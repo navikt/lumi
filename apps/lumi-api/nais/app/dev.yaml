@@ -62,7 +62,7 @@ spec:
     - instance: lumi-cache
       access: readwrite
   envFrom:
-    - secret: lumi-api
+    - secret: nais-api-key
   env:
     - name: NAIS_CLUSTER_NAME
       value: dev-gcp
