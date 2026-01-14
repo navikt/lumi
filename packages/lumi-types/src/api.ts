@@ -4,6 +4,45 @@
 // ============================================
 
 // ============================================
+// Widget Submission Types (schemaVersion=1)
+// Matches apps/lumi-api domain/SubmissionV1.kt
+// ============================================
+
+export type JsonPrimitive = string | number | boolean | null;
+
+export interface Viewport {
+  width: number;
+  height: number;
+}
+
+export interface SubmissionContextV1 {
+  url?: string | null;
+  pathname?: string | null;
+  deviceType?: DeviceType | null;
+  viewport?: Viewport | null;
+  userAgent?: string | null;
+  /** Low-cardinality segmentation tags (values must be JSON primitives). */
+  tags?: Record<string, JsonPrimitive> | null;
+  /** Debug payload (ignored by backend storage/analytics). */
+  debug?: Record<string, unknown> | null;
+}
+
+export interface FeedbackSubmissionV1 {
+  schemaVersion: 1;
+  surveyId: string;
+  surveyType: SurveyType;
+  submittedAt: string;
+  startedAt?: string | null;
+  timeToCompleteMs?: number | null;
+  context?: SubmissionContextV1 | null;
+  answers: Answer[];
+}
+
+export interface SubmissionCreatedResponse {
+  id: string;
+}
+
+// ============================================
 // Answer Types
 // ============================================
 

@@ -4,7 +4,14 @@ export default defineConfig({
   entry: ["src/index.ts"],
   format: ["esm"],
   dts: true,
-  sourcemap: true,
   clean: true,
-  outDir: "dist",
+  external: [
+    "@navikt/nav-dekoratoren-moduler",
+    "@navikt/ds-react",
+    "@navikt/aksel-icons",
+  ],
+  loader: {
+    ".module.css": "local-css",
+    ".css": "css",
+  },
 });

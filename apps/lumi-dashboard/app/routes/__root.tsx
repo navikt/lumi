@@ -11,7 +11,7 @@ import { useState } from "react";
 
 // Import Aksel Darkside styles (supports light/dark mode)
 import akselStyles from "@navikt/ds-css/darkside?url";
-import lumiLogo from "~/assets/lumi.svg";
+import lumiLogo from "~/assets/lumi.png";
 import { ErrorComponent } from "~/components/shared/ErrorComponent";
 import { ThemeProvider, useTheme } from "~/context/ThemeContext";
 import globalStyles from "~/styles/global.css?url";
@@ -38,7 +38,7 @@ export const Route = createRootRoute({
       { rel: "stylesheet", href: globalStyles },
       {
         rel: "icon",
-        type: "image/svg+xml",
+        type: "image/png",
         href: lumiLogo,
       },
     ],

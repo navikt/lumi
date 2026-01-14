@@ -5,11 +5,16 @@
   "scripts": {
     "dev": "npm -w packages/lumi-types run build && npm -w apps/lumi-dashboard run dev",
     "build": "npm -w packages/lumi-types run build && npm -w packages/lumi-survey run build && npm -w apps/lumi-dashboard run build",
+    "storybook:survey": "npm -w packages/lumi-survey run storybook",
+    "build-storybook:survey": "npm -w packages/lumi-survey run build-storybook",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "typecheck": "npm -w packages/lumi-types run typecheck && npm -w packages/lumi-survey run typecheck && npm -w apps/lumi-dashboard run typecheck",
     "test": "npm -w apps/lumi-dashboard run test",
     "e2e": "npm -w apps/lumi-dashboard run e2e",
+    "api:run": "cd apps/lumi-api && ./gradlew run",
+    "api:build": "cd apps/lumi-api && ./gradlew build",
+    "api:test": "cd apps/lumi-api && ./gradlew test",
     "prepare": "husky"
   },
   "devDependencies": {

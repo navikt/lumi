@@ -2,6 +2,7 @@
   "name": "@navikt/lumi-survey",
   "version": "0.0.0",
   "private": true,
+  "description": "Aksel-based React widget for configurable NAV Lumi surveys.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -9,14 +10,52 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./styles.css": "./dist/index.css"
   },
+  "files": ["dist"],
+  "sideEffects": ["./dist/**/*.css"],
   "scripts": {
-    "build": "tsup",
+    "prepare": "npm run build",
+    "build": "tsup --config tsup.config.ts",
+    "test": "vitest run --passWithNoTests",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "clean": "rm -rf dist",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "@navikt/lumi-types": "0.0.0"
+  },
+  "peerDependencies": {
+    "@navikt/ds-css": ">=7",
+    "@navikt/ds-react": ">=7",
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "@navikt/nav-dekoratoren-moduler": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@navikt/ds-css": "^7.35.0",
+    "@navikt/ds-react": "^7.35.0",
+    "@storybook/addon-a11y": "^9.1.10",
+    "@storybook/react-vite": "^9.1.10",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.6.0",
+    "@types/node": "^22.5.4",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "jsdom": "^26.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "storybook": "^9.1.10",
     "tsup": "^8.5.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "vitest-axe": "^0.1.0"
   }
 }

@@ -17,6 +17,23 @@
       }
     }
   },
+  "overrides": [
+    {
+      "include": [
+        "packages/lumi-survey/src/components/questions/rating/EmojiButton.tsx",
+        "packages/lumi-survey/src/components/questions/rating/NpsRating.tsx",
+        "packages/lumi-survey/src/components/questions/rating/StarRating.tsx",
+        "packages/lumi-survey/src/components/questions/rating/ThumbsRating.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useSemanticElements": "off"
+          }
+        }
+      }
+    }
+  ],
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -31,6 +48,7 @@
       "apps/lumi-dashboard/app/routes/api/backend/$.ts",
 
       "packages/*/dist",
+      "**/storybook-static/**",
 
       "apps/lumi-api/build",
       "apps/lumi-api/.gradle"

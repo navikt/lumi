@@ -1,0 +1,88 @@
+.flexjar-rating__row {
+  display: flex;
+  gap: var(--ax-space-16);
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  overflow-x: auto;
+  padding: var(--ax-space-12) var(--ax-space-16);
+  -webkit-overflow-scrolling: touch;
+}
+
+.flexjar-rating__fieldset {
+  border: 0;
+  margin: 0;
+}
+
+.flexjar-rating__emoji-button {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: center;
+  justify-content: center;
+  color: var(--ax-text-neutral);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  min-width: 5.5rem;
+  padding: var(--ax-space-8) var(--ax-space-8);
+  transition: color 0.2s ease, transform 0.2s ease;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.flexjar-rating__emoji-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.flexjar-rating__emoji-button:focus-visible {
+  outline: none;
+  border-radius: var(--ax-radius-8);
+  box-shadow: 0 0 0 3px var(--ax-border-focus);
+  z-index: 1;
+}
+
+.flexjar-rating__emoji-button--active {
+  transform: translateY(-2px);
+}
+
+.flexjar-rating__emoji-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.flexjar-rating__emoji-button--sinna:hover {
+  color: var(--ax-text-danger-subtle);
+}
+
+.flexjar-rating__emoji-button--lei:hover {
+  color: var(--ax-text-warning-decoration);
+}
+
+.flexjar-rating__emoji-button--noytral:hover {
+  color: var(--ax-text-info-decoration);
+}
+
+.flexjar-rating__emoji-button--glad:hover {
+  color: var(--ax-text-success-decoration);
+}
+
+.flexjar-rating__emoji-button--veldig-glad:hover {
+  color: var(--ax-text-success-decoration);
+  filter: brightness(0.8);
+}
+
+.flexjar-rating__legend {
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+}
+
+.flexjar-rating__error-message {
+  color: var(--ax-text-danger-subtle);
+}

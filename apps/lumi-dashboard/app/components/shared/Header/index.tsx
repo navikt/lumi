@@ -1,10 +1,13 @@
 import { BarChartIcon, DownloadIcon, TableIcon } from "@navikt/aksel-icons";
 import { Box, Button, HStack, Hide } from "@navikt/ds-react";
 import { Link, useLocation } from "@tanstack/react-router";
-import lumiLogo from "~/assets/lumi.svg";
+import lumiLogo from "~/assets/lumi.png";
 import { ThemeToggle } from "~/components/shared/ThemeToggle";
 
 export function Header() {
+  const logoHeight = 32;
+  // `lumi.png` is 1920x1080 (16:9). Keep the correct intrinsic ratio to avoid layout shift.
+  const logoWidth = Math.round((logoHeight * 1920) / 1080);
   const location = useLocation();
   const currentPath = location.pathname;
 
@@ -61,9 +64,9 @@ export function Header() {
           <img
             src={lumiLogo}
             alt=""
-            style={{ height: "36px", width: "auto" }}
-            width={36}
-            height={36}
+            width={logoWidth}
+            height={logoHeight}
+            style={{ height: logoHeight, width: "auto", display: "block" }}
           />
           {/* Hide title text on very small screens */}
           <Hide below="sm" asChild>

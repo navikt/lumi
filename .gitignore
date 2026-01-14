@@ -7,6 +7,8 @@ dist/
 coverage/
 playwright-report/
 test-results/
+storybook-static/
+**/storybook-static/
 
 # Java/Gradle
 **/build/

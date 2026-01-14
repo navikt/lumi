@@ -21,7 +21,7 @@ app/
 │   ├── index.tsx         # Dashboard with charts
 │   ├── feedback.tsx      # Paginated feedback table
 │   ├── export.tsx        # Export panel (CSV/JSON/Excel)
-│   └── api/              # API routes (proxy to backend)
+│   └── api/              # Internal endpoints (health/metrics)
 ├── components/
 │   ├── FilterBar/        # Date range, team, app, tags filters
 │   ├── FeedbackTable/    # Expandable rows with answer fields
@@ -35,7 +35,8 @@ app/
 │   ├── api.ts            # API response types (matches backend DTOs)
 │   └── filters.ts        # Filter-related types
 ├── server/
-│   ├── fetchFromBackend.ts  # Server function with OBO token
+│   ├── actions/          # createServerFn handlers that call the backend with OBO token
+│   ├── fetchFromBackend.ts  # Backend fetch wrapper (OBO + headers)
 │   └── utils.ts          # Server-side utilities
 ├── context/              # React context providers
 ├── utils/                # Client-side utilities
@@ -75,7 +76,7 @@ npm run typecheck  # TypeScript check (added to pre-commit)
 - **[lumi-survey](https://github.com/navikt/lumi/tree/main/packages/lumi-survey)**: Survey widget (`@navikt/lumi-survey`) that submits to the backend.
 
 ## Backend Integration
-- Proxy route at `app/routes/api/` forwards to `LUMI_API_URL`
+- Server functions in `app/server/actions/*` call `LUMI_API_URL` using OBO token exchange
 - Types in `types/api.ts` must match backend DTOs
 - Backend handles: pagination, filtering, sorting, PII redaction
 

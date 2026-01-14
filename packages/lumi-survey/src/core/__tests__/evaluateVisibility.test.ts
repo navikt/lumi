@@ -1,0 +1,223 @@
+import { describe, expect, it } from "vitest";
+import {
+  evaluateVisibility,
+  getVisibleQuestions,
+  shouldShowSubmitButton,
+} from "../evaluateVisibility";
+import type { FlexJarQuestion } from "../types";
+
+describe("evaluateVisibility", () => {
+  describe("with no condition", () => {
+    it("returns true when condition is undefined", () => {
+      expect(evaluateVisibility(undefined, {})).toBe(true);
+    });
+  });
+
+  describe("with EXISTS operator", () => {
+    it("returns true when referenced answer exists", () => {
+      const condition = {
+        field: "ANSWER" as const,
+        questionId: "rating",
+        operator: "EXISTS" as const,
+      };
+      expect(evaluateVisibility(condition, { rating: 5 })).toBe(true);
+    });
+
+    it("returns false when referenced answer does not exist", () => {
+      const condition = {
+        field: "ANSWER" as const,
+        questionId: "rating",
+        operator: "EXISTS" as const,
+      };
+      expect(evaluateVisibility(condition, {})).toBe(false);
+    });
+
+    it("returns true when no questionId is specified", () => {
+      const condition = {
+        field: "ANSWER" as const,
+        operator: "EXISTS" as const,
+      };
+      expect(evaluateVisibility(condition, {})).toBe(true);
+    });
+  });
+
+  describe("with EQ operator", () => {
+    it("returns true when values are equal", () => {
+      const condition = {
+        field: "ANSWER" as const,
+        questionId: "success",
+        operator: "EQ" as const,
+        value: "yes",
+      };
+      expect(evaluateVisibility(condition, { success: "yes" })).toBe(true);
+    });
+
+    it("returns false when values are not equal", () => {
+      const condition = {
+        field: "ANSWER" as const,
+        questionId: "success",
+        operator: "EQ" as const,
+        value: "yes",
+      };
+      expect(evaluateVisibility(condition, { success: "no" })).toBe(false);
+    });
+  });
+
+  describe("with NEQ operator", () => {
+    it("returns true when values are not equal", () => {
+      const condition = {
+        field: "ANSWER" as const,
+        questionId: "success",
+        operator: "NEQ" as const,
+        value: "yes",
+      };
+      expect(evaluateVisibility(condition, { success: "no" })).toBe(true);
+    });
+
+    it("returns false when values are equal", () => {
+      const condition = {
+        field: "ANSWER" as const,
+        questionId: "success",
+        operator: "NEQ" as const,
+        value: "yes",
+      };
+      expect(evaluateVisibility(condition, { success: "yes" })).toBe(false);
+    });
+  });
+
+  describe("with numeric operators", () => {
+    it("GT returns true when actual > expected", () => {
+      const condition = {
+        field: "ANSWER" as const,
+        questionId: "rating",
+        operator: "GT" as const,
+        value: 3,
+      };
+      expect(evaluateVisibility(condition, { rating: 5 })).toBe(true);
+      expect(evaluateVisibility(condition, { rating: 3 })).toBe(false);
+    });
+
+    it("LT returns true when actual < expected", () => {
+      const condition = {
+        field: "ANSWER" as const,
+        questionId: "rating",
+        operator: "LT" as const,
+        value: 3,
+      };
+      expect(evaluateVisibility(condition, { rating: 2 })).toBe(true);
+      expect(evaluateVisibility(condition, { rating: 3 })).toBe(false);
+    });
+  });
+
+  describe("with CONTAINS operator", () => {
+    it("returns true when array contains value", () => {
+      const condition = {
+        field: "ANSWER" as const,
+        questionId: "tasks",
+        operator: "CONTAINS" as const,
+        value: "apply",
+      };
+      expect(evaluateVisibility(condition, { tasks: ["apply", "check"] })).toBe(
+        true,
+      );
+    });
+
+    it("returns false when array does not contain value", () => {
+      const condition = {
+        field: "ANSWER" as const,
+        questionId: "tasks",
+        operator: "CONTAINS" as const,
+        value: "apply",
+      };
+      expect(
+        evaluateVisibility(condition, { tasks: ["check", "status"] }),
+      ).toBe(false);
+    });
+  });
+
+  describe("with METADATA field", () => {
+    it("evaluates metadata conditions", () => {
+      const condition = {
+        field: "METADATA" as const,
+        key: "userType",
+        operator: "EQ" as const,
+        value: "employee",
+      };
+      expect(evaluateVisibility(condition, {}, { userType: "employee" })).toBe(
+        true,
+      );
+      expect(evaluateVisibility(condition, {}, { userType: "employer" })).toBe(
+        false,
+      );
+    });
+  });
+});
+
+describe("getVisibleQuestions", () => {
+  const questions: FlexJarQuestion[] = [
+    {
+      id: "rating",
+      type: "rating",
+      prompt: "How was it?",
+      required: true,
+    },
+    {
+      id: "feedback",
+      type: "text",
+      prompt: "Tell us more",
+      visibleIf: {
+        field: "ANSWER",
+        questionId: "rating",
+        operator: "EXISTS",
+      },
+    },
+    {
+      id: "blocker",
+      type: "text",
+      prompt: "What blocked you?",
+      visibleIf: {
+        field: "ANSWER",
+        questionId: "rating",
+        operator: "LT",
+        value: 3,
+      },
+    },
+  ];
+
+  it("returns only the rating question when no answers", () => {
+    const visible = getVisibleQuestions(questions, {});
+    expect(visible.map((q) => q.id)).toEqual(["rating"]);
+  });
+
+  it("returns rating and feedback when rating is answered", () => {
+    const visible = getVisibleQuestions(questions, { rating: 5 });
+    expect(visible.map((q) => q.id)).toEqual(["rating", "feedback"]);
+  });
+
+  it("returns rating, feedback, and blocker when rating is low", () => {
+    const visible = getVisibleQuestions(questions, { rating: 2 });
+    expect(visible.map((q) => q.id)).toEqual(["rating", "feedback", "blocker"]);
+  });
+});
+
+describe("shouldShowSubmitButton", () => {
+  const questions: FlexJarQuestion[] = [
+    { id: "rating", type: "rating", prompt: "Rate us", required: true },
+    { id: "feedback", type: "text", prompt: "Comments", required: false },
+  ];
+
+  it("returns false when first required question has no answer", () => {
+    expect(shouldShowSubmitButton(questions, {})).toBe(false);
+  });
+
+  it("returns true when first required question has an answer", () => {
+    expect(shouldShowSubmitButton(questions, { rating: 4 })).toBe(true);
+  });
+
+  it("returns true when there are no required questions", () => {
+    const optionalQuestions: FlexJarQuestion[] = [
+      { id: "feedback", type: "text", prompt: "Comments", required: false },
+    ];
+    expect(shouldShowSubmitButton(optionalQuestions, {})).toBe(true);
+  });
+});

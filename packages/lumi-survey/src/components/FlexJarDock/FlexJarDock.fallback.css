@@ -1,0 +1,109 @@
+.flexjar-dock {
+  display: flex;
+  flex-direction: column;
+}
+
+.flexjar-dock__panel {
+  position: relative;
+}
+
+.flexjar-dock__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--ax-space-16);
+  margin-bottom: var(--ax-space-8);
+}
+
+.flexjar-dock__header-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-4);
+  flex: 1;
+  min-width: 0;
+}
+
+.flexjar-dock__close-button.flexjar-dock__close-button {
+  position: absolute;
+  top: -0.75rem;
+  right: 1rem;
+  z-index: 10;
+  background-color: var(--ax-bg-accent-strong);
+  color: var(--ax-text-accent-contrast);
+  border-radius: var(--ax-radius-full);
+  box-shadow: var(--a-shadow-medium);
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0;
+}
+
+.flexjar-dock__close-button.flexjar-dock__close-button:hover {
+  background-color: var(--ax-bg-accent-strong-hover);
+  color: var(--ax-text-accent-contrast);
+}
+
+.flexjar-dock__close-button.flexjar-dock__close-button:focus-visible {
+  outline: none;
+  box-shadow: var(--a-shadow-focus), var(--a-shadow-medium);
+}
+
+.flexjar-dock__rating {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-8);
+}
+
+.flexjar-dock__rating-heading {
+  font-size: var(--ax-font-size-xlarge);
+  font-weight: var(--ax-font-weight-bold);
+}
+
+.flexjar-dock__rating-description {
+  font-size: var(--ax-font-size-small);
+}
+
+.flexjar-dock__rating-fieldset {
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.flexjar-dock__rating-fieldset legend {
+  display: none;
+}
+
+.flexjar-dock__rating-row {
+  display: flex;
+  gap: var(--ax-space-12);
+  justify-content: space-between;
+  width: 100%;
+  flex-wrap: nowrap;
+}
+
+.flexjar-dock__rating-button {
+  flex: 1 0 0;
+  padding-inline: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ax-space-4);
+  min-width: 0;
+}
+
+.flexjar-dock__rating-button svg {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.flexjar-dock__minimized-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ax-space-8);
+  border-radius: var(--ax-radius-full);
+  box-shadow: var(--a-shadow-medium);
+}
+
+.flexjar-dock__minimized-button svg {
+  width: 1.75rem;
+  height: 1.75rem;
+}

@@ -222,6 +222,8 @@ const QuestionSchema = z.object({
 const RatingValueSchema = z.object({
   type: z.literal("rating"),
   rating: z.number(),
+  ratingVariant: z.enum(["emoji", "thumbs", "stars", "nps"]).optional(),
+  ratingScale: z.number().optional(),
 });
 
 const TextValueSchema = z.object({
@@ -260,6 +262,172 @@ const AnswerSchema = z.object({
 });
 
 const DeviceTypeSchema = z.enum(["mobile", "tablet", "desktop"]);
+
+// ============================================
+// Widget submission (schemaVersion=1)
+// Matches apps/lumi-api domain/SubmissionV1.kt + SubmissionRoutes validation
+// ============================================
+
+const JsonPrimitiveSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.null(),
+]);
+
+const IsoInstantSchema = z.string().refine(
+  (value) => {
+    // Backend validates with java.time.Instant.parse.
+    // Keep this strict enough to catch obvious issues, without false negatives.
+    if (!value.includes("T")) return false;
+    const parsed = Date.parse(value);
+    return !Number.isNaN(parsed);
+  },
+  { message: "Expected an ISO-8601 instant" },
+);
+
+const ViewportSchema = z.object({
+  width: z.number().int(),
+  height: z.number().int(),
+});
+
+export const SubmissionContextV1Schema = z.object({
+  url: z.string().nullable().optional(),
+  pathname: z.string().nullable().optional(),
+  deviceType: DeviceTypeSchema.nullable().optional(),
+  viewport: ViewportSchema.nullable().optional(),
+  userAgent: z.string().nullable().optional(),
+  tags: z.record(z.string(), JsonPrimitiveSchema).nullable().optional(),
+  debug: z.record(z.string(), z.unknown()).nullable().optional(),
+});
+
+const RatingVariantSchema = z.enum(["emoji", "thumbs", "stars", "nps"]);
+const SubmissionRatingValueSchema = z
+  .object({
+    type: z.literal("rating"),
+    rating: z.number().int(),
+    ratingVariant: RatingVariantSchema,
+    ratingScale: z.number().int(),
+  })
+  .superRefine((value, ctx) => {
+    const expectedScaleByVariant: Record<
+      z.infer<typeof RatingVariantSchema>,
+      number
+    > = {
+      emoji: 5,
+      thumbs: 2,
+      stars: 5,
+      nps: 11,
+    };
+
+    const expectedScale = expectedScaleByVariant[value.ratingVariant];
+    if (value.ratingScale !== expectedScale) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `ratingScale=${value.ratingScale} does not match ratingVariant=${value.ratingVariant} (expected ${expectedScale})`,
+        path: ["ratingScale"],
+      });
+    }
+
+    const [minRating, maxRating] =
+      value.ratingVariant === "nps" ? [0, 10] : [1, value.ratingScale];
+    if (value.rating < minRating || value.rating > maxRating) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `rating=${value.rating} out of range for ratingVariant=${value.ratingVariant} (${minRating}-${maxRating})`,
+        path: ["rating"],
+      });
+    }
+  });
+
+const SubmissionTextValueSchema = z.object({
+  type: z.literal("text"),
+  text: z.string(),
+});
+
+const SubmissionSingleChoiceValueSchema = z.object({
+  type: z.literal("singleChoice"),
+  selectedOptionId: z.string().min(1),
+});
+
+const SubmissionMultiChoiceValueSchema = z.object({
+  type: z.literal("multiChoice"),
+  selectedOptionIds: z.array(z.string().min(1)).min(1),
+});
+
+const SubmissionDateValueSchema = z.object({
+  type: z.literal("date"),
+  date: z.string().min(1),
+});
+
+const SubmissionBaseAnswerSchema = z.object({
+  fieldId: z.string().min(1),
+  question: QuestionSchema,
+});
+
+const SubmissionRatingAnswerSchema = SubmissionBaseAnswerSchema.extend({
+  fieldType: z.literal("RATING"),
+  value: SubmissionRatingValueSchema,
+});
+
+const SubmissionTextAnswerSchema = SubmissionBaseAnswerSchema.extend({
+  fieldType: z.literal("TEXT"),
+  value: SubmissionTextValueSchema,
+});
+
+const SubmissionSingleChoiceAnswerSchema = SubmissionBaseAnswerSchema.extend({
+  fieldType: z.literal("SINGLE_CHOICE"),
+  value: SubmissionSingleChoiceValueSchema,
+});
+
+const SubmissionMultiChoiceAnswerSchema = SubmissionBaseAnswerSchema.extend({
+  fieldType: z.literal("MULTI_CHOICE"),
+  value: SubmissionMultiChoiceValueSchema,
+});
+
+const SubmissionDateAnswerSchema = SubmissionBaseAnswerSchema.extend({
+  fieldType: z.literal("DATE"),
+  value: SubmissionDateValueSchema,
+});
+
+const SubmissionAnswerSchema = z.discriminatedUnion("fieldType", [
+  SubmissionRatingAnswerSchema,
+  SubmissionTextAnswerSchema,
+  SubmissionSingleChoiceAnswerSchema,
+  SubmissionMultiChoiceAnswerSchema,
+  SubmissionDateAnswerSchema,
+]);
+
+export const FeedbackSubmissionV1Schema = z
+  .object({
+    schemaVersion: z.literal(1),
+    surveyId: z.string().min(1),
+    surveyType: SurveyTypeSchema,
+    submittedAt: IsoInstantSchema,
+    startedAt: IsoInstantSchema.nullable().optional(),
+    timeToCompleteMs: z.number().int().nonnegative().nullable().optional(),
+    context: SubmissionContextV1Schema.nullable().optional(),
+    answers: z.array(SubmissionAnswerSchema).min(1),
+  })
+  .superRefine((submission, ctx) => {
+    const seen = new Set<string>();
+    for (let i = 0; i < submission.answers.length; i += 1) {
+      const fieldId = submission.answers[i]?.fieldId;
+      if (!fieldId) continue;
+      if (seen.has(fieldId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `answers.fieldId must be unique (duplicate: ${fieldId})`,
+          path: ["answers", i, "fieldId"],
+        });
+      }
+      seen.add(fieldId);
+    }
+  });
+
+export const SubmissionCreatedResponseSchema = z.object({
+  id: z.string(),
+});
 
 const SubmissionContextSchema = z.object({
   url: z.string().optional(),
