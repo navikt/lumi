@@ -1,0 +1,40 @@
+/* StatsCards Component Styles */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  padding: 1.25rem;
+  background: var(--ax-bg-raised);
+  border-radius: 8px;
+  box-shadow: var(--ax-shadow-small);
+  border: 1px solid var(--ax-border-neutral-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-weight: 500;
+  color: var(--ax-text-neutral-subtle);
+}
+
+.value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.subtitle {
+  color: var(--ax-text-neutral-subtle);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .value {
+    font-size: 2rem;
+  }
+}

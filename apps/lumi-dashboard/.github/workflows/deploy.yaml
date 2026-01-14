@@ -1,0 +1,167 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - demo-*
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
+jobs:
+  checks:
+    name: Run checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+      - run: npm ci
+        env:
+          NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - name: Install Playwright
+        run: npx playwright install chromium --with-deps
+      - name: Run E2E tests
+        run: npm run e2e
+        env:
+          USE_MOCK_DATA: "true"
+
+  # Build 1: For demo environment (with mock data)
+  build-demo:
+    name: Build demo (mock data)
+    needs: checks
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.docker-build-push.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+      - run: npm ci
+        env:
+          NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
+      
+      - name: Build application (with mock data)
+        run: npm run build
+        env:
+          VITE_MOCK_DATA: "true"
+          CDN_BASE_PATH: "/lumi-dashboard-demo"
+      
+      - name: Copy static files
+        run: cp -r .output/public .output/client
+      
+      - name: Upload static files to NAV CDN
+        uses: nais/deploy/actions/cdn-upload/v2@master
+        with:
+          team: team-esyfo
+          source: ./.output/client
+          destination: "/lumi-dashboard-demo"
+          project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
+          identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Push to GAR
+        uses: nais/docker-build-push@v0
+        id: docker-build-push
+        with:
+          team: team-esyfo
+          identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
+          project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
+          image_suffix: demo
+
+  # Build 2: For dev and prod environments (real backend)
+  build-production:
+    name: Build production
+    needs: checks
+    runs-on: ubuntu-latest
+    if: github.ref_name == 'main'
+    outputs:
+      image: ${{ steps.docker-build-push.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+      - run: npm ci
+        env:
+          NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
+      
+      - name: Build application (production)
+        run: npm run build
+        env:
+          CDN_BASE_PATH: "/lumi-dashboard"
+      
+      - name: Copy static files
+        run: cp -r .output/public .output/client
+      
+      - name: Upload static files to NAV CDN
+        uses: nais/deploy/actions/cdn-upload/v2@master
+        with:
+          team: team-esyfo
+          source: ./.output/client
+          destination: "/lumi-dashboard"
+          project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
+          identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Push to GAR
+        uses: nais/docker-build-push@v0
+        id: docker-build-push
+        with:
+          team: team-esyfo
+          identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
+          project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
+
+  deploy-demo:
+    name: Deploy to dev-gcp (Demo)
+    needs: build-demo
+    runs-on: ubuntu-latest
+    environment:
+      name: demo
+      url: https://lumi-dashboard-demo.ekstern.dev.nav.no
+    steps:
+      - uses: actions/checkout@v4
+      - uses: nais/deploy/actions/deploy@v2
+        env:
+          CLUSTER: dev-gcp
+          RESOURCE: nais/demo.yaml
+          VAR: image=${{ needs.build-demo.outputs.image }}
+
+  deploy-dev:
+    name: Deploy to dev-gcp
+    needs: build-production
+    runs-on: ubuntu-latest
+    environment:
+      name: dev
+      url: https://lumi-dashboard.ansatt.dev.nav.no
+    steps:
+      - uses: actions/checkout@v4
+      - uses: nais/deploy/actions/deploy@v2
+        env:
+          CLUSTER: dev-gcp
+          RESOURCE: nais/dev.yaml
+          VAR: image=${{ needs.build-production.outputs.image }}
+
+  deploy-prod:
+    name: Deploy to prod-gcp
+    needs: [build-production, deploy-dev]
+    runs-on: ubuntu-latest
+    environment:
+      name: prod
+      url: https://lumi-dashboard.ansatt.nav.no
+    steps:
+      - uses: actions/checkout@v4
+      - uses: nais/deploy/actions/deploy@v2
+        env:
+          CLUSTER: prod-gcp
+          RESOURCE: nais/prod.yaml
+          VAR: image=${{ needs.build-production.outputs.image }}

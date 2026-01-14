@@ -1,0 +1,273 @@
+/**
+ * Global styles for Lumi Dashboard
+ *
+ * This file contains only:
+ * - CSS resets and base styles
+ * - Layout utilities (header, main content)
+ * - Responsive utilities
+ * - Typography defaults
+ * - Loading states
+ * - Dashboard grid layout
+ *
+ * Component-specific styles are in their respective .module.css files.
+ *
+ * Aksel Breakpoints Reference:
+ * - xs: 0px (small phones)
+ * - sm: 480px (large phones)
+ * - md: 768px (tablets)
+ * - lg: 1024px (small laptops)
+ * - xl: 1280px (desktops)
+ * - 2xl: 1440px (large desktops)
+ */
+
+/* ============================================
+ * Base Styles
+ * ============================================ */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  /* Prevent horizontal overflow on mobile */
+  overflow-x: hidden;
+}
+
+.app-theme-root {
+  min-height: 100vh;
+}
+
+body {
+  font-family: var(--ax-font-family);
+  background-color: var(--ax-bg-default);
+  color: var(--ax-text-default);
+  /* Improve text rendering on mobile */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Header */
+.app-header {
+  background: var(--ax-bg-raised);
+  border-bottom: 1px solid var(--ax-border-neutral-subtle);
+  padding: 0 1rem;
+}
+
+.header-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 64px;
+}
+
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    height: auto;
+    padding: 0.75rem 0;
+    gap: 0.75rem;
+  }
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+  font-size: 1.25rem;
+  text-decoration: none;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.header-title:hover {
+  opacity: 0.8;
+}
+
+.header-logo {
+  height: 40px;
+  width: auto;
+}
+
+/* Main content area - responsive padding */
+.main-content {
+  padding: 1rem 0.75rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+@media (min-width: 480px) {
+  .main-content {
+    padding: 1.25rem 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .main-content {
+    padding: 1.5rem 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .main-content {
+    padding: 1.5rem 2rem;
+  }
+}
+
+/* Navigation tabs */
+.nav-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--ax-border-neutral-subtle);
+  margin-bottom: 1.5rem;
+}
+
+.nav-tab {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--ax-text-neutral-subtle);
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.nav-tab:hover {
+  color: var(--ax-text-neutral);
+}
+
+.nav-tab.active {
+  color: var(--ax-text-accent);
+  border-bottom-color: var(--ax-border-accent);
+}
+
+/* Loading states */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--ax-bg-neutral-soft) 25%,
+    var(--ax-bg-neutral-moderate) 50%,
+    var(--ax-bg-neutral-soft) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Date range picker */
+.date-range {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Page-level containers */
+.page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  /* Hide button text on mobile */
+  .hide-text-mobile span.ds-button__label {
+    display: none;
+  }
+}
+
+@media (min-width: 769px) {
+  /* Show only icons on mobile, text on desktop */
+  .show-text-desktop span.ds-button__label {
+    display: inline;
+  }
+}
+
+/* ============================================
+ * Dashboard Grid Layout
+ * ============================================ */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Dashboard Cards */
+.dashboard-card {
+  background: var(--ax-bg-default);
+  border: 1px solid var(--ax-border-subtle);
+  border-radius: 8px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dashboard-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Chart Containers */
+.chart-container {
+  height: 300px;
+  width: 100%;
+  min-height: 250px;
+}
+
+.chart-container-small {
+  height: 200px;
+  width: 100%;
+  min-height: 150px;
+}
+
+/* Table wrapper for scrolling */
+.table-wrapper {
+  overflow-x: auto;
+  margin: 0 -1.5rem;
+  padding: 0 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .dashboard-card {
+    padding: 1rem;
+  }
+
+  .chart-container {
+    height: 250px;
+    min-height: 200px;
+  }
+
+  .chart-container-small {
+    height: 180px;
+    min-height: 150px;
+  }
+}
+
+/* Export alert styling */
+.export-alert {
+  grid-column: 1 / -1;
+}

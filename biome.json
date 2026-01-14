@@ -1,0 +1,39 @@
+{
+  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "organizeImports": {
+    "enabled": true
+  },
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "correctness": {
+        "noUnusedImports": "warn"
+      }
+    }
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2
+  },
+  "files": {
+    "ignore": [
+      "apps/lumi-dashboard/app/routeTree.gen.ts",
+      "apps/lumi-dashboard/app.config.timestamp_*.js",
+      "apps/lumi-dashboard/dist",
+      "apps/lumi-dashboard/.output",
+      "apps/lumi-dashboard/app/routes/api/backend/$.ts",
+
+      "packages/*/dist",
+
+      "apps/lumi-api/build",
+      "apps/lumi-api/.gradle"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+# Node
+node_modules/
+
+# Builds / output
+.output/
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# Java/Gradle
+**/build/
+**/.gradle/
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log
+error.log
+
+# OS
+.DS_Store

@@ -1,0 +1,345 @@
+/* FeedbackTable Component Styles */
+
+.table {
+  background: var(--ax-bg-default);
+  border-radius: 8px;
+  box-shadow: var(--ax-shadow-small);
+  border: 1px solid var(--ax-border-subtle);
+  overflow: hidden;
+}
+
+.toolbar {
+  padding: 0.75rem 1rem;
+  background: var(--ax-bg-neutral-soft);
+  border-bottom: 1px solid var(--ax-border-subtle);
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.row {
+  transition: background-color 0.15s;
+}
+
+.row:hover {
+  background-color: var(--ax-bg-neutral-soft);
+}
+
+/* Expanded row styling */
+.expandedRow {
+  background: transparent !important;
+}
+
+.expandedRow:hover {
+  background: transparent !important;
+}
+
+.expandedCell {
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+/* Inner expanded content box is handled by Box.New */
+
+.expandedSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.expandedSectionLabel {
+  color: var(--ax-text-subtle);
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 0.6875rem;
+  letter-spacing: 0.05em;
+}
+
+/* Context grid for expanded view */
+.contextGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.contextItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: var(--ax-bg-default);
+  border-radius: 8px;
+  border: 1px solid var(--ax-border-subtle);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.contextItem:hover {
+  border-color: var(--ax-border-content-interaction);
+  box-shadow: var(--ax-shadow-xsmall);
+}
+
+.contextIcon {
+  font-size: 1.25rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.contextContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.contextLabel {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ax-text-subtle);
+}
+
+.contextValue {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--ax-text-default);
+  word-break: break-word;
+}
+
+/* Metadata row */
+.metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--ax-border-subtle);
+}
+
+/* Answer cards in timeline view */
+.answersList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  position: relative;
+}
+
+.connectorLines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.answerItem {
+  display: grid;
+  grid-template-columns: 1.875rem 1fr;
+  gap: 1rem;
+  position: relative;
+}
+
+.answerNumber {
+  position: relative;
+  width: 1.875rem;
+  height: 1.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ax-bg-default);
+  border: 2px solid var(--ax-border-subtle);
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ax-text-subtle);
+  z-index: 1;
+  margin-top: calc(1rem + 0.125rem);
+}
+
+.answerCard {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+  background: var(--ax-bg-default);
+  border-radius: 8px;
+  border: 1px solid var(--ax-border-subtle);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.answerCard:hover {
+  border-color: var(--ax-border-content-interaction);
+  box-shadow: var(--ax-shadow-xsmall);
+}
+
+.answerHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.answerLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.answerDescription {
+  font-weight: 400;
+  color: var(--ax-text-subtle);
+}
+
+.answerContent {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.answerContentText {
+  display: block;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.answerEmpty {
+  font-style: italic;
+  color: var(--ax-text-subtle);
+}
+
+/* Choice options */
+.choiceOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.choiceOption {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 0.75rem;
+  background: var(--ax-bg-neutral-soft);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  color: var(--ax-text-subtle);
+  border: 1px solid transparent;
+}
+
+.choiceOptionSelected {
+  background: var(--ax-bg-accent-soft);
+  color: var(--ax-text-accent);
+  border-color: var(--ax-border-accent);
+  font-weight: 500;
+}
+
+/* Rating emoji display */
+.ratingEmoji {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+/* Survey pill */
+.surveyPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem;
+  background: var(--ax-bg-accent-soft);
+  color: var(--ax-text-accent);
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Text answer box */
+.textAnswerBox {
+  background: var(--ax-bg-raised);
+  border: 1px solid var(--ax-border-subtle);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Answer tag */
+.answerTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  background: var(--ax-bg-neutral-soft);
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+/* NEW Rating bar styles */
+.ratingBar {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.ratingDot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--ax-bg-neutral-soft);
+  opacity: 0.3;
+  transition: opacity 0.2s;
+}
+
+.ratingDotFilled {
+  opacity: 1;
+  background: transparent;
+}
+
+.ratingScore {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* Preview text in compact row */
+.previewText {
+  max-width: 350px;
+  font-weight: 500;
+}
+
+.previewSubText {
+  max-width: 350px;
+  font-size: 0.85rem;
+  color: var(--ax-text-neutral-subtle);
+}
+
+/* Mobile answer cards */
+.answerCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.875rem 1rem;
+  background: var(--ax-bg-default);
+  border-radius: 8px;
+  border: 1px solid var(--ax-border-subtle);
+}
+
+.answerLabel {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ax-text-subtle);
+}
+
+.answerValue {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--ax-text-default);
+  word-break: break-word;
+}

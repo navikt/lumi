@@ -1,0 +1,24 @@
+node_modules/
+.output/
+.vinxi/
+dist/
+*.log
+.DS_Store
+.env
+.env.local
+app.config.timestamp_*.js
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Temporary
+test-h3.js
+.nitro/
+
+# Playwright
+playwright-report/
+test-results/
+

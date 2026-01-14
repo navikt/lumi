@@ -1,0 +1,62 @@
+apiVersion: nais.io/v1alpha1
+kind: Application
+metadata:
+  name: lumi-dashboard
+  namespace: team-esyfo
+  labels:
+    team: team-esyfo
+spec:
+  image: {{image}}
+  port: 3000
+  replicas:
+    min: 1
+    max: 2
+  liveness:
+    path: /api/internal/isAlive
+    initialDelay: 10
+  readiness:
+    path: /api/internal/isReady
+    initialDelay: 10
+  prometheus:
+    enabled: true
+    path: /api/internal/metrics
+  resources:
+    limits:
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  observability:
+    logging:
+      destinations:
+        - id: elastic
+        - id: loki
+    autoInstrumentation:
+      enabled: true
+      runtime: nodejs
+  ingresses:
+    - https://lumi-dashboard.ansatt.dev.nav.no
+  azure:
+    application:
+      enabled: true
+      allowAllUsers: true
+      tenant: nav.no
+      claims:
+        extra:
+          - "NAVident"
+    sidecar:
+      enabled: true
+      autoLogin: true
+      autoLoginIgnorePaths:
+        - /api/internal/*
+  accessPolicy:
+    outbound:
+      rules:
+        - application: lumi-api
+  env:
+    - name: NODE_ENV
+      value: production
+    - name: LUMI_API_URL
+      value: http://lumi-api
+    - name: LUMI_API_AUDIENCE
+      value: api://dev-gcp.team-esyfo.lumi-api/.default

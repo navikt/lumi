@@ -1,0 +1,73 @@
+apiVersion: nais.io/v1alpha1
+kind: Application
+metadata:
+  name: lumi-api
+  namespace: team-esyfo
+  labels:
+    team: team-esyfo
+spec:
+  image: {{image}}
+  port: 8080
+  replicas:
+    min: 1
+    max: 2
+  liveness:
+    path: /internal/isAlive
+    initialDelay: 30
+  readiness:
+    path: /internal/isReady
+    initialDelay: 30
+  resources:
+    limits:
+      memory: 768Mi
+    requests:
+      cpu: 100m
+      memory: 384Mi
+  observability:
+    logging:
+      destinations:
+        - id: elastic
+        - id: loki
+    autoInstrumentation:
+      enabled: true
+      runtime: java
+  azure:
+    application:
+      enabled: true
+      allowAllUsers: false
+      tenant: nav.no
+      claims:
+        extra:
+          - "NAVident"
+        groups:
+          - id: "5066bb56-7f19-4b49-ae48-f1ba66abf546" # isyfo - Intern Sykefraværsoppfølging
+          - id: "ef4e9824-6f3a-4933-8f40-6edf5233d4d2" # esyfo - Ekstern Sykefraværsoppfølging
+  accessPolicy:
+    inbound:
+      rules:
+        - application: lumi-dashboard
+        - application: bro-frontend
+    outbound:
+      external:
+        - host: console.nav.cloud.nais.io
+  gcp:
+    sqlInstances:
+      - type: POSTGRES_17
+        tier: db-f1-micro
+        diskAutoresize: true
+        databases:
+          - name: lumi
+            envVarPrefix: DB
+  valkey:
+    - instance: lumi-cache
+      access: readwrite
+  envFrom:
+    - secret: lumi-api
+  env:
+    - name: NAIS_CLUSTER_NAME
+      value: dev-gcp
+    - name: LUMI_DASHBOARD_CLIENT_ID
+      value: dev-gcp:team-esyfo:lumi-dashboard
+    - name: NAIS_API_GRAPHQL_URL
+      value: https://console.nav.cloud.nais.io/graphql
+

@@ -1,0 +1,608 @@
+package no.nav.lumi.integrations.nais
+
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.network.sockets.ConnectTimeoutException
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
+import io.ktor.serialization.kotlinx.json.json
+import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.Timer
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.Json
+import no.nav.lumi.config.appMicrometerRegistry
+import no.nav.lumi.integrations.valkey.TeamCache
+import no.nav.lumi.integrations.valkey.ValkeyTeamCache
+import org.slf4j.LoggerFactory
+import java.time.Clock
+import java.time.Duration
+import java.time.Instant
+import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicBoolean
+
+private val log = LoggerFactory.getLogger("no.nav.lumi.integrations.nais.NaisGraphQlClient")
+
+/**
+ * Result type for NAIS API operations.
+ * Distinguishes between successful empty results and errors.
+ */
+sealed class NaisApiResult<out T> {
+    data class Success<T>(val value: T) : NaisApiResult<T>()
+    data class Error(val message: String, val cause: Throwable? = null) : NaisApiResult<Nothing>()
+    
+    fun getOrDefault(default: @UnsafeVariance T): T = when (this) {
+        is Success -> value
+        is Error -> default
+    }
+    
+    fun isSuccess(): Boolean = this is Success
+    fun isError(): Boolean = this is Error
+}
+
+/**
+ * Cache TTL configuration.
+ * Different TTLs based on whether user has teams or not.
+ */
+object CacheTtl {
+    /** TTL when user HAS teams - team membership changes rarely */
+    val HAS_TEAMS: Duration = Duration.ofHours(1)
+    
+    /** TTL when user has NO teams - allow quick onboarding */
+    val NO_TEAMS: Duration = Duration.ofMinutes(5)
+
+    /** TTL when NAIS API lookup fails - avoid spamming calls */
+    val ERROR: Duration = Duration.ofSeconds(30)
+    
+    /** Default TTL for in-memory cache (legacy) */
+    val DEFAULT: Duration = Duration.ofMinutes(5)
+}
+
+/**
+ * Client for NAIS Console GraphQL API.
+ * 
+ * Used to dynamically look up team membership for users, replacing
+ * the need for hardcoded AD group → team mappings.
+ * 
+ * Features:
+ * - Valkey cache with fallback to in-memory
+ * - Prometheus metrics for monitoring
+ * - Health check endpoint
+ * - Graceful error handling with Result type
+ * - Different TTLs for users with/without teams
+ */
+class NaisGraphQlClient private constructor(
+    private val graphqlUrl: String,
+    private val apiKey: String,
+    private val teamCache: TeamCache,
+    private val clock: Clock = Clock.systemUTC(),
+    private val client: HttpClient = defaultHttpClient()
+) {
+    private val userAgent: String = "lumi-api"
+
+    private val hasLoggedFirstSuccess = AtomicBoolean(false)
+    // Health tracking
+    private val lastSuccessfulCall = AtomicReference<Instant?>(null)
+    private val lastError = AtomicReference<String?>(null)
+
+    // Log throttling (reduce spam when NAIS API is unreachable)
+    private val lastThrottledLog = AtomicReference<ThrottledLog?>(null)
+    
+    // Metrics
+    private val apiCallTimer = Timer.builder("nais_api_call_duration_seconds")
+        .description("Duration of NAIS API calls")
+        .tag("operation", "team_lookup")
+        .register(appMicrometerRegistry)
+    
+    private val apiCallCounter = Counter.builder("nais_api_calls_total")
+        .description("Total number of NAIS API calls")
+        .tag("operation", "team_lookup")
+        .register(appMicrometerRegistry)
+    
+    private val apiErrorCounter = Counter.builder("nais_api_errors_total")
+        .description("Total number of NAIS API errors")
+        .tag("operation", "team_lookup")
+        .register(appMicrometerRegistry)
+    
+    private val cacheHitCounter = Counter.builder("nais_api_cache_hits_total")
+        .description("Number of cache hits for NAIS API lookups")
+        .register(appMicrometerRegistry)
+    
+    private val cacheMissCounter = Counter.builder("nais_api_cache_misses_total")
+        .description("Number of cache misses for NAIS API lookups")
+        .register(appMicrometerRegistry)
+
+    /**
+     * Get team slugs for a user by email.
+     * Returns a set of team slugs (NAIS namespace names).
+     */
+    suspend fun getTeamSlugsForUser(email: String): Set<String> {
+        return getTeamSlugsForUserResult(email).getOrDefault(emptySet())
+    }
+    
+    /**
+     * Get team slugs for a user by email with detailed result.
+     * Allows callers to distinguish between "user has no teams" and "API error".
+     */
+    suspend fun getTeamSlugsForUserResult(email: String): NaisApiResult<Set<String>> {
+        // Check cache first
+        val cachedTeams = teamCache.get(email)
+        if (cachedTeams != null) {
+            cacheHitCounter.increment()
+            if (cachedTeams.contains(ERROR_SENTINEL)) {
+                return NaisApiResult.Error("NAIS API call failed recently (cached)")
+            }
+            // Filter out sentinel value for empty teams
+            val teams = cachedTeams.filterNot { it == EMPTY_SENTINEL }.toSet()
+            recordSuccess(source = "cache-user", teamsCount = teams.size, ttl = Duration.ZERO)
+            return NaisApiResult.Success(teams)
+        }
+        
+        cacheMissCounter.increment()
+        apiCallCounter.increment()
+        
+        val startTime = System.nanoTime()
+        
+        val response = try {
+            client.post(graphqlUrl) {
+                contentType(ContentType.Application.Json)
+                header(HttpHeaders.UserAgent, userAgent)
+                header(HttpHeaders.Authorization, "Bearer $apiKey")
+                setBody(
+                    GraphQlRequest(
+                        query = USER_TEAMS_QUERY,
+                        variables = UserTeamsVariables(email = email)
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            recordError("Failed to call NAIS GraphQL for user teams", e)
+            teamCache.set(email, setOf(ERROR_SENTINEL), CacheTtl.ERROR)
+            return NaisApiResult.Error("API call failed", e)
+        } finally {
+            apiCallTimer.record(Duration.ofNanos(System.nanoTime() - startTime))
+        }
+
+        if (response.status != HttpStatusCode.OK) {
+            val bodySnippet = try {
+                response.bodyAsText().take(500)
+            } catch (_: Exception) {
+                null
+            }
+            val wwwAuthenticate = if (response.status == HttpStatusCode.Unauthorized || response.status == HttpStatusCode.Forbidden) {
+                response.headers[HttpHeaders.WWWAuthenticate]
+            } else {
+                null
+            }
+
+            val errorMsg = buildString {
+                append("NAIS GraphQL returned non-OK status: ${response.status}")
+                if (!wwwAuthenticate.isNullOrBlank()) {
+                    append(" (www-authenticate=$wwwAuthenticate)")
+                }
+                if (!bodySnippet.isNullOrBlank()) {
+                    append(" (body=${bodySnippet.replace("\n", " ")})")
+                }
+            }
+
+            recordError(errorMsg)
+            teamCache.set(email, setOf(ERROR_SENTINEL), CacheTtl.ERROR)
+            return NaisApiResult.Error(errorMsg)
+        }
+
+        val body = try {
+            response.body<GraphQlResponse<UserTeamsData>>()
+        } catch (e: Exception) {
+            recordError("Failed to parse NAIS GraphQL response for user teams", e)
+            teamCache.set(email, setOf(ERROR_SENTINEL), CacheTtl.ERROR)
+            return NaisApiResult.Error("Response parsing failed", e)
+        }
+
+        if (!body.errors.isNullOrEmpty()) {
+            val errorMsg = "NAIS GraphQL returned errors: ${body.errors.joinToString { it.message }}"
+            recordError(errorMsg)
+            teamCache.set(email, setOf(ERROR_SENTINEL), CacheTtl.ERROR)
+            return NaisApiResult.Error(errorMsg)
+        }
+
+        val teams = body.data?.user?.teams?.nodes
+            ?.mapNotNull { it.team.slug }
+            ?.toSet()
+            ?: emptySet()
+
+        // Cache with appropriate TTL based on result
+        val ttl = if (teams.isNotEmpty()) CacheTtl.HAS_TEAMS else CacheTtl.NO_TEAMS
+        teamCache.set(email, teams, ttl)
+        recordSuccess(source = "user", teamsCount = teams.size, ttl = ttl)
+        return NaisApiResult.Success(teams)
+    }
+
+    /**
+     * Get team slugs for the current "viewer" (authenticated API key owner).
+     * This is a fallback when email lookup doesn't work.
+     */
+    suspend fun getTeamSlugsForViewer(): Set<String> {
+        return getTeamSlugsForViewerResult().getOrDefault(emptySet())
+    }
+    
+    /**
+     * Get team slugs for viewer with detailed result.
+     */
+    suspend fun getTeamSlugsForViewerResult(): NaisApiResult<Set<String>> {
+        val viewerCacheKey = "__viewer__"
+        
+        val cachedTeams = teamCache.get(viewerCacheKey)
+        if (cachedTeams != null) {
+            cacheHitCounter.increment()
+            if (cachedTeams.contains(ERROR_SENTINEL)) {
+                return NaisApiResult.Error("NAIS API call failed recently (cached)")
+            }
+            val teams = cachedTeams.filterNot { it == EMPTY_SENTINEL }.toSet()
+            recordSuccess(source = "cache-viewer", teamsCount = teams.size, ttl = Duration.ZERO)
+            return NaisApiResult.Success(teams)
+        }
+        
+        cacheMissCounter.increment()
+        apiCallCounter.increment()
+        
+        val startTime = System.nanoTime()
+
+        val response = try {
+            client.post(graphqlUrl) {
+                contentType(ContentType.Application.Json)
+                header(HttpHeaders.UserAgent, userAgent)
+                header(HttpHeaders.Authorization, "Bearer $apiKey")
+                setBody(GraphQlRequest(query = VIEWER_TEAMS_QUERY, variables = EmptyVariables()))
+            }
+        } catch (e: Exception) {
+            recordError("Failed to call NAIS GraphQL for viewer teams", e)
+            teamCache.set(viewerCacheKey, setOf(ERROR_SENTINEL), CacheTtl.ERROR)
+            return NaisApiResult.Error("API call failed", e)
+        } finally {
+            apiCallTimer.record(Duration.ofNanos(System.nanoTime() - startTime))
+        }
+
+        if (response.status != HttpStatusCode.OK) {
+            val bodySnippet = try {
+                response.bodyAsText().take(500)
+            } catch (_: Exception) {
+                null
+            }
+            val wwwAuthenticate = if (response.status == HttpStatusCode.Unauthorized || response.status == HttpStatusCode.Forbidden) {
+                response.headers[HttpHeaders.WWWAuthenticate]
+            } else {
+                null
+            }
+
+            val errorMsg = buildString {
+                append("NAIS GraphQL returned non-OK status: ${response.status}")
+                if (!wwwAuthenticate.isNullOrBlank()) {
+                    append(" (www-authenticate=$wwwAuthenticate)")
+                }
+                if (!bodySnippet.isNullOrBlank()) {
+                    append(" (body=${bodySnippet.replace("\n", " ")})")
+                }
+            }
+
+            recordError(errorMsg)
+            teamCache.set(viewerCacheKey, setOf(ERROR_SENTINEL), CacheTtl.ERROR)
+            return NaisApiResult.Error(errorMsg)
+        }
+
+        val body = try {
+            response.body<GraphQlResponse<ViewerTeamsData>>()
+        } catch (e: Exception) {
+            recordError("Failed to parse NAIS GraphQL response for viewer teams", e)
+            teamCache.set(viewerCacheKey, setOf(ERROR_SENTINEL), CacheTtl.ERROR)
+            return NaisApiResult.Error("Response parsing failed", e)
+        }
+
+        if (!body.errors.isNullOrEmpty()) {
+            val errorMsg = "NAIS GraphQL returned errors: ${body.errors.joinToString { it.message }}"
+            recordError(errorMsg)
+            teamCache.set(viewerCacheKey, setOf(ERROR_SENTINEL), CacheTtl.ERROR)
+            return NaisApiResult.Error(errorMsg)
+        }
+
+        val me = body.data?.me
+        val teams = if (me?.typename == "User") {
+            me.teams?.nodes
+                ?.mapNotNull { it.team.slug }
+                ?.toSet()
+                ?: emptySet()
+        } else {
+            log.debug("NAIS API 'me' query did not return a User type (was: ${me?.typename})")
+            emptySet()
+        }
+
+        val ttl = if (teams.isNotEmpty()) CacheTtl.HAS_TEAMS else CacheTtl.NO_TEAMS
+        teamCache.set(viewerCacheKey, teams, ttl)
+        recordSuccess(source = "viewer", teamsCount = teams.size, ttl = ttl)
+        
+        return NaisApiResult.Success(teams)
+    }
+    
+    /**
+     * Check if the NAIS API is healthy.
+     * Returns true if we've had a successful call recently (within 2 hours).
+     */
+    fun isHealthy(): Boolean {
+        val lastSuccess = lastSuccessfulCall.get() ?: return true // No calls yet is OK
+        val threshold = Instant.now(clock).minus(Duration.ofHours(2))
+        return lastSuccess.isAfter(threshold)
+    }
+    
+    /**
+     * Get health status details for diagnostics.
+     */
+    fun getHealthStatus(): Map<String, Any?> {
+        return mapOf(
+            "healthy" to isHealthy(),
+            "cacheHealthy" to teamCache.isHealthy(),
+            "lastSuccessfulCall" to lastSuccessfulCall.get()?.toString(),
+            "lastError" to lastError.get(),
+            "graphqlUrl" to graphqlUrl.take(50) + "..."
+        )
+    }
+    
+    /**
+     * Clear the cache. Useful for testing.
+     */
+    fun clearCache() {
+        teamCache.clear()
+        log.info("NAIS API cache cleared")
+    }
+    
+    private fun recordSuccess(source: String, teamsCount: Int, ttl: Duration) {
+        lastSuccessfulCall.set(Instant.now(clock))
+        lastError.set(null)
+
+        // Avoid noisy logs: just a single confirmation that NAIS lookup works.
+        if (hasLoggedFirstSuccess.compareAndSet(false, true)) {
+            val ttlLabel = if (ttl == Duration.ZERO && source.startsWith("cache")) {
+                "cached"
+            } else {
+                ttl.toMinutes().toString()
+            }
+            log.info(
+                "NAIS API lookup succeeded (source=$source, teamsCount=$teamsCount, ttlMinutes=$ttlLabel, cache=${teamCache::class.simpleName})"
+            )
+        }
+    }
+    
+    private fun recordError(message: String, cause: Throwable? = null) {
+        apiErrorCounter.increment()
+        lastError.set(message)
+        if (cause == null) {
+            log.warn(message)
+            return
+        }
+
+        if (shouldThrottleLog(cause)) {
+            val now = Instant.now(clock)
+            val last = lastThrottledLog.get()
+            val isSameMessage = last?.message == message
+            val isWithinWindow = last?.at?.isAfter(now.minus(ERROR_LOG_THROTTLE)) == true
+
+            if (isSameMessage && isWithinWindow) {
+                log.debug("$message (throttled): ${cause.javaClass.simpleName}: ${cause.message}")
+                return
+            }
+
+            lastThrottledLog.set(ThrottledLog(message = message, at = now))
+        }
+
+        log.warn(message, cause)
+    }
+
+    companion object {
+        private fun tokenFormat(token: String): String {
+            // Avoid logging secrets; only log broad format.
+            // JWTs usually have 2 dots (header.payload.signature).
+            val dotCount = token.count { it == '.' }
+            return if (dotCount >= 2) "jwt" else "opaque"
+        }
+
+        private val USER_TEAMS_QUERY = """
+            query UserTeams(${'$'}email: String) {
+                user(email: ${'$'}email) {
+                    teams(first: 200) {
+                        nodes {
+                            team {
+                                slug
+                            }
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        private val VIEWER_TEAMS_QUERY = """
+            query ViewerTeams {
+                me {
+                    __typename
+                    ... on User {
+                        teams(first: 200) {
+                            nodes {
+                                team {
+                                    slug
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        /**
+         * Create a client from environment variables, or null if not configured.
+         * 
+         * Required env vars:
+         * - NAIS_API_GRAPHQL_URL: The GraphQL endpoint (e.g., https://console.nav.cloud.nais.io/graphql)
+         * - NAIS_API_KEY: API key for authentication
+         * 
+         * Optional env vars (for Valkey cache):
+         * - VALKEY_URI_LUMI_CACHE: Valkey connection URI
+         * - VALKEY_USERNAME_LUMI_CACHE: Valkey username
+         * - VALKEY_PASSWORD_LUMI_CACHE: Valkey password
+         */
+        fun fromEnvOrNull(): NaisGraphQlClient? {
+            // Support both our naming and the convention used by e.g. appsec-notifiers.
+            val urlFromPrimary = System.getenv("NAIS_API_GRAPHQL_URL")?.trim()?.takeIf { it.isNotBlank() }
+            val urlFromFallback = System.getenv("NAIS_API_ENDPOINT")?.trim()?.takeIf { it.isNotBlank() }
+            val url = urlFromPrimary ?: urlFromFallback
+
+            val keyFromPrimary = System.getenv("NAIS_API_KEY")?.trim()?.takeIf { it.isNotBlank() }
+            val keyFromFallback = System.getenv("TEAMS_TOKEN")?.trim()?.takeIf { it.isNotBlank() }
+            val key = keyFromPrimary ?: keyFromFallback
+
+            if (url == null && key == null) {
+                log.debug(
+                    "NAIS API integration not configured (NAIS_API_GRAPHQL_URL/NAIS_API_ENDPOINT and NAIS_API_KEY/TEAMS_TOKEN not set)"
+                )
+                return null
+            }
+
+            require(!url.isNullOrBlank()) {
+                "NAIS_API_GRAPHQL_URL must be set when NAIS API integration is enabled"
+            }
+            require(!key.isNullOrBlank()) {
+                "NAIS_API_KEY must be set when NAIS API integration is enabled"
+            }
+
+            // Create cache (Valkey if configured, otherwise in-memory)
+            val teamCache = ValkeyTeamCache.fromEnvOrFallback()
+            
+            val urlSource = if (urlFromPrimary != null) "NAIS_API_GRAPHQL_URL" else "NAIS_API_ENDPOINT"
+            val keySource = if (keyFromPrimary != null) "NAIS_API_KEY" else "TEAMS_TOKEN"
+            log.info(
+                "NAIS API integration enabled (endpoint: ${url.take(50)}..., urlSource=$urlSource, keySource=$keySource, keyLength=${key.length}, keyFormat=${tokenFormat(key)}, cache=${teamCache::class.simpleName})"
+            )
+            return NaisGraphQlClient(graphqlUrl = url, apiKey = key, teamCache = teamCache)
+        }
+        
+        /**
+         * Create a client for testing with custom dependencies.
+         */
+        fun forTesting(
+            graphqlUrl: String,
+            apiKey: String,
+            teamCache: TeamCache,
+            clock: Clock = Clock.systemUTC(),
+            client: HttpClient = defaultHttpClient()
+        ): NaisGraphQlClient {
+            return NaisGraphQlClient(
+                graphqlUrl = graphqlUrl,
+                apiKey = apiKey,
+                teamCache = teamCache,
+                clock = clock,
+                client = client
+            )
+        }
+
+        private fun defaultHttpClient(): HttpClient {
+            return HttpClient(CIO) {
+                install(HttpTimeout) {
+                    connectTimeoutMillis = 2_000
+                    requestTimeoutMillis = 5_000
+                    socketTimeoutMillis = 5_000
+                }
+                install(ContentNegotiation) {
+                    json(
+                        Json {
+                            ignoreUnknownKeys = true
+                            isLenient = true
+                        }
+                    )
+                }
+            }
+        }
+
+        private const val EMPTY_SENTINEL = "__EMPTY__"
+        private const val ERROR_SENTINEL = "__ERROR__"
+        private val ERROR_LOG_THROTTLE: Duration = Duration.ofMinutes(1)
+
+        private fun shouldThrottleLog(cause: Throwable): Boolean {
+            return cause is ConnectTimeoutException || cause is java.net.SocketTimeoutException || cause is java.net.ConnectException
+        }
+    }
+}
+
+private data class ThrottledLog(
+    val message: String,
+    val at: Instant
+)
+
+@Serializable
+private data class GraphQlRequest<V>(
+    val query: String,
+    val variables: V
+)
+
+@Serializable
+private data class GraphQlResponse<D>(
+    val data: D? = null,
+    val errors: List<GraphQlError>? = null
+)
+
+@Serializable
+private data class GraphQlError(
+    val message: String
+)
+
+@Serializable
+private data class UserTeamsVariables(
+    val email: String
+)
+
+@Serializable
+private class EmptyVariables
+
+@Serializable
+private data class UserTeamsData(
+    val user: UserNode? = null
+)
+
+@Serializable
+private data class ViewerTeamsData(
+    val me: ViewerNode? = null
+)
+
+@Serializable
+private data class ViewerNode(
+    @SerialName("__typename")
+    val typename: String,
+    val teams: TeamMemberConnection? = null
+)
+
+@Serializable
+private data class UserNode(
+    val teams: TeamMemberConnection? = null
+)
+
+@Serializable
+private data class TeamMemberConnection(
+    val nodes: List<TeamMemberNode>? = null
+)
+
+@Serializable
+private data class TeamMemberNode(
+    val team: TeamNode
+)
+
+@Serializable
+private data class TeamNode(
+    val slug: String? = null,
+    @SerialName("externalResources")
+    val externalResources: JsonObject? = null
+)

@@ -1,0 +1,62 @@
+.segmentRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 8px;
+  margin: -4px -8px;
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+  /* Button reset */
+  background: none;
+  border: none;
+  text-align: left;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+}
+
+.segmentRow:hover {
+  background-color: var(--ax-bg-neutral-soft);
+}
+
+.segmentRow:active {
+  background-color: var(--ax-bg-neutral-moderate);
+}
+
+.segmentLabel {
+  min-width: 50px;
+  font-size: 0.75rem;
+  color: var(--ax-text-neutral-subtle);
+  transition: color 0.15s ease;
+}
+
+.segmentRow:hover .segmentLabel {
+  color: var(--ax-text-neutral-default);
+}
+
+.barBackground {
+  flex: 1;
+  height: 24px;
+  background: var(--ax-bg-neutral-moderate);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.segmentRow:hover .bar {
+  filter: brightness(1.1);
+}
+
+.segmentCount {
+  min-width: 70px;
+  font-size: 0.75rem;
+  text-align: right;
+  color: var(--ax-text-neutral-subtle);
+  font-variant-numeric: tabular-nums;
+}

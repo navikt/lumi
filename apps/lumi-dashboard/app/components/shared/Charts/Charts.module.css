@@ -1,0 +1,74 @@
+/* Chart Components Shared Styles */
+
+.container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.title {
+  margin-bottom: 0.5rem;
+}
+
+.chartArea {
+  flex: 1;
+  min-height: 0;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--ax-text-neutral-subtle);
+}
+
+/* Rating bar rows */
+.ratingBarRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.ratingLabel {
+  width: 1.25rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+.ratingBar {
+  flex: 1;
+  height: 10px;
+  background: var(--ax-bg-neutral-moderate);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.ratingBarFill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.3s ease;
+}
+
+.ratingCount {
+  width: 2rem;
+  text-align: right;
+  color: var(--ax-text-neutral-subtle);
+  font-size: 0.75rem;
+}
+
+/* Response rate bar */
+.responseRateBar {
+  width: 100%;
+  height: 8px;
+  background: var(--ax-bg-neutral-moderate);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.responseRateFill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
