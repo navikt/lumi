@@ -1,10 +1,24 @@
-name: Build and Deploy
+name: Deploy dashboard
 
 on:
   push:
     branches:
       - main
       - demo-*
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Where to deploy
+        type: choice
+        required: true
+        options:
+          - demo
+          - dev
+          - prod
+      ref:
+        description: Git ref to deploy (branch/tag/sha). Defaults to the ref you run the workflow from.
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -17,10 +31,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "npm"
+          cache: npm
       - run: npm ci
         env:
           NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
@@ -32,40 +48,49 @@ jobs:
       - name: Run E2E tests
         run: npm run e2e
         env:
-          USE_MOCK_DATA: "true"
+          USE_MOCK_DATA: 'true'
 
-  # Build 1: For demo environment (with mock data)
   build-demo:
     name: Build demo (mock data)
     needs: checks
     runs-on: ubuntu-latest
+    if: |
+      startsWith(github.ref_name, 'demo-') ||
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'demo')
     outputs:
       image: ${{ steps.docker-build-push.outputs.image }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "npm"
+          cache: npm
       - run: npm ci
         env:
           NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
-      
-      - name: Build application (with mock data)
-        run: npm run build
+
+      - name: Build shared types
+        run: npm -w packages/lumi-types run build
+
+      - name: Build dashboard (with mock data)
+        run: npm -w apps/lumi-dashboard run build
         env:
-          VITE_MOCK_DATA: "true"
-          CDN_BASE_PATH: "/lumi-dashboard-demo"
-      
+          VITE_MOCK_DATA: 'true'
+          CDN_BASE_PATH: '/lumi-dashboard-demo'
+
       - name: Copy static files
-        run: cp -r .output/public .output/client
-      
+        run: |
+          cd apps/lumi-dashboard
+          cp -r .output/public .output/client
+
       - name: Upload static files to NAV CDN
         uses: nais/deploy/actions/cdn-upload/v2@master
         with:
           team: team-esyfo
-          source: ./.output/client
-          destination: "/lumi-dashboard-demo"
+          source: ./apps/lumi-dashboard/.output/client
+          destination: '/lumi-dashboard-demo'
           project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
           identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
 
@@ -77,39 +102,49 @@ jobs:
           identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
           project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
           image_suffix: demo
+          dockerfile: apps/lumi-dashboard/Dockerfile
+          docker_context: apps/lumi-dashboard
 
-  # Build 2: For dev and prod environments (real backend)
   build-production:
     name: Build production
     needs: checks
     runs-on: ubuntu-latest
-    if: github.ref_name == 'main'
+    if: |
+      github.ref_name == 'main' ||
+      (github.event_name == 'workflow_dispatch' && (inputs.target == 'dev' || inputs.target == 'prod'))
     outputs:
       image: ${{ steps.docker-build-push.outputs.image }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "npm"
+          cache: npm
       - run: npm ci
         env:
           NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
-      
-      - name: Build application (production)
-        run: npm run build
+
+      - name: Build shared types
+        run: npm -w packages/lumi-types run build
+
+      - name: Build dashboard (production)
+        run: npm -w apps/lumi-dashboard run build
         env:
-          CDN_BASE_PATH: "/lumi-dashboard"
-      
+          CDN_BASE_PATH: '/lumi-dashboard'
+
       - name: Copy static files
-        run: cp -r .output/public .output/client
-      
+        run: |
+          cd apps/lumi-dashboard
+          cp -r .output/public .output/client
+
       - name: Upload static files to NAV CDN
         uses: nais/deploy/actions/cdn-upload/v2@master
         with:
           team: team-esyfo
-          source: ./.output/client
-          destination: "/lumi-dashboard"
+          source: ./apps/lumi-dashboard/.output/client
+          destination: '/lumi-dashboard'
           project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
           identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
 
@@ -120,11 +155,16 @@ jobs:
           team: team-esyfo
           identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
           project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
+          dockerfile: apps/lumi-dashboard/Dockerfile
+          docker_context: apps/lumi-dashboard
 
   deploy-demo:
     name: Deploy to dev-gcp (Demo)
     needs: build-demo
     runs-on: ubuntu-latest
+    if: |
+      startsWith(github.ref_name, 'demo-') ||
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'demo')
     environment:
       name: demo
       url: https://lumi-dashboard-demo.ekstern.dev.nav.no
@@ -133,13 +173,16 @@ jobs:
       - uses: nais/deploy/actions/deploy@v2
         env:
           CLUSTER: dev-gcp
-          RESOURCE: nais/demo.yaml
+          RESOURCE: apps/lumi-dashboard/nais/demo.yaml
           VAR: image=${{ needs.build-demo.outputs.image }}
 
   deploy-dev:
     name: Deploy to dev-gcp
     needs: build-production
     runs-on: ubuntu-latest
+    if: |
+      github.ref_name == 'main' ||
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'dev')
     environment:
       name: dev
       url: https://lumi-dashboard.ansatt.dev.nav.no
@@ -148,13 +191,16 @@ jobs:
       - uses: nais/deploy/actions/deploy@v2
         env:
           CLUSTER: dev-gcp
-          RESOURCE: nais/dev.yaml
+          RESOURCE: apps/lumi-dashboard/nais/dev.yaml
           VAR: image=${{ needs.build-production.outputs.image }}
 
   deploy-prod:
     name: Deploy to prod-gcp
     needs: [build-production, deploy-dev]
     runs-on: ubuntu-latest
+    if: |
+      github.ref_name == 'main' ||
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'prod')
     environment:
       name: prod
       url: https://lumi-dashboard.ansatt.nav.no
@@ -163,5 +209,5 @@ jobs:
       - uses: nais/deploy/actions/deploy@v2
         env:
           CLUSTER: prod-gcp
-          RESOURCE: nais/prod.yaml
+          RESOURCE: apps/lumi-dashboard/nais/prod.yaml
           VAR: image=${{ needs.build-production.outputs.image }}

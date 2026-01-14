@@ -1,10 +1,23 @@
-name: Build and Deploy
+name: Deploy API
 
 on:
   push:
     branches:
       - main
   pull_request:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Where to deploy
+        type: choice
+        required: true
+        options:
+          - dev
+          - prod
+      ref:
+        description: Git ref to deploy (branch/tag/sha). Defaults to the ref you run the workflow from.
+        type: string
+        required: false
 
 jobs:
   build:
@@ -16,16 +29,23 @@ jobs:
       image: ${{ steps.docker-build-push.outputs.image }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          # Only write cache on main branch to avoid cache pollution
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
-          # Reduce warning noise from transient cache issues
           cache-overwrite-existing: true
 
       - name: Build with Gradle
+        working-directory: apps/lumi-api
         run: ./gradlew shadowJar
 
       - name: Push docker image to GAR
@@ -35,9 +55,14 @@ jobs:
           team: team-esyfo
           identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
           project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
+          dockerfile: apps/lumi-api/Dockerfile
+          docker_context: apps/lumi-api
+          push_image: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
 
   deploy-dev:
-    if: github.ref == 'refs/heads/main'
+    if: |
+      github.ref == 'refs/heads/main' ||
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'dev')
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -47,11 +72,13 @@ jobs:
       - uses: nais/deploy/actions/deploy@v2
         env:
           CLUSTER: dev-gcp
-          RESOURCE: nais/app/dev.yaml
+          RESOURCE: apps/lumi-api/nais/app/dev.yaml
           VAR: image=${{ needs.build.outputs.image }}
 
   deploy-prod:
-    if: github.ref == 'refs/heads/main'
+    if: |
+      github.ref == 'refs/heads/main' ||
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'prod')
     needs: [build, deploy-dev]
     runs-on: ubuntu-latest
     permissions:
@@ -61,5 +88,5 @@ jobs:
       - uses: nais/deploy/actions/deploy@v2
         env:
           CLUSTER: prod-gcp
-          RESOURCE: nais/app/prod.yaml
+          RESOURCE: apps/lumi-api/nais/app/prod.yaml
           VAR: image=${{ needs.build.outputs.image }}

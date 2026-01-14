@@ -1,9 +1,7 @@
 ---
-name: deprecated-kotlin-app-config
+name: kotlin-app-config
 description: Sealed class configuration pattern for Kotlin applications with environment-specific settings
 ---
-
-> DEPRECATED: use `.github/skills/kotlin-app-config/skill.md` at repo root.
 
 # Kotlin Application Configuration Skill
 

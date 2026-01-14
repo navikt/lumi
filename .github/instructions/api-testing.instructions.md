@@ -1,8 +1,6 @@
 ---
-applyTo: "__deprecated__/**"
+applyTo: "apps/lumi-api/**/*.test.{kt,kts}"
 ---
-
-> DEPRECATED: moved to repo root `.github/instructions/api-testing.instructions.md`.
 
 # Testing Standards (lumi-api)
 

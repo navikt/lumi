@@ -1,9 +1,7 @@
 ---
-name: deprecated-observability-setup-dashboard
+name: observability-setup-dashboard
 description: Observability setup for lumi-dashboard (TanStack Start/Node.js) on Nais
 ---
-
-> DEPRECATED: use `.github/skills/observability-setup-dashboard/skill.md` at repo root.
 
 # Observability Setup (lumi-dashboard)
 
@@ -25,7 +23,7 @@ curl -s http://localhost:3000/api/internal/metrics | head -50
 
 ## Nais manifest essentials
 
-Manifests live in `nais/*.yaml`.
+Manifests live in `apps/lumi-dashboard/nais/*.yaml`.
 
 ```yaml
 spec:

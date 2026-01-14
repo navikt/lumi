@@ -1,7 +1,9 @@
 ---
-name: nais-manifest
+name: deprecated-nais-manifest-api
 description: Generate a production-ready Nais application manifest for Kubernetes deployment
 ---
+
+> DEPRECATED: use `.github/prompts/nais-manifest-api.prompt.md` at repo root.
 
 You are creating or updating Nais application manifests in `nais/app/dev.yaml` and `nais/app/prod.yaml` for deploying to Nav's Kubernetes platform.
 

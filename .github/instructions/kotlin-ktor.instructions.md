@@ -1,8 +1,6 @@
 ---
-applyTo: "__deprecated__/**"
+applyTo: "apps/lumi-api/**/*.kt"
 ---
-
-> DEPRECATED: moved to repo root `.github/instructions/kotlin-ktor.instructions.md`.
 
 # Kotlin/Ktor Standards (lumi-api)
 
@@ -91,7 +89,7 @@ Operational endpoints in this repo:
 
 ## Database (Exposed + Flyway)
 
-- Flyway migrations live under `src/main/resources/db/migration/`.
+- Flyway migrations live under `apps/lumi-api/src/main/resources/db/migration/`.
 - DB is initialized via `DatabaseHolder` + `configureDatabase()`.
 - Use Exposed DSL inside `transaction {}` blocks.
 

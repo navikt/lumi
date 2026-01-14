@@ -1,12 +1,10 @@
 ---
-applyTo: "__deprecated__/**"
+applyTo: "apps/lumi-dashboard/app/**/*.{tsx,ts}"
 ---
-
-> DEPRECATED: moved to repo root `.github/instructions/tanstack-start-aksel.instructions.md`.
 
 # TanStack Start with Aksel Design System (lumi-dashboard)
 
-This repo uses **TanStack Start** (`@tanstack/react-start`) + **TanStack Router** file-based routes (`app/routes/*`), built with Vite.
+This repo uses **TanStack Start** (`@tanstack/react-start`) + **TanStack Router** file-based routes (`apps/lumi-dashboard/app/routes/*`), built with Vite.
 
 ## Spacing Rules
 
@@ -67,7 +65,7 @@ Mobile-first breakpoints: `xs`, `sm`, `md`, `lg`, `xl`.
 
 ## Routing (TanStack Router)
 
-Routes are file-based under `app/routes/*` using `createFileRoute()`.
+Routes are file-based under `apps/lumi-dashboard/app/routes/*` using `createFileRoute()`.
 
 ```tsx
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -87,7 +85,7 @@ function FeedbackPage() {
 
 ## Server Functions (TanStack Start)
 
-Server-side calls live under `app/server/actions/*` and use `createServerFn()`.
+Server-side calls live under `apps/lumi-dashboard/app/server/actions/*` and use `createServerFn()`.
 Prefer Zod validation + auth middleware (matches repo patterns).
 
 ```ts
@@ -106,7 +104,7 @@ export const fetchStatsServerFn = createServerFn({ method: "GET" })
 
 ## Internal Endpoints (Health + Metrics)
 
-Internal endpoints are implemented as **server handlers** in route files under `app/routes/api/internal/*`.
+Internal endpoints are implemented as **server handlers** in route files under `apps/lumi-dashboard/app/routes/api/internal/*`.
 
 - `GET /api/internal/isAlive`
 - `GET /api/internal/isReady`

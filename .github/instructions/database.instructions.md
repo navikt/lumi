@@ -1,8 +1,6 @@
 ---
-applyTo: "__deprecated__/**"
+applyTo: "apps/lumi-api/src/main/resources/db/migration/**/*.sql"
 ---
-
-> DEPRECATED: moved to repo root `.github/instructions/database.instructions.md`.
 
 # Database Migration Standards (Flyway)
 
@@ -143,34 +141,6 @@ ALTER COLUMN ident TYPE VARCHAR(20);
 
 Migrations run on startup in `configureDatabase()` using `DatabaseHolder`.
 
-## Testing Migrations
-
-```kotlin
-@Testcontainers
-class MigrationTest {
-    companion object {
-        @Container
-        val postgres = PostgreSQLContainer<Nothing>("postgres:17")
-    }
-
-    @Test
-    fun `migrations should run successfully`() {
-        val dataSource = HikariDataSource().apply {
-            jdbcUrl = postgres.jdbcUrl
-            username = postgres.username
-            password = postgres.password
-        }
-
-        val flyway = Flyway.configure()
-            .dataSource(dataSource)
-            .load()
-
-        val result = flyway.migrate()
-        result.migrationsExecuted shouldBeGreaterThan 0
-    }
-}
-```
-
 ## Boundaries
 
 ### ✅ Always
@@ -179,7 +149,6 @@ class MigrationTest {
 - Add indexes for foreign keys
 - Follow existing column naming conventions in this repo
 - Use appropriate data types
-- Test migrations in dev environment first
 
 ### ⚠️ Ask First
 
@@ -193,5 +162,4 @@ class MigrationTest {
 - Modify existing migration files
 - Skip version numbers
 - Use single underscore in naming
-- Deploy untested migrations to production
 - Commit migration files without testing

@@ -1,7 +1,9 @@
 ---
-name: aksel-spacing
+name: deprecated-aksel-spacing
 description: Responsive layout patterns using Aksel spacing tokens with Box, VStack, HStack, and HGrid
 ---
+
+> DEPRECATED: use `.github/skills/aksel-spacing/skill.md` at repo root.
 
 # Aksel Spacing Skill
 

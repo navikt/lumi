@@ -1,15 +1,13 @@
 ---
-applyTo: "__deprecated__/**"
+applyTo: "apps/lumi-dashboard/**/*.test.{ts,tsx}"
 ---
-
-> DEPRECATED: moved to repo root `.github/instructions/dashboard-testing.instructions.md`.
 
 # Testing (lumi-dashboard)
 
 This repo is a TanStack Start app (React + TypeScript).
 
 - Unit/integration tests: Vitest + Testing Library
-- E2E tests: Playwright (in `e2e/`)
+- E2E tests: Playwright (in `apps/lumi-dashboard/e2e/`)
 
 ## Commands
 

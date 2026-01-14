@@ -1,17 +1,15 @@
 ---
-name: deprecated-nais-manifest-dashboard
-description: Generate or update the Nais manifests for lumi-dashboard (TanStack Start)
+name: nais-manifest-dashboard
+description: Generate or update the Nais manifests for lumi-dashboard (TanStack Start) in this monorepo
 ---
 
-> DEPRECATED: use `.github/prompts/nais-manifest-dashboard.prompt.md` at repo root.
+You are working on the `apps/lumi-dashboard` frontend app (TanStack Start on Node.js).
 
-You are working in the `lumi-dashboard` frontend repo (TanStack Start on Node.js).
+This app keeps manifests in `apps/lumi-dashboard/nais/`:
 
-This repo keeps manifests in `nais/`:
-
-- `nais/dev.yaml`
-- `nais/prod.yaml`
-- `nais/demo.yaml` (if applicable)
+- `apps/lumi-dashboard/nais/dev.yaml`
+- `apps/lumi-dashboard/nais/prod.yaml`
+- `apps/lumi-dashboard/nais/demo.yaml` (if applicable)
 
 ## Requirements (defaults)
 

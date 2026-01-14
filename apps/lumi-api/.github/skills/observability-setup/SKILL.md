@@ -1,7 +1,9 @@
 ---
-name: observability-setup
+name: deprecated-observability-setup-api
 description: Setting up Prometheus metrics, OpenTelemetry tracing, and health endpoints for Nais applications
 ---
+
+> DEPRECATED: use `.github/skills/observability-setup-api/skill.md` at repo root.
 
 # Observability Setup Skill
 

@@ -1,9 +1,7 @@
 ---
-name: deprecated-aksel-component
+name: aksel-component
 description: Scaffold a responsive React component using Aksel Design System with correct spacing tokens
 ---
-
-> DEPRECATED: use `.github/prompts/aksel-component.prompt.md` at repo root.
 
 You are creating a new React component using Nav's Aksel Design System.
 
@@ -145,80 +143,6 @@ Prefer spacing tokens for `gap` as well:
 </main>
 ```
 
-## Available Aksel Components
-
-### Layout
-
-- `Box` - Container with spacing, background, radius
-- `VStack` - Vertical stack with gap
-- `HStack` - Horizontal stack with gap
-- `HGrid` - Responsive grid
-
-### Typography
-
-- `Heading` - size: "large" | "medium" | "small", level: 1-6
-- `BodyShort` - size: "large" | "medium" | "small"
-- `BodyLong` - For longer text blocks
-- `Label` - For form labels
-- `Detail` - For supplementary info
-
-### Interactive
-
-- `Button` - variant: "primary" | "secondary" | "tertiary"
-- `TextField` - Text input
-- `Select` - Dropdown
-- `Checkbox`, `Radio`, `Switch`
-
-### Feedback
-
-- `Alert` - variant: "info" | "success" | "warning" | "error"
-- `Loader` - Loading spinner
-- `HelpText` - Contextual help
-
-## Spacing Tokens
-
-Always use these tokens:
-
-- `space-4` (4px)
-- `space-8` (8px)
-- `space-12` (12px)
-- `space-16` (16px) - Common default
-- `space-20` (20px)
-- `space-24` (24px) - Common for cards
-- `space-32` (32px)
-- `space-40` (40px) - Common for page padding
-
-## Background Colors
-
-```tsx
-background = "surface-default"; // White
-background = "surface-subtle"; // Light gray
-background = "surface-action-subtle"; // Light blue
-background = "surface-success-subtle"; // Light green
-background = "surface-warning-subtle"; // Light orange
-background = "surface-danger-subtle"; // Light red
-```
-
-## Responsive Breakpoints
-
-```tsx
-// Mobile-first approach
-padding={{ xs: "space-16" }}                          // All sizes
-padding={{ xs: "space-16", md: "space-24" }}         // Mobile + tablet
-padding={{ xs: "space-12", sm: "space-16", md: "space-24" }}  // All breakpoints
-
-columns={{ xs: 1, md: 2, lg: 3 }}  // Responsive grid
-gap={{ xs: "4", md: "6" }}          // Responsive gap
-```
-
-Breakpoints:
-
-- `xs`: 0px (mobile)
-- `sm`: 480px
-- `md`: 768px (tablet)
-- `lg`: 1024px (desktop)
-- `xl`: 1280px (large desktop)
-
 ## Testing
 
 Create a test file `{component-name}.test.tsx`:
@@ -240,8 +164,3 @@ describe("ComponentName", () => {
 After generating the component, verify:
 
 - ✅ No Tailwind padding/margin utilities
-- ✅ All spacing uses `space-` prefix tokens
-- ✅ Responsive design with breakpoints
-- ✅ TypeScript props interface
-- ✅ Accessible markup (proper heading levels, labels)
-- ✅ Component exported from file

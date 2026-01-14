@@ -1,3 +1,12 @@
+<!--
+DEPRECATED: Copilot guidance is now centralized at repo root.
+
+Use:
+- .github/copilot-instructions.md
+- .github/instructions/
+- .github/agents/ .github/prompts/ .github/skills/
+-->
+
 # Lumi API – AI Coding Guide
 
 Ktor 3.x backend for Lumi survey analytics with PostgreSQL storage.

@@ -1,3 +1,12 @@
+<!--
+DEPRECATED: Copilot guidance is now centralized at repo root.
+
+Use:
+- .github/copilot-instructions.md
+- .github/instructions/
+- .github/agents/ .github/prompts/ .github/skills/
+-->
+
 # Lumi Dashboard – AI Coding Guide
 
 TanStack Start dashboard for viewing and exporting Lumi survey feedback.

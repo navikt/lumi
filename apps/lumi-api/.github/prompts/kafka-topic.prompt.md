@@ -1,7 +1,9 @@
 ---
-name: kafka-topic
+name: deprecated-kafka-topic
 description: Add Kafka topic configuration to Nais manifest and create Rapids & Rivers event handler
 ---
+
+> DEPRECATED: use `.github/prompts/kafka-topic.prompt.md` at repo root.
 
 You are helping configure Kafka integration for a Nav application using the Rapids & Rivers pattern.
 

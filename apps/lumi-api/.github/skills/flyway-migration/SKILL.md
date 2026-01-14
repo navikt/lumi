@@ -1,7 +1,9 @@
 ---
-name: flyway-migration
+name: deprecated-flyway-migration
 description: Database migration patterns using Flyway with versioned SQL scripts
 ---
+
+> DEPRECATED: use `.github/skills/flyway-migration/skill.md` at repo root.
 
 # Flyway Migration Skill
 

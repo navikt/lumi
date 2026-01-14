@@ -1,9 +1,7 @@
 ---
-name: deprecated-tokenx-auth
+name: tokenx-auth
 description: Service-to-service authentication using TokenX token exchange in Nais
 ---
-
-> DEPRECATED: use `.github/skills/tokenx-auth/skill.md` at repo root.
 
 # TokenX Authentication Skill
 
@@ -49,4 +47,3 @@ spec:
 ### 🚫 Never
 
 - Validate JWTs via JWKS in-app “just because” when the repo is already set up for Texas introspection.
-
