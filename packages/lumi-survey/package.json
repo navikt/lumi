@@ -16,8 +16,8 @@
   "files": ["dist"],
   "sideEffects": ["./dist/**/*.css"],
   "scripts": {
-    "prepare": "npm run build",
-    "build": "tsup --config tsup.config.ts",
+    "prepack": "npm run build",
+    "build": "npm -w @navikt/lumi-types run build && tsup --config tsup.config.ts",
     "test": "vitest run --passWithNoTests",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
