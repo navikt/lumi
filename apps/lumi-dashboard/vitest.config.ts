@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [
     // @ts-expect-error: Known type mismatch between vite and vitest types
     tsconfigPaths({
-      projects: ["./tsconfig.json"],
+      projects: ["./tsconfig.typecheck.json"],
     }),
     // @ts-expect-error: Known type mismatch between vite and vitest types
     react(),

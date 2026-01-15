@@ -38,7 +38,7 @@ export default defineConfig({
     // Custom plugin to stub server-only modules in client builds
     serverOnlyPlugin(serverOnlyModules),
     tsconfigPaths({
-      projects: ["./tsconfig.json"],
+      projects: ["./tsconfig.typecheck.json"],
     }),
     tanstackStart({
       // Use app directory as source (non-standard but keeps our structure)
