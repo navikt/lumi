@@ -83,8 +83,8 @@ Deployed to NAIS via GitHub Actions.
 
 ### URLs
 
-- **Dev**: https://lumi-dashboard.intern.dev.nav.no
-- **Prod**: https://lumi-dashboard.intern.nav.no
+- **Dev**: https://lumi-dashboard.ansatt.dev.nav.no
+- **Prod**: https://lumi-dashboard.ansatt.nav.no
 
 ## Authentication
 
