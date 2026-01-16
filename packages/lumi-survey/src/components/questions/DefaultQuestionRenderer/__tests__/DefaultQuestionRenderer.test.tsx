@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import type { LumiSurveyQuestion } from "../../../../core/types.js";
 import { DefaultQuestionRenderer } from "../DefaultQuestionRenderer.js";
 
 beforeAll(() => {
@@ -146,10 +147,16 @@ describe("DefaultQuestionRenderer", () => {
   });
 
   it("returns null for unsupported question types", () => {
+    const question: LumiSurveyQuestion = {
+      id: "unknown",
+      // @ts-expect-error: this is intentionally invalid to test runtime handling
+      type: "unsupported",
+      prompt: "Unsupported",
+    };
+
     const { container } = render(
       <DefaultQuestionRenderer
-        // @ts-expect-error intentionally using an unsupported type to verify guard behaviour
-        question={{ id: "unknown", type: "unsupported", prompt: "Unsupported" }}
+        question={question}
         value={undefined}
         onChange={() => undefined}
         validationErrorMessage=""

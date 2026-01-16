@@ -2,13 +2,13 @@ import { Radio, RadioGroup } from "@navikt/ds-react";
 import type {
   ChoiceOption,
   ChoiceQuestion,
-  FlexJarAnswerValue,
+  LumiSurveyAnswerValue,
 } from "../../../core/types.js";
 import { useChoiceOptions } from "./useChoiceOptions.js";
 
 interface SingleChoiceFieldProps {
   question: ChoiceQuestion & { type: "singleChoice" };
-  value: FlexJarAnswerValue | undefined;
+  value: LumiSurveyAnswerValue | undefined;
   onChange: (value: string | null) => void;
   validationErrorMessage: string;
   isMissing: boolean;

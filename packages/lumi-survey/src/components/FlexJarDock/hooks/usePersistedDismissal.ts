@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { FlexJarEvents } from "../../../core/types.js";
+import type { LumiSurveyEvents } from "../../../core/types.js";
 import {
   readConsentValue,
   removeConsentValue,
@@ -112,7 +112,7 @@ export interface UsePersistedDismissalOptions {
   surveyId: string;
   initialOpen: boolean;
   dismissCooldownDays: number;
-  events?: FlexJarEvents;
+  events?: LumiSurveyEvents;
   resetOnClose: boolean;
   onReset: () => void;
   storageStrategy: StorageStrategy;

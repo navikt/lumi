@@ -4,7 +4,7 @@ import type React from "react";
 import type { ReactElement } from "react";
 import type {
   EmojiRatingQuestion,
-  FlexJarAnswerValue,
+  LumiSurveyAnswerValue,
   RatingQuestion,
 } from "../../../core/types.js";
 import { EmojiButton } from "./EmojiButton.js";
@@ -17,7 +17,7 @@ import "./emo.fallback.css";
 
 interface RatingQuestionFieldProps {
   question: RatingQuestion;
-  value: FlexJarAnswerValue | undefined;
+  value: LumiSurveyAnswerValue | undefined;
   onChange: (value: number | null) => void;
   validationErrorMessage: string;
   isMissing: boolean;

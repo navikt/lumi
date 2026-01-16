@@ -1,7 +1,7 @@
-import type { FlexJarSurveyConfig } from "../components/surveyTypes.js";
+import type { LumiSurveyConfig } from "../components/surveyTypes.js";
 import type {
   EmojiRatingQuestion,
-  FlexJarQuestion,
+  LumiSurveyQuestion,
   NpsRatingQuestion,
   StarRatingQuestion,
   TextQuestion,
@@ -26,7 +26,7 @@ import type {
  * />
  * ```
  */
-export const DEFAULT_SURVEY_RATING: FlexJarSurveyConfig = {
+export const DEFAULT_SURVEY_RATING: LumiSurveyConfig = {
   type: "rating",
   questions: [
     {
@@ -55,7 +55,7 @@ export const DEFAULT_SURVEY_RATING: FlexJarSurveyConfig = {
  * Service-oriented rating survey with improved messaging.
  * Emphasizes that feedback is anonymous and used for service development.
  */
-export const DEFAULT_SURVEY_SERVICE_FEEDBACK: FlexJarSurveyConfig = {
+export const DEFAULT_SURVEY_SERVICE_FEEDBACK: LumiSurveyConfig = {
   type: "rating",
   questions: [
     {
@@ -97,7 +97,7 @@ export const DEFAULT_SURVEY_SERVICE_FEEDBACK: FlexJarSurveyConfig = {
  * />
  * ```
  */
-export const DEFAULT_SURVEY_THUMBS: FlexJarSurveyConfig = {
+export const DEFAULT_SURVEY_THUMBS: LumiSurveyConfig = {
   type: "rating",
   questions: [
     {
@@ -131,7 +131,7 @@ export const DEFAULT_SURVEY_THUMBS: FlexJarSurveyConfig = {
  * />
  * ```
  */
-export const DEFAULT_SURVEY_STARS: FlexJarSurveyConfig = {
+export const DEFAULT_SURVEY_STARS: LumiSurveyConfig = {
   type: "rating",
   questions: [
     {
@@ -168,7 +168,7 @@ export const DEFAULT_SURVEY_STARS: FlexJarSurveyConfig = {
  * />
  * ```
  */
-export const DEFAULT_SURVEY_NPS: FlexJarSurveyConfig = {
+export const DEFAULT_SURVEY_NPS: LumiSurveyConfig = {
   type: "rating",
   questions: [
     {
@@ -208,7 +208,7 @@ export const DEFAULT_SURVEY_NPS: FlexJarSurveyConfig = {
  * />
  * ```
  */
-export const DEFAULT_SURVEY_DISCOVERY: FlexJarSurveyConfig = {
+export const DEFAULT_SURVEY_DISCOVERY: LumiSurveyConfig = {
   type: "discovery",
   questions: [
     {
@@ -219,7 +219,7 @@ export const DEFAULT_SURVEY_DISCOVERY: FlexJarSurveyConfig = {
       required: true,
       minRows: 2,
       maxLength: 500,
-    } as FlexJarQuestion,
+    } as LumiSurveyQuestion,
     {
       id: "taskSuccess",
       type: "singleChoice",
@@ -230,14 +230,14 @@ export const DEFAULT_SURVEY_DISCOVERY: FlexJarSurveyConfig = {
         { value: "no", label: "Nei" },
       ],
       required: true,
-    } as FlexJarQuestion,
+    } as LumiSurveyQuestion,
     {
       id: "blocker",
       type: "text",
       prompt: "Hva hindret deg? (valgfritt)",
       required: false,
       maxLength: 500,
-    } as FlexJarQuestion,
+    } as LumiSurveyQuestion,
   ],
 };
 
@@ -252,9 +252,9 @@ export const DEFAULT_SURVEY_DISCOVERY: FlexJarSurveyConfig = {
 export function createRatingSurvey(options: {
   ratingPrompt: string;
   ratingDescription?: string;
-  followUpQuestions?: FlexJarQuestion[];
-}): FlexJarSurveyConfig {
-  const questions: FlexJarQuestion[] = [
+  followUpQuestions?: LumiSurveyQuestion[];
+}): LumiSurveyConfig {
+  const questions: LumiSurveyQuestion[] = [
     {
       id: "rating",
       type: "rating",
@@ -293,8 +293,8 @@ export function createDiscoverySurvey(options?: {
   successPrompt?: string;
   blockerPrompt?: string;
   includeBlockerQuestion?: boolean;
-}): FlexJarSurveyConfig {
-  const questions: FlexJarQuestion[] = [
+}): LumiSurveyConfig {
+  const questions: LumiSurveyQuestion[] = [
     {
       id: "discoveredTask",
       type: "text",
@@ -357,12 +357,12 @@ export function createTopTasksSurvey(options: {
   includeBlockerQuestion?: boolean;
   includeOtherTask?: boolean;
   otherTaskPrompt?: string;
-}): FlexJarSurveyConfig {
+}): LumiSurveyConfig {
   const taskOptions = options.includeOtherTask
     ? [...options.tasks, { value: "other", label: "Noe annet" }]
     : options.tasks;
 
-  const questions: FlexJarQuestion[] = [
+  const questions: LumiSurveyQuestion[] = [
     {
       id: "task",
       type: "singleChoice",
@@ -465,12 +465,12 @@ export function createTaskPrioritySurvey(options: {
    * - "checkbox": Traditional checkbox list
    */
   variant?: "checkbox" | "combobox";
-}): FlexJarSurveyConfig {
+}): LumiSurveyConfig {
   const maxSelections = options.maxSelections ?? 5;
   // Default to combobox for Task Priority (typically has many options)
   const variant = options.variant ?? "combobox";
 
-  const questions: FlexJarQuestion[] = [
+  const questions: LumiSurveyQuestion[] = [
     {
       id: "priorities",
       type: "multiChoice",

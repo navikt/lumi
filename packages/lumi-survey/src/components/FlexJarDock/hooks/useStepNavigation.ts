@@ -5,13 +5,13 @@ import {
   surveyHasBranchingLogic,
 } from "../../../core/branchingEngine.js";
 import type {
-  FlexJarAnswerValue,
-  FlexJarQuestion,
+  LumiSurveyAnswerValue,
+  LumiSurveyQuestion,
 } from "../../../core/types.js";
 
 export interface UseStepNavigationOptions {
-  questions: FlexJarQuestion[];
-  answers: Record<string, FlexJarAnswerValue>;
+  questions: LumiSurveyQuestion[];
+  answers: Record<string, LumiSurveyAnswerValue>;
   metadata?: Record<string, unknown>;
   /** If true, forces step mode even without branching logic */
   forceStepMode?: boolean;
@@ -23,7 +23,7 @@ export interface UseStepNavigationReturn {
   /** Current question index */
   currentStep: number;
   /** The current question to display */
-  currentQuestion: FlexJarQuestion;
+  currentQuestion: LumiSurveyQuestion;
   /** Whether the user can go back */
   canGoBack: boolean;
   /** Whether the user can go forward (has answered current question) */
@@ -41,7 +41,7 @@ export interface UseStepNavigationReturn {
   /** Array of visited question indices for back navigation */
   visitedSteps: number[];
   /** Get all questions that should be visible (for non-step mode) */
-  getVisibleQuestions: () => FlexJarQuestion[];
+  getVisibleQuestions: () => LumiSurveyQuestion[];
 }
 
 /**

@@ -1,7 +1,7 @@
 import type {
-  FlexJarAnswerValue,
-  FlexJarQuestion,
   LogicCondition,
+  LumiSurveyAnswerValue,
+  LumiSurveyQuestion,
 } from "./types";
 
 /**
@@ -23,7 +23,7 @@ import type {
  */
 export function evaluateVisibility(
   condition: LogicCondition | undefined,
-  answers: Record<string, FlexJarAnswerValue>,
+  answers: Record<string, LumiSurveyAnswerValue>,
   metadata?: Record<string, unknown>,
 ): boolean {
   // No condition = always visible
@@ -94,9 +94,9 @@ function evaluateOperator(
  * @param metadata - Optional context metadata
  * @returns Questions that should be visible based on their visibleIf conditions
  */
-export function getVisibleQuestions<T extends FlexJarQuestion>(
+export function getVisibleQuestions<T extends LumiSurveyQuestion>(
   questions: T[],
-  answers: Record<string, FlexJarAnswerValue>,
+  answers: Record<string, LumiSurveyAnswerValue>,
   metadata?: Record<string, unknown>,
 ): T[] {
   return questions.filter((q) =>
@@ -113,8 +113,8 @@ export function getVisibleQuestions<T extends FlexJarQuestion>(
  * @returns true if the submit button should be visible
  */
 export function shouldShowSubmitButton(
-  questions: FlexJarQuestion[],
-  answers: Record<string, FlexJarAnswerValue>,
+  questions: LumiSurveyQuestion[],
+  answers: Record<string, LumiSurveyAnswerValue>,
 ): boolean {
   // Find first required question
   const firstRequired = questions.find((q) => q.required);

@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { FlexJarStatus } from "../../../../core/types.js";
+import type { LumiSurveyStatus } from "../../../../core/types.js";
 import { useAutoCloseOnSuccess } from "../useAutoCloseOnSuccess.js";
 
 describe("useAutoCloseOnSuccess", () => {
@@ -56,14 +56,14 @@ describe("useAutoCloseOnSuccess", () => {
     const onClose = vi.fn();
 
     const { rerender } = renderHook(
-      ({ status }: { status: FlexJarStatus }) =>
+      ({ status }: { status: LumiSurveyStatus }) =>
         useAutoCloseOnSuccess({
           enabled: true,
           status,
           delayMs: 1000,
           onClose,
         }),
-      { initialProps: { status: "idle" as FlexJarStatus } },
+      { initialProps: { status: "idle" } },
     );
 
     act(() => {

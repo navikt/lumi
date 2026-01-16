@@ -1,16 +1,19 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
-  FlexJarAnswerValue,
-  FlexJarEvents,
-  FlexJarQuestion,
-  FlexJarSubmission,
-  FlexJarSubmitResult,
-  FlexJarTransport,
+  LumiSurveyAnswerValue,
+  LumiSurveyEvents,
+  LumiSurveyQuestion,
+  LumiSurveySubmission,
+  LumiSurveySubmitResult,
+  LumiSurveyTransport,
 } from "../types.js";
-import { useFlexJar } from "../useFlexJar.js";
+import { useLumiSurvey } from "../useLumiSurvey.js";
 
-const requiredQuestions: FlexJarQuestion[] = [
+const delay = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+const requiredQuestions: LumiSurveyQuestion[] = [
   {
     id: "rating",
     type: "rating",
@@ -33,7 +36,7 @@ const requiredQuestions: FlexJarQuestion[] = [
   },
 ];
 
-const optionalMainQuestionSurvey: FlexJarQuestion[] = [
+const optionalMainQuestionSurvey: LumiSurveyQuestion[] = [
   {
     id: "rating",
     type: "rating",
@@ -56,7 +59,7 @@ const SUBMIT_TIME = new Date("2024-01-01T12:05:00.000Z");
 const RESET_TIME = new Date("2024-01-01T12:07:00.000Z");
 const POST_RESET_SUBMIT_TIME = new Date("2024-01-01T12:09:00.000Z");
 
-function createEventSpies(): FlexJarEvents {
+function createEventSpies(): LumiSurveyEvents {
   return {
     onAnswer: vi.fn(),
     onValidationFailed: vi.fn(),
@@ -67,7 +70,7 @@ function createEventSpies(): FlexJarEvents {
   };
 }
 
-describe("useFlexJar", () => {
+describe("useLumiSurvey", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(INITIAL_TIME);
@@ -78,22 +81,22 @@ describe("useFlexJar", () => {
   });
 
   it("returns validation error when required answers are missing", async () => {
-    const submitMock = vi.fn(async (payload: FlexJarSubmission) => {
+    const submitMock = vi.fn(async (payload: LumiSurveySubmission) => {
       void payload;
     });
-    const transport: FlexJarTransport = {
+    const transport: LumiSurveyTransport = {
       submit: submitMock,
     };
 
     const { result } = renderHook(() =>
-      useFlexJar({
+      useLumiSurvey({
         surveyId: SURVEY_ID,
         questions: requiredQuestions,
         transport,
       }),
     );
 
-    let submission: FlexJarSubmitResult | undefined;
+    let submission: LumiSurveySubmitResult | undefined;
     await act(async () => {
       submission = await result.current.submit();
     });
@@ -115,15 +118,15 @@ describe("useFlexJar", () => {
   });
 
   it("allows submissions when the main question is optional", async () => {
-    const submitMock = vi.fn(async (payload: FlexJarSubmission) => {
+    const submitMock = vi.fn(async (payload: LumiSurveySubmission) => {
       void payload;
     });
-    const transport: FlexJarTransport = {
+    const transport: LumiSurveyTransport = {
       submit: submitMock,
     };
 
     const { result } = renderHook(() =>
-      useFlexJar({
+      useLumiSurvey({
         surveyId: SURVEY_ID,
         questions: optionalMainQuestionSurvey,
         transport,
@@ -134,7 +137,7 @@ describe("useFlexJar", () => {
       result.current.setAnswer("rating", 5);
     });
 
-    let submission: FlexJarSubmitResult | undefined;
+    let submission: LumiSurveySubmitResult | undefined;
     await act(async () => {
       submission = await result.current.submit();
     });
@@ -181,15 +184,15 @@ describe("useFlexJar", () => {
   });
 
   it("includes surveyType in the submission payload", async () => {
-    const submitMock = vi.fn(async (payload: FlexJarSubmission) => {
+    const submitMock = vi.fn(async (payload: LumiSurveySubmission) => {
       void payload;
     });
-    const transport: FlexJarTransport = {
+    const transport: LumiSurveyTransport = {
       submit: submitMock,
     };
 
     const { result } = renderHook(() =>
-      useFlexJar({
+      useLumiSurvey({
         surveyId: SURVEY_ID,
         questions: requiredQuestions,
         transport,
@@ -211,15 +214,15 @@ describe("useFlexJar", () => {
   });
 
   it("submits answers when validation passes", async () => {
-    const submitMock = vi.fn(async (payload: FlexJarSubmission) => {
+    const submitMock = vi.fn(async (payload: LumiSurveySubmission) => {
       void payload;
     });
-    const transport: FlexJarTransport = {
+    const transport: LumiSurveyTransport = {
       submit: submitMock,
     };
 
     const { result } = renderHook(() =>
-      useFlexJar({
+      useLumiSurvey({
         surveyId: SURVEY_ID,
         questions: requiredQuestions,
         transport,
@@ -234,7 +237,7 @@ describe("useFlexJar", () => {
 
     vi.setSystemTime(SUBMIT_TIME);
 
-    let submission: FlexJarSubmitResult | undefined;
+    let submission: LumiSurveySubmitResult | undefined;
     await act(async () => {
       submission = await result.current.submit();
     });
@@ -299,13 +302,13 @@ describe("useFlexJar", () => {
 
   it("surfaces transport failures and triggers error callbacks", async () => {
     const transportError = new Error("Transport failed");
-    const transport: FlexJarTransport = {
+    const transport: LumiSurveyTransport = {
       submit: vi.fn().mockRejectedValue(transportError),
     };
     const events = createEventSpies();
 
     const { result } = renderHook(() =>
-      useFlexJar({
+      useLumiSurvey({
         surveyId: SURVEY_ID,
         questions: requiredQuestions,
         transport,
@@ -320,7 +323,7 @@ describe("useFlexJar", () => {
 
     vi.setSystemTime(SUBMIT_TIME);
 
-    let submission: FlexJarSubmitResult | undefined;
+    let submission: LumiSurveySubmitResult | undefined;
     await act(async () => {
       submission = await result.current.submit();
     });
@@ -351,21 +354,21 @@ describe("useFlexJar", () => {
   });
 
   it("resets answers to the initial snapshot and refreshes startedAt", async () => {
-    const submitMock = vi.fn(async (payload: FlexJarSubmission) => {
+    const submitMock = vi.fn(async (payload: LumiSurveySubmission) => {
       void payload;
     });
-    const transport: FlexJarTransport = {
+    const transport: LumiSurveyTransport = {
       submit: submitMock,
     };
     const events = createEventSpies();
 
-    const initialAnswers: Record<string, FlexJarAnswerValue> = {
+    const initialAnswers: Record<string, LumiSurveyAnswerValue> = {
       rating: 2,
       feedback: "Initial",
     };
 
     const { result } = renderHook(() =>
-      useFlexJar({
+      useLumiSurvey({
         surveyId: SURVEY_ID,
         questions: requiredQuestions,
         transport,
@@ -412,12 +415,12 @@ describe("useFlexJar", () => {
   });
 
   it("drops empty answer values instead of storing blanks", () => {
-    const transport: FlexJarTransport = {
+    const transport: LumiSurveyTransport = {
       submit: vi.fn(),
     };
 
     const { result } = renderHook(() =>
-      useFlexJar({
+      useLumiSurvey({
         surveyId: SURVEY_ID,
         questions: requiredQuestions,
         transport,

@@ -2,10 +2,10 @@ import type { BoxNewProps } from "@navikt/ds-react/Box";
 import type { ReactNode } from "react";
 
 /**
- * Labels for the FlexJar widget UI elements.
+ * Labels for the Lumi survey widget UI elements.
  * All have sensible Norwegian defaults.
  */
-export interface FlexJarLabels {
+export interface LumiSurveyLabels {
   /** Label for the submit button. @default "Send inn" */
   submit?: string;
   /** Label for submit button while submitting. @default "Sender inn..." */
@@ -20,12 +20,10 @@ export interface FlexJarLabels {
   minimizedButton?: string;
 }
 
-export type LumiSurveyLabels = FlexJarLabels;
-
 /**
  * Configuration for the success state after submission.
  */
-export interface FlexJarSuccessConfig {
+export interface LumiSurveySuccessConfig {
   /** Title shown on success screen. @default "Takk for tilbakemeldingen!" */
   title?: string;
   /** Optional body content on success screen. */
@@ -38,12 +36,10 @@ export interface FlexJarSuccessConfig {
   autoCloseDelayMs?: number;
 }
 
-export type LumiSurveySuccessConfig = FlexJarSuccessConfig;
-
 /**
  * Visual styling options for the dock panel.
  */
-export interface FlexJarStyle {
+export interface LumiSurveyStyle {
   /** Position on screen. @default "bottom-right" */
   position?: "bottom-right" | "bottom-left";
   /** Offset from viewport edges in px. @default 24 */
@@ -57,8 +53,6 @@ export interface FlexJarStyle {
   /** Panel border color (Aksel token). @default "neutral-subtle" */
   panelBorderColor?: BoxNewProps["borderColor"];
 }
-
-export type LumiSurveyStyle = FlexJarStyle;
 
 /**
  * Storage strategy for persistence (dismissal state).
@@ -79,7 +73,7 @@ export type QuestionLayout = "auto" | "singlePage" | "steps";
 /**
  * Behavior options for the dock.
  */
-export interface FlexJarBehavior {
+export interface LumiSurveyBehavior {
   /** Whether dock starts open. @default true */
   initialOpen?: boolean;
   /** Reset form when closing. @default true */
@@ -106,5 +100,3 @@ export interface FlexJarBehavior {
    */
   storageStrategy?: StorageStrategy;
 }
-
-export type LumiSurveyBehavior = FlexJarBehavior;

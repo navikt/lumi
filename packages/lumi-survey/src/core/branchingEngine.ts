@@ -1,9 +1,9 @@
 import type {
-  FlexJarAnswerValue,
-  FlexJarQuestion,
   LogicCondition,
   LogicOperator,
   LogicRule,
+  LumiSurveyAnswerValue,
+  LumiSurveyQuestion,
 } from "./types.js";
 
 /**
@@ -23,7 +23,7 @@ export interface BranchingResult {
  */
 function evaluateCondition(
   condition: LogicCondition,
-  currentAnswer: FlexJarAnswerValue | undefined,
+  currentAnswer: LumiSurveyAnswerValue | undefined,
   metadata: Record<string, unknown> | undefined,
 ): boolean {
   // Determine the actual value to compare
@@ -125,7 +125,7 @@ function compareValues(
  * Returns -1 if not found.
  */
 function findQuestionIndex(
-  questions: FlexJarQuestion[],
+  questions: LumiSurveyQuestion[],
   targetId: string,
 ): number {
   return questions.findIndex((q) => q.id === targetId);
@@ -142,10 +142,10 @@ function findQuestionIndex(
  * @returns BranchingResult indicating the next question index
  */
 export function evaluateBranching(
-  currentQuestion: FlexJarQuestion,
-  currentAnswer: FlexJarAnswerValue | undefined,
+  currentQuestion: LumiSurveyQuestion,
+  currentAnswer: LumiSurveyAnswerValue | undefined,
   metadata: Record<string, unknown> | undefined,
-  questions: FlexJarQuestion[],
+  questions: LumiSurveyQuestion[],
   currentIndex: number,
 ): BranchingResult {
   const rules = currentQuestion.logic;
@@ -211,7 +211,9 @@ export function evaluateBranching(
  * Checks if a survey has any branching logic configured.
  * Used to determine if step-based navigation should be enabled.
  */
-export function surveyHasBranchingLogic(questions: FlexJarQuestion[]): boolean {
+export function surveyHasBranchingLogic(
+  questions: LumiSurveyQuestion[],
+): boolean {
   return questions.some((q) => q.logic && q.logic.length > 0);
 }
 
@@ -220,7 +222,7 @@ export function surveyHasBranchingLogic(questions: FlexJarQuestion[]): boolean {
  * Returns an array of invalid targetIds.
  */
 export function validateBranchingTargets(
-  questions: FlexJarQuestion[],
+  questions: LumiSurveyQuestion[],
 ): string[] {
   const questionIds = new Set(questions.map((q) => q.id));
   const invalidTargets: string[] = [];

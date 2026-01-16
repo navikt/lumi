@@ -10,8 +10,8 @@ import {
 } from "@navikt/ds-react";
 import type { BoxNewProps } from "@navikt/ds-react/Box";
 import type React from "react";
-import type { FlexJarAnswerValue, FlexJarQuestion } from "../../../core";
-import type { FlexJarRenderQuestionProps } from "../../../types.js";
+import type { LumiSurveyAnswerValue, LumiSurveyQuestion } from "../../../core";
+import type { LumiSurveyRenderQuestionProps } from "../../../types.js";
 import { CLASS_NAMES, joinClassNames } from "../classNames.js";
 import { SuccessContent } from "./SuccessContent.js";
 
@@ -22,7 +22,7 @@ interface DockPanelProps {
   panelStyle: React.CSSProperties;
   panelBackground: BoxNewProps["background"];
   panelBorderColor?: BoxNewProps["borderColor"];
-  promptQuestion: FlexJarQuestion;
+  promptQuestion: LumiSurveyQuestion;
   promptHeadingId: string;
   promptDescriptionId?: string;
   successHeadingId: string;
@@ -32,9 +32,9 @@ interface DockPanelProps {
   isSuccess: boolean;
   onClose: () => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
-  orderedQuestions: FlexJarQuestion[];
-  answers: Record<string, FlexJarAnswerValue>;
-  renderQuestion: (props: FlexJarRenderQuestionProps) => React.ReactNode;
+  orderedQuestions: LumiSurveyQuestion[];
+  answers: Record<string, LumiSurveyAnswerValue>;
+  renderQuestion: (props: LumiSurveyRenderQuestionProps) => React.ReactNode;
   validationMissing: string[];
   isSubmitting: boolean;
   submitLabel: string;
@@ -47,12 +47,12 @@ interface DockPanelProps {
   transportErrorMessage: string;
   onQuestionChange: (
     questionId: string,
-    value: FlexJarAnswerValue | null | undefined,
+    value: LumiSurveyAnswerValue | null | undefined,
   ) => void;
   // Step mode props (branching logic)
   isStepMode?: boolean;
   currentStep?: number;
-  currentStepQuestion?: FlexJarQuestion;
+  currentStepQuestion?: LumiSurveyQuestion;
   canGoBack?: boolean;
   canGoNext?: boolean;
   isLastStep?: boolean;
@@ -273,7 +273,7 @@ export const DockPanel = ({
                     const value = answers[question.id];
                     const isMissing = validationMissing.includes(question.id);
                     const handleChange = (
-                      nextValue: FlexJarAnswerValue | null | undefined,
+                      nextValue: LumiSurveyAnswerValue | null | undefined,
                     ) => {
                       onQuestionChange(question.id, nextValue);
                     };

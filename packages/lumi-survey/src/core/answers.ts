@@ -1,19 +1,19 @@
 import { type MutableRefObject, useCallback, useRef, useState } from "react";
-import type { FlexJarAnswerValue } from "./types";
+import type { LumiSurveyAnswerValue } from "./types";
 
 export interface UseAnswerStateOptions {
-  initialAnswers?: Record<string, FlexJarAnswerValue>;
+  initialAnswers?: Record<string, LumiSurveyAnswerValue>;
   onAnswer?: (
     questionId: string,
-    value: FlexJarAnswerValue | null | undefined,
+    value: LumiSurveyAnswerValue | null | undefined,
   ) => void;
 }
 
 export interface UseAnswerStateReturn {
-  answers: Record<string, FlexJarAnswerValue>;
+  answers: Record<string, LumiSurveyAnswerValue>;
   setAnswer: (
     questionId: string,
-    value: FlexJarAnswerValue | null | undefined,
+    value: LumiSurveyAnswerValue | null | undefined,
   ) => void;
   resetAnswers: () => void;
   startedAtRef: MutableRefObject<string>;
@@ -24,23 +24,23 @@ export function useAnswerState(
 ): UseAnswerStateReturn {
   const { initialAnswers, onAnswer } = options;
 
-  const initialAnswersRef = useRef<Record<string, FlexJarAnswerValue>>(
+  const initialAnswersRef = useRef<Record<string, LumiSurveyAnswerValue>>(
     initialAnswers ? cloneAnswers(initialAnswers) : {},
   );
 
-  const [answers, setAnswers] = useState<Record<string, FlexJarAnswerValue>>(
+  const [answers, setAnswers] = useState<Record<string, LumiSurveyAnswerValue>>(
     initialAnswersRef.current,
   );
   const startedAtRef = useRef<string>(new Date().toISOString());
 
   const setAnswer = useCallback(
-    (questionId: string, value: FlexJarAnswerValue | null | undefined) => {
-      setAnswers((prev: Record<string, FlexJarAnswerValue>) => {
+    (questionId: string, value: LumiSurveyAnswerValue | null | undefined) => {
+      setAnswers((prev: Record<string, LumiSurveyAnswerValue>) => {
         const next = { ...prev };
         if (shouldDropValue(value)) {
           delete next[questionId];
         } else {
-          const safeValue = value as FlexJarAnswerValue;
+          const safeValue = value as LumiSurveyAnswerValue;
           next[questionId] = cloneAnswerValue(safeValue);
         }
         return next;
@@ -66,9 +66,9 @@ export function useAnswerState(
 }
 
 export function cloneAnswers(
-  source: Record<string, FlexJarAnswerValue>,
-): Record<string, FlexJarAnswerValue> {
-  const copy: Record<string, FlexJarAnswerValue> = {};
+  source: Record<string, LumiSurveyAnswerValue>,
+): Record<string, LumiSurveyAnswerValue> {
+  const copy: Record<string, LumiSurveyAnswerValue> = {};
   for (const key of Object.keys(source)) {
     const value = source[key];
     if (value !== undefined) {
@@ -79,7 +79,7 @@ export function cloneAnswers(
 }
 
 function shouldDropValue(
-  value: FlexJarAnswerValue | null | undefined,
+  value: LumiSurveyAnswerValue | null | undefined,
 ): boolean {
   if (value === undefined || value === null) {
     return true;
@@ -96,7 +96,7 @@ function shouldDropValue(
   return false;
 }
 
-function cloneAnswerValue(value: FlexJarAnswerValue): FlexJarAnswerValue {
+function cloneAnswerValue(value: LumiSurveyAnswerValue): LumiSurveyAnswerValue {
   if (Array.isArray(value)) {
     return [...value];
   }

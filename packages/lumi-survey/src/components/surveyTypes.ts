@@ -1,4 +1,4 @@
-import type { FlexJarQuestion, SurveyType } from "../core/types.js";
+import type { LumiSurveyQuestion, SurveyType } from "../core/types.js";
 
 export type { SurveyType };
 
@@ -7,7 +7,7 @@ export type { SurveyType };
  * Questions are displayed in array order.
  * Use `visibleIf` on individual questions for progressive disclosure.
  */
-export interface FlexJarSurveyConfig {
+export interface LumiSurveyConfig {
   /**
    * Survey type for analytics categorization.
    * Determines how the dashboard displays and aggregates results.
@@ -20,7 +20,5 @@ export interface FlexJarSurveyConfig {
    * The first question is rendered prominently in the dock header.
    * Use `visibleIf` on subsequent questions for progressive disclosure.
    */
-  questions: FlexJarQuestion[];
+  questions: LumiSurveyQuestion[];
 }
-
-export type LumiSurveyConfig = FlexJarSurveyConfig;

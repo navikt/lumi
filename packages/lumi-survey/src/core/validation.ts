@@ -1,14 +1,14 @@
 import type {
   ChoiceOption,
   ChoiceQuestion,
-  FlexJarAnswerValue,
-  FlexJarQuestion,
+  LumiSurveyAnswerValue,
+  LumiSurveyQuestion,
   RatingQuestion,
 } from "./types";
 
 export function validateAnswers(
-  questions: FlexJarQuestion[],
-  answers: Record<string, FlexJarAnswerValue>,
+  questions: LumiSurveyQuestion[],
+  answers: Record<string, LumiSurveyAnswerValue>,
 ): string[] {
   const missingIds: string[] = [];
 
@@ -33,8 +33,8 @@ export function validateAnswers(
 }
 
 function isAnswerPresent(
-  value: FlexJarAnswerValue | undefined,
-): value is FlexJarAnswerValue {
+  value: LumiSurveyAnswerValue | undefined,
+): value is LumiSurveyAnswerValue {
   if (value === undefined || value === null) {
     return false;
   }
@@ -51,8 +51,8 @@ function isAnswerPresent(
 }
 
 function isAnswerValidForQuestion(
-  question: FlexJarQuestion,
-  rawAnswer: FlexJarAnswerValue,
+  question: LumiSurveyQuestion,
+  rawAnswer: LumiSurveyAnswerValue,
 ): boolean {
   switch (question.type) {
     case "rating":
@@ -70,7 +70,7 @@ function isAnswerValidForQuestion(
 
 function isValidRatingAnswer(
   question: RatingQuestion,
-  rawAnswer: FlexJarAnswerValue,
+  rawAnswer: LumiSurveyAnswerValue,
 ): boolean {
   // Get scale from variant (fixed scales per variant)
   const variant = question.variant ?? "emoji";
@@ -98,7 +98,7 @@ function isValidRatingAnswer(
 
 function isValidSingleChoiceAnswer(
   question: ChoiceQuestion & { type: "singleChoice" },
-  rawAnswer: FlexJarAnswerValue,
+  rawAnswer: LumiSurveyAnswerValue,
 ): boolean {
   if (typeof rawAnswer !== "string") {
     return false;
@@ -111,7 +111,7 @@ function isValidSingleChoiceAnswer(
 
 function isValidMultiChoiceAnswer(
   question: ChoiceQuestion & { type: "multiChoice" },
-  rawAnswer: FlexJarAnswerValue,
+  rawAnswer: LumiSurveyAnswerValue,
 ): boolean {
   if (!Array.isArray(rawAnswer)) {
     return false;

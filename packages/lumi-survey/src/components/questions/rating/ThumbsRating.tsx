@@ -10,7 +10,7 @@ import {
 import type { BoxNewProps } from "@navikt/ds-react/Box";
 import { useCallback } from "react";
 import type {
-  FlexJarAnswerValue,
+  LumiSurveyAnswerValue,
   ThumbsRatingQuestion,
 } from "../../../core/types.js";
 import styles from "./emo.module.css";
@@ -18,7 +18,7 @@ import "./emo.fallback.css";
 
 interface ThumbsRatingProps {
   question: ThumbsRatingQuestion;
-  value: FlexJarAnswerValue | undefined;
+  value: LumiSurveyAnswerValue | undefined;
   onChange: (value: number | null) => void;
   validationErrorMessage: string;
   isMissing: boolean;

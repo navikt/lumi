@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { FlexJarSurveyConfig } from "../../surveyTypes.js";
+import type { LumiSurveyConfig } from "../../surveyTypes.js";
 import { buildCanonicalSurvey } from "../canonicalSurvey.js";
 
 const validQuestions = [
@@ -9,7 +9,7 @@ const validQuestions = [
 
 describe("buildCanonicalSurvey", () => {
   it("passes through questions as-is", () => {
-    const survey: FlexJarSurveyConfig = {
+    const survey: LumiSurveyConfig = {
       questions: [...validQuestions],
     };
 
@@ -29,7 +29,7 @@ describe("buildCanonicalSurvey", () => {
   it("validates that all questions have IDs", () => {
     const invalidQuestions = [
       { type: "text", prompt: "No ID" },
-    ] as unknown as FlexJarSurveyConfig["questions"];
+    ] as unknown as LumiSurveyConfig["questions"];
 
     expect(() =>
       buildCanonicalSurvey({ questions: invalidQuestions }),

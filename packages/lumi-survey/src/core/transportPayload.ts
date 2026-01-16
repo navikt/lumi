@@ -1,9 +1,9 @@
 import type {
   ChoiceOption,
-  FlexJarAnswerValue,
-  FlexJarQuestion,
-  FlexJarTransportPayload,
-  FlexjarContext,
+  LumiSurveyAnswerValue,
+  LumiSurveyContext,
+  LumiSurveyQuestion,
+  LumiSurveyTransportPayload,
   RatingQuestion,
   RatingVariant,
   SurveyType,
@@ -15,7 +15,7 @@ import { RATING_SCALES } from "./types";
  * Infers the survey type from the question structure.
  * This ensures analytics always gets a valid surveyType even if not explicitly set.
  */
-export function inferSurveyType(questions: FlexJarQuestion[]): SurveyType {
+export function inferSurveyType(questions: LumiSurveyQuestion[]): SurveyType {
   // Check for Discovery pattern: has "discoveredTask" text field
   const hasDiscoveredTask = questions.some(
     (q) => q.id === "discoveredTask" && q.type === "text",
@@ -47,22 +47,20 @@ export function inferSurveyType(questions: FlexJarQuestion[]): SurveyType {
 
 export function buildTransportPayload(
   surveyId: string,
-  answers: Record<string, FlexJarAnswerValue>,
-  questions: FlexJarQuestion[],
+  answers: Record<string, LumiSurveyAnswerValue>,
+  questions: LumiSurveyQuestion[],
   surveyType?: SurveyType,
-  context?: FlexjarContext,
+  context?: LumiSurveyContext,
   startedAt?: string,
   submittedAt?: string,
-): FlexJarTransportPayload {
+): LumiSurveyTransportPayload {
   if (!submittedAt) {
-    throw new Error(
-      "FlexJar: submittedAt is required to build transport payload",
-    );
+    throw new Error("Lumi: submittedAt is required to build transport payload");
   }
 
   // Add survey type - use provided or infer from questions
   const resolvedSurveyType = surveyType ?? inferSurveyType(questions);
-  const payload: FlexJarTransportPayload = {
+  const payload: LumiSurveyTransportPayload = {
     schemaVersion: 1,
     surveyId,
     surveyType: resolvedSurveyType,

@@ -1,9 +1,9 @@
 import { useEffect } from "react";
-import type { FlexJarStatus } from "../../../core/types.js";
+import type { LumiSurveyStatus } from "../../../core/types.js";
 
 interface AutoCloseOptions {
   enabled: boolean;
-  status: FlexJarStatus;
+  status: LumiSurveyStatus;
   delayMs: number;
   onClose: () => void;
 }

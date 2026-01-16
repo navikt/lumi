@@ -4,7 +4,7 @@ import {
   getVisibleQuestions,
   shouldShowSubmitButton,
 } from "../evaluateVisibility";
-import type { FlexJarQuestion } from "../types";
+import type { LumiSurveyQuestion } from "../types";
 
 describe("evaluateVisibility", () => {
   describe("with no condition", () => {
@@ -154,7 +154,7 @@ describe("evaluateVisibility", () => {
 });
 
 describe("getVisibleQuestions", () => {
-  const questions: FlexJarQuestion[] = [
+  const questions: LumiSurveyQuestion[] = [
     {
       id: "rating",
       type: "rating",
@@ -201,7 +201,7 @@ describe("getVisibleQuestions", () => {
 });
 
 describe("shouldShowSubmitButton", () => {
-  const questions: FlexJarQuestion[] = [
+  const questions: LumiSurveyQuestion[] = [
     { id: "rating", type: "rating", prompt: "Rate us", required: true },
     { id: "feedback", type: "text", prompt: "Comments", required: false },
   ];
@@ -215,7 +215,7 @@ describe("shouldShowSubmitButton", () => {
   });
 
   it("returns true when there are no required questions", () => {
-    const optionalQuestions: FlexJarQuestion[] = [
+    const optionalQuestions: LumiSurveyQuestion[] = [
       { id: "feedback", type: "text", prompt: "Comments", required: false },
     ];
     expect(shouldShowSubmitButton(optionalQuestions, {})).toBe(true);

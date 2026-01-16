@@ -4,10 +4,10 @@ import {
   DEFAULT_PERSONAL_DATA_NOTICE,
 } from "../shared/commonDefaults.js";
 import type {
-  FlexJarBehavior,
-  FlexJarLabels,
-  FlexJarStyle,
-  FlexJarSuccessConfig,
+  LumiSurveyBehavior,
+  LumiSurveyLabels,
+  LumiSurveyStyle,
+  LumiSurveySuccessConfig,
 } from "./propTypes.js";
 
 /**
@@ -34,8 +34,8 @@ export interface ResolvedConfig {
   offset: number;
   containerClassName?: string;
   panelClassName?: string;
-  panelBackground?: FlexJarStyle["panelBackground"];
-  panelBorderColor?: FlexJarStyle["panelBorderColor"];
+  panelBackground?: LumiSurveyStyle["panelBackground"];
+  panelBorderColor?: LumiSurveyStyle["panelBorderColor"];
 
   // Behavior
   initialOpen: boolean;
@@ -49,13 +49,13 @@ export interface ResolvedConfig {
 }
 
 /**
- * Resolves FlexJarDock configuration by applying defaults to optional props.
+ * Resolves LumiSurveyDock configuration by applying defaults to optional props.
  */
 export function resolveConfig(
-  labels?: FlexJarLabels,
-  success?: FlexJarSuccessConfig,
-  style?: FlexJarStyle,
-  behavior?: FlexJarBehavior,
+  labels?: LumiSurveyLabels,
+  success?: LumiSurveySuccessConfig,
+  style?: LumiSurveyStyle,
+  behavior?: LumiSurveyBehavior,
 ): ResolvedConfig {
   return {
     // Labels

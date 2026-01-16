@@ -1,16 +1,16 @@
-import type { FlexJarQuestion } from "../../core/types.js";
-import type { FlexJarSurveyConfig, SurveyType } from "../surveyTypes.js";
+import type { LumiSurveyQuestion } from "../../core/types.js";
+import type { LumiSurveyConfig, SurveyType } from "../surveyTypes.js";
 
 export const RATING_ANSWER_KEY = "svar";
 export const MAIN_ANSWER_KEY = "feedback";
 
 export interface CanonicalSurvey {
   type: SurveyType;
-  questions: FlexJarQuestion[];
+  questions: LumiSurveyQuestion[];
 }
 
 export function buildCanonicalSurvey(
-  survey: FlexJarSurveyConfig,
+  survey: LumiSurveyConfig,
 ): CanonicalSurvey {
   if (!survey.questions || survey.questions.length === 0) {
     throw new Error("Lumi survey must have at least one question");

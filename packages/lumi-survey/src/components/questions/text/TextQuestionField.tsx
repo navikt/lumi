@@ -1,10 +1,10 @@
 import { Textarea } from "@navikt/ds-react";
 import type React from "react";
-import type { FlexJarAnswerValue, TextQuestion } from "../../../core";
+import type { LumiSurveyAnswerValue, TextQuestion } from "../../../core";
 
 interface TextQuestionFieldProps {
   question: TextQuestion;
-  value: FlexJarAnswerValue | undefined;
+  value: LumiSurveyAnswerValue | undefined;
   onChange: (value: string) => void;
   validationErrorMessage: string;
   isMissing: boolean;

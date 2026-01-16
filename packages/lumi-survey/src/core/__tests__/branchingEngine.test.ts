@@ -4,10 +4,10 @@ import {
   surveyHasBranchingLogic,
   validateBranchingTargets,
 } from "../branchingEngine";
-import type { FlexJarQuestion, LogicRule } from "../types";
+import type { LogicRule, LumiSurveyQuestion } from "../types";
 
 // Helper to create a simple text question
-function createQuestion(id: string, logic?: LogicRule[]): FlexJarQuestion {
+function createQuestion(id: string, logic?: LogicRule[]): LumiSurveyQuestion {
   return {
     id,
     type: "text",
@@ -21,7 +21,7 @@ function createChoiceQuestion(
   id: string,
   options: string[],
   logic?: LogicRule[],
-): FlexJarQuestion {
+): LumiSurveyQuestion {
   return {
     id,
     type: "singleChoice",
@@ -151,7 +151,7 @@ describe("evaluateBranching", () => {
           action: { type: "JUMP_TO", targetId: "q_positive" },
         },
       ];
-      const questions: FlexJarQuestion[] = [
+      const questions: LumiSurveyQuestion[] = [
         { id: "rating", type: "rating", prompt: "Rate us", logic },
         createQuestion("q_negative"),
         createQuestion("q_positive"),
@@ -178,7 +178,7 @@ describe("evaluateBranching", () => {
           action: { type: "JUMP_TO", targetId: "q_followup" },
         },
       ];
-      const questions: FlexJarQuestion[] = [
+      const questions: LumiSurveyQuestion[] = [
         { id: "rating", type: "rating", prompt: "Rate us", logic },
         createQuestion("q_end"),
         createQuestion("q_followup"),
@@ -206,7 +206,7 @@ describe("evaluateBranching", () => {
           action: { type: "JUMP_TO", targetId: "q_details" },
         },
       ];
-      const questions: FlexJarQuestion[] = [
+      const questions: LumiSurveyQuestion[] = [
         { id: "feedback", type: "text", prompt: "Tell us more", logic },
         createQuestion("q_end"),
         createQuestion("q_details"),
@@ -239,7 +239,7 @@ describe("evaluateBranching", () => {
           action: { type: "JUMP_TO", targetId: "q_urgent" },
         },
       ];
-      const questions: FlexJarQuestion[] = [
+      const questions: LumiSurveyQuestion[] = [
         {
           id: "tags",
           type: "multiChoice",
@@ -404,7 +404,7 @@ describe("evaluateBranching", () => {
           action: { type: "SUBMIT" },
         },
       ];
-      const questions: FlexJarQuestion[] = [
+      const questions: LumiSurveyQuestion[] = [
         { id: "rating", type: "rating", prompt: "Rate us", logic },
         createQuestion("q_followup"),
       ];

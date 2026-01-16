@@ -3,13 +3,13 @@ import { useMemo } from "react";
 import type {
   ChoiceOption,
   ChoiceQuestion,
-  FlexJarAnswerValue,
+  LumiSurveyAnswerValue,
 } from "../../../core/types.js";
 import { useChoiceOptions } from "./useChoiceOptions.js";
 
 interface ComboboxMultiChoiceFieldProps {
   question: ChoiceQuestion & { type: "multiChoice" };
-  value: FlexJarAnswerValue | undefined;
+  value: LumiSurveyAnswerValue | undefined;
   onChange: (value: string[]) => void;
   validationErrorMessage: string;
   isMissing: boolean;

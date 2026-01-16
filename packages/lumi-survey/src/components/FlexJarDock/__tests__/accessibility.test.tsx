@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import { createRatingSurvey } from "../../../presets/index.js";
-import { FlexJarDock } from "../FlexJarDock.js";
+import { LumiSurveyDock } from "../FlexJarDock.js";
 
 const survey = createRatingSurvey({
   ratingPrompt: "Hvor fornøyd er du?",
@@ -19,7 +19,7 @@ const survey = createRatingSurvey({
 
 const mockTransport = { submit: vi.fn().mockResolvedValue(undefined) };
 
-describe("FlexJarDock Accessibility", () => {
+describe("LumiSurveyDock Accessibility", () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
@@ -27,7 +27,7 @@ describe("FlexJarDock Accessibility", () => {
 
   it("should have no axe violations in open state", async () => {
     const { container } = render(
-      <FlexJarDock
+      <LumiSurveyDock
         surveyId="a11y-test"
         survey={survey}
         transport={mockTransport}
@@ -44,7 +44,7 @@ describe("FlexJarDock Accessibility", () => {
 
   it("should have no axe violations in minimized state", async () => {
     const { container } = render(
-      <FlexJarDock
+      <LumiSurveyDock
         surveyId="a11y-test-min"
         survey={survey}
         transport={mockTransport}
@@ -64,7 +64,7 @@ describe("FlexJarDock Accessibility", () => {
 
   it("renders widget in aside element", async () => {
     render(
-      <FlexJarDock
+      <LumiSurveyDock
         surveyId="aside-test"
         survey={survey}
         transport={mockTransport}
@@ -79,7 +79,7 @@ describe("FlexJarDock Accessibility", () => {
   it("supports keyboard navigation for rating", async () => {
     const user = userEvent.setup();
     render(
-      <FlexJarDock
+      <LumiSurveyDock
         surveyId="keyboard-test"
         survey={survey}
         transport={mockTransport}
@@ -106,7 +106,7 @@ describe("FlexJarDock Accessibility", () => {
 
   it("has proper heading hierarchy", async () => {
     render(
-      <FlexJarDock
+      <LumiSurveyDock
         surveyId="heading-test"
         survey={survey}
         transport={mockTransport}
@@ -122,7 +122,7 @@ describe("FlexJarDock Accessibility", () => {
   it("announces success state to screen readers", async () => {
     const user = userEvent.setup();
     render(
-      <FlexJarDock
+      <LumiSurveyDock
         surveyId="announce-test"
         survey={survey}
         transport={mockTransport}
@@ -152,7 +152,7 @@ describe("FlexJarDock Accessibility", () => {
 
   it("radiogroup has accessible name", async () => {
     render(
-      <FlexJarDock
+      <LumiSurveyDock
         surveyId="radiogroup-test"
         survey={survey}
         transport={mockTransport}

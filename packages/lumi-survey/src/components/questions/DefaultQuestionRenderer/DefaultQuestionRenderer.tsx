@@ -3,7 +3,7 @@ import type {
   RatingQuestion,
   TextQuestion,
 } from "../../../core/types.js";
-import type { FlexJarDefaultQuestionProps } from "../../../types.js";
+import type { LumiSurveyDefaultQuestionProps } from "../../../types.js";
 import {
   ComboboxMultiChoiceField,
   MultiChoiceField,
@@ -20,7 +20,7 @@ export const DefaultQuestionRenderer = ({
   isMissing,
   disabled,
   hideLabel,
-}: FlexJarDefaultQuestionProps) => {
+}: LumiSurveyDefaultQuestionProps) => {
   switch (question.type) {
     case "rating": {
       const ratingQuestion: RatingQuestion = question;

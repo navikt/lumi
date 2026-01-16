@@ -2,49 +2,47 @@ import { useCallback, useState } from "react";
 import { cloneAnswers, useAnswerState } from "./answers.js";
 import { buildTransportPayload } from "./transportPayload.js";
 import type {
-  FlexJarAnswerValue,
-  FlexJarError,
-  FlexJarEvents,
-  FlexJarQuestion,
-  FlexJarStatus,
-  FlexJarSubmission,
-  FlexJarSubmitResult,
-  FlexJarTransport,
-  FlexJarValidationError,
-  FlexjarContext,
+  LumiSurveyAnswerValue,
+  LumiSurveyContext,
+  LumiSurveyError,
+  LumiSurveyEvents,
+  LumiSurveyQuestion,
+  LumiSurveyStatus,
+  LumiSurveySubmission,
+  LumiSurveySubmitResult,
+  LumiSurveyTransport,
+  LumiSurveyValidationError,
   SurveyType,
 } from "./types";
 import { validateAnswers } from "./validation.js";
 
-export interface UseFlexJarOptions {
+export interface UseLumiSurveyOptions {
   surveyId: string;
-  questions: FlexJarQuestion[];
-  transport: FlexJarTransport;
-  events?: FlexJarEvents;
+  questions: LumiSurveyQuestion[];
+  transport: LumiSurveyTransport;
+  events?: LumiSurveyEvents;
   /** Structured context for segmentation (tags) and debugging (debug) */
-  context?: FlexjarContext;
-  initialAnswers?: Record<string, FlexJarAnswerValue>;
+  context?: LumiSurveyContext;
+  initialAnswers?: Record<string, LumiSurveyAnswerValue>;
   surveyType?: SurveyType;
 }
 
-export type UseLumiSurveyOptions = UseFlexJarOptions;
-
-export interface UseFlexJarReturn {
-  answers: Record<string, FlexJarAnswerValue>;
-  status: FlexJarStatus;
-  error: FlexJarError | null;
+export interface UseLumiSurveyReturn {
+  answers: Record<string, LumiSurveyAnswerValue>;
+  status: LumiSurveyStatus;
+  error: LumiSurveyError | null;
   setAnswer: (
     questionId: string,
-    value: FlexJarAnswerValue | null | undefined,
+    value: LumiSurveyAnswerValue | null | undefined,
   ) => void;
-  submit: () => Promise<FlexJarSubmitResult>;
+  submit: () => Promise<LumiSurveySubmitResult>;
   validate: () => string[];
   reset: () => void;
 }
 
-export type UseLumiSurveyReturn = UseFlexJarReturn;
-
-export function useFlexJar(options: UseFlexJarOptions): UseFlexJarReturn {
+export function useLumiSurvey(
+  options: UseLumiSurveyOptions,
+): UseLumiSurveyReturn {
   const {
     surveyId,
     questions,
@@ -59,18 +57,18 @@ export function useFlexJar(options: UseFlexJarOptions): UseFlexJarReturn {
     initialAnswers,
     onAnswer: events?.onAnswer,
   });
-  const [status, setStatus] = useState<FlexJarStatus>("idle");
-  const [error, setError] = useState<FlexJarError | null>(null);
+  const [status, setStatus] = useState<LumiSurveyStatus>("idle");
+  const [error, setError] = useState<LumiSurveyError | null>(null);
 
   const validate = useCallback((): string[] => {
     return validateAnswers(questions, answers);
   }, [answers, questions]);
 
-  const submit = useCallback(async (): Promise<FlexJarSubmitResult> => {
+  const submit = useCallback(async (): Promise<LumiSurveySubmitResult> => {
     const missing = validate();
 
     if (missing.length > 0) {
-      const validationError: FlexJarValidationError = {
+      const validationError: LumiSurveyValidationError = {
         type: "validation",
         missing,
       };
@@ -85,7 +83,7 @@ export function useFlexJar(options: UseFlexJarOptions): UseFlexJarReturn {
 
     const answerSnapshot = cloneAnswers(answers);
     const submittedAtTimestamp = new Date().toISOString();
-    const submission: FlexJarSubmission = {
+    const submission: LumiSurveySubmission = {
       surveyId,
       answers: answerSnapshot,
       startedAt: startedAtRef.current,
@@ -111,7 +109,7 @@ export function useFlexJar(options: UseFlexJarOptions): UseFlexJarReturn {
       events?.onSubmitSuccess?.(submission);
       return { ok: true, submission };
     } catch (cause) {
-      const transportError: FlexJarError = { type: "transport", cause };
+      const transportError: LumiSurveyError = { type: "transport", cause };
       setStatus("error");
       setError(transportError);
       events?.onSubmitError?.(cause);
@@ -121,12 +119,12 @@ export function useFlexJar(options: UseFlexJarOptions): UseFlexJarReturn {
     answers,
     context,
     events,
-    surveyId,
     questions,
+    startedAtRef,
+    surveyId,
     surveyType,
     transport,
     validate,
-    startedAtRef,
   ]);
 
   const reset = useCallback(() => {
@@ -145,10 +143,4 @@ export function useFlexJar(options: UseFlexJarOptions): UseFlexJarReturn {
     validate,
     reset,
   };
-}
-
-export function useLumiSurvey(
-  options: UseLumiSurveyOptions,
-): UseLumiSurveyReturn {
-  return useFlexJar(options);
 }

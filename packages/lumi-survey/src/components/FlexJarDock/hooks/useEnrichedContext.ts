@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { DeviceType, FlexjarContext } from "../../../core/types.js";
+import type { DeviceType, LumiSurveyContext } from "../../../core/types.js";
 
 /**
  * Derives device type from viewport width.
@@ -60,8 +60,8 @@ function ensureHistoryPatched(): void {
  * @returns Enriched context with system fields (url, pathname, viewport, deviceType, userAgent)
  */
 export function useEnrichedContext(
-  userContext?: FlexjarContext,
-): FlexjarContext {
+  userContext?: LumiSurveyContext,
+): LumiSurveyContext {
   const [location, setLocation] = useState(() => ({
     url: window.location.href,
     pathname: window.location.pathname,
@@ -112,7 +112,7 @@ export function useEnrichedContext(
     };
   }, []);
 
-  return useMemo((): FlexjarContext => {
+  return useMemo((): LumiSurveyContext => {
     return {
       // System-collected
       url: location.url,

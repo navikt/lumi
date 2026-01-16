@@ -1,21 +1,21 @@
 import type React from "react";
 import { useCallback, useMemo } from "react";
 import type {
-  FlexJarEvents,
-  FlexJarTransport,
-  FlexjarContext,
+  LumiSurveyContext,
+  LumiSurveyEvents,
+  LumiSurveyTransport,
   RatingQuestion,
 } from "../../core";
 import {
   getVisibleQuestions,
   shouldShowSubmitButton,
-  useFlexJar,
+  useLumiSurvey,
 } from "../../core";
 import { surveyHasBranchingLogic } from "../../core/branchingEngine.js";
-import type { FlexJarRenderQuestionProps } from "../../types.js";
+import type { LumiSurveyRenderQuestionProps } from "../../types.js";
 import { DefaultQuestionRenderer, RatingQuestionField } from "../questions";
 import { buildCanonicalSurvey } from "../shared/canonicalSurvey.js";
-import type { FlexJarSurveyConfig } from "../surveyTypes.js";
+import type { LumiSurveyConfig } from "../surveyTypes.js";
 import { CLASS_NAMES, joinClassNames } from "./classNames.js";
 import { DockPanel } from "./components/DockPanel.js";
 import { MinimizedDock } from "./components/MinimizedDock.js";
@@ -27,18 +27,18 @@ import { resolveConfig } from "./resolveConfig.js";
 import "./FlexJarDock.fallback.css";
 
 import type {
-  FlexJarBehavior,
-  FlexJarLabels,
-  FlexJarStyle,
-  FlexJarSuccessConfig,
+  LumiSurveyBehavior,
+  LumiSurveyLabels,
+  LumiSurveyStyle,
+  LumiSurveySuccessConfig,
 } from "./propTypes.js";
 
 /**
- * Props for the FlexJarDock component.
+ * Props for the LumiSurveyDock component.
  *
  * @example
  * ```tsx
- * <FlexJarDock
+ * <LumiSurveyDock
  *   surveyId="my-app"
  *   survey={NAV_STANDARD_RATING}
  *   transport={transport}
@@ -48,7 +48,7 @@ import type {
  * />
  * ```
  */
-export interface FlexJarDockProps {
+export interface LumiSurveyDockProps {
   /**
    * Unique identifier for this feedback instance. Used for localStorage persistence keys and event tracking.
    * @example "oppfolgingsplan-feedback"
@@ -59,49 +59,47 @@ export interface FlexJarDockProps {
    * Survey configuration defining the questions to display.
    * Use presets like NAV_STANDARD_RATING or create custom with createRatingSurvey().
    */
-  survey: FlexJarSurveyConfig;
+  survey: LumiSurveyConfig;
 
   /**
    * Transport implementation for submitting feedback data.
    * Receives the formatted submission payload and returns a promise.
    */
-  transport: FlexJarTransport;
+  transport: LumiSurveyTransport;
 
   /**
    * Labels for UI elements (submit button, error messages, etc.).
    */
-  labels?: FlexJarLabels;
+  labels?: LumiSurveyLabels;
 
   /**
    * Success state configuration (title, body, auto-close).
    */
-  success?: FlexJarSuccessConfig;
+  success?: LumiSurveySuccessConfig;
 
   /**
    * Visual styling options (position, colors, classNames).
    */
-  style?: FlexJarStyle;
+  style?: LumiSurveyStyle;
 
   /**
    * Behavior options (persistence, cooldown, privacy notice).
    */
-  behavior?: FlexJarBehavior;
+  behavior?: LumiSurveyBehavior;
 
   /**
    * Optional event callbacks for tracking user interactions and lifecycle events.
    */
-  events?: FlexJarEvents;
+  events?: LumiSurveyEvents;
 
   /**
    * Structured context for segmentation (tags) and debugging (debug).
    * System fields (url, pathname, viewport, deviceType) are auto-collected.
    */
-  context?: FlexjarContext;
+  context?: LumiSurveyContext;
 }
 
-export type LumiSurveyDockProps = FlexJarDockProps;
-
-export const FlexJarDock = ({
+export const LumiSurveyDock = ({
   surveyId,
   survey,
   transport,
@@ -111,7 +109,7 @@ export const FlexJarDock = ({
   success,
   style,
   behavior,
-}: FlexJarDockProps) => {
+}: LumiSurveyDockProps) => {
   // Resolve all config with defaults
   const config = useMemo(
     () => resolveConfig(labels, success, style, behavior),
@@ -146,7 +144,7 @@ export const FlexJarDock = ({
   // Auto-collect system context and merge with user-provided context
   const enrichedContext = useEnrichedContext(context);
 
-  const { answers, status, error, setAnswer, submit, reset } = useFlexJar({
+  const { answers, status, error, setAnswer, submit, reset } = useLumiSurvey({
     surveyId,
     questions,
     transport,
@@ -238,7 +236,7 @@ export const FlexJarDock = ({
     try {
       await submit();
     } catch {
-      // useFlexJar sets error state; avoid unhandled rejections
+      // useLumiSurvey sets error state; avoid unhandled rejections
     }
   }, [
     config.showPersonalDataNotice,
@@ -302,7 +300,7 @@ export const FlexJarDock = ({
   };
 
   const defaultQuestionRenderer = useCallback(
-    (props: FlexJarRenderQuestionProps) => {
+    (props: LumiSurveyRenderQuestionProps) => {
       /**
        * Special rendering for the rating question type.
        * Can now be any question in the list, but we keep the special UI for it.
@@ -443,10 +441,4 @@ export const FlexJarDock = ({
   );
 };
 
-export const LumiSurveyDock = (props: LumiSurveyDockProps) => {
-  return <FlexJarDock {...props} />;
-};
-
 LumiSurveyDock.displayName = "LumiSurveyDock";
-
-FlexJarDock.displayName = "FlexJarDock";

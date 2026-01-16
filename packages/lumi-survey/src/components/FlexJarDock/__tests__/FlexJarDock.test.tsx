@@ -1,14 +1,17 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { FlexJarEvents, FlexJarTransport } from "../../../core/types.js";
-import type { FlexJarSurveyConfig } from "../../surveyTypes.js";
-import { FlexJarDock } from "../FlexJarDock.js";
+import type {
+  LumiSurveyEvents,
+  LumiSurveyTransport,
+} from "../../../core/types.js";
+import type { LumiSurveyConfig } from "../../surveyTypes.js";
+import { LumiSurveyDock } from "../FlexJarDock.js";
 
 import { createRatingSurvey } from "../../../presets/index.js";
 import { createTopTasksSurvey } from "../../../presets/index.js";
 
-function createSurvey(): FlexJarSurveyConfig {
+function createSurvey(): LumiSurveyConfig {
   return createRatingSurvey({
     ratingPrompt: "Hvor fornøyd er du?",
     ratingDescription: "Beskriv gjerne opplevelsen din.",
@@ -32,19 +35,19 @@ function createSurvey(): FlexJarSurveyConfig {
 }
 
 function renderDock(options?: {
-  transport?: FlexJarTransport;
-  events?: FlexJarEvents;
-  survey?: FlexJarSurveyConfig;
+  transport?: LumiSurveyTransport;
+  events?: LumiSurveyEvents;
+  survey?: LumiSurveyConfig;
   context?: Record<string, unknown>;
   initialOpen?: boolean;
   behavior?: Record<string, unknown>;
 }) {
-  const transport: FlexJarTransport = options?.transport ?? {
+  const transport: LumiSurveyTransport = options?.transport ?? {
     submit: vi.fn().mockResolvedValue(undefined),
   };
 
   return render(
-    <FlexJarDock
+    <LumiSurveyDock
       surveyId="dock-feedback"
       survey={options?.survey ?? createSurvey()}
       transport={transport}
@@ -58,18 +61,18 @@ function renderDock(options?: {
   );
 }
 
-describe("FlexJarDock", () => {
+describe("LumiSurveyDock", () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
   it("does not show personal data notice when branching submits before any text question", async () => {
     const user = userEvent.setup();
-    const transport: FlexJarTransport = {
+    const transport: LumiSurveyTransport = {
       submit: vi.fn().mockResolvedValue(undefined),
     };
 
-    const branchingSurvey: FlexJarSurveyConfig = {
+    const branchingSurvey: LumiSurveyConfig = {
       type: "custom",
       questions: [
         {
@@ -126,7 +129,7 @@ describe("FlexJarDock", () => {
   it("shows personal data notice when branching leads to a text question", async () => {
     const user = userEvent.setup();
 
-    const branchingSurvey: FlexJarSurveyConfig = {
+    const branchingSurvey: LumiSurveyConfig = {
       type: "custom",
       questions: [
         {
@@ -285,10 +288,10 @@ describe("FlexJarDock", () => {
 
   it("displays validation errors when required questions are missing", async () => {
     const user = userEvent.setup();
-    const events: FlexJarEvents = {
+    const events: LumiSurveyEvents = {
       onValidationFailed: vi.fn(),
     };
-    const transport: FlexJarTransport = {
+    const transport: LumiSurveyTransport = {
       submit: vi.fn().mockResolvedValue(undefined),
     };
 
@@ -311,7 +314,7 @@ describe("FlexJarDock", () => {
   });
 
   it("calls onViewDock when the dock mounts", () => {
-    const events: FlexJarEvents = {
+    const events: LumiSurveyEvents = {
       onViewDock: vi.fn(),
     };
 
@@ -336,7 +339,7 @@ describe("FlexJarDock", () => {
   });
 
   it("persists dismissal state and triggers reset when closing", async () => {
-    const events: FlexJarEvents = {
+    const events: LumiSurveyEvents = {
       onReset: vi.fn(),
       onDismissalPersistFailed: vi.fn(),
     };

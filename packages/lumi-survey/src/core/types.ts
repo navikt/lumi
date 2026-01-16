@@ -1,4 +1,4 @@
-export type FlexJarQuestionType =
+export type LumiSurveyQuestionType =
   | "rating"
   | "text"
   | "singleChoice"
@@ -99,7 +99,7 @@ export interface LogicRule {
 // Question Base Type
 // ============================================
 
-export interface FlexJarQuestionBase<TType extends FlexJarQuestionType> {
+export interface LumiSurveyQuestionBase<TType extends LumiSurveyQuestionType> {
   id: string;
   type: TType;
   prompt: string;
@@ -162,7 +162,7 @@ export interface RatingScaleLabel {
 /**
  * Base interface for all rating question types.
  */
-interface RatingQuestionBase extends FlexJarQuestionBase<"rating"> {
+interface RatingQuestionBase extends LumiSurveyQuestionBase<"rating"> {
   labels?: RatingScaleLabel[];
 }
 
@@ -206,7 +206,7 @@ export type RatingQuestion =
   | StarRatingQuestion
   | NpsRatingQuestion;
 
-export interface TextQuestion extends FlexJarQuestionBase<"text"> {
+export interface TextQuestion extends LumiSurveyQuestionBase<"text"> {
   maxLength?: number;
   minRows?: number;
   placeholder?: string;
@@ -227,7 +227,7 @@ export interface ChoiceOption {
 export type MultiChoiceVariant = "checkbox" | "combobox";
 
 export interface ChoiceQuestion
-  extends FlexJarQuestionBase<"singleChoice" | "multiChoice"> {
+  extends LumiSurveyQuestionBase<"singleChoice" | "multiChoice"> {
   options: ChoiceOption[];
   randomize?: boolean;
   /**
@@ -243,13 +243,13 @@ export interface ChoiceQuestion
   maxSelections?: number;
 }
 
-export type FlexJarQuestion =
+export type LumiSurveyQuestion =
   | RatingQuestion
   | TextQuestion
   | (ChoiceQuestion & { type: "singleChoice" })
   | (ChoiceQuestion & { type: "multiChoice" });
 
-export type FlexJarAnswerValue = string | number | string[];
+export type LumiSurveyAnswerValue = string | number | string[];
 
 /**
  * Survey type identifier for analytics and dashboard display.
@@ -292,14 +292,14 @@ export interface TransportAnswer {
  * Canonical submission payload (schemaVersion=1).
  * This is the ONLY payload shape that should be sent to analytics backends.
  */
-export interface FlexJarTransportPayload {
+export interface LumiSurveyTransportPayload {
   schemaVersion: 1;
   surveyId: string;
   surveyType: SurveyType;
   submittedAt: string;
   startedAt?: string;
   timeToCompleteMs?: number;
-  context?: FlexjarContext;
+  context?: LumiSurveyContext;
   answers: TransportAnswer[];
 }
 
@@ -313,7 +313,7 @@ export type DeviceType = "mobile" | "tablet" | "desktop";
  *
  * @example
  * ```tsx
- * <FlexJarDock
+ * <LumiSurveyDock
  *   context={{
  *     tags: { harSykmelding: true, rolle: "arbeidsgiver" },
  *     debug: { sessionId: "abc-123" }
@@ -321,7 +321,7 @@ export type DeviceType = "mobile" | "tablet" | "desktop";
  * />
  * ```
  */
-export interface FlexjarContext {
+export interface LumiSurveyContext {
   // ============================================
   // System-collected (auto-populated by widget)
   // ============================================
@@ -363,24 +363,24 @@ export interface FlexjarContext {
   debug?: Record<string, unknown>;
 }
 
-export interface FlexJarSubmission {
+export interface LumiSurveySubmission {
   surveyId: string;
-  answers: Record<string, FlexJarAnswerValue>;
+  answers: Record<string, LumiSurveyAnswerValue>;
   startedAt: string;
   submittedAt: string;
-  context?: FlexjarContext;
-  transportPayload: FlexJarTransportPayload;
+  context?: LumiSurveyContext;
+  transportPayload: LumiSurveyTransportPayload;
 }
 
-export interface FlexJarTransport {
-  submit: (submission: FlexJarSubmission) => Promise<void>;
+export interface LumiSurveyTransport {
+  submit: (submission: LumiSurveySubmission) => Promise<void>;
 }
 
-export interface FlexJarEvents {
+export interface LumiSurveyEvents {
   onViewDock?: (surveyId: string) => void;
   onAnswer?: (questionId: string, value: unknown) => void;
-  onSubmitStart?: (submission: FlexJarSubmission) => void;
-  onSubmitSuccess?: (submission: FlexJarSubmission) => void;
+  onSubmitStart?: (submission: LumiSurveySubmission) => void;
+  onSubmitSuccess?: (submission: LumiSurveySubmission) => void;
   onSubmitError?: (cause: unknown) => void;
   onValidationFailed?: (missingQuestionIds: string[]) => void;
   onReset?: () => void;
@@ -390,58 +390,32 @@ export interface FlexJarEvents {
   onDismissalPersistFailed?: (cause: unknown) => void;
 }
 
-export type FlexJarStatus = "idle" | "submitting" | "success" | "error";
+export type LumiSurveyStatus = "idle" | "submitting" | "success" | "error";
 
-export interface FlexJarValidationError {
+export interface LumiSurveyValidationError {
   type: "validation";
   missing: string[];
 }
 
-export interface FlexJarTransportError {
+export interface LumiSurveyTransportError {
   type: "transport";
   cause: unknown;
 }
 
-export type FlexJarError = FlexJarValidationError | FlexJarTransportError;
+export type LumiSurveyError =
+  | LumiSurveyValidationError
+  | LumiSurveyTransportError;
 
-export interface FlexJarSubmitSuccess {
+export interface LumiSurveySubmitSuccess {
   ok: true;
-  submission: FlexJarSubmission;
+  submission: LumiSurveySubmission;
 }
 
-export interface FlexJarSubmitFailure {
+export interface LumiSurveySubmitFailure {
   ok: false;
-  error: FlexJarError;
+  error: LumiSurveyError;
 }
 
-export type FlexJarSubmitResult = FlexJarSubmitSuccess | FlexJarSubmitFailure;
-
-// ============================================
-// Lumi naming (public API) + FlexJar aliases
-// ============================================
-
-export type LumiSurveyQuestionType = FlexJarQuestionType;
-export type LumiSurveyQuestionBase<TType extends LumiSurveyQuestionType> =
-  FlexJarQuestionBase<TType>;
-export type LumiSurveyQuestion = FlexJarQuestion;
-export type LumiSurveyAnswerValue = FlexJarAnswerValue;
-
-export type LumiSurveyType = SurveyType;
-
-export type LumiSurveyTransportAnswer = TransportAnswer;
-export type LumiSurveyTransportPayload = FlexJarTransportPayload;
-
-export type LumiDeviceType = DeviceType;
-export type LumiSurveyContext = FlexjarContext;
-
-export type LumiSurveySubmission = FlexJarSubmission;
-export type LumiSurveyTransport = FlexJarTransport;
-export type LumiSurveyEvents = FlexJarEvents;
-
-export type LumiSurveyStatus = FlexJarStatus;
-export type LumiSurveyValidationError = FlexJarValidationError;
-export type LumiSurveyTransportError = FlexJarTransportError;
-export type LumiSurveyError = FlexJarError;
-export type LumiSurveySubmitSuccess = FlexJarSubmitSuccess;
-export type LumiSurveySubmitFailure = FlexJarSubmitFailure;
-export type LumiSurveySubmitResult = FlexJarSubmitResult;
+export type LumiSurveySubmitResult =
+  | LumiSurveySubmitSuccess
+  | LumiSurveySubmitFailure;

@@ -3,7 +3,7 @@ import type { BoxNewProps } from "@navikt/ds-react/Box";
 import type React from "react";
 import { useCallback } from "react";
 import type {
-  FlexJarAnswerValue,
+  LumiSurveyAnswerValue,
   NpsRatingQuestion,
 } from "../../../core/types.js";
 import styles from "./emo.module.css";
@@ -11,7 +11,7 @@ import "./emo.fallback.css";
 
 interface NpsRatingProps {
   question: NpsRatingQuestion;
-  value: FlexJarAnswerValue | undefined;
+  value: LumiSurveyAnswerValue | undefined;
   onChange: (value: number | null) => void;
   validationErrorMessage: string;
   isMissing: boolean;
