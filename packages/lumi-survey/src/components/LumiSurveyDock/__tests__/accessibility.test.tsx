@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import { createRatingSurvey } from "../../../presets/index.js";
-import { LumiSurveyDock } from "../FlexJarDock.js";
+import { LumiSurveyDock } from "../LumiSurveyDock.js";
 
 const survey = createRatingSurvey({
   ratingPrompt: "Hvor fornøyd er du?",

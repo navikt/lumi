@@ -1,4 +1,4 @@
-.flexjar-rating__row {
+.lumi-survey-rating__row {
   display: flex;
   gap: var(--ax-space-16);
   align-items: center;
@@ -9,12 +9,12 @@
   -webkit-overflow-scrolling: touch;
 }
 
-.flexjar-rating__fieldset {
+.lumi-survey-rating__fieldset {
   border: 0;
   margin: 0;
 }
 
-.flexjar-rating__emoji-button {
+.lumi-survey-rating__emoji-button {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -31,48 +31,48 @@
   flex-shrink: 0;
 }
 
-.flexjar-rating__emoji-button:hover:not(:disabled) {
+.lumi-survey-rating__emoji-button:hover:not(:disabled) {
   transform: translateY(-2px);
 }
 
-.flexjar-rating__emoji-button:focus-visible {
+.lumi-survey-rating__emoji-button:focus-visible {
   outline: none;
   border-radius: var(--ax-radius-8);
   box-shadow: 0 0 0 3px var(--ax-border-focus);
   z-index: 1;
 }
 
-.flexjar-rating__emoji-button--active {
+.lumi-survey-rating__emoji-button--active {
   transform: translateY(-2px);
 }
 
-.flexjar-rating__emoji-button:disabled {
+.lumi-survey-rating__emoji-button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
 
-.flexjar-rating__emoji-button--sinna:hover {
+.lumi-survey-rating__emoji-button--sinna:hover {
   color: var(--ax-text-danger-subtle);
 }
 
-.flexjar-rating__emoji-button--lei:hover {
+.lumi-survey-rating__emoji-button--lei:hover {
   color: var(--ax-text-warning-decoration);
 }
 
-.flexjar-rating__emoji-button--noytral:hover {
+.lumi-survey-rating__emoji-button--noytral:hover {
   color: var(--ax-text-info-decoration);
 }
 
-.flexjar-rating__emoji-button--glad:hover {
+.lumi-survey-rating__emoji-button--glad:hover {
   color: var(--ax-text-success-decoration);
 }
 
-.flexjar-rating__emoji-button--veldig-glad:hover {
+.lumi-survey-rating__emoji-button--veldig-glad:hover {
   color: var(--ax-text-success-decoration);
   filter: brightness(0.8);
 }
 
-.flexjar-rating__legend {
+.lumi-survey-rating__legend {
   border: 0;
   clip: rect(0 0 0 0);
   height: 1px;
@@ -83,6 +83,6 @@
   width: 1px;
 }
 
-.flexjar-rating__error-message {
+.lumi-survey-rating__error-message {
   color: var(--ax-text-danger-subtle);
 }

@@ -3,14 +3,14 @@ export * from "./core/index.js";
 export {
   LumiSurveyDock,
   type LumiSurveyDockProps,
-} from "./components/FlexJarDock/index.js";
+} from "./components/LumiSurveyDock/index.js";
 export type {
   LumiSurveyLabels,
   LumiSurveySuccessConfig,
   LumiSurveyStyle,
   LumiSurveyBehavior,
   StorageStrategy,
-} from "./components/FlexJarDock/propTypes.js";
+} from "./components/LumiSurveyDock/propTypes.js";
 export type {
   LumiSurveyConfig,
   SurveyType,

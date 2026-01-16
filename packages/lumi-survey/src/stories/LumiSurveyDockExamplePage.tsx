@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   LumiSurveyDock,
   type LumiSurveyDockProps,
-} from "../components/FlexJarDock";
+} from "../components/LumiSurveyDock";
 import { removeConsentValue } from "../components/shared/consentStorage.js";
 import { SurveyCodePreview } from "./SurveyCodePreview";
 
@@ -16,7 +16,6 @@ interface LumiMockConsentApi {
 declare global {
   interface Window {
     __LUMI_SURVEY_MOCK_CONSENT__?: LumiMockConsentApi;
-    __FLEXJAR_MOCK_CONSENT__?: LumiMockConsentApi;
   }
 }
 
@@ -32,7 +31,7 @@ export const SUCCESS_TRANSPORT: LumiSurveyDockProps["transport"] = {
 export const ExamplePage = (props: LumiSurveyDockProps) => {
   const [resetToken, setResetToken] = useState(0);
   const [hasConsent, setHasConsent] = useState(() => {
-    const stored = localStorage.getItem("__flexjar_storybook_consent__");
+    const stored = localStorage.getItem("__lumi_survey_storybook_consent__");
     return stored === null ? true : stored === "true";
   });
 
@@ -44,8 +43,7 @@ export const ExamplePage = (props: LumiSurveyDockProps) => {
   }, [props.surveyId]);
 
   const handleGrantConsent = useCallback(() => {
-    const mockAPI =
-      window.__LUMI_SURVEY_MOCK_CONSENT__ ?? window.__FLEXJAR_MOCK_CONSENT__;
+    const mockAPI = window.__LUMI_SURVEY_MOCK_CONSENT__;
     if (mockAPI) {
       mockAPI.setConsent(true);
       setHasConsent(true);
@@ -53,8 +51,7 @@ export const ExamplePage = (props: LumiSurveyDockProps) => {
   }, []);
 
   const handleRevokeConsent = useCallback(() => {
-    const mockAPI =
-      window.__LUMI_SURVEY_MOCK_CONSENT__ ?? window.__FLEXJAR_MOCK_CONSENT__;
+    const mockAPI = window.__LUMI_SURVEY_MOCK_CONSENT__;
     if (mockAPI) {
       mockAPI.setConsent(false);
       setHasConsent(false);
@@ -64,14 +61,17 @@ export const ExamplePage = (props: LumiSurveyDockProps) => {
   useEffect(() => {
     // Listen for consent changes from controls
     const handleConsentChange = () => {
-      const stored = localStorage.getItem("__flexjar_storybook_consent__");
+      const stored = localStorage.getItem("__lumi_survey_storybook_consent__");
       setHasConsent(stored === null ? true : stored === "true");
     };
 
-    window.addEventListener("__flexjar_consent_change__", handleConsentChange);
+    window.addEventListener(
+      "__lumi_survey_consent_change__",
+      handleConsentChange,
+    );
     return () =>
       window.removeEventListener(
-        "__flexjar_consent_change__",
+        "__lumi_survey_consent_change__",
         handleConsentChange,
       );
   }, []);

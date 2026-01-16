@@ -84,7 +84,7 @@ export function ThumbsRating({
       )}
       <Box.New
         as="fieldset"
-        className={styles.fieldset ?? "flexjar-rating__fieldset"}
+        className={styles.fieldset ?? "lumi-survey-rating__fieldset"}
         aria-labelledby={
           ariaLabelledBy ?? (!hidePrompt ? fallbackHeadingId : undefined)
         }
@@ -97,7 +97,7 @@ export function ThumbsRating({
         paddingBlock={fieldsetPaddingBlock ?? "space-12"}
         paddingInline={fieldsetPaddingInline ?? "space-16"}
       >
-        <legend className={styles.legend ?? "flexjar-rating__legend"}>
+        <legend className={styles.legend ?? "lumi-survey-rating__legend"}>
           {question.prompt}
         </legend>
         <HStack
@@ -145,7 +145,7 @@ export function ThumbsRating({
       {isMissing && (
         <BodyShort
           id={errorId}
-          className={styles.errorMessage ?? "flexjar-rating__error-message"}
+          className={styles.errorMessage ?? "lumi-survey-rating__error-message"}
           role="alert"
         >
           {validationErrorMessage}

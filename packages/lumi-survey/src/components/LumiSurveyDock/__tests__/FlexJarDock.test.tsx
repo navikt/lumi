@@ -6,7 +6,7 @@ import type {
   LumiSurveyTransport,
 } from "../../../core/types.js";
 import type { LumiSurveyConfig } from "../../surveyTypes.js";
-import { LumiSurveyDock } from "../FlexJarDock.js";
+import { LumiSurveyDock } from "../LumiSurveyDock.js";
 
 import { createRatingSurvey } from "../../../presets/index.js";
 import { createTopTasksSurvey } from "../../../presets/index.js";

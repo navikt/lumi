@@ -57,19 +57,21 @@ interface EmojiVariant {
 }
 
 const CLASS_NAMES = {
-  row: styles.emojiRow ?? "flexjar-rating__row",
-  fieldset: styles.fieldset ?? "flexjar-rating__fieldset",
-  legend: styles.legend ?? "flexjar-rating__legend",
-  button: styles.emobutton ?? "flexjar-rating__emoji-button",
-  active: styles.active ?? "flexjar-rating__emoji-button--active",
-  error: styles.errorMessage ?? "flexjar-rating__error-message",
+  row: styles.emojiRow ?? "lumi-survey-rating__row",
+  fieldset: styles.fieldset ?? "lumi-survey-rating__fieldset",
+  legend: styles.legend ?? "lumi-survey-rating__legend",
+  button: styles.emobutton ?? "lumi-survey-rating__emoji-button",
+  active: styles.active ?? "lumi-survey-rating__emoji-button--active",
+  error: styles.errorMessage ?? "lumi-survey-rating__error-message",
   variants: {
-    sinna: styles.sinnaButton ?? "flexjar-rating__emoji-button--sinna",
-    lei: styles.leiButton ?? "flexjar-rating__emoji-button--lei",
-    noytral: styles.noytralButton ?? "flexjar-rating__emoji-button--noytral",
-    glad: styles.gladButton ?? "flexjar-rating__emoji-button--glad",
+    sinna: styles.sinnaButton ?? "lumi-survey-rating__emoji-button--sinna",
+    lei: styles.leiButton ?? "lumi-survey-rating__emoji-button--lei",
+    noytral:
+      styles.noytralButton ?? "lumi-survey-rating__emoji-button--noytral",
+    glad: styles.gladButton ?? "lumi-survey-rating__emoji-button--glad",
     veldigGlad:
-      styles.veldigGladButton ?? "flexjar-rating__emoji-button--veldig-glad",
+      styles.veldigGladButton ??
+      "lumi-survey-rating__emoji-button--veldig-glad",
   },
 } as const;
 

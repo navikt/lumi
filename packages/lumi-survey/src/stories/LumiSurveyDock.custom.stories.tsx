@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { LumiSurveyDock } from "../components/FlexJarDock";
+import { LumiSurveyDock } from "../components/LumiSurveyDock";
 import type { LumiSurveyConfig } from "../components/surveyTypes.js";
 import { DEFAULT_SURVEY_RATING } from "../presets/index.js";
-import { ExamplePage, SUCCESS_TRANSPORT } from "./FlexJarDockExamplePage";
+import { ExamplePage, SUCCESS_TRANSPORT } from "./LumiSurveyDockExamplePage";
 
 const CUSTOM_SURVEY: LumiSurveyConfig = {
   type: "custom",

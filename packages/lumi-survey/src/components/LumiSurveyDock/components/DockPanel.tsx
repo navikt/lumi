@@ -116,8 +116,8 @@ export const DockPanel = ({
         borderColor={panelBorderColor}
         className={joinClassNames(CLASS_NAMES.panel, panelClassName)}
         style={panelStyle}
-        data-flexjar-panel-label={panelLabel}
-        data-flexjar-step={isStepMode ? currentStep : undefined}
+        data-lumi-survey-panel-label={panelLabel}
+        data-lumi-survey-step={isStepMode ? currentStep : undefined}
         aria-labelledby={isSuccess ? successHeadingId : promptHeadingId}
         id={panelId}
       >
@@ -207,7 +207,7 @@ export const DockPanel = ({
               {isStepMode && currentStepQuestion ? (
                 // Step mode: Show only the current question
                 <>
-                  <div className="flexjar-question">
+                  <div className="lumi-survey-question">
                     {renderQuestion({
                       question: currentStepQuestion,
                       value: answers[currentStepQuestion.id],
@@ -279,7 +279,7 @@ export const DockPanel = ({
                     };
 
                     return (
-                      <div key={question.id} className="flexjar-question">
+                      <div key={question.id} className="lumi-survey-question">
                         {renderQuestion({
                           question,
                           value,
@@ -326,4 +326,4 @@ export const DockPanel = ({
   );
 };
 
-DockPanel.displayName = "FlexJarDockPanel";
+DockPanel.displayName = "LumiSurveyDockPanel";

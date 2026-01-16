@@ -3,10 +3,9 @@
  * Uses localStorage to persist consent state for realistic testing
  */
 
-const CONSENT_STORAGE_KEY = "__flexjar_storybook_consent__";
+const CONSENT_STORAGE_KEY = "__lumi_survey_storybook_consent__";
 
-// NOTE: Keep legacy Flexjar keys for now.
-// We still rely on NAV's existing allowlist pattern for `flexjar-*`.
+// NOTE: We still rely on NAV's existing allowlist pattern for `flexjar-*`.
 console.log("[Lumi Mock] Loading consent mock module for Storybook");
 
 const getStoredConsent = (): boolean => {
@@ -24,7 +23,7 @@ const setStoredConsent = (granted: boolean) => {
 
   // Manually dispatch custom event since storage events don't fire in the same window
   window.dispatchEvent(
-    new CustomEvent("__flexjar_consent_change__", {
+    new CustomEvent("__lumi_survey_consent_change__", {
       detail: { granted },
     }),
   );
@@ -45,19 +44,11 @@ if (typeof window !== "undefined") {
   (
     window as Window & {
       __LUMI_SURVEY_MOCK_CONSENT__?: LumiMockConsentApi;
-      __FLEXJAR_MOCK_CONSENT__?: LumiMockConsentApi;
     }
   ).__LUMI_SURVEY_MOCK_CONSENT__ = api;
 
-  // Backwards-compatible alias (ported code + any existing stories)
-  (
-    window as Window & {
-      __FLEXJAR_MOCK_CONSENT__?: LumiMockConsentApi;
-    }
-  ).__FLEXJAR_MOCK_CONSENT__ = api;
-
   console.log(
-    "[Lumi Mock] Global API exposed as window.__LUMI_SURVEY_MOCK_CONSENT__ (and __FLEXJAR_MOCK_CONSENT__) ",
+    "[Lumi Mock] Global API exposed as window.__LUMI_SURVEY_MOCK_CONSENT__",
   );
 }
 

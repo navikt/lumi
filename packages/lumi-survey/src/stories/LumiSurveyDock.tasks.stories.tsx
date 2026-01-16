@@ -1,14 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { LumiSurveyDock } from "../components/FlexJarDock";
+import { LumiSurveyDock } from "../components/LumiSurveyDock";
 import {
   DEFAULT_SURVEY_DISCOVERY,
   DEFAULT_SURVEY_RATING,
   createTaskPrioritySurvey,
   createTopTasksSurvey,
 } from "../presets/index.js";
-import { ExamplePage, SUCCESS_TRANSPORT } from "./FlexJarDockExamplePage";
+import { ExamplePage, SUCCESS_TRANSPORT } from "./LumiSurveyDockExamplePage";
 
-// Tasks matching flexjar-analytics mock data for Top Tasks surveys (8 items per Gerry McGovern methodology)
+// Example tasks for Storybook Top Tasks surveys (8 items per Gerry McGovern methodology)
 const TOP_TASKS = [
   { value: "lese-om-dialogmote", label: "Lese om dialogmøte" },
   { value: "melde-motebehov", label: "Melde behov for møte" },
@@ -20,7 +20,7 @@ const TOP_TASKS = [
   { value: "kontakte-nav", label: "Kontakte NAV om møtet" },
 ];
 
-// Task Priority list matching flexjar-analytics mock data (McGovern methodology)
+// Example Task Priority list for Storybook (McGovern methodology)
 const TASK_PRIORITY_TASKS = [
   // TOP TASKS (will get ~60% of all votes combined - the "Long Neck")
   { value: "sjekke-utbetaling", label: "Sjekke utbetalinger" },

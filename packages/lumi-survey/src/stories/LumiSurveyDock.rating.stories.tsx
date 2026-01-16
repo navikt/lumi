@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { LumiSurveyDock } from "../components/FlexJarDock";
+import { LumiSurveyDock } from "../components/LumiSurveyDock";
 import {
   DEFAULT_SURVEY_NPS,
   DEFAULT_SURVEY_RATING,
@@ -7,7 +7,7 @@ import {
   DEFAULT_SURVEY_STARS,
   DEFAULT_SURVEY_THUMBS,
 } from "../presets/index.js";
-import { ExamplePage, SUCCESS_TRANSPORT } from "./FlexJarDockExamplePage";
+import { ExamplePage, SUCCESS_TRANSPORT } from "./LumiSurveyDockExamplePage";
 
 const meta: Meta<typeof LumiSurveyDock> = {
   title: "Components/LumiSurveyDock/Rating",

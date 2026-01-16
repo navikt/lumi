@@ -10,8 +10,7 @@ function getDeviceType(width: number): DeviceType {
   return "desktop";
 }
 
-const LUMI_NAVIGATION_EVENT = "lumi:navigation";
-const LEGACY_FLEXJAR_NAVIGATION_EVENT = "flexjar:navigation";
+const LUMI_SURVEY_NAVIGATION_EVENT = "lumi-survey:navigation";
 
 let historyPatched = false;
 
@@ -22,8 +21,7 @@ function ensureHistoryPatched(): void {
   historyPatched = true;
 
   const notify = () => {
-    window.dispatchEvent(new Event(LUMI_NAVIGATION_EVENT));
-    window.dispatchEvent(new Event(LEGACY_FLEXJAR_NAVIGATION_EVENT));
+    window.dispatchEvent(new Event(LUMI_SURVEY_NAVIGATION_EVENT));
   };
 
   type PushState = History["pushState"];
@@ -82,17 +80,12 @@ export function useEnrichedContext(
       });
     };
 
-    window.addEventListener(LUMI_NAVIGATION_EVENT, updateLocation);
-    window.addEventListener(LEGACY_FLEXJAR_NAVIGATION_EVENT, updateLocation);
+    window.addEventListener(LUMI_SURVEY_NAVIGATION_EVENT, updateLocation);
     window.addEventListener("popstate", updateLocation);
     window.addEventListener("hashchange", updateLocation);
 
     return () => {
-      window.removeEventListener(LUMI_NAVIGATION_EVENT, updateLocation);
-      window.removeEventListener(
-        LEGACY_FLEXJAR_NAVIGATION_EVENT,
-        updateLocation,
-      );
+      window.removeEventListener(LUMI_SURVEY_NAVIGATION_EVENT, updateLocation);
       window.removeEventListener("popstate", updateLocation);
       window.removeEventListener("hashchange", updateLocation);
     };

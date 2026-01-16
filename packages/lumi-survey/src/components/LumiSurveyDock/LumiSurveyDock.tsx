@@ -24,7 +24,7 @@ import { useEnrichedContext } from "./hooks/useEnrichedContext.js";
 import { usePersistedDismissal } from "./hooks/usePersistedDismissal.js";
 import { useStepNavigation } from "./hooks/useStepNavigation.js";
 import { resolveConfig } from "./resolveConfig.js";
-import "./FlexJarDock.fallback.css";
+import "./LumiSurveyDock.fallback.css";
 
 import type {
   LumiSurveyBehavior,

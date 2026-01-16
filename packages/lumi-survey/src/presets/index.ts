@@ -17,9 +17,9 @@ import type {
  *
  * @example
  * ```tsx
- * import { FlexJarDock, DEFAULT_SURVEY_RATING } from "@navikt/lumi-survey";
+ * import { LumiSurveyDock, DEFAULT_SURVEY_RATING } from "@navikt/lumi-survey";
  *
- * <FlexJarDock
+ * <LumiSurveyDock
  *   surveyId="my-app-feedback"
  *   survey={DEFAULT_SURVEY_RATING}
  *   transport={transport}
@@ -90,7 +90,7 @@ export const DEFAULT_SURVEY_SERVICE_FEEDBACK: LumiSurveyConfig = {
  *
  * @example
  * ```tsx
- * <FlexJarDock
+ * <LumiSurveyDock
  *   surveyId="article-helpful"
  *   survey={DEFAULT_SURVEY_THUMBS}
  *   transport={transport}
@@ -124,7 +124,7 @@ export const DEFAULT_SURVEY_THUMBS: LumiSurveyConfig = {
  *
  * @example
  * ```tsx
- * <FlexJarDock
+ * <LumiSurveyDock
  *   surveyId="content-quality"
  *   survey={DEFAULT_SURVEY_STARS}
  *   transport={transport}
@@ -161,7 +161,7 @@ export const DEFAULT_SURVEY_STARS: LumiSurveyConfig = {
  *
  * @example
  * ```tsx
- * <FlexJarDock
+ * <LumiSurveyDock
  *   surveyId="nps-survey"
  *   survey={DEFAULT_SURVEY_NPS}
  *   transport={transport}
@@ -199,9 +199,9 @@ export const DEFAULT_SURVEY_NPS: LumiSurveyConfig = {
  *
  * @example
  * ```tsx
- * import { FlexJarDock, DEFAULT_SURVEY_DISCOVERY } from "@navikt/lumi-survey";
+ * import { LumiSurveyDock, DEFAULT_SURVEY_DISCOVERY } from "@navikt/lumi-survey";
  *
- * <FlexJarDock
+ * <LumiSurveyDock
  *   surveyId="discovery-feedback"
  *   survey={DEFAULT_SURVEY_DISCOVERY}
  *   transport={transport}

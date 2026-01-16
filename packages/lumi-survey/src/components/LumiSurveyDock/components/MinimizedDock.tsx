@@ -30,4 +30,4 @@ export const MinimizedDock = ({
   );
 };
 
-MinimizedDock.displayName = "FlexJarDockMinimized";
+MinimizedDock.displayName = "LumiSurveyDockMinimized";

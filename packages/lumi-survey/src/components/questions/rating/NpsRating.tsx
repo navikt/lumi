@@ -117,7 +117,7 @@ export function NpsRating({
       )}
       <Box.New
         as="fieldset"
-        className={styles.fieldset ?? "flexjar-rating__fieldset"}
+        className={styles.fieldset ?? "lumi-survey-rating__fieldset"}
         aria-labelledby={
           ariaLabelledBy ?? (!hidePrompt ? fallbackHeadingId : undefined)
         }
@@ -130,7 +130,7 @@ export function NpsRating({
         paddingBlock={fieldsetPaddingBlock ?? "space-8"}
         paddingInline={fieldsetPaddingInline ?? "space-12"}
       >
-        <legend className={styles.legend ?? "flexjar-rating__legend"}>
+        <legend className={styles.legend ?? "lumi-survey-rating__legend"}>
           {question.prompt}
         </legend>
         <VStack gap="space-8">
@@ -202,7 +202,7 @@ export function NpsRating({
       {isMissing && (
         <BodyShort
           id={errorId}
-          className={styles.errorMessage ?? "flexjar-rating__error-message"}
+          className={styles.errorMessage ?? "lumi-survey-rating__error-message"}
           role="alert"
         >
           {validationErrorMessage}

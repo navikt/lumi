@@ -22,7 +22,7 @@ export const previewAnnotations: Preview = {
         order: [
           "Welcome",
           "Components",
-          ["FlexJarDock", ["Rating", "Tasks", "Custom"]],
+          ["LumiSurveyDock", ["Rating", "Tasks", "Custom"]],
         ],
       },
     },
