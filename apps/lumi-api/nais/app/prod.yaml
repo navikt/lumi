@@ -60,7 +60,7 @@ spec:
           - name: lumi
             envVarPrefix: DB
   valkey:
-    - instance: flexjar-cache
+    - instance: lumi-cache
       access: readwrite
   envFrom:
     - secret: nais-api-key
