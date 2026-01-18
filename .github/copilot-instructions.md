@@ -41,10 +41,19 @@ Avoid duplicating Copilot files inside `apps/*/.github/` to prevent drift and co
 
 ## Conventions
 
-- Aksel: use `@navikt/ds-react` components and spacing tokens (`space-*`).
+- Aksel (v8): use `@navikt/ds-react` components and spacing tokens (`space-*`, including `space-0`).
 - No Tailwind.
 - Keep filter/state URL-driven in the dashboard (TanStack Router search params).
 - Backend owns PII redaction; frontend displays.
+
+### Aksel v8 Migration Notes (House Style)
+
+- Styling import: use `@navikt/ds-css` (not `@navikt/ds-css/darkside`).
+- `Box.New` is removed in v8: use `Box`.
+- Prefer numeric radius tokens (e.g. `"8"`, `"12"`) when `borderRadius` typing rejects legacy names.
+- Color variants: avoid deprecated variants like `"danger"`, `"tertiary-neutral"`, `"secondary-neutral"`.
+	- Use `data-color="danger" variant="primary"` for destructive actions.
+	- Use `data-color="neutral" variant="tertiary"` for neutral tertiary actions.
 
 ## Project-specific notes
 

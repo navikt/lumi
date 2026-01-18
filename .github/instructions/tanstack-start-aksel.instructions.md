@@ -29,7 +29,7 @@ import { Box, VStack, HGrid } from "@navikt/ds-react";
 <Box
   background="surface-subtle"
   padding={{ xs: "space-12", sm: "space-16", md: "space-24" }}
-  borderRadius="large"
+  borderRadius="12"
 >
   <Heading size="large" level="2">Title</Heading>
   <BodyShort>Content</BodyShort>
@@ -49,6 +49,35 @@ import { Box, VStack, HGrid } from "@navikt/ds-react";
 <div className="p-4 md:p-6">  // ❌ Wrong
 <div className="mx-4 my-2">   // ❌ Wrong
 <Box padding="4">             // ❌ Wrong - no space- prefix
+```
+
+## Aksel v8 Notes
+
+This project is on Aksel v8 (`@navikt/ds-react`/`@navikt/ds-css` ^8), so prefer these patterns:
+
+### ✅ v8 Patterns
+
+```tsx
+// Box.New is removed in v8
+import { Box, Button, Tag } from "@navikt/ds-react";
+
+<Box borderRadius="8" padding="space-16" />
+
+// Colors are expressed via data-color (danger/neutral/info/warning/success)
+<Button data-color="danger" variant="primary">Slett</Button>
+<Tag data-color="neutral" variant="outline" size="small">chip</Tag>
+
+// Use space tokens everywhere, including zeros
+<Box paddingBlock="space-0 space-16" />
+```
+
+### ❌ v8 Gotchas
+
+```tsx
+<Box.New />                       // ❌ Removed
+<Button variant="danger" />       // ❌ Use data-color + variant
+<VStack gap="0" />                // ❌ Use space-0
+<Box paddingInline="0" />         // ❌ Use space-0
 ```
 
 ## Responsive Design
