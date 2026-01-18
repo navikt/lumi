@@ -32,8 +32,8 @@
     "@navikt/lumi-types": "0.0.0"
   },
   "peerDependencies": {
-    "@navikt/ds-css": ">=7",
-    "@navikt/ds-react": ">=7",
+    "@navikt/ds-css": ">=8",
+    "@navikt/ds-react": ">=8",
     "react": ">=18",
     "react-dom": ">=18"
   },
