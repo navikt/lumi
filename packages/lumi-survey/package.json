@@ -43,8 +43,8 @@
     }
   },
   "devDependencies": {
-    "@navikt/ds-css": "^7.35.0",
-    "@navikt/ds-react": "^7.35.0",
+    "@navikt/ds-css": "^7.40.0",
+    "@navikt/ds-react": "^7.40.0",
     "@storybook/addon-a11y": "^9.1.10",
     "@storybook/react-vite": "^9.1.10",
     "@testing-library/jest-dom": "^6.6.3",
