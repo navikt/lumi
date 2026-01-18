@@ -1,5 +1,5 @@
 import { StarFillIcon, StarIcon } from "@navikt/aksel-icons";
-import { BodyShort, Box, HStack, Heading, VStack } from "@navikt/ds-react";
+import { BodyShort, Box, Heading, HStack, VStack } from "@navikt/ds-react";
 import type { BoxNewProps } from "@navikt/ds-react/Box";
 import type React from "react";
 import { useCallback, useState } from "react";

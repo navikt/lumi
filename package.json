@@ -1,7 +1,10 @@
 {
   "name": "lumi",
   "private": true,
-  "workspaces": ["apps/lumi-dashboard", "packages/*"],
+  "workspaces": [
+    "apps/lumi-dashboard",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "npm -w packages/lumi-types run build && npm -w apps/lumi-dashboard run dev",
     "build": "npm -w packages/lumi-types run build && npm -w packages/lumi-survey run build && npm -w apps/lumi-dashboard run build",
@@ -18,7 +21,7 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
+    "@biomejs/biome": "^2.3.11",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7"
   }

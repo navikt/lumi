@@ -6,7 +6,10 @@ import { RenderAnswer } from "./AnswerRenderer";
 export function TimelineView({
   answers,
   styles,
-}: { answers: Answer[]; styles: Record<string, string> }) {
+}: {
+  answers: Answer[];
+  styles: Record<string, string>;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [lines, setLines] = useState<{ top: number; height: number }[]>([]);
 

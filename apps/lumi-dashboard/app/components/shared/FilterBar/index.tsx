@@ -2,8 +2,8 @@ import { XMarkIcon } from "@navikt/aksel-icons";
 import {
   Box,
   Button,
-  HStack,
   Hide,
+  HStack,
   Select,
   Show,
   TextField,

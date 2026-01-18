@@ -6,13 +6,13 @@ import {
 import {
   Button,
   DatePicker,
-  HStack,
   Hide,
+  HStack,
   Label,
   Popover,
   Show,
-  VStack,
   useDatepicker,
+  VStack,
 } from "@navikt/ds-react";
 import dayjs from "dayjs";
 import { useRef, useState } from "react";

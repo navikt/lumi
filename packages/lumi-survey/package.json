@@ -13,8 +13,12 @@
     },
     "./styles.css": "./dist/index.css"
   },
-  "files": ["dist"],
-  "sideEffects": ["./dist/**/*.css"],
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "./dist/**/*.css"
+  ],
   "scripts": {
     "prepack": "npm run build",
     "build": "npm -w @navikt/lumi-types run build && tsup --config tsup.config.ts",

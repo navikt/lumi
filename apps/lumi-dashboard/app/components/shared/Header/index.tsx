@@ -1,5 +1,5 @@
 import { BarChartIcon, DownloadIcon, TableIcon } from "@navikt/aksel-icons";
-import { Box, Button, HStack, Hide } from "@navikt/ds-react";
+import { Box, Button, Hide, HStack } from "@navikt/ds-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import lumiLogo from "~/assets/lumi.png";
 import { ThemeToggle } from "~/components/shared/ThemeToggle";

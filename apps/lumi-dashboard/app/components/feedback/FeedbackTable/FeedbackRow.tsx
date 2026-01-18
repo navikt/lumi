@@ -1,5 +1,9 @@
-import { ChevronDownIcon, ChevronUpIcon, TrashIcon } from "@navikt/aksel-icons";
-import { ShieldLockIcon } from "@navikt/aksel-icons";
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  ShieldLockIcon,
+  TrashIcon,
+} from "@navikt/aksel-icons";
 import {
   BodyShort,
   Button,
@@ -146,7 +150,9 @@ export function FeedbackRow({
  */
 function FeedbackPreviewText({
   preview,
-}: { preview: { text: string; subText?: string } }) {
+}: {
+  preview: { text: string; subText?: string };
+}) {
   return (
     <VStack gap="0">
       <BodyShort truncate className={styles.previewText}>

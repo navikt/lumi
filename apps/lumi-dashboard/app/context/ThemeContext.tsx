@@ -33,7 +33,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined") {
       try {
         localStorage.removeItem("theme");
-      } catch (e) {}
+      } catch (_e) {}
 
       // 0. Trust the blocking script (window.__theme) as the source of truth
       if (window.__theme === "dark" || window.__theme === "light") {
@@ -82,7 +82,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     try {
       localStorage.setItem(THEME_STORAGE_KEY, theme);
-    } catch (e) {}
+    } catch (_e) {}
   }, [theme]);
 
   const toggleTheme = () => {

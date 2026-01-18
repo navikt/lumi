@@ -1,12 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
-
 import type { FeedbackSubmissionV1 } from "@navikt/lumi-types";
+import { describe, expect, it, vi } from "vitest";
 import {
   createLumiApiTransport,
   submitFeedbackToLumiApi,
 } from "../lumiApiTransport";
-import type { LumiSurveyTransportPayload } from "../types";
-import type { TransportAnswer } from "../types";
+import type { LumiSurveyTransportPayload, TransportAnswer } from "../types";
 
 function makeValidSubmission(
   overrides?: Partial<FeedbackSubmissionV1>,

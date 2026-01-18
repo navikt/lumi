@@ -4,8 +4,8 @@ import { TimelineSection } from "~/components/dashboard/sections/Timeline";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
 import { useTaskPriorityStats } from "~/hooks/useTaskPriorityStats";
-import { Skeleton as TaskPriorityAnalysisSkeleton } from "./Skeleton";
 import { TaskPriorityAnalysis } from "./index";
+import { Skeleton as TaskPriorityAnalysisSkeleton } from "./Skeleton";
 
 /**
  * Task Priority Dashboard - Long Neck chart, vote distribution

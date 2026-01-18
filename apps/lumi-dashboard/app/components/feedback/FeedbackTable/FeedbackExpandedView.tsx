@@ -2,8 +2,8 @@ import { TagIcon } from "@navikt/aksel-icons";
 import { Box, Detail, HStack, Label, Table, VStack } from "@navikt/ds-react";
 import type { FeedbackDto } from "~/types/api";
 import { TagEditor } from "../TagEditor";
-import { TimelineView } from "./TimelineView";
 import styles from "./styles.module.css";
+import { TimelineView } from "./TimelineView";
 import { deviceToIcon, formatMetadataKey, formatMetadataValue } from "./utils";
 
 interface FeedbackExpandedViewProps {
@@ -100,7 +100,9 @@ function ExpandedSection({
  */
 function ContextGrid({
   context,
-}: { context: NonNullable<FeedbackDto["context"]> }) {
+}: {
+  context: NonNullable<FeedbackDto["context"]>;
+}) {
   return (
     <div className={styles.contextGrid}>
       {context.pathname && (
@@ -131,7 +133,11 @@ function ContextItem({
   icon,
   label,
   value,
-}: { icon: string; label: string; value: string }) {
+}: {
+  icon: string;
+  label: string;
+  value: string;
+}) {
   return (
     <div className={styles.contextItem}>
       <span className={styles.contextIcon}>{icon}</span>

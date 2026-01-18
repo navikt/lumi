@@ -5,11 +5,12 @@ import type {
   LumiSurveyEvents,
   LumiSurveyTransport,
 } from "../../../core/types.js";
+import {
+  createRatingSurvey,
+  createTopTasksSurvey,
+} from "../../../presets/index.js";
 import type { LumiSurveyConfig } from "../../surveyTypes.js";
 import { LumiSurveyDock } from "../LumiSurveyDock.js";
-
-import { createRatingSurvey } from "../../../presets/index.js";
-import { createTopTasksSurvey } from "../../../presets/index.js";
 
 function createSurvey(): LumiSurveyConfig {
   return createRatingSurvey({

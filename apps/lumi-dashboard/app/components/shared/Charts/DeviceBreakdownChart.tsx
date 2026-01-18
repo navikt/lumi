@@ -1,4 +1,4 @@
-import { BodyShort, HStack, Hide, Label, Show, VStack } from "@navikt/ds-react";
+import { BodyShort, Hide, HStack, Label, Show, VStack } from "@navikt/ds-react";
 import { ChartEmptyState } from "~/components/shared/Charts/ChartEmptyState";
 import { ChartLoadingState } from "~/components/shared/Charts/ChartLoadingState";
 import { useTheme } from "~/context/ThemeContext";

@@ -1,9 +1,9 @@
 import {
   BodyShort,
   Box,
-  HStack,
   Heading,
   Hide,
+  HStack,
   Table,
   Tooltip,
   VStack,

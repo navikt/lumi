@@ -5,8 +5,8 @@ import { TimelineSection } from "~/components/dashboard/sections/Timeline";
 import { useDiscoveryStats } from "~/hooks/useDiscoveryStats";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
-import { Skeleton as DiscoveryAnalysisSkeleton } from "./Skeleton";
 import { DiscoveryAnalysis } from "./index";
+import { Skeleton as DiscoveryAnalysisSkeleton } from "./Skeleton";
 
 /**
  * Discovery Dashboard - word cloud, themes, recent responses

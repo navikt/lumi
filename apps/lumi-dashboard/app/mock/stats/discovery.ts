@@ -6,7 +6,7 @@
 
 import type { DiscoveryResponse, FeedbackDto } from "~/types/api";
 import { mockThemes } from "../themes";
-import { STOP_WORDS, applyFeedbackFilters, stemNorwegian } from "./common";
+import { applyFeedbackFilters, STOP_WORDS, stemNorwegian } from "./common";
 
 /**
  * Calculate Discovery stats from feedback items.

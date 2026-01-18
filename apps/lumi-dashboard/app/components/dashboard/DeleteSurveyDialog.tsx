@@ -44,7 +44,7 @@ export function DeleteSurveyDialog({
       setConfirmed(false);
       onClose();
       onDeleted?.();
-    } catch (error) {
+    } catch (_error) {
       // Error is handled by mutation state
     }
   };

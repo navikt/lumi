@@ -8,8 +8,8 @@ import {
   Alert,
   BodyShort,
   Button,
-  HStack,
   Heading,
+  HStack,
   Radio,
   RadioGroup,
   VStack,
@@ -188,7 +188,9 @@ export function ExportPanel() {
  */
 function ActiveFilters({
   params,
-}: { params: ReturnType<typeof useSearchParams>["params"] }) {
+}: {
+  params: ReturnType<typeof useSearchParams>["params"];
+}) {
   const segments = parseSegmentParam(params.segment);
   const segmentEntries = Object.entries(segments);
 

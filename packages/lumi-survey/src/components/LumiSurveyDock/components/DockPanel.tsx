@@ -4,8 +4,8 @@ import {
   BodyShort,
   Box,
   Button,
-  HStack,
   Heading,
+  HStack,
   VStack,
 } from "@navikt/ds-react";
 import type { BoxNewProps } from "@navikt/ds-react/Box";

@@ -1,5 +1,5 @@
-import { Box, HStack, Heading, Tag, Tooltip, VStack } from "@navikt/ds-react";
 import type { TagProps } from "@navikt/ds-react";
+import { Box, Heading, HStack, Tag, Tooltip, VStack } from "@navikt/ds-react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { DiscoveryDashboard } from "~/components/dashboard/views/Discovery/Dashboard";

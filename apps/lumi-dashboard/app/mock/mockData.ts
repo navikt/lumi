@@ -25,21 +25,21 @@ export {
   generateComplexSurveyData,
 };
 
+import { calculateStats } from "./stats";
 import {
   getMockBlockerStats as calculateBlockerStats,
   getMockDiscoveryStats as calculateDiscoveryStats,
   getMockTopTasksStats as calculateTopTasksStats,
 } from "./stats/index";
 
-import { calculateStats } from "./stats";
-
 import { getMockTaskPriorityStats as calculateTaskPriorityStats } from "./stats/taskPriority";
 
 import { sykmeldtTopics } from "./topics";
+
 export {
-  sykmeldtTopics,
-  PRIORITY_TASKS,
   DISCOVERY_RESPONSES,
+  PRIORITY_TASKS,
+  sykmeldtTopics,
 } from "./topics";
 
 // ============================================
@@ -298,8 +298,8 @@ export function filterFeedback(
   const filtered = applyFilters(items, params);
 
   // Paginate
-  const page = Number.parseInt(params.get("page") || "0");
-  const size = Number.parseInt(params.get("size") || "20");
+  const page = Number.parseInt(params.get("page") || "0", 10);
+  const size = Number.parseInt(params.get("size") || "20", 10);
   const start = page * size;
   const content = filtered.slice(start, start + size);
 

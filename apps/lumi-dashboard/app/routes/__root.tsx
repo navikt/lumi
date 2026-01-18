@@ -1,16 +1,15 @@
+// Import Aksel Darkside styles (supports light/dark mode)
+import akselStyles from "@navikt/ds-css/darkside?url";
 import { Theme } from "@navikt/ds-react/Theme";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  createRootRoute,
   HeadContent,
   Outlet,
   Scripts,
-  createRootRoute,
 } from "@tanstack/react-router";
 import type * as React from "react";
 import { useState } from "react";
-
-// Import Aksel Darkside styles (supports light/dark mode)
-import akselStyles from "@navikt/ds-css/darkside?url";
 import lumiLogo from "~/assets/lumi.png";
 import { ErrorComponent } from "~/components/shared/ErrorComponent";
 import { ThemeProvider, useTheme } from "~/context/ThemeContext";

@@ -1,8 +1,8 @@
 import {
   Skeleton as AkselSkeleton,
   Box,
-  HStack,
   Hide,
+  HStack,
   Show,
   VStack,
 } from "@navikt/ds-react";

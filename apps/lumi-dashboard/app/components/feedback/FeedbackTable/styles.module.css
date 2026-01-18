@@ -28,16 +28,16 @@
 
 /* Expanded row styling */
 .expandedRow {
-  background: transparent !important;
+  background: transparent;
 }
 
 .expandedRow:hover {
-  background: transparent !important;
+  background: transparent;
 }
 
 .expandedCell {
-  padding: 0 !important;
-  background: transparent !important;
+  padding: 0;
+  background: transparent;
 }
 
 /* Inner expanded content box is handled by Box.New */
@@ -71,7 +71,9 @@
   background: var(--ax-bg-default);
   border-radius: 8px;
   border: 1px solid var(--ax-border-subtle);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 
 .contextItem:hover {
@@ -168,7 +170,9 @@
   background: var(--ax-bg-default);
   border-radius: 8px;
   border: 1px solid var(--ax-border-subtle);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 
 .answerCard:hover {

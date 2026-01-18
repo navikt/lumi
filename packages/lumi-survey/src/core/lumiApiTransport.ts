@@ -1,12 +1,12 @@
-import type { ApiError } from "@navikt/lumi-types";
+import type {
+  ApiError,
+  FeedbackSubmissionV1,
+  SubmissionCreatedResponse,
+} from "@navikt/lumi-types";
 import {
   ApiErrorSchema,
   FeedbackSubmissionV1Schema,
   SubmissionCreatedResponseSchema,
-} from "@navikt/lumi-types";
-import type {
-  FeedbackSubmissionV1,
-  SubmissionCreatedResponse,
 } from "@navikt/lumi-types";
 
 import type { LumiSurveySubmission, LumiSurveyTransport } from "./types";

@@ -53,7 +53,10 @@ function AnswerCardLayout({
 export function RenderAnswer({
   answer,
   styles,
-}: { answer: Answer; styles: Record<string, string> }) {
+}: {
+  answer: Answer;
+  styles: Record<string, string>;
+}) {
   switch (answer.fieldType) {
     case "RATING": {
       const ratingValue =

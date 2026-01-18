@@ -47,7 +47,7 @@ const loadConsentModule = async (): Promise<ConsentModule | null> => {
           isStorageKeyAllowed: mod.isStorageKeyAllowed,
           navLocalStorage: mod.navLocalStorage,
         } satisfies ConsentModule;
-      } catch (error) {
+      } catch (_error) {
         if (process.env.NODE_ENV === "development") {
           // eslint-disable-next-line no-console -- development diagnostics only
           console.log(

@@ -254,7 +254,7 @@ export function generateTopTasksMockData(): FeedbackDto[] {
       // Determine success
       const successRand = Math.random();
       let successValue = "Ja";
-      let blocker: string | undefined = undefined;
+      let blocker: string | undefined;
 
       // Oppgavespesifikke blocker-meldinger for bedre mønsteranalyse
       // Alle meldinger er unike og realistiske for sykefraværsoppfølging

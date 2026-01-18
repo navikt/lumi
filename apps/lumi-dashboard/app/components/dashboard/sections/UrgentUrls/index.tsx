@@ -100,7 +100,10 @@ export function UrgentUrls() {
 function UrlLink({
   path,
   truncate = false,
-}: { path: string; truncate?: boolean }) {
+}: {
+  path: string;
+  truncate?: boolean;
+}) {
   const href = path.startsWith("http") ? path : `https://www.nav.no${path}`;
 
   return (

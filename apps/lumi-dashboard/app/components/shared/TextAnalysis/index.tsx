@@ -7,8 +7,8 @@ import {
   BodyShort,
   Box,
   Button,
-  HStack,
   Heading,
+  HStack,
   Skeleton,
   Tag,
   Tooltip,
@@ -463,10 +463,9 @@ export function TextAnalysis({
                   (theme.theme === "Annet" ? "uncategorized" : null);
 
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={theme.theme}
-                    role={themeId ? "button" : undefined}
-                    tabIndex={themeId ? 0 : undefined}
                     onClick={() => {
                       if (themeId) {
                         const url = new URL(window.location.href);
@@ -475,15 +474,7 @@ export function TextAnalysis({
                         window.location.href = url.toString();
                       }
                     }}
-                    onKeyDown={(e) => {
-                      if (themeId && (e.key === "Enter" || e.key === " ")) {
-                        e.preventDefault();
-                        const url = new URL(window.location.href);
-                        url.pathname = "/feedback";
-                        url.searchParams.set("theme", themeId);
-                        window.location.href = url.toString();
-                      }
-                    }}
+                    disabled={!themeId}
                     style={{
                       display: "block",
                       width: "100%",
@@ -603,7 +594,7 @@ export function TextAnalysis({
                         "{theme.examples[0]}"
                       </BodyShort>
                     )}
-                  </div>
+                  </button>
                 );
               })}
             </VStack>

@@ -16,9 +16,8 @@ import type {
   TaskPriorityResponse,
   TopTasksResponse,
 } from "~/types/api";
-
-import { calculateStats } from "./stats";
 import {
+  calculateStats,
   getMockBlockerStats,
   getMockDiscoveryStats,
   getMockTaskPriorityStats,
@@ -29,9 +28,9 @@ import { applyFeedbackFilters } from "./utils/filters";
 
 // Re-export store for convenience
 export {
-  mockFeedbackItems,
   getAllMockFeedback,
   getMockFeedbackByType,
+  mockFeedbackItems,
 } from "./store";
 
 /**

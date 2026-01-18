@@ -7,28 +7,26 @@
 
 // Field ID constants and extraction functions
 export {
-  TopTasksFieldIds,
-  RatingFieldIds,
-  getTaskNameFromFeedback,
+  getBlockerTextFromFeedback,
+  getCommentFromFeedback,
+  getDurationFromFeedback,
   getRatingFromFeedback,
   getSuccessStatusFromFeedback,
-  getBlockerTextFromFeedback,
-  getDurationFromFeedback,
-  getCommentFromFeedback,
+  getTaskNameFromFeedback,
+  RatingFieldIds,
+  TopTasksFieldIds,
 } from "./extractors";
-
-// Text analysis utilities
-export {
-  STOP_WORDS,
-  stemNorwegian,
-  matchesThemeKeywords,
-  extractWords,
-  extractStemmedWords,
-} from "./textAnalysis";
-
 // Filter utilities
 export {
-  type FilterParams,
   applyFeedbackFilters,
+  type FilterParams,
   toURLSearchParams,
 } from "./filters";
+// Text analysis utilities
+export {
+  extractStemmedWords,
+  extractWords,
+  matchesThemeKeywords,
+  STOP_WORDS,
+  stemNorwegian,
+} from "./textAnalysis";

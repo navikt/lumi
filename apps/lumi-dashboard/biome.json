@@ -1,8 +1,7 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-  "organizeImports": {
-    "enabled": true
-  },
+  "root": false,
+  "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -23,11 +22,12 @@
     "indentWidth": 2
   },
   "files": {
-    "ignore": [
-      "app/routeTree.gen.ts",
-      "app.config.timestamp_*.js",
-      "dist",
-      "app/routes/api/backend/$.ts"
+    "includes": [
+      "**",
+      "!**/app/routeTree.gen.ts",
+      "!**/app.config.timestamp_*.js",
+      "!**/dist",
+      "!**/app/routes/api/backend/$.ts"
     ]
   }
 }

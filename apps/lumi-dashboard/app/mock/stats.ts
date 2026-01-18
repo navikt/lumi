@@ -11,7 +11,7 @@ import type {
   TopTaskStats,
   TopTasksResponse,
 } from "~/types/api";
-import { IGNORED_WORDS, getTopKeywords } from "~/utils/wordAnalysis";
+import { getTopKeywords, IGNORED_WORDS } from "~/utils/wordAnalysis";
 import { getRating, hasTextResponse } from "./helpers";
 
 // Note: circular dependency if we import mockFeedbackItems here directly while mockData imports stats.
@@ -933,9 +933,7 @@ export function getMockTopTasksStats(
       stats.totalCount > 0 ? stats.successCount / stats.totalCount : 0;
 
     // Use aggregated duration if available, otherwise fallback
-    // @ts-ignore
     const totalDuration = stats.totalDurationMs || 0;
-    // @ts-ignore
     const durationCount = stats.durationCount || 0;
 
     let avgTimeMs = 0;

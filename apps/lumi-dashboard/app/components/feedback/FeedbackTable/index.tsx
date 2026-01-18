@@ -4,8 +4,8 @@ import {
   BodyShort,
   Box,
   Button,
-  HStack,
   Hide,
+  HStack,
   Pagination,
   Show,
   Table,
@@ -187,7 +187,11 @@ function SurveyToolbar({
   surveyId,
   totalCount,
   onDelete,
-}: { surveyId: string; totalCount: number; onDelete: () => void }) {
+}: {
+  surveyId: string;
+  totalCount: number;
+  onDelete: () => void;
+}) {
   return (
     <div className={styles.toolbar}>
       <HStack justify="space-between" align="center" wrap gap="space-8">

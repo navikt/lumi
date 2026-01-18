@@ -1,4 +1,4 @@
-import { BodyShort, Box, HStack, Heading, VStack } from "@navikt/ds-react";
+import { BodyShort, Box, Heading, HStack, VStack } from "@navikt/ds-react";
 import type { BoxNewProps } from "@navikt/ds-react/Box";
 import type React from "react";
 import type { ReactElement } from "react";
@@ -8,11 +8,11 @@ import type {
   RatingQuestion,
 } from "../../../core/types.js";
 import { EmojiButton } from "./EmojiButton.js";
+import styles from "./emo.module.css";
+import { Glad, Lei, Noytral, Sinna, VeldigGlad } from "./emojies.js";
 import { NpsRating } from "./NpsRating.js";
 import { StarRating } from "./StarRating.js";
 import { ThumbsRating } from "./ThumbsRating.js";
-import styles from "./emo.module.css";
-import { Glad, Lei, Noytral, Sinna, VeldigGlad } from "./emojies.js";
 import "./emo.fallback.css";
 
 interface RatingQuestionFieldProps {

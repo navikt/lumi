@@ -3,7 +3,7 @@ import {
   ClockIcon,
   ThumbUpIcon,
 } from "@navikt/aksel-icons";
-import { BodyShort, Box, HStack, Heading, VStack } from "@navikt/ds-react";
+import { BodyShort, Box, Heading, HStack, VStack } from "@navikt/ds-react";
 import { DashboardCard, DashboardGrid } from "~/components/dashboard";
 import { StatCard } from "~/components/dashboard/sections/StatsCards";
 import type { TopTasksResponse } from "~/types/api";

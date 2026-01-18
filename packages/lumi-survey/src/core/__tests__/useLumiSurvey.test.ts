@@ -10,7 +10,7 @@ import type {
 } from "../types.js";
 import { useLumiSurvey } from "../useLumiSurvey.js";
 
-const delay = (ms: number) =>
+const _delay = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 const requiredQuestions: LumiSurveyQuestion[] = [

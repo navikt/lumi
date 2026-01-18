@@ -19,8 +19,8 @@ import { DashboardCard } from "~/components/dashboard";
 import { useBreakpoint } from "~/hooks/useBreakpoint";
 import type { FeedbackDto } from "~/types/api";
 import { RenderAnswer } from "./AnswerRenderer";
-import { TimelineView } from "./TimelineView";
 import styles from "./styles.module.css";
+import { TimelineView } from "./TimelineView";
 import {
   deviceToIcon,
   getAllRatings,

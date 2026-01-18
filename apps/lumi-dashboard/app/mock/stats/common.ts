@@ -13,16 +13,16 @@ import type {
 } from "~/types/api";
 import { extractWords } from "../utils/textAnalysis";
 
-// Re-export filter utilities for convenience
-export { applyFeedbackFilters, type FilterParams } from "../utils/filters";
-export { stemNorwegian, extractWords, STOP_WORDS } from "../utils/textAnalysis";
 export {
-  getTaskNameFromFeedback,
   getBlockerTextFromFeedback,
-  getSuccessStatusFromFeedback,
   getDurationFromFeedback,
+  getSuccessStatusFromFeedback,
+  getTaskNameFromFeedback,
   TopTasksFieldIds,
 } from "../utils/extractors";
+// Re-export filter utilities for convenience
+export { applyFeedbackFilters, type FilterParams } from "../utils/filters";
+export { extractWords, STOP_WORDS, stemNorwegian } from "../utils/textAnalysis";
 
 // ============================================
 // Types
