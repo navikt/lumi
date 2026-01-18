@@ -28,9 +28,10 @@ export {
 import {
   getMockBlockerStats as calculateBlockerStats,
   getMockDiscoveryStats as calculateDiscoveryStats,
-  calculateStats,
   getMockTopTasksStats as calculateTopTasksStats,
-} from "./stats";
+} from "./stats/index";
+
+import { calculateStats } from "./stats";
 
 import { getMockTaskPriorityStats as calculateTaskPriorityStats } from "./stats/taskPriority";
 

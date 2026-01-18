@@ -51,12 +51,16 @@ export function getMockDiscoveryStats(
     };
   });
 
-  // Calculate word frequency
-  const wordData = new Map<
+  // Calculate word frequency with stem-based grouping
+  // Group word variants by stem, track surface form counts for canonical selection
+  const stemAccumulators = new Map<
     string,
     {
-      count: number;
+      stem: string;
+      surfaceCounts: Map<string, number>;
+      totalCount: number;
       sourceResponses: Array<{ text: string; submittedAt: string }>;
+      usedTexts: Set<string>;
     }
   >();
 
@@ -65,32 +69,64 @@ export function getMockDiscoveryStats(
       .toLowerCase()
       .replace(/[^\wæøå\s]/g, "")
       .split(/\s+/);
-    const seenWordsInResponse = new Set<string>();
+    const seenStemsInResponse = new Set<string>();
+
     for (const word of words) {
       if (word.length > 2 && !STOP_WORDS.has(word)) {
-        if (!wordData.has(word)) {
-          wordData.set(word, { count: 0, sourceResponses: [] });
-        }
-        const data = wordData.get(word);
-        if (!data) continue;
-        data.count++;
-        if (!seenWordsInResponse.has(word) && data.sourceResponses.length < 5) {
-          data.sourceResponses.push({
-            text: response.task,
-            submittedAt: response.submittedAt,
+        const stem = stemNorwegian(word);
+
+        if (!stemAccumulators.has(stem)) {
+          stemAccumulators.set(stem, {
+            stem,
+            surfaceCounts: new Map(),
+            totalCount: 0,
+            sourceResponses: [],
+            usedTexts: new Set(),
           });
-          seenWordsInResponse.add(word);
+        }
+
+        const acc = stemAccumulators.get(stem);
+        if (!acc) continue;
+        acc.totalCount++;
+        acc.surfaceCounts.set(word, (acc.surfaceCounts.get(word) || 0) + 1);
+
+        // Add source response (max 3 per stem, deduped by text)
+        if (!seenStemsInResponse.has(stem) && acc.sourceResponses.length < 3) {
+          if (!acc.usedTexts.has(response.task)) {
+            acc.sourceResponses.push({
+              text: response.task,
+              submittedAt: response.submittedAt,
+            });
+            acc.usedTexts.add(response.task);
+          }
+          seenStemsInResponse.add(stem);
         }
       }
     }
   }
 
-  const wordFrequency = Array.from(wordData.entries())
-    .map(([word, data]) => ({
-      word,
-      count: data.count,
-      sourceResponses: data.sourceResponses,
-    }))
+  // Build word frequency list with canonical form and variants
+  const wordFrequency = Array.from(stemAccumulators.values())
+    .map((acc) => {
+      // Get canonical form (most common surface form)
+      const sortedSurfaces = Array.from(acc.surfaceCounts.entries()).sort(
+        (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+      );
+      const canonicalWord = sortedSurfaces[0]?.[0] || acc.stem;
+
+      // Get top 5 variants
+      const variants = sortedSurfaces
+        .slice(0, 5)
+        .map(([word, count]) => ({ word, count }));
+
+      return {
+        word: canonicalWord,
+        stem: acc.stem,
+        count: acc.totalCount,
+        variants,
+        sourceResponses: acc.sourceResponses,
+      };
+    })
     .sort((a, b) => b.count - a.count)
     .slice(0, 30);
 

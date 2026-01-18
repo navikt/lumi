@@ -130,6 +130,10 @@ export function TextAnalysis({
     const map = new Map<string, WordFrequency>();
     for (const w of wordFrequency) {
       map.set(w.word.toLowerCase(), w);
+      map.set(w.stem.toLowerCase(), w);
+      for (const variant of w.variants ?? []) {
+        map.set(variant.word.toLowerCase(), w);
+      }
     }
     return map;
   }, [wordFrequency]);
@@ -155,16 +159,39 @@ export function TextAnalysis({
   const getThemeForWord = useCallback(
     (word: string): TextTheme | undefined => {
       const wordLower = word.toLowerCase();
+
+      const wordData = wordLookup.get(wordLower);
+      const surfaceCandidates = new Set<string>([
+        wordLower,
+        ...(wordData?.variants?.map((v) => v.word.toLowerCase()) ?? []),
+      ]);
+      const stemCandidate = wordData?.stem.toLowerCase();
+
+      const matchesSurfaceCandidate = (kwLower: string) => {
+        for (const candidate of surfaceCandidates) {
+          if (
+            kwLower === candidate ||
+            candidate.includes(kwLower) ||
+            kwLower.includes(candidate)
+          ) {
+            return true;
+          }
+        }
+        return false;
+      };
+
       return definedThemes.find((t) =>
-        t.keywords.some(
-          (kw) =>
-            kw.toLowerCase() === wordLower ||
-            wordLower.includes(kw.toLowerCase()) ||
-            kw.toLowerCase().includes(wordLower),
-        ),
+        t.keywords.some((kw) => {
+          const kwLower = kw.toLowerCase();
+
+          if (matchesSurfaceCandidate(kwLower)) return true;
+
+          // Stem is a stable grouping key; only do exact match to avoid over-matching.
+          return stemCandidate ? kwLower === stemCandidate : false;
+        }),
       );
     },
-    [definedThemes],
+    [definedThemes, wordLookup],
   );
 
   // Open modal for creating new theme
@@ -231,12 +258,22 @@ export function TextAnalysis({
     (themeId: string, word: string) => {
       const theme = definedThemes.find((t) => t.id === themeId);
       if (!theme) return;
+
+      const wordLower = word.toLowerCase();
+      const wordData = wordLookup.get(wordLower);
+      const removeSet = new Set<string>([
+        wordLower,
+        wordData?.stem.toLowerCase() ?? "",
+        ...(wordData?.variants?.map((v) => v.word.toLowerCase()) ?? []),
+      ]);
+      removeSet.delete("");
+
       const updatedKeywords = theme.keywords.filter(
-        (k) => k.toLowerCase() !== word.toLowerCase(),
+        (k) => !removeSet.has(k.toLowerCase()),
       );
       updateTheme({ themeId, keywords: updatedKeywords });
     },
-    [definedThemes, updateTheme],
+    [definedThemes, updateTheme, wordLookup],
   );
 
   // Combine defined themes with stats
@@ -680,6 +717,11 @@ export function TextAnalysis({
         contextExamples={
           initialKeywords.length > 0
             ? getContextExamples(initialKeywords[0])
+            : []
+        }
+        wordVariants={
+          initialKeywords.length > 0
+            ? (wordLookup.get(initialKeywords[0].toLowerCase())?.variants ?? [])
             : []
         }
       />

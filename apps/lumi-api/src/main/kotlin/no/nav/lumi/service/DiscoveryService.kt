@@ -22,6 +22,12 @@ class DiscoveryService(
         
         /** Maximum words in frequency list */
         const val MAX_WORD_FREQUENCY = 50
+        
+        /** Maximum source responses per word in discovery */
+        const val MAX_SOURCE_RESPONSES_DISCOVERY = 3
+        
+        /** Maximum variants to return per word */
+        const val MAX_VARIANTS = 5
     }
 
     /**
@@ -41,7 +47,8 @@ class DiscoveryService(
         feedbacks: List<FeedbackDto>,
         themes: List<TextThemeDto>
     ): DiscoveryStatsResponse {
-        val wordCounts = mutableMapOf<String, Int>()
+        // Stem-based word frequency accumulator
+        val wordAccumulators = mutableMapOf<String, StemWordAccumulator>()
         val themeStats = themes.associate { it.name to ThemeAccumulator() }.toMutableMap()
         themeStats["Annet"] = ThemeAccumulator() // Catch-all for unmatched
         
@@ -69,9 +76,21 @@ class DiscoveryService(
                 else -> null
             }
             
-            // Word frequency analysis
-            TextProcessor.extractWords(taskText).forEach { word ->
-                wordCounts[word] = (wordCounts[word] ?: 0) + 1
+            // Word frequency analysis with stem grouping
+            val seenStemsInResponse = mutableSetOf<String>()
+            TextProcessor.extractStemmedWords(taskText).forEach { (surface, stem) ->
+                val acc = wordAccumulators.getOrPut(stem) { StemWordAccumulator(stem) }
+                acc.addOccurrence(surface)
+                
+                // Add source response (max 3 per stem, deduped by text, max 1 per response per stem)
+                if (!seenStemsInResponse.contains(stem) && acc.sourceResponses.size < MAX_SOURCE_RESPONSES_DISCOVERY) {
+                    val sourceText = taskText
+                    if (!acc.usedTexts.contains(sourceText)) {
+                        acc.sourceResponses.add(SourceResponse(text = sourceText, submittedAt = dto.submittedAt))
+                        acc.usedTexts.add(sourceText)
+                    }
+                    seenStemsInResponse.add(stem)
+                }
             }
             
             // Theme matching (find first matching theme based on priority)
@@ -97,11 +116,11 @@ class DiscoveryService(
             }
         }
         
-        // Build word frequency list
-        val wordFrequency = wordCounts.entries
-            .sortedByDescending { it.value }
+        // Build word frequency list from accumulators
+        val wordFrequency = wordAccumulators.values
+            .sortedByDescending { it.totalCount }
             .take(MAX_WORD_FREQUENCY)
-            .map { WordFrequencyEntry(it.key, it.value) }
+            .map { it.toWordFrequencyEntry() }
         
         // Build theme results (exclude empty themes)
         val themeResults = themeStats
@@ -155,5 +174,49 @@ internal data class ThemeAccumulator(
 
     fun toThemeResult(name: String): ThemeResult {
         return ThemeResult(name, count, calculateSuccessRate(), examples.toList())
+    }
+}
+
+/**
+ * Helper class to accumulate word frequency statistics grouped by stem.
+ * Tracks surface form counts to determine canonical (most common) form.
+ */
+internal class StemWordAccumulator(val stem: String) {
+    private val surfaceCounts = mutableMapOf<String, Int>()
+    val sourceResponses = mutableListOf<SourceResponse>()
+    val usedTexts = mutableSetOf<String>()  // Dedup sourceResponses by text
+    
+    /** Total occurrences across all surface forms */
+    val totalCount: Int get() = surfaceCounts.values.sum()
+    
+    /** Add an occurrence of a surface form */
+    fun addOccurrence(surface: String) {
+        surfaceCounts[surface] = (surfaceCounts[surface] ?: 0) + 1
+    }
+    
+    /** Get canonical form (most common surface form) */
+    fun getCanonicalForm(): String {
+        return surfaceCounts.entries
+            .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+            .firstOrNull()?.key ?: stem
+    }
+    
+    /** Get top variants sorted by count desc */
+    fun getVariants(): List<WordVariant> {
+        return surfaceCounts.entries
+            .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+            .take(DiscoveryService.MAX_VARIANTS)
+            .map { WordVariant(word = it.key, count = it.value) }
+    }
+    
+    /** Convert to WordFrequencyEntry */
+    fun toWordFrequencyEntry(): WordFrequencyEntry {
+        return WordFrequencyEntry(
+            word = getCanonicalForm(),
+            stem = stem,
+            count = totalCount,
+            variants = getVariants(),
+            sourceResponses = sourceResponses.toList()
+        )
     }
 }

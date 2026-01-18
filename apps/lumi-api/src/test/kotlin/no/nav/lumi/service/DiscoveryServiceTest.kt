@@ -4,6 +4,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.comparables.shouldBeGreaterThan
 import io.kotest.matchers.doubles.shouldBeGreaterThan
 import io.kotest.matchers.doubles.shouldBeLessThan
 import io.kotest.matchers.shouldBe
@@ -23,7 +24,7 @@ class DiscoveryServiceTest : FunSpec({
             result.recentResponses.shouldBeEmpty()
         }
 
-        test("calculates word frequency correctly") {
+        test("calculates word frequency correctly with stems") {
             val feedbacks = listOf(
                 createDiscoveryFeedback("Sjekke sykepenger status"),
                 createDiscoveryFeedback("Sjekke utbetaling status"),
@@ -32,11 +33,48 @@ class DiscoveryServiceTest : FunSpec({
             
             val result = service.processStats(feedbacks, emptyList())
             
-            val sjekkeEntry = result.wordFrequency.find { it.word == "sjekke" }
+            // 'sjekke' doesn't match any suffix (e is not in suffix list), so stem = 'sjekke'
+            val sjekkeEntry = result.wordFrequency.find { it.stem == "sjekke" }
             sjekkeEntry?.count shouldBe 3
+            sjekkeEntry?.word shouldBe "sjekke"  // canonical = most common form
             
-            val statusEntry = result.wordFrequency.find { it.word == "status" }
+            // 'status' has no matching suffix, so stem = 'status'
+            val statusEntry = result.wordFrequency.find { it.stem == "status" }
             statusEntry?.count shouldBe 3
+        }
+
+        test("groups word variants under same stem") {
+            val feedbacks = listOf(
+                createDiscoveryFeedback("Søke om sykepenger"),
+                createDiscoveryFeedback("Søknaden min"),
+                createDiscoveryFeedback("Søknad status"),
+                createDiscoveryFeedback("Søknadene mine")
+            )
+            
+            val result = service.processStats(feedbacks, emptyList())
+            
+            // All variants should be grouped under one stem
+            val søknadEntry = result.wordFrequency.find { it.stem == "søknad" }
+            søknadEntry?.count shouldBe 3 // søknaden, søknad, søknadene
+            søknadEntry?.variants?.size?.shouldBeGreaterThan(0)
+            
+            // "søknad" should be the canonical form (most common)
+            // Variants should include the different forms
+            søknadEntry?.variants?.any { it.word.startsWith("søknad") } shouldBe true
+        }
+
+        test("includes sourceResponses for context") {
+            val feedbacks = listOf(
+                createDiscoveryFeedback("Sjekke sykepenger status"),
+                createDiscoveryFeedback("Sjekke utbetaling status")
+            )
+            
+            val result = service.processStats(feedbacks, emptyList())
+            
+            // 'sjekke' stem stays 'sjekke'
+            val sjekkeEntry = result.wordFrequency.find { it.stem == "sjekke" }
+            sjekkeEntry?.sourceResponses?.size?.shouldBeGreaterThan(0)
+            sjekkeEntry?.sourceResponses?.first()?.text shouldBe "Sjekke sykepenger status"
         }
 
         test("groups by theme correctly") {

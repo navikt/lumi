@@ -61,10 +61,18 @@ describe("Mock Data Generation", () => {
         for (const response of wordData.sourceResponses) {
           expect(response.text).toBeDefined();
           expect(response.submittedAt).toBeDefined();
-          // The word should appear in the response text (case insensitive)
-          expect(response.text.toLowerCase()).toContain(
-            wordData.word.toLowerCase(),
-          );
+          // With stem grouping, the source text should contain a word that stems to the same stem
+          // We verify this by checking that at least one variant appears in the response text
+          const matchesVariant =
+            wordData.variants?.some((v) =>
+              response.text.toLowerCase().includes(v.word.toLowerCase()),
+            ) ??
+            response.text
+              .toLowerCase()
+              .includes(
+                wordData.stem?.toLowerCase() ?? wordData.word.toLowerCase(),
+              );
+          expect(matchesVariant).toBe(true);
         }
       }
     }
@@ -111,6 +119,96 @@ describe("Mock Data Generation", () => {
     for (const wordData of blockerStats.wordFrequency) {
       expect(wordData.sourceResponses?.length ?? 0).toBeLessThanOrEqual(5);
     }
+  });
+
+  describe("Stem-based Word Grouping", () => {
+    it("should group word variants under canonical form in Discovery", () => {
+      const params = new URLSearchParams();
+      const stats = getMockDiscoveryStats(params);
+
+      // Every word frequency entry should have stem and variants
+      for (const wordData of stats.wordFrequency) {
+        expect(wordData.stem).toBeDefined();
+        expect(typeof wordData.stem).toBe("string");
+        expect(wordData.variants).toBeDefined();
+        expect(Array.isArray(wordData.variants)).toBe(true);
+
+        // The canonical word should appear in variants (as most common form)
+        if (wordData.variants && wordData.variants.length > 0) {
+          const variantWords = wordData.variants.map((v) => v.word);
+          expect(variantWords).toContain(wordData.word);
+        }
+
+        // Variant counts should sum to total count
+        if (wordData.variants && wordData.variants.length > 0) {
+          const variantSum = wordData.variants.reduce(
+            (sum, v) => sum + v.count,
+            0,
+          );
+          expect(variantSum).toBe(wordData.count);
+        }
+      }
+    });
+
+    it("should group word variants under canonical form in Blocker", () => {
+      const params = new URLSearchParams();
+      const stats = getMockBlockerStats(params);
+
+      if (stats.wordFrequency.length === 0) return; // Skip if no blockers
+
+      // Every word frequency entry should have stem and variants
+      for (const wordData of stats.wordFrequency) {
+        expect(wordData.stem).toBeDefined();
+        expect(typeof wordData.stem).toBe("string");
+        expect(wordData.variants).toBeDefined();
+        expect(Array.isArray(wordData.variants)).toBe(true);
+      }
+    });
+
+    it("should select most common surface form as canonical word", () => {
+      const params = new URLSearchParams();
+      const stats = getMockDiscoveryStats(params);
+
+      // For each word, the canonical form should be the one with highest count in variants
+      for (const wordData of stats.wordFrequency) {
+        if (wordData.variants && wordData.variants.length > 0) {
+          // Variants are sorted by count desc, so first should match canonical
+          const mostCommonVariant = wordData.variants[0];
+          expect(wordData.word).toBe(mostCommonVariant.word);
+        }
+      }
+    });
+
+    it("should limit variants to max 5 per word", () => {
+      const params = new URLSearchParams();
+      const discoveryStats = getMockDiscoveryStats(params);
+      const blockerStats = getMockBlockerStats(params);
+
+      for (const wordData of discoveryStats.wordFrequency) {
+        expect(wordData.variants?.length ?? 0).toBeLessThanOrEqual(5);
+      }
+
+      for (const wordData of blockerStats.wordFrequency) {
+        expect(wordData.variants?.length ?? 0).toBeLessThanOrEqual(5);
+      }
+    });
+
+    it("should use consistent stem for grouping across responses", () => {
+      const params = new URLSearchParams();
+      const stats = getMockDiscoveryStats(params);
+
+      // Build a set of all stems - each stem should only appear once
+      const stems = new Set<string>();
+      for (const wordData of stats.wordFrequency) {
+        if (stems.has(wordData.stem)) {
+          throw new Error(`Duplicate stem found: ${wordData.stem}`);
+        }
+        stems.add(wordData.stem);
+      }
+
+      // If we got here, all stems are unique (grouped correctly)
+      expect(stems.size).toBe(stats.wordFrequency.length);
+    });
   });
 
   it("should generate task priority stats correctly", () => {

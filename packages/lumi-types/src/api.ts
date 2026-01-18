@@ -308,12 +308,33 @@ export interface ContextTagsResponse {
 // Discovery Survey Types
 // ============================================
 
-/** Word frequency with optional source responses for context examples */
-export interface WordFrequency {
+/** Word variant with its occurrence count */
+export interface WordVariant {
   word: string;
   count: number;
-  /** Source responses containing this word for displaying context examples */
-  sourceResponses?: Array<{ text: string; submittedAt: string }>;
+}
+
+/** Source response for context examples */
+export interface SourceResponse {
+  text: string;
+  submittedAt: string;
+}
+
+/**
+ * Word frequency entry for word cloud (unified for Discovery and Blocker).
+ * Groups word variants by stem and provides context examples.
+ */
+export interface WordFrequency {
+  /** Canonical display form (most common surface form) */
+  word: string;
+  /** Normalized/stemmed form (stable key for grouping) */
+  stem: string;
+  /** Total occurrences across all variants */
+  count: number;
+  /** Top word variants with their counts (max 5) */
+  variants?: WordVariant[];
+  /** Source responses containing this word for context examples */
+  sourceResponses?: SourceResponse[];
 }
 
 export interface DiscoveryTheme {

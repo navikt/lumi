@@ -45,6 +45,8 @@ interface ThemeModalProps {
   allThemes?: TextTheme[];
   /** Context examples containing the clicked word */
   contextExamples?: ContextExample[];
+  /** Word variants that were grouped under this stem (for showing normalization info) */
+  wordVariants?: Array<{ word: string; count: number }>;
 }
 
 // Preset colors for themes
@@ -74,6 +76,7 @@ export function ThemeModal({
   availableWords = [],
   allThemes = [],
   contextExamples = [],
+  wordVariants = [],
 }: ThemeModalProps) {
   const isEditing = !!theme;
 
@@ -385,6 +388,24 @@ export function ThemeModal({
               📝 Slik brukes "{initialKeywords[0]}" i svarene (
               {contextExamples.length} treff)
             </Label>
+
+            {/* Show variants if multiple word forms were grouped */}
+            {wordVariants.length > 1 && (
+              <BodyShort
+                size="small"
+                textColor="subtle"
+                style={{ marginBottom: "0.75rem", fontStyle: "italic" }}
+              >
+                Normalisert fra:{" "}
+                {wordVariants.map((v, i) => (
+                  <span key={v.word}>
+                    {v.word} ({v.count})
+                    {i < wordVariants.length - 1 ? ", " : ""}
+                  </span>
+                ))}
+              </BodyShort>
+            )}
+
             <VStack gap="space-8">
               {contextExamples
                 .slice(
@@ -394,7 +415,17 @@ export function ThemeModal({
                 .map((example, idx) => {
                   // Highlight keyword using cumulative position as key
                   const keyword = initialKeywords[0];
-                  const regex = new RegExp(`(${keyword})`, "gi");
+                  const highlightTerm = example.text
+                    .toLowerCase()
+                    .includes(keyword.toLowerCase())
+                    ? keyword
+                    : (wordVariants.find((v) =>
+                        example.text
+                          .toLowerCase()
+                          .includes(v.word.toLowerCase()),
+                      )?.word ?? keyword);
+
+                  const regex = new RegExp(`(${highlightTerm})`, "gi");
                   const parts = example.text.split(regex);
                   let pos = 0;
                   return (
@@ -410,7 +441,7 @@ export function ThemeModal({
                           const key = `${pos}`;
                           pos += part.length;
                           return part.toLowerCase() ===
-                            keyword.toLowerCase() ? (
+                            highlightTerm.toLowerCase() ? (
                             <strong
                               key={key}
                               style={{ color: "var(--ax-text-action)" }}

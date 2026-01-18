@@ -64,12 +64,40 @@ data class ThemeResult(
 )
 
 /**
- * Word frequency entry for word cloud
+ * Source response for context examples in word cloud
+ */
+@Serializable
+data class SourceResponse(
+    val text: String,
+    val submittedAt: String
+)
+
+/**
+ * Word variant with its count (for showing normalization info)
+ */
+@Serializable
+data class WordVariant(
+    val word: String,
+    val count: Int
+)
+
+/**
+ * Word frequency entry for word cloud (unified for Discovery and Blocker).
+ * Groups word variants by stem and provides context examples.
+ *
+ * @property word Canonical display form (most common surface form)
+ * @property stem Normalized/stemmed form (stable key for grouping)
+ * @property count Total occurrences across all variants
+ * @property variants Top word variants with their counts (max 5)
+ * @property sourceResponses Example responses containing this word (max 3 for discovery, 5 for blocker)
  */
 @Serializable
 data class WordFrequencyEntry(
     val word: String,
-    val count: Int
+    val stem: String,
+    val count: Int,
+    val variants: List<WordVariant> = emptyList(),
+    val sourceResponses: List<SourceResponse> = emptyList()
 )
 
 /**
@@ -99,19 +127,6 @@ data class DiscoveryStatsResponse(
 // ============================================
 
 @Serializable
-data class BlockerSourceResponse(
-    val text: String,
-    val submittedAt: String
-)
-
-@Serializable
-data class BlockerWordFrequencyEntry(
-    val word: String,
-    val count: Int,
-    val sourceResponses: List<BlockerSourceResponse> = emptyList()
-)
-
-@Serializable
 data class BlockerThemeResult(
     val theme: String,
     val themeId: String,
@@ -130,7 +145,8 @@ data class RecentBlockerResponse(
 @Serializable
 data class BlockerStatsResponse(
     val totalBlockers: Int,
-    val wordFrequency: List<BlockerWordFrequencyEntry>,
+    val wordFrequency: List<WordFrequencyEntry>,  // Uses unified WordFrequencyEntry
     val themes: List<BlockerThemeResult>,
     val recentBlockers: List<RecentBlockerResponse>
 )
+

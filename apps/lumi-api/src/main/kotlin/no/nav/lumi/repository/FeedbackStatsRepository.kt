@@ -18,6 +18,12 @@ class FeedbackStatsRepository {
     companion object {
         /** Minimum number of responses required to show aggregated statistics */
         const val MIN_AGGREGATION_THRESHOLD = 5
+        
+        /** Maximum source responses per word for blocker analysis */
+        const val MAX_SOURCE_RESPONSES_BLOCKER = 5
+        
+        /** Maximum variants to return per word for blocker analysis */
+        const val MAX_VARIANTS = 5
     }
 
     fun getStats(query: StatsQuery): FeedbackStatsResult {
@@ -276,30 +282,29 @@ class FeedbackStatsRepository {
                 )
             }
 
-            val wordData = mutableMapOf<String, WordAccumulator>()
+            // Stem-based word frequency with grouping
+            val wordAccumulators = mutableMapOf<String, BlockerStemWordAccumulator>()
             for (response in blockerResponses) {
-                val words = TextProcessor.extractWords(response.blocker)
-                val seenWordsInResponse = mutableSetOf<String>()
-                for (word in words) {
-                    val acc = wordData.getOrPut(word) { WordAccumulator() }
-                    acc.count++
-                    if (!seenWordsInResponse.contains(word) && acc.sourceResponses.size < 5) {
-                        acc.sourceResponses.add(BlockerSourceResponse(text = response.blocker, submittedAt = response.submittedAt))
-                        seenWordsInResponse.add(word)
+                val seenStemsInResponse = mutableSetOf<String>()
+                TextProcessor.extractStemmedWords(response.blocker).forEach { (surface, stem) ->
+                    val acc = wordAccumulators.getOrPut(stem) { BlockerStemWordAccumulator(stem) }
+                    acc.addOccurrence(surface)
+                    
+                    // Add source response (max 5 per stem, deduped by text)
+                    if (!seenStemsInResponse.contains(stem) && acc.sourceResponses.size < MAX_SOURCE_RESPONSES_BLOCKER) {
+                        if (!acc.usedTexts.contains(response.blocker)) {
+                            acc.sourceResponses.add(SourceResponse(text = response.blocker, submittedAt = response.submittedAt))
+                            acc.usedTexts.add(response.blocker)
+                        }
+                        seenStemsInResponse.add(stem)
                     }
                 }
             }
 
-            val wordFrequency = wordData.entries
-                .sortedByDescending { it.value.count }
+            val wordFrequency = wordAccumulators.values
+                .sortedByDescending { it.totalCount }
                 .take(30)
-                .map { entry ->
-                    BlockerWordFrequencyEntry(
-                        word = entry.key,
-                        count = entry.value.count,
-                        sourceResponses = entry.value.sourceResponses.toList()
-                    )
-                }
+                .map { it.toWordFrequencyEntry() }
 
             val themeAccumulators = themes.map { theme ->
                 ThemeAccumulator(
@@ -435,10 +440,49 @@ class FeedbackStatsRepository {
     }
     
 
-private class WordAccumulator(
-    var count: Int = 0,
-    val sourceResponses: MutableList<BlockerSourceResponse> = mutableListOf()
-)
+/**
+ * Helper class to accumulate word frequency statistics grouped by stem.
+ * Tracks surface form counts to determine canonical (most common) form.
+ */
+private class BlockerStemWordAccumulator(val stem: String) {
+    private val surfaceCounts = mutableMapOf<String, Int>()
+    val sourceResponses = mutableListOf<SourceResponse>()
+    val usedTexts = mutableSetOf<String>()  // Dedup sourceResponses by text
+    
+    /** Total occurrences across all surface forms */
+    val totalCount: Int get() = surfaceCounts.values.sum()
+    
+    /** Add an occurrence of a surface form */
+    fun addOccurrence(surface: String) {
+        surfaceCounts[surface] = (surfaceCounts[surface] ?: 0) + 1
+    }
+    
+    /** Get canonical form (most common surface form) */
+    fun getCanonicalForm(): String {
+        return surfaceCounts.entries
+            .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+            .firstOrNull()?.key ?: stem
+    }
+    
+    /** Get top variants sorted by count desc */
+    fun getVariants(): List<WordVariant> {
+        return surfaceCounts.entries
+            .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+            .take(FeedbackStatsRepository.MAX_VARIANTS)
+            .map { WordVariant(word = it.key, count = it.value) }
+    }
+    
+    /** Convert to WordFrequencyEntry */
+    fun toWordFrequencyEntry(): WordFrequencyEntry {
+        return WordFrequencyEntry(
+            word = getCanonicalForm(),
+            stem = stem,
+            count = totalCount,
+            variants = getVariants(),
+            sourceResponses = sourceResponses.toList()
+        )
+    }
+}
 
 private class ThemeAccumulator(
     val theme: String,

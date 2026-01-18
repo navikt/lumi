@@ -628,6 +628,7 @@ export function getMockDiscoveryStats(
   const wordFrequency = Array.from(wordData.entries())
     .map(([word, data]) => ({
       word,
+      stem: word, // Legacy: word is already the stem-like key
       count: data.count,
       sourceResponses: data.sourceResponses,
     }))
@@ -1176,6 +1177,7 @@ export function getMockBlockerStats(
   const wordFrequency = Array.from(wordData.entries())
     .map(([word, data]) => ({
       word,
+      stem: word, // Legacy: word is already the stem-like key
       count: data.count,
       sourceResponses: data.sourceResponses,
     }))

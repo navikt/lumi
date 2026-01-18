@@ -58,4 +58,19 @@ object TextProcessor {
 
         return stem
     }
+
+    /**
+     * A word with its stemmed form.
+     */
+    data class StemmedWord(val surface: String, val stem: String)
+
+    /**
+     * Extract words from text with their stems.
+     * @return List of (surfaceForm, stem) pairs
+     */
+    fun extractStemmedWords(text: String): List<StemmedWord> {
+        return extractWords(text).map { word ->
+            StemmedWord(surface = word, stem = stemNorwegian(word))
+        }
+    }
 }
