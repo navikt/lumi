@@ -38,7 +38,7 @@ body {
 
 body {
   font-family: var(--ax-font-family);
-  background-color: var(--ax-bg-default);
+  background-color: var(--ax-bg-sunken);
   color: var(--ax-text-default);
   /* Improve text rendering on mobile */
   -webkit-font-smoothing: antialiased;
