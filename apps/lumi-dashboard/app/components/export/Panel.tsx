@@ -127,7 +127,7 @@ export function ExportPanel() {
             <Radio value="csv">
               <HStack gap="space-8" align="start">
                 <FilesIcon aria-hidden style={{ marginTop: "2px" }} />
-                <VStack gap="0">
+                <VStack gap="space-0">
                   <BodyShort weight="semibold">CSV</BodyShort>
                   <BodyShort size="small">
                     Kommaseparert fil, fungerer med Excel og andre verktøy
@@ -138,7 +138,7 @@ export function ExportPanel() {
             <Radio value="excel">
               <HStack gap="space-8" align="start">
                 <FileExcelIcon aria-hidden style={{ marginTop: "2px" }} />
-                <VStack gap="0">
+                <VStack gap="space-0">
                   <BodyShort weight="semibold">Excel (XLSX)</BodyShort>
                   <BodyShort size="small">
                     Native Excel-format med formatering
@@ -149,7 +149,7 @@ export function ExportPanel() {
             <Radio value="json">
               <HStack gap="space-8" align="start">
                 <FilesIcon aria-hidden style={{ marginTop: "2px" }} />
-                <VStack gap="0">
+                <VStack gap="space-0">
                   <BodyShort weight="semibold">JSON</BodyShort>
                   <BodyShort size="small">
                     Maskinlesbart format for videre prosessering
@@ -168,7 +168,6 @@ export function ExportPanel() {
           </Button>
         </VStack>
       </DashboardCard>
-
       <DashboardCard padding="space-24">
         <VStack gap="space-16">
           <Heading size="small">Aktive filtre</Heading>

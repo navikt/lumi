@@ -88,7 +88,7 @@ export function FeedbackCard({
               </span>
             )}
           </HStack>
-          <Tag variant="neutral" size="small">
+          <Tag data-color="neutral" variant="outline" size="small">
             {feedback.app}
           </Tag>
         </HStack>
@@ -213,7 +213,12 @@ export function FeedbackCard({
                 <span className={styles.expandedSectionLabel}>🏷️ Tagger</span>
                 <HStack gap="space-8" wrap>
                   {feedback.tags.map((tag) => (
-                    <Tag key={tag} variant="neutral" size="small">
+                    <Tag
+                      data-color="neutral"
+                      key={tag}
+                      variant="outline"
+                      size="small"
+                    >
                       {tag}
                     </Tag>
                   ))}
@@ -240,7 +245,7 @@ export function FeedbackCard({
 
             {/* Sensitive data warning */}
             {feedback.sensitiveDataRedacted && (
-              <Tag variant="warning" size="small">
+              <Tag data-color="warning" variant="outline" size="small">
                 <ShieldLockIcon aria-hidden /> Sensitive data er redigert bort
               </Tag>
             )}
@@ -262,7 +267,12 @@ export function FeedbackCard({
             {feedback.tags && feedback.tags.length > 0 && (
               <>
                 {feedback.tags.slice(0, 2).map((tag) => (
-                  <Tag key={tag} variant="neutral" size="small">
+                  <Tag
+                    data-color="neutral"
+                    key={tag}
+                    variant="outline"
+                    size="small"
+                  >
                     {tag}
                   </Tag>
                 ))}
@@ -274,7 +284,7 @@ export function FeedbackCard({
               </>
             )}
             {feedback.sensitiveDataRedacted && (
-              <Tag variant="warning" size="small">
+              <Tag data-color="warning" variant="outline" size="small">
                 <ShieldLockIcon aria-hidden /> Redigert
               </Tag>
             )}
@@ -299,7 +309,8 @@ export function FeedbackCard({
             <CopyButton copyText={copyText} size="xsmall" variant="neutral" />
             <Tooltip content="Slett denne tilbakemeldingen">
               <Button
-                variant="tertiary-neutral"
+                data-color="neutral"
+                variant="tertiary"
                 size="xsmall"
                 icon={<TrashIcon aria-hidden />}
                 onClick={(e) => {

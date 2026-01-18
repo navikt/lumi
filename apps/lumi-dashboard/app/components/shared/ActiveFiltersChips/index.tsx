@@ -91,8 +91,9 @@ export function ActiveFiltersChips() {
     <HStack gap="space-8" wrap>
       {chips.map((chip) => (
         <Tag
+          data-color="neutral"
           key={chip.key}
-          variant="neutral"
+          variant="outline"
           size="small"
           style={{ cursor: "pointer", paddingRight: "0.25rem" }}
         >

@@ -9,7 +9,8 @@ export function ThemeToggle() {
   if (!theme) {
     return (
       <Button
-        variant="tertiary-neutral"
+        data-color="neutral"
+        variant="tertiary"
         size="small"
         disabled
         icon={<SunIcon aria-hidden className="opacity-0" />}
@@ -22,7 +23,8 @@ export function ThemeToggle() {
       content={theme === "light" ? "Bytt til mørk modus" : "Bytt til lys modus"}
     >
       <Button
-        variant="tertiary-neutral"
+        data-color="neutral"
+        variant="tertiary"
         size="small"
         onClick={toggleTheme}
         icon={

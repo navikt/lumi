@@ -31,7 +31,7 @@ export function UrgentUrls() {
 
   return (
     <DashboardCard padding="0" style={{ overflow: "hidden" }}>
-      <Box.New
+      <Box
         padding={{ xs: "space-16", md: "space-20" }}
         borderWidth="0 0 1 0"
         borderColor="neutral-subtle"
@@ -42,8 +42,7 @@ export function UrgentUrls() {
         >
           <LinkIcon aria-hidden /> Sider med lavest score
         </Heading>
-      </Box.New>
-
+      </Box>
       {/* Desktop: Table view */}
       <Show above="md">
         <Table size="small">
@@ -69,12 +68,11 @@ export function UrgentUrls() {
           </Table.Body>
         </Table>
       </Show>
-
       {/* Mobile: List view */}
       <Hide above="md">
-        <VStack gap="0">
+        <VStack gap="space-0">
           {urls.map((row) => (
-            <Box.New
+            <Box
               key={row.path}
               padding="space-12"
               borderWidth="0 0 1 0"
@@ -86,7 +84,7 @@ export function UrgentUrls() {
                   Snitt: {row.average.toFixed(1)} • {row.count} svar
                 </BodyShort>
               </VStack>
-            </Box.New>
+            </Box>
           ))}
         </VStack>
       </Hide>

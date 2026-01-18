@@ -73,9 +73,9 @@ export function RatingFieldCard({ field, totalCount }: FieldCardProps) {
 
   return (
     <DashboardCard padding="space-20">
-      <HStack gap="space-8" align="start" marginBlock="0 space-8">
+      <HStack gap="space-8" align="start" marginBlock="space-0 space-8">
         <StarIcon fontSize="1.25rem" aria-hidden />
-        <VStack gap="0" style={{ flex: 1 }}>
+        <VStack gap="space-0" style={{ flex: 1 }}>
           <Label size="small" style={{ flex: 1, minWidth: 0 }}>
             {field.label}
           </Label>
@@ -88,7 +88,6 @@ export function RatingFieldCard({ field, totalCount }: FieldCardProps) {
           </BodyShort>
         </VStack>
       </HStack>
-
       <HStack gap="space-8" align="center" marginBlock="space-8">
         <span
           style={{
@@ -103,8 +102,7 @@ export function RatingFieldCard({ field, totalCount }: FieldCardProps) {
           {getRatingEmoji(stats.average)}
         </span>
       </HStack>
-
-      <VStack gap="space-4" marginBlock="space-12 0">
+      <VStack gap="space-4" marginBlock="space-12 space-0">
         {[5, 4, 3, 2, 1].map((rating) => {
           const count = distribution[rating] || 0;
           const barWidth = maxCount > 0 ? (count / maxCount) * 100 : 0;
@@ -182,9 +180,9 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
         flexDirection: "column",
       }}
     >
-      <HStack gap="space-8" align="start" marginBlock="0 space-8">
+      <HStack gap="space-8" align="start" marginBlock="space-0 space-8">
         <ChatExclamationmarkIcon fontSize="1.25rem" aria-hidden />
-        <VStack gap="0" style={{ flex: 1 }}>
+        <VStack gap="space-0" style={{ flex: 1 }}>
           <Label size="small" style={{ flex: 1, minWidth: 0 }}>
             {field.label}
           </Label>
@@ -196,9 +194,8 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
           </BodyShort>
         </VStack>
       </HStack>
-
       {hasKeywords && (
-        <VStack gap="space-8" marginBlock="space-12 0">
+        <VStack gap="space-8" marginBlock="space-12 space-0">
           <BodyShort
             size="small"
             weight="semibold"
@@ -208,7 +205,12 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
           </BodyShort>
           <HStack gap="space-8" wrap>
             {stats.topKeywords.map(({ word, count }) => (
-              <Tag key={word} size="small" variant="neutral">
+              <Tag
+                data-color="neutral"
+                key={word}
+                size="small"
+                variant="outline"
+              >
                 {word}
                 <span
                   style={{
@@ -224,9 +226,8 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
           </HStack>
         </VStack>
       )}
-
       {hasRecentResponses && (
-        <VStack gap="space-8" marginBlock="space-16 0">
+        <VStack gap="space-8" marginBlock="space-16 space-0">
           <BodyShort
             size="small"
             weight="semibold"
@@ -272,7 +273,6 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
           </VStack>
         </VStack>
       )}
-
       {!hasKeywords && !hasRecentResponses && (
         <BodyShort
           size="small"
@@ -309,9 +309,9 @@ export function ChoiceFieldCard({ field, totalCount }: FieldCardProps) {
       padding="space-20"
       style={{ display: "flex", flexDirection: "column" }}
     >
-      <HStack gap="space-8" align="start" marginBlock="0 space-8">
+      <HStack gap="space-8" align="start" marginBlock="space-0 space-8">
         <ChatElipsisIcon fontSize="1.25rem" aria-hidden />
-        <VStack gap="0" style={{ flex: 1 }}>
+        <VStack gap="space-0" style={{ flex: 1 }}>
           <Label size="small" style={{ flex: 1, minWidth: 0 }}>
             {field.label}
           </Label>
@@ -324,8 +324,7 @@ export function ChoiceFieldCard({ field, totalCount }: FieldCardProps) {
           </BodyShort>
         </VStack>
       </HStack>
-
-      <VStack gap="space-8" marginBlock="space-12 0">
+      <VStack gap="space-8" marginBlock="space-12 space-0">
         {choices.map((choice, index) => {
           const barWidth = maxCount > 0 ? (choice.count / maxCount) * 100 : 0;
           const color = CHOICE_COLORS[index % CHOICE_COLORS.length];

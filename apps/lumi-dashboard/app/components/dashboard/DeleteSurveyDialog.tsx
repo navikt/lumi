@@ -109,14 +109,14 @@ export function DeleteSurveyDialog({
           )}
         </VStack>
       </Modal.Body>
-
       <Modal.Footer>
         <HStack gap="space-8" justify="end">
           <Button variant="secondary" onClick={handleClose}>
             Avbryt
           </Button>
           <Button
-            variant="danger"
+            data-color="danger"
+            variant="primary"
             onClick={handleDelete}
             disabled={!confirmed || isLoadingTotal}
             loading={deleteMutation.isPending}

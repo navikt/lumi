@@ -335,7 +335,7 @@ export const LumiSurveyDock = ({
                 rowClassName={CLASS_NAMES.ratingRow}
                 buttonClassName={CLASS_NAMES.ratingButton}
                 fieldsetPaddingBlock="space-8"
-                fieldsetPaddingInline="0"
+                fieldsetPaddingInline="space-0"
               />
             </div>
           </div>

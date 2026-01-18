@@ -44,14 +44,15 @@ export function FilterMenu({
     <ActionMenu>
       <ActionMenu.Trigger>
         <Button
-          variant="secondary-neutral"
+          data-color="neutral"
+          variant="secondary"
           size="small"
           icon={<FunnelIcon aria-hidden />}
         >
           <HStack gap="space-4" align="center">
             <span>Filter</span>
             {activeCount > 0 && (
-              <Tag size="small" variant="info">
+              <Tag data-color="info" size="small" variant="outline">
                 {activeCount}
               </Tag>
             )}

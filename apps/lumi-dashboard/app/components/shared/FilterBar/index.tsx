@@ -156,10 +156,10 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
   return (
     <VStack gap="space-12" style={{ width: "100%" }}>
       {/* Primary Row: All filters in one line */}
-      <Box.New
+      <Box
         padding={{ xs: "space-12", md: "space-16" }}
         background="raised"
-        borderRadius="large"
+        borderRadius="12"
         style={{ boxShadow: "var(--ax-shadow-small)" }}
         borderColor="neutral-subtle"
         borderWidth="1"
@@ -375,7 +375,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
             )}
           </VStack>
         </Hide>
-      </Box.New>
+      </Box>
     </VStack>
   );
 }

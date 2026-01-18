@@ -1,5 +1,5 @@
 // Aksel Darkside CSS (v8+) - handles both light and dark themes
-import "@navikt/ds-css/darkside";
+import "@navikt/ds-css";
 
 // Initialize mock consent module for Storybook
 import "./mocks/consentMock";

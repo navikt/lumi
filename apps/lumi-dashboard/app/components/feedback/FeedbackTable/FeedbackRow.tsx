@@ -66,7 +66,6 @@ export function FeedbackRow({
           }
         />
       </Table.DataCell>
-
       {/* Date */}
       <Table.DataCell>
         <Tooltip
@@ -77,7 +76,6 @@ export function FeedbackRow({
           </BodyShort>
         </Tooltip>
       </Table.DataCell>
-
       {/* Feedback Content */}
       <Table.DataCell>
         <VStack gap="space-4">
@@ -108,7 +106,7 @@ export function FeedbackRow({
             <TagsPreview tags={feedback.tags} />
             {feedback.sensitiveDataRedacted && (
               <Tooltip content="Sensitiv data har blitt fjernet">
-                <Tag variant="warning" size="small">
+                <Tag data-color="warning" variant="outline" size="small">
                   <ShieldLockIcon aria-hidden /> Redigert
                 </Tag>
               </Tooltip>
@@ -116,19 +114,18 @@ export function FeedbackRow({
           </HStack>
         </VStack>
       </Table.DataCell>
-
       {/* App */}
       <Table.DataCell>
         <BodyShort size="small">{feedback.app}</BodyShort>
       </Table.DataCell>
-
       {/* Actions */}
       <Table.DataCell>
         <HStack gap="space-4">
           <CopyButton copyText={copyText} size="xsmall" variant="neutral" />
           <Tooltip content="Slett denne tilbakemeldingen">
             <Button
-              variant="tertiary-neutral"
+              data-color="neutral"
+              variant="tertiary"
               size="xsmall"
               aria-label="Slett tilbakemelding"
               icon={<TrashIcon aria-hidden />}
@@ -154,7 +151,7 @@ function FeedbackPreviewText({
   preview: { text: string; subText?: string };
 }) {
   return (
-    <VStack gap="0">
+    <VStack gap="space-0">
       <BodyShort truncate className={styles.previewText}>
         {preview.text}
       </BodyShort>
@@ -176,7 +173,7 @@ function TagsPreview({ tags }: { tags?: string[] }) {
   return (
     <HStack gap="space-4" wrap>
       {tags.slice(0, 2).map((tag) => (
-        <Tag key={tag} variant="neutral" size="small">
+        <Tag data-color="neutral" key={tag} variant="outline" size="small">
           {tag}
         </Tag>
       ))}

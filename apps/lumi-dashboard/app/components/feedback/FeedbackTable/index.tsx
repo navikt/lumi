@@ -200,7 +200,8 @@ function SurveyToolbar({
         </BodyShort>
         <Tooltip content="Slett hele surveyen (alle svar, uavhengig av filtrering)">
           <Button
-            variant="danger"
+            data-color="danger"
+            variant="primary"
             size="small"
             icon={<TrashIcon aria-hidden />}
             onClick={onDelete}

@@ -106,7 +106,7 @@ export function TopTasksExport({ data, surveyId }: TopTasksExportProps) {
 
   return (
     <DashboardCard padding="0" style={{ overflow: "hidden" }}>
-      <Box.New
+      <Box
         padding={{ xs: "space-16", md: "space-24" }}
         borderWidth="0 0 1 0"
         borderColor="neutral-subtle"
@@ -126,9 +126,8 @@ export function TopTasksExport({ data, surveyId }: TopTasksExportProps) {
         >
           Last ned Top Tasks data for videre analyse
         </BodyShort>
-      </Box.New>
-
-      <Box.New padding={{ xs: "space-16", md: "space-24" }}>
+      </Box>
+      <Box padding={{ xs: "space-16", md: "space-24" }}>
         <VStack gap="space-16">
           <HStack gap="space-12">
             <Button
@@ -155,7 +154,7 @@ export function TopTasksExport({ data, surveyId }: TopTasksExportProps) {
             {data.overallTpi !== undefined && `, TPI ${data.overallTpi}`}
           </BodyShort>
         </VStack>
-      </Box.New>
+      </Box>
     </DashboardCard>
   );
 }

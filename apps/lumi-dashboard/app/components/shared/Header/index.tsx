@@ -25,7 +25,7 @@ export function Header() {
   };
 
   return (
-    <Box.New
+    <Box
       paddingInline={{ xs: "space-12", sm: "space-16" }}
       background="raised"
       borderWidth="0 0 1 0"
@@ -125,6 +125,6 @@ export function Header() {
           <ThemeToggle />
         </HStack>
       </HStack>
-    </Box.New>
+    </Box>
   );
 }

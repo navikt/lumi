@@ -1,7 +1,6 @@
 import { BodyShort, Box, Heading, HStack, VStack } from "@navikt/ds-react";
-import type { BoxNewProps } from "@navikt/ds-react/Box";
 import type React from "react";
-import type { ReactElement } from "react";
+import type { ComponentProps, ReactElement } from "react";
 import type {
   EmojiRatingQuestion,
   LumiSurveyAnswerValue,
@@ -43,9 +42,9 @@ interface RatingQuestionFieldProps {
   /** Control whether the emoji row should wrap to multiple lines */
   wrap?: boolean;
   /** Override the paddingBlock token on the underlying fieldset */
-  fieldsetPaddingBlock?: BoxNewProps["paddingBlock"];
+  fieldsetPaddingBlock?: ComponentProps<typeof Box>["paddingBlock"];
   /** Override the paddingInline token on the underlying fieldset */
-  fieldsetPaddingInline?: BoxNewProps["paddingInline"];
+  fieldsetPaddingInline?: ComponentProps<typeof Box>["paddingInline"];
 }
 
 interface EmojiVariant {
@@ -107,7 +106,7 @@ const VARIANTS: EmojiVariant[] = [
   {
     className: CLASS_NAMES.variants.veldigGlad,
     activeFill: "var(--ax-bg-success-moderate)",
-    activeColor: "var(--a-text-success)",
+    activeColor: "var(--ax-text-success)",
     fallbackLabel: "Veldig bra",
     Icon: VeldigGlad,
   },
@@ -246,7 +245,7 @@ export const RatingQuestionField = ({
           {question.description}
         </BodyShort>
       )}
-      <Box.New
+      <Box
         as="fieldset"
         className={joinClassNames(CLASS_NAMES.fieldset, fieldsetClassName)}
         aria-labelledby={headingId}
@@ -302,7 +301,7 @@ export const RatingQuestionField = ({
             );
           })}
         </HStack>
-      </Box.New>
+      </Box>
       {isMissing && (
         <BodyShort id={errorId} className={CLASS_NAMES.error} role="alert">
           {validationErrorMessage}

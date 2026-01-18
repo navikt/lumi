@@ -160,7 +160,6 @@ export function DeviceBreakdownChart({
           })}
         </VStack>
       </Hide>
-
       {/* Desktop: Cards + Bar chart */}
       <Show above="md">
         {/* Summary cards */}
@@ -190,7 +189,7 @@ export function DeviceBreakdownChart({
               <span style={{ fontSize: "1.25rem", cursor: "inherit" }}>
                 {d.icon}
               </span>
-              <VStack gap="0" style={{ cursor: "inherit" }}>
+              <VStack gap="space-0" style={{ cursor: "inherit" }}>
                 <Label size="small" style={{ cursor: "inherit" }}>
                   {d.label}
                 </Label>

@@ -50,11 +50,9 @@ export function TopTasksOverview() {
   return (
     <>
       <TopTasksStatsCards data={data} />
-
       <TimelineSection title="Suksessrate over tid" variant="topTasks" />
-
       <DashboardCard padding={{ xs: "space-16", md: "space-24" }}>
-        <Box.New paddingBlock="0 space-16">
+        <Box paddingBlock="space-0 space-16">
           <Heading size="small">Oppgavekvadrant</Heading>
           <p
             style={{ margin: "0.5rem 0 0", fontSize: "0.875rem", opacity: 0.7 }}
@@ -62,7 +60,7 @@ export function TopTasksOverview() {
             Volum vs suksessrate. Klikk på et punkt for å filtrere hele
             dashboardet.
           </p>
-        </Box.New>
+        </Box>
         <div style={{ height: "clamp(280px, 50vw, 400px)", width: "100%" }}>
           <TaskQuadrantChart
             selectedTask={selectedTask}
@@ -70,9 +68,8 @@ export function TopTasksOverview() {
           />
         </div>
       </DashboardCard>
-
       <DashboardCard padding="0" style={{ overflow: "hidden" }}>
-        <Box.New
+        <Box
           padding={{ xs: "space-16", md: "space-24" }}
           borderWidth="0 0 1 0"
           borderColor="neutral-subtle"
@@ -80,7 +77,7 @@ export function TopTasksOverview() {
           <Heading size="small">
             {data.questionText ? `Spørsmål: ${data.questionText}` : "Spørsmål"}
           </Heading>
-        </Box.New>
+        </Box>
         <Box overflowX="auto">
           <Table>
             <Table.Header>
@@ -226,14 +223,11 @@ export function TopTasksOverview() {
           </Table>
         </Box>
       </DashboardCard>
-
       <BlockerAnalysis />
-
       {/* Segment breakdown */}
       {surveyId && (
         <SegmentBreakdown surveyId={surveyId} onSegmentClick={addSegment} />
       )}
-
       {/* Device breakdown */}
       <DeviceBreakdownSection />
     </>

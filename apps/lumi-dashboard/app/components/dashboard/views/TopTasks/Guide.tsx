@@ -18,7 +18,7 @@ import { DashboardCard } from "~/components/dashboard";
 export function TopTasksGuide() {
   return (
     <DashboardCard padding="0" style={{ overflow: "hidden" }}>
-      <Box.New
+      <Box
         padding={{ xs: "space-16", md: "space-24" }}
         borderWidth="0 0 1 0"
         borderColor="neutral-subtle"
@@ -38,9 +38,8 @@ export function TopTasksGuide() {
         >
           Forstå metodikken og metrikker
         </BodyShort>
-      </Box.New>
-
-      <Box.New padding={{ xs: "space-16", md: "space-24" }}>
+      </Box>
+      <Box padding={{ xs: "space-16", md: "space-24" }}>
         <Accordion>
           <Accordion.Item>
             <Accordion.Header>
@@ -98,15 +97,15 @@ export function TopTasksGuide() {
                   TPI kombinerer suksessrate med tidseffektivitet for å gi et
                   helhetlig bilde av oppgaveytelse.
                 </BodyShort>
-                <Box.New
+                <Box
                   padding="space-12"
                   background="neutral-softA"
-                  borderRadius="medium"
+                  borderRadius="8"
                 >
                   <BodyShort size="small" weight="semibold">
                     TPI = Suksessrate × min(1, Måltid / Faktisk tid) × 100
                   </BodyShort>
-                </Box.New>
+                </Box>
                 <List as="ul" size="small">
                   <List.Item>
                     <strong>TPI ≥ 80:</strong> Utmerket - brukere fullfører
@@ -173,7 +172,7 @@ export function TopTasksGuide() {
             </Accordion.Content>
           </Accordion.Item>
         </Accordion>
-      </Box.New>
+      </Box>
     </DashboardCard>
   );
 }

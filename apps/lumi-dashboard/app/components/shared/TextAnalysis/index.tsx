@@ -319,21 +319,21 @@ export function TextAnalysis({
   if (isLoading) {
     return (
       <DashboardCard padding="0" style={{ overflow: "hidden" }}>
-        <Box.New
+        <Box
           padding={{ xs: "space-16", md: "space-24" }}
           borderWidth="0 0 1 0"
           borderColor="neutral-subtle"
         >
           <Skeleton width="200px" height="24px" />
-        </Box.New>
-        <Box.New padding={{ xs: "space-16", md: "space-24" }}>
+        </Box>
+        <Box padding={{ xs: "space-16", md: "space-24" }}>
           <VStack gap="space-12">
             {[...Array(4)].map((_, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: Skeletons are static
               <Skeleton key={i} width="100%" height="40px" />
             ))}
           </VStack>
-        </Box.New>
+        </Box>
       </DashboardCard>
     );
   }
@@ -363,7 +363,7 @@ export function TextAnalysis({
       {/* Word Cloud Section */}
       {wordFrequency.length > 0 && (
         <DashboardCard padding="0" style={{ overflow: "hidden" }}>
-          <Box.New
+          <Box
             padding={{ xs: "space-16", md: "space-24" }}
             borderWidth="0 0 1 0"
             borderColor="neutral-subtle"
@@ -396,22 +396,21 @@ export function TextAnalysis({
             >
               Klikk på et ord for å lage tema eller redigere eksisterende
             </BodyShort>
-          </Box.New>
+          </Box>
 
-          <Box.New padding={{ xs: "space-16", md: "space-24" }}>
+          <Box padding={{ xs: "space-16", md: "space-24" }}>
             <WordCloud
               words={wordFrequency}
               maxWords={30}
               getThemeForWord={getThemeForWord}
               onWordClick={handleWordClick}
             />
-          </Box.New>
+          </Box>
         </DashboardCard>
       )}
-
       {/* Themes Section */}
       <DashboardCard padding="0" style={{ overflow: "hidden" }}>
-        <Box.New
+        <Box
           padding={{ xs: "space-16", md: "space-24" }}
           borderWidth="0 0 1 0"
           borderColor="neutral-subtle"
@@ -448,9 +447,9 @@ export function TextAnalysis({
               ? `${allThemesDisplay.length} temaer vist`
               : "Ingen temaer med data ennå."}
           </BodyShort>
-        </Box.New>
+        </Box>
 
-        <Box.New padding={{ xs: "space-16", md: "space-24" }}>
+        <Box padding={{ xs: "space-16", md: "space-24" }}>
           {allThemesDisplay.length > 0 ? (
             <VStack gap="space-12">
               {allThemesDisplay.map((theme) => {
@@ -609,13 +608,12 @@ export function TextAnalysis({
               </Button>
             </HStack>
           )}
-        </Box.New>
+        </Box>
       </DashboardCard>
-
       {/* Recent Responses */}
       {recentResponses.length > 0 && (
         <DashboardCard padding="0" style={{ overflow: "hidden" }}>
-          <Box.New
+          <Box
             padding={{ xs: "space-16", md: "space-24" }}
             borderWidth="0 0 1 0"
             borderColor="neutral-subtle"
@@ -628,9 +626,9 @@ export function TextAnalysis({
             >
               {labels.recentSubtitle}
             </BodyShort>
-          </Box.New>
+          </Box>
 
-          <Box.New padding={{ xs: "space-16", md: "space-24" }}>
+          <Box padding={{ xs: "space-16", md: "space-24" }}>
             <VStack gap="space-12">
               {recentResponses.slice(0, 10).map((response) => (
                 <div
@@ -677,10 +675,9 @@ export function TextAnalysis({
                 </div>
               ))}
             </VStack>
-          </Box.New>
+          </Box>
         </DashboardCard>
       )}
-
       {/* Word Popover for categorized words */}
       {popoverTheme && (
         <WordPopover
@@ -693,7 +690,6 @@ export function TextAnalysis({
           onEditTheme={handleOpenEdit}
         />
       )}
-
       {/* Theme Modal */}
       <ThemeModal
         isOpen={isModalOpen}

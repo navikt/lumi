@@ -32,7 +32,6 @@ export function Skeleton({ showToolbar }: FeedbackTableSkeletonProps) {
           </HStack>
         </div>
       )}
-
       <Table>
         <Table.Header>
           <Table.Row>
@@ -56,12 +55,10 @@ export function Skeleton({ showToolbar }: FeedbackTableSkeletonProps) {
               <Table.DataCell>
                 <AkselSkeleton variant="circle" width={24} height={24} />
               </Table.DataCell>
-
               {/* Date Skeleton */}
               <Table.DataCell>
                 <AkselSkeleton variant="text" width={70} />
               </Table.DataCell>
-
               {/* Feedback Content Skeleton */}
               <Table.DataCell>
                 {/* Randomize widths slightly for organic feel */}
@@ -79,12 +76,10 @@ export function Skeleton({ showToolbar }: FeedbackTableSkeletonProps) {
                   {i % 3 === 0 && <AkselSkeleton variant="text" width="40%" />}
                 </div>
               </Table.DataCell>
-
               {/* App Name Skeleton */}
               <Table.DataCell>
                 <AkselSkeleton variant="text" width={120} />
               </Table.DataCell>
-
               {/* Actions Skeleton */}
               <Table.DataCell>
                 <div style={{ display: "flex", gap: "0.5rem" }}>

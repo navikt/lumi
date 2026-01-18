@@ -7,7 +7,7 @@ import {
   HStack,
   VStack,
 } from "@navikt/ds-react";
-import type { BoxNewProps } from "@navikt/ds-react/Box";
+import type { ComponentProps } from "react";
 import { useCallback } from "react";
 import type {
   LumiSurveyAnswerValue,
@@ -28,8 +28,8 @@ interface ThumbsRatingProps {
   ariaDescribedBy?: string;
   hidePrompt?: boolean;
   hideDescription?: boolean;
-  fieldsetPaddingBlock?: BoxNewProps["paddingBlock"];
-  fieldsetPaddingInline?: BoxNewProps["paddingInline"];
+  fieldsetPaddingBlock?: ComponentProps<typeof Box>["paddingBlock"];
+  fieldsetPaddingInline?: ComponentProps<typeof Box>["paddingInline"];
 }
 
 /**
@@ -82,7 +82,7 @@ export function ThumbsRating({
           {question.description}
         </BodyShort>
       )}
-      <Box.New
+      <Box
         as="fieldset"
         className={styles.fieldset ?? "lumi-survey-rating__fieldset"}
         aria-labelledby={
@@ -107,7 +107,7 @@ export function ThumbsRating({
           role="radiogroup"
           wrap
         >
-          <Box.New style={{ flex: "1 1 0" }}>
+          <Box style={{ flex: "1 1 0" }}>
             <Button
               type="button"
               role="radio"
@@ -116,15 +116,16 @@ export function ThumbsRating({
               onClick={() => handleSelect(1)}
               disabled={disabled}
               tabIndex={activeState === 1 || !activeState ? 0 : -1}
-              variant={activeState === 1 ? "danger" : "secondary"}
+              data-color={activeState === 1 ? "danger" : undefined}
+              variant={activeState === 1 ? "primary" : "secondary"}
               icon={<ThumbDownIcon fontSize="1.75rem" aria-hidden />}
               style={{ width: "100%", justifyContent: "center" }}
             >
               Nei
             </Button>
-          </Box.New>
+          </Box>
 
-          <Box.New style={{ flex: "1 1 0" }}>
+          <Box style={{ flex: "1 1 0" }}>
             <Button
               type="button"
               role="radio"
@@ -139,9 +140,9 @@ export function ThumbsRating({
             >
               Ja
             </Button>
-          </Box.New>
+          </Box>
         </HStack>
-      </Box.New>
+      </Box>
       {isMissing && (
         <BodyShort
           id={errorId}

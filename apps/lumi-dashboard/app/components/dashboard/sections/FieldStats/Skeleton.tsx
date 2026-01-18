@@ -2,10 +2,10 @@ import { Skeleton as AkselSkeleton, Box, VStack } from "@navikt/ds-react";
 
 function FieldStatCardSkeleton() {
   return (
-    <Box.New
+    <Box
       padding="space-20"
       background="raised"
-      borderRadius="large"
+      borderRadius="12"
       style={{ boxShadow: "var(--ax-shadow-small)", width: "100%" }}
       borderColor="neutral-subtle"
       borderWidth="1"
@@ -31,7 +31,7 @@ function FieldStatCardSkeleton() {
           </div>
         ))}
       </VStack>
-    </Box.New>
+    </Box>
   );
 }
 

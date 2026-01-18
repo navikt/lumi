@@ -7,7 +7,7 @@ interface ChartEmptyStateProps {
 
 export function ChartEmptyState({ message, color }: ChartEmptyStateProps) {
   return (
-    <Box.New
+    <Box
       style={{
         height: "100%",
         width: "100%",
@@ -19,6 +19,6 @@ export function ChartEmptyState({ message, color }: ChartEmptyStateProps) {
       }}
     >
       <BodyShort size="small">{message}</BodyShort>
-    </Box.New>
+    </Box>
   );
 }

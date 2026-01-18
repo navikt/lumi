@@ -34,7 +34,12 @@ export function DeleteFeedbackDialog({
           <Button variant="secondary" onClick={onClose} disabled={isPending}>
             Avbryt
           </Button>
-          <Button variant="danger" onClick={onConfirm} loading={isPending}>
+          <Button
+            data-color="danger"
+            variant="primary"
+            onClick={onConfirm}
+            loading={isPending}
+          >
             Slett
           </Button>
         </HStack>

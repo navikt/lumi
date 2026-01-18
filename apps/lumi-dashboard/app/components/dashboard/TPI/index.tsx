@@ -71,10 +71,9 @@ export function TPIDashboard({ data }: TPIDashboardProps) {
           subtitle="Benchmark"
         />
       </DashboardGrid>
-
       {/* Per-task TPI breakdown */}
       <DashboardCard padding="0" style={{ overflow: "hidden" }}>
-        <Box.New
+        <Box
           padding={{ xs: "space-16", md: "space-24" }}
           borderWidth="0 0 1 0"
           borderColor="neutral-subtle"
@@ -97,9 +96,9 @@ export function TPIDashboard({ data }: TPIDashboardProps) {
           >
             TPI = Suksessrate × Tidseffektivitet (høyere er bedre)
           </BodyShort>
-        </Box.New>
+        </Box>
 
-        <Box.New padding={{ xs: "space-16", md: "space-24" }}>
+        <Box padding={{ xs: "space-16", md: "space-24" }}>
           <VStack gap="space-12">
             {tasks
               .filter((t) => t.tpiScore !== undefined)
@@ -166,10 +165,10 @@ export function TPIDashboard({ data }: TPIDashboardProps) {
                 </div>
               ))}
           </VStack>
-        </Box.New>
+        </Box>
 
         {/* TPI Formula explanation */}
-        <Box.New
+        <Box
           padding={{ xs: "space-16", md: "space-24" }}
           borderWidth="1 0 0 0"
           borderColor="neutral-subtle"
@@ -187,7 +186,7 @@ export function TPIDashboard({ data }: TPIDashboardProps) {
             Høy TPI = brukere fullfører raskt og vellykket. Lav TPI = treg
             fullføring eller mange feil.
           </BodyShort>
-        </Box.New>
+        </Box>
       </DashboardCard>
     </>
   );

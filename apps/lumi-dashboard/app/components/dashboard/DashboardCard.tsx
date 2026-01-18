@@ -1,12 +1,11 @@
 import { Box } from "@navikt/ds-react";
 import type { ComponentProps } from "react";
 
-// Use ComponentProps to get the exact props expected by Box.New
-type BoxNewProps = ComponentProps<typeof Box.New>;
+type BoxProps = ComponentProps<typeof Box>;
 
 // Make 'as' optional since we default it to 'div'
-export type DashboardCardProps = Omit<BoxNewProps, "as"> & {
-  as?: BoxNewProps["as"];
+export type DashboardCardProps = Omit<BoxProps, "as"> & {
+  as?: BoxProps["as"];
 };
 
 export function DashboardCard({
@@ -15,11 +14,11 @@ export function DashboardCard({
   ...props
 }: DashboardCardProps) {
   return (
-    <Box.New
+    <Box
       as={as}
       padding="space-24"
       background="raised"
-      borderRadius="large"
+      borderRadius="12"
       borderWidth="1"
       borderColor="neutral-subtle"
       style={{

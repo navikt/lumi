@@ -18,11 +18,7 @@ export function FeedbackExpandedView({ feedback }: FeedbackExpandedViewProps) {
   return (
     <Table.Row className={styles.expandedRow}>
       <Table.DataCell colSpan={5} className={styles.expandedCell}>
-        <Box.New
-          padding="space-20"
-          background="neutral-soft"
-          borderRadius="medium"
-        >
+        <Box padding="space-20" background="neutral-soft" borderRadius="8">
           <VStack gap="space-20">
             {/* Answers Timeline */}
             <ExpandedSection label={`Svar(${feedback.answers.length})`}>
@@ -60,7 +56,7 @@ export function FeedbackExpandedView({ feedback }: FeedbackExpandedViewProps) {
               )}
             </div>
           </VStack>
-        </Box.New>
+        </Box>
       </Table.DataCell>
     </Table.Row>
   );

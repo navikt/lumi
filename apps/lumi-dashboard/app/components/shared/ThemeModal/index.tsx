@@ -378,8 +378,8 @@ export function ThemeModal({
 
         {/* Context Examples Section */}
         {contextExamples.length > 0 && initialKeywords.length > 0 && (
-          <Box.New
-            marginBlock="space-24 0"
+          <Box
+            marginBlock="space-24 space-0"
             paddingBlock="space-16"
             borderWidth="1 0 0 0"
             borderColor="neutral-subtle"
@@ -429,11 +429,11 @@ export function ThemeModal({
                   const parts = example.text.split(regex);
                   let pos = 0;
                   return (
-                    <Box.New
+                    <Box
                       key={`${example.submittedAt}-${idx}`}
                       padding="space-12"
                       background="neutral-soft"
-                      borderRadius="medium"
+                      borderRadius="8"
                     >
                       <BodyShort size="small">
                         "
@@ -454,7 +454,7 @@ export function ThemeModal({
                         })}
                         "
                       </BodyShort>
-                    </Box.New>
+                    </Box>
                   );
                 })}
             </VStack>
@@ -472,10 +472,9 @@ export function ThemeModal({
                 />
               </HStack>
             )}
-          </Box.New>
+          </Box>
         )}
       </Modal.Body>
-
       <Modal.Footer>
         <HStack
           justify="space-between"
@@ -501,7 +500,8 @@ export function ThemeModal({
 
           {isEditing && onDelete && (
             <Button
-              variant="danger"
+              data-color="danger"
+              variant="primary"
               icon={<TrashIcon aria-hidden />}
               onClick={handleDelete}
               loading={isSubmitting}

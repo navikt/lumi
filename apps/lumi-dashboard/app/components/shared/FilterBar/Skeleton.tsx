@@ -19,10 +19,10 @@ export function Skeleton({
   return (
     <VStack gap="space-12" style={{ width: "100%" }}>
       {/* Mirrors FilterBar layout */}
-      <Box.New
+      <Box
         padding={{ xs: "space-12", md: "space-16" }}
         background="raised"
-        borderRadius="large"
+        borderRadius="12"
         style={{ boxShadow: "var(--ax-shadow-small)" }}
         borderColor="neutral-subtle"
         borderWidth="1"
@@ -86,7 +86,7 @@ export function Skeleton({
             {showDetails && <AkselSkeleton variant="rounded" height={32} />}
           </VStack>
         </Hide>
-      </Box.New>
+      </Box>
     </VStack>
   );
 }

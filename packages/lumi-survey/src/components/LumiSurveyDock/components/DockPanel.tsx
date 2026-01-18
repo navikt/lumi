@@ -8,20 +8,22 @@ import {
   HStack,
   VStack,
 } from "@navikt/ds-react";
-import type { BoxNewProps } from "@navikt/ds-react/Box";
 import type React from "react";
+import type { ComponentProps } from "react";
 import type { LumiSurveyAnswerValue, LumiSurveyQuestion } from "../../../core";
 import type { LumiSurveyRenderQuestionProps } from "../../../types.js";
 import { CLASS_NAMES, joinClassNames } from "../classNames.js";
 import { SuccessContent } from "./SuccessContent.js";
+
+type BoxProps = ComponentProps<typeof Box>;
 
 interface DockPanelProps {
   panelId: string;
   panelLabel: string;
   panelClassName?: string;
   panelStyle: React.CSSProperties;
-  panelBackground: BoxNewProps["background"];
-  panelBorderColor?: BoxNewProps["borderColor"];
+  panelBackground: BoxProps["background"];
+  panelBorderColor?: BoxProps["borderColor"];
   promptQuestion: LumiSurveyQuestion;
   promptHeadingId: string;
   promptDescriptionId?: string;
@@ -107,10 +109,10 @@ export const DockPanel = ({
 }: DockPanelProps) => {
   return (
     <div style={{ position: "relative" }}>
-      <Box.New
+      <Box
         padding="space-16"
         background={panelBackground}
-        borderRadius="large"
+        borderRadius="12"
         shadow="dialog"
         borderWidth={panelBorderColor ? "1" : undefined}
         borderColor={panelBorderColor}
@@ -175,7 +177,8 @@ export const DockPanel = ({
           </div>
           {/* Close button - circular hover effect for better affordance */}
           <Button
-            variant="tertiary-neutral"
+            data-color="neutral"
+            variant="tertiary"
             size="small"
             icon={<XMarkIcon aria-hidden />}
             onClick={onClose}
@@ -321,7 +324,7 @@ export const DockPanel = ({
             </VStack>
           </form>
         )}
-      </Box.New>
+      </Box>
     </div>
   );
 };

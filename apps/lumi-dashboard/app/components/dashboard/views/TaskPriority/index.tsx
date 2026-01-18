@@ -52,10 +52,9 @@ export function TaskPriorityAnalysis({ data }: TaskPriorityAnalysisProps) {
           subtitle="Av alle stemmer"
         />
       </DashboardGrid>
-
       {/* Long Neck Chart */}
       <DashboardCard padding="0" style={{ overflow: "hidden" }}>
-        <Box.New
+        <Box
           padding={{ xs: "space-16", md: "space-24" }}
           borderWidth="0 0 1 0"
           borderColor="neutral-subtle"
@@ -79,9 +78,9 @@ export function TaskPriorityAnalysis({ data }: TaskPriorityAnalysisProps) {
             Oppgavene brukerne mener er viktigst. Prosent = andel av alle
             stemmer.
           </BodyShort>
-        </Box.New>
+        </Box>
 
-        <Box.New padding={{ xs: "space-16", md: "space-24" }}>
+        <Box padding={{ xs: "space-16", md: "space-24" }}>
           <VStack gap="space-12">
             {tasks.slice(0, 15).map((task, index) => {
               const barWidth = (task.votes / maxVotes) * 100;
@@ -151,8 +150,8 @@ export function TaskPriorityAnalysis({ data }: TaskPriorityAnalysisProps) {
           </VStack>
 
           {tasks.length > 15 && (
-            <Box.New
-              marginBlock="space-16 0"
+            <Box
+              marginBlock="space-16 space-0"
               paddingBlock="space-12"
               borderWidth="1 0 0 0"
               borderColor="neutral-subtle"
@@ -160,9 +159,9 @@ export function TaskPriorityAnalysis({ data }: TaskPriorityAnalysisProps) {
               <BodyShort size="small" textColor="subtle">
                 + {tasks.length - 15} flere oppgaver med færre stemmer
               </BodyShort>
-            </Box.New>
+            </Box>
           )}
-        </Box.New>
+        </Box>
       </DashboardCard>
     </>
   );

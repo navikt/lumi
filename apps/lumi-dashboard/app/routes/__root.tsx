@@ -1,5 +1,5 @@
 // Import Aksel Darkside styles (supports light/dark mode)
-import akselStyles from "@navikt/ds-css/darkside?url";
+import akselStyles from "@navikt/ds-css?url";
 import { Theme } from "@navikt/ds-react/Theme";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {

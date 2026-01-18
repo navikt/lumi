@@ -1,6 +1,6 @@
 import { BodyShort, Box, Heading, HStack, VStack } from "@navikt/ds-react";
-import type { BoxNewProps } from "@navikt/ds-react/Box";
 import type React from "react";
+import type { ComponentProps } from "react";
 import { useCallback } from "react";
 import type {
   LumiSurveyAnswerValue,
@@ -21,8 +21,8 @@ interface NpsRatingProps {
   ariaDescribedBy?: string;
   hidePrompt?: boolean;
   hideDescription?: boolean;
-  fieldsetPaddingBlock?: BoxNewProps["paddingBlock"];
-  fieldsetPaddingInline?: BoxNewProps["paddingInline"];
+  fieldsetPaddingBlock?: ComponentProps<typeof Box>["paddingBlock"];
+  fieldsetPaddingInline?: ComponentProps<typeof Box>["paddingInline"];
 }
 
 // NPS color zones: 0-6 detractors (red), 7-8 passives (yellow), 9-10 promoters (green)
@@ -115,7 +115,7 @@ export function NpsRating({
           {question.description}
         </BodyShort>
       )}
-      <Box.New
+      <Box
         as="fieldset"
         className={styles.fieldset ?? "lumi-survey-rating__fieldset"}
         aria-labelledby={
@@ -134,7 +134,7 @@ export function NpsRating({
           {question.prompt}
         </legend>
         <VStack gap="space-8">
-          <Box.New
+          <Box
             as="div"
             role="radiogroup"
             onKeyDown={handleKeyDown}
@@ -182,7 +182,7 @@ export function NpsRating({
                 </button>
               );
             })}
-          </Box.New>
+          </Box>
           <HStack justify="space-between" style={{ width: "100%" }}>
             <BodyShort
               size="small"
@@ -198,7 +198,7 @@ export function NpsRating({
             </BodyShort>
           </HStack>
         </VStack>
-      </Box.New>
+      </Box>
       {isMissing && (
         <BodyShort
           id={errorId}

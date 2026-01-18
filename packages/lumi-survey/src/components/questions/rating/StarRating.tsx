@@ -1,7 +1,7 @@
 import { StarFillIcon, StarIcon } from "@navikt/aksel-icons";
 import { BodyShort, Box, Heading, HStack, VStack } from "@navikt/ds-react";
-import type { BoxNewProps } from "@navikt/ds-react/Box";
 import type React from "react";
+import type { ComponentProps } from "react";
 import { useCallback, useState } from "react";
 import type {
   LumiSurveyAnswerValue,
@@ -22,8 +22,8 @@ interface StarRatingProps {
   ariaDescribedBy?: string;
   hidePrompt?: boolean;
   hideDescription?: boolean;
-  fieldsetPaddingBlock?: BoxNewProps["paddingBlock"];
-  fieldsetPaddingInline?: BoxNewProps["paddingInline"];
+  fieldsetPaddingBlock?: ComponentProps<typeof Box>["paddingBlock"];
+  fieldsetPaddingInline?: ComponentProps<typeof Box>["paddingInline"];
   /**
    * Controls label display behavior:
    * - 'never': No labels shown (default, no layout jump)
@@ -123,7 +123,7 @@ export function StarRating({
           {question.description}
         </BodyShort>
       )}
-      <Box.New
+      <Box
         as="fieldset"
         className={styles.fieldset ?? "lumi-survey-rating__fieldset"}
         aria-labelledby={
@@ -241,7 +241,7 @@ export function StarRating({
             </BodyShort>
           )}
         </VStack>
-      </Box.New>
+      </Box>
       {isMissing && (
         <BodyShort
           id={errorId}

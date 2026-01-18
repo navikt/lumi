@@ -117,7 +117,8 @@ export const ExamplePage = (props: LumiSurveyDockProps) => {
           </Button>
           <Button
             size="small"
-            variant={!hasConsent ? "secondary" : "danger"}
+            data-color={hasConsent ? "danger" : undefined}
+            variant={!hasConsent ? "secondary" : "primary"}
             onClick={handleRevokeConsent}
             disabled={!hasConsent}
           >
