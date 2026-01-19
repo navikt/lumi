@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -68,9 +68,53 @@ jobs:
         run: |
           node -e "const fs=require('fs'); const pkg=require('./packages/lumi-survey/package.json'); const c=fs.readFileSync('./packages/lumi-survey/CHANGELOG.md','utf8'); const v=pkg.version; const patterns=[`## [${v}]`,`## ${v}`]; if (!patterns.some(p=>c.includes(p))) { console.error(`Missing changelog entry for ${v} in packages/lumi-survey/CHANGELOG.md`); process.exit(1); }"
 
+      - name: Guard against empty release (no meaningful changes)
+        if: ${{ inputs.dry_run == 'false' }}
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./packages/lumi-survey/package.json').version")
+          TAG="lumi-survey-v${VERSION}"
+
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            echo "Tag already exists: ${TAG}. Refusing to publish the same version twice."
+            exit 1
+          fi
+
+          LAST_TAG=$(git tag -l 'lumi-survey-v*' --sort=-v:refname | head -n 1 || true)
+          if [ -z "${LAST_TAG}" ]; then
+            echo "No previous lumi-survey release tags found; skipping empty-release guard."
+            exit 0
+          fi
+
+          echo "Checking for meaningful changes since ${LAST_TAG}…"
+          CHANGED=$(git diff --name-only "${LAST_TAG}..HEAD" -- packages/lumi-survey | cat)
+          MEANINGFUL=$(echo "${CHANGED}" | grep -vE '^packages/lumi-survey/(package\.json|CHANGELOG\.md)$' || true)
+
+          if [ -z "${MEANINGFUL}" ]; then
+            echo "No meaningful changes in packages/lumi-survey since ${LAST_TAG}."
+            echo "Only version/changelog changed (or nothing changed). Refusing to publish a new version."
+            exit 1
+          fi
+
+          echo "Meaningful changes detected:"
+          echo "${MEANINGFUL}"
+
       - name: Publish
         if: ${{ inputs.dry_run == 'false' }}
         run: npm -w @navikt/lumi-survey publish
         env:
           NPM_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag release
+        if: ${{ inputs.dry_run == 'false' }}
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./packages/lumi-survey/package.json').version")
+          TAG="lumi-survey-v${VERSION}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "${TAG}" -m "@navikt/lumi-survey ${VERSION}"
+          git push origin "${TAG}"
