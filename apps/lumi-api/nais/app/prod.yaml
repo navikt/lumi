@@ -47,6 +47,7 @@ spec:
       rules:
         - application: lumi-dashboard
         - application: bro-frontend
+        - application: syfo-oppfolgingsplan-frontend
     outbound:
       external:
         - host: console.nav.cloud.nais.io
