@@ -3,6 +3,7 @@ import {
   ActionMenu,
   Box,
   Button,
+  HGrid,
   HStack,
   Label,
   Tag,
@@ -40,6 +41,13 @@ export function FilterMenu({
     params.segment, // Count segmentation filter
   ].filter(Boolean).length;
 
+  const contentStyle = {
+    width: "min(42rem, calc(100vw - 2rem))",
+    minWidth: 320,
+    maxHeight: "70vh",
+    overflowY: "auto" as const,
+  };
+
   return (
     <ActionMenu>
       <ActionMenu.Trigger>
@@ -59,93 +67,98 @@ export function FilterMenu({
           </HStack>
         </Button>
       </ActionMenu.Trigger>
-      <ActionMenu.Content style={{ maxHeight: "70vh", overflowY: "auto" }}>
-        {/* Device filter */}
-        {features.showDeviceFilter && (
-          <ActionMenu.RadioGroup
-            label="Enhet"
-            value={params.deviceType ?? ""}
-            onValueChange={(value) =>
-              setParam("deviceType", value ? value : undefined)
-            }
-          >
-            <ActionMenu.RadioItem value="">Alle enheter</ActionMenu.RadioItem>
-            <ActionMenu.RadioItem value="desktop">Desktop</ActionMenu.RadioItem>
-            <ActionMenu.RadioItem value="mobile">Mobil</ActionMenu.RadioItem>
-            <ActionMenu.RadioItem value="tablet">
-              Nettbrett
-            </ActionMenu.RadioItem>
-          </ActionMenu.RadioGroup>
-        )}
-
-        {/* Quick toggles - only show if there are filters */}
-        {(features.showTextFilter || features.showRatingFilter) && (
-          <>
-            <ActionMenu.Divider />
-            <ActionMenu.Group label="Vis kun">
-              {features.showTextFilter && (
-                <ActionMenu.CheckboxItem
-                  checked={params.hasText === "true"}
-                  onCheckedChange={(checked) =>
-                    setParam("hasText", checked ? "true" : undefined)
+      <ActionMenu.Content style={contentStyle}>
+        <Box padding="space-12">
+          <HGrid columns={{ xs: 1, md: 2 }} gap="space-16">
+            <VStack gap="space-12">
+              {/* Device filter */}
+              {features.showDeviceFilter && (
+                <ActionMenu.RadioGroup
+                  label="Enhet"
+                  value={params.deviceType ?? ""}
+                  onValueChange={(value) =>
+                    setParam("deviceType", value ? value : undefined)
                   }
                 >
-                  Med tekstsvar
-                </ActionMenu.CheckboxItem>
+                  <ActionMenu.RadioItem value="">
+                    Alle enheter
+                  </ActionMenu.RadioItem>
+                  <ActionMenu.RadioItem value="desktop">
+                    Desktop
+                  </ActionMenu.RadioItem>
+                  <ActionMenu.RadioItem value="mobile">
+                    Mobil
+                  </ActionMenu.RadioItem>
+                  <ActionMenu.RadioItem value="tablet">
+                    Nettbrett
+                  </ActionMenu.RadioItem>
+                </ActionMenu.RadioGroup>
               )}
 
-              {features.showRatingFilter && (
-                <ActionMenu.CheckboxItem
-                  checked={params.lowRating === "true"}
-                  onCheckedChange={(checked) =>
-                    setParam("lowRating", checked ? "true" : undefined)
-                  }
-                >
-                  Lav score (1-2)
-                </ActionMenu.CheckboxItem>
+              {/* Quick toggles */}
+              {(features.showTextFilter || features.showRatingFilter) && (
+                <ActionMenu.Group label="Vis kun">
+                  {features.showTextFilter && (
+                    <ActionMenu.CheckboxItem
+                      checked={params.hasText === "true"}
+                      onCheckedChange={(checked) =>
+                        setParam("hasText", checked ? "true" : undefined)
+                      }
+                    >
+                      Med tekstsvar
+                    </ActionMenu.CheckboxItem>
+                  )}
+
+                  {features.showRatingFilter && (
+                    <ActionMenu.CheckboxItem
+                      checked={params.lowRating === "true"}
+                      onCheckedChange={(checked) =>
+                        setParam("lowRating", checked ? "true" : undefined)
+                      }
+                    >
+                      Lav score (1-2)
+                    </ActionMenu.CheckboxItem>
+                  )}
+                </ActionMenu.Group>
               )}
-            </ActionMenu.Group>
-          </>
-        )}
+            </VStack>
 
-        {/* Tags - only show when there are tags available */}
-        {features.showTagsFilter && allTags.length > 0 && (
-          <>
-            <ActionMenu.Divider />
-            <ActionMenu.Group label="Tags">
-              {allTags.map((tag) => (
-                <ActionMenu.CheckboxItem
-                  key={tag}
-                  checked={selectedTags.includes(tag)}
-                  onCheckedChange={(checked) => {
-                    const newTags = checked
-                      ? [...selectedTags, tag]
-                      : selectedTags.filter((t) => t !== tag);
-                    setParam(
-                      "tag",
-                      newTags.length > 0 ? newTags.join(",") : undefined,
-                    );
-                  }}
-                >
-                  {tag}
-                </ActionMenu.CheckboxItem>
-              ))}
-            </ActionMenu.Group>
-          </>
-        )}
+            <VStack gap="space-12">
+              {/* Tags */}
+              {features.showTagsFilter && allTags.length > 0 && (
+                <ActionMenu.Group label="Tags">
+                  {allTags.map((tag) => (
+                    <ActionMenu.CheckboxItem
+                      key={tag}
+                      checked={selectedTags.includes(tag)}
+                      onCheckedChange={(checked) => {
+                        const newTags = checked
+                          ? [...selectedTags, tag]
+                          : selectedTags.filter((t) => t !== tag);
+                        setParam(
+                          "tag",
+                          newTags.length > 0 ? newTags.join(",") : undefined,
+                        );
+                      }}
+                    >
+                      {tag}
+                    </ActionMenu.CheckboxItem>
+                  ))}
+                </ActionMenu.Group>
+              )}
 
-        {/* Segmentation */}
-        {params.surveyId && (
-          <>
-            <ActionMenu.Divider />
-            <Box paddingInline="space-12" paddingBlock="space-8">
-              <VStack gap="space-8">
-                <Label size="small">Segmentering</Label>
-                <ContextTagsFilter surveyId={params.surveyId} />
-              </VStack>
-            </Box>
-          </>
-        )}
+              {/* Segmentation */}
+              {params.surveyId && (
+                <Box>
+                  <VStack gap="space-8">
+                    <Label size="small">Segmentering</Label>
+                    <ContextTagsFilter surveyId={params.surveyId} />
+                  </VStack>
+                </Box>
+              )}
+            </VStack>
+          </HGrid>
+        </Box>
       </ActionMenu.Content>
     </ActionMenu>
   );
