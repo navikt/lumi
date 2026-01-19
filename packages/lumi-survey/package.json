@@ -21,16 +21,14 @@
   ],
   "scripts": {
     "prepack": "npm run build",
-    "build": "npm -w @navikt/lumi-types run build && tsup --config tsup.config.ts",
+    "build": "tsup --config tsup.config.ts",
     "test": "vitest run --passWithNoTests",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "clean": "rm -rf dist",
     "typecheck": "tsc -p tsconfig.typecheck.json --noEmit"
   },
-  "dependencies": {
-    "@navikt/lumi-types": "0.0.0"
-  },
+  "dependencies": {},
   "peerDependencies": {
     "@navikt/ds-css": ">=8",
     "@navikt/ds-react": ">=8",

@@ -2,12 +2,6 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "rootDir": "..",
-    "baseUrl": ".",
-    "paths": {
-      "@navikt/lumi-types": ["../lumi-types/src/index.ts"],
-      "@navikt/lumi-types/api": ["../lumi-types/src/api.ts"],
-      "@navikt/lumi-types/errors": ["../lumi-types/src/errors.ts"],
-      "@navikt/lumi-types/schemas": ["../lumi-types/src/schemas.ts"]
-    }
+    "baseUrl": "."
   }
 }

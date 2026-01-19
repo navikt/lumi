@@ -2,12 +2,8 @@ import type {
   ApiError,
   FeedbackSubmissionV1,
   SubmissionCreatedResponse,
-} from "@navikt/lumi-types";
-import {
-  ApiErrorSchema,
-  FeedbackSubmissionV1Schema,
-  SubmissionCreatedResponseSchema,
-} from "@navikt/lumi-types";
+} from "../contracts/lumiApi";
+import { isApiError, isSubmissionCreatedResponse } from "../contracts/lumiApi";
 
 import type { LumiSurveySubmission, LumiSurveyTransport } from "./types";
 
@@ -42,8 +38,7 @@ async function parseApiError(response: Response): Promise<ApiError | null> {
 
   try {
     const json: unknown = await response.json();
-    const parsed = ApiErrorSchema.safeParse(json);
-    return parsed.success ? parsed.data : null;
+    return isApiError(json) ? json : null;
   } catch {
     return null;
   }
@@ -63,12 +58,10 @@ export async function submitFeedbackToLumiApi(
     ...headersFromProvider,
   };
 
-  const strictSubmission = FeedbackSubmissionV1Schema.parse(submission);
-
   const response = await fetchFn(endpoint, {
     method: "POST",
     headers,
-    body: JSON.stringify(strictSubmission),
+    body: JSON.stringify(submission),
   });
 
   if (!response.ok) {
@@ -85,7 +78,10 @@ export async function submitFeedbackToLumiApi(
   }
 
   const json: unknown = await response.json();
-  return SubmissionCreatedResponseSchema.parse(json);
+  if (!isSubmissionCreatedResponse(json)) {
+    throw new Error("Lumi API response did not match expected shape");
+  }
+  return json;
 }
 
 /**
@@ -98,7 +94,7 @@ export function createLumiApiTransport(
   return {
     submit: async (submission: LumiSurveySubmission) => {
       // The widget already builds schemaVersion=1 payload.
-      // Validate it against the shared contract before sending.
+      // Submit the payload as a FeedbackSubmissionV1-compatible shape.
       await submitFeedbackToLumiApi(
         submission.transportPayload as unknown as FeedbackSubmissionV1,
         options,

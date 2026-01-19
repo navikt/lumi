@@ -37,5 +37,6 @@ Run these from the repo root:
 
 ## Publishing guidance
 
-- Inside this monorepo: no publishing is needed. `npm install` uses workspaces and the apps/packages depend on `@navikt/lumi-types` via the local workspace version.
-- If you later want external consumers (outside this repo) to install `@navikt/lumi-survey`: you should publish `@navikt/lumi-types` and `@navikt/lumi-survey` together (same release process), or change `lumi-survey` to avoid a runtime dependency on a separately published types package.
+- Inside this monorepo: no publishing is needed. `npm install` uses workspaces and apps/packages may depend on `@navikt/lumi-types` via the local workspace version.
+- `@navikt/lumi-survey` is intentionally self-contained (no dependency on workspace-only packages) so it can be published/installed externally without extra packages.
+- If you later want external consumers (outside this repo) to install `@navikt/lumi-survey`: follow the release notes in `packages/lumi-survey/CONTRIBUTING.md`.

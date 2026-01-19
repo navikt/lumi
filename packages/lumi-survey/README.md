@@ -45,6 +45,10 @@ For eksterne flater som bruker NAV dekoratørens consent/storage API:
 npm install @navikt/nav-dekoratoren-moduler
 ```
 
+## Bidra / lage ny versjon
+
+Se `CONTRIBUTING.md` for hvordan vi lager nye versjoner av `@navikt/lumi-survey`.
+
 ## Survey presets
 
 ```tsx
@@ -79,7 +83,9 @@ const taskPriority = createTaskPrioritySurvey({
 
 ### Bruk innebygget Lumi API-transport
 
-`createLumiApiTransport()` validerer payload mot kontrakten i `@navikt/lumi-types` og POST-er til Lumi API.
+`createLumiApiTransport()` POST-er payload til Lumi API.
+
+Merk: widgeten gjør ikke runtime-validering av payload (for å holde pakken lettbeint). Backend validerer uansett.
 
 ```ts
 import { createLumiApiTransport } from "@navikt/lumi-survey";
@@ -89,6 +95,14 @@ const transport = createLumiApiTransport({
   baseUrl: "https://lumi-api.intern.dev.nav.no",
   // getHeaders: async () => ({ Authorization: `Bearer ${token}` }),
 });
+
+Tips: TypeScript-typer følger med pakken (via `dist/*.d.ts`). Om du vil referere til kontrakt-typene eksplisitt kan du importere dem fra `@navikt/lumi-survey`.
+
+Eksempel:
+
+```ts
+import type { LumiApiFeedbackSubmissionV1 } from "@navikt/lumi-survey";
+```
 ```
 
 ### Egen transport

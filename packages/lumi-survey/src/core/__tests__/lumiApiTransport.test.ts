@@ -1,5 +1,5 @@
-import type { FeedbackSubmissionV1 } from "@navikt/lumi-types";
 import { describe, expect, it, vi } from "vitest";
+import type { FeedbackSubmissionV1 } from "../../contracts/lumiApi";
 import {
   createLumiApiTransport,
   submitFeedbackToLumiApi,

@@ -17,10 +17,16 @@ Legacy Flexjar repositories are deprecated:
 - `flexjar-analytics-api` → `apps/lumi-api`
 - `flexjar-widget` → `packages/lumi-survey`
 
-Shared types live in `packages/lumi-types` and are consumed by both the dashboard and the survey widget.
+Shared types live in `packages/lumi-types` and are consumed by the dashboard and other internal code.
+
+The survey widget (`packages/lumi-survey`) is intentionally self-contained (no dependency on internal workspace-only packages) so it can be published and installed externally without extra packages.
 
 Note: The survey widget still uses the legacy NAV localStorage allowlist key pattern `flexjar-*` for consent-related persistence until a new pattern can be allowlisted.
 
 ## Common commands
 - Dashboard: `npm run dev`
 - Dashboard lint/typecheck: `npm run lint` / `npm run typecheck`
+
+## Releasing
+
+- `@navikt/lumi-survey`: see `packages/lumi-survey/CONTRIBUTING.md`

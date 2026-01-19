@@ -59,6 +59,8 @@ jobs:
         run: npm run lint
       - name: Typecheck
         run: npm run typecheck
+      - name: Verify lumi-survey packaging boundaries
+        run: npm run verify:lumi-survey
       - name: Unit tests
         run: npm test
       - name: Install Playwright
