@@ -1,0 +1,71 @@
+name: Publish @navikt/lumi-survey (GitHub Packages)
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run checks and pack, but do not publish"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+concurrency:
+  group: publish-lumi-survey
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+        env:
+          # Repo uses .npmrc with ${NPM_AUTH_TOKEN}
+          NPM_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Verify publish boundaries
+        run: npm run verify:lumi-survey
+
+      - name: Unit tests
+        run: npm -w @navikt/lumi-survey test
+
+      - name: Pack (dry-run)
+        run: npm -w @navikt/lumi-survey pack --dry-run
+
+      - name: Guard against 0.0.0 publish
+        if: ${{ inputs.dry_run == 'false' }}
+        run: |
+          node -e "const p=require('./packages/lumi-survey/package.json'); if (p.version === '0.0.0') { console.error('Refusing to publish version 0.0.0. Bump packages/lumi-survey/package.json first.'); process.exit(1); }"
+
+      - name: Guard against private publish
+        if: ${{ inputs.dry_run == 'false' }}
+        run: |
+          node -e "const p=require('./packages/lumi-survey/package.json'); if (p.private) { console.error('packages/lumi-survey/package.json has private=true. npm will refuse to publish.'); process.exit(1); }"
+
+      - name: Publish
+        if: ${{ inputs.dry_run == 'false' }}
+        run: npm -w @navikt/lumi-survey publish
+        env:
+          NPM_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

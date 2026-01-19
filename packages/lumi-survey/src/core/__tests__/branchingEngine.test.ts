@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   evaluateBranching,
   surveyHasBranchingLogic,
@@ -455,6 +455,13 @@ describe("evaluateBranching", () => {
 
   describe("error handling", () => {
     it("ignores JUMP_TO with invalid targetId (target doesn't exist)", () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+      const consoleWarnSpy = vi
+        .spyOn(console, "warn")
+        .mockImplementation(() => undefined);
+
       const logic: LogicRule[] = [
         {
           condition: { field: "ANSWER", operator: "EQ", value: "TEST" },
@@ -466,15 +473,20 @@ describe("evaluateBranching", () => {
         createQuestion("q2"),
       ];
 
-      const result = evaluateBranching(
-        questions[0],
-        "TEST",
-        undefined,
-        questions,
-        0,
-      );
+      try {
+        const result = evaluateBranching(
+          questions[0],
+          "TEST",
+          undefined,
+          questions,
+          0,
+        );
 
-      expect(result.nextIndex).toBe(1); // Falls through to default
+        expect(result.nextIndex).toBe(1); // Falls through to default
+      } finally {
+        consoleErrorSpy.mockRestore();
+        consoleWarnSpy.mockRestore();
+      }
     });
   });
 });

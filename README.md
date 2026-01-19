@@ -30,3 +30,7 @@ Note: The survey widget still uses the legacy NAV localStorage allowlist key pat
 ## Releasing
 
 - `@navikt/lumi-survey`: see `packages/lumi-survey/CONTRIBUTING.md`
+
+## Guardrails
+
+- Verify that `@navikt/lumi-survey` stays publishable (no `@navikt/lumi-types` / `zod` leakage): `npm run verify:lumi-survey`

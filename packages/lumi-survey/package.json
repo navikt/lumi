@@ -1,11 +1,14 @@
 {
   "name": "@navikt/lumi-survey",
   "version": "0.0.0",
-  "private": true,
+  "private": false,
   "description": "Aksel-based React widget for configurable NAV Lumi surveys.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

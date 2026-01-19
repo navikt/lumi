@@ -39,6 +39,15 @@ For eksterne konsumenter (hvis vi publiserer senere):
 npm install @navikt/lumi-survey @navikt/ds-react @navikt/ds-css
 ```
 
+### Install fra GitHub Packages
+
+Du må ha `.npmrc` som peker `@navikt` til GitHub Packages, f.eks:
+
+```properties
+@navikt:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NPM_AUTH_TOKEN}
+```
+
 For eksterne flater som bruker NAV dekoratørens consent/storage API:
 
 ```sh
