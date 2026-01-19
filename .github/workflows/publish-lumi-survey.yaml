@@ -63,6 +63,11 @@ jobs:
         run: |
           node -e "const p=require('./packages/lumi-survey/package.json'); if (p.private) { console.error('packages/lumi-survey/package.json has private=true. npm will refuse to publish.'); process.exit(1); }"
 
+      - name: Guard against missing changelog entry
+        if: ${{ inputs.dry_run == 'false' }}
+        run: |
+          node -e "const fs=require('fs'); const pkg=require('./packages/lumi-survey/package.json'); const c=fs.readFileSync('./packages/lumi-survey/CHANGELOG.md','utf8'); const v=pkg.version; const patterns=[`## [${v}]`,`## ${v}`]; if (!patterns.some(p=>c.includes(p))) { console.error(`Missing changelog entry for ${v} in packages/lumi-survey/CHANGELOG.md`); process.exit(1); }"
+
       - name: Publish
         if: ${{ inputs.dry_run == 'false' }}
         run: npm -w @navikt/lumi-survey publish

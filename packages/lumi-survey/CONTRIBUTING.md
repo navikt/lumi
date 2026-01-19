@@ -27,6 +27,7 @@ Vi holder kontrakten dependency-free (ingen Zod) for å minimere runtime-avhengi
 
 1. Sørg for at endringen er bakoverkompatibel (semver).
 2. Oppdater versjon i `packages/lumi-survey/package.json`.
+2. Oppdater changelog: `packages/lumi-survey/CHANGELOG.md`.
 3. Kjør kvalitetssjekker:
    - `npm run lint`
    - `npm run typecheck`
@@ -49,14 +50,24 @@ Vi følger SemVer: `MAJOR.MINOR.PATCH`.
 
 Merk: før første stabile release kan vi starte på `0.1.0`. Da vil vi fortsatt bruke samme tenkning, men være litt mer fleksible.
 
+## Changelog
+
+Vi bruker `packages/lumi-survey/CHANGELOG.md` for release-notes.
+
+Prinsipp:
+
+- Hver gang du bumper versjon, legg inn en seksjon for den versjonen i changelog.
+- Skriv kort og konkret (1–6 bullets). Tenk: "hva trenger en konsument å vite?".
+- Interne refactors som ikke påvirker konsumenter kan stå under "Changed" eller utelates.
+
 ## Publisering til GitHub Packages (anbefalt)
 
-Målet er at publisering er en “to-trinns” prosess:
+Publisering er en “to-trinns” prosess:
 
 1) Versjonsbump + endringer i en PR
 2) Publiser fra `main` via GitHub Actions når PR er merget
 
-### Steg-for-steg (teskje)
+### Steg-for-steg
 
 1. Lag PR med endringen du vil slippe.
 2. Velg SemVer-bump (patch/minor/major) basert på reglene over.
@@ -78,13 +89,14 @@ Målet er at publisering er en “to-trinns” prosess:
 
 ### Publisering (manuelt)
 
-Når dere er klare for faktisk publisering må dette være avklart først:
+Dette er normalt ikke nødvendig. Anbefalt flyt er å publisere fra `main` via workflowen over.
 
-- Hvilket registry (npmjs / GitHub Packages / intern løsning)
-- Tilgang til `@navikt`-scope og publish-token
+Bruk manuell publisering kun hvis du må debugge/rette opp et publish-problem, og gjør det med samme krav som workflowen (lint/typecheck/verify/tests + `pack --dry-run`).
 
-Deretter kan du publisere fra repo root, f.eks:
+Per i dag publiserer vi til GitHub Packages (se `publishConfig.registry` i `packages/lumi-survey/package.json`).
+
+For å publisere manuelt må du ha en token som kan skrive til GitHub Packages og en `.npmrc`/miljøvariabel som gir auth (samme mekanisme som i CI).
+
+Publiser fra repo root:
 
 - `npm -w @navikt/lumi-survey publish`
-
-(Flagg som `--access public` kan være nødvendig, avhengig av registry/scope-policy.)
