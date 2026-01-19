@@ -135,27 +135,6 @@ The backend authorizes dashboard access by looking up team membership via the NA
 
 If NAIS team lookup is not configured, the API fails closed with **503** (`TEAM_LOOKUP_NOT_CONFIGURED`).
 
-#### Setup (NAIS)
-
-**Setup:**
-
-1. Create a secret in NAIS Console named `lumi-api` (in both dev and prod) with key:
-  - `NAIS_API_KEY` (or `TEAMS_TOKEN`) (get this from NAIS Console)
-
-  The manifests already set `NAIS_API_GRAPHQL_URL` to `https://console.nav.cloud.nais.io/graphql`.
-  You may also put `NAIS_API_GRAPHQL_URL` in the same secret, but it is not required.
-
-  Example (dev, run in the correct namespace):
-
-  ```bash
-  kubectl create secret generic lumi-api \
-    --from-literal=NAIS_API_KEY='<paste-api-key-here>'
-  ```
-
-2. The manifests already reference this secret via `spec.envFrom`.
-
-  If the secret does not exist, the deployment will fail because Kubernetes cannot mount env vars from a missing secret.
-
 **Local testing:**
 
 To test NAIS team lookups locally, you normally need a valid `NAIS_API_KEY` (or `TEAMS_TOKEN`).
