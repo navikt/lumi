@@ -19,7 +19,7 @@ Monorepoet bruker workspaces, så til daglig trengs ingen publisering. Denne sek
 
 `@navikt/lumi-survey` publiserer TypeScript-typer via `dist/index.d.ts`.
 
-For at konsumenter skal få autocomplete/typestøtte uten ekstra pakker, må typene være løselige uten interne workspace-avhengigheter. Derfor ligger API-kontrakten som `createLumiApiTransport()` bruker inne i `@navikt/lumi-survey`.
+For at konsumenter skal få autocomplete/typestøtte uten ekstra pakker, må typene være løselige uten interne workspace-avhengigheter. Derfor ligger API-kontrakten (TypeScript-typene) inne i `@navikt/lumi-survey`.
 
 Vi holder kontrakten dependency-free (ingen Zod) for å minimere runtime-avhengigheter for eksterne konsumenter.
 

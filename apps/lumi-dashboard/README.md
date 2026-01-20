@@ -1,85 +1,85 @@
 # Lumi Dashboard
 
-Analytics dashboard for Lumi survey data. Built with TanStack Start.
+Analyse-dashboard for Lumi survey-data. Bygget med TanStack Start.
 
-## Quick Start
+## Kom i gang
 
 ```bash
-# Prerequisites: Node.js 20+
+# Forutsetninger: Node.js 20+
 
-# 1. Clone and install
+# 1. Klon og installer
 git clone https://github.com/navikt/lumi.git
 cd lumi
 npm install
 
-# 2. Set environment (optional - defaults work locally)
+# 2. Sett miljøvariabler (valgfritt – default fungerer lokalt)
 export LUMI_API_URL=http://localhost:8080
 
-# 3. Start development server
+# 3. Start dev-server
 npm run dev
-# Open http://localhost:3000
+# Åpne http://localhost:3000
 ```
 
-## Features
+## Egenskaper
 
-- 📊 **Dashboard** - Visual overview with charts and statistics
-- 📈 **Charts** - Rating distribution, timeline, top apps
-- 🔍 **Advanced filtering** - Date range, team, app, text search, tags
-- 📤 **Export** - CSV, JSON, and Excel downloads
-- 🔒 **Sensitive data protection** - PII is automatically redacted by the backend
-- 🎨 **Aksel Darkside** - NAV Design System with dark mode support
+- 📊 **Dashboard** - Visuell oversikt med grafer og statistikk
+- 📈 **Grafer** - Fordeling av rating, tidslinje, topp apper
+- 🔍 **Avansert filtrering** - Dato, team, app, fritekstsøk, tags
+- 📤 **Eksport** - Nedlasting som CSV, JSON og Excel
+- 🔒 **Beskyttelse av sensitive data** - PII maskeres automatisk av backenden
+- 🎨 **Aksel** - NAV designsystem
 
-## Tech Stack
+## Teknologistack
 
-- **TanStack Start** - Full-stack React framework
+- **TanStack Start** - Fullstack React-rammeverk
 - **TanStack Router** - Type-safe routing
-- **TanStack Query** - Server state management
-- **@navikt/ds-react** - NAV Aksel components
-- **Recharts** - Charts and visualizations
-- **@navikt/oasis** - Azure AD authentication
+- **TanStack Query** - Håndtering av server state
+- **@navikt/ds-react** - NAV Aksel-komponenter
+- **Recharts** - Grafer og visualisering
+- **@navikt/oasis** - Azure AD-autentisering
 
-## Pages
+## Sider
 
-| Route | Description |
+| Rute | Beskrivelse |
 |-------|-------------|
-| `/` | Dashboard with overview charts and stats |
-| `/feedback` | Detailed feedback table with filters |
-| `/export` | Export data in various formats |
+| `/` | Dashboard med oversiktsgrafer og statistikk |
+| `/feedback` | Detaljert tabell med filtre |
+| `/export` | Eksport i ulike formater |
 
-## Development
+## Utvikling
 
-### Prerequisites
+### Forutsetninger
 
 - Node.js 20+
 - npm or yarn
 
-### Setup
+### Oppsett
 
 ```bash
-# Install dependencies
+# Installer avhengigheter
 npm install
 
-# Start development server
+# Start dev-server
 npm run dev
 
-# Build for production
+# Bygg for produksjon
 npm run build
 
-# Start production server
+# Start produksjonsserver
 npm run start
 ```
 
-### Environment Variables
+### Miljøvariabler
 
-| Variable | Description | Default |
+| Variabel | Beskrivelse | Standard |
 |----------|-------------|---------|
-| `LUMI_API_URL` | Backend API URL | `http://localhost:8080` |
-| `LUMI_API_AUDIENCE` | Azure AD audience for OBO | `api://dev-gcp.team-esyfo.lumi-api/.default` |
-| `NAIS_CLUSTER_NAME` | NAIS cluster (enables auth) | - |
+| `LUMI_API_URL` | URL til backend-API | `http://localhost:8080` |
+| `LUMI_API_AUDIENCE` | Azure AD-audience for OBO | `api://dev-gcp.team-esyfo.lumi-api/.default` |
+| `NAIS_CLUSTER_NAME` | NAIS cluster (aktiverer auth) | - |
 
-## Deployment
+## Deploy
 
-Deployed to NAIS via GitHub Actions.
+Deployes til NAIS via GitHub Actions.
 
 ### URLs
 
@@ -88,36 +88,36 @@ Deployed to NAIS via GitHub Actions.
 
 ## Authentication
 
-Uses Wonderwall + Azure AD for authentication:
+Bruker Wonderwall + Azure AD for autentisering:
 
-1. User navigates to the app
-2. Wonderwall intercepts and redirects to Azure AD login
-3. After login, Wonderwall adds the token to requests
-4. App validates token and exchanges for OBO token to call backend
+1. Bruker åpner appen
+2. Wonderwall stopper og videresender til Azure AD-innlogging
+3. Etter innlogging legger Wonderwall token på requests
+4. Appen validerer token og bytter til OBO-token for å kalle backenden
 
-## Project Structure
+## Prosjektstruktur
 
 ```
 app/
-├── routes/             # TanStack Router page routes
-│   ├── index.tsx       # Dashboard page (main entry)
-│   └── feedback.tsx    # Feedback table page
+├── routes/             # TanStack Router-ruter
+│   ├── index.tsx       # Dashboard-side (entry)
+│   └── feedback.tsx    # Tilbakemeldingsside (tabell)
 ├── components/
-│   ├── dashboard/      # Dashboard components
-│   │   ├── views/      # Survey-type specific views
-│   │   │   ├── Overview/       # Default "all surveys" view
-│   │   │   ├── TopTasks/       # Top Tasks survey
-│   │   │   ├── Discovery/      # Discovery survey
-│   │   │   ├── TaskPriority/   # Task Priority survey
-│   │   │   └── Rating/         # Rating/Custom survey
+│   ├── dashboard/      # Dashboard-komponenter
+│   │   ├── views/      # Views per survey-type
+│   │   │   ├── Overview/       # Default "alle surveys"-view
+│   │   │   ├── TopTasks/       # Top Tasks-survey
+│   │   │   ├── Discovery/      # Discovery-survey
+│   │   │   ├── TaskPriority/   # Task Priority-survey
+│   │   │   └── Rating/         # Rating/Custom-survey
 │   │   ├── DashboardComponents/
 │   │   ├── StatsCards/
 │   │   └── FieldStats/
-│   ├── feedback/       # Feedback table and related
-│   └── shared/         # Cross-cutting utilities and charts
-├── hooks/              # Custom TanStack Query hooks
-├── types/              # TypeScript interfaces and Zod schemas
-├── server/             # Server-side logic and API functions
-├── styles/             # Global CSS and tokens
-└── mock/               # MSW mock data and handlers
+│   ├── feedback/       # Tilbakemeldingstabell og relatert
+│   └── shared/         # Felles utiler og grafer
+├── hooks/              # Custom TanStack Query-hooks
+├── types/              # TypeScript-grensesnitt og Zod-schema
+├── server/             # Server-side logikk og API-kall
+├── styles/             # Global CSS og tokens
+└── mock/               # MSW mock-data og handlers
 ```

@@ -2,21 +2,23 @@
 
 Aksel-basert React-widget for å samle inn brukertilbakemeldinger via Lumi.
 
-## Quick Start
+## Kom i gang
 
 ```tsx
 import "@navikt/ds-css";
 import "@navikt/lumi-survey/styles.css";
 
-import {
-  LumiSurveyDock,
-  DEFAULT_SURVEY_RATING,
-  createLumiApiTransport,
-} from "@navikt/lumi-survey";
+import { DEFAULT_SURVEY_RATING, LumiSurveyDock } from "@navikt/lumi-survey";
 
-const transport = createLumiApiTransport({
-  // endpoint: "https://lumi-api.intern.nav.no/api/tokenx/v1/feedback",
-});
+const transport = {
+  async submit(submission) {
+    await fetch("/api/lumi/feedback", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(submission.transportPayload),
+    });
+  },
+};
 
 export function App() {
   return (
@@ -29,7 +31,7 @@ export function App() {
 }
 ```
 
-## Installation
+## Installasjon
 
 I dette monorepoet bruker vi workspaces (ingen publisering nødvendig).
 
@@ -58,7 +60,7 @@ npm install @navikt/nav-dekoratoren-moduler
 
 Se `CONTRIBUTING.md` for hvordan vi lager nye versjoner av `@navikt/lumi-survey`.
 
-## Survey presets
+## Survey-presets
 
 ```tsx
 import {
@@ -90,48 +92,20 @@ const taskPriority = createTaskPrioritySurvey({
 
 ## Transport
 
-### Bruk innebygget Lumi API-transport
+Vi støtter én måte å sende inn tilbakemeldinger på:
 
-`createLumiApiTransport()` POST-er payload til Lumi API.
+- Widgeten sender `submission.transportPayload` til din egen backend (API-route/server action), f.eks. `/api/lumi/feedback`.
+- Backenden gjør token exchange (TokenX/OBO eller AzureAD) og videresender til `lumi-api`.
 
-Viktig: Dette må gjøres **server-side**. Widgeten skal ikke poste direkte til `lumi-api` fra browser.
+Viktig: Widgeten skal **ikke** poste direkte til `lumi-api` fra browser.
 
-Typisk integrasjon er at widgeten sender `submission.transportPayload` til din backend (API-route/server action), og at backend gjør token exchange + kaller `lumi-api`.
-
-Merk: widgeten gjør ikke runtime-validering av payload (for å holde pakken lettbeint). Backend validerer uansett.
-
-Validering i din backend er valgfritt (men anbefalt) – f.eks. med Zod, Valibot eller tilsvarende.
-`lumi-api` validerer uansett `schemaVersion=1` og vil svare 400 dersom payload ikke matcher kontrakten.
-
-```ts
-import { createLumiApiTransport } from "@navikt/lumi-survey";
-
-const transport = createLumiApiTransport({
-  // default: /api/tokenx/v1/feedback
-  baseUrl: "https://lumi-api.intern.dev.nav.no",
-  // getHeaders: async () => ({ Authorization: `Bearer ${token}` }),
-});
-
-`getHeaders` bør hente et **server-side** bearer-token (etter token exchange) og må ikke kjøres i browser.
-
-Tips: TypeScript-typer følger med pakken (via `dist/*.d.ts`). Om du vil referere til kontrakt-typene eksplisitt kan du importere dem fra `@navikt/lumi-survey`.
-
-Eksempel:
-
-```ts
-import type { LumiApiFeedbackSubmissionV1 } from "@navikt/lumi-survey";
-```
-```
-
-### Egen transport
+### Widget (browser → din backend)
 
 ```ts
 import type { LumiSurveyTransport } from "@navikt/lumi-survey";
 
-const transport: LumiSurveyTransport = {
+export const transport: LumiSurveyTransport = {
   async submit(submission) {
-    // Send til din backend, ikke direkte til lumi-api.
-    // Backend validerer + gjør token exchange og videresender til lumi-api.
     await fetch("/api/lumi/feedback", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -140,6 +114,10 @@ const transport: LumiSurveyTransport = {
   },
 };
 ```
+
+Server-side (API-route/server action) gjør token exchange og videresender til `lumi-api`.
+
+Detaljert eksempel ligger i repoets rot-README.
 
 ## Consent/storage
 

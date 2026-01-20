@@ -1,98 +1,100 @@
 # Lumi API
 
-Backend API for Lumi survey analytics. Built with Ktor.
+Backend-API for Lumi survey analytics, bygget med Ktor.
 
-## Quick Start
+## Kom i gang
 
 ```bash
-# Prerequisites: JDK 21, Docker
+# Forutsetninger: JDK 21, Docker
 
 # 1. Start PostgreSQL
 docker run -d --name lumi-db \
   -e POSTGRES_USER=lumi -e POSTGRES_PASSWORD=lumi -e POSTGRES_DB=lumi \
   -p 5432:5432 postgres:17
 
-# 2. Run the API
+# 2. Kjør API-et
 ./gradlew run
-# API available at http://localhost:8080
-# Swagger UI at http://localhost:8080/swagger
+# API tilgjengelig på http://localhost:8080
+# Swagger UI på http://localhost:8080/swagger
 ```
 
-## Features
+## Egenskaper
 
-- 📊 **Analytics endpoints** - Statistics, aggregations, timeline data
-- 🔒 **Sensitive data filtering** - Automatic redaction of PII (fødselsnummer, email, phone, etc.)
-- 📤 **Export** - CSV, JSON, and Excel exports
-- 📅 **Date range filtering** - Filter feedback by time period
-- 🏷️ **Tag management** - Add/remove tags on feedback
-- 🔐 **Azure AD authentication** - Secure access via NAIS Texas
+- 📊 **Analyse-endepunkter** - Statistikk, aggregeringer og tidslinjedata
+- 🔒 **Rensing av sensitive data** - Automatisk maskering av PII (fødselsnummer, e-post, telefon osv.)
+- 📤 **Eksport** - CSV-, JSON- og Excel-eksport
+- 📅 **Datofiltrering** - Filtrer tilbakemeldinger på tidsperiode
+- 🏷️ **Tag-håndtering** - Legg til / fjern tags på tilbakemeldinger
+- 🔐 **Autentisering (Azure AD)** - Sikker tilgang via NAIS Texas
 
-## API Endpoints
+## API-endepunkter
 
-### Analytics (Protected)
+### Analyse (beskyttet)
 
-| Endpoint | Description |
+| Endepunkt | Beskrivelse |
 |----------|-------------|
-| `GET /api/v1/intern/feedback` | List feedback with filters |
-| `GET /api/v1/intern/feedback/{id}` | Get single feedback |
-| `DELETE /api/v1/intern/feedback/{id}` | Delete feedback permanently |
-| `POST /api/v1/intern/feedback/{id}/tags` | Add tag |
-| `DELETE /api/v1/intern/feedback/{id}/tags?tag=X` | Remove tag |
-| `GET /api/v1/intern/feedback/tags` | List all tags |
-| `GET /api/v1/intern/teams` | List authorized teams and apps |
-| `GET /api/v1/intern/feedback/teams` | List apps for the currently selected team |
-| `DELETE /api/v1/intern/surveys/{surveyId}` | Delete all feedback for a survey |
-| `GET /api/v1/intern/stats` | Get statistics |
-| `GET /api/v1/intern/stats/ratings` | Rating distribution |
-| `GET /api/v1/intern/stats/timeline` | Timeline data |
-| `GET /api/v1/intern/export?format=csv\|json\|excel` | Export data |
+| `GET /api/v1/intern/feedback` | Liste over tilbakemeldinger med filtre |
+| `GET /api/v1/intern/feedback/{id}` | Hent én tilbakemelding |
+| `DELETE /api/v1/intern/feedback/{id}` | Slett tilbakemelding permanent |
+| `POST /api/v1/intern/feedback/{id}/tags` | Legg til tag |
+| `DELETE /api/v1/intern/feedback/{id}/tags?tag=X` | Fjern tag |
+| `GET /api/v1/intern/feedback/tags` | List alle tags |
+| `GET /api/v1/intern/teams` | List autoriserte team og apper |
+| `GET /api/v1/intern/feedback/teams` | List apper for valgt team |
+| `DELETE /api/v1/intern/surveys/{surveyId}` | Slett alle tilbakemeldinger for en survey |
+| `GET /api/v1/intern/stats` | Hent statistikk |
+| `GET /api/v1/intern/stats/ratings` | Fordeling av rating |
+| `GET /api/v1/intern/stats/timeline` | Tidslinjedata |
+| `GET /api/v1/intern/export?format=csv\|json\|excel` | Eksportér data |
 
-### Query Parameters
+### Query-parametre
 
-All endpoints under `/api/v1/intern/*` are **team-scoped**.
+Alle endepunkter under `/api/v1/intern/*` er **team-scope'et**.
 
-- `team` is an **optional** query parameter.
-- If `team` is omitted, the backend picks a stable default authorized team.
-- If `team` is provided but not authorized, the backend returns **403**.
-- Route handlers always use `call.authorizedTeam` (validated by `TeamAuthorizationPlugin`).
+- `team` er en **valgfri** query-parameter.
+- Hvis `team` utelates, velger backenden et stabilt standardteam som brukeren har tilgang til.
+- Hvis `team` er satt, men ikke autorisert, returnerer backenden **403**.
+- Route handlers bruker alltid `call.authorizedTeam` (validert av `TeamAuthorizationPlugin`).
 
-| Parameter | Type | Default | Description |
+| Parameter | Type | Standard | Beskrivelse |
 |-----------|------|---------|-------------|
-| `team` | string | (selected by backend) | Team scope for the request |
-| `app` | string | - | Filter by app |
-| `fromDate` | `YYYY-MM-DD` | - | Start date (Europe/Oslo, inclusive) |
-| `toDate` | `YYYY-MM-DD` | - | End date (Europe/Oslo, inclusive) |
-| `surveyId` | string | - | Filter by survey ID |
-| `hasText` | boolean | `false` | Only include feedback with text responses |
-| `lowRating` | boolean | `false` | Only include low ratings (1-2) |
-| `tag` | string[] | - | Repeated `tag=foo&tag=bar` (also accepts comma-separated values per entry) |
-| `query` | string | - | Full-text search query |
-| `page` | int | `0` | Page number (0-indexed) |
-| `size` | int | `10` | Page size |
+| `team` | string | (velges av backend) | Team-scope for forespørselen |
+| `app` | string | - | Filtrer på app |
+| `fromDate` | `YYYY-MM-DD` | - | Startdato (Europe/Oslo, inklusiv) |
+| `toDate` | `YYYY-MM-DD` | - | Sluttdato (Europe/Oslo, inklusiv) |
+| `surveyId` | string | - | Filtrer på survey-id |
+| `hasText` | boolean | `false` | Kun tilbakemeldinger med fritekst |
+| `lowRating` | boolean | `false` | Kun lave ratinger (1-2) |
+| `tag` | string[] | - | Gjentatt `tag=foo&tag=bar` (aksepterer også komma-separerte verdier per entry) |
+| `query` | string | - | Fulltekstsøk |
+| `page` | int | `0` | Side (0-indeksert) |
+| `size` | int | `10` | Sidestørrelse |
 | `deviceType` | string | - | `mobile`, `tablet`, `desktop` |
-| `segment` | string[] | - | Repeated `segment=key:value` |
-| `task` | string | - | Top Tasks drill-down filter (matches option label) |
+| `segment` | string[] | - | Gjentatt `segment=key:value` |
+| `task` | string | - | Top Tasks drill-down filter (matcher option label) |
 
-### Submission (For Widget)
+### Innsending (for widget)
 
-| Endpoint | Description |
+| Endepunkt | Beskrivelse |
 |----------|-------------|
-| `POST /api/tokenx/v1/feedback` | Submit feedback from end-user apps (TokenX, schemaVersion=1) |
-| `POST /api/azure/v1/feedback` | Submit feedback from veileder/Modia apps (AzureAD, schemaVersion=1) |
+| `POST /api/tokenx/v1/feedback` | Innsending fra sluttbruker-flater (TokenX, schemaVersion=1) |
+| `POST /api/azure/v1/feedback` | Innsending fra veileder-/Modia-/fagsystem-flater (AzureAD, schemaVersion=1) |
 
-Note: The survey widget should not call these endpoints directly from the browser. Calls are expected to be backend-to-backend (server-side token exchange).
+Merk: Survey-widgeten skal ikke kalle disse endepunktene direkte fra browser. Kall forventes å være backend-til-backend (token exchange server-side).
 
-## 🔐 Security & Access
+Integrasjonsmønsteret (widget → din backend → token exchange → lumi-api) er beskrevet i repoets rot-README og `packages/lumi-survey/README.md`.
 
-This API follows NAIS Zero Trust principles. Both parties must configure access policies.
+## 🔐 Sikkerhet og tilgang
 
-### For Teams Wanting to Submit Feedback
+Dette API-et følger NAIS Zero Trust-prinsipper. Begge parter må konfigurere tilgangspolicyer.
 
-To submit feedback from your application, you need:
+### For team som vil sende inn tilbakemeldinger
 
-#### 1. Request Access (Our Side)
+For å sende inn tilbakemeldinger fra din applikasjon trenger du:
 
-Open an issue in this repository using the **"Request API Access"** template, or create a PR adding your app to our NAIS config:
+#### 1. Be om tilgang (vår side)
+
+Opprett en issue i dette repoet med templaten **"Request API Access"**, eller lag en PR som legger appen din til i vår NAIS-konfig:
 
 ```yaml
 # In nais/app/dev.yaml and nais/app/prod.yaml
@@ -106,9 +108,9 @@ spec:
               namespace: your-team
 ```
 
-#### 2. Configure Outbound (Your Side)
+#### 2. Konfigurer outbound (din side)
 
-Add `lumi-api` to your app's outbound access policy:
+Legg til `lumi-api` i appens outbound-tilgangspolicy:
 
 ```yaml
 # In your app's nais.yaml
@@ -120,54 +122,54 @@ spec:
           namespace: team-esyfo
 ```
 
-#### 3. Get Token (TokenX / AzureAD)
+#### 3. Hent token (TokenX / AzureAD)
 
-Submissions are split by issuer. Use the endpoint that matches your authentication model:
+Innsending er splittet på issuer. Bruk endepunktet som matcher autentiseringsmodellen din:
 
-**TokenX (end-user apps)**
+**TokenX (sluttbruker-flater)**
 
-- Endpoint: `POST /api/tokenx/v1/feedback`
-- Token: TokenX token targeting `lumi-api`
+- Endepunkt: `POST /api/tokenx/v1/feedback`
+- Token: TokenX-token som har audience mot `lumi-api`
 - Caller identity claim: `client_id` (format `cluster:namespace:app`)
 
 **AzureAD (veileder/Modia/fagsystem)**
 
-- Endpoint: `POST /api/azure/v1/feedback`
-- Token: Azure AD token targeting `lumi-api`
+- Endepunkt: `POST /api/azure/v1/feedback`
+- Token: Azure AD-token som har audience mot `lumi-api`
 - Caller identity claim: `azp_name` (format `cluster:namespace:app`)
 
-All calls must include:
+Alle kall må inkludere:
 
 ```
 Authorization: Bearer <token>
 ```
 
-Note: Submission endpoints do not store NAVident.
+Merk: Innsending-endepunktene lagrer ikke NAVident.
 
-### Getting access
+### Tilgang til analyse-endepunkter
 
-This section covers access to the analytics (dashboard) endpoints.
+Denne seksjonen gjelder tilgang til analyse-endepunktene (dashboard).
 
-The backend authorizes dashboard access by looking up team membership via the NAIS Console GraphQL API, using the user's email from the Azure token claims (e.g. `preferred_username`).
+Backenden autoriserer dashboard-tilgang ved å slå opp teammedlemskap via NAIS Console GraphQL API, basert på brukerens e-post fra Azure-token claims (f.eks. `preferred_username`).
 
-If NAIS team lookup is not configured, the API fails closed with **503** (`TEAM_LOOKUP_NOT_CONFIGURED`).
+Hvis NAIS team-oppslag ikke er konfigurert, feiler API-et lukket med **503** (`TEAM_LOOKUP_NOT_CONFIGURED`).
 
-**Local testing:**
+**Lokal testing:**
 
-To test NAIS team lookups locally, you normally need a valid `NAIS_API_KEY` (or `TEAMS_TOKEN`).
-The client authenticates to NAIS Console GraphQL using `Authorization: Bearer <token>`.
+For å teste NAIS team-oppslag lokalt trenger du normalt en gyldig `NAIS_API_KEY` (eller `TEAMS_TOKEN`).
+Klienten autentiserer mot NAIS Console GraphQL med `Authorization: Bearer <token>`.
 
-If you are logged in with the NAIS CLI, you can also use the local NAIS API proxy to call the GraphQL endpoint without a real key:
+Hvis du er logget inn med NAIS CLI kan du også bruke lokal NAIS API-proxy for å kalle GraphQL-endepunktet uten en ekte nøkkel:
 
 ```bash
 nais login -n
 nais alpha api proxy  # listens on localhost:4242
 
-# Proxy forwards to https://console.nav.cloud.nais.io/graphql
+# Proxy videresender til https://console.nav.cloud.nais.io/graphql
 export NAIS_API_GRAPHQL_URL='http://localhost:4242/graphql'
 
-# Must be non-empty to enable the integration in this app.
-# The proxy accepts requests even if this is not a real key.
+# Må være ikke-tom for å aktivere integrasjonen i denne appen.
+# Proxyen aksepterer forespørsler selv om dette ikke er en ekte nøkkel.
 export NAIS_API_KEY='dummy'
 
 ./gradlew run
@@ -180,56 +182,53 @@ export NAIS_API_KEY='<dev-api-key>'
 ./gradlew run
 ```
 
-**How it works:**
+**Slik fungerer det:**
 
-1. When a user logs in, the backend extracts their email from the Azure token
-2. The NAIS Console API is queried for the user's team memberships
-3. Results are cached to reduce API load (separate TTLs for "has teams" vs "no teams")
-4. If the API call fails, access is denied (fail closed)
+1. Når en bruker logger inn, henter backenden ut e-post fra Azure-tokenet
+2. NAIS Console API spørres om brukerens teammedlemskap
+3. Resultater caches for å redusere last (separate TTL-er for "har team" vs "har ingen team")
+4. Hvis API-kallet feiler, gis ikke tilgang (fail closed)
 
 **Observability:**
 
-The NAIS API integration exposes Prometheus metrics at `/internal/prometheus`:
+NAIS API-integrasjonen eksponerer Prometheus-metrikker på `/internal/prometheus`:
 
-| Metric | Description |
+| Metrikk | Beskrivelse |
 |--------|-------------|
-| `nais_api_calls_total` | Total number of NAIS API calls |
-| `nais_api_errors_total` | Total number of NAIS API errors |
-| `nais_api_call_duration_seconds` | Duration of NAIS API calls |
-| `nais_api_cache_hits_total` | Number of cache hits |
-| `nais_api_cache_misses_total` | Number of cache misses |
+| `nais_api_calls_total` | Antall NAIS API-kall |
+| `nais_api_errors_total` | Antall NAIS API-feil |
+| `nais_api_call_duration_seconds` | Varighet på NAIS API-kall |
+| `nais_api_cache_hits_total` | Antall cache-treff |
+| `nais_api_cache_misses_total` | Antall cache-miss |
 
-**Notes:**
+**Notater:**
 
-- Team identifiers in query params are NAIS namespace slugs (e.g. `team-esyfo`).
-- The API will return **403** (`NO_TEAM_ACCESS`) if NAIS returns no teams for the user.
-|------------|----------------|
-| `5066bb56-7f19-4b49-ae48-f1ba66abf546` | `isyfo` |
-| `ef4e9824-6f3a-4933-8f40-6edf5233d4d2` | `esyfo` |
+- Team-identifikatorer i query-parametre er NAIS namespace-slugs (f.eks. `team-esyfo`).
+- API-et returnerer **403** (`NO_TEAM_ACCESS`) hvis NAIS ikke finner noen team for brukeren.
 
 
-## Sensitive Data Filtering
+## Rensing av sensitive data
 
-The API automatically redacts sensitive data from feedback text:
+API-et maskerer automatisk sensitive data i fritekst:
 
-| Pattern | Example | Replacement |
+| Mønster | Eksempel | Erstatning |
 |---------|---------|-------------|
 | Fødselsnummer | 12345678901 | `[FØDSELSNUMMER FJERNET]` |
 | NAVident | A123456 | `[NAVIDENT FJERNET]` |
-| Email | test@nav.no | `[E-POST FJERNET]` |
-| Phone | 12345678 | `[TELEFON FJERNET]` |
-| Bank card | 1234 5678 9012 3456 | `[KORTNUMMER FJERNET]` |
-| Bank account | 1234.56.12345 | `[KONTONUMMER FJERNET]` |
-| Secret address | "hemmelig adresse" | `[HEMMELIG ADRESSE]` |
+| E-post | test@nav.no | `[E-POST FJERNET]` |
+| Telefon | 12345678 | `[TELEFON FJERNET]` |
+| Kortnummer | 1234 5678 9012 3456 | `[KORTNUMMER FJERNET]` |
+| Kontonummer | 1234.56.12345 | `[KONTONUMMER FJERNET]` |
+| Hemmelig adresse | "hemmelig adresse" | `[HEMMELIG ADRESSE]` |
 
-## Development
+## Utvikling
 
-### Prerequisites
+### Forutsetninger
 
 - JDK 21
 - Docker (for PostgreSQL)
 
-### Run locally
+### Kjør lokalt
 
 ```bash
 # Start PostgreSQL
@@ -240,25 +239,25 @@ docker run -d --name lumi-db \
   -p 5432:5432 \
   postgres:17
 
-# Run the application
+# Kjør applikasjonen
 ./gradlew run
 ```
 
-### Build
+### Bygg
 
 ```bash
 ./gradlew build
 ```
 
-### Test
+### Tester
 
 ```bash
 ./gradlew test
 ```
 
-## Deployment
+## Deploy
 
-Deployed to NAIS via GitHub Actions.
+Deployes til NAIS via GitHub Actions.
 
 ```bash
 # Dev
@@ -268,12 +267,12 @@ kubectl apply -f nais/app/dev.yaml
 kubectl apply -f nais/app/naiserator.yaml
 ```
 
-## Tech Stack
+## Teknologistack
 
-- **Ktor** - Kotlin async web framework
+- **Ktor** - Kotlin web-rammeverk
 - **PostgreSQL** - Database
-- **Flyway** - Database migrations
+- **Flyway** - Databasemigreringer
 - **HikariCP** - Connection pooling
-- **kotlinx.serialization** - JSON serialization
-- **Apache POI** - Excel export
-- **nav-token-support** - Azure AD / TokenX validation
+- **kotlinx.serialization** - JSON-serialisering
+- **Apache POI** - Excel-eksport
+- **nav-token-support** - Validering av Azure AD / TokenX

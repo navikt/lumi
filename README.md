@@ -8,11 +8,11 @@ Lumi består av:
 - **API**: Tar imot submissions, lagrer data, og tilbyr analytics/endepunkter for dashboard.
 - **Dashboard**: Admin-grensesnitt for å utforske data, filtrere, tagge og eksportere.
 
-## Structure
-- `apps/lumi-dashboard`: Admin dashboard (TanStack Start)
-- `apps/lumi-api`: Backend API (Kotlin/Ktor)
-- `packages/lumi-types`: Shared TypeScript types
-- `packages/lumi-survey`: Survey widget package
+## Struktur
+- `apps/lumi-dashboard`: Admin-dashboard (TanStack Start)
+- `apps/lumi-api`: Backend-API (Kotlin/Ktor)
+- `packages/lumi-types`: Delte TypeScript-typer
+- `packages/lumi-survey`: Survey-widget
 
 ## Integrasjon (for team)
 
@@ -21,13 +21,60 @@ Lumi skiller bevisst mellom submissions fra sluttbruker-flater (TokenX) og veile
 Viktig: Survey-widgeten skal **ikke** poste direkte til `lumi-api` fra browser. Token exchange må gjøres server-side. Typisk flyt er:
 
 1. Widget sender payload til din app/backend (f.eks. server action / API-route)
-2. Backend kan validere payload (valgfritt, men anbefalt – f.eks. med Zod)
+2. Backend kan validere payload (valgfritt, men ofte lurt – f.eks. med Zod)
 3. Backend gjør token exchange (TokenX/OBO eller AzureAD, avhengig av type flate)
 4. Backend kaller `lumi-api`
 
+### Slik integrerer du ("manuell" transport)
+
+I NAV-økosystemet er det vanligst å implementere dette som en enkel server action / API-route i din app som:
+
+1. Tar imot `submission.transportPayload` fra widgeten
+2. (Valgfritt) validerer payload (f.eks. Zod)
+3. Gjør token exchange og kaller `lumi-api`
+
+Pseudo-kode (Next.js/Node-ish):
+
+```ts
+// 1) Client: widget transport
+const transport = {
+	async submit(submission) {
+		await fetch("/api/lumi/feedback", {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify(submission.transportPayload),
+		});
+	},
+};
+
+// 2) Server: endepunkt som gjør token exchange + videresender
+export async function POST(req: Request) {
+	const payload = await req.json();
+
+	// (Valgfritt) valider payload her
+	// lumiSurveyTransportSchema.parse(payload)
+
+	const accessToken = await exchangeTokenForLumiApi();
+
+	const res = await fetch(`${process.env.LUMI_API_HOST}/api/tokenx/v1/feedback`, {
+		method: "POST",
+		headers: {
+			"content-type": "application/json",
+			authorization: `Bearer ${accessToken}`,
+		},
+		body: JSON.stringify(payload),
+	});
+
+	if (!res.ok) throw new Error("Failed to submit Lumi feedback");
+	return new Response(await res.text(), { status: res.status });
+}
+```
+
+`exchangeTokenForLumiApi()` er app-spesifikt (TokenX/OBO-løsning avhenger av stack). Poenget er at token exchange skjer server-side.
+
 ### Sluttbruker-flater (TokenX)
 
-- Endpoint: `POST /api/tokenx/v1/feedback`
+- Endepunkt: `POST /api/tokenx/v1/feedback`
 - Auth: **TokenX**
 - Caller-identitet: `client_id` (format `cluster:namespace:app`)
 
@@ -35,7 +82,7 @@ Bruk dette for f.eks. innloggede sluttbruker-flater (arbeidsgiver/privatperson) 
 
 ### Veileder / fagsystem (AzureAD)
 
-- Endpoint: `POST /api/azure/v1/feedback`
+- Endepunkt: `POST /api/azure/v1/feedback`
 - Auth: **AzureAD**
 - Caller-identitet: `azp_name` (format `cluster:namespace:app`)
 
@@ -43,7 +90,7 @@ Bruk dette for f.eks. Modia/veiledersystem. Submissions skal ikke lagre NAVident
 
 ### Tilgang (Zero Trust)
 
-For at din app skal kunne kalle Lumi API, må både din app og `lumi-api` ha riktige NAIS access policies (inbound/outbound). Se mer detaljer i `apps/lumi-api/README.md`.
+For at appen din skal kunne kalle Lumi API, må både appen din og `lumi-api` ha riktige NAIS tilgangspolicyer (inbound/outbound). Se mer detaljer i `apps/lumi-api/README.md`.
 
 ## Kom i gang (lokal utvikling)
 
@@ -56,29 +103,29 @@ For at din app skal kunne kalle Lumi API, må både din app og `lumi-api` ha rik
 - Widget og eksempler: `packages/lumi-survey/README.md`
 - Release/publisering: `packages/lumi-survey/CONTRIBUTING.md`
 
-## Migration status
+## Migreringsstatus
 
-This monorepo is the source of truth going forward.
+Dette monorepoet er fasiten fremover.
 
-Legacy Flexjar repositories are deprecated:
+Tidligere Flexjar-repoer er faset ut:
 - `flexjar-analytics` → `apps/lumi-dashboard`
 - `flexjar-analytics-api` → `apps/lumi-api`
 - `flexjar-widget` → `packages/lumi-survey`
 
-Shared types live in `packages/lumi-types` and are consumed by the dashboard and other internal code.
+Delte typer ligger i `packages/lumi-types` og brukes av dashboardet og annen intern kode.
 
-The survey widget (`packages/lumi-survey`) is intentionally self-contained (no dependency on internal workspace-only packages) so it can be published and installed externally without extra packages.
+Survey-widgeten (`packages/lumi-survey`) er bevisst selvstendig (ingen avhengighet til interne workspace-only pakker) slik at den kan publiseres og installeres eksternt uten ekstra pakker.
 
-Note: The survey widget still uses the legacy NAV localStorage allowlist key pattern `flexjar-*` for consent-related persistence until a new pattern can be allowlisted.
+Merk: Survey-widgeten bruker fortsatt gammel NAV localStorage tillatliste-key pattern `flexjar-*` for consent-relatert persistering til et nytt mønster blir tillatlistet.
 
-## Common commands
+## Vanlige kommandoer
 - Dashboard: `npm run dev`
 - Dashboard lint/typecheck: `npm run lint` / `npm run typecheck`
 
-## Releasing
+## Release
 
-- `@navikt/lumi-survey`: see `packages/lumi-survey/CONTRIBUTING.md`
+- `@navikt/lumi-survey`: se `packages/lumi-survey/CONTRIBUTING.md`
 
-## Guardrails
+## Føringer
 
-- Verify that `@navikt/lumi-survey` stays publishable (no `@navikt/lumi-types` / `zod` leakage): `npm run verify:lumi-survey`
+- Verifiser at `@navikt/lumi-survey` fortsatt kan publiseres (ingen `@navikt/lumi-types` / `zod`-lekasje): `npm run verify:lumi-survey`
