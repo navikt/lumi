@@ -21,7 +21,7 @@ fun Application.configureRouting() {
         // Health checks - no auth
         internalRoutes()
         
-        // Public submission API (for widget) - uses TokenX/Azure from submitting app
+        // Public submission API - issuer-specific endpoints (/api/tokenx/* and /api/azure/*)
         submissionRoutes()
         
         // Protected analytics API - requires Azure AD from frontend

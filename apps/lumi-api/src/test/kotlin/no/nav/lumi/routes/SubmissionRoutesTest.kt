@@ -19,7 +19,7 @@ class SubmissionRoutesTest : FunSpec({
             application { testModule() }
             val client = createTestClient()
 
-            val response = client.post("/api/v1/feedback") {
+            val response = client.post("/api/tokenx/v1/feedback") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     """
@@ -56,12 +56,57 @@ class SubmissionRoutesTest : FunSpec({
         }
     }
 
-    test("should reject invalid payload") {
+        test("should accept schemaVersion=1 submissions via azure endpoint") {
+                testApplication {
+                        application { testModule() }
+                        val client = createTestClient()
+
+                        val response = client.post("/api/azure/v1/feedback") {
+                                contentType(ContentType.Application.Json)
+                                setBody(
+                                        """
+                                        {
+                                            "schemaVersion": 1,
+                                            "surveyId": "dp-feedback",
+                                            "surveyType": "rating",
+                                            "submittedAt": "2026-01-10T12:00:12Z",
+                                            "answers": [
+                                                {
+                                                    "fieldId": "rating",
+                                                    "fieldType": "RATING",
+                                                    "question": { "label": "Hvor fornøyd er du?", "description": null, "options": null },
+                                                    "value": { "type": "rating", "rating": 2, "ratingVariant": "emoji", "ratingScale": 5 }
+                                                }
+                                            ]
+                                        }
+                                        """.trimIndent()
+                                )
+                        }
+
+                        response.status shouldBe HttpStatusCode.Created
+                }
+        }
+
+    test("legacy /api/v1/feedback should not exist") {
         testApplication {
             application { testModule() }
             val client = createTestClient()
 
             val response = client.post("/api/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody("{}")
+            }
+
+            response.status shouldBe HttpStatusCode.NotFound
+        }
+    }
+
+    test("should reject invalid payload") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+
+            val response = client.post("/api/tokenx/v1/feedback") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     """
@@ -83,7 +128,7 @@ class SubmissionRoutesTest : FunSpec({
             application { testModule() }
             val client = createTestClient()
 
-            val response = client.post("/api/v1/feedback") {
+            val response = client.post("/api/tokenx/v1/feedback") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     """

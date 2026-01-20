@@ -50,6 +50,8 @@ spec:
         - application: lumi-dashboard
         - application: bro-frontend
         - application: syfo-oppfolgingsplan-frontend
+        - application: syfomodiaperson
+          namespace: teamsykefravr
     outbound:
       external:
         - host: console.nav.cloud.nais.io

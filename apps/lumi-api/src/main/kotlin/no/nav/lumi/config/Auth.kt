@@ -8,6 +8,7 @@ import io.ktor.server.response.*
 import kotlinx.coroutines.runBlocking
 import no.nav.lumi.config.auth.BrukerPrincipal
 import no.nav.lumi.config.auth.CallerIdentity
+import no.nav.lumi.config.auth.parseCallerIdentity
 import no.nav.lumi.config.auth.TexasClient
 import org.slf4j.LoggerFactory
 
@@ -69,7 +70,7 @@ fun Application.configureAuth() {
  */
 private fun validateTokenWithTexas(token: String): BrukerPrincipal? {
     return runBlocking {
-        val result = texasClient.introspect(token)
+        val result = texasClient.introspect(token, identityProvider = "azuread")
         
         if (result == null) {
             logger.warn("Token validation failed - introspection returned null")
@@ -124,13 +125,9 @@ fun isDev(): Boolean = ServerEnv.current.nais.isLocal
  */
 fun extractCallerIdentityFromPrincipal(principal: BrukerPrincipal): CallerIdentity? {
     return try {
-        val azpName = principal.clientId ?: return null
-        val parts = azpName.split(":")
-        if (parts.size < 3) return null
-        
-        CallerIdentity(
-            team = parts[1],
-            app = parts[2],
+        val callerId = principal.clientId ?: return null
+        parseCallerIdentity(
+            callerId = callerId,
             navIdent = principal.navIdent,
             name = principal.name
         )

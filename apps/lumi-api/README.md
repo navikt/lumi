@@ -77,7 +77,10 @@ All endpoints under `/api/v1/intern/*` are **team-scoped**.
 
 | Endpoint | Description |
 |----------|-------------|
-| `POST /api/v1/feedback` | Submit feedback (schemaVersion=1, returns created ID) |
+| `POST /api/tokenx/v1/feedback` | Submit feedback from end-user apps (TokenX, schemaVersion=1) |
+| `POST /api/azure/v1/feedback` | Submit feedback from veileder/Modia apps (AzureAD, schemaVersion=1) |
+
+Note: The survey widget should not call these endpoints directly from the browser. Calls are expected to be backend-to-backend (server-side token exchange).
 
 ## 🔐 Security & Access
 
@@ -117,15 +120,29 @@ spec:
           namespace: team-esyfo
 ```
 
-#### 3. Get Azure AD Token
+#### 3. Get Token (TokenX / AzureAD)
 
-Your app must obtain an Azure AD token targeting `lumi-api` and include it in requests:
+Submissions are split by issuer. Use the endpoint that matches your authentication model:
+
+**TokenX (end-user apps)**
+
+- Endpoint: `POST /api/tokenx/v1/feedback`
+- Token: TokenX token targeting `lumi-api`
+- Caller identity claim: `client_id` (format `cluster:namespace:app`)
+
+**AzureAD (veileder/Modia/fagsystem)**
+
+- Endpoint: `POST /api/azure/v1/feedback`
+- Token: Azure AD token targeting `lumi-api`
+- Caller identity claim: `azp_name` (format `cluster:namespace:app`)
+
+All calls must include:
 
 ```
 Authorization: Bearer <token>
 ```
 
-The token's `azp_name` claim identifies your app and determines which team the feedback belongs to.
+Note: Submission endpoints do not store NAVident.
 
 ### Getting access
 

@@ -19,7 +19,7 @@ tags:
   - name: Analytics
     description: Protected endpoints for viewing and managing feedback data
   - name: Submission
-    description: Public endpoints for submitting feedback from widgets
+    description: Submission endpoints for collecting feedback (intended for server-side, backend-to-backend calls)
   - name: Internal
     description: Health check endpoints for NAIS
 
@@ -1088,13 +1088,38 @@ paths:
                 type: string
                 format: binary
 
-  # ==================== Submission (Public) ====================
-  /api/v1/feedback:
+  # ==================== Submission ====================
+  /api/tokenx/v1/feedback:
     post:
       tags: [Submission]
-      summary: Submit feedback
-      description: Canonical widget submission payload (schemaVersion=1). Returns created ID.
-      security: []
+      summary: Submit feedback (TokenX)
+      description: Submission payload (schemaVersion=1) from end-user apps authenticated with TokenX. Intended for server-side token exchange + backend-to-backend calls. Returns created ID.
+      security:
+        - tokenx: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackSubmission'
+      responses:
+        '201':
+          description: Feedback created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+
+  /api/azure/v1/feedback:
+    post:
+      tags: [Submission]
+      summary: Submit feedback (AzureAD)
+      description: Submission payload (schemaVersion=1) from veileder/Modia apps authenticated with AzureAD. Intended for backend-to-backend calls. Returns created ID.
+      security:
+        - azuread: []
       requestBody:
         required: true
         content:
@@ -1138,6 +1163,18 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Azure AD token via Wonderwall
+
+    tokenx:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: TokenX access token
+
+    azuread:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Azure AD access token
 
   schemas:
     FeedbackDto:

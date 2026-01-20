@@ -15,7 +15,7 @@ import {
 } from "@navikt/lumi-survey";
 
 const transport = createLumiApiTransport({
-  // endpoint: "https://lumi-api.intern.nav.no/api/v1/feedback",
+  // endpoint: "https://lumi-api.intern.nav.no/api/tokenx/v1/feedback",
 });
 
 export function App() {
@@ -94,16 +94,25 @@ const taskPriority = createTaskPrioritySurvey({
 
 `createLumiApiTransport()` POST-er payload til Lumi API.
 
+Viktig: Dette må gjøres **server-side**. Widgeten skal ikke poste direkte til `lumi-api` fra browser.
+
+Typisk integrasjon er at widgeten sender `submission.transportPayload` til din backend (API-route/server action), og at backend gjør token exchange + kaller `lumi-api`.
+
 Merk: widgeten gjør ikke runtime-validering av payload (for å holde pakken lettbeint). Backend validerer uansett.
+
+Validering i din backend er valgfritt (men anbefalt) – f.eks. med Zod, Valibot eller tilsvarende.
+`lumi-api` validerer uansett `schemaVersion=1` og vil svare 400 dersom payload ikke matcher kontrakten.
 
 ```ts
 import { createLumiApiTransport } from "@navikt/lumi-survey";
 
 const transport = createLumiApiTransport({
-  // default: /api/v1/feedback
+  // default: /api/tokenx/v1/feedback
   baseUrl: "https://lumi-api.intern.dev.nav.no",
   // getHeaders: async () => ({ Authorization: `Bearer ${token}` }),
 });
+
+`getHeaders` bør hente et **server-side** bearer-token (etter token exchange) og må ikke kjøres i browser.
 
 Tips: TypeScript-typer følger med pakken (via `dist/*.d.ts`). Om du vil referere til kontrakt-typene eksplisitt kan du importere dem fra `@navikt/lumi-survey`.
 
@@ -121,7 +130,9 @@ import type { LumiSurveyTransport } from "@navikt/lumi-survey";
 
 const transport: LumiSurveyTransport = {
   async submit(submission) {
-    await fetch("/api/v1/feedback", {
+    // Send til din backend, ikke direkte til lumi-api.
+    // Backend validerer + gjør token exchange og videresender til lumi-api.
+    await fetch("/api/lumi/feedback", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(submission.transportPayload),

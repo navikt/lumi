@@ -8,7 +8,7 @@ import { isApiError, isSubmissionCreatedResponse } from "../contracts/lumiApi";
 import type { LumiSurveySubmission, LumiSurveyTransport } from "./types";
 
 export interface LumiApiTransportOptions {
-  /** Full endpoint URL, e.g. `https://.../api/v1/feedback` or `/api/v1/feedback`. */
+  /** Full endpoint URL, e.g. `https://.../api/tokenx/v1/feedback` or `/api/tokenx/v1/feedback`. */
   endpoint?: string;
   /** Base URL if you want to provide `baseUrl` + default path. */
   baseUrl?: string;
@@ -26,10 +26,10 @@ function resolveEndpoint(options?: LumiApiTransportOptions): string {
 
   const baseUrl = options?.baseUrl;
   if (baseUrl && baseUrl.length > 0) {
-    return `${baseUrl.replace(/\/$/, "")}/api/v1/feedback`;
+    return `${baseUrl.replace(/\/$/, "")}/api/tokenx/v1/feedback`;
   }
 
-  return "/api/v1/feedback";
+  return "/api/tokenx/v1/feedback";
 }
 
 async function parseApiError(response: Response): Promise<ApiError | null> {
@@ -48,6 +48,9 @@ export async function submitFeedbackToLumiApi(
   submission: FeedbackSubmissionV1,
   options?: LumiApiTransportOptions,
 ): Promise<SubmissionCreatedResponse> {
+  // NOTE: This should be called server-side.
+  // Browser clients should submit to their own backend first, which performs token exchange
+  // and forwards the request to lumi-api.
   const endpoint = resolveEndpoint(options);
   const fetchFn = options?.fetchFn ?? fetch;
 

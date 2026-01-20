@@ -9,7 +9,8 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import no.nav.lumi.config.SubmissionRateLimit
-import no.nav.lumi.config.auth.SubmissionAuthPlugin
+import no.nav.lumi.config.auth.AzureSubmissionAuthPlugin
+import no.nav.lumi.config.auth.TokenXSubmissionAuthPlugin
 import no.nav.lumi.config.auth.getCallerIdentity
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.AnswerValue
@@ -31,22 +32,26 @@ private val strictJson = Json {
 /**
  * Submission routes for feedback collection.
  * 
- * All routes require authentication via Azure AD token.
- * The caller's identity (team/app) is extracted from the token's azp_name claim.
- * Any authenticated NAIS app can submit feedback - no whitelist required.
+ * Issuer-specific submission endpoints:
+ * - TokenX: /api/tokenx/v1/feedback
+ * - AzureAD: /api/azure/v1/feedback
+ *
+ * The caller's identity (team/app) is extracted from:
+ * - TokenX: client_id
+ * - AzureAD: azp_name
  * 
  * Rate limited to 100 requests per minute per calling application.
  */
 fun Route.submissionRoutes(feedbackService: FeedbackService = defaultFeedbackService) {
     rateLimit(SubmissionRateLimit) {
-        route("/api") {
-            // Install authentication plugin for all submission routes
-            install(SubmissionAuthPlugin)
+        route("/api/tokenx") {
+            install(TokenXSubmissionAuthPlugin)
+            post("/v1/feedback") { handleSubmissionV1(call, feedbackService) }
+        }
 
-            // Canonical submission endpoint (schemaVersion=1)
-            post("/v1/feedback") {
-                handleSubmissionV1(call, feedbackService)
-            }
+        route("/api/azure") {
+            install(AzureSubmissionAuthPlugin)
+            post("/v1/feedback") { handleSubmissionV1(call, feedbackService) }
         }
     }
 }

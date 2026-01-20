@@ -11,7 +11,11 @@ data class BrukerPrincipal(
 )
 
 /**
- * Caller identity extracted from the token's azp_name claim.
+ * Caller identity extracted from the calling application's identity claims.
+ *
+ * - AzureAD: typically `azp_name` ("cluster:namespace:app")
+ * - TokenX: typically `client_id` ("cluster:namespace:app")
+ *
  * Used for both analytics routes and submission routes.
  */
 data class CallerIdentity(
@@ -20,4 +24,27 @@ data class CallerIdentity(
     val navIdent: String?,
     val name: String?
 )
+
+/**
+ * Parse a caller id in the common NAIS format "cluster:namespace:app".
+ *
+ * Returns null if the format is invalid.
+ */
+fun parseCallerIdentity(
+    callerId: String,
+    navIdent: String? = null,
+    name: String? = null
+): CallerIdentity? {
+    val parts = callerId.split(":")
+    if (parts.size < 3) return null
+    val team = parts[parts.size - 2]
+    val app = parts[parts.size - 1]
+    if (team.isBlank() || app.isBlank()) return null
+    return CallerIdentity(
+        team = team,
+        app = app,
+        navIdent = navIdent,
+        name = name
+    )
+}
 

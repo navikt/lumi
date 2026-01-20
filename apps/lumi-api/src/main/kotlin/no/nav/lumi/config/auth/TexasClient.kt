@@ -37,14 +37,14 @@ class TexasClient(
      * Introspect a token using the Texas sidecar.
      * Returns the introspection result with claims if valid, or null if invalid.
      */
-    suspend fun introspect(token: String): TexasIntrospectionResult? {
+    suspend fun introspect(token: String, identityProvider: String): TexasIntrospectionResult? {
         return try {
             // Introspection happens per request in NAIS; keep this at DEBUG to avoid log spam.
             log.debug("Introspecting token with Texas: $introspectionEndpoint")
             val response = client.post(introspectionEndpoint) {
                 contentType(ContentType.Application.Json)
                 setBody(TexasIntrospectionRequest(
-                    identityProvider = "azuread",
+                    identityProvider = identityProvider,
                     token = token
                 ))
             }
@@ -103,6 +103,9 @@ data class TexasIntrospectionResult(
     val exp: Long? = null,
     val iat: Long? = null,
     val azp: String? = null,
+    /** TokenX client id in format "cluster:namespace:app" */
+    @SerialName("client_id")
+    val clientId: String? = null,
     /** The calling application's name in format "cluster:namespace:app" */
     val azp_name: String? = null,
     /** NAV employee identifier */

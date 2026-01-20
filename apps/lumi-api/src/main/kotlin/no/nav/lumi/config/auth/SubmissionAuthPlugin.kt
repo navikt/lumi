@@ -3,8 +3,6 @@ package no.nav.lumi.config.auth
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
-import io.ktor.server.response.*
-import kotlinx.coroutines.runBlocking
 import no.nav.lumi.config.ServerEnv
 import no.nav.lumi.config.exception.ApiErrorException
 import org.slf4j.LoggerFactory
@@ -12,92 +10,115 @@ import org.slf4j.LoggerFactory
 private val log = LoggerFactory.getLogger("SubmissionAuthPlugin")
 
 /**
- * Authentication plugin for submission routes.
- * 
- * This plugin:
- * 1. Requires a valid Azure AD token (via Texas introspection)
- * 2. Extracts caller identity from the token
- * 3. Allows ANY authenticated NAIS app to submit (no whitelist)
- * 
- * The caller's identity (team/app) is stored as request attributes
- * for use by the route handlers.
+ * Authentication plugins for submission routes.
+ *
+ * Submission is intentionally split by issuer:
+ * - TokenX (end-user apps)
+ * - AzureAD (Modia/veiledersystem)
  */
-class SubmissionAuthPluginConfig {
-    // No configuration needed - we allow all authenticated apps
-}
+class SubmissionAuthPluginConfig
 
-val SubmissionAuthPlugin = createRouteScopedPlugin(
-    name = "SubmissionAuthPlugin",
+private fun createSubmissionAuthPlugin(
+    pluginName: String,
+    identityProvider: String,
+    endpointHint: String,
+    callerIdentityClaim: String,
+    extractCallerId: (TexasIntrospectionResult) -> String?
+) = createRouteScopedPlugin(
+    name = pluginName,
     createConfiguration = ::SubmissionAuthPluginConfig,
 ) {
     val env = ServerEnv.current
     val isNais = env.nais.isNais
-    
+
     val texasClient = if (isNais && env.nais.tokenIntrospectionEndpoint != null) {
         TexasClient(env.nais.tokenIntrospectionEndpoint)
     } else {
         null
     }
-    
+
     onCall { call ->
         if (!isNais) {
-            // Local dev - create mock identity
-            log.warn("SubmissionAuthPlugin: Running in local mode, using mock identity")
-            call.attributes.put(CallerIdentityKey, CallerIdentity(
-                team = "local-dev",
-                app = "local-app",
-                navIdent = null,
-                name = null
-            ))
+            // Local dev/tests - create mock identity
+            log.warn("$pluginName: Running in local mode, using mock identity")
+            call.attributes.put(
+                CallerIdentityKey,
+                CallerIdentity(
+                    team = "local-dev",
+                    app = "local-app",
+                    navIdent = null,
+                    name = null
+                )
+            )
             return@onCall
         }
-        
-        // Production - require valid token
+
         val authHeader = call.request.header(HttpHeaders.Authorization)
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            log.warn("SubmissionAuthPlugin: Missing or invalid Authorization header")
-            throw ApiErrorException.UnauthorizedException("Authorization header required")
+            log.warn("$pluginName: Missing or invalid Authorization header")
+            throw ApiErrorException.UnauthorizedException(
+                "Authorization header required (Bearer token). Expected issuer=$identityProvider. Use $endpointHint"
+            )
         }
-        
+
         val token = authHeader.removePrefix("Bearer ")
-        
-        // Validate token via Texas
-        val introspectionResult = runBlocking {
-            texasClient?.introspect(token)
-        }
-        
+
+        val client = texasClient
+            ?: run {
+                log.error("$pluginName: Missing Texas introspection config in NAIS")
+                throw ApiErrorException.InternalServerErrorException(
+                    "Token introspection is not configured (missing NAIS_TOKEN_INTROSPECTION_ENDPOINT)"
+                )
+            }
+
+        val introspectionResult = client.introspect(token, identityProvider = identityProvider)
+
         if (introspectionResult == null || !introspectionResult.active) {
-            log.warn("SubmissionAuthPlugin: Token validation failed")
-            throw ApiErrorException.UnauthorizedException("Invalid or expired token")
+            log.warn("$pluginName: Token validation failed")
+            throw ApiErrorException.UnauthorizedException(
+                "Invalid or expired token for issuer=$identityProvider. Ensure you call $endpointHint"
+            )
         }
-        
-        // Extract caller identity from azp_name claim
-        // Format: "cluster:namespace:app" e.g. "dev-gcp:team-esyfo:my-app"
-        val azpName = introspectionResult.azp_name
-        if (azpName.isNullOrBlank()) {
-            log.error("SubmissionAuthPlugin: Missing azp_name claim in token")
-            throw ApiErrorException.UnauthorizedException("Missing caller identity in token")
+
+        val callerId = extractCallerId(introspectionResult)
+        if (callerId.isNullOrBlank()) {
+            log.error("$pluginName: Missing caller identity claim in token (claim=$callerIdentityClaim)")
+            throw ApiErrorException.UnauthorizedException(
+                "Missing caller identity in token (claim=$callerIdentityClaim)"
+            )
         }
-        
-        val parts = azpName.split(":")
-        if (parts.size < 3) {
-            log.error("SubmissionAuthPlugin: Invalid azp_name format: $azpName")
-            throw ApiErrorException.UnauthorizedException("Invalid caller identity format")
-        }
-        
-        val identity = CallerIdentity(
-            team = parts[1],  // namespace = team
-            app = parts[2],
-            navIdent = introspectionResult.NAVident,
-            name = introspectionResult.name
+
+        val identity = parseCallerIdentity(
+            callerId = callerId,
+            // Submission routes should not use/store user identifiers.
+            navIdent = null,
+            name = null
         )
-        
-        log.info("SubmissionAuthPlugin: Authenticated submission from team=${identity.team} app=${identity.app}")
-        
-        // Store identity in request attributes for route handlers
+            ?: run {
+                log.error("$pluginName: Invalid caller identity format: $callerId")
+                throw ApiErrorException.UnauthorizedException("Invalid caller identity format")
+            }
+
+        log.info("$pluginName: Authenticated submission from team=${identity.team} app=${identity.app}")
         call.attributes.put(CallerIdentityKey, identity)
     }
 }
+
+val TokenXSubmissionAuthPlugin = createSubmissionAuthPlugin(
+    pluginName = "TokenXSubmissionAuthPlugin",
+    identityProvider = "tokenx",
+    endpointHint = "/api/tokenx/v1/feedback",
+    callerIdentityClaim = "client_id",
+    extractCallerId = { it.clientId }
+)
+
+val AzureSubmissionAuthPlugin = createSubmissionAuthPlugin(
+    pluginName = "AzureSubmissionAuthPlugin",
+    identityProvider = "azuread",
+    endpointHint = "/api/azure/v1/feedback",
+    callerIdentityClaim = "azp_name",
+    extractCallerId = { it.azp_name }
+)
 
 /**
  * Attribute key for storing caller identity in request.

@@ -87,7 +87,7 @@ describe("lumiApiTransport", () => {
     });
 
     const result = await submitFeedbackToLumiApi(makeValidSubmission(), {
-      endpoint: "https://api.test/api/v1/feedback",
+      endpoint: "https://api.test/api/tokenx/v1/feedback",
       fetchFn,
       headers: { authorization: "Bearer test" },
     });
@@ -96,7 +96,7 @@ describe("lumiApiTransport", () => {
     expect(fetchFn).toHaveBeenCalledTimes(1);
 
     const [url, init] = fetchFn.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("https://api.test/api/v1/feedback");
+    expect(url).toBe("https://api.test/api/tokenx/v1/feedback");
     expect(init.method).toBe("POST");
     expect((init.headers as Record<string, string>).authorization).toBe(
       "Bearer test",
@@ -113,7 +113,7 @@ describe("lumiApiTransport", () => {
     });
 
     const transport = createLumiApiTransport({
-      endpoint: "https://api.test/api/v1/feedback",
+      endpoint: "https://api.test/api/tokenx/v1/feedback",
       fetchFn,
     });
 
