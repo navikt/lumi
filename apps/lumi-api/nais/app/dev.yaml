@@ -31,6 +31,8 @@ spec:
     autoInstrumentation:
       enabled: true
       runtime: java
+  tokenx:
+    enabled: true
   azure:
     application:
       enabled: true
