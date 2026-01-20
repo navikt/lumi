@@ -45,6 +45,7 @@ export interface ResolvedConfig {
   questionLayout: "auto" | "singlePage" | "steps";
   showPersonalDataNotice: boolean;
   personalDataNotice: ReactNode;
+  collectLocation: boolean;
   storageStrategy: "consent" | "localStorage" | "none";
 }
 
@@ -94,6 +95,7 @@ export function resolveConfig(
     showPersonalDataNotice: behavior?.showPersonalDataNotice ?? true,
     personalDataNotice:
       behavior?.personalDataNotice ?? DEFAULT_PERSONAL_DATA_NOTICE,
+    collectLocation: behavior?.collectLocation ?? false,
     storageStrategy: behavior?.storageStrategy ?? "consent",
   };
 }

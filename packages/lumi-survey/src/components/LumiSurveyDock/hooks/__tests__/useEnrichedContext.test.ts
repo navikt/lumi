@@ -3,24 +3,47 @@ import { describe, expect, it } from "vitest";
 import { useEnrichedContext } from "../useEnrichedContext.js";
 
 describe("useEnrichedContext", () => {
-  it("updates pathname/url when history.pushState changes route", async () => {
+  it("does not auto-collect url/pathname (privacy)", async () => {
     window.history.replaceState({}, "", "/");
 
+    const { result } = renderHook(() => useEnrichedContext());
+
+    await waitFor(() => {
+      expect(result.current.pathname).toBeUndefined();
+      expect(result.current.url).toBeUndefined();
+    });
+  });
+
+  it("auto-collects pathname when opted in", async () => {
+    window.history.replaceState({}, "", "/some-route");
+
     const { result } = renderHook(() =>
-      useEnrichedContext({ tags: { rolle: "test" } }),
+      useEnrichedContext(undefined, { collectLocation: true }),
     );
 
     await waitFor(() => {
-      expect(result.current.pathname).toBe("/");
+      expect(result.current.pathname).toBe("/some-route");
     });
+  });
 
-    act(() => {
-      window.history.pushState({}, "", "/next");
-    });
+  it("passes through user-provided url/pathname", async () => {
+    const { result } = renderHook(() =>
+      useEnrichedContext(
+        {
+          pathname: "/oppfolgingsplan/:uuid",
+          url: "https://example.test/oppfolgingsplan/:uuid",
+          tags: { rolle: "test" },
+        },
+        { collectLocation: true },
+      ),
+    );
 
     await waitFor(() => {
-      expect(result.current.pathname).toBe("/next");
-      expect(result.current.url).toContain("/next");
+      expect(result.current.pathname).toBe("/oppfolgingsplan/:uuid");
+      expect(result.current.url).toBe(
+        "https://example.test/oppfolgingsplan/:uuid",
+      );
+      expect(result.current.tags).toEqual({ rolle: "test" });
     });
   });
 

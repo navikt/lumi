@@ -50,20 +50,30 @@ function ensureHistoryPatched(): void {
   };
 }
 
+export interface EnrichedContextOptions {
+  /** Opt-in: auto-collect current pathname from the browser. */
+  collectLocation?: boolean;
+}
+
 /**
  * Hook that enriches user-provided context with auto-collected browser data.
  * Note: This hook is client-only - the widget is never server-rendered.
  *
  * @param userContext - Optional user-provided context (app, tags, debug)
- * @returns Enriched context with system fields (url, pathname, viewport, deviceType, userAgent)
+ * @returns Enriched context with system fields (viewport, deviceType, userAgent)
  */
 export function useEnrichedContext(
   userContext?: LumiSurveyContext,
+  options?: EnrichedContextOptions,
 ): LumiSurveyContext {
-  const [location, setLocation] = useState(() => ({
-    url: window.location.href,
-    pathname: window.location.pathname,
-  }));
+  const shouldCollectLocation = options?.collectLocation ?? false;
+
+  const [location, setLocation] = useState(() => {
+    if (!shouldCollectLocation) return { pathname: undefined };
+    return {
+      pathname: window.location.pathname,
+    };
+  });
 
   const [viewport, setViewport] = useState(() => ({
     width: window.innerWidth,
@@ -71,25 +81,26 @@ export function useEnrichedContext(
   }));
 
   useEffect(() => {
+    if (!shouldCollectLocation) return;
     ensureHistoryPatched();
 
     const updateLocation = () => {
       setLocation({
-        url: window.location.href,
         pathname: window.location.pathname,
       });
     };
 
+    updateLocation();
+
     window.addEventListener(LUMI_SURVEY_NAVIGATION_EVENT, updateLocation);
     window.addEventListener("popstate", updateLocation);
     window.addEventListener("hashchange", updateLocation);
-
     return () => {
       window.removeEventListener(LUMI_SURVEY_NAVIGATION_EVENT, updateLocation);
       window.removeEventListener("popstate", updateLocation);
       window.removeEventListener("hashchange", updateLocation);
     };
-  }, []);
+  }, [shouldCollectLocation]);
 
   useEffect(() => {
     const updateViewport = () => {
@@ -108,18 +119,25 @@ export function useEnrichedContext(
   return useMemo((): LumiSurveyContext => {
     return {
       // System-collected
-      url: location.url,
-      pathname: location.pathname,
       viewport,
       deviceType: getDeviceType(viewport.width),
       userAgent: navigator.userAgent,
       // User-provided
+      // NOTE: url/pathname are opt-in. If you enable auto-collection, make sure
+      // your routes do not include identifiers. Prefer passing a sanitized
+      // route key/template explicitly.
+      url: userContext?.url,
+      pathname:
+        userContext?.pathname ??
+        (shouldCollectLocation ? location.pathname : undefined),
       tags: userContext?.tags,
       debug: userContext?.debug,
     };
   }, [
     location.pathname,
-    location.url,
+    shouldCollectLocation,
+    userContext?.pathname,
+    userContext?.url,
     userContext?.debug,
     userContext?.tags,
     viewport,

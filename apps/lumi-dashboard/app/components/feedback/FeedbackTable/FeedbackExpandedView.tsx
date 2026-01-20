@@ -114,7 +114,7 @@ function ContextGrid({
       {(context.viewportWidth || context.viewportHeight) && (
         <ContextItem
           icon="🖼️"
-          label="Skjermstørrelse"
+          label="Viewport"
           value={`${context.viewportWidth || "?"}×${context.viewportHeight || "?"} `}
         />
       )}

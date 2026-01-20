@@ -94,7 +94,13 @@ export interface LumiSurveyDockProps {
 
   /**
    * Structured context for segmentation (tags) and debugging (debug).
-   * System fields (url, pathname, viewport, deviceType) are auto-collected.
+   * System fields (viewport, deviceType, userAgent) are auto-collected.
+   * Note: `deviceType` is derived from viewport width breakpoints (not the
+   * physical device). If DevTools is open, the viewport may be narrower.
+   *
+   * Note: `url` is never auto-collected. `pathname` can be auto-collected if
+   * `behavior.collectLocation` is enabled. Only use this if your routes do not
+   * contain identifiers; otherwise pass a sanitized route key/template instead.
    */
   context?: LumiSurveyContext;
 }
@@ -142,7 +148,9 @@ export const LumiSurveyDock = ({
   const panelId = `${surveyId}-dock-panel`;
 
   // Auto-collect system context and merge with user-provided context
-  const enrichedContext = useEnrichedContext(context);
+  const enrichedContext = useEnrichedContext(context, {
+    collectLocation: config.collectLocation,
+  });
 
   const { answers, status, error, setAnswer, submit, reset } = useLumiSurvey({
     surveyId,

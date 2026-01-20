@@ -199,7 +199,7 @@ export function FeedbackCard({
                       <span className={styles.contextValue}>
                         {feedback.context.deviceType}
                         {feedback.context.viewportWidth &&
-                          ` (${feedback.context.viewportWidth}×${feedback.context.viewportHeight})`}
+                          ` (viewport ${feedback.context.viewportWidth}×${feedback.context.viewportHeight})`}
                       </span>
                     </div>
                   </div>

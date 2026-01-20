@@ -91,6 +91,12 @@ export interface LumiSurveyBehavior {
   showPersonalDataNotice?: boolean;
   /** Custom privacy notice content. */
   personalDataNotice?: ReactNode;
+
+  /**
+   * Opt-in: Auto-collect current pathname from `window.location.pathname`.
+   * Default is `false` to avoid collecting identifiers from dynamic routes.
+   */
+  collectLocation?: boolean;
   /**
    * Storage strategy for persistence (dismissal state).
    * - "consent": Use NAV decorator consent system (external pages)

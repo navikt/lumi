@@ -119,6 +119,44 @@ Server-side (API-route/server action) gjør token exchange og videresender til `
 
 Detaljert eksempel ligger i repoets rot-README.
 
+## Kontekst (context)
+
+Widgeten kan sende med ekstra kontekst som brukes til segmentering og debugging.
+
+Dette blir alltid auto-collectet i browser:
+
+- `viewport` (bredde/høyde fra `window.innerWidth/innerHeight`)
+- `deviceType` (en grov kategori basert på viewport-bredde: mobile/tablet/desktop)
+- `userAgent`
+
+Merk: `deviceType` er **ikke** “hvilken maskin brukeren har”, men en viewport-breakpoint.
+Hvis brukeren har DevTools åpent, kan viewport bli smalere og dermed gi f.eks. `tablet`.
+
+### URL/pathname og personvern
+
+- `url` auto-collectes aldri.
+- `pathname` auto-collectes heller ikke som default.
+
+Hvis dere har statiske ruter uten identifikatorer, kan dere opt-in til å auto-collecte
+`pathname`:
+
+```tsx
+<LumiSurveyDock
+  behavior={{ collectLocation: true }}
+  // ...
+/>
+```
+
+Hvis rutene kan inneholde ID-er (f.eks. `/sak/123`), skal dere **ikke** bruke `collectLocation`.
+Send heller inn en sanitert verdi via `context`, for eksempel en route-key eller template:
+
+```tsx
+<LumiSurveyDock
+  context={{ pathname: "/sak/:id" }}
+  // ...
+/>
+```
+
 ## Consent/storage
 
 Widgeten støtter valgfri persistering av "dismissed" til localStorage, og kan integrere med `@navikt/nav-dekoratoren-moduler` for å respektere consent/allowlist.
