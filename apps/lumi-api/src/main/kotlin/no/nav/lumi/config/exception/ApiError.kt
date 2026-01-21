@@ -20,6 +20,8 @@ data class ApiError(
     val message: String,
     val timestamp: String,
     val path: String? = null,
+    val details: String? = null,
+    val helpUrl: String? = null,
 ) {
     companion object {
         fun notFound(message: String, path: String? = null) = ApiError(
@@ -27,7 +29,7 @@ data class ApiError(
             type = ErrorType.NOT_FOUND,
             message = message,
             timestamp = java.time.Instant.now().toString(),
-            path = path
+            path = path,
         )
 
         fun internalServerError(message: String, path: String? = null) = ApiError(
@@ -35,7 +37,7 @@ data class ApiError(
             type = ErrorType.INTERNAL_SERVER_ERROR,
             message = message,
             timestamp = java.time.Instant.now().toString(),
-            path = path
+            path = path,
         )
 
         fun badRequest(message: String, path: String? = null) = ApiError(
@@ -43,7 +45,7 @@ data class ApiError(
             type = ErrorType.BAD_REQUEST,
             message = message,
             timestamp = java.time.Instant.now().toString(),
-            path = path
+            path = path,
         )
 
         fun unauthorized(message: String, path: String? = null) = ApiError(
@@ -51,7 +53,7 @@ data class ApiError(
             type = ErrorType.AUTHENTICATION_ERROR,
             message = message,
             timestamp = java.time.Instant.now().toString(),
-            path = path
+            path = path,
         )
 
         fun forbidden(message: String, path: String? = null) = ApiError(
@@ -59,7 +61,7 @@ data class ApiError(
             type = ErrorType.AUTHORIZATION_ERROR,
             message = message,
             timestamp = java.time.Instant.now().toString(),
-            path = path
+            path = path,
         )
     }
 }

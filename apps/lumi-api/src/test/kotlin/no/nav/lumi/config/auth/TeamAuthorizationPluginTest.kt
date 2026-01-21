@@ -16,6 +16,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import no.nav.lumi.config.AZURE_REALM
+import no.nav.lumi.config.configureStatusPages
 import no.nav.lumi.integrations.nais.NaisApiResult
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -34,6 +35,16 @@ private class FakeNaisTeamLookup(
         NaisApiResult.Success(teamsByViewer)
 }
 
+private class ErroringNaisTeamLookup(
+    private val message: String = "NAIS API unavailable"
+) : NaisTeamLookup {
+    override suspend fun getTeamSlugsForUserResult(email: String): NaisApiResult<Set<String>> =
+        NaisApiResult.Error(message)
+
+    override suspend fun getTeamSlugsForViewerResult(): NaisApiResult<Set<String>> =
+        NaisApiResult.Error(message)
+}
+
 @Serializable
 private data class TeamResponse(
     val team: String,
@@ -48,6 +59,7 @@ class TeamAuthorizationPluginTest {
             install(ContentNegotiation) {
                 json()
             }
+            configureStatusPages()
             install(Authentication) {
                 bearer(AZURE_REALM) {
                     authenticate { _ ->
@@ -101,6 +113,7 @@ class TeamAuthorizationPluginTest {
             install(ContentNegotiation) {
                 json()
             }
+            configureStatusPages()
             install(Authentication) {
                 bearer(AZURE_REALM) {
                     authenticate { _ ->
@@ -136,7 +149,8 @@ class TeamAuthorizationPluginTest {
 
         assertEquals(HttpStatusCode.Forbidden, response.status)
         val body = response.bodyAsText()
-        assertTrue(body.contains("TEAM_NOT_AUTHORIZED"))
+        assertTrue(body.contains("Du har ikke tilgang"))
+        assertTrue(body.contains("flex"))
         assertFalse(handlerInvoked.get())
     }
 
@@ -148,6 +162,7 @@ class TeamAuthorizationPluginTest {
             install(ContentNegotiation) {
                 json()
             }
+            configureStatusPages()
             install(Authentication) {
                 bearer(AZURE_REALM) {
                     authenticate { _ ->
@@ -183,7 +198,7 @@ class TeamAuthorizationPluginTest {
 
         assertEquals(HttpStatusCode.Forbidden, response.status)
         val body = response.bodyAsText()
-        assertTrue(body.contains("NO_TEAM_ACCESS"))
+        assertTrue(body.contains("ikke tilgang til noen team", ignoreCase = true))
         assertFalse(handlerInvoked.get())
     }
 
@@ -193,6 +208,7 @@ class TeamAuthorizationPluginTest {
             install(ContentNegotiation) {
                 json()
             }
+            configureStatusPages()
             install(Authentication) {
                 bearer(AZURE_REALM) {
                     authenticate { _ ->
@@ -235,6 +251,7 @@ class TeamAuthorizationPluginTest {
             install(ContentNegotiation) {
                 json()
             }
+            configureStatusPages()
             install(Authentication) {
                 bearer(AZURE_REALM) {
                     authenticate { _ ->
@@ -282,6 +299,7 @@ class TeamAuthorizationPluginTest {
             install(ContentNegotiation) {
                 json()
             }
+            configureStatusPages()
             install(Authentication) {
                 bearer(AZURE_REALM) {
                     authenticate { _ ->
@@ -317,6 +335,54 @@ class TeamAuthorizationPluginTest {
 
         assertEquals(HttpStatusCode.Forbidden, response.status)
         val body = response.bodyAsText()
-        assertTrue(body.contains("NO_TEAM_ACCESS"))
+        assertTrue(body.contains("ikke tilgang til noen team", ignoreCase = true))
+    }
+
+    @Test
+    fun `returns 503 when NAIS team lookup fails (no sticky 403 no-team)`() = testApplication {
+        val handlerInvoked = AtomicBoolean(false)
+
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureStatusPages()
+            install(Authentication) {
+                bearer(AZURE_REALM) {
+                    authenticate { _ ->
+                        BrukerPrincipal(
+                            navIdent = "Z123456",
+                            name = "Test User",
+                            email = "test@nav.no",
+                            token = "token",
+                            clientId = "client",
+                            groups = emptyList(),
+                        )
+                    }
+                }
+            }
+
+            routing {
+                authenticate(AZURE_REALM) {
+                    install(TeamAuthorizationPlugin) {
+                        naisTeamLookupProvider = { ErroringNaisTeamLookup("timeout") }
+                    }
+
+                    get("/team") {
+                        handlerInvoked.set(true)
+                        call.respondText("ok")
+                    }
+                }
+            }
+        }
+
+        val response = client.get("/team") {
+            header(HttpHeaders.Authorization, "Bearer whatever")
+        }
+
+        assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
+        assertFalse(handlerInvoked.get())
+        val body = response.bodyAsText()
+        assertTrue(body.contains("Kunne ikke hente teamtilgang"))
     }
 }

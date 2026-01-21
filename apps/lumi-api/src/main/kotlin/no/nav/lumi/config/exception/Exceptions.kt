@@ -15,6 +15,8 @@ sealed class ApiErrorException(
 
     class ForbiddenException(
         val errorMessage: String = "Forbidden",
+        val details: String? = null,
+        val helpUrl: String? = null,
         cause: Throwable? = null,
         type: ErrorType = ErrorType.AUTHORIZATION_ERROR
     ) : ApiErrorException(errorMessage, type, cause) {
@@ -23,7 +25,27 @@ sealed class ApiErrorException(
             type = type,
             message = errorMessage,
             timestamp = java.time.Instant.now().toString(),
-            path = path
+            path = path,
+            details = details,
+            helpUrl = helpUrl,
+        )
+    }
+
+    class ServiceUnavailableException(
+        val errorMessage: String = "Service unavailable",
+        val details: String? = null,
+        val helpUrl: String? = null,
+        cause: Throwable? = null,
+        type: ErrorType = ErrorType.INTERNAL_SERVER_ERROR
+    ) : ApiErrorException(errorMessage, type, cause) {
+        override fun toApiError(path: String?) = ApiError(
+            status = HttpStatusCode.ServiceUnavailable.value,
+            type = type,
+            message = errorMessage,
+            timestamp = java.time.Instant.now().toString(),
+            path = path,
+            details = details,
+            helpUrl = helpUrl,
         )
     }
 
@@ -37,7 +59,7 @@ sealed class ApiErrorException(
             type = type,
             message = errorMessage,
             timestamp = java.time.Instant.now().toString(),
-            path = path
+            path = path,
         )
     }
 
@@ -51,7 +73,7 @@ sealed class ApiErrorException(
             type = type,
             message = errorMessage,
             timestamp = java.time.Instant.now().toString(),
-            path = path
+            path = path,
         )
     }
 
@@ -65,7 +87,7 @@ sealed class ApiErrorException(
             type = type,
             message = errorMessage,
             timestamp = java.time.Instant.now().toString(),
-            path = path
+            path = path,
         )
     }
 
@@ -79,7 +101,7 @@ sealed class ApiErrorException(
             type = type,
             message = errorMessage,
             timestamp = java.time.Instant.now().toString(),
-            path = path
+            path = path,
         )
     }
 
@@ -93,7 +115,7 @@ sealed class ApiErrorException(
             type = type,
             message = errorMessage,
             timestamp = java.time.Instant.now().toString(),
-            path = path
+            path = path,
         )
     }
 }

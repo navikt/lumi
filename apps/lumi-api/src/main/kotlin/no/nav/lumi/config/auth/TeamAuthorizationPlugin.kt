@@ -1,11 +1,10 @@
 package no.nav.lumi.config.auth
 
-import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
-import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.util.*
+import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.integrations.nais.NaisApiResult
 import no.nav.lumi.integrations.nais.NaisGraphQlClient
 import org.slf4j.LoggerFactory
@@ -68,33 +67,44 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
         
         if (principal == null) {
             log.warn("TeamAuthorization: No principal found")
-            call.respond(HttpStatusCode.Unauthorized, "Not authenticated")
-            return@on
+            throw ApiErrorException.UnauthorizedException("Not authenticated")
         }
 
         if (naisLookup == null) {
             log.error("TeamAuthorization: NAIS team lookup is not configured (missing NAIS_API_KEY/TEAMS_TOKEN and/or NAIS_API_GRAPHQL_URL/NAIS_API_ENDPOINT)")
-            call.respond(
-                HttpStatusCode.ServiceUnavailable,
-                mapOf(
-                    "error" to "TEAM_LOOKUP_NOT_CONFIGURED",
-                    "message" to "Team lookup via NAIS is not configured"
-                )
+            throw ApiErrorException.ServiceUnavailableException(
+                errorMessage = "Team lookup via NAIS is not configured",
+                details = "Missing NAIS configuration for team lookup.",
             )
-            return@on
         }
-        
-        val authorizedTeams = resolveAuthorizedTeams(principal, naisLookup)
-        
+
+        val authorizedTeamsResult = resolveAuthorizedTeams(principal, naisLookup)
+
+        val authorizedTeams = when (authorizedTeamsResult) {
+            is NaisApiResult.Success -> authorizedTeamsResult.value
+            is NaisApiResult.Error -> {
+                // NAIS lookup failed (e.g. outage/timeout/401). Treat as temporary service problem.
+                val msg = "TeamAuthorization: NAIS team lookup failed (${authorizedTeamsResult.message}) for ${principal.navIdent}"
+                if (authorizedTeamsResult.message.contains("cached", ignoreCase = true)) {
+                    log.debug(msg)
+                } else {
+                    log.warn(msg)
+                }
+
+                throw ApiErrorException.ServiceUnavailableException(
+                    errorMessage = "Kunne ikke hente teamtilgang akkurat nå",
+                    details = "Dette er ofte midlertidig (f.eks. NAIS API-nedetid). Prøv igjen om litt.",
+                )
+            }
+        }
+
         if (authorizedTeams.isEmpty()) {
             log.warn("TeamAuthorization: User ${principal.navIdent} has no authorized teams")
-            call.respond(HttpStatusCode.Forbidden, mapOf(
-                "error" to "NO_TEAM_ACCESS",
-                "message" to "You don't have access to any teams in Lumi",
-                "details" to "To get access, your team needs to be onboarded. See the README for instructions.",
-                "helpUrl" to "https://github.com/navikt/lumi#getting-access"
-            ))
-            return@on
+            throw ApiErrorException.ForbiddenException(
+                errorMessage = "Du har ikke tilgang til noen team i Lumi",
+                details = "For å få tilgang må teamet ditt onboardes.",
+                helpUrl = "https://github.com/navikt/lumi#getting-access",
+            )
         }
         
         // Get requested team from query parameter
@@ -105,11 +115,9 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
             requestedTeam
         } else if (requestedTeam != null && requestedTeam !in authorizedTeams) {
             log.warn("TeamAuthorization: User ${principal.navIdent} requested unauthorized team: $requestedTeam")
-            call.respond(HttpStatusCode.Forbidden, mapOf(
-                "error" to "TEAM_NOT_AUTHORIZED",
-                "message" to "You are not authorized for team: $requestedTeam"
-            ))
-            return@on
+            throw ApiErrorException.ForbiddenException(
+                errorMessage = "Du har ikke tilgang til team: $requestedTeam",
+            )
         } else {
             // Pick a stable team from the resolved set.
             authorizedTeams.sorted().first()
@@ -125,7 +133,7 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
 private suspend fun resolveAuthorizedTeams(
     principal: BrukerPrincipal,
     naisLookup: NaisTeamLookup
-): Set<String> {
+): NaisApiResult<Set<String>> {
     val email = principal.email
 
     val teamsByEmailResult: NaisApiResult<Set<String>> = if (!email.isNullOrBlank()) {
@@ -158,21 +166,7 @@ private suspend fun resolveAuthorizedTeams(
         is NaisApiResult.Error -> teamsByEmailResult
     }
 
-    return when (resolvedTeamsResult) {
-        is NaisApiResult.Success -> {
-            resolvedTeamsResult.value
-        }
-        is NaisApiResult.Error -> {
-            // NAIS lookup failed (e.g. 401/timeout). Fail closed.
-            val msg = "NAIS API team lookup failed (${resolvedTeamsResult.message}) for ${principal.navIdent}"
-            if (resolvedTeamsResult.message.contains("cached", ignoreCase = true)) {
-                log.debug(msg)
-            } else {
-                log.warn(msg)
-            }
-            emptySet()
-        }
-    }
+    return resolvedTeamsResult
 }
 
 // Attribute keys for storing authorization context
