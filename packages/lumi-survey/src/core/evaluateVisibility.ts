@@ -110,15 +110,32 @@ export function getVisibleQuestions<T extends LumiSurveyQuestion>(
  * @returns true if the submit button should be visible
  */
 export function shouldShowSubmitButton(
-  questions: LumiSurveyQuestion[],
+  _questions: LumiSurveyQuestion[],
   answers: Record<string, LumiSurveyAnswerValue>,
 ): boolean {
-  // Find first required question
-  const firstRequired = questions.find((q) => q.required);
+  const hasAnyMeaningfulAnswer = Object.values(answers).some((value) => {
+    if (value === undefined || value === null) {
+      return false;
+    }
 
-  // No required questions = always show button
-  if (!firstRequired) return true;
+    if (typeof value === "string") {
+      return value.trim().length > 0;
+    }
 
-  // Check if it has an answer
-  return answers[firstRequired.id] !== undefined;
+    if (Array.isArray(value)) {
+      return value.length > 0;
+    }
+
+    return true;
+  });
+
+  // Progressive: never show submit before the user has provided any meaningful answer.
+  // This prevents confusing "empty submit" flows.
+  if (!hasAnyMeaningfulAnswer) {
+    return false;
+  }
+
+  // Once the user has interacted, we keep the button visible.
+  // Missing required answers are handled by validation on submit.
+  return true;
 }

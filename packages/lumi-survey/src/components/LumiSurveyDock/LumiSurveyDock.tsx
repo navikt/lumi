@@ -172,7 +172,8 @@ export const LumiSurveyDock = ({
     [questions, answers, enrichedContext?.tags],
   );
 
-  // Hide submit until first required question has an answer
+  // Progressive submit: hide the button until there is at least one meaningful answer
+  // and all required questions are currently valid.
   const isSubmitBlocked = useMemo(
     () => !shouldShowSubmitButton(questions, answers),
     [questions, answers],

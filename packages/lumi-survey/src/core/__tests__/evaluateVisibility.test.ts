@@ -214,10 +214,35 @@ describe("shouldShowSubmitButton", () => {
     expect(shouldShowSubmitButton(questions, { rating: 4 })).toBe(true);
   });
 
-  it("returns true when there are no required questions", () => {
+  it("returns true when there are no required questions and at least one meaningful answer exists", () => {
     const optionalQuestions: LumiSurveyQuestion[] = [
       { id: "feedback", type: "text", prompt: "Comments", required: false },
     ];
-    expect(shouldShowSubmitButton(optionalQuestions, {})).toBe(true);
+    expect(shouldShowSubmitButton(optionalQuestions, {})).toBe(false);
+    expect(shouldShowSubmitButton(optionalQuestions, { feedback: "" })).toBe(
+      false,
+    );
+    expect(shouldShowSubmitButton(optionalQuestions, { feedback: "   " })).toBe(
+      false,
+    );
+    expect(shouldShowSubmitButton(optionalQuestions, { feedback: "Hi" })).toBe(
+      true,
+    );
+  });
+
+  it("returns true once there is any meaningful answer, even if other required questions are missing", () => {
+    const requiredQuestions: LumiSurveyQuestion[] = [
+      { id: "rating", type: "rating", prompt: "Rate us", required: true },
+      { id: "why", type: "text", prompt: "Why?", required: true },
+    ];
+
+    expect(shouldShowSubmitButton(requiredQuestions, {})).toBe(false);
+    expect(shouldShowSubmitButton(requiredQuestions, { rating: 4 })).toBe(true);
+    expect(
+      shouldShowSubmitButton(requiredQuestions, { rating: 4, why: "" }),
+    ).toBe(true);
+    expect(
+      shouldShowSubmitButton(requiredQuestions, { rating: 4, why: "Because" }),
+    ).toBe(true);
   });
 });

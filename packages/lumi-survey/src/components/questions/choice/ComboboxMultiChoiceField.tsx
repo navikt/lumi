@@ -5,6 +5,7 @@ import type {
   ChoiceQuestion,
   LumiSurveyAnswerValue,
 } from "../../../core/types.js";
+import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
 import { useChoiceOptions } from "./useChoiceOptions.js";
 
 interface ComboboxMultiChoiceFieldProps {
@@ -96,7 +97,7 @@ export const ComboboxMultiChoiceField = ({
 
   return (
     <UNSAFE_Combobox
-      label={question.prompt}
+      label={formatQuestionPrompt(question)}
       hideLabel={hideLabel}
       description={description}
       options={comboboxOptions}

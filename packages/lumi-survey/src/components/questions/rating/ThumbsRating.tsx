@@ -13,6 +13,7 @@ import type {
   LumiSurveyAnswerValue,
   ThumbsRatingQuestion,
 } from "../../../core/types.js";
+import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
 import styles from "./emo.module.css";
 import "./emo.fallback.css";
 
@@ -74,7 +75,7 @@ export function ThumbsRating({
           level="3"
           size="xsmall"
         >
-          {question.prompt}
+          {formatQuestionPrompt(question)}
         </Heading>
       )}
       {question.description && !hideDescription && (
@@ -98,7 +99,7 @@ export function ThumbsRating({
         paddingInline={fieldsetPaddingInline ?? "space-16"}
       >
         <legend className={styles.legend ?? "lumi-survey-rating__legend"}>
-          {question.prompt}
+          {formatQuestionPrompt(question)}
         </legend>
         <HStack
           gap="space-8"

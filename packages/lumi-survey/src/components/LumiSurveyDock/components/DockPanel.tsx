@@ -12,6 +12,7 @@ import type React from "react";
 import type { ComponentProps } from "react";
 import type { LumiSurveyAnswerValue, LumiSurveyQuestion } from "../../../core";
 import type { LumiSurveyRenderQuestionProps } from "../../../types.js";
+import { formatQuestionPrompt } from "../../questions/utils/formatQuestionPrompt.js";
 import { CLASS_NAMES, joinClassNames } from "../classNames.js";
 import { SuccessContent } from "./SuccessContent.js";
 
@@ -155,8 +156,8 @@ export const DockPanel = ({
                 >
                   {/* In step mode, show current step's prompt; otherwise show first question */}
                   {isStepMode && currentStepQuestion
-                    ? currentStepQuestion.prompt
-                    : promptQuestion.prompt}
+                    ? formatQuestionPrompt(currentStepQuestion)
+                    : formatQuestionPrompt(promptQuestion)}
                 </Heading>
                 {/* Show description from current step in step mode, or from first question otherwise */}
                 {(isStepMode && currentStepQuestion

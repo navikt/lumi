@@ -7,6 +7,7 @@ import type {
   LumiSurveyAnswerValue,
   StarRatingQuestion,
 } from "../../../core/types.js";
+import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
 import styles from "./emo.module.css";
 import "./emo.fallback.css";
 
@@ -139,7 +140,7 @@ export function StarRating({
         paddingInline={fieldsetPaddingInline ?? "space-16"}
       >
         <legend className={styles.legend ?? "lumi-survey-rating__legend"}>
-          {question.prompt}
+          {formatQuestionPrompt(question)}
         </legend>
         <VStack gap="space-4" align="center">
           <HStack

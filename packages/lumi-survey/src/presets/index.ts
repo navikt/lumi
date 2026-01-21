@@ -70,7 +70,7 @@ export const DEFAULT_SURVEY_SERVICE_FEEDBACK: LumiSurveyConfig = {
     {
       id: "feedback",
       type: "text",
-      prompt: "Legg gjerne til en begrunnelse (valgfritt)",
+      prompt: "Legg gjerne til en begrunnelse",
       description: "Alle tilbakemeldinger er til stor nytte for oss",
       required: false,
       maxLength: 1000,
@@ -110,7 +110,7 @@ export const DEFAULT_SURVEY_THUMBS: LumiSurveyConfig = {
     {
       id: "feedback",
       type: "text",
-      prompt: "Har du forslag til forbedringer? (valgfritt)",
+      prompt: "Har du forslag til forbedringer?",
       required: false,
       maxLength: 500,
       visibleIf: { field: "ANSWER", questionId: "helpful", operator: "EXISTS" },
@@ -146,7 +146,7 @@ export const DEFAULT_SURVEY_STARS: LumiSurveyConfig = {
     {
       id: "feedback",
       type: "text",
-      prompt: "Legg gjerne til en begrunnelse (valgfritt)",
+      prompt: "Legg gjerne til en begrunnelse",
       description: "Alle tilbakemeldinger er til stor nytte for oss",
       required: false,
       maxLength: 1000,
@@ -158,7 +158,6 @@ export const DEFAULT_SURVEY_STARS: LumiSurveyConfig = {
 /**
  * NPS (Net Promoter Score) survey: 0-10 scale.
  * Standard methodology for measuring customer loyalty.
- *
  * @example
  * ```tsx
  * <LumiSurveyDock
@@ -184,7 +183,7 @@ export const DEFAULT_SURVEY_NPS: LumiSurveyConfig = {
     {
       id: "reason",
       type: "text",
-      prompt: "Legg gjerne til en begrunnelse (valgfritt)",
+      prompt: "Legg gjerne til en begrunnelse",
       description: "Alle tilbakemeldinger er til stor nytte for oss",
       required: false,
       maxLength: 500,
@@ -234,7 +233,7 @@ export const DEFAULT_SURVEY_DISCOVERY: LumiSurveyConfig = {
     {
       id: "blocker",
       type: "text",
-      prompt: "Hva hindret deg? (valgfritt)",
+      prompt: "Hva hindret deg?",
       required: false,
       maxLength: 500,
     } as LumiSurveyQuestion,
@@ -321,7 +320,7 @@ export function createDiscoverySurvey(options?: {
     questions.push({
       id: "blocker",
       type: "text",
-      prompt: options?.blockerPrompt ?? "Hva hindret deg? (valgfritt)",
+      prompt: options?.blockerPrompt ?? "Hva hindret deg?",
       required: false,
       maxLength: 500,
     });
@@ -420,7 +419,7 @@ export function createTopTasksSurvey(options: {
     questions.push({
       id: "blocker",
       type: "text",
-      prompt: options.blockerPrompt ?? "Hva hindret deg? (valgfritt)",
+      prompt: options.blockerPrompt ?? "Hva hindret deg?",
       required: false,
       maxLength: 500,
     });

@@ -81,4 +81,28 @@ describe("buildCanonicalSurvey", () => {
       }),
     ).toThrowError(/targetId/i);
   });
+
+  it("defaults first rating question to required for rating surveys", () => {
+    const canonical = buildCanonicalSurvey({
+      type: "rating",
+      questions: [
+        {
+          id: "rating",
+          type: "rating",
+          prompt: "Rating",
+          // required intentionally omitted
+        },
+        {
+          id: "comment",
+          type: "text",
+          prompt: "Comment",
+          required: false,
+          visibleIf: { operator: "EXISTS", questionId: "rating" },
+        },
+      ] as unknown as LumiSurveyConfig["questions"],
+    });
+
+    expect(canonical.type).toBe("rating");
+    expect(canonical.questions[0]?.required).toBe(true);
+  });
 });

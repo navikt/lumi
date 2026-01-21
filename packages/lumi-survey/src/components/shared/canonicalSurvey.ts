@@ -16,9 +16,28 @@ export function buildCanonicalSurvey(
     throw new Error("Lumi survey must have at least one question");
   }
 
+  const surveyType = survey.type ?? "custom";
+
+  // Apply small UX-safe defaults at build time (without changing the external API shape).
+  // For rating surveys, the first rating question is the main interaction and should be
+  // required by default unless explicitly set to false.
+  const questions: LumiSurveyQuestion[] = (() => {
+    if (
+      surveyType === "rating" &&
+      survey.questions[0]?.type === "rating" &&
+      survey.questions[0]?.required === undefined
+    ) {
+      const next = [...survey.questions];
+      next[0] = { ...next[0], required: true } as LumiSurveyQuestion;
+      return next as LumiSurveyQuestion[];
+    }
+
+    return survey.questions;
+  })();
+
   // Validate all questions have IDs
   const ids = new Set<string>();
-  for (const question of survey.questions) {
+  for (const question of questions) {
     if (!question.id) {
       throw new Error("Lumi: All questions must have an id");
     }
@@ -31,7 +50,7 @@ export function buildCanonicalSurvey(
   }
 
   // Validate cross-references in visibility and branching logic
-  for (const question of survey.questions) {
+  for (const question of questions) {
     const visibleIf = question.visibleIf;
     if (visibleIf && visibleIf.field !== "METADATA") {
       const referencedId = visibleIf.questionId;
@@ -63,7 +82,7 @@ export function buildCanonicalSurvey(
   }
 
   return {
-    type: survey.type ?? "custom",
-    questions: survey.questions,
+    type: surveyType,
+    questions,
   };
 }

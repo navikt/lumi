@@ -43,7 +43,7 @@ describe("DefaultQuestionRenderer", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: question.prompt }),
+      screen.getByRole("heading", { name: new RegExp(question.prompt) }),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("radio", { name: "2. Neutral" }));
@@ -71,7 +71,9 @@ describe("DefaultQuestionRenderer", () => {
       />,
     );
 
-    const textarea = screen.getByRole("textbox", { name: question.prompt });
+    const textarea = screen.getByRole("textbox", {
+      name: new RegExp(question.prompt),
+    });
     expect(textarea).toBeInTheDocument();
 
     fireEvent.change(textarea, { target: { value: "Great" } });

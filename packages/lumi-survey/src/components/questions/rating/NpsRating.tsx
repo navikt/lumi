@@ -6,6 +6,7 @@ import type {
   LumiSurveyAnswerValue,
   NpsRatingQuestion,
 } from "../../../core/types.js";
+import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
 import styles from "./emo.module.css";
 import npsStyles from "./nps.module.css";
 import "./emo.fallback.css";
@@ -109,7 +110,7 @@ export function NpsRating({
           level="3"
           size="xsmall"
         >
-          {question.prompt}
+          {formatQuestionPrompt(question)}
         </Heading>
       )}
       {question.description && !hideDescription && (
@@ -133,7 +134,7 @@ export function NpsRating({
         paddingInline={fieldsetPaddingInline ?? "space-12"}
       >
         <legend className={styles.legend ?? "lumi-survey-rating__legend"}>
-          {question.prompt}
+          {formatQuestionPrompt(question)}
         </legend>
         <VStack gap="space-8">
           <Box

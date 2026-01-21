@@ -4,6 +4,7 @@ import type {
   ChoiceQuestion,
   LumiSurveyAnswerValue,
 } from "../../../core/types.js";
+import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
 import { useChoiceOptions } from "./useChoiceOptions.js";
 
 interface MultiChoiceFieldProps {
@@ -30,7 +31,7 @@ export const MultiChoiceField = ({
 
   return (
     <CheckboxGroup
-      legend={question.prompt}
+      legend={formatQuestionPrompt(question)}
       hideLegend={hideLabel}
       description={question.description}
       value={selected}

@@ -1,6 +1,7 @@
 import { Textarea } from "@navikt/ds-react";
 import type React from "react";
 import type { LumiSurveyAnswerValue, TextQuestion } from "../../../core";
+import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
 
 interface TextQuestionFieldProps {
   question: TextQuestion;
@@ -22,7 +23,7 @@ export const TextQuestionField = ({
   hideLabel,
 }: TextQuestionFieldProps) => (
   <Textarea
-    label={question.prompt}
+    label={formatQuestionPrompt(question)}
     hideLabel={hideLabel}
     description={question.description}
     value={typeof value === "string" ? value : ""}

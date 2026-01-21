@@ -6,6 +6,7 @@ import type {
   LumiSurveyAnswerValue,
   RatingQuestion,
 } from "../../../core/types.js";
+import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
 import { EmojiButton } from "./EmojiButton.js";
 import styles from "./emo.module.css";
 import { Glad, Lei, Noytral, Sinna, VeldigGlad } from "./emojies.js";
@@ -237,7 +238,7 @@ export const RatingQuestionField = ({
           level="3"
           size="xsmall"
         >
-          {question.prompt}
+          {formatQuestionPrompt(question)}
         </Heading>
       )}
       {question.description && !hideDescription && (
@@ -253,7 +254,9 @@ export const RatingQuestionField = ({
         paddingBlock={fieldsetPaddingBlock ?? "space-12"}
         paddingInline={fieldsetPaddingInline ?? "space-16"}
       >
-        <legend className={CLASS_NAMES.legend}>{question.prompt}</legend>
+        <legend className={CLASS_NAMES.legend}>
+          {formatQuestionPrompt(question)}
+        </legend>
         <HStack
           gap="space-16"
           justify="start"
