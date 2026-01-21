@@ -29,11 +29,11 @@ function evaluateCondition(
   // Determine the actual value to compare
   let actualValue: unknown;
 
-  if (condition.field === "ANSWER") {
-    actualValue = currentAnswer;
-  } else {
-    // condition.field === "METADATA" - TypeScript guarantees key exists
+  if (condition.field === "METADATA") {
     actualValue = metadata?.[condition.key];
+  } else {
+    // Default: condition.field is "ANSWER" (or omitted)
+    actualValue = currentAnswer;
   }
 
   // Handle EXISTS operator separately

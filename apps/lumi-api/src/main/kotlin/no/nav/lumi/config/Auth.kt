@@ -129,7 +129,7 @@ fun extractCallerIdentityFromPrincipal(principal: BrukerPrincipal): CallerIdenti
         parseCallerIdentity(
             callerId = callerId,
             navIdent = principal.navIdent,
-            name = principal.name
+            name = principal.name,
         )
     } catch (e: Exception) {
         logger.error("Failed to extract caller identity from principal", e)

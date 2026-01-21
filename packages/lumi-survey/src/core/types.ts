@@ -37,7 +37,7 @@ export type LogicOperator = "EQ" | "NEQ" | "GT" | "LT" | "CONTAINS" | "EXISTS";
 export type LogicCondition =
   | {
       /** Compare against a question's answer */
-      field: "ANSWER";
+      field?: "ANSWER";
       /** Reference to another question's answer (required for visibleIf) */
       questionId?: string;
       /** Comparison operator */

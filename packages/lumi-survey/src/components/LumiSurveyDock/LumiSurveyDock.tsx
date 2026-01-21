@@ -131,12 +131,6 @@ export const LumiSurveyDock = ({
   const canonicalSurvey = useMemo(() => buildCanonicalSurvey(survey), [survey]);
   const { type: surveyType, questions } = canonicalSurvey;
 
-  // Check if survey has any text questions (for personal data notice)
-  const hasTextQuestions = useMemo(
-    () => questions.some((q) => q.type === "text"),
-    [questions],
-  );
-
   // The first question is used as the "prompt" question in the header
   const promptQuestion = questions[0];
 
@@ -197,7 +191,6 @@ export const LumiSurveyDock = ({
     isStepMode: stepModeFromSurvey,
     currentStep,
     currentQuestion: currentStepQuestion,
-    visitedSteps,
     canGoBack,
     canGoNext,
     isLastStep,
@@ -214,30 +207,24 @@ export const LumiSurveyDock = ({
   // If branching exists we keep step mode to preserve correct navigation.
   const isStepMode = forceSinglePage ? hasBranching : stepModeFromSurvey;
 
-  const hasTextQuestionsForNotice = useMemo(() => {
-    if (!isStepMode) {
-      return hasTextQuestions;
+  const showPersonalDataNotice = useMemo(() => {
+    if (!config.showPersonalDataNotice) return false;
+
+    if (isStepMode) {
+      return currentStepQuestion?.type === "text";
     }
 
-    const indices = new Set<number>([...visitedSteps, currentStep]);
-    for (const index of indices) {
-      if (questions[index]?.type === "text") {
-        return true;
-      }
-    }
-
-    return false;
-  }, [currentStep, hasTextQuestions, isStepMode, questions, visitedSteps]);
+    return visibleQuestions.some((q) => q.type === "text");
+  }, [
+    config.showPersonalDataNotice,
+    currentStepQuestion?.type,
+    isStepMode,
+    visibleQuestions,
+  ]);
 
   const handleNext = useCallback(async () => {
     const result = goToNext();
     if (!result || result.nextIndex !== -1) {
-      return;
-    }
-
-    // If a privacy notice is relevant for this path, keep the existing confirm step:
-    // first click shows the notice + "Send" button, second click submits.
-    if (config.showPersonalDataNotice && hasTextQuestionsForNotice) {
       return;
     }
 
@@ -246,12 +233,7 @@ export const LumiSurveyDock = ({
     } catch {
       // useLumiSurvey sets error state; avoid unhandled rejections
     }
-  }, [
-    config.showPersonalDataNotice,
-    hasTextQuestionsForNotice,
-    goToNext,
-    submit,
-  ]);
+  }, [goToNext, submit]);
 
   const handleSubmit = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
@@ -426,9 +408,7 @@ export const LumiSurveyDock = ({
           submitLabel={config.submitLabel}
           submitPendingLabel={config.submitPendingLabel}
           cancelLabel={config.cancelLabel}
-          showPersonalDataNotice={
-            config.showPersonalDataNotice && hasTextQuestionsForNotice
-          }
+          showPersonalDataNotice={showPersonalDataNotice}
           personalDataNotice={noticeContent}
           isSubmitBlocked={isSubmitBlocked}
           hasTransportError={Boolean(hasTransportError)}

@@ -41,4 +41,44 @@ describe("buildCanonicalSurvey", () => {
       "Lumi survey must have at least one question",
     );
   });
+
+  it("throws if visibleIf references unknown questionId", () => {
+    expect(() =>
+      buildCanonicalSurvey({
+        type: "custom",
+        questions: [
+          { id: "q1", type: "rating", prompt: "Rating", required: true },
+          {
+            id: "q2",
+            type: "text",
+            prompt: "Text",
+            visibleIf: { operator: "EXISTS", questionId: "does-not-exist" },
+          },
+        ] as unknown as LumiSurveyConfig["questions"],
+      }),
+    ).toThrowError(/visibleIf\.questionId/i);
+  });
+
+  it("throws if branching logic jumps to unknown targetId", () => {
+    expect(() =>
+      buildCanonicalSurvey({
+        type: "custom",
+        questions: [
+          {
+            id: "q1",
+            type: "singleChoice",
+            prompt: "Choice",
+            required: true,
+            options: [{ value: "yes", label: "Ja" }],
+            logic: [
+              {
+                condition: { operator: "EXISTS" },
+                action: { type: "JUMP_TO", targetId: "missing" },
+              },
+            ],
+          },
+        ] as unknown as LumiSurveyConfig["questions"],
+      }),
+    ).toThrowError(/targetId/i);
+  });
 });

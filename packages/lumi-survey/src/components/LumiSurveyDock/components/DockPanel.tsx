@@ -224,16 +224,16 @@ export const DockPanel = ({
                     })}
                   </div>
 
-                  {hasTransportError && (
-                    <Alert variant="error" role="alert">
-                      {transportErrorMessage}
+                  {/* Show privacy notice when a text field is visible */}
+                  {showPersonalDataNotice && (
+                    <Alert variant="warning" role="alert">
+                      {personalDataNotice}
                     </Alert>
                   )}
 
-                  {/* Show privacy notice only on last step before submit */}
-                  {showPersonalDataNotice && isLastStep && (
-                    <Alert variant="warning" role="alert">
-                      {personalDataNotice}
+                  {hasTransportError && (
+                    <Alert variant="error" role="alert">
+                      {transportErrorMessage}
                     </Alert>
                   )}
 
@@ -295,20 +295,13 @@ export const DockPanel = ({
                     );
                   })}
 
-                  {hasTransportError && (
-                    <Alert variant="error" role="alert">
-                      {transportErrorMessage}
-                    </Alert>
-                  )}
-
-                  {showPersonalDataNotice && !isSubmitBlocked && (
+                  {showPersonalDataNotice && (
                     <Alert variant="warning" role="alert">
                       {personalDataNotice}
                     </Alert>
                   )}
 
                   <HStack gap="space-8" wrap>
-                    {/* Only show Submit button when form is valid (not blocked) */}
                     {!isSubmitBlocked && (
                       <Button
                         type="submit"
@@ -319,6 +312,12 @@ export const DockPanel = ({
                       </Button>
                     )}
                   </HStack>
+
+                  {hasTransportError && (
+                    <Alert variant="error" role="alert">
+                      {transportErrorMessage}
+                    </Alert>
+                  )}
                 </>
               )}
             </VStack>

@@ -7,7 +7,9 @@ import type {
   NpsRatingQuestion,
 } from "../../../core/types.js";
 import styles from "./emo.module.css";
+import npsStyles from "./nps.module.css";
 import "./emo.fallback.css";
+import "./nps.fallback.css";
 
 interface NpsRatingProps {
   question: NpsRatingQuestion;
@@ -158,24 +160,22 @@ export function NpsRating({
                   onClick={() => handleSelect(value)}
                   disabled={disabled}
                   tabIndex={isActive || (!activeState && value === 0) ? 0 : -1}
+                  className={
+                    npsStyles.npsButton ?? "lumi-survey-rating__nps-button"
+                  }
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: "100%",
-                    minWidth: 0,
-                    height: "2.25rem",
-                    border: `2px solid ${getNpsBorderColor(value, isActive)}`,
-                    borderRadius: "var(--ax-radius-4)",
-                    background: getNpsColor(value, isActive),
-                    cursor: disabled ? "not-allowed" : "pointer",
-                    opacity: disabled ? 0.5 : 1,
-                    padding: 0,
-                    fontSize: "0.875rem",
-                    fontWeight: isActive ? 700 : 500,
-                    color: "var(--ax-text-neutral)",
-                    transition: "all 0.15s ease",
-                    fontVariantNumeric: "tabular-nums",
+                    ["--lumi-nps-bg" as string]: getNpsColor(value, isActive),
+                    ["--lumi-nps-border" as string]: getNpsBorderColor(
+                      value,
+                      isActive,
+                    ),
+                    ["--lumi-nps-hover-bg" as string]: isActive
+                      ? getNpsColor(value, true)
+                      : "var(--ax-bg-neutral-soft)",
+                    ["--lumi-nps-hover-border" as string]: isActive
+                      ? getNpsBorderColor(value, true)
+                      : "var(--ax-border-neutral-subtle)",
+                    ["--lumi-nps-font-weight" as string]: isActive ? 700 : 500,
                   }}
                 >
                   {value}

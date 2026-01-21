@@ -29,27 +29,24 @@ export function evaluateVisibility(
   // No condition = always visible
   if (!condition) return true;
 
-  if (condition.field === "ANSWER") {
-    const questionId = condition.questionId;
-
-    // EXISTS operator: check if answer is defined
-    if (condition.operator === "EXISTS") {
-      if (!questionId) return true; // No reference = visible
-      return answers[questionId] !== undefined;
-    }
-
-    // Other operators: compare with value
-    if (!questionId) return true; // No reference = visible
-    const answer = answers[questionId];
-    return evaluateOperator(answer, condition.operator, condition.value);
-  }
-
   if (condition.field === "METADATA") {
     const metaValue = metadata?.[condition.key];
     return evaluateOperator(metaValue, condition.operator, condition.value);
   }
 
-  return true;
+  // Default: condition.field is "ANSWER" (or omitted)
+  const questionId = condition.questionId;
+
+  // EXISTS operator: check if answer is defined
+  if (condition.operator === "EXISTS") {
+    if (!questionId) return true; // No reference = visible
+    return answers[questionId] !== undefined;
+  }
+
+  // Other operators: compare with value
+  if (!questionId) return true; // No reference = visible
+  const answer = answers[questionId];
+  return evaluateOperator(answer, condition.operator, condition.value);
 }
 
 /**

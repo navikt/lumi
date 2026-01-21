@@ -12,9 +12,11 @@ private val log = LoggerFactory.getLogger("SubmissionAuthPlugin")
 /**
  * Authentication plugins for submission routes.
  *
- * Submission is intentionally split by issuer:
+ * Submission is intentionally split by issuer to avoid guessing:
  * - TokenX (end-user apps)
- * - AzureAD (Modia/veiledersystem)
+ * - AzureAD (internal tools)
+ *
+ * Submission routes must not store end-user identifiers.
  */
 class SubmissionAuthPluginConfig
 
@@ -30,13 +32,13 @@ private fun createSubmissionAuthPlugin(
 ) {
     val env = ServerEnv.current
     val isNais = env.nais.isNais
-
+    
     val texasClient = if (isNais && env.nais.tokenIntrospectionEndpoint != null) {
         TexasClient(env.nais.tokenIntrospectionEndpoint)
     } else {
         null
     }
-
+    
     onCall { call ->
         if (!isNais) {
             // Local dev/tests - create mock identity
@@ -52,7 +54,7 @@ private fun createSubmissionAuthPlugin(
             )
             return@onCall
         }
-
+        
         val authHeader = call.request.header(HttpHeaders.Authorization)
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             log.warn("$pluginName: Missing or invalid Authorization header")
@@ -60,7 +62,7 @@ private fun createSubmissionAuthPlugin(
                 "Authorization header required (Bearer token). Expected issuer=$identityProvider. Use $endpointHint"
             )
         }
-
+        
         val token = authHeader.removePrefix("Bearer ")
 
         val client = texasClient
@@ -72,7 +74,7 @@ private fun createSubmissionAuthPlugin(
             }
 
         val introspectionResult = client.introspect(token, identityProvider = identityProvider)
-
+        
         if (introspectionResult == null || !introspectionResult.active) {
             log.warn("$pluginName: Token validation failed")
             throw ApiErrorException.UnauthorizedException(

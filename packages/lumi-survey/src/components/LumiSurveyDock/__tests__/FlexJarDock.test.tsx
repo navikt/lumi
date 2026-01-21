@@ -195,10 +195,18 @@ describe("LumiSurveyDock", () => {
       screen.queryByLabelText(/andre kommentarer/i),
     ).not.toBeInTheDocument();
 
+    expect(
+      screen.queryByText(/ikke skriv inn navn eller andre personopplysninger/i),
+    ).not.toBeInTheDocument();
+
     await user.click(screen.getByRole("radio", { name: /5\./i }));
 
     expect(screen.getByLabelText(/hva kan vi forbedre/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/andre kommentarer/i)).toBeInTheDocument();
+
+    expect(
+      screen.getByText(/ikke skriv inn navn eller andre personopplysninger/i),
+    ).toBeInTheDocument();
   });
 
   it("submits answers via the transport and shows success state", async () => {
