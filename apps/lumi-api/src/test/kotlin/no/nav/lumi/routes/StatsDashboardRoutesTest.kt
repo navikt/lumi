@@ -7,6 +7,7 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.delete
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -206,6 +207,57 @@ class StatsDashboardRoutesTest : FunSpec({
 
             // No surveyId => backend should not compute fieldStats (avoid heavy payload).
             stats.fieldStats shouldBe emptyList()
+        }
+    }
+
+    test("DELETE /api/v1/intern/feedback invalidates cached stats immediately") {
+        testApplication {
+            application { testModule() }
+
+            val team = "flex"
+            val app = "spinnsyn"
+            val id = "fb-to-delete"
+
+            val submittedAt = OffsetDateTime.parse("2026-01-21T10:00:00+01:00")
+            insertTestFeedbackWithJson(
+                id = id,
+                team = team,
+                app = app,
+                feedbackJson = feedbackJson(
+                    surveyId = "survey-x",
+                    pathname = "/x",
+                    deviceType = "desktop",
+                    rating = 5,
+                    text = "bra",
+                    startedAt = submittedAt.minusSeconds(30),
+                    submittedAt = submittedAt,
+                ),
+                opprettet = submittedAt,
+            )
+
+            val client = createTestClient()
+
+            // Prime stats cache
+            val initial = client.get("/api/v1/intern/stats/dashboard?team=$team&app=$app") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+            initial.status shouldBe HttpStatusCode.OK
+            val initialStats = json.decodeFromString<FeedbackStats>(initial.bodyAsText())
+            initialStats.totalCount shouldBe 1
+
+            // Delete the feedback
+            val deleted = client.delete("/api/v1/intern/feedback/$id?team=$team") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+            deleted.status shouldBe HttpStatusCode.NoContent
+
+            // Must reflect deletion immediately (no waiting for cache TTL)
+            val after = client.get("/api/v1/intern/stats/dashboard?team=$team&app=$app") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+            after.status shouldBe HttpStatusCode.OK
+            val afterStats = json.decodeFromString<FeedbackStats>(after.bodyAsText())
+            afterStats.totalCount shouldBe 0
         }
     }
 

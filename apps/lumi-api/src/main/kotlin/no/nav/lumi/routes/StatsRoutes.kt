@@ -6,9 +6,11 @@ import io.ktor.server.routing.*
 import no.nav.lumi.config.auth.authorizedTeam
 import no.nav.lumi.domain.FILTER_ALL
 import no.nav.lumi.domain.StatsQuery
+import no.nav.lumi.integrations.valkey.ValkeyStatsCache
 import no.nav.lumi.service.StatsService
 
-private val defaultStatsService = StatsService()
+private val defaultStatsCache = ValkeyStatsCache.fromEnvOrFallback()
+private val defaultStatsService = StatsService(statsCache = defaultStatsCache)
 
 /**
  * Helper to build StatsQuery from resource params.

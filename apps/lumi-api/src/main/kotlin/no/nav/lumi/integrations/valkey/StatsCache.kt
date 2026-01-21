@@ -38,6 +38,14 @@ interface StatsCache {
      * Clear all cached stats.
      */
     fun clear()
+
+    /**
+     * Clear cached stats keys that start with the given prefix.
+     *
+     * Prefix is matched against the logical cache key (without the Valkey keyPrefix).
+     * Example: prefix = "dashboard:team=flex".
+     */
+    fun clearByPrefix(prefix: String)
 }
 
 /**
@@ -68,6 +76,13 @@ class InMemoryStatsCache : StatsCache {
     override fun clear() {
         cache.clear()
         log.info("In-memory stats cache cleared")
+    }
+
+    override fun clearByPrefix(prefix: String) {
+        if (prefix.isBlank()) return
+        val keysToRemove = cache.keys.filter { it.startsWith(prefix) }
+        keysToRemove.forEach { cache.remove(it) }
+        log.info("In-memory stats cache cleared by prefix '$prefix' (${keysToRemove.size} keys)")
     }
 }
 
@@ -166,6 +181,22 @@ class ValkeyStatsCache private constructor(
         } catch (e: Exception) {
             log.warn("Failed to clear Valkey stats cache", e)
             fallback.clear()
+        }
+    }
+
+    override fun clearByPrefix(prefix: String) {
+        if (prefix.isBlank()) return
+
+        try {
+            val keys = jedis.keys("${keyPrefix}${prefix}*")
+            if (keys.isNotEmpty()) {
+                jedis.del(*keys.toTypedArray())
+            }
+            fallback.clearByPrefix(prefix)
+            log.info("Valkey stats cache cleared by prefix '$prefix' (${keys.size} keys)")
+        } catch (e: Exception) {
+            log.warn("Failed to clear Valkey stats cache by prefix '$prefix'", e)
+            fallback.clearByPrefix(prefix)
         }
     }
     

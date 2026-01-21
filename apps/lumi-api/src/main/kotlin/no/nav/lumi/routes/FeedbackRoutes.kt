@@ -18,12 +18,19 @@ import no.nav.lumi.domain.TagInput
 import no.nav.lumi.domain.TeamsAndApps
 import no.nav.lumi.repository.FeedbackRepository
 import no.nav.lumi.service.FeedbackService
+import no.nav.lumi.service.StatsCacheInvalidator
+import no.nav.lumi.integrations.valkey.ValkeyStatsCache
 import org.slf4j.LoggerFactory
 
 private val log = LoggerFactory.getLogger("FeedbackRoutes")
 private val defaultFeedbackService = FeedbackService()
+private val defaultStatsCache = ValkeyStatsCache.fromEnvOrFallback()
+private val defaultStatsCacheInvalidator = StatsCacheInvalidator(defaultStatsCache)
 
-fun Route.feedbackRoutes(service: FeedbackService = defaultFeedbackService) {
+fun Route.feedbackRoutes(
+    service: FeedbackService = defaultFeedbackService,
+    statsCacheInvalidator: StatsCacheInvalidator = defaultStatsCacheInvalidator,
+) {
     // List feedback with pagination and filters
     get<ApiV1Intern.Feedback> { params ->
         // Team is already validated by TeamAuthorizationPlugin
@@ -88,6 +95,7 @@ fun Route.feedbackRoutes(service: FeedbackService = defaultFeedbackService) {
         val team = call.authorizedTeam
         val deleted = service.delete(params.id, team)
         if (deleted) {
+            statsCacheInvalidator.invalidateTeam(team)
             call.respond(HttpStatusCode.NoContent)
         } else {
             call.respond(HttpStatusCode.NotFound)
@@ -166,11 +174,17 @@ fun Route.feedbackRoutes(service: FeedbackService = defaultFeedbackService) {
     }
 }
 
-fun Route.surveyFacetRoutes(service: FeedbackService = defaultFeedbackService) {
+fun Route.surveyFacetRoutes(
+    service: FeedbackService = defaultFeedbackService,
+    statsCacheInvalidator: StatsCacheInvalidator = defaultStatsCacheInvalidator,
+) {
     // Delete all feedback for a survey (team-scoped)
     delete<ApiV1Intern.Surveys.Id> { params ->
         val team = call.authorizedTeam
         val deletedCount = service.deleteSurvey(params.surveyId, team)
+        if (deletedCount > 0) {
+            statsCacheInvalidator.invalidateTeam(team)
+        }
         call.respond(DeleteSurveyResult(surveyId = params.surveyId, deletedCount = deletedCount))
     }
 

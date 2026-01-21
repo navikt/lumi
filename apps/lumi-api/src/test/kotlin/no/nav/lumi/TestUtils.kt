@@ -16,6 +16,7 @@ import no.nav.lumi.config.configureSerialization
 import no.nav.lumi.config.configureStatusPages
 import no.nav.lumi.config.configureRateLimiting
 import no.nav.lumi.config.DatabaseHolder
+import no.nav.lumi.integrations.valkey.InMemoryStatsCache
 import no.nav.lumi.repository.FeedbackRepository
 import no.nav.lumi.routes.feedbackRoutes
 import no.nav.lumi.routes.internalRoutes
@@ -26,6 +27,7 @@ import no.nav.lumi.routes.submissionRoutes
 import no.nav.lumi.repository.FeedbackStatsRepository
 import java.sql.Timestamp
 import no.nav.lumi.service.FeedbackService
+import no.nav.lumi.service.StatsCacheInvalidator
 import no.nav.lumi.service.StatsService
 import no.nav.lumi.service.ExportService
 import java.time.OffsetDateTime
@@ -217,8 +219,10 @@ fun Application.testModule(
     }
     
     // Create services with the injected repositories/services
-    val statsService = StatsService(FeedbackRepository(), statsRepository)
+    val statsCache = InMemoryStatsCache()
+    val statsService = StatsService(FeedbackRepository(), statsRepository, statsCache = statsCache)
     val exportService = ExportService(FeedbackRepository())
+    val statsCacheInvalidator = StatsCacheInvalidator(statsCache)
     
     routing {
         internalRoutes()
@@ -233,8 +237,8 @@ fun Application.testModule(
                 naisTeamLookupProvider = { testNaisTeamLookup }
             }
             
-            feedbackRoutes(feedbackService)
-            surveyFacetRoutes(feedbackService)
+            feedbackRoutes(feedbackService, statsCacheInvalidator)
+            surveyFacetRoutes(feedbackService, statsCacheInvalidator)
             statsRoutes(statsService)
             exportRoutes(exportService)
         }
