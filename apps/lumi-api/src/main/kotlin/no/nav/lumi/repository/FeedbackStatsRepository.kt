@@ -204,9 +204,26 @@ class FeedbackStatsRepository {
         val totalFeedbackCount = records.size
         val answersByField = mutableMapOf<String, MutableList<Pair<FeedbackDto, Answer>>>()
 
+        // Preserve the survey question order as seen in submissions.
+        // We use a representative submission (most answers) as the primary ordering source,
+        // then fall back to first-seen across all submissions for any missing/optional fields.
+        val fieldOrder = mutableMapOf<String, Int>()
+        var nextOrderIndex = 0
+
+        val representativeAnswers = records.maxByOrNull { it.answers.size }?.answers.orEmpty()
+        for (answer in representativeAnswers) {
+            if (answer.fieldId !in fieldOrder) {
+                fieldOrder[answer.fieldId] = nextOrderIndex++
+            }
+        }
+
         for (dto in records) {
             for (answer in dto.answers) {
                 answersByField.getOrPut(answer.fieldId) { mutableListOf() }.add(dto to answer)
+
+                if (answer.fieldId !in fieldOrder) {
+                    fieldOrder[answer.fieldId] = nextOrderIndex++
+                }
             }
         }
 
@@ -340,7 +357,11 @@ class FeedbackStatsRepository {
             }
         }
 
-        return result.sortedWith(compareBy<FieldStat> { it.fieldType.name }.thenBy { it.fieldId })
+        return result.sortedWith(
+            compareBy<FieldStat> { fieldOrder[it.fieldId] ?: Int.MAX_VALUE }
+                .thenBy { it.fieldType.name }
+                .thenBy { it.fieldId }
+        )
     }
 
     fun getTopTasksStats(query: StatsQuery): TopTasksResponse {

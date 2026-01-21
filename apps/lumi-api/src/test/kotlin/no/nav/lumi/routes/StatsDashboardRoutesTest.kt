@@ -267,6 +267,113 @@ class StatsDashboardRoutesTest : FunSpec({
         }
     }
 
+    test("GET /api/v1/intern/stats/dashboard preserves fieldStats question order") {
+        testApplication {
+            application { testModule() }
+
+            val team = "flex"
+            val app = "spinnsyn"
+            val surveyId = "survey-ordering"
+            val submittedAt = OffsetDateTime.parse("2026-01-21T10:00:00+01:00")
+
+            fun feedbackJsonWithReorderedFieldIds(
+                rating: Int,
+                textSecondQuestion: String,
+                textThirdQuestion: String,
+                startedAt: OffsetDateTime,
+                submittedAt: OffsetDateTime,
+            ): String {
+                val payload = buildJsonObject {
+                    put("schemaVersion", 1)
+                    put("surveyId", surveyId)
+                    put("surveyType", "rating")
+                    putJsonObject("context") {
+                        put("pathname", "/ordering")
+                        put("deviceType", "desktop")
+                    }
+                    putJsonArray("answers") {
+                        // Q1
+                        add(
+                            buildJsonObject {
+                                put("fieldId", "svar")
+                                put("fieldType", "RATING")
+                                putJsonObject("question") { put("label", "Q1") }
+                                putJsonObject("value") {
+                                    put("type", "rating")
+                                    put("rating", rating)
+                                    put("ratingVariant", "emoji")
+                                    put("ratingScale", 5)
+                                }
+                            }
+                        )
+
+                        // Q2 (fieldId sorts AFTER Q3 lexicographically)
+                        add(
+                            buildJsonObject {
+                                put("fieldId", "text-z")
+                                put("fieldType", "TEXT")
+                                putJsonObject("question") { put("label", "Q2") }
+                                putJsonObject("value") {
+                                    put("type", "text")
+                                    put("text", textSecondQuestion)
+                                }
+                            }
+                        )
+
+                        // Q3 (fieldId sorts BEFORE Q2 lexicographically)
+                        add(
+                            buildJsonObject {
+                                put("fieldId", "text-a")
+                                put("fieldType", "TEXT")
+                                putJsonObject("question") { put("label", "Q3") }
+                                putJsonObject("value") {
+                                    put("type", "text")
+                                    put("text", textThirdQuestion)
+                                }
+                            }
+                        )
+                    }
+                    put("startedAt", startedAt.toInstant().toString())
+                    put("submittedAt", submittedAt.toInstant().toString())
+                }
+
+                return payload.toString()
+            }
+
+            // 5 responses => NOT masked (threshold is 5)
+            repeat(5) { idx ->
+                val time = submittedAt.minusMinutes(idx.toLong())
+                insertTestFeedbackWithJson(
+                    team = team,
+                    app = app,
+                    feedbackJson = feedbackJsonWithReorderedFieldIds(
+                        rating = 5,
+                        textSecondQuestion = "second-$idx",
+                        textThirdQuestion = "third-$idx",
+                        startedAt = time.minusSeconds(30),
+                        submittedAt = time,
+                    ),
+                    opprettet = time,
+                )
+            }
+
+            val response = createTestClient().get(
+                "/api/v1/intern/stats/dashboard?team=$team&app=$app&surveyId=$surveyId"
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.OK
+
+            val stats = json.decodeFromString<FeedbackStats>(response.bodyAsText())
+            stats.totalCount shouldBe 5
+            stats.privacy.shouldBeNull()
+
+            stats.fieldStats.map { it.fieldId } shouldBe listOf("svar", "text-z", "text-a")
+            stats.fieldStats.map { it.label } shouldBe listOf("Q1", "Q2", "Q3")
+        }
+    }
+
     test("GET /api/v1/intern/stats/dashboard masks analytics when below privacy threshold") {
         testApplication {
             application { testModule() }
