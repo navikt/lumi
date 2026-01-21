@@ -25,7 +25,11 @@ export function FieldStatsSection() {
   );
 
   return (
-    <VStack gap="space-16" marginBlock="space-24 space-16">
+    <VStack
+      data-testid="field-stats-section"
+      gap="space-16"
+      marginBlock="space-24 space-16"
+    >
       <Heading level="3" size="small">
         Statistikk per felt
       </Heading>

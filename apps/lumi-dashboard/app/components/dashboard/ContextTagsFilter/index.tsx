@@ -1,4 +1,4 @@
-import { Select, VStack } from "@navikt/ds-react";
+import { Box, Label, Select, VStack } from "@navikt/ds-react";
 import { useContextTags } from "~/hooks/useContextTags";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
 import { formatMetadataLabel, formatMetadataValue } from "~/utils/segmentUtils";
@@ -39,30 +39,38 @@ export function ContextTagsFilter({ surveyId }: ContextTagsFilterProps) {
   };
 
   return (
-    <VStack gap="space-8">
-      {Object.entries(contextTags).map(([key, values]) => {
-        const label = formatMetadataLabel(key);
-        const selectedValue = activeFilters[key];
+    <Box>
+      <VStack gap="space-8">
+        <Label size="small">Segmentering</Label>
+        <VStack gap="space-8">
+          {Object.entries(contextTags).map(([key, values]) => {
+            const label = formatMetadataLabel(key);
+            const selectedValue = activeFilters[key];
 
-        return (
-          <Select
-            key={key}
-            label={label}
-            size="small"
-            value={selectedValue || ""}
-            onChange={(e) =>
-              setFilter(key, e.target.value === "" ? undefined : e.target.value)
-            }
-          >
-            <option value="">Alle</option>
-            {values.map((item) => (
-              <option key={item.value} value={item.value}>
-                {formatMetadataValue(item.value)} ({item.count})
-              </option>
-            ))}
-          </Select>
-        );
-      })}
-    </VStack>
+            return (
+              <Select
+                key={key}
+                label={label}
+                size="small"
+                value={selectedValue || ""}
+                onChange={(e) =>
+                  setFilter(
+                    key,
+                    e.target.value === "" ? undefined : e.target.value,
+                  )
+                }
+              >
+                <option value="">Alle</option>
+                {values.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {formatMetadataValue(item.value)} ({item.count})
+                  </option>
+                ))}
+              </Select>
+            );
+          })}
+        </VStack>
+      </VStack>
+    </Box>
   );
 }

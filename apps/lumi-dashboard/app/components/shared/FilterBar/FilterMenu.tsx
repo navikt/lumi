@@ -5,7 +5,6 @@ import {
   Button,
   HGrid,
   HStack,
-  Label,
   Tag,
   VStack,
 } from "@navikt/ds-react";
@@ -149,12 +148,7 @@ export function FilterMenu({
 
               {/* Segmentation */}
               {params.surveyId && (
-                <Box>
-                  <VStack gap="space-8">
-                    <Label size="small">Segmentering</Label>
-                    <ContextTagsFilter surveyId={params.surveyId} />
-                  </VStack>
-                </Box>
+                <ContextTagsFilter surveyId={params.surveyId} />
               )}
             </VStack>
           </HGrid>

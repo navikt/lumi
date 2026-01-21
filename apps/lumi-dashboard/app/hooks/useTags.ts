@@ -54,6 +54,8 @@ export function useAddTag() {
       // Invalidate both feedback and tags queries
       queryClient.invalidateQueries({ queryKey: ["feedback"] });
       queryClient.invalidateQueries({ queryKey: ["tags"] });
+      // Filter menu uses tags from bootstrap; refresh it so tags appear immediately.
+      queryClient.invalidateQueries({ queryKey: ["filterBootstrap"] });
     },
   });
 }
@@ -74,6 +76,7 @@ export function useRemoveTag() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["feedback"] });
       queryClient.invalidateQueries({ queryKey: ["tags"] });
+      queryClient.invalidateQueries({ queryKey: ["filterBootstrap"] });
     },
   });
 }

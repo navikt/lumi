@@ -76,7 +76,11 @@ export function RatingFieldCard({ field, totalCount }: FieldCardProps) {
       <HStack gap="space-8" align="start" marginBlock="space-0 space-8">
         <StarIcon fontSize="1.25rem" aria-hidden />
         <VStack gap="space-0" style={{ flex: 1 }}>
-          <Label size="small" style={{ flex: 1, minWidth: 0 }}>
+          <Label
+            size="small"
+            style={{ flex: 1, minWidth: 0 }}
+            data-testid={`field-stat-title-${field.fieldId}`}
+          >
             {field.label}
           </Label>
           <BodyShort
@@ -183,7 +187,11 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
       <HStack gap="space-8" align="start" marginBlock="space-0 space-8">
         <ChatExclamationmarkIcon fontSize="1.25rem" aria-hidden />
         <VStack gap="space-0" style={{ flex: 1 }}>
-          <Label size="small" style={{ flex: 1, minWidth: 0 }}>
+          <Label
+            size="small"
+            style={{ flex: 1, minWidth: 0 }}
+            data-testid={`field-stat-title-${field.fieldId}`}
+          >
             {field.label}
           </Label>
           <BodyShort
@@ -312,7 +320,11 @@ export function ChoiceFieldCard({ field, totalCount }: FieldCardProps) {
       <HStack gap="space-8" align="start" marginBlock="space-0 space-8">
         <ChatElipsisIcon fontSize="1.25rem" aria-hidden />
         <VStack gap="space-0" style={{ flex: 1 }}>
-          <Label size="small" style={{ flex: 1, minWidth: 0 }}>
+          <Label
+            size="small"
+            style={{ flex: 1, minWidth: 0 }}
+            data-testid={`field-stat-title-${field.fieldId}`}
+          >
             {field.label}
           </Label>
           <BodyShort

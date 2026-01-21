@@ -17,6 +17,8 @@ import {
   generateTopTasksMockData,
 } from "./generators";
 
+import { createContext, createRatingAnswer, createTextAnswer } from "./helpers";
+
 export {
   generateSurveyData,
   generateTopTasksMockData,
@@ -45,6 +47,36 @@ export {
 // ============================================
 // Mock feedback data - One survey per type for showcase
 // ============================================
+
+function generateFieldStatsOrderingSurveyData(count: number): FeedbackDto[] {
+  const items: FeedbackDto[] = [];
+  const now = new Date();
+
+  for (let i = 0; i < count; i++) {
+    const minutesAgo = i * 7;
+    const timestamp = new Date(
+      now.getTime() - minutesAgo * 60_000,
+    ).toISOString();
+
+    items.push({
+      id: `ordering-${i}`,
+      submittedAt: timestamp,
+      app: "syfo-oppfolgingsplan-frontend",
+      surveyId: "survey-ordering",
+      surveyType: "rating",
+      context: createContext("/ordering", "desktop"),
+      answers: [
+        createRatingAnswer("svar", "Ordering Q1", 5),
+        // Intentionally picked fieldIds that would swap if sorted lexicographically.
+        createTextAnswer("text-z", "Ordering Q2", `second-${i}`),
+        createTextAnswer("text-a", "Ordering Q3", `third-${i}`),
+      ],
+      sensitiveDataRedacted: false,
+    });
+  }
+
+  return items;
+}
 
 export const mockFeedbackItems: FeedbackDto[] = [
   // ===========================================
@@ -90,6 +122,12 @@ export const mockFeedbackItems: FeedbackDto[] = [
   // Multi-field complex survey
   // ===========================================
   ...generateComplexSurveyData(),
+
+  // ===========================================
+  // 6. ORDERING SURVEY (type: "rating")
+  // Dedicated for verifying per-field ordering in UI
+  // ===========================================
+  ...generateFieldStatsOrderingSurveyData(12),
 ];
 
 export * from "./helpers"; // export helpers if needed by tests
