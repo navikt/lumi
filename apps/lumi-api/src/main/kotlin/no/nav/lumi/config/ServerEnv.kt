@@ -13,7 +13,8 @@ import org.slf4j.LoggerFactory
 data class ServerEnv(
     val database: DatabaseEnv,
     val nais: NaisEnv,
-    val auth: AuthEnv
+    val auth: AuthEnv,
+    val valkey: ValkeyEnv
 ) {
     /**
      * Database connection configuration.
@@ -152,7 +153,8 @@ data class ServerEnv(
             return ServerEnv(
                 database = DatabaseEnv.fromNais(),
                 nais = nais,
-                auth = AuthEnv.fromEnvironment(nais.clusterName)
+                auth = AuthEnv.fromEnvironment(nais.clusterName),
+                valkey = ValkeyEnv.fromEnvironment()
             )
         }
         
@@ -165,7 +167,8 @@ data class ServerEnv(
             return ServerEnv(
                 database = DatabaseEnv.forLocal(),
                 nais = NaisEnv.forLocal(),
-                auth = AuthEnv.forLocal()
+                auth = AuthEnv.forLocal(),
+                valkey = ValkeyEnv.forLocal()
             )
         }
         
@@ -187,7 +190,8 @@ data class ServerEnv(
                     password = password
                 ),
                 nais = NaisEnv.forLocal(),
-                auth = AuthEnv.forLocal()
+                auth = AuthEnv.forLocal(),
+                valkey = ValkeyEnv.forLocal()
             )
         }
     }
