@@ -110,6 +110,25 @@ class SensitiveDataFilterTest : FunSpec({
             result.redactedText shouldNotContain "test@nav.no"
             result.redactedText shouldNotContain "98765432"
         }
+
+        test("should not corrupt redacted output when patterns overlap on same 11-digit substring") {
+            // Dummy 11-digit sequence (not real PII). This overlaps fødselsnummer (\b\d{11}\b)
+            // and kontonummer patterns.
+            val digits = "12345678901"
+            val text = "Tekst med tall $digits i midten"
+
+            val result = filter.redact(text)
+
+            result.wasRedacted shouldBe true
+            result.redactedText shouldNotContain digits
+
+            // Ensure we don't get double-replacement artifacts like "...FJERNET]MER FJERNET]".
+            result.redactedText shouldNotContain "]MER FJERNET]"
+
+            // Prefer the fødselsnummer placeholder for raw 11-digit sequences.
+            result.redactedText shouldContain "[FØDSELSNUMMER FJERNET]"
+            result.redactedText shouldNotContain "[KONTONUMMER FJERNET]"
+        }
     }
 
     context("No sensitive data") {

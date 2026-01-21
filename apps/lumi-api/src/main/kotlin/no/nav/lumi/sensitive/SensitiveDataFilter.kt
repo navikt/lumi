@@ -50,9 +50,10 @@ class SensitiveDataFilter(
             )
         }
         
-        val matches = detect(text)
+        val allMatches = detect(text)
+        val appliedMatches = selectNonOverlappingMatches(allMatches)
         
-        if (matches.isEmpty()) {
+        if (allMatches.isEmpty()) {
             return RedactionResult(
                 originalText = text,
                 redactedText = text,
@@ -64,7 +65,7 @@ class SensitiveDataFilter(
         var redactedText: String = text
         
         // Apply replacements in reverse order to preserve indices
-        val sortedMatches = matches.sortedByDescending { it.startIndex }
+        val sortedMatches = appliedMatches.sortedByDescending { it.startIndex }
         
         for (match in sortedMatches) {
             val pattern = patterns.find { it.name == match.patternName }
@@ -78,14 +79,14 @@ class SensitiveDataFilter(
         }
         
         if (logMatches) {
-            val patternCounts = matches.groupBy { it.patternName }.mapValues { it.value.size }
+            val patternCounts = allMatches.groupBy { it.patternName }.mapValues { it.value.size }
             log.info("Redacted sensitive data: $patternCounts")
         }
         
         return RedactionResult(
             originalText = text,
             redactedText = redactedText,
-            matches = matches,
+            matches = allMatches,
             wasRedacted = true
         )
     }
@@ -143,5 +144,58 @@ class SensitiveDataFilter(
         val STRICT = SensitiveDataFilter(
             patterns = SensitiveDataPatterns.ALL_PATTERNS
         )
+    }
+
+    /**
+     * Reduce overlapping matches to a non-overlapping set.
+     *
+     * Some patterns intentionally overlap (e.g. 11 digits can be both fødselsnummer and kontonummer).
+     * If we apply both, the second replacement would use indices from the original string and can corrupt
+     * the output (e.g. "[KONTONUMMER FJERNET]MER FJERNET]").
+     *
+     * Strategy: prefer patterns earlier in [patterns] (higher confidence/priority).
+     */
+    private fun selectNonOverlappingMatches(allMatches: List<SensitiveDataMatch>): List<SensitiveDataMatch> {
+        if (allMatches.isEmpty()) return emptyList()
+
+        val priorityByName = patterns.mapIndexed { index, pattern -> pattern.name to index }.toMap()
+
+        fun priority(match: SensitiveDataMatch): Int = priorityByName[match.patternName] ?: Int.MAX_VALUE
+
+        // Sort by start, then by priority (lower is better), then by length (longer first).
+        val sorted = allMatches.sortedWith(
+            compareBy<SensitiveDataMatch> { it.startIndex }
+                .thenBy { priority(it) }
+                .thenByDescending { it.endIndex - it.startIndex }
+        )
+
+        val accepted = mutableListOf<SensitiveDataMatch>()
+
+        for (match in sorted) {
+            // Pop and replace any overlapping lower-priority matches.
+            while (accepted.isNotEmpty()) {
+                val last = accepted.last()
+                val overlaps = match.startIndex < last.endIndex && match.endIndex > last.startIndex
+                if (!overlaps) break
+
+                val keepNew = priority(match) < priority(last)
+                if (keepNew) {
+                    accepted.removeAt(accepted.lastIndex)
+                    continue
+                }
+
+                // Existing match has higher or equal priority → drop the new one.
+                break
+            }
+
+            val overlapsAny = accepted.any {
+                match.startIndex < it.endIndex && match.endIndex > it.startIndex
+            }
+            if (!overlapsAny) {
+                accepted.add(match)
+            }
+        }
+
+        return accepted.sortedBy { it.startIndex }
     }
 }

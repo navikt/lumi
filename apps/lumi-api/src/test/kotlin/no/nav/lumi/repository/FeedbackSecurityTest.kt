@@ -103,6 +103,34 @@ class FeedbackSecurityTest : DescribeSpec({
             
             retrieved?.feedbackJson shouldNotContain "12345678901"
         }
+
+        it("should store a clean placeholder when 11-digit patterns overlap") {
+            // Dummy 11-digit sequence (not real PII). Matches both fødselsnummer and kontonummer patterns.
+            val digits = "12345678901"
+            val feedbackJson = """
+                {
+                    "surveyId": "test-survey",
+                    "answers": [
+                        {
+                            "fieldId": "feedback",
+                            "value": {
+                                "type": "text",
+                                "text": "Tekst med tall $digits i midten"
+                            }
+                        }
+                    ]
+                }
+            """.trimIndent()
+
+            val saved = service.save(feedbackJson, "team-test", "test-app")
+            val retrieved = repository.findRawById(saved, "team-test")
+
+            retrieved?.feedbackJson shouldNotContain digits
+            retrieved?.feedbackJson shouldContain "[FØDSELSNUMMER FJERNET]"
+
+            // Regression: avoid corrupted double-replacement artifacts.
+            retrieved?.feedbackJson shouldNotContain "]MER FJERNET]"
+        }
         
         it("should redact email from text answers") {
             val feedbackJson = """
