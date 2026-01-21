@@ -7,6 +7,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
+  type TooltipIndex,
   XAxis,
   YAxis,
 } from "recharts";
@@ -98,22 +99,44 @@ export function RatingTrendChart() {
         margin={chartMargin}
         role="img"
         aria-label={`Linjediagram som viser gjennomsnittlig vurdering over tid. Totalt snitt: ${overallAverage.toFixed(1)}`}
-        onClick={(e) => {
-          if (e?.activePayload && e.activePayload.length > 0) {
-            const clickData = e.activePayload[0].payload;
-            const date = clickData.date;
-            const average = clickData.average;
+        onClick={(state: {
+          activeTooltipIndex?: number | TooltipIndex;
+          activeIndex?: number | TooltipIndex;
+          activeLabel?: string | number;
+        }) => {
+          const rawIndex = state.activeTooltipIndex ?? state.activeIndex;
+          const index =
+            typeof rawIndex === "number"
+              ? rawIndex
+              : typeof rawIndex === "string"
+                ? Number.parseInt(rawIndex, 10)
+                : undefined;
 
-            navigate({
-              to: "/feedback",
-              search: {
-                ...params,
-                fromDate: date,
-                toDate: date,
-                lowRating: average < 3 ? "true" : undefined,
-              },
-            });
-          }
+          const clickData =
+            typeof index === "number" && Number.isFinite(index)
+              ? data[index]
+              : typeof state.activeLabel === "string"
+                ? data.find(
+                    (d) =>
+                      d.displayDate === state.activeLabel ||
+                      d.date === state.activeLabel,
+                  )
+                : undefined;
+          if (!clickData) return;
+
+          const { date, average } = clickData;
+          if (!date || typeof date !== "string") return;
+          if (typeof average !== "number") return;
+
+          navigate({
+            to: "/feedback",
+            search: {
+              ...params,
+              fromDate: date,
+              toDate: date,
+              lowRating: average < 3 ? "true" : undefined,
+            },
+          });
         }}
         style={{ cursor: "pointer" }}
       >
@@ -139,6 +162,7 @@ export function RatingTrendChart() {
           strokeDasharray="3 3"
         />
         <Tooltip
+          cursor={{ stroke: colors.reference, strokeDasharray: "3 3" }}
           content={({ active, payload }) => {
             if (active && payload && payload.length) {
               const data = payload[0].payload;
@@ -172,6 +196,15 @@ export function RatingTrendChart() {
                     <span style={{ color: colors.textMuted }}>
                       ({data.count} {data.count === 1 ? "svar" : "svar"})
                     </span>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      marginTop: "0.25rem",
+                      opacity: 0.7,
+                    }}
+                  >
+                    Klikk for å åpne tilbakemeldinger
                   </div>
                 </div>
               );

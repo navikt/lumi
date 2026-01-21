@@ -7,6 +7,7 @@ import {
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
+  type TooltipIndex,
   XAxis,
   YAxis,
 } from "recharts";
@@ -92,20 +93,40 @@ export function TimelineChart() {
         margin={chartMargin}
         role="img"
         aria-label={`Stolpediagram som viser ${data.length} dager med tilbakemeldinger`}
-        onClick={(e) => {
-          if (e?.activePayload && e.activePayload.length > 0) {
-            const clickData = e.activePayload[0].payload;
-            const date = clickData.date;
+        onClick={(state: {
+          activeTooltipIndex?: number | TooltipIndex;
+          activeIndex?: number | TooltipIndex;
+          activeLabel?: string | number;
+        }) => {
+          const rawIndex = state.activeTooltipIndex ?? state.activeIndex;
+          const index =
+            typeof rawIndex === "number"
+              ? rawIndex
+              : typeof rawIndex === "string"
+                ? Number.parseInt(rawIndex, 10)
+                : undefined;
 
-            navigate({
-              to: "/feedback",
-              search: {
-                ...params,
-                fromDate: date,
-                toDate: date,
-              },
-            });
-          }
+          const clickData =
+            typeof index === "number" && Number.isFinite(index)
+              ? data[index]
+              : typeof state.activeLabel === "string"
+                ? data.find(
+                    (d) =>
+                      d.displayDate === state.activeLabel ||
+                      d.date === state.activeLabel,
+                  )
+                : undefined;
+          const date = clickData?.date;
+          if (!date) return;
+
+          navigate({
+            to: "/feedback",
+            search: {
+              ...params,
+              fromDate: date,
+              toDate: date,
+            },
+          });
         }}
         style={{ cursor: "pointer" }}
       >
@@ -125,6 +146,7 @@ export function TimelineChart() {
           hide={isMobile}
         />
         <Tooltip
+          cursor={{ fill: colors.primaryFaded }}
           content={({ active, payload }) => {
             if (active && payload && payload.length) {
               const data = payload[0].payload;
@@ -144,6 +166,15 @@ export function TimelineChart() {
                   </div>
                   <div>
                     {data.count.toLocaleString("no-NO")} tilbakemeldinger
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      marginTop: "0.25rem",
+                      opacity: 0.7,
+                    }}
+                  >
+                    Klikk for å åpne tilbakemeldinger
                   </div>
                 </div>
               );

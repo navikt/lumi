@@ -63,8 +63,13 @@ export function TopAppsChart() {
     );
   }
 
-  const handleBarClick = (data: { app: string }) => {
-    setParam("app", data.app);
+  const handleBarClick = (
+    bar: { payload?: { app?: unknown } },
+    _index: number,
+  ) => {
+    const app = bar.payload?.app;
+    if (typeof app !== "string") return;
+    setParam("app", app);
   };
 
   return (
@@ -128,7 +133,7 @@ export function TopAppsChart() {
         />
         <Bar
           dataKey="count"
-          fill={CHART_COLORS.primary}
+          fill={colors.primary}
           radius={[0, 4, 4, 0]}
           cursor="pointer"
           onClick={handleBarClick}

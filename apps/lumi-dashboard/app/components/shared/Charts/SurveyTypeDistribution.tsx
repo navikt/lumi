@@ -49,7 +49,7 @@ const CHART_COLORS_LIGHT = {
 
 interface SurveyTypeDistributionProps {
   /** Height of the chart in pixels */
-  height?: number | string;
+  height?: number | `${number}%`;
 }
 
 export function SurveyTypeDistribution({
