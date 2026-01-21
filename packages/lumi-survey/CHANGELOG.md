@@ -6,6 +6,12 @@ This project follows SemVer.
 
 ## [Unreleased]
 
+## [0.0.4] - 2026-01-21
+
+### Fixed
+
+- Next.js/SSR safety: LumiSurveyDock is a client component and avoids `window is not defined` during server rendering.
+
 ## [0.0.3] - 2026-01-21
 
 ### Changed
@@ -13,7 +19,6 @@ This project follows SemVer.
 - Rating surveys: the first rating question defaults to `required: true` when omitted.
 - Submit UX: button stays hidden until the user has interacted (validation happens on submit).
 - Optional labeling: “(valgfritt)” is derived from `required` consistently; presets no longer hardcode it in prompt strings.
-- Next.js/SSR safety: LumiSurveyDock is a client component and avoids `window is not defined` during server rendering.
 
 ## [0.0.2] - 2026-01-21
 
