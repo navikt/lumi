@@ -6,6 +6,12 @@ This project follows SemVer.
 
 ## [Unreleased]
 
+## [0.0.5] - 2026-01-21
+
+### Changed
+
+- Tooling: upgraded to Vitest v4 and added V8 coverage provider support (`@vitest/coverage-v8`).
+
 ## [0.0.4] - 2026-01-21
 
 ### Fixed
