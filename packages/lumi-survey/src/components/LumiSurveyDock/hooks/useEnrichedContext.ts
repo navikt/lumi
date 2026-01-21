@@ -67,20 +67,23 @@ export function useEnrichedContext(
   options?: EnrichedContextOptions,
 ): LumiSurveyContext {
   const shouldCollectLocation = options?.collectLocation ?? false;
+  const isBrowser = typeof window !== "undefined";
 
   const [location, setLocation] = useState(() => {
     if (!shouldCollectLocation) return { pathname: undefined };
+    if (!isBrowser) return { pathname: undefined };
     return {
       pathname: window.location.pathname,
     };
   });
 
   const [viewport, setViewport] = useState(() => ({
-    width: window.innerWidth,
-    height: window.innerHeight,
+    width: isBrowser ? window.innerWidth : 0,
+    height: isBrowser ? window.innerHeight : 0,
   }));
 
   useEffect(() => {
+    if (!isBrowser) return;
     if (!shouldCollectLocation) return;
     ensureHistoryPatched();
 
@@ -100,9 +103,10 @@ export function useEnrichedContext(
       window.removeEventListener("popstate", updateLocation);
       window.removeEventListener("hashchange", updateLocation);
     };
-  }, [shouldCollectLocation]);
+  }, [isBrowser, shouldCollectLocation]);
 
   useEffect(() => {
+    if (!isBrowser) return;
     const updateViewport = () => {
       setViewport({
         width: window.innerWidth,
@@ -114,14 +118,14 @@ export function useEnrichedContext(
     return () => {
       window.removeEventListener("resize", updateViewport);
     };
-  }, []);
+  }, [isBrowser]);
 
   return useMemo((): LumiSurveyContext => {
     return {
       // System-collected
       viewport,
       deviceType: getDeviceType(viewport.width),
-      userAgent: navigator.userAgent,
+      userAgent: isBrowser ? navigator.userAgent : undefined,
       // User-provided
       // NOTE: url/pathname are opt-in. If you enable auto-collection, make sure
       // your routes do not include identifiers. Prefer passing a sanitized
@@ -135,6 +139,7 @@ export function useEnrichedContext(
     };
   }, [
     location.pathname,
+    isBrowser,
     shouldCollectLocation,
     userContext?.pathname,
     userContext?.url,
