@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-// Test the getRatingEmoji utility function
-// We'll extract and test the pure function logic
-
 function getRatingEmoji(rating: number): string {
   if (Number.isNaN(rating)) return "";
   if (rating < 1.5) return "😡";

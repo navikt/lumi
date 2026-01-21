@@ -13,6 +13,50 @@ import type { FeedbackStats } from "~/types/api";
 import { StatsParamsSchema } from "~/types/schemas";
 import { handleApiResponse } from "../fetchUtils";
 
+export const STATS_DASHBOARD_PATH = "/api/v1/intern/stats/dashboard" as const;
+
+export function transformStatsToBackendParams(data: {
+  team?: string;
+  app?: string;
+  surveyId?: string;
+  fromDate?: string;
+  toDate?: string;
+  deviceType?: string;
+  segment?: string;
+  task?: string;
+}) {
+  return {
+    team: data.team,
+    app: data.app,
+    surveyId: data.surveyId,
+    fromDate: data.fromDate,
+    toDate: data.toDate,
+    deviceType: data.deviceType,
+    segment: data.segment?.split(",").filter(Boolean),
+    task: data.task,
+  };
+}
+
+export function buildStatsDashboardUrl(
+  backendUrl: string,
+  data: {
+    team?: string;
+    app?: string;
+    surveyId?: string;
+    fromDate?: string;
+    toDate?: string;
+    deviceType?: string;
+    segment?: string;
+    task?: string;
+  },
+) {
+  return buildUrl(
+    backendUrl,
+    STATS_DASHBOARD_PATH,
+    transformStatsToBackendParams(data),
+  );
+}
+
 /**
  * Fetch aggregated feedback statistics.
  * Supports filtering by app, date range, survey, and device type.
@@ -32,18 +76,7 @@ export const fetchStatsServerFn = createServerFn({ method: "GET" })
       return getMockStats(searchParams);
     }
 
-    const backendParams = {
-      team: data.team,
-      app: data.app,
-      surveyId: data.surveyId,
-      fromDate: data.fromDate,
-      toDate: data.toDate,
-      deviceType: data.deviceType,
-      segment: data.segment?.split(",").filter(Boolean),
-      task: data.task,
-    };
-
-    const url = buildUrl(backendUrl, "/api/v1/intern/stats", backendParams);
+    const url = buildStatsDashboardUrl(backendUrl, data);
     const response = await fetch(url, {
       headers: getHeaders(oboToken),
     });

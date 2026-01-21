@@ -540,11 +540,11 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
-  /api/v1/intern/stats:
+  /api/v1/intern/stats/dashboard:
     get:
       tags: [Analytics]
-      summary: Get feedback statistics
-      description: Returns aggregated statistics including rating distribution, timeline data, and device breakdown.
+      summary: Get dashboard statistics
+      description: Returns aggregated statistics used by lumi-dashboard.
       security:
         - azure: []
       parameters:

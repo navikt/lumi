@@ -73,20 +73,32 @@ export function StatsCards({ showRating = false }: StatsCardsProps) {
 
   // Kun vis detaljert felt-statistikk når én survey er valgt
   if (hasSurveyFilter) {
+    const isPrivacyMasked = stats?.privacy?.masked === true;
+
     // Find first rating field from fieldStats
     const ratingField = stats?.fieldStats?.find(
       (f) => f.fieldType === "RATING",
     );
     const ratingStats = ratingField?.stats as RatingStats | undefined;
-    const avgRating = ratingStats?.average?.toFixed(1) || "–";
+
+    const avgRatingNumber = !isPrivacyMasked
+      ? (ratingStats?.average ?? stats?.averageRating ?? null)
+      : null;
+    const avgRating =
+      avgRatingNumber != null ? avgRatingNumber.toFixed(1) : "–";
 
     // Count text fields with responses
     const textFields =
       stats?.fieldStats?.filter((f) => f.fieldType === "TEXT") || [];
-    const totalTextResponses = textFields.reduce((sum, f) => {
-      const textStats = f.stats as TextStats;
-      return sum + textStats.responseCount;
-    }, 0);
+    const totalTextResponses =
+      textFields.length > 0
+        ? textFields.reduce((sum, f) => {
+            const textStats = f.stats as TextStats;
+            return sum + textStats.responseCount;
+          }, 0)
+        : countWithText;
+    const textResponsesSubtitle =
+      textFields.length > 0 ? `${textFields.length} felt` : "På tvers av felt";
 
     return (
       <DashboardGrid
@@ -103,16 +115,16 @@ export function StatsCards({ showRating = false }: StatsCardsProps) {
         <StatCard
           icon={<ChatIcon fontSize="1.25rem" aria-hidden />}
           label="Tilbakemeldinger"
-          value={totalCount.toLocaleString("no-NO")}
+          value={isPrivacyMasked ? "–" : totalCount.toLocaleString("no-NO")}
           subtitle={`Siste ${periodDays} dager`}
         />
 
         {showRating &&
-          (ratingStats ? (
+          (avgRatingNumber != null ? (
             <StatCard
               icon={<StarIcon fontSize="1.25rem" aria-hidden />}
               label="Snitt vurdering"
-              value={`${avgRating} ${getRatingEmoji(Number(avgRating))}`}
+              value={`${avgRating} ${getRatingEmoji(avgRatingNumber)}`}
               subtitle="av 5 mulige"
             />
           ) : (
@@ -127,8 +139,10 @@ export function StatsCards({ showRating = false }: StatsCardsProps) {
         <StatCard
           icon={<ChatExclamationmarkIcon fontSize="1.25rem" aria-hidden />}
           label="Tekstsvar"
-          value={totalTextResponses.toLocaleString("no-NO")}
-          subtitle={`${textFields.length} felt`}
+          value={
+            isPrivacyMasked ? "–" : totalTextResponses.toLocaleString("no-NO")
+          }
+          subtitle={textResponsesSubtitle}
         />
       </DashboardGrid>
     );

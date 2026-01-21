@@ -80,6 +80,10 @@ class ApiV1Intern {
         /** Task filter for Top Tasks drill-down */
         val task: String? = null
     ) {
+        @Resource("dashboard")
+        @Serializable
+        class Dashboard(val parent: Stats)
+
         @Resource("overview")
         @Serializable
         class Overview(val parent: Stats)

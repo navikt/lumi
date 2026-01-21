@@ -46,6 +46,16 @@ private fun buildStatsQuery(
 fun Route.statsRoutes(
     statsService: StatsService = defaultStatsService
 ) {
+    // Dashboard stats (primary endpoint used by lumi-dashboard)
+    get<ApiV1Intern.Stats.Dashboard> { params ->
+        val team = call.authorizedTeam
+        val p = params.parent
+
+        val query = buildStatsQuery(team, p.app, p.fromDate, p.toDate, p.surveyId, p.deviceType, p.segment, p.task)
+        val stats = statsService.getDashboardStats(query)
+        call.respond(stats)
+    }
+
     // Get stats overview (new consolidated endpoint)
     get<ApiV1Intern.Stats.Overview> { params ->
         val team = call.authorizedTeam
@@ -54,15 +64,6 @@ fun Route.statsRoutes(
         val query = buildStatsQuery(team, p.app, p.fromDate, p.toDate, p.surveyId, p.deviceType, p.segment)
         val overview = statsService.getStatsOverview(query)
         call.respond(overview)
-    }
-
-    // Get statistics for feedback (legacy endpoint, still functional)
-    get<ApiV1Intern.Stats> { params ->
-        val team = call.authorizedTeam
-
-        val query = buildStatsQuery(team, params.app, params.fromDate, params.toDate, params.surveyId, params.deviceType, params.segment)
-        val stats = statsService.getStats(query)
-        call.respond(stats)
     }
     
     // Get rating distribution

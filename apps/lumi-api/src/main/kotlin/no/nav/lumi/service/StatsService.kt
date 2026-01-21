@@ -85,11 +85,12 @@ class StatsService(
     }
 
     /**
-     * Get comprehensive feedback statistics for the given query.
+     * Get dashboard feedback statistics for the given query.
+     * This is the primary stats endpoint used by lumi-dashboard.
      * Results are cached for 5 minutes.
      */
-    fun getStats(query: StatsQuery): FeedbackStats {
-        val cacheKey = query.toCacheKey()
+    fun getDashboardStats(query: StatsQuery): FeedbackStats {
+        val cacheKey = "dashboard:${query.toCacheKey()}"
         
         // Try cache first
         statsCache.get(cacheKey)?.let { cached ->
@@ -108,6 +109,12 @@ class StatsService(
     
     private fun computeStats(query: StatsQuery): FeedbackStats {
         val stats = statsRepository.getStats(query)
+
+        val analytics = if (!stats.masked) {
+            statsRepository.getAnalyticsStats(query, includeFieldStats = query.surveyId != null)
+        } else {
+            null
+        }
         
         val averageRating = calculateAverageRating(stats.byRating)
         val days = calculateDays(query.fromDate, query.toDate)
@@ -138,12 +145,17 @@ class StatsService(
             surveyType = stats.surveyType?.let { 
                 try { SurveyType.valueOf(it.uppercase()) } catch(e: Exception) { SurveyType.CUSTOM }
             },
+            ratingByDate = if (stats.masked) emptyMap() else analytics?.ratingByDate.orEmpty(),
+            byDevice = if (stats.masked) emptyMap() else analytics?.byDevice.orEmpty(),
+            byPathname = if (stats.masked) emptyMap() else analytics?.byPathname.orEmpty(),
+            lowestRatingPaths = if (stats.masked) emptyMap() else analytics?.lowestRatingPaths.orEmpty(),
+            fieldStats = if (stats.masked) emptyList() else analytics?.fieldStats.orEmpty(),
             privacy = privacy
         )
     }
 
     /**
-     * Get stats overview (new consolidated endpoint per GPT contract).
+     * Get stats overview (consolidated endpoint).
      */
     fun getStatsOverview(query: StatsQuery): StatsOverviewResponse {
         return getOrComputeCached(prefix = "overview", query = query, ttl = overviewCacheTtl) {

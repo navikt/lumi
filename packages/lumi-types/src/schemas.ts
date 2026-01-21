@@ -506,6 +506,12 @@ const FieldStatSchema = z.object({
   stats: FieldStatsValueSchema,
 });
 
+const PrivacyInfoSchema = z.object({
+  masked: z.boolean(),
+  reason: z.string().optional(),
+  threshold: z.number(),
+});
+
 export const FeedbackStatsSchema = z.object({
   totalCount: z.number(),
   countWithText: z.number(),
@@ -538,6 +544,7 @@ export const FeedbackStatsSchema = z.object({
     toDate: z.string().nullable(),
     days: z.number(),
   }),
+  privacy: PrivacyInfoSchema.optional(),
 });
 
 export const TeamsAndAppsSchema = z.object({

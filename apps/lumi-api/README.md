@@ -42,7 +42,7 @@ docker run -d --name lumi-db \
 | `GET /api/v1/intern/teams` | List autoriserte team og apper |
 | `GET /api/v1/intern/feedback/teams` | List apper for valgt team |
 | `DELETE /api/v1/intern/surveys/{surveyId}` | Slett alle tilbakemeldinger for en survey |
-| `GET /api/v1/intern/stats` | Hent statistikk |
+| `GET /api/v1/intern/stats/dashboard` | Hent dashboard-statistikk |
 | `GET /api/v1/intern/stats/ratings` | Fordeling av rating |
 | `GET /api/v1/intern/stats/timeline` | Tidslinjedata |
 | `GET /api/v1/intern/export?format=csv\|json\|excel` | Eksportér data |

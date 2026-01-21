@@ -26,6 +26,14 @@ class FeedbackStatsRepository {
         const val MAX_VARIANTS = 5
     }
 
+    data class FeedbackAnalyticsStats(
+        val ratingByDate: Map<String, RatingByDateEntry> = emptyMap(),
+        val byDevice: Map<String, DeviceStats> = emptyMap(),
+        val byPathname: Map<String, PathnameStats> = emptyMap(),
+        val lowestRatingPaths: Map<String, PathnameStats> = emptyMap(),
+        val fieldStats: List<FieldStat> = emptyList(),
+    )
+
     fun getStats(query: StatsQuery): FeedbackStatsResult {
         return transaction {
             val totalQuery = FeedbackTable.selectAll()
@@ -113,6 +121,226 @@ class FeedbackStatsRepository {
                 threshold = MIN_AGGREGATION_THRESHOLD
             )
         }
+    }
+
+    fun getAnalyticsStats(query: StatsQuery, includeFieldStats: Boolean): FeedbackAnalyticsStats {
+        return transaction {
+            val dbQuery = FeedbackTable.selectAll()
+            applyStatsFilters(dbQuery, query)
+            val records = dbQuery.map { it.toDto() }
+
+            fun FeedbackDto.firstRating(): Int? = answers.firstNotNullOfOrNull { answer ->
+                (answer.value as? AnswerValue.Rating)?.rating
+            }
+
+            val ratings = records.mapNotNull { dto ->
+                dto.firstRating()?.let { rating -> dto to rating }
+            }
+
+            val ratingByDate = ratings
+                .groupBy { (dto, _) ->
+                    try {
+                        OffsetDateTime.parse(dto.submittedAt).toLocalDate().toString()
+                    } catch (_: Exception) {
+                        "unknown"
+                    }
+                }
+                .filterKeys { it != "unknown" }
+                .mapValues { (_, rows) ->
+                    val count = rows.size
+                    val average = rows.sumOf { (_, rating) -> rating }.toDouble() / count
+                    RatingByDateEntry(average = average, count = count)
+                }
+
+            val byDevice = ratings
+                .mapNotNull { (dto, rating) ->
+                    dto.context?.deviceType?.name?.lowercase()?.let { it to rating }
+                }
+                .groupBy({ it.first }, { it.second })
+                .mapValues { (_, rs) ->
+                    val count = rs.size
+                    val average = rs.sum().toDouble() / count
+                    DeviceStats(count = count, averageRating = average)
+                }
+
+            val byPathname = ratings
+                .mapNotNull { (dto, rating) ->
+                    dto.context?.pathname
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { it to rating }
+                }
+                .groupBy({ it.first }, { it.second })
+                .mapValues { (_, rs) ->
+                    val count = rs.size
+                    val average = rs.sum().toDouble() / count
+                    PathnameStats(count = count, averageRating = average)
+                }
+
+            val lowestRatingPaths = byPathname.entries
+                .filter { it.value.count >= MIN_AGGREGATION_THRESHOLD }
+                .sortedWith(
+                    compareBy<Map.Entry<String, PathnameStats>> { it.value.averageRating }
+                        .thenByDescending { it.value.count }
+                        .thenBy { it.key }
+                )
+                .take(10)
+                .associate { it.key to it.value }
+
+            val fieldStats = if (includeFieldStats) buildFieldStats(records) else emptyList()
+
+            FeedbackAnalyticsStats(
+                ratingByDate = ratingByDate,
+                byDevice = byDevice,
+                byPathname = byPathname,
+                lowestRatingPaths = lowestRatingPaths,
+                fieldStats = fieldStats,
+            )
+        }
+    }
+
+    private fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
+        if (records.isEmpty()) return emptyList()
+
+        val totalFeedbackCount = records.size
+        val answersByField = mutableMapOf<String, MutableList<Pair<FeedbackDto, Answer>>>()
+
+        for (dto in records) {
+            for (answer in dto.answers) {
+                answersByField.getOrPut(answer.fieldId) { mutableListOf() }.add(dto to answer)
+            }
+        }
+
+        val result = mutableListOf<FieldStat>()
+
+        for ((fieldId, entries) in answersByField) {
+            val first = entries.firstOrNull()?.second ?: continue
+            val fieldType = first.fieldType
+            val label = first.question.label.ifBlank { fieldId }
+
+            when (fieldType) {
+                FieldType.RATING -> {
+                    val distribution = mutableMapOf<String, Int>()
+                    var sum = 0
+                    var count = 0
+
+                    for ((_, answer) in entries) {
+                        val rating = (answer.value as? AnswerValue.Rating)?.rating ?: continue
+                        distribution[rating.toString()] = (distribution[rating.toString()] ?: 0) + 1
+                        sum += rating
+                        count += 1
+                    }
+
+                    if (count == 0) continue
+                    val average = sum.toDouble() / count
+
+                    result.add(
+                        FieldStat(
+                            fieldId = fieldId,
+                            fieldType = fieldType,
+                            label = label,
+                            stats = FieldStats.Rating(average = average, distribution = distribution)
+                        )
+                    )
+                }
+
+                FieldType.TEXT -> {
+                    val texts = mutableListOf<RecentTextResponse>()
+                    val keywordCounts = mutableMapOf<String, Int>()
+                    var responseCount = 0
+
+                    for ((dto, answer) in entries) {
+                        val text = (answer.value as? AnswerValue.Text)?.text?.trim().orEmpty()
+                        if (text.isBlank()) continue
+
+                        responseCount += 1
+                        texts.add(RecentTextResponse(text = text, submittedAt = dto.submittedAt))
+
+                        for (word in TextProcessor.extractWords(text)) {
+                            val stem = TextProcessor.stemNorwegian(word)
+                            keywordCounts[stem] = (keywordCounts[stem] ?: 0) + 1
+                        }
+                    }
+
+                    val responseRate = if (totalFeedbackCount > 0) {
+                        responseCount.toDouble() / totalFeedbackCount
+                    } else {
+                        0.0
+                    }
+
+                    val topKeywords = keywordCounts.entries
+                        .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+                        .take(10)
+                        .map { (word, count) -> KeywordCount(word = word, count = count) }
+
+                    val recentResponses = texts
+                        .sortedByDescending { parseSubmittedAt(it.submittedAt) }
+                        .take(5)
+
+                    result.add(
+                        FieldStat(
+                            fieldId = fieldId,
+                            fieldType = fieldType,
+                            label = label,
+                            stats = FieldStats.Text(
+                                responseCount = responseCount,
+                                responseRate = responseRate,
+                                topKeywords = topKeywords,
+                                recentResponses = recentResponses
+                            )
+                        )
+                    )
+                }
+
+                FieldType.SINGLE_CHOICE, FieldType.MULTI_CHOICE -> {
+                    val optionLabels = first.question.options.orEmpty().associate { it.id to it.label }
+                    val counts = mutableMapOf<String, Int>()
+
+                    for ((_, answer) in entries) {
+                        when (val value = answer.value) {
+                            is AnswerValue.SingleChoice -> {
+                                counts[value.selectedOptionId] = (counts[value.selectedOptionId] ?: 0) + 1
+                            }
+
+                            is AnswerValue.MultiChoice -> {
+                                for (id in value.selectedOptionIds) {
+                                    counts[id] = (counts[id] ?: 0) + 1
+                                }
+                            }
+
+                            else -> Unit
+                        }
+                    }
+
+                    val totalSelections = counts.values.sum()
+                    if (totalSelections == 0) continue
+
+                    val distribution = counts
+                        .entries
+                        .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+                        .associate { (optionId, count) ->
+                            val percentage = kotlin.math.round((count.toDouble() / totalSelections) * 100.0).toInt()
+                            optionId to ChoiceDistributionEntry(
+                                label = optionLabels[optionId] ?: optionId,
+                                count = count,
+                                percentage = percentage
+                            )
+                        }
+
+                    result.add(
+                        FieldStat(
+                            fieldId = fieldId,
+                            fieldType = fieldType,
+                            label = label,
+                            stats = FieldStats.Choice(distribution = distribution)
+                        )
+                    )
+                }
+
+                else -> Unit
+            }
+        }
+
+        return result.sortedWith(compareBy<FieldStat> { it.fieldType.name }.thenBy { it.fieldId })
     }
 
     fun getTopTasksStats(query: StatsQuery): TopTasksResponse {

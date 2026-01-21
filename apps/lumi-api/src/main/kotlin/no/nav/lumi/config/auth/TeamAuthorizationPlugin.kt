@@ -52,7 +52,7 @@ class TeamAuthorizationConfig {
  * authenticate(AZURE_REALM) {
  *     install(TeamAuthorizationPlugin)
  *     
- *     get("/api/v1/intern/stats") {
+ *     get("/api/v1/intern/stats/dashboard") {
  *         val team = call.authorizedTeam  // Already validated
  *         // ... use team
  *     }

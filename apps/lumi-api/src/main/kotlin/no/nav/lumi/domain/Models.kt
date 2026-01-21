@@ -299,12 +299,9 @@ data class FieldStat(
 // Mirrors frontend discriminated union on `type`.
 @Serializable
 sealed class FieldStats {
-    abstract val type: String
-
     @Serializable
     @SerialName("rating")
     data class Rating(
-        override val type: String = "rating",
         val average: Double,
         /** Keys are serialized as strings in JSON ("1".."5"). */
         val distribution: Map<String, Int>
@@ -313,7 +310,6 @@ sealed class FieldStats {
     @Serializable
     @SerialName("text")
     data class Text(
-        override val type: String = "text",
         val responseCount: Int,
         val responseRate: Double,
         val topKeywords: List<KeywordCount> = emptyList(),
@@ -323,7 +319,6 @@ sealed class FieldStats {
     @Serializable
     @SerialName("choice")
     data class Choice(
-        override val type: String = "choice",
         val distribution: Map<String, ChoiceDistributionEntry>
     ) : FieldStats()
 }

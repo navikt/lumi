@@ -22,17 +22,17 @@ class StatsRoutesTest : FunSpec({
         TestDatabase.clearAllData()
     }
 
-    test("GET /api/v1/intern/stats requires authentication") {
+    test("GET /api/v1/intern/stats/dashboard requires authentication") {
         testApplication {
             application { testModule() }
             
-            val response = client.get("/api/v1/intern/stats")
+            val response = client.get("/api/v1/intern/stats/dashboard")
             
             response.status shouldBe HttpStatusCode.Unauthorized
         }
     }
 
-    test("GET /api/v1/intern/stats returns statistics with auth") {
+    test("GET /api/v1/intern/stats/dashboard returns statistics with auth") {
         testApplication {
             application { testModule() }
             
@@ -40,7 +40,7 @@ class StatsRoutesTest : FunSpec({
             insertTestFeedback(team = "flex", app = "spinnsyn", rating = 4)
             insertTestFeedback(team = "flex", app = "spinnsyn", rating = 5)
             
-            val response = createTestClient().get("/api/v1/intern/stats?team=flex") {
+            val response = createTestClient().get("/api/v1/intern/stats/dashboard?team=flex") {
                 header(HttpHeaders.Authorization, "Bearer test-token")
             }
             
@@ -61,8 +61,7 @@ class StatsRoutesTest : FunSpec({
             val response = createTestClient().get("/api/v1/intern/stats/ratings?team=flex") {
                 header(HttpHeaders.Authorization, "Bearer test-token")
             }
-            
-            println("RATINGS RESPONSE: " + response.bodyAsText())
+
             response.status shouldBe HttpStatusCode.OK
             response.bodyAsText() shouldContain "distribution"
             response.bodyAsText() shouldContain "average"
