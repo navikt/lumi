@@ -2,6 +2,8 @@ import { XMarkIcon } from "@navikt/aksel-icons";
 import { HStack, Tag } from "@navikt/ds-react";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
+import { useStats } from "~/hooks/useStats";
+import { inferRatingVariantFromDistribution } from "~/utils/ratingDisplay";
 import { formatMetadataLabel } from "~/utils/segmentUtils";
 
 interface FilterChip {
@@ -28,8 +30,9 @@ const DEVICE_LABELS: Record<string, string> = {
  * - Segment: Metadata filters from SegmentBreakdown → global chip
  */
 export function ActiveFiltersChips() {
-  const { params, setParam } = useSearchParams();
+  const { params, setParam, setParams } = useSearchParams();
   const { activeFilters, removeSegment } = useSegmentFilter();
+  const statsQuery = useStats();
 
   const chips: FilterChip[] = [];
 
@@ -70,6 +73,47 @@ export function ActiveFiltersChips() {
       label: "Oppgave",
       value: params.task,
       onRemove: () => setParam("task", undefined),
+    });
+  }
+
+  // Rating field filter (e.g. thumbs donut drill-down)
+  if (params.ratingFieldId && params.ratingValue) {
+    const field = statsQuery.data?.fieldStats?.find(
+      (f) => f.fieldId === params.ratingFieldId,
+    );
+
+    const fieldLabel = field?.label ?? "Vurdering";
+
+    let valueLabel = params.ratingValue;
+    if (field?.fieldType === "RATING") {
+      const stats = field.stats as unknown as {
+        distribution?: Record<string, number>;
+        ratingVariant?: string;
+      };
+      const ratingVariant = inferRatingVariantFromDistribution(
+        stats.distribution ?? {},
+        stats.ratingVariant,
+      );
+      if (ratingVariant === "thumbs") {
+        valueLabel =
+          params.ratingValue === "2"
+            ? "Ja"
+            : params.ratingValue === "1"
+              ? "Nei"
+              : params.ratingValue;
+      }
+    }
+
+    chips.push({
+      key: `rating-${params.ratingFieldId}-${params.ratingValue}`,
+      label: fieldLabel,
+      value: valueLabel,
+      onRemove: () =>
+        setParams({
+          ratingFieldId: undefined,
+          ratingValue: undefined,
+          page: "1",
+        }),
     });
   }
 

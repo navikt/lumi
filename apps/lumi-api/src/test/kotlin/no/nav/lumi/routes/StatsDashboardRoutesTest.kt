@@ -472,4 +472,226 @@ class StatsDashboardRoutesTest : FunSpec({
             stats.fieldStats shouldBe emptyList()
         }
     }
+
+    // ============================================
+    // Rating Variant Tests
+    // ============================================
+
+    test("GET /api/v1/intern/stats/dashboard handles stars rating variant (5-point scale)") {
+        testApplication {
+            application { testModule() }
+
+            val team = "flex"
+            val app = "spinnsyn"
+            val surveyId = "survey-stars"
+            val submittedAt = OffsetDateTime.parse("2026-01-21T10:00:00+01:00")
+
+            fun starsRatingJson(rating: Int): String {
+                return buildJsonObject {
+                    put("schemaVersion", 1)
+                    put("surveyId", surveyId)
+                    put("surveyType", "rating")
+                    putJsonObject("context") {
+                        put("pathname", "/stars-test")
+                        put("deviceType", "desktop")
+                    }
+                    putJsonArray("answers") {
+                        add(
+                            buildJsonObject {
+                                put("fieldId", "rating")
+                                put("fieldType", "RATING")
+                                putJsonObject("question") { put("label", "Hvordan vil du vurdere siden?") }
+                                putJsonObject("value") {
+                                    put("type", "rating")
+                                    put("rating", rating)
+                                    put("ratingVariant", "stars")
+                                    put("ratingScale", 5)
+                                }
+                            }
+                        )
+                    }
+                    put("submittedAt", submittedAt.toInstant().toString())
+                }.toString()
+            }
+
+            // Insert 5 ratings: 1, 2, 3, 4, 5
+            listOf(1, 2, 3, 4, 5).forEachIndexed { idx, rating ->
+                insertTestFeedbackWithJson(
+                    team = team,
+                    app = app,
+                    feedbackJson = starsRatingJson(rating),
+                    opprettet = submittedAt.plusMinutes(idx.toLong())
+                )
+            }
+
+            val response = createTestClient().get("/api/v1/intern/stats/dashboard?team=$team&app=$app&surveyId=$surveyId") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.OK
+
+            val stats = json.decodeFromString<FeedbackStats>(response.bodyAsText())
+
+            stats.totalCount shouldBe 5
+            stats.averageRating shouldBe (3.0 plusOrMinus 0.0001)
+
+            // Distribution should have all 5 ratings
+            stats.byRating["1"] shouldBe 1
+            stats.byRating["5"] shouldBe 1
+        }
+    }
+
+    test("GET /api/v1/intern/stats/dashboard handles thumbs rating variant (2-point yes/no scale)") {
+        testApplication {
+            application { testModule() }
+
+            val team = "flex"
+            val app = "spinnsyn"
+            val surveyId = "survey-thumbs"
+            val submittedAt = OffsetDateTime.parse("2026-01-21T10:00:00+01:00")
+
+            fun thumbsRatingJson(rating: Int): String {
+                return buildJsonObject {
+                    put("schemaVersion", 1)
+                    put("surveyId", surveyId)
+                    put("surveyType", "rating")
+                    putJsonObject("context") {
+                        put("pathname", "/thumbs-test")
+                        put("deviceType", "mobile")
+                    }
+                    putJsonArray("answers") {
+                        add(
+                            buildJsonObject {
+                                put("fieldId", "helpful")
+                                put("fieldType", "RATING")
+                                putJsonObject("question") { put("label", "Var dette til hjelp?") }
+                                putJsonObject("value") {
+                                    put("type", "rating")
+                                    put("rating", rating)
+                                    put("ratingVariant", "thumbs")
+                                    put("ratingScale", 2)
+                                }
+                            }
+                        )
+                    }
+                    put("submittedAt", submittedAt.toInstant().toString())
+                }.toString()
+            }
+
+            // 3 thumbs up (2), 2 thumbs down (1)
+            repeat(3) { idx ->
+                insertTestFeedbackWithJson(
+                    team = team,
+                    app = app,
+                    feedbackJson = thumbsRatingJson(2), // thumbs up
+                    opprettet = submittedAt.plusMinutes(idx.toLong())
+                )
+            }
+            repeat(2) { idx ->
+                insertTestFeedbackWithJson(
+                    team = team,
+                    app = app,
+                    feedbackJson = thumbsRatingJson(1), // thumbs down
+                    opprettet = submittedAt.plusMinutes((3 + idx).toLong())
+                )
+            }
+
+            val response = createTestClient().get("/api/v1/intern/stats/dashboard?team=$team&app=$app&surveyId=$surveyId") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.OK
+
+            val stats = json.decodeFromString<FeedbackStats>(response.bodyAsText())
+
+            stats.totalCount shouldBe 5
+            // Average: (3*2 + 2*1) / 5 = 8/5 = 1.6
+            stats.averageRating shouldBe (1.6 plusOrMinus 0.0001)
+
+            // Distribution: 3 thumbs up (2), 2 thumbs down (1)
+            stats.byRating["2"] shouldBe 3
+            stats.byRating["1"] shouldBe 2
+
+            // Filtering by the specific thumbs field + value should narrow results
+            val filteredResponse = createTestClient().get(
+                "/api/v1/intern/stats/dashboard?team=$team&app=$app&surveyId=$surveyId&ratingFieldId=helpful&ratingValue=2"
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            filteredResponse.status shouldBe HttpStatusCode.OK
+            val filteredStats = json.decodeFromString<FeedbackStats>(filteredResponse.bodyAsText())
+            filteredStats.totalCount shouldBe 3
+            // Below privacy threshold, distribution is masked
+            filteredStats.byRating.isEmpty() shouldBe true
+            filteredStats.privacy?.masked shouldBe true
+        }
+    }
+
+    test("GET /api/v1/intern/stats/dashboard handles NPS rating variant (0-10 scale)") {
+        testApplication {
+            application { testModule() }
+
+            val team = "flex"
+            val app = "spinnsyn"
+            val surveyId = "survey-nps"
+            val submittedAt = OffsetDateTime.parse("2026-01-21T10:00:00+01:00")
+
+            fun npsRatingJson(rating: Int): String {
+                return buildJsonObject {
+                    put("schemaVersion", 1)
+                    put("surveyId", surveyId)
+                    put("surveyType", "rating")
+                    putJsonObject("context") {
+                        put("pathname", "/nps-test")
+                        put("deviceType", "desktop")
+                    }
+                    putJsonArray("answers") {
+                        add(
+                            buildJsonObject {
+                                put("fieldId", "nps")
+                                put("fieldType", "RATING")
+                                putJsonObject("question") { put("label", "Hvor sannsynlig er det at du vil anbefale nav.no?") }
+                                putJsonObject("value") {
+                                    put("type", "rating")
+                                    put("rating", rating)
+                                    put("ratingVariant", "nps")
+                                    put("ratingScale", 11)
+                                }
+                            }
+                        )
+                    }
+                    put("submittedAt", submittedAt.toInstant().toString())
+                }.toString()
+            }
+
+            // Insert NPS responses: detractors (0-6), passives (7-8), promoters (9-10)
+            // 2 detractors (3, 5), 2 passives (7, 8), 3 promoters (9, 10, 10)
+            val ratings = listOf(3, 5, 7, 8, 9, 10, 10)
+            ratings.forEachIndexed { idx, rating ->
+                insertTestFeedbackWithJson(
+                    team = team,
+                    app = app,
+                    feedbackJson = npsRatingJson(rating),
+                    opprettet = submittedAt.plusMinutes(idx.toLong())
+                )
+            }
+
+            val response = createTestClient().get("/api/v1/intern/stats/dashboard?team=$team&app=$app&surveyId=$surveyId") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.OK
+
+            val stats = json.decodeFromString<FeedbackStats>(response.bodyAsText())
+
+            stats.totalCount shouldBe 7
+            // Average: (3+5+7+8+9+10+10) / 7 = 52/7 ≈ 7.43
+            stats.averageRating shouldBe ((52.0 / 7.0) plusOrMinus 0.01)
+
+            // Distribution should reflect all ratings
+            stats.byRating["10"] shouldBe 2
+            stats.byRating["9"] shouldBe 1
+        }
+    }
 })

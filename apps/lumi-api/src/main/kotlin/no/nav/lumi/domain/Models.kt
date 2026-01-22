@@ -395,7 +395,11 @@ data class FeedbackQuery(
     /** Device type filter */
     val deviceType: String? = null,
     /** Segment filters (context.tags) as key:value pairs */
-    val segments: List<Pair<String, String>> = emptyList()
+    val segments: List<Pair<String, String>> = emptyList(),
+    /** Filter by a specific rating question fieldId */
+    val ratingFieldId: String? = null,
+    /** Filter by a specific rating value */
+    val ratingValue: Int? = null,
 )
 
 /**
@@ -417,7 +421,11 @@ data class StatsQuery(
     /** Segment filters (context.tags) as key:value pairs */
     val segments: List<Pair<String, String>> = emptyList(),
     /** Task filter for Top Tasks drill-down */
-    val task: String? = null
+    val task: String? = null,
+    /** Filter by a specific rating question fieldId */
+    val ratingFieldId: String? = null,
+    /** Filter by a specific rating value */
+    val ratingValue: Int? = null,
 )
 
 // ============================================

@@ -19,6 +19,7 @@ import { DashboardCard } from "~/components/dashboard";
 import { useBreakpoint } from "~/hooks/useBreakpoint";
 import type { FeedbackDto } from "~/types/api";
 import { RenderAnswer } from "./AnswerRenderer";
+import { RatingBadge } from "./RatingBadge";
 import styles from "./styles.module.css";
 import { TimelineView } from "./TimelineView";
 import {
@@ -26,7 +27,6 @@ import {
   getAllRatings,
   getFeedbackPreview,
   getMainTextPreview,
-  ratingToEmoji,
 } from "./utils";
 
 interface FeedbackCardProps {
@@ -93,14 +93,16 @@ export function FeedbackCard({
           </Tag>
         </HStack>
 
-        {/* Rating emojis */}
+        {/* Rating display */}
         {ratings.length > 0 && (
           <HStack gap="space-8" align="center">
             {ratings.map((r) => (
               <Tooltip key={r.label} content={r.label}>
-                <span className={styles.ratingEmoji}>
-                  {ratingToEmoji(r.rating)}
-                </span>
+                <RatingBadge
+                  rating={r.rating}
+                  variant={r.variant}
+                  scale={r.scale}
+                />
               </Tooltip>
             ))}
           </HStack>

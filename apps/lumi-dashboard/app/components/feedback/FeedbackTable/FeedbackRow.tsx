@@ -17,13 +17,13 @@ import {
 } from "@navikt/ds-react";
 import dayjs from "dayjs";
 import type { FeedbackDto } from "~/types/api";
+import { RatingBadge } from "./RatingBadge";
 import styles from "./styles.module.css";
 import {
   deviceToIcon,
   getAllRatings,
   getFeedbackPreview,
   getMainTextPreview,
-  ratingToEmoji,
 } from "./utils";
 
 interface FeedbackRowProps {
@@ -79,13 +79,15 @@ export function FeedbackRow({
       {/* Feedback Content */}
       <Table.DataCell>
         <VStack gap="space-4">
-          {/* Rating emojis and preview */}
+          {/* Rating display and preview */}
           <HStack gap="space-8" align="center" wrap>
             {ratings.map((r) => (
               <Tooltip key={r.label} content={r.label}>
-                <span className={styles.ratingEmoji}>
-                  {ratingToEmoji(r.rating)}
-                </span>
+                <RatingBadge
+                  rating={r.rating}
+                  variant={r.variant}
+                  scale={r.scale}
+                />
               </Tooltip>
             ))}
             {preview && <FeedbackPreviewText preview={preview} />}

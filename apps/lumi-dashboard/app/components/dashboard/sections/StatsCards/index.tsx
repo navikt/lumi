@@ -10,6 +10,13 @@ import { DashboardCard, DashboardGrid } from "~/components/dashboard";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import type { RatingStats, TextStats } from "~/types/api";
+import {
+  calculateThumbsPositiveRate,
+  getRatingScaleLabel,
+  getRatingSingleIcon,
+  inferRatingVariantFromDistribution,
+  type RatingVariant,
+} from "~/utils/ratingDisplay";
 import { Skeleton as StatsCardsSkeleton } from "./Skeleton";
 
 interface StatCardProps {
@@ -81,11 +88,56 @@ export function StatsCards({ showRating = false }: StatsCardsProps) {
     );
     const ratingStats = ratingField?.stats as RatingStats | undefined;
 
+    // Extract rating variant info (default to emoji); infer from distribution if possible.
+    const ratingVariant: RatingVariant = inferRatingVariantFromDistribution(
+      ratingStats?.distribution as unknown as
+        | Record<string, number>
+        | undefined,
+      (ratingStats as RatingStats & { ratingVariant?: RatingVariant })
+        ?.ratingVariant,
+    );
+
+    const ratingScale =
+      (ratingStats as RatingStats & { ratingScale?: number })?.ratingScale ||
+      (ratingVariant === "nps" ? 11 : ratingVariant === "thumbs" ? 2 : 5);
+
     const avgRatingNumber = !isPrivacyMasked
       ? (ratingStats?.average ?? stats?.averageRating ?? null)
       : null;
-    const avgRating =
-      avgRatingNumber != null ? avgRatingNumber.toFixed(1) : "–";
+
+    // Format display value based on variant
+    let avgRating: string;
+    let ratingIcon: string;
+    let scaleLabel: string;
+
+    if (avgRatingNumber == null) {
+      avgRating = "–";
+      ratingIcon = "";
+      scaleLabel = "Ingen rating";
+    } else if (ratingVariant === "thumbs") {
+      // For thumbs, show positive rate percentage
+      const positiveRate = ratingStats?.distribution
+        ? calculateThumbsPositiveRate(ratingStats.distribution)
+        : 0;
+      avgRating = `${Math.round(positiveRate)}%`;
+      ratingIcon = "👍";
+      scaleLabel = getRatingScaleLabel(ratingVariant, ratingScale);
+    } else if (ratingVariant === "nps") {
+      // For NPS, show average without emoji
+      avgRating = avgRatingNumber.toFixed(1);
+      ratingIcon = ""; // No emoji for NPS
+      scaleLabel = getRatingScaleLabel(ratingVariant, ratingScale);
+    } else if (ratingVariant === "stars") {
+      // For stars, show average with single star icon
+      avgRating = avgRatingNumber.toFixed(1);
+      ratingIcon = "⭐";
+      scaleLabel = getRatingScaleLabel(ratingVariant, ratingScale);
+    } else {
+      // Emoji variant
+      avgRating = avgRatingNumber.toFixed(1);
+      ratingIcon = getRatingSingleIcon(avgRatingNumber, ratingVariant);
+      scaleLabel = getRatingScaleLabel(ratingVariant, ratingScale);
+    }
 
     // Count text fields with responses
     const textFields =
@@ -119,22 +171,16 @@ export function StatsCards({ showRating = false }: StatsCardsProps) {
           subtitle={`Siste ${periodDays} dager`}
         />
 
-        {showRating &&
-          (avgRatingNumber != null ? (
-            <StatCard
-              icon={<StarIcon fontSize="1.25rem" aria-hidden />}
-              label="Snitt vurdering"
-              value={`${avgRating} ${getRatingEmoji(avgRatingNumber)}`}
-              subtitle="av 5 mulige"
-            />
-          ) : (
-            <StatCard
-              icon={<StarIcon fontSize="1.25rem" aria-hidden />}
-              label="Vurdering"
-              value="–"
-              subtitle="Ingen rating"
-            />
-          ))}
+        {showRating && (
+          <StatCard
+            icon={<StarIcon fontSize="1.25rem" aria-hidden />}
+            label={
+              ratingVariant === "thumbs" ? "Positiv rate" : "Snitt vurdering"
+            }
+            value={ratingIcon ? `${avgRating} ${ratingIcon}` : avgRating}
+            subtitle={scaleLabel}
+          />
+        )}
 
         <StatCard
           icon={<ChatExclamationmarkIcon fontSize="1.25rem" aria-hidden />}
@@ -176,13 +222,4 @@ export function StatsCards({ showRating = false }: StatsCardsProps) {
       />
     </DashboardGrid>
   );
-}
-
-function getRatingEmoji(rating: number): string {
-  if (Number.isNaN(rating)) return "";
-  if (rating < 1.5) return "😡";
-  if (rating < 2.5) return "🙁";
-  if (rating < 3.5) return "😐";
-  if (rating < 4.5) return "😀";
-  return "😍";
 }

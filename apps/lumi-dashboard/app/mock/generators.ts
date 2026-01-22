@@ -1000,3 +1000,225 @@ export function generateComplexSurveyData(): FeedbackDto[] {
   }
   return items;
 }
+
+// ============================================
+// Rating Variant Generators
+// ============================================
+
+/**
+ * Generate Stars rating survey data (5-point scale)
+ */
+export function generateStarsRatingSurveyData(count = 40): FeedbackDto[] {
+  const items: FeedbackDto[] = [];
+  const now = new Date();
+
+  const comments = [
+    "Veldig enkelt å navigere",
+    "Fant det jeg lette etter",
+    "Litt forvirrende layout",
+    "Rask og effektiv side",
+    "Kunne vært bedre på mobil",
+    "",
+  ];
+
+  for (let i = 0; i < count; i++) {
+    const daysAgo = Math.floor(Math.random() * 30);
+    const date = new Date(now);
+    date.setDate(date.getDate() - daysAgo);
+    const timestamp = date.toISOString();
+
+    // Weighted distribution: more 4-5 stars than 1-2
+    const ratingWeights = [0.05, 0.1, 0.2, 0.35, 0.3];
+    let rating = 5;
+    const rand = Math.random();
+    let cumulative = 0;
+    for (let r = 0; r < ratingWeights.length; r++) {
+      cumulative += ratingWeights[r];
+      if (rand <= cumulative) {
+        rating = r + 1;
+        break;
+      }
+    }
+
+    const comment = comments[Math.floor(Math.random() * comments.length)];
+    const device =
+      Math.random() > 0.6
+        ? "desktop"
+        : Math.random() > 0.2
+          ? "mobile"
+          : "tablet";
+
+    const answers: Answer[] = [
+      createRatingAnswer(
+        "stars",
+        "Hvor fornøyd er du med denne siden?",
+        rating,
+        undefined,
+        "stars",
+        5,
+      ),
+    ];
+
+    if (comment) {
+      answers.push(createTextAnswer("begrunnelse", "Fortell oss mer", comment));
+    }
+
+    items.push({
+      id: `stars-${i}`,
+      submittedAt: timestamp,
+      app: "syfo-oppfolgingsplan-frontend",
+      surveyId: "survey-stars",
+      surveyType: "rating",
+      context: createContext("/brukertest", device),
+      answers,
+      sensitiveDataRedacted: false,
+    });
+  }
+
+  return items;
+}
+
+/**
+ * Generate Thumbs rating survey data (2-point yes/no scale)
+ */
+export function generateThumbsSurveyData(count = 50): FeedbackDto[] {
+  const items: FeedbackDto[] = [];
+  const now = new Date();
+
+  const negativeComments = [
+    "Informasjonen var vanskelig å forstå",
+    "Fant ikke det jeg lette etter",
+    "Teksten var for lang",
+    "Mangler viktig info",
+  ];
+
+  for (let i = 0; i < count; i++) {
+    const daysAgo = Math.floor(Math.random() * 21);
+    const date = new Date(now);
+    date.setDate(date.getDate() - daysAgo);
+    const timestamp = date.toISOString();
+
+    // ~70% thumbs up, ~30% thumbs down
+    const rating = Math.random() > 0.3 ? 2 : 1;
+    const device = Math.random() > 0.5 ? "mobile" : "desktop";
+
+    const answers: Answer[] = [
+      createRatingAnswer(
+        "helpful",
+        "Var denne informasjonen nyttig?",
+        rating,
+        undefined,
+        "thumbs",
+        2,
+      ),
+    ];
+
+    // Add optional negative feedback text
+    if (rating === 1 && Math.random() > 0.4) {
+      answers.push(
+        createTextAnswer(
+          "feedback",
+          "Hva kan vi forbedre?",
+          negativeComments[Math.floor(Math.random() * negativeComments.length)],
+        ),
+      );
+    }
+
+    items.push({
+      id: `thumbs-${i}`,
+      submittedAt: timestamp,
+      app: "syfo-oppfolgingsplan-frontend",
+      surveyId: "survey-thumbs",
+      surveyType: "rating",
+      context: createContext("/hjelp/artikkel", device),
+      answers,
+      sensitiveDataRedacted: false,
+    });
+  }
+
+  return items;
+}
+
+/**
+ * Generate NPS survey data (0-10 Net Promoter Score)
+ */
+export function generateNpsSurveyData(count = 60): FeedbackDto[] {
+  const items: FeedbackDto[] = [];
+  const now = new Date();
+
+  const promoterComments = [
+    "Fantastisk brukeropplevelse!",
+    "Veldig god tjeneste",
+    "Mye bedre enn forventet",
+  ];
+  const detractorComments = [
+    "For tregt og tungvint",
+    "Vanskelig å finne frem",
+    "Tekniske problemer hindrer meg",
+  ];
+
+  for (let i = 0; i < count; i++) {
+    const daysAgo = Math.floor(Math.random() * 45);
+    const date = new Date(now);
+    date.setDate(date.getDate() - daysAgo);
+    const timestamp = date.toISOString();
+
+    // NPS distribution: 25% detractors (0-6), 25% passives (7-8), 50% promoters (9-10)
+    const rand = Math.random();
+    let rating: number;
+    if (rand < 0.25) {
+      rating = Math.floor(Math.random() * 7); // 0-6
+    } else if (rand < 0.5) {
+      rating = 7 + Math.floor(Math.random() * 2); // 7-8
+    } else {
+      rating = 9 + Math.floor(Math.random() * 2); // 9-10
+    }
+
+    const device = Math.random() > 0.6 ? "desktop" : "mobile";
+
+    const answers: Answer[] = [
+      createRatingAnswer(
+        "nps",
+        "Hvor sannsynlig er det at du vil anbefale nav.no til andre?",
+        rating,
+        "0 = svært usannsynlig, 10 = svært sannsynlig",
+        "nps",
+        11,
+      ),
+    ];
+
+    // Add optional comment based on rating
+    if (rating >= 9 && Math.random() > 0.6) {
+      answers.push(
+        createTextAnswer(
+          "comment",
+          "Hva liker du best?",
+          promoterComments[Math.floor(Math.random() * promoterComments.length)],
+        ),
+      );
+    } else if (rating <= 6 && Math.random() > 0.5) {
+      answers.push(
+        createTextAnswer(
+          "improvement",
+          "Hva kan vi forbedre?",
+          detractorComments[
+            Math.floor(Math.random() * detractorComments.length)
+          ],
+        ),
+      );
+    }
+
+    items.push({
+      id: `nps-${i}`,
+      submittedAt: timestamp,
+      app: "nav-no-frontend",
+      surveyId: "survey-nps",
+      surveyType: "rating",
+      context: createContext("/minside", device),
+      answers,
+      sensitiveDataRedacted: false,
+    });
+  }
+
+  return items;
+}

@@ -27,6 +27,11 @@ export interface FilterParams {
   hasText?: string;
   lowRating?: string;
   theme?: string;
+
+  /** Filter by a specific rating question fieldId */
+  ratingFieldId?: string;
+  /** Filter by a specific rating value (stringified number) */
+  ratingValue?: string;
 }
 
 // ============================================
@@ -117,6 +122,22 @@ export function applyFeedbackFilters(
     );
   }
 
+  // Specific rating filter (fieldId + rating value)
+  if (filters.ratingFieldId && filters.ratingValue) {
+    const parsed = Number.parseInt(filters.ratingValue, 10);
+    if (!Number.isNaN(parsed)) {
+      filtered = filtered.filter((item) =>
+        item.answers.some(
+          (a) =>
+            a.fieldType === "RATING" &&
+            a.fieldId === filters.ratingFieldId &&
+            a.value.type === "rating" &&
+            a.value.rating === parsed,
+        ),
+      );
+    }
+  }
+
   return filtered;
 }
 
@@ -140,6 +161,8 @@ function normalizeParams(params: FilterParams | URLSearchParams): FilterParams {
       hasText: params.get("hasText") ?? undefined,
       lowRating: params.get("lowRating") ?? undefined,
       theme: params.get("theme") ?? undefined,
+      ratingFieldId: params.get("ratingFieldId") ?? undefined,
+      ratingValue: params.get("ratingValue") ?? undefined,
     };
   }
   return params;

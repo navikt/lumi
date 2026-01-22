@@ -3,6 +3,8 @@ import {
   ChatIcon,
   StarIcon,
   TasklistIcon,
+  ThumbDownIcon,
+  ThumbUpIcon,
 } from "@navikt/aksel-icons";
 import {
   BodyShort,
@@ -14,6 +16,11 @@ import {
 } from "@navikt/ds-react";
 import type { ReactNode } from "react";
 import type { Answer } from "~/types/api";
+import {
+  inferRatingVariantFromAnswer,
+  normalizeRatingVariant,
+  type RatingVariant,
+} from "~/utils/ratingDisplay";
 import { COLORS, ratingToEmoji } from "./utils";
 
 interface AnswerCardLayoutProps {
@@ -61,12 +68,155 @@ export function RenderAnswer({
     case "RATING": {
       const ratingValue =
         answer.value.type === "rating" ? answer.value.rating : 0;
+      const ratingVariantFromPayload =
+        answer.value.type === "rating"
+          ? normalizeRatingVariant(
+              (answer.value as { ratingVariant?: unknown }).ratingVariant,
+            )
+          : undefined;
+
+      const ratingScaleFromPayload =
+        answer.value.type === "rating"
+          ? (answer.value as { ratingScale?: unknown }).ratingScale
+          : undefined;
+
+      const ratingVariant: RatingVariant = inferRatingVariantFromAnswer({
+        rating: ratingValue,
+        ratingVariant: ratingVariantFromPayload,
+        ratingScale: ratingScaleFromPayload,
+      });
+
+      const ratingScale =
+        typeof ratingScaleFromPayload === "number"
+          ? ratingScaleFromPayload
+          : ratingVariant === "nps"
+            ? 11
+            : ratingVariant === "thumbs"
+              ? 2
+              : 5;
+
+      // Variant-specific rendering
+      if (ratingVariant === "thumbs") {
+        const isPositive = ratingValue >= 2;
+        return (
+          <AnswerCardLayout
+            styles={styles}
+            className="answer-card--rating"
+            icon={
+              <Tooltip content="Tommel opp/ned">
+                {isPositive ? (
+                  <ThumbUpIcon fontSize="1.5rem" style={{ color: "#22C55E" }} />
+                ) : (
+                  <ThumbDownIcon
+                    fontSize="1.5rem"
+                    style={{ color: "#EF4444" }}
+                  />
+                )}
+              </Tooltip>
+            }
+            label={answer.question.label}
+            description={answer.question.description}
+          >
+            <HStack align="center" gap="space-8">
+              <span
+                className={styles.ratingScore}
+                style={{
+                  backgroundColor: isPositive ? "#DCFCE7" : "#FEE2E2",
+                  color: isPositive ? "#166534" : "#991B1B",
+                  padding: "0.25rem 0.5rem",
+                  borderRadius: "4px",
+                }}
+              >
+                {isPositive ? "👍 Ja" : "👎 Nei"}
+              </span>
+            </HStack>
+          </AnswerCardLayout>
+        );
+      }
+
+      if (ratingVariant === "nps") {
+        const category =
+          ratingValue >= 9
+            ? "promoter"
+            : ratingValue >= 7
+              ? "passive"
+              : "detractor";
+        const categoryColors = {
+          promoter: { bg: "#DCFCE7", text: "#166534" },
+          passive: { bg: "#FEF9C3", text: "#854D0E" },
+          detractor: { bg: "#FEE2E2", text: "#991B1B" },
+        };
+        const colors = categoryColors[category];
+
+        return (
+          <AnswerCardLayout
+            styles={styles}
+            className="answer-card--rating"
+            icon={
+              <Tooltip content="NPS (0-10)">
+                <StarIcon
+                  fontSize="1.5rem"
+                  style={{ color: COLORS.iconWarning }}
+                />
+              </Tooltip>
+            }
+            label={answer.question.label}
+            description={answer.question.description}
+          >
+            <HStack align="center" gap="space-8">
+              <span
+                className={styles.ratingScore}
+                style={{
+                  backgroundColor: colors.bg,
+                  color: colors.text,
+                  padding: "0.25rem 0.5rem",
+                  borderRadius: "4px",
+                  fontWeight: 600,
+                }}
+              >
+                {ratingValue}/10
+              </span>
+            </HStack>
+          </AnswerCardLayout>
+        );
+      }
+
+      if (ratingVariant === "stars") {
+        return (
+          <AnswerCardLayout
+            styles={styles}
+            className="answer-card--rating"
+            icon={
+              <Tooltip content={`Stjerner (1-${ratingScale})`}>
+                <StarIcon
+                  fontSize="1.5rem"
+                  style={{ color: COLORS.iconWarning }}
+                />
+              </Tooltip>
+            }
+            label={answer.question.label}
+            description={answer.question.description}
+          >
+            <HStack align="center" gap="space-8">
+              <span style={{ fontSize: "1.25rem" }}>
+                {"⭐".repeat(ratingValue)}
+                {"☆".repeat(ratingScale - ratingValue)}
+              </span>
+              <span className={styles.ratingScore}>
+                {ratingValue}/{ratingScale}
+              </span>
+            </HStack>
+          </AnswerCardLayout>
+        );
+      }
+
+      // Default: emoji variant
       return (
         <AnswerCardLayout
           styles={styles}
           className="answer-card--rating"
           icon={
-            <Tooltip content="Vurdering (1-5)">
+            <Tooltip content={`Vurdering (1-${ratingScale})`}>
               <StarIcon
                 fontSize="1.5rem"
                 style={{ color: COLORS.iconWarning }}
@@ -78,7 +228,7 @@ export function RenderAnswer({
         >
           <HStack align="center" gap="space-8">
             <div className={styles.ratingBar}>
-              {[1, 2, 3, 4, 5].map((n) => (
+              {Array.from({ length: ratingScale }, (_, i) => i + 1).map((n) => (
                 <span
                   key={n}
                   className={`${styles.ratingDot} ${n <= ratingValue ? styles.ratingDotFilled : ""}`}
@@ -88,7 +238,9 @@ export function RenderAnswer({
                 </span>
               ))}
             </div>
-            <span className={styles.ratingScore}>{ratingValue}/5</span>
+            <span className={styles.ratingScore}>
+              {ratingValue}/{ratingScale}
+            </span>
           </HStack>
         </AnswerCardLayout>
       );

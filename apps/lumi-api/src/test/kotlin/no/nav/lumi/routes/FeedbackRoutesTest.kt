@@ -85,6 +85,51 @@ class FeedbackRoutesTest : FunSpec({
         }
     }
 
+    test("GET /api/v1/intern/feedback supports ratingFieldId + ratingValue filtering") {
+        testApplication {
+            application { testModule() }
+
+            val team = "team-test"
+            val app = "app-test"
+            val surveyId = "survey-thumbs"
+
+            fun thumbsJson(rating: Int): String {
+                return """
+                {
+                  "schemaVersion": 1,
+                  "surveyId": "$surveyId",
+                  "surveyType": "rating",
+                  "context": { "pathname": "/thumbs", "deviceType": "mobile" },
+                  "answers": [
+                    {
+                      "fieldId": "helpful",
+                      "fieldType": "RATING",
+                      "question": { "label": "Var denne informasjonen nyttig?" },
+                      "value": { "type": "rating", "rating": $rating, "ratingVariant": "thumbs", "ratingScale": 2 }
+                    }
+                  ],
+                  "submittedAt": "2026-01-21T09:00:00Z"
+                }
+                """.trimIndent()
+            }
+
+            insertTestFeedbackWithJson(team = team, app = app, feedbackJson = thumbsJson(2))
+            insertTestFeedbackWithJson(team = team, app = app, feedbackJson = thumbsJson(1))
+
+            val response = createTestClient().get(
+                "/api/v1/intern/feedback?team=$team&app=$app&surveyId=$surveyId&ratingFieldId=helpful&ratingValue=2"
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.OK
+
+            val body = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+            val content = body["content"].shouldNotBeNull().jsonArray
+            content.size shouldBe 1
+        }
+    }
+
     test("GET /api/v1/intern/feedback/tags returns list of tags") {
         testApplication {
             application { testModule() }

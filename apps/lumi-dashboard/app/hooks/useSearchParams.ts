@@ -26,6 +26,12 @@ export interface SearchParams {
 
   /** Filter by specific task (for Top Tasks drill-down) */
   task?: string;
+
+  /** Filter by a specific rating fieldId (e.g. thumbs question) */
+  ratingFieldId?: string;
+
+  /** Filter by a specific rating value for ratingFieldId (e.g. 2=Ja, 1=Nei) */
+  ratingValue?: string;
 }
 
 // Store for managing search params reactively

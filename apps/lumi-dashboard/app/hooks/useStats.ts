@@ -40,6 +40,8 @@ export function useStats() {
       params.deviceType,
       params.segment,
       params.task, // Task filter for Top Tasks drill-down
+      params.ratingFieldId,
+      params.ratingValue,
     ],
     queryFn: () =>
       fetchStatsServerFn({
@@ -52,6 +54,8 @@ export function useStats() {
           deviceType: params.deviceType,
           segment: params.segment,
           task: params.task, // Pass task filter to backend
+          ratingFieldId: params.ratingFieldId,
+          ratingValue: params.ratingValue,
         },
       }),
     staleTime: 30000, // 30 seconds

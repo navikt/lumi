@@ -21,6 +21,10 @@ export const StatsParamsSchema = z.object({
   segment: z.string().optional(),
   /** Filter by specific task (Top Tasks drill-down) */
   task: z.string().optional(),
+  /** Filter by a specific rating question fieldId */
+  ratingFieldId: z.string().optional(),
+  /** Filter by a specific rating value (number as string) */
+  ratingValue: z.string().optional(),
 });
 
 export type StatsParams = z.infer<typeof StatsParamsSchema>;
@@ -47,6 +51,11 @@ export const FeedbackParamsSchema = z.object({
   theme: z.string().optional(),
   /** Segment filters (format: "key:value,key:value") */
   segment: z.string().optional(),
+
+  /** Filter by a specific rating question fieldId */
+  ratingFieldId: z.string().optional(),
+  /** Filter by a specific rating value (number as string) */
+  ratingValue: z.string().optional(),
 });
 
 export type FeedbackParams = z.infer<typeof FeedbackParamsSchema>;
@@ -60,6 +69,10 @@ export const TopTasksParamsSchema = z.object({
   deviceType: z.string().optional(),
   /** Filter by specific task name (drill-down from quadrant) */
   task: z.string().optional(),
+  /** Filter by a specific rating question fieldId */
+  ratingFieldId: z.string().optional(),
+  /** Filter by a specific rating value (number as string) */
+  ratingValue: z.string().optional(),
 });
 
 export type TopTasksParams = z.infer<typeof TopTasksParamsSchema>;
@@ -71,6 +84,10 @@ export const DiscoveryParamsSchema = z.object({
   fromDate: z.string().optional(),
   toDate: z.string().optional(),
   deviceType: z.string().optional(),
+  /** Filter by a specific rating question fieldId */
+  ratingFieldId: z.string().optional(),
+  /** Filter by a specific rating value (number as string) */
+  ratingValue: z.string().optional(),
 });
 
 export type DiscoveryParams = z.infer<typeof DiscoveryParamsSchema>;
@@ -84,6 +101,10 @@ export const BlockerParamsSchema = z.object({
   deviceType: z.string().optional(),
   /** Filter by specific task name (drill-down from quadrant) */
   task: z.string().optional(),
+  /** Filter by a specific rating question fieldId */
+  ratingFieldId: z.string().optional(),
+  /** Filter by a specific rating value (number as string) */
+  ratingValue: z.string().optional(),
 });
 
 export type BlockerParams = z.infer<typeof BlockerParamsSchema>;
@@ -96,6 +117,10 @@ export const TaskPriorityParamsSchema = z.object({
   toDate: z.string().optional(),
   deviceType: z.string().optional(),
   segment: z.string().optional(),
+  /** Filter by a specific rating question fieldId */
+  ratingFieldId: z.string().optional(),
+  /** Filter by a specific rating value (number as string) */
+  ratingValue: z.string().optional(),
 });
 
 export type TaskPriorityParams = z.infer<typeof TaskPriorityParamsSchema>;
@@ -581,6 +606,83 @@ export const ContextTagsResponseSchema = z.object({
   ),
   /** The maxCardinality used for filtering */
   maxCardinality: z.number().optional(),
+});
+
+// Word frequency schema (shared by Discovery and Blocker)
+const WordVariantSchema = z.object({
+  word: z.string(),
+  count: z.number(),
+});
+
+const SourceResponseSchema = z.object({
+  text: z.string(),
+  submittedAt: z.string(),
+});
+
+const WordFrequencySchema = z.object({
+  word: z.string(),
+  stem: z.string(),
+  count: z.number(),
+  variants: z.array(WordVariantSchema).optional(),
+  sourceResponses: z.array(SourceResponseSchema).optional(),
+});
+
+// Discovery schemas
+const DiscoveryThemeSchema = z.object({
+  theme: z.string(),
+  count: z.number(),
+  successRate: z.number(),
+  examples: z.array(z.string()),
+});
+
+export const DiscoveryResponseSchema = z.object({
+  totalSubmissions: z.number(),
+  wordFrequency: z.array(WordFrequencySchema),
+  themes: z.array(DiscoveryThemeSchema),
+  recentResponses: z.array(
+    z.object({
+      task: z.string(),
+      success: z.enum(["yes", "partial", "no"]),
+      blocker: z.string().optional(),
+      submittedAt: z.string(),
+    }),
+  ),
+});
+
+// Blocker schemas (for Top Tasks)
+const BlockerThemeSchema = z.object({
+  theme: z.string(),
+  themeId: z.string(),
+  count: z.number(),
+  examples: z.array(z.string()),
+  color: z.string().optional(),
+});
+
+export const BlockerResponseSchema = z.object({
+  totalBlockers: z.number(),
+  wordFrequency: z.array(WordFrequencySchema),
+  themes: z.array(BlockerThemeSchema),
+  recentBlockers: z.array(
+    z.object({
+      blocker: z.string(),
+      task: z.string(),
+      submittedAt: z.string(),
+    }),
+  ),
+});
+
+// Task Priority schemas
+const TaskVoteSchema = z.object({
+  task: z.string(),
+  votes: z.number(),
+  percentage: z.number(),
+});
+
+export const TaskPriorityResponseSchema = z.object({
+  totalSubmissions: z.number(),
+  tasks: z.array(TaskVoteSchema),
+  longNeckCutoff: z.number(),
+  cumulativePercentageAt5: z.number(),
 });
 
 export const DeleteSurveyResultSchema = z.object({

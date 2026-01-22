@@ -1,4 +1,9 @@
 import type { FeedbackDto } from "~/types/api";
+import {
+  inferRatingVariantFromAnswer,
+  normalizeRatingVariant,
+  type RatingVariant,
+} from "~/utils/ratingDisplay";
 
 /**
  * Common color tokens for feedback UI elements.
@@ -48,18 +53,71 @@ export function ratingToEmoji(rating: number): string {
 }
 
 /**
- * Extracts all rating answers from feedback.
- * Returns array of {rating, label} for display.
+ * Returns a display string for a rating based on its variant.
+ * Used in list views where we show a compact rating indicator.
  */
-export function getAllRatings(
-  feedback: FeedbackDto,
-): { rating: number; label: string }[] {
+export function getRatingDisplay(
+  rating: number,
+  variant: RatingVariant,
+  _scale: number,
+): string {
+  switch (variant) {
+    case "thumbs":
+      return rating >= 2 ? "👍" : "👎";
+    case "stars":
+      return `${rating}⭐`;
+    case "nps":
+      return String(rating);
+    case "emoji":
+      return ratingToEmoji(rating);
+  }
+}
+
+/**
+ * Rating info with variant for display.
+ */
+export interface RatingInfo {
+  rating: number;
+  label: string;
+  variant: RatingVariant;
+  scale: number;
+}
+
+/**
+ * Extracts all rating answers from feedback.
+ * Returns array of {rating, label, variant, scale} for display.
+ */
+export function getAllRatings(feedback: FeedbackDto): RatingInfo[] {
   return feedback.answers
     .filter((a) => a.fieldType === "RATING" && a.value.type === "rating")
-    .map((a) => ({
-      rating: (a.value as { type: "rating"; rating: number }).rating,
-      label: a.question.label,
-    }));
+    .map((a) => {
+      const value = a.value as {
+        type: "rating";
+        rating: number;
+        ratingVariant?: string;
+        ratingScale?: number;
+      };
+
+      const variantFromPayload = normalizeRatingVariant(value.ratingVariant);
+      const variant = inferRatingVariantFromAnswer({
+        rating: value.rating,
+        ratingVariant: variantFromPayload,
+        ratingScale: value.ratingScale,
+      });
+
+      const scaleFromPayload =
+        typeof value.ratingScale === "number" ? value.ratingScale : undefined;
+      const scale =
+        scaleFromPayload ??
+        (variant === "nps" ? 11 : variant === "thumbs" ? 2 : 5);
+
+      return {
+        rating: value.rating,
+        label: a.question.label,
+        variant,
+        scale,
+      };
+    });
 }
 
 /**

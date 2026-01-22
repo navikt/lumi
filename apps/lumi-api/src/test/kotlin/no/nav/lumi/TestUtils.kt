@@ -24,6 +24,7 @@ import no.nav.lumi.routes.statsRoutes
 import no.nav.lumi.routes.exportRoutes
 import no.nav.lumi.routes.surveyFacetRoutes
 import no.nav.lumi.routes.submissionRoutes
+import no.nav.lumi.routes.discoveryRoutes
 import no.nav.lumi.repository.FeedbackStatsRepository
 import java.sql.Timestamp
 import no.nav.lumi.service.FeedbackService
@@ -241,6 +242,7 @@ fun Application.testModule(
             surveyFacetRoutes(feedbackService, statsCacheInvalidator)
             statsRoutes(statsService)
             exportRoutes(exportService)
+            discoveryRoutes()
         }
     }
 }

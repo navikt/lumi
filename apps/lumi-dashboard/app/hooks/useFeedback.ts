@@ -51,6 +51,8 @@ export function useFeedback() {
       params.deviceType,
       params.theme,
       params.segment,
+      params.ratingFieldId,
+      params.ratingValue,
     ],
     queryFn: () =>
       fetchFeedbackServerFn({
@@ -69,6 +71,8 @@ export function useFeedback() {
           deviceType: params.deviceType,
           theme: params.theme,
           segment: params.segment,
+          ratingFieldId: params.ratingFieldId,
+          ratingValue: params.ratingValue,
         },
       }),
     staleTime: 10000, // 10 seconds

@@ -40,6 +40,9 @@ function transformToBackendParams(data: Record<string, string | undefined>) {
     deviceType: data.deviceType,
     // Transform segment format: "key:value,key:value" -> repeated params handled by buildUrl
     segment: data.segment?.split(",").filter(Boolean),
+
+    ratingFieldId: data.ratingFieldId,
+    ratingValue: data.ratingValue,
   };
 }
 

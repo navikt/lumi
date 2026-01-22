@@ -22,6 +22,8 @@ export function useTaskPriorityStats() {
       params.surveyId,
       params.deviceType,
       params.segment,
+      params.ratingFieldId,
+      params.ratingValue,
     ],
     queryFn: () =>
       fetchTaskPriorityServerFn({
@@ -33,6 +35,8 @@ export function useTaskPriorityStats() {
           toDate: params.toDate,
           deviceType: params.deviceType,
           segment: params.segment,
+          ratingFieldId: params.ratingFieldId,
+          ratingValue: params.ratingValue,
         },
       }),
     staleTime: 60000, // 1 minute

@@ -12,8 +12,11 @@ import type {
 import {
   generateComplexSurveyData,
   generateDiscoveryMockData,
+  generateNpsSurveyData,
+  generateStarsRatingSurveyData,
   generateSurveyData,
   generateTaskPriorityMockData,
+  generateThumbsSurveyData,
   generateTopTasksMockData,
 } from "./generators";
 
@@ -128,6 +131,24 @@ export const mockFeedbackItems: FeedbackDto[] = [
   // Dedicated for verifying per-field ordering in UI
   // ===========================================
   ...generateFieldStatsOrderingSurveyData(12),
+
+  // ===========================================
+  // 7. STARS RATING (type: "rating", variant: "stars")
+  // 5-point star scale for satisfaction
+  // ===========================================
+  ...generateStarsRatingSurveyData(40),
+
+  // ===========================================
+  // 8. THUMBS RATING (type: "rating", variant: "thumbs")
+  // 2-point yes/no for article helpfulness
+  // ===========================================
+  ...generateThumbsSurveyData(50),
+
+  // ===========================================
+  // 9. NPS SURVEY (type: "rating", variant: "nps")
+  // 0-10 Net Promoter Score
+  // ===========================================
+  ...generateNpsSurveyData(60),
 ];
 
 export * from "./helpers"; // export helpers if needed by tests
@@ -214,6 +235,8 @@ function applyFilters(
   const tag = params.get("tag");
   const theme = params.get("theme");
   const segment = params.get("segment");
+  const ratingFieldId = params.get("ratingFieldId");
+  const ratingValue = params.get("ratingValue");
 
   if (app) {
     filtered = filtered.filter((item) => item.app === app);
@@ -262,6 +285,22 @@ function applyFilters(
   }
   if (surveyId) {
     filtered = filtered.filter((item) => item.surveyId === surveyId);
+  }
+
+  // Filter by specific rating answer (fieldId + value)
+  if (ratingFieldId && ratingValue) {
+    const parsed = Number.parseInt(ratingValue, 10);
+    if (!Number.isNaN(parsed)) {
+      filtered = filtered.filter((item) =>
+        item.answers.some(
+          (a) =>
+            a.fieldType === "RATING" &&
+            a.fieldId === ratingFieldId &&
+            a.value.type === "rating" &&
+            a.value.rating === parsed,
+        ),
+      );
+    }
   }
   // Filter by tags (supports both item.tags array and metadata key:value format)
   if (tag) {
@@ -471,10 +510,13 @@ function getMockItemsForTeam(team?: string): FeedbackDto[] {
 
 export function getMockSurveysByApp(team?: string): Record<string, string[]> {
   const surveysByApp: Record<string, string[]> = {};
+  const hiddenSurveyIds = new Set(["survey-ordering"]);
 
   for (const item of getMockItemsForTeam(team)) {
     const app = item.app || "unknown";
     const surveyId = item.surveyId;
+
+    if (hiddenSurveyIds.has(surveyId)) continue;
 
     if (!surveysByApp[app]) {
       surveysByApp[app] = [];

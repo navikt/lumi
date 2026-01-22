@@ -41,6 +41,8 @@ export const fetchTaskPriorityServerFn = createServerFn({ method: "GET" })
       deviceType: data.deviceType,
       // Backend expects repeated params: segment=key:value&segment=key:value
       segment: data.segment?.split(",").filter(Boolean),
+      ratingFieldId: data.ratingFieldId,
+      ratingValue: data.ratingValue,
     };
 
     const url = buildUrl(

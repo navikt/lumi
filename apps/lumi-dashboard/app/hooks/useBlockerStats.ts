@@ -22,6 +22,8 @@ export function useBlockerStats() {
       params.surveyId,
       params.deviceType,
       params.task, // Task filter for drill-down
+      params.ratingFieldId,
+      params.ratingValue,
     ],
     queryFn: () =>
       fetchBlockerServerFn({
@@ -33,6 +35,8 @@ export function useBlockerStats() {
           toDate: params.toDate,
           deviceType: params.deviceType,
           task: params.task, // Pass task filter to backend
+          ratingFieldId: params.ratingFieldId,
+          ratingValue: params.ratingValue,
         },
       }),
     staleTime: 60000, // 1 minute

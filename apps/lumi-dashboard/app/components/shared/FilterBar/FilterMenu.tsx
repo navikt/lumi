@@ -3,8 +3,10 @@ import {
   ActionMenu,
   Box,
   Button,
+  Chips,
   HGrid,
   HStack,
+  Label,
   Tag,
   VStack,
 } from "@navikt/ds-react";
@@ -18,6 +20,8 @@ interface FilterMenuProps {
   features: SurveyFeatureConfig;
   allTags: string[];
   selectedTags: string[];
+  ratingFilterLabel?: string;
+  ratingFilterValue?: string;
 }
 
 /**
@@ -30,14 +34,19 @@ export function FilterMenu({
   features,
   allTags,
   selectedTags,
+  ratingFilterLabel,
+  ratingFilterValue,
 }: FilterMenuProps) {
   // Count active filters to show badge (including segment + tags)
   const activeCount = [
+    params.task,
+    params.pathname,
     params.deviceType && params.deviceType !== "alle",
     params.hasText === "true",
     params.lowRating === "true",
     selectedTags.length > 0,
     params.segment, // Count segmentation filter
+    params.ratingFieldId && params.ratingValue,
   ].filter(Boolean).length;
 
   const contentStyle = {
@@ -152,6 +161,64 @@ export function FilterMenu({
               )}
             </VStack>
           </HGrid>
+
+          {(params.task ||
+            params.pathname ||
+            (params.ratingFieldId && params.ratingValue)) && (
+            <Box paddingBlock="space-16">
+              <div
+                style={{
+                  height: "1px",
+                  backgroundColor: "var(--ax-border-neutral-subtle)",
+                  width: "100%",
+                }}
+              />
+
+              <VStack gap="space-8" style={{ paddingTop: "var(--ax-space-4)" }}>
+                <Label size="small">Valgt fra grafer</Label>
+                <Chips size="small">
+                  {params.task && (
+                    <Chips.Removable
+                      variant="neutral"
+                      onDelete={() => {
+                        setParam("task", undefined);
+                        setParam("page", "1");
+                      }}
+                    >
+                      {`Oppgave: ${params.task}`}
+                    </Chips.Removable>
+                  )}
+
+                  {params.pathname && (
+                    <Chips.Removable
+                      variant="neutral"
+                      onDelete={() => {
+                        setParam("pathname", undefined);
+                        setParam("page", "1");
+                      }}
+                    >
+                      {`Side: ${params.pathname}`}
+                    </Chips.Removable>
+                  )}
+
+                  {params.ratingFieldId && params.ratingValue && (
+                    <Chips.Removable
+                      variant="neutral"
+                      onDelete={() => {
+                        setParam("ratingFieldId", undefined);
+                        setParam("ratingValue", undefined);
+                        setParam("page", "1");
+                      }}
+                    >
+                      {`${ratingFilterLabel ?? "Vurdering"}: ${
+                        ratingFilterValue ?? params.ratingValue
+                      }`}
+                    </Chips.Removable>
+                  )}
+                </Chips>
+              </VStack>
+            </Box>
+          )}
         </Box>
       </ActionMenu.Content>
     </ActionMenu>

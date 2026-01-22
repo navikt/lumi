@@ -61,7 +61,9 @@ fun Route.feedbackRoutes(
             toDate = params.toDate,
             surveyId = params.surveyId,
             deviceType = params.deviceType?.takeIf { it.isNotBlank() },
-            segments = segments
+            segments = segments,
+            ratingFieldId = params.ratingFieldId,
+            ratingValue = params.ratingValue,
         )
         
         val (content, total, page) = service.findPaginated(query)

@@ -21,6 +21,8 @@ export function useDiscoveryStats() {
       params.toDate,
       params.surveyId,
       params.deviceType,
+      params.ratingFieldId,
+      params.ratingValue,
     ],
     queryFn: () =>
       fetchDiscoveryServerFn({
@@ -31,6 +33,8 @@ export function useDiscoveryStats() {
           fromDate: params.fromDate,
           toDate: params.toDate,
           deviceType: params.deviceType,
+          ratingFieldId: params.ratingFieldId,
+          ratingValue: params.ratingValue,
         },
       }),
     staleTime: 60000, // 1 minute

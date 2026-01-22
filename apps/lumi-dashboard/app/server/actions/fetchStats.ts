@@ -24,6 +24,8 @@ export function transformStatsToBackendParams(data: {
   deviceType?: string;
   segment?: string;
   task?: string;
+  ratingFieldId?: string;
+  ratingValue?: string;
 }) {
   return {
     team: data.team,
@@ -34,6 +36,8 @@ export function transformStatsToBackendParams(data: {
     deviceType: data.deviceType,
     segment: data.segment?.split(",").filter(Boolean),
     task: data.task,
+    ratingFieldId: data.ratingFieldId,
+    ratingValue: data.ratingValue,
   };
 }
 
@@ -48,6 +52,8 @@ export function buildStatsDashboardUrl(
     deviceType?: string;
     segment?: string;
     task?: string;
+    ratingFieldId?: string;
+    ratingValue?: string;
   },
 ) {
   return buildUrl(

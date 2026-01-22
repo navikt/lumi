@@ -39,6 +39,8 @@ export const fetchDiscoveryServerFn = createServerFn({ method: "GET" })
       fromDate: data.fromDate,
       toDate: data.toDate,
       deviceType: data.deviceType,
+      ratingFieldId: data.ratingFieldId,
+      ratingValue: data.ratingValue,
     };
 
     const url = buildUrl(

@@ -32,7 +32,11 @@ class ApiV1Intern {
         /** Device type filter: mobile, tablet, desktop */
         val deviceType: String? = null,
         /** Segment filter - repeated params like segment=key:value */
-        val segment: List<String>? = null
+        val segment: List<String>? = null,
+        /** Filter by a specific rating question fieldId */
+        val ratingFieldId: String? = null,
+        /** Filter by a specific rating value */
+        val ratingValue: Int? = null,
     ) {
         @Resource("{id}")
         @Serializable
@@ -78,7 +82,11 @@ class ApiV1Intern {
         /** Segment filter - repeated params like segment=key:value */
         val segment: List<String>? = null,
         /** Task filter for Top Tasks drill-down */
-        val task: String? = null
+        val task: String? = null,
+        /** Filter by a specific rating question fieldId */
+        val ratingFieldId: String? = null,
+        /** Filter by a specific rating value */
+        val ratingValue: Int? = null,
     ) {
         @Resource("dashboard")
         @Serializable

@@ -138,7 +138,9 @@ fun Route.discoveryRoutes(
             fromDate = params.parent.fromDate,
             toDate = params.parent.toDate,
             surveyId = params.parent.surveyId,
-            deviceType = params.parent.deviceType?.takeIf { it != FILTER_ALL }
+            deviceType = params.parent.deviceType?.takeIf { it != FILTER_ALL },
+            ratingFieldId = params.parent.ratingFieldId,
+            ratingValue = params.parent.ratingValue,
         )
 
         val stats = discoveryService.getStats(query)

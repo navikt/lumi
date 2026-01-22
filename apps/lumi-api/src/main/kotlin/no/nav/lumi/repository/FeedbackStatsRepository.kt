@@ -673,6 +673,22 @@ class FeedbackStatsRepository {
                 JsonExtract(FeedbackTable.feedbackJson, listOf("context", "tags", safeKey)) eq safeValue
             }
         }
+
+        // Filter by specific rating answer (fieldId + rating)
+        val ratingFieldId = criteria.ratingFieldId
+        val ratingValue = criteria.ratingValue
+        if (!ratingFieldId.isNullOrBlank() && ratingValue != null) {
+            // Avoid JSONPath injection by only allowing simple fieldId characters.
+            val isSafeFieldId = ratingFieldId.all { it.isLetterOrDigit() || it == '-' || it == '_' }
+            if (isSafeFieldId) {
+                val ratingTextForField = JsonbPathQueryFirstText(
+                    FeedbackTable.feedbackJson,
+                    "$.answers[*] ? (@.fieldId == \"$ratingFieldId\" && @.value.type == \"rating\").value.rating"
+                )
+                val ratingExpr = Cast(ratingTextForField, IntegerColumnType())
+                query.andWhere { ratingExpr eq ratingValue }
+            }
+        }
     }
 
 

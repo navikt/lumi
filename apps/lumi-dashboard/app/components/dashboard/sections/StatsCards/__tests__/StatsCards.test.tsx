@@ -158,7 +158,8 @@ describe("StatsCards", () => {
     expect(screen.queryByText("12")).not.toBeInTheDocument();
     expect(screen.getAllByText("–").length).toBeGreaterThan(0);
 
-    expect(screen.getByText("Vurdering")).toBeInTheDocument();
+    // Rating card now shows "Snitt vurdering" label regardless of state
+    expect(screen.getByText("Snitt vurdering")).toBeInTheDocument();
     expect(screen.getByText("Ingen rating")).toBeInTheDocument();
 
     expect(screen.getByText("Tekstsvar")).toBeInTheDocument();

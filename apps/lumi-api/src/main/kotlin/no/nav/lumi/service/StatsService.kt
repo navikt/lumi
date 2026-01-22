@@ -57,7 +57,9 @@ class StatsService(
             "surveyId" to surveyId,
             "deviceType" to deviceType,
             "segment" to segmentValue,
-            "task" to task
+            "task" to task,
+            "ratingFieldId" to ratingFieldId,
+            "ratingValue" to ratingValue?.toString(),
         )
             .filter { (_, value) -> value != null }
             .map { (key, value) -> "${enc(key)}=${enc(value!!)}" }

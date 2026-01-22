@@ -17,12 +17,19 @@ export function createRatingAnswer(
   label: string,
   rating: number,
   description?: string,
+  variant?: "emoji" | "stars" | "thumbs" | "nps",
+  scale?: number,
 ): RatingAnswer {
   return {
     fieldId,
     fieldType: "RATING",
     question: { label, description },
-    value: { type: "rating", rating },
+    value: {
+      type: "rating",
+      rating,
+      ...(variant && { ratingVariant: variant }),
+      ...(scale && { ratingScale: scale }),
+    },
   };
 }
 

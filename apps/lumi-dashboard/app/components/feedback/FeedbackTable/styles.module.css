@@ -246,6 +246,21 @@
   line-height: 1;
 }
 
+/* Compact rating pill for numeric variants (stars/NPS) */
+.ratingPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  background: var(--ax-bg-neutral-soft);
+  color: var(--ax-text-default);
+  border: 1px solid var(--ax-border-subtle);
+}
+
 /* Survey pill */
 .surveyPill {
   display: inline-flex;

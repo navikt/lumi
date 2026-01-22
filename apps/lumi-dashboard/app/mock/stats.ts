@@ -135,17 +135,45 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
 
   for (const [, field] of fieldMap) {
     if (field.fieldType === "RATING") {
-      const ratings = field.values
-        .filter((v) => v.type === "rating")
-        .map((v) => (v as { type: "rating"; rating: number }).rating);
+      const ratingValues = field.values.filter((v) => v.type === "rating");
+      const ratings = ratingValues.map(
+        (v) => (v as { type: "rating"; rating: number }).rating,
+      );
 
-      const distribution: Record<number, number> = {
-        1: 0,
-        2: 0,
-        3: 0,
-        4: 0,
-        5: 0,
-      };
+      // Extract variant and scale from first rating answer
+      const firstRating = ratingValues[0] as
+        | {
+            type: "rating";
+            rating: number;
+            ratingVariant?: string;
+            ratingScale?: number;
+          }
+        | undefined;
+      const ratingVariant = firstRating?.ratingVariant || "emoji";
+      const ratingScale = firstRating?.ratingScale || 5;
+
+      // Build distribution based on variant
+      let distribution: Record<number, number> = {};
+      if (ratingVariant === "thumbs") {
+        distribution = { 1: 0, 2: 0 };
+      } else if (ratingVariant === "nps") {
+        distribution = {
+          0: 0,
+          1: 0,
+          2: 0,
+          3: 0,
+          4: 0,
+          5: 0,
+          6: 0,
+          7: 0,
+          8: 0,
+          9: 0,
+          10: 0,
+        };
+      } else {
+        distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+      }
+
       let sum = 0;
       for (const r of ratings) {
         distribution[r] = (distribution[r] || 0) + 1;
@@ -160,6 +188,15 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
           type: "rating",
           average: ratings.length > 0 ? sum / ratings.length : 0,
           distribution,
+          // Include variant info for display components
+          ratingVariant,
+          ratingScale,
+        } as {
+          type: "rating";
+          average: number;
+          distribution: Record<number, number>;
+          ratingVariant: string;
+          ratingScale: number;
         },
       });
     } else if (field.fieldType === "TEXT") {
@@ -270,6 +307,8 @@ export function calculateStats(
   const toDate = params.get("toDate");
   const surveyId = params.get("surveyId");
   const deviceType = params.get("deviceType");
+  const ratingFieldId = params.get("ratingFieldId");
+  const ratingValue = params.get("ratingValue");
 
   if (app) {
     filtered = filtered.filter((item) => item.app === app);
@@ -289,6 +328,22 @@ export function calculateStats(
     filtered = filtered.filter(
       (item) => item.context?.deviceType === deviceType,
     );
+  }
+
+  // Filter by specific rating answer (fieldId + value)
+  if (ratingFieldId && ratingValue) {
+    const parsed = Number.parseInt(ratingValue, 10);
+    if (!Number.isNaN(parsed)) {
+      filtered = filtered.filter((item) =>
+        item.answers.some(
+          (a) =>
+            a.fieldType === "RATING" &&
+            a.fieldId === ratingFieldId &&
+            a.value.type === "rating" &&
+            a.value.rating === parsed,
+        ),
+      );
+    }
   }
 
   // Filter by segment (context.tags format: "key:value,key:value")
@@ -513,6 +568,8 @@ function applyFiltersToItems(
   const toDate = params.get("toDate");
   const surveyId = params.get("surveyId");
   const deviceType = params.get("deviceType");
+  const ratingFieldId = params.get("ratingFieldId");
+  const ratingValue = params.get("ratingValue");
 
   if (app) filtered = filtered.filter((item) => item.app === app);
   if (fromDate)
@@ -527,6 +584,22 @@ function applyFiltersToItems(
     filtered = filtered.filter(
       (item) => item.context?.deviceType === deviceType,
     );
+
+  // Filter by specific rating answer (fieldId + value)
+  if (ratingFieldId && ratingValue) {
+    const parsed = Number.parseInt(ratingValue, 10);
+    if (!Number.isNaN(parsed)) {
+      filtered = filtered.filter((item) =>
+        item.answers.some(
+          (a) =>
+            a.fieldType === "RATING" &&
+            a.fieldId === ratingFieldId &&
+            a.value.type === "rating" &&
+            a.value.rating === parsed,
+        ),
+      );
+    }
+  }
 
   // Filter by segment (context.tags format: "key:value,key:value")
   const segment = params.get("segment");

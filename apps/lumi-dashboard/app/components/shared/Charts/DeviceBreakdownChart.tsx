@@ -4,6 +4,10 @@ import { ChartLoadingState } from "~/components/shared/Charts/ChartLoadingState"
 import { useTheme } from "~/context/ThemeContext";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
+import {
+  getNpsCategory,
+  inferRatingVariantFromDistribution,
+} from "~/utils/ratingDisplay";
 
 const DEVICE_COLORS: Record<string, string> = {
   desktop: "#60A5FA", // Blue
@@ -51,6 +55,62 @@ interface DeviceBreakdownChartProps {
   showRating?: boolean;
 }
 
+function clamp01(value: number) {
+  if (value < 0) return 0;
+  if (value > 1) return 1;
+  return value;
+}
+
+function thumbsPositiveRateFromAverage(averageRating: number) {
+  // Thumbs is stored as 1=down, 2=up.
+  // Expected value: E[rating] = 1 + p(up) => p(up) = average - 1.
+  return clamp01(averageRating - 1);
+}
+
+function ratingTextColor(
+  averageRating: number,
+  variant: "stars" | "emoji" | "thumbs" | "nps",
+) {
+  if (variant === "thumbs") {
+    const p = thumbsPositiveRateFromAverage(averageRating);
+    if (p >= 0.75) return "var(--ax-text-success)";
+    if (p <= 0.4) return "var(--ax-text-danger)";
+    return "var(--ax-text-default)";
+  }
+
+  if (variant === "nps") {
+    const category = getNpsCategory(averageRating);
+    switch (category) {
+      case "promoter":
+        return "var(--ax-text-success)";
+      case "passive":
+        return "var(--ax-text-default)";
+      case "detractor":
+        return "var(--ax-text-danger)";
+    }
+  }
+
+  if (averageRating >= 4) return "var(--ax-text-success)";
+  if (averageRating <= 2) return "var(--ax-text-danger)";
+  return "var(--ax-text-default)";
+}
+
+function ratingLabel(
+  averageRating: number,
+  variant: "stars" | "emoji" | "thumbs" | "nps",
+) {
+  if (variant === "thumbs") {
+    const p = thumbsPositiveRateFromAverage(averageRating);
+    return `👍 ${Math.round(p * 100)}%`;
+  }
+
+  if (variant === "nps") {
+    return `${Math.round(averageRating)}/10`;
+  }
+
+  return `⭐ ${averageRating.toFixed(1)}`;
+}
+
 export function DeviceBreakdownChart({
   showRating,
 }: DeviceBreakdownChartProps = {}) {
@@ -69,6 +129,12 @@ export function DeviceBreakdownChart({
   const surveyType = stats?.surveyType;
   const shouldShowRating =
     showRating ?? (surveyType === "rating" || surveyType === "custom");
+
+  const ratingVariant = inferRatingVariantFromDistribution(stats?.byRating);
+  const deviceVariant: "stars" | "emoji" | "thumbs" | "nps" =
+    ratingVariant === "thumbs" || ratingVariant === "nps"
+      ? ratingVariant
+      : "stars";
 
   if (isPending) {
     return <ChartLoadingState />;
@@ -130,6 +196,19 @@ export function DeviceBreakdownChart({
                   </HStack>
                   <HStack gap="space-8" align="center">
                     <BodyShort size="small">{d.count}</BodyShort>
+                    {shouldShowRating && d.averageRating != null && (
+                      <BodyShort
+                        size="small"
+                        style={{
+                          color: ratingTextColor(
+                            d.averageRating,
+                            deviceVariant,
+                          ),
+                        }}
+                      >
+                        {ratingLabel(d.averageRating, deviceVariant)}
+                      </BodyShort>
+                    )}
                     <BodyShort size="small" style={{ color: colors.textMuted }}>
                       ({percentage}%)
                     </BodyShort>
@@ -217,14 +296,14 @@ export function DeviceBreakdownChart({
                       style={{
                         cursor: "inherit",
                         color:
-                          d.averageRating >= 4
-                            ? "var(--ax-text-success)"
-                            : d.averageRating <= 2
-                              ? "var(--ax-text-danger)"
-                              : "var(--ax-text-default)",
+                          d.averageRating != null
+                            ? ratingTextColor(d.averageRating, deviceVariant)
+                            : "var(--ax-text-default)",
                       }}
                     >
-                      ⭐ {d.averageRating.toFixed(1)}
+                      {d.averageRating != null
+                        ? ratingLabel(d.averageRating, deviceVariant)
+                        : null}
                     </BodyShort>
                   )}
                 </HStack>

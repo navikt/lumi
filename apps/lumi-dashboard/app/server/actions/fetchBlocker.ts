@@ -40,6 +40,8 @@ export const fetchBlockerServerFn = createServerFn({ method: "GET" })
       toDate: data.toDate,
       deviceType: data.deviceType,
       task: data.task,
+      ratingFieldId: data.ratingFieldId,
+      ratingValue: data.ratingValue,
     };
 
     const url = buildUrl(

@@ -89,6 +89,15 @@ describe("applyFeedbackFilters", () => {
 
   const items = [itemA, itemB, itemC];
 
+  it("filters by ratingFieldId + ratingValue", () => {
+    const filtered = applyFeedbackFilters(items, {
+      ratingFieldId: "rating",
+      ratingValue: "5",
+    });
+
+    expect(filtered.map((i) => i.id)).toEqual(["b"]);
+  });
+
   it("filters by date range (toDate inclusive)", () => {
     const filtered = applyFeedbackFilters(items, {
       fromDate: "2026-01-02",

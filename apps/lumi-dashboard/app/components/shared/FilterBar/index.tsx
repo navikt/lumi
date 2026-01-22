@@ -16,6 +16,7 @@ import { getSurveyFeatures } from "~/config/surveyConfig";
 import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
+import { inferRatingVariantFromDistribution } from "~/utils/ratingDisplay";
 import { FilterMenu } from "./FilterMenu";
 import { Skeleton as FilterBarSkeleton } from "./Skeleton";
 
@@ -33,6 +34,38 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
 
   // Determine active features based on survey type
   const features = getSurveyFeatures(stats?.surveyType);
+
+  const ratingField = stats?.fieldStats?.find(
+    (f) => f.fieldId === params.ratingFieldId,
+  );
+
+  const ratingFilterLabel =
+    ratingField && ratingField.fieldType === "RATING"
+      ? ratingField.label
+      : undefined;
+
+  let ratingFilterValue: string | undefined;
+  if (params.ratingFieldId && params.ratingValue) {
+    ratingFilterValue = params.ratingValue;
+    if (ratingField?.fieldType === "RATING") {
+      const ratingStats = ratingField.stats as unknown as {
+        distribution?: Record<string, number>;
+        ratingVariant?: string;
+      };
+      const ratingVariant = inferRatingVariantFromDistribution(
+        ratingStats.distribution,
+        ratingStats.ratingVariant,
+      );
+      if (ratingVariant === "thumbs") {
+        ratingFilterValue =
+          params.ratingValue === "2"
+            ? "Ja"
+            : params.ratingValue === "1"
+              ? "Nei"
+              : params.ratingValue;
+      }
+    }
+  }
 
   // Parse current tag filter (comma-separated)
   const selectedTags = params.tag
@@ -138,7 +171,9 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
     params.hasText ||
     params.deviceType ||
     params.tag ||
-    params.segment;
+    params.segment ||
+    params.ratingFieldId ||
+    params.ratingValue;
 
   // isPending: no cached data AND fetching (TanStack Query v5 best practice)
   // With placeholderData: keepPreviousData, isPending stays false during refetches
@@ -248,6 +283,8 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                   features={features}
                   allTags={allTags}
                   selectedTags={selectedTags}
+                  ratingFilterLabel={ratingFilterLabel}
+                  ratingFilterValue={ratingFilterValue}
                 />
               )}
             </HStack>
