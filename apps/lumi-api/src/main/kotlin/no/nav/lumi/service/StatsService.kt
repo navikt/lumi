@@ -162,6 +162,24 @@ class StatsService(
     fun getStatsOverview(query: StatsQuery): StatsOverviewResponse {
         return getOrComputeCached(prefix = "overview", query = query, ttl = overviewCacheTtl) {
             val stats = statsRepository.getStats(query)
+            val range = if (query.fromDate != null || query.toDate != null) {
+                DateRange(fromDate = query.fromDate, toDate = query.toDate)
+            } else {
+                null
+            }
+
+            if (stats.masked) {
+                return@getOrComputeCached StatsOverviewResponse(
+                    generatedAt = java.time.Instant.now().toString(),
+                    range = range,
+                    totals = StatsTotals(
+                        feedbackCount = 0,
+                        textCount = 0,
+                        lowRatingCount = 0
+                    ),
+                    ratingDistribution = emptyMap()
+                )
+            }
 
             // Calculate low rating count (ratings 1-2)
             val lowRatingCount = stats.byRating
@@ -170,9 +188,7 @@ class StatsService(
 
             StatsOverviewResponse(
                 generatedAt = java.time.Instant.now().toString(),
-                range = if (query.fromDate != null || query.toDate != null) {
-                    DateRange(fromDate = query.fromDate, toDate = query.toDate)
-                } else null,
+                range = range,
                 totals = StatsTotals(
                     feedbackCount = stats.totalCount.toInt(),
                     textCount = stats.countWithText.toInt(),
@@ -190,6 +206,14 @@ class StatsService(
         return getOrComputeCached(prefix = "ratings", query = query, ttl = ratingsCacheTtl) {
             val stats = statsRepository.getStats(query)
 
+            if (stats.masked) {
+                return@getOrComputeCached RatingDistribution(
+                    distribution = emptyMap(),
+                    average = null,
+                    total = 0
+                )
+            }
+
             RatingDistribution(
                 distribution = stats.byRating,
                 average = calculateAverageRating(stats.byRating),
@@ -205,6 +229,10 @@ class StatsService(
         return getOrComputeCached(prefix = "timeline", query = query, ttl = timelineCacheTtl) {
             val stats = statsRepository.getStats(query)
 
+            if (stats.masked) {
+                return@getOrComputeCached TimelineResponse(data = emptyList())
+            }
+
             TimelineResponse(
                 data = stats.byDate.map { (date, count) ->
                     TimelineEntry(date = date, count = count)
@@ -218,6 +246,16 @@ class StatsService(
      */
     fun getTopTasksStats(query: StatsQuery): TopTasksResponse {
         return getOrComputeCached(prefix = "topTasks", query = query, ttl = topTasksCacheTtl) {
+            val stats = statsRepository.getStats(query)
+            if (stats.masked) {
+                return@getOrComputeCached TopTasksResponse(
+                    totalSubmissions = 0,
+                    tasks = emptyList(),
+                    dailyStats = emptyMap(),
+                    questionText = null
+                )
+            }
+
             statsRepository.getTopTasksStats(query)
         }
     }
@@ -227,6 +265,14 @@ class StatsService(
      */
     fun getSurveyTypeDistribution(query: StatsQuery): SurveyTypeDistribution {
         return getOrComputeCached(prefix = "surveyTypes", query = query, ttl = surveyTypesCacheTtl) {
+            val stats = statsRepository.getStats(query)
+            if (stats.masked) {
+                return@getOrComputeCached SurveyTypeDistribution(
+                    totalSurveys = 0,
+                    distribution = emptyList()
+                )
+            }
+
             statsRepository.getSurveyTypeDistribution(query)
         }
     }
@@ -237,6 +283,16 @@ class StatsService(
      */
     fun getBlockerStats(query: StatsQuery): BlockerStatsResponse {
         return getOrComputeCached(prefix = "blockers", query = query, ttl = blockersCacheTtl) {
+            val stats = statsRepository.getStats(query)
+            if (stats.masked) {
+                return@getOrComputeCached BlockerStatsResponse(
+                    totalBlockers = 0,
+                    wordFrequency = emptyList(),
+                    themes = emptyList(),
+                    recentBlockers = emptyList()
+                )
+            }
+
             val themes = themeRepository.findByTeam(query.team, AnalysisContext.BLOCKER)
             statsRepository.getBlockerStats(query, themes)
         }
@@ -247,6 +303,16 @@ class StatsService(
      */
     fun getTaskPriorityStats(query: StatsQuery): TaskPriorityResponse {
         return getOrComputeCached(prefix = "taskPriority", query = query, ttl = taskPriorityCacheTtl) {
+            val stats = statsRepository.getStats(query)
+            if (stats.masked) {
+                return@getOrComputeCached TaskPriorityResponse(
+                    totalSubmissions = 0,
+                    tasks = emptyList(),
+                    longNeckCutoff = 0,
+                    cumulativePercentageAt5 = 0
+                )
+            }
+
             statsRepository.getTaskPriorityStats(query)
         }
     }
