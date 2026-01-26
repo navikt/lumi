@@ -2,11 +2,13 @@ package no.nav.lumi.routes
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.maps.shouldContainKey
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.server.testing.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import no.nav.lumi.TestDatabase
 import no.nav.lumi.createTestClient
 import no.nav.lumi.insertTestFeedback
@@ -45,8 +47,9 @@ class StatsRoutesTest : FunSpec({
             }
             
             response.status shouldBe HttpStatusCode.OK
-            response.bodyAsText() shouldContain "totalCount"
-            response.bodyAsText() shouldContain "byRating"
+            val body = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+            body shouldContainKey "totalCount"
+            body shouldContainKey "byRating"
         }
     }
 
@@ -63,8 +66,9 @@ class StatsRoutesTest : FunSpec({
             }
 
             response.status shouldBe HttpStatusCode.OK
-            response.bodyAsText() shouldContain "distribution"
-            response.bodyAsText() shouldContain "average"
+            val body = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+            body shouldContainKey "distribution"
+            body shouldContainKey "average"
         }
     }
 
@@ -79,7 +83,8 @@ class StatsRoutesTest : FunSpec({
             }
             
             response.status shouldBe HttpStatusCode.OK
-            response.bodyAsText() shouldContain "data"
+            val body = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+            body shouldContainKey "data"
         }
     }
 })

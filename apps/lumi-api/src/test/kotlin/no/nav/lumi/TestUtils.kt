@@ -63,8 +63,8 @@ fun insertTestFeedback(
 ) {
     TestDatabase.dataSource.connection.use { conn ->
         conn.prepareStatement("""
-            INSERT INTO feedback (id, opprettet, feedback_json, team, app, tags) 
-            VALUES (?, ?, ?::jsonb, ?, ?, ?)
+            INSERT INTO feedback (id, opprettet, feedback_json, team, app)
+            VALUES (?, ?, ?::jsonb, ?, ?)
         """).use { stmt ->
             stmt.setString(1, id)
             stmt.setObject(2, java.sql.Timestamp.from(opprettet.toInstant()))
@@ -97,9 +97,9 @@ fun insertTestFeedback(
             """.trimIndent())
             stmt.setString(4, team)
             stmt.setString(5, app)
-            stmt.setString(6, tags)
             stmt.executeUpdate()
         }
+        insertFeedbackTags(conn, id, tags)
         conn.commit()
     }
 }
@@ -115,8 +115,8 @@ fun insertTestFeedbackWithJson(
     TestDatabase.dataSource.connection.use { conn ->
         conn.prepareStatement(
             """
-            INSERT INTO feedback (id, opprettet, feedback_json, team, app, tags)
-            VALUES (?, ?, ?::jsonb, ?, ?, ?)
+            INSERT INTO feedback (id, opprettet, feedback_json, team, app)
+            VALUES (?, ?, ?::jsonb, ?, ?)
             """.trimIndent()
         ).use { stmt ->
             stmt.setString(1, id)
@@ -124,10 +124,35 @@ fun insertTestFeedbackWithJson(
             stmt.setString(3, feedbackJson)
             stmt.setString(4, team)
             stmt.setString(5, app)
-            stmt.setString(6, tags)
             stmt.executeUpdate()
         }
+        insertFeedbackTags(conn, id, tags)
         conn.commit()
+    }
+}
+
+private fun insertFeedbackTags(conn: java.sql.Connection, feedbackId: String, tags: String?) {
+    val normalizedTags = tags
+        ?.split(",")
+        ?.map { it.trim().lowercase() }
+        ?.filter { it.isNotBlank() }
+        ?: return
+
+    if (normalizedTags.isEmpty()) return
+
+    conn.prepareStatement(
+        """
+        INSERT INTO feedback_tag (feedback_id, tag)
+        VALUES (?, ?)
+        ON CONFLICT DO NOTHING
+        """.trimIndent()
+    ).use { stmt ->
+        for (tag in normalizedTags) {
+            stmt.setString(1, feedbackId)
+            stmt.setString(2, tag)
+            stmt.addBatch()
+        }
+        stmt.executeBatch()
     }
 }
 

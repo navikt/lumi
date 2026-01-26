@@ -101,7 +101,9 @@ class TextThemeRepository {
      */
     fun delete(id: UUID): Boolean {
         return transaction {
-            TextThemeTable.deleteWhere { TextThemeTable.id eq id } > 0
+            TextThemeTable.deleteWhere(op = {
+                SqlExpressionBuilder.run { TextThemeTable.id eq id }
+            }) > 0
         }
     }
 

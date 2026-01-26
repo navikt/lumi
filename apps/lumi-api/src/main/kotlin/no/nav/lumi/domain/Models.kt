@@ -21,8 +21,7 @@ data class FeedbackDbRecord(
     val opprettet: OffsetDateTime,
     val feedbackJson: String,
     val team: String,
-    val app: String,
-    val tags: String?
+    val app: String
 )
 
 @Serializable

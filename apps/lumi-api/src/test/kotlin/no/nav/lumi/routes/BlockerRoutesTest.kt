@@ -78,6 +78,25 @@ class BlockerRoutesTest : FunSpec({
         """.trimIndent()
     }
 
+    fun ratingJson(surveyId: String): String {
+        return """
+            {
+              "schemaVersion": 1,
+              "surveyId": "$surveyId",
+              "surveyType": "rating",
+              "context": {"deviceType": "desktop"},
+              "answers": [
+                {
+                  "fieldId": "rating",
+                  "fieldType": "RATING",
+                  "question": {"label": "Hvordan?"},
+                  "value": {"type": "rating", "rating": 5}
+                }
+              ]
+            }
+        """.trimIndent()
+    }
+
     beforeSpec {
         TestDatabase.initialize()
     }
@@ -133,6 +152,19 @@ class BlockerRoutesTest : FunSpec({
                 ),
                 opprettet = t0.plusMinutes(2),
             )
+            // Add fillers to avoid privacy masking (<5 total)
+            insertTestFeedbackWithJson(
+                team = team,
+                app = app,
+                feedbackJson = ratingJson(surveyId),
+                opprettet = t0.plusMinutes(3),
+            )
+            insertTestFeedbackWithJson(
+                team = team,
+                app = app,
+                feedbackJson = ratingJson(surveyId),
+                opprettet = t0.plusMinutes(4),
+            )
 
             val response = createTestClient().get(
                 "/api/v1/intern/stats/blockers?team=$team&app=$app&surveyId=$surveyId",
@@ -147,6 +179,51 @@ class BlockerRoutesTest : FunSpec({
             stats.totalBlockers shouldBe 2
             stats.wordFrequency shouldHaveAtLeastSize 1
             stats.recentBlockers shouldHaveAtLeastSize 1
+        }
+    }
+
+    test("GET /api/v1/intern/stats/blockers is not masked at threshold") {
+        testApplication {
+            application { testModule() }
+
+            val team = "flex"
+            val app = "spinnsyn"
+            val surveyId = "survey-top-blockers-threshold"
+
+            val t0 = OffsetDateTime.parse("2026-01-21T10:00:00+01:00")
+
+            insertTestFeedbackWithJson(
+                team = team,
+                app = app,
+                feedbackJson = topTasksJsonWithBlocker(
+                    surveyId = surveyId,
+                    selectedTaskId = "task-a",
+                    taskLabel = "Lage oppfølgingsplan",
+                    success = "no",
+                    blocker = "Fant ikke skjema",
+                ),
+                opprettet = t0,
+            )
+            repeat(4) { offset ->
+                insertTestFeedbackWithJson(
+                    team = team,
+                    app = app,
+                    feedbackJson = ratingJson(surveyId),
+                    opprettet = t0.plusMinutes((offset + 1).toLong()),
+                )
+            }
+
+            val response = createTestClient().get(
+                "/api/v1/intern/stats/blockers?team=$team&app=$app&surveyId=$surveyId",
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.OK
+            val stats = json.decodeFromString<BlockerStatsResponse>(response.bodyAsText())
+
+            stats.totalBlockers shouldBe 1
+            stats.recentBlockers.first().blocker shouldBe "Fant ikke skjema"
         }
     }
 })

@@ -86,6 +86,26 @@ class TopTasksRoutesTest : FunSpec({
         """.trimIndent()
     }
 
+    fun ratingJson(surveyId: String, contextTagsJson: String? = null): String {
+        val tagsBlock = if (contextTagsJson != null) """"tags": $contextTagsJson, """ else ""
+        return """
+            {
+              "schemaVersion": 1,
+              "surveyId": "$surveyId",
+              "surveyType": "rating",
+              "context": { $tagsBlock"deviceType": "desktop" },
+              "answers": [
+                {
+                  "fieldId": "rating",
+                  "fieldType": "RATING",
+                  "question": {"label": "Hvordan?"},
+                  "value": {"type": "rating", "rating": 5}
+                }
+              ]
+            }
+        """.trimIndent()
+    }
+
     beforeSpec {
         TestDatabase.initialize()
     }
@@ -152,6 +172,9 @@ class TopTasksRoutesTest : FunSpec({
             insertTestFeedbackWithJson(team = team, app = app, feedbackJson = topTasksJson(surveyId, "task-a", "Lage oppfølgingsplan", "yes"), opprettet = t0)
             insertTestFeedbackWithJson(team = team, app = app, feedbackJson = topTasksJson(surveyId, "task-b", "Se innkalling", "yes"), opprettet = t0.plusMinutes(1))
             insertTestFeedbackWithJson(team = team, app = app, feedbackJson = topTasksJson(surveyId, "task-a", "Lage oppfølgingsplan", "no", blocker = "Feil"), opprettet = t0.plusMinutes(2))
+            // Add fillers to avoid privacy masking (<5 total)
+            insertTestFeedbackWithJson(team = team, app = app, feedbackJson = ratingJson(surveyId), opprettet = t0.plusMinutes(3))
+            insertTestFeedbackWithJson(team = team, app = app, feedbackJson = ratingJson(surveyId), opprettet = t0.plusMinutes(4))
 
             // Get all tasks first
             val allResponse = createTestClient().get("/api/v1/intern/stats/top-tasks?team=$team&app=$app&surveyId=$surveyId") {
@@ -193,6 +216,9 @@ class TopTasksRoutesTest : FunSpec({
 
             // Day 2: 1 submission
             insertTestFeedbackWithJson(team = team, app = app, feedbackJson = topTasksJson(surveyId, "task-a", "Lage oppfølgingsplan", "yes"), opprettet = day2)
+            // Add fillers to avoid privacy masking (<5 total)
+            insertTestFeedbackWithJson(team = team, app = app, feedbackJson = ratingJson(surveyId), opprettet = day2.plusMinutes(1))
+            insertTestFeedbackWithJson(team = team, app = app, feedbackJson = ratingJson(surveyId), opprettet = day2.plusMinutes(2))
 
             val response = createTestClient().get("/api/v1/intern/stats/top-tasks?team=$team&app=$app&surveyId=$surveyId") {
                 header(HttpHeaders.Authorization, "Bearer test-token")
@@ -225,6 +251,15 @@ class TopTasksRoutesTest : FunSpec({
                 feedbackJson = topTasksJson(surveyId, "task-a", "Lage oppfølgingsplan", "yes"),
                 opprettet = OffsetDateTime.now()
             )
+            // Add fillers to avoid privacy masking (<5 total)
+            repeat(4) { offset ->
+                insertTestFeedbackWithJson(
+                    team = team,
+                    app = app,
+                    feedbackJson = ratingJson(surveyId),
+                    opprettet = OffsetDateTime.now().plusMinutes((offset + 1).toLong())
+                )
+            }
 
             val response = createTestClient().get("/api/v1/intern/stats/top-tasks?team=$team&app=$app&surveyId=$surveyId") {
                 header(HttpHeaders.Authorization, "Bearer test-token")
@@ -233,6 +268,41 @@ class TopTasksRoutesTest : FunSpec({
             response.status shouldBe HttpStatusCode.OK
             val stats = json.decodeFromString<TopTasksResponse>(response.bodyAsText())
 
+            stats.questionText shouldBe "Hva prøvde du å gjøre?"
+        }
+    }
+
+    test("GET /api/v1/intern/stats/top-tasks is not masked at threshold") {
+        testApplication {
+            application { testModule() }
+
+            val team = "flex"
+            val app = "spinnsyn"
+            val surveyId = "survey-top-threshold"
+
+            insertTestFeedbackWithJson(
+                team = team,
+                app = app,
+                feedbackJson = topTasksJson(surveyId, "task-a", "Lage oppfølgingsplan", "yes"),
+                opprettet = OffsetDateTime.now()
+            )
+            repeat(4) { offset ->
+                insertTestFeedbackWithJson(
+                    team = team,
+                    app = app,
+                    feedbackJson = ratingJson(surveyId),
+                    opprettet = OffsetDateTime.now().plusMinutes((offset + 1).toLong())
+                )
+            }
+
+            val response = createTestClient().get("/api/v1/intern/stats/top-tasks?team=$team&app=$app&surveyId=$surveyId") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.OK
+            val stats = json.decodeFromString<TopTasksResponse>(response.bodyAsText())
+
+            stats.totalSubmissions shouldBe 1
             stats.questionText shouldBe "Hva prøvde du å gjøre?"
         }
     }
@@ -290,6 +360,15 @@ class TopTasksRoutesTest : FunSpec({
                 """.trimIndent(),
                 opprettet = t0.plusMinutes(1)
             )
+            // Add fillers matching segment to avoid privacy masking (<5 total)
+            repeat(4) { offset ->
+                insertTestFeedbackWithJson(
+                    team = team,
+                    app = app,
+                    feedbackJson = ratingJson(surveyId, contextTagsJson = """{"harAktivSykmelding": "Ja"}"""),
+                    opprettet = t0.plusMinutes((2 + offset).toLong())
+                )
+            }
 
             // Filter by segment
             val response = createTestClient().get("/api/v1/intern/stats/top-tasks?team=$team&app=$app&surveyId=$surveyId&segment=harAktivSykmelding:Ja") {

@@ -162,6 +162,21 @@ class FeedbackRepositoryTest : FunSpec({
             allTags shouldContain "existing-tag"
         }
 
+        test("addTag normalizes and avoids duplicates") {
+            val id = UUID.randomUUID().toString()
+            insertTestFeedback(id = id, tags = null)
+
+            val first = repository.addTag(id, "  Bug ")
+            val second = repository.addTag(id, "bug")
+
+            first shouldBe true
+            second shouldBe true
+
+            val feedback = repository.findById(id).shouldNotBeNull()
+            feedback.tags shouldHaveSize 1
+            feedback.tags.first() shouldBe "bug"
+        }
+
         test("addTag returns false for non-existent feedback") {
             val result = repository.addTag("non-existent", "tag")
             
@@ -175,6 +190,22 @@ class FeedbackRepositoryTest : FunSpec({
             val result = repository.removeTag(id, "tag1")
             
             result shouldBe true
+        }
+
+        test("removeTag only affects the targeted feedback") {
+            val idA = UUID.randomUUID().toString()
+            val idB = UUID.randomUUID().toString()
+            insertTestFeedback(id = idA, tags = "shared")
+            insertTestFeedback(id = idB, tags = "shared")
+
+            val result = repository.removeTag(idA, "shared")
+
+            result shouldBe true
+
+            val feedbackA = repository.findById(idA).shouldNotBeNull()
+            val feedbackB = repository.findById(idB).shouldNotBeNull()
+            feedbackA.tags.shouldBeEmpty()
+            feedbackB.tags shouldContain "shared"
         }
     }
 
@@ -203,8 +234,8 @@ class FeedbackRepositoryTest : FunSpec({
                         TestDatabase.dataSource.connection.use { conn ->
                                 conn.prepareStatement(
                                         """
-                                        INSERT INTO feedback (id, opprettet, feedback_json, team, app, tags)
-                                        VALUES (?, ?, ?::jsonb, ?, ?, ?)
+                                        INSERT INTO feedback (id, opprettet, feedback_json, team, app)
+                                        VALUES (?, ?, ?::jsonb, ?, ?)
                                         """.trimIndent()
                                 ).use { stmt ->
                                         stmt.setString(1, id)
@@ -212,7 +243,6 @@ class FeedbackRepositoryTest : FunSpec({
                                         stmt.setString(3, feedbackJson)
                                         stmt.setString(4, team)
                                         stmt.setString(5, app)
-                                        stmt.setString(6, null)
                                         stmt.executeUpdate()
                                 }
                                 conn.commit()

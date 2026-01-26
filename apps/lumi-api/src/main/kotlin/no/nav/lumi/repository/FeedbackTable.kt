@@ -19,9 +19,15 @@ object FeedbackTable : Table("feedback") {
     val feedbackJson = text("feedback_json")
     val team = varchar("team", 255)
     val app = varchar("app", 255)
-    val tags = text("tags").nullable()
 
     override val primaryKey = PrimaryKey(id)
+}
+
+object FeedbackTagTable : Table("feedback_tag") {
+    val feedbackId = varchar("feedback_id", 255).references(FeedbackTable.id)
+    val tag = varchar("tag", 255)
+
+    override val primaryKey = PrimaryKey(feedbackId, tag)
 }
 
 class JsonExtract(val col: Column<*>, val path: List<String>) : Function<String>(VarCharColumnType()) {

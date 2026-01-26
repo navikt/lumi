@@ -103,6 +103,28 @@ class TaskPriorityRoutesTest : FunSpec({
                 feedbackJson = taskPriorityJson(surveyId, listOf("sok-dagpenger")),
                 opprettet = t0.plusMinutes(3)
             )
+            // Add filler to avoid privacy masking (<5 total)
+            insertTestFeedbackWithJson(
+                team = team,
+                app = app,
+                feedbackJson = """
+                    {
+                      "schemaVersion": 1,
+                      "surveyId": "$surveyId",
+                      "surveyType": "rating",
+                      "context": {"deviceType": "desktop"},
+                      "answers": [
+                        {
+                          "fieldId": "rating",
+                          "fieldType": "RATING",
+                          "question": {"label": "Hvordan?"},
+                          "value": {"type": "rating", "rating": 5}
+                        }
+                      ]
+                    }
+                """.trimIndent(),
+                opprettet = t0.plusMinutes(4)
+            )
 
             val response = createTestClient().get("/api/v1/intern/stats/task-priority?team=$team&app=$app&surveyId=$surveyId") {
                 header(HttpHeaders.Authorization, "Bearer test-token")
@@ -274,6 +296,59 @@ class TaskPriorityRoutesTest : FunSpec({
 
             stats.tasks[2].task shouldBe "Melde sykefravær"
             stats.tasks[2].votes shouldBe 1
+        }
+    }
+
+    test("GET /api/v1/intern/stats/task-priority is not masked at threshold") {
+        testApplication {
+            application { testModule() }
+
+            val team = "flex"
+            val app = "spinnsyn"
+            val surveyId = "survey-priority-threshold"
+
+            val t0 = OffsetDateTime.parse("2025-01-15T10:00:00+01:00")
+
+            insertTestFeedbackWithJson(
+                team = team,
+                app = app,
+                feedbackJson = taskPriorityJson(surveyId, listOf("sjekke-utbetaling")),
+                opprettet = t0
+            )
+            repeat(4) { offset ->
+                insertTestFeedbackWithJson(
+                    team = team,
+                    app = app,
+                    feedbackJson = """
+                        {
+                          "schemaVersion": 1,
+                          "surveyId": "$surveyId",
+                          "surveyType": "rating",
+                          "context": {"deviceType": "desktop"},
+                          "answers": [
+                            {
+                              "fieldId": "rating",
+                              "fieldType": "RATING",
+                              "question": {"label": "Hvordan?"},
+                              "value": {"type": "rating", "rating": 5}
+                            }
+                          ]
+                        }
+                    """.trimIndent(),
+                    opprettet = t0.plusMinutes((offset + 1).toLong())
+                )
+            }
+
+            val response = createTestClient().get("/api/v1/intern/stats/task-priority?team=$team&app=$app&surveyId=$surveyId") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.OK
+
+            val stats = json.decodeFromString<TaskPriorityResponse>(response.bodyAsText())
+            stats.totalSubmissions shouldBe 1
+            stats.tasks.size shouldBe 1
+            stats.tasks.first().task shouldBe "Sjekke utbetalinger"
         }
     }
 

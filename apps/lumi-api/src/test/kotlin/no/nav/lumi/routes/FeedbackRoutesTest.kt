@@ -4,8 +4,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.nulls.shouldNotBeNull
-import io.kotest.matchers.string.shouldContain
-import io.kotest.matchers.string.shouldNotContain
+import io.kotest.matchers.collections.shouldContain
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -18,37 +17,12 @@ import kotlinx.serialization.json.int
 import no.nav.lumi.TestDatabase
 import no.nav.lumi.createTestClient
 import no.nav.lumi.insertTestFeedback
+import no.nav.lumi.insertTestFeedbackWithJson
 import no.nav.lumi.testModule
-import java.sql.Timestamp
+import java.time.OffsetDateTime
 import java.util.UUID
 
 class FeedbackRoutesTest : FunSpec({
-
-    fun insertTestFeedbackWithJson(
-        id: String = UUID.randomUUID().toString(),
-        team: String = "team-test",
-        app: String = "app-test",
-        feedbackJson: String,
-        opprettet: Timestamp = Timestamp.from(java.time.Instant.now()),
-    ) {
-        TestDatabase.dataSource.connection.use { conn ->
-            conn.prepareStatement(
-                """
-                INSERT INTO feedback (id, opprettet, feedback_json, team, app, tags)
-                VALUES (?, ?, ?::jsonb, ?, ?, ?)
-                """.trimIndent()
-            ).use { stmt ->
-                stmt.setString(1, id)
-                stmt.setObject(2, opprettet)
-                stmt.setString(3, feedbackJson)
-                stmt.setString(4, team)
-                stmt.setString(5, app)
-                stmt.setString(6, null)
-                stmt.executeUpdate()
-            }
-            conn.commit()
-        }
-    }
 
     beforeSpec {
         TestDatabase.initialize()
@@ -80,8 +54,9 @@ class FeedbackRoutesTest : FunSpec({
             }
             
             response.status shouldBe HttpStatusCode.OK
-            response.bodyAsText() shouldContain "content"
-            response.bodyAsText() shouldContain "totalPages"
+            val body = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+            body shouldContainKey "content"
+            body shouldContainKey "totalPages"
         }
     }
 
@@ -136,14 +111,19 @@ class FeedbackRoutesTest : FunSpec({
             
             // Insert feedback with tags
             insertTestFeedback(team = "team-test", tags = "bug,feature")
+            insertTestFeedback(team = "other-team", tags = "internal")
             
             val response = createTestClient().get("/api/v1/intern/feedback/tags?team=team-test") {
                 header(HttpHeaders.Authorization, "Bearer test-token")
             }
             
             response.status shouldBe HttpStatusCode.OK
-            response.bodyAsText() shouldContain "bug"
-            response.bodyAsText() shouldContain "feature"
+            val tags = Json.parseToJsonElement(response.bodyAsText()).jsonArray
+                .map { it.jsonPrimitive.content }
+                .toSet()
+            tags shouldContain "bug"
+            tags shouldContain "feature"
+            tags.contains("internal") shouldBe false
         }
     }
 
@@ -158,9 +138,13 @@ class FeedbackRoutesTest : FunSpec({
             }
             
             response.status shouldBe HttpStatusCode.OK
-            response.bodyAsText() shouldContain "teams"
-            response.bodyAsText() shouldContain "flex"
-            response.bodyAsText() shouldContain "spinnsyn"
+            val teams = Json.parseToJsonElement(response.bodyAsText()).jsonObject["teams"]
+                .shouldNotBeNull()
+                .jsonObject
+            teams shouldContainKey "flex"
+            teams["flex"].shouldNotBeNull().jsonArray
+                .map { it.jsonPrimitive.content }
+                .toSet() shouldContain "spinnsyn"
         }
     }
 
@@ -176,7 +160,8 @@ class FeedbackRoutesTest : FunSpec({
             }
             
             response.status shouldBe HttpStatusCode.OK
-            response.bodyAsText() shouldContain id
+            val body = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+            body["id"]?.jsonPrimitive?.content shouldBe id
         }
     }
 
@@ -282,6 +267,51 @@ class FeedbackRoutesTest : FunSpec({
         }
     }
 
+    test("DELETE /api/v1/intern/feedback/{id}/tags removes tag from feedback") {
+        testApplication {
+            application { testModule() }
+
+            val id = UUID.randomUUID().toString()
+            insertTestFeedback(id = id, team = "team-test", tags = "keep,remove-me")
+
+            val response = createTestClient().delete("/api/v1/intern/feedback/$id/tags?team=team-test&tag=remove-me") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.NoContent
+
+            val feedbackResponse = createTestClient().get("/api/v1/intern/feedback/$id?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            feedbackResponse.status shouldBe HttpStatusCode.OK
+            val tags = Json.parseToJsonElement(feedbackResponse.bodyAsText()).jsonObject["tags"]
+                .shouldNotBeNull()
+                .jsonArray
+                .map { it.jsonPrimitive.content }
+                .toSet()
+            tags shouldContain "keep"
+            tags.contains("remove-me") shouldBe false
+        }
+    }
+
+    test("DELETE /api/v1/intern/feedback/{id}/tags returns 400 when tag param is missing") {
+        testApplication {
+            application { testModule() }
+
+            val id = UUID.randomUUID().toString()
+            insertTestFeedback(id = id, team = "team-test", tags = "remove-me")
+
+            val response = createTestClient().delete("/api/v1/intern/feedback/$id/tags?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            val body = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+            body["error"]?.jsonPrimitive?.content shouldBe "Missing tag parameter"
+        }
+    }
+
     test("GET /api/v1/intern/surveys/{surveyId}/context-tags returns tag values with counts") {
         testApplication {
             application { testModule() }
@@ -344,12 +374,13 @@ class FeedbackRoutesTest : FunSpec({
             val contextTags = body["contextTags"].shouldNotBeNull().jsonObject
             contextTags shouldContainKey "harAktivSykmelding"
 
-            val values = contextTags["harAktivSykmelding"].shouldNotBeNull()
-            val valuesText = values.toString()
-            valuesText shouldContain "\"value\":\"Ja\""
-            valuesText shouldContain "\"count\":2"
-            valuesText shouldContain "\"value\":\"Nei\""
-            valuesText shouldContain "\"count\":1"
+            val values = contextTags["harAktivSykmelding"].shouldNotBeNull().jsonArray
+            val countsByValue = values.associate {
+                it.jsonObject["value"]?.jsonPrimitive?.content.orEmpty() to
+                    it.jsonObject["count"]?.jsonPrimitive?.int
+            }
+            countsByValue["Ja"] shouldBe 2
+            countsByValue["Nei"] shouldBe 1
         }
     }
 
@@ -358,8 +389,8 @@ class FeedbackRoutesTest : FunSpec({
                         application { testModule() }
 
                         val surveyId = "survey-ctx-filters-1"
-                        val tsInRange = Timestamp.from(java.time.Instant.parse("2026-01-01T12:00:00Z"))
-                        val tsOutOfRange = Timestamp.from(java.time.Instant.parse("2026-01-02T12:00:00Z"))
+                        val tsInRange = OffsetDateTime.parse("2026-01-01T12:00:00Z")
+                        val tsOutOfRange = OffsetDateTime.parse("2026-01-02T12:00:00Z")
 
                         // Only this row should match all filters below (mobile, hasText, lowRating, date)
                         insertTestFeedbackWithJson(
@@ -432,11 +463,13 @@ class FeedbackRoutesTest : FunSpec({
                         val json = Json { ignoreUnknownKeys = true }
                         val body = json.parseToJsonElement(response.bodyAsText()).jsonObject
                         val contextTags = body["contextTags"].shouldNotBeNull().jsonObject
-                        val values = contextTags["harAktivSykmelding"].shouldNotBeNull()
-                        val valuesText = values.toString()
-                        valuesText shouldContain "\"value\":\"Ja\""
-                        valuesText shouldContain "\"count\":1"
-                        valuesText shouldNotContain "\"value\":\"Nei\""
+                        val values = contextTags["harAktivSykmelding"].shouldNotBeNull().jsonArray
+                        val countsByValue = values.associate {
+                            it.jsonObject["value"]?.jsonPrimitive?.content.orEmpty() to
+                                it.jsonObject["count"]?.jsonPrimitive?.int
+                        }
+                        countsByValue["Ja"] shouldBe 1
+                        countsByValue.containsKey("Nei") shouldBe false
                 }
         }
 
@@ -572,9 +605,9 @@ class FeedbackRoutesTest : FunSpec({
             }
 
             response.status shouldBe HttpStatusCode.OK
-            response.bodyAsText() shouldContain surveyId
-            response.bodyAsText() shouldContain "deletedCount"
-            response.bodyAsText() shouldContain "2"
+            val body = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+            body["surveyId"]?.jsonPrimitive?.content shouldBe surveyId
+            body["deletedCount"]?.jsonPrimitive?.int shouldBe 2
 
             // Ensure it's gone
             val after = createTestClient().get("/api/v1/intern/feedback?surveyId=$surveyId&team=team-test") {

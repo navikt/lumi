@@ -86,6 +86,28 @@ class BlockersRoutesTest : FunSpec({
             insertTestFeedbackWithJson(team = team, app = app, feedbackJson = topTasksJson("a", "Bankid virker ikke"), opprettet = t0.plusMinutes(1))
             insertTestFeedbackWithJson(team = team, app = app, feedbackJson = topTasksJson("b", "Skjema krasjer"), opprettet = t0.plusMinutes(2))
             insertTestFeedbackWithJson(team = team, app = app, feedbackJson = topTasksJson("b", ""), opprettet = t0.plusMinutes(3))
+            // Add filler to avoid privacy masking (<5 total)
+            insertTestFeedbackWithJson(
+                team = team,
+                app = app,
+                feedbackJson = """
+                    {
+                      "schemaVersion": 1,
+                      "surveyId": "$surveyId",
+                      "surveyType": "rating",
+                      "context": {"deviceType": "desktop"},
+                      "answers": [
+                        {
+                          "fieldId": "rating",
+                          "fieldType": "RATING",
+                          "question": {"label": "Hvordan?"},
+                          "value": {"type": "rating", "rating": 5}
+                        }
+                      ]
+                    }
+                """.trimIndent(),
+                opprettet = t0.plusMinutes(4)
+            )
 
             val response = createTestClient().get("/api/v1/intern/stats/blockers?team=$team&app=$app&surveyId=$surveyId") {
                 header(HttpHeaders.Authorization, "Bearer test-token")

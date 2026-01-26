@@ -1,18 +1,10 @@
 package no.nav.lumi.repository
 
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.int
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import no.nav.lumi.domain.*
-import no.nav.lumi.sensitive.SensitiveDataFilter
 import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.time.Instant
-import java.time.OffsetDateTime
 import java.util.*
 import kotlin.math.ceil
 
@@ -29,13 +21,16 @@ fun String.escapeLikePattern(): String {
 
 class FeedbackRepository {
     private val log = LoggerFactory.getLogger(FeedbackRepository::class.java)
-    private val json = Json { ignoreUnknownKeys = true }
 
     internal fun findById(id: String): FeedbackDto? {
         return transaction {
             FeedbackTable.selectAll().where { FeedbackTable.id eq id }
                 .singleOrNull()
-                ?.toDto()
+                ?.toDbRecord()
+                ?.let { record ->
+                    val tags = findTagsByFeedbackId(record.id)
+                    record.toDto(tags)
+                }
         }
     }
 
@@ -43,7 +38,11 @@ class FeedbackRepository {
         return transaction {
             FeedbackTable.selectAll().where { (FeedbackTable.id eq id) and (FeedbackTable.team eq team) }
                 .singleOrNull()
-                ?.toDto()
+                ?.toDbRecord()
+                ?.let { record ->
+                    val tags = findTagsByFeedbackId(record.id)
+                    record.toDto(tags)
+                }
         }
     }
     
@@ -55,16 +54,7 @@ class FeedbackRepository {
         return transaction {
             FeedbackTable.selectAll().where { FeedbackTable.id eq id }
                 .singleOrNull()
-                ?.let {
-                    FeedbackDbRecord(
-                        id = it[FeedbackTable.id],
-                        opprettet = OffsetDateTime.ofInstant(it[FeedbackTable.opprettet], java.time.ZoneOffset.UTC),
-                        feedbackJson = it[FeedbackTable.feedbackJson],
-                        team = it[FeedbackTable.team],
-                        app = it[FeedbackTable.app],
-                        tags = it[FeedbackTable.tags]
-                    )
-                }
+                ?.toDbRecord()
         }
     }
 
@@ -72,16 +62,7 @@ class FeedbackRepository {
         return transaction {
             FeedbackTable.selectAll().where { (FeedbackTable.id eq id) and (FeedbackTable.team eq team) }
                 .singleOrNull()
-                ?.let {
-                    FeedbackDbRecord(
-                        id = it[FeedbackTable.id],
-                        opprettet = OffsetDateTime.ofInstant(it[FeedbackTable.opprettet], java.time.ZoneOffset.UTC),
-                        feedbackJson = it[FeedbackTable.feedbackJson],
-                        team = it[FeedbackTable.team],
-                        app = it[FeedbackTable.app],
-                        tags = it[FeedbackTable.tags]
-                    )
-                }
+                ?.toDbRecord()
         }
     }
 
@@ -130,9 +111,11 @@ class FeedbackRepository {
      */
     fun delete(id: String, team: String): Boolean {
         return transaction {
-            FeedbackTable.deleteWhere { 
-                (FeedbackTable.id eq id) and (FeedbackTable.team eq team) 
-            } > 0
+            FeedbackTable.deleteWhere(op = {
+                SqlExpressionBuilder.run {
+                    (FeedbackTable.id eq id) and (FeedbackTable.team eq team)
+                }
+            }) > 0
         }
     }
 
@@ -144,100 +127,92 @@ class FeedbackRepository {
      */
     fun deleteSurvey(surveyId: String, team: String): Int {
         return transaction {
-            FeedbackTable.deleteWhere {
-                (JsonExtract(FeedbackTable.feedbackJson, listOf("surveyId")) eq surveyId) and
-                    (FeedbackTable.team eq team)
-            }
+            FeedbackTable.deleteWhere(op = {
+                SqlExpressionBuilder.run {
+                    (JsonExtract(FeedbackTable.feedbackJson, listOf("surveyId")) eq surveyId) and
+                        (FeedbackTable.team eq team)
+                }
+            })
         }
     }
 
     internal fun addTag(id: String, tag: String): Boolean {
         return transaction {
-            val record = FeedbackTable.select(FeedbackTable.tags)
+            val normalized = normalizeTag(tag) ?: return@transaction false
+            val exists = FeedbackTable.select(FeedbackTable.id)
                 .where { FeedbackTable.id eq id }
-                .singleOrNull() 
-                ?: return@transaction false
-                
-            val currentTags = record[FeedbackTable.tags]
-                ?.split(",")
-                ?.filter { it.isNotBlank() }
-                ?.map { it.trim().lowercase() }
-                ?.toSet() 
-                ?: emptySet()
-            
-            val newTags = currentTags + tag.lowercase()
-            
-            FeedbackTable.update({ FeedbackTable.id eq id }) {
-                it[FeedbackTable.tags] = newTags.joinToString(",")
-            } > 0
+                .any()
+            if (!exists) return@transaction false
+
+            val alreadyTagged = FeedbackTagTable.select(FeedbackTagTable.tag)
+                .where { (FeedbackTagTable.feedbackId eq id) and (FeedbackTagTable.tag eq normalized) }
+                .any()
+
+            if (!alreadyTagged) {
+                FeedbackTagTable.insert {
+                    it[feedbackId] = id
+                    it[this.tag] = normalized
+                }
+            }
+
+            true
         }
     }
 
     fun addTag(id: String, team: String, tag: String): Boolean {
         return transaction {
-            val record = FeedbackTable.select(FeedbackTable.tags)
+            val normalized = normalizeTag(tag) ?: return@transaction false
+            val exists = FeedbackTable.select(FeedbackTable.id)
                 .where { (FeedbackTable.id eq id) and (FeedbackTable.team eq team) }
-                .singleOrNull()
-                ?: return@transaction false
+                .any()
+            if (!exists) return@transaction false
 
-            val currentTags = record[FeedbackTable.tags]
-                ?.split(",")
-                ?.filter { it.isNotBlank() }
-                ?.map { it.trim().lowercase() }
-                ?.toSet()
-                ?: emptySet()
+            val alreadyTagged = FeedbackTagTable.select(FeedbackTagTable.tag)
+                .where { (FeedbackTagTable.feedbackId eq id) and (FeedbackTagTable.tag eq normalized) }
+                .any()
 
-            val newTags = currentTags + tag.lowercase()
+            if (!alreadyTagged) {
+                FeedbackTagTable.insert {
+                    it[feedbackId] = id
+                    it[this.tag] = normalized
+                }
+            }
 
-            FeedbackTable.update({ (FeedbackTable.id eq id) and (FeedbackTable.team eq team) }) {
-                it[FeedbackTable.tags] = newTags.joinToString(",")
-            } > 0
+            true
         }
     }
     
     internal fun removeTag(id: String, tag: String): Boolean {
         return transaction {
-            val record = FeedbackTable.select(FeedbackTable.tags)
+            val normalized = normalizeTag(tag) ?: return@transaction false
+            val exists = FeedbackTable.select(FeedbackTable.id)
                 .where { FeedbackTable.id eq id }
-                .singleOrNull() 
-                ?: return@transaction false
-                
-            val currentTags = record[FeedbackTable.tags]
-                ?.split(",")
-                ?.filter { it.isNotBlank() }
-                ?.map { it.trim().lowercase() }
-                ?.toSet() 
-                ?: emptySet()
-            
-            val newTags = currentTags - tag.lowercase()
-            val tagsStr = if (newTags.isEmpty()) null else newTags.joinToString(",")
-            
-            FeedbackTable.update({ FeedbackTable.id eq id }) {
-                it[FeedbackTable.tags] = tagsStr
-            } > 0
+                .any()
+            if (!exists) return@transaction false
+
+            FeedbackTagTable.deleteWhere(op = {
+                SqlExpressionBuilder.run {
+                    (FeedbackTagTable.feedbackId eq id) and (FeedbackTagTable.tag eq normalized)
+                }
+            })
+            true
         }
     }
 
     fun removeTag(id: String, team: String, tag: String): Boolean {
         return transaction {
-            val record = FeedbackTable.select(FeedbackTable.tags)
+            val normalized = normalizeTag(tag) ?: return@transaction false
+            val exists = FeedbackTable.select(FeedbackTable.id)
                 .where { (FeedbackTable.id eq id) and (FeedbackTable.team eq team) }
-                .singleOrNull()
-                ?: return@transaction false
+                .any()
+            if (!exists) return@transaction false
 
-            val currentTags = record[FeedbackTable.tags]
-                ?.split(",")
-                ?.filter { it.isNotBlank() }
-                ?.map { it.trim().lowercase() }
-                ?.toSet()
-                ?: emptySet()
-
-            val newTags = currentTags - tag.lowercase()
-            val tagsStr = if (newTags.isEmpty()) null else newTags.joinToString(",")
-
-            FeedbackTable.update({ (FeedbackTable.id eq id) and (FeedbackTable.team eq team) }) {
-                it[FeedbackTable.tags] = tagsStr
-            } > 0
+            FeedbackTagTable.deleteWhere(op = {
+                SqlExpressionBuilder.run {
+                    (FeedbackTagTable.feedbackId eq id) and (FeedbackTagTable.tag eq normalized)
+                }
+            })
+            true
         }
     }
 
@@ -263,9 +238,14 @@ class FeedbackRepository {
             val records = dbQuery
                 .orderBy(FeedbackTable.opprettet to SortOrder.DESC)
                 .limit(query.size).offset(offset)
-                .map { it.toDto() }
+                .map { it.toDbRecord() }
 
-            Triple(records, total, page)
+            val tagsById = findTagsByFeedbackIds(records.map { it.id })
+            val dtos = records.map { record ->
+                record.toDto(tagsById[record.id].orEmpty())
+            }
+
+            Triple(dtos, total, page)
         }
     }
 
@@ -276,17 +256,12 @@ class FeedbackRepository {
      */
     fun findAllTags(team: String): Set<String> {
         return transaction {
-             FeedbackTable.select(FeedbackTable.tags)
-                .where { 
-                    (FeedbackTable.team eq team) and 
-                    FeedbackTable.tags.isNotNull() and 
-                    (FeedbackTable.tags neq "") 
-                }
+            FeedbackTagTable
+                .innerJoin(FeedbackTable)
+                .select(FeedbackTagTable.tag)
+                .where { FeedbackTable.team eq team }
                 .withDistinct()
-                .mapNotNull { it[FeedbackTable.tags] }
-                .flatMap { it.split(",") }
-                .map { it.trim().lowercase() }
-                .filter { it.isNotBlank() }
+                .mapNotNull { it[FeedbackTagTable.tag] }
                 .toSet()
         }
     }
@@ -568,14 +543,15 @@ class FeedbackRepository {
         
         // Tags filter
         criteria.tags.forEach { tag ->
-            val escaped = tag.escapeLikePattern()
-            query.andWhere { FeedbackTable.tags like "%$escaped%" }
+            val normalized = normalizeTag(tag) ?: return@forEach
+            query.andWhere { HasTagOp(FeedbackTable.id, normalized) }
         }
         
         // Full-text search query
         criteria.query?.let { searchQuery ->
             val escaped = searchQuery.escapeLikePattern()
-            query.andWhere { (FeedbackTable.feedbackJson like "%$escaped%") or (FeedbackTable.tags like "%$escaped%") }
+            val pattern = "%$escaped%"
+            query.andWhere { (FeedbackTable.feedbackJson like pattern) or HasTagLikeOp(FeedbackTable.id, pattern) }
         }
         
         // Segment filter (context.tags)
@@ -603,6 +579,61 @@ class FeedbackRepository {
                 val ratingExpr = Cast(ratingTextForField, IntegerColumnType())
                 query.andWhere { ratingExpr eq ratingValue }
             }
+        }
+    }
+
+    private fun normalizeTag(tag: String): String? {
+        val normalized = tag.trim().lowercase()
+        return normalized.takeIf { it.isNotBlank() }
+    }
+
+    private fun findTagsByFeedbackId(id: String): List<String> {
+        return FeedbackTagTable
+            .select(FeedbackTagTable.tag)
+            .where { FeedbackTagTable.feedbackId eq id }
+            .map { it[FeedbackTagTable.tag] }
+            .sorted()
+    }
+
+    private fun findTagsByFeedbackIds(ids: List<String>): Map<String, List<String>> {
+        if (ids.isEmpty()) return emptyMap()
+
+        val result = mutableMapOf<String, MutableList<String>>()
+        FeedbackTagTable
+            .select(FeedbackTagTable.feedbackId, FeedbackTagTable.tag)
+            .where { FeedbackTagTable.feedbackId inList ids }
+            .forEach { row ->
+                val feedbackId = row[FeedbackTagTable.feedbackId]
+                val tag = row[FeedbackTagTable.tag]
+                result.getOrPut(feedbackId) { mutableListOf() }.add(tag)
+            }
+
+        return result.mapValues { (_, tags) -> tags.sorted() }
+    }
+
+    private class HasTagOp(
+        private val feedbackIdColumn: Column<String>,
+        private val tag: String
+    ) : Op<Boolean>() {
+        override fun toQueryBuilder(queryBuilder: QueryBuilder) {
+            queryBuilder.append("EXISTS (SELECT 1 FROM feedback_tag WHERE feedback_tag.feedback_id = ")
+            queryBuilder.append(feedbackIdColumn)
+            queryBuilder.append(" AND feedback_tag.tag = ")
+            queryBuilder.registerArgument(VarCharColumnType(), tag)
+            queryBuilder.append(")")
+        }
+    }
+
+    private class HasTagLikeOp(
+        private val feedbackIdColumn: Column<String>,
+        private val pattern: String
+    ) : Op<Boolean>() {
+        override fun toQueryBuilder(queryBuilder: QueryBuilder) {
+            queryBuilder.append("EXISTS (SELECT 1 FROM feedback_tag WHERE feedback_tag.feedback_id = ")
+            queryBuilder.append(feedbackIdColumn)
+            queryBuilder.append(" AND feedback_tag.tag LIKE ")
+            queryBuilder.registerArgument(VarCharColumnType(), pattern)
+            queryBuilder.append(")")
         }
     }
 

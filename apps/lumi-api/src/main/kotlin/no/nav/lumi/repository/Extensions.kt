@@ -12,43 +12,38 @@ private val log = LoggerFactory.getLogger("Extensions")
 private val json = Json { ignoreUnknownKeys = true }
 private val sensitiveDataFilter = SensitiveDataFilter.DEFAULT
 
-private fun parseTags(tags: String?): List<String> {
-    return tags
-        ?.split(",")
-        ?.map { it.trim() }
-        ?.filter { it.isNotBlank() }
-        ?: emptyList()
-}
-
-fun ResultRow.toDto(): FeedbackDto {
-     return FeedbackDbRecord(
+fun ResultRow.toDbRecord(): FeedbackDbRecord {
+    return FeedbackDbRecord(
         id = this[FeedbackTable.id],
         opprettet = OffsetDateTime.ofInstant(this[FeedbackTable.opprettet], ZoneId.of("Europe/Oslo")),
         feedbackJson = this[FeedbackTable.feedbackJson],
         team = this[FeedbackTable.team],
-        app = this[FeedbackTable.app],
-        tags = this[FeedbackTable.tags]
-     ).toDto()
+        app = this[FeedbackTable.app]
+    )
 }
 
-fun FeedbackDbRecord.createEmptyDto(): FeedbackDto {
+fun ResultRow.toDto(): FeedbackDto {
+    return toDbRecord().toDto()
+}
+
+fun FeedbackDbRecord.createEmptyDto(tags: List<String> = emptyList()): FeedbackDto {
     return FeedbackDto(
         id = id,
         submittedAt = opprettet.toString(),
         app = app,
         surveyId = "unknown",
         answers = emptyList(),
-        tags = parseTags(tags),
+        tags = tags,
         sensitiveDataRedacted = false
     )
 }
 
-fun FeedbackDbRecord.toDto(): FeedbackDto {
+fun FeedbackDbRecord.toDto(tags: List<String> = emptyList()): FeedbackDto {
     val jsonElement = try {
         json.parseToJsonElement(feedbackJson)
     } catch (e: Exception) {
         log.warn("Failed to parse feedback JSON for id=$id", e)
-        return createEmptyDto()
+        return createEmptyDto(tags)
     }
     
     val jsonObj = jsonElement.jsonObject
@@ -172,7 +167,7 @@ fun FeedbackDbRecord.toDto(): FeedbackDto {
         context = context,
         metadata = metadata,
         answers = answers,
-        tags = parseTags(tags),
+        tags = tags,
         sensitiveDataRedacted = hasRedactions,
         durationMs = durationMs,
         visitStartedAt = visitStartedAt
