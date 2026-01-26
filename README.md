@@ -8,13 +8,87 @@ Lumi består av:
 - **API**: Tar imot submissions, lagrer data, og tilbyr analytics/endepunkter for dashboard.
 - **Dashboard**: Admin-grensesnitt for å utforske data, filtrere, tagge og eksportere.
 
+## Kom i gang med survey (lumi-survey)
+
+Dette er korteste vei til første survey (rating/smiley). Full guide og API-referanse ligger i
+[`packages/lumi-survey/README.md`](packages/lumi-survey/README.md).
+
+```tsx
+import "@navikt/ds-css";
+import "@navikt/lumi-survey/styles.css";
+
+import { LumiSurveyDock } from "@navikt/lumi-survey";
+
+const survey = {
+  type: "rating",
+  questions: [
+    {
+      id: "rating",
+      type: "rating",
+      prompt: "Hvordan var opplevelsen?",
+      variant: "emoji",
+      required: true,
+    },
+  ],
+};
+
+const transport = {
+  async submit(submission) {
+    await fetch("/api/lumi/feedback", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(submission.transportPayload),
+    });
+  },
+};
+
+export function App() {
+  return (
+    <LumiSurveyDock
+      surveyId="my-app-feedback"
+      survey={survey}
+      transport={transport}
+    />
+  );
+}
+```
+
+Viktig: Widgeten skal **ikke** poste direkte til `lumi-api` fra browser. Se transportflyten under.
+
+## Velg surveytype (kortversjon)
+
+Start enkelt (ofte `rating`). Full playbook (valg av surveytype, best practices og go-live) ligger i
+[`packages/lumi-survey/README.md`](packages/lumi-survey/README.md).
+
+## Arkitektur (1 minutt)
+
+```mermaid
+flowchart LR
+  subgraph Client["Klient"]
+    A["LumiSurveyDock (browser)"]
+  end
+  subgraph Backend["Din app"]
+    B["API-route / server action"]
+    C["Token exchange (TokenX/OBO eller AzureAD)"]
+  end
+  D["lumi-api"]
+  E["Dashboard / analytics"]
+
+  A --> B --> C --> D --> E
+```
+
+## Dokumentasjon
+
+- Survey widget: [`packages/lumi-survey/README.md`](packages/lumi-survey/README.md)
+- API og tilgang: [`apps/lumi-api/README.md`](apps/lumi-api/README.md)
+
 ## Struktur
 - `apps/lumi-dashboard`: Admin-dashboard (TanStack Start)
 - `apps/lumi-api`: Backend-API (Kotlin/Ktor)
 - `packages/lumi-types`: Delte TypeScript-typer
 - `packages/lumi-survey`: Survey-widget
 
-## Integrasjon (for team)
+## Integrasjon og tilgang (for team)
 
 Lumi skiller bevisst mellom submissions fra sluttbruker-flater (TokenX) og veileder/fagsystemer (AzureAD). Dette gjør feilsøking enklere og unngår at vi må "gjette" issuer.
 
@@ -90,7 +164,7 @@ Bruk dette for f.eks. Modia/veiledersystem. Submissions skal ikke lagre NAVident
 
 ### Tilgang (Zero Trust)
 
-For at appen din skal kunne kalle Lumi API, må både appen din og `lumi-api` ha riktige NAIS tilgangspolicyer (inbound/outbound). Se mer detaljer i `apps/lumi-api/README.md`.
+For at appen din skal kunne kalle Lumi API, må både appen din og `lumi-api` ha riktige NAIS tilgangspolicyer (inbound/outbound). Se mer detaljer i [`apps/lumi-api/README.md`](apps/lumi-api/README.md).
 
 ## Kom i gang (lokal utvikling)
 
@@ -100,27 +174,9 @@ For at appen din skal kunne kalle Lumi API, må både appen din og `lumi-api` ha
 
 ## Survey widget
 
-- Widget og eksempler: `packages/lumi-survey/README.md`
-- Release/publisering: `packages/lumi-survey/CONTRIBUTING.md`
-
-## Migreringsstatus
-
-Dette monorepoet er fasiten fremover.
-
-Tidligere Flexjar-repoer er faset ut:
-- `flexjar-analytics` → `apps/lumi-dashboard`
-- `flexjar-analytics-api` → `apps/lumi-api`
-- `flexjar-widget` → `packages/lumi-survey`
-
-Delte typer ligger i `packages/lumi-types` og brukes av dashboardet og annen intern kode.
-
-Survey-widgeten (`packages/lumi-survey`) er bevisst selvstendig (ingen avhengighet til interne workspace-only pakker) slik at den kan publiseres og installeres eksternt uten ekstra pakker.
-
-Merk: Survey-widgeten bruker fortsatt gammel NAV localStorage tillatliste-key pattern `flexjar-*` for consent-relatert persistering til et nytt mønster blir tillatlistet.
-
-## Vanlige kommandoer
-- Dashboard: `npm run dev`
-- Dashboard lint/typecheck: `npm run lint` / `npm run typecheck`
+- Widget og eksempler: [`packages/lumi-survey/README.md`](packages/lumi-survey/README.md)
+- Release/publisering: [`packages/lumi-survey/CONTRIBUTING.md`](packages/lumi-survey/CONTRIBUTING.md)
+- Storybook: `npm run storybook:survey` (statisk build: `npm run build-storybook:survey`)
 
 ## Release
 

@@ -1,13 +1,20 @@
 # Lumi Survey
 
-Aksel-basert React-widget for å samle inn brukertilbakemeldinger via Lumi.
+Aksel-basert React-widget for å samle inn brukertilbakemeldinger via Lumi. Dette er den komplette
+integratørguiden for `@navikt/lumi-survey`.
 
-## Kom i gang
+## Kom i gang (30 sek)
+
+1) Installer + importer CSS
 
 ```tsx
 import "@navikt/ds-css";
 import "@navikt/lumi-survey/styles.css";
+```
 
+2) Render widgeten og send `submission.transportPayload` til din backend
+
+```tsx
 import { DEFAULT_SURVEY_RATING, LumiSurveyDock } from "@navikt/lumi-survey";
 
 const transport = {
@@ -31,15 +38,74 @@ export function App() {
 }
 ```
 
+3) Backend gjør token exchange server-side og videresender til `lumi-api`.
+Transportflyt og endepunkter er beskrevet i [README.md](../../README.md).
+
+Les mer:
+- Presets og builder-funksjoner: se “Survey-presets” og “Bygg egne surveyer”
+- Valg av surveytype + best practices: se “Velg surveytype (playbook)” (klikk for å åpne)
+- Personvern, storage, events, feilsøking: se seksjonene lengre ned
+
+<details>
+<summary><strong>Kom i gang (smiley/rating) – full eksempel</strong></summary>
+
+Minste mulige integrasjon. Send `submission.transportPayload` til din backend som deretter gjør
+token exchange og kaller `lumi-api`. Detaljert transportflyt finnes i
+[`README.md`](../../README.md).
+
+```tsx
+import "@navikt/ds-css";
+import "@navikt/lumi-survey/styles.css";
+
+import { LumiSurveyDock } from "@navikt/lumi-survey";
+
+const survey = {
+  type: "rating",
+  questions: [
+    {
+      id: "rating",
+      type: "rating",
+      prompt: "Hvordan var opplevelsen?",
+      variant: "emoji",
+      required: true,
+    },
+  ],
+};
+
+const transport = {
+  async submit(submission) {
+    await fetch("/api/lumi/feedback", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(submission.transportPayload),
+    });
+  },
+};
+
+export function App() {
+  return (
+    <LumiSurveyDock
+      surveyId="my-app-feedback"
+      survey={survey}
+      transport={transport}
+    />
+  );
+}
+```
+
+Tips: Bruk et stabilt, beskrivende `surveyId` per flate/bruksmønster, f.eks. `soknad-kvittering`.
+
+</details>
+
 ## Installasjon
 
-I dette monorepoet bruker vi workspaces (ingen publisering nødvendig).
-
-For eksterne konsumenter (hvis vi publiserer senere):
+Installer som vanlig npm-pakke:
 
 ```sh
 npm install @navikt/lumi-survey @navikt/ds-react @navikt/ds-css
 ```
+
+I dette repoet er pakken allerede tilgjengelig via workspaces etter `npm install` i rotmappen.
 
 ### Install fra GitHub Packages
 
@@ -56,25 +122,34 @@ For eksterne flater som bruker NAV dekoratørens consent/storage API:
 npm install @navikt/nav-dekoratoren-moduler
 ```
 
-## Bidra / lage ny versjon
-
-Se `CONTRIBUTING.md` for hvordan vi lager nye versjoner av `@navikt/lumi-survey`.
-
-## Survey-presets
+## Survey-presets (raskest å komme i gang)
 
 ```tsx
 import {
-  LumiSurveyDock,
   DEFAULT_SURVEY_RATING,
   DEFAULT_SURVEY_DISCOVERY,
+  DEFAULT_SURVEY_SERVICE_FEEDBACK,
   createTopTasksSurvey,
   createTaskPrioritySurvey,
+  createRatingSurvey,
+  LumiSurveyDock,
 } from "@navikt/lumi-survey";
 
 <LumiSurveyDock surveyId="rating" survey={DEFAULT_SURVEY_RATING} transport={transport} />;
 
 <LumiSurveyDock surveyId="discovery" survey={DEFAULT_SURVEY_DISCOVERY} transport={transport} />;
 
+<LumiSurveyDock
+  surveyId="service-feedback"
+  survey={DEFAULT_SURVEY_SERVICE_FEEDBACK}
+  transport={transport}
+/>;
+```
+
+<details>
+<summary>Eksempel: Top Tasks survey</summary>
+
+```tsx
 const topTasks = createTopTasksSurvey({
   tasks: [
     { value: "apply", label: "Søke om sykepenger" },
@@ -82,83 +157,258 @@ const topTasks = createTopTasksSurvey({
   ],
 });
 
+<LumiSurveyDock surveyId="top-tasks" survey={topTasks} transport={transport} />;
+```
+</details>
+
+<details>
+<summary>Eksempel: Task Priority survey</summary>
+
+```tsx
 const taskPriority = createTaskPrioritySurvey({
   tasks: [
     { value: "apply", label: "Søke om sykepenger" },
     { value: "status", label: "Sjekke status" },
   ],
 });
+
+<LumiSurveyDock surveyId="task-priority" survey={taskPriority} transport={transport} />;
+```
+</details>
+
+<details>
+<summary>Eksempel: NPS (0-10) rating</summary>
+
+```tsx
+const nps = {
+  type: "rating",
+  questions: [
+    {
+      id: "nps",
+      type: "rating",
+      variant: "nps",
+      prompt: "Hvor sannsynlig er det at du vil anbefale oss?",
+      lowLabel: "Lite sannsynlig",
+      highLabel: "Svært sannsynlig",
+      required: true,
+    },
+  ],
+};
+
+<LumiSurveyDock surveyId="nps" survey={nps} transport={transport} />;
+```
+</details>
+
+<details>
+<summary><strong>Velg surveytype (playbook)</strong></summary>
+
+Dette er en rask tommelfingerregel for å velge riktig surveytype. Poenget er å få <strong>handlingsbare</strong> data
+med minst mulig friksjon for brukeren.
+
+| Surveytype | Når bruke | Hva du får ut | Typiske fallgruver |
+| --- | --- | --- | --- |
+| `rating` | “Pulse” etter en konkret oppgave eller flyt | Trend over tid + (valgfri) årsak i fritekst | For generelt spørsmål, for mange spørsmål, for hyppig visning |
+| `discovery` | Utforskning: hva kom brukeren hit for å gjøre? | Frie tekstsvar + “fikk du gjort det?” + ev. blocker | For mye tekst, dårlig segmentering, samler identifikatorer i context |
+| `topTasks` | Måle suksess for kjerneoppgaver (McGovern) | Suksess/feil per oppgave + blocker-innsikt | For mange/få oppgaver, ikke randomisert rekkefølge, uklare oppgavenavn |
+| `taskPriority` | Strategisk: hva er viktigst å prioritere? (Long Neck) | Rangering av viktigste oppgaver (top N) | For få tasks, ikke randomisert, feil UI-variant for mange tasks |
+| `custom` | Når du må kombinere eller branch’e | Skreddersydd spørreflyt | Blir fort “for mye”, vanskelig å sammenligne over tid |
+
+Anbefaling: Start med `rating` eller `discovery`, og gå videre til `topTasks`/`taskPriority` når dere har en tydelig hypoteseliste.
+
+<strong>Best practices</strong>
+
+- Hold det kort: 1–2 spørsmål er ofte nok (rating + valgfri tekst).
+- Still spørsmål om en konkret opplevelse (“etter du gjorde X”), ikke hele produktet.
+- Bruk progresjon: vis fritekst først etter at rating er valgt (`visibleIf`).
+- Bruk `context.tags` for segmentering (lav kardinalitet), og `context.debug` kun for feilsøking (høy kardinalitet).
+- Unngå identifikatorer i `context` (og ikke auto-collect `pathname` på dynamiske ruter).
+- Velg en stabil `surveyId` per flate/bruksmønster (ikke per deploy).
+
+<strong>Go-live sjekkliste</strong>
+
+- Importer styling: `@navikt/ds-css` og `@navikt/lumi-survey/styles.css`.
+- Implementer `transport.submit` som sender `submission.transportPayload` til din backend.
+- Gjør token exchange server-side og kall riktig endpoint:
+  - TokenX: `POST /api/tokenx/v1/feedback`
+  - AzureAD: `POST /api/azure/v1/feedback`
+- Sett riktig `storageStrategy` (`consent` / `localStorage` / `none`).
+- Sjekk NAIS policies og test ende-til-ende (innsending → dashboard).
+
+</details>
+
+## Bygg egne surveyer
+
+En survey er et `LumiSurveyConfig`-objekt med spørsmål i rekkefølge. Spørsmålstyper:
+
+- `rating` (varianter: `emoji`, `thumbs`, `stars`, `nps`)
+- `text`
+- `singleChoice`
+- `multiChoice` (støtter `variant: "checkbox"` eller `variant: "combobox"`)
+
+Eksempel med progresjon (vis tekstfelt etter rating):
+
+```tsx
+const customSurvey = {
+  type: "rating",
+  questions: [
+    {
+      id: "rating",
+      type: "rating",
+      prompt: "Hvor fornøyd er du?",
+      variant: "emoji",
+      required: true,
+    },
+    {
+      id: "comment",
+      type: "text",
+      prompt: "Hva kan vi forbedre?",
+      visibleIf: {
+        field: "ANSWER",
+        questionId: "rating",
+        operator: "EXISTS",
+      },
+    },
+  ],
+};
+
+<LumiSurveyDock surveyId="custom" survey={customSurvey} transport={transport} />;
 ```
 
-## Transport
+### Branching / skip-logic
 
-Vi støtter én måte å sende inn tilbakemeldinger på:
+Bruk `logic` for å hoppe, skippe eller submitte basert på svar.
 
-- Widgeten sender `submission.transportPayload` til din egen backend (API-route/server action), f.eks. `/api/lumi/feedback`.
-- Backenden gjør token exchange (TokenX/OBO eller AzureAD) og videresender til `lumi-api`.
-
-Viktig: Widgeten skal **ikke** poste direkte til `lumi-api` fra browser.
-
-### Widget (browser → din backend)
-
-```ts
-import type { LumiSurveyTransport } from "@navikt/lumi-survey";
-
-export const transport: LumiSurveyTransport = {
-  async submit(submission) {
-    await fetch("/api/lumi/feedback", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(submission.transportPayload),
-    });
-  },
+```tsx
+const surveyWithLogic = {
+  type: "custom",
+  questions: [
+    {
+      id: "rating",
+      type: "rating",
+      prompt: "Hvor fornøyd er du?",
+      logic: [
+        {
+          condition: { field: "ANSWER", operator: "LT", value: 3 },
+          action: { type: "JUMP_TO", targetId: "comment" },
+        },
+        { condition: { field: "ANSWER", operator: "GT", value: 2 }, action: { type: "SUBMIT" } },
+      ],
+    },
+    {
+      id: "comment",
+      type: "text",
+      prompt: "Hva kan vi forbedre?",
+    },
+  ],
 };
 ```
 
-Server-side (API-route/server action) gjør token exchange og videresender til `lumi-api`.
+## LumiSurveyDock props (API-overblikk)
 
-Detaljert eksempel ligger i repoets rot-README.
+Obligatorisk:
 
-## Kontekst (context)
+- `surveyId`: Stabil identifikator for surveyen
+- `survey`: `LumiSurveyConfig` (preset eller custom)
+- `transport`: Implementasjon av `LumiSurveyTransport`
 
-Widgeten kan sende med ekstra kontekst som brukes til segmentering og debugging.
+Valgfritt (mest brukt):
 
-Dette blir alltid auto-collectet i browser:
+- `context`: Metadata/tags/debug for segmentering og feilsøking
+- `behavior`: Oppførsel (layout, storage, auto-close osv.)
+- `labels`: Overstyr tekster
+- `style`: Plassering og panelstil
+- `success`: Tekster og auto-close etter submit
+- `events`: Callbacks for analytics/logging
 
-- `viewport` (bredde/høyde fra `window.innerWidth/innerHeight`)
-- `deviceType` (en grov kategori basert på viewport-bredde: mobile/tablet/desktop)
+## Transport og payload
+
+Widgeten sender `submission.transportPayload` til din backend. Payloaden er stabil og
+versjonert (`schemaVersion: 1`). Den inkluderer:
+
+- `surveyId`, `surveyType`, `submittedAt`, `startedAt`
+- `answers`: Normalisert struktur per spørsmål
+- `context`: tags/debug/auto-collectet miljøinfo
+
+Viktig: Widgeten skal **ikke** poste direkte til `lumi-api` fra browser.
+
+## Kontekst og personvern
+
+Auto-collectes i browser:
+
+- `viewport` (bredde/høyde)
+- `deviceType` (mobile/tablet/desktop)
 - `userAgent`
 
-Merk: `deviceType` er **ikke** “hvilken maskin brukeren har”, men en viewport-breakpoint.
-Hvis brukeren har DevTools åpent, kan viewport bli smalere og dermed gi f.eks. `tablet`.
-
-### URL/pathname og personvern
-
-- `url` auto-collectes aldri.
-- `pathname` auto-collectes heller ikke som default.
-
-Hvis dere har statiske ruter uten identifikatorer, kan dere opt-in til å auto-collecte
-`pathname`:
+`url` og `pathname` auto-collectes ikke som default. Hvis dere har statiske ruter uten
+identifikatorer kan dere opt-in:
 
 ```tsx
-<LumiSurveyDock
-  behavior={{ collectLocation: true }}
-  // ...
-/>
+<LumiSurveyDock behavior={{ collectLocation: true }} />
 ```
 
-Hvis rutene kan inneholde ID-er (f.eks. `/sak/123`), skal dere **ikke** bruke `collectLocation`.
-Send heller inn en sanitert verdi via `context`, for eksempel en route-key eller template:
+Hvis rutene kan inneholde ID-er, send heller en sanitert verdi:
 
 ```tsx
-<LumiSurveyDock
-  context={{ pathname: "/sak/:id" }}
-  // ...
-/>
+<LumiSurveyDock context={{ pathname: "/sak/:id" }} />
 ```
+
+### Tags vs debug
+
+- `context.tags`: Lav kardinalitet, brukes til segmentering og grafer i dashboard.
+- `context.debug`: Høy kardinalitet, kun for detaljvisning av enkeltinnsendinger.
 
 ## Consent/storage
 
-Widgeten støtter valgfri persistering av "dismissed" til localStorage, og kan integrere med `@navikt/nav-dekoratoren-moduler` for å respektere consent/allowlist.
+Widgeten kan persistere "dismissed" i storage. Velg strategi:
 
-Merk: av kompatibilitetshensyn kan storage-nøkkel fortsatt bruke `flexjar-*` mønsteret (se [MIGRATION.md](../../MIGRATION.md)).
+- `consent` (default) for eksterne flater med NAV dekoratør
+- `localStorage` for interne flater (f.eks. Modia)
+- `none` hvis dere ikke vil persistere i det hele tatt
+
+```tsx
+<LumiSurveyDock behavior={{ storageStrategy: "localStorage" }} />
+```
+
+## Events (hooks)
+
+```ts
+const events = {
+  onViewDock: (surveyId) => {},
+  onAnswer: (questionId, value) => {},
+  onSubmitStart: (submission) => {},
+  onSubmitSuccess: (submission) => {},
+  onSubmitError: (cause) => {},
+  onValidationFailed: (missingQuestionIds) => {},
+  onReset: () => {},
+  onDismissalPersistFailed: (cause) => {},
+};
+```
+
+## Storybook (interaktiv demo)
+
+Kjør lokalt:
+
+```sh
+npm run storybook:survey
+```
+
+Bygg statisk Storybook:
+
+```sh
+npm run build-storybook:survey
+```
+
+Statisk output ligger i `packages/lumi-survey/storybook-static`.
+
+## Feilsøking (vanlige problemer)
+
+- Survey dukker ikke opp: Sjekk at `behavior.initialOpen` ikke er satt til `false`, og at
+  `storageStrategy` ikke skjuler den pga. cooldown.
+- 403 fra API: Sjekk NAIS access policies på både inn- og utgående trafikk.
+- Ingen data i dashboard: Verifiser at backend sender `submission.transportPayload` til riktig
+  endpoint (`/api/tokenx/v1/feedback` eller `/api/azure/v1/feedback`).
+- Layout virker “tom”: Sørg for at `@navikt/ds-css` og `@navikt/lumi-survey/styles.css` er importert.
+
+## Bidra / lage ny versjon
+
+Se [`CONTRIBUTING.md`](CONTRIBUTING.md) for hvordan vi lager nye versjoner av `@navikt/lumi-survey`.
