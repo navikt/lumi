@@ -7,16 +7,18 @@ import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.QueryBuilder
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.BooleanColumnType
+import org.jetbrains.exposed.sql.ColumnType
 import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.javatime.JavaLocalDateColumnType
 import org.jetbrains.exposed.sql.javatime.timestamp
+import org.postgresql.util.PGobject
 import java.time.Instant
 import java.time.LocalDate
 
 object FeedbackTable : Table("feedback") {
     val id = varchar("id", 255)
     val opprettet = timestamp("opprettet")
-    val feedbackJson = text("feedback_json")
+    val feedbackJson = registerColumn<String>("feedback_json", JsonbColumnType())
     val team = varchar("team", 255)
     val app = varchar("app", 255)
 
@@ -30,10 +32,28 @@ object FeedbackTagTable : Table("feedback_tag") {
     override val primaryKey = PrimaryKey(feedbackId, tag)
 }
 
+class JsonbColumnType : ColumnType<String>() {
+    override fun sqlType(): String = "jsonb"
+
+    override fun valueFromDB(value: Any): String = when (value) {
+        is PGobject -> value.value ?: ""
+        else -> value.toString()
+    }
+
+    override fun notNullValueToDB(value: String): Any {
+        val pg = PGobject()
+        pg.type = "jsonb"
+        pg.value = value
+        return pg
+    }
+
+    override fun nonNullValueToString(value: String): String = "'${value.replace("'", "''")}'"
+}
+
 class JsonExtract(val col: Column<*>, val path: List<String>) : Function<String>(VarCharColumnType()) {
     override fun toQueryBuilder(queryBuilder: QueryBuilder) {
         queryBuilder.append(col)
-        queryBuilder.append("::json")
+        queryBuilder.append("::jsonb")
         path.forEachIndexed { index, p ->
             val escaped = p.replace("'", "''")
             if (index == path.size - 1) {

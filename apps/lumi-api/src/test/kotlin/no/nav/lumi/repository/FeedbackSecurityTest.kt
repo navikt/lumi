@@ -4,6 +4,11 @@ import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.int
 import no.nav.lumi.TestDatabase
 import no.nav.lumi.service.FeedbackService
 
@@ -196,8 +201,15 @@ class FeedbackSecurityTest : DescribeSpec({
             
             val saved = service.save(feedbackJson, "team-test", "test-app")
             val retrieved = repository.findRawById(saved, "team-test")
-            
-            retrieved?.feedbackJson shouldContain "\"rating\":5"
+
+            val body = Json.parseToJsonElement(retrieved?.feedbackJson ?: "").jsonObject
+            val answers = body["answers"]?.jsonArray.orEmpty()
+            val rating = answers.first().jsonObject["value"]
+                ?.jsonObject
+                ?.get("rating")
+                ?.jsonPrimitive
+                ?.int
+            rating shouldBe 5
         }
         
         it("should handle JSON without answers gracefully") {

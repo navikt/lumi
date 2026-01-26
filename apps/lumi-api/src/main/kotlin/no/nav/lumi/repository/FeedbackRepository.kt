@@ -284,11 +284,11 @@ class FeedbackRepository {
             val sql = """
                 SELECT DISTINCT 
                     app,
-                    feedback_json::json->>'surveyId' as survey_id
+                    feedback_json::jsonb->>'surveyId' as survey_id
                 FROM feedback
                 WHERE team = ?
                   AND app IS NOT NULL
-                  AND feedback_json::json->>'surveyId' IS NOT NULL
+                  AND feedback_json::jsonb->>'surveyId' IS NOT NULL
                 ORDER BY app, survey_id
             """.trimIndent()
             
@@ -309,12 +309,12 @@ class FeedbackRepository {
             val sql = """
                 SELECT DISTINCT 
                     key as metadata_key,
-                    feedback_json::json->'context'->'tags'->>key as metadata_value
+                    feedback_json::jsonb->'context'->'tags'->>key as metadata_value
                 FROM feedback,
                      jsonb_object_keys(feedback_json::jsonb->'context'->'tags') as key
                 WHERE team = ?
-                  AND feedback_json::json->>'surveyId' = ?
-                  AND feedback_json::json->'context'->'tags' IS NOT NULL
+                  AND feedback_json::jsonb->>'surveyId' = ?
+                  AND feedback_json::jsonb->'context'->'tags' IS NOT NULL
             """.trimIndent()
             
             val result = mutableMapOf<String, MutableSet<String>>()
@@ -355,7 +355,7 @@ class FeedbackRepository {
                     val safeKey = key.trim()
                     val safeValue = value.trim()
                     if (safeKey.isBlank() || safeValue.isBlank()) continue
-                    filterClauses.add("AND feedback_json::json->'context'->'tags'->>? = ?")
+                    filterClauses.add("AND feedback_json::jsonb->'context'->'tags'->>? = ?")
                     filterArgs.add(VarCharColumnType() to safeKey)
                     filterArgs.add(VarCharColumnType() to safeValue)
                 }
@@ -372,7 +372,7 @@ class FeedbackRepository {
 
                 // Device type filter
                 if (!deviceType.isNullOrBlank()) {
-                    filterClauses.add("AND feedback_json::json->'context'->>'deviceType' = ?")
+                    filterClauses.add("AND feedback_json::jsonb->'context'->>'deviceType' = ?")
                     filterArgs.add(VarCharColumnType() to deviceType)
                 }
 
@@ -391,12 +391,12 @@ class FeedbackRepository {
                         """
                     SELECT
                         key as tag_key,
-                        feedback_json::json->'context'->'tags'->>key as tag_value,
+                        feedback_json::jsonb->'context'->'tags'->>key as tag_value,
                         COUNT(*) as tag_count
                     FROM feedback,
                          jsonb_object_keys(feedback_json::jsonb->'context'->'tags') as key
                     WHERE team = ?
-                      AND feedback_json::json->>'surveyId' = ?
+                      AND feedback_json::jsonb->>'surveyId' = ?
                       AND feedback_json::jsonb->'context'->'tags' IS NOT NULL
                     """.trimIndent()
                     )
