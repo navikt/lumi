@@ -1,6 +1,23 @@
 # Lumi API
 
+**Swagger UI:** http://localhost:8080/swagger
+
 Backend-API for Lumi survey analytics, bygget med Ktor.
+
+## Kom i gang (kort)
+
+```bash
+# Forutsetninger: JDK 21, Docker
+
+docker run -d --name lumi-db \
+  -e POSTGRES_USER=lumi -e POSTGRES_PASSWORD=lumi -e POSTGRES_DB=lumi \
+  -p 5432:5432 postgres:17
+
+./gradlew run
+```
+
+<details>
+<summary><strong>Kom i gang (full)</strong></summary>
 
 ## Kom i gang
 
@@ -15,8 +32,9 @@ docker run -d --name lumi-db \
 # 2. Kjør API-et
 ./gradlew run
 # API tilgjengelig på http://localhost:8080
-# Swagger UI på http://localhost:8080/swagger
 ```
+
+</details>
 
 ## Egenskaper
 
@@ -29,7 +47,7 @@ docker run -d --name lumi-db \
 
 ## API-endepunkter
 
-### Analyse (beskyttet)
+### Analyse & Dashboard (Internt)
 
 | Endepunkt | Beskrivelse |
 |----------|-------------|
@@ -73,7 +91,7 @@ Alle endepunkter under `/api/v1/intern/*` er **team-scope'et**.
 | `segment` | string[] | - | Gjentatt `segment=key:value` |
 | `task` | string | - | Top Tasks drill-down filter (matcher option label) |
 
-### Innsending (for widget)
+### Innsending (Public)
 
 | Endepunkt | Beskrivelse |
 |----------|-------------|
@@ -83,6 +101,9 @@ Alle endepunkter under `/api/v1/intern/*` er **team-scope'et**.
 Merk: Survey-widgeten skal ikke kalle disse endepunktene direkte fra browser. Kall forventes å være backend-til-backend (token exchange server-side).
 
 Integrasjonsmønsteret (widget → din backend → token exchange → lumi-api) er beskrevet i repoets rot-README og `packages/lumi-survey/README.md`.
+
+<details>
+<summary><strong>🔐 Sikkerhet og tilgang</strong></summary>
 
 ## 🔐 Sikkerhet og tilgang
 
@@ -206,6 +227,8 @@ NAIS API-integrasjonen eksponerer Prometheus-metrikker på `/internal/prometheus
 - Team-identifikatorer i query-parametre er NAIS namespace-slugs (f.eks. `team-esyfo`).
 - API-et returnerer **403** (`NO_TEAM_ACCESS`) hvis NAIS ikke finner noen team for brukeren.
 
+</details>
+
 
 ## Rensing av sensitive data
 
@@ -220,6 +243,9 @@ API-et maskerer automatisk sensitive data i fritekst:
 | Kortnummer | 1234 5678 9012 3456 | `[KORTNUMMER FJERNET]` |
 | Kontonummer | 1234.56.12345 | `[KONTONUMMER FJERNET]` |
 | Hemmelig adresse | "hemmelig adresse" | `[HEMMELIG ADRESSE]` |
+
+<details>
+<summary><strong>Utvikling</strong></summary>
 
 ## Utvikling
 
@@ -255,6 +281,11 @@ docker run -d --name lumi-db \
 ./gradlew test
 ```
 
+</details>
+
+<details>
+<summary><strong>Deploy</strong></summary>
+
 ## Deploy
 
 Deployes til NAIS via GitHub Actions.
@@ -267,6 +298,11 @@ kubectl apply -f nais/app/dev.yaml
 kubectl apply -f nais/app/naiserator.yaml
 ```
 
+</details>
+
+<details>
+<summary><strong>Teknologstack</strong></summary>
+
 ## Teknologistack
 
 - **Ktor** - Kotlin web-rammeverk
@@ -276,3 +312,5 @@ kubectl apply -f nais/app/naiserator.yaml
 - **kotlinx.serialization** - JSON-serialisering
 - **Apache POI** - Excel-eksport
 - **nav-token-support** - Validering av Azure AD / TokenX
+
+</details>

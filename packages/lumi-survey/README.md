@@ -54,17 +54,8 @@ Les mer:
 - Valg av surveytype + best practices + go-live: åpne [Velg surveytype (playbook)](#velg-surveytype-playbook)
 - Personvern, storage, events, feilsøking: [Kontekst og personvern](#kontekst-og-personvern), [Consent/storage](#consentstorage), [Events](#events-hooks), [Feilsøking](#feils%C3%B8king-vanlige-problemer)
 
-## Installasjon
-
-Installer som vanlig npm-pakke:
-
-```sh
-npm install @navikt/lumi-survey @navikt/ds-react @navikt/ds-css
-```
-
-I dette repoet er pakken allerede tilgjengelig via workspaces etter `npm install` i rotmappen.
-
-### Installer fra GitHub Packages
+<details>
+<summary><strong>Install fra GitHub Packages (valgfritt)</strong></summary>
 
 Du må ha `.npmrc` som peker `@navikt` til GitHub Packages, f.eks:
 
@@ -78,6 +69,8 @@ For eksterne flater som bruker NAV dekoratørens consent/storage API:
 ```sh
 npm install @navikt/nav-dekoratoren-moduler
 ```
+
+</details>
 
 <details>
 <summary><strong>Kom i gang (smiley/rating) – full eksempel</strong></summary>
@@ -170,6 +163,8 @@ import {
 <details>
 <summary>Eksempel: Top Tasks survey</summary>
 
+![Bilde av Top Tasks](TODO_LINK)
+
 ```tsx
 const topTasks = createTopTasksSurvey({
   tasks: [
@@ -199,6 +194,8 @@ const taskPriority = createTaskPrioritySurvey({
 
 <details>
 <summary>Eksempel: NPS (0-10) rating</summary>
+
+![Bilde av NPS](TODO_LINK)
 
 ```tsx
 const nps = {
@@ -326,20 +323,13 @@ const surveyWithLogic = {
 
 ## LumiSurveyDock props (API-overblikk)
 
-Obligatorisk:
-
-- `surveyId`: Stabil identifikator for surveyen
-- `survey`: `LumiSurveyConfig` (preset eller custom)
-- `transport`: Implementasjon av `LumiSurveyTransport`
-
-Valgfritt (mest brukt):
-
-- `context`: Metadata/tags/debug for segmentering og feilsøking
-- `behavior`: Oppførsel (layout, storage, auto-close osv.)
-- `labels`: Overstyr tekster
-- `style`: Plassering og panelstil
-- `success`: Tekster og auto-close etter submit
-- `events`: Callbacks for analytics/logging
+| Prop | Type | Påkrevd | Beskrivelse |
+| :--- | :--- | :---: | :--- |
+| `surveyId` | `string` | ✅ | Stabil identifikator for surveyen (f.eks. `soknad-kvittering`) |
+| `survey` | `LumiSurveyConfig` | ✅ | Konfigurasjonsobjektet for spørsmålene |
+| `transport` | `LumiSurveyTransport` | ✅ | Objekt med `submit`-funksjon for innsending |
+| `context` | `object` | ❌ | Metadata/tags/debug for segmentering |
+| `behavior` | `object` | ❌ | Styrer åpning, lukking, cooldown og storage-strategi |
 
 ## Transport og payload
 

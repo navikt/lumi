@@ -1,13 +1,19 @@
 # Lumi
 
+![Build Status](https://github.com/navikt/lumi/actions/workflows/main.yml/badge.svg)
+![NPM Version](https://img.shields.io/npm/v/@navikt/lumi-survey)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+
+**Personvernvennlig survey-infrastruktur for NAV.**
+Lumi lar deg samle brukerinnsikt uten at data forlater clusteret, med full støtte for Zero Trust og universell utforming.
+
 Monorepo for Lumi survey analytics.
 
-Dette repoet inneholder:
-
-- `packages/lumi-survey`: Survey widget (React, Aksel)
-- `apps/lumi-api`: Backend-API (Kotlin/Ktor)
-- `apps/lumi-dashboard`: Admin-dashboard (TanStack Start)
-- `packages/lumi-types`: Delte TypeScript-typer
+| Pakke | Beskrivelse | Tech Stack |
+| :--- | :--- | :--- |
+| [`@navikt/lumi-survey`](packages/lumi-survey) | React-widget (Aksel) | React, CSS Modules |
+| [`lumi-api`](apps/lumi-api) | Backend & Analyse API | Kotlin, Ktor, Postgres |
+| [`lumi-dashboard`](apps/lumi-dashboard) | Admin-dashboard | TanStack Start, React |
 
 ## Kom i gang (lokal utvikling)
 
