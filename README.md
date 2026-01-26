@@ -15,31 +15,12 @@ Monorepo for Lumi survey analytics.
 | [`lumi-api`](apps/lumi-api) | Backend & Analyse API | Kotlin, Ktor, Postgres |
 | [`lumi-dashboard`](apps/lumi-dashboard) | Admin-dashboard | TanStack Start, React |
 
-## Kom i gang (lokal utvikling)
-
-```sh
-npm install
-npm run dev
-```
-
-Vanlige kommandoer:
-- `npm run lint`
-- `npm run typecheck`
-- `npm test`
-- Backend-tester: `npm run api:test`
-- Storybook (survey-widget): `npm run storybook:survey`
-
 ## Bruk survey-widgeten (lumi-survey)
 
 For å komme i gang, følg “Kom i gang (30 sek)” i
 [`packages/lumi-survey/README.md`](packages/lumi-survey/README.md).
 
 Viktig: Widgeten skal **ikke** poste direkte til `lumi-api` fra browser. Token exchange må gjøres server-side.
-
-## Velg surveytype (kortversjon)
-
-Start enkelt (ofte `rating`). Full playbook (valg av surveytype, best practices og go-live) ligger i
-[`packages/lumi-survey/README.md`](packages/lumi-survey/README.md).
 
 ## Arkitektur (1 minutt)
 
@@ -63,8 +44,7 @@ flowchart LR
 - Survey widget: [`packages/lumi-survey/README.md`](packages/lumi-survey/README.md)
 - API og tilgang: [`apps/lumi-api/README.md`](apps/lumi-api/README.md)
 
-<details>
-<summary><strong>Integrasjon og tilgang (for team)</strong></summary>
+### Integrasjon og tilgang (for team)
 
 Lumi skiller bevisst mellom submissions fra sluttbruker-flater (TokenX) og veileder/fagsystemer (AzureAD). Dette gjør feilsøking enklere og unngår at vi må "gjette" issuer.
 
@@ -142,17 +122,6 @@ Bruk dette for f.eks. Modia/veiledersystem. Submissions skal ikke lagre NAVident
 
 For at appen din skal kunne kalle Lumi API, må både appen din og `lumi-api` ha riktige NAIS tilgangspolicyer (inbound/outbound). Se mer detaljer i [`apps/lumi-api/README.md`](apps/lumi-api/README.md).
 
-</details>
-
-<details>
-<summary><strong>Release og føringer</strong></summary>
-
 ## Release
 
 - `@navikt/lumi-survey`: se `packages/lumi-survey/CONTRIBUTING.md`
-
-## Føringer
-
-- Verifiser at `@navikt/lumi-survey` fortsatt kan publiseres (ingen `@navikt/lumi-types` / `zod`-lekasje): `npm run verify:lumi-survey`
-
-</details>
