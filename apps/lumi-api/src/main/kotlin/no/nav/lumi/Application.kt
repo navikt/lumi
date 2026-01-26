@@ -4,6 +4,7 @@ import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import no.nav.lumi.config.configureAuth
+import no.nav.lumi.config.configureCors
 import no.nav.lumi.config.configureDatabase
 import no.nav.lumi.config.configureMetrics
 import no.nav.lumi.config.configureOpenApi
@@ -28,9 +29,9 @@ fun Application.module() {
     configureCallLogging()
     configureRateLimiting()
     configureAuth()
+    configureCors()
     configureDatabase()
     configureOpenApi()
     configureMetrics()
     configureRouting()
 }
-

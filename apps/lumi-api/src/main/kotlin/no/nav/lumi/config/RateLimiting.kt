@@ -34,8 +34,15 @@ fun Application.configureRateLimiting() {
 }
 
 private fun io.ktor.server.application.ApplicationCall.rateLimitKey(): String {
-    return JwtUtils.extractAzpNameFromHeader(request.headers["Authorization"])
-        ?: request.headers["X-Forwarded-For"]?.split(",")?.firstOrNull()?.trim()
-        ?: request.local.remoteAddress
-}
+    val azpName = JwtUtils.extractAzpNameFromHeader(request.headers["Authorization"])
+    if (!azpName.isNullOrBlank()) return azpName
 
+    val env = ServerEnv.current
+    val forwardedFor = if (env.nais.isNais) {
+        request.headers["X-Forwarded-For"]?.split(",")?.firstOrNull()?.trim()
+    } else {
+        null
+    }
+
+    return forwardedFor ?: request.local.remoteAddress
+}

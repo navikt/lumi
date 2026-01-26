@@ -19,9 +19,13 @@ import no.nav.lumi.domain.RatingVariant
 import no.nav.lumi.service.FeedbackService
 import org.slf4j.LoggerFactory
 import java.time.Instant
+import io.ktor.utils.io.core.readText
+import io.ktor.utils.io.readRemaining
 
 private val log = LoggerFactory.getLogger("SubmissionRoutes")
 private val defaultFeedbackService = FeedbackService()
+
+private const val MAX_SUBMISSION_BYTES = 1_048_576L
 
 private val strictJson = Json {
     ignoreUnknownKeys = false
@@ -149,7 +153,7 @@ private suspend fun handleSubmissionV1(
     feedbackService: FeedbackService
 ) {
     val identity = call.getCallerIdentity()
-    val body = call.receiveText()
+    val body = receiveTextWithLimit(call)
 
     val jsonElement = try {
         strictJson.parseToJsonElement(body)
@@ -174,4 +178,19 @@ private suspend fun handleSubmissionV1(
 
     log.info("Saved feedback id=$id team=${identity.team} app=${identity.app} surveyId=${submission.surveyId}")
     call.respond(HttpStatusCode.Created, mapOf("id" to id))
+}
+
+private suspend fun receiveTextWithLimit(call: io.ktor.server.application.ApplicationCall): String {
+    val contentLength = call.request.headers[HttpHeaders.ContentLength]?.toLongOrNull()
+    if (contentLength != null && contentLength > MAX_SUBMISSION_BYTES) {
+        throw ApiErrorException.PayloadTooLargeException("Payload too large")
+    }
+
+    val packet = call.receiveChannel().readRemaining(MAX_SUBMISSION_BYTES + 1)
+    val text = packet.readText()
+    if (text.toByteArray().size > MAX_SUBMISSION_BYTES) {
+        throw ApiErrorException.PayloadTooLargeException("Payload too large")
+    }
+
+    return text
 }

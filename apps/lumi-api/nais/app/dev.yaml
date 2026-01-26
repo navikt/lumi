@@ -75,4 +75,5 @@ spec:
       value: dev-gcp:team-esyfo:lumi-dashboard
     - name: NAIS_API_GRAPHQL_URL
       value: https://console.nav.cloud.nais.io/graphql
-
+    - name: LUMI_CORS_ALLOWED_ORIGINS
+      value: https://lumi-dashboard.ansatt.dev.nav.no

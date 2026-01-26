@@ -91,6 +91,14 @@ sealed class ApiErrorException(
         )
     }
 
+    class PayloadTooLargeException(
+        val errorMessage: String = "Payload too large",
+        cause: Throwable? = null,
+        type: ErrorType = ErrorType.BAD_REQUEST
+    ) : ApiErrorException(errorMessage, type, cause) {
+        override fun toApiError(path: String?) = ApiError.payloadTooLarge(errorMessage, path)
+    }
+
     class InternalServerErrorException(
         val errorMessage: String = "Internal server error",
         cause: Throwable? = null,

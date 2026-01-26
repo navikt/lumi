@@ -63,5 +63,13 @@ data class ApiError(
             timestamp = java.time.Instant.now().toString(),
             path = path,
         )
+
+        fun payloadTooLarge(message: String, path: String? = null) = ApiError(
+            status = HttpStatusCode.PayloadTooLarge.value,
+            type = ErrorType.BAD_REQUEST,
+            message = message,
+            timestamp = java.time.Instant.now().toString(),
+            path = path,
+        )
     }
 }

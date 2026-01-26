@@ -146,4 +146,36 @@ class SubmissionRoutesTest : FunSpec({
             response.status shouldBe HttpStatusCode.BadRequest
         }
     }
+
+    test("should reject payloads larger than limit") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+
+            val largeText = "a".repeat(1_100_000)
+            val payload = """
+                {
+                  "schemaVersion": 1,
+                  "surveyId": "dp-feedback",
+                  "surveyType": "rating",
+                  "submittedAt": "2026-01-10T12:00:12Z",
+                  "answers": [
+                    {
+                      "fieldId": "text",
+                      "fieldType": "TEXT",
+                      "question": { "label": "Hvorfor?" },
+                      "value": { "type": "text", "text": "$largeText" }
+                    }
+                  ]
+                }
+            """.trimIndent()
+
+            val response = client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(payload)
+            }
+
+            response.status shouldBe HttpStatusCode.PayloadTooLarge
+        }
+    }
 })
