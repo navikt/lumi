@@ -28,13 +28,13 @@ Viktig: Widgeten skal **ikke** poste direkte til `lumi-api` fra browser. Token e
 flowchart LR
 	%% ---------- Client ----------
 	subgraph Client["Klient"]
-		A["LumiSurveyDock\n(browser)"]
+		A["lumi-survey (i din app)"]
 	end
 
 	%% ---------- App Backend ----------
 	subgraph App["Din app"]
 		B["API-route / server action"]
-		C["Token exchange\n(TokenX / OBO / AzureAD)"]
+		C["Token exchange (TokenX / AzureAD)"]
 	end
 
 	%% ---------- Platform ----------
