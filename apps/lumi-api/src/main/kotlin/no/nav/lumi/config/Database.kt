@@ -131,7 +131,6 @@ fun runMigrations(dataSource: DataSource) {
         val flyway = Flyway.configure()
             .dataSource(dataSource)
             .locations("classpath:db/migration")
-            .placeholders(mapOf("concurrently" to "CONCURRENTLY"))
             .baselineOnMigrate(true)
             .load()
         

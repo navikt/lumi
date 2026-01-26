@@ -65,7 +65,6 @@ object TestDatabase {
             Flyway.configure()
                 .dataSource(dataSource)
                 .locations("classpath:db/migration")
-                .placeholders(mapOf("concurrently" to ""))
                 .cleanDisabled(false)
                 .load()
                 .migrate()
