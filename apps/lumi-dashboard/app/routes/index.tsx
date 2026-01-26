@@ -1,7 +1,7 @@
 import type { TagProps } from "@navikt/ds-react";
 import { Box, Heading, HStack, Tag, Tooltip, VStack } from "@navikt/ds-react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { DiscoveryDashboard } from "~/components/dashboard/views/Discovery/Dashboard";
 import { OverviewDashboard } from "~/components/dashboard/views/Overview/Dashboard";
 import { RatingDashboard } from "~/components/dashboard/views/Rating/Dashboard";
@@ -110,11 +110,43 @@ export const Route = createFileRoute("/")({
 });
 
 function DashboardPage() {
-  const { params } = useSearchParams();
+  const { params, setParams } = useSearchParams();
   const { data: stats, isPending } = useStats();
   const hasSurveyFilter = !!params.surveyId;
   const surveyType = stats?.surveyType;
   const isPrivacyMasked = stats?.privacy?.masked;
+
+  useEffect(() => {
+    const hasUnsupported =
+      !!params.hasText ||
+      !!params.lowRating ||
+      !!params.query ||
+      !!params.tag ||
+      !!params.theme ||
+      !!params.page ||
+      !!params.size;
+
+    if (!hasUnsupported) return;
+
+    setParams({
+      hasText: undefined,
+      lowRating: undefined,
+      query: undefined,
+      tag: undefined,
+      theme: undefined,
+      page: undefined,
+      size: undefined,
+    });
+  }, [
+    params.hasText,
+    params.lowRating,
+    params.query,
+    params.tag,
+    params.theme,
+    params.page,
+    params.size,
+    setParams,
+  ]);
 
   const config = surveyType ? SURVEY_CONFIG[surveyType] : null;
 

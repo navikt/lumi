@@ -25,7 +25,6 @@ const DEVICE_LABELS: Record<string, string> = {
  *
  * - App/Survey/Period: Already shown in FilterBar → no chip
  * - DeviceType: NOT shown on dashboard → show chip
- * - LowRating: Only on feedback page → show chip on dashboard
  * - Segment: Metadata filters from SegmentBreakdown → global chip
  */
 export function ActiveFiltersChips() {
@@ -44,20 +43,6 @@ export function ActiveFiltersChips() {
       onRemove: () =>
         setParams({
           deviceType: undefined,
-          page: "1",
-        }),
-    });
-  }
-
-  // Low rating filter - not shown in dashboard FilterBar
-  if (params.lowRating === "true") {
-    chips.push({
-      key: "lowRating",
-      label: "Rating",
-      value: "Lav (1-2)",
-      onRemove: () =>
-        setParams({
-          lowRating: undefined,
           page: "1",
         }),
     });

@@ -58,6 +58,8 @@ describe("export helpers", () => {
       deviceType: "mobile",
       theme: "theme-1",
       task: "Soknad",
+      ratingFieldId: "rating",
+      ratingValue: "2",
     });
 
     expect(params.tag).toEqual(["a", "b"]);
@@ -67,6 +69,8 @@ describe("export helpers", () => {
     expect(params.deviceType).toBe("mobile");
     expect(params.theme).toBe("theme-1");
     expect(params.task).toBe("Soknad");
+    expect(params.ratingFieldId).toBe("rating");
+    expect(params.ratingValue).toBe("2");
   });
 
   it("toMockCsv creates a CSV with header + 1 row", () => {

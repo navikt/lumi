@@ -227,5 +227,9 @@ class ApiV1Intern {
         val theme: String? = null,
         /** Task filter for Top Tasks drill-down */
         val task: String? = null,
+        /** Filter by a specific rating question fieldId */
+        val ratingFieldId: String? = null,
+        /** Filter by a specific rating value */
+        val ratingValue: Int? = null,
     )
 }

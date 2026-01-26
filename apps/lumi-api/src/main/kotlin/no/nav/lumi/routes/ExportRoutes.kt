@@ -57,7 +57,9 @@ fun Route.exportRoutes(exportService: ExportService = defaultExportService) {
             deviceType = params.deviceType?.takeIf { it.isNotBlank() },
             theme = params.theme,
             task = params.task,
-            segments = segments
+            segments = segments,
+            ratingFieldId = params.ratingFieldId,
+            ratingValue = params.ratingValue,
         )
         
         val feedbacks = exportService.getFeedbackForExport(query)

@@ -77,4 +77,24 @@ class ExportRoutesTest : FunSpec({
             response.headers[HttpHeaders.ContentType] shouldContain "application/vnd.openxmlformats-officedocument"
         }
     }
+
+    test("GET /api/v1/intern/export supports ratingFieldId/ratingValue filter") {
+        testApplication {
+            application { testModule() }
+
+            insertTestFeedback(team = "flex", rating = 2, text = "rating-two")
+            insertTestFeedback(team = "flex", rating = 4, text = "rating-four")
+
+            val response = createTestClient().get(
+                "/api/v1/intern/export?team=flex&ratingFieldId=svar&ratingValue=2"
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.OK
+            val body = response.bodyAsText()
+            body shouldContain "rating-two"
+            body.contains("rating-four") shouldBe false
+        }
+    }
 })

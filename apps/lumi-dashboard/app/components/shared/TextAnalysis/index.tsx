@@ -470,6 +470,7 @@ export function TextAnalysis({
                         const url = new URL(window.location.href);
                         url.pathname = "/feedback";
                         url.searchParams.set("theme", themeId);
+                        url.searchParams.set("page", "1");
                         window.location.href = url.toString();
                       }
                     }}

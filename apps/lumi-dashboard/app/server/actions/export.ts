@@ -150,6 +150,8 @@ function transformToBackendParams(data: Record<string, string | undefined>) {
     theme: data.theme,
     task: data.task,
     segment: data.segment?.split(",").filter(Boolean),
+    ratingFieldId: data.ratingFieldId,
+    ratingValue: data.ratingValue,
   };
 }
 
@@ -179,6 +181,8 @@ export const exportServerFn = createServerFn({ method: "POST" })
         theme: data.theme,
         hasText: data.hasText,
         lowRating: data.lowRating,
+        ratingFieldId: data.ratingFieldId,
+        ratingValue: data.ratingValue,
       }).slice(0, 10_000);
 
       const extension = data.format === "excel" ? "xlsx" : data.format;

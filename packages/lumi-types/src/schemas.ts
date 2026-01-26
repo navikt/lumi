@@ -215,6 +215,10 @@ export const ExportParamsSchema = z.object({
   task: z.string().optional(),
   /** Segment filters (format: "key:value,key:value") */
   segment: z.string().optional(),
+  /** Filter by a specific rating question fieldId */
+  ratingFieldId: z.string().optional(),
+  /** Filter by a specific rating value (number as string) */
+  ratingValue: z.string().optional(),
 });
 
 export type ExportParams = z.infer<typeof ExportParamsSchema>;

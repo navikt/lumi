@@ -23,6 +23,7 @@ interface FilterMenuProps {
   selectedTags: string[];
   ratingFilterLabel?: string;
   ratingFilterValue?: string;
+  themeLabel?: string;
 }
 
 /**
@@ -38,10 +39,12 @@ export function FilterMenu({
   selectedTags,
   ratingFilterLabel,
   ratingFilterValue,
+  themeLabel,
 }: FilterMenuProps) {
   // Count active filters to show badge (including segment + tags)
   const activeCount = [
     params.task,
+    params.theme,
     params.deviceType && params.deviceType !== "alle",
     params.hasText === "true",
     params.lowRating === "true",
@@ -56,6 +59,10 @@ export function FilterMenu({
     maxHeight: "70vh",
     overflowY: "auto" as const,
   };
+
+  const themeValueLabel =
+    themeLabel ??
+    (params.theme === "uncategorized" ? "Annet" : (params.theme ?? ""));
 
   return (
     <ActionMenu>
@@ -173,7 +180,9 @@ export function FilterMenu({
             </VStack>
           </HGrid>
 
-          {(params.task || (params.ratingFieldId && params.ratingValue)) && (
+          {(params.task ||
+            params.theme ||
+            (params.ratingFieldId && params.ratingValue)) && (
             <Box paddingBlock="space-16">
               <div
                 style={{
@@ -186,6 +195,18 @@ export function FilterMenu({
               <VStack gap="space-8" style={{ paddingTop: "var(--ax-space-4)" }}>
                 <Label size="small">Valgt fra grafer</Label>
                 <Chips size="small">
+                  {params.theme && (
+                    <Chips.Removable
+                      variant="neutral"
+                      onDelete={() => {
+                        setParam("theme", undefined);
+                        setParam("page", "1");
+                      }}
+                    >
+                      {`Tema: ${themeValueLabel}`}
+                    </Chips.Removable>
+                  )}
+
                   {params.task && (
                     <Chips.Removable
                       variant="neutral"
