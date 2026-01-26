@@ -2,58 +2,33 @@
 
 Monorepo for Lumi survey analytics.
 
-Lumi består av:
+Dette repoet inneholder:
 
-- **Survey widget**: React-widget som brukes i flater for å samle inn tilbakemeldinger.
-- **API**: Tar imot submissions, lagrer data, og tilbyr analytics/endepunkter for dashboard.
-- **Dashboard**: Admin-grensesnitt for å utforske data, filtrere, tagge og eksportere.
+- `packages/lumi-survey`: Survey widget (React, Aksel)
+- `apps/lumi-api`: Backend-API (Kotlin/Ktor)
+- `apps/lumi-dashboard`: Admin-dashboard (TanStack Start)
+- `packages/lumi-types`: Delte TypeScript-typer
 
-## Kom i gang med survey (lumi-survey)
+## Kom i gang (lokal utvikling)
 
-Dette er korteste vei til første survey (rating/smiley). Full guide og API-referanse ligger i
-[`packages/lumi-survey/README.md`](packages/lumi-survey/README.md).
-
-```tsx
-import "@navikt/ds-css";
-import "@navikt/lumi-survey/styles.css";
-
-import { LumiSurveyDock } from "@navikt/lumi-survey";
-
-const survey = {
-  type: "rating",
-  questions: [
-    {
-      id: "rating",
-      type: "rating",
-      prompt: "Hvordan var opplevelsen?",
-      variant: "emoji",
-      required: true,
-    },
-  ],
-};
-
-const transport = {
-  async submit(submission) {
-    await fetch("/api/lumi/feedback", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(submission.transportPayload),
-    });
-  },
-};
-
-export function App() {
-  return (
-    <LumiSurveyDock
-      surveyId="my-app-feedback"
-      survey={survey}
-      transport={transport}
-    />
-  );
-}
+```sh
+npm install
+npm run dev
 ```
 
-Viktig: Widgeten skal **ikke** poste direkte til `lumi-api` fra browser. Se transportflyten under.
+Vanlige kommandoer:
+- `npm run lint`
+- `npm run typecheck`
+- `npm test`
+- Backend-tester: `npm run api:test`
+- Storybook (survey-widget): `npm run storybook:survey`
+
+## Bruk survey-widgeten (lumi-survey)
+
+For å komme i gang, følg “Kom i gang (30 sek)” i
+[`packages/lumi-survey/README.md`](packages/lumi-survey/README.md).
+
+Viktig: Widgeten skal **ikke** poste direkte til `lumi-api` fra browser. Token exchange må gjøres server-side.
 
 ## Velg surveytype (kortversjon)
 
@@ -82,13 +57,8 @@ flowchart LR
 - Survey widget: [`packages/lumi-survey/README.md`](packages/lumi-survey/README.md)
 - API og tilgang: [`apps/lumi-api/README.md`](apps/lumi-api/README.md)
 
-## Struktur
-- `apps/lumi-dashboard`: Admin-dashboard (TanStack Start)
-- `apps/lumi-api`: Backend-API (Kotlin/Ktor)
-- `packages/lumi-types`: Delte TypeScript-typer
-- `packages/lumi-survey`: Survey-widget
-
-## Integrasjon og tilgang (for team)
+<details>
+<summary><strong>Integrasjon og tilgang (for team)</strong></summary>
 
 Lumi skiller bevisst mellom submissions fra sluttbruker-flater (TokenX) og veileder/fagsystemer (AzureAD). Dette gjør feilsøking enklere og unngår at vi må "gjette" issuer.
 
@@ -166,17 +136,10 @@ Bruk dette for f.eks. Modia/veiledersystem. Submissions skal ikke lagre NAVident
 
 For at appen din skal kunne kalle Lumi API, må både appen din og `lumi-api` ha riktige NAIS tilgangspolicyer (inbound/outbound). Se mer detaljer i [`apps/lumi-api/README.md`](apps/lumi-api/README.md).
 
-## Kom i gang (lokal utvikling)
+</details>
 
-- Start dashboard: `npm run dev`
-- Lint/typecheck: `npm run lint` / `npm run typecheck`
-- Backend-tester: `npm run api:test`
-
-## Survey widget
-
-- Widget og eksempler: [`packages/lumi-survey/README.md`](packages/lumi-survey/README.md)
-- Release/publisering: [`packages/lumi-survey/CONTRIBUTING.md`](packages/lumi-survey/CONTRIBUTING.md)
-- Storybook: `npm run storybook:survey` (statisk build: `npm run build-storybook:survey`)
+<details>
+<summary><strong>Release og føringer</strong></summary>
 
 ## Release
 
@@ -185,3 +148,5 @@ For at appen din skal kunne kalle Lumi API, må både appen din og `lumi-api` ha
 ## Føringer
 
 - Verifiser at `@navikt/lumi-survey` fortsatt kan publiseres (ingen `@navikt/lumi-types` / `zod`-lekasje): `npm run verify:lumi-survey`
+
+</details>

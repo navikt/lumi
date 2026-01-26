@@ -1,21 +1,29 @@
 # Lumi Survey
 
-Aksel-basert React-widget for å samle inn brukertilbakemeldinger via Lumi. Dette er den komplette
+Aksel-basert React-widget for å samle inn brukertilbakemeldinger via Lumi. Dette er
 integratørguiden for `@navikt/lumi-survey`.
 
 ## Kom i gang (30 sek)
 
-1) Installer + importer CSS
+1) Installer
+
+```sh
+npm install @navikt/lumi-survey @navikt/ds-react @navikt/ds-css
+```
+
+I dette repoet er pakken allerede tilgjengelig via workspaces etter `npm install` i rotmappen.
+
+2) Importer CSS
 
 ```tsx
 import "@navikt/ds-css";
 import "@navikt/lumi-survey/styles.css";
 ```
 
-2) Render widgeten og send `submission.transportPayload` til din backend
+3) Render widgeten og send `submission.transportPayload` til din backend
 
 ```tsx
-import { DEFAULT_SURVEY_RATING, LumiSurveyDock } from "@navikt/lumi-survey";
+import { LumiSurveyDock } from "@navikt/lumi-survey";
 
 const transport = {
   async submit(submission) {
@@ -31,20 +39,45 @@ export function App() {
   return (
     <LumiSurveyDock
       surveyId="my-app-feedback"
-      survey={DEFAULT_SURVEY_RATING}
+      survey={/* se full eksempel under */}
       transport={transport}
     />
   );
 }
 ```
 
-3) Backend gjør token exchange server-side og videresender til `lumi-api`.
+4) Backend gjør token exchange server-side og videresender til `lumi-api`.
 Transportflyt og endepunkter er beskrevet i [README.md](../../README.md).
 
 Les mer:
-- Presets og builder-funksjoner: se “Survey-presets” og “Bygg egne surveyer”
-- Valg av surveytype + best practices: se “Velg surveytype (playbook)” (klikk for å åpne)
-- Personvern, storage, events, feilsøking: se seksjonene lengre ned
+- Presets og builder-funksjoner: [Survey-presets](#survey-presets-raskest-%C3%A5-komme-i-gang) og [Bygg egne surveyer](#bygg-egne-surveyer)
+- Valg av surveytype + best practices + go-live: åpne [Velg surveytype (playbook)](#velg-surveytype-playbook)
+- Personvern, storage, events, feilsøking: [Kontekst og personvern](#kontekst-og-personvern), [Consent/storage](#consentstorage), [Events](#events-hooks), [Feilsøking](#feils%C3%B8king-vanlige-problemer)
+
+## Installasjon
+
+Installer som vanlig npm-pakke:
+
+```sh
+npm install @navikt/lumi-survey @navikt/ds-react @navikt/ds-css
+```
+
+I dette repoet er pakken allerede tilgjengelig via workspaces etter `npm install` i rotmappen.
+
+### Installer fra GitHub Packages
+
+Du må ha `.npmrc` som peker `@navikt` til GitHub Packages, f.eks:
+
+```properties
+@navikt:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NPM_AUTH_TOKEN}
+```
+
+For eksterne flater som bruker NAV dekoratørens consent/storage API:
+
+```sh
+npm install @navikt/nav-dekoratoren-moduler
+```
 
 <details>
 <summary><strong>Kom i gang (smiley/rating) – full eksempel</strong></summary>
@@ -63,11 +96,24 @@ const survey = {
   type: "rating",
   questions: [
     {
-      id: "rating",
+      id: "plan-til-hjelp",
       type: "rating",
-      prompt: "Hvordan var opplevelsen?",
       variant: "emoji",
-      required: true,
+      prompt: "Er oppfølgingsplanen til hjelp for deg?",
+      description: "Alle tilbakemeldinger er til stor nytte for oss",
+    },
+    {
+      id: "begrunnelse",
+      type: "text",
+      prompt: "Legg gjerne til en begrunnelse",
+      description: "Alle tilbakemeldinger er til stor nytte for oss",
+      required: false,
+      minRows: 3,
+      maxLength: 500,
+      visibleIf: {
+        questionId: "plan-til-hjelp",
+        operator: "EXISTS",
+      },
     },
   ],
 };
@@ -96,31 +142,6 @@ export function App() {
 Tips: Bruk et stabilt, beskrivende `surveyId` per flate/bruksmønster, f.eks. `soknad-kvittering`.
 
 </details>
-
-## Installasjon
-
-Installer som vanlig npm-pakke:
-
-```sh
-npm install @navikt/lumi-survey @navikt/ds-react @navikt/ds-css
-```
-
-I dette repoet er pakken allerede tilgjengelig via workspaces etter `npm install` i rotmappen.
-
-### Install fra GitHub Packages
-
-Du må ha `.npmrc` som peker `@navikt` til GitHub Packages, f.eks:
-
-```properties
-@navikt:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${NPM_AUTH_TOKEN}
-```
-
-For eksterne flater som bruker NAV dekoratørens consent/storage API:
-
-```sh
-npm install @navikt/nav-dekoratoren-moduler
-```
 
 ## Survey-presets (raskest å komme i gang)
 
