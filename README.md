@@ -1,7 +1,7 @@
 # Lumi
 
-![Build Status](https://github.com/navikt/lumi/actions/workflows/main.yml/badge.svg)
-![NPM Version](https://img.shields.io/npm/v/@navikt/lumi-survey)
+![Build Status](https://github.com/navikt/lumi/actions/workflows/ci.yaml/badge.svg)
+![Publish @navikt/lumi-survey](https://github.com/navikt/lumi/actions/workflows/publish-lumi-survey.yaml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 **Personvernvennlig survey-infrastruktur for NAV.**
