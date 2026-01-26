@@ -26,17 +26,33 @@ Viktig: Widgeten skal **ikke** poste direkte til `lumi-api` fra browser. Token e
 
 ```mermaid
 flowchart LR
-  subgraph Client["Klient"]
-    A["LumiSurveyDock (browser)"]
-  end
-  subgraph Backend["Din app"]
-    B["API-route / server action"]
-    C["Token exchange (TokenX/OBO eller AzureAD)"]
-  end
-  D["lumi-api"]
-  E["Dashboard / analytics"]
+	%% ---------- Client ----------
+	subgraph Client["Klient"]
+		A["LumiSurveyDock\n(browser)"]
+	end
 
-  A --> B --> C --> D --> E
+	%% ---------- App Backend ----------
+	subgraph App["Din app"]
+		B["API-route / server action"]
+		C["Token exchange\n(TokenX / OBO / AzureAD)"]
+	end
+
+	%% ---------- Platform ----------
+	subgraph Platform["Lumi"]
+		D["lumi-api"]
+		E["Dashboard / analytics"]
+	end
+
+	A --> B --> C --> D --> E
+
+	%% ---------- Styling ----------
+	classDef client fill:#E8F2FF,stroke:#0B5FFF,stroke-width:1px,color:#0B2E66;
+	classDef app fill:#E9F8F0,stroke:#1C7C54,stroke-width:1px,color:#0F3D2E;
+	classDef platform fill:#FFF2E8,stroke:#CC4F00,stroke-width:1px,color:#6A2A00;
+
+	class A client;
+	class B,C app;
+	class D,E platform;
 ```
 
 ## Dokumentasjon
@@ -46,13 +62,13 @@ flowchart LR
 
 ### Integrasjon og tilgang (for team)
 
-Lumi skiller bevisst mellom submissions fra sluttbruker-flater (TokenX) og veileder/fagsystemer (AzureAD). Dette gjør feilsøking enklere og unngår at vi må "gjette" issuer.
+Lumi har egne endepunkter for innsending fra sluttbruker-flater (TokenX) og veileder/fagsystemer (AzureAD).
 
 Viktig: Survey-widgeten skal **ikke** poste direkte til `lumi-api` fra browser. Token exchange må gjøres server-side. Typisk flyt er:
 
 1. Widget sender payload til din app/backend (f.eks. server action / API-route)
 2. Backend kan validere payload (valgfritt, men ofte lurt – f.eks. med Zod)
-3. Backend gjør token exchange (TokenX/OBO eller AzureAD, avhengig av type flate)
+3. Backend gjør token exchange (TokenX eller AzureAD, avhengig av type flate)
 4. Backend kaller `lumi-api`
 
 ### Slik integrerer du ("manuell" transport)
@@ -106,17 +122,15 @@ export async function POST(req: Request) {
 
 - Endepunkt: `POST /api/tokenx/v1/feedback`
 - Auth: **TokenX**
-- Caller-identitet: `client_id` (format `cluster:namespace:app`)
 
-Bruk dette for f.eks. innloggede sluttbruker-flater (arbeidsgiver/privatperson) som allerede bruker TokenX.
+Bruk dette for f.eks. innloggede sluttbruker-flater (arbeidsgiver/privatperson)
 
 ### Veileder / fagsystem (AzureAD)
 
 - Endepunkt: `POST /api/azure/v1/feedback`
 - Auth: **AzureAD**
-- Caller-identitet: `azp_name` (format `cluster:namespace:app`)
 
-Bruk dette for f.eks. Modia/veiledersystem. Submissions skal ikke lagre NAVident.
+Bruk dette for f.eks. Modia/veiledersystem.
 
 ### Tilgang (Zero Trust)
 
