@@ -7,11 +7,11 @@ integratørguiden for `@navikt/lumi-survey`.
 
 1) Installer
 
+`@navikt/lumi-survey` publiseres til GitHub Packages. Første gang må du sette opp `.npmrc` (se seksjonen under), og deretter installere:
+
 ```sh
 npm install @navikt/lumi-survey @navikt/ds-react @navikt/ds-css
 ```
-
-I dette repoet er pakken allerede tilgjengelig via workspaces etter `npm install` i rotmappen.
 
 2) Importer CSS
 
@@ -46,8 +46,8 @@ export function App() {
 }
 ```
 
-4) Backend gjør token exchange server-side og videresender til `lumi-api`.
-Transportflyt og endepunkter er beskrevet i [README.md](../../README.md).
+4) Backend gjør token exchange server-side og videresender til Lumi API.
+Se [Backend: token exchange og forwarding](#backend-token-exchange-og-forwarding).
 
 Les mer:
 - Presets og builder-funksjoner: [Survey-presets](#survey-presets-raskest-%C3%A5-komme-i-gang) og [Bygg egne surveyer](#bygg-egne-surveyer)
@@ -55,7 +55,7 @@ Les mer:
 - Personvern, storage, events, feilsøking: [Kontekst og personvern](#kontekst-og-personvern), [Consent/storage](#consentstorage), [Events](#events-hooks), [Feilsøking](#feils%C3%B8king-vanlige-problemer)
 
 <details>
-<summary><strong>Install fra GitHub Packages (valgfritt)</strong></summary>
+<summary><strong>Installer fra GitHub Packages</strong></summary>
 
 Du må ha `.npmrc` som peker `@navikt` til GitHub Packages, f.eks:
 
@@ -64,20 +64,13 @@ Du må ha `.npmrc` som peker `@navikt` til GitHub Packages, f.eks:
 //npm.pkg.github.com/:_authToken=${NPM_AUTH_TOKEN}
 ```
 
-For eksterne flater som bruker NAV dekoratørens consent/storage API:
-
-```sh
-npm install @navikt/nav-dekoratoren-moduler
-```
-
 </details>
 
 <details>
 <summary><strong>Kom i gang (smiley/rating) – full eksempel</strong></summary>
 
 Minste mulige integrasjon. Send `submission.transportPayload` til din backend som deretter gjør
-token exchange og kaller `lumi-api`. Detaljert transportflyt finnes i
-[`README.md`](../../README.md).
+token exchange og kaller Lumi API. Se [Backend: token exchange og forwarding](#backend-token-exchange-og-forwarding).
 
 ```tsx
 import "@navikt/ds-css";
@@ -104,6 +97,7 @@ const survey = {
       minRows: 3,
       maxLength: 500,
       visibleIf: {
+        field: "ANSWER",
         questionId: "plan-til-hjelp",
         operator: "EXISTS",
       },
@@ -163,8 +157,6 @@ import {
 <details>
 <summary>Eksempel: Top Tasks survey</summary>
 
-![Bilde av Top Tasks](TODO_LINK)
-
 ```tsx
 const topTasks = createTopTasksSurvey({
   tasks: [
@@ -194,8 +186,6 @@ const taskPriority = createTaskPrioritySurvey({
 
 <details>
 <summary>Eksempel: NPS (0-10) rating</summary>
-
-![Bilde av NPS](TODO_LINK)
 
 ```tsx
 const nps = {
@@ -263,7 +253,9 @@ En survey er et `LumiSurveyConfig`-objekt med spørsmål i rekkefølge. Spørsm�
 - `singleChoice`
 - `multiChoice` (støtter `variant: "checkbox"` eller `variant: "combobox"`)
 
-Eksempel med progresjon (vis tekstfelt etter rating):
+### Progresjon (anbefalt): `visibleIf`
+
+For de fleste surveyer er det nok å vise oppfølgingsspørsmål kun når det er relevant (progressive disclosure).
 
 ```tsx
 const customSurvey = {
@@ -292,9 +284,10 @@ const customSurvey = {
 <LumiSurveyDock surveyId="custom" survey={customSurvey} transport={transport} />;
 ```
 
-### Branching / skip-logic
+<details>
+<summary><strong>Avansert: branching / skip-logic (`logic`)</strong></summary>
 
-Bruk `logic` for å hoppe, skippe eller submitte basert på svar.
+Bruk `logic` når du faktisk må endre flyten (hoppe, skippe, eller avslutte tidlig). Hvis du bare vil vise/skjule oppfølgingsspørsmål, bruk heller `visibleIf`.
 
 ```tsx
 const surveyWithLogic = {
@@ -309,7 +302,10 @@ const surveyWithLogic = {
           condition: { field: "ANSWER", operator: "LT", value: 3 },
           action: { type: "JUMP_TO", targetId: "comment" },
         },
-        { condition: { field: "ANSWER", operator: "GT", value: 2 }, action: { type: "SUBMIT" } },
+        {
+          condition: { field: "ANSWER", operator: "GT", value: 2 },
+          action: { type: "SUBMIT" },
+        },
       ],
     },
     {
@@ -320,6 +316,8 @@ const surveyWithLogic = {
   ],
 };
 ```
+
+</details>
 
 ## LumiSurveyDock props (API-overblikk)
 
@@ -340,7 +338,32 @@ versjonert (`schemaVersion: 1`). Den inkluderer:
 - `answers`: Normalisert struktur per spørsmål
 - `context`: tags/debug/auto-collectet miljøinfo
 
-Viktig: Widgeten skal **ikke** poste direkte til `lumi-api` fra browser.
+Viktig: Widgeten skal **ikke** poste direkte til Lumi API fra browser.
+
+## Backend: token exchange og forwarding
+
+Backend mottar `submission.transportPayload` fra frontend, gjør token exchange server-side, og videresender payloaden til Lumi API.
+
+- TokenX (sluttbruker-flater): `POST /api/tokenx/v1/feedback`
+- AzureAD (interne flater): `POST /api/azure/v1/feedback`
+
+Payloaden dere videresender er JSON og inkluderer `schemaVersion: 1`.
+
+Minimal pseudokode (server-side):
+
+```ts
+// 1) Motta submission.transportPayload fra frontend
+// 2) OBO/token exchange (TokenX eller AzureAD)
+// 3) POST til Lumi API med Authorization: Bearer <token>
+await fetch(`${process.env.LUMI_API_HOST}/api/tokenx/v1/feedback`, {
+  method: "POST",
+  headers: {
+    authorization: `Bearer ${token}`,
+    "content-type": "application/json",
+  },
+  body: JSON.stringify(transportPayload),
+});
+```
 
 ## Kontekst og personvern
 
@@ -376,6 +399,12 @@ Widgeten kan persistere "dismissed" i storage. Velg strategi:
 - `localStorage` for interne flater (f.eks. Modia)
 - `none` hvis dere ikke vil persistere i det hele tatt
 
+Hvis dere bruker `storageStrategy: "consent"` i en ekstern flate, trenger dere NAV dekoratørens consent/storage API (pakken er en optional peer dependency):
+
+```sh
+npm install @navikt/nav-dekoratoren-moduler
+```
+
 ```tsx
 <LumiSurveyDock behavior={{ storageStrategy: "localStorage" }} />
 ```
@@ -395,22 +424,6 @@ const events = {
 };
 ```
 
-## Storybook (interaktiv demo)
-
-Kjør lokalt:
-
-```sh
-npm run storybook:survey
-```
-
-Bygg statisk Storybook:
-
-```sh
-npm run build-storybook:survey
-```
-
-Statisk output ligger i `packages/lumi-survey/storybook-static`.
-
 ## Feilsøking (vanlige problemer)
 
 - Survey dukker ikke opp: Sjekk at `behavior.initialOpen` ikke er satt til `false`, og at
@@ -419,7 +432,3 @@ Statisk output ligger i `packages/lumi-survey/storybook-static`.
 - Ingen data i dashboard: Verifiser at backend sender `submission.transportPayload` til riktig
   endpoint (`/api/tokenx/v1/feedback` eller `/api/azure/v1/feedback`).
 - Layout virker “tom”: Sørg for at `@navikt/ds-css` og `@navikt/lumi-survey/styles.css` er importert.
-
-## Bidra / lage ny versjon
-
-Se [`CONTRIBUTING.md`](CONTRIBUTING.md) for hvordan vi lager nye versjoner av `@navikt/lumi-survey`.
