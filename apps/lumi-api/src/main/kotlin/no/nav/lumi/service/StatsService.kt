@@ -24,22 +24,22 @@ private val json = Json {
  * Contains business logic for calculating and aggregating feedback statistics.
  * 
  * Uses StatsCache (Valkey with in-memory fallback) to cache expensive aggregations.
- * Default TTL: 5 minutes.
+ * Default TTL: 3 minutes.
  */
 class StatsService(
     private val feedbackRepository: FeedbackRepository = FeedbackRepository(),
     private val statsRepository: FeedbackStatsRepository = FeedbackStatsRepository(),
     private val themeRepository: TextThemeRepository = TextThemeRepository(),
     private val statsCache: StatsCache = ValkeyStatsCache.fromEnvOrFallback(),
-    private val cacheTtl: Duration = Duration.ofMinutes(5)
+    private val cacheTtl: Duration = Duration.ofMinutes(3)
 ) {
     private val overviewCacheTtl: Duration = Duration.ofMinutes(2)
     private val ratingsCacheTtl: Duration = Duration.ofMinutes(2)
     private val timelineCacheTtl: Duration = Duration.ofMinutes(2)
-    private val topTasksCacheTtl: Duration = Duration.ofMinutes(5)
-    private val surveyTypesCacheTtl: Duration = Duration.ofMinutes(10)
-    private val blockersCacheTtl: Duration = Duration.ofMinutes(5)
-    private val taskPriorityCacheTtl: Duration = Duration.ofMinutes(5)
+    private val topTasksCacheTtl: Duration = Duration.ofMinutes(3)
+    private val surveyTypesCacheTtl: Duration = Duration.ofMinutes(5)
+    private val blockersCacheTtl: Duration = Duration.ofMinutes(3)
+    private val taskPriorityCacheTtl: Duration = Duration.ofMinutes(3)
 
     private fun StatsQuery.toCacheKey(): String {
         fun enc(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)
@@ -67,11 +67,11 @@ class StatsService(
         return parts.joinToString("&")
     }
 
-    private inline fun <reified T> getOrComputeCached(
+    private suspend inline fun <reified T> getOrComputeCached(
         prefix: String,
         query: StatsQuery,
         ttl: Duration,
-        crossinline compute: () -> T
+        crossinline compute: suspend () -> T
     ): T {
         val cacheKey = "$prefix:${query.toCacheKey()}"
 
@@ -91,7 +91,7 @@ class StatsService(
      * This is the primary stats endpoint used by lumi-dashboard.
      * Results are cached for 5 minutes.
      */
-    fun getDashboardStats(query: StatsQuery): FeedbackStats {
+    suspend fun getDashboardStats(query: StatsQuery): FeedbackStats {
         val cacheKey = "dashboard:${query.toCacheKey()}"
         
         // Try cache first
@@ -109,7 +109,7 @@ class StatsService(
         }
     }
     
-    private fun computeStats(query: StatsQuery): FeedbackStats {
+    private suspend fun computeStats(query: StatsQuery): FeedbackStats {
         val stats = statsRepository.getStats(query)
 
         val analytics = if (!stats.masked) {
@@ -159,7 +159,7 @@ class StatsService(
     /**
      * Get stats overview (consolidated endpoint).
      */
-    fun getStatsOverview(query: StatsQuery): StatsOverviewResponse {
+    suspend fun getStatsOverview(query: StatsQuery): StatsOverviewResponse {
         return getOrComputeCached(prefix = "overview", query = query, ttl = overviewCacheTtl) {
             val stats = statsRepository.getStats(query)
             val range = if (query.fromDate != null || query.toDate != null) {
@@ -202,7 +202,7 @@ class StatsService(
     /**
      * Get rating distribution for the given query.
      */
-    fun getRatingDistribution(query: StatsQuery): RatingDistribution {
+    suspend fun getRatingDistribution(query: StatsQuery): RatingDistribution {
         return getOrComputeCached(prefix = "ratings", query = query, ttl = ratingsCacheTtl) {
             val stats = statsRepository.getStats(query)
 
@@ -225,7 +225,7 @@ class StatsService(
     /**
      * Get timeline data for the given query.
      */
-    fun getTimeline(query: StatsQuery): TimelineResponse {
+    suspend fun getTimeline(query: StatsQuery): TimelineResponse {
         return getOrComputeCached(prefix = "timeline", query = query, ttl = timelineCacheTtl) {
             val stats = statsRepository.getStats(query)
 
@@ -244,7 +244,7 @@ class StatsService(
     /**
      * Get Top Tasks statistics for the given query.
      */
-    fun getTopTasksStats(query: StatsQuery): TopTasksResponse {
+    suspend fun getTopTasksStats(query: StatsQuery): TopTasksResponse {
         return getOrComputeCached(prefix = "topTasks", query = query, ttl = topTasksCacheTtl) {
             val stats = statsRepository.getStats(query)
             if (stats.masked) {
@@ -263,7 +263,7 @@ class StatsService(
     /**
      * Get Survey Type distribution for the given query.
      */
-    fun getSurveyTypeDistribution(query: StatsQuery): SurveyTypeDistribution {
+    suspend fun getSurveyTypeDistribution(query: StatsQuery): SurveyTypeDistribution {
         return getOrComputeCached(prefix = "surveyTypes", query = query, ttl = surveyTypesCacheTtl) {
             val stats = statsRepository.getStats(query)
             if (stats.masked) {
@@ -281,7 +281,7 @@ class StatsService(
      * Get blocker text analysis for Top Tasks (word frequency, themes, recent blockers).
      * Uses themes where analysisContext = BLOCKER.
      */
-    fun getBlockerStats(query: StatsQuery): BlockerStatsResponse {
+    suspend fun getBlockerStats(query: StatsQuery): BlockerStatsResponse {
         return getOrComputeCached(prefix = "blockers", query = query, ttl = blockersCacheTtl) {
             val stats = statsRepository.getStats(query)
             if (stats.masked) {
@@ -301,7 +301,7 @@ class StatsService(
     /**
      * Get Task Priority statistics for the given query ("long neck" distribution).
      */
-    fun getTaskPriorityStats(query: StatsQuery): TaskPriorityResponse {
+    suspend fun getTaskPriorityStats(query: StatsQuery): TaskPriorityResponse {
         return getOrComputeCached(prefix = "taskPriority", query = query, ttl = taskPriorityCacheTtl) {
             val stats = statsRepository.getStats(query)
             if (stats.masked) {

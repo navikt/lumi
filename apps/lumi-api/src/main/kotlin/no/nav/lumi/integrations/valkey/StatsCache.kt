@@ -88,15 +88,31 @@ class InMemoryStatsCache : StatsCache {
 }
 
 /**
+ * No-op stats cache implementation.
+ * Use when caching should be disabled (e.g. Valkey unavailable and no fallback desired).
+ */
+class NoopStatsCache : StatsCache {
+    override fun get(key: String): String? = null
+
+    override fun set(key: String, jsonValue: String, ttl: Duration) = Unit
+
+    override fun isHealthy(): Boolean = false
+
+    override fun clear() = Unit
+
+    override fun clearByPrefix(prefix: String) = Unit
+}
+
+/**
  * Valkey/Redis stats cache implementation using Jedis.
- * Falls back to in-memory cache if Valkey is unavailable.
+ * Optionally falls back to another StatsCache if Valkey is unavailable.
  * 
  * Default TTL: 5 minutes for stats data.
  */
 class ValkeyStatsCache private constructor(
     private val jedisPool: JedisPool,
     private val keyPrefix: String = "stats:",
-    private val fallback: InMemoryStatsCache = InMemoryStatsCache()
+    private val fallback: StatsCache? = InMemoryStatsCache()
 ) : StatsCache {
     
     // Metrics
@@ -128,7 +144,7 @@ class ValkeyStatsCache private constructor(
             
             if (value.isNullOrEmpty()) {
                 cacheMissCounter.increment()
-                fallback.get(key)
+                fallback?.get(key)
             } else {
                 cacheHitCounter.increment()
                 log.debug("Stats cache hit for key: $key")
@@ -137,11 +153,11 @@ class ValkeyStatsCache private constructor(
         } catch (e: JedisConnectionException) {
             cacheErrorCounter.increment()
             log.warn("Failed to get from Valkey stats cache, using fallback", e)
-            fallback.get(key)
+            fallback?.get(key)
         } catch (e: Exception) {
             cacheErrorCounter.increment()
             log.warn("Unexpected error getting from Valkey stats cache", e)
-            fallback.get(key)
+            fallback?.get(key)
         }
     }
     
@@ -159,11 +175,11 @@ class ValkeyStatsCache private constructor(
         } catch (e: JedisConnectionException) {
             cacheErrorCounter.increment()
             log.warn("Failed to set in Valkey stats cache, using fallback", e)
-            fallback.set(key, jsonValue, ttl)
+            fallback?.set(key, jsonValue, ttl)
         } catch (e: Exception) {
             cacheErrorCounter.increment()
             log.warn("Unexpected error setting in Valkey stats cache", e)
-            fallback.set(key, jsonValue, ttl)
+            fallback?.set(key, jsonValue, ttl)
         }
     }
     
@@ -185,11 +201,11 @@ class ValkeyStatsCache private constructor(
                     jedis.del(*keys.toTypedArray())
                 }
             }
-            fallback.clear()
+            fallback?.clear()
             log.info("Valkey stats cache cleared (${keys.size} keys)")
         } catch (e: Exception) {
             log.warn("Failed to clear Valkey stats cache", e)
-            fallback.clear()
+            fallback?.clear()
         }
     }
 
@@ -205,11 +221,11 @@ class ValkeyStatsCache private constructor(
                     jedis.del(*keys.toTypedArray())
                 }
             }
-            fallback.clearByPrefix(prefix)
+            fallback?.clearByPrefix(prefix)
             log.info("Valkey stats cache cleared by prefix '$prefix' (${keys.size} keys)")
         } catch (e: Exception) {
             log.warn("Failed to clear Valkey stats cache by prefix '$prefix'", e)
-            fallback.clearByPrefix(prefix)
+            fallback?.clearByPrefix(prefix)
         }
     }
     
@@ -241,6 +257,33 @@ class ValkeyStatsCache private constructor(
             } catch (e: Exception) {
                 log.error("Failed to connect to Valkey for stats cache, using in-memory fallback", e)
                 InMemoryStatsCache()
+            }
+        }
+
+        /**
+         * Create a ValkeyStatsCache from NAIS environment variables.
+         * Returns NoopStatsCache if Valkey is not configured or unavailable.
+         */
+        fun fromEnvOrNoop(): StatsCache {
+            val valkeyEnv = ServerEnv.current.valkey
+            val uri = valkeyEnv.uri
+
+            if (uri.isNullOrBlank()) {
+                log.warn("Valkey not configured for stats cache; caching disabled")
+                return NoopStatsCache()
+            }
+
+            val username = valkeyEnv.username
+            val password = valkeyEnv.password
+
+            return try {
+                val jedisPool = JedisFactory.createPool(uri = uri, username = username, password = password)
+                jedisPool.resource.use { jedis -> jedis.ping() }
+                log.info("Valkey stats cache connected successfully")
+                ValkeyStatsCache(jedisPool, fallback = null)
+            } catch (e: Exception) {
+                log.error("Failed to connect to Valkey for stats cache; caching disabled", e)
+                NoopStatsCache()
             }
         }
         

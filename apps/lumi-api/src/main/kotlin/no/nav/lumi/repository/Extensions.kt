@@ -3,7 +3,7 @@ package no.nav.lumi.repository
 import kotlinx.serialization.json.*
 import no.nav.lumi.domain.*
 import no.nav.lumi.sensitive.SensitiveDataFilter
-import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.v1.core.ResultRow
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 import java.time.ZoneId

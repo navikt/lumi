@@ -1,10 +1,13 @@
 package no.nav.lumi.repository
 
 import no.nav.lumi.domain.*
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greaterEq
+import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.lessEq
+import org.jetbrains.exposed.v1.jdbc.andWhere
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import java.time.Instant
 
 /**
@@ -17,8 +20,8 @@ class DiscoveryStatsRepository {
      * Fetch all discovery survey feedback for the given query parameters.
      * Returns FeedbackDto list for further processing by the service layer.
      */
-    fun getDiscoveryFeedback(query: StatsQuery): List<FeedbackDto> {
-        return transaction {
+    suspend fun getDiscoveryFeedback(query: StatsQuery): List<FeedbackDto> {
+        val records = dbQuery {
             val dbQuery = FeedbackTable.selectAll()
             dbQuery.andWhere { FeedbackTable.team eq query.team }
             dbQuery.andWhere { 
@@ -57,7 +60,9 @@ class DiscoveryStatsRepository {
             
             dbQuery
                 .orderBy(FeedbackTable.opprettet to SortOrder.DESC)
-                .map { it.toDto() }
+                .map { it.toDbRecord() }
         }
+
+        return records.map { it.toDto() }
     }
 }

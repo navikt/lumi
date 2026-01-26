@@ -1,8 +1,8 @@
 # Lumi API
 
-**Swagger UI:** http://localhost:8080/swagger
-
 Backend-API for Lumi survey analytics, bygget med Ktor.
+
+**Swagger UI:** http://localhost:8080/swagger
 
 ## Kom i gang (kort)
 
@@ -35,6 +35,15 @@ docker run -d --name lumi-db \
 ```
 
 </details>
+
+## Når skal du bruke dette API-et?
+
+- Du bygger en app som skal sende `submission.transportPayload` videre til Lumi.
+- Du integrerer med dashboardet og trenger analyse-endepunkter.
+
+Se også:
+- Survey-widget og integrasjon: https://github.com/navikt/lumi/tree/main/packages/lumi-survey/README.md
+- Oversikt i repoet: https://github.com/navikt/lumi
 
 ## Egenskaper
 
@@ -91,6 +100,12 @@ Alle endepunkter under `/api/v1/intern/*` er **team-scope'et**.
 | `segment` | string[] | - | Gjentatt `segment=key:value` |
 | `task` | string | - | Top Tasks drill-down filter (matcher option label) |
 
+Eksempel:
+
+```http
+GET /api/v1/intern/stats/dashboard?team=flex&app=spinnsyn&fromDate=2026-01-01&toDate=2026-01-31
+```
+
 ### Innsending (Public)
 
 | Endepunkt | Beskrivelse |
@@ -101,6 +116,63 @@ Alle endepunkter under `/api/v1/intern/*` er **team-scope'et**.
 Merk: Survey-widgeten skal ikke kalle disse endepunktene direkte fra browser. Kall forventes å være backend-til-backend (token exchange server-side).
 
 Integrasjonsmønsteret (widget → din backend → token exchange → lumi-api) er beskrevet i repoets rot-README og `packages/lumi-survey/README.md`.
+
+Eksempel på innsendingskall:
+
+```bash
+curl -X POST "$LUMI_API_HOST/api/tokenx/v1/feedback" \
+  -H "authorization: Bearer $TOKEN" \
+  -H "content-type: application/json" \
+  -d @payload.json
+```
+
+## Token exchange (backend)
+
+Dette gjøres server-side i din app. Hvilken flow du bruker avhenger av flaten:
+
+### TokenX (sluttbruker-flater)
+
+1) Motta `submission.transportPayload` fra widgeten
+2) Kall TokenX for OBO-token mot `lumi-api`
+3) POST payload til `/api/tokenx/v1/feedback`
+
+```ts
+// Pseudokode (Node/Next)
+const payload = await req.json();
+const token = await tokenxExchangeFor("lumi-api");
+
+const res = await fetch(`${process.env.LUMI_API_HOST}/api/tokenx/v1/feedback`, {
+  method: "POST",
+  headers: {
+    authorization: `Bearer ${token}`,
+    "content-type": "application/json",
+  },
+  body: JSON.stringify(payload),
+});
+
+if (!res.ok) throw new Error("Failed to submit feedback");
+```
+
+### AzureAD (veileder-/Modia-/fagsystem)
+
+1) Motta `submission.transportPayload`
+2) Kall AzureAD for OBO-token mot `lumi-api`
+3) POST payload til `/api/azure/v1/feedback`
+
+```ts
+// Pseudokode (Node/Next)
+const payload = await req.json();
+const token = await azureOboFor("lumi-api");
+
+const res = await fetch(`${process.env.LUMI_API_HOST}/api/azure/v1/feedback`, {
+  method: "POST",
+  headers: {
+    authorization: `Bearer ${token}`,
+    "content-type": "application/json",
+  },
+  body: JSON.stringify(payload),
+});
+```
 
 <details>
 <summary><strong>🔐 Sikkerhet og tilgang</strong></summary>

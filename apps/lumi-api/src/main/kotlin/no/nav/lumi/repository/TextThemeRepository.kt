@@ -1,9 +1,14 @@
 package no.nav.lumi.repository
 
 import no.nav.lumi.domain.*
-import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.update
 import java.time.OffsetDateTime
 import java.util.*
 
@@ -16,8 +21,8 @@ class TextThemeRepository {
     /**
      * Find all themes for a team, ordered by priority (highest first)
      */
-    fun findByTeam(team: String): List<TextThemeDto> {
-        return transaction {
+    suspend fun findByTeam(team: String): List<TextThemeDto> {
+        return dbQuery {
             TextThemeTable.selectAll()
                 .where { TextThemeTable.team eq team }
                 .orderBy(TextThemeTable.priority to SortOrder.DESC)
@@ -25,8 +30,8 @@ class TextThemeRepository {
         }
     }
 
-    fun findByTeam(team: String, context: AnalysisContext): List<TextThemeDto> {
-        return transaction {
+    suspend fun findByTeam(team: String, context: AnalysisContext): List<TextThemeDto> {
+        return dbQuery {
             TextThemeTable.selectAll()
                 .where {
                     (TextThemeTable.team eq team) and
@@ -40,8 +45,8 @@ class TextThemeRepository {
     /**
      * Find a single theme by ID
      */
-    fun findById(id: UUID): TextThemeDto? {
-        return transaction {
+    suspend fun findById(id: UUID): TextThemeDto? {
+        return dbQuery {
             TextThemeTable.selectAll()
                 .where { TextThemeTable.id eq id }
                 .singleOrNull()
@@ -52,8 +57,8 @@ class TextThemeRepository {
     /**
      * Create a new theme
      */
-    fun create(team: String, request: CreateThemeRequest): TextThemeDto {
-        return transaction {
+    suspend fun create(team: String, request: CreateThemeRequest): TextThemeDto {
+        return dbQuery {
             val id = UUID.randomUUID()
             val now = OffsetDateTime.now()
             val context = request.analysisContext
@@ -84,8 +89,8 @@ class TextThemeRepository {
     /**
      * Update an existing theme. Only updates non-null fields.
      */
-    fun update(id: UUID, request: UpdateThemeRequest): Boolean {
-        return transaction {
+    suspend fun update(id: UUID, request: UpdateThemeRequest): Boolean {
+        return dbQuery {
             TextThemeTable.update({ TextThemeTable.id eq id }) { stmt ->
                 request.name?.let { stmt[name] = it }
                 request.keywords?.let { stmt[keywords] = it }
@@ -99,19 +104,17 @@ class TextThemeRepository {
     /**
      * Delete a theme by ID
      */
-    fun delete(id: UUID): Boolean {
-        return transaction {
-            TextThemeTable.deleteWhere(op = {
-                SqlExpressionBuilder.run { TextThemeTable.id eq id }
-            }) > 0
+    suspend fun delete(id: UUID): Boolean {
+        return dbQuery {
+            TextThemeTable.deleteWhere { TextThemeTable.id eq id } > 0
         }
     }
 
     /**
      * Check if theme belongs to a specific team (for authorization)
      */
-    fun belongsToTeam(id: UUID, team: String): Boolean {
-        return transaction {
+    suspend fun belongsToTeam(id: UUID, team: String): Boolean {
+        return dbQuery {
             TextThemeTable.selectAll()
                 .where { (TextThemeTable.id eq id) and (TextThemeTable.team eq team) }
                 .count() > 0

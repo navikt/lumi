@@ -15,11 +15,10 @@ fun Route.teamsRoutes(
     get<ApiV1Intern.Teams> {
         val teams = call.authorizedTeams
 
-        val teamsToApps = teams
-            .sorted()
-            .associateWith { team ->
-                feedbackRepository.findDistinctApps(team).toSet()
-            }
+        val teamsToApps = mutableMapOf<String, Set<String>>()
+        for (team in teams.sorted()) {
+            teamsToApps[team] = feedbackRepository.findDistinctApps(team).toSet()
+        }
 
         call.respond(TeamsAndApps(teams = teamsToApps))
     }

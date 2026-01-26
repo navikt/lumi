@@ -2,15 +2,11 @@ package no.nav.lumi.repository
 
 import kotlinx.serialization.json.*
 import no.nav.lumi.domain.*
-import no.nav.lumi.service.DiscoveryService
 import no.nav.lumi.service.TextProcessor
-import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.*
+import org.jetbrains.exposed.v1.jdbc.*
 import java.time.Duration
 import java.time.Instant
-import java.time.LocalDate
-import java.time.OffsetDateTime
 
 class FeedbackStatsRepository {
     private val json = Json { ignoreUnknownKeys = true }
@@ -34,8 +30,8 @@ class FeedbackStatsRepository {
         val fieldStats: List<FieldStat> = emptyList(),
     )
 
-    fun getStats(query: StatsQuery): FeedbackStatsResult {
-        return transaction {
+    suspend fun getStats(query: StatsQuery): FeedbackStatsResult {
+        return dbQuery {
             val totalQuery = FeedbackTable.selectAll()
             applyStatsFilters(totalQuery, query)
             val totalCount = totalQuery.count()
@@ -123,500 +119,378 @@ class FeedbackStatsRepository {
         }
     }
 
-    fun getAnalyticsStats(query: StatsQuery, includeFieldStats: Boolean): FeedbackAnalyticsStats {
-        return transaction {
-            val dbQuery = FeedbackTable.selectAll()
-            applyStatsFilters(dbQuery, query)
-            val records = dbQuery.map { it.toDto() }
+    suspend fun getAnalyticsStats(query: StatsQuery, includeFieldStats: Boolean): FeedbackAnalyticsStats {
+        val snapshot = dbQuery {
+            val ratingTextExpr = JsonbPathQueryFirstText(
+                FeedbackTable.feedbackJson,
+                "$.answers[*] ? (@.value.type == \"rating\").value.rating"
+            )
+            val ratingIntExpr = Cast(ratingTextExpr, IntegerColumnType())
+            val ratingAvgExpr = ratingIntExpr.avg()
+            val ratingCountExpr = FeedbackTable.id.count()
 
-            fun FeedbackDto.firstRating(): Int? = answers.firstNotNullOfOrNull { answer ->
-                (answer.value as? AnswerValue.Rating)?.rating
+            val dateExpr = DateDate(FeedbackTable.opprettet)
+            val dateQuery = FeedbackTable.select(dateExpr, ratingCountExpr, ratingAvgExpr)
+            applyStatsFilters(dateQuery, query)
+            dateQuery.andWhere { ratingTextExpr.isNotNull() }
+            val ratingByDateRows = dateQuery
+                .groupBy(dateExpr)
+                .orderBy(dateExpr to SortOrder.ASC)
+                .map { row ->
+                    AvgCountRow(
+                        key = row[dateExpr].toString(),
+                        count = row[ratingCountExpr].toInt(),
+                        average = row[ratingAvgExpr]?.toDouble() ?: 0.0
+                    )
+                }
+
+            val deviceExpr = JsonExtract(FeedbackTable.feedbackJson, listOf("context", "deviceType"))
+            val deviceQuery = FeedbackTable.select(deviceExpr, ratingCountExpr, ratingAvgExpr)
+            applyStatsFilters(deviceQuery, query)
+            deviceQuery.andWhere { ratingTextExpr.isNotNull() and deviceExpr.isNotNull() }
+            val deviceRows = deviceQuery
+                .groupBy(deviceExpr)
+                .map { row ->
+                    AvgCountRow(
+                        key = row[deviceExpr],
+                        count = row[ratingCountExpr].toInt(),
+                        average = row[ratingAvgExpr]?.toDouble() ?: 0.0
+                    )
+                }
+
+            val pathnameExpr = JsonExtract(FeedbackTable.feedbackJson, listOf("context", "pathname"))
+            val pathnameQuery = FeedbackTable.select(pathnameExpr, ratingCountExpr, ratingAvgExpr)
+            applyStatsFilters(pathnameQuery, query)
+            pathnameQuery.andWhere { ratingTextExpr.isNotNull() and pathnameExpr.isNotNull() }
+            val pathnameRows = pathnameQuery
+                .groupBy(pathnameExpr)
+                .map { row ->
+                    AvgCountRow(
+                        key = row[pathnameExpr],
+                        count = row[ratingCountExpr].toInt(),
+                        average = row[ratingAvgExpr]?.toDouble() ?: 0.0
+                    )
+                }
+
+            val fieldRecords = if (includeFieldStats) {
+                val fieldQuery = FeedbackTable.selectAll()
+                applyStatsFilters(fieldQuery, query)
+                fieldQuery.map { it.toDbRecord() }
+            } else {
+                emptyList()
             }
 
-            val ratings = records.mapNotNull { dto ->
-                dto.firstRating()?.let { rating -> dto to rating }
-            }
-
-            val ratingByDate = ratings
-                .groupBy { (dto, _) ->
-                    try {
-                        OffsetDateTime.parse(dto.submittedAt).toLocalDate().toString()
-                    } catch (_: Exception) {
-                        "unknown"
-                    }
-                }
-                .filterKeys { it != "unknown" }
-                .mapValues { (_, rows) ->
-                    val count = rows.size
-                    val average = rows.sumOf { (_, rating) -> rating }.toDouble() / count
-                    RatingByDateEntry(average = average, count = count)
-                }
-
-            val byDevice = ratings
-                .mapNotNull { (dto, rating) ->
-                    dto.context?.deviceType?.name?.lowercase()?.let { it to rating }
-                }
-                .groupBy({ it.first }, { it.second })
-                .mapValues { (_, rs) ->
-                    val count = rs.size
-                    val average = rs.sum().toDouble() / count
-                    DeviceStats(count = count, averageRating = average)
-                }
-
-            val byPathname = ratings
-                .mapNotNull { (dto, rating) ->
-                    dto.context?.pathname
-                        ?.takeIf { it.isNotBlank() }
-                        ?.let { it to rating }
-                }
-                .groupBy({ it.first }, { it.second })
-                .mapValues { (_, rs) ->
-                    val count = rs.size
-                    val average = rs.sum().toDouble() / count
-                    PathnameStats(count = count, averageRating = average)
-                }
-
-            val lowestRatingPaths = byPathname.entries
-                .filter { it.value.count >= MIN_AGGREGATION_THRESHOLD }
-                .sortedWith(
-                    compareBy<Map.Entry<String, PathnameStats>> { it.value.averageRating }
-                        .thenByDescending { it.value.count }
-                        .thenBy { it.key }
-                )
-                .take(10)
-                .associate { it.key to it.value }
-
-            val fieldStats = if (includeFieldStats) buildFieldStats(records) else emptyList()
-
-            FeedbackAnalyticsStats(
-                ratingByDate = ratingByDate,
-                byDevice = byDevice,
-                byPathname = byPathname,
-                lowestRatingPaths = lowestRatingPaths,
-                fieldStats = fieldStats,
+            AnalyticsSnapshot(
+                ratingByDateRows = ratingByDateRows,
+                deviceRows = deviceRows,
+                pathnameRows = pathnameRows,
+                fieldRecords = fieldRecords
             )
         }
-    }
 
-    private fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
-        if (records.isEmpty()) return emptyList()
+        val ratingByDate = snapshot.ratingByDateRows
+            .filter { it.key.isNotBlank() }
+            .associate { it.key to RatingByDateEntry(average = it.average, count = it.count) }
 
-        val totalFeedbackCount = records.size
-        val answersByField = mutableMapOf<String, MutableList<Pair<FeedbackDto, Answer>>>()
-
-        // Preserve the survey question order as seen in submissions.
-        // We use a representative submission (most answers) as the primary ordering source,
-        // then fall back to first-seen across all submissions for any missing/optional fields.
-        val fieldOrder = mutableMapOf<String, Int>()
-        var nextOrderIndex = 0
-
-        val representativeAnswers = records.maxByOrNull { it.answers.size }?.answers.orEmpty()
-        for (answer in representativeAnswers) {
-            if (answer.fieldId !in fieldOrder) {
-                fieldOrder[answer.fieldId] = nextOrderIndex++
+        val byDevice = snapshot.deviceRows
+            .filter { it.key.isNotBlank() }
+            .associate { row ->
+                row.key.lowercase() to DeviceStats(count = row.count, averageRating = row.average)
             }
+
+        val byPathname = snapshot.pathnameRows
+            .filter { it.key.isNotBlank() }
+            .associate { row ->
+                row.key to PathnameStats(count = row.count, averageRating = row.average)
+            }
+
+        val lowestRatingPaths = byPathname.entries
+            .filter { it.value.count >= MIN_AGGREGATION_THRESHOLD }
+            .sortedWith(
+                compareBy<Map.Entry<String, PathnameStats>> { it.value.averageRating }
+                    .thenByDescending { it.value.count }
+                    .thenBy { it.key }
+            )
+            .take(10)
+            .associate { it.key to it.value }
+
+        val fieldStats = if (includeFieldStats) {
+            buildFieldStats(snapshot.fieldRecords.map { it.toDto() })
+        } else {
+            emptyList()
         }
 
-        for (dto in records) {
-            for (answer in dto.answers) {
-                answersByField.getOrPut(answer.fieldId) { mutableListOf() }.add(dto to answer)
-
-                if (answer.fieldId !in fieldOrder) {
-                    fieldOrder[answer.fieldId] = nextOrderIndex++
-                }
-            }
-        }
-
-        val result = mutableListOf<FieldStat>()
-
-        for ((fieldId, entries) in answersByField) {
-            val first = entries.firstOrNull()?.second ?: continue
-            val fieldType = first.fieldType
-            val label = first.question.label.ifBlank { fieldId }
-
-            when (fieldType) {
-                FieldType.RATING -> {
-                    val distribution = mutableMapOf<String, Int>()
-                    var sum = 0
-                    var count = 0
-
-                    for ((_, answer) in entries) {
-                        val rating = (answer.value as? AnswerValue.Rating)?.rating ?: continue
-                        distribution[rating.toString()] = (distribution[rating.toString()] ?: 0) + 1
-                        sum += rating
-                        count += 1
-                    }
-
-                    if (count == 0) continue
-                    val average = sum.toDouble() / count
-
-                    result.add(
-                        FieldStat(
-                            fieldId = fieldId,
-                            fieldType = fieldType,
-                            label = label,
-                            stats = FieldStats.Rating(average = average, distribution = distribution)
-                        )
-                    )
-                }
-
-                FieldType.TEXT -> {
-                    val texts = mutableListOf<RecentTextResponse>()
-                    val keywordCounts = mutableMapOf<String, Int>()
-                    var responseCount = 0
-
-                    for ((dto, answer) in entries) {
-                        val text = (answer.value as? AnswerValue.Text)?.text?.trim().orEmpty()
-                        if (text.isBlank()) continue
-
-                        responseCount += 1
-                        texts.add(RecentTextResponse(text = text, submittedAt = dto.submittedAt))
-
-                        for (word in TextProcessor.extractWords(text)) {
-                            val stem = TextProcessor.stemNorwegian(word)
-                            keywordCounts[stem] = (keywordCounts[stem] ?: 0) + 1
-                        }
-                    }
-
-                    val responseRate = if (totalFeedbackCount > 0) {
-                        responseCount.toDouble() / totalFeedbackCount
-                    } else {
-                        0.0
-                    }
-
-                    val topKeywords = keywordCounts.entries
-                        .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
-                        .take(10)
-                        .map { (word, count) -> KeywordCount(word = word, count = count) }
-
-                    val recentResponses = texts
-                        .sortedByDescending { parseSubmittedAt(it.submittedAt) }
-                        .take(5)
-
-                    result.add(
-                        FieldStat(
-                            fieldId = fieldId,
-                            fieldType = fieldType,
-                            label = label,
-                            stats = FieldStats.Text(
-                                responseCount = responseCount,
-                                responseRate = responseRate,
-                                topKeywords = topKeywords,
-                                recentResponses = recentResponses
-                            )
-                        )
-                    )
-                }
-
-                FieldType.SINGLE_CHOICE, FieldType.MULTI_CHOICE -> {
-                    val optionLabels = first.question.options.orEmpty().associate { it.id to it.label }
-                    val counts = mutableMapOf<String, Int>()
-
-                    for ((_, answer) in entries) {
-                        when (val value = answer.value) {
-                            is AnswerValue.SingleChoice -> {
-                                counts[value.selectedOptionId] = (counts[value.selectedOptionId] ?: 0) + 1
-                            }
-
-                            is AnswerValue.MultiChoice -> {
-                                for (id in value.selectedOptionIds) {
-                                    counts[id] = (counts[id] ?: 0) + 1
-                                }
-                            }
-
-                            else -> Unit
-                        }
-                    }
-
-                    val totalSelections = counts.values.sum()
-                    if (totalSelections == 0) continue
-
-                    val distribution = counts
-                        .entries
-                        .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
-                        .associate { (optionId, count) ->
-                            val percentage = kotlin.math.round((count.toDouble() / totalSelections) * 100.0).toInt()
-                            optionId to ChoiceDistributionEntry(
-                                label = optionLabels[optionId] ?: optionId,
-                                count = count,
-                                percentage = percentage
-                            )
-                        }
-
-                    result.add(
-                        FieldStat(
-                            fieldId = fieldId,
-                            fieldType = fieldType,
-                            label = label,
-                            stats = FieldStats.Choice(distribution = distribution)
-                        )
-                    )
-                }
-
-                else -> Unit
-            }
-        }
-
-        return result.sortedWith(
-            compareBy<FieldStat> { fieldOrder[it.fieldId] ?: Int.MAX_VALUE }
-                .thenBy { it.fieldType.name }
-                .thenBy { it.fieldId }
+        return FeedbackAnalyticsStats(
+            ratingByDate = ratingByDate,
+            byDevice = byDevice,
+            byPathname = byPathname,
+            lowestRatingPaths = lowestRatingPaths,
+            fieldStats = fieldStats,
         )
     }
 
-    fun getTopTasksStats(query: StatsQuery): TopTasksResponse {
-        return transaction {
+    suspend fun getTopTasksStats(query: StatsQuery): TopTasksResponse {
+        val records = dbQuery {
             val dbQuery = FeedbackTable.selectAll()
             applyStatsFilters(dbQuery, query)
-            var records = dbQuery.map { it.toDto() }
-            
-            // Task filter: filter by specific task name if provided
-            query.task?.let { taskFilter ->
-                records = records.filter { feedback ->
-                    val taskAnswer = feedback.answers.find { a -> 
-                        a.fieldId in TopTasksFieldIds.task
-                    }
-                    if (taskAnswer != null && taskAnswer.fieldType == FieldType.SINGLE_CHOICE) {
-                        val selectedId = (taskAnswer.value as? AnswerValue.SingleChoice)?.selectedOptionId
-                        val option = taskAnswer.question.options?.find { it.id == selectedId }
-                        option?.label == taskFilter
-                    } else false
-                }
-            }
-            
-            processTopTasks(records)
+            dbQuery.andWhere { JsonExtract(FeedbackTable.feedbackJson, listOf("surveyType")) eq "topTasks" }
+            dbQuery.map { it.toDbRecord() }
         }
-    }
 
-    fun getSurveyTypeDistribution(query: StatsQuery): SurveyTypeDistribution {
-        return transaction {
-            val dbQuery = FeedbackTable.selectAll()
-            applyStatsFilters(dbQuery, query)
-            val records = dbQuery.map { it.toDto() }
-            
-            // Count unique surveys by type
-            val surveyTypeCounts = mutableMapOf<SurveyType, Int>()
-            val seenSurveys = mutableMapOf<String, SurveyType>()
-            
-            for (record in records) {
-                val surveyType = record.surveyType ?: SurveyType.CUSTOM
-                val surveyId = record.surveyId
-                
-                // Only count each survey once
-                if (!seenSurveys.containsKey(surveyId)) {
-                    seenSurveys[surveyId] = surveyType
-                    surveyTypeCounts[surveyType] = (surveyTypeCounts[surveyType] ?: 0) + 1
-                }
-            }
-            
-            val totalSurveys = seenSurveys.size
-            val distribution = surveyTypeCounts.map { (type, count) ->
-                val percentage = if (totalSurveys > 0) (count * 100 / totalSurveys) else 0
-                SurveyTypeCount(type, count, percentage)
-            }.sortedByDescending { it.count }
-            
-            SurveyTypeDistribution(totalSurveys, distribution)
-        }
-    }
-
-    fun getTaskPriorityStats(query: StatsQuery): TaskPriorityResponse {
-        return transaction {
-            val dbQuery = FeedbackTable.selectAll()
-            applyStatsFilters(dbQuery, query)
-            val records = dbQuery.map { it.toDto() }
-                .filter { it.surveyType == SurveyType.TASK_PRIORITY }
-
-            val voteCounts = mutableMapOf<String, Int>()
-            val taskLabels = mutableMapOf<String, String>()
-
-            for (feedback in records) {
-                val priorityAnswer = feedback.answers.find { a ->
-                    a.fieldId == "priority" && a.fieldType == FieldType.MULTI_CHOICE
-                } ?: continue
-
-                val selectedIds = (priorityAnswer.value as? AnswerValue.MultiChoice)?.selectedOptionIds.orEmpty()
-                if (selectedIds.isEmpty()) continue
-
-                // Cache labels
-                priorityAnswer.question.options?.forEach { opt ->
-                    taskLabels.putIfAbsent(opt.id, opt.label)
-                }
-
-                for (taskId in selectedIds) {
-                    voteCounts[taskId] = (voteCounts[taskId] ?: 0) + 1
-                }
-            }
-
-            val tasks = voteCounts.entries
-                .sortedByDescending { it.value }
-                .map { (taskId, votes) ->
-                    TaskVote(
-                        task = taskLabels[taskId] ?: taskId,
-                        votes = votes,
-                        percentage = 0
-                    )
-                }
-
-            val totalVotes = tasks.sumOf { it.votes }
-            val tasksWithPercentages = if (totalVotes > 0) {
-                tasks.map { it.copy(percentage = kotlin.math.round((it.votes.toDouble() / totalVotes) * 100.0).toInt()) }
-            } else tasks
-
-            // Find long neck cutoff (where cumulative percentage hits 80%)
-            var cumulative = 0
-            var longNeckCutoff = 0
-            for (i in tasksWithPercentages.indices) {
-                cumulative += tasksWithPercentages[i].percentage
-                if (cumulative >= 80) {
-                    longNeckCutoff = i + 1
-                    break
-                }
-            }
-            if (longNeckCutoff == 0) {
-                longNeckCutoff = tasksWithPercentages.size
-            }
-
-            val cumulativePercentageAt5 = tasksWithPercentages
-                .take(5)
-                .sumOf { it.percentage }
-
-            TaskPriorityResponse(
-                totalSubmissions = records.size,
-                tasks = tasksWithPercentages,
-                longNeckCutoff = longNeckCutoff,
-                cumulativePercentageAt5 = cumulativePercentageAt5,
-            )
-        }
-    }
-
-    fun getBlockerStats(query: StatsQuery, themes: List<TextThemeDto>): BlockerStatsResponse {
-        return transaction {
-            val dbQuery = FeedbackTable.selectAll()
-            applyStatsFilters(dbQuery, query)
-            var records = dbQuery.map { it.toDto() }
-
-            records = records.filter { it.surveyType == SurveyType.TOP_TASKS }
-
-            // Extract blocker responses with optional task filter (matches option label)
-            val blockerResponses = mutableListOf<RecentBlockerResponse>()
-
-            for (feedback in records) {
-                val blockerAnswer = feedback.answers.find { a ->
-                    a.fieldId in TopTasksFieldIds.blocker
-                }
-                val blockerText = (blockerAnswer?.value as? AnswerValue.Text)?.text?.trim().orEmpty()
-                if (blockerText.isBlank()) continue
-
+        val dtos = records.map { it.toDto() }
+        val filteredRecords = query.task?.let { taskFilter ->
+            dtos.filter { feedback ->
                 val taskAnswer = feedback.answers.find { a ->
                     a.fieldId in TopTasksFieldIds.task
                 }
-
-                val taskLabel = when {
-                    taskAnswer != null && taskAnswer.fieldType == FieldType.SINGLE_CHOICE -> {
-                        val selectedId = (taskAnswer.value as? AnswerValue.SingleChoice)?.selectedOptionId
-                        val option = taskAnswer.question.options?.find { it.id == selectedId }
-                        option?.label ?: "Ukjent oppgave"
-                    }
-                    else -> "Ukjent oppgave"
+                if (taskAnswer != null && taskAnswer.fieldType == FieldType.SINGLE_CHOICE) {
+                    val selectedId = (taskAnswer.value as? AnswerValue.SingleChoice)?.selectedOptionId
+                    val option = taskAnswer.question.options?.find { it.id == selectedId }
+                    option?.label == taskFilter
+                } else {
+                    false
                 }
+            }
+        } ?: dtos
 
-                if (query.task != null && taskLabel != query.task) continue
+        return processTopTasks(filteredRecords)
+    }
 
-                blockerResponses.add(
-                    RecentBlockerResponse(
-                        blocker = blockerText,
-                        task = taskLabel,
-                        submittedAt = feedback.submittedAt
-                    )
+    suspend fun getSurveyTypeDistribution(query: StatsQuery): SurveyTypeDistribution {
+        val distinctRows = dbQuery {
+            val surveyIdExpr = JsonExtract(FeedbackTable.feedbackJson, listOf("surveyId"))
+            val surveyTypeExpr = JsonExtract(FeedbackTable.feedbackJson, listOf("surveyType"))
+            val dbQuery = FeedbackTable.select(surveyIdExpr, surveyTypeExpr)
+            applyStatsFilters(dbQuery, query)
+            dbQuery.andWhere { surveyIdExpr.isNotNull() }
+            dbQuery.withDistinct()
+            dbQuery.map { row ->
+                SurveyTypeRow(
+                    surveyId = row[surveyIdExpr],
+                    surveyType = row[surveyTypeExpr]
+                )
+            }
+        }
+
+        val surveyTypeCounts = mutableMapOf<SurveyType, Int>()
+        val seenSurveys = mutableMapOf<String, SurveyType>()
+
+        for (row in distinctRows) {
+            if (row.surveyId.isBlank()) continue
+            if (seenSurveys.containsKey(row.surveyId)) continue
+            val parsedType = row.surveyType?.let {
+                try { SurveyType.valueOf(it.uppercase()) } catch (_: Exception) { SurveyType.CUSTOM }
+            } ?: SurveyType.CUSTOM
+            seenSurveys[row.surveyId] = parsedType
+            surveyTypeCounts[parsedType] = (surveyTypeCounts[parsedType] ?: 0) + 1
+        }
+
+        val totalSurveys = seenSurveys.size
+        val distribution = surveyTypeCounts.map { (type, count) ->
+            val percentage = if (totalSurveys > 0) (count * 100 / totalSurveys) else 0
+            SurveyTypeCount(type, count, percentage)
+        }.sortedByDescending { it.count }
+
+        return SurveyTypeDistribution(totalSurveys, distribution)
+    }
+
+    suspend fun getTaskPriorityStats(query: StatsQuery): TaskPriorityResponse {
+        val records = dbQuery {
+            val dbQuery = FeedbackTable.selectAll()
+            applyStatsFilters(dbQuery, query)
+            dbQuery.andWhere { JsonExtract(FeedbackTable.feedbackJson, listOf("surveyType")) eq "taskPriority" }
+            dbQuery.map { it.toDbRecord() }
+        }
+
+        val dtos = records.map { it.toDto() }
+            .filter { it.surveyType == SurveyType.TASK_PRIORITY }
+
+        val voteCounts = mutableMapOf<String, Int>()
+        val taskLabels = mutableMapOf<String, String>()
+
+        for (feedback in dtos) {
+            val priorityAnswer = feedback.answers.find { a ->
+                a.fieldId == "priority" && a.fieldType == FieldType.MULTI_CHOICE
+            } ?: continue
+
+            val selectedIds = (priorityAnswer.value as? AnswerValue.MultiChoice)?.selectedOptionIds.orEmpty()
+            if (selectedIds.isEmpty()) continue
+
+            priorityAnswer.question.options?.forEach { opt ->
+                taskLabels.putIfAbsent(opt.id, opt.label)
+            }
+
+            for (taskId in selectedIds) {
+                voteCounts[taskId] = (voteCounts[taskId] ?: 0) + 1
+            }
+        }
+
+        val tasks = voteCounts.entries
+            .sortedByDescending { it.value }
+            .map { (taskId, votes) ->
+                TaskVote(
+                    task = taskLabels[taskId] ?: taskId,
+                    votes = votes,
+                    percentage = 0
                 )
             }
 
-            // Stem-based word frequency with grouping
-            val wordAccumulators = mutableMapOf<String, BlockerStemWordAccumulator>()
-            for (response in blockerResponses) {
-                val seenStemsInResponse = mutableSetOf<String>()
-                TextProcessor.extractStemmedWords(response.blocker).forEach { (surface, stem) ->
-                    val acc = wordAccumulators.getOrPut(stem) { BlockerStemWordAccumulator(stem) }
-                    acc.addOccurrence(surface)
-                    
-                    // Add source response (max 5 per stem, deduped by text)
-                    if (!seenStemsInResponse.contains(stem) && acc.sourceResponses.size < MAX_SOURCE_RESPONSES_BLOCKER) {
-                        if (!acc.usedTexts.contains(response.blocker)) {
-                            acc.sourceResponses.add(SourceResponse(text = response.blocker, submittedAt = response.submittedAt))
-                            acc.usedTexts.add(response.blocker)
-                        }
-                        seenStemsInResponse.add(stem)
-                    }
-                }
+        val totalVotes = tasks.sumOf { it.votes }
+        val tasksWithPercentages = if (totalVotes > 0) {
+            tasks.map { it.copy(percentage = kotlin.math.round((it.votes.toDouble() / totalVotes) * 100.0).toInt()) }
+        } else tasks
+
+        var cumulative = 0
+        var longNeckCutoff = 0
+        for (i in tasksWithPercentages.indices) {
+            cumulative += tasksWithPercentages[i].percentage
+            if (cumulative >= 80) {
+                longNeckCutoff = i + 1
+                break
+            }
+        }
+        if (longNeckCutoff == 0) {
+            longNeckCutoff = tasksWithPercentages.size
+        }
+
+        val cumulativePercentageAt5 = tasksWithPercentages
+            .take(5)
+            .sumOf { it.percentage }
+
+        return TaskPriorityResponse(
+            totalSubmissions = dtos.size,
+            tasks = tasksWithPercentages,
+            longNeckCutoff = longNeckCutoff,
+            cumulativePercentageAt5 = cumulativePercentageAt5,
+        )
+    }
+
+    suspend fun getBlockerStats(query: StatsQuery, themes: List<TextThemeDto>): BlockerStatsResponse {
+        val records = dbQuery {
+            val dbQuery = FeedbackTable.selectAll()
+            applyStatsFilters(dbQuery, query)
+            dbQuery.andWhere { JsonExtract(FeedbackTable.feedbackJson, listOf("surveyType")) eq "topTasks" }
+            dbQuery.map { it.toDbRecord() }
+        }
+
+        val dtos = records.map { it.toDto() }
+
+        val blockerResponses = mutableListOf<RecentBlockerResponse>()
+
+        for (feedback in dtos) {
+            val blockerAnswer = feedback.answers.find { a ->
+                a.fieldId in TopTasksFieldIds.blocker
+            }
+            val blockerText = (blockerAnswer?.value as? AnswerValue.Text)?.text?.trim().orEmpty()
+            if (blockerText.isBlank()) continue
+
+            val taskAnswer = feedback.answers.find { a ->
+                a.fieldId in TopTasksFieldIds.task
             }
 
-            val wordFrequency = wordAccumulators.values
-                .sortedByDescending { it.totalCount }
-                .take(30)
-                .map { it.toWordFrequencyEntry() }
-
-            val themeAccumulators = themes.map { theme ->
-                ThemeAccumulator(
-                    theme = theme.name,
-                    themeId = theme.id,
-                    color = theme.color,
-                )
-            }.toMutableList()
-
-            val annetThemeId = "blocker-annet"
-            themeAccumulators.add(
-                ThemeAccumulator(
-                    theme = "Annet",
-                    themeId = annetThemeId,
-                    color = "var(--ax-text-neutral-subtle)",
-                )
-            )
-
-            for (response in blockerResponses) {
-                val blockerWordStems = TextProcessor.extractWords(response.blocker).map { TextProcessor.stemNorwegian(it) }
-                var matchedAny = false
-
-                for (acc in themeAccumulators) {
-                    if (acc.themeId == annetThemeId) continue
-
-                    val theme = themes.find { it.id == acc.themeId } ?: continue
-                    val keywordStems = theme.keywords.map { TextProcessor.stemNorwegian(it.lowercase()) }
-                    if (keywordStems.any { it in blockerWordStems }) {
-                        acc.count++
-                        if (acc.examples.size < 3 && acc.usedExamples.add(response.blocker)) {
-                            acc.examples.add(response.blocker)
-                        }
-                        matchedAny = true
-                    }
+            val taskLabel = when {
+                taskAnswer != null && taskAnswer.fieldType == FieldType.SINGLE_CHOICE -> {
+                    val selectedId = (taskAnswer.value as? AnswerValue.SingleChoice)?.selectedOptionId
+                    val option = taskAnswer.question.options?.find { it.id == selectedId }
+                    option?.label ?: "Ukjent oppgave"
                 }
-
-                if (!matchedAny) {
-                    val annet = themeAccumulators.find { it.themeId == annetThemeId }
-                    if (annet != null) {
-                        annet.count++
-                        if (annet.examples.size < 3 && annet.usedExamples.add(response.blocker)) {
-                            annet.examples.add(response.blocker)
-                        }
-                    }
-                }
+                else -> "Ukjent oppgave"
             }
 
-            val themeResults = themeAccumulators
-                .filter { it.count > 0 }
-                .sortedByDescending { it.count }
-                .map { it.toResult() }
+            if (query.task != null && taskLabel != query.task) continue
 
-            val recentBlockers = blockerResponses
-                .sortedByDescending { parseSubmittedAt(it.submittedAt) }
-                .take(10)
-
-            BlockerStatsResponse(
-                totalBlockers = blockerResponses.size,
-                wordFrequency = wordFrequency,
-                themes = themeResults,
-                recentBlockers = recentBlockers
+            blockerResponses.add(
+                RecentBlockerResponse(
+                    blocker = blockerText,
+                    task = taskLabel,
+                    submittedAt = feedback.submittedAt
+                )
             )
         }
+
+        val wordAccumulators = mutableMapOf<String, BlockerStemWordAccumulator>()
+        for (response in blockerResponses) {
+            val seenStemsInResponse = mutableSetOf<String>()
+            TextProcessor.extractStemmedWords(response.blocker).forEach { (surface, stem) ->
+                val acc = wordAccumulators.getOrPut(stem) { BlockerStemWordAccumulator(stem) }
+                acc.addOccurrence(surface)
+
+                if (!seenStemsInResponse.contains(stem) && acc.sourceResponses.size < MAX_SOURCE_RESPONSES_BLOCKER) {
+                    if (!acc.usedTexts.contains(response.blocker)) {
+                        acc.sourceResponses.add(SourceResponse(text = response.blocker, submittedAt = response.submittedAt))
+                        acc.usedTexts.add(response.blocker)
+                    }
+                    seenStemsInResponse.add(stem)
+                }
+            }
+        }
+
+        val wordFrequency = wordAccumulators.values
+            .sortedByDescending { it.totalCount }
+            .take(30)
+            .map { it.toWordFrequencyEntry() }
+
+        val themeAccumulators = themes.map { theme ->
+            ThemeAccumulator(
+                theme = theme.name,
+                themeId = theme.id,
+                color = theme.color,
+            )
+        }.toMutableList()
+
+        val annetThemeId = "blocker-annet"
+        themeAccumulators.add(
+            ThemeAccumulator(
+                theme = "Annet",
+                themeId = annetThemeId,
+                color = "var(--ax-text-neutral-subtle)",
+            )
+        )
+
+        for (response in blockerResponses) {
+            val blockerWordStems = TextProcessor.extractWords(response.blocker).map { TextProcessor.stemNorwegian(it) }
+            var matchedAny = false
+
+            for (acc in themeAccumulators) {
+                if (acc.themeId == annetThemeId) continue
+
+                val theme = themes.find { it.id == acc.themeId } ?: continue
+                val keywordStems = theme.keywords.map { TextProcessor.stemNorwegian(it.lowercase()) }
+                if (keywordStems.any { it in blockerWordStems }) {
+                    acc.count++
+                    if (acc.examples.size < 3 && acc.usedExamples.add(response.blocker)) {
+                        acc.examples.add(response.blocker)
+                    }
+                    matchedAny = true
+                }
+            }
+
+            if (!matchedAny) {
+                val annet = themeAccumulators.find { it.themeId == annetThemeId }
+                if (annet != null) {
+                    annet.count++
+                    if (annet.examples.size < 3 && annet.usedExamples.add(response.blocker)) {
+                        annet.examples.add(response.blocker)
+                    }
+                }
+            }
+        }
+
+        val themeResults = themeAccumulators
+            .filter { it.count > 0 }
+            .sortedByDescending { it.count }
+            .map { it.toResult() }
+
+        val recentBlockers = blockerResponses
+            .sortedByDescending { parseSubmittedAt(it.submittedAt) }
+            .take(10)
+
+        return BlockerStatsResponse(
+            totalBlockers = blockerResponses.size,
+            wordFrequency = wordFrequency,
+            themes = themeResults,
+            recentBlockers = recentBlockers
+        )
     }
 
     
@@ -692,162 +566,4 @@ class FeedbackStatsRepository {
     }
 
 
-    private fun parseSubmittedAt(value: String): Instant {
-        return try {
-            Instant.parse(value)
-        } catch (_: Exception) {
-            try {
-                OffsetDateTime.parse(value).toInstant()
-            } catch (_: Exception) {
-                Instant.EPOCH
-            }
-        }
-    }
-    
-
-/**
- * Helper class to accumulate word frequency statistics grouped by stem.
- * Tracks surface form counts to determine canonical (most common) form.
- */
-private class BlockerStemWordAccumulator(val stem: String) {
-    private val surfaceCounts = mutableMapOf<String, Int>()
-    val sourceResponses = mutableListOf<SourceResponse>()
-    val usedTexts = mutableSetOf<String>()  // Dedup sourceResponses by text
-    
-    /** Total occurrences across all surface forms */
-    val totalCount: Int get() = surfaceCounts.values.sum()
-    
-    /** Add an occurrence of a surface form */
-    fun addOccurrence(surface: String) {
-        surfaceCounts[surface] = (surfaceCounts[surface] ?: 0) + 1
-    }
-    
-    /** Get canonical form (most common surface form) */
-    fun getCanonicalForm(): String {
-        return surfaceCounts.entries
-            .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
-            .firstOrNull()?.key ?: stem
-    }
-    
-    /** Get top variants sorted by count desc */
-    fun getVariants(): List<WordVariant> {
-        return surfaceCounts.entries
-            .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
-            .take(FeedbackStatsRepository.MAX_VARIANTS)
-            .map { WordVariant(word = it.key, count = it.value) }
-    }
-    
-    /** Convert to WordFrequencyEntry */
-    fun toWordFrequencyEntry(): WordFrequencyEntry {
-        return WordFrequencyEntry(
-            word = getCanonicalForm(),
-            stem = stem,
-            count = totalCount,
-            variants = getVariants(),
-            sourceResponses = sourceResponses.toList()
-        )
-    }
-}
-
-private class ThemeAccumulator(
-    val theme: String,
-    val themeId: String,
-    val color: String?,
-    val examples: MutableList<String> = mutableListOf(),
-    val usedExamples: MutableSet<String> = mutableSetOf(),
-    var count: Int = 0,
-) {
-    fun toResult(): BlockerThemeResult {
-        return BlockerThemeResult(
-            theme = theme,
-            themeId = themeId,
-            count = count,
-            examples = examples.toList(),
-            color = color,
-        )
-    }
-}
-    // DTO methods removed - using Extensions.kt
-
-    private fun processTopTasks(feedbacks: List<FeedbackDto>): TopTasksResponse {
-        val taskStatsMap = mutableMapOf<String, MutableMap<String, Int>>()
-        var totalSubmissions = 0
-        val dailyStats = mutableMapOf<String, MutableMap<String, Int>>()
-        var questionText: String? = null
-
-        feedbacks.forEach { dto ->
-             val taskAnswer = dto.answers.find { it.fieldId == "task" }
-             if (taskAnswer == null) return@forEach
-             
-             totalSubmissions++
-             
-             val taskLabel = when (val v = taskAnswer.value) {
-                 is AnswerValue.SingleChoice -> {
-                     val optId = v.selectedOptionId
-                     taskAnswer.question.options?.find { it.id == optId }?.label ?: optId
-                 }
-                 is AnswerValue.Text -> v.text
-                 else -> "Ukjent oppgave"
-             }
-             
-             if (questionText == null) {
-                 questionText = taskAnswer.question.label
-             }
-             
-             val successAnswer = dto.answers.find { it.fieldId == "taskSuccess" }
-             val successValue = when (val v = successAnswer?.value) {
-                 is AnswerValue.SingleChoice -> v.selectedOptionId // "yes", "partial", "no"
-                 else -> null
-             }
-             
-             val blockerAnswer = dto.answers.find { it.fieldId == "blocker" }
-             val blockerValue = when (val v = blockerAnswer?.value) {
-                 is AnswerValue.SingleChoice -> v.selectedOptionId
-                 is AnswerValue.Text -> v.text
-                 else -> null
-             }
-             
-             // Daily stats
-             val dateStr = LocalDate.parse(dto.submittedAt.substring(0, 10)).toString()
-             val dayStat = dailyStats.getOrPut(dateStr) { mutableMapOf("total" to 0, "success" to 0) }
-             dayStat["total"] = (dayStat["total"] ?: 0) + 1
-             if (successValue == "yes") {
-                 dayStat["success"] = (dayStat["success"] ?: 0) + 1
-             }
-             
-             // Task stats
-             val stats = taskStatsMap.getOrPut(taskLabel) { 
-                mutableMapOf("total" to 0, "success" to 0, "partial" to 0, "failure" to 0) 
-             }
-             stats["total"] = (stats["total"] ?: 0) + 1
-             when (successValue) {
-                "yes" -> stats["success"] = (stats["success"] ?: 0) + 1
-                "partial" -> stats["partial"] = (stats["partial"] ?: 0) + 1
-                "no" -> stats["failure"] = (stats["failure"] ?: 0) + 1
-             }
-             
-             if ((successValue == "no" || successValue == "partial") && !blockerValue.isNullOrBlank()) {
-                val blockerKey = "blocker_$blockerValue"
-                stats[blockerKey] = (stats[blockerKey] ?: 0) + 1
-             }
-        }
-        
-        val taskStatsList = taskStatsMap.map { (task, stats) ->
-            val total = stats["total"] ?: 0
-            val success = stats["success"] ?: 0
-            val partial = stats["partial"] ?: 0
-            val failure = stats["failure"] ?: 0
-            val successRate = if (total > 0) (success.toDouble() / total.toDouble()) else 0.0
-            val formattedRate = "${(successRate * 100).toInt()}%"
-            val blockers = stats.filterKeys { it.startsWith("blocker_") }.mapKeys { it.key.removePrefix("blocker_") }
-            
-            TopTaskStats(task, total, success, partial, failure, successRate, formattedRate, blockers)
-        }.sortedByDescending { it.totalCount }
-        
-        val dailyStatsResult = dailyStats.mapValues { (_, v) -> 
-            no.nav.lumi.domain.DailyStat(v["total"] ?: 0, v["success"] ?: 0)
-        }
-        
-        return TopTasksResponse(totalSubmissions, taskStatsList, dailyStatsResult, questionText)
-    }
 }

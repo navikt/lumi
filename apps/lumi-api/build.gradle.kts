@@ -34,7 +34,7 @@ val kotestVersion = "6.0.7"
 val mockkVersion = "1.14.7"
 val testcontainersVersion = "1.21.4"
 val tokenSupportVersion = "5.0.13"
-val exposedVersion = "0.56.0"
+val exposedVersion = "1.0.0"
 val micrometerVersion = "1.16.1"
 
 dependencies {

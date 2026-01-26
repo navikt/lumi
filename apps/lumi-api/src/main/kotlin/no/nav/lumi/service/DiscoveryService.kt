@@ -33,7 +33,7 @@ class DiscoveryService(
     /**
      * Get discovery statistics with theme-based grouping.
      */
-    fun getStats(query: StatsQuery): DiscoveryStatsResponse {
+    suspend fun getStats(query: StatsQuery): DiscoveryStatsResponse {
         val feedbacks = discoveryRepository.getDiscoveryFeedback(query)
         val themes = themeRepository.findByTeam(query.team, AnalysisContext.GENERAL_FEEDBACK)
         return processStats(feedbacks, themes)

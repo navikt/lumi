@@ -2,8 +2,9 @@ package no.nav.lumi.repository
 
 import no.nav.lumi.domain.*
 import no.nav.lumi.service.TextProcessor
-import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.*
+import org.jetbrains.exposed.v1.jdbc.*
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.util.*
@@ -24,8 +25,8 @@ class FeedbackRepository {
     private val log = LoggerFactory.getLogger(FeedbackRepository::class.java)
     private val themeRepository = TextThemeRepository()
 
-    internal fun findById(id: String): FeedbackDto? {
-        return transaction {
+    internal suspend fun findById(id: String): FeedbackDto? {
+        return dbQuery {
             FeedbackTable.selectAll().where { FeedbackTable.id eq id }
                 .singleOrNull()
                 ?.toDbRecord()
@@ -36,8 +37,8 @@ class FeedbackRepository {
         }
     }
 
-    fun findById(id: String, team: String): FeedbackDto? {
-        return transaction {
+    suspend fun findById(id: String, team: String): FeedbackDto? {
+        return dbQuery {
             FeedbackTable.selectAll().where { (FeedbackTable.id eq id) and (FeedbackTable.team eq team) }
                 .singleOrNull()
                 ?.toDbRecord()
@@ -52,26 +53,26 @@ class FeedbackRepository {
      * Get raw database record for ownership verification.
      * Returns team and app for the given feedback ID.
      */
-    internal fun findRawById(id: String): FeedbackDbRecord? {
-        return transaction {
+    internal suspend fun findRawById(id: String): FeedbackDbRecord? {
+        return dbQuery {
             FeedbackTable.selectAll().where { FeedbackTable.id eq id }
                 .singleOrNull()
                 ?.toDbRecord()
         }
     }
 
-    fun findRawById(id: String, team: String): FeedbackDbRecord? {
-        return transaction {
+    suspend fun findRawById(id: String, team: String): FeedbackDbRecord? {
+        return dbQuery {
             FeedbackTable.selectAll().where { (FeedbackTable.id eq id) and (FeedbackTable.team eq team) }
                 .singleOrNull()
                 ?.toDbRecord()
         }
     }
 
-    fun save(feedbackJson: String, team: String, app: String): String {
+    suspend fun save(feedbackJson: String, team: String, app: String): String {
         val id = UUID.randomUUID().toString()
         
-        transaction {
+        dbQuery {
             FeedbackTable.insert {
                 it[FeedbackTable.id] = id
                 it[FeedbackTable.opprettet] = Instant.now()
@@ -83,24 +84,24 @@ class FeedbackRepository {
         return id
     }
 
-    internal fun update(id: String, feedbackJson: String): Boolean {
-        return transaction {
+    internal suspend fun update(id: String, feedbackJson: String): Boolean {
+        return dbQuery {
             FeedbackTable.update({ FeedbackTable.id eq id }) {
                 it[FeedbackTable.feedbackJson] = feedbackJson
             } > 0
         }
     }
 
-    internal fun updateJson(id: String, feedbackJson: String): Boolean {
-        return transaction {
+    internal suspend fun updateJson(id: String, feedbackJson: String): Boolean {
+        return dbQuery {
             FeedbackTable.update({ FeedbackTable.id eq id }) {
                 it[FeedbackTable.feedbackJson] = feedbackJson
             } > 0
         }
     }
 
-    fun updateJson(id: String, team: String, feedbackJson: String): Boolean {
-        return transaction {
+    suspend fun updateJson(id: String, team: String, feedbackJson: String): Boolean {
+        return dbQuery {
             FeedbackTable.update({ (FeedbackTable.id eq id) and (FeedbackTable.team eq team) }) {
                 it[FeedbackTable.feedbackJson] = feedbackJson
             } > 0
@@ -111,13 +112,9 @@ class FeedbackRepository {
      * Permanently delete a feedback item from the database.
      * Returns true if the item was deleted, false if not found.
      */
-    fun delete(id: String, team: String): Boolean {
-        return transaction {
-            FeedbackTable.deleteWhere(op = {
-                SqlExpressionBuilder.run {
-                    (FeedbackTable.id eq id) and (FeedbackTable.team eq team)
-                }
-            }) > 0
+    suspend fun delete(id: String, team: String): Boolean {
+        return dbQuery {
+            FeedbackTable.deleteWhere { (FeedbackTable.id eq id) and (FeedbackTable.team eq team) } > 0
         }
     }
 
@@ -127,24 +124,22 @@ class FeedbackRepository {
      * Note: surveyId is stored inside feedback_json, so we filter using JSON extraction.
      * Returns number of deleted rows.
      */
-    fun deleteSurvey(surveyId: String, team: String): Int {
-        return transaction {
-            FeedbackTable.deleteWhere(op = {
-                SqlExpressionBuilder.run {
-                    (JsonExtract(FeedbackTable.feedbackJson, listOf("surveyId")) eq surveyId) and
-                        (FeedbackTable.team eq team)
-                }
-            })
+    suspend fun deleteSurvey(surveyId: String, team: String): Int {
+        return dbQuery {
+            FeedbackTable.deleteWhere {
+                (JsonExtract(FeedbackTable.feedbackJson, listOf("surveyId")) eq surveyId) and
+                    (FeedbackTable.team eq team)
+            }
         }
     }
 
-    internal fun addTag(id: String, tag: String): Boolean {
-        return transaction {
-            val normalized = normalizeTag(tag) ?: return@transaction false
+    internal suspend fun addTag(id: String, tag: String): Boolean {
+        return dbQuery {
+            val normalized = normalizeTag(tag) ?: return@dbQuery false
             val exists = FeedbackTable.select(FeedbackTable.id)
                 .where { FeedbackTable.id eq id }
                 .any()
-            if (!exists) return@transaction false
+            if (!exists) return@dbQuery false
 
             val alreadyTagged = FeedbackTagTable.select(FeedbackTagTable.tag)
                 .where { (FeedbackTagTable.feedbackId eq id) and (FeedbackTagTable.tag eq normalized) }
@@ -161,13 +156,13 @@ class FeedbackRepository {
         }
     }
 
-    fun addTag(id: String, team: String, tag: String): Boolean {
-        return transaction {
-            val normalized = normalizeTag(tag) ?: return@transaction false
+    suspend fun addTag(id: String, team: String, tag: String): Boolean {
+        return dbQuery {
+            val normalized = normalizeTag(tag) ?: return@dbQuery false
             val exists = FeedbackTable.select(FeedbackTable.id)
                 .where { (FeedbackTable.id eq id) and (FeedbackTable.team eq team) }
                 .any()
-            if (!exists) return@transaction false
+            if (!exists) return@dbQuery false
 
             val alreadyTagged = FeedbackTagTable.select(FeedbackTagTable.tag)
                 .where { (FeedbackTagTable.feedbackId eq id) and (FeedbackTagTable.tag eq normalized) }
@@ -184,56 +179,56 @@ class FeedbackRepository {
         }
     }
     
-    internal fun removeTag(id: String, tag: String): Boolean {
-        return transaction {
-            val normalized = normalizeTag(tag) ?: return@transaction false
+    internal suspend fun removeTag(id: String, tag: String): Boolean {
+        return dbQuery {
+            val normalized = normalizeTag(tag) ?: return@dbQuery false
             val exists = FeedbackTable.select(FeedbackTable.id)
                 .where { FeedbackTable.id eq id }
                 .any()
-            if (!exists) return@transaction false
+            if (!exists) return@dbQuery false
 
-            FeedbackTagTable.deleteWhere(op = {
-                SqlExpressionBuilder.run {
-                    (FeedbackTagTable.feedbackId eq id) and (FeedbackTagTable.tag eq normalized)
-                }
-            })
+            FeedbackTagTable.deleteWhere {
+                (FeedbackTagTable.feedbackId eq id) and (FeedbackTagTable.tag eq normalized)
+            }
             true
         }
     }
 
-    fun removeTag(id: String, team: String, tag: String): Boolean {
-        return transaction {
-            val normalized = normalizeTag(tag) ?: return@transaction false
+    suspend fun removeTag(id: String, team: String, tag: String): Boolean {
+        return dbQuery {
+            val normalized = normalizeTag(tag) ?: return@dbQuery false
             val exists = FeedbackTable.select(FeedbackTable.id)
                 .where { (FeedbackTable.id eq id) and (FeedbackTable.team eq team) }
                 .any()
-            if (!exists) return@transaction false
+            if (!exists) return@dbQuery false
 
-            FeedbackTagTable.deleteWhere(op = {
-                SqlExpressionBuilder.run {
-                    (FeedbackTagTable.feedbackId eq id) and (FeedbackTagTable.tag eq normalized)
-                }
-            })
+            FeedbackTagTable.deleteWhere {
+                (FeedbackTagTable.feedbackId eq id) and (FeedbackTagTable.tag eq normalized)
+            }
             true
         }
     }
 
-    fun findPaginated(query: FeedbackQuery): Triple<List<FeedbackDto>, Long, Int> {
-        return transaction {
-            val dbQuery = FeedbackTable.selectAll()
-            
-            dbQuery.andWhere { FeedbackTable.team eq query.team }
-            
-            query.app?.let { app ->
-                if (app != FILTER_ALL) {
-                    dbQuery.andWhere { FeedbackTable.app eq app } 
-                }
-            }
-            
-            applyCommonFilters(dbQuery, query)
+    suspend fun findPaginated(query: FeedbackQuery): Triple<List<FeedbackDto>, Long, Int> {
+        val themeFilter = query.theme?.trim()?.takeIf { it.isNotBlank() }
+        val themes = if (themeFilter != null) {
+            themeRepository.findByTeam(query.team, AnalysisContext.GENERAL_FEEDBACK)
+        } else {
+            emptyList()
+        }
+        val needsInMemoryFiltering = !query.task.isNullOrBlank() || !query.theme.isNullOrBlank()
 
-            val needsInMemoryFiltering = !query.task.isNullOrBlank() || !query.theme.isNullOrBlank()
-            if (!needsInMemoryFiltering) {
+        if (!needsInMemoryFiltering) {
+            val snapshot = dbQuery {
+                val dbQuery = FeedbackTable.selectAll()
+                dbQuery.andWhere { FeedbackTable.team eq query.team }
+                query.app?.let { app ->
+                    if (app != FILTER_ALL) {
+                        dbQuery.andWhere { FeedbackTable.app eq app }
+                    }
+                }
+                applyCommonFilters(dbQuery, query)
+
                 val total = dbQuery.count()
                 val totalPages = if (query.size > 0) ceil(total.toDouble() / query.size).toInt() else 0
                 val page = query.page ?: (totalPages - 1).coerceAtLeast(0)
@@ -245,48 +240,56 @@ class FeedbackRepository {
                     .map { it.toDbRecord() }
 
                 val tagsById = findTagsByFeedbackIds(records.map { it.id })
-                val dtos = records.map { record ->
-                    record.toDto(tagsById[record.id].orEmpty())
-                }
-
-                return@transaction Triple(dtos, total, page)
+                PaginatedSnapshot(records, tagsById, total, page)
             }
+
+            val dtos = snapshot.records.map { record ->
+                record.toDto(snapshot.tagsById[record.id].orEmpty())
+            }
+            return Triple(dtos, snapshot.total, snapshot.page)
+        }
+
+        val snapshot = dbQuery {
+            val dbQuery = FeedbackTable.selectAll()
+            dbQuery.andWhere { FeedbackTable.team eq query.team }
+            query.app?.let { app ->
+                if (app != FILTER_ALL) {
+                    dbQuery.andWhere { FeedbackTable.app eq app }
+                }
+            }
+            applyCommonFilters(dbQuery, query)
 
             val records = dbQuery
                 .orderBy(FeedbackTable.opprettet to SortOrder.DESC)
                 .map { it.toDbRecord() }
 
             val tagsById = findTagsByFeedbackIds(records.map { it.id })
-            val dtos = records.map { record ->
-                record.toDto(tagsById[record.id].orEmpty())
-            }
-
-            val taskFilter = query.task?.trim()?.takeIf { it.isNotBlank() }
-            val themeFilter = query.theme?.trim()?.takeIf { it.isNotBlank() }
-            val themes = if (themeFilter != null) {
-                themeRepository.findByTeam(query.team, AnalysisContext.GENERAL_FEEDBACK)
-            } else {
-                emptyList()
-            }
-
-            val filtered = dtos.filter { feedback ->
-                matchesTaskFilter(feedback, taskFilter) &&
-                    matchesThemeFilter(feedback, themeFilter, themes)
-            }
-
-            val total = filtered.size.toLong()
-            val totalPages = if (query.size > 0) ceil(total.toDouble() / query.size).toInt() else 0
-            val page = query.page ?: (totalPages - 1).coerceAtLeast(0)
-            val offset = (page * query.size)
-
-            val pageContent = if (query.size > 0) {
-                filtered.drop(offset).take(query.size)
-            } else {
-                filtered
-            }
-
-            Triple(pageContent, total, page)
+            RecordsSnapshot(records, tagsById)
         }
+
+        val dtos = snapshot.records.map { record ->
+            record.toDto(snapshot.tagsById[record.id].orEmpty())
+        }
+
+        val taskFilter = query.task?.trim()?.takeIf { it.isNotBlank() }
+
+        val filtered = dtos.filter { feedback ->
+            matchesTaskFilter(feedback, taskFilter) &&
+                matchesThemeFilter(feedback, themeFilter, themes)
+        }
+
+        val total = filtered.size.toLong()
+        val totalPages = if (query.size > 0) ceil(total.toDouble() / query.size).toInt() else 0
+        val page = query.page ?: (totalPages - 1).coerceAtLeast(0)
+        val offset = (page * query.size)
+
+        val pageContent = if (query.size > 0) {
+            filtered.drop(offset).take(query.size)
+        } else {
+            filtered
+        }
+
+        return Triple(pageContent, total, page)
     }
 
 
@@ -294,8 +297,8 @@ class FeedbackRepository {
      * Find all tags for a specific team.
      * Used by filter bootstrap endpoint.
      */
-    fun findAllTags(team: String): Set<String> {
-        return transaction {
+    suspend fun findAllTags(team: String): Set<String> {
+        return dbQuery {
             FeedbackTagTable
                 .innerJoin(FeedbackTable)
                 .select(FeedbackTagTable.tag)
@@ -306,8 +309,8 @@ class FeedbackRepository {
         }
     }
 
-    fun findDistinctApps(team: String): List<String> {
-        return transaction {
+    suspend fun findDistinctApps(team: String): List<String> {
+        return dbQuery {
             FeedbackTable.select(FeedbackTable.app)
                 .where { (FeedbackTable.team eq team) and FeedbackTable.app.isNotNull() }
                 .withDistinct()
@@ -319,8 +322,8 @@ class FeedbackRepository {
      * Find all surveys (surveyIds) grouped by app for a specific team.
      * Used by filter bootstrap endpoint and survey list.
      */
-    fun findSurveysByApp(team: String): Map<String, List<String>> {
-        return transaction {
+    suspend fun findSurveysByApp(team: String): Map<String, List<String>> {
+        return dbQuery {
             val sql = """
                 SELECT DISTINCT 
                     app,
@@ -333,7 +336,8 @@ class FeedbackRepository {
             """.trimIndent()
             
             val result = mutableMapOf<String, MutableList<String>>()
-            exec(sql, listOf(org.jetbrains.exposed.sql.VarCharColumnType() to team)) { rs ->
+            val transaction = TransactionManager.current()
+            transaction.exec(sql, listOf(VarCharColumnType() to team)) { rs ->
                 while (rs.next()) {
                     val app = rs.getString("app") ?: continue
                     val surveyId = rs.getString("survey_id") ?: continue
@@ -344,8 +348,8 @@ class FeedbackRepository {
         }
     }
     
-    fun findMetadataKeysForSurvey(surveyId: String, team: String): Map<String, Set<String>> {
-        return transaction {
+    suspend fun findMetadataKeysForSurvey(surveyId: String, team: String): Map<String, Set<String>> {
+        return dbQuery {
             val sql = """
                 SELECT DISTINCT 
                     key as metadata_key,
@@ -358,7 +362,8 @@ class FeedbackRepository {
             """.trimIndent()
             
             val result = mutableMapOf<String, MutableSet<String>>()
-            exec(sql, listOf(VarCharColumnType() to team, VarCharColumnType() to surveyId)) { rs ->
+            val transaction = TransactionManager.current()
+            transaction.exec(sql, listOf(VarCharColumnType() to team, VarCharColumnType() to surveyId)) { rs ->
                 while (rs.next()) {
                     val key = rs.getString("metadata_key") ?: continue
                     val value = rs.getString("metadata_value") ?: continue
@@ -369,7 +374,7 @@ class FeedbackRepository {
         }
     }
 
-    fun findContextTagsForSurvey(
+    suspend fun findContextTagsForSurvey(
         surveyId: String,
         team: String,
         task: String? = null,
@@ -380,11 +385,11 @@ class FeedbackRepository {
         hasText: Boolean = false,
         lowRating: Boolean = false,
     ): Map<String, List<MetadataValueWithCount>> {
-        return transaction {
-            if (task.isNullOrBlank()) {
+        if (task.isNullOrBlank()) {
+            return dbQuery {
                 // Build dynamic filter clauses
                 val filterClauses = mutableListOf<String>()
-                val filterArgs = mutableListOf<Pair<IColumnType<*>, Any>>()
+                val filterArgs = mutableListOf<Pair<IColumnType<*>, Any?>>()
 
                 // Base args: team and surveyId
                 filterArgs.add(VarCharColumnType() to team)
@@ -456,7 +461,8 @@ class FeedbackRepository {
 
                 val result = mutableMapOf<String, MutableList<MetadataValueWithCount>>()
 
-                exec(sql, filterArgs) { rs ->
+                val transaction = TransactionManager.current()
+                transaction.exec(sql, filterArgs) { rs ->
                     while (rs.next()) {
                         val key = rs.getString("tag_key") ?: continue
                         val value = rs.getString("tag_value") ?: continue
@@ -467,59 +473,64 @@ class FeedbackRepository {
                 }
 
                 // Keep stable order (desc by count, then value) for deterministic responses
-                return@transaction result.mapValues { (_, values) ->
+                result.mapValues { (_, values) ->
                     values.sortedWith(compareByDescending<MetadataValueWithCount> { it.count }.thenBy { it.value })
                 }
             }
+        }
 
-            // Task filter path (for Top Tasks drill-down) - less common, keep simpler approach
+        val records = dbQuery {
             val dbQuery = FeedbackTable.selectAll()
             dbQuery.andWhere { FeedbackTable.team eq team }
             dbQuery.andWhere { JsonExtract(FeedbackTable.feedbackJson, listOf("surveyId")) eq surveyId }
+            dbQuery.map { it.toDbRecord() }
+        }
 
-            val records = dbQuery.map { it.toDto() }
-
-            val taskFiltered = records.filter { feedback ->
-                // Segment filter (context.tags)
-                if (segments.isNotEmpty()) {
-                    val tags = feedback.context?.tags
-                    if (tags == null) return@filter false
-
-                    val matchesSegments = segments.all { (key, value) ->
-                        val safeKey = key.trim()
-                        val safeValue = value.trim()
-                        safeKey.isNotBlank() && safeValue.isNotBlank() && tags[safeKey] == safeValue
-                    }
-                    if (!matchesSegments) return@filter false
-                }
-
-                val taskAnswer = feedback.answers.find { a ->
-                    a.fieldId in TopTasksFieldIds.task
-                }
-                if (taskAnswer != null && taskAnswer.fieldType == FieldType.SINGLE_CHOICE) {
-                    val selectedId = (taskAnswer.value as? AnswerValue.SingleChoice)?.selectedOptionId
-                    val option = taskAnswer.question.options?.find { it.id == selectedId }
-                    option?.label == task
-                } else {
-                    false
-                }
+        val enriched = records.map { record -> record to record.toDto() }
+        val taskFiltered = enriched.filter { (record, feedback) ->
+            if (!matchesContextTagFilters(record, feedback, segments, fromDate, toDate, deviceType, hasText, lowRating)) {
+                return@filter false
             }
 
-            val counts = mutableMapOf<String, MutableMap<String, Int>>()
-            for (feedback in taskFiltered) {
-                val tags = feedback.context?.tags ?: continue
-                for ((key, value) in tags) {
-                    if (key.isBlank() || value.isBlank()) continue
-                    val perKey = counts.getOrPut(key) { mutableMapOf() }
-                    perKey[value] = (perKey[value] ?: 0) + 1
+            // Segment filter (context.tags)
+            if (segments.isNotEmpty()) {
+                val tags = feedback.context?.tags
+                if (tags == null) return@filter false
+
+                val matchesSegments = segments.all { (key, value) ->
+                    val safeKey = key.trim()
+                    val safeValue = value.trim()
+                    safeKey.isNotBlank() && safeValue.isNotBlank() && tags[safeKey] == safeValue
                 }
+                if (!matchesSegments) return@filter false
             }
 
-            counts.mapValues { (_, valueCounts) ->
-                valueCounts.entries
-                    .map { (value, count) -> MetadataValueWithCount(value = value, count = count) }
-                    .sortedWith(compareByDescending<MetadataValueWithCount> { it.count }.thenBy { it.value })
+            val taskAnswer = feedback.answers.find { a ->
+                a.fieldId in TopTasksFieldIds.task
             }
+            if (taskAnswer != null && taskAnswer.fieldType == FieldType.SINGLE_CHOICE) {
+                val selectedId = (taskAnswer.value as? AnswerValue.SingleChoice)?.selectedOptionId
+                val option = taskAnswer.question.options?.find { it.id == selectedId }
+                option?.label == task
+            } else {
+                false
+            }
+        }
+
+        val counts = mutableMapOf<String, MutableMap<String, Int>>()
+        for ((_, feedback) in taskFiltered) {
+            val tags = feedback.context?.tags ?: continue
+            for ((key, value) in tags) {
+                if (key.isBlank() || value.isBlank()) continue
+                val perKey = counts.getOrPut(key) { mutableMapOf() }
+                perKey[value] = (perKey[value] ?: 0) + 1
+            }
+        }
+
+        return counts.mapValues { (_, valueCounts) ->
+            valueCounts.entries
+                .map { (value, count) -> MetadataValueWithCount(value = value, count = count) }
+                .sortedWith(compareByDescending<MetadataValueWithCount> { it.count }.thenBy { it.value })
         }
     }
 
@@ -721,5 +732,82 @@ class FeedbackRepository {
             queryBuilder.append(")")
         }
     }
+
+    private fun matchesContextTagFilters(
+        record: FeedbackDbRecord,
+        feedback: FeedbackDto,
+        segments: List<Pair<String, String>>,
+        fromDate: String?,
+        toDate: String?,
+        deviceType: String?,
+        hasText: Boolean,
+        lowRating: Boolean
+    ): Boolean {
+        if (segments.isNotEmpty()) {
+            val tags = feedback.context?.tags ?: return false
+            val matchesSegments = segments.all { (key, value) ->
+                val safeKey = key.trim()
+                val safeValue = value.trim()
+                safeKey.isNotBlank() && safeValue.isNotBlank() && tags[safeKey] == safeValue
+            }
+            if (!matchesSegments) return false
+        }
+
+        if (!fromDate.isNullOrBlank()) {
+            try {
+                val localDate = java.time.LocalDate.parse(fromDate)
+                val startOfDay = localDate.atStartOfDay(java.time.ZoneId.of("Europe/Oslo")).toInstant()
+                if (record.opprettet.toInstant() < startOfDay) return false
+            } catch (_: Exception) {
+                // ignore invalid date
+            }
+        }
+        if (!toDate.isNullOrBlank()) {
+            try {
+                val localDate = java.time.LocalDate.parse(toDate)
+                val nextDayStart = localDate.plusDays(1)
+                    .atStartOfDay(java.time.ZoneId.of("Europe/Oslo"))
+                    .toInstant()
+                if (record.opprettet.toInstant() >= nextDayStart) return false
+            } catch (_: Exception) {
+                // ignore invalid date
+            }
+        }
+
+        if (!deviceType.isNullOrBlank()) {
+            val actual = feedback.context?.deviceType?.name?.lowercase()
+            if (actual == null || actual != deviceType.lowercase()) return false
+        }
+
+        if (hasText) {
+            val hasTextAnswer = feedback.answers.any { answer ->
+                val text = (answer.value as? AnswerValue.Text)?.text.orEmpty()
+                text.isNotBlank()
+            }
+            if (!hasTextAnswer) return false
+        }
+
+        if (lowRating) {
+            val hasLowRating = feedback.answers.any { answer ->
+                val rating = (answer.value as? AnswerValue.Rating)?.rating
+                rating != null && rating <= 2
+            }
+            if (!hasLowRating) return false
+        }
+
+        return true
+    }
+
+    private data class PaginatedSnapshot(
+        val records: List<FeedbackDbRecord>,
+        val tagsById: Map<String, List<String>>,
+        val total: Long,
+        val page: Int
+    )
+
+    private data class RecordsSnapshot(
+        val records: List<FeedbackDbRecord>,
+        val tagsById: Map<String, List<String>>
+    )
 
 }

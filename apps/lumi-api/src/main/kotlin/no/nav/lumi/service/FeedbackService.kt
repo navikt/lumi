@@ -14,27 +14,27 @@ class FeedbackService(
     private val log = LoggerFactory.getLogger(FeedbackService::class.java)
     private val json = Json { ignoreUnknownKeys = true }
 
-    fun findPaginated(query: FeedbackQuery) = repository.findPaginated(query)
+    suspend fun findPaginated(query: FeedbackQuery) = repository.findPaginated(query)
 
-    fun findById(id: String, team: String) = repository.findById(id, team)
+    suspend fun findById(id: String, team: String) = repository.findById(id, team)
 
-    fun findAllTags(team: String) = repository.findAllTags(team)
+    suspend fun findAllTags(team: String) = repository.findAllTags(team)
 
-    fun findDistinctApps(team: String) = repository.findDistinctApps(team)
+    suspend fun findDistinctApps(team: String) = repository.findDistinctApps(team)
 
-    fun save(feedbackJson: String, team: String, app: String): String {
+    suspend fun save(feedbackJson: String, team: String, app: String): String {
         val sanitizedJson = redactFeedbackJson(feedbackJson)
         return repository.save(sanitizedJson, team, app)
     }
 
-    fun addTag(id: String, team: String, tag: String) = repository.addTag(id, team, tag)
+    suspend fun addTag(id: String, team: String, tag: String) = repository.addTag(id, team, tag)
 
-    fun removeTag(id: String, team: String, tag: String) = repository.removeTag(id, team, tag)
+    suspend fun removeTag(id: String, team: String, tag: String) = repository.removeTag(id, team, tag)
 
     /**
      * Permanently delete a feedback item from the database.
      */
-    fun delete(id: String, team: String): Boolean {
+    suspend fun delete(id: String, team: String): Boolean {
         return repository.delete(id, team)
     }
 
@@ -42,7 +42,7 @@ class FeedbackService(
      * Permanently delete all feedback for a surveyId in the given team.
      * Returns number of deleted rows.
      */
-    fun deleteSurvey(surveyId: String, team: String): Int {
+    suspend fun deleteSurvey(surveyId: String, team: String): Int {
         return repository.deleteSurvey(surveyId, team)
     }
 

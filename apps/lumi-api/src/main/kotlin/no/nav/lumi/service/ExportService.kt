@@ -23,7 +23,7 @@ class ExportService(
      * Get feedback data for export based on query.
      * Returns up to MAX_EXPORT_SIZE records.
      */
-    fun getFeedbackForExport(query: FeedbackQuery): List<FeedbackDto> {
+    suspend fun getFeedbackForExport(query: FeedbackQuery): List<FeedbackDto> {
         val exportQuery = query.copy(size = MAX_EXPORT_SIZE)
         val (content, _, _) = feedbackRepository.findPaginated(exportQuery)
         return content

@@ -4,7 +4,6 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import no.nav.lumi.config.DatabaseHolder
 import org.flywaydb.core.Flyway
-import org.jetbrains.exposed.sql.Database
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.containers.wait.strategy.HostPortWaitStrategy
 import javax.sql.DataSource
@@ -57,17 +56,21 @@ object TestDatabase {
      */
     fun initialize() {
         synchronized(this) {
-            if (initialized) return
+            if (initialized) {
+                DatabaseHolder.connect()
+                return
+            }
 
             // Run migrations
             Flyway.configure()
                 .dataSource(dataSource)
                 .locations("classpath:db/migration")
+                .placeholders(mapOf("concurrently" to ""))
                 .cleanDisabled(false)
                 .load()
                 .migrate()
 
-            Database.connect(dataSource)
+            DatabaseHolder.connect()
             initialized = true
         }
     }

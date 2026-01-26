@@ -4,7 +4,7 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.ktor.server.application.*
 import org.flywaydb.core.Flyway
-import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.v1.jdbc.Database
 import org.slf4j.LoggerFactory
 import javax.sql.DataSource
 
@@ -15,39 +15,68 @@ private val log = LoggerFactory.getLogger("Database")
  * Initialized during application startup.
  */
 object DatabaseHolder {
+    @Volatile
     private var _dataSource: DataSource? = null
+    @Volatile
+    private var _database: Database? = null
     
     val dataSource: DataSource
         get() = _dataSource ?: throw IllegalStateException(
             "Database not initialized. Call configureDatabase() first."
         )
+
+    val database: Database
+        get() = _database ?: throw IllegalStateException(
+            "Database not connected. Call connect() after initialization."
+        )
     
     /**
      * Initialize for production use with ServerEnv configuration.
      */
+    @Synchronized
     fun initialize(env: ServerEnv.DatabaseEnv) {
         if (_dataSource != null) {
             log.warn("Database already initialized, skipping")
             return
         }
         _dataSource = createDataSource(env)
+        _database = null
         log.info("Database initialized with production configuration")
     }
     
     /**
      * Initialize for testing with a pre-configured DataSource.
      */
+    @Synchronized
     fun initializeForTesting(dataSource: DataSource) {
-        _dataSource = dataSource
+        if (_dataSource !== dataSource) {
+            (_dataSource as? HikariDataSource)?.close()
+            _dataSource = dataSource
+            _database = null
+        }
         log.info("Database initialized with test configuration")
+    }
+
+    @Synchronized
+    fun connect() {
+        if (_database != null) return
+        _database = Database.connect(dataSource)
+    }
+
+    fun requireConnected(): Database {
+        return _database ?: throw IllegalStateException(
+            "Database not connected. Call configureDatabase() or DatabaseHolder.connect() before dbQuery."
+        )
     }
     
     /**
      * Reset the database holder (for testing purposes only).
      */
+    @Synchronized
     fun reset() {
         (_dataSource as? HikariDataSource)?.close()
         _dataSource = null
+        _database = null
     }
 }
 
@@ -62,7 +91,7 @@ fun Application.configureDatabase() {
     
     runMigrations(DatabaseHolder.dataSource)
     
-    Database.connect(DatabaseHolder.dataSource)
+    DatabaseHolder.connect()
     
     log.info("Database configured successfully")
 }
@@ -102,6 +131,7 @@ fun runMigrations(dataSource: DataSource) {
         val flyway = Flyway.configure()
             .dataSource(dataSource)
             .locations("classpath:db/migration")
+            .placeholders(mapOf("concurrently" to "CONCURRENTLY"))
             .baselineOnMigrate(true)
             .load()
         
