@@ -393,6 +393,10 @@ data class FeedbackQuery(
     val surveyId: String? = null,
     /** Device type filter */
     val deviceType: String? = null,
+    /** Theme filter (themeId or 'uncategorized') */
+    val theme: String? = null,
+    /** Task filter for Top Tasks drill-down */
+    val task: String? = null,
     /** Segment filters (context.tags) as key:value pairs */
     val segments: List<Pair<String, String>> = emptyList(),
     /** Filter by a specific rating question fieldId */

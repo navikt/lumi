@@ -38,6 +38,8 @@ function transformToBackendParams(data: Record<string, string | undefined>) {
     query: data.query,
     tag: tag && tag.length > 0 ? tag : undefined,
     deviceType: data.deviceType,
+    theme: data.theme,
+    task: data.task,
     // Transform segment format: "key:value,key:value" -> repeated params handled by buildUrl
     segment: data.segment?.split(",").filter(Boolean),
 
@@ -45,6 +47,8 @@ function transformToBackendParams(data: Record<string, string | undefined>) {
     ratingValue: data.ratingValue,
   };
 }
+
+export { transformToBackendParams };
 
 /**
  * Fetch paginated feedback items with filtering support.

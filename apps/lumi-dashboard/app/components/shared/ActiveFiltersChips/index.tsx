@@ -25,12 +25,11 @@ const DEVICE_LABELS: Record<string, string> = {
  *
  * - App/Survey/Period: Already shown in FilterBar → no chip
  * - DeviceType: NOT shown on dashboard → show chip
- * - Pathname: Only set via drill-down → show chip
  * - LowRating: Only on feedback page → show chip on dashboard
  * - Segment: Metadata filters from SegmentBreakdown → global chip
  */
 export function ActiveFiltersChips() {
-  const { params, setParam, setParams } = useSearchParams();
+  const { params, setParams } = useSearchParams();
   const { activeFilters, removeSegment } = useSegmentFilter();
   const statsQuery = useStats();
 
@@ -42,17 +41,11 @@ export function ActiveFiltersChips() {
       key: "deviceType",
       label: "Enhet",
       value: DEVICE_LABELS[params.deviceType] || params.deviceType,
-      onRemove: () => setParam("deviceType", undefined),
-    });
-  }
-
-  // Pathname filter - only set via drill-down
-  if (params.pathname) {
-    chips.push({
-      key: "pathname",
-      label: "Side",
-      value: params.pathname,
-      onRemove: () => setParam("pathname", undefined),
+      onRemove: () =>
+        setParams({
+          deviceType: undefined,
+          page: "1",
+        }),
     });
   }
 
@@ -62,7 +55,11 @@ export function ActiveFiltersChips() {
       key: "lowRating",
       label: "Rating",
       value: "Lav (1-2)",
-      onRemove: () => setParam("lowRating", undefined),
+      onRemove: () =>
+        setParams({
+          lowRating: undefined,
+          page: "1",
+        }),
     });
   }
 
@@ -72,7 +69,11 @@ export function ActiveFiltersChips() {
       key: "task",
       label: "Oppgave",
       value: params.task,
-      onRemove: () => setParam("task", undefined),
+      onRemove: () =>
+        setParams({
+          task: undefined,
+          page: "1",
+        }),
     });
   }
 

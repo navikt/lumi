@@ -35,7 +35,7 @@ export function useSegmentFilter() {
     if (current[key] === value) return; // Already active
 
     current[key] = value;
-    setParams({ segment: stringifySegmentFilters(current) });
+    setParams({ segment: stringifySegmentFilters(current), page: "1" });
   };
 
   /**
@@ -46,6 +46,7 @@ export function useSegmentFilter() {
     const newSegments = activeSegments.filter((s) => s !== segment);
     setParams({
       segment: newSegments.length > 0 ? newSegments.join(",") : undefined,
+      page: "1",
     });
   };
 
@@ -53,7 +54,7 @@ export function useSegmentFilter() {
    * Clear all segment filters.
    */
   const clearSegments = () => {
-    setParams({ segment: undefined });
+    setParams({ segment: undefined, page: "1" });
   };
 
   /**

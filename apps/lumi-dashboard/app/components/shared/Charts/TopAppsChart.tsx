@@ -38,7 +38,7 @@ const CHART_COLORS_LIGHT = {
 export function TopAppsChart() {
   const { data: stats, isPending } = useStats();
   const { theme } = useTheme();
-  const { setParam } = useSearchParams();
+  const { setParams } = useSearchParams();
 
   const colors = theme === "light" ? CHART_COLORS_LIGHT : CHART_COLORS;
 
@@ -69,7 +69,10 @@ export function TopAppsChart() {
   ) => {
     const app = bar.payload?.app;
     if (typeof app !== "string") return;
-    setParam("app", app);
+    setParams({
+      app,
+      page: "1",
+    });
   };
 
   return (

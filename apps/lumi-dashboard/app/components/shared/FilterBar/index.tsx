@@ -112,14 +112,20 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
 
   // Reset surveyId when app changes and current surveyId is not available for new app
   const handleAppChange = (newApp: string | undefined) => {
-    setParam("app", newApp);
+    setParams({
+      app: newApp,
+      page: "1",
+    });
 
     // If a surveyId is selected, check if it's valid for the new app
     if (params.surveyId && surveysByApp) {
       const surveysForApp = newApp ? surveysByApp[newApp] : [];
       if (newApp && surveysForApp && !surveysForApp.includes(params.surveyId)) {
         // Clear surveyId if it's not available for the new app
-        setParam("surveyId", undefined);
+        setParams({
+          surveyId: undefined,
+          page: "1",
+        });
       }
     }
   };
@@ -156,7 +162,6 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
       segment: undefined,
       task: undefined,
       theme: undefined,
-      pathname: undefined,
       page: undefined,
       size: undefined,
     });
@@ -172,6 +177,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
     params.deviceType ||
     params.tag ||
     params.segment ||
+    params.task ||
     params.ratingFieldId ||
     params.ratingValue;
 
@@ -246,10 +252,11 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                 size="small"
                 value={params.surveyId || "alle"}
                 onChange={(e) =>
-                  setParam(
-                    "surveyId",
-                    e.target.value === "alle" ? undefined : e.target.value,
-                  )
+                  setParams({
+                    surveyId:
+                      e.target.value === "alle" ? undefined : e.target.value,
+                    page: "1",
+                  })
                 }
                 style={{ minWidth: 140, maxWidth: 220 }}
               >
@@ -268,7 +275,10 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                   size="small"
                   value={params.query || ""}
                   onChange={(e) =>
-                    setParam("query", e.target.value || undefined)
+                    setParams({
+                      query: e.target.value || undefined,
+                      page: "1",
+                    })
                   }
                   placeholder="Søk i tekst..."
                   style={{ minWidth: 160, maxWidth: 220 }}
@@ -280,6 +290,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                 <FilterMenu
                   params={params}
                   setParam={setParam}
+                  setParams={setParams}
                   features={features}
                   allTags={allTags}
                   selectedTags={selectedTags}
@@ -356,10 +367,11 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                 size="small"
                 value={params.surveyId || "alle"}
                 onChange={(e) =>
-                  setParam(
-                    "surveyId",
-                    e.target.value === "alle" ? undefined : e.target.value,
-                  )
+                  setParams({
+                    surveyId:
+                      e.target.value === "alle" ? undefined : e.target.value,
+                    page: "1",
+                  })
                 }
                 style={{ flex: 1, minWidth: 100 }}
               >
@@ -379,6 +391,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                   <FilterMenu
                     params={params}
                     setParam={setParam}
+                    setParams={setParams}
                     features={features}
                     allTags={allTags}
                     selectedTags={selectedTags}
@@ -405,7 +418,12 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                 hideLabel
                 size="small"
                 value={params.query || ""}
-                onChange={(e) => setParam("query", e.target.value || undefined)}
+                onChange={(e) =>
+                  setParams({
+                    query: e.target.value || undefined,
+                    page: "1",
+                  })
+                }
                 placeholder="Søk i tekst..."
                 style={{ width: "100%" }}
               />

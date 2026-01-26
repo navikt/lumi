@@ -56,6 +56,8 @@ describe("export helpers", () => {
       lowRating: "false",
       segment: "k:v,,x:y",
       deviceType: "mobile",
+      theme: "theme-1",
+      task: "Soknad",
     });
 
     expect(params.tag).toEqual(["a", "b"]);
@@ -63,6 +65,8 @@ describe("export helpers", () => {
     expect(params.lowRating).toBeUndefined();
     expect(params.segment).toEqual(["k:v", "x:y"]);
     expect(params.deviceType).toBe("mobile");
+    expect(params.theme).toBe("theme-1");
+    expect(params.task).toBe("Soknad");
   });
 
   it("toMockCsv creates a CSV with header + 1 row", () => {

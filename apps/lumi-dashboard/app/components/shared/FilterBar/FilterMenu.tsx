@@ -17,6 +17,7 @@ import type { SearchParams } from "~/hooks/useSearchParams";
 interface FilterMenuProps {
   params: SearchParams;
   setParam: (key: keyof SearchParams, value: string | undefined) => void;
+  setParams: (params: Partial<SearchParams>) => void;
   features: SurveyFeatureConfig;
   allTags: string[];
   selectedTags: string[];
@@ -31,6 +32,7 @@ interface FilterMenuProps {
 export function FilterMenu({
   params,
   setParam,
+  setParams,
   features,
   allTags,
   selectedTags,
@@ -40,7 +42,6 @@ export function FilterMenu({
   // Count active filters to show badge (including segment + tags)
   const activeCount = [
     params.task,
-    params.pathname,
     params.deviceType && params.deviceType !== "alle",
     params.hasText === "true",
     params.lowRating === "true",
@@ -85,7 +86,10 @@ export function FilterMenu({
                   label="Enhet"
                   value={params.deviceType ?? ""}
                   onValueChange={(value) =>
-                    setParam("deviceType", value ? value : undefined)
+                    setParams({
+                      deviceType: value ? value : undefined,
+                      page: "1",
+                    })
                   }
                 >
                   <ActionMenu.RadioItem value="">
@@ -110,7 +114,10 @@ export function FilterMenu({
                     <ActionMenu.CheckboxItem
                       checked={params.hasText === "true"}
                       onCheckedChange={(checked) =>
-                        setParam("hasText", checked ? "true" : undefined)
+                        setParams({
+                          hasText: checked ? "true" : undefined,
+                          page: "1",
+                        })
                       }
                     >
                       Med tekstsvar
@@ -121,7 +128,10 @@ export function FilterMenu({
                     <ActionMenu.CheckboxItem
                       checked={params.lowRating === "true"}
                       onCheckedChange={(checked) =>
-                        setParam("lowRating", checked ? "true" : undefined)
+                        setParams({
+                          lowRating: checked ? "true" : undefined,
+                          page: "1",
+                        })
                       }
                     >
                       Lav score (1-2)
@@ -143,10 +153,11 @@ export function FilterMenu({
                         const newTags = checked
                           ? [...selectedTags, tag]
                           : selectedTags.filter((t) => t !== tag);
-                        setParam(
-                          "tag",
-                          newTags.length > 0 ? newTags.join(",") : undefined,
-                        );
+                        setParams({
+                          tag:
+                            newTags.length > 0 ? newTags.join(",") : undefined,
+                          page: "1",
+                        });
                       }}
                     >
                       {tag}
@@ -162,9 +173,7 @@ export function FilterMenu({
             </VStack>
           </HGrid>
 
-          {(params.task ||
-            params.pathname ||
-            (params.ratingFieldId && params.ratingValue)) && (
+          {(params.task || (params.ratingFieldId && params.ratingValue)) && (
             <Box paddingBlock="space-16">
               <div
                 style={{
@@ -186,18 +195,6 @@ export function FilterMenu({
                       }}
                     >
                       {`Oppgave: ${params.task}`}
-                    </Chips.Removable>
-                  )}
-
-                  {params.pathname && (
-                    <Chips.Removable
-                      variant="neutral"
-                      onDelete={() => {
-                        setParam("pathname", undefined);
-                        setParam("page", "1");
-                      }}
-                    >
-                      {`Side: ${params.pathname}`}
                     </Chips.Removable>
                   )}
 

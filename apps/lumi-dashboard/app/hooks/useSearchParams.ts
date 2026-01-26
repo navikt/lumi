@@ -11,8 +11,6 @@ export interface SearchParams {
   query?: string;
   tag?: string;
   surveyId?: string;
-  /** Filter by pathname (from context) */
-  pathname?: string;
   /** Filter by low ratings (1-2) */
   lowRating?: string;
   /** Filter by device type */

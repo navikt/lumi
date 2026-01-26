@@ -56,6 +56,8 @@ export function ExportPanel() {
           query: params.query,
           lowRating: params.lowRating,
           deviceType: params.deviceType,
+          theme: params.theme,
+          task: params.task,
           tag: params.tag,
           segment: params.segment,
         },

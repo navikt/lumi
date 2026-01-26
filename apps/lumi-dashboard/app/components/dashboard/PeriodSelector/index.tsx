@@ -66,7 +66,7 @@ function CustomPeriodInputs({
 }
 
 export function PeriodSelector() {
-  const { params, setParam } = useSearchParams();
+  const { params, setParams } = useSearchParams();
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { isMobile } = useBreakpoint();
@@ -76,8 +76,11 @@ export function PeriodSelector() {
   const currentTo = params.toDate ? dayjs(params.toDate) : undefined;
 
   const handleApply = (from: Date, to: Date) => {
-    setParam("fromDate", dayjs(from).format("YYYY-MM-DD"));
-    setParam("toDate", dayjs(to).format("YYYY-MM-DD"));
+    setParams({
+      fromDate: dayjs(from).format("YYYY-MM-DD"),
+      toDate: dayjs(to).format("YYYY-MM-DD"),
+      page: "1",
+    });
     setOpen(false);
   };
 
@@ -93,8 +96,11 @@ export function PeriodSelector() {
       start = start.subtract(days - 1, "day");
     }
 
-    setParam("fromDate", start.format("YYYY-MM-DD"));
-    setParam("toDate", end.format("YYYY-MM-DD"));
+    setParams({
+      fromDate: start.format("YYYY-MM-DD"),
+      toDate: end.format("YYYY-MM-DD"),
+      page: "1",
+    });
     setOpen(false);
   };
 

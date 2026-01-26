@@ -49,6 +49,8 @@ export const FeedbackParamsSchema = z.object({
   deviceType: z.string().optional(),
   /** Filter by theme (themeId or 'uncategorized') - client-side only */
   theme: z.string().optional(),
+  /** Filter by specific task (Top Tasks drill-down) */
+  task: z.string().optional(),
   /** Segment filters (format: "key:value,key:value") */
   segment: z.string().optional(),
 
@@ -207,6 +209,10 @@ export const ExportParamsSchema = z.object({
   deviceType: z.string().optional(),
   /** Comma-separated tag list in URL (sent as repeated `tag` params to backend). */
   tag: z.string().optional(),
+  /** Filter by theme (themeId or 'uncategorized') */
+  theme: z.string().optional(),
+  /** Filter by specific task (Top Tasks drill-down) */
+  task: z.string().optional(),
   /** Segment filters (format: "key:value,key:value") */
   segment: z.string().optional(),
 });

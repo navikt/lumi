@@ -17,6 +17,8 @@ npm run typecheck
 npm test
 ```
 
+Use `npm` only for installs and scripts.
+
 ## Core patterns
 
 - **File routes**: add pages + API endpoints under `apps/lumi-dashboard/app/routes/` using `createFileRoute()`.

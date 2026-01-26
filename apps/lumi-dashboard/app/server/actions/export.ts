@@ -147,6 +147,8 @@ function transformToBackendParams(data: Record<string, string | undefined>) {
     query: data.query,
     tag: tag && tag.length > 0 ? tag : undefined,
     deviceType: data.deviceType,
+    theme: data.theme,
+    task: data.task,
     segment: data.segment?.split(",").filter(Boolean),
   };
 }
@@ -173,6 +175,8 @@ export const exportServerFn = createServerFn({ method: "POST" })
         toDate: data.toDate,
         deviceType: data.deviceType,
         segment: data.segment,
+        task: data.task,
+        theme: data.theme,
         hasText: data.hasText,
         lowRating: data.lowRating,
       }).slice(0, 10_000);

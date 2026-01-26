@@ -6,7 +6,9 @@
  */
 
 import type { FeedbackDto } from "~/types/api";
+import { mockThemes } from "../themes";
 import { getTaskNameFromFeedback } from "./extractors";
+import { matchesThemeKeywords } from "./textAnalysis";
 
 // ============================================
 // Filter Parameters Interface
@@ -106,6 +108,25 @@ export function applyFeedbackFilters(
     });
   }
 
+  // Theme filter (themeId or "uncategorized")
+  if (filters.theme) {
+    if (filters.theme === "uncategorized") {
+      filtered = filtered.filter((item) => {
+        const text = getFeedbackText(item);
+        if (!text) return true;
+        return !mockThemes.some((t) => matchesThemeKeywords(text, t.keywords));
+      });
+    } else {
+      const targetTheme = mockThemes.find((t) => t.id === filters.theme);
+      if (targetTheme && targetTheme.keywords.length > 0) {
+        filtered = filtered.filter((item) => {
+          const text = getFeedbackText(item);
+          return matchesThemeKeywords(text, targetTheme.keywords);
+        });
+      }
+    }
+  }
+
   // Text filter (has text response)
   if (filters.hasText === "true") {
     filtered = filtered.filter((item) =>
@@ -139,6 +160,11 @@ export function applyFeedbackFilters(
   }
 
   return filtered;
+}
+
+function getFeedbackText(item: FeedbackDto): string {
+  const textAnswer = item.answers.find((a) => a.fieldType === "TEXT");
+  return textAnswer?.fieldType === "TEXT" ? (textAnswer.value.text ?? "") : "";
 }
 
 // ============================================

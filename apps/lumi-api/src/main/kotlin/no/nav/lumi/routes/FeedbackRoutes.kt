@@ -61,6 +61,8 @@ fun Route.feedbackRoutes(
             toDate = params.toDate,
             surveyId = params.surveyId,
             deviceType = params.deviceType?.takeIf { it.isNotBlank() },
+            theme = params.theme,
+            task = params.task,
             segments = segments,
             ratingFieldId = params.ratingFieldId,
             ratingValue = params.ratingValue,

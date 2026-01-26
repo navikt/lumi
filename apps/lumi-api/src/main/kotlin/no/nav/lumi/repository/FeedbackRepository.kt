@@ -1,6 +1,7 @@
 package no.nav.lumi.repository
 
 import no.nav.lumi.domain.*
+import no.nav.lumi.service.TextProcessor
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
@@ -21,6 +22,7 @@ fun String.escapeLikePattern(): String {
 
 class FeedbackRepository {
     private val log = LoggerFactory.getLogger(FeedbackRepository::class.java)
+    private val themeRepository = TextThemeRepository()
 
     internal fun findById(id: String): FeedbackDto? {
         return transaction {
@@ -230,14 +232,28 @@ class FeedbackRepository {
             
             applyCommonFilters(dbQuery, query)
 
-            val total = dbQuery.count()
-            val totalPages = if (query.size > 0) ceil(total.toDouble() / query.size).toInt() else 0
-            val page = query.page ?: (totalPages - 1).coerceAtLeast(0)
-            val offset = (page * query.size).toLong()
+            val needsInMemoryFiltering = !query.task.isNullOrBlank() || !query.theme.isNullOrBlank()
+            if (!needsInMemoryFiltering) {
+                val total = dbQuery.count()
+                val totalPages = if (query.size > 0) ceil(total.toDouble() / query.size).toInt() else 0
+                val page = query.page ?: (totalPages - 1).coerceAtLeast(0)
+                val offset = (page * query.size).toLong()
+
+                val records = dbQuery
+                    .orderBy(FeedbackTable.opprettet to SortOrder.DESC)
+                    .limit(query.size).offset(offset)
+                    .map { it.toDbRecord() }
+
+                val tagsById = findTagsByFeedbackIds(records.map { it.id })
+                val dtos = records.map { record ->
+                    record.toDto(tagsById[record.id].orEmpty())
+                }
+
+                return@transaction Triple(dtos, total, page)
+            }
 
             val records = dbQuery
                 .orderBy(FeedbackTable.opprettet to SortOrder.DESC)
-                .limit(query.size).offset(offset)
                 .map { it.toDbRecord() }
 
             val tagsById = findTagsByFeedbackIds(records.map { it.id })
@@ -245,7 +261,31 @@ class FeedbackRepository {
                 record.toDto(tagsById[record.id].orEmpty())
             }
 
-            Triple(dtos, total, page)
+            val taskFilter = query.task?.trim()?.takeIf { it.isNotBlank() }
+            val themeFilter = query.theme?.trim()?.takeIf { it.isNotBlank() }
+            val themes = if (themeFilter != null) {
+                themeRepository.findByTeam(query.team, AnalysisContext.GENERAL_FEEDBACK)
+            } else {
+                emptyList()
+            }
+
+            val filtered = dtos.filter { feedback ->
+                matchesTaskFilter(feedback, taskFilter) &&
+                    matchesThemeFilter(feedback, themeFilter, themes)
+            }
+
+            val total = filtered.size.toLong()
+            val totalPages = if (query.size > 0) ceil(total.toDouble() / query.size).toInt() else 0
+            val page = query.page ?: (totalPages - 1).coerceAtLeast(0)
+            val offset = (page * query.size)
+
+            val pageContent = if (query.size > 0) {
+                filtered.drop(offset).take(query.size)
+            } else {
+                filtered
+            }
+
+            Triple(pageContent, total, page)
         }
     }
 
@@ -585,6 +625,51 @@ class FeedbackRepository {
     private fun normalizeTag(tag: String): String? {
         val normalized = tag.trim().lowercase()
         return normalized.takeIf { it.isNotBlank() }
+    }
+
+    private fun matchesTaskFilter(feedback: FeedbackDto, task: String?): Boolean {
+        if (task.isNullOrBlank()) return true
+
+        val taskAnswer = feedback.answers.find { a -> a.fieldId in TopTasksFieldIds.task }
+        if (taskAnswer != null && taskAnswer.fieldType == FieldType.SINGLE_CHOICE) {
+            val selectedId = (taskAnswer.value as? AnswerValue.SingleChoice)?.selectedOptionId
+            val option = taskAnswer.question.options?.find { it.id == selectedId }
+            return option?.label == task
+        }
+        return false
+    }
+
+    private fun matchesThemeFilter(
+        feedback: FeedbackDto,
+        themeId: String?,
+        themes: List<TextThemeDto>
+    ): Boolean {
+        if (themeId.isNullOrBlank()) return true
+
+        val taskAnswer = feedback.answers.find { it.fieldId == "task" }
+        val taskText = (taskAnswer?.value as? AnswerValue.Text)?.text ?: return false
+        val matchedTheme = matchThemeName(taskText, themes)
+
+        if (themeId == "uncategorized") {
+            return matchedTheme == "Annet"
+        }
+
+        val targetTheme = themes.find { it.id == themeId } ?: return false
+        return matchedTheme == targetTheme.name
+    }
+
+    private fun matchThemeName(text: String, themes: List<TextThemeDto>): String {
+        val textWords = TextProcessor.extractWords(text)
+            .map { TextProcessor.stemNorwegian(it) }
+            .toSet()
+
+        for (theme in themes.sortedByDescending { it.priority }) {
+            val keywordStems = theme.keywords.map { TextProcessor.stemNorwegian(it.lowercase()) }.toSet()
+            if (textWords.any { it in keywordStems }) {
+                return theme.name
+            }
+        }
+        return "Annet"
     }
 
     private fun findTagsByFeedbackId(id: String): List<String> {

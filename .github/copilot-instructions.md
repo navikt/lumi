@@ -12,6 +12,7 @@ Monorepo for Lumi survey analytics:
 - Always run `npm run lint` (Biome) and `npm run typecheck` before finishing a task.
 - Run `npm test` when making logic changes.
 - For backend changes: run `npm run api:test` (or `cd apps/lumi-api && ./gradlew test`).
+- Use `npm` only for installs and scripts. Do not use `pnpm` or `yarn`.
 - Keep changes scoped and consistent with existing patterns.
 
 ## Commands (repo root)
@@ -38,6 +39,7 @@ This monorepo keeps Copilot guidance **only** under the repo root `.github/`:
 - `.github/agents/`, `.github/prompts/`, `.github/skills/`
 
 Avoid duplicating Copilot files inside `apps/*/.github/` to prevent drift and conflicting instructions.
+Always check `.github/instructions/`, `.github/agents/`, `.github/prompts/`, and `.github/skills/` for relevant guidance before acting.
 
 ## Conventions
 

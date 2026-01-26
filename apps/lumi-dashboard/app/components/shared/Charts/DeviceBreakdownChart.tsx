@@ -116,10 +116,13 @@ export function DeviceBreakdownChart({
 }: DeviceBreakdownChartProps = {}) {
   const { data: stats, isPending } = useStats();
   const { theme } = useTheme();
-  const { setParam } = useSearchParams();
+  const { setParams } = useSearchParams();
 
   const handleDeviceClick = (device: string) => {
-    setParam("deviceType", device);
+    setParams({
+      deviceType: device,
+      page: "1",
+    });
   };
 
   const colors = theme === "light" ? CHART_COLORS_LIGHT : CHART_COLORS;

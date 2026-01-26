@@ -13,6 +13,8 @@ import no.nav.lumi.domain.FieldType
 import no.nav.lumi.domain.FeedbackQuery
 import no.nav.lumi.domain.StatsQuery
 import no.nav.lumi.insertTestFeedback
+import no.nav.lumi.insertTestFeedbackWithJson
+import no.nav.lumi.insertTestTheme
 import java.sql.Timestamp
 import java.time.Instant
 import java.util.UUID
@@ -86,6 +88,137 @@ class FeedbackRepositoryTest : FunSpec({
             
             content shouldHaveSize 1
             content.first().id shouldBe "with-tag"
+        }
+
+        test("filters by task name (Top Tasks drill-down)") {
+            val surveyId = "survey-task-filter"
+            insertTestFeedbackWithJson(
+                id = "task-match",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "schemaVersion": 1,
+                        "surveyId": "$surveyId",
+                        "surveyType": "topTasks",
+                        "context": { "deviceType": "desktop" },
+                        "answers": [
+                            {
+                                "fieldId": "task",
+                                "fieldType": "SINGLE_CHOICE",
+                                "question": {
+                                    "label": "Hva skulle du gjoere?",
+                                    "options": [
+                                        { "id": "opt-1", "label": "Soknad" },
+                                        { "id": "opt-2", "label": "Oppfolging" }
+                                    ]
+                                },
+                                "value": { "type": "singleChoice", "selectedOptionId": "opt-1" }
+                            }
+                        ]
+                    }
+                """.trimIndent()
+            )
+            insertTestFeedbackWithJson(
+                id = "task-no-match",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "schemaVersion": 1,
+                        "surveyId": "$surveyId",
+                        "surveyType": "topTasks",
+                        "context": { "deviceType": "desktop" },
+                        "answers": [
+                            {
+                                "fieldId": "task",
+                                "fieldType": "SINGLE_CHOICE",
+                                "question": {
+                                    "label": "Hva skulle du gjoere?",
+                                    "options": [
+                                        { "id": "opt-1", "label": "Soknad" },
+                                        { "id": "opt-2", "label": "Oppfolging" }
+                                    ]
+                                },
+                                "value": { "type": "singleChoice", "selectedOptionId": "opt-2" }
+                            }
+                        ]
+                    }
+                """.trimIndent()
+            )
+
+            val (content, _, _) = repository.findPaginated(
+                FeedbackQuery(team = "team-test", task = "Soknad")
+            )
+
+            content shouldHaveSize 1
+            content.first().id shouldBe "task-match"
+        }
+
+        test("filters by theme id and uncategorized") {
+            val themeId = insertTestTheme(
+                team = "team-test",
+                name = "Utbetaling",
+                keywords = listOf("utbetaling"),
+                priority = 1,
+                analysisContext = "GENERAL_FEEDBACK"
+            )
+
+            insertTestFeedbackWithJson(
+                id = "theme-match",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "schemaVersion": 1,
+                        "surveyId": "survey-discovery",
+                        "surveyType": "discovery",
+                        "context": { "deviceType": "desktop" },
+                        "answers": [
+                            {
+                                "fieldId": "task",
+                                "fieldType": "TEXT",
+                                "question": { "label": "Hva kom du for aa gjoere?" },
+                                "value": { "type": "text", "text": "Venter paa utbetaling" }
+                            }
+                        ]
+                    }
+                """.trimIndent()
+            )
+
+            insertTestFeedbackWithJson(
+                id = "theme-other",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "schemaVersion": 1,
+                        "surveyId": "survey-discovery",
+                        "surveyType": "discovery",
+                        "context": { "deviceType": "desktop" },
+                        "answers": [
+                            {
+                                "fieldId": "task",
+                                "fieldType": "TEXT",
+                                "question": { "label": "Hva kom du for aa gjoere?" },
+                                "value": { "type": "text", "text": "Jeg trenger hjelp" }
+                            }
+                        ]
+                    }
+                """.trimIndent()
+            )
+
+            val (matched, _, _) = repository.findPaginated(
+                FeedbackQuery(team = "team-test", theme = themeId)
+            )
+            matched shouldHaveSize 1
+            matched.first().id shouldBe "theme-match"
+
+            val (uncategorized, _, _) = repository.findPaginated(
+                FeedbackQuery(team = "team-test", theme = "uncategorized")
+            )
+            uncategorized shouldHaveSize 1
+            uncategorized.first().id shouldBe "theme-other"
         }
     }
 

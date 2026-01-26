@@ -21,7 +21,7 @@ import { TopTasksStatsCards } from "./StatsCards";
 
 export function TopTasksOverview() {
   const { data, isLoading } = useTopTasksStats();
-  const { params, setParam } = useSearchParams();
+  const { params, setParams } = useSearchParams();
   const { addSegment } = useSegmentFilter();
   const surveyId = params.surveyId;
 
@@ -29,7 +29,10 @@ export function TopTasksOverview() {
   const selectedTask = params.task ?? null;
 
   const handleTaskSelect = (taskName: string | null) => {
-    setParam("task", taskName ?? undefined);
+    setParams({
+      task: taskName ?? undefined,
+      page: "1",
+    });
   };
 
   if (isLoading) return null;

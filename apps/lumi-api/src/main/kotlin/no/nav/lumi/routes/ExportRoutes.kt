@@ -55,6 +55,8 @@ fun Route.exportRoutes(exportService: ExportService = defaultExportService) {
             toDate = params.toDate,
             surveyId = params.surveyId,
             deviceType = params.deviceType?.takeIf { it.isNotBlank() },
+            theme = params.theme,
+            task = params.task,
             segments = segments
         )
         

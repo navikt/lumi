@@ -31,6 +31,10 @@ class ApiV1Intern {
         val surveyId: String? = null,
         /** Device type filter: mobile, tablet, desktop */
         val deviceType: String? = null,
+        /** Theme filter (themeId or 'uncategorized') */
+        val theme: String? = null,
+        /** Task filter for Top Tasks drill-down */
+        val task: String? = null,
         /** Segment filter - repeated params like segment=key:value */
         val segment: List<String>? = null,
         /** Filter by a specific rating question fieldId */
@@ -218,6 +222,10 @@ class ApiV1Intern {
         val toDate: String? = null,
         val surveyId: String? = null,
         val deviceType: String? = null,
-        val segment: List<String>? = null
+        val segment: List<String>? = null,
+        /** Theme filter (themeId or 'uncategorized') */
+        val theme: String? = null,
+        /** Task filter for Top Tasks drill-down */
+        val task: String? = null,
     )
 }
