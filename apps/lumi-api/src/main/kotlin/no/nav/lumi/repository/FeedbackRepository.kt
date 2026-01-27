@@ -1,29 +1,18 @@
 package no.nav.lumi.repository
 
 import no.nav.lumi.domain.*
-import no.nav.lumi.service.TextProcessor
 import org.jetbrains.exposed.v1.core.*
 import org.jetbrains.exposed.v1.jdbc.*
-import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.util.*
 import kotlin.math.ceil
 
-/**
- * Escape special characters for SQL LIKE patterns to prevent SQL injection.
- * Escapes %, _, and \ which have special meaning in LIKE clauses.
- */
-fun String.escapeLikePattern(): String {
-    return this
-        .replace("\\", "\\\\")
-        .replace("%", "\\%")
-        .replace("_", "\\_")
-}
-
-class FeedbackRepository {
+class FeedbackRepository(
+    private val themeRepository: TextThemeRepository = TextThemeRepository(),
+    private val contextTagsRepository: FeedbackContextTagsRepository = FeedbackContextTagsRepository()
+) {
     private val log = LoggerFactory.getLogger(FeedbackRepository::class.java)
-    private val themeRepository = TextThemeRepository()
 
     internal suspend fun findById(id: String): FeedbackDto? {
         return dbQuery {
@@ -227,7 +216,7 @@ class FeedbackRepository {
                         dbQuery.andWhere { FeedbackTable.app eq app }
                     }
                 }
-                applyCommonFilters(dbQuery, query)
+                applyCommonFilters(dbQuery, query, log)
 
                 val total = dbQuery.count()
                 val totalPages = if (query.size > 0) ceil(total.toDouble() / query.size).toInt() else 0
@@ -257,7 +246,7 @@ class FeedbackRepository {
                     dbQuery.andWhere { FeedbackTable.app eq app }
                 }
             }
-            applyCommonFilters(dbQuery, query)
+            applyCommonFilters(dbQuery, query, log)
 
             val records = dbQuery
                 .orderBy(FeedbackTable.opprettet to SortOrder.DESC)
@@ -323,55 +312,11 @@ class FeedbackRepository {
      * Used by filter bootstrap endpoint and survey list.
      */
     suspend fun findSurveysByApp(team: String): Map<String, List<String>> {
-        return dbQuery {
-            val sql = """
-                SELECT DISTINCT 
-                    app,
-                    feedback_json::jsonb->>'surveyId' as survey_id
-                FROM feedback
-                WHERE team = ?
-                  AND app IS NOT NULL
-                  AND feedback_json::jsonb->>'surveyId' IS NOT NULL
-                ORDER BY app, survey_id
-            """.trimIndent()
-            
-            val result = mutableMapOf<String, MutableList<String>>()
-            val transaction = TransactionManager.current()
-            transaction.exec(sql, listOf(VarCharColumnType() to team)) { rs ->
-                while (rs.next()) {
-                    val app = rs.getString("app") ?: continue
-                    val surveyId = rs.getString("survey_id") ?: continue
-                    result.getOrPut(app) { mutableListOf() }.add(surveyId)
-                }
-            }
-            result
-        }
+        return contextTagsRepository.findSurveysByApp(team)
     }
     
     suspend fun findMetadataKeysForSurvey(surveyId: String, team: String): Map<String, Set<String>> {
-        return dbQuery {
-            val sql = """
-                SELECT DISTINCT 
-                    key as metadata_key,
-                    feedback_json::jsonb->'context'->'tags'->>key as metadata_value
-                FROM feedback,
-                     jsonb_object_keys(feedback_json::jsonb->'context'->'tags') as key
-                WHERE team = ?
-                  AND feedback_json::jsonb->>'surveyId' = ?
-                  AND feedback_json::jsonb->'context'->'tags' IS NOT NULL
-            """.trimIndent()
-            
-            val result = mutableMapOf<String, MutableSet<String>>()
-            val transaction = TransactionManager.current()
-            transaction.exec(sql, listOf(VarCharColumnType() to team, VarCharColumnType() to surveyId)) { rs ->
-                while (rs.next()) {
-                    val key = rs.getString("metadata_key") ?: continue
-                    val value = rs.getString("metadata_value") ?: continue
-                    result.getOrPut(key) { mutableSetOf() }.add(value)
-                }
-            }
-            result
-        }
+        return contextTagsRepository.findMetadataKeysForSurvey(surveyId, team)
     }
 
     suspend fun findContextTagsForSurvey(
@@ -385,429 +330,17 @@ class FeedbackRepository {
         hasText: Boolean = false,
         lowRating: Boolean = false,
     ): Map<String, List<MetadataValueWithCount>> {
-        if (task.isNullOrBlank()) {
-            return dbQuery {
-                // Build dynamic filter clauses
-                val filterClauses = mutableListOf<String>()
-                val filterArgs = mutableListOf<Pair<IColumnType<*>, Any?>>()
-
-                // Base args: team and surveyId
-                filterArgs.add(VarCharColumnType() to team)
-                filterArgs.add(VarCharColumnType() to surveyId)
-
-                // Segment filters
-                for ((key, value) in segments) {
-                    val safeKey = key.trim()
-                    val safeValue = value.trim()
-                    if (safeKey.isBlank() || safeValue.isBlank()) continue
-                    filterClauses.add("AND feedback_json::jsonb->'context'->'tags'->>? = ?")
-                    filterArgs.add(VarCharColumnType() to safeKey)
-                    filterArgs.add(VarCharColumnType() to safeValue)
-                }
-
-                // Date range filter (Europe/Oslo)
-                if (!fromDate.isNullOrBlank()) {
-                    filterClauses.add("AND opprettet >= (? || ' 00:00:00 Europe/Oslo')::timestamptz")
-                    filterArgs.add(VarCharColumnType() to fromDate)
-                }
-                if (!toDate.isNullOrBlank()) {
-                    filterClauses.add("AND opprettet < ((? || ' 00:00:00 Europe/Oslo')::timestamptz + interval '1 day')")
-                    filterArgs.add(VarCharColumnType() to toDate)
-                }
-
-                // Device type filter
-                if (!deviceType.isNullOrBlank()) {
-                    filterClauses.add("AND feedback_json::jsonb->'context'->>'deviceType' = ?")
-                    filterArgs.add(VarCharColumnType() to deviceType)
-                }
-
-                // Has text filter
-                if (hasText) {
-                    filterClauses.add("AND jsonb_path_exists(feedback_json::jsonb, '\$.answers[*] ? (@.value.type == \"text\" && @.value.text != \"\")')")
-                }
-
-                // Low rating filter (1-2)
-                if (lowRating) {
-                    filterClauses.add("AND (jsonb_path_query_first(feedback_json::jsonb, '\$.answers[*] ? (@.value.type == \"rating\").value.rating')::text)::int <= 2")
-                }
-
-                val sql = buildString {
-                    append(
-                        """
-                    SELECT
-                        key as tag_key,
-                        feedback_json::jsonb->'context'->'tags'->>key as tag_value,
-                        COUNT(*) as tag_count
-                    FROM feedback,
-                         jsonb_object_keys(feedback_json::jsonb->'context'->'tags') as key
-                    WHERE team = ?
-                      AND feedback_json::jsonb->>'surveyId' = ?
-                      AND feedback_json::jsonb->'context'->'tags' IS NOT NULL
-                    """.trimIndent()
-                    )
-
-                    if (filterClauses.isNotEmpty()) {
-                        append("\n")
-                        append(filterClauses.joinToString("\n"))
-                    }
-
-                    append("\n")
-                    append(
-                        """
-                    GROUP BY key, tag_value
-                """.trimIndent()
-                    )
-                }
-
-                val result = mutableMapOf<String, MutableList<MetadataValueWithCount>>()
-
-                val transaction = TransactionManager.current()
-                transaction.exec(sql, filterArgs) { rs ->
-                    while (rs.next()) {
-                        val key = rs.getString("tag_key") ?: continue
-                        val value = rs.getString("tag_value") ?: continue
-                        val count = rs.getInt("tag_count")
-                        result.getOrPut(key) { mutableListOf() }
-                            .add(MetadataValueWithCount(value = value, count = count))
-                    }
-                }
-
-                // Keep stable order (desc by count, then value) for deterministic responses
-                result.mapValues { (_, values) ->
-                    values.sortedWith(compareByDescending<MetadataValueWithCount> { it.count }.thenBy { it.value })
-                }
-            }
-        }
-
-        val records = dbQuery {
-            val dbQuery = FeedbackTable.selectAll()
-            dbQuery.andWhere { FeedbackTable.team eq team }
-            dbQuery.andWhere { JsonExtract(FeedbackTable.feedbackJson, listOf("surveyId")) eq surveyId }
-            dbQuery.map { it.toDbRecord() }
-        }
-
-        val enriched = records.map { record -> record to record.toDto() }
-        val taskFiltered = enriched.filter { (record, feedback) ->
-            if (!matchesContextTagFilters(record, feedback, segments, fromDate, toDate, deviceType, hasText, lowRating)) {
-                return@filter false
-            }
-
-            // Segment filter (context.tags)
-            if (segments.isNotEmpty()) {
-                val tags = feedback.context?.tags
-                if (tags == null) return@filter false
-
-                val matchesSegments = segments.all { (key, value) ->
-                    val safeKey = key.trim()
-                    val safeValue = value.trim()
-                    safeKey.isNotBlank() && safeValue.isNotBlank() && tags[safeKey] == safeValue
-                }
-                if (!matchesSegments) return@filter false
-            }
-
-            val taskAnswer = feedback.answers.find { a ->
-                a.fieldId in TopTasksFieldIds.task
-            }
-            if (taskAnswer != null && taskAnswer.fieldType == FieldType.SINGLE_CHOICE) {
-                val selectedId = (taskAnswer.value as? AnswerValue.SingleChoice)?.selectedOptionId
-                val option = taskAnswer.question.options?.find { it.id == selectedId }
-                option?.label == task
-            } else {
-                false
-            }
-        }
-
-        val counts = mutableMapOf<String, MutableMap<String, Int>>()
-        for ((_, feedback) in taskFiltered) {
-            val tags = feedback.context?.tags ?: continue
-            for ((key, value) in tags) {
-                if (key.isBlank() || value.isBlank()) continue
-                val perKey = counts.getOrPut(key) { mutableMapOf() }
-                perKey[value] = (perKey[value] ?: 0) + 1
-            }
-        }
-
-        return counts.mapValues { (_, valueCounts) ->
-            valueCounts.entries
-                .map { (value, count) -> MetadataValueWithCount(value = value, count = count) }
-                .sortedWith(compareByDescending<MetadataValueWithCount> { it.count }.thenBy { it.value })
-        }
+        return contextTagsRepository.findContextTagsForSurvey(
+            surveyId = surveyId,
+            team = team,
+            task = task,
+            segments = segments,
+            fromDate = fromDate,
+            toDate = toDate,
+            deviceType = deviceType,
+            hasText = hasText,
+            lowRating = lowRating
+        )
     }
-
-    // Stats methods removed - moved to FeedbackStatsRepository
-
-    
-    private fun applyCommonFilters(query: Query, criteria: FeedbackQuery) {
-        // Filter for feedback with text responses
-        if (criteria.hasText) {
-            query.andWhere {
-                JsonbPathExists(
-                    FeedbackTable.feedbackJson,
-                    "$.answers[*] ? (@.value.type == \"text\" && @.value.text != \"\")"
-                )
-            }
-        }
-        
-        // Filter by survey ID
-        criteria.surveyId?.let { surveyId ->
-            query.andWhere { JsonExtract(FeedbackTable.feedbackJson, listOf("surveyId")) eq surveyId }
-        }
-        
-        // Date range filter - convert YYYY-MM-DD to UTC Instants (Europe/Oslo)
-        criteria.fromDate?.let { fromDate ->
-            try {
-                val localDate = java.time.LocalDate.parse(fromDate)
-                val startOfDay = localDate.atStartOfDay(java.time.ZoneId.of("Europe/Oslo")).toInstant()
-                query.andWhere { FeedbackTable.opprettet greaterEq startOfDay }
-            } catch (e: Exception) {
-                log.warn("Invalid fromDate format: $fromDate, expected YYYY-MM-DD")
-            }
-        }
-        
-        criteria.toDate?.let { toDate ->
-            try {
-                val localDate = java.time.LocalDate.parse(toDate)
-                // Inclusive date filter: < start of next day in Europe/Oslo
-                val nextDayStart = localDate.plusDays(1)
-                    .atStartOfDay(java.time.ZoneId.of("Europe/Oslo"))
-                    .toInstant()
-                query.andWhere { FeedbackTable.opprettet less nextDayStart }
-            } catch (e: Exception) {
-                log.warn("Invalid toDate format: $toDate, expected YYYY-MM-DD")
-            }
-        }
-        
-        // Filter for low ratings (1-2)
-        if (criteria.lowRating) {
-            val ratingText = JsonbPathQueryFirstText(
-                FeedbackTable.feedbackJson,
-                "$.answers[*] ? (@.value.type == \"rating\").value.rating"
-            )
-            val ratingExpr = Cast(ratingText, IntegerColumnType())
-            query.andWhere { ratingExpr lessEq 2 }
-        }
-        
-        // Device type filter
-        criteria.deviceType?.let { device ->
-            query.andWhere { JsonExtract(FeedbackTable.feedbackJson, listOf("context", "deviceType")) eq device }
-        }
-        
-        // Tags filter
-        criteria.tags.forEach { tag ->
-            val normalized = normalizeTag(tag) ?: return@forEach
-            query.andWhere { HasTagOp(FeedbackTable.id, normalized) }
-        }
-        
-        // Full-text search query
-        criteria.query?.let { searchQuery ->
-            val escaped = searchQuery.escapeLikePattern()
-            val pattern = "%$escaped%"
-            query.andWhere { (FeedbackTable.feedbackJson like pattern) or HasTagLikeOp(FeedbackTable.id, pattern) }
-        }
-        
-        // Segment filter (context.tags)
-        criteria.segments.forEach { (key, value) ->
-            val safeKey = key.trim()
-            val safeValue = value.trim()
-            if (safeKey.isBlank() || safeValue.isBlank()) return@forEach
-            // Query JSONB context->tags->key = value
-            query.andWhere { 
-                JsonExtract(FeedbackTable.feedbackJson, listOf("context", "tags", safeKey)) eq safeValue 
-            }
-        }
-
-        // Filter by specific rating answer (fieldId + rating)
-        val ratingFieldId = criteria.ratingFieldId
-        val ratingValue = criteria.ratingValue
-        if (!ratingFieldId.isNullOrBlank() && ratingValue != null) {
-            // Avoid JSONPath injection by only allowing simple fieldId characters.
-            val isSafeFieldId = ratingFieldId.all { it.isLetterOrDigit() || it == '-' || it == '_' }
-            if (isSafeFieldId) {
-                val ratingTextForField = JsonbPathQueryFirstText(
-                    FeedbackTable.feedbackJson,
-                    "$.answers[*] ? (@.fieldId == \"$ratingFieldId\" && @.value.type == \"rating\").value.rating"
-                )
-                val ratingExpr = Cast(ratingTextForField, IntegerColumnType())
-                query.andWhere { ratingExpr eq ratingValue }
-            }
-        }
-    }
-
-    private fun normalizeTag(tag: String): String? {
-        val normalized = tag.trim().lowercase()
-        return normalized.takeIf { it.isNotBlank() }
-    }
-
-    private fun matchesTaskFilter(feedback: FeedbackDto, task: String?): Boolean {
-        if (task.isNullOrBlank()) return true
-
-        val taskAnswer = feedback.answers.find { a -> a.fieldId in TopTasksFieldIds.task }
-        if (taskAnswer != null && taskAnswer.fieldType == FieldType.SINGLE_CHOICE) {
-            val selectedId = (taskAnswer.value as? AnswerValue.SingleChoice)?.selectedOptionId
-            val option = taskAnswer.question.options?.find { it.id == selectedId }
-            return option?.label == task
-        }
-        return false
-    }
-
-    private fun matchesThemeFilter(
-        feedback: FeedbackDto,
-        themeId: String?,
-        themes: List<TextThemeDto>
-    ): Boolean {
-        if (themeId.isNullOrBlank()) return true
-
-        val taskAnswer = feedback.answers.find { it.fieldId == "task" }
-        val taskText = (taskAnswer?.value as? AnswerValue.Text)?.text ?: return false
-        val matchedTheme = matchThemeName(taskText, themes)
-
-        if (themeId == "uncategorized") {
-            return matchedTheme == "Annet"
-        }
-
-        val targetTheme = themes.find { it.id == themeId } ?: return false
-        return matchedTheme == targetTheme.name
-    }
-
-    private fun matchThemeName(text: String, themes: List<TextThemeDto>): String {
-        val textWords = TextProcessor.extractWords(text)
-            .map { TextProcessor.stemNorwegian(it) }
-            .toSet()
-
-        for (theme in themes.sortedByDescending { it.priority }) {
-            val keywordStems = theme.keywords.map { TextProcessor.stemNorwegian(it.lowercase()) }.toSet()
-            if (textWords.any { it in keywordStems }) {
-                return theme.name
-            }
-        }
-        return "Annet"
-    }
-
-    private fun findTagsByFeedbackId(id: String): List<String> {
-        return FeedbackTagTable
-            .select(FeedbackTagTable.tag)
-            .where { FeedbackTagTable.feedbackId eq id }
-            .map { it[FeedbackTagTable.tag] }
-            .sorted()
-    }
-
-    private fun findTagsByFeedbackIds(ids: List<String>): Map<String, List<String>> {
-        if (ids.isEmpty()) return emptyMap()
-
-        val result = mutableMapOf<String, MutableList<String>>()
-        FeedbackTagTable
-            .select(FeedbackTagTable.feedbackId, FeedbackTagTable.tag)
-            .where { FeedbackTagTable.feedbackId inList ids }
-            .forEach { row ->
-                val feedbackId = row[FeedbackTagTable.feedbackId]
-                val tag = row[FeedbackTagTable.tag]
-                result.getOrPut(feedbackId) { mutableListOf() }.add(tag)
-            }
-
-        return result.mapValues { (_, tags) -> tags.sorted() }
-    }
-
-    private class HasTagOp(
-        private val feedbackIdColumn: Column<String>,
-        private val tag: String
-    ) : Op<Boolean>() {
-        override fun toQueryBuilder(queryBuilder: QueryBuilder) {
-            queryBuilder.append("EXISTS (SELECT 1 FROM feedback_tag WHERE feedback_tag.feedback_id = ")
-            queryBuilder.append(feedbackIdColumn)
-            queryBuilder.append(" AND feedback_tag.tag = ")
-            queryBuilder.registerArgument(VarCharColumnType(), tag)
-            queryBuilder.append(")")
-        }
-    }
-
-    private class HasTagLikeOp(
-        private val feedbackIdColumn: Column<String>,
-        private val pattern: String
-    ) : Op<Boolean>() {
-        override fun toQueryBuilder(queryBuilder: QueryBuilder) {
-            queryBuilder.append("EXISTS (SELECT 1 FROM feedback_tag WHERE feedback_tag.feedback_id = ")
-            queryBuilder.append(feedbackIdColumn)
-            queryBuilder.append(" AND feedback_tag.tag LIKE ")
-            queryBuilder.registerArgument(VarCharColumnType(), pattern)
-            queryBuilder.append(")")
-        }
-    }
-
-    private fun matchesContextTagFilters(
-        record: FeedbackDbRecord,
-        feedback: FeedbackDto,
-        segments: List<Pair<String, String>>,
-        fromDate: String?,
-        toDate: String?,
-        deviceType: String?,
-        hasText: Boolean,
-        lowRating: Boolean
-    ): Boolean {
-        if (segments.isNotEmpty()) {
-            val tags = feedback.context?.tags ?: return false
-            val matchesSegments = segments.all { (key, value) ->
-                val safeKey = key.trim()
-                val safeValue = value.trim()
-                safeKey.isNotBlank() && safeValue.isNotBlank() && tags[safeKey] == safeValue
-            }
-            if (!matchesSegments) return false
-        }
-
-        if (!fromDate.isNullOrBlank()) {
-            try {
-                val localDate = java.time.LocalDate.parse(fromDate)
-                val startOfDay = localDate.atStartOfDay(java.time.ZoneId.of("Europe/Oslo")).toInstant()
-                if (record.opprettet.toInstant() < startOfDay) return false
-            } catch (_: Exception) {
-                // ignore invalid date
-            }
-        }
-        if (!toDate.isNullOrBlank()) {
-            try {
-                val localDate = java.time.LocalDate.parse(toDate)
-                val nextDayStart = localDate.plusDays(1)
-                    .atStartOfDay(java.time.ZoneId.of("Europe/Oslo"))
-                    .toInstant()
-                if (record.opprettet.toInstant() >= nextDayStart) return false
-            } catch (_: Exception) {
-                // ignore invalid date
-            }
-        }
-
-        if (!deviceType.isNullOrBlank()) {
-            val actual = feedback.context?.deviceType?.name?.lowercase()
-            if (actual == null || actual != deviceType.lowercase()) return false
-        }
-
-        if (hasText) {
-            val hasTextAnswer = feedback.answers.any { answer ->
-                val text = (answer.value as? AnswerValue.Text)?.text.orEmpty()
-                text.isNotBlank()
-            }
-            if (!hasTextAnswer) return false
-        }
-
-        if (lowRating) {
-            val hasLowRating = feedback.answers.any { answer ->
-                val rating = (answer.value as? AnswerValue.Rating)?.rating
-                rating != null && rating <= 2
-            }
-            if (!hasLowRating) return false
-        }
-
-        return true
-    }
-
-    private data class PaginatedSnapshot(
-        val records: List<FeedbackDbRecord>,
-        val tagsById: Map<String, List<String>>,
-        val total: Long,
-        val page: Int
-    )
-
-    private data class RecordsSnapshot(
-        val records: List<FeedbackDbRecord>,
-        val tagsById: Map<String, List<String>>
-    )
 
 }

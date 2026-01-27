@@ -17,6 +17,7 @@ import no.nav.lumi.insertTestFeedbackWithJson
 import no.nav.lumi.insertTestTheme
 import java.sql.Timestamp
 import java.time.Instant
+import java.time.OffsetDateTime
 import java.util.UUID
 
 class FeedbackRepositoryTest : FunSpec({
@@ -220,6 +221,169 @@ class FeedbackRepositoryTest : FunSpec({
             uncategorized shouldHaveSize 1
             uncategorized.first().id shouldBe "theme-other"
         }
+
+        test("filters by query with escaped like characters") {
+            insertTestFeedback(id = "match", team = "team-test", text = "foo%bar")
+            insertTestFeedback(id = "no-match", team = "team-test", text = "fooXbar")
+
+            val (content, _, _) = repository.findPaginated(
+                FeedbackQuery(team = "team-test", query = "foo%bar")
+            )
+
+            content shouldHaveSize 1
+            content.first().id shouldBe "match"
+        }
+
+        test("filters by deviceType") {
+            insertTestFeedbackWithJson(
+                id = "mobile",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-device",
+                        "context": { "deviceType": "mobile" },
+                        "answers": [
+                            {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 4}},
+                            {"fieldId": "text", "fieldType": "TEXT", "question": {"label": "Hvorfor?"}, "value": {"type": "text", "text": "Ok"}}
+                        ]
+                    }
+                """.trimIndent()
+            )
+            insertTestFeedbackWithJson(
+                id = "desktop",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-device",
+                        "context": { "deviceType": "desktop" },
+                        "answers": [
+                            {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 4}},
+                            {"fieldId": "text", "fieldType": "TEXT", "question": {"label": "Hvorfor?"}, "value": {"type": "text", "text": "Ok"}}
+                        ]
+                    }
+                """.trimIndent()
+            )
+
+            val (content, _, _) = repository.findPaginated(
+                FeedbackQuery(team = "team-test", deviceType = "mobile")
+            )
+
+            content shouldHaveSize 1
+            content.first().id shouldBe "mobile"
+        }
+
+        test("filters by date range") {
+            insertTestFeedback(
+                id = "in-range",
+                team = "team-test",
+                opprettet = OffsetDateTime.parse("2026-01-01T10:00:00Z")
+            )
+            insertTestFeedback(
+                id = "out-range",
+                team = "team-test",
+                opprettet = OffsetDateTime.parse("2026-01-02T10:00:00Z")
+            )
+            insertTestFeedback(
+                id = "before-range",
+                team = "team-test",
+                opprettet = OffsetDateTime.parse("2025-12-31T23:00:00Z")
+            )
+
+            val (content, _, _) = repository.findPaginated(
+                FeedbackQuery(team = "team-test", fromDate = "2026-01-01", toDate = "2026-01-01")
+            )
+
+            content shouldHaveSize 2
+            content.map { it.id }.toSet() shouldBe setOf("in-range", "before-range")
+        }
+
+        test("filters by lowRating") {
+            insertTestFeedback(id = "low", team = "team-test", rating = 2)
+            insertTestFeedback(id = "high", team = "team-test", rating = 4)
+
+            val (content, _, _) = repository.findPaginated(
+                FeedbackQuery(team = "team-test", lowRating = true)
+            )
+
+            content shouldHaveSize 1
+            content.first().id shouldBe "low"
+        }
+
+        test("filters by ratingFieldId and ratingValue") {
+            insertTestFeedbackWithJson(
+                id = "rating-3",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-rating",
+                        "answers": [
+                            {"fieldId": "rating_main", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 3}}
+                        ]
+                    }
+                """.trimIndent()
+            )
+            insertTestFeedbackWithJson(
+                id = "rating-1",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-rating",
+                        "answers": [
+                            {"fieldId": "rating_main", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 1}}
+                        ]
+                    }
+                """.trimIndent()
+            )
+
+            val (content, _, _) = repository.findPaginated(
+                FeedbackQuery(team = "team-test", ratingFieldId = "rating_main", ratingValue = 1)
+            )
+
+            content shouldHaveSize 1
+            content.first().id shouldBe "rating-1"
+        }
+
+        test("filters by segments") {
+            insertTestFeedbackWithJson(
+                id = "segment-match",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-segment",
+                        "context": { "tags": { "rolle": "bruker" } },
+                        "answers": [
+                            {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 4}}
+                        ]
+                    }
+                """.trimIndent()
+            )
+            insertTestFeedbackWithJson(
+                id = "segment-no-match",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-segment",
+                        "context": { "tags": { "rolle": "veileder" } },
+                        "answers": [
+                            {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 4}}
+                        ]
+                    }
+                """.trimIndent()
+            )
+
+            val (content, _, _) = repository.findPaginated(
+                FeedbackQuery(team = "team-test", segments = listOf("rolle" to "bruker"))
+            )
+
+            content shouldHaveSize 1
+            content.first().id shouldBe "segment-match"
+        }
     }
 
     context("findById") {
@@ -277,6 +441,20 @@ class FeedbackRepositoryTest : FunSpec({
             val arbeidApps = repository.findDistinctApps("arbeid")
             arbeidApps shouldHaveSize 1
             arbeidApps shouldContain "pam-frontend"
+        }
+    }
+
+    context("findSurveysByApp") {
+        test("groups and sorts surveyIds per app") {
+            insertTestFeedback(team = "flex", app = "app-a", surveyId = "Z")
+            insertTestFeedback(team = "flex", app = "app-a", surveyId = "A")
+            insertTestFeedback(team = "flex", app = "app-b", surveyId = "B")
+            insertTestFeedback(team = "flex", app = "app-b", surveyId = "B")
+
+            val surveysByApp = repository.findSurveysByApp("flex")
+
+            surveysByApp["app-a"] shouldBe listOf("A", "Z")
+            surveysByApp["app-b"] shouldBe listOf("B")
         }
     }
 
@@ -481,6 +659,120 @@ class FeedbackRepositoryTest : FunSpec({
                         val values = result["harAktivSykmelding"].shouldNotBeNull()
                         values shouldHaveSize 1
                         values.first().value shouldBe "Ja"
+                        values.first().count shouldBe 1
+                }
+
+                test("filters by task when task is set") {
+                        val surveyId = "survey-ctx-task-1"
+                        val tsInRange = Timestamp.from(Instant.parse("2026-01-01T12:00:00Z"))
+
+                        insertTestFeedbackWithJson(
+                                team = "team-test",
+                                app = "app-test",
+                                opprettet = tsInRange,
+                                feedbackJson = """
+                                        {
+                                            "surveyId": "$surveyId",
+                                            "context": {
+                                                "deviceType": "mobile",
+                                                "tags": {"k": "v"}
+                                            },
+                                            "answers": [
+                                                {
+                                                    "fieldId": "task",
+                                                    "fieldType": "SINGLE_CHOICE",
+                                                    "question": {
+                                                        "label": "Hva skulle du gjoere?",
+                                                        "options": [
+                                                            { "id": "opt-1", "label": "Soknad" },
+                                                            { "id": "opt-2", "label": "Oppfolging" }
+                                                        ]
+                                                    },
+                                                    "value": { "type": "singleChoice", "selectedOptionId": "opt-1" }
+                                                },
+                                                {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 2}},
+                                                {"fieldId": "text", "fieldType": "TEXT", "question": {"label": "Hvorfor?"}, "value": {"type": "text", "text": "Bra nok"}}
+                                            ]
+                                        }
+                                """.trimIndent(),
+                        )
+
+                        insertTestFeedbackWithJson(
+                                team = "team-test",
+                                app = "app-test",
+                                opprettet = tsInRange,
+                                feedbackJson = """
+                                        {
+                                            "surveyId": "$surveyId",
+                                            "context": {
+                                                "deviceType": "desktop",
+                                                "tags": {"k": "v"}
+                                            },
+                                            "answers": [
+                                                {
+                                                    "fieldId": "task",
+                                                    "fieldType": "SINGLE_CHOICE",
+                                                    "question": {
+                                                        "label": "Hva skulle du gjoere?",
+                                                        "options": [
+                                                            { "id": "opt-1", "label": "Soknad" },
+                                                            { "id": "opt-2", "label": "Oppfolging" }
+                                                        ]
+                                                    },
+                                                    "value": { "type": "singleChoice", "selectedOptionId": "opt-1" }
+                                                },
+                                                {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 2}},
+                                                {"fieldId": "text", "fieldType": "TEXT", "question": {"label": "Hvorfor?"}, "value": {"type": "text", "text": "Bra nok"}}
+                                            ]
+                                        }
+                                """.trimIndent(),
+                        )
+
+                        insertTestFeedbackWithJson(
+                                team = "team-test",
+                                app = "app-test",
+                                opprettet = tsInRange,
+                                feedbackJson = """
+                                        {
+                                            "surveyId": "$surveyId",
+                                            "context": {
+                                                "deviceType": "mobile",
+                                                "tags": {"k": "v"}
+                                            },
+                                            "answers": [
+                                                {
+                                                    "fieldId": "task",
+                                                    "fieldType": "SINGLE_CHOICE",
+                                                    "question": {
+                                                        "label": "Hva skulle du gjoere?",
+                                                        "options": [
+                                                            { "id": "opt-1", "label": "Soknad" },
+                                                            { "id": "opt-2", "label": "Oppfolging" }
+                                                        ]
+                                                    },
+                                                    "value": { "type": "singleChoice", "selectedOptionId": "opt-2" }
+                                                },
+                                                {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 2}},
+                                                {"fieldId": "text", "fieldType": "TEXT", "question": {"label": "Hvorfor?"}, "value": {"type": "text", "text": "Bra nok"}}
+                                            ]
+                                        }
+                                """.trimIndent(),
+                        )
+
+                        val result = repository.findContextTagsForSurvey(
+                                surveyId = surveyId,
+                                team = "team-test",
+                                task = "Soknad",
+                                segments = listOf("k" to "v"),
+                                deviceType = "mobile",
+                                hasText = true,
+                                lowRating = true,
+                        )
+
+                        result.keys shouldContain "k"
+                        val values = result["k"].shouldNotBeNull()
+                        values shouldHaveSize 1
+                        values.first().value shouldBe "v"
                         values.first().count shouldBe 1
                 }
         }
