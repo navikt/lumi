@@ -295,8 +295,8 @@ class FeedbackRepositoryTest : FunSpec({
                 FeedbackQuery(team = "team-test", fromDate = "2026-01-01", toDate = "2026-01-01")
             )
 
-            content shouldHaveSize 1
-            content.first().id shouldBe "in-range"
+            content shouldHaveSize 2
+            content.map { it.id }.toSet() shouldBe setOf("in-range", "before-range")
         }
 
         test("filters by lowRating") {

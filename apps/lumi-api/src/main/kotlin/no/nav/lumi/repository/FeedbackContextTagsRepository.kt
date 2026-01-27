@@ -6,6 +6,7 @@ import no.nav.lumi.domain.MetadataValueWithCount
 import no.nav.lumi.domain.TopTasksFieldIds
 import org.jetbrains.exposed.v1.core.IColumnType
 import org.jetbrains.exposed.v1.core.VarCharColumnType
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 

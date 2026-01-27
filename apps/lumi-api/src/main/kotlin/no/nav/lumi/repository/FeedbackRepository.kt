@@ -1,7 +1,7 @@
 package no.nav.lumi.repository
 
 import no.nav.lumi.domain.*
-import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.*
 import org.jetbrains.exposed.v1.jdbc.*
 import org.slf4j.LoggerFactory
 import java.time.Instant

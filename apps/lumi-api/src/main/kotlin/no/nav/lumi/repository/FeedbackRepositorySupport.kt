@@ -4,6 +4,7 @@ import no.nav.lumi.domain.*
 import no.nav.lumi.service.TextProcessor
 import org.jetbrains.exposed.v1.core.*
 import org.jetbrains.exposed.v1.jdbc.Query
+import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.slf4j.Logger
 import java.time.LocalDate
@@ -36,7 +37,7 @@ internal fun applyCommonFilters(query: Query, criteria: FeedbackQuery, log: Logg
         query.andWhere { JsonExtract(FeedbackTable.feedbackJson, listOf("surveyId")) eq surveyId }
     }
 
-    // Date range filter - convert YYYY-MM-DD to UTC Instants (Europe/Oslo)
+    // Date range filter - convert YYYY-MM-DD to UTC instants (Europe/Oslo).
     criteria.fromDate?.let { fromDate ->
         try {
             val localDate = LocalDate.parse(fromDate)
@@ -50,7 +51,7 @@ internal fun applyCommonFilters(query: Query, criteria: FeedbackQuery, log: Logg
     criteria.toDate?.let { toDate ->
         try {
             val localDate = LocalDate.parse(toDate)
-            // Inclusive date filter: < start of next day in Europe/Oslo
+            // Inclusive date filter: < start of next day (Europe/Oslo)
             val nextDayStart = localDate.plusDays(1)
                 .atStartOfDay(ZoneId.of("Europe/Oslo"))
                 .toInstant()
@@ -85,7 +86,8 @@ internal fun applyCommonFilters(query: Query, criteria: FeedbackQuery, log: Logg
     criteria.query?.let { searchQuery ->
         val escaped = searchQuery.escapeLikePattern()
         val pattern = "%$escaped%"
-        query.andWhere { (FeedbackTable.feedbackJson like pattern) or HasTagLikeOp(FeedbackTable.id, pattern) }
+        val jsonText = Cast(FeedbackTable.feedbackJson, TextColumnType())
+        query.andWhere { (jsonText like pattern) or HasTagLikeOp(FeedbackTable.id, pattern) }
     }
 
     // Segment filter (context.tags)
