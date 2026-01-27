@@ -207,7 +207,7 @@ const nps = {
 ```
 </details>
 
-<details>
+<details id="velg-surveytype-playbook">
 <summary><strong>Velg surveytype (playbook)</strong></summary>
 
 Dette er en rask tommelfingerregel for å velge riktig surveytype. Poenget er å få <strong>handlingsbare</strong> data
