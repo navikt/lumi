@@ -23,9 +23,9 @@ import "@navikt/lumi-survey/styles.css";
 3) Render widgeten og send `submission.transportPayload` til din backend
 
 ```tsx
-import { LumiSurveyDock } from "@navikt/lumi-survey";
+import { LumiSurveyDock, type LumiSurveyTransport } from "@navikt/lumi-survey";
 
-const transport = {
+const transport: LumiSurveyTransport = {
   async submit(submission) {
     await fetch("/api/lumi/feedback", {
       method: "POST",
@@ -76,9 +76,9 @@ token exchange og kaller Lumi API. Se [Backend: token exchange og forwarding](#b
 import "@navikt/ds-css";
 import "@navikt/lumi-survey/styles.css";
 
-import { LumiSurveyDock } from "@navikt/lumi-survey";
+import { type LumiSurveyConfig, LumiSurveyDock, type LumiSurveyTransport } from "@navikt/lumi-survey";
 
-const survey = {
+const survey: LumiSurveyConfig = {
   type: "rating",
   questions: [
     {
@@ -105,7 +105,7 @@ const survey = {
   ],
 };
 
-const transport = {
+const transport: LumiSurveyTransport = {
   async submit(submission) {
     await fetch("/api/lumi/feedback", {
       method: "POST",
