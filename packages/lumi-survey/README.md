@@ -411,6 +411,8 @@ npm install @navikt/nav-dekoratoren-moduler
 
 ## Events (hooks)
 
+Registrer event-callbacks ved å sende et `events`-objekt til `LumiSurveyDock`.
+
 ```ts
 const events = {
   onViewDock: (surveyId) => {},
