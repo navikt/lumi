@@ -5,10 +5,6 @@ import io.ktor.server.plugins.openapi.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.util.*
-import org.slf4j.LoggerFactory
-
-private val log = LoggerFactory.getLogger("OpenApi")
-
 /**
  * Uses experimental OpenAPI helpers (`descendants()`/`hide()`) to assemble docs
  * and hide internal endpoints from the published spec.
