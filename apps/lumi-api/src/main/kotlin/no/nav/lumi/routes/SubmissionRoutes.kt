@@ -16,6 +16,7 @@ import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.AnswerValue
 import no.nav.lumi.domain.FeedbackSubmissionV1
 import no.nav.lumi.domain.RatingVariant
+import no.nav.lumi.domain.SubmissionResult
 import no.nav.lumi.service.FeedbackService
 import org.slf4j.LoggerFactory
 import java.time.Instant
@@ -50,11 +51,33 @@ fun Route.submissionRoutes(feedbackService: FeedbackService = defaultFeedbackSer
     rateLimit(SubmissionRateLimit) {
         route("/api/tokenx") {
             install(TokenXSubmissionAuthPlugin)
+            /**
+             * Tag: submission
+             * Description: Submit feedback payload (TokenX).
+             * Body: application/json [FeedbackSubmissionV1] Feedback submission payload.
+             * Response: 201 application/json [SubmissionResult] Created.
+             * Response: 400 application/json [no.nav.lumi.config.exception.ApiError] Invalid payload.
+             * Response: 401 application/json [no.nav.lumi.config.exception.ApiError] Unauthorized.
+             * Response: 403 application/json [no.nav.lumi.config.exception.ApiError] Forbidden.
+             * Response: 413 application/json [no.nav.lumi.config.exception.ApiError] Payload too large.
+             * Response: 500 application/json [no.nav.lumi.config.exception.ApiError] Internal error.
+             */
             post("/v1/feedback") { handleSubmissionV1(call, feedbackService) }
         }
 
         route("/api/azure") {
             install(AzureSubmissionAuthPlugin)
+            /**
+             * Tag: submission
+             * Description: Submit feedback payload (Azure AD).
+             * Body: application/json [FeedbackSubmissionV1] Feedback submission payload.
+             * Response: 201 application/json [SubmissionResult] Created.
+             * Response: 400 application/json [no.nav.lumi.config.exception.ApiError] Invalid payload.
+             * Response: 401 application/json [no.nav.lumi.config.exception.ApiError] Unauthorized.
+             * Response: 403 application/json [no.nav.lumi.config.exception.ApiError] Forbidden.
+             * Response: 413 application/json [no.nav.lumi.config.exception.ApiError] Payload too large.
+             * Response: 500 application/json [no.nav.lumi.config.exception.ApiError] Internal error.
+             */
             post("/v1/feedback") { handleSubmissionV1(call, feedbackService) }
         }
     }
@@ -177,7 +200,7 @@ private suspend fun handleSubmissionV1(
     )
 
     log.info("Saved feedback id=$id team=${identity.team} app=${identity.app} surveyId=${submission.surveyId}")
-    call.respond(HttpStatusCode.Created, mapOf("id" to id))
+    call.respond(HttpStatusCode.Created, SubmissionResult(id = id))
 }
 
 private suspend fun receiveTextWithLimit(call: io.ktor.server.application.ApplicationCall): String {

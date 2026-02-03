@@ -2,7 +2,9 @@ package no.nav.lumi.config
 
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
+import io.ktor.server.plugins.openapi.*
 import io.ktor.server.routing.*
+import io.ktor.util.*
 import no.nav.lumi.config.auth.ClientAuthorizationPlugin
 import no.nav.lumi.config.auth.TeamAuthorizationPlugin
 import no.nav.lumi.routes.discoveryRoutes
@@ -15,6 +17,10 @@ import no.nav.lumi.routes.internalRoutes
 import no.nav.lumi.routes.submissionRoutes
 import no.nav.lumi.routes.teamsRoutes
 
+/**
+ * Uses `hide()` to keep internal routes out of OpenAPI/Swagger output.
+ */
+@OptIn(ExperimentalKtorApi::class)
 fun Application.configureRouting() {
     install(io.ktor.server.resources.Resources)
     routing {
@@ -25,7 +31,7 @@ fun Application.configureRouting() {
         submissionRoutes()
         
         // Protected analytics API - requires Azure AD from frontend
-        authenticate(AZURE_REALM) {
+        val internalApi = authenticate(AZURE_REALM) {
             // Validate that caller is the allowed lumi-dashboard frontend
             install(ClientAuthorizationPlugin) {
                 allowedClientId = getDashboardClientId()
@@ -42,6 +48,6 @@ fun Application.configureRouting() {
             discoveryRoutes()
             teamsRoutes()
         }
+        internalApi.hide()
     }
 }
-

@@ -173,6 +173,11 @@ data class DeleteSurveyResult(
     val deletedCount: Int
 )
 
+@Serializable
+data class SubmissionResult(
+    val id: String
+)
+
 // ============================================
 // API Response Types
 // ============================================

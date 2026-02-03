@@ -1,9 +1,9 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    kotlin("jvm") version "2.3.0"
-    kotlin("plugin.serialization") version "2.3.0"
-    id("io.ktor.plugin") version "3.3.3"
+    kotlin("jvm") version "2.2.20"
+    kotlin("plugin.serialization") version "2.2.20"
+    id("io.ktor.plugin") version "3.4.1"
     id("com.gradleup.shadow") version "9.3.1"
     id("com.github.ben-manes.versions") version "0.53.0"
     application
@@ -23,8 +23,8 @@ repositories {
     }
 }
 
-val ktorVersion = "3.3.3"
-val kotlinVersion = "2.3.0"
+val ktorVersion = "3.4.1"
+val kotlinVersion = "2.2.20"
 val logbackVersion = "1.5.24"
 val logstashVersion = "9.0"
 val postgresVersion = "42.7.8"
@@ -51,6 +51,7 @@ dependencies {
     implementation("io.ktor:ktor-server-rate-limit:$ktorVersion")
     implementation("io.ktor:ktor-server-openapi:$ktorVersion")
     implementation("io.ktor:ktor-server-swagger:$ktorVersion")
+    implementation("io.ktor:ktor-server-routing-openapi:$ktorVersion")
     
     // Ktor Client (for token validation)
     implementation("io.ktor:ktor-client-core:$ktorVersion")
@@ -108,6 +109,14 @@ java {
 kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_21)
+    }
+}
+
+ktor {
+    openApi {
+        enabled = true
+        codeInferenceEnabled = true
+        onlyCommented = true
     }
 }
 
