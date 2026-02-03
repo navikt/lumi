@@ -1,8 +1,10 @@
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { StorybookConfig } from "@storybook/react-vite";
 
 const customRequire = createRequire(import.meta.url);
+const configDir = dirname(fileURLToPath(import.meta.url));
 
 const config: StorybookConfig = {
   stories: ["../src/**/*.stories.@(ts|tsx)"],
@@ -14,7 +16,7 @@ const config: StorybookConfig = {
   },
 
   viteFinal: async (config) => {
-    const mockPath = resolve(__dirname, "./mocks/consentMock.ts");
+    const mockPath = resolve(configDir, "./mocks/consentMock.ts");
     console.log(
       "[Storybook] Setting up mock alias for @navikt/nav-dekoratoren-moduler",
     );
@@ -27,15 +29,16 @@ const config: StorybookConfig = {
     config.build.rollupOptions = config.build.rollupOptions || {};
     const previousOnWarn = config.build.rollupOptions.onwarn;
     config.build.rollupOptions.onwarn = (warning, warn) => {
+      const warningId = typeof warning.id === "string" ? warning.id : "";
       const isUseClientDirectiveWarning =
         warning.code === "MODULE_LEVEL_DIRECTIVE" &&
         warning.message.includes('"use client"') &&
-        typeof warning.id === "string";
+        warningId !== "";
 
       if (
         isUseClientDirectiveWarning &&
-        (warning.id.includes("node_modules/@navikt/aksel-icons/") ||
-          warning.id.includes("node_modules/@navikt/ds-react/"))
+        (warningId.includes("node_modules/@navikt/aksel-icons/") ||
+          warningId.includes("node_modules/@navikt/ds-react/"))
       ) {
         return;
       }
