@@ -21,9 +21,9 @@ jobs:
       node: ${{ steps.filter.outputs.node }}
       api: ${{ steps.filter.outputs.api }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
         with:
           filters: |
             node:
@@ -38,6 +38,45 @@ jobs:
               - '.github/workflows/**'
               - 'apps/lumi-api/**'
 
+  required:
+    name: Merge gate
+    needs: [changes, node, api]
+    runs-on: ubuntu-latest
+    if: always()
+    permissions:
+      contents: read
+    steps:
+      - name: Check required jobs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # We keep this job always-running so branch protection can require a single check.
+          # Accept "skipped" because we conditionally run jobs based on changed paths.
+          results=(
+            "changes=${{ needs.changes.result }}"
+            "node=${{ needs.node.result }}"
+            "api=${{ needs.api.result }}"
+          )
+          printf '%s\n' "${results[@]}"
+
+          for r in "${results[@]}"; do
+            status="${r#*=}"
+            case "$status" in
+              success|skipped) ;;
+              cancelled)
+                echo "Required job was cancelled: $r"
+                echo "This usually happens when a newer push cancels an in-flight run (concurrency.cancel-in-progress) or someone manually cancels the workflow."
+                echo "Wait for the latest CI run on the PR/branch to finish."
+                exit 1
+                ;;
+              *)
+                echo "Required job failed: $r"
+                exit 1
+                ;;
+            esac
+          done
+
   node:
     name: Lint / Typecheck / Test (Node)
     needs: changes
@@ -46,8 +85,8 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238
         with:
           node-version: 22
           cache: npm
@@ -78,14 +117,14 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
         with:
           distribution: temurin
           java-version: 21
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@f29f5a9d7b09a7c6b29859002d29d24e1674c884
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           cache-overwrite-existing: true

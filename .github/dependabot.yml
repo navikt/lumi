@@ -1,0 +1,43 @@
+version: 2
+registries:
+  github-npm:
+    type: npm-registry
+    url: https://npm.pkg.github.com
+    token: ${{ secrets.READER_TOKEN }}
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    registries:
+      - github-npm
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+      storybook:
+        patterns:
+          - "storybook"
+          - "@storybook/*"
+      testing-library:
+        patterns:
+          - "@testing-library/*"
+      navikt:
+        patterns:
+          - "@navikt/*"
+  - package-ecosystem: "gradle"
+    directory: "/apps/lumi-api"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      actions:
+        patterns:
+          - "*"

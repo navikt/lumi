@@ -18,6 +18,9 @@ storybook-static/
 .idea/
 .vscode/
 
+# Local-only notes
+.local-notes/
+
 # Logs
 *.log
 error.log
