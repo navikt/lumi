@@ -64,6 +64,12 @@ jobs:
             status="${r#*=}"
             case "$status" in
               success|skipped) ;;
+              cancelled)
+                echo "Required job was cancelled: $r"
+                echo "This usually happens when a newer push cancels an in-flight run (concurrency.cancel-in-progress) or someone manually cancels the workflow."
+                echo "Wait for the latest CI run on the PR/branch to finish."
+                exit 1
+                ;;
               *)
                 echo "Required job failed: $r"
                 exit 1
