@@ -31,13 +31,15 @@ jobs:
           update_type='${{ steps.dependabot-metadata.outputs.update-type }}'
           dependency_type='${{ steps.dependabot-metadata.outputs.dependency-type }}'
 
+          echo "Dependabot policy inputs: ecosystem=$ecosystem update_type=$update_type dependency_type=$dependency_type"
+
           should_automerge=false
 
           case "$ecosystem" in
             github-actions)
               [[ "$update_type" == "version-update:semver-patch" || "$update_type" == "version-update:semver-minor" ]] && should_automerge=true
               ;;
-            npm)
+            npm|npm_and_yarn)
               if [[ "$dependency_type" == "direct:production" ]]; then
                 [[ "$update_type" == "version-update:semver-patch" ]] && should_automerge=true
               else
