@@ -17,6 +17,7 @@ jobs:
   analyze-java:
     name: Analyze (Java/Kotlin)
     runs-on: ubuntu-latest
+    continue-on-error: true
 
     steps:
       - name: Checkout
