@@ -17,7 +17,6 @@ jobs:
   analyze-java:
     name: Analyze (Java/Kotlin)
     runs-on: ubuntu-latest
-    continue-on-error: true
 
     steps:
       - name: Checkout
@@ -29,6 +28,9 @@ jobs:
           distribution: "temurin"
           java-version: "21"
 
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@f29f5a9d7b09a7c6b29859002d29d24e1674c884
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@6bc82e05fd0ea64601dd4b465378bbcf57de0314
         with:
@@ -37,7 +39,8 @@ jobs:
           tools: linked
 
       - name: Build (API)
-        run: ./gradlew build -x test
+        # Avoid Kotlin daemon flakiness with CodeQL interception.
+        run: ./gradlew --no-daemon build -x test -Dkotlin.compiler.execution.strategy=in-process
         working-directory: apps/lumi-api
 
       - name: Perform CodeQL Analysis
