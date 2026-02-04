@@ -38,22 +38,28 @@ jobs:
           case "$ecosystem" in
             github-actions)
               [[ "$update_type" == "version-update:semver-patch" || "$update_type" == "version-update:semver-minor" ]] && should_automerge=true
+              echo "Dependabot policy: github-actions allows patch/minor"
               ;;
             npm|npm_and_yarn)
               if [[ "$dependency_type" == "direct:production" ]]; then
                 [[ "$update_type" == "version-update:semver-patch" ]] && should_automerge=true
+                echo "Dependabot policy: npm prod allows patch only"
               else
                 [[ "$update_type" == "version-update:semver-patch" || "$update_type" == "version-update:semver-minor" ]] && should_automerge=true
+                echo "Dependabot policy: npm dev allows patch/minor"
               fi
               ;;
             gradle)
-              [[ "$update_type" == "version-update:semver-patch" ]] && should_automerge=true
+              [[ "$update_type" == "version-update:semver-patch" || "$update_type" == "version-update:semver-minor" ]] && should_automerge=true
+              echo "Dependabot policy: gradle allows patch/minor"
               ;;
             *)
               should_automerge=false
+              echo "Dependabot policy: no rule for ecosystem=$ecosystem"
               ;;
           esac
 
+          echo "Dependabot policy decision: should_automerge=$should_automerge"
           echo "should_automerge=$should_automerge" >> "$GITHUB_OUTPUT"
 
       - name: Approve PR (if needed)
