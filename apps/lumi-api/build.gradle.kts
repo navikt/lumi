@@ -24,7 +24,7 @@ repositories {
     }
 }
 
-val ktorVersion = "3.3.3"
+val ktorVersion = "3.4.0"
 val kotlinVersion = "2.2.20"
 val logbackVersion = "1.5.27"
 val logstashVersion = "9.0"
