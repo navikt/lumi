@@ -2,7 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     // Pinned to a CodeQL-supported Kotlin version. Update when CodeQL supports Kotlin 2.3.x.
-    kotlin("jvm") version "2.2.20"
+    kotlin("jvm") version "2.3.0"
     kotlin("plugin.serialization") version "2.3.0"
     id("io.ktor.plugin") version "3.3.3"
     id("com.gradleup.shadow") version "9.3.1"
