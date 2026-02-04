@@ -34,7 +34,7 @@ jobs:
         with:
           languages: "java-kotlin"
           build-mode: "manual"
-          tools: latest
+          tools: linked
 
       - name: Build (API)
         run: ./gradlew build -x test
