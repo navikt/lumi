@@ -49,8 +49,6 @@ dependencies {
     implementation("io.ktor:ktor-server-auth-jwt:$ktorVersion")
     implementation("io.ktor:ktor-server-double-receive:$ktorVersion")
     implementation("io.ktor:ktor-server-rate-limit:$ktorVersion")
-    implementation("io.ktor:ktor-server-openapi:$ktorVersion")
-    implementation("io.ktor:ktor-server-swagger:$ktorVersion")
     
     // Ktor Client (for token validation)
     implementation("io.ktor:ktor-client-core:$ktorVersion")

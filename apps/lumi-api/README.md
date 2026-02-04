@@ -2,8 +2,6 @@
 
 Backend-API for Lumi survey analytics, bygget med Ktor.
 
-**Swagger UI:** http://localhost:8080/swagger
-
 ## Kom i gang (kort)
 
 ```bash

@@ -7,7 +7,6 @@ import no.nav.lumi.config.configureAuth
 import no.nav.lumi.config.configureCors
 import no.nav.lumi.config.configureDatabase
 import no.nav.lumi.config.configureMetrics
-import no.nav.lumi.config.configureOpenApi
 import no.nav.lumi.config.configureRateLimiting
 import no.nav.lumi.config.configureRouting
 import no.nav.lumi.config.configureSerialization
@@ -31,7 +30,6 @@ fun Application.module() {
     configureAuth()
     configureCors()
     configureDatabase()
-    configureOpenApi()
     configureMetrics()
     configureRouting()
 }
