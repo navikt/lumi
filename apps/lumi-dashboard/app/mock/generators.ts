@@ -9,6 +9,17 @@ import {
 } from "./helpers";
 import type { FeedbackTopic } from "./topics";
 
+const cryptoApi = globalThis.crypto;
+const randomBuffer = new Uint32Array(1);
+
+function randomFloat(): number {
+  if (!cryptoApi) {
+    throw new Error("Crypto API not available for mock data generation.");
+  }
+  cryptoApi.getRandomValues(randomBuffer);
+  return randomBuffer[0] / 2 ** 32;
+}
+
 export interface SurveyConfig {
   app: string;
   surveyId: string;
@@ -53,7 +64,7 @@ export function generateSurveyData(
 
   // 2. Shuffle the pool to get random order
   for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(randomFloat() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
 
@@ -62,12 +73,12 @@ export function generateSurveyData(
     const poolItem = pool[i % pool.length];
 
     // Random date within last 60 days to spread them out
-    const daysAgo = Math.floor(Math.random() * 60);
+    const daysAgo = Math.floor(randomFloat() * 60);
     const date = new Date(now);
     date.setDate(date.getDate() - daysAgo);
     const dateStr = date.toISOString().split("T")[0];
-    const hour = 7 + Math.floor(Math.random() * 15);
-    const minute = Math.floor(Math.random() * 60);
+    const hour = 7 + Math.floor(randomFloat() * 15);
+    const minute = Math.floor(randomFloat() * 60);
     const timestamp = `${dateStr}T${hour.toString().padStart(2, "0")}:${minute
       .toString()
       .padStart(2, "0")}:00Z`;
@@ -104,7 +115,7 @@ export function generateSurveyData(
     }
 
     // Device
-    const deviceRand = Math.random();
+    const deviceRand = randomFloat();
     let device: "mobile" | "tablet" | "desktop";
     let width: number;
     let height: number;
@@ -239,11 +250,11 @@ export function generateTopTasksMockData(): FeedbackDto[] {
     const dateStr = date.toISOString().split("T")[0];
 
     // 10-25 submissions per day to ensure > 100 total
-    const dailyCount = Math.floor(Math.random() * 15) + 10;
+    const dailyCount = Math.floor(randomFloat() * 15) + 10;
 
     for (let j = 0; j < dailyCount; j++) {
       // Pick task based on weight
-      const rand = Math.random();
+      const rand = randomFloat();
       let cumulativeWeight = 0;
       const selectedTask =
         tasks.find((t) => {
@@ -252,7 +263,7 @@ export function generateTopTasksMockData(): FeedbackDto[] {
         }) || tasks[0];
 
       // Determine success
-      const successRand = Math.random();
+      const successRand = randomFloat();
       let successValue = "Ja";
       let blocker: string | undefined;
 
@@ -338,30 +349,30 @@ export function generateTopTasksMockData(): FeedbackDto[] {
 
       if (successRand > selectedTask.successRate) {
         // Fail or partial
-        if (Math.random() > 0.4) {
+        if (randomFloat() > 0.4) {
           successValue = "Nei";
-          blocker = blockerPool[Math.floor(Math.random() * blockerPool.length)];
+          blocker = blockerPool[Math.floor(randomFloat() * blockerPool.length)];
         } else {
           successValue = "Delvis";
-          blocker = blockerPool[Math.floor(Math.random() * blockerPool.length)];
+          blocker = blockerPool[Math.floor(randomFloat() * blockerPool.length)];
         }
       }
 
       // Calculate duration based on success and complexity
       // Target time + variability
-      const baseTimeMs = 45000 + Math.random() * 90000;
-      let durationMs = baseTimeMs * (0.8 + Math.random() * 0.4);
+      const baseTimeMs = 45000 + randomFloat() * 90000;
+      let durationMs = baseTimeMs * (0.8 + randomFloat() * 0.4);
 
       // Failures usually take longer (searching around) or very short (rage quit)
       if (successValue === "Nei") {
-        durationMs = Math.random() > 0.5 ? durationMs * 2 : durationMs * 0.3;
+        durationMs = randomFloat() > 0.5 ? durationMs * 2 : durationMs * 0.3;
       }
 
       durationMs = Math.round(durationMs);
 
       // Add variation to time
-      const hour = 8 + Math.floor(Math.random() * 12);
-      const minute = Math.floor(Math.random() * 60);
+      const hour = 8 + Math.floor(randomFloat() * 12);
+      const minute = Math.floor(randomFloat() * 60);
       const dateObj = new Date(dateStr);
       dateObj.setUTCHours(hour, minute, 0, 0);
       const timestamp = dateObj.toISOString();
@@ -380,9 +391,9 @@ export function generateTopTasksMockData(): FeedbackDto[] {
         // Realistic device distribution: 55% desktop, 35% mobile, 10% tablet
         context: createContext(
           "/motebehov/arbeidsgiver",
-          Math.random() < 0.55
+          randomFloat() < 0.55
             ? "desktop"
-            : Math.random() < 0.8
+            : randomFloat() < 0.8
               ? "mobile"
               : "tablet",
         ),
@@ -405,8 +416,8 @@ export function generateTopTasksMockData(): FeedbackDto[] {
         ],
         // Add metadata to match segment data
         metadata: {
-          harAktivSykmelding: Math.random() > 0.33 ? "Ja" : "Nei",
-          ukeSykefravær: String(Math.floor(Math.random() * 8) + 1),
+          harAktivSykmelding: randomFloat() > 0.33 ? "Ja" : "Nei",
+          ukeSykefravær: String(Math.floor(randomFloat() * 8) + 1),
         },
         sensitiveDataRedacted: false,
       });
@@ -582,12 +593,12 @@ export function generateDiscoveryMockData(): FeedbackDto[] {
 
   // Generate 150 items with weighted distribution
   for (let i = 0; i < 150; i++) {
-    const daysAgo = Math.floor(Math.random() * 45);
+    const daysAgo = Math.floor(randomFloat() * 45);
     const date = new Date(now);
     date.setDate(date.getDate() - daysAgo);
-    const hour = 6 + Math.floor(Math.random() * 16);
+    const hour = 6 + Math.floor(randomFloat() * 16);
     const timestamp = `${date.toISOString().split("T")[0]}T${hour.toString().padStart(2, "0")}:${Math.floor(
-      Math.random() * 60,
+      randomFloat() * 60,
     )
       .toString()
       .padStart(2, "0")}:00Z`;
@@ -601,7 +612,7 @@ export function generateDiscoveryMockData(): FeedbackDto[] {
       tilrettelegging: 0.12,
       kontakt: 0.08,
     };
-    const rand = Math.random();
+    const rand = randomFloat();
     let cumulative = 0;
     let selectedTheme = "oppfolgingsplan";
     for (const [theme, weight] of Object.entries(weights)) {
@@ -616,10 +627,10 @@ export function generateDiscoveryMockData(): FeedbackDto[] {
       (r) => r.theme === selectedTheme,
     );
     const response =
-      themeResponses[Math.floor(Math.random() * themeResponses.length)];
+      themeResponses[Math.floor(randomFloat() * themeResponses.length)];
 
     // Determine success based on the response's typical success rate
-    const successRand = Math.random();
+    const successRand = randomFloat();
     let successValue: "yes" | "partial" | "no" = "yes";
     if (successRand > response.success) {
       successValue = successRand > response.success + 0.15 ? "no" : "partial";
@@ -658,12 +669,12 @@ export function generateDiscoveryMockData(): FeedbackDto[] {
       ),
     ];
 
-    if (successValue !== "yes" && Math.random() > 0.3) {
+    if (successValue !== "yes" && randomFloat() > 0.3) {
       answers.push(
         createTextAnswer(
           "blocker",
           "Hva hindret deg?",
-          blockerTexts[Math.floor(Math.random() * blockerTexts.length)],
+          blockerTexts[Math.floor(randomFloat() * blockerTexts.length)],
         ),
       );
     }
@@ -674,12 +685,12 @@ export function generateDiscoveryMockData(): FeedbackDto[] {
       app: "nav-no-frontend",
       surveyId: "survey-discovery",
       surveyType: "discovery",
-      context: createContext("/", Math.random() > 0.6 ? "mobile" : "desktop"),
+      context: createContext("/", randomFloat() > 0.6 ? "mobile" : "desktop"),
       answers,
       // Add metadata to match the segment data returned by fetchContextTags
       metadata: {
-        harAktivSykmelding: Math.random() > 0.33 ? "Ja" : "Nei", // ~67% Ja, ~33% Nei
-        ukeSykefravær: String(Math.floor(Math.random() * 8) + 1), // 1-8
+        harAktivSykmelding: randomFloat() > 0.33 ? "Ja" : "Nei", // ~67% Ja, ~33% Nei
+        ukeSykefravær: String(Math.floor(randomFloat() * 8) + 1), // 1-8
       },
       sensitiveDataRedacted: false,
     });
@@ -723,23 +734,23 @@ export function generateTaskPriorityMockData(): FeedbackDto[] {
 
   // Generate 200 votes to show a clear pattern
   for (let i = 0; i < 200; i++) {
-    const daysAgo = Math.floor(Math.random() * 14); // Concentrated in last 2 weeks
+    const daysAgo = Math.floor(randomFloat() * 14); // Concentrated in last 2 weeks
     const date = new Date(now);
     date.setDate(date.getDate() - daysAgo);
-    const hour = 8 + Math.floor(Math.random() * 12);
+    const hour = 8 + Math.floor(randomFloat() * 12);
     const timestamp = `${date.toISOString().split("T")[0]}T${hour.toString().padStart(2, "0")}:${Math.floor(
-      Math.random() * 60,
+      randomFloat() * 60,
     )
       .toString()
       .padStart(2, "0")}:00Z`;
 
     // Users pick 3-5 tasks based on WEIGHTED selection (not uniform!)
-    const numPicks = 3 + Math.floor(Math.random() * 3);
+    const numPicks = 3 + Math.floor(randomFloat() * 3);
     const picks = new Set<string>();
 
     while (picks.size < numPicks) {
       // Weighted random selection
-      const rand = Math.random();
+      const rand = randomFloat();
       let cumulative = 0;
       for (const task of tasks) {
         cumulative += task.weight;
@@ -759,7 +770,7 @@ export function generateTaskPriorityMockData(): FeedbackDto[] {
       surveyType: "taskPriority",
       context: createContext(
         "/minside",
-        Math.random() > 0.7 ? "mobile" : "desktop",
+        randomFloat() > 0.7 ? "mobile" : "desktop",
       ),
       answers: [
         createMultiChoiceAnswer(
@@ -772,8 +783,8 @@ export function generateTaskPriorityMockData(): FeedbackDto[] {
       ],
       // Add metadata to match segment data
       metadata: {
-        harAktivSykmelding: Math.random() > 0.33 ? "Ja" : "Nei",
-        ukeSykefravær: String(Math.floor(Math.random() * 8) + 1),
+        harAktivSykmelding: randomFloat() > 0.33 ? "Ja" : "Nei",
+        ukeSykefravær: String(Math.floor(randomFloat() * 8) + 1),
       },
       sensitiveDataRedacted: false,
     });
@@ -901,25 +912,25 @@ export function generateComplexSurveyData(): FeedbackDto[] {
   // Generate 80 submissions over the last 30 days
   for (let i = 0; i < 80; i++) {
     // Varied timestamps over last 30 days
-    const daysAgo = Math.floor(Math.random() * 30);
+    const daysAgo = Math.floor(randomFloat() * 30);
     const date = new Date(now);
     date.setDate(date.getDate() - daysAgo);
     // Realistic working hours with some evening submissions
-    const isEvening = Math.random() < 0.15;
+    const isEvening = randomFloat() < 0.15;
     const hour = isEvening
-      ? 19 + Math.floor(Math.random() * 3)
-      : 8 + Math.floor(Math.random() * 10);
-    const minute = Math.floor(Math.random() * 60);
-    const second = Math.floor(Math.random() * 60);
+      ? 19 + Math.floor(randomFloat() * 3)
+      : 8 + Math.floor(randomFloat() * 10);
+    const minute = Math.floor(randomFloat() * 60);
+    const second = Math.floor(randomFloat() * 60);
     date.setHours(hour, minute, second, 0);
     const timestamp = date.toISOString();
 
     // Role distribution: 70% private persons, 30% employers
-    const isEmployer = Math.random() < 0.3;
+    const isEmployer = randomFloat() < 0.3;
     const role = isEmployer ? "Arbeidsgiver" : "Privatperson";
 
     // Rating with realistic distribution (skewed toward 3-4)
-    const ratingRand = Math.random();
+    const ratingRand = randomFloat();
     let rating: number;
     if (ratingRand < 0.08) rating = 1;
     else if (ratingRand < 0.18) rating = 2;
@@ -939,14 +950,14 @@ export function generateComplexSurveyData(): FeedbackDto[] {
     const availableComments = commentPool.filter((c) => !usedComments.has(c));
     if (availableComments.length > 0) {
       comment =
-        availableComments[Math.floor(Math.random() * availableComments.length)];
+        availableComments[Math.floor(randomFloat() * availableComments.length)];
       if (comment) usedComments.add(comment);
     } else {
-      comment = commentPool[Math.floor(Math.random() * commentPool.length)];
+      comment = commentPool[Math.floor(randomFloat() * commentPool.length)];
     }
 
     // Weighted feature selection
-    const featureRand = Math.random();
+    const featureRand = randomFloat();
     let cumulative = 0;
     let features: string[] = ["innsending"];
     for (const combo of featureCombinations) {
@@ -958,13 +969,13 @@ export function generateComplexSurveyData(): FeedbackDto[] {
     }
 
     // Random incident date within last 6 months
-    const incidentDaysAgo = Math.floor(Math.random() * 180);
+    const incidentDaysAgo = Math.floor(randomFloat() * 180);
     const incidentDate = new Date(now);
     incidentDate.setDate(incidentDate.getDate() - incidentDaysAgo);
     const incidentDateStr = incidentDate.toISOString().split("T")[0];
 
     // Device distribution
-    const deviceRand = Math.random();
+    const deviceRand = randomFloat();
     const device =
       deviceRand < 0.5 ? "desktop" : deviceRand < 0.85 ? "mobile" : "tablet";
 
@@ -1022,7 +1033,7 @@ export function generateStarsRatingSurveyData(count = 40): FeedbackDto[] {
   ];
 
   for (let i = 0; i < count; i++) {
-    const daysAgo = Math.floor(Math.random() * 30);
+    const daysAgo = Math.floor(randomFloat() * 30);
     const date = new Date(now);
     date.setDate(date.getDate() - daysAgo);
     const timestamp = date.toISOString();
@@ -1030,7 +1041,7 @@ export function generateStarsRatingSurveyData(count = 40): FeedbackDto[] {
     // Weighted distribution: more 4-5 stars than 1-2
     const ratingWeights = [0.05, 0.1, 0.2, 0.35, 0.3];
     let rating = 5;
-    const rand = Math.random();
+    const rand = randomFloat();
     let cumulative = 0;
     for (let r = 0; r < ratingWeights.length; r++) {
       cumulative += ratingWeights[r];
@@ -1040,11 +1051,11 @@ export function generateStarsRatingSurveyData(count = 40): FeedbackDto[] {
       }
     }
 
-    const comment = comments[Math.floor(Math.random() * comments.length)];
+    const comment = comments[Math.floor(randomFloat() * comments.length)];
     const device =
-      Math.random() > 0.6
+      randomFloat() > 0.6
         ? "desktop"
-        : Math.random() > 0.2
+        : randomFloat() > 0.2
           ? "mobile"
           : "tablet";
 
@@ -1093,14 +1104,14 @@ export function generateThumbsSurveyData(count = 50): FeedbackDto[] {
   ];
 
   for (let i = 0; i < count; i++) {
-    const daysAgo = Math.floor(Math.random() * 21);
+    const daysAgo = Math.floor(randomFloat() * 21);
     const date = new Date(now);
     date.setDate(date.getDate() - daysAgo);
     const timestamp = date.toISOString();
 
     // ~70% thumbs up, ~30% thumbs down
-    const rating = Math.random() > 0.3 ? 2 : 1;
-    const device = Math.random() > 0.5 ? "mobile" : "desktop";
+    const rating = randomFloat() > 0.3 ? 2 : 1;
+    const device = randomFloat() > 0.5 ? "mobile" : "desktop";
 
     const answers: Answer[] = [
       createRatingAnswer(
@@ -1114,12 +1125,12 @@ export function generateThumbsSurveyData(count = 50): FeedbackDto[] {
     ];
 
     // Add optional negative feedback text
-    if (rating === 1 && Math.random() > 0.4) {
+    if (rating === 1 && randomFloat() > 0.4) {
       answers.push(
         createTextAnswer(
           "feedback",
           "Hva kan vi forbedre?",
-          negativeComments[Math.floor(Math.random() * negativeComments.length)],
+          negativeComments[Math.floor(randomFloat() * negativeComments.length)],
         ),
       );
     }
@@ -1158,23 +1169,23 @@ export function generateNpsSurveyData(count = 60): FeedbackDto[] {
   ];
 
   for (let i = 0; i < count; i++) {
-    const daysAgo = Math.floor(Math.random() * 45);
+    const daysAgo = Math.floor(randomFloat() * 45);
     const date = new Date(now);
     date.setDate(date.getDate() - daysAgo);
     const timestamp = date.toISOString();
 
     // NPS distribution: 25% detractors (0-6), 25% passives (7-8), 50% promoters (9-10)
-    const rand = Math.random();
+    const rand = randomFloat();
     let rating: number;
     if (rand < 0.25) {
-      rating = Math.floor(Math.random() * 7); // 0-6
+      rating = Math.floor(randomFloat() * 7); // 0-6
     } else if (rand < 0.5) {
-      rating = 7 + Math.floor(Math.random() * 2); // 7-8
+      rating = 7 + Math.floor(randomFloat() * 2); // 7-8
     } else {
-      rating = 9 + Math.floor(Math.random() * 2); // 9-10
+      rating = 9 + Math.floor(randomFloat() * 2); // 9-10
     }
 
-    const device = Math.random() > 0.6 ? "desktop" : "mobile";
+    const device = randomFloat() > 0.6 ? "desktop" : "mobile";
 
     const answers: Answer[] = [
       createRatingAnswer(
@@ -1188,21 +1199,21 @@ export function generateNpsSurveyData(count = 60): FeedbackDto[] {
     ];
 
     // Add optional comment based on rating
-    if (rating >= 9 && Math.random() > 0.6) {
+    if (rating >= 9 && randomFloat() > 0.6) {
       answers.push(
         createTextAnswer(
           "comment",
           "Hva liker du best?",
-          promoterComments[Math.floor(Math.random() * promoterComments.length)],
+          promoterComments[Math.floor(randomFloat() * promoterComments.length)],
         ),
       );
-    } else if (rating <= 6 && Math.random() > 0.5) {
+    } else if (rating <= 6 && randomFloat() > 0.5) {
       answers.push(
         createTextAnswer(
           "improvement",
           "Hva kan vi forbedre?",
           detractorComments[
-            Math.floor(Math.random() * detractorComments.length)
+            Math.floor(randomFloat() * detractorComments.length)
           ],
         ),
       );

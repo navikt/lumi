@@ -32,18 +32,18 @@ jobs:
     outputs:
       image: ${{ steps.docker-build-push.outputs.image }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
         with:
           distribution: temurin
           java-version: 21
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           cache-overwrite-existing: true
@@ -53,7 +53,7 @@ jobs:
         run: ./gradlew shadowJar
 
       - name: Push docker image to GAR
-        uses: nais/docker-build-push@v0
+        uses: nais/docker-build-push@87f920b0411b987d9a1fd4113aa384e1e3b54f2c
         id: docker-build-push
         with:
           team: team-esyfo
@@ -73,8 +73,8 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: nais/deploy/actions/deploy@v2
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: nais/deploy/actions/deploy@fa754451577294aae42872a69b888b3470478ec1
         env:
           CLUSTER: dev-gcp
           RESOURCE: apps/lumi-api/nais/app/dev.yaml
@@ -90,8 +90,8 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: nais/deploy/actions/deploy@v2
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: nais/deploy/actions/deploy@fa754451577294aae42872a69b888b3470478ec1
         env:
           CLUSTER: prod-gcp
           RESOURCE: apps/lumi-api/nais/app/prod.yaml

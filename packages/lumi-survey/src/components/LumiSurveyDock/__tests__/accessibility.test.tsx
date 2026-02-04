@@ -1,8 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import axe from "axe-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { axe } from "vitest-axe";
-import { createRatingSurvey } from "../../../presets/index.js";
+import { createRatingSurvey } from "../../../presets";
 import { LumiSurveyDock } from "../LumiSurveyDock.js";
 
 const survey = createRatingSurvey({
@@ -38,7 +38,7 @@ describe("LumiSurveyDock Accessibility", () => {
       expect(screen.getByRole("radio", { name: /5\./i })).toBeInTheDocument();
     });
 
-    const results = await axe(container);
+    const results = await axe.run(container);
     expect(results.violations).toEqual([]);
   });
 
@@ -58,7 +58,7 @@ describe("LumiSurveyDock Accessibility", () => {
       ).toBeInTheDocument();
     });
 
-    const results = await axe(container);
+    const results = await axe.run(container);
     expect(results.violations).toEqual([]);
   });
 
