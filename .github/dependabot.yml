@@ -32,6 +32,12 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    ignore:
+      # CodeQL supports Kotlin < 2.2.30; keep Kotlin pinned until support lands.
+      - dependency-name: "org.jetbrains.kotlin.jvm"
+        versions: [">=2.2.30"]
+      - dependency-name: "org.jetbrains.kotlin.plugin.serialization"
+        versions: [">=2.2.30"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

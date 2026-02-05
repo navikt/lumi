@@ -2,8 +2,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     // Pinned to a CodeQL-supported Kotlin version. Update when CodeQL supports Kotlin 2.3.x.
-    kotlin("jvm") version "2.3.0"
-    kotlin("plugin.serialization") version "2.3.0"
+    kotlin("jvm")
+    kotlin("plugin.serialization")
     id("io.ktor.plugin") version "3.4.0"
     id("com.gradleup.shadow") version "9.3.1"
     id("com.github.ben-manes.versions") version "0.53.0"
@@ -25,7 +25,6 @@ repositories {
 }
 
 val ktorVersion = "3.4.0"
-val kotlinVersion = "2.2.20"
 val logbackVersion = "1.5.27"
 val logstashVersion = "9.0"
 val postgresVersion = "42.7.9"
