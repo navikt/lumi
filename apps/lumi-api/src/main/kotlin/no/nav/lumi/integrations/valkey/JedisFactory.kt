@@ -1,9 +1,9 @@
 package no.nav.lumi.integrations.valkey
 
+import redis.clients.jedis.ConnectionPoolConfig
 import redis.clients.jedis.DefaultJedisClientConfig
 import redis.clients.jedis.HostAndPort
-import redis.clients.jedis.JedisPool
-import redis.clients.jedis.JedisPoolConfig
+import redis.clients.jedis.RedisClient
 import java.net.URI
 import java.time.Duration
 
@@ -11,11 +11,11 @@ internal object JedisFactory {
     private val defaultConnectionTimeout: Duration = Duration.ofSeconds(2)
     private val defaultSocketTimeout: Duration = Duration.ofSeconds(2)
 
-    fun createPool(
+    fun createClient(
         uri: String,
         username: String?,
         password: String?,
-    ): JedisPool {
+    ): RedisClient {
         val normalizedUri = uri
             .replace("valkey://", "redis://")
             .replace("valkeys://", "rediss://")
@@ -43,7 +43,7 @@ internal object JedisFactory {
             }
             .build()
 
-        val poolConfig = JedisPoolConfig().apply {
+        val poolConfig = ConnectionPoolConfig().apply {
             // Validate connections to avoid stale sockets ("Broken pipe") after idle.
             testOnBorrow = true
             testWhileIdle = true
@@ -51,6 +51,10 @@ internal object JedisFactory {
             minEvictableIdleDuration = Duration.ofMinutes(5)
         }
 
-        return JedisPool(poolConfig, HostAndPort(host, port), clientConfig)
+        return RedisClient.builder()
+            .hostAndPort(HostAndPort(host, port))
+            .clientConfig(clientConfig)
+            .poolConfig(poolConfig)
+            .build()
     }
 }

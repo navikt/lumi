@@ -5,7 +5,7 @@ import io.micrometer.core.instrument.Timer
 import no.nav.lumi.config.ServerEnv
 import no.nav.lumi.config.appMicrometerRegistry
 import org.slf4j.LoggerFactory
-import redis.clients.jedis.JedisPool
+import redis.clients.jedis.RedisClient
 import redis.clients.jedis.exceptions.JedisConnectionException
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
@@ -76,7 +76,7 @@ class InMemoryTeamCache : TeamCache {
  * Falls back to in-memory cache if Valkey is unavailable.
  */
 class ValkeyTeamCache private constructor(
-    private val jedisPool: JedisPool,
+    private val redisClient: RedisClient,
     private val keyPrefix: String = "teams:",
     private val fallback: InMemoryTeamCache = InMemoryTeamCache()
 ) : TeamCache {
@@ -106,9 +106,7 @@ class ValkeyTeamCache private constructor(
         
         return try {
             val startTime = System.nanoTime()
-            val members = jedisPool.resource.use { jedis ->
-                jedis.smembers(key)
-            }
+            val members = redisClient.smembers(key)
             cacheOperationTimer.record(Duration.ofNanos(System.nanoTime() - startTime))
             
             if (members.isNullOrEmpty()) {
@@ -139,16 +137,14 @@ class ValkeyTeamCache private constructor(
             val startTime = System.nanoTime()
             
             // Use pipeline for atomicity
-            jedisPool.resource.use { jedis ->
-                jedis.del(key)
-                if (teams.isNotEmpty()) {
-                    jedis.sadd(key, *teams.toTypedArray())
-                    jedis.expire(key, ttl.seconds)
-                } else {
-                    // For empty teams, store a sentinel value to distinguish from "not cached"
-                    jedis.sadd(key, "__EMPTY__")
-                    jedis.expire(key, ttl.seconds)
-                }
+            redisClient.del(key)
+            if (teams.isNotEmpty()) {
+                redisClient.sadd(key, *teams.toTypedArray())
+                redisClient.expire(key, ttl.seconds)
+            } else {
+                // For empty teams, store a sentinel value to distinguish from "not cached"
+                redisClient.sadd(key, "__EMPTY__")
+                redisClient.expire(key, ttl.seconds)
             }
             
             cacheOperationTimer.record(Duration.ofNanos(System.nanoTime() - startTime))
@@ -172,13 +168,9 @@ class ValkeyTeamCache private constructor(
     override fun clear() {
         try {
             // Note: In production, be careful with KEYS command on large datasets
-            val keys = jedisPool.resource.use { jedis ->
-                jedis.keys("${keyPrefix}*")
-            }
+            val keys = redisClient.keys("${keyPrefix}*")
             if (keys.isNotEmpty()) {
-                jedisPool.resource.use { jedis ->
-                    jedis.del(*keys.toTypedArray())
-                }
+                redisClient.del(*keys.toTypedArray())
             }
             fallback.clear()
             log.info("Valkey cache cleared (${keys.size} keys)")
@@ -206,13 +198,13 @@ class ValkeyTeamCache private constructor(
             val password = valkeyEnv.password
             
             return try {
-                val jedisPool = JedisFactory.createPool(uri = uri, username = username, password = password)
+                val redisClient = JedisFactory.createClient(uri = uri, username = username, password = password)
                 
                 // Test connection
-                jedisPool.resource.use { jedis -> jedis.ping() }
+                redisClient.ping()
                 
                 log.info("Valkey cache connected successfully")
-                ValkeyTeamCache(jedisPool)
+                ValkeyTeamCache(redisClient)
             } catch (e: Exception) {
                 log.error("Failed to connect to Valkey, using in-memory fallback", e)
                 InMemoryTeamCache()
@@ -222,8 +214,8 @@ class ValkeyTeamCache private constructor(
         /**
          * Create a ValkeyTeamCache for testing.
          */
-        fun forTesting(jedisPool: JedisPool, keyPrefix: String = "test:teams:"): ValkeyTeamCache {
-            return ValkeyTeamCache(jedisPool, keyPrefix = keyPrefix)
+        fun forTesting(redisClient: RedisClient, keyPrefix: String = "test:teams:"): ValkeyTeamCache {
+            return ValkeyTeamCache(redisClient, keyPrefix = keyPrefix)
         }
     }
 }

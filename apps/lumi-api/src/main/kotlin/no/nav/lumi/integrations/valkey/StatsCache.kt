@@ -7,7 +7,7 @@ import kotlinx.serialization.json.Json
 import no.nav.lumi.config.ServerEnv
 import no.nav.lumi.config.appMicrometerRegistry
 import org.slf4j.LoggerFactory
-import redis.clients.jedis.JedisPool
+import redis.clients.jedis.RedisClient
 import redis.clients.jedis.exceptions.JedisConnectionException
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
@@ -110,7 +110,7 @@ class NoopStatsCache : StatsCache {
  * Default TTL: 5 minutes for stats data.
  */
 class ValkeyStatsCache private constructor(
-    private val jedisPool: JedisPool,
+    private val redisClient: RedisClient,
     private val keyPrefix: String = "stats:",
     private val fallback: StatsCache? = InMemoryStatsCache()
 ) : StatsCache {
@@ -137,9 +137,7 @@ class ValkeyStatsCache private constructor(
         
         return try {
             val startTime = System.nanoTime()
-            val value = jedisPool.resource.use { jedis ->
-                jedis.get(fullKey)
-            }
+            val value = redisClient.get(fullKey)
             cacheOperationTimer.record(Duration.ofNanos(System.nanoTime() - startTime))
             
             if (value.isNullOrEmpty()) {
@@ -166,9 +164,7 @@ class ValkeyStatsCache private constructor(
         
         try {
             val startTime = System.nanoTime()
-            jedisPool.resource.use { jedis ->
-                jedis.setex(fullKey, ttl.seconds, jsonValue)
-            }
+            redisClient.setex(fullKey, ttl.seconds, jsonValue)
             cacheOperationTimer.record(Duration.ofNanos(System.nanoTime() - startTime))
             
             log.debug("Cached stats for key: $key (TTL: ${ttl.seconds}s)")
@@ -185,7 +181,7 @@ class ValkeyStatsCache private constructor(
     
     override fun isHealthy(): Boolean {
         return try {
-            jedisPool.resource.use { jedis -> jedis.ping() } == "PONG"
+            redisClient.ping() == "PONG"
         } catch (e: Exception) {
             false
         }
@@ -193,13 +189,9 @@ class ValkeyStatsCache private constructor(
     
     override fun clear() {
         try {
-            val keys = jedisPool.resource.use { jedis ->
-                jedis.keys("${keyPrefix}*")
-            }
+            val keys = redisClient.keys("${keyPrefix}*")
             if (keys.isNotEmpty()) {
-                jedisPool.resource.use { jedis ->
-                    jedis.del(*keys.toTypedArray())
-                }
+                redisClient.del(*keys.toTypedArray())
             }
             fallback?.clear()
             log.info("Valkey stats cache cleared (${keys.size} keys)")
@@ -213,13 +205,9 @@ class ValkeyStatsCache private constructor(
         if (prefix.isBlank()) return
 
         try {
-            val keys = jedisPool.resource.use { jedis ->
-                jedis.keys("${keyPrefix}${prefix}*")
-            }
+            val keys = redisClient.keys("${keyPrefix}${prefix}*")
             if (keys.isNotEmpty()) {
-                jedisPool.resource.use { jedis ->
-                    jedis.del(*keys.toTypedArray())
-                }
+                redisClient.del(*keys.toTypedArray())
             }
             fallback?.clearByPrefix(prefix)
             log.info("Valkey stats cache cleared by prefix '$prefix' (${keys.size} keys)")
@@ -247,13 +235,13 @@ class ValkeyStatsCache private constructor(
             val password = valkeyEnv.password
             
             return try {
-                val jedisPool = JedisFactory.createPool(uri = uri, username = username, password = password)
+                val redisClient = JedisFactory.createClient(uri = uri, username = username, password = password)
                 
                 // Test connection
-                jedisPool.resource.use { jedis -> jedis.ping() }
+                redisClient.ping()
                 
                 log.info("Valkey stats cache connected successfully")
-                ValkeyStatsCache(jedisPool)
+                ValkeyStatsCache(redisClient)
             } catch (e: Exception) {
                 log.error("Failed to connect to Valkey for stats cache, using in-memory fallback", e)
                 InMemoryStatsCache()
@@ -277,10 +265,10 @@ class ValkeyStatsCache private constructor(
             val password = valkeyEnv.password
 
             return try {
-                val jedisPool = JedisFactory.createPool(uri = uri, username = username, password = password)
-                jedisPool.resource.use { jedis -> jedis.ping() }
+                val redisClient = JedisFactory.createClient(uri = uri, username = username, password = password)
+                redisClient.ping()
                 log.info("Valkey stats cache connected successfully")
-                ValkeyStatsCache(jedisPool, fallback = null)
+                ValkeyStatsCache(redisClient, fallback = null)
             } catch (e: Exception) {
                 log.error("Failed to connect to Valkey for stats cache; caching disabled", e)
                 NoopStatsCache()
@@ -290,8 +278,8 @@ class ValkeyStatsCache private constructor(
         /**
          * Create for testing with custom Jedis.
          */
-        fun forTesting(jedisPool: JedisPool, keyPrefix: String = "test:stats:"): ValkeyStatsCache {
-            return ValkeyStatsCache(jedisPool, keyPrefix = keyPrefix)
+        fun forTesting(redisClient: RedisClient, keyPrefix: String = "test:stats:"): ValkeyStatsCache {
+            return ValkeyStatsCache(redisClient, keyPrefix = keyPrefix)
         }
     }
 }

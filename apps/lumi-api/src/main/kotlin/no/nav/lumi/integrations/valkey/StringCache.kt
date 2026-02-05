@@ -5,7 +5,7 @@ import io.micrometer.core.instrument.Timer
 import no.nav.lumi.config.ServerEnv
 import no.nav.lumi.config.appMicrometerRegistry
 import org.slf4j.LoggerFactory
-import redis.clients.jedis.JedisPool
+import redis.clients.jedis.RedisClient
 import redis.clients.jedis.exceptions.JedisConnectionException
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
@@ -51,7 +51,7 @@ class InMemoryStringCache : StringCache {
 }
 
 class ValkeyStringCache private constructor(
-    private val jedisPool: JedisPool,
+    private val redisClient: RedisClient,
     private val keyPrefix: String,
     private val fallback: InMemoryStringCache = InMemoryStringCache()
 ) : StringCache {
@@ -77,9 +77,7 @@ class ValkeyStringCache private constructor(
 
         return try {
             val startTime = System.nanoTime()
-            val value = jedisPool.resource.use { jedis ->
-                jedis.get(fullKey)
-            }
+            val value = redisClient.get(fullKey)
             cacheOperationTimer.record(Duration.ofNanos(System.nanoTime() - startTime))
 
             if (value.isNullOrEmpty()) {
@@ -105,9 +103,7 @@ class ValkeyStringCache private constructor(
 
         try {
             val startTime = System.nanoTime()
-            jedisPool.resource.use { jedis ->
-                jedis.setex(fullKey, ttl.seconds, value)
-            }
+            redisClient.setex(fullKey, ttl.seconds, value)
             cacheOperationTimer.record(Duration.ofNanos(System.nanoTime() - startTime))
         } catch (e: JedisConnectionException) {
             cacheErrorCounter.increment()
@@ -122,7 +118,7 @@ class ValkeyStringCache private constructor(
 
     override fun isHealthy(): Boolean {
         return try {
-            jedisPool.resource.use { jedis -> jedis.ping() } == "PONG"
+            redisClient.ping() == "PONG"
         } catch (e: Exception) {
             false
         }
@@ -130,13 +126,9 @@ class ValkeyStringCache private constructor(
 
     override fun clear() {
         try {
-            val keys = jedisPool.resource.use { jedis ->
-                jedis.keys("${keyPrefix}*")
-            }
+            val keys = redisClient.keys("${keyPrefix}*")
             if (keys.isNotEmpty()) {
-                jedisPool.resource.use { jedis ->
-                    jedis.del(*keys.toTypedArray())
-                }
+                redisClient.del(*keys.toTypedArray())
             }
             fallback.clear()
             log.info("Valkey string cache cleared (${keys.size} keys)")
@@ -164,10 +156,10 @@ class ValkeyStringCache private constructor(
             val password = valkeyEnv.password
 
             return try {
-                val jedisPool = JedisFactory.createPool(uri = uri, username = username, password = password)
-                jedisPool.resource.use { jedis -> jedis.ping() }
+                val redisClient = JedisFactory.createClient(uri = uri, username = username, password = password)
+                redisClient.ping()
                 log.info("Valkey string cache connected successfully")
-                ValkeyStringCache(jedisPool, keyPrefix)
+                ValkeyStringCache(redisClient, keyPrefix)
             } catch (e: Exception) {
                 log.error("Failed to connect to Valkey for string cache, using in-memory fallback", e)
                 InMemoryStringCache()
