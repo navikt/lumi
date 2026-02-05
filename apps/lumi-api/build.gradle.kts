@@ -29,7 +29,7 @@ val logbackVersion = "1.5.27"
 val logstashVersion = "9.0"
 val postgresVersion = "42.7.9"
 val hikariVersion = "7.0.2"
-val flywayVersion = "11.20.0"
+val flywayVersion = "12.0.0"
 val kotestVersion = "6.1.3"
 val mockkVersion = "1.14.9"
 val testcontainersVersion = "1.21.4"
@@ -115,9 +115,7 @@ tasks.withType<Test>().configureEach {
 
 tasks {
     shadowJar {
-        mergeServiceFiles {
-            exclude("META-INF/services/org.flywaydb.core.extensibility.Plugin")
-        }
+        mergeServiceFiles()
 
         archiveFileName.set("app.jar")
         archiveClassifier.set("")
