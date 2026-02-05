@@ -84,7 +84,7 @@ dependencies {
     implementation("org.apache.poi:poi-ooxml:5.5.1")
     
     // Valkey/Redis cache
-    implementation("redis.clients:jedis:5.2.0")
+    implementation("redis.clients:jedis:7.2.1")
     
     // Testing
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
