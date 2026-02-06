@@ -43,10 +43,20 @@ class ExportService(
                     (it.value as? AnswerValue.Rating)?.rating?.toString() ?: ""
                 } ?: ""
                 val feedbackText = feedback.answers.firstOrNull { it.fieldType == FieldType.TEXT }?.let {
-                    (it.value as? AnswerValue.Text)?.text?.escapeCsv() ?: ""
+                    (it.value as? AnswerValue.Text)?.text ?: ""
                 } ?: ""
-                
-                appendLine("${feedback.id},${feedback.submittedAt},${feedback.app ?: ""},${feedback.surveyId},${rating},${feedbackText},${feedback.sensitiveDataRedacted}")
+
+                val row = listOf(
+                    feedback.id,
+                    feedback.submittedAt,
+                    feedback.app ?: "",
+                    feedback.surveyId,
+                    rating,
+                    feedbackText,
+                    feedback.sensitiveDataRedacted.toString()
+                ).joinToString(",") { it.escapeCsv() }
+
+                appendLine(row)
             }
         }
     }
@@ -113,9 +123,16 @@ class ExportService(
  * Helper extension to escape CSV values properly.
  */
 private fun String.escapeCsv(): String {
-    return if (contains(",") || contains("\"") || contains("\n")) {
-        "\"${replace("\"", "\"\"")}\""
+    val value = if (isPotentialCsvFormula()) "'$this" else this
+    return if (value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r")) {
+        "\"${value.replace("\"", "\"\"")}\""
     } else {
-        this
+        value
     }
+}
+
+private fun String.isPotentialCsvFormula(): Boolean {
+    val trimmed = trimStart { it == ' ' || it == '\t' }
+    val first = trimmed.firstOrNull() ?: return false
+    return first == '=' || first == '+' || first == '-' || first == '@'
 }

@@ -391,14 +391,14 @@ class FeedbackRepositoryTest : FunSpec({
             val id = UUID.randomUUID().toString()
             insertTestFeedback(id = id, team = "flex", text = "Test feedback text")
             
-            val feedback = repository.findById(id)
+            val feedback = repository.findById(id, "flex")
             
             feedback.shouldNotBeNull()
             feedback.id shouldBe id
         }
 
         test("returns null for non-existent id") {
-            val feedback = repository.findById("non-existent-id")
+            val feedback = repository.findById("non-existent-id", "flex")
             
             feedback.shouldBeNull()
         }
@@ -463,7 +463,7 @@ class FeedbackRepositoryTest : FunSpec({
             val id = UUID.randomUUID().toString()
             insertTestFeedback(id = id, tags = "existing-tag")
             
-            val result = repository.addTag(id, "new-tag")
+            val result = repository.addTag(id, "team-test", "new-tag")
             
             result shouldBe true
             
@@ -477,19 +477,19 @@ class FeedbackRepositoryTest : FunSpec({
             val id = UUID.randomUUID().toString()
             insertTestFeedback(id = id, tags = null)
 
-            val first = repository.addTag(id, "  Bug ")
-            val second = repository.addTag(id, "bug")
+            val first = repository.addTag(id, "team-test", "  Bug ")
+            val second = repository.addTag(id, "team-test", "bug")
 
             first shouldBe true
             second shouldBe true
 
-            val feedback = repository.findById(id).shouldNotBeNull()
+            val feedback = repository.findById(id, "team-test").shouldNotBeNull()
             feedback.tags shouldHaveSize 1
             feedback.tags.first() shouldBe "bug"
         }
 
         test("addTag returns false for non-existent feedback") {
-            val result = repository.addTag("non-existent", "tag")
+            val result = repository.addTag("non-existent", "team-test", "tag")
             
             result shouldBe false
         }
@@ -498,7 +498,7 @@ class FeedbackRepositoryTest : FunSpec({
             val id = UUID.randomUUID().toString()
             insertTestFeedback(id = id, tags = "tag1,tag2")
             
-            val result = repository.removeTag(id, "tag1")
+            val result = repository.removeTag(id, "team-test", "tag1")
             
             result shouldBe true
         }
@@ -509,12 +509,12 @@ class FeedbackRepositoryTest : FunSpec({
             insertTestFeedback(id = idA, tags = "shared")
             insertTestFeedback(id = idB, tags = "shared")
 
-            val result = repository.removeTag(idA, "shared")
+            val result = repository.removeTag(idA, "team-test", "shared")
 
             result shouldBe true
 
-            val feedbackA = repository.findById(idA).shouldNotBeNull()
-            val feedbackB = repository.findById(idB).shouldNotBeNull()
+            val feedbackA = repository.findById(idA, "team-test").shouldNotBeNull()
+            val feedbackB = repository.findById(idB, "team-test").shouldNotBeNull()
             feedbackA.tags.shouldBeEmpty()
             feedbackB.tags shouldContain "shared"
         }
@@ -526,10 +526,10 @@ class FeedbackRepositoryTest : FunSpec({
             insertTestFeedback(id = id, text = "Old text")
             
             val newJson = """{"surveyId": "test", "answers": []}"""
-            val result = repository.updateJson(id, newJson)
+            val result = repository.updateJson(id, "team-test", newJson)
             
             result shouldBe true
-            val feedback = repository.findById(id)
+            val feedback = repository.findById(id, "team-test")
             feedback.shouldNotBeNull()
         }
     }

@@ -1,24 +1,22 @@
 package no.nav.lumi.service
 
+import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldEndWith
+import io.kotest.matchers.string.shouldStartWith
 import no.nav.lumi.domain.*
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.*
 
-class ExportServiceTest {
-    
-    private val service = ExportService()
-    
-    @Test
-    fun `exportToCsv generates correct header`() {
-        val feedbacks = emptyList<FeedbackDto>()
-        
-        val csv = service.exportToCsv(feedbacks)
-        
-        assertTrue(csv.startsWith("id,submittedAt,app,surveyId,rating,feedback,sensitiveDataRedacted"))
+class ExportServiceTest : FunSpec({
+
+    val service = ExportService()
+
+    test("exportToCsv generates correct header") {
+        val csv = service.exportToCsv(emptyList())
+        csv.shouldStartWith("id,submittedAt,app,surveyId,rating,feedback,sensitiveDataRedacted")
     }
-    
-    @Test
-    fun `exportToCsv includes feedback data`() {
+
+    test("exportToCsv includes feedback data") {
         val feedbacks = listOf(
             FeedbackDto(
                 id = "test-id-123",
@@ -42,17 +40,16 @@ class ExportServiceTest {
                 sensitiveDataRedacted = false
             )
         )
-        
+
         val csv = service.exportToCsv(feedbacks)
-        
-        assertTrue(csv.contains("test-id-123"))
-        assertTrue(csv.contains("test-app"))
-        assertTrue(csv.contains("4"))
-        assertTrue(csv.contains("Great service!"))
+
+        csv.shouldContain("test-id-123")
+        csv.shouldContain("test-app")
+        csv.shouldContain(",4,")
+        csv.shouldContain("Great service!")
     }
-    
-    @Test
-    fun `exportToCsv escapes commas in text`() {
+
+    test("exportToCsv escapes commas in text") {
         val feedbacks = listOf(
             FeedbackDto(
                 id = "test-id",
@@ -70,15 +67,58 @@ class ExportServiceTest {
                 sensitiveDataRedacted = false
             )
         )
-        
+
         val csv = service.exportToCsv(feedbacks)
-        
-        // Should escape the comma
-        assertTrue(csv.contains("\"Hello, world\""))
+        csv.shouldContain("\"Hello, world\"")
     }
-    
-    @Test
-    fun `exportToJson returns valid JSON`() {
+
+    test("exportToCsv prefixes potential formulas in text") {
+        val feedbacks = listOf(
+            FeedbackDto(
+                id = "test-id",
+                submittedAt = "2024-01-15T10:00:00Z",
+                app = "app",
+                surveyId = "survey",
+                answers = listOf(
+                    Answer(
+                        fieldId = "feedback",
+                        fieldType = FieldType.TEXT,
+                        question = Question(label = "Feedback"),
+                        value = AnswerValue.Text("=1+1")
+                    )
+                ),
+                sensitiveDataRedacted = false
+            )
+        )
+
+        val csv = service.exportToCsv(feedbacks)
+        csv.shouldContain("'=1+1")
+    }
+
+    test("exportToCsv prefixes potential formulas even with leading whitespace") {
+        val feedbacks = listOf(
+            FeedbackDto(
+                id = "test-id",
+                submittedAt = "2024-01-15T10:00:00Z",
+                app = "app",
+                surveyId = "survey",
+                answers = listOf(
+                    Answer(
+                        fieldId = "feedback",
+                        fieldType = FieldType.TEXT,
+                        question = Question(label = "Feedback"),
+                        value = AnswerValue.Text(" =1+1")
+                    )
+                ),
+                sensitiveDataRedacted = false
+            )
+        )
+
+        val csv = service.exportToCsv(feedbacks)
+        csv.shouldContain("' =1+1")
+    }
+
+    test("exportToJson returns valid JSON") {
         val feedbacks = listOf(
             FeedbackDto(
                 id = "test-id",
@@ -89,16 +129,15 @@ class ExportServiceTest {
                 sensitiveDataRedacted = false
             )
         )
-        
+
         val json = service.exportToJson(feedbacks)
-        
-        assertTrue(json.startsWith("["))
-        assertTrue(json.endsWith("]"))
-        assertTrue(json.contains("test-id"))
+
+        json.shouldStartWith("[")
+        json.shouldEndWith("]")
+        json.shouldContain("test-id")
     }
-    
-    @Test
-    fun `exportToExcel returns non-empty byte array`() {
+
+    test("exportToExcel returns non-empty byte array") {
         val feedbacks = listOf(
             FeedbackDto(
                 id = "test-id",
@@ -109,12 +148,10 @@ class ExportServiceTest {
                 sensitiveDataRedacted = false
             )
         )
-        
+
         val bytes = service.exportToExcel(feedbacks)
-        
-        assertTrue(bytes.isNotEmpty())
-        // XLSX files start with PK (ZIP header)
-        assertEquals(0x50.toByte(), bytes[0])
-        assertEquals(0x4B.toByte(), bytes[1])
+        (bytes.isNotEmpty()) shouldBe true
+        bytes[0] shouldBe 0x50.toByte()
+        bytes[1] shouldBe 0x4B.toByte()
     }
-}
+})

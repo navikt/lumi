@@ -38,6 +38,19 @@ export const authMiddleware = createMiddleware().server(
       });
     }
 
+    // CSRF mitigation: reject cross-origin unsafe requests.
+    // In NAIS, auth is typically provided via sidecar-injected headers/cookies.
+    // Verifying Origin for state-changing requests prevents drive-by cross-site calls.
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      const origin = request.headers.get("origin");
+      if (origin) {
+        const expectedOrigin = new URL(request.url).origin;
+        if (origin !== expectedOrigin) {
+          throw new Error("Forbidden: Cross-origin request");
+        }
+      }
+    }
+
     // Production: dynamically import server-only oasis module
     // Using dynamic import ensures @navikt/oasis is never bundled into client code
     const { getToken, validateAzureToken, requestAzureOboToken } = await import(
