@@ -115,6 +115,11 @@ tasks.withType<Test>().configureEach {
 
 tasks {
     shadowJar {
+        // mergeServiceFiles() needs INCLUDE on service descriptors so Shadow
+        // concatenates all copies (e.g. Flyway 12's SPI plugin registry).
+        filesMatching("META-INF/services/**") {
+            duplicatesStrategy = DuplicatesStrategy.INCLUDE
+        }
         mergeServiceFiles()
 
         archiveFileName.set("app.jar")
