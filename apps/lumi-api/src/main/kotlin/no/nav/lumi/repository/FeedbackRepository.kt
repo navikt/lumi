@@ -14,18 +14,6 @@ class FeedbackRepository(
 ) {
     private val log = LoggerFactory.getLogger(FeedbackRepository::class.java)
 
-    internal suspend fun findById(id: String): FeedbackDto? {
-        return dbQuery {
-            FeedbackTable.selectAll().where { FeedbackTable.id eq id }
-                .singleOrNull()
-                ?.toDbRecord()
-                ?.let { record ->
-                    val tags = findTagsByFeedbackId(record.id)
-                    record.toDto(tags)
-                }
-        }
-    }
-
     suspend fun findById(id: String, team: String): FeedbackDto? {
         return dbQuery {
             FeedbackTable.selectAll().where { (FeedbackTable.id eq id) and (FeedbackTable.team eq team) }
@@ -38,18 +26,6 @@ class FeedbackRepository(
         }
     }
     
-    /**
-     * Get raw database record for ownership verification.
-     * Returns team and app for the given feedback ID.
-     */
-    internal suspend fun findRawById(id: String): FeedbackDbRecord? {
-        return dbQuery {
-            FeedbackTable.selectAll().where { FeedbackTable.id eq id }
-                .singleOrNull()
-                ?.toDbRecord()
-        }
-    }
-
     suspend fun findRawById(id: String, team: String): FeedbackDbRecord? {
         return dbQuery {
             FeedbackTable.selectAll().where { (FeedbackTable.id eq id) and (FeedbackTable.team eq team) }
@@ -71,22 +47,6 @@ class FeedbackRepository(
             }
         }
         return id
-    }
-
-    internal suspend fun update(id: String, feedbackJson: String): Boolean {
-        return dbQuery {
-            FeedbackTable.update({ FeedbackTable.id eq id }) {
-                it[FeedbackTable.feedbackJson] = feedbackJson
-            } > 0
-        }
-    }
-
-    internal suspend fun updateJson(id: String, feedbackJson: String): Boolean {
-        return dbQuery {
-            FeedbackTable.update({ FeedbackTable.id eq id }) {
-                it[FeedbackTable.feedbackJson] = feedbackJson
-            } > 0
-        }
     }
 
     suspend fun updateJson(id: String, team: String, feedbackJson: String): Boolean {
@@ -122,29 +82,6 @@ class FeedbackRepository(
         }
     }
 
-    internal suspend fun addTag(id: String, tag: String): Boolean {
-        return dbQuery {
-            val normalized = normalizeTag(tag) ?: return@dbQuery false
-            val exists = FeedbackTable.select(FeedbackTable.id)
-                .where { FeedbackTable.id eq id }
-                .any()
-            if (!exists) return@dbQuery false
-
-            val alreadyTagged = FeedbackTagTable.select(FeedbackTagTable.tag)
-                .where { (FeedbackTagTable.feedbackId eq id) and (FeedbackTagTable.tag eq normalized) }
-                .any()
-
-            if (!alreadyTagged) {
-                FeedbackTagTable.insert {
-                    it[feedbackId] = id
-                    it[this.tag] = normalized
-                }
-            }
-
-            true
-        }
-    }
-
     suspend fun addTag(id: String, team: String, tag: String): Boolean {
         return dbQuery {
             val normalized = normalizeTag(tag) ?: return@dbQuery false
@@ -168,21 +105,6 @@ class FeedbackRepository(
         }
     }
     
-    internal suspend fun removeTag(id: String, tag: String): Boolean {
-        return dbQuery {
-            val normalized = normalizeTag(tag) ?: return@dbQuery false
-            val exists = FeedbackTable.select(FeedbackTable.id)
-                .where { FeedbackTable.id eq id }
-                .any()
-            if (!exists) return@dbQuery false
-
-            FeedbackTagTable.deleteWhere {
-                (FeedbackTagTable.feedbackId eq id) and (FeedbackTagTable.tag eq normalized)
-            }
-            true
-        }
-    }
-
     suspend fun removeTag(id: String, team: String, tag: String): Boolean {
         return dbQuery {
             val normalized = normalizeTag(tag) ?: return@dbQuery false

@@ -4,6 +4,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
+import io.kotest.matchers.nulls.shouldNotBeNull
 import no.nav.lumi.TestDatabase
 import no.nav.lumi.config.DatabaseHolder
 import no.nav.lumi.insertTestFeedback
@@ -43,9 +44,9 @@ class FeedbackServiceTest : FunSpec({
             
             val id = service.save(feedbackJson, "flex", "test-app")
             
-            val saved = repository.findRawById(id)
-            saved?.feedbackJson shouldNotContain "12345678901"
-            saved?.feedbackJson shouldContain "FJERNET"
+            val saved = repository.findRawById(id, "flex").shouldNotBeNull()
+            saved.feedbackJson shouldNotContain "12345678901"
+            saved.feedbackJson shouldContain "FJERNET"
         }
     }
 
@@ -72,12 +73,12 @@ class FeedbackServiceTest : FunSpec({
             insertTestFeedbackWithJson(id = id, team = "flex", feedbackJson = feedbackJson)
             
             // Verify it exists first
-            repository.findRawById(id) shouldBe repository.findRawById(id)
+            repository.findRawById(id, "flex").shouldNotBeNull()
             
             val result = service.delete(id, "flex")
             
             result shouldBe true
-            repository.findRawById(id) shouldBe null
+            repository.findRawById(id, "flex") shouldBe null
         }
 
         test("does not delete feedback from another team") {
@@ -100,7 +101,7 @@ class FeedbackServiceTest : FunSpec({
 
             result shouldBe false
             // Should still exist
-            val unchanged = repository.findRawById(id)
+            val unchanged = repository.findRawById(id, "team-a")
             unchanged?.feedbackJson shouldContain "Team secret"
         }
     }

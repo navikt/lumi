@@ -6,6 +6,7 @@ import io.ktor.server.netty.*
 import no.nav.lumi.config.configureAuth
 import no.nav.lumi.config.configureCors
 import no.nav.lumi.config.configureDatabase
+import no.nav.lumi.config.configureSecurityHeaders
 import no.nav.lumi.config.configureMetrics
 import no.nav.lumi.config.configureRateLimiting
 import no.nav.lumi.config.configureRouting
@@ -25,6 +26,7 @@ fun main() {
 fun Application.module() {
     configureSerialization()
     configureStatusPages()
+    configureSecurityHeaders()
     configureCallLogging()
     configureRateLimiting()
     configureAuth()
