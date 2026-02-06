@@ -5,6 +5,9 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.nulls.shouldNotBeNull
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import no.nav.lumi.TestDatabase
 import no.nav.lumi.config.DatabaseHolder
 import no.nav.lumi.insertTestFeedback
@@ -47,6 +50,14 @@ class FeedbackServiceTest : FunSpec({
             val saved = repository.findRawById(id, "flex").shouldNotBeNull()
             saved.feedbackJson shouldNotContain "12345678901"
             saved.feedbackJson shouldContain "FJERNET"
+
+            // Persisted flag for robust UI/export indication
+            val savedJson = Json.parseToJsonElement(saved.feedbackJson).jsonObject
+            savedJson["sensitiveDataRedacted"]?.jsonPrimitive?.content shouldBe "true"
+
+            // And the DTO mapping should expose it
+            val dto = repository.findById(id, "flex").shouldNotBeNull()
+            dto.sensitiveDataRedacted shouldBe true
         }
     }
 

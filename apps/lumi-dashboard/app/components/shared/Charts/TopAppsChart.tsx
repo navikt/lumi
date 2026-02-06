@@ -1,13 +1,7 @@
-import {
-  Bar,
-  BarChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartEmptyState } from "~/components/shared/Charts/ChartEmptyState";
 import { ChartLoadingState } from "~/components/shared/Charts/ChartLoadingState";
+import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import { useTheme } from "~/context/ThemeContext";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
@@ -76,7 +70,12 @@ export function TopAppsChart() {
   };
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainerWithInitialSize
+      width="100%"
+      height="100%"
+      minWidth={2}
+      minHeight={2}
+    >
       <BarChart
         data={data}
         layout="vertical"
@@ -142,6 +141,6 @@ export function TopAppsChart() {
           onClick={handleBarClick}
         />
       </BarChart>
-    </ResponsiveContainer>
+    </ResponsiveContainerWithInitialSize>
   );
 }

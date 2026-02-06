@@ -3,13 +3,13 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { ChartEmptyState } from "~/components/shared/Charts/ChartEmptyState";
 import { ChartLoadingState } from "~/components/shared/Charts/ChartLoadingState";
+import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import { useTheme } from "~/context/ThemeContext";
 import { useSurveyTypeDistribution } from "~/hooks/useSurveyTypeDistribution";
 import type { SurveyType } from "~/types/api";
@@ -90,7 +90,7 @@ export function SurveyTypeDistribution({
   });
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ResponsiveContainerWithInitialSize width="100%" height={height}>
       <BarChart
         data={data}
         layout="vertical"
@@ -140,6 +140,6 @@ export function SurveyTypeDistribution({
           ))}
         </Bar>
       </BarChart>
-    </ResponsiveContainer>
+    </ResponsiveContainerWithInitialSize>
   );
 }

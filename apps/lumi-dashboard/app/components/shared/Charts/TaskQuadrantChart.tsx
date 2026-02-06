@@ -4,7 +4,6 @@ import {
   Cell,
   ReferenceArea,
   ReferenceLine,
-  ResponsiveContainer,
   Scatter,
   ScatterChart,
   Tooltip,
@@ -12,6 +11,7 @@ import {
   YAxis,
   ZAxis,
 } from "recharts";
+import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import { useTheme } from "~/context/ThemeContext";
 import { useTopTasksStats } from "~/hooks/useTopTasksStats";
 
@@ -152,7 +152,12 @@ export function TaskQuadrantChart({
   };
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainerWithInitialSize
+      width="100%"
+      height="100%"
+      minWidth={2}
+      minHeight={2}
+    >
       <ScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
         {/* Quadrant background zones */}
         {/* Bottom-right: CRISIS (high volume, low success) */}
@@ -332,6 +337,6 @@ export function TaskQuadrantChart({
           })}
         </Scatter>
       </ScatterChart>
-    </ResponsiveContainer>
+    </ResponsiveContainerWithInitialSize>
   );
 }

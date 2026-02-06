@@ -78,7 +78,7 @@ class ExportService(
         
         // Header row
         val headerRow = sheet.createRow(0)
-        val headers = listOf("ID", "Tidspunkt", "App", "Survey", "Vurdering", "Tilbakemelding", "Sensitivt data fjernet")
+        val headers = listOf("ID", "Tidspunkt", "App", "Survey", "Vurdering", "Tilbakemelding", "Sensitiv data fjernet")
         headers.forEachIndexed { index, header ->
             headerRow.createCell(index).setCellValue(header)
         }
