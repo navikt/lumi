@@ -47,6 +47,7 @@ fun FeedbackDbRecord.toDto(tags: List<String> = emptyList()): FeedbackDto {
     }
     
     val jsonObj = jsonElement.jsonObject
+    val storedRedactionFlag = jsonObj["sensitiveDataRedacted"]?.jsonPrimitive?.booleanOrNull
     val surveyId = jsonObj["surveyId"]?.jsonPrimitive?.content ?: "unknown"
     val surveyVersion = jsonObj["surveyVersion"]?.jsonPrimitive?.contentOrNull
 
@@ -97,7 +98,7 @@ fun FeedbackDbRecord.toDto(tags: List<String> = emptyList()): FeedbackDto {
     
     val answersJson = jsonObj["answers"] as? JsonArray ?: return createEmptyDto()
     val answers = mutableListOf<Answer>()
-    var hasRedactions = false
+    var hasRedactions = storedRedactionFlag == true
     
     for (answerElement in answersJson) {
         val answerObj = answerElement.jsonObject

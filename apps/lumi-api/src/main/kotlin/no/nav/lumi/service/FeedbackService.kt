@@ -50,6 +50,7 @@ class FeedbackService(
         return try {
             val jsonElement = json.parseToJsonElement(feedbackJson)
             val jsonObj = jsonElement.jsonObject.toMutableMap()
+            var hasRedactions = false
             
             val answers = jsonObj["answers"] as? JsonArray
             if (answers != null) {
@@ -64,6 +65,7 @@ class FeedbackService(
                                 val originalText = valueObj["text"]?.jsonPrimitive?.contentOrNull ?: ""
                                 val redacted = sensitiveDataFilter.redact(originalText)
                                 if (redacted.wasRedacted) {
+                                    hasRedactions = true
                                     valueObj["text"] = JsonPrimitive(redacted.redactedText)
                                     answerObj["value"] = JsonObject(valueObj)
                                     log.info("Redacted sensitive data from answer fieldId=${answerObj["fieldId"]}: ${redacted.matchedPatterns}")
@@ -78,6 +80,9 @@ class FeedbackService(
                 }
                 jsonObj["answers"] = JsonArray(redactedAnswers)
             }
+
+            // Persist a robust signal for redaction. Always set by backend based on actual redaction.
+            jsonObj["sensitiveDataRedacted"] = JsonPrimitive(hasRedactions)
             
             json.encodeToString(JsonObject.serializer(), JsonObject(jsonObj))
         } catch (e: Exception) {

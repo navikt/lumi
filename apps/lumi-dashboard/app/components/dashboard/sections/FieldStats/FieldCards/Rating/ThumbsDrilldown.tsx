@@ -1,5 +1,6 @@
 import { HStack, VStack } from "@navikt/ds-react";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { Cell, Pie, PieChart, Tooltip } from "recharts";
+import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 
 function calculatePct(count: number, total: number) {
   return total > 0 ? Math.round((count / total) * 100) : 0;
@@ -25,7 +26,12 @@ export function ThumbsDrilldown({
   return (
     <VStack gap="space-12" marginBlock="space-12 space-0">
       <div style={{ height: 200, width: "100%" }}>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainerWithInitialSize
+          width="100%"
+          height="100%"
+          minWidth={2}
+          minHeight={2}
+        >
           <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
             <Tooltip
               formatter={(value, name) => {
@@ -95,7 +101,7 @@ export function ThumbsDrilldown({
               );
             })()}
           </PieChart>
-        </ResponsiveContainer>
+        </ResponsiveContainerWithInitialSize>
       </div>
 
       <HStack gap="space-8" wrap>

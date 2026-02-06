@@ -1,13 +1,6 @@
 import { Skeleton } from "@navikt/ds-react";
-import {
-  Bar,
-  BarChart,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, Cell, Tooltip, XAxis, YAxis } from "recharts";
+import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import { useTheme } from "~/context/ThemeContext";
 import { useStats } from "~/hooks/useStats";
 
@@ -83,7 +76,12 @@ export function TopPathsChart() {
   }
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainerWithInitialSize
+      width="100%"
+      height="100%"
+      minWidth={2}
+      minHeight={2}
+    >
       <BarChart
         data={data}
         layout="vertical"
@@ -143,7 +141,7 @@ export function TopPathsChart() {
           ))}
         </Bar>
       </BarChart>
-    </ResponsiveContainer>
+    </ResponsiveContainerWithInitialSize>
   );
 }
 

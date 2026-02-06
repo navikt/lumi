@@ -194,6 +194,8 @@ data class FeedbackDto(
     val answers: List<Answer>,
     /** User-defined tags set in analytics (stored separately from submission payload). */
     val tags: List<String> = emptyList(),
+    @OptIn(ExperimentalSerializationApi::class)
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS)
     val sensitiveDataRedacted: Boolean = false,
     /** Duration in milliseconds from visit start to submission (from widget submission). */
     val durationMs: Long? = null,

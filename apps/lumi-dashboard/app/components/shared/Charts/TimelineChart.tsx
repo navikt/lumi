@@ -5,12 +5,12 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  ResponsiveContainer,
   Tooltip,
   type TooltipIndex,
   XAxis,
   YAxis,
 } from "recharts";
+import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import { useTheme } from "~/context/ThemeContext";
 import { useBreakpoint } from "~/hooks/useBreakpoint";
 import { useSearchParams } from "~/hooks/useSearchParams";
@@ -87,7 +87,12 @@ export function TimelineChart() {
   }
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainerWithInitialSize
+      width="100%"
+      height="100%"
+      minWidth={2}
+      minHeight={2}
+    >
       <BarChart
         data={data}
         margin={chartMargin}
@@ -189,6 +194,6 @@ export function TimelineChart() {
           maxBarSize={50}
         />
       </BarChart>
-    </ResponsiveContainer>
+    </ResponsiveContainerWithInitialSize>
   );
 }
