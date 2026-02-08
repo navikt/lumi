@@ -1,4 +1,5 @@
 import { createMiddleware } from "@tanstack/react-start";
+import { setResponseStatus } from "@tanstack/react-start/server";
 
 import { logger } from "~/server/logger";
 import { isMockMode } from "~/server/utils";
@@ -24,6 +25,11 @@ export interface AuthContext {
  */
 
 const SAFE_METHODS = new Set(["GET", "HEAD"]);
+
+function failWithStatus(status: number, message: string): never {
+  setResponseStatus(status);
+  throw new Error(message);
+}
 
 export function validateCsrfHeaders(
   request: Request,
@@ -95,7 +101,12 @@ export const authMiddleware = createMiddleware().server(
           },
           "Rejected request due to CSRF validation failure",
         );
-        throw error;
+        failWithStatus(
+          403,
+          error instanceof Error
+            ? error.message
+            : "Forbidden: CSRF validation failed",
+        );
       }
     }
 
@@ -108,18 +119,18 @@ export const authMiddleware = createMiddleware().server(
     const token = getToken(request);
 
     if (!token) {
-      throw new Error("Unauthorized: No token provided");
+      failWithStatus(401, "Unauthorized: No token provided");
     }
 
     const validation = await validateAzureToken(token);
     if (!validation.ok) {
-      throw new Error("Unauthorized: Invalid token");
+      failWithStatus(401, "Unauthorized: Invalid token");
     }
 
     const oboResult = await requestAzureOboToken(token, BACKEND_AUDIENCE);
     if (!oboResult.ok) {
       logger.error({ audience: BACKEND_AUDIENCE }, "OBO token exchange failed");
-      throw new Error("Token exchange failed");
+      failWithStatus(502, "Token exchange failed");
     }
 
     return next({

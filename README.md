@@ -60,6 +60,16 @@ flowchart LR
 - Survey widget: [`packages/lumi-survey/README.md`](packages/lumi-survey/README.md)
 - API og tilgang: [`apps/lumi-api/README.md`](apps/lumi-api/README.md)
 
+## TanStack MCP (lokalt script)
+
+For TanStack MCP-oppslag fra dette repoet, bruk scriptet:
+
+- `npm run tanstack:mcp -- list-tools`
+- `npm run tanstack:mcp -- call-tool listTanStackAddOns '{"framework":"React"}'`
+- `npm run tanstack:mcp -- call-tool tanstack_search_docs '{"query":"hydration","library":"start","framework":"react","limit":3}'`
+
+Merk: `tanstack_search_docs` og `tanstack_doc` krever nett-tilgang.
+
 ### Integrasjon og tilgang (for team)
 
 Lumi har egne endepunkter for innsending fra sluttbruker-flater (TokenX) og veileder/fagsystemer (AzureAD).

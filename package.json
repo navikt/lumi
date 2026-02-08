@@ -14,6 +14,7 @@
     "lint:fix": "biome check --write .",
     "typecheck": "npm -w packages/lumi-types run typecheck && npm -w packages/lumi-survey run typecheck && npm -w apps/lumi-dashboard run typecheck",
     "verify:lumi-survey": "npm -w @navikt/lumi-survey run build && node scripts/verify-lumi-survey-package.mjs",
+    "tanstack:mcp": "node scripts/tanstack-mcp.mjs",
     "test": "npm -w apps/lumi-dashboard run test",
     "e2e": "npm -w apps/lumi-dashboard run e2e",
     "api:run": "cd apps/lumi-api && ./gradlew run",
