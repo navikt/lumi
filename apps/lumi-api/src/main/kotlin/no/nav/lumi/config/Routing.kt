@@ -2,6 +2,7 @@ package no.nav.lumi.config
 
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
+import io.ktor.server.plugins.ratelimit.*
 import io.ktor.server.routing.*
 import no.nav.lumi.config.auth.ClientAuthorizationPlugin
 import no.nav.lumi.config.auth.TeamAuthorizationPlugin
@@ -33,15 +34,19 @@ fun Application.configureRouting() {
             
             // Enforce team authorization based on user's AD groups
             install(TeamAuthorizationPlugin)
-            
-            filterRoutes()
-            feedbackRoutes()
-            surveyFacetRoutes()
-            statsRoutes()
-            exportRoutes()
-            discoveryRoutes()
-            teamsRoutes()
+
+            rateLimit(AnalyticsRateLimit) {
+                filterRoutes()
+                feedbackRoutes()
+                surveyFacetRoutes()
+                statsRoutes()
+                discoveryRoutes()
+                teamsRoutes()
+            }
+
+            rateLimit(ExportRateLimit) {
+                exportRoutes()
+            }
         }
     }
 }
-

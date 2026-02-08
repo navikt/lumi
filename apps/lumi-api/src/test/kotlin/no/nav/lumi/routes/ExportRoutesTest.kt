@@ -97,4 +97,41 @@ class ExportRoutesTest : FunSpec({
             body.contains("rating-four") shouldBe false
         }
     }
+
+    test("GET /api/v1/intern/export rejects invalid date format") {
+        testApplication {
+            application { testModule() }
+
+            val response = createTestClient().get("/api/v1/intern/export?team=flex&fromDate=bad-date") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+        }
+    }
+
+    test("GET /api/v1/intern/export rejects invalid segment format") {
+        testApplication {
+            application { testModule() }
+
+            val response = createTestClient().get("/api/v1/intern/export?team=flex&segment=invalid-segment") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+        }
+    }
+
+    test("GET /api/v1/intern/export rejects too long query") {
+        testApplication {
+            application { testModule() }
+
+            val longQuery = "x".repeat(201)
+            val response = createTestClient().get("/api/v1/intern/export?team=flex&query=$longQuery") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+        }
+    }
 })

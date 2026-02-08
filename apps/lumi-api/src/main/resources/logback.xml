@@ -40,6 +40,5 @@
     <logger name="com.zaxxer.hikari" level="WARN"/>
     
     <!-- Our application logging -->
-    <logger name="no.nav.lumi" level="DEBUG"/>
+    <logger name="no.nav.lumi" level="INFO"/>
 </configuration>
-

@@ -47,14 +47,16 @@ private val strictJson = Json {
  * Rate limited to 100 requests per minute per calling application.
  */
 fun Route.submissionRoutes(feedbackService: FeedbackService = defaultFeedbackService) {
-    rateLimit(SubmissionRateLimit) {
-        route("/api/tokenx") {
-            install(TokenXSubmissionAuthPlugin)
+    route("/api/tokenx") {
+        install(TokenXSubmissionAuthPlugin)
+        rateLimit(SubmissionRateLimit) {
             post("/v1/feedback") { handleSubmissionV1(call, feedbackService) }
         }
+    }
 
-        route("/api/azure") {
-            install(AzureSubmissionAuthPlugin)
+    route("/api/azure") {
+        install(AzureSubmissionAuthPlugin)
+        rateLimit(SubmissionRateLimit) {
             post("/v1/feedback") { handleSubmissionV1(call, feedbackService) }
         }
     }

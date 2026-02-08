@@ -67,7 +67,6 @@ class TeamAuthorizationPluginTest {
                             navIdent = "Z123456",
                             name = "Test User",
                             email = "test@nav.no",
-                            token = "token",
                             clientId = "client",
                             groups = emptyList(),
                         )
@@ -121,7 +120,6 @@ class TeamAuthorizationPluginTest {
                             navIdent = "Z123456",
                             name = "Test User",
                             email = "test@nav.no",
-                            token = "token",
                             clientId = "client",
                             groups = emptyList(),
                         )
@@ -170,7 +168,6 @@ class TeamAuthorizationPluginTest {
                             navIdent = "Z123456",
                             name = "Test User",
                             email = "test@nav.no",
-                            token = "token",
                             clientId = "client",
                             groups = emptyList(),
                         )
@@ -216,7 +213,6 @@ class TeamAuthorizationPluginTest {
                             navIdent = "Z123456",
                             name = "Test User",
                             email = "test@nav.no",
-                            token = "token",
                             clientId = "client",
                             groups = emptyList(),
                         )
@@ -259,7 +255,6 @@ class TeamAuthorizationPluginTest {
                             navIdent = "Z123456",
                             name = "Test User",
                             email = "test@nav.no",
-                            token = "token",
                             clientId = "client",
                             groups = emptyList(),
                         )
@@ -307,7 +302,6 @@ class TeamAuthorizationPluginTest {
                             navIdent = "Z123456",
                             name = "Test User",
                             email = "test@nav.no",
-                            token = "token",
                             clientId = "client",
                             // Groups should not grant access without NAIS team membership.
                             groups = listOf("ef4e9824-6f3a-4933-8f40-6edf5233d4d2"),
@@ -354,7 +348,6 @@ class TeamAuthorizationPluginTest {
                             navIdent = "Z123456",
                             name = "Test User",
                             email = "test@nav.no",
-                            token = "token",
                             clientId = "client",
                             groups = emptyList(),
                         )

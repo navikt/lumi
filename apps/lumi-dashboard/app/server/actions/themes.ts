@@ -160,9 +160,14 @@ export const updateThemeServerFn = createServerFn({ method: "POST" })
       return theme;
     }
 
-    const url = buildUrl(backendUrl, `/api/v1/intern/themes/${themeId}`, {
-      team,
-    });
+    const encodedThemeId = encodeURIComponent(themeId);
+    const url = buildUrl(
+      backendUrl,
+      `/api/v1/intern/themes/${encodedThemeId}`,
+      {
+        team,
+      },
+    );
     const response = await fetch(url, {
       method: "PUT",
       headers: {
@@ -192,9 +197,14 @@ export const deleteThemeServerFn = createServerFn({ method: "POST" })
       return;
     }
 
-    const url = buildUrl(backendUrl, `/api/v1/intern/themes/${data.themeId}`, {
-      team: data.team,
-    });
+    const encodedThemeId = encodeURIComponent(data.themeId);
+    const url = buildUrl(
+      backendUrl,
+      `/api/v1/intern/themes/${encodedThemeId}`,
+      {
+        team: data.team,
+      },
+    );
     const response = await fetch(url, {
       method: "DELETE",
       headers: getHeaders(oboToken),

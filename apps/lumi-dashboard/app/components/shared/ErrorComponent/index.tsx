@@ -1,6 +1,16 @@
 import { Alert, BodyShort, Heading } from "@navikt/ds-react";
 import { ApiErrorException, ErrorType } from "~/types/errors";
 
+export function safeHelpUrl(helpUrl: string | null | undefined): string | null {
+  if (!helpUrl) return null;
+  try {
+    const parsed = new URL(helpUrl);
+    return parsed.protocol === "https:" ? parsed.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export function ErrorComponent({ error }: { error: Error }) {
   // Handle structured ApiErrors
   if (error instanceof ApiErrorException) {
@@ -44,6 +54,7 @@ export function ErrorComponent({ error }: { error: Error }) {
 
     if (type === ErrorType.AUTHORIZATION_ERROR || status === 403) {
       const { details, helpUrl } = error.error;
+      const validatedHelpUrl = safeHelpUrl(helpUrl);
       return (
         <Alert variant="warning" className="m-4">
           <Heading spacing size="small" level="3">
@@ -51,10 +62,10 @@ export function ErrorComponent({ error }: { error: Error }) {
           </Heading>
           <BodyShort>{message}</BodyShort>
           {details && <BodyShort className="mt-2">{details}</BodyShort>}
-          {helpUrl && (
+          {validatedHelpUrl && (
             <BodyShort className="mt-4">
               <a
-                href={helpUrl}
+                href={validatedHelpUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:underline"

@@ -66,8 +66,8 @@ private fun determineApiError(cause: Throwable, path: String?): ApiError {
         is NotFoundException -> ApiError.notFound(cause.message ?: "Not found", path)
         
         // Standard library exceptions
-        is IllegalArgumentException -> ApiError.badRequest(cause.message ?: "Illegal argument", path)
-        is IllegalStateException -> ApiError.badRequest(cause.message ?: "Illegal state", path)
+        is IllegalArgumentException -> ApiError.badRequest(safeBadRequestMessage(cause.message), path)
+        is IllegalStateException -> ApiError.badRequest(safeBadRequestMessage(cause.message), path)
         
         // Catch-all for unknown exceptions
         else -> ApiError.internalServerError(
@@ -82,8 +82,16 @@ private fun determineApiError(cause: Throwable, path: String?): ApiError {
  */
 private fun handleBadRequestException(cause: BadRequestException, path: String?): ApiError {
     val rootCause = cause.rootCause()
-    val message = rootCause.message ?: cause.message ?: "Bad request"
+    val message = safeBadRequestMessage(rootCause.message ?: cause.message)
     return ApiError.badRequest(message, path)
+}
+
+private fun safeBadRequestMessage(message: String?): String {
+    return if (isDev()) {
+        message ?: "Bad request"
+    } else {
+        "Bad request"
+    }
 }
 
 /**

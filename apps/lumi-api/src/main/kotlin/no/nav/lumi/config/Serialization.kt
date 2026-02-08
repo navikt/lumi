@@ -8,8 +8,8 @@ import kotlinx.serialization.json.Json
 fun Application.configureSerialization() {
     install(ContentNegotiation) {
         json(Json {
-            prettyPrint = true
-            isLenient = true
+            prettyPrint = false
+            isLenient = false
             ignoreUnknownKeys = true
             encodeDefaults = true
         })

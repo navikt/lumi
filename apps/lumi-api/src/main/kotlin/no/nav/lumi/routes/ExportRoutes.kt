@@ -20,27 +20,15 @@ fun Route.exportRoutes(exportService: ExportService = defaultExportService) {
     // Export feedback data
     get<ApiV1Intern.Export> { params ->
         val team = call.authorizedTeam
+        val tags = parseTags(params.tag)
+        val segments = parseSegments(params.segment)
+        validateDateRange(fromDate = params.fromDate, toDate = params.toDate)
         
         val format = try { 
             ExportFormat.valueOf(params.format.uppercase()) 
         } catch (e: Exception) { 
             ExportFormat.CSV 
         }
-        
-        // Parse tags (accept repeated params + comma-separated entries)
-        val tags = params.tag
-            ?.flatMap { it.split(",") }
-            ?.map { it.trim() }
-            ?.filter { it.isNotBlank() }
-            ?: emptyList()
-
-        // Parse segment params (format: "key:value")
-        val segments = params.segment
-            ?.mapNotNull { segmentStr ->
-                val parts = segmentStr.split(":", limit = 2)
-                if (parts.size == 2) Pair(parts[0], parts[1]) else null
-            }
-            ?: emptyList()
 
         val query = FeedbackQuery(
             team = team,
@@ -50,7 +38,7 @@ fun Route.exportRoutes(exportService: ExportService = defaultExportService) {
             hasText = params.hasText ?: false,
             lowRating = params.lowRating ?: false,
             tags = tags,
-            query = params.query?.takeIf { it.isNotBlank() },
+            query = parseSearchQuery(params.query),
             fromDate = params.fromDate,
             toDate = params.toDate,
             surveyId = params.surveyId,
