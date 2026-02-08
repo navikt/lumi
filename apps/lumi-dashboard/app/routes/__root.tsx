@@ -7,11 +7,13 @@ import {
   HeadContent,
   Outlet,
   Scripts,
+  useRouter,
 } from "@tanstack/react-router";
 import type * as React from "react";
 import { useState } from "react";
 import lumiLogo from "~/assets/lumi.png";
 import { ErrorComponent } from "~/components/shared/ErrorComponent";
+import { THEME_INIT_SCRIPT } from "~/config/themeInit";
 import { ThemeProvider, useTheme } from "~/context/ThemeContext";
 import globalStyles from "~/styles/global.css?url";
 
@@ -25,11 +27,6 @@ export const Route = createRootRoute({
       {
         name: "description",
         content: "Analytics dashboard for Lumi feedback and surveys.",
-      },
-      {
-        httpEquiv: "Content-Security-Policy",
-        content:
-          "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.nav.no; style-src 'self' 'unsafe-inline' https://cdn.nav.no; img-src 'self' data: https://cdn.nav.no; font-src 'self' data: https://cdn.nav.no;",
       },
     ],
     links: [
@@ -78,6 +75,23 @@ declare global {
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   const { theme } = useTheme();
+  const router = useRouter();
+  const nonce = (() => {
+    const routerNonce = router.options.ssr?.nonce;
+    if (routerNonce) {
+      return routerNonce;
+    }
+
+    if (typeof document === "undefined") {
+      return undefined;
+    }
+
+    const metaNonce = document
+      .querySelector('meta[property="csp-nonce"]')
+      ?.getAttribute("content");
+
+    return metaNonce || undefined;
+  })();
 
   // Use window.__theme as fallback during initial client render to prevent FOUC
   // The blocking script sets this variable before React loads
@@ -88,33 +102,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html lang="no" suppressHydrationWarning>
       <head>
         <script
+          nonce={nonce}
+          suppressHydrationWarning
           // biome-ignore lint/security/noDangerouslySetInnerHtml: Needed for theme init
           dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  localStorage.removeItem('theme');
-                  var key = 'lumi-theme-preference';
-                  var localTheme = localStorage.getItem(key);
-                  var supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
-                  if (!localTheme && supportDarkMode) localTheme = 'dark';
-                  if (!localTheme) localTheme = 'light';
-                  
-                  // Apply class "dark" for Aksel tokens
-                  if (localTheme === 'dark') {
-                    document.documentElement.classList.add('dark');
-                  } else {
-                    document.documentElement.classList.remove('dark');
-                  }
-                  
-                  document.documentElement.setAttribute('data-theme', localTheme);
-                  document.documentElement.style.colorScheme = localTheme;
-                  document.body.setAttribute('data-theme', localTheme);
-                  document.body.style.colorScheme = localTheme;
-                  window.__theme = localTheme;
-                } catch (e) {}
-              })();
-            `,
+            __html: THEME_INIT_SCRIPT,
           }}
         />
         <HeadContent />

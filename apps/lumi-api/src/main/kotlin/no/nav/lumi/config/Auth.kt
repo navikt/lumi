@@ -50,7 +50,6 @@ fun Application.configureAuth() {
                             navIdent = "Z999999",
                             name = "Lokal Utvikler",
                             email = "lokal.utvikler@nav.no",
-                            token = "mock-token",
                             clientId = env.auth.dashboardClientId,
                             // Include both groups for local development
                             groups = listOf(
@@ -89,7 +88,6 @@ private fun validateTokenWithTexas(token: String): BrukerPrincipal? {
             navIdent = result.NAVident,
             name = result.name,
             email = email,
-            token = token,
             clientId = result.azp_name,
             groups = groups
         )

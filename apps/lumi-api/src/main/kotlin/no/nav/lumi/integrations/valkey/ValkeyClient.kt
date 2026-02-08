@@ -150,7 +150,7 @@ class ValkeyTeamCache private constructor(
             cacheOperationTimer.record(Duration.ofNanos(System.nanoTime() - startTime))
             healthy.set(true)
             
-            log.debug("Cached teams for $email with TTL ${ttl.seconds}s: $teams")
+            log.debug("Cached teams in Valkey (teamCount={}, ttlSeconds={})", teams.size, ttl.seconds)
         } catch (e: JedisConnectionException) {
             cacheErrorCounter.increment()
             healthy.set(false)

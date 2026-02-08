@@ -13,41 +13,44 @@ const serverOnlyModules = [
   "pino",
   "prom-client",
 ];
+export default defineConfig(({ command, mode }) => {
+  const isProductionBuild = command === "build" && mode === "production";
+  const cdnBasePath = process.env.CDN_BASE_PATH || "/lumi-dashboard";
+  const cdnBaseUrl =
+    process.env.CDN_BASE_URL || `https://cdn.nav.no/team-esyfo${cdnBasePath}`;
+  const base = isProductionBuild ? `${cdnBaseUrl}/client/` : undefined;
 
-export default defineConfig({
-  base:
-    process.env.NODE_ENV === "production"
-      ? `https://cdn.nav.no/team-esyfo${process.env.CDN_BASE_PATH || "/lumi-dashboard"}/client`
-      : undefined,
+  return {
+    base,
+    server: {
+      port: 3000,
+      strictPort: true,
+    },
 
-  server: {
-    port: 3000,
-    strictPort: true,
-  },
+    // Externalize server-only dependencies from SSR bundle
+    ssr: {
+      external: serverOnlyModules,
+    },
 
-  // Externalize server-only dependencies from SSR bundle
-  ssr: {
-    external: serverOnlyModules,
-  },
+    // Nitro configuration for deployment
+    nitro: {
+      preset: "node-server",
+    },
 
-  // Nitro configuration for deployment
-  nitro: {
-    preset: "node-server",
-  },
-
-  plugins: [
-    // Custom plugin to stub server-only modules in client builds
-    serverOnlyPlugin(serverOnlyModules),
-    tsconfigPaths({
-      projects: ["./tsconfig.typecheck.json"],
-    }),
-    tanstackStart({
-      // Use app directory as source (non-standard but keeps our structure)
-      srcDirectory: "app",
-    }),
-    // Nitro handles production server deployment
-    nitro(),
-    // React plugin must come after TanStack Start plugin
-    viteReact(),
-  ],
+    plugins: [
+      // Custom plugin to stub server-only modules in client builds
+      serverOnlyPlugin(serverOnlyModules),
+      tsconfigPaths({
+        projects: ["./tsconfig.typecheck.json"],
+      }),
+      tanstackStart({
+        // Use app directory as source (non-standard but keeps our structure)
+        srcDirectory: "app",
+      }),
+      // Nitro handles production server deployment
+      nitro(),
+      // React plugin must come after TanStack Start plugin
+      viteReact(),
+    ],
+  };
 });

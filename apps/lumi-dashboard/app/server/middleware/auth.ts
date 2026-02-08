@@ -1,6 +1,7 @@
 import { createMiddleware } from "@tanstack/react-start";
 
 import { logger } from "~/server/logger";
+import { isMockMode } from "~/server/utils";
 import { serverEnv } from "~/serverEnv";
 
 const BACKEND_URL = serverEnv.LUMI_API_URL || "http://localhost:8080";
@@ -21,7 +22,46 @@ export interface AuthContext {
  *
  * Provides AuthContext to downstream handlers with backendUrl and oboToken.
  */
-import { isMockMode } from "~/server/utils";
+
+const SAFE_METHODS = new Set(["GET", "HEAD"]);
+
+export function validateCsrfHeaders(
+  request: Request,
+  options?: { enforceMissingHeaders?: boolean },
+): void {
+  if (SAFE_METHODS.has(request.method.toUpperCase())) {
+    return;
+  }
+
+  const expectedOrigin = new URL(request.url).origin;
+  const origin = request.headers.get("origin");
+  const referer = request.headers.get("referer");
+
+  if (origin) {
+    if (origin !== expectedOrigin) {
+      throw new Error("Forbidden: Cross-origin request");
+    }
+    return;
+  }
+
+  if (referer) {
+    let refererOrigin: string;
+    try {
+      refererOrigin = new URL(referer).origin;
+    } catch {
+      throw new Error("Forbidden: Invalid referer header");
+    }
+
+    if (refererOrigin !== expectedOrigin) {
+      throw new Error("Forbidden: Cross-origin request");
+    }
+    return;
+  }
+
+  if (options?.enforceMissingHeaders ?? true) {
+    throw new Error("Forbidden: Missing CSRF headers");
+  }
+}
 
 export const authMiddleware = createMiddleware().server(
   async ({ next, request }) => {
@@ -38,16 +78,24 @@ export const authMiddleware = createMiddleware().server(
       });
     }
 
-    // CSRF mitigation: reject cross-origin unsafe requests.
-    // In NAIS, auth is typically provided via sidecar-injected headers/cookies.
-    // Verifying Origin for state-changing requests prevents drive-by cross-site calls.
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      const origin = request.headers.get("origin");
-      if (origin) {
-        const expectedOrigin = new URL(request.url).origin;
-        if (origin !== expectedOrigin) {
-          throw new Error("Forbidden: Cross-origin request");
-        }
+    // CSRF mitigation: reject cross-origin unsafe requests in NAIS.
+    // Require Origin or Referer match; reject if both are missing.
+    if (!SAFE_METHODS.has(request.method.toUpperCase())) {
+      try {
+        validateCsrfHeaders(request, { enforceMissingHeaders: true });
+      } catch (error) {
+        logger.warn(
+          {
+            method: request.method,
+            path: new URL(request.url).pathname,
+            hasOrigin: Boolean(request.headers.get("origin")),
+            hasReferer: Boolean(request.headers.get("referer")),
+            reason:
+              error instanceof Error ? error.message : "Unknown CSRF error",
+          },
+          "Rejected request due to CSRF validation failure",
+        );
+        throw error;
       }
     }
 

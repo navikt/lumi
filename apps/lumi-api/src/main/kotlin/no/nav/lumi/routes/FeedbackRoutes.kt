@@ -35,28 +35,20 @@ fun Route.feedbackRoutes(
     get<ApiV1Intern.Feedback> { params ->
         // Team is already validated by TeamAuthorizationPlugin
         val team = call.authorizedTeam
-
-        // Parse segment params (format: "key:value")
-        val segments = params.segment?.mapNotNull { segmentStr ->
-            val parts = segmentStr.split(":", limit = 2)
-            if (parts.size == 2) Pair(parts[0], parts[1]) else null
-        } ?: emptyList()
-
-        val tags = params.tag
-            ?.flatMap { it.split(",") }
-            ?.map { it.trim() }
-            ?.filter { it.isNotBlank() }
-            ?: emptyList()
+        val paging = parsePaging(page = params.page, size = params.size)
+        val tags = parseTags(params.tag)
+        val segments = parseSegments(params.segment)
+        validateDateRange(fromDate = params.fromDate, toDate = params.toDate)
 
         val query = FeedbackQuery(
             team = team,
             app = params.app?.takeIf { it != FILTER_ALL },
-            page = params.page,
-            size = params.size ?: 10,
+            page = paging.page,
+            size = paging.size,
             hasText = params.hasText ?: false,
             lowRating = params.lowRating ?: false,
             tags = tags,
-            query = params.query?.takeIf { it.isNotBlank() },
+            query = parseSearchQuery(params.query),
             fromDate = params.fromDate,
             toDate = params.toDate,
             surveyId = params.surveyId,
@@ -195,12 +187,8 @@ fun Route.surveyFacetRoutes(
     // Get all context tags and values with counts for a survey (filtered by cardinality)
     get<ApiV1Intern.Surveys.Id.ContextTags> { params ->
         val team = call.authorizedTeam
-
-        // Parse segment params (format: "key:value")
-        val segments = params.segment?.mapNotNull { segmentStr ->
-            val parts = segmentStr.split(":", limit = 2)
-            if (parts.size == 2) Pair(parts[0], parts[1]) else null
-        } ?: emptyList()
+        val segments = parseSegments(params.segment)
+        validateDateRange(fromDate = params.fromDate, toDate = params.toDate)
 
         // repository lookup for advanced facet query
         val contextTags = FeedbackRepository().findContextTagsForSurvey(

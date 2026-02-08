@@ -2,18 +2,19 @@ package no.nav.lumi.config
 
 import io.ktor.server.application.*
 import io.ktor.server.plugins.ratelimit.*
-import no.nav.lumi.config.auth.JwtUtils
+import no.nav.lumi.config.auth.CallerIdentityKey
 import kotlin.time.Duration.Companion.minutes
 
 /**
  * Rate limiting to prevent abuse.
  * 
- * Uses azp_name from JWT to group requests by calling application.
- * Falls back to IP address for unauthenticated requests.
+ * Uses validated caller identity when available.
+ * Falls back to clientId from validated principal, then to IP address.
  */
 
 val SubmissionRateLimit = RateLimitName("submission")
 val AnalyticsRateLimit = RateLimitName("analytics")
+val ExportRateLimit = RateLimitName("export")
 
 fun Application.configureRateLimiting() {
     install(RateLimit) {
@@ -26,6 +27,11 @@ fun Application.configureRateLimiting() {
             rateLimiter(limit = 300, refillPeriod = 1.minutes)
             requestKey { call -> call.rateLimitKey() }
         }
+
+        register(ExportRateLimit) {
+            rateLimiter(limit = 30, refillPeriod = 1.minutes)
+            requestKey { call -> call.rateLimitKey() }
+        }
         
         global {
             rateLimiter(limit = 1000, refillPeriod = 1.minutes)
@@ -34,8 +40,18 @@ fun Application.configureRateLimiting() {
 }
 
 private fun io.ktor.server.application.ApplicationCall.rateLimitKey(): String {
-    val azpName = JwtUtils.extractAzpNameFromHeader(request.headers["Authorization"])
-    if (!azpName.isNullOrBlank()) return azpName
+    // Submission routes set CallerIdentityKey after successful token introspection.
+    attributes.getOrNull(CallerIdentityKey)?.let { identity ->
+        return "${identity.team}:${identity.app}"
+    }
+
+    // Analytics routes authenticate with BrukerPrincipal from Texas introspection.
+    getBrukerPrincipal()?.let { principal ->
+        extractCallerIdentityFromPrincipal(principal)?.let { identity ->
+            return "${identity.team}:${identity.app}"
+        }
+        principal.clientId?.takeIf { it.isNotBlank() }?.let { return it }
+    }
 
     val env = ServerEnv.current
     val forwardedFor = if (env.nais.isNais) {

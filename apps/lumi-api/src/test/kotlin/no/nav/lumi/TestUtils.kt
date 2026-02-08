@@ -214,7 +214,6 @@ fun Application.testModule(
                         navIdent = "A123456",
                         name = "Test User",
                         email = "test.user@nav.no",
-                        token = tokenCredential.token,
                         clientId = "dev-gcp:team-esyfo:lumi-dashboard",
                         // Groups are kept for realism, but team access is resolved via NAIS lookup in tests.
                         groups = listOf(

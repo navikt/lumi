@@ -708,4 +708,51 @@ class FeedbackRoutesTest : FunSpec({
             context["viewportHeight"].shouldNotBeNull().jsonPrimitive.int shouldBe 555
         }
     }
+
+    test("GET /api/v1/intern/feedback rejects negative page") {
+        testApplication {
+            application { testModule() }
+
+            val response = createTestClient().get("/api/v1/intern/feedback?team=team-test&page=-1") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            Json.parseToJsonElement(response.bodyAsText()).jsonObject["message"]
+                ?.jsonPrimitive
+                ?.content shouldBe "Invalid page: must be >= 0"
+        }
+    }
+
+    test("GET /api/v1/intern/feedback rejects oversized page size") {
+        testApplication {
+            application { testModule() }
+
+            val response = createTestClient().get("/api/v1/intern/feedback?team=team-test&size=100000") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            Json.parseToJsonElement(response.bodyAsText()).jsonObject["message"]
+                ?.jsonPrimitive
+                ?.content shouldBe "Invalid size: must be between 1 and 200"
+        }
+    }
+
+    test("GET /api/v1/intern/feedback rejects invalid date format") {
+        testApplication {
+            application { testModule() }
+
+            val response = createTestClient().get(
+                "/api/v1/intern/feedback?team=team-test&fromDate=2026-99-99"
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            Json.parseToJsonElement(response.bodyAsText()).jsonObject["message"]
+                ?.jsonPrimitive
+                ?.content shouldBe "Invalid fromDate: expected YYYY-MM-DD"
+        }
+    }
 })
