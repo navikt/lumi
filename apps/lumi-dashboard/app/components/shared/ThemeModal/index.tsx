@@ -467,6 +467,7 @@ export function ThemeModal({
                   onPageChange={setExamplesPage}
                   count={Math.ceil(contextExamples.length / EXAMPLES_PER_PAGE)}
                   size="xsmall"
+                  prevNextTexts
                   siblingCount={0}
                   boundaryCount={1}
                 />
