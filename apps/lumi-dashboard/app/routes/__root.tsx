@@ -1,5 +1,6 @@
 // Import Aksel and global styles as regular CSS so they are emitted as manifest assets.
 import "@navikt/ds-css";
+import { Alert, BodyShort, Heading } from "@navikt/ds-react";
 import { Theme } from "@navikt/ds-react/Theme";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -39,7 +40,19 @@ export const Route = createRootRoute({
   }),
   component: RootComponent,
   errorComponent: ErrorComponent,
+  notFoundComponent: RootNotFoundComponent,
 });
+
+function RootNotFoundComponent() {
+  return (
+    <Alert variant="info" className="m-4">
+      <Heading spacing size="small" level="3">
+        Siden finnes ikke
+      </Heading>
+      <BodyShort>Vi fant ikke siden du prøvde å åpne.</BodyShort>
+    </Alert>
+  );
+}
 
 function RootComponent() {
   const [queryClient] = useState(
@@ -75,20 +88,17 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const { theme } = useTheme();
   const router = useRouter();
   const nonce = (() => {
-    const routerNonce = router.options.ssr?.nonce;
-    if (routerNonce) {
-      return routerNonce;
-    }
-
     if (typeof document === "undefined") {
-      return undefined;
+      return router.options.ssr?.nonce;
     }
 
     const metaNonce = document
       .querySelector('meta[property="csp-nonce"]')
       ?.getAttribute("content");
-
-    return metaNonce || undefined;
+    if (metaNonce) {
+      return metaNonce;
+    }
+    return router.options.ssr?.nonce;
   })();
 
   // Use window.__theme as fallback during initial client render to prevent FOUC
@@ -99,6 +109,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html lang="no" suppressHydrationWarning>
       <head>
+        <meta property="csp-nonce" content={nonce ?? ""} />
         <script
           nonce={nonce}
           suppressHydrationWarning

@@ -36,6 +36,7 @@ val testcontainersVersion = "1.21.4"
 val tokenSupportVersion = "5.0.13"
 val exposedVersion = "1.0.0"
 val micrometerVersion = "1.16.2"
+val log4jVersion = "2.24.3"
 
 dependencies {
     // Ktor Server
@@ -79,6 +80,8 @@ dependencies {
     // Logging
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
     implementation("net.logstash.logback:logstash-logback-encoder:$logstashVersion")
+    // Bridge libraries using Log4j API (e.g. Apache POI) into SLF4J/Logback.
+    implementation("org.apache.logging.log4j:log4j-to-slf4j:$log4jVersion")
     
     // Excel export
     implementation("org.apache.poi:poi-ooxml:5.5.1")
