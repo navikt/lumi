@@ -7,7 +7,6 @@ type ManifestLike = {
   routes: Record<
     string,
     {
-      preloads?: Array<string>;
       assets?: Array<RouterManagedTag>;
     }
   >;
@@ -136,22 +135,6 @@ function asStringAttribute(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
-function toIntegrityLinkTag(
-  href: string,
-  integrityByPath: Map<string, string>,
-): RouterManagedTag {
-  const integrity = integrityForUrl(href, integrityByPath);
-
-  return {
-    tag: "link",
-    attrs: {
-      rel: "modulepreload",
-      href,
-      ...(integrity ? { integrity, crossorigin: "anonymous" } : {}),
-    },
-  };
-}
-
 function patchAssetTag(
   asset: RouterManagedTag,
   integrityByPath: Map<string, string>,
@@ -187,53 +170,9 @@ function patchAssetTag(
       }
       return { ...asset, attrs };
     }
-
-    if (typeof asset.children === "string") {
-      const sourceMatch = asset.children.match(/import\(['"]([^'"]+)['"]\)/);
-      const entrySource = sourceMatch?.[1];
-
-      if (entrySource) {
-        const integrity = integrityForUrl(entrySource, integrityByPath);
-        const nextAttrs: Record<string, unknown> = {
-          ...attrs,
-          type: "module",
-          async: true,
-          src: entrySource,
-        };
-
-        if (integrity) {
-          nextAttrs.integrity = integrity;
-          nextAttrs.crossorigin = "anonymous";
-        }
-
-        return {
-          ...asset,
-          attrs: nextAttrs,
-          children: undefined,
-        };
-      }
-    }
   }
 
   return asset;
-}
-
-function dedupeAssetTags(
-  assets: Array<RouterManagedTag>,
-): Array<RouterManagedTag> {
-  const seen = new Set<string>();
-  const deduped: Array<RouterManagedTag> = [];
-
-  for (const asset of assets) {
-    const key = JSON.stringify(asset);
-    if (seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    deduped.push(asset);
-  }
-
-  return deduped;
 }
 
 export async function applySriToManifest(
@@ -253,18 +192,9 @@ export async function applySriToManifest(
   }
 
   for (const route of Object.values(manifest.routes)) {
-    const patchedAssets = (route.assets ?? []).map((asset) =>
+    route.assets = (route.assets ?? []).map((asset) =>
       patchAssetTag(asset, integrityByPath),
     );
-
-    if (route.preloads?.length) {
-      for (const preloadHref of route.preloads) {
-        patchedAssets.push(toIntegrityLinkTag(preloadHref, integrityByPath));
-      }
-      route.preloads = [];
-    }
-
-    route.assets = dedupeAssetTags(patchedAssets);
   }
 
   patchedManifests.add(manifest);
