@@ -63,6 +63,41 @@ function logRecoverableHydrationError(
   });
 }
 
+function logGlobalHydrationError(error: unknown): void {
+  const reactErrorCode = getReactMinifiedErrorCode(error);
+  if (reactErrorCode !== "418") {
+    return;
+  }
+
+  const html = document.documentElement;
+  const body = document.body;
+  const nonceMeta = document
+    .querySelector('meta[property="csp-nonce"]')
+    ?.getAttribute("content");
+  const scriptNonceAttr = document
+    .querySelector("head script[nonce]")
+    ?.getAttribute("nonce");
+
+  console.error("[hydration] Global React hydration error", {
+    error,
+    reactErrorCode,
+    reactErrorHint: REACT_ERROR_HINTS[reactErrorCode] ?? null,
+    htmlClass: html.className,
+    htmlDataTheme: html.getAttribute("data-theme"),
+    htmlColorScheme: html.style.colorScheme,
+    bodyDataTheme: body?.getAttribute("data-theme") ?? null,
+    bodyColorScheme: body?.style.colorScheme ?? null,
+    nonceMeta,
+    scriptNonceAttr,
+  });
+}
+
+if (shouldLogHydrationDiagnostics && typeof window !== "undefined") {
+  window.addEventListener("error", (event) => {
+    logGlobalHydrationError(event.error ?? event.message);
+  });
+}
+
 startTransition(() => {
   hydrateRoot(
     document,

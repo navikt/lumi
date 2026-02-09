@@ -101,10 +101,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     return router.options.ssr?.nonce;
   })();
 
-  // Use window.__theme as fallback during initial client render to prevent FOUC
-  // The blocking script sets this variable before React loads
-  const effectiveTheme =
-    theme ?? (typeof window !== "undefined" ? window.__theme : undefined);
+  // Keep first render deterministic across server and client.
+  const effectiveTheme = theme ?? "light";
 
   return (
     <html lang="no" suppressHydrationWarning>
