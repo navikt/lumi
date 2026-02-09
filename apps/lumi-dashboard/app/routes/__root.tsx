@@ -90,9 +90,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const isServerRender = typeof document === "undefined";
   const nonce = isServerRender ? router.options.ssr?.nonce : undefined;
 
-  // Keep first render deterministic across server and client.
-  const effectiveTheme = theme ?? "light";
-
   return (
     <html lang="no" suppressHydrationWarning>
       <head>
@@ -110,11 +107,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <Theme
-          theme={effectiveTheme}
-          hasBackground={false}
-          className="app-theme-root"
-        >
+        <Theme theme={theme} hasBackground={false} className="app-theme-root">
           {children}
         </Theme>
         <Scripts />

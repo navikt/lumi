@@ -1,4 +1,10 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from "react";
 
 export type Theme = "dark" | "light";
 
@@ -17,13 +23,15 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Keep first client render identical to SSR to avoid hydration mismatches.
   const [theme, setThemeState] = useState<Theme | undefined>(undefined);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Only run once
-  useEffect(() => {
+  // Sync theme before first paint on the client to avoid light/dark flash.
+  useIsomorphicLayoutEffect(() => {
     if (typeof window !== "undefined") {
       try {
         localStorage.removeItem("theme");
@@ -53,7 +61,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (!theme) return; // Don't do anything if theme is undefined
 
     const root = document.documentElement;
