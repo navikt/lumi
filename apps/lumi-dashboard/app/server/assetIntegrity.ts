@@ -14,6 +14,7 @@ type ManifestLike = {
 
 const SRI_PREFIX = "sha384-";
 const SRI_ASSET_EXTENSIONS = new Set([".js", ".css"]);
+const SRI_LINK_RELS = new Set(["stylesheet", "modulepreload"]);
 const patchedManifests = new WeakSet<ManifestLike>();
 
 let cachedIntegrityMap: Map<string, string> | null = null;
@@ -139,12 +140,6 @@ function patchAssetTag(
   asset: RouterManagedTag,
   integrityByPath: Map<string, string>,
 ): RouterManagedTag {
-  // Keep <link> assets unchanged. Mutating link attributes at runtime causes
-  // hydration mismatches in TanStack HeadContent/Asset. Script assets still get SRI.
-  if (asset.tag === "link") {
-    return asset;
-  }
-
   if (asset.tag === "script") {
     const attrs = { ...(asset.attrs ?? {}) } as Record<string, unknown>;
     const src = asStringAttribute(attrs.src);
@@ -159,7 +154,31 @@ function patchAssetTag(
     }
   }
 
+  if (asset.tag === "link") {
+    const attrs = { ...(asset.attrs ?? {}) } as Record<string, unknown>;
+    const rel = asStringAttribute(attrs.rel);
+    const href = asStringAttribute(attrs.href);
+
+    if (!rel || !SRI_LINK_RELS.has(rel) || !href) {
+      return asset;
+    }
+
+    const integrity = integrityForUrl(href, integrityByPath);
+    if (!integrity) {
+      return asset;
+    }
+
+    attrs.integrity = integrity;
+    attrs.crossorigin = "anonymous";
+    return { ...asset, attrs };
+  }
+
   return asset;
+}
+
+export function resetSriStateForTests(): void {
+  cachedIntegrityMap = null;
+  loadingIntegrityMap = null;
 }
 
 export async function applySriToManifest(
