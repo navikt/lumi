@@ -159,12 +159,17 @@ export function TopTasksGuide() {
                   <Link
                     href="https://gerrymcgovern.com/books/top-tasks-a-how-to-guide/"
                     target="_blank"
+                    rel="noopener noreferrer"
                   >
                     Top Tasks: A How-to Guide - Gerry McGovern
                   </Link>
                 </List.Item>
                 <List.Item>
-                  <Link href="https://aksel.nav.no" target="_blank">
+                  <Link
+                    href="https://aksel.nav.no"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     Aksel - NAV Design System
                   </Link>
                 </List.Item>

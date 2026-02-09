@@ -8,6 +8,7 @@ import io.ktor.server.response.*
 import no.nav.lumi.config.auth.BrukerPrincipal
 import no.nav.lumi.config.auth.CallerIdentity
 import no.nav.lumi.config.auth.parseCallerIdentity
+import no.nav.lumi.config.auth.pseudonymizeIdentifier
 import no.nav.lumi.config.auth.TexasClient
 import org.slf4j.LoggerFactory
 
@@ -75,7 +76,7 @@ private suspend fun validateTokenWithTexas(token: String): BrukerPrincipal? {
     }
 
     val groups = result.groups ?: emptyList()
-    logger.debug("Authenticated user ${result.NAVident} with ${groups.size} groups")
+    logger.debug("Authenticated user {} with {} groups", pseudonymizeIdentifier(result.NAVident), groups.size)
 
     val email = result.preferredUsername
         ?: result.upn
