@@ -46,6 +46,11 @@ export default defineConfig(({ command, mode }) => {
       tanstackStart({
         // Use app directory as source (non-standard but keeps our structure)
         srcDirectory: "app",
+        router: {
+          // Prevent route generation from scanning test files/folders under app/routes
+          routeFileIgnorePattern:
+            "(^__tests__$|\\.(test|spec)\\.(ts|tsx|js|jsx)$)",
+        },
       }),
       // Nitro handles production server deployment
       nitro(),
