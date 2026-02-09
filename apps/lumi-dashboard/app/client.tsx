@@ -20,10 +20,6 @@ type ManifestLike = {
 };
 
 const REACT_MINIFIED_ERROR_PATTERN = /Minified React error #(\d+)/;
-const REACT_ERROR_HINTS: Record<string, string> = {
-  "418":
-    "Hydration mismatch: server-rendered HTML differs from the initial client render.",
-};
 
 const shouldLogHydrationDiagnostics =
   import.meta.env.DEV || import.meta.env.VITE_HYDRATION_DEBUG === "true";
@@ -147,9 +143,10 @@ function logRecoverableHydrationError(
     .querySelector("head script[nonce]")
     ?.getAttribute("nonce");
   const reactErrorCode = getReactMinifiedErrorCode(error);
-  const reactErrorHint = reactErrorCode
-    ? (REACT_ERROR_HINTS[reactErrorCode] ?? null)
-    : null;
+  const reactErrorHint =
+    reactErrorCode === "418"
+      ? "Hydration mismatch: server-rendered HTML differs from the initial client render."
+      : null;
 
   console.error("[hydration] Recoverable hydration error", {
     error,
@@ -163,41 +160,6 @@ function logRecoverableHydrationError(
     bodyColorScheme: body?.style.colorScheme ?? null,
     nonceMeta,
     scriptNonce,
-  });
-}
-
-function logGlobalHydrationError(error: unknown): void {
-  const reactErrorCode = getReactMinifiedErrorCode(error);
-  if (reactErrorCode !== "418") {
-    return;
-  }
-
-  const html = document.documentElement;
-  const body = document.body;
-  const nonceMeta = document
-    .querySelector('meta[property="csp-nonce"]')
-    ?.getAttribute("content");
-  const scriptNonceAttr = document
-    .querySelector("head script[nonce]")
-    ?.getAttribute("nonce");
-
-  console.error("[hydration] Global React hydration error", {
-    error,
-    reactErrorCode,
-    reactErrorHint: REACT_ERROR_HINTS[reactErrorCode] ?? null,
-    htmlClass: html.className,
-    htmlDataTheme: html.getAttribute("data-theme"),
-    htmlColorScheme: html.style.colorScheme,
-    bodyDataTheme: body?.getAttribute("data-theme") ?? null,
-    bodyColorScheme: body?.style.colorScheme ?? null,
-    nonceMeta,
-    scriptNonceAttr,
-  });
-}
-
-if (shouldLogHydrationDiagnostics && typeof window !== "undefined") {
-  window.addEventListener("error", (event) => {
-    logGlobalHydrationError(event.error ?? event.message);
   });
 }
 

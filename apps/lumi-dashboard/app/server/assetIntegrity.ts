@@ -139,10 +139,8 @@ function patchAssetTag(
   asset: RouterManagedTag,
   integrityByPath: Map<string, string>,
 ): RouterManagedTag {
-  // NOTE:
-  // Keep <link> assets untouched for now. We observed hydration mismatches in
-  // TanStack HeadContent/Asset for link tags when mutating their attributes at runtime.
-  // Script assets are still patched with SRI.
+  // Keep <link> assets unchanged. Mutating link attributes at runtime causes
+  // hydration mismatches in TanStack HeadContent/Asset. Script assets still get SRI.
   if (asset.tag === "link") {
     return asset;
   }
