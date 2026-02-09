@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     // Kotlin plugin version is controlled centrally via `kotlinVersion` in gradle.properties.
+    // Keep this at 2.3.0 for now; current CodeQL (linked tools v2.24.1) does not support 2.3.10 yet.
     kotlin("jvm")
     kotlin("plugin.serialization")
     id("io.ktor.plugin") version "3.4.0"
