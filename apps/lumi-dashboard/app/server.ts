@@ -5,13 +5,9 @@ import {
   type RequestHandler,
 } from "@tanstack/react-start/server";
 import { createServerEntry } from "@tanstack/react-start/server-entry";
-import { applySriToManifest } from "~/server/assetIntegrity";
 
 const fetch = createStartHandler(async (ctx) => {
-  if (process.env.NODE_ENV === "production") {
-    await applySriToManifest(ctx.router.ssr?.manifest);
-  }
-
+  // Temporary diagnostic: disable runtime manifest mutation while isolating hydration mismatch.
   return defaultStreamHandler(ctx);
 });
 
