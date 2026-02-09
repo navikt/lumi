@@ -1,13 +1,8 @@
 package no.nav.lumi.config.auth
 
 import io.ktor.server.application.*
-import io.ktor.util.*
 import no.nav.lumi.config.getBrukerPrincipal
 import no.nav.lumi.config.exception.ApiErrorException
-
-// Re-declare keys here to access via getOrNull (avoids internal implementation coupling)
-private val AuthorizedTeamKey = AttributeKey<String>("authorizedTeam")
-private val AuthorizedTeamsKey = AttributeKey<Set<String>>("authorizedTeams")
 
 /**
  * Extension to get the authorized team for this call.
@@ -16,7 +11,7 @@ private val AuthorizedTeamsKey = AttributeKey<Set<String>>("authorizedTeams")
  * Throws ForbiddenException if no team is authorized.
  */
 val ApplicationCall.authorizedTeamSafe: String
-    get() = attributes.getOrNull(AuthorizedTeamKey)
+    get() = attributes.getOrNull(AuthorizationAttributes.AuthorizedTeamKey)
         ?: throw ApiErrorException.ForbiddenException("Access denied: No authorized team found for this request")
 
 /**
@@ -24,7 +19,7 @@ val ApplicationCall.authorizedTeamSafe: String
  * Returns empty set if authorization context is not available.
  */
 val ApplicationCall.authorizedTeamsSafe: Set<String>
-    get() = attributes.getOrNull(AuthorizedTeamsKey) ?: emptySet()
+    get() = attributes.getOrNull(AuthorizationAttributes.AuthorizedTeamsKey) ?: emptySet()
 
 /**
  * Extension to get the validated principal.

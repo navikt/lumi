@@ -131,6 +131,17 @@ export const fetchStatsServerFn = createServerFn({ method: "GET" })
   });
 ```
 
+## Security Baseline (Dashboard)
+
+- Keep global security headers/CSP in `apps/lumi-dashboard/app/start.ts` with helpers from `app/server/securityHeaders.ts`.
+- Keep nonce propagation flow intact:
+  - nonce created in `start.ts`
+  - passed via start context in `app/router.tsx`
+  - consumed in `app/routes/__root.tsx`
+- Keep CSRF checks for non-GET methods in `app/server/middleware/auth.ts` (Origin/Referer validation in prod).
+- Keep SRI runtime injection for manifest assets in `app/server.ts` + `app/server/assetIntegrity.ts`.
+- In root layout, import styles as CSS modules (`import "@navikt/ds-css"; import "~/styles/global.css";`) instead of `?url` links so SRI coverage is maintained.
+
 ## Internal Endpoints (Health + Metrics)
 
 Internal endpoints are implemented as **server handlers** in route files under `apps/lumi-dashboard/app/routes/api/internal/*`.

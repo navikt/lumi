@@ -1,5 +1,6 @@
-// Import Aksel Darkside styles (supports light/dark mode)
-import akselStyles from "@navikt/ds-css?url";
+// Import Aksel and global styles as regular CSS so they are emitted as manifest assets.
+import "@navikt/ds-css";
+import { Alert, BodyShort, Heading } from "@navikt/ds-react";
 import { Theme } from "@navikt/ds-react/Theme";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -15,7 +16,7 @@ import lumiLogo from "~/assets/lumi.png";
 import { ErrorComponent } from "~/components/shared/ErrorComponent";
 import { THEME_INIT_SCRIPT } from "~/config/themeInit";
 import { ThemeProvider, useTheme } from "~/context/ThemeContext";
-import globalStyles from "~/styles/global.css?url";
+import "~/styles/global.css";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -30,8 +31,6 @@ export const Route = createRootRoute({
       },
     ],
     links: [
-      { rel: "stylesheet", href: akselStyles },
-      { rel: "stylesheet", href: globalStyles },
       {
         rel: "icon",
         type: "image/png",
@@ -41,7 +40,19 @@ export const Route = createRootRoute({
   }),
   component: RootComponent,
   errorComponent: ErrorComponent,
+  notFoundComponent: RootNotFoundComponent,
 });
+
+function RootNotFoundComponent() {
+  return (
+    <Alert variant="info" className="m-4">
+      <Heading spacing size="small" level="3">
+        Siden finnes ikke
+      </Heading>
+      <BodyShort>Vi fant ikke siden du prøvde å åpne.</BodyShort>
+    </Alert>
+  );
+}
 
 function RootComponent() {
   const [queryClient] = useState(
@@ -76,31 +87,18 @@ declare global {
 function RootDocument({ children }: { children: React.ReactNode }) {
   const { theme } = useTheme();
   const router = useRouter();
-  const nonce = (() => {
-    const routerNonce = router.options.ssr?.nonce;
-    if (routerNonce) {
-      return routerNonce;
-    }
+  const isServerRender = typeof document === "undefined";
+  const nonce = isServerRender ? router.options.ssr?.nonce : undefined;
 
-    if (typeof document === "undefined") {
-      return undefined;
-    }
-
-    const metaNonce = document
-      .querySelector('meta[property="csp-nonce"]')
-      ?.getAttribute("content");
-
-    return metaNonce || undefined;
-  })();
-
-  // Use window.__theme as fallback during initial client render to prevent FOUC
-  // The blocking script sets this variable before React loads
-  const effectiveTheme =
-    theme ?? (typeof window !== "undefined" ? window.__theme : undefined);
+  // Keep first render deterministic across server and client.
+  const effectiveTheme = theme ?? "light";
 
   return (
     <html lang="no" suppressHydrationWarning>
       <head>
+        {isServerRender ? (
+          <meta property="csp-nonce" content={nonce ?? ""} />
+        ) : null}
         <script
           nonce={nonce}
           suppressHydrationWarning

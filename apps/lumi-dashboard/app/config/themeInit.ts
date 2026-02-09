@@ -17,8 +17,14 @@ export const THEME_INIT_SCRIPT = `(function () {
 
     document.documentElement.setAttribute('data-theme', localTheme);
     document.documentElement.style.colorScheme = localTheme;
-    document.body.setAttribute('data-theme', localTheme);
-    document.body.style.colorScheme = localTheme;
+
+    // Body is often unavailable while this script runs in <head>.
+    // Guard to avoid aborting before window.__theme is set.
+    if (document.body) {
+      document.body.setAttribute('data-theme', localTheme);
+      document.body.style.colorScheme = localTheme;
+    }
+
     window.__theme = localTheme;
   } catch (e) {}
 })();

@@ -19,14 +19,8 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Initialize to undefined so we don't override the SSR/Script-injected theme
-  // until we know for sure what the client preference is.
-  const [theme, setThemeState] = useState<Theme | undefined>(() => {
-    if (typeof window !== "undefined" && window.__theme) {
-      return window.__theme;
-    }
-    return undefined;
-  });
+  // Keep first client render identical to SSR to avoid hydration mismatches.
+  const [theme, setThemeState] = useState<Theme | undefined>(undefined);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Only run once
   useEffect(() => {

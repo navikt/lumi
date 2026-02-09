@@ -27,6 +27,10 @@ Use `npm` only for installs and scripts.
   - `authMiddleware`
   - `zodValidator(schema)`
 - **URL-driven filters**: filter state lives in URL params via `useSearchParams`.
+- **Security headers + CSP**: set globally in `apps/lumi-dashboard/app/start.ts` via request middleware and helpers in `app/server/securityHeaders.ts`.
+- **CSP nonce flow**: nonce is created in `start.ts`, passed via start context in `app/router.tsx`, and consumed in `app/routes/__root.tsx`.
+- **CSRF hardening**: `app/server/middleware/auth.ts` enforces Origin/Referer checks for state-changing requests in prod.
+- **SRI for CDN assets**: runtime SRI patching happens in `app/server.ts` via `app/server/assetIntegrity.ts`.
 
 ## Examples
 
@@ -64,10 +68,13 @@ export const Route = createFileRoute("/api/internal/example")({
 
 - Use Aksel components and `space-*` spacing tokens.
 - Keep health/metrics endpoints on `/api/internal/*`.
+- Keep security middleware wiring in `start.ts` intact when changing root/server setup.
+- Import global CSS via regular CSS imports (not `?url`) in root layout so manifest-based SRI coverage is preserved.
 
 ### ⚠️ Ask First
 
 - Changing auth middleware or token exchange.
 - Adding new filter parameters that impact backend queries.
+- Weakening CSP/CSRF/SRI behavior for convenience.
 
 ````

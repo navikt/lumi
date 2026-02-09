@@ -42,16 +42,21 @@ jobs:
               ;;
             npm|npm_and_yarn)
               if [[ "$dependency_type" == "direct:production" ]]; then
-                [[ "$update_type" == "version-update:semver-patch" || "$update_type" == "version-update:semver-minor" ]] && should_automerge=true
-                echo "Dependabot policy: npm prod allows patch/minor"
+                [[ "$update_type" == "version-update:semver-patch" ]] && should_automerge=true
+                echo "Dependabot policy: npm prod allows patch only"
               else
                 [[ "$update_type" == "version-update:semver-patch" || "$update_type" == "version-update:semver-minor" ]] && should_automerge=true
                 echo "Dependabot policy: npm dev allows patch/minor"
               fi
               ;;
             gradle)
-              [[ "$update_type" == "version-update:semver-patch" || "$update_type" == "version-update:semver-minor" ]] && should_automerge=true
-              echo "Dependabot policy: gradle allows patch/minor"
+              if [[ "$dependency_type" == "direct:production" ]]; then
+                [[ "$update_type" == "version-update:semver-patch" ]] && should_automerge=true
+                echo "Dependabot policy: gradle prod allows patch only"
+              else
+                [[ "$update_type" == "version-update:semver-patch" || "$update_type" == "version-update:semver-minor" ]] && should_automerge=true
+                echo "Dependabot policy: gradle dev allows patch/minor"
+              fi
               ;;
             *)
               should_automerge=false

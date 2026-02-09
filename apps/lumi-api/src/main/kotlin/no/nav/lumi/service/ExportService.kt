@@ -79,6 +79,7 @@ class ExportService(
         // Header row
         val headerRow = sheet.createRow(0)
         val headers = listOf("ID", "Tidspunkt", "App", "Survey", "Vurdering", "Tilbakemelding", "Sensitiv data fjernet")
+        val maxColumnChars = headers.map { it.length }.toMutableList()
         headers.forEachIndexed { index, header ->
             headerRow.createCell(index).setCellValue(header)
         }
@@ -86,25 +87,43 @@ class ExportService(
         // Data rows
         feedbacks.forEachIndexed { rowIndex, feedback ->
             val row = sheet.createRow(rowIndex + 1)
-            row.createCell(0).setCellValue(feedback.id)
-            row.createCell(1).setCellValue(feedback.submittedAt)
-            row.createCell(2).setCellValue(feedback.app ?: "")
-            row.createCell(3).setCellValue(feedback.surveyId)
+            val id = feedback.id
+            val submittedAt = feedback.submittedAt
+            val app = feedback.app ?: ""
+            val surveyId = feedback.surveyId
             
             val rating = feedback.answers.firstOrNull { it.fieldType == FieldType.RATING }?.let {
                 (it.value as? AnswerValue.Rating)?.rating?.toString() ?: ""
             } ?: ""
-            row.createCell(4).setCellValue(rating)
             
             val feedbackText = feedback.answers.firstOrNull { it.fieldType == FieldType.TEXT }?.let {
                 (it.value as? AnswerValue.Text)?.text ?: ""
             } ?: ""
-            row.createCell(5).setCellValue(feedbackText)
-            row.createCell(6).setCellValue(if (feedback.sensitiveDataRedacted) "Ja" else "Nei")
+
+            val sensitiveDataRedacted = if (feedback.sensitiveDataRedacted) "Ja" else "Nei"
+            val values = listOf(
+                id,
+                submittedAt,
+                app,
+                surveyId,
+                rating,
+                feedbackText,
+                sensitiveDataRedacted,
+            )
+
+            values.forEachIndexed { columnIndex, value ->
+                row.createCell(columnIndex).setCellValue(value)
+                if (value.length > maxColumnChars[columnIndex]) {
+                    maxColumnChars[columnIndex] = value.length
+                }
+            }
         }
-        
-        // Auto-size columns
-        headers.indices.forEach { sheet.autoSizeColumn(it) }
+
+        // Avoid POI autoSizeColumn (uses AWT/font config and causes noisy warnings in distroless runtime).
+        maxColumnChars.forEachIndexed { index, maxChars ->
+            val paddedChars = (maxChars + 2).coerceAtMost(100)
+            sheet.setColumnWidth(index, paddedChars * 256)
+        }
         
         val outputStream = ByteArrayOutputStream()
         workbook.write(outputStream)

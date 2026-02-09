@@ -30,12 +30,16 @@ cd apps/lumi-api
 - Use Exposed DSL (no DAO layer) and keep queries in repositories.
 - Auth: validate tokens via **NAIS Texas introspection** and construct principals from claims.
 - DB changes: add Flyway migrations under `apps/lumi-api/src/main/resources/db/migration/`.
+- Rate limiting keys must be based on validated identity (`CallerIdentity`/`BrukerPrincipal`) with IP fallback, never unverified JWT decoding.
+- Team authorization context must use shared keys from `config/auth/AuthorizationAttributes.kt` (Ktor attribute keys are reference-based).
+- Keep Texas auth validation suspend-friendly (`validateTokenWithTexas`), do not reintroduce `runBlocking` in request path.
 
 ## Boundaries
 
 ### ✅ Always
 - Add/adjust tests for repository/query logic when practical
 - Keep `/internal/*` endpoints working (liveness/readiness/metrics)
+- Keep export endpoints on their stricter dedicated rate-limit policy.
 
 ### ⚠️ Ask First
 - Changing auth mechanisms or authorization model
