@@ -87,19 +87,8 @@ declare global {
 function RootDocument({ children }: { children: React.ReactNode }) {
   const { theme } = useTheme();
   const router = useRouter();
-  const nonce = (() => {
-    if (typeof document === "undefined") {
-      return router.options.ssr?.nonce;
-    }
-
-    const metaNonce = document
-      .querySelector('meta[property="csp-nonce"]')
-      ?.getAttribute("content");
-    if (metaNonce) {
-      return metaNonce;
-    }
-    return router.options.ssr?.nonce;
-  })();
+  const isServerRender = typeof document === "undefined";
+  const nonce = isServerRender ? router.options.ssr?.nonce : undefined;
 
   // Keep first render deterministic across server and client.
   const effectiveTheme = theme ?? "light";
@@ -107,7 +96,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html lang="no" suppressHydrationWarning>
       <head>
-        <meta property="csp-nonce" content={nonce ?? ""} />
+        {isServerRender ? (
+          <meta property="csp-nonce" content={nonce ?? ""} />
+        ) : null}
         <script
           nonce={nonce}
           suppressHydrationWarning
