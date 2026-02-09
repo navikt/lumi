@@ -48,7 +48,8 @@ spec:
       enabled: true
       autoLogin: true
       autoLoginIgnorePaths:
-        - /api/internal/*
+        - /api/internal/isAlive
+        - /api/internal/isReady
   accessPolicy:
     outbound:
       rules:
