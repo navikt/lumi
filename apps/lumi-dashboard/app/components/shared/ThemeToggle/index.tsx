@@ -8,14 +8,13 @@ export function ThemeToggle() {
   // Avoid flicker during hydration/loading
   if (!theme) {
     return (
-      <Button
-        data-color="neutral"
-        variant="tertiary"
-        size="small"
-        disabled
-        aria-label="Laster tema"
-        title="Laster tema"
-        icon={<SunIcon aria-hidden className="opacity-0" />}
+      <span
+        aria-hidden="true"
+        style={{
+          display: "inline-block",
+          width: "2rem",
+          height: "2rem",
+        }}
       />
     );
   }

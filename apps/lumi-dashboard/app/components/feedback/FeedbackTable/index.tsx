@@ -253,6 +253,7 @@ function PaginationBar({
           count={totalPages}
           onPageChange={onPageChange}
           size="small"
+          prevNextTexts
           siblingCount={0}
           boundaryCount={1}
         />
