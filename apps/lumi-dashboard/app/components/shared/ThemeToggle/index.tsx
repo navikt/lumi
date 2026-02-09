@@ -13,20 +13,25 @@ export function ThemeToggle() {
         variant="tertiary"
         size="small"
         disabled
+        aria-label="Laster tema"
+        title="Laster tema"
         icon={<SunIcon aria-hidden className="opacity-0" />}
       />
     );
   }
 
+  const toggleLabel =
+    theme === "light" ? "Bytt til mørk modus" : "Bytt til lys modus";
+
   return (
-    <Tooltip
-      content={theme === "light" ? "Bytt til mørk modus" : "Bytt til lys modus"}
-    >
+    <Tooltip content={toggleLabel}>
       <Button
         data-color="neutral"
         variant="tertiary"
         size="small"
         onClick={toggleTheme}
+        aria-label={toggleLabel}
+        title={toggleLabel}
         icon={
           theme === "light" ? <MoonIcon aria-hidden /> : <SunIcon aria-hidden />
         }
