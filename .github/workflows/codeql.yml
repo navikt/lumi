@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Set up Java
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
@@ -29,10 +29,10 @@ jobs:
           java-version: "21"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@f29f5a9d7b09a7c6b29859002d29d24e1674c884
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@6bc82e05fd0ea64601dd4b465378bbcf57de0314
+        uses: github/codeql-action/init@45cbd0c69e560cd9e7cd7f8c32362050c9b7ded2
         with:
           languages: "java-kotlin"
           build-mode: "manual"
@@ -44,7 +44,7 @@ jobs:
         working-directory: apps/lumi-api
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@6bc82e05fd0ea64601dd4b465378bbcf57de0314
+        uses: github/codeql-action/analyze@45cbd0c69e560cd9e7cd7f8c32362050c9b7ded2
 
   analyze-js:
     name: Analyze (JavaScript/TypeScript)
@@ -52,13 +52,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@6bc82e05fd0ea64601dd4b465378bbcf57de0314
+        uses: github/codeql-action/init@45cbd0c69e560cd9e7cd7f8c32362050c9b7ded2
         with:
           languages: "javascript-typescript"
           build-mode: "none"
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@6bc82e05fd0ea64601dd4b465378bbcf57de0314
+        uses: github/codeql-action/analyze@45cbd0c69e560cd9e7cd7f8c32362050c9b7ded2
