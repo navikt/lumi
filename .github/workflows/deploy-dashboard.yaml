@@ -15,6 +15,11 @@ on:
           - demo
           - dev
           - prod
+      debug_build:
+        description: Build dashboard with sourcemaps and hydration debug logs (for troubleshooting in demo/dev)
+        type: boolean
+        required: false
+        default: false
       ref:
         description: Git ref to deploy (branch/tag/sha). Defaults to the ref you run the workflow from.
         type: string
@@ -75,7 +80,12 @@ jobs:
         run: npm -w packages/lumi-types run build
 
       - name: Build dashboard (with mock data)
-        run: npm -w apps/lumi-dashboard run build
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.debug_build }}" == "true" ]]; then
+            npm -w apps/lumi-dashboard run build:debug
+          else
+            npm -w apps/lumi-dashboard run build
+          fi
         env:
           VITE_MOCK_DATA: 'true'
           CDN_BASE_PATH: '/lumi-dashboard-demo'
@@ -130,7 +140,12 @@ jobs:
         run: npm -w packages/lumi-types run build
 
       - name: Build dashboard (production)
-        run: npm -w apps/lumi-dashboard run build
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.debug_build }}" == "true" && "${{ inputs.target }}" != "prod" ]]; then
+            npm -w apps/lumi-dashboard run build:debug
+          else
+            npm -w apps/lumi-dashboard run build
+          fi
         env:
           CDN_BASE_PATH: '/lumi-dashboard'
 

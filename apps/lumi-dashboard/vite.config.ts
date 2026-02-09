@@ -15,6 +15,8 @@ const serverOnlyModules = [
 ];
 export default defineConfig(({ command, mode }) => {
   const isProductionBuild = command === "build" && mode === "production";
+  const isMinifiedBuild = process.env.VITE_MINIFY !== "false";
+  const useSourceMaps = process.env.VITE_SOURCEMAP === "true";
   const cdnBasePath = process.env.CDN_BASE_PATH || "/lumi-dashboard";
   const cdnBaseUrl =
     process.env.CDN_BASE_URL || `https://cdn.nav.no/team-esyfo${cdnBasePath}`;
@@ -35,6 +37,12 @@ export default defineConfig(({ command, mode }) => {
     // Nitro configuration for deployment
     nitro: {
       preset: "node-server",
+    },
+
+    // Optional debug build knobs for test environments.
+    build: {
+      minify: isMinifiedBuild ? "esbuild" : false,
+      sourcemap: useSourceMaps,
     },
 
     plugins: [

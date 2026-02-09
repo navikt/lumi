@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && tsc -p tsconfig.typecheck.json --noEmit",
+    "build:debug": "VITE_MINIFY=false VITE_SOURCEMAP=true VITE_HYDRATION_DEBUG=true vite build && tsc -p tsconfig.typecheck.json --noEmit",
     "start": "node .output/server/index.mjs",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
