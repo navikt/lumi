@@ -43,10 +43,13 @@ This repo uses **NAIS Texas sidecar introspection**.
 - Validating tokens via the Texas introspection client/helper
 - Constructing `BrukerPrincipal` from introspected claims
 - Authorization via `ClientAuthorizationPlugin` + `TeamAuthorizationPlugin`
+- Using shared authorization attribute keys from `config/auth/AuthorizationAttributes.kt`
+- Suspend auth validation in request path (no `runBlocking`)
 
 🚫 Avoid:
 - Implementing JWKS/JWT verification in-app “just for this endpoint”
 - Parsing JWTs directly for `azp_name`/groups
+- Using unverified JWT claims for rate-limiting keys
 
 Typical structure:
 
@@ -81,6 +84,7 @@ routing {
 - Prefer route modules under `no.nav.lumi.routes`.
 - For analytics routes, use Ktor Resources (`@Resource`) for typed routing.
 - Keep `/internal/*` endpoints unauthenticated.
+- Keep export routes on dedicated stricter rate-limits (separate from generic analytics limits).
 
 Operational endpoints in this repo:
 - `GET /internal/isAlive`

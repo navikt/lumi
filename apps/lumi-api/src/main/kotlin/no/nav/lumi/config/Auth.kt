@@ -5,7 +5,6 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
-import kotlinx.coroutines.runBlocking
 import no.nav.lumi.config.auth.BrukerPrincipal
 import no.nav.lumi.config.auth.CallerIdentity
 import no.nav.lumi.config.auth.parseCallerIdentity
@@ -67,31 +66,29 @@ fun Application.configureAuth() {
 /**
  * Validate token using NAIS Texas sidecar introspection endpoint.
  */
-private fun validateTokenWithTexas(token: String): BrukerPrincipal? {
-    return runBlocking {
-        val result = texasClient.introspect(token, identityProvider = "azuread")
-        
-        if (result == null) {
-            logger.warn("Token validation failed - introspection returned null")
-            return@runBlocking null
-        }
-        
-        val groups = result.groups ?: emptyList()
-        logger.debug("Authenticated user ${result.NAVident} with ${groups.size} groups")
+private suspend fun validateTokenWithTexas(token: String): BrukerPrincipal? {
+    val result = texasClient.introspect(token, identityProvider = "azuread")
 
-        val email = result.preferredUsername
-            ?: result.upn
-            ?: result.email
-            ?: result.uniqueName
-        
-        BrukerPrincipal(
-            navIdent = result.NAVident,
-            name = result.name,
-            email = email,
-            clientId = result.azp_name,
-            groups = groups
-        )
+    if (result == null) {
+        logger.warn("Token validation failed - introspection returned null")
+        return null
     }
+
+    val groups = result.groups ?: emptyList()
+    logger.debug("Authenticated user ${result.NAVident} with ${groups.size} groups")
+
+    val email = result.preferredUsername
+        ?: result.upn
+        ?: result.email
+        ?: result.uniqueName
+
+    return BrukerPrincipal(
+        navIdent = result.NAVident,
+        name = result.name,
+        email = email,
+        clientId = result.azp_name,
+        groups = groups
+    )
 }
 
 /**

@@ -1,5 +1,5 @@
-// Import Aksel Darkside styles (supports light/dark mode)
-import akselStyles from "@navikt/ds-css?url";
+// Import Aksel and global styles as regular CSS so they are emitted as manifest assets.
+import "@navikt/ds-css";
 import { Theme } from "@navikt/ds-react/Theme";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -15,7 +15,7 @@ import lumiLogo from "~/assets/lumi.png";
 import { ErrorComponent } from "~/components/shared/ErrorComponent";
 import { THEME_INIT_SCRIPT } from "~/config/themeInit";
 import { ThemeProvider, useTheme } from "~/context/ThemeContext";
-import globalStyles from "~/styles/global.css?url";
+import "~/styles/global.css";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -30,8 +30,6 @@ export const Route = createRootRoute({
       },
     ],
     links: [
-      { rel: "stylesheet", href: akselStyles },
-      { rel: "stylesheet", href: globalStyles },
       {
         rel: "icon",
         type: "image/png",

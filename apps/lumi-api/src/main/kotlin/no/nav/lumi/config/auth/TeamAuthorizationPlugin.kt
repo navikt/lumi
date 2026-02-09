@@ -3,7 +3,6 @@ package no.nav.lumi.config.auth
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.routing.*
-import io.ktor.util.*
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.integrations.nais.NaisApiResult
 import no.nav.lumi.integrations.nais.NaisGraphQlClient
@@ -124,9 +123,9 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
         }
         
         // Store in call attributes for route handlers
-        call.attributes.put(AuthorizedTeamKey, team)
-        call.attributes.put(AuthorizedTeamsKey, authorizedTeams)
-        call.attributes.put(AuthorizedPrincipalKey, principal)
+        call.attributes.put(AuthorizationAttributes.AuthorizedTeamKey, team)
+        call.attributes.put(AuthorizationAttributes.AuthorizedTeamsKey, authorizedTeams)
+        call.attributes.put(AuthorizationAttributes.AuthorizedPrincipalKey, principal)
     }
 }
 
@@ -169,28 +168,23 @@ private suspend fun resolveAuthorizedTeams(
     return resolvedTeamsResult
 }
 
-// Attribute keys for storing authorization context
-private val AuthorizedTeamKey = AttributeKey<String>("authorizedTeam")
-private val AuthorizedTeamsKey = AttributeKey<Set<String>>("authorizedTeams")
-private val AuthorizedPrincipalKey = AttributeKey<BrukerPrincipal>("authorizedPrincipal")
-
 /**
  * Get the authorized team for this request.
  * Only available after TeamAuthorizationPlugin has run.
  */
 val ApplicationCall.authorizedTeam: String
-    get() = attributes[AuthorizedTeamKey]
+    get() = attributes[AuthorizationAttributes.AuthorizedTeamKey]
 
 /**
  * Get all teams the user is authorized for.
  * Only available after TeamAuthorizationPlugin has run.
  */
 val ApplicationCall.authorizedTeams: Set<String>
-    get() = attributes[AuthorizedTeamsKey]
+    get() = attributes[AuthorizationAttributes.AuthorizedTeamsKey]
 
 /**
  * Get the authenticated principal.
  * Only available after TeamAuthorizationPlugin has run.
  */
 val ApplicationCall.authorizedPrincipal: BrukerPrincipal
-    get() = attributes[AuthorizedPrincipalKey]
+    get() = attributes[AuthorizationAttributes.AuthorizedPrincipalKey]
