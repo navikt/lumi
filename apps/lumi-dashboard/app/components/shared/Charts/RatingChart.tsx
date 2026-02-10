@@ -56,12 +56,6 @@ const NPS_CONFIG = {
   scale: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
 };
 
-// Chart styling for dark mode
-const CHART_STYLES = {
-  text: "rgba(255, 255, 255, 0.7)",
-  textMuted: "rgba(255, 255, 255, 0.5)",
-};
-
 function getConfigForVariant(variant: RatingVariant) {
   switch (variant) {
     case "thumbs":
@@ -93,10 +87,6 @@ function RatingBarShape(props: RatingBarShapeProps) {
 export function RatingChart() {
   const { data: stats, isPending } = useStats();
   const { isMobile } = useBreakpoint();
-
-  const chartMargin = isMobile
-    ? { top: 10, right: 5, left: 5, bottom: 30 }
-    : { top: 20, right: 30, left: 20, bottom: 40 };
 
   if (isPending) {
     return <Skeleton variant="rectangle" height={300} />;
@@ -140,6 +130,9 @@ export function RatingChart() {
     explicitVariant,
   );
   const ratingConfig = getConfigForVariant(ratingVariant);
+  const chartMargin = isMobile
+    ? { top: 10, right: 5, left: 5, bottom: 30 }
+    : { top: 16, right: 8, left: 8, bottom: ratingVariant === "nps" ? 32 : 36 };
 
   // Build data array based on detected type
   let data: { label: string; value: number; count: number; color: string }[];
@@ -211,12 +204,7 @@ export function RatingChart() {
           axisLine={false}
           tickLine={false}
         />
-        <YAxis
-          axisLine={false}
-          tickLine={false}
-          tick={{ fill: CHART_STYLES.text, fontSize: 12 }}
-          hide={isMobile}
-        />
+        <YAxis hide />
         <Tooltip
           content={({ active, payload }) => {
             if (active && payload && payload.length && payload[0]) {
