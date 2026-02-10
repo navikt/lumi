@@ -1,4 +1,5 @@
 import type { TextTheme } from "~/types/api";
+import styles from "./WordCloud.module.css";
 
 interface WordCloudWord {
   word: string;
@@ -19,6 +20,41 @@ interface WordCloudProps {
   ) => void;
 }
 
+const THEME_COLOR_CLASS_BY_HEX: Record<string, string> = {
+  "#3b82f6": styles.themeBlue,
+  "#10b981": styles.themeEmerald,
+  "#f59e0b": styles.themeAmber,
+  "#ef4444": styles.themeRed,
+  "#8b5cf6": styles.themeViolet,
+  "#ec4899": styles.themePink,
+  "#06b6d4": styles.themeCyan,
+  "#84cc16": styles.themeLime,
+  "#f97316": styles.themeOrange,
+  "#9ca3af": styles.themeGray,
+};
+
+function getThemeColorClass(theme?: TextTheme): string {
+  if (!theme?.color) return "";
+  return (
+    THEME_COLOR_CLASS_BY_HEX[theme.color.toLowerCase()] ?? styles.themeDefault
+  );
+}
+
+function getWordSizeClass(ratio: number): string {
+  if (ratio >= 0.9) return styles.sizeXl;
+  if (ratio >= 0.75) return styles.sizeLg;
+  if (ratio >= 0.6) return styles.sizeMd;
+  if (ratio >= 0.45) return styles.sizeSm;
+  if (ratio >= 0.3) return styles.sizeXs;
+  return styles.sizeXxs;
+}
+
+function getUncategorizedRankClass(index: number): string {
+  if (index < 3) return styles.uncategorizedTop;
+  if (index < 10) return styles.uncategorizedMid;
+  return styles.uncategorizedLow;
+}
+
 /**
  * Reusable word cloud component that displays words with frequency-based sizing.
  * Words belonging to a theme are colored with the theme color.
@@ -35,28 +71,19 @@ export function WordCloud({
   const maxCount = words[0]?.count ?? 1;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: "0.5rem",
-        alignItems: "center",
-      }}
-    >
+    <div className={styles.cloud}>
       {words.slice(0, maxWords).map(({ word, count }, index) => {
-        // Scale font size based on frequency (0.75 to 1.5 rem)
-        const scale = 0.75 + (count / maxCount) * 0.75;
+        const ratio = count / maxCount;
         const wordTheme = getThemeForWord(word);
         const isCategorized = !!wordTheme;
-
-        // Use theme color if categorized, otherwise neutral based on rank
-        const baseColor = isCategorized
-          ? wordTheme.color
-          : index < 3
-            ? "var(--ax-text-default)"
-            : index < 10
-              ? "var(--ax-text-neutral-subtle)"
-              : "var(--ax-text-muted)";
+        const className = [
+          styles.word,
+          getWordSizeClass(ratio),
+          index < 5 ? styles.weightStrong : styles.weightNormal,
+          isCategorized
+            ? getThemeColorClass(wordTheme)
+            : getUncategorizedRankClass(index),
+        ].join(" ");
 
         return (
           <button
@@ -68,36 +95,12 @@ export function WordCloud({
                 ? `${word}, nevnt ${count} ganger, tilhører tema ${wordTheme.name}`
                 : `${word}, nevnt ${count} ganger, ikke kategorisert`
             }
-            style={{
-              fontSize: `${scale}rem`,
-              fontWeight: index < 5 ? 600 : 400,
-              color: baseColor,
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-              background: isCategorized ? `${wordTheme.color}15` : "none",
-              border: "none",
-              padding: "0.125rem 0.25rem",
-              borderRadius: "var(--ax-border-radius-small)",
-            }}
+            className={className}
             title={
               isCategorized
                 ? `${word}: tilhører "${wordTheme.name}" – klikk for å administrere`
                 : `${word}: ${count} ganger – klikk for å kategorisere`
             }
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = isCategorized
-                ? `${wordTheme.color || "#888"}30`
-                : "var(--ax-bg-neutral-soft-hover)";
-              e.currentTarget.style.color = isCategorized
-                ? wordTheme.color || "#888"
-                : "var(--ax-text-action)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = isCategorized
-                ? `${wordTheme.color || "#888"}15`
-                : "transparent";
-              e.currentTarget.style.color = baseColor || "";
-            }}
           >
             {word}
           </button>

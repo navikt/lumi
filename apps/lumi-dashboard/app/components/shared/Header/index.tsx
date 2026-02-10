@@ -3,6 +3,7 @@ import { Box, Button, Hide, HStack } from "@navikt/ds-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import lumiLogo from "~/assets/lumi.png";
 import { ThemeToggle } from "~/components/shared/ThemeToggle";
+import styles from "./Header.module.css";
 
 export function Header() {
   const logoHeight = 32;
@@ -36,37 +37,21 @@ export function Header() {
         justify="space-between"
         align="center"
         gap={{ xs: "space-8", md: "space-16" }}
-        style={{
-          maxWidth: "1400px",
-          margin: "0 auto",
-          height: "64px",
-        }}
+        className={styles.inner}
       >
         {/* Logo and title */}
         <button
           type="button"
           onClick={handleResetAndNavigate}
           aria-label="Lumi Dashboard - gå til forsiden"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            fontWeight: 600,
-            fontSize: "1.125rem",
-            textDecoration: "none",
-            color: "inherit",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: 0,
-          }}
+          className={styles.brandButton}
         >
           <img
             src={lumiLogo}
             alt=""
             width={logoWidth}
             height={logoHeight}
-            style={{ height: logoHeight, width: "auto", display: "block" }}
+            className={styles.logo}
           />
           {/* Hide title text on very small screens */}
           <Hide below="sm" asChild>
@@ -113,13 +98,7 @@ export function Header() {
 
           {/* Divider - hide on very small screens */}
           <Hide below="sm">
-            <div
-              style={{
-                width: "1px",
-                height: "32px",
-                background: "var(--ax-border-neutral-subtle)",
-              }}
-            />
+            <div className={styles.divider} />
           </Hide>
 
           <ThemeToggle />

@@ -460,21 +460,18 @@ export function TextAnalysis({
                 const themeId =
                   theme.themeId ??
                   (theme.theme === "Annet" ? "uncategorized" : null);
+                const handleNavigateToTheme = () => {
+                  if (!themeId) return;
+                  const url = new URL(window.location.href);
+                  url.pathname = "/feedback";
+                  url.searchParams.set("theme", themeId);
+                  url.searchParams.set("page", "1");
+                  window.location.href = url.toString();
+                };
 
                 return (
-                  <button
-                    type="button"
+                  <div
                     key={theme.theme}
-                    onClick={() => {
-                      if (themeId) {
-                        const url = new URL(window.location.href);
-                        url.pathname = "/feedback";
-                        url.searchParams.set("theme", themeId);
-                        url.searchParams.set("page", "1");
-                        window.location.href = url.toString();
-                      }
-                    }}
-                    disabled={!themeId}
                     style={{
                       display: "block",
                       width: "100%",
@@ -507,16 +504,40 @@ export function TextAnalysis({
                             }}
                           />
                         )}
-                        <BodyShort size="small" weight="semibold" truncate>
-                          {theme.theme}
-                        </BodyShort>
+                        <button
+                          type="button"
+                          onClick={handleNavigateToTheme}
+                          disabled={!themeId}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            cursor: themeId ? "pointer" : "default",
+                            textAlign: "left",
+                            minWidth: 0,
+                          }}
+                          title={
+                            themeId
+                              ? "Klikk for å se feedback med dette temaet"
+                              : ""
+                          }
+                        >
+                          <BodyShort
+                            as="span"
+                            size="small"
+                            weight="semibold"
+                            truncate
+                          >
+                            {theme.theme}
+                          </BodyShort>
+                        </button>
                         {isEditable && (
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (theme.definedTheme)
+                            onClick={() => {
+                              if (theme.definedTheme) {
                                 handleOpenEdit(theme.definedTheme);
+                              }
                             }}
                             style={{
                               background: "none",
@@ -594,7 +615,7 @@ export function TextAnalysis({
                         "{theme.examples[0]}"
                       </BodyShort>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </VStack>

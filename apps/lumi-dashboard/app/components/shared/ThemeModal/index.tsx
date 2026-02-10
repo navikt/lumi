@@ -427,7 +427,6 @@ export function ThemeModal({
 
                   const regex = new RegExp(`(${highlightTerm})`, "gi");
                   const parts = example.text.split(regex);
-                  let pos = 0;
                   return (
                     <Box
                       key={`${example.submittedAt}-${idx}`}
@@ -437,9 +436,8 @@ export function ThemeModal({
                     >
                       <BodyShort size="small">
                         "
-                        {parts.map((part) => {
-                          const key = `${pos}`;
-                          pos += part.length;
+                        {parts.map((part, partIdx) => {
+                          const key = `${idx}-${partIdx}`;
                           return part.toLowerCase() ===
                             highlightTerm.toLowerCase() ? (
                             <strong
