@@ -137,11 +137,7 @@ export function ActiveFiltersChips() {
             className={styles.removeButton}
             aria-label={`Fjern filter ${chip.label}`}
           >
-            <XMarkIcon
-              fontSize="1rem"
-              className={styles.removeIcon}
-              style={{ color: "var(--ax-text-accent-subtle)" }}
-            />
+            <XMarkIcon fontSize="1rem" className={styles.removeIcon} />
           </button>
         </Tag>
       ))}

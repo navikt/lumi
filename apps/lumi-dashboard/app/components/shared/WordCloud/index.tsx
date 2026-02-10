@@ -1,4 +1,16 @@
 import type { TextTheme } from "~/types/api";
+import {
+  THEME_COLOR_AMBER,
+  THEME_COLOR_BLUE,
+  THEME_COLOR_CYAN,
+  THEME_COLOR_EMERALD,
+  THEME_COLOR_GRAY,
+  THEME_COLOR_LIME,
+  THEME_COLOR_ORANGE,
+  THEME_COLOR_PINK,
+  THEME_COLOR_RED,
+  THEME_COLOR_VIOLET,
+} from "~/utils/colors";
 import styles from "./WordCloud.module.css";
 
 interface WordCloudWord {
@@ -21,32 +33,32 @@ interface WordCloudProps {
 }
 
 const THEME_COLOR_CLASS_BY_HEX: Record<string, string> = {
-  "#3b82f6": styles.themeBlue,
-  "#10b981": styles.themeEmerald,
-  "#f59e0b": styles.themeAmber,
-  "#ef4444": styles.themeRed,
-  "#8b5cf6": styles.themeViolet,
-  "#ec4899": styles.themePink,
-  "#06b6d4": styles.themeCyan,
-  "#84cc16": styles.themeLime,
-  "#f97316": styles.themeOrange,
-  "#9ca3af": styles.themeGray,
+  [THEME_COLOR_BLUE]: styles.themeBlue,
+  [THEME_COLOR_EMERALD]: styles.themeEmerald,
+  [THEME_COLOR_AMBER]: styles.themeAmber,
+  [THEME_COLOR_RED]: styles.themeRed,
+  [THEME_COLOR_VIOLET]: styles.themeViolet,
+  [THEME_COLOR_PINK]: styles.themePink,
+  [THEME_COLOR_CYAN]: styles.themeCyan,
+  [THEME_COLOR_LIME]: styles.themeLime,
+  [THEME_COLOR_ORANGE]: styles.themeOrange,
+  [THEME_COLOR_GRAY]: styles.themeGray,
 };
 
+const WORD_SIZE_CLASS_COUNT = 16;
+
 function getThemeColorClass(theme?: TextTheme): string {
-  if (!theme?.color) return "";
+  if (!theme?.color) return styles.themeDefault;
   return (
     THEME_COLOR_CLASS_BY_HEX[theme.color.toLowerCase()] ?? styles.themeDefault
   );
 }
 
 function getWordSizeClass(ratio: number): string {
-  if (ratio >= 0.9) return styles.sizeXl;
-  if (ratio >= 0.75) return styles.sizeLg;
-  if (ratio >= 0.6) return styles.sizeMd;
-  if (ratio >= 0.45) return styles.sizeSm;
-  if (ratio >= 0.3) return styles.sizeXs;
-  return styles.sizeXxs;
+  const clampedRatio = Math.max(0, Math.min(1, ratio));
+  const idx = Math.round(clampedRatio * (WORD_SIZE_CLASS_COUNT - 1));
+  const classKey = `size${idx.toString().padStart(2, "0")}`;
+  return styles[classKey] ?? styles.size00;
 }
 
 function getUncategorizedRankClass(index: number): string {

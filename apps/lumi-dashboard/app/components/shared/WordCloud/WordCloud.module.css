@@ -14,28 +14,53 @@
   border-radius: var(--ax-border-radius-small);
 }
 
-.sizeXl {
-  font-size: 1.5rem;
+.size00 {
+  font-size: 0.75rem;
 }
-
-.sizeLg {
-  font-size: 1.3rem;
+.size01 {
+  font-size: 0.8rem;
 }
-
-.sizeMd {
-  font-size: 1.15rem;
+.size02 {
+  font-size: 0.85rem;
 }
-
-.sizeSm {
+.size03 {
+  font-size: 0.9rem;
+}
+.size04 {
+  font-size: 0.95rem;
+}
+.size05 {
   font-size: 1rem;
 }
-
-.sizeXs {
-  font-size: 0.875rem;
+.size06 {
+  font-size: 1.05rem;
 }
-
-.sizeXxs {
-  font-size: 0.75rem;
+.size07 {
+  font-size: 1.1rem;
+}
+.size08 {
+  font-size: 1.15rem;
+}
+.size09 {
+  font-size: 1.2rem;
+}
+.size10 {
+  font-size: 1.25rem;
+}
+.size11 {
+  font-size: 1.3rem;
+}
+.size12 {
+  font-size: 1.35rem;
+}
+.size13 {
+  font-size: 1.4rem;
+}
+.size14 {
+  font-size: 1.45rem;
+}
+.size15 {
+  font-size: 1.5rem;
 }
 
 .weightStrong {
