@@ -1,3 +1,0 @@
-# Auth is handled via NAIS Texas token introspection in `config/Auth.kt`.
-# Legacy `no.nav.security.jwt` issuer configuration has been removed to avoid
-# configuration drift and operational confusion.
