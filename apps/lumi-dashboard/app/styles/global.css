@@ -32,6 +32,16 @@ body {
   overflow-x: hidden;
 }
 
+html[data-theme="light"],
+body[data-theme="light"] {
+  color-scheme: light;
+}
+
+html[data-theme="dark"],
+body[data-theme="dark"] {
+  color-scheme: dark;
+}
+
 .app-theme-root {
   min-height: 100vh;
 }

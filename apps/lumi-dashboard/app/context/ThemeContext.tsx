@@ -70,9 +70,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // Only update if the theme actually changed or is different from attribute
     if (root.getAttribute("data-theme") !== theme) {
       root.setAttribute("data-theme", theme);
-      root.style.colorScheme = theme;
       body.setAttribute("data-theme", theme);
-      body.style.colorScheme = theme;
 
       // Crucial: Aksel Darkside tokens depend on the ".dark" class
       if (theme === "dark") {
