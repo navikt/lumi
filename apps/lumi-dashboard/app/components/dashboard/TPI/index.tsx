@@ -139,6 +139,7 @@ export function TPIDashboard({ data }: TPIDashboardProps) {
                       className={`${styles.progress} ${getTpiProgressClass(score)}`}
                       value={score}
                       max={100}
+                      aria-label={`TPI score for ${task.task}`}
                     />
 
                     {/* Details row */}
