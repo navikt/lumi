@@ -5,6 +5,7 @@ import { useSegmentFilter } from "~/hooks/useSegmentFilter";
 import { useStats } from "~/hooks/useStats";
 import { inferRatingVariantFromDistribution } from "~/utils/ratingDisplay";
 import { formatMetadataLabel } from "~/utils/segmentUtils";
+import styles from "./ActiveFiltersChips.module.css";
 
 interface FilterChip {
   key: string;
@@ -118,33 +119,25 @@ export function ActiveFiltersChips() {
   }
 
   return (
-    <HStack gap="space-8" wrap>
+    <HStack gap="space-8" wrap className={styles.root}>
       {chips.map((chip) => (
         <Tag
           data-color="neutral"
           key={chip.key}
           variant="outline"
           size="small"
-          style={{ cursor: "pointer", paddingRight: "0.25rem" }}
+          className={styles.chip}
         >
-          <span style={{ marginRight: "0.5rem" }}>
+          <span className={styles.label}>
             {chip.label}: {chip.value}
           </span>
           <button
             type="button"
             onClick={chip.onRemove}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: "0.125rem",
-              display: "inline-flex",
-              alignItems: "center",
-              borderRadius: "2px",
-            }}
+            className={styles.removeButton}
             aria-label={`Fjern filter ${chip.label}`}
           >
-            <XMarkIcon fontSize="1rem" />
+            <XMarkIcon fontSize="1rem" className={styles.removeIcon} />
           </button>
         </Tag>
       ))}

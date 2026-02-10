@@ -1,0 +1,30 @@
+.inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  height: 64px;
+}
+
+.brandButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 1.125rem;
+  text-decoration: none;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.logo {
+  width: auto;
+  display: block;
+}
+
+.divider {
+  width: 1px;
+  height: 32px;
+  background: var(--ax-border-neutral-subtle);
+}

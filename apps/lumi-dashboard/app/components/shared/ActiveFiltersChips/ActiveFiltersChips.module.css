@@ -1,0 +1,47 @@
+.root {
+  width: 100%;
+}
+
+.chip {
+  padding-right: 0.25rem;
+  background: var(--ax-bg-raised);
+  border-color: var(--ax-border-neutral-subtle);
+  color: var(--ax-text-default);
+}
+
+.label {
+  margin-right: 0.5rem;
+}
+
+.removeButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.125rem;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 2px;
+  color: var(--ax-text-accent-subtle);
+}
+
+.removeButton:hover {
+  color: var(--ax-text-accent-subtle);
+  background: var(--ax-bg-accent-soft);
+}
+
+.removeButton svg {
+  color: inherit;
+}
+
+.removeIcon {
+  color: var(--ax-text-accent-subtle);
+}
+
+.removeButton:hover .removeIcon {
+  color: var(--ax-text-accent-subtle);
+}
+
+.removeButton:focus-visible {
+  outline: 2px solid var(--ax-border-focus);
+  outline-offset: 1px;
+}

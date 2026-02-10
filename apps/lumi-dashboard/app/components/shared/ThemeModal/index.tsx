@@ -20,6 +20,7 @@ import type {
   TextTheme,
   UpdateThemeInput,
 } from "~/types/api";
+import { THEME_COLOR_BLUE, THEME_COLORS } from "~/utils/colors";
 
 /** Context example for peek context feature */
 export interface ContextExample {
@@ -49,18 +50,6 @@ interface ThemeModalProps {
   wordVariants?: Array<{ word: string; count: number }>;
 }
 
-// Preset colors for themes
-const THEME_COLORS = [
-  "#3b82f6", // blue
-  "#10b981", // emerald
-  "#f59e0b", // amber
-  "#ef4444", // red
-  "#8b5cf6", // violet
-  "#ec4899", // pink
-  "#06b6d4", // cyan
-  "#84cc16", // lime
-];
-
 /**
  * Modal for creating or editing a text theme.
  * Supports keyword management with chips.
@@ -89,7 +78,7 @@ export function ThemeModal({
     theme?.keywords ?? initialKeywords,
   );
 
-  const [color, setColor] = useState(theme?.color ?? THEME_COLORS[0]);
+  const [color, setColor] = useState(theme?.color ?? THEME_COLOR_BLUE);
 
   // State for "Add to Existing"
   const [selectedExistingThemeId, setSelectedExistingThemeId] =
@@ -116,7 +105,7 @@ export function ThemeModal({
     if (hasOpened || themeChanged) {
       setName(theme?.name ?? "");
       setKeywords(theme?.keywords ?? initialKeywords);
-      setColor(theme?.color ?? THEME_COLORS[0]);
+      setColor(theme?.color ?? THEME_COLOR_BLUE);
 
       // Default to "existing" tab only if we are creating AND have initial keywords (clicked a word)
       // Otherwise default to "new"
@@ -427,7 +416,6 @@ export function ThemeModal({
 
                   const regex = new RegExp(`(${highlightTerm})`, "gi");
                   const parts = example.text.split(regex);
-                  let pos = 0;
                   return (
                     <Box
                       key={`${example.submittedAt}-${idx}`}
@@ -437,9 +425,8 @@ export function ThemeModal({
                     >
                       <BodyShort size="small">
                         "
-                        {parts.map((part) => {
-                          const key = `${pos}`;
-                          pos += part.length;
+                        {parts.map((part, partIdx) => {
+                          const key = `${idx}-${partIdx}`;
                           return part.toLowerCase() ===
                             highlightTerm.toLowerCase() ? (
                             <strong

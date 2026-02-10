@@ -18,6 +18,7 @@ import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import { useThemes } from "~/hooks/useThemes";
 import { getFilterLabels } from "~/utils/filterLabels";
+import styles from "./FilterBar.module.css";
 import { FilterMenu } from "./FilterMenu";
 import { Skeleton as FilterBarSkeleton } from "./Skeleton";
 
@@ -173,13 +174,13 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
   }
 
   return (
-    <VStack gap="space-12" style={{ width: "100%" }}>
+    <VStack gap="space-12" className={styles.root}>
       {/* Primary Row: All filters in one line */}
       <Box
         padding={{ xs: "space-12", md: "space-16" }}
         background="raised"
         borderRadius="12"
-        style={{ boxShadow: "var(--ax-shadow-small)" }}
+        className={styles.card}
         borderColor="neutral-subtle"
         borderWidth="1"
       >
@@ -195,7 +196,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                   size="small"
                   value={selectedTeam}
                   onChange={(e) => handleTeamChange(e.target.value)}
-                  style={{ minWidth: 140, maxWidth: 200 }}
+                  className={styles.desktopTeamSelect}
                 >
                   {availableTeams.map((team) => (
                     <option key={team} value={team}>
@@ -215,7 +216,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                     e.target.value === "alle" ? undefined : e.target.value,
                   )
                 }
-                style={{ minWidth: 120, maxWidth: 160 }}
+                className={styles.desktopAppSelect}
               >
                 {apps.map((app) => (
                   <option key={app} value={app}>
@@ -236,7 +237,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                     page: "1",
                   })
                 }
-                style={{ minWidth: 140, maxWidth: 220 }}
+                className={styles.desktopSurveySelect}
               >
                 {surveys.map((survey) => (
                   <option key={survey} value={survey}>
@@ -259,7 +260,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                     })
                   }
                   placeholder="Søk i tekst..."
-                  style={{ minWidth: 160, maxWidth: 220 }}
+                  className={styles.desktopSearch}
                 />
               )}
 
@@ -311,7 +312,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                   size="small"
                   value={selectedTeam}
                   onChange={(e) => handleTeamChange(e.target.value)}
-                  style={{ flex: 1, minWidth: 120 }}
+                  className={styles.mobileTeamSelect}
                 >
                   {availableTeams.map((team) => (
                     <option key={team} value={team}>
@@ -331,7 +332,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                     e.target.value === "alle" ? undefined : e.target.value,
                   )
                 }
-                style={{ flex: 1, minWidth: 100 }}
+                className={styles.mobileAppSelect}
               >
                 {apps.map((app) => (
                   <option key={app} value={app}>
@@ -352,7 +353,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                     page: "1",
                   })
                 }
-                style={{ flex: 1, minWidth: 100 }}
+                className={styles.mobileSurveySelect}
               >
                 {surveys.map((survey) => (
                   <option key={survey} value={survey}>
@@ -407,7 +408,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                   })
                 }
                 placeholder="Søk i tekst..."
-                style={{ width: "100%" }}
+                className={styles.mobileSearch}
               />
             )}
           </VStack>

@@ -1,4 +1,17 @@
 import type { TextTheme } from "~/types/api";
+import {
+  THEME_COLOR_AMBER,
+  THEME_COLOR_BLUE,
+  THEME_COLOR_CYAN,
+  THEME_COLOR_EMERALD,
+  THEME_COLOR_GRAY,
+  THEME_COLOR_LIME,
+  THEME_COLOR_ORANGE,
+  THEME_COLOR_PINK,
+  THEME_COLOR_RED,
+  THEME_COLOR_VIOLET,
+} from "~/utils/colors";
+import styles from "./WordCloud.module.css";
 
 interface WordCloudWord {
   word: string;
@@ -19,6 +32,41 @@ interface WordCloudProps {
   ) => void;
 }
 
+const THEME_COLOR_CLASS_BY_HEX: Record<string, string> = {
+  [THEME_COLOR_BLUE]: styles.themeBlue,
+  [THEME_COLOR_EMERALD]: styles.themeEmerald,
+  [THEME_COLOR_AMBER]: styles.themeAmber,
+  [THEME_COLOR_RED]: styles.themeRed,
+  [THEME_COLOR_VIOLET]: styles.themeViolet,
+  [THEME_COLOR_PINK]: styles.themePink,
+  [THEME_COLOR_CYAN]: styles.themeCyan,
+  [THEME_COLOR_LIME]: styles.themeLime,
+  [THEME_COLOR_ORANGE]: styles.themeOrange,
+  [THEME_COLOR_GRAY]: styles.themeGray,
+};
+
+const WORD_SIZE_CLASS_COUNT = 16;
+
+function getThemeColorClass(theme?: TextTheme): string {
+  if (!theme?.color) return styles.themeDefault;
+  return (
+    THEME_COLOR_CLASS_BY_HEX[theme.color.toLowerCase()] ?? styles.themeDefault
+  );
+}
+
+function getWordSizeClass(ratio: number): string {
+  const clampedRatio = Math.max(0, Math.min(1, ratio));
+  const idx = Math.round(clampedRatio * (WORD_SIZE_CLASS_COUNT - 1));
+  const classKey = `size${idx.toString().padStart(2, "0")}`;
+  return styles[classKey] ?? styles.size00;
+}
+
+function getUncategorizedRankClass(index: number): string {
+  if (index < 3) return styles.uncategorizedTop;
+  if (index < 10) return styles.uncategorizedMid;
+  return styles.uncategorizedLow;
+}
+
 /**
  * Reusable word cloud component that displays words with frequency-based sizing.
  * Words belonging to a theme are colored with the theme color.
@@ -35,28 +83,19 @@ export function WordCloud({
   const maxCount = words[0]?.count ?? 1;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: "0.5rem",
-        alignItems: "center",
-      }}
-    >
+    <div className={styles.cloud}>
       {words.slice(0, maxWords).map(({ word, count }, index) => {
-        // Scale font size based on frequency (0.75 to 1.5 rem)
-        const scale = 0.75 + (count / maxCount) * 0.75;
+        const ratio = count / maxCount;
         const wordTheme = getThemeForWord(word);
         const isCategorized = !!wordTheme;
-
-        // Use theme color if categorized, otherwise neutral based on rank
-        const baseColor = isCategorized
-          ? wordTheme.color
-          : index < 3
-            ? "var(--ax-text-default)"
-            : index < 10
-              ? "var(--ax-text-neutral-subtle)"
-              : "var(--ax-text-muted)";
+        const className = [
+          styles.word,
+          getWordSizeClass(ratio),
+          index < 5 ? styles.weightStrong : styles.weightNormal,
+          isCategorized
+            ? getThemeColorClass(wordTheme)
+            : getUncategorizedRankClass(index),
+        ].join(" ");
 
         return (
           <button
@@ -68,36 +107,12 @@ export function WordCloud({
                 ? `${word}, nevnt ${count} ganger, tilhører tema ${wordTheme.name}`
                 : `${word}, nevnt ${count} ganger, ikke kategorisert`
             }
-            style={{
-              fontSize: `${scale}rem`,
-              fontWeight: index < 5 ? 600 : 400,
-              color: baseColor,
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-              background: isCategorized ? `${wordTheme.color}15` : "none",
-              border: "none",
-              padding: "0.125rem 0.25rem",
-              borderRadius: "var(--ax-border-radius-small)",
-            }}
+            className={className}
             title={
               isCategorized
                 ? `${word}: tilhører "${wordTheme.name}" – klikk for å administrere`
                 : `${word}: ${count} ganger – klikk for å kategorisere`
             }
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = isCategorized
-                ? `${wordTheme.color || "#888"}30`
-                : "var(--ax-bg-neutral-soft-hover)";
-              e.currentTarget.style.color = isCategorized
-                ? wordTheme.color || "#888"
-                : "var(--ax-text-action)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = isCategorized
-                ? `${wordTheme.color || "#888"}15`
-                : "transparent";
-              e.currentTarget.style.color = baseColor || "";
-            }}
           >
             {word}
           </button>

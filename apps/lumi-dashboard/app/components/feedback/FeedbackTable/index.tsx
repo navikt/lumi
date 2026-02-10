@@ -236,18 +236,18 @@ function PaginationBar({
   return (
     <Box padding="space-16">
       <HStack justify="space-between" align="center" wrap gap="space-8">
-        <BodyShort size="small">
-          <Hide below="sm" asChild>
-            <span>
-              Viser {(page - 1) * pageSize + 1} -{" "}
-              {Math.min(page * pageSize, totalElements)} av {totalElements}
-            </span>
-          </Hide>
-          <Show below="sm">
+        <Hide below="sm">
+          <BodyShort size="small">
+            Viser {(page - 1) * pageSize + 1} -{" "}
+            {Math.min(page * pageSize, totalElements)} av {totalElements}
+          </BodyShort>
+        </Hide>
+        <Show below="sm">
+          <BodyShort size="small">
             {(page - 1) * pageSize + 1}-
             {Math.min(page * pageSize, totalElements)} / {totalElements}
-          </Show>
-        </BodyShort>
+          </BodyShort>
+        </Show>
         <Pagination
           page={page}
           count={totalPages}

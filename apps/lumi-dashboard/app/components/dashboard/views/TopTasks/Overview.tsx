@@ -100,7 +100,8 @@ export function TopTasksOverview() {
                 <Hide below="md" asChild>
                   <Table.HeaderCell align="right">Feil</Table.HeaderCell>
                 </Hide>
-                <Table.HeaderCell /> {/* For expand button on right */}
+                {/* For expand button on right */}
+                <Table.HeaderCell />
               </Table.Row>
             </Table.Header>
             <Table.Body>

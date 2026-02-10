@@ -1,0 +1,46 @@
+.root {
+  width: 100%;
+}
+
+.card {
+  box-shadow: var(--ax-shadow-small);
+}
+
+.desktopTeamSelect {
+  min-width: 140px;
+  max-width: 200px;
+}
+
+.desktopAppSelect {
+  min-width: 120px;
+  max-width: 160px;
+}
+
+.desktopSurveySelect {
+  min-width: 140px;
+  max-width: 220px;
+}
+
+.desktopSearch {
+  min-width: 160px;
+  max-width: 220px;
+}
+
+.mobileTeamSelect {
+  flex: 1;
+  min-width: 120px;
+}
+
+.mobileAppSelect {
+  flex: 1;
+  min-width: 100px;
+}
+
+.mobileSurveySelect {
+  flex: 1;
+  min-width: 100px;
+}
+
+.mobileSearch {
+  width: 100%;
+}
