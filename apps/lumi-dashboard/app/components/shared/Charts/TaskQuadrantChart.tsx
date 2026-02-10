@@ -1,7 +1,6 @@
 import { Skeleton } from "@navikt/ds-react";
 import {
   CartesianGrid,
-  Cell,
   ReferenceArea,
   ReferenceLine,
   Scatter,
@@ -57,6 +56,13 @@ interface TaskDataPoint {
   volume: number;
   successRate: number;
   zone: "crisis" | "watch" | "good" | "lowPriority";
+}
+
+interface TaskPointShapeProps {
+  cx?: number;
+  cy?: number;
+  size?: number;
+  payload?: TaskDataPoint;
 }
 
 function getZone(volume: number, successRate: number): TaskDataPoint["zone"] {
@@ -143,6 +149,29 @@ export function TaskQuadrantChart({
       // Toggle selection: if clicking the same task, deselect
       onTaskSelect(data.name === selectedTask ? null : data.name);
     }
+  };
+
+  const renderTaskPoint = ({ cx, cy, size, payload }: TaskPointShapeProps) => {
+    if (typeof cx !== "number" || typeof cy !== "number" || !payload) {
+      return null;
+    }
+
+    const isSelected = payload.name === selectedTask;
+    const fill = getZoneColor(payload.zone, colors);
+    const pointSize = typeof size === "number" ? size : 100;
+    const radius = Math.max(4, Math.sqrt(pointSize / Math.PI));
+
+    return (
+      <circle
+        cx={cx}
+        cy={cy}
+        r={radius}
+        fill={fill}
+        stroke={isSelected ? colors.selected : fill}
+        strokeWidth={isSelected ? 3 : 2}
+        className={isSelected ? styles.selectedScatterCell : undefined}
+      />
+    );
   };
 
   return (
@@ -294,24 +323,8 @@ export function TaskQuadrantChart({
           data={data}
           cursor={onTaskSelect ? "pointer" : "default"}
           onClick={(data) => handleClick(data as unknown as TaskDataPoint)}
-        >
-          {data.map((entry) => {
-            const isSelected = entry.name === selectedTask;
-            return (
-              <Cell
-                key={`cell-${entry.name}`}
-                fill={getZoneColor(entry.zone, colors)}
-                stroke={
-                  isSelected
-                    ? colors.selected
-                    : getZoneColor(entry.zone, colors)
-                }
-                strokeWidth={isSelected ? 3 : 2}
-                className={isSelected ? styles.selectedScatterCell : undefined}
-              />
-            );
-          })}
-        </Scatter>
+          shape={renderTaskPoint}
+        />
       </ScatterChart>
     </ResponsiveContainerWithInitialSize>
   );

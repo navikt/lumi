@@ -58,6 +58,7 @@ export function ChoiceFieldCard({ field, totalCount }: FieldCardProps) {
                 className={`${styles.choiceBar} ${barColorClass}`}
                 value={choice.count}
                 max={maxCount}
+                aria-hidden="true"
               />
             </VStack>
           );

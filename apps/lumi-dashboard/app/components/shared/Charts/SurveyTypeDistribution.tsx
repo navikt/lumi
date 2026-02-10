@@ -1,8 +1,9 @@
+import type { ComponentProps } from "react";
 import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
+  Rectangle,
   Tooltip,
   XAxis,
   YAxis,
@@ -41,6 +42,21 @@ const CHART_COLORS_LIGHT = {
 interface SurveyTypeDistributionProps {
   /** Height of the chart in pixels */
   height?: number | `${number}%`;
+}
+
+type SurveyTypeBarShapeProps = ComponentProps<typeof Rectangle> & {
+  payload?: { color?: string };
+};
+
+function SurveyTypeBarShape(props: SurveyTypeBarShapeProps) {
+  const { payload, ...rectangleProps } = props;
+  return (
+    <Rectangle
+      {...rectangleProps}
+      fill={payload?.color ?? "#6b7280"}
+      radius={[0, 4, 4, 0]}
+    />
+  );
 }
 
 export function SurveyTypeDistribution({
@@ -113,11 +129,7 @@ export function SurveyTypeDistribution({
             return null;
           }}
         />
-        <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={30}>
-          {data.map((entry) => (
-            <Cell key={entry.type} fill={entry.color} />
-          ))}
-        </Bar>
+        <Bar dataKey="count" maxBarSize={30} shape={<SurveyTypeBarShape />} />
       </BarChart>
     </ResponsiveContainerWithInitialSize>
   );

@@ -68,6 +68,7 @@ export function RatingBars({
               className={`${styles.barTrack} ${fillClass}`}
               value={count}
               max={maxCount}
+              aria-hidden="true"
             />
 
             <span className={styles.barCount}>{count}</span>

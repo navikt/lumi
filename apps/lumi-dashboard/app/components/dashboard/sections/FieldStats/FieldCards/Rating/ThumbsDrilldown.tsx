@@ -1,10 +1,26 @@
 import { HStack, VStack } from "@navikt/ds-react";
-import { Cell, Pie, PieChart, Tooltip } from "recharts";
+import type { ComponentProps } from "react";
+import { Pie, PieChart, Sector, Tooltip } from "recharts";
 import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import styles from "./ThumbsDrilldown.module.css";
 
 function calculatePct(count: number, total: number) {
   return total > 0 ? Math.round((count / total) * 100) : 0;
+}
+
+type ThumbsSectorShapeProps = ComponentProps<typeof Sector> & {
+  payload?: { fill?: string; opacity?: number };
+};
+
+function ThumbsSectorShape(props: ThumbsSectorShapeProps) {
+  const { payload, ...sectorProps } = props;
+  return (
+    <Sector
+      {...sectorProps}
+      fill={payload?.fill ?? "var(--ax-bg-neutral-moderate)"}
+      opacity={payload?.opacity ?? 1}
+    />
+  );
 }
 
 export function ThumbsDrilldown({
@@ -24,6 +40,23 @@ export function ThumbsDrilldown({
   onSelect: (ratingValue: "1" | "2") => void;
   onClear: () => void;
 }) {
+  const pieData = [
+    {
+      name: "Ja",
+      value: distribution["2"] || 0,
+      ratingValue: "2" as const,
+      fill: "var(--ax-bg-success-strong)",
+      opacity: !isFilteringThisField || activeRatingValue === "2" ? 1 : 0.35,
+    },
+    {
+      name: "Nei",
+      value: distribution["1"] || 0,
+      ratingValue: "1" as const,
+      fill: "var(--ax-bg-danger-strong)",
+      opacity: !isFilteringThisField || activeRatingValue === "1" ? 1 : 0.35,
+    },
+  ].filter((d) => d.value > 0);
+
   return (
     <VStack gap="space-12" marginBlock="space-12 space-0">
       <div className={styles.chartContainer}>
@@ -42,14 +75,7 @@ export function ThumbsDrilldown({
               }}
             />
             <Pie
-              data={[
-                { name: "Ja", value: distribution["2"] || 0, ratingValue: "2" },
-                {
-                  name: "Nei",
-                  value: distribution["1"] || 0,
-                  ratingValue: "1",
-                },
-              ].filter((d) => d.value > 0)}
+              data={pieData}
               dataKey="value"
               nameKey="name"
               cx="50%"
@@ -66,20 +92,8 @@ export function ThumbsDrilldown({
                 onSelect(nextValue);
               }}
               className={styles.clickableChart}
-            >
-              <Cell
-                fill="var(--ax-bg-success-strong)"
-                opacity={
-                  !isFilteringThisField || activeRatingValue === "2" ? 1 : 0.35
-                }
-              />
-              <Cell
-                fill="var(--ax-bg-danger-strong)"
-                opacity={
-                  !isFilteringThisField || activeRatingValue === "1" ? 1 : 0.35
-                }
-              />
-            </Pie>
+              shape={<ThumbsSectorShape />}
+            />
 
             {(() => {
               const up = distribution["2"] || 0;

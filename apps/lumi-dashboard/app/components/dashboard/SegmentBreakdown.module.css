@@ -35,20 +35,6 @@
   color: var(--ax-text-neutral-default);
 }
 
-.barBackground {
-  flex: 1;
-  height: 24px;
-  background: var(--ax-bg-neutral-moderate);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.bar {
-  height: 100%;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
 .barProgress {
   flex: 1;
   height: 24px;
@@ -57,6 +43,10 @@
   overflow: hidden;
   appearance: none;
   background: var(--ax-bg-neutral-moderate);
+}
+
+.segmentRow:hover .barProgress {
+  filter: brightness(1.08);
 }
 
 .barProgress::-webkit-progress-bar {
@@ -142,10 +132,6 @@
 .barOrange::-moz-progress-bar {
   background: #f97316;
   border-radius: 6px;
-}
-
-.segmentRow:hover .bar {
-  filter: brightness(1.1);
 }
 
 .segmentCount {

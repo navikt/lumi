@@ -109,6 +109,7 @@ function SegmentCard({ segmentKey, values, onValueClick }: SegmentCardProps) {
                 className={`${styles.barProgress} ${BAR_COLOR_CLASSES[index % BAR_COLOR_CLASSES.length]}`}
                 value={item.count}
                 max={maxCount}
+                aria-hidden="true"
               />
               <span className={styles.segmentCount}>
                 {item.count} ({item.percentage}%)

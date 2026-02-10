@@ -106,6 +106,7 @@ export function TaskPriorityAnalysis({ data }: TaskPriorityAnalysisProps) {
                     className={`${styles.progress} ${isTopTask ? styles.progressTop : styles.progressRegular}`}
                     value={task.votes}
                     max={maxVotes}
+                    aria-label={`${task.task}: ${task.votes} stemmer (${task.percentage} prosent)`}
                   />
 
                   {/* Long neck cutoff line */}

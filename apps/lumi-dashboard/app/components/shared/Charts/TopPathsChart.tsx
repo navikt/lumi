@@ -1,5 +1,6 @@
 import { Skeleton } from "@navikt/ds-react";
-import { Bar, BarChart, Cell, Tooltip, XAxis, YAxis } from "recharts";
+import type { ComponentProps } from "react";
+import { Bar, BarChart, Rectangle, Tooltip, XAxis, YAxis } from "recharts";
 import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import { useTheme } from "~/context/ThemeContext";
 import { useStats } from "~/hooks/useStats";
@@ -30,6 +31,21 @@ function getRatingClass(rating: number): string {
   if (rating >= 4) return styles.tooltipRatingGood;
   if (rating >= 3) return styles.tooltipRatingMedium;
   return styles.tooltipRatingLow;
+}
+
+type TopPathsBarShapeProps = ComponentProps<typeof Rectangle> & {
+  payload?: { averageRating?: number };
+};
+
+function TopPathsBarShape(props: TopPathsBarShapeProps) {
+  const { payload, ...rectangleProps } = props;
+  return (
+    <Rectangle
+      {...rectangleProps}
+      fill={getRatingColor(payload?.averageRating ?? 0)}
+      radius={[0, 4, 4, 0]}
+    />
+  );
 }
 
 export function TopPathsChart() {
@@ -113,14 +129,7 @@ export function TopPathsChart() {
             return null;
           }}
         />
-        <Bar dataKey="count" radius={[0, 4, 4, 0]}>
-          {data.map((entry) => (
-            <Cell
-              key={entry.pathname}
-              fill={getRatingColor(entry.averageRating)}
-            />
-          ))}
-        </Bar>
+        <Bar dataKey="count" shape={<TopPathsBarShape />} />
       </BarChart>
     </ResponsiveContainerWithInitialSize>
   );

@@ -1,5 +1,6 @@
 import { BodyShort, Skeleton } from "@navikt/ds-react";
-import { Bar, BarChart, Cell, Tooltip, XAxis, YAxis } from "recharts";
+import type { ComponentProps } from "react";
+import { Bar, BarChart, Rectangle, Tooltip, XAxis, YAxis } from "recharts";
 import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import { useBreakpoint } from "~/hooks/useBreakpoint";
 import { useStats } from "~/hooks/useStats";
@@ -74,6 +75,21 @@ function getConfigForVariant(variant: RatingVariant) {
   }
 }
 
+type RatingBarShapeProps = ComponentProps<typeof Rectangle> & {
+  payload?: { color?: string };
+};
+
+function RatingBarShape(props: RatingBarShapeProps) {
+  const { payload, ...rectangleProps } = props;
+  return (
+    <Rectangle
+      {...rectangleProps}
+      fill={payload?.color ?? "#6b7280"}
+      radius={[4, 4, 0, 0]}
+    />
+  );
+}
+
 export function RatingChart() {
   const { data: stats, isPending } = useStats();
   const { isMobile } = useBreakpoint();
@@ -90,12 +106,20 @@ export function RatingChart() {
   const ratingField = stats?.fieldStats?.find((f) => f.fieldType === "RATING");
   const ratingStats = ratingField?.stats as RatingStats | undefined;
 
-  // Scope to concrete rating fields only.
-  // Avoid mixing legacy/global byRating across different survey scales.
-  const distribution = ratingStats?.distribution || {};
-  const distributionEntries = Object.entries(distribution).filter(
+  // Prefer concrete rating-field distribution to avoid mixing scales.
+  // Fallback to legacy/global byRating when fieldStats is missing.
+  const fieldDistribution = ratingStats?.distribution || {};
+  const fieldDistributionEntries = Object.entries(fieldDistribution).filter(
     ([, count]) => typeof count === "number" && count > 0,
   );
+  const byRating = stats?.byRating || {};
+  const byRatingEntries = Object.entries(byRating).filter(
+    ([, count]) => typeof count === "number" && count > 0,
+  );
+  const distributionEntries =
+    fieldDistributionEntries.length > 0
+      ? fieldDistributionEntries
+      : byRatingEntries;
 
   if (distributionEntries.length === 0) {
     return (
@@ -222,11 +246,7 @@ export function RatingChart() {
             return null;
           }}
         />
-        <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-          {data.map((entry) => (
-            <Cell key={`cell-${entry.value}`} fill={entry.color} />
-          ))}
-        </Bar>
+        <Bar dataKey="count" shape={<RatingBarShape />} />
       </BarChart>
     </ResponsiveContainerWithInitialSize>
   );

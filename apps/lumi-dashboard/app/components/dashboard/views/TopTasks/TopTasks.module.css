@@ -4,6 +4,15 @@
   opacity: 0.7;
 }
 
+.headerIcon {
+  display: inline-flex;
+  color: var(--ax-text-accent);
+}
+
+.introText {
+  margin-top: 0.25rem;
+}
+
 .quadrantChartContainer {
   height: clamp(280px, 50vw, 400px);
   width: 100%;
