@@ -1,19 +1,16 @@
 import { Skeleton } from "@navikt/ds-react";
-import { Bar, BarChart, Cell, Tooltip, XAxis, YAxis } from "recharts";
+import type { ComponentProps } from "react";
+import { Bar, BarChart, Rectangle, Tooltip, XAxis, YAxis } from "recharts";
 import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import { useTheme } from "~/context/ThemeContext";
 import { useStats } from "~/hooks/useStats";
+import styles from "./Charts.module.css";
 
 const CHART_COLORS = {
   bar: "#818CF8", // Purple
   barHover: "#A5B4FC",
   text: "rgba(255, 255, 255, 0.7)",
   textMuted: "rgba(255, 255, 255, 0.5)",
-  tooltip: {
-    bg: "#1c1f24",
-    border: "rgba(255, 255, 255, 0.15)",
-    text: "#ffffff",
-  },
 };
 
 const CHART_COLORS_LIGHT = {
@@ -21,11 +18,6 @@ const CHART_COLORS_LIGHT = {
   barHover: "#818cf8", // Indigo 400
   text: "#262626", // Nav Gray 90
   textMuted: "#545454", // Nav Gray 60
-  tooltip: {
-    bg: "#ffffff",
-    border: "#a0a0a0", // Nav Gray 40
-    text: "#262626",
-  },
 };
 
 // Color based on rating
@@ -33,6 +25,27 @@ function getRatingColor(rating: number): string {
   if (rating >= 4) return "#34D399"; // Green
   if (rating >= 3) return "#FBBF24"; // Yellow
   return "#F87171"; // Red
+}
+
+function getRatingClass(rating: number): string {
+  if (rating >= 4) return styles.tooltipRatingGood;
+  if (rating >= 3) return styles.tooltipRatingMedium;
+  return styles.tooltipRatingLow;
+}
+
+type TopPathsBarShapeProps = ComponentProps<typeof Rectangle> & {
+  payload?: { averageRating?: number };
+};
+
+function TopPathsBarShape(props: TopPathsBarShapeProps) {
+  const { payload, ...rectangleProps } = props;
+  return (
+    <Rectangle
+      {...rectangleProps}
+      fill={getRatingColor(payload?.averageRating ?? 0)}
+      radius={[0, 4, 4, 0]}
+    />
+  );
 }
 
 export function TopPathsChart() {
@@ -62,13 +75,9 @@ export function TopPathsChart() {
   if (data.length === 0) {
     return (
       <div
-        style={{
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: colors.textMuted,
-        }}
+        className={[styles.emptyStateCentered, styles.emptyStateMuted].join(
+          " ",
+        )}
       >
         Ingen stier tilgjengelig
       </div>
@@ -98,33 +107,21 @@ export function TopPathsChart() {
         />
         <Tooltip
           content={({ active, payload }) => {
-            if (active && payload && payload.length) {
-              const d = payload[0].payload;
+            if (active && payload && payload.length && payload[0]) {
+              const point = payload[0].payload as {
+                pathname: string;
+                count: number;
+                averageRating: number;
+              };
               return (
-                <div
-                  style={{
-                    background: colors.tooltip.bg,
-                    color: colors.tooltip.text,
-                    padding: "0.75rem",
-                    borderRadius: "4px",
-                    border: `1px solid ${colors.tooltip.border}`,
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                    maxWidth: "300px",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontWeight: 600,
-                      marginBottom: "0.5rem",
-                      wordBreak: "break-all",
-                    }}
-                  >
-                    {d.pathname}
+                <div className={styles.tooltipCard}>
+                  <div className={styles.tooltipPathTitle}>
+                    {point.pathname}
                   </div>
-                  <div>{d.count} tilbakemeldinger</div>
-                  <div style={{ color: getRatingColor(d.averageRating) }}>
-                    Snittrating: {d.averageRating.toFixed(1)}{" "}
-                    {ratingToEmoji(Math.round(d.averageRating))}
+                  <div>{point.count} tilbakemeldinger</div>
+                  <div className={getRatingClass(point.averageRating)}>
+                    Snittrating: {point.averageRating.toFixed(1)}{" "}
+                    {ratingToEmoji(Math.round(point.averageRating))}
                   </div>
                 </div>
               );
@@ -132,14 +129,7 @@ export function TopPathsChart() {
             return null;
           }}
         />
-        <Bar dataKey="count" radius={[0, 4, 4, 0]}>
-          {data.map((entry) => (
-            <Cell
-              key={entry.pathname}
-              fill={getRatingColor(entry.averageRating)}
-            />
-          ))}
-        </Bar>
+        <Bar dataKey="count" shape={<TopPathsBarShape />} />
       </BarChart>
     </ResponsiveContainerWithInitialSize>
   );

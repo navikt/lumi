@@ -1,31 +1,16 @@
 import { Skeleton as AkselSkeleton, HStack, Table } from "@navikt/ds-react";
+import styles from "./styles.module.css";
 
 interface FeedbackTableSkeletonProps {
   showToolbar?: boolean;
 }
 
 export function Skeleton({ showToolbar }: FeedbackTableSkeletonProps) {
-  // Inline styles to match .table in FeedbackTable.module.css
-  const tableContainerStyle: React.CSSProperties = {
-    background: "var(--ax-bg-default)",
-    borderRadius: "8px",
-    boxShadow: "var(--ax-shadow-small)",
-    border: "1px solid var(--ax-border-neutral-subtle)",
-    overflow: "hidden",
-  };
-
-  // Toolbar skeleton styles (matching .toolbar in FeedbackTable.module.css)
-  const toolbarStyle: React.CSSProperties = {
-    padding: "0.75rem 1rem",
-    background: "var(--ax-bg-neutral-moderate)",
-    borderBottom: "1px solid var(--ax-border-neutral-subtle)",
-  };
-
   return (
-    <div style={tableContainerStyle}>
+    <div className={styles.table}>
       {/* Toolbar skeleton when survey is selected */}
       {showToolbar && (
-        <div style={toolbarStyle}>
+        <div className={styles.toolbar}>
           <HStack justify="space-between" align="center">
             <AkselSkeleton variant="text" width={280} height={20} />
             <AkselSkeleton variant="rounded" width={130} height={32} />
@@ -36,15 +21,19 @@ export function Skeleton({ showToolbar }: FeedbackTableSkeletonProps) {
         <Table.Header>
           <Table.Row>
             {/* Expand toggle */}
-            <Table.HeaderCell style={{ width: 40 }} />
+            <Table.HeaderCell className={styles.headerCellExpand} />
             {/* Date */}
-            <Table.HeaderCell style={{ width: 100 }}>Dato</Table.HeaderCell>
+            <Table.HeaderCell className={styles.headerCellDate}>
+              Dato
+            </Table.HeaderCell>
             {/* Feedback */}
             <Table.HeaderCell>Tilbakemelding</Table.HeaderCell>
             {/* App */}
-            <Table.HeaderCell style={{ width: 200 }}>App</Table.HeaderCell>
+            <Table.HeaderCell className={styles.headerCellApp}>
+              App
+            </Table.HeaderCell>
             {/* Actions */}
-            <Table.HeaderCell style={{ width: 80 }} />
+            <Table.HeaderCell className={styles.headerCellActions} />
           </Table.Row>
         </Table.Header>
         <Table.Body>
@@ -62,13 +51,7 @@ export function Skeleton({ showToolbar }: FeedbackTableSkeletonProps) {
               {/* Feedback Content Skeleton */}
               <Table.DataCell>
                 {/* Randomize widths slightly for organic feel */}
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.25rem",
-                  }}
-                >
+                <div className={styles.skeletonFeedbackLines}>
                   <AkselSkeleton
                     variant="text"
                     width={`${[85, 92, 65, 78, 90, 60, 88, 72, 95, 68][i % 10]}%`}
@@ -82,7 +65,7 @@ export function Skeleton({ showToolbar }: FeedbackTableSkeletonProps) {
               </Table.DataCell>
               {/* Actions Skeleton */}
               <Table.DataCell>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
+                <div className={styles.skeletonActionButtons}>
                   <AkselSkeleton variant="rounded" width={24} height={24} />
                   <AkselSkeleton variant="rounded" width={24} height={24} />
                 </div>

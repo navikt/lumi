@@ -5,14 +5,13 @@ import { TimelineSection } from "~/components/dashboard/sections/Timeline";
 import { DeviceBreakdownChart } from "~/components/shared/Charts/DeviceBreakdownChart";
 import { SurveyTypeDistribution } from "~/components/shared/Charts/SurveyTypeDistribution";
 import { TopAppsChart } from "~/components/shared/Charts/TopAppsChart";
+import styles from "./Overview.module.css";
 
 /**
  * Overview Dashboard - shown when no specific survey is selected.
  * Displays aggregated stats across all surveys.
  */
 export function OverviewDashboard() {
-  const chartHeight = "clamp(150px, 30vw, 180px)";
-
   return (
     <>
       <StatsCards showRating />
@@ -25,12 +24,7 @@ export function OverviewDashboard() {
         <DashboardCard padding={{ xs: "space-16", md: "space-24" }}>
           <VStack gap="space-16">
             <Heading size="small">Tilbakemeldinger per app</Heading>
-            <div
-              style={{
-                height: chartHeight,
-                width: "100%",
-              }}
-            >
+            <div className={styles.chartContainer}>
               <TopAppsChart />
             </div>
           </VStack>
@@ -39,7 +33,7 @@ export function OverviewDashboard() {
         <DashboardCard padding={{ xs: "space-16", md: "space-24" }}>
           <VStack gap="space-16">
             <Heading size="small">Enheter</Heading>
-            <div style={{ height: chartHeight, width: "100%" }}>
+            <div className={styles.chartContainer}>
               <DeviceBreakdownChart />
             </div>
           </VStack>
@@ -48,7 +42,7 @@ export function OverviewDashboard() {
         <DashboardCard padding={{ xs: "space-16", md: "space-24" }}>
           <VStack gap="space-16">
             <Heading size="small">Survey-typer</Heading>
-            <div style={{ height: chartHeight, width: "100%" }}>
+            <div className={styles.chartContainer}>
               <SurveyTypeDistribution height="100%" />
             </div>
           </VStack>

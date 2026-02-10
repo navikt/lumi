@@ -15,6 +15,7 @@ import { RatingTrendChart } from "~/components/shared/Charts/RatingTrendChart";
 import { TopAppsChart } from "~/components/shared/Charts/TopAppsChart";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
+import styles from "./RatingDashboard.module.css";
 
 interface RatingDashboardProps {
   hasSurveyFilter?: boolean;
@@ -38,10 +39,10 @@ export function RatingDashboard({ hasSurveyFilter }: RatingDashboardProps) {
       {!hasSurveyFilter && (
         <>
           <DashboardGrid minColumnWidth="280px">
-            <ChartCard title="Vurderingsfordeling" height="260px">
+            <ChartCard title="Vurderingsfordeling" size="compact">
               <RatingChart />
             </ChartCard>
-            <ChartCard title="Topp apper" height="260px">
+            <ChartCard title="Topp apper" size="compact">
               <TopAppsChart />
             </ChartCard>
           </DashboardGrid>
@@ -55,13 +56,7 @@ export function RatingDashboard({ hasSurveyFilter }: RatingDashboardProps) {
                     Kun rating-surveys
                   </BodyShort>
                 </VStack>
-                <div
-                  style={{
-                    height: "260px",
-                    width: "100%",
-                    overflow: "hidden",
-                  }}
-                >
+                <div className={styles.trendContainer}>
                   <RatingTrendChart />
                 </div>
               </VStack>

@@ -1,53 +1,39 @@
-import { Skeleton as AkselSkeleton, Box, VStack } from "@navikt/ds-react";
+import { Skeleton as AkselSkeleton, VStack } from "@navikt/ds-react";
+import { DashboardCard } from "~/components/dashboard";
+import styles from "./FieldStatsSkeleton.module.css";
 
 function FieldStatCardSkeleton() {
   return (
-    <Box
-      padding="space-20"
-      background="raised"
-      borderRadius="12"
-      style={{ boxShadow: "var(--ax-shadow-small)", width: "100%" }}
-      borderColor="neutral-subtle"
-      borderWidth="1"
-    >
-      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+    <DashboardCard padding="space-20">
+      <div className={styles.headerRow}>
         <AkselSkeleton variant="circle" width={20} height={20} />
         <VStack gap="space-4">
           <AkselSkeleton variant="text" width={120} />
           <AkselSkeleton variant="text" width={100} height={14} />
         </VStack>
       </div>
-      <div style={{ marginTop: "1rem" }}>
+      <div className={styles.valueBlock}>
         <AkselSkeleton variant="text" width={80} height={40} />
       </div>
-      <VStack gap="space-8" style={{ marginTop: "1rem" }}>
+      <VStack gap="space-8" className={styles.bars}>
         {[1, 2, 3, 4, 5].map((i) => (
-          <div
-            key={i}
-            style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
-          >
+          <div key={i} className={styles.barRow}>
             <AkselSkeleton variant="text" width={16} />
             <AkselSkeleton variant="rectangle" width="100%" height={16} />
           </div>
         ))}
       </VStack>
-    </Box>
+    </DashboardCard>
   );
 }
 
 export function Skeleton() {
-  const gridStyle: React.CSSProperties = {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-    gap: "1.5rem",
-  };
-
   return (
     <VStack gap="space-24">
-      <div style={{ marginBottom: "1rem" }}>
+      <div className={styles.title}>
         <AkselSkeleton variant="text" width={150} height={32} />
       </div>
-      <div style={gridStyle}>
+      <div className={styles.grid}>
         <FieldStatCardSkeleton />
         <FieldStatCardSkeleton />
       </div>

@@ -1,0 +1,22 @@
+.overflowHidden {
+  overflow: hidden;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.urlLink {
+  text-decoration: none;
+  color: var(--ax-text-accent);
+  display: block;
+}
+
+.urlLinkTruncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}

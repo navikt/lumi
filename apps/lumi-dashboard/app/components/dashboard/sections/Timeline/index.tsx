@@ -2,6 +2,7 @@ import { Heading, VStack } from "@navikt/ds-react";
 import { DashboardCard } from "~/components/dashboard";
 import { TopTasksTimelineChart } from "~/components/dashboard/views/TopTasks/TimelineChart";
 import { TimelineChart } from "~/components/shared/Charts/TimelineChart";
+import styles from "./TimelineSection.module.css";
 
 interface TimelineSectionProps {
   /**
@@ -29,7 +30,7 @@ export function TimelineSection({
     <DashboardCard padding={{ xs: "space-12", md: "space-16" }}>
       <VStack gap="space-12">
         <Heading size="small">{title}</Heading>
-        <div style={{ height: "280px", width: "100%" }}>
+        <div className={styles.chartContainer}>
           {variant === "topTasks" ? (
             <TopTasksTimelineChart />
           ) : (

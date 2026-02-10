@@ -6,17 +6,6 @@ import {
 } from "~/utils/ratingDisplay";
 
 /**
- * Common color tokens for feedback UI elements.
- * Uses CSS variables from Aksel design system.
- */
-export const COLORS = {
-  iconWarning: "var(--ax-icon-warning)",
-  iconInfo: "var(--ax-icon-info)",
-  iconSuccess: "var(--ax-icon-success)",
-  iconError: "var(--ax-icon-error)",
-};
-
-/**
  * Converts device type to an emoji icon.
  */
 export function deviceToIcon(deviceType: string): string {

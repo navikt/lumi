@@ -1,0 +1,40 @@
+.triggerButton {
+  border: 1px solid var(--ax-border-neutral-subtle);
+}
+
+.popoverContent {
+  max-width: calc(100vw - 2rem);
+  overflow: auto;
+}
+
+@media (min-width: 768px) {
+  .popoverContent {
+    max-width: none;
+  }
+}
+
+.desktopPresets {
+  min-width: 140px;
+}
+
+.verticalDivider {
+  width: 1px;
+  background-color: var(--ax-border-neutral-subtle);
+  align-self: stretch;
+}
+
+.horizontalDivider {
+  height: 1px;
+  background-color: var(--ax-border-neutral-subtle);
+  width: 100%;
+}
+
+.mobilePresetGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.mobilePresetButton {
+  flex: 1 1 45%;
+}

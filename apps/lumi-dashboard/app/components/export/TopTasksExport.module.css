@@ -1,0 +1,8 @@
+.headerIcon {
+  color: var(--ax-text-neutral-subtle);
+  display: flex;
+}
+
+.introText {
+  margin-top: 0.25rem;
+}

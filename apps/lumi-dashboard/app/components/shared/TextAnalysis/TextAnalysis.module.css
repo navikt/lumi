@@ -1,0 +1,178 @@
+.cardOverflowHidden {
+  overflow: hidden;
+}
+
+.createFirstThemeButton {
+  margin-top: 1rem;
+}
+
+.sectionIcon {
+  color: var(--ax-text-neutral-subtle);
+  display: flex;
+}
+
+.helpIcon {
+  cursor: help;
+  color: var(--ax-text-neutral-subtle);
+}
+
+.sectionSubtitle {
+  margin-top: 0.25rem;
+}
+
+.themeListRow {
+  --theme-accent: var(--ax-status-info);
+
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  border-radius: var(--ax-border-radius-medium);
+  transition: background-color 0.2s ease;
+}
+
+.themeListRowClickable {
+  cursor: pointer;
+}
+
+.themeListRowClickable:hover {
+  background: var(--ax-bg-neutral-soft);
+}
+
+.themeRowMain {
+  min-width: 0;
+}
+
+.themeDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--theme-accent);
+  flex-shrink: 0;
+}
+
+.themeLinkButton {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: default;
+  text-align: left;
+  min-width: 0;
+}
+
+.themeLinkButtonEnabled {
+  cursor: pointer;
+}
+
+.themeEditButton {
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: var(--ax-text-muted);
+}
+
+.themeMeta {
+  flex-shrink: 0;
+}
+
+.themeProgress {
+  margin-top: 0.25rem;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  appearance: none;
+  border: none;
+  background: var(--ax-bg-neutral-moderate);
+}
+
+.themeProgress::-webkit-progress-bar {
+  background: var(--ax-bg-neutral-moderate);
+  border-radius: 3px;
+}
+
+.themeProgress::-webkit-progress-value {
+  background: var(--theme-accent);
+  border-radius: 3px;
+  transition: inline-size 0.3s ease;
+}
+
+.themeProgress::-moz-progress-bar {
+  background: var(--theme-accent);
+  border-radius: 3px;
+  transition: inline-size 0.3s ease;
+}
+
+.themeExample {
+  margin-top: 0.25rem;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recentResponseCard {
+  padding: 0.75rem;
+  background-color: var(--ax-bg-neutral-soft);
+  border-radius: var(--ax-border-radius-medium);
+}
+
+.recentResponseText {
+  flex: 1;
+}
+
+.recentStatusTag {
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+}
+
+.recentResponseAdditional {
+  margin-top: 0.25rem;
+}
+
+.themeAccentBlue {
+  --theme-accent: #3b82f6;
+}
+
+.themeAccentEmerald {
+  --theme-accent: #10b981;
+}
+
+.themeAccentAmber {
+  --theme-accent: #f59e0b;
+}
+
+.themeAccentRed {
+  --theme-accent: #ef4444;
+}
+
+.themeAccentViolet {
+  --theme-accent: #8b5cf6;
+}
+
+.themeAccentPink {
+  --theme-accent: #ec4899;
+}
+
+.themeAccentCyan {
+  --theme-accent: #06b6d4;
+}
+
+.themeAccentLime {
+  --theme-accent: #84cc16;
+}
+
+.themeAccentOrange {
+  --theme-accent: #f97316;
+}
+
+.themeAccentGray {
+  --theme-accent: #9ca3af;
+}
+
+.themeAccentDefault {
+  --theme-accent: var(--ax-status-info);
+}

@@ -1,5 +1,6 @@
 import { BodyShort, HStack, Label, VStack } from "@navikt/ds-react";
 import type { ReactNode } from "react";
+import styles from "./FieldCardHeader.module.css";
 
 export function FieldCardHeader({
   icon,
@@ -15,18 +16,11 @@ export function FieldCardHeader({
   return (
     <HStack gap="space-8" align="start" marginBlock="space-0 space-8">
       {icon}
-      <VStack gap="space-0" style={{ flex: 1 }}>
-        <Label
-          size="small"
-          style={{ flex: 1, minWidth: 0 }}
-          data-testid={titleTestId}
-        >
+      <VStack gap="space-0" className={styles.content}>
+        <Label size="small" className={styles.label} data-testid={titleTestId}>
           {label}
         </Label>
-        <BodyShort
-          size="small"
-          style={{ color: "var(--ax-text-neutral-subtle)" }}
-        >
+        <BodyShort size="small" className={styles.subtitle}>
           {subtitle}
         </BodyShort>
       </VStack>

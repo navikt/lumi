@@ -23,6 +23,208 @@
   color: var(--ax-text-neutral-subtle);
 }
 
+.fullSize {
+  width: 100%;
+  height: 100%;
+}
+
+.emptyStateCentered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+}
+
+.emptyStateMuted {
+  color: var(--ax-text-neutral-subtle);
+}
+
+.tooltipCard {
+  background: var(--ax-bg-default);
+  color: var(--ax-text-default);
+  padding: 0.75rem;
+  border-radius: 4px;
+  border: 1px solid var(--ax-border-neutral-subtle);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.tooltipTitle {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.tooltipHint {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+  opacity: 0.7;
+}
+
+.chartNoData {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--ax-text-neutral-subtle);
+}
+
+.chartClickable {
+  cursor: pointer;
+}
+
+.tooltipRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tooltipEmojiLarge {
+  font-size: 1.5rem;
+}
+
+.tooltipStrong {
+  font-weight: 600;
+}
+
+.tooltipMuted {
+  color: var(--ax-text-neutral-subtle);
+}
+
+.tooltipTaskZone {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.tooltipCardMaxWidth {
+  max-width: 280px;
+}
+
+.selectedScatterCell {
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.5));
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.deviceListButton {
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  width: 100%;
+  text-align: left;
+}
+
+.deviceIconSmall {
+  font-size: 1rem;
+}
+
+.deviceIconLarge {
+  font-size: 1.25rem;
+}
+
+.deviceMutedText {
+  color: var(--ax-text-neutral-subtle);
+}
+
+.deviceProgress {
+  margin-top: 0.25rem;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  appearance: none;
+  border: none;
+  background: var(--ax-bg-neutral-moderate);
+}
+
+.deviceProgress::-webkit-progress-bar {
+  background: var(--ax-bg-neutral-moderate);
+  border-radius: 4px;
+}
+
+.deviceProgress::-webkit-progress-value {
+  background: var(--device-color, var(--ax-border-neutral-subtle));
+  border-radius: 4px;
+  transition: inline-size 0.3s ease;
+}
+
+.deviceProgress::-moz-progress-bar {
+  background: var(--device-color, var(--ax-border-neutral-subtle));
+  border-radius: 4px;
+  transition: inline-size 0.3s ease;
+}
+
+.deviceCard {
+  --device-color: var(--ax-border-neutral-subtle);
+
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--ax-bg-neutral-soft);
+  cursor: pointer;
+  border-radius: 6px;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  border-left: 3px solid var(--device-color);
+  font: inherit;
+  text-align: left;
+}
+
+.deviceCard * {
+  cursor: inherit;
+}
+
+.deviceTonePositive {
+  color: var(--ax-text-success);
+}
+
+.deviceToneNegative {
+  color: var(--ax-text-danger);
+}
+
+.deviceToneNeutral {
+  color: var(--ax-text-default);
+}
+
+.deviceColorDesktop {
+  --device-color: #60a5fa;
+}
+
+.deviceColorMobile {
+  --device-color: #34d399;
+}
+
+.deviceColorTablet {
+  --device-color: #fbbf24;
+}
+
+.deviceColorUnknown {
+  --device-color: #9ca3af;
+}
+
+.tooltipPathTitle {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  word-break: break-all;
+}
+
+.tooltipRatingGood {
+  color: #34d399;
+}
+
+.tooltipRatingMedium {
+  color: #fbbf24;
+}
+
+.tooltipRatingLow {
+  color: #f87171;
+}
+
 /* Rating bar rows */
 .ratingBarRow {
   display: flex;

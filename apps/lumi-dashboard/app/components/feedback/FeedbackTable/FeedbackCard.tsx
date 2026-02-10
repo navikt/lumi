@@ -61,12 +61,7 @@ export function FeedbackCard({
   return (
     <DashboardCard
       padding="space-16"
-      style={{
-        cursor: "pointer",
-        borderLeft: isExpanded
-          ? "3px solid var(--ax-border-action)"
-          : undefined,
-      }}
+      className={`${styles.cardInteractive} ${isExpanded ? styles.cardExpanded : ""}`}
       onClick={onToggleExpand}
     >
       <VStack gap="space-12">
@@ -83,7 +78,7 @@ export function FeedbackCard({
               </Detail>
             </Tooltip>
             {feedback.context?.deviceType && (
-              <span style={{ fontSize: "0.875rem" }}>
+              <span className={styles.deviceIcon}>
                 {deviceToIcon(feedback.context.deviceType)}
               </span>
             )}
@@ -111,7 +106,7 @@ export function FeedbackCard({
         {/* Preview text (collapsed) */}
         {!isExpanded && preview && (
           <VStack gap="space-4">
-            <BodyShort truncate style={{ fontWeight: 500, maxWidth: "100%" }}>
+            <BodyShort truncate className={styles.previewPrimary}>
               {preview.text}
             </BodyShort>
             {preview.subText && (
@@ -119,7 +114,7 @@ export function FeedbackCard({
                 truncate
                 size="small"
                 textColor="subtle"
-                style={{ maxWidth: "100%" }}
+                className={styles.previewSecondary}
               >
                 {preview.subText}
               </BodyShort>

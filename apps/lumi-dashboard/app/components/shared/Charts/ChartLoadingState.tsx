@@ -1,9 +1,10 @@
 import { Box, Skeleton } from "@navikt/ds-react";
+import styles from "./Charts.module.css";
 
 export function ChartLoadingState() {
   return (
-    <Box style={{ height: "100%", width: "100%" }}>
-      <Skeleton variant="rectangle" style={{ height: "100%", width: "100%" }} />
+    <Box className={styles.fullSize}>
+      <Skeleton variant="rectangle" className={styles.fullSize} />
     </Box>
   );
 }

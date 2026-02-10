@@ -18,6 +18,7 @@ import {
   type RatingVariant,
 } from "~/utils/ratingDisplay";
 import { Skeleton as StatsCardsSkeleton } from "./Skeleton";
+import styles from "./StatsCards.module.css";
 
 interface StatCardProps {
   icon: ReactNode;
@@ -29,26 +30,13 @@ interface StatCardProps {
 export function StatCard({ icon, label, value, subtitle }: StatCardProps) {
   return (
     <DashboardCard padding={{ xs: "space-16", md: "space-20" }}>
-      <HStack gap="space-8" align="center" style={{ marginBottom: "0.5rem" }}>
-        <span
-          style={{ color: "var(--ax-text-neutral-subtle)", display: "flex" }}
-        >
-          {icon}
-        </span>
+      <HStack gap="space-8" align="center" className={styles.statHeaderRow}>
+        <span className={styles.statIcon}>{icon}</span>
         <BodyShort weight="semibold" textColor="subtle" size="small">
           {label}
         </BodyShort>
       </HStack>
-      <div
-        style={{
-          fontSize: "clamp(1.75rem, 5vw, 2.5rem)",
-          fontWeight: 700,
-          lineHeight: 1,
-          marginBottom: "0.2rem",
-        }}
-      >
-        {value}
-      </div>
+      <div className={styles.statValue}>{value}</div>
       <BodyShort size="small" textColor="subtle">
         {subtitle}
       </BodyShort>

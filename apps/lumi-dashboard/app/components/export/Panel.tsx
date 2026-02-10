@@ -19,6 +19,7 @@ import { DashboardCard, DashboardGrid } from "~/components/dashboard";
 import { ActiveFilters } from "~/components/export/ActiveFilters";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { exportServerFn } from "~/server/actions";
+import styles from "./Panel.module.css";
 
 type ExportFormat = "csv" | "json" | "excel";
 
@@ -102,7 +103,7 @@ export function ExportPanel() {
             size="small"
             icon={<ArrowsCirclepathIcon aria-hidden />}
             onClick={handleExport}
-            style={{ marginLeft: "0.5rem" }}
+            className={styles.retryButton}
           >
             Prøv igjen
           </Button>
@@ -125,7 +126,7 @@ export function ExportPanel() {
           >
             <Radio value="csv">
               <HStack gap="space-8" align="start">
-                <FilesIcon aria-hidden style={{ marginTop: "2px" }} />
+                <FilesIcon aria-hidden className={styles.optionIcon} />
                 <VStack gap="space-0">
                   <BodyShort weight="semibold">CSV</BodyShort>
                   <BodyShort size="small">
@@ -136,7 +137,7 @@ export function ExportPanel() {
             </Radio>
             <Radio value="excel">
               <HStack gap="space-8" align="start">
-                <FileExcelIcon aria-hidden style={{ marginTop: "2px" }} />
+                <FileExcelIcon aria-hidden className={styles.optionIcon} />
                 <VStack gap="space-0">
                   <BodyShort weight="semibold">Excel (XLSX)</BodyShort>
                   <BodyShort size="small">
@@ -147,7 +148,7 @@ export function ExportPanel() {
             </Radio>
             <Radio value="json">
               <HStack gap="space-8" align="start">
-                <FilesIcon aria-hidden style={{ marginTop: "2px" }} />
+                <FilesIcon aria-hidden className={styles.optionIcon} />
                 <VStack gap="space-0">
                   <BodyShort weight="semibold">JSON</BodyShort>
                   <BodyShort size="small">

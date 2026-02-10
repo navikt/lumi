@@ -18,6 +18,7 @@ import dayjs from "dayjs";
 import { useRef, useState } from "react";
 import { useBreakpoint } from "~/hooks/useBreakpoint";
 import { useSearchParams } from "~/hooks/useSearchParams";
+import styles from "./PeriodSelector.module.css";
 
 function CustomPeriodInputs({
   onApply,
@@ -141,7 +142,7 @@ export function PeriodSelector() {
         onClick={() => setOpen(!open)}
         icon={<CalendarIcon aria-hidden />}
         iconPosition="left"
-        style={{ border: "1px solid var(--ax-border-neutral-subtle)" }}
+        className={styles.triggerButton}
       >
         {getLabel()}
         {open ? <ChevronUpIcon aria-hidden /> : <ChevronDownIcon aria-hidden />}
@@ -153,29 +154,18 @@ export function PeriodSelector() {
         anchorEl={buttonRef.current}
         placement={isMobile ? "bottom" : "bottom-start"}
       >
-        <Popover.Content
-          style={{
-            maxWidth: isMobile ? "calc(100vw - 2rem)" : "auto",
-            overflow: "auto",
-          }}
-        >
+        <Popover.Content className={styles.popoverContent}>
           {/* Mobile: Stack vertically */}
           <Show above="md">
             <HStack gap="space-16" align="start">
               {/* Presets Column */}
-              <VStack gap="space-8" style={{ minWidth: "140px" }}>
+              <VStack gap="space-8" className={styles.desktopPresets}>
                 <Label size="small">Hurtigvalg</Label>
                 <PresetButtons onSelect={handlePreset} />
               </VStack>
 
               {/* Divider */}
-              <div
-                style={{
-                  width: "1px",
-                  backgroundColor: "var(--ax-border-neutral-subtle)",
-                  alignSelf: "stretch",
-                }}
-              />
+              <div className={styles.verticalDivider} />
 
               {/* Custom Range Column */}
               {open && <CustomPeriodInputs onApply={handleApply} />}
@@ -190,13 +180,7 @@ export function PeriodSelector() {
                 <PresetButtons onSelect={handlePreset} compact />
               </VStack>
 
-              <div
-                style={{
-                  height: "1px",
-                  backgroundColor: "var(--ax-border-neutral-subtle)",
-                  width: "100%",
-                }}
-              />
+              <div className={styles.horizontalDivider} />
 
               {open && <CustomPeriodInputs onApply={handleApply} />}
             </VStack>
@@ -228,14 +212,14 @@ function PresetButtons({
   // On mobile, show in a 2x3 grid for better touch targets
   if (compact) {
     return (
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+      <div className={styles.mobilePresetGrid}>
         {presets.map((preset) => (
           <Button
             key={preset.label}
             variant="tertiary"
             size="small"
             onClick={() => onSelect(preset.value)}
-            style={{ flex: "1 1 45%" }}
+            className={styles.mobilePresetButton}
           >
             {preset.label}
           </Button>

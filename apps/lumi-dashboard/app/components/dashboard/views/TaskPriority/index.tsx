@@ -3,6 +3,7 @@ import { BodyShort, Box, Heading, HStack, VStack } from "@navikt/ds-react";
 import { DashboardCard, DashboardGrid } from "~/components/dashboard";
 import { StatCard } from "~/components/dashboard/sections/StatsCards";
 import type { TaskPriorityResponse } from "~/types/api";
+import styles from "./TaskPriority.module.css";
 
 interface TaskPriorityAnalysisProps {
   data: TaskPriorityResponse;
@@ -53,19 +54,14 @@ export function TaskPriorityAnalysis({ data }: TaskPriorityAnalysisProps) {
         />
       </DashboardGrid>
       {/* Long Neck Chart */}
-      <DashboardCard padding="0" style={{ overflow: "hidden" }}>
+      <DashboardCard padding="0" className={styles.overflowHidden}>
         <Box
           padding={{ xs: "space-16", md: "space-24" }}
           borderWidth="0 0 1 0"
           borderColor="neutral-subtle"
         >
           <HStack gap="space-8" align="center">
-            <span
-              style={{
-                color: "var(--ax-text-neutral-subtle)",
-                display: "flex",
-              }}
-            >
+            <span className={styles.headerIcon}>
               <TasklistIcon fontSize="1.25rem" aria-hidden />
             </span>
             <Heading size="small">Task Priority - "Long Neck"</Heading>
@@ -73,7 +69,7 @@ export function TaskPriorityAnalysis({ data }: TaskPriorityAnalysisProps) {
           <BodyShort
             size="small"
             textColor="subtle"
-            style={{ marginTop: "0.25rem" }}
+            className={styles.introText}
           >
             Oppgavene brukerne mener er viktigst. Prosent = andel av alle
             stemmer.
@@ -83,7 +79,6 @@ export function TaskPriorityAnalysis({ data }: TaskPriorityAnalysisProps) {
         <Box padding={{ xs: "space-16", md: "space-24" }}>
           <VStack gap="space-12">
             {tasks.slice(0, 15).map((task, index) => {
-              const barWidth = (task.votes / maxVotes) * 100;
               const isTopTask = index < longNeckCutoff;
 
               return (
@@ -93,51 +88,30 @@ export function TaskPriorityAnalysis({ data }: TaskPriorityAnalysisProps) {
                       size="small"
                       weight={isTopTask ? "semibold" : "regular"}
                       truncate
-                      style={{ flex: 1 }}
+                      className={styles.taskLabel}
                     >
                       {index + 1}. {task.task}
                     </BodyShort>
                     <BodyShort
                       size="small"
                       textColor="subtle"
-                      style={{ flexShrink: 0, marginLeft: "0.5rem" }}
+                      className={styles.taskCount}
                     >
                       {task.votes} ({task.percentage}%)
                     </BodyShort>
                   </HStack>
 
                   {/* Progress bar */}
-                  <div
-                    style={{
-                      marginTop: "0.25rem",
-                      height: "8px",
-                      borderRadius: "4px",
-                      backgroundColor: "var(--ax-bg-neutral-moderate)",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: `${barWidth}%`,
-                        height: "100%",
-                        borderRadius: "4px",
-                        backgroundColor: isTopTask
-                          ? "var(--ax-status-success)"
-                          : "var(--ax-border-neutral-subtle)",
-                        transition: "width 0.3s ease",
-                      }}
-                    />
-                  </div>
+                  <progress
+                    className={`${styles.progress} ${isTopTask ? styles.progressTop : styles.progressRegular}`}
+                    value={task.votes}
+                    max={maxVotes}
+                    aria-label={`${task.task}: ${task.votes} stemmer (${task.percentage} prosent)`}
+                  />
 
                   {/* Long neck cutoff line */}
                   {index === longNeckCutoff - 1 && (
-                    <div
-                      style={{
-                        marginTop: "0.75rem",
-                        paddingTop: "0.75rem",
-                        borderTop: "2px dashed var(--ax-border-warning)",
-                      }}
-                    >
+                    <div className={styles.cutoff}>
                       <BodyShort size="small" textColor="subtle">
                         ↑ "Long Neck" - disse {longNeckCutoff} oppgavene utgjør
                         80% av stemmene

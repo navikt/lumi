@@ -9,6 +9,7 @@ import {
 } from "@navikt/ds-react";
 import { DashboardCard } from "~/components/dashboard";
 import type { TopTasksResponse } from "~/types/api";
+import styles from "./TopTasksExport.module.css";
 
 interface TopTasksExportProps {
   data: TopTasksResponse;
@@ -105,25 +106,19 @@ export function TopTasksExport({ data, surveyId }: TopTasksExportProps) {
   };
 
   return (
-    <DashboardCard padding="0" style={{ overflow: "hidden" }}>
+    <DashboardCard padding="0" overflow="hidden">
       <Box
         padding={{ xs: "space-16", md: "space-24" }}
         borderWidth="0 0 1 0"
         borderColor="neutral-subtle"
       >
         <HStack gap="space-8" align="center">
-          <span
-            style={{ color: "var(--ax-text-neutral-subtle)", display: "flex" }}
-          >
+          <span className={styles.headerIcon}>
             <DownloadIcon fontSize="1.25rem" aria-hidden />
           </span>
           <Heading size="small">Eksporter data</Heading>
         </HStack>
-        <BodyShort
-          size="small"
-          textColor="subtle"
-          style={{ marginTop: "0.25rem" }}
-        >
+        <BodyShort size="small" textColor="subtle" className={styles.introText}>
           Last ned Top Tasks data for videre analyse
         </BodyShort>
       </Box>

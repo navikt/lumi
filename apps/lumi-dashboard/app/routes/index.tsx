@@ -1,7 +1,8 @@
 import type { TagProps } from "@navikt/ds-react";
 import { Box, Heading, HStack, Tag, Tooltip, VStack } from "@navikt/ds-react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { type ReactNode, useEffect } from "react";
+import dayjs from "dayjs";
+import { type ReactNode, useEffect, useRef } from "react";
 import { DiscoveryDashboard } from "~/components/dashboard/views/Discovery/Dashboard";
 import { OverviewDashboard } from "~/components/dashboard/views/Overview/Dashboard";
 import { RatingDashboard } from "~/components/dashboard/views/Rating/Dashboard";
@@ -15,6 +16,7 @@ import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import { fetchFilterBootstrapServerFn } from "~/server/actions";
 import type { SurveyType } from "~/types/api";
+import styles from "./index.module.css";
 
 /**
  * Survey type descriptions - educates users about each methodology
@@ -115,6 +117,32 @@ function DashboardPage() {
   const hasSurveyFilter = !!params.surveyId;
   const surveyType = stats?.surveyType;
   const isPrivacyMasked = stats?.privacy?.masked;
+  const hasAppliedDefaultPeriodRef = useRef(false);
+
+  useEffect(() => {
+    if (hasAppliedDefaultPeriodRef.current) return;
+    if (typeof window === "undefined") return;
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const hasFromDateInUrl = searchParams.has("fromDate");
+    const hasToDateInUrl = searchParams.has("toDate");
+
+    // Respect explicit URL period filters (important for deep-links and e2e tests).
+    if (hasFromDateInUrl || hasToDateInUrl) {
+      hasAppliedDefaultPeriodRef.current = true;
+      return;
+    }
+
+    const end = dayjs();
+    const start = end.subtract(29, "day");
+
+    setParams({
+      fromDate: start.format("YYYY-MM-DD"),
+      toDate: end.format("YYYY-MM-DD"),
+      page: "1",
+    });
+    hasAppliedDefaultPeriodRef.current = true;
+  }, [setParams]);
 
   useEffect(() => {
     const hasUnsupported =
@@ -177,7 +205,7 @@ function DashboardPage() {
       <Box
         paddingBlock={{ xs: "space-16", md: "space-24" }}
         paddingInline={{ xs: "space-12", sm: "space-16" }}
-        style={{ maxWidth: "1400px", margin: "0 auto" }}
+        className={styles.mainContainer}
         as="main"
       >
         <VStack gap={{ xs: "space-16", md: "space-24" }}>
@@ -190,7 +218,7 @@ function DashboardPage() {
                   <Tag
                     variant={config.variant}
                     size="small"
-                    style={{ cursor: "help" }}
+                    className={styles.surveyTypeTag}
                   >
                     {config.label}
                   </Tag>

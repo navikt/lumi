@@ -44,3 +44,24 @@
 .mobileSearch {
   width: 100%;
 }
+
+.skeletonMobileGrow {
+  flex: 1;
+}
+
+.actionMenuContent {
+  width: min(42rem, calc(100vw - 2rem));
+  min-width: 320px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.menuDivider {
+  height: 1px;
+  background-color: var(--ax-border-neutral-subtle);
+  width: 100%;
+}
+
+.selectedFromCharts {
+  padding-top: var(--ax-space-4);
+}

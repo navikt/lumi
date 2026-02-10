@@ -1,15 +1,16 @@
 import { Box } from "@navikt/ds-react";
 import type { ComponentProps } from "react";
+import styles from "./DashboardCard.module.css";
 
 type BoxProps = ComponentProps<typeof Box>;
 
 // Make 'as' optional since we default it to 'div'
-export type DashboardCardProps = Omit<BoxProps, "as"> & {
+export type DashboardCardProps = Omit<BoxProps, "as" | "style"> & {
   as?: BoxProps["as"];
 };
 
 export function DashboardCard({
-  style,
+  className,
   as = "div",
   ...props
 }: DashboardCardProps) {
@@ -21,10 +22,7 @@ export function DashboardCard({
       borderRadius="12"
       borderWidth="1"
       borderColor="neutral-subtle"
-      style={{
-        boxShadow: "var(--ax-shadow-small)",
-        ...style,
-      }}
+      className={[styles.cardShadow, className].filter(Boolean).join(" ")}
       {...props}
     />
   );

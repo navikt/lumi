@@ -27,7 +27,7 @@ export function RatingBadge({
       return (
         <span className={styles.ratingPill}>
           <span>{rating}</span>
-          <span aria-hidden style={{ lineHeight: 1 }}>
+          <span aria-hidden className={styles.ratingStarIcon}>
             ⭐
           </span>
         </span>
@@ -35,22 +35,15 @@ export function RatingBadge({
 
     case "nps": {
       const category = getNpsCategory(rating);
-      const colors =
+      const categoryClass =
         category === "promoter"
-          ? { bg: "#DCFCE7", text: "#166534", border: "#86EFAC" }
+          ? styles.ratingPillPromoter
           : category === "passive"
-            ? { bg: "#FEF9C3", text: "#854D0E", border: "#FDE047" }
-            : { bg: "#FEE2E2", text: "#991B1B", border: "#FCA5A5" };
+            ? styles.ratingPillPassive
+            : styles.ratingPillDetractor;
 
       return (
-        <span
-          className={styles.ratingPill}
-          style={{
-            backgroundColor: colors.bg,
-            color: colors.text,
-            borderColor: colors.border,
-          }}
-        >
+        <span className={`${styles.ratingPill} ${categoryClass}`}>
           {rating}/{Math.max(scale - 1, 10)}
         </span>
       );

@@ -1,0 +1,90 @@
+.cardContent {
+  display: flex;
+  flex-direction: column;
+}
+
+.choiceLabel {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.choiceValue {
+  color: var(--ax-text-neutral-subtle);
+  margin-left: 0.5rem;
+}
+
+.choiceBar {
+  width: 100%;
+  height: 8px;
+  border: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--ax-bg-neutral-moderate);
+}
+
+.choiceBar::-webkit-progress-bar {
+  background: var(--ax-bg-neutral-moderate);
+  border-radius: 4px;
+}
+
+.choiceBarBlue::-webkit-progress-value {
+  background-color: #3b82f6;
+  border-radius: 4px;
+}
+
+.choiceBarGreen::-webkit-progress-value {
+  background-color: #22c55e;
+  border-radius: 4px;
+}
+
+.choiceBarAmber::-webkit-progress-value {
+  background-color: #f59e0b;
+  border-radius: 4px;
+}
+
+.choiceBarPurple::-webkit-progress-value {
+  background-color: #8b5cf6;
+  border-radius: 4px;
+}
+
+.choiceBarPink::-webkit-progress-value {
+  background-color: #ec4899;
+  border-radius: 4px;
+}
+
+.choiceBarCyan::-webkit-progress-value {
+  background-color: #06b6d4;
+  border-radius: 4px;
+}
+
+.choiceBarBlue::-moz-progress-bar {
+  background-color: #3b82f6;
+  border-radius: 4px;
+}
+
+.choiceBarGreen::-moz-progress-bar {
+  background-color: #22c55e;
+  border-radius: 4px;
+}
+
+.choiceBarAmber::-moz-progress-bar {
+  background-color: #f59e0b;
+  border-radius: 4px;
+}
+
+.choiceBarPurple::-moz-progress-bar {
+  background-color: #8b5cf6;
+  border-radius: 4px;
+}
+
+.choiceBarPink::-moz-progress-bar {
+  background-color: #ec4899;
+  border-radius: 4px;
+}
+
+.choiceBarCyan::-moz-progress-bar {
+  background-color: #06b6d4;
+  border-radius: 4px;
+}

@@ -1,9 +1,15 @@
 import { BodyShort, Skeleton } from "@navikt/ds-react";
-import { Bar, BarChart, Cell, Tooltip, XAxis, YAxis } from "recharts";
+import type { ComponentProps } from "react";
+import { Bar, BarChart, Rectangle, Tooltip, XAxis, YAxis } from "recharts";
 import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import { useBreakpoint } from "~/hooks/useBreakpoint";
 import { useStats } from "~/hooks/useStats";
 import type { RatingStats } from "~/types/api";
+import {
+  inferRatingVariantFromDistribution,
+  type RatingVariant,
+} from "~/utils/ratingDisplay";
+import styles from "./Charts.module.css";
 
 // ============================================
 // Display Configurations for Different Scales
@@ -50,59 +56,37 @@ const NPS_CONFIG = {
   scale: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
 };
 
-// Chart styling for dark mode
-const CHART_STYLES = {
-  text: "rgba(255, 255, 255, 0.7)",
-  textMuted: "rgba(255, 255, 255, 0.5)",
-  tooltip: {
-    bg: "#1c1f24",
-    border: "rgba(255, 255, 255, 0.15)",
-  },
+function getConfigForVariant(variant: RatingVariant) {
+  switch (variant) {
+    case "thumbs":
+      return THUMBS_CONFIG;
+    case "nps":
+      return NPS_CONFIG;
+    case "stars":
+      return STARS_CONFIG;
+    default:
+      return EMOJI_CONFIG;
+  }
+}
+
+type RatingBarShapeProps = ComponentProps<typeof Rectangle> & {
+  payload?: { color?: string };
 };
 
-/**
- * Detects rating variant by analyzing the distribution data.
- * Returns: 'thumbs' (2), 'emoji' (5), 'stars' (5), or 'nps' (0-10/11 values)
- * Note: emoji and stars both have scale 5 - we default to emoji for historical data
- */
-function detectRatingType(distribution: Record<number | string, number>): {
-  type: "emoji" | "thumbs" | "stars" | "nps";
-  scale: number;
-} {
-  const keys = Object.keys(distribution)
-    .map(Number)
-    .filter((k) => !Number.isNaN(k));
-  if (keys.length === 0) return { type: "emoji", scale: 5 };
-
-  const maxKey = Math.max(...keys);
-  const minKey = Math.min(...keys);
-
-  // NPS: has key 0 and max is 10
-  if (minKey === 0 && maxKey === 10) {
-    return { type: "nps", scale: 11 };
-  }
-
-  // Thumbs: max is 2
-  if (maxKey === 2 && minKey >= 1) {
-    return { type: "thumbs", scale: 2 };
-  }
-
-  // 5-point scale (emoji or stars) - default to emoji for backward compat
-  if (maxKey === 5 && minKey >= 1) {
-    return { type: "emoji", scale: 5 };
-  }
-
-  // Default to emoji 5-point
-  return { type: "emoji", scale: 5 };
+function RatingBarShape(props: RatingBarShapeProps) {
+  const { payload, ...rectangleProps } = props;
+  return (
+    <Rectangle
+      {...rectangleProps}
+      fill={payload?.color ?? "#6b7280"}
+      radius={[4, 4, 0, 0]}
+    />
+  );
 }
 
 export function RatingChart() {
   const { data: stats, isPending } = useStats();
   const { isMobile } = useBreakpoint();
-
-  const chartMargin = isMobile
-    ? { top: 10, right: 5, left: 5, bottom: 30 }
-    : { top: 20, right: 30, left: 20, bottom: 40 };
 
   if (isPending) {
     return <Skeleton variant="rectangle" height={300} />;
@@ -112,52 +96,79 @@ export function RatingChart() {
   const ratingField = stats?.fieldStats?.find((f) => f.fieldType === "RATING");
   const ratingStats = ratingField?.stats as RatingStats | undefined;
 
-  // Use fieldStats distribution if available, fallback to legacy byRating
-  const distribution = ratingStats?.distribution || {};
+  // Prefer concrete rating-field distribution to avoid mixing scales.
+  // Fallback to legacy/global byRating when fieldStats is missing.
+  const fieldDistribution = ratingStats?.distribution || {};
+  const fieldDistributionEntries = Object.entries(fieldDistribution).filter(
+    ([, count]) => typeof count === "number" && count > 0,
+  );
   const byRating = stats?.byRating || {};
-  const mergedDistribution: Record<string | number, number> = {
-    ...byRating,
-    ...distribution,
-  };
+  const byRatingEntries = Object.entries(byRating).filter(
+    ([, count]) => typeof count === "number" && count > 0,
+  );
+  const distributionEntries =
+    fieldDistributionEntries.length > 0
+      ? fieldDistributionEntries
+      : byRatingEntries;
 
-  // Detect rating type from distribution data
-  const { type: ratingType } = detectRatingType(mergedDistribution);
+  if (distributionEntries.length === 0) {
+    return (
+      <div className={styles.chartNoData}>
+        <BodyShort>Ingen vurderinger i valgt periode</BodyShort>
+      </div>
+    );
+  }
+
+  const scopedDistribution: Record<string, number> =
+    Object.fromEntries(distributionEntries);
+
+  const explicitVariant = (
+    ratingStats as RatingStats & { ratingVariant?: unknown }
+  )?.ratingVariant;
+  const ratingVariant = inferRatingVariantFromDistribution(
+    scopedDistribution,
+    explicitVariant,
+  );
+  const ratingConfig = getConfigForVariant(ratingVariant);
+  const chartMargin = isMobile
+    ? { top: 10, right: 5, left: 5, bottom: 30 }
+    : { top: 16, right: 8, left: 8, bottom: ratingVariant === "nps" ? 32 : 36 };
 
   // Build data array based on detected type
   let data: { label: string; value: number; count: number; color: string }[];
 
-  switch (ratingType) {
+  switch (ratingVariant) {
     case "thumbs":
-      data = THUMBS_CONFIG.scale.map((rating, i) => ({
-        label: THUMBS_CONFIG.labels[i],
+      data = ratingConfig.scale.map((rating, i) => ({
+        label: ratingConfig.labels[i],
         value: rating,
-        count: mergedDistribution[rating] || 0,
-        color: THUMBS_CONFIG.colors[i],
+        count: scopedDistribution[String(rating)] || 0,
+        color: ratingConfig.colors[i],
       }));
       break;
     case "nps":
-      data = NPS_CONFIG.scale.map((rating, i) => ({
-        label: NPS_CONFIG.labels[i],
+      data = ratingConfig.scale.map((rating, i) => ({
+        label: ratingConfig.labels[i],
         value: rating,
-        count: mergedDistribution[rating] || 0,
-        color: NPS_CONFIG.colors[i],
+        count: scopedDistribution[String(rating)] || 0,
+        color: ratingConfig.colors[i],
       }));
       break;
     case "stars": {
-      data = STARS_CONFIG.scale.map((rating, i) => ({
-        label: STARS_CONFIG.labels[i],
+      data = ratingConfig.scale.map((rating, i) => ({
+        label: ratingConfig.labels[i],
         value: rating,
-        count: mergedDistribution[rating] || 0,
-        color: STARS_CONFIG.colors[i],
+        count: scopedDistribution[String(rating)] || 0,
+        color: ratingConfig.colors[i],
       }));
       break;
     }
     default:
-      data = EMOJI_CONFIG.scale.map((rating, i) => ({
-        label: EMOJI_CONFIG.labels[i],
+      data = ratingConfig.scale.map((rating, i) => ({
+        label: ratingConfig.labels[i],
         value: rating,
-        count: mergedDistribution[rating] || 0,
-        color: EMOJI_CONFIG.colors[i],
+        count: scopedDistribution[String(rating)] || 0,
+        color: ratingConfig.colors[i],
       }));
       break;
   }
@@ -166,15 +177,7 @@ export function RatingChart() {
 
   if (total === 0) {
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          color: CHART_STYLES.textMuted,
-        }}
-      >
+      <div className={styles.chartNoData}>
         <BodyShort>Ingen vurderinger i valgt periode</BodyShort>
       </div>
     );
@@ -195,58 +198,43 @@ export function RatingChart() {
       >
         <XAxis
           dataKey="label"
-          tick={{ fontSize: ratingType === "nps" ? 12 : isMobile ? 20 : 24 }}
+          tick={{
+            fontSize: ratingVariant === "nps" ? 12 : isMobile ? 20 : 24,
+          }}
           axisLine={false}
           tickLine={false}
         />
-        <YAxis
-          axisLine={false}
-          tickLine={false}
-          tick={{ fill: CHART_STYLES.text, fontSize: 12 }}
-          hide={isMobile}
-        />
+        <YAxis hide />
         <Tooltip
           content={({ active, payload }) => {
-            if (active && payload && payload.length) {
-              const item = payload[0].payload;
+            if (active && payload && payload.length && payload[0]) {
+              const item = payload[0].payload as {
+                label: string;
+                count: number;
+              };
               const percentage =
                 total > 0 ? ((item.count / total) * 100).toFixed(1) : 0;
               return (
-                <div
-                  style={{
-                    background: CHART_STYLES.tooltip.bg,
-                    color: "#ffffff",
-                    padding: "0.75rem",
-                    borderRadius: "4px",
-                    border: `1px solid ${CHART_STYLES.tooltip.border}`,
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
-                  }}
-                >
-                  <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>
+                <div className={styles.tooltipCard}>
+                  <div
+                    className={[
+                      styles.tooltipEmojiLarge,
+                      styles.tooltipTitle,
+                    ].join(" ")}
+                  >
                     {item.label}
                   </div>
-                  <div style={{ fontWeight: 600 }}>
+                  <div className={styles.tooltipStrong}>
                     {item.count.toLocaleString("no-NO")} svar
                   </div>
-                  <div
-                    style={{
-                      color: CHART_STYLES.textMuted,
-                      fontSize: "0.875rem",
-                    }}
-                  >
-                    {percentage}%
-                  </div>
+                  <div className={styles.tooltipMuted}>{percentage}%</div>
                 </div>
               );
             }
             return null;
           }}
         />
-        <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-          {data.map((entry) => (
-            <Cell key={`cell-${entry.value}`} fill={entry.color} />
-          ))}
-        </Bar>
+        <Bar dataKey="count" shape={<RatingBarShape />} />
       </BarChart>
     </ResponsiveContainerWithInitialSize>
   );

@@ -8,6 +8,7 @@ import {
 } from "@navikt/ds-react";
 import { useState } from "react";
 import { useAddTag, useRemoveTag, useTags } from "~/hooks/useTags";
+import styles from "./TagEditor.module.css";
 
 interface TagEditorProps {
   id: string;
@@ -112,7 +113,7 @@ export function TagEditor({
                 handleAddTag(option);
               }
             }}
-            style={{ minWidth: 150 }}
+            className={styles.combobox}
           />
           <Button
             variant="tertiary"

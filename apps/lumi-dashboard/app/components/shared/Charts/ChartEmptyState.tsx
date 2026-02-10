@@ -1,24 +1,16 @@
 import { BodyShort, Box } from "@navikt/ds-react";
+import styles from "./Charts.module.css";
 
 interface ChartEmptyStateProps {
   message: string;
-  color: string;
 }
 
-export function ChartEmptyState({ message, color }: ChartEmptyStateProps) {
+export function ChartEmptyState({ message }: ChartEmptyStateProps) {
   return (
-    <Box
-      style={{
-        height: "100%",
-        width: "100%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color,
-        textAlign: "center",
-      }}
-    >
-      <BodyShort size="small">{message}</BodyShort>
+    <Box className={styles.emptyStateCentered}>
+      <BodyShort size="small" className={styles.emptyStateMuted}>
+        {message}
+      </BodyShort>
     </Box>
   );
 }

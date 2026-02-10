@@ -30,6 +30,19 @@ import type {
   UpdateThemeInput,
   WordFrequency,
 } from "~/types/api";
+import {
+  THEME_COLOR_AMBER,
+  THEME_COLOR_BLUE,
+  THEME_COLOR_CYAN,
+  THEME_COLOR_EMERALD,
+  THEME_COLOR_GRAY,
+  THEME_COLOR_LIME,
+  THEME_COLOR_ORANGE,
+  THEME_COLOR_PINK,
+  THEME_COLOR_RED,
+  THEME_COLOR_VIOLET,
+} from "~/utils/colors";
+import styles from "./TextAnalysis.module.css";
 
 /**
  * Generic theme with statistics for display
@@ -87,6 +100,26 @@ const DEFAULT_LABELS = {
   recentSubtitle: "Nylige svar fra brukere",
   emptyMessage: "Ingen data tilgjengelig ennå.",
 };
+
+const THEME_COLOR_CLASS_BY_HEX: Record<string, string> = {
+  [THEME_COLOR_BLUE]: styles.themeAccentBlue,
+  [THEME_COLOR_EMERALD]: styles.themeAccentEmerald,
+  [THEME_COLOR_AMBER]: styles.themeAccentAmber,
+  [THEME_COLOR_RED]: styles.themeAccentRed,
+  [THEME_COLOR_VIOLET]: styles.themeAccentViolet,
+  [THEME_COLOR_PINK]: styles.themeAccentPink,
+  [THEME_COLOR_CYAN]: styles.themeAccentCyan,
+  [THEME_COLOR_LIME]: styles.themeAccentLime,
+  [THEME_COLOR_ORANGE]: styles.themeAccentOrange,
+  [THEME_COLOR_GRAY]: styles.themeAccentGray,
+};
+
+function getThemeAccentClass(color?: string): string {
+  if (!color) return styles.themeAccentDefault;
+  return (
+    THEME_COLOR_CLASS_BY_HEX[color.toLowerCase()] ?? styles.themeAccentDefault
+  );
+}
 
 /**
  * Unified text analysis component for Discovery and Blocker patterns.
@@ -318,7 +351,7 @@ export function TextAnalysis({
   // Loading state
   if (isLoading) {
     return (
-      <DashboardCard padding="0" style={{ overflow: "hidden" }}>
+      <DashboardCard padding="0" className={styles.cardOverflowHidden}>
         <Box
           padding={{ xs: "space-16", md: "space-24" }}
           borderWidth="0 0 1 0"
@@ -348,7 +381,7 @@ export function TextAnalysis({
           size="small"
           icon={<PlusIcon aria-hidden />}
           onClick={() => handleOpenCreate()}
-          style={{ marginTop: "1rem" }}
+          className={styles.createFirstThemeButton}
         >
           Opprett første tema
         </Button>
@@ -362,29 +395,21 @@ export function TextAnalysis({
     <>
       {/* Word Cloud Section */}
       {wordFrequency.length > 0 && (
-        <DashboardCard padding="0" style={{ overflow: "hidden" }}>
+        <DashboardCard padding="0" className={styles.cardOverflowHidden}>
           <Box
             padding={{ xs: "space-16", md: "space-24" }}
             borderWidth="0 0 1 0"
             borderColor="neutral-subtle"
           >
             <HStack gap="space-8" align="center">
-              <span
-                style={{
-                  color: "var(--ax-text-neutral-subtle)",
-                  display: "flex",
-                }}
-              >
+              <span className={styles.sectionIcon}>
                 <MagnifyingGlassIcon fontSize="1.25rem" aria-hidden />
               </span>
               <Heading size="small">{labels.wordCloudTitle}</Heading>
               <Tooltip content="Klikk på et ord for å opprette et tema med det som nøkkelord">
                 <InformationSquareIcon
                   fontSize="1rem"
-                  style={{
-                    cursor: "help",
-                    color: "var(--ax-text-neutral-subtle)",
-                  }}
+                  className={styles.helpIcon}
                   aria-hidden
                 />
               </Tooltip>
@@ -392,7 +417,7 @@ export function TextAnalysis({
             <BodyShort
               size="small"
               textColor="subtle"
-              style={{ marginTop: "0.25rem" }}
+              className={styles.sectionSubtitle}
             >
               Klikk på et ord for å lage tema eller redigere eksisterende
             </BodyShort>
@@ -409,7 +434,7 @@ export function TextAnalysis({
         </DashboardCard>
       )}
       {/* Themes Section */}
-      <DashboardCard padding="0" style={{ overflow: "hidden" }}>
+      <DashboardCard padding="0" className={styles.cardOverflowHidden}>
         <Box
           padding={{ xs: "space-16", md: "space-24" }}
           borderWidth="0 0 1 0"
@@ -421,10 +446,7 @@ export function TextAnalysis({
               <Tooltip content="Gruppert basert på nøkkelord du definerer. Klikk på et tema for å redigere.">
                 <InformationSquareIcon
                   fontSize="1rem"
-                  style={{
-                    cursor: "help",
-                    color: "var(--ax-text-neutral-subtle)",
-                  }}
+                  className={styles.helpIcon}
                   aria-hidden
                 />
               </Tooltip>
@@ -441,7 +463,7 @@ export function TextAnalysis({
           <BodyShort
             size="small"
             textColor="subtle"
-            style={{ marginTop: "0.25rem" }}
+            className={styles.sectionSubtitle}
           >
             {allThemesDisplay.length > 0
               ? `${allThemesDisplay.length} temaer vist`
@@ -454,12 +476,12 @@ export function TextAnalysis({
             <VStack gap="space-12">
               {allThemesDisplay.map((theme) => {
                 const percentage = Math.round((theme.count / totalCount) * 100);
-                const relativeWidth = (theme.count / maxThemeCount) * 100;
                 const isEditable =
                   theme.definedTheme && theme.theme !== "Annet";
                 const themeId =
                   theme.themeId ??
                   (theme.theme === "Annet" ? "uncategorized" : null);
+                const themeAccentClass = getThemeAccentClass(theme.color);
                 const handleNavigateToTheme = () => {
                   if (!themeId) return;
                   const url = new URL(window.location.href);
@@ -472,17 +494,11 @@ export function TextAnalysis({
                 return (
                   <div
                     key={theme.theme}
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      textAlign: "left",
-                      background: "none",
-                      border: "none",
-                      padding: "0.5rem",
-                      borderRadius: "var(--ax-border-radius-medium)",
-                      cursor: themeId ? "pointer" : "default",
-                      transition: "background-color 0.2s ease",
-                    }}
+                    className={[
+                      styles.themeListRow,
+                      themeAccentClass,
+                      themeId ? styles.themeListRowClickable : "",
+                    ].join(" ")}
                     title={
                       themeId ? "Klikk for å se feedback med dette temaet" : ""
                     }
@@ -492,30 +508,20 @@ export function TextAnalysis({
                       align="baseline"
                       wrap={false}
                     >
-                      <HStack gap="space-8" align="center">
-                        {theme.color && (
-                          <div
-                            style={{
-                              width: "10px",
-                              height: "10px",
-                              borderRadius: "50%",
-                              backgroundColor: theme.color,
-                              flexShrink: 0,
-                            }}
-                          />
-                        )}
+                      <HStack
+                        gap="space-8"
+                        align="center"
+                        className={styles.themeRowMain}
+                      >
+                        {theme.color && <div className={styles.themeDot} />}
                         <button
                           type="button"
                           onClick={handleNavigateToTheme}
                           disabled={!themeId}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            padding: 0,
-                            cursor: themeId ? "pointer" : "default",
-                            textAlign: "left",
-                            minWidth: 0,
-                          }}
+                          className={[
+                            styles.themeLinkButton,
+                            themeId ? styles.themeLinkButtonEnabled : "",
+                          ].join(" ")}
                           title={
                             themeId
                               ? "Klikk for å se feedback med dette temaet"
@@ -539,13 +545,7 @@ export function TextAnalysis({
                                 handleOpenEdit(theme.definedTheme);
                               }
                             }}
-                            style={{
-                              background: "none",
-                              border: "none",
-                              padding: "2px",
-                              cursor: "pointer",
-                              color: "var(--ax-text-muted)",
-                            }}
+                            className={styles.themeEditButton}
                             title="Rediger tema"
                           >
                             ✎
@@ -555,7 +555,7 @@ export function TextAnalysis({
                       <HStack
                         gap="space-8"
                         align="center"
-                        style={{ flexShrink: 0 }}
+                        className={styles.themeMeta}
                       >
                         <BodyShort size="small" textColor="subtle">
                           {theme.count} ({percentage}%)
@@ -578,39 +578,19 @@ export function TextAnalysis({
                     </HStack>
 
                     {/* Progress bar */}
-                    <div
-                      style={{
-                        marginTop: "0.25rem",
-                        height: "6px",
-                        borderRadius: "3px",
-                        backgroundColor: "var(--ax-bg-neutral-moderate)",
-                        overflow: "hidden",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: `${relativeWidth}%`,
-                          height: "100%",
-                          borderRadius: "3px",
-                          backgroundColor:
-                            theme.color ?? "var(--ax-status-info)",
-                          transition: "width 0.3s ease",
-                        }}
-                      />
-                    </div>
+                    <progress
+                      className={styles.themeProgress}
+                      value={theme.count}
+                      max={maxThemeCount}
+                      aria-label={`Andel for tema ${theme.theme}`}
+                    />
 
                     {/* Example quote */}
                     {theme.examples.length > 0 && (
                       <BodyShort
                         size="small"
                         textColor="subtle"
-                        style={{
-                          marginTop: "0.25rem",
-                          fontStyle: "italic",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
+                        className={styles.themeExample}
                       >
                         "{theme.examples[0]}"
                       </BodyShort>
@@ -634,7 +614,7 @@ export function TextAnalysis({
       </DashboardCard>
       {/* Recent Responses */}
       {recentResponses.length > 0 && (
-        <DashboardCard padding="0" style={{ overflow: "hidden" }}>
+        <DashboardCard padding="0" className={styles.cardOverflowHidden}>
           <Box
             padding={{ xs: "space-16", md: "space-24" }}
             borderWidth="0 0 1 0"
@@ -644,7 +624,7 @@ export function TextAnalysis({
             <BodyShort
               size="small"
               textColor="subtle"
-              style={{ marginTop: "0.25rem" }}
+              className={styles.sectionSubtitle}
             >
               {labels.recentSubtitle}
             </BodyShort>
@@ -655,14 +635,13 @@ export function TextAnalysis({
               {recentResponses.slice(0, 10).map((response) => (
                 <div
                   key={`${response.text}-${response.submittedAt}`}
-                  style={{
-                    padding: "0.75rem",
-                    backgroundColor: "var(--ax-bg-neutral-soft)",
-                    borderRadius: "var(--ax-border-radius-medium)",
-                  }}
+                  className={styles.recentResponseCard}
                 >
                   <HStack justify="space-between" align="start" wrap={false}>
-                    <BodyShort size="small" style={{ flex: 1 }}>
+                    <BodyShort
+                      size="small"
+                      className={styles.recentResponseText}
+                    >
                       "{response.text}"
                     </BodyShort>
                     {showResponseStatus && response.success && (
@@ -675,7 +654,7 @@ export function TextAnalysis({
                               ? "warning"
                               : "error"
                         }
-                        style={{ flexShrink: 0, marginLeft: "0.5rem" }}
+                        className={styles.recentStatusTag}
                       >
                         {response.success === "yes"
                           ? "Fullført"
@@ -689,7 +668,7 @@ export function TextAnalysis({
                     <BodyShort
                       size="small"
                       textColor="subtle"
-                      style={{ marginTop: "0.25rem" }}
+                      className={styles.recentResponseAdditional}
                     >
                       {response.additionalInfo}
                     </BodyShort>

@@ -3,6 +3,7 @@ import {
   calculateThumbsPositiveRate,
   getRatingSingleIcon,
 } from "~/utils/ratingDisplay";
+import styles from "./RatingFieldCard.module.css";
 
 export function RatingSummary({
   variant,
@@ -17,10 +18,8 @@ export function RatingSummary({
     const positiveRate = calculateThumbsPositiveRate(distribution);
     return (
       <>
-        <span style={{ fontSize: "2rem", fontWeight: 700, lineHeight: 1 }}>
-          {Math.round(positiveRate)}%
-        </span>
-        <span style={{ fontSize: "1.5rem", marginLeft: "0.5rem" }}>👍</span>
+        <span className={styles.summaryValue}>{Math.round(positiveRate)}%</span>
+        <span className={styles.summaryIcon}>👍</span>
       </>
     );
   }
@@ -28,28 +27,16 @@ export function RatingSummary({
   if (variant === "nps") {
     return (
       <>
-        <span style={{ fontSize: "2rem", fontWeight: 700, lineHeight: 1 }}>
-          {average.toFixed(1)}
-        </span>
-        <span
-          style={{
-            fontSize: "0.875rem",
-            marginLeft: "0.5rem",
-            color: "var(--ax-text-neutral-subtle)",
-          }}
-        >
-          av 10 mulige
-        </span>
+        <span className={styles.summaryValue}>{average.toFixed(1)}</span>
+        <span className={styles.summaryMeta}>av 10 mulige</span>
       </>
     );
   }
 
   return (
     <>
-      <span style={{ fontSize: "2rem", fontWeight: 700, lineHeight: 1 }}>
-        {average.toFixed(1)}
-      </span>
-      <span style={{ fontSize: "1.5rem", marginLeft: "0.5rem" }}>
+      <span className={styles.summaryValue}>{average.toFixed(1)}</span>
+      <span className={styles.summaryIcon}>
         {getRatingSingleIcon(average, variant)}
       </span>
     </>
