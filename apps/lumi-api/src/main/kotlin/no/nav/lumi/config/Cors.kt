@@ -32,7 +32,9 @@ fun Application.configureCors() {
     }
 
     install(CORS) {
-        allowCredentials = true
+        // Lumi API uses bearer tokens, not cookie-based cross-origin auth.
+        // Keep credentials disabled to reduce CSRF/misconfiguration blast radius.
+        allowCredentials = false
         allowNonSimpleContentTypes = true
         allowHeader(HttpHeaders.Authorization)
         allowHeader(HttpHeaders.ContentType)

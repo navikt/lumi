@@ -83,7 +83,7 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
             is NaisApiResult.Success -> authorizedTeamsResult.value
             is NaisApiResult.Error -> {
                 // NAIS lookup failed (e.g. outage/timeout/401). Treat as temporary service problem.
-                val msg = "TeamAuthorization: NAIS team lookup failed (${authorizedTeamsResult.message}) for ${principal.navIdent}"
+                val msg = "TeamAuthorization: NAIS team lookup failed (${authorizedTeamsResult.message}) for ${pseudonymizeIdentifier(principal.navIdent)}"
                 if (authorizedTeamsResult.message.contains("cached", ignoreCase = true)) {
                     log.debug(msg)
                 } else {
@@ -98,7 +98,7 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
         }
 
         if (authorizedTeams.isEmpty()) {
-            log.warn("TeamAuthorization: User ${principal.navIdent} has no authorized teams")
+            log.warn("TeamAuthorization: User {} has no authorized teams", pseudonymizeIdentifier(principal.navIdent))
             throw ApiErrorException.ForbiddenException(
                 errorMessage = "Du har ikke tilgang til noen team i Lumi",
                 details = "For å få tilgang må teamet ditt onboardes.",
@@ -113,7 +113,7 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
         val team = if (requestedTeam != null && requestedTeam in authorizedTeams) {
             requestedTeam
         } else if (requestedTeam != null && requestedTeam !in authorizedTeams) {
-            log.warn("TeamAuthorization: User ${principal.navIdent} requested unauthorized team: $requestedTeam")
+            log.warn("TeamAuthorization: User {} requested unauthorized team", pseudonymizeIdentifier(principal.navIdent))
             throw ApiErrorException.ForbiddenException(
                 errorMessage = "Du har ikke tilgang til team: $requestedTeam",
             )
@@ -139,7 +139,7 @@ private suspend fun resolveAuthorizedTeams(
         naisLookup.getTeamSlugsForUserResult(email)
     } else {
         // Some tokens may not include email; try viewer query instead.
-        log.debug("User ${principal.navIdent} has no email claim, falling back to NAIS viewer lookup")
+        log.debug("User {} has no email claim, falling back to NAIS viewer lookup", pseudonymizeIdentifier(principal.navIdent))
         naisLookup.getTeamSlugsForViewerResult()
     }
 
@@ -147,7 +147,9 @@ private suspend fun resolveAuthorizedTeams(
         is NaisApiResult.Success -> {
             if (teamsByEmailResult.value.isNotEmpty()) {
                 log.debug(
-                    "Resolved teams from NAIS API (by email) for ${principal.navIdent} (count=${teamsByEmailResult.value.size})"
+                    "Resolved teams from NAIS API (by email) for {} (count={})",
+                    pseudonymizeIdentifier(principal.navIdent),
+                    teamsByEmailResult.value.size
                 )
                 teamsByEmailResult
             } else {
@@ -156,7 +158,9 @@ private suspend fun resolveAuthorizedTeams(
                 val viewerTeamsResult = naisLookup.getTeamSlugsForViewerResult()
                 if (viewerTeamsResult is NaisApiResult.Success && viewerTeamsResult.value.isNotEmpty()) {
                     log.debug(
-                        "Resolved teams from NAIS API (viewer query) for ${principal.navIdent} (count=${viewerTeamsResult.value.size})"
+                        "Resolved teams from NAIS API (viewer query) for {} (count={})",
+                        pseudonymizeIdentifier(principal.navIdent),
+                        viewerTeamsResult.value.size
                     )
                 }
                 viewerTeamsResult

@@ -108,7 +108,7 @@ function UrlLink({
     <a
       href={href}
       target="_blank"
-      rel="noreferrer"
+      rel="noopener noreferrer"
       style={{
         textDecoration: "none",
         color: "var(--ax-text-accent)",

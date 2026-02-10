@@ -3,6 +3,7 @@ package no.nav.lumi.config.auth
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -23,7 +24,18 @@ private val log = LoggerFactory.getLogger("TexasClient")
 class TexasClient(
     private val introspectionEndpoint: String
 ) {
+    companion object {
+        private const val CONNECT_TIMEOUT_MS = 2_000L
+        private const val REQUEST_TIMEOUT_MS = 5_000L
+        private const val SOCKET_TIMEOUT_MS = 5_000L
+    }
+
     private val client = HttpClient(CIO) {
+        install(HttpTimeout) {
+            connectTimeoutMillis = CONNECT_TIMEOUT_MS
+            requestTimeoutMillis = REQUEST_TIMEOUT_MS
+            socketTimeoutMillis = SOCKET_TIMEOUT_MS
+        }
         install(ContentNegotiation) {
             json(Json {
                 ignoreUnknownKeys = true
@@ -50,19 +62,8 @@ class TexasClient(
             }
             
             if (response.status != HttpStatusCode.OK) {
-                // Avoid logging full response bodies; they may contain claims/PII.
-                val bodySnippet = try {
-                    response.body<String>().take(300)
-                } catch (_: Exception) {
-                    null
-                }
-                if (bodySnippet.isNullOrBlank()) {
-                    log.warn("Texas introspection failed with status: ${response.status}")
-                } else {
-                    log.warn(
-                        "Texas introspection failed with status: ${response.status} (body=${bodySnippet.replace("\n", " ")})"
-                    )
-                }
+                // Avoid logging response bodies; they may contain claims/PII.
+                log.warn("Texas introspection failed with status: ${response.status}")
                 return null
             }
 

@@ -94,6 +94,8 @@ jobs:
         run: npm ci
         env:
           NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
+      - name: Dependency audit (production)
+        run: npm audit --omit=dev --audit-level=high
       - name: Lint
         run: npm run lint
       - name: Typecheck
