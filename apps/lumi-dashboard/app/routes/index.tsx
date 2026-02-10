@@ -2,7 +2,7 @@ import type { TagProps } from "@navikt/ds-react";
 import { Box, Heading, HStack, Tag, Tooltip, VStack } from "@navikt/ds-react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import dayjs from "dayjs";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { DiscoveryDashboard } from "~/components/dashboard/views/Discovery/Dashboard";
 import { OverviewDashboard } from "~/components/dashboard/views/Overview/Dashboard";
 import { RatingDashboard } from "~/components/dashboard/views/Rating/Dashboard";
@@ -117,19 +117,32 @@ function DashboardPage() {
   const hasSurveyFilter = !!params.surveyId;
   const surveyType = stats?.surveyType;
   const isPrivacyMasked = stats?.privacy?.masked;
+  const hasAppliedDefaultPeriodRef = useRef(false);
 
   useEffect(() => {
-    if (params.fromDate && params.toDate) return;
+    if (hasAppliedDefaultPeriodRef.current) return;
+    if (typeof window === "undefined") return;
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const hasFromDateInUrl = searchParams.has("fromDate");
+    const hasToDateInUrl = searchParams.has("toDate");
+
+    // Respect explicit URL period filters (important for deep-links and e2e tests).
+    if (hasFromDateInUrl || hasToDateInUrl) {
+      hasAppliedDefaultPeriodRef.current = true;
+      return;
+    }
 
     const end = dayjs();
     const start = end.subtract(29, "day");
 
     setParams({
-      fromDate: params.fromDate ?? start.format("YYYY-MM-DD"),
-      toDate: params.toDate ?? end.format("YYYY-MM-DD"),
+      fromDate: start.format("YYYY-MM-DD"),
+      toDate: end.format("YYYY-MM-DD"),
       page: "1",
     });
-  }, [params.fromDate, params.toDate, setParams]);
+    hasAppliedDefaultPeriodRef.current = true;
+  }, [setParams]);
 
   useEffect(() => {
     const hasUnsupported =
