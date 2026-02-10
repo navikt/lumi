@@ -1,22 +1,14 @@
 import { MoonIcon, SunIcon } from "@navikt/aksel-icons";
 import { Button, Tooltip } from "@navikt/ds-react";
 import { useTheme } from "~/context/ThemeContext";
+import styles from "./ThemeToggle.module.css";
 
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
 
   // Avoid flicker during hydration/loading
   if (!theme) {
-    return (
-      <span
-        aria-hidden="true"
-        style={{
-          display: "inline-block",
-          width: "2rem",
-          height: "2rem",
-        }}
-      />
-    );
+    return <span aria-hidden="true" className={styles.placeholder} />;
   }
 
   const toggleLabel =

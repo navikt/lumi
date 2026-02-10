@@ -6,6 +6,7 @@ import type { TextStats } from "~/types/api";
 import { formatRelativeTime } from "~/utils/wordAnalysis";
 
 import { FieldCardHeader } from "./FieldCardHeader";
+import styles from "./TextFieldCard.module.css";
 import type { FieldCardProps } from "./types";
 
 export function TextFieldCard({ field, totalCount }: FieldCardProps) {
@@ -18,13 +19,7 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
     stats.recentResponses && stats.recentResponses.length > 0;
 
   return (
-    <DashboardCard
-      padding="space-20"
-      style={{
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
+    <DashboardCard padding="space-20" className={styles.cardContent}>
       <FieldCardHeader
         icon={<ChatExclamationmarkIcon fontSize="1.25rem" aria-hidden />}
         label={field.label}
@@ -37,7 +32,7 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
           <BodyShort
             size="small"
             weight="semibold"
-            style={{ color: "var(--ax-text-neutral-subtle)" }}
+            className={styles.sectionHeading}
           >
             Hyppigste ord
           </BodyShort>
@@ -50,15 +45,7 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
                 variant="outline"
               >
                 {word}
-                <span
-                  style={{
-                    opacity: 0.5,
-                    marginLeft: "0.35rem",
-                    fontSize: "0.75rem",
-                  }}
-                >
-                  {count}
-                </span>
+                <span className={styles.keywordCount}>{count}</span>
               </Tag>
             ))}
           </HStack>
@@ -70,7 +57,7 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
           <BodyShort
             size="small"
             weight="semibold"
-            style={{ color: "var(--ax-text-neutral-subtle)" }}
+            className={styles.sectionHeading}
           >
             Siste svar
           </BodyShort>
@@ -78,33 +65,12 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
             {stats.recentResponses.map((response, index) => (
               <div
                 key={`${response.submittedAt}-${index}`}
-                style={{
-                  padding: "0.5rem 0.75rem",
-                  backgroundColor: "var(--ax-bg-neutral-soft)",
-                  borderRadius: "var(--ax-border-radius-medium)",
-                  borderLeft: "3px solid var(--ax-border-info)",
-                }}
+                className={styles.responseCard}
               >
-                <BodyShort
-                  size="small"
-                  style={{
-                    display: "-webkit-box",
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
+                <BodyShort size="small" className={styles.responseText}>
                   "{response.text}"
                 </BodyShort>
-                <BodyShort
-                  size="small"
-                  style={{
-                    color: "var(--ax-text-neutral-subtle)",
-                    marginTop: "0.25rem",
-                    fontSize: "0.75rem",
-                  }}
-                >
+                <BodyShort size="small" className={styles.responseTime}>
                   {formatRelativeTime(response.submittedAt)}
                 </BodyShort>
               </div>
@@ -114,14 +80,7 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
       )}
 
       {!hasKeywords && !hasRecentResponses && (
-        <BodyShort
-          size="small"
-          style={{
-            color: "var(--ax-text-neutral-subtle)",
-            marginTop: "0.5rem",
-            fontStyle: "italic",
-          }}
-        >
+        <BodyShort size="small" className={styles.emptyState}>
           Ingen tekstsvar ennå
         </BodyShort>
       )}

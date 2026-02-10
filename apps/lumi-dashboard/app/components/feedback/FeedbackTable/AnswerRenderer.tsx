@@ -21,7 +21,7 @@ import {
   normalizeRatingVariant,
   type RatingVariant,
 } from "~/utils/ratingDisplay";
-import { COLORS, ratingToEmoji } from "./utils";
+import { ratingToEmoji } from "./utils";
 
 interface AnswerCardLayoutProps {
   icon: ReactNode;
@@ -44,7 +44,7 @@ function AnswerCardLayout({
     <div className={`${styles.answerCard} ${className}`}>
       <HStack gap="space-16" align="start">
         <div className={styles.answerIcon}>{icon}</div>
-        <VStack gap="space-8" style={{ flex: 1 }}>
+        <VStack gap="space-8" className={styles.answerContentGrow}>
           <div>
             <Label size="small">{label}</Label>
             {description && <Detail textColor="subtle">{description}</Detail>}
@@ -105,11 +105,14 @@ export function RenderAnswer({
             icon={
               <Tooltip content="Tommel opp/ned">
                 {isPositive ? (
-                  <ThumbUpIcon fontSize="1.5rem" style={{ color: "#22C55E" }} />
+                  <ThumbUpIcon
+                    fontSize="1.5rem"
+                    className={styles.iconThumbPositive}
+                  />
                 ) : (
                   <ThumbDownIcon
                     fontSize="1.5rem"
-                    style={{ color: "#EF4444" }}
+                    className={styles.iconThumbNegative}
                   />
                 )}
               </Tooltip>
@@ -119,13 +122,7 @@ export function RenderAnswer({
           >
             <HStack align="center" gap="space-8">
               <span
-                className={styles.ratingScore}
-                style={{
-                  backgroundColor: isPositive ? "#DCFCE7" : "#FEE2E2",
-                  color: isPositive ? "#166534" : "#991B1B",
-                  padding: "0.25rem 0.5rem",
-                  borderRadius: "4px",
-                }}
+                className={`${styles.ratingBadge} ${isPositive ? styles.ratingBadgeThumbPositive : styles.ratingBadgeThumbNegative}`}
               >
                 {isPositive ? "👍 Ja" : "👎 Nei"}
               </span>
@@ -142,11 +139,11 @@ export function RenderAnswer({
               ? "passive"
               : "detractor";
         const categoryColors = {
-          promoter: { bg: "#DCFCE7", text: "#166534" },
-          passive: { bg: "#FEF9C3", text: "#854D0E" },
-          detractor: { bg: "#FEE2E2", text: "#991B1B" },
+          promoter: styles.ratingBadgePromoter,
+          passive: styles.ratingBadgePassive,
+          detractor: styles.ratingBadgeDetractor,
         };
-        const colors = categoryColors[category];
+        const badgeClass = categoryColors[category];
 
         return (
           <AnswerCardLayout
@@ -154,26 +151,14 @@ export function RenderAnswer({
             className="answer-card--rating"
             icon={
               <Tooltip content="NPS (0-10)">
-                <StarIcon
-                  fontSize="1.5rem"
-                  style={{ color: COLORS.iconWarning }}
-                />
+                <StarIcon fontSize="1.5rem" className={styles.iconWarning} />
               </Tooltip>
             }
             label={answer.question.label}
             description={answer.question.description}
           >
             <HStack align="center" gap="space-8">
-              <span
-                className={styles.ratingScore}
-                style={{
-                  backgroundColor: colors.bg,
-                  color: colors.text,
-                  padding: "0.25rem 0.5rem",
-                  borderRadius: "4px",
-                  fontWeight: 600,
-                }}
-              >
+              <span className={`${styles.ratingBadge} ${badgeClass}`}>
                 {ratingValue}/10
               </span>
             </HStack>
@@ -188,17 +173,14 @@ export function RenderAnswer({
             className="answer-card--rating"
             icon={
               <Tooltip content={`Stjerner (1-${ratingScale})`}>
-                <StarIcon
-                  fontSize="1.5rem"
-                  style={{ color: COLORS.iconWarning }}
-                />
+                <StarIcon fontSize="1.5rem" className={styles.iconWarning} />
               </Tooltip>
             }
             label={answer.question.label}
             description={answer.question.description}
           >
             <HStack align="center" gap="space-8">
-              <span style={{ fontSize: "1.25rem" }}>
+              <span className={styles.starsVisual}>
                 {"⭐".repeat(ratingValue)}
                 {"☆".repeat(ratingScale - ratingValue)}
               </span>
@@ -217,10 +199,7 @@ export function RenderAnswer({
           className="answer-card--rating"
           icon={
             <Tooltip content={`Vurdering (1-${ratingScale})`}>
-              <StarIcon
-                fontSize="1.5rem"
-                style={{ color: COLORS.iconWarning }}
-              />
+              <StarIcon fontSize="1.5rem" className={styles.iconWarning} />
             </Tooltip>
           }
           label={answer.question.label}
@@ -252,7 +231,7 @@ export function RenderAnswer({
           className="answer-card--text"
           icon={
             <Tooltip content="Fritekst">
-              <ChatIcon fontSize="1.5rem" style={{ color: COLORS.iconInfo }} />
+              <ChatIcon fontSize="1.5rem" className={styles.iconInfo} />
             </Tooltip>
           }
           label={answer.question.label}

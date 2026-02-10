@@ -26,6 +26,9 @@ export function buildCspHeaderValue(options?: {
   return [
     "default-src 'self'",
     `script-src ${scriptSrcParts.join(" ")}`,
+    // TODO: Remove 'unsafe-inline' from style-src once Recharts (which injects
+    // inline styles on SVG/container elements) is replaced or supports nonce.
+    // All project-owned inline styles have been migrated to CSS modules.
     "style-src 'self' https://cdn.nav.no 'unsafe-inline'",
     "img-src 'self' data: https://cdn.nav.no",
     "font-src 'self' data: https://cdn.nav.no",

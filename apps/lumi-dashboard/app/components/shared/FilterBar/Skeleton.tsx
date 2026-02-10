@@ -6,6 +6,7 @@ import {
   Show,
   VStack,
 } from "@navikt/ds-react";
+import styles from "./FilterBar.module.css";
 
 interface FilterBarSkeletonProps {
   showDetails?: boolean;
@@ -17,13 +18,13 @@ export function Skeleton({
   hasActiveFilters,
 }: FilterBarSkeletonProps) {
   return (
-    <VStack gap="space-12" style={{ width: "100%" }}>
+    <VStack gap="space-12" className={styles.root}>
       {/* Mirrors FilterBar layout */}
       <Box
         padding={{ xs: "space-12", md: "space-16" }}
         background="raised"
         borderRadius="12"
-        style={{ boxShadow: "var(--ax-shadow-small)" }}
+        className={styles.card}
         borderColor="neutral-subtle"
         borderWidth="1"
       >
@@ -60,12 +61,12 @@ export function Skeleton({
               <AkselSkeleton
                 variant="rounded"
                 height={32}
-                style={{ flex: 1 }}
+                className={styles.skeletonMobileGrow}
               />
               <AkselSkeleton
                 variant="rounded"
                 height={32}
-                style={{ flex: 1 }}
+                className={styles.skeletonMobileGrow}
               />
             </HStack>
 

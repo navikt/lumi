@@ -15,6 +15,7 @@ import { useTheme } from "~/context/ThemeContext";
 import { useBreakpoint } from "~/hooks/useBreakpoint";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
+import styles from "./Charts.module.css";
 
 // Chart colors for dark mode
 const CHART_COLORS = {
@@ -22,11 +23,6 @@ const CHART_COLORS = {
   primaryFaded: "rgba(94, 234, 212, 0.2)",
   text: "rgba(255, 255, 255, 0.7)",
   textMuted: "rgba(255, 255, 255, 0.5)",
-  tooltip: {
-    bg: "#1c1f24",
-    border: "rgba(255, 255, 255, 0.15)",
-    text: "#ffffff",
-  },
 };
 
 const CHART_COLORS_LIGHT = {
@@ -34,11 +30,6 @@ const CHART_COLORS_LIGHT = {
   primaryFaded: "rgba(0, 103, 197, 0.1)",
   text: "#262626", // Nav Gray 90
   textMuted: "#545454", // Nav Gray 60
-  tooltip: {
-    bg: "#ffffff",
-    border: "#a0a0a0", // Nav Gray 40
-    text: "#262626",
-  },
 };
 
 export function TimelineChart() {
@@ -72,17 +63,7 @@ export function TimelineChart() {
 
   if (data.length === 0) {
     return (
-      <div
-        style={{
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: colors.textMuted,
-        }}
-      >
-        Ingen data for valgt periode
-      </div>
+      <div className={styles.chartNoData}>Ingen data for valgt periode</div>
     );
   }
 
@@ -133,7 +114,7 @@ export function TimelineChart() {
             },
           });
         }}
-        style={{ cursor: "pointer" }}
+        className={styles.chartClickable}
       >
         <CartesianGrid strokeDasharray="3 3" opacity={0.1} vertical={false} />
         <XAxis
@@ -153,32 +134,20 @@ export function TimelineChart() {
         <Tooltip
           cursor={{ fill: colors.primaryFaded }}
           content={({ active, payload }) => {
-            if (active && payload && payload.length) {
-              const data = payload[0].payload;
+            if (active && payload && payload.length && payload[0]) {
+              const point = payload[0].payload as {
+                date: string;
+                count: number;
+              };
               return (
-                <div
-                  style={{
-                    background: colors.tooltip.bg,
-                    color: colors.tooltip.text,
-                    padding: "0.75rem",
-                    borderRadius: "4px",
-                    border: `1px solid ${colors.tooltip.border}`,
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                  }}
-                >
-                  <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>
-                    {dayjs(data.date).format("DD. MMMM YYYY")}
+                <div className={styles.tooltipCard}>
+                  <div className={styles.tooltipTitle}>
+                    {dayjs(point.date).format("DD. MMMM YYYY")}
                   </div>
                   <div>
-                    {data.count.toLocaleString("no-NO")} tilbakemeldinger
+                    {point.count.toLocaleString("no-NO")} tilbakemeldinger
                   </div>
-                  <div
-                    style={{
-                      fontSize: "0.75rem",
-                      marginTop: "0.25rem",
-                      opacity: 0.7,
-                    }}
-                  >
+                  <div className={styles.tooltipHint}>
                     Klikk for å åpne tilbakemeldinger
                   </div>
                 </div>
@@ -192,6 +161,7 @@ export function TimelineChart() {
           fill={colors.primary}
           radius={[4, 4, 0, 0]}
           maxBarSize={50}
+          cursor="pointer"
         />
       </BarChart>
     </ResponsiveContainerWithInitialSize>

@@ -17,7 +17,33 @@ import { TaskQuadrantChart } from "~/components/shared/Charts/TaskQuadrantChart"
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
 import { useTopTasksStats } from "~/hooks/useTopTasksStats";
+import {
+  THEME_COLOR_AMBER,
+  THEME_COLOR_BLUE,
+  THEME_COLOR_CYAN,
+  THEME_COLOR_EMERALD,
+  THEME_COLOR_GRAY,
+  THEME_COLOR_LIME,
+  THEME_COLOR_ORANGE,
+  THEME_COLOR_PINK,
+  THEME_COLOR_RED,
+  THEME_COLOR_VIOLET,
+} from "~/utils/colors";
 import { TopTasksStatsCards } from "./StatsCards";
+import styles from "./TopTasks.module.css";
+
+const THEME_DOT_CLASS_BY_HEX: Record<string, string> = {
+  [THEME_COLOR_BLUE]: styles.themeBlue,
+  [THEME_COLOR_EMERALD]: styles.themeEmerald,
+  [THEME_COLOR_AMBER]: styles.themeAmber,
+  [THEME_COLOR_RED]: styles.themeRed,
+  [THEME_COLOR_VIOLET]: styles.themeViolet,
+  [THEME_COLOR_PINK]: styles.themePink,
+  [THEME_COLOR_CYAN]: styles.themeCyan,
+  [THEME_COLOR_LIME]: styles.themeLime,
+  [THEME_COLOR_ORANGE]: styles.themeOrange,
+  [THEME_COLOR_GRAY]: styles.themeGray,
+};
 
 export function TopTasksOverview() {
   const { data, isLoading } = useTopTasksStats();
@@ -57,21 +83,19 @@ export function TopTasksOverview() {
       <DashboardCard padding={{ xs: "space-16", md: "space-24" }}>
         <Box paddingBlock="space-0 space-16">
           <Heading size="small">Oppgavekvadrant</Heading>
-          <p
-            style={{ margin: "0.5rem 0 0", fontSize: "0.875rem", opacity: 0.7 }}
-          >
+          <BodyShort size="small" className={styles.quadrantDescription}>
             Volum vs suksessrate. Klikk på et punkt for å filtrere hele
             dashboardet.
-          </p>
+          </BodyShort>
         </Box>
-        <div style={{ height: "clamp(280px, 50vw, 400px)", width: "100%" }}>
+        <div className={styles.quadrantChartContainer}>
           <TaskQuadrantChart
             selectedTask={selectedTask}
             onTaskSelect={handleTaskSelect}
           />
         </div>
       </DashboardCard>
-      <DashboardCard padding="0" style={{ overflow: "hidden" }}>
+      <DashboardCard padding="0" className={styles.overflowHidden}>
         <Box
           padding={{ xs: "space-16", md: "space-24" }}
           borderWidth="0 0 1 0"
@@ -92,7 +116,10 @@ export function TopTasksOverview() {
                 {/* Extra columns hidden on mobile */}
                 <Hide below="md" asChild>
                   <Tooltip content="Brukeren kom delvis i mål med oppgaven">
-                    <Table.HeaderCell align="right" style={{ cursor: "help" }}>
+                    <Table.HeaderCell
+                      align="right"
+                      className={styles.cursorHelp}
+                    >
                       Delvis
                     </Table.HeaderCell>
                   </Tooltip>
@@ -130,12 +157,7 @@ export function TopTasksOverview() {
                     expansionDisabled={!hasBlockers}
                     content={
                       hasBlockers ? (
-                        <div
-                          style={{
-                            padding: "1rem",
-                            backgroundColor: "var(--ax-bg-neutral-soft)",
-                          }}
-                        >
+                        <div className={styles.expandableContent}>
                           <Heading size="xsmall" level="4" spacing>
                             Årsaker til at oppgaven stoppet
                           </Heading>
@@ -145,20 +167,19 @@ export function TopTasksOverview() {
                               return (
                                 <div
                                   key={themeId}
-                                  style={{
-                                    opacity: isAnnet ? 0.7 : 1,
-                                  }}
+                                  className={
+                                    isAnnet ? styles.themeRowDimmed : undefined
+                                  }
                                 >
                                   <HStack gap="space-8" align="center">
                                     {/* Color dot */}
                                     <span
-                                      style={{
-                                        width: "10px",
-                                        height: "10px",
-                                        borderRadius: "50%",
-                                        backgroundColor: theme.color,
-                                        flexShrink: 0,
-                                      }}
+                                      className={[
+                                        styles.themeDot,
+                                        THEME_DOT_CLASS_BY_HEX[
+                                          theme.color.toLowerCase()
+                                        ] ?? styles.themeGray,
+                                      ].join(" ")}
                                     />
                                     <BodyShort weight="semibold">
                                       {theme.themeName} ({theme.count})
@@ -169,11 +190,7 @@ export function TopTasksOverview() {
                                     <BodyShort
                                       size="small"
                                       textColor="subtle"
-                                      style={{
-                                        marginLeft: "18px",
-                                        fontStyle: "italic",
-                                        marginTop: "0.25rem",
-                                      }}
+                                      className={styles.themeExample}
                                     >
                                       "{theme.examples[0]}"
                                     </BodyShort>
@@ -191,15 +208,14 @@ export function TopTasksOverview() {
                     </Table.DataCell>
                     <Table.DataCell>
                       <span
-                        style={{
-                          color:
-                            task.successRate >= 0.8
-                              ? "var(--ax-text-success)"
-                              : task.successRate >= 0.5
-                                ? "var(--ax-text-warning)"
-                                : "var(--ax-text-danger)",
-                          fontWeight: "bold",
-                        }}
+                        className={[
+                          styles.successRate,
+                          task.successRate >= 0.8
+                            ? styles.successRateGood
+                            : task.successRate >= 0.5
+                              ? styles.successRateMedium
+                              : styles.successRateLow,
+                        ].join(" ")}
                       >
                         {task.formattedSuccessRate}
                       </span>

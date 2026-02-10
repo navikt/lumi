@@ -15,6 +15,7 @@ import { useTheme } from "~/context/ThemeContext";
 import { useBreakpoint } from "~/hooks/useBreakpoint";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
+import styles from "./Charts.module.css";
 
 // Chart colors for dark mode
 const CHART_COLORS = {
@@ -23,11 +24,6 @@ const CHART_COLORS = {
   reference: "rgba(255, 255, 255, 0.2)",
   text: "rgba(255, 255, 255, 0.7)",
   textMuted: "rgba(255, 255, 255, 0.5)",
-  tooltip: {
-    bg: "#1c1f24",
-    border: "rgba(255, 255, 255, 0.15)",
-    text: "#ffffff",
-  },
 };
 
 const CHART_COLORS_LIGHT = {
@@ -36,11 +32,6 @@ const CHART_COLORS_LIGHT = {
   reference: "rgba(0, 0, 0, 0.2)",
   text: "#262626", // Nav Gray 90
   textMuted: "#545454", // Nav Gray 60
-  tooltip: {
-    bg: "#ffffff",
-    border: "#a0a0a0", // Nav Gray 40
-    text: "#262626",
-  },
 };
 
 export function RatingTrendChart() {
@@ -75,17 +66,7 @@ export function RatingTrendChart() {
 
   if (data.length === 0) {
     return (
-      <div
-        style={{
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: colors.textMuted,
-        }}
-      >
-        Ingen data for valgt periode
-      </div>
+      <div className={styles.chartNoData}>Ingen data for valgt periode</div>
     );
   }
 
@@ -143,7 +124,7 @@ export function RatingTrendChart() {
             },
           });
         }}
-        style={{ cursor: "pointer" }}
+        className={styles.chartClickable}
       >
         <XAxis
           dataKey="displayDate"
@@ -169,46 +150,29 @@ export function RatingTrendChart() {
         <Tooltip
           cursor={{ stroke: colors.reference, strokeDasharray: "3 3" }}
           content={({ active, payload }) => {
-            if (active && payload && payload.length) {
-              const data = payload[0].payload;
+            if (active && payload && payload.length && payload[0]) {
+              const point = payload[0].payload as {
+                date: string;
+                average: number;
+                count: number;
+              };
               return (
-                <div
-                  style={{
-                    background: colors.tooltip.bg,
-                    color: colors.tooltip.text,
-                    padding: "0.75rem",
-                    borderRadius: "4px",
-                    border: `1px solid ${colors.tooltip.border}`,
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                  }}
-                >
-                  <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>
-                    {dayjs(data.date).format("DD. MMMM YYYY")}
+                <div className={styles.tooltipCard}>
+                  <div className={styles.tooltipTitle}>
+                    {dayjs(point.date).format("DD. MMMM YYYY")}
                   </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                    }}
-                  >
-                    <span style={{ fontSize: "1.5rem" }}>
-                      {ratingToEmoji(Math.round(data.average))}
+                  <div className={styles.tooltipRow}>
+                    <span className={styles.tooltipEmojiLarge}>
+                      {ratingToEmoji(Math.round(point.average))}
                     </span>
-                    <span style={{ fontWeight: 600 }}>
-                      {data.average.toFixed(1)}
+                    <span className={styles.tooltipStrong}>
+                      {point.average.toFixed(1)}
                     </span>
-                    <span style={{ color: colors.textMuted }}>
-                      ({data.count} {data.count === 1 ? "svar" : "svar"})
+                    <span className={styles.tooltipMuted}>
+                      ({point.count} {point.count === 1 ? "svar" : "svar"})
                     </span>
                   </div>
-                  <div
-                    style={{
-                      fontSize: "0.75rem",
-                      marginTop: "0.25rem",
-                      opacity: 0.7,
-                    }}
-                  >
+                  <div className={styles.tooltipHint}>
                     Klikk for å åpne tilbakemeldinger
                   </div>
                 </div>

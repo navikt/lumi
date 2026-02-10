@@ -18,9 +18,7 @@ export function DeviceBreakdownSection({
     <DashboardCard padding={{ xs: "space-16", md: "space-24" }}>
       <VStack gap="space-16">
         <Heading size="small">Enheter</Heading>
-        <div style={{ width: "100%" }}>
-          <DeviceBreakdownChart showRating={showRating} />
-        </div>
+        <DeviceBreakdownChart showRating={showRating} />
       </VStack>
     </DashboardCard>
   );

@@ -1,11 +1,12 @@
 import { Heading, VStack } from "@navikt/ds-react";
 import type { ReactNode } from "react";
 import { DashboardCard } from "~/components/dashboard";
+import styles from "./ChartCard.module.css";
 
 interface ChartCardProps {
   title: string;
   subtitle?: string;
-  height?: string;
+  size?: "default" | "compact";
   children: ReactNode;
 }
 
@@ -16,26 +17,20 @@ interface ChartCardProps {
 export function ChartCard({
   title,
   subtitle,
-  height = "clamp(200px, 40vw, 300px)",
+  size = "default",
   children,
 }: ChartCardProps) {
+  const chartHeightClass =
+    size === "compact" ? styles.chartCompact : styles.chartDefault;
+
   return (
     <DashboardCard padding={{ xs: "space-16", md: "space-24" }}>
       <VStack gap="space-16">
         <VStack gap="space-4">
           <Heading size="small">{title}</Heading>
-          {subtitle && (
-            <span
-              style={{
-                fontSize: "0.875rem",
-                color: "var(--ax-text-neutral-subtle)",
-              }}
-            >
-              {subtitle}
-            </span>
-          )}
+          {subtitle && <span className={styles.subtitle}>{subtitle}</span>}
         </VStack>
-        <div style={{ height, width: "100%" }}>{children}</div>
+        <div className={chartHeightClass}>{children}</div>
       </VStack>
     </DashboardCard>
   );

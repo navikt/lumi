@@ -1,6 +1,7 @@
 import type { TagProps } from "@navikt/ds-react";
 import { Box, Heading, HStack, Tag, Tooltip, VStack } from "@navikt/ds-react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import dayjs from "dayjs";
 import { type ReactNode, useEffect } from "react";
 import { DiscoveryDashboard } from "~/components/dashboard/views/Discovery/Dashboard";
 import { OverviewDashboard } from "~/components/dashboard/views/Overview/Dashboard";
@@ -15,6 +16,7 @@ import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import { fetchFilterBootstrapServerFn } from "~/server/actions";
 import type { SurveyType } from "~/types/api";
+import styles from "./index.module.css";
 
 /**
  * Survey type descriptions - educates users about each methodology
@@ -117,6 +119,19 @@ function DashboardPage() {
   const isPrivacyMasked = stats?.privacy?.masked;
 
   useEffect(() => {
+    if (params.fromDate && params.toDate) return;
+
+    const end = dayjs();
+    const start = end.subtract(29, "day");
+
+    setParams({
+      fromDate: params.fromDate ?? start.format("YYYY-MM-DD"),
+      toDate: params.toDate ?? end.format("YYYY-MM-DD"),
+      page: "1",
+    });
+  }, [params.fromDate, params.toDate, setParams]);
+
+  useEffect(() => {
     const hasUnsupported =
       !!params.hasText ||
       !!params.lowRating ||
@@ -177,7 +192,7 @@ function DashboardPage() {
       <Box
         paddingBlock={{ xs: "space-16", md: "space-24" }}
         paddingInline={{ xs: "space-12", sm: "space-16" }}
-        style={{ maxWidth: "1400px", margin: "0 auto" }}
+        className={styles.mainContainer}
         as="main"
       >
         <VStack gap={{ xs: "space-16", md: "space-24" }}>
@@ -190,7 +205,7 @@ function DashboardPage() {
                   <Tag
                     variant={config.variant}
                     size="small"
-                    style={{ cursor: "help" }}
+                    className={styles.surveyTypeTag}
                   >
                     {config.label}
                   </Tag>

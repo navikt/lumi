@@ -1,0 +1,12 @@
+.content {
+  flex: 1;
+}
+
+.label {
+  flex: 1;
+  min-width: 0;
+}
+
+.subtitle {
+  color: var(--ax-text-neutral-subtle);
+}

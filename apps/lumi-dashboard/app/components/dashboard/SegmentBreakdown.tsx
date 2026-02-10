@@ -12,15 +12,15 @@ interface SegmentBreakdownProps {
 }
 
 // Beautiful color palette for bars
-const COLORS = [
-  "#3B82F6", // blue
-  "#10B981", // green
-  "#F59E0B", // yellow
-  "#EF4444", // red
-  "#8B5CF6", // purple
-  "#EC4899", // pink
-  "#06B6D4", // cyan
-  "#F97316", // orange
+const BAR_COLOR_CLASSES = [
+  styles.barBlue,
+  styles.barGreen,
+  styles.barYellow,
+  styles.barRed,
+  styles.barPurple,
+  styles.barPink,
+  styles.barCyan,
+  styles.barOrange,
 ];
 
 /**
@@ -105,15 +105,11 @@ function SegmentCard({ segmentKey, values, onValueClick }: SegmentCardProps) {
               onClick={() => onValueClick?.(segmentKey, item.name)}
             >
               <span className={styles.segmentLabel}>{item.name}</span>
-              <div className={styles.barBackground}>
-                <div
-                  className={styles.bar}
-                  style={{
-                    width: `${(item.count / maxCount) * 100}%`,
-                    background: COLORS[index % COLORS.length],
-                  }}
-                />
-              </div>
+              <progress
+                className={`${styles.barProgress} ${BAR_COLOR_CLASSES[index % BAR_COLOR_CLASSES.length]}`}
+                value={item.count}
+                max={maxCount}
+              />
               <span className={styles.segmentCount}>
                 {item.count} ({item.percentage}%)
               </span>

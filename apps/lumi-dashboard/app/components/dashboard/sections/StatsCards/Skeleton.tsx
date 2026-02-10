@@ -1,5 +1,6 @@
 import { Skeleton as AkselSkeleton } from "@navikt/ds-react";
 import { DashboardCard, DashboardGrid } from "~/components/dashboard";
+import styles from "./StatsCards.module.css";
 
 interface StatCardSkeletonProps {
   labelWidth?: number;
@@ -8,19 +9,12 @@ interface StatCardSkeletonProps {
 function StatCardSkeleton({ labelWidth = 140 }: StatCardSkeletonProps) {
   return (
     <DashboardCard padding={{ xs: "space-16", md: "space-20" }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "0.5rem",
-          marginBottom: "0.5rem",
-        }}
-      >
+      <div className={styles.skeletonHeader}>
         <AkselSkeleton variant="circle" width={24} height={24} />
         <AkselSkeleton variant="text" width={labelWidth} />
       </div>
 
-      <div style={{ marginBottom: "0.2rem" }}>
+      <div className={styles.skeletonValue}>
         <AkselSkeleton variant="text" width={100} height={40} />
       </div>
 

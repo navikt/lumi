@@ -1,6 +1,7 @@
 import { PencilIcon, TrashIcon } from "@navikt/aksel-icons";
 import { BodyShort, Button, HStack, Popover, VStack } from "@navikt/ds-react";
 import type { TextTheme } from "~/types/api";
+import styles from "./WordPopover.module.css";
 
 interface WordPopoverProps {
   /** The word that was clicked */
@@ -42,7 +43,7 @@ export function WordPopover({
       placement="bottom"
     >
       <Popover.Content>
-        <VStack gap="space-12" style={{ minWidth: "220px" }}>
+        <VStack gap="space-12" className={styles.content}>
           <BodyShort size="small">
             Ordet <strong>"{word}"</strong> tilhører temaet{" "}
             <strong>{theme.name}</strong>.

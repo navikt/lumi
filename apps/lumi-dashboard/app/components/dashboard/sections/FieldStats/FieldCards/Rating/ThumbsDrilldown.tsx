@@ -1,6 +1,7 @@
 import { HStack, VStack } from "@navikt/ds-react";
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
 import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
+import styles from "./ThumbsDrilldown.module.css";
 
 function calculatePct(count: number, total: number) {
   return total > 0 ? Math.round((count / total) * 100) : 0;
@@ -25,7 +26,7 @@ export function ThumbsDrilldown({
 }) {
   return (
     <VStack gap="space-12" marginBlock="space-12 space-0">
-      <div style={{ height: 200, width: "100%" }}>
+      <div className={styles.chartContainer}>
         <ResponsiveContainerWithInitialSize
           width="100%"
           height="100%"
@@ -64,7 +65,7 @@ export function ThumbsDrilldown({
                 ) as "1" | "2";
                 onSelect(nextValue);
               }}
-              style={{ cursor: "pointer" }}
+              className={styles.clickableChart}
             >
               <Cell
                 fill="var(--ax-bg-success-strong)"
@@ -90,11 +91,7 @@ export function ThumbsDrilldown({
                   y="50%"
                   textAnchor="middle"
                   dominantBaseline="middle"
-                  style={{
-                    fill: "var(--ax-text-neutral)",
-                    fontSize: 18,
-                    fontWeight: 700,
-                  }}
+                  className={styles.chartCenterText}
                 >
                   {pct}%
                 </text>
@@ -110,12 +107,10 @@ export function ThumbsDrilldown({
             {
               label: "👍 Ja",
               value: "2" as const,
-              color: "var(--ax-bg-success-strong)",
             },
             {
               label: "👎 Nei",
               value: "1" as const,
-              color: "var(--ax-bg-danger-strong)",
             },
           ] as const
         ).map((item) => {
@@ -129,40 +124,16 @@ export function ThumbsDrilldown({
               key={item.value}
               type="button"
               onClick={() => onSelect(item.value)}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "6px 10px",
-                borderRadius: 999,
-                border: isSelected
-                  ? "2px solid var(--ax-border-neutral)"
-                  : "1px solid var(--ax-border-neutral-subtle)",
-                background: "var(--ax-bg-default)",
-                cursor: "pointer",
-              }}
+              className={`${styles.chip} ${isSelected ? styles.chipSelected : ""}`}
               aria-pressed={isSelected}
               data-testid={`thumbs-drilldown-${fieldId}-${item.value}`}
             >
               <span
                 aria-hidden
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: 999,
-                  background: item.color,
-                  display: "inline-block",
-                }}
+                className={`${styles.chipDot} ${item.value === "2" ? styles.chipDotPositive : styles.chipDotNegative}`}
               />
-              <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>
-                {item.label}
-              </span>
-              <span
-                style={{
-                  fontSize: "0.875rem",
-                  color: "var(--ax-text-neutral-subtle)",
-                }}
-              >
+              <span className={styles.chipLabel}>{item.label}</span>
+              <span className={styles.chipValue}>
                 {pct}% ({count})
               </span>
             </button>
@@ -173,15 +144,7 @@ export function ThumbsDrilldown({
           <button
             type="button"
             onClick={onClear}
-            style={{
-              padding: "6px 10px",
-              borderRadius: 999,
-              border: "1px dashed var(--ax-border-neutral-subtle)",
-              background: "transparent",
-              cursor: "pointer",
-              color: "var(--ax-text-neutral-subtle)",
-              fontSize: "0.875rem",
-            }}
+            className={styles.resetButton}
           >
             Nullstill
           </button>

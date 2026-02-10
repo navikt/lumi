@@ -1,0 +1,14 @@
+.subtitle {
+  font-size: 0.875rem;
+  color: var(--ax-text-neutral-subtle);
+}
+
+.chartDefault {
+  height: clamp(200px, 40vw, 300px);
+  width: 100%;
+}
+
+.chartCompact {
+  height: 260px;
+  width: 100%;
+}

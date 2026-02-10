@@ -1,6 +1,6 @@
 import { HStack, VStack } from "@navikt/ds-react";
 import type { RatingVariant } from "~/utils/ratingDisplay";
-import { getRatingColor } from "~/utils/ratingDisplay";
+import styles from "./RatingFieldCard.module.css";
 
 export function RatingBars({
   variant,
@@ -16,11 +16,11 @@ export function RatingBars({
     1,
   );
 
-  const labelWidth = (() => {
-    if (variant === "thumbs") return "4rem";
-    if (variant === "stars") return "1.5rem";
-    if (variant === "nps") return "1.5rem";
-    return "1.25rem";
+  const labelClass = (() => {
+    if (variant === "thumbs") return styles.barLabelThumbs;
+    if (variant === "stars") return styles.barLabelStars;
+    if (variant === "nps") return styles.barLabelNps;
+    return styles.barLabelEmoji;
   })();
 
   const label = (rating: number): string => {
@@ -28,61 +28,49 @@ export function RatingBars({
     return String(rating);
   };
 
+  const getFillClass = (rating: number): string => {
+    if (variant === "thumbs") {
+      return rating >= 2 ? styles.barFillPositive : styles.barFillNegative;
+    }
+
+    if (variant === "nps") {
+      if (rating >= 9) return styles.barFillPositive;
+      if (rating >= 7) return styles.barFillMedium;
+      return styles.barFillNegative;
+    }
+
+    if (rating >= 5) return styles.barFillPositive;
+    if (rating >= 4) return styles.barFillGood;
+    if (rating >= 3) return styles.barFillMedium;
+    if (rating >= 2) return styles.barFillWarning;
+    if (rating >= 1) return styles.barFillNegative;
+    return styles.barFillNeutral;
+  };
+
   return (
     <VStack gap="space-4" marginBlock="space-12 space-0">
       {ratingValues.map((rating) => {
         const count = distribution[String(rating)] || 0;
-        const barWidth = maxCount > 0 ? (count / maxCount) * 100 : 0;
+        const fillClass = getFillClass(rating);
 
         return (
           <HStack
             key={rating}
             gap="space-8"
             align="center"
-            style={{ fontSize: "0.875rem" }}
+            className={styles.barRow}
           >
-            <span
-              style={{
-                width: labelWidth,
-                textAlign: "center",
-                fontWeight: 500,
-                flexShrink: 0,
-              }}
-            >
+            <span className={`${styles.barLabel} ${labelClass}`}>
               {label(rating)}
             </span>
 
-            <div
-              style={{
-                flex: 1,
-                height: 10,
-                background: "var(--ax-bg-neutral-moderate)",
-                borderRadius: 5,
-                overflow: "hidden",
-                minWidth: 0,
-              }}
-            >
-              <div
-                style={{
-                  width: `${barWidth}%`,
-                  height: "100%",
-                  borderRadius: 5,
-                  backgroundColor: getRatingColor(rating, variant),
-                  transition: "width 0.3s ease",
-                }}
-              />
-            </div>
+            <progress
+              className={`${styles.barTrack} ${fillClass}`}
+              value={count}
+              max={maxCount}
+            />
 
-            <span
-              style={{
-                width: "2rem",
-                textAlign: "right",
-                color: "var(--ax-text-neutral-subtle)",
-                fontSize: "0.75rem",
-              }}
-            >
-              {count}
-            </span>
+            <span className={styles.barCount}>{count}</span>
           </HStack>
         );
       })}

@@ -1,0 +1,104 @@
+.tabs {
+  margin-bottom: 1.5rem;
+}
+
+.keywordsDescription {
+  margin-bottom: 0.5rem;
+}
+
+.keywordInputRow {
+  margin-bottom: 0.5rem;
+}
+
+.combobox {
+  flex: 1;
+}
+
+.keywordsError {
+  color: var(--ax-text-danger);
+}
+
+.colorSwatches {
+  margin-top: 0.5rem;
+}
+
+.colorButton {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 4px;
+  border: 1px solid var(--ax-border-divider);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.colorButtonSelected {
+  border: 3px solid var(--ax-border-focus);
+}
+
+.colorBlue {
+  background-color: #3b82f6;
+}
+
+.colorEmerald {
+  background-color: #10b981;
+}
+
+.colorAmber {
+  background-color: #f59e0b;
+}
+
+.colorRed {
+  background-color: #ef4444;
+}
+
+.colorViolet {
+  background-color: #8b5cf6;
+}
+
+.colorPink {
+  background-color: #ec4899;
+}
+
+.colorCyan {
+  background-color: #06b6d4;
+}
+
+.colorLime {
+  background-color: #84cc16;
+}
+
+.colorOrange {
+  background-color: #f97316;
+}
+
+.colorGray {
+  background-color: #9ca3af;
+}
+
+.checkmark {
+  color: white;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.5));
+}
+
+.examplesHeading {
+  margin-bottom: 0.5rem;
+}
+
+.variantsNote {
+  margin-bottom: 0.75rem;
+  font-style: italic;
+}
+
+.highlight {
+  color: var(--ax-text-action);
+}
+
+.examplesPagination {
+  margin-top: 0.75rem;
+}
+
+.footerRow {
+  width: 100%;
+}

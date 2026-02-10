@@ -1,0 +1,64 @@
+.chartContainer {
+  height: 200px;
+  width: 100%;
+}
+
+.clickableChart {
+  cursor: pointer;
+}
+
+.chartCenterText {
+  fill: var(--ax-text-neutral);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--ax-border-neutral-subtle);
+  background: var(--ax-bg-default);
+  cursor: pointer;
+}
+
+.chipSelected {
+  border: 2px solid var(--ax-border-neutral);
+}
+
+.chipDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.chipDotPositive {
+  background: var(--ax-bg-success-strong);
+}
+
+.chipDotNegative {
+  background: var(--ax-bg-danger-strong);
+}
+
+.chipLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.chipValue {
+  font-size: 0.875rem;
+  color: var(--ax-text-neutral-subtle);
+}
+
+.resetButton {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px dashed var(--ax-border-neutral-subtle);
+  background: transparent;
+  cursor: pointer;
+  color: var(--ax-text-neutral-subtle);
+  font-size: 0.875rem;
+}

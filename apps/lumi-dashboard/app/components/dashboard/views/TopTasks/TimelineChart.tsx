@@ -11,6 +11,7 @@ import {
 import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import { useTheme } from "~/context/ThemeContext";
 import { useTopTasksStats } from "~/hooks/useTopTasksStats";
+import styles from "./TopTasks.module.css";
 
 // Chart colors for dark mode (reused from others for consistency)
 const CHART_COLORS = {
@@ -69,13 +70,7 @@ export function TopTasksTimelineChart() {
   if (data.length === 0) {
     return (
       <div
-        style={{
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: colors.textMuted,
-        }}
+        className={`${styles.timelineEmpty} ${theme === "light" ? styles.timelineEmptyLight : styles.timelineEmptyDark}`}
       >
         Ingen data for valgt periode
       </div>
@@ -120,22 +115,21 @@ export function TopTasksTimelineChart() {
               const d = payload[0].payload;
               return (
                 <div
-                  style={{
-                    background: colors.tooltip.bg,
-                    color: colors.tooltip.text,
-                    padding: "0.75rem",
-                    borderRadius: "4px",
-                    border: `1px solid ${colors.tooltip.border} `,
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                  }}
+                  className={`${styles.tooltip} ${theme === "light" ? styles.tooltipLight : styles.tooltipDark}`}
                 >
-                  <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>
+                  <div className={styles.tooltipTitle}>
                     {dayjs(d.date).format("DD. MMMM YYYY")}
                   </div>
-                  <div style={{ color: colors.success, fontWeight: "bold" }}>
+                  <div
+                    className={
+                      theme === "light"
+                        ? styles.tooltipSuccessLight
+                        : styles.tooltipSuccessDark
+                    }
+                  >
                     Suksessrate: {d.successRate}%
                   </div>
-                  <div style={{ fontSize: "0.85rem", opacity: 0.8 }}>
+                  <div className={styles.tooltipMeta}>
                     {d.success} av {d.total} oppgaver fullført
                   </div>
                 </div>

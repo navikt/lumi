@@ -13,6 +13,7 @@ import {
 import { ContextTagsFilter } from "~/components/dashboard/ContextTagsFilter";
 import type { SurveyFeatureConfig } from "~/config/surveyConfig";
 import type { SearchParams } from "~/hooks/useSearchParams";
+import styles from "./FilterBar.module.css";
 
 interface FilterMenuProps {
   params: SearchParams;
@@ -53,13 +54,6 @@ export function FilterMenu({
     params.ratingFieldId && params.ratingValue,
   ].filter(Boolean).length;
 
-  const contentStyle = {
-    width: "min(42rem, calc(100vw - 2rem))",
-    minWidth: 320,
-    maxHeight: "70vh",
-    overflowY: "auto" as const,
-  };
-
   const themeValueLabel =
     themeLabel ??
     (params.theme === "uncategorized" ? "Annet" : (params.theme ?? ""));
@@ -83,7 +77,7 @@ export function FilterMenu({
           </HStack>
         </Button>
       </ActionMenu.Trigger>
-      <ActionMenu.Content style={contentStyle}>
+      <ActionMenu.Content className={styles.actionMenuContent}>
         <Box padding="space-12">
           <HGrid columns={{ xs: 1, md: 2 }} gap="space-16">
             <VStack gap="space-12">
@@ -184,15 +178,9 @@ export function FilterMenu({
             params.theme ||
             (params.ratingFieldId && params.ratingValue)) && (
             <Box paddingBlock="space-16">
-              <div
-                style={{
-                  height: "1px",
-                  backgroundColor: "var(--ax-border-neutral-subtle)",
-                  width: "100%",
-                }}
-              />
+              <div className={styles.menuDivider} />
 
-              <VStack gap="space-8" style={{ paddingTop: "var(--ax-space-4)" }}>
+              <VStack gap="space-8" className={styles.selectedFromCharts}>
                 <Label size="small">Valgt fra grafer</Label>
                 <Chips size="small">
                   {params.theme && (

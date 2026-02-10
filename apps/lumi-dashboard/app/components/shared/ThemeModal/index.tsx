@@ -20,7 +20,13 @@ import type {
   TextTheme,
   UpdateThemeInput,
 } from "~/types/api";
-import { THEME_COLOR_BLUE, THEME_COLORS } from "~/utils/colors";
+import {
+  THEME_COLOR_BLUE,
+  THEME_COLOR_GRAY,
+  THEME_COLOR_ORANGE,
+  THEME_COLORS,
+} from "~/utils/colors";
+import styles from "./ThemeModal.module.css";
 
 /** Context example for peek context feature */
 export interface ContextExample {
@@ -49,6 +55,19 @@ interface ThemeModalProps {
   /** Word variants that were grouped under this stem (for showing normalization info) */
   wordVariants?: Array<{ word: string; count: number }>;
 }
+
+const COLOR_CLASS_BY_HEX: Record<string, string> = {
+  [THEME_COLORS[0]]: styles.colorBlue,
+  [THEME_COLORS[1]]: styles.colorEmerald,
+  [THEME_COLORS[2]]: styles.colorAmber,
+  [THEME_COLORS[3]]: styles.colorRed,
+  [THEME_COLORS[4]]: styles.colorViolet,
+  [THEME_COLORS[5]]: styles.colorPink,
+  [THEME_COLORS[6]]: styles.colorCyan,
+  [THEME_COLORS[7]]: styles.colorLime,
+  [THEME_COLOR_ORANGE]: styles.colorOrange,
+  [THEME_COLOR_GRAY]: styles.colorGray,
+};
 
 /**
  * Modal for creating or editing a text theme.
@@ -220,7 +239,7 @@ export function ThemeModal({
           <Tabs
             value={activeTab}
             onChange={setActiveTab}
-            style={{ marginBottom: "1.5rem" }}
+            className={styles.tabs}
           >
             <Tabs.List>
               <Tabs.Tab value="existing" label="Legg til i eksisterende tema" />
@@ -279,7 +298,7 @@ export function ThemeModal({
               <BodyShort
                 size="small"
                 textColor="subtle"
-                style={{ marginBottom: "0.5rem" }}
+                className={styles.keywordsDescription}
               >
                 Tekster som inneholder disse ordene blir gruppert under dette
                 temaet. Vi bruker smart søk – "søknad" treffer også "søknaden"
@@ -288,7 +307,7 @@ export function ThemeModal({
 
               <HStack
                 gap="space-8"
-                style={{ marginBottom: "0.5rem" }}
+                className={styles.keywordInputRow}
                 align="end"
               >
                 <Combobox
@@ -311,15 +330,12 @@ export function ThemeModal({
                   allowNewValues
                   isMultiSelect
                   shouldAutocomplete={true}
-                  style={{ flex: 1 }}
+                  className={styles.combobox}
                 />
               </HStack>
 
               {errors.keywords && (
-                <BodyShort
-                  size="small"
-                  style={{ color: "var(--ax-text-danger)" }}
-                >
+                <BodyShort size="small" className={styles.keywordsError}>
                   {errors.keywords}
                 </BodyShort>
               )}
@@ -327,35 +343,25 @@ export function ThemeModal({
 
             <div>
               <Label>Farge</Label>
-              <HStack gap="space-8" style={{ marginTop: "0.5rem" }}>
+              <HStack gap="space-8" className={styles.colorSwatches}>
                 {THEME_COLORS.map((c) => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setColor(c)}
-                    style={{
-                      width: "2rem",
-                      height: "2rem",
-                      borderRadius: "4px",
-                      backgroundColor: c,
-                      border:
-                        color === c
-                          ? "3px solid var(--ax-border-focus)"
-                          : "1px solid var(--ax-border-divider)",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
+                    className={[
+                      styles.colorButton,
+                      COLOR_CLASS_BY_HEX[c] ?? styles.colorGray,
+                      color === c ? styles.colorButtonSelected : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
                     aria-label={`Velg farge ${c}`}
                   >
                     {color === c && (
                       <CheckmarkIcon
                         title="Valgt farge"
-                        style={{
-                          color: "white",
-                          filter: "drop-shadow(0px 0px 2px rgba(0,0,0,0.5))",
-                        }}
+                        className={styles.checkmark}
                       />
                     )}
                   </button>
@@ -373,7 +379,7 @@ export function ThemeModal({
             borderWidth="1 0 0 0"
             borderColor="neutral-subtle"
           >
-            <Label size="small" style={{ marginBottom: "0.5rem" }}>
+            <Label size="small" className={styles.examplesHeading}>
               📝 Slik brukes "{initialKeywords[0]}" i svarene (
               {contextExamples.length} treff)
             </Label>
@@ -383,7 +389,7 @@ export function ThemeModal({
               <BodyShort
                 size="small"
                 textColor="subtle"
-                style={{ marginBottom: "0.75rem", fontStyle: "italic" }}
+                className={styles.variantsNote}
               >
                 Normalisert fra:{" "}
                 {wordVariants.map((v, i) => (
@@ -429,10 +435,7 @@ export function ThemeModal({
                           const key = `${idx}-${partIdx}`;
                           return part.toLowerCase() ===
                             highlightTerm.toLowerCase() ? (
-                            <strong
-                              key={key}
-                              style={{ color: "var(--ax-text-action)" }}
-                            >
+                            <strong key={key} className={styles.highlight}>
                               {part}
                             </strong>
                           ) : (
@@ -448,7 +451,7 @@ export function ThemeModal({
 
             {/* Pagination */}
             {contextExamples.length > EXAMPLES_PER_PAGE && (
-              <HStack justify="center" style={{ marginTop: "0.75rem" }}>
+              <HStack justify="center" className={styles.examplesPagination}>
                 <Pagination
                   page={examplesPage}
                   onPageChange={setExamplesPage}
@@ -467,7 +470,7 @@ export function ThemeModal({
         <HStack
           justify="space-between"
           align="center"
-          style={{ width: "100%" }}
+          className={styles.footerRow}
         >
           <HStack gap="space-12">
             <Button onClick={handleSubmit} loading={isSubmitting}>

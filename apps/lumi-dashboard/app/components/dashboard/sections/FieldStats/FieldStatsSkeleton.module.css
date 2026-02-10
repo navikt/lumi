@@ -1,0 +1,29 @@
+.headerRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.valueBlock {
+  margin-top: 1rem;
+}
+
+.bars {
+  margin-top: 1rem;
+}
+
+.barRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.title {
+  margin-bottom: 1rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}

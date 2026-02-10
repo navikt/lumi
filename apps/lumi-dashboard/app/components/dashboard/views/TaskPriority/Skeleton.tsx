@@ -1,5 +1,6 @@
 import { Skeleton as AkselSkeleton, VStack } from "@navikt/ds-react";
 import { DashboardCard, DashboardGrid } from "~/components/dashboard";
+import styles from "./TaskPriority.module.css";
 
 /**
  * Skeleton for Task Priority Analysis while loading
@@ -35,7 +36,7 @@ export function Skeleton() {
                   variant="rounded"
                   height={8}
                   width={`${width}%`}
-                  style={{ marginTop: "0.25rem" }}
+                  className={styles.skeletonProgress}
                 />
               </div>
             ))}

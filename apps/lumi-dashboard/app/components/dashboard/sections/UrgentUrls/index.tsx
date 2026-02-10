@@ -10,6 +10,7 @@ import {
 } from "@navikt/ds-react";
 import { DashboardCard } from "~/components/dashboard";
 import { useStats } from "~/hooks/useStats";
+import styles from "./UrgentUrls.module.css";
 
 export function UrgentUrls() {
   const { data: stats } = useStats();
@@ -30,16 +31,13 @@ export function UrgentUrls() {
     .sort((a, b) => a.average - b.average);
 
   return (
-    <DashboardCard padding="0" style={{ overflow: "hidden" }}>
+    <DashboardCard padding="0" className={styles.overflowHidden}>
       <Box
         padding={{ xs: "space-16", md: "space-20" }}
         borderWidth="0 0 1 0"
         borderColor="neutral-subtle"
       >
-        <Heading
-          size="small"
-          style={{ display: "flex", alignItems: "center", gap: "8px" }}
-        >
+        <Heading size="small" className={styles.titleRow}>
           <LinkIcon aria-hidden /> Sider med lavest score
         </Heading>
       </Box>
@@ -109,17 +107,7 @@ function UrlLink({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      style={{
-        textDecoration: "none",
-        color: "var(--ax-text-accent)",
-        display: "block",
-        ...(truncate && {
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          maxWidth: "100%",
-        }),
-      }}
+      className={`${styles.urlLink} ${truncate ? styles.urlLinkTruncate : ""}`}
     >
       {path}
     </a>

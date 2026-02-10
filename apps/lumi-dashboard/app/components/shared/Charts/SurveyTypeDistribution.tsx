@@ -13,6 +13,7 @@ import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/R
 import { useTheme } from "~/context/ThemeContext";
 import { useSurveyTypeDistribution } from "~/hooks/useSurveyTypeDistribution";
 import type { SurveyType } from "~/types/api";
+import styles from "./Charts.module.css";
 
 /**
  * Survey type configuration with Norwegian labels and colors
@@ -30,21 +31,11 @@ const SURVEY_TYPE_CONFIG: Record<SurveyType, { label: string; color: string }> =
 const CHART_COLORS = {
   text: "rgba(255, 255, 255, 0.7)",
   textMuted: "rgba(255, 255, 255, 0.5)",
-  tooltip: {
-    bg: "#1c1f24",
-    border: "rgba(255, 255, 255, 0.15)",
-    text: "#ffffff",
-  },
 };
 
 const CHART_COLORS_LIGHT = {
   text: "#262626",
   textMuted: "#545454",
-  tooltip: {
-    bg: "#ffffff",
-    border: "#a0a0a0",
-    text: "#262626",
-  },
 };
 
 interface SurveyTypeDistributionProps {
@@ -65,12 +56,7 @@ export function SurveyTypeDistribution({
   }
 
   if (!distribution || distribution.distribution.length === 0) {
-    return (
-      <ChartEmptyState
-        message="Ingen survey-data tilgjengelig"
-        color={colors.textMuted}
-      />
-    );
+    return <ChartEmptyState message="Ingen survey-data tilgjengelig" />;
   }
 
   // Transform API data to chart format
@@ -108,25 +94,18 @@ export function SurveyTypeDistribution({
         />
         <Tooltip
           content={({ active, payload }) => {
-            if (active && payload && payload.length) {
-              const d = payload[0].payload;
+            if (active && payload && payload.length && payload[0]) {
+              const point = payload[0].payload as {
+                label: string;
+                count: number;
+                percentage: number;
+              };
               return (
-                <div
-                  style={{
-                    background: colors.tooltip.bg,
-                    color: colors.tooltip.text,
-                    padding: "0.75rem",
-                    borderRadius: "4px",
-                    border: `1px solid ${colors.tooltip.border}`,
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                  }}
-                >
-                  <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>
-                    {d.label}
-                  </div>
+                <div className={styles.tooltipCard}>
+                  <div className={styles.tooltipTitle}>{point.label}</div>
                   <div>
-                    {d.count} {d.count === 1 ? "survey" : "surveys"} (
-                    {d.percentage}%)
+                    {point.count} {point.count === 1 ? "survey" : "surveys"} (
+                    {point.percentage}%)
                   </div>
                 </div>
               );

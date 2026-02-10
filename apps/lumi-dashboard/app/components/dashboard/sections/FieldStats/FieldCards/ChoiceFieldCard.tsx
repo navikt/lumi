@@ -3,17 +3,17 @@ import { BodyShort, HStack, VStack } from "@navikt/ds-react";
 
 import { DashboardCard } from "~/components/dashboard";
 import type { ChoiceStats } from "~/types/api";
-
+import styles from "./ChoiceFieldCard.module.css";
 import { FieldCardHeader } from "./FieldCardHeader";
 import type { FieldCardProps } from "./types";
 
-const CHOICE_COLORS = [
-  "#3B82F6", // Blue
-  "#22C55E", // Green
-  "#F59E0B", // Amber
-  "#8B5CF6", // Purple
-  "#EC4899", // Pink
-  "#06B6D4", // Cyan
+const CHOICE_BAR_COLOR_CLASSES = [
+  styles.choiceBarBlue,
+  styles.choiceBarGreen,
+  styles.choiceBarAmber,
+  styles.choiceBarPurple,
+  styles.choiceBarPink,
+  styles.choiceBarCyan,
 ];
 
 export function ChoiceFieldCard({ field, totalCount }: FieldCardProps) {
@@ -31,10 +31,7 @@ export function ChoiceFieldCard({ field, totalCount }: FieldCardProps) {
     totalCount > 0 ? Math.round((totalResponses / totalCount) * 100) : 0;
 
   return (
-    <DashboardCard
-      padding="space-20"
-      style={{ display: "flex", flexDirection: "column" }}
-    >
+    <DashboardCard padding="space-20" className={styles.cardContent}>
       <FieldCardHeader
         icon={<ChatElipsisIcon fontSize="1.25rem" aria-hidden />}
         label={field.label}
@@ -44,51 +41,24 @@ export function ChoiceFieldCard({ field, totalCount }: FieldCardProps) {
 
       <VStack gap="space-8" marginBlock="space-12 space-0">
         {choices.map((choice, index) => {
-          const barWidth = maxCount > 0 ? (choice.count / maxCount) * 100 : 0;
-          const color = CHOICE_COLORS[index % CHOICE_COLORS.length];
+          const barColorClass =
+            CHOICE_BAR_COLOR_CLASSES[index % CHOICE_BAR_COLOR_CLASSES.length];
 
           return (
             <VStack key={choice.id} gap="space-4">
               <HStack justify="space-between" align="center">
-                <BodyShort
-                  size="small"
-                  style={{
-                    flex: 1,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
+                <BodyShort size="small" className={styles.choiceLabel}>
                   {choice.label}
                 </BodyShort>
-                <BodyShort
-                  size="small"
-                  style={{
-                    color: "var(--ax-text-neutral-subtle)",
-                    marginLeft: "0.5rem",
-                  }}
-                >
+                <BodyShort size="small" className={styles.choiceValue}>
                   {choice.count} ({choice.percentage}%)
                 </BodyShort>
               </HStack>
-              <div
-                style={{
-                  height: 8,
-                  background: "var(--ax-bg-neutral-moderate)",
-                  borderRadius: 4,
-                  overflow: "hidden",
-                }}
-              >
-                <div
-                  style={{
-                    width: `${barWidth}%`,
-                    height: "100%",
-                    borderRadius: 4,
-                    backgroundColor: color,
-                    transition: "width 0.3s ease",
-                  }}
-                />
-              </div>
+              <progress
+                className={`${styles.choiceBar} ${barColorClass}`}
+                value={choice.count}
+                max={maxCount}
+              />
             </VStack>
           );
         })}

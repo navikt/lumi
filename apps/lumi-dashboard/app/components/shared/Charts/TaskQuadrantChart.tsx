@@ -14,6 +14,7 @@ import {
 import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import { useTheme } from "~/context/ThemeContext";
 import { useTopTasksStats } from "~/hooks/useTopTasksStats";
+import styles from "./Charts.module.css";
 
 const CHART_COLORS = {
   danger: "#ef4444", // Red for crisis zone
@@ -22,11 +23,6 @@ const CHART_COLORS = {
   muted: "#6b7280", // Gray for low priority
   text: "rgba(255, 255, 255, 0.7)",
   textMuted: "rgba(255, 255, 255, 0.5)",
-  tooltip: {
-    bg: "#1c1f24",
-    border: "rgba(255, 255, 255, 0.15)",
-    text: "#ffffff",
-  },
   zones: {
     crisis: "rgba(239, 68, 68, 0.15)",
     watch: "rgba(245, 158, 11, 0.1)",
@@ -43,11 +39,6 @@ const CHART_COLORS_LIGHT = {
   muted: "#9ca3af",
   text: "#262626",
   textMuted: "#545454",
-  tooltip: {
-    bg: "#ffffff",
-    border: "#a0a0a0",
-    text: "#262626",
-  },
   zones: {
     crisis: "rgba(220, 38, 38, 0.08)",
     watch: "rgba(217, 119, 6, 0.06)",
@@ -94,6 +85,19 @@ function getZoneColor(
   }
 }
 
+function getZoneTextClass(zone: TaskDataPoint["zone"]): string {
+  switch (zone) {
+    case "crisis":
+      return styles.tooltipRatingLow;
+    case "watch":
+      return styles.tooltipRatingMedium;
+    case "good":
+      return styles.tooltipRatingGood;
+    case "lowPriority":
+      return styles.tooltipMuted;
+  }
+}
+
 interface TaskQuadrantChartProps {
   /** Callback when a task point is clicked */
   onTaskSelect?: (taskName: string | null) => void;
@@ -116,17 +120,7 @@ export function TaskQuadrantChart({
 
   if (!stats?.tasks || stats.tasks.length === 0) {
     return (
-      <div
-        style={{
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: colors.textMuted,
-        }}
-      >
-        Ingen oppgavedata tilgjengelig
-      </div>
+      <div className={styles.chartNoData}>Ingen oppgavedata tilgjengelig</div>
     );
   }
 
@@ -253,7 +247,7 @@ export function TaskQuadrantChart({
         <Tooltip
           cursor={{ strokeDasharray: "3 3" }}
           content={({ active, payload }) => {
-            if (active && payload && payload.length) {
+            if (active && payload && payload.length && payload[0]) {
               const d = payload[0].payload as TaskDataPoint;
               const zoneLabels = {
                 crisis: "🔴 KRISE - Mange prøver, få lykkes",
@@ -263,42 +257,28 @@ export function TaskQuadrantChart({
               };
               return (
                 <div
-                  style={{
-                    background: colors.tooltip.bg,
-                    color: colors.tooltip.text,
-                    padding: "0.75rem",
-                    borderRadius: "4px",
-                    border: `1px solid ${colors.tooltip.border}`,
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                    maxWidth: "280px",
-                  }}
+                  className={[
+                    styles.tooltipCard,
+                    styles.tooltipCardMaxWidth,
+                  ].join(" ")}
                 >
-                  <div style={{ fontWeight: 600, marginBottom: "0.5rem" }}>
-                    {d.name}
-                  </div>
-                  <div style={{ marginBottom: "0.25rem" }}>
+                  <div className={styles.tooltipPathTitle}>{d.name}</div>
+                  <div className={styles.tooltipTitle}>
                     <strong>Volum:</strong> {d.volume} svar
                   </div>
-                  <div style={{ marginBottom: "0.5rem" }}>
+                  <div className={styles.tooltipTitle}>
                     <strong>Suksessrate:</strong> {d.successRate}%
                   </div>
                   <div
-                    style={{
-                      fontSize: "0.8rem",
-                      color: getZoneColor(d.zone, colors),
-                      fontWeight: 500,
-                    }}
+                    className={[
+                      styles.tooltipTaskZone,
+                      getZoneTextClass(d.zone),
+                    ].join(" ")}
                   >
                     {zoneLabels[d.zone]}
                   </div>
                   {onTaskSelect && (
-                    <div
-                      style={{
-                        marginTop: "0.5rem",
-                        fontSize: "0.75rem",
-                        color: colors.textMuted,
-                      }}
-                    >
+                    <div className={styles.tooltipHint}>
                       Klikk for å filtrere tabellen
                     </div>
                   )}
@@ -327,11 +307,7 @@ export function TaskQuadrantChart({
                     : getZoneColor(entry.zone, colors)
                 }
                 strokeWidth={isSelected ? 3 : 2}
-                style={{
-                  filter: isSelected
-                    ? "drop-shadow(0 0 6px rgba(255,255,255,0.5))"
-                    : undefined,
-                }}
+                className={isSelected ? styles.selectedScatterCell : undefined}
               />
             );
           })}

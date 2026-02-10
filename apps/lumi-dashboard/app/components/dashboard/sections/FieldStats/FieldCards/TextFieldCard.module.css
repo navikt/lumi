@@ -1,0 +1,41 @@
+.cardContent {
+  display: flex;
+  flex-direction: column;
+}
+
+.sectionHeading {
+  color: var(--ax-text-neutral-subtle);
+}
+
+.keywordCount {
+  opacity: 0.5;
+  margin-left: 0.35rem;
+  font-size: 0.75rem;
+}
+
+.responseCard {
+  padding: 0.5rem 0.75rem;
+  background-color: var(--ax-bg-neutral-soft);
+  border-radius: var(--ax-border-radius-medium);
+  border-left: 3px solid var(--ax-border-info);
+}
+
+.responseText {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.responseTime {
+  color: var(--ax-text-neutral-subtle);
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.emptyState {
+  color: var(--ax-text-neutral-subtle);
+  margin-top: 0.5rem;
+  font-style: italic;
+}

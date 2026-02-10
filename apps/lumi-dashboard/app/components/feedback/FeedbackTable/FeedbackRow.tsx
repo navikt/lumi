@@ -50,7 +50,7 @@ export function FeedbackRow({
   const copyText = getMainTextPreview(feedback) || "";
 
   return (
-    <Table.Row onClick={onToggleExpand} style={{ cursor: "pointer" }}>
+    <Table.Row onClick={onToggleExpand} className={styles.rowClickable}>
       {/* Expand/Collapse Button */}
       <Table.DataCell>
         <Button
@@ -99,7 +99,7 @@ export function FeedbackRow({
               <Tooltip
                 content={`${feedback.context.deviceType}${feedback.context.viewportWidth ? ` (${feedback.context.viewportWidth}px)` : ""}`}
               >
-                <span style={{ fontSize: "0.875rem" }}>
+                <span className={styles.deviceIcon}>
                   {deviceToIcon(feedback.context.deviceType)}
                 </span>
               </Tooltip>

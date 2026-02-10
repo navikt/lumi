@@ -1,20 +1,13 @@
 import { BodyShort, Hide, HStack, Label, Show, VStack } from "@navikt/ds-react";
 import { ChartEmptyState } from "~/components/shared/Charts/ChartEmptyState";
 import { ChartLoadingState } from "~/components/shared/Charts/ChartLoadingState";
-import { useTheme } from "~/context/ThemeContext";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import {
   getNpsCategory,
   inferRatingVariantFromDistribution,
 } from "~/utils/ratingDisplay";
-
-const DEVICE_COLORS: Record<string, string> = {
-  desktop: "#60A5FA", // Blue
-  mobile: "#34D399", // Green
-  tablet: "#FBBF24", // Yellow
-  unknown: "#9CA3AF", // Gray
-};
+import styles from "./Charts.module.css";
 
 const DEVICE_ICONS: Record<string, string> = {
   desktop: "🖥️",
@@ -30,24 +23,11 @@ const DEVICE_LABELS: Record<string, string> = {
   unknown: "Ukjent",
 };
 
-const CHART_COLORS = {
-  text: "rgba(255, 255, 255, 0.7)",
-  textMuted: "rgba(255, 255, 255, 0.5)",
-  tooltip: {
-    bg: "#1c1f24",
-    border: "rgba(255, 255, 255, 0.15)",
-    text: "#ffffff",
-  },
-};
-
-const CHART_COLORS_LIGHT = {
-  text: "#262626", // Nav Gray 90
-  textMuted: "#545454", // Nav Gray 60
-  tooltip: {
-    bg: "#ffffff",
-    border: "#a0a0a0", // Nav Gray 40
-    text: "#262626",
-  },
+const DEVICE_COLOR_CLASS_BY_KEY: Record<string, string> = {
+  desktop: styles.deviceColorDesktop,
+  mobile: styles.deviceColorMobile,
+  tablet: styles.deviceColorTablet,
+  unknown: styles.deviceColorUnknown,
 };
 
 interface DeviceBreakdownChartProps {
@@ -67,32 +47,32 @@ function thumbsPositiveRateFromAverage(averageRating: number) {
   return clamp01(averageRating - 1);
 }
 
-function ratingTextColor(
+function ratingTone(
   averageRating: number,
   variant: "stars" | "emoji" | "thumbs" | "nps",
-) {
+): "positive" | "negative" | "neutral" {
   if (variant === "thumbs") {
     const p = thumbsPositiveRateFromAverage(averageRating);
-    if (p >= 0.75) return "var(--ax-text-success)";
-    if (p <= 0.4) return "var(--ax-text-danger)";
-    return "var(--ax-text-default)";
+    if (p >= 0.75) return "positive";
+    if (p <= 0.4) return "negative";
+    return "neutral";
   }
 
   if (variant === "nps") {
     const category = getNpsCategory(averageRating);
     switch (category) {
       case "promoter":
-        return "var(--ax-text-success)";
+        return "positive";
       case "passive":
-        return "var(--ax-text-default)";
+        return "neutral";
       case "detractor":
-        return "var(--ax-text-danger)";
+        return "negative";
     }
   }
 
-  if (averageRating >= 4) return "var(--ax-text-success)";
-  if (averageRating <= 2) return "var(--ax-text-danger)";
-  return "var(--ax-text-default)";
+  if (averageRating >= 4) return "positive";
+  if (averageRating <= 2) return "negative";
+  return "neutral";
 }
 
 function ratingLabel(
@@ -111,11 +91,25 @@ function ratingLabel(
   return `⭐ ${averageRating.toFixed(1)}`;
 }
 
+function ratingToneClass(
+  averageRating: number,
+  variant: "stars" | "emoji" | "thumbs" | "nps",
+): string {
+  const tone = ratingTone(averageRating, variant);
+  switch (tone) {
+    case "positive":
+      return styles.deviceTonePositive;
+    case "negative":
+      return styles.deviceToneNegative;
+    case "neutral":
+      return styles.deviceToneNeutral;
+  }
+}
+
 export function DeviceBreakdownChart({
   showRating,
 }: DeviceBreakdownChartProps = {}) {
   const { data: stats, isPending } = useStats();
-  const { theme } = useTheme();
   const { setParams } = useSearchParams();
 
   const handleDeviceClick = (device: string) => {
@@ -124,8 +118,6 @@ export function DeviceBreakdownChart({
       page: "1",
     });
   };
-
-  const colors = theme === "light" ? CHART_COLORS_LIGHT : CHART_COLORS;
 
   // Auto-detect whether to show rating based on survey type
   // Rating is only relevant for "rating" and "custom" surveys
@@ -154,45 +146,36 @@ export function DeviceBreakdownChart({
       icon: DEVICE_ICONS[device] || "❓",
       count,
       averageRating,
-      color: DEVICE_COLORS[device] || DEVICE_COLORS.unknown,
     }))
     .sort((a, b) => b.count - a.count);
 
   if (data.length === 0) {
-    return (
-      <ChartEmptyState
-        message="Ingen enhetsdata tilgjengelig"
-        color={colors.textMuted}
-      />
-    );
+    return <ChartEmptyState message="Ingen enhetsdata tilgjengelig" />;
   }
 
   const totalCount = data.reduce((sum, d) => sum + d.count, 0);
 
   return (
-    <VStack gap="space-16" style={{ width: "100%" }}>
+    <VStack gap="space-16" className={styles.fullWidth}>
       {/* Mobile: Simple compact list with progress bars */}
       <Hide above="md">
-        <VStack gap="space-12" style={{ width: "100%" }}>
+        <VStack gap="space-12" className={styles.fullWidth}>
           {data.map((d) => {
             const percentage = Math.round((d.count / totalCount) * 100);
+            const deviceColorClass =
+              DEVICE_COLOR_CLASS_BY_KEY[d.device] ?? styles.deviceColorUnknown;
             return (
               <button
                 type="button"
                 key={d.device}
                 onClick={() => handleDeviceClick(d.device)}
-                style={{
-                  cursor: "pointer",
-                  background: "none",
-                  border: "none",
-                  padding: 0,
-                  width: "100%",
-                  textAlign: "left",
-                }}
+                className={[styles.deviceListButton, deviceColorClass].join(
+                  " ",
+                )}
               >
                 <HStack justify="space-between" align="center" gap="space-8">
                   <HStack gap="space-8" align="center">
-                    <span style={{ fontSize: "1rem" }}>{d.icon}</span>
+                    <span className={styles.deviceIconSmall}>{d.icon}</span>
                     <BodyShort size="small" weight="semibold">
                       {d.label}
                     </BodyShort>
@@ -202,41 +185,25 @@ export function DeviceBreakdownChart({
                     {shouldShowRating && d.averageRating != null && (
                       <BodyShort
                         size="small"
-                        style={{
-                          color: ratingTextColor(
-                            d.averageRating,
-                            deviceVariant,
-                          ),
-                        }}
+                        className={ratingToneClass(
+                          d.averageRating,
+                          deviceVariant,
+                        )}
                       >
                         {ratingLabel(d.averageRating, deviceVariant)}
                       </BodyShort>
                     )}
-                    <BodyShort size="small" style={{ color: colors.textMuted }}>
+                    <BodyShort size="small" className={styles.deviceMutedText}>
                       ({percentage}%)
                     </BodyShort>
                   </HStack>
                 </HStack>
-                <div
-                  style={{
-                    width: "100%",
-                    height: "8px",
-                    background: "var(--ax-bg-neutral-moderate)",
-                    borderRadius: "4px",
-                    marginTop: "0.25rem",
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: `${percentage}%`,
-                      height: "100%",
-                      background: d.color,
-                      borderRadius: "4px",
-                      transition: "width 0.3s ease",
-                    }}
-                  />
-                </div>
+                <progress
+                  className={styles.deviceProgress}
+                  value={percentage}
+                  max={100}
+                  aria-label={`Andel for ${d.label}`}
+                />
               </button>
             );
           })}
@@ -251,58 +218,30 @@ export function DeviceBreakdownChart({
               type="button"
               key={d.device}
               onClick={() => handleDeviceClick(d.device)}
-              className="device-card"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.5rem 0.75rem",
-                background: "var(--ax-bg-neutral-soft)",
-                cursor: "pointer",
-                borderRadius: "6px",
-                borderTop: "none",
-                borderRight: "none",
-                borderBottom: "none",
-                borderLeft: `3px solid ${d.color}`,
-                font: "inherit",
-                textAlign: "left",
-              }}
+              className={[
+                styles.deviceCard,
+                DEVICE_COLOR_CLASS_BY_KEY[d.device] ??
+                  styles.deviceColorUnknown,
+              ].join(" ")}
             >
-              <span style={{ fontSize: "1.25rem", cursor: "inherit" }}>
-                {d.icon}
-              </span>
-              <VStack gap="space-0" style={{ cursor: "inherit" }}>
-                <Label size="small" style={{ cursor: "inherit" }}>
-                  {d.label}
-                </Label>
-                <HStack
-                  gap="space-8"
-                  align="center"
-                  style={{ cursor: "inherit" }}
-                >
-                  <BodyShort
-                    size="small"
-                    weight="semibold"
-                    style={{ cursor: "inherit" }}
-                  >
+              <span className={styles.deviceIconLarge}>{d.icon}</span>
+              <VStack gap="space-0">
+                <Label size="small">{d.label}</Label>
+                <HStack gap="space-8" align="center">
+                  <BodyShort size="small" weight="semibold">
                     {d.count}
                   </BodyShort>
-                  <BodyShort
-                    size="small"
-                    style={{ color: colors.textMuted, cursor: "inherit" }}
-                  >
+                  <BodyShort size="small" className={styles.deviceMutedText}>
                     ({Math.round((d.count / totalCount) * 100)}%)
                   </BodyShort>
                   {shouldShowRating && (
                     <BodyShort
                       size="small"
-                      style={{
-                        cursor: "inherit",
-                        color:
-                          d.averageRating != null
-                            ? ratingTextColor(d.averageRating, deviceVariant)
-                            : "var(--ax-text-default)",
-                      }}
+                      className={
+                        d.averageRating != null
+                          ? ratingToneClass(d.averageRating, deviceVariant)
+                          : styles.deviceToneNeutral
+                      }
                     >
                       {d.averageRating != null
                         ? ratingLabel(d.averageRating, deviceVariant)

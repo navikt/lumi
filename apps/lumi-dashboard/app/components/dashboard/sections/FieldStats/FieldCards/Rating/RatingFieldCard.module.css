@@ -1,0 +1,121 @@
+.summaryValue {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.summaryIcon {
+  font-size: 1.5rem;
+  margin-left: 0.5rem;
+}
+
+.summaryMeta {
+  font-size: 0.875rem;
+  margin-left: 0.5rem;
+  color: var(--ax-text-neutral-subtle);
+}
+
+.barRow {
+  font-size: 0.875rem;
+}
+
+.barLabel {
+  text-align: center;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.barLabelThumbs {
+  width: 4rem;
+}
+
+.barLabelStars,
+.barLabelNps {
+  width: 1.5rem;
+}
+
+.barLabelEmoji {
+  width: 1.25rem;
+}
+
+.barTrack {
+  flex: 1;
+  min-width: 0;
+  height: 10px;
+  border: 0;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--ax-bg-neutral-moderate);
+}
+
+.barTrack::-webkit-progress-bar {
+  background: var(--ax-bg-neutral-moderate);
+  border-radius: 5px;
+}
+
+.barFillPositive::-webkit-progress-value {
+  background-color: #22c55e;
+  border-radius: 5px;
+}
+
+.barFillGood::-webkit-progress-value {
+  background-color: #84cc16;
+  border-radius: 5px;
+}
+
+.barFillMedium::-webkit-progress-value {
+  background-color: #eab308;
+  border-radius: 5px;
+}
+
+.barFillWarning::-webkit-progress-value {
+  background-color: #f97316;
+  border-radius: 5px;
+}
+
+.barFillNegative::-webkit-progress-value {
+  background-color: #ef4444;
+  border-radius: 5px;
+}
+
+.barFillNeutral::-webkit-progress-value {
+  background-color: #9ca3af;
+  border-radius: 5px;
+}
+
+.barFillPositive::-moz-progress-bar {
+  background-color: #22c55e;
+  border-radius: 5px;
+}
+
+.barFillGood::-moz-progress-bar {
+  background-color: #84cc16;
+  border-radius: 5px;
+}
+
+.barFillMedium::-moz-progress-bar {
+  background-color: #eab308;
+  border-radius: 5px;
+}
+
+.barFillWarning::-moz-progress-bar {
+  background-color: #f97316;
+  border-radius: 5px;
+}
+
+.barFillNegative::-moz-progress-bar {
+  background-color: #ef4444;
+  border-radius: 5px;
+}
+
+.barFillNeutral::-moz-progress-bar {
+  background-color: #9ca3af;
+  border-radius: 5px;
+}
+
+.barCount {
+  width: 2rem;
+  text-align: right;
+  color: var(--ax-text-neutral-subtle);
+  font-size: 0.75rem;
+}

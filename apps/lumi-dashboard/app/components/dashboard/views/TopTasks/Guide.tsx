@@ -10,6 +10,7 @@ import {
   VStack,
 } from "@navikt/ds-react";
 import { DashboardCard } from "~/components/dashboard";
+import styles from "./TopTasks.module.css";
 
 /**
  * In-app documentation and guidance for the Top Tasks methodology.
@@ -17,25 +18,19 @@ import { DashboardCard } from "~/components/dashboard";
  */
 export function TopTasksGuide() {
   return (
-    <DashboardCard padding="0" style={{ overflow: "hidden" }}>
+    <DashboardCard padding="0" overflow="hidden">
       <Box
         padding={{ xs: "space-16", md: "space-24" }}
         borderWidth="0 0 1 0"
         borderColor="neutral-subtle"
       >
         <HStack gap="space-8" align="center">
-          <span
-            style={{ color: "var(--ax-text-neutral-subtle)", display: "flex" }}
-          >
+          <span className={styles.headerIcon}>
             <InformationIcon fontSize="1.25rem" aria-hidden />
           </span>
           <Heading size="small">Top Tasks Guide</Heading>
         </HStack>
-        <BodyShort
-          size="small"
-          textColor="subtle"
-          style={{ marginTop: "0.25rem" }}
-        >
+        <BodyShort size="small" textColor="subtle" className={styles.introText}>
           Forstå metodikken og metrikker
         </BodyShort>
       </Box>

@@ -1,0 +1,83 @@
+.overflowHidden {
+  overflow: hidden;
+}
+
+.headerIcon {
+  color: var(--ax-text-neutral-subtle);
+  display: flex;
+}
+
+.introText {
+  margin-top: 0.25rem;
+}
+
+.scoreValue {
+  min-width: 3rem;
+  text-align: right;
+}
+
+.scoreHigh {
+  color: var(--ax-text-success);
+}
+
+.scoreMedium {
+  color: var(--ax-text-warning);
+}
+
+.scoreLow {
+  color: var(--ax-text-danger);
+}
+
+.progress {
+  margin-top: 0.25rem;
+  width: 100%;
+  height: 6px;
+  border: 0;
+  border-radius: 3px;
+  overflow: hidden;
+  appearance: none;
+  background-color: var(--ax-bg-neutral-moderate);
+}
+
+.progress::-webkit-progress-bar {
+  background-color: var(--ax-bg-neutral-moderate);
+  border-radius: 3px;
+}
+
+.progressHigh::-webkit-progress-value {
+  background-color: var(--ax-text-success);
+  border-radius: 3px;
+}
+
+.progressMedium::-webkit-progress-value {
+  background-color: var(--ax-text-warning);
+  border-radius: 3px;
+}
+
+.progressLow::-webkit-progress-value {
+  background-color: var(--ax-text-danger);
+  border-radius: 3px;
+}
+
+.progressHigh::-moz-progress-bar {
+  background-color: var(--ax-text-success);
+  border-radius: 3px;
+}
+
+.progressMedium::-moz-progress-bar {
+  background-color: var(--ax-text-warning);
+  border-radius: 3px;
+}
+
+.progressLow::-moz-progress-bar {
+  background-color: var(--ax-text-danger);
+  border-radius: 3px;
+}
+
+.detailsRow {
+  margin-top: 0.25rem;
+}
+
+.formulaText {
+  margin-top: 0.25rem;
+}

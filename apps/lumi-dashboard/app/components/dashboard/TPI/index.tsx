@@ -7,6 +7,7 @@ import { BodyShort, Box, Heading, HStack, VStack } from "@navikt/ds-react";
 import { DashboardCard, DashboardGrid } from "~/components/dashboard";
 import { StatCard } from "~/components/dashboard/sections/StatsCards";
 import type { TopTasksResponse } from "~/types/api";
+import styles from "./TPI.module.css";
 
 interface TPIDashboardProps {
   data: TopTasksResponse;
@@ -36,10 +37,16 @@ export function TPIDashboard({ data }: TPIDashboardProps) {
     return `${minutes}m ${seconds}s`;
   };
 
-  const getTpiColor = (score: number) => {
-    if (score >= 80) return "var(--ax-text-success)";
-    if (score >= 60) return "var(--ax-text-warning)";
-    return "var(--ax-text-danger)";
+  const getTpiScoreClass = (score: number) => {
+    if (score >= 80) return styles.scoreHigh;
+    if (score >= 60) return styles.scoreMedium;
+    return styles.scoreLow;
+  };
+
+  const getTpiProgressClass = (score: number) => {
+    if (score >= 80) return styles.progressHigh;
+    if (score >= 60) return styles.progressMedium;
+    return styles.progressLow;
   };
 
   return (
@@ -72,19 +79,14 @@ export function TPIDashboard({ data }: TPIDashboardProps) {
         />
       </DashboardGrid>
       {/* Per-task TPI breakdown */}
-      <DashboardCard padding="0" style={{ overflow: "hidden" }}>
+      <DashboardCard padding="0" className={styles.overflowHidden}>
         <Box
           padding={{ xs: "space-16", md: "space-24" }}
           borderWidth="0 0 1 0"
           borderColor="neutral-subtle"
         >
           <HStack gap="space-8" align="center">
-            <span
-              style={{
-                color: "var(--ax-text-neutral-subtle)",
-                display: "flex",
-              }}
-            >
+            <span className={styles.headerIcon}>
               <ThumbUpIcon fontSize="1.25rem" aria-hidden />
             </span>
             <Heading size="small">TPI per oppgave</Heading>
@@ -92,7 +94,7 @@ export function TPIDashboard({ data }: TPIDashboardProps) {
           <BodyShort
             size="small"
             textColor="subtle"
-            style={{ marginTop: "0.25rem" }}
+            className={styles.introText}
           >
             TPI = Suksessrate × Tidseffektivitet (høyere er bedre)
           </BodyShort>
@@ -104,66 +106,55 @@ export function TPIDashboard({ data }: TPIDashboardProps) {
               .filter((t) => t.tpiScore !== undefined)
               .sort((a, b) => (b.tpiScore ?? 0) - (a.tpiScore ?? 0))
               .slice(0, 10)
-              .map((task) => (
-                <div key={task.task}>
-                  <HStack justify="space-between" align="baseline" wrap={false}>
-                    <BodyShort size="small" weight="semibold" truncate>
-                      {task.task}
-                    </BodyShort>
-                    <HStack gap="space-12">
-                      {task.avgTimeMs && (
+              .map((task) => {
+                const score = task.tpiScore ?? 0;
+                return (
+                  <div key={task.task}>
+                    <HStack
+                      justify="space-between"
+                      align="baseline"
+                      wrap={false}
+                    >
+                      <BodyShort size="small" weight="semibold" truncate>
+                        {task.task}
+                      </BodyShort>
+                      <HStack gap="space-12">
+                        {task.avgTimeMs && (
+                          <BodyShort size="small" textColor="subtle">
+                            {formatTime(task.avgTimeMs)}
+                          </BodyShort>
+                        )}
+                        <BodyShort
+                          size="small"
+                          weight="semibold"
+                          className={`${styles.scoreValue} ${getTpiScoreClass(score)}`}
+                        >
+                          {task.tpiScore}
+                        </BodyShort>
+                      </HStack>
+                    </HStack>
+
+                    {/* TPI bar */}
+                    <progress
+                      className={`${styles.progress} ${getTpiProgressClass(score)}`}
+                      value={score}
+                      max={100}
+                    />
+
+                    {/* Details row */}
+                    <HStack gap="space-16" className={styles.detailsRow}>
+                      <BodyShort size="small" textColor="subtle">
+                        Suksess: {task.formattedSuccessRate}
+                      </BodyShort>
+                      {task.targetTimeMs && (
                         <BodyShort size="small" textColor="subtle">
-                          {formatTime(task.avgTimeMs)}
+                          Mål: {formatTime(task.targetTimeMs)}
                         </BodyShort>
                       )}
-                      <BodyShort
-                        size="small"
-                        weight="semibold"
-                        style={{
-                          color: getTpiColor(task.tpiScore ?? 0),
-                          minWidth: "3rem",
-                          textAlign: "right",
-                        }}
-                      >
-                        {task.tpiScore}
-                      </BodyShort>
                     </HStack>
-                  </HStack>
-
-                  {/* TPI bar */}
-                  <div
-                    style={{
-                      marginTop: "0.25rem",
-                      height: "6px",
-                      borderRadius: "3px",
-                      backgroundColor: "var(--ax-bg-neutral-moderate)",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: `${task.tpiScore ?? 0}%`,
-                        height: "100%",
-                        borderRadius: "3px",
-                        backgroundColor: getTpiColor(task.tpiScore ?? 0),
-                        transition: "width 0.3s ease",
-                      }}
-                    />
                   </div>
-
-                  {/* Details row */}
-                  <HStack gap="space-16" style={{ marginTop: "0.25rem" }}>
-                    <BodyShort size="small" textColor="subtle">
-                      Suksess: {task.formattedSuccessRate}
-                    </BodyShort>
-                    {task.targetTimeMs && (
-                      <BodyShort size="small" textColor="subtle">
-                        Mål: {formatTime(task.targetTimeMs)}
-                      </BodyShort>
-                    )}
-                  </HStack>
-                </div>
-              ))}
+                );
+              })}
           </VStack>
         </Box>
 
@@ -181,7 +172,7 @@ export function TPIDashboard({ data }: TPIDashboardProps) {
           <BodyShort
             size="small"
             textColor="subtle"
-            style={{ marginTop: "0.25rem" }}
+            className={styles.formulaText}
           >
             Høy TPI = brukere fullfører raskt og vellykket. Lav TPI = treg
             fullføring eller mange feil.

@@ -89,15 +89,15 @@ export function FeedbackTable() {
               <Table>
                 <Table.Header>
                   <Table.Row>
-                    <Table.HeaderCell style={{ width: 40 }} />
-                    <Table.HeaderCell style={{ width: 100 }}>
+                    <Table.HeaderCell className={styles.headerCellExpand} />
+                    <Table.HeaderCell className={styles.headerCellDate}>
                       Dato
                     </Table.HeaderCell>
                     <Table.HeaderCell>Tilbakemelding</Table.HeaderCell>
-                    <Table.HeaderCell style={{ width: 200 }}>
+                    <Table.HeaderCell className={styles.headerCellApp}>
                       App
                     </Table.HeaderCell>
-                    <Table.HeaderCell style={{ width: 80 }} />
+                    <Table.HeaderCell className={styles.headerCellActions} />
                   </Table.Row>
                 </Table.Header>
                 <Table.Body>

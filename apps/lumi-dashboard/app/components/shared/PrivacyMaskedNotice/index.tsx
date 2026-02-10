@@ -1,4 +1,4 @@
-import { Alert, BodyShort, Heading, VStack } from "@navikt/ds-react";
+import { Alert, BodyShort, Box, Heading, VStack } from "@navikt/ds-react";
 import type { PrivacyInfo } from "~/types/api";
 
 interface PrivacyMaskedNoticeProps {
@@ -11,15 +11,17 @@ interface PrivacyMaskedNoticeProps {
  */
 export function PrivacyMaskedNotice({ privacy }: PrivacyMaskedNoticeProps) {
   return (
-    <Alert variant="info" style={{ marginBlock: "1rem" }}>
-      <VStack gap="space-4">
-        <Heading size="xsmall">For få svar til å vise statistikk</Heading>
-        <BodyShort size="small">
-          For å beskytte personvernet til de som har svart, kreves det minst{" "}
-          {privacy.threshold} svar før statistikk vises. Akkurat nå har denne
-          undersøkelsen for få svar.
-        </BodyShort>
-      </VStack>
-    </Alert>
+    <Box marginBlock="space-16">
+      <Alert variant="info">
+        <VStack gap="space-4">
+          <Heading size="xsmall">For få svar til å vise statistikk</Heading>
+          <BodyShort size="small">
+            For å beskytte personvernet til de som har svart, kreves det minst{" "}
+            {privacy.threshold} svar før statistikk vises. Akkurat nå har denne
+            undersøkelsen for få svar.
+          </BodyShort>
+        </VStack>
+      </Alert>
+    </Box>
   );
 }
