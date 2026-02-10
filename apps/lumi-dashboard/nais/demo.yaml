@@ -32,6 +32,8 @@ spec:
   env:
     - name: NODE_ENV
       value: production
+    - name: ENABLE_STRICT_CSP_REPORT_ONLY
+      value: "false"
     - name: USE_MOCK_DATA
       value: "true"
     - name: LUMI_API_URL
