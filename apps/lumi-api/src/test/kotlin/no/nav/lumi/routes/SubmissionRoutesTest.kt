@@ -178,4 +178,158 @@ class SubmissionRoutesTest : FunSpec({
             response.status shouldBe HttpStatusCode.PayloadTooLarge
         }
     }
+
+    test("should reject submissions with too many answers") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+
+            val answers = (1..51).joinToString(",") { index ->
+                """
+                {
+                  "fieldId": "q$index",
+                  "fieldType": "TEXT",
+                  "question": { "label": "Spm $index" },
+                  "value": { "type": "text", "text": "ok" }
+                }
+                """.trimIndent()
+            }
+
+            val payload = """
+                {
+                  "schemaVersion": 1,
+                  "surveyId": "dp-feedback",
+                  "surveyType": "rating",
+                  "submittedAt": "2026-01-10T12:00:12Z",
+                  "answers": [$answers]
+                }
+            """.trimIndent()
+
+            val response = client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(payload)
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            val message = Json.parseToJsonElement(response.bodyAsText()).jsonObject["message"]?.jsonPrimitive?.content
+            (message?.contains("answers max count", ignoreCase = true) == true) shouldBe true
+        }
+    }
+
+    test("should reject text answers exceeding max length") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+
+            val tooLongText = "x".repeat(2_001)
+            val payload = """
+                {
+                  "schemaVersion": 1,
+                  "surveyId": "dp-feedback",
+                  "surveyType": "rating",
+                  "submittedAt": "2026-01-10T12:00:12Z",
+                  "answers": [
+                    {
+                      "fieldId": "feedback",
+                      "fieldType": "TEXT",
+                      "question": { "label": "Hvorfor?" },
+                      "value": { "type": "text", "text": "$tooLongText" }
+                    }
+                  ]
+                }
+            """.trimIndent()
+
+            val response = client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(payload)
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            val message = Json.parseToJsonElement(response.bodyAsText()).jsonObject["message"]?.jsonPrimitive?.content
+            (message?.contains("text answer max length", ignoreCase = true) == true) shouldBe true
+        }
+    }
+
+    test("should reject submissions with too many context tags") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+
+            val tags = (1..21).joinToString(",") { index -> """"k$index":"v$index"""" }
+            val payload = """
+                {
+                  "schemaVersion": 1,
+                  "surveyId": "dp-feedback",
+                  "surveyType": "rating",
+                  "submittedAt": "2026-01-10T12:00:12Z",
+                  "context": {
+                    "tags": { $tags }
+                  },
+                  "answers": [
+                    {
+                      "fieldId": "rating",
+                      "fieldType": "RATING",
+                      "question": { "label": "Hvor fornøyd er du?" },
+                      "value": { "type": "rating", "rating": 4, "ratingVariant": "emoji", "ratingScale": 5 }
+                    }
+                  ]
+                }
+            """.trimIndent()
+
+            val response = client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(payload)
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            val message = Json.parseToJsonElement(response.bodyAsText()).jsonObject["message"]?.jsonPrimitive?.content
+            (message?.contains("context.tags max count", ignoreCase = true) == true) shouldBe true
+        }
+    }
+
+    test("should reject submissions with too deep context debug object") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+
+            val payload = """
+                {
+                  "schemaVersion": 1,
+                  "surveyId": "dp-feedback",
+                  "surveyType": "rating",
+                  "submittedAt": "2026-01-10T12:00:12Z",
+                  "context": {
+                    "debug": {
+                      "a": {
+                        "b": {
+                          "c": {
+                            "d": {
+                              "e": "value"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "answers": [
+                    {
+                      "fieldId": "rating",
+                      "fieldType": "RATING",
+                      "question": { "label": "Hvor fornøyd er du?" },
+                      "value": { "type": "rating", "rating": 4, "ratingVariant": "emoji", "ratingScale": 5 }
+                    }
+                  ]
+                }
+            """.trimIndent()
+
+            val response = client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(payload)
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            val message = Json.parseToJsonElement(response.bodyAsText()).jsonObject["message"]?.jsonPrimitive?.content
+            (message?.contains("context.debug max depth", ignoreCase = true) == true) shouldBe true
+        }
+    }
 })

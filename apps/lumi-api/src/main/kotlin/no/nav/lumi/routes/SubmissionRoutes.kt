@@ -8,6 +8,7 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import no.nav.lumi.config.SubmissionRateLimit
 import no.nav.lumi.config.auth.AzureSubmissionAuthPlugin
 import no.nav.lumi.config.auth.TokenXSubmissionAuthPlugin
@@ -26,6 +27,15 @@ private val log = LoggerFactory.getLogger("SubmissionRoutes")
 private val defaultFeedbackService = FeedbackService()
 
 private const val MAX_SUBMISSION_BYTES = 1_048_576L
+private const val MAX_SURVEY_ID_LENGTH = 200
+private const val MAX_ANSWERS_PER_SUBMISSION = 50
+private const val MAX_TEXT_ANSWER_LENGTH = 2_000
+private const val MAX_CONTEXT_TAGS = 20
+private const val MAX_CONTEXT_TAG_KEY_LENGTH = 50
+private const val MAX_CONTEXT_TAG_VALUE_LENGTH = 100
+private const val MAX_CONTEXT_DEBUG_BYTES = 8_192
+private const val MAX_CONTEXT_DEBUG_DEPTH = 4
+private const val MAX_CONTEXT_DEBUG_KEYS = 50
 
 private val strictJson = Json {
     ignoreUnknownKeys = false
@@ -72,6 +82,11 @@ private fun validateSubmissionV1(submission: FeedbackSubmissionV1) {
     if (submission.surveyId.isBlank()) {
         throw ApiErrorException.BadRequestException("Invalid payload: surveyId must be non-blank")
     }
+    if (submission.surveyId.length > MAX_SURVEY_ID_LENGTH) {
+        throw ApiErrorException.BadRequestException(
+            "Invalid payload: surveyId max length is $MAX_SURVEY_ID_LENGTH"
+        )
+    }
 
     runCatching { Instant.parse(submission.submittedAt) }
         .getOrElse { throw ApiErrorException.BadRequestException("Invalid payload: submittedAt must be an ISO instant") }
@@ -83,6 +98,11 @@ private fun validateSubmissionV1(submission: FeedbackSubmissionV1) {
 
     if (submission.answers.isEmpty()) {
         throw ApiErrorException.BadRequestException("Invalid payload: answers must be non-empty")
+    }
+    if (submission.answers.size > MAX_ANSWERS_PER_SUBMISSION) {
+        throw ApiErrorException.BadRequestException(
+            "Invalid payload: answers max count is $MAX_ANSWERS_PER_SUBMISSION"
+        )
     }
 
     val duplicateFieldIds = submission.answers
@@ -97,7 +117,60 @@ private fun validateSubmissionV1(submission: FeedbackSubmissionV1) {
         )
     }
 
+    submission.context?.let { context ->
+        val tags = context.tags
+        if (tags != null) {
+            if (tags.size > MAX_CONTEXT_TAGS) {
+                throw ApiErrorException.BadRequestException(
+                    "Invalid payload: context.tags max count is $MAX_CONTEXT_TAGS"
+                )
+            }
+            for ((key, value) in tags) {
+                if (key.isBlank()) {
+                    throw ApiErrorException.BadRequestException("Invalid payload: context.tags keys must be non-blank")
+                }
+                if (key.length > MAX_CONTEXT_TAG_KEY_LENGTH) {
+                    throw ApiErrorException.BadRequestException(
+                        "Invalid payload: context.tags key max length is $MAX_CONTEXT_TAG_KEY_LENGTH"
+                    )
+                }
+                if (value.content.length > MAX_CONTEXT_TAG_VALUE_LENGTH) {
+                    throw ApiErrorException.BadRequestException(
+                        "Invalid payload: context.tags value max length is $MAX_CONTEXT_TAG_VALUE_LENGTH"
+                    )
+                }
+            }
+        }
+
+        context.debug?.let { debug ->
+            val debugBytes = debug.toString().toByteArray().size
+            if (debugBytes > MAX_CONTEXT_DEBUG_BYTES) {
+                throw ApiErrorException.BadRequestException(
+                    "Invalid payload: context.debug max size is $MAX_CONTEXT_DEBUG_BYTES bytes"
+                )
+            }
+
+            val debugDepth = maxJsonDepth(debug)
+            if (debugDepth > MAX_CONTEXT_DEBUG_DEPTH) {
+                throw ApiErrorException.BadRequestException(
+                    "Invalid payload: context.debug max depth is $MAX_CONTEXT_DEBUG_DEPTH"
+                )
+            }
+
+            val debugKeyCount = totalJsonKeys(debug)
+            if (debugKeyCount > MAX_CONTEXT_DEBUG_KEYS) {
+                throw ApiErrorException.BadRequestException(
+                    "Invalid payload: context.debug max key count is $MAX_CONTEXT_DEBUG_KEYS"
+                )
+            }
+        }
+    }
+
     submission.answers.forEach { answer ->
+        if (answer.fieldId.isBlank()) {
+            throw ApiErrorException.BadRequestException("Invalid payload: answers.fieldId must be non-blank")
+        }
+
         when (val value = answer.value) {
             is AnswerValue.Rating -> {
                 val variant = value.ratingVariant
@@ -126,7 +199,11 @@ private fun validateSubmissionV1(submission: FeedbackSubmissionV1) {
             }
 
             is AnswerValue.Text -> {
-                // No extra validation (PII redaction happens before storage)
+                if (value.text.length > MAX_TEXT_ANSWER_LENGTH) {
+                    throw ApiErrorException.BadRequestException(
+                        "Invalid payload: text answer max length is $MAX_TEXT_ANSWER_LENGTH"
+                    )
+                }
             }
 
             is AnswerValue.SingleChoice -> {
@@ -148,6 +225,42 @@ private fun validateSubmissionV1(submission: FeedbackSubmissionV1) {
             }
         }
     }
+}
+
+private fun maxJsonDepth(jsonObject: JsonObject): Int {
+    fun depth(element: JsonElement, currentDepth: Int): Int {
+        return when (element) {
+            is JsonObject -> {
+                if (element.isEmpty()) {
+                    currentDepth
+                } else {
+                    element.values.maxOf { value -> depth(value, currentDepth + 1) }
+                }
+            }
+            is kotlinx.serialization.json.JsonArray -> {
+                if (element.isEmpty()) {
+                    currentDepth
+                } else {
+                    element.maxOf { value -> depth(value, currentDepth + 1) }
+                }
+            }
+            else -> currentDepth
+        }
+    }
+
+    return depth(jsonObject, currentDepth = 0)
+}
+
+private fun totalJsonKeys(jsonObject: JsonObject): Int {
+    fun count(element: JsonElement): Int {
+        return when (element) {
+            is JsonObject -> element.size + element.values.sumOf(::count)
+            is kotlinx.serialization.json.JsonArray -> element.sumOf(::count)
+            else -> 0
+        }
+    }
+
+    return count(jsonObject)
 }
 
 private suspend fun handleSubmissionV1(
