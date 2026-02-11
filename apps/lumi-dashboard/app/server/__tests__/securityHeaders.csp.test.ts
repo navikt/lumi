@@ -30,7 +30,7 @@ describe("security headers", () => {
     expect(scriptSrcDirective).toContain("'nonce-test-nonce'");
   });
 
-  it("uses CSP level 3 style directives in enforced mode", () => {
+  it("uses CSP level 3 style directives in compatibility mode by default", () => {
     const csp = buildCspHeaderValue({ isDev: false });
 
     const directives = csp.split(";").map((d) => d.trim());
@@ -42,8 +42,8 @@ describe("security headers", () => {
       d.startsWith("style-src-attr "),
     );
 
-    expect(styleSrc).not.toContain("'unsafe-inline'");
+    expect(styleSrc).toContain("'unsafe-inline'");
     expect(styleSrcElem).toBe("style-src-elem 'self' https://cdn.nav.no");
-    expect(styleSrcAttr).toBe("style-src-attr 'none'");
+    expect(styleSrcAttr).toBe("style-src-attr 'unsafe-inline'");
   });
 });
