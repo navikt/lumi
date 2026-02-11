@@ -332,4 +332,42 @@ class SubmissionRoutesTest : FunSpec({
             (message?.contains("context.debug max depth", ignoreCase = true) == true) shouldBe true
         }
     }
+
+    test("should reject submissions with null context tag values") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+
+            val payload = """
+                {
+                  "schemaVersion": 1,
+                  "surveyId": "dp-feedback",
+                  "surveyType": "rating",
+                  "submittedAt": "2026-01-10T12:00:12Z",
+                  "context": {
+                    "tags": {
+                      "rolle": null
+                    }
+                  },
+                  "answers": [
+                    {
+                      "fieldId": "rating",
+                      "fieldType": "RATING",
+                      "question": { "label": "Hvor fornøyd er du?" },
+                      "value": { "type": "rating", "rating": 4, "ratingVariant": "emoji", "ratingScale": 5 }
+                    }
+                  ]
+                }
+            """.trimIndent()
+
+            val response = client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(payload)
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            val message = Json.parseToJsonElement(response.bodyAsText()).jsonObject["message"]?.jsonPrimitive?.content
+            (message?.contains("context.tags values must be non-blank", ignoreCase = true) == true) shouldBe true
+        }
+    }
 })

@@ -2,6 +2,7 @@ package no.nav.lumi.validation
 
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.AnswerValue
 import no.nav.lumi.domain.FeedbackSubmissionV1
@@ -76,7 +77,13 @@ object SubmissionValidator {
                             "Invalid payload: context.tags key max length is $MAX_CONTEXT_TAG_KEY_LENGTH"
                         )
                     }
-                    if (value.content.length > MAX_CONTEXT_TAG_VALUE_LENGTH) {
+                    val tagValue = value.contentOrNull?.trim()
+                    if (tagValue.isNullOrEmpty()) {
+                        throw ApiErrorException.BadRequestException(
+                            "Invalid payload: context.tags values must be non-blank"
+                        )
+                    }
+                    if (tagValue.length > MAX_CONTEXT_TAG_VALUE_LENGTH) {
                         throw ApiErrorException.BadRequestException(
                             "Invalid payload: context.tags value max length is $MAX_CONTEXT_TAG_VALUE_LENGTH"
                         )
