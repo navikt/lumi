@@ -59,6 +59,11 @@ flowchart LR
 
 - Survey widget: [`packages/lumi-survey/README.md`](packages/lumi-survey/README.md)
 - API og tilgang: [`apps/lumi-api/README.md`](apps/lumi-api/README.md)
+- Pentest kickoff-underlag: [`docs/security/pentest-kickoff.md`](docs/security/pentest-kickoff.md)
+- Arkitektur og trust boundaries: [`docs/security/trust-boundary-architecture.md`](docs/security/trust-boundary-architecture.md)
+- OpenAPI (utkast): [`docs/openapi/lumi-api.yaml`](docs/openapi/lumi-api.yaml)
+
+Merk: OpenAPI-specen er foreløpig statisk dokumentasjon i repo, ikke et deployet Swagger-endepunkt.
 
 ## TanStack MCP (lokalt script)
 
