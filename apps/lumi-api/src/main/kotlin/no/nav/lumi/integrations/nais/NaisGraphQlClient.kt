@@ -91,6 +91,7 @@ class NaisGraphQlClient private constructor(
     private val userAgent: String = "lumi-api"
 
     private val hasLoggedFirstSuccess = AtomicBoolean(false)
+    private val hasLoggedViewerUserType = AtomicBoolean(false)
     // Health tracking
     private val lastSuccessfulCall = AtomicReference<Instant?>(null)
     private val lastError = AtomicReference<String?>(null)
@@ -120,6 +121,10 @@ class NaisGraphQlClient private constructor(
     
     private val cacheMissCounter = Counter.builder("nais_api_cache_misses_total")
         .description("Number of cache misses for NAIS API lookups")
+        .register(appMicrometerRegistry)
+    
+    private val viewerUserTypeCounter = Counter.builder("nais_api_viewer_user_type_total")
+        .description("Number of times NAIS viewer query resolved to User type")
         .register(appMicrometerRegistry)
 
     /**
@@ -316,6 +321,12 @@ class NaisGraphQlClient private constructor(
 
         val me = body.data?.me
         val teams = if (me?.typename == "User") {
+            viewerUserTypeCounter.increment()
+            if (hasLoggedViewerUserType.compareAndSet(false, true)) {
+                log.warn(
+                    "NAIS viewer query resolved as User. Verify NAIS_API_KEY/TEAMS_TOKEN is a service account token in NAIS."
+                )
+            }
             me.teams?.nodes
                 ?.mapNotNull { it.team.slug }
                 ?.toSet()

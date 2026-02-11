@@ -291,6 +291,9 @@ NAIS API-integrasjonen eksponerer Prometheus-metrikker på `/internal/prometheus
 | `nais_api_call_duration_seconds` | Varighet på NAIS API-kall |
 | `nais_api_cache_hits_total` | Antall cache-treff |
 | `nais_api_cache_misses_total` | Antall cache-miss |
+| `nais_api_viewer_user_type_total` | Antall ganger `me`-query ga `User` (bør normalt være 0 med service account-token) |
+| `team_authorization_viewer_fallback_total{reason=\"missing_email_claim\"}` | Fallback til viewer pga manglende e-postclaim i bruker-token |
+| `team_authorization_viewer_fallback_total{reason=\"empty_user_lookup\"}` | Fallback til viewer etter tomt `user(email)`-oppslag |
 
 **Notater:**
 
