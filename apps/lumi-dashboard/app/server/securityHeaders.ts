@@ -9,26 +9,20 @@ export function sha256Base64(value: string): string {
 export function buildCspHeaderValue(options?: {
   isDev?: boolean;
   nonce?: string;
-  strictStyleMode?: boolean;
 }): string {
   const themeInitHash = sha256Base64(THEME_INIT_SCRIPT);
   const isDev = options?.isDev === true;
   const nonce = options?.nonce;
-  const strictStyleMode = options?.strictStyleMode === true;
 
   const connectSrc = isDev ? "'self' ws: wss:" : "'self'";
   const scriptSrcParts = ["'self'", "https://cdn.nav.no"];
   const styleSrcParts = ["'self'", "https://cdn.nav.no"];
-  const styleSrcAttr = strictStyleMode ? "'none'" : "'unsafe-inline'";
 
   if (nonce) {
     scriptSrcParts.push(`'nonce-${nonce}'`);
   }
 
   scriptSrcParts.push(`'sha256-${themeInitHash}'`);
-  if (!strictStyleMode) {
-    styleSrcParts.push("'unsafe-inline'");
-  }
 
   return [
     "default-src 'self'",
@@ -37,10 +31,9 @@ export function buildCspHeaderValue(options?: {
     // CSP level 3 split:
     // - style-src-elem governs <style> and stylesheet links
     // - style-src-attr governs style="" attributes
-    // We keep style attrs allowed in enforced mode while we still rely on
-    // runtime inline styles from third-party UI/chart libraries.
+    // Enforce strict mode: disallow all inline style attributes.
     "style-src-elem 'self' https://cdn.nav.no",
-    `style-src-attr ${styleSrcAttr}`,
+    "style-src-attr 'none'",
     "img-src 'self' data: https://cdn.nav.no",
     "font-src 'self' data: https://cdn.nav.no",
     `connect-src ${connectSrc}`,

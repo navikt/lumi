@@ -10,8 +10,6 @@ const securityHeadersMiddleware = createMiddleware().server(
     const { randomBytes } = await import("node:crypto");
     const nonce = randomBytes(16).toString("base64");
     const isDev = process.env.NODE_ENV !== "production";
-    const enableStrictCspReportOnly =
-      process.env.ENABLE_STRICT_CSP_REPORT_ONLY === "true";
 
     const result = await next({
       context: {
@@ -28,19 +26,6 @@ const securityHeadersMiddleware = createMiddleware().server(
         nonce,
       }),
     );
-
-    if (enableStrictCspReportOnly) {
-      result.response.headers.set(
-        "Content-Security-Policy-Report-Only",
-        buildCspHeaderValue({
-          isDev,
-          nonce,
-          strictStyleMode: true,
-        }),
-      );
-    } else {
-      result.response.headers.delete("Content-Security-Policy-Report-Only");
-    }
 
     return result;
   },
