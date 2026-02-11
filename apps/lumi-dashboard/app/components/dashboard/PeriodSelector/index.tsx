@@ -155,36 +155,40 @@ export function PeriodSelector() {
         placement={isMobile ? "bottom" : "bottom-start"}
       >
         <Popover.Content className={styles.popoverContent}>
-          {/* Mobile: Stack vertically */}
-          <Show above="md">
-            <HStack gap="space-16" align="start">
-              {/* Presets Column */}
-              <VStack gap="space-8" className={styles.desktopPresets}>
-                <Label size="small">Hurtigvalg</Label>
-                <PresetButtons onSelect={handlePreset} />
-              </VStack>
+          {open && (
+            <>
+              {/* Desktop: Side by side */}
+              <Show above="md">
+                <HStack gap="space-16" align="start">
+                  {/* Presets Column */}
+                  <VStack gap="space-8" className={styles.desktopPresets}>
+                    <Label size="small">Hurtigvalg</Label>
+                    <PresetButtons onSelect={handlePreset} />
+                  </VStack>
 
-              {/* Divider */}
-              <div className={styles.verticalDivider} />
+                  {/* Divider */}
+                  <div className={styles.verticalDivider} />
 
-              {/* Custom Range Column */}
-              {open && <CustomPeriodInputs onApply={handleApply} />}
-            </HStack>
-          </Show>
+                  {/* Custom Range Column */}
+                  <CustomPeriodInputs onApply={handleApply} />
+                </HStack>
+              </Show>
 
-          {/* Mobile: Vertical layout */}
-          <Hide above="md">
-            <VStack gap="space-16">
-              <VStack gap="space-8">
-                <Label size="small">Hurtigvalg</Label>
-                <PresetButtons onSelect={handlePreset} compact />
-              </VStack>
+              {/* Mobile: Vertical layout */}
+              <Hide above="md">
+                <VStack gap="space-16">
+                  <VStack gap="space-8">
+                    <Label size="small">Hurtigvalg</Label>
+                    <PresetButtons onSelect={handlePreset} compact />
+                  </VStack>
 
-              <div className={styles.horizontalDivider} />
+                  <div className={styles.horizontalDivider} />
 
-              {open && <CustomPeriodInputs onApply={handleApply} />}
-            </VStack>
-          </Hide>
+                  <CustomPeriodInputs onApply={handleApply} />
+                </VStack>
+              </Hide>
+            </>
+          )}
         </Popover.Content>
       </Popover>
     </>

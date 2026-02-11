@@ -293,7 +293,13 @@ export function FeedbackCard({
           <Button
             variant="tertiary"
             size="xsmall"
-            icon={isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+            icon={
+              isExpanded ? (
+                <ChevronUpIcon aria-hidden />
+              ) : (
+                <ChevronDownIcon aria-hidden />
+              )
+            }
             onClick={(e) => {
               e.stopPropagation();
               onToggleExpand();
