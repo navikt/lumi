@@ -29,4 +29,21 @@ describe("security headers", () => {
 
     expect(scriptSrcDirective).toContain("'nonce-test-nonce'");
   });
+
+  it("uses CSP level 3 style directives in compatibility mode by default", () => {
+    const csp = buildCspHeaderValue({ isDev: false });
+
+    const directives = csp.split(";").map((d) => d.trim());
+    const styleSrc = directives.find((d) => d.startsWith("style-src "));
+    const styleSrcElem = directives.find((d) =>
+      d.startsWith("style-src-elem "),
+    );
+    const styleSrcAttr = directives.find((d) =>
+      d.startsWith("style-src-attr "),
+    );
+
+    expect(styleSrc).toContain("'unsafe-inline'");
+    expect(styleSrcElem).toBe("style-src-elem 'self' https://cdn.nav.no");
+    expect(styleSrcAttr).toBe("style-src-attr 'unsafe-inline'");
+  });
 });

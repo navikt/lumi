@@ -16,6 +16,7 @@ export function buildCspHeaderValue(options?: {
 
   const connectSrc = isDev ? "'self' ws: wss:" : "'self'";
   const scriptSrcParts = ["'self'", "https://cdn.nav.no"];
+  const styleSrcParts = ["'self'", "https://cdn.nav.no", "'unsafe-inline'"];
 
   if (nonce) {
     scriptSrcParts.push(`'nonce-${nonce}'`);
@@ -26,10 +27,12 @@ export function buildCspHeaderValue(options?: {
   return [
     "default-src 'self'",
     `script-src ${scriptSrcParts.join(" ")}`,
-    // TODO: Remove 'unsafe-inline' from style-src once Recharts (which injects
-    // inline styles on SVG/container elements) is replaced or supports nonce.
-    // All project-owned inline styles have been migrated to CSS modules.
-    "style-src 'self' https://cdn.nav.no 'unsafe-inline'",
+    `style-src ${styleSrcParts.join(" ")}`,
+    // CSP level 3 split:
+    // - style-src-elem governs <style> and stylesheet links
+    // - style-src-attr governs style="" attributes
+    "style-src-elem 'self' https://cdn.nav.no",
+    "style-src-attr 'unsafe-inline'",
     "img-src 'self' data: https://cdn.nav.no",
     "font-src 'self' data: https://cdn.nav.no",
     `connect-src ${connectSrc}`,
