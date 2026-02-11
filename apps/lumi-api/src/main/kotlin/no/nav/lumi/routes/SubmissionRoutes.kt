@@ -7,18 +7,15 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
 import no.nav.lumi.config.SubmissionRateLimit
 import no.nav.lumi.config.auth.AzureSubmissionAuthPlugin
 import no.nav.lumi.config.auth.TokenXSubmissionAuthPlugin
 import no.nav.lumi.config.auth.getCallerIdentity
 import no.nav.lumi.config.exception.ApiErrorException
-import no.nav.lumi.domain.AnswerValue
 import no.nav.lumi.domain.FeedbackSubmissionV1
-import no.nav.lumi.domain.RatingVariant
 import no.nav.lumi.service.FeedbackService
+import no.nav.lumi.validation.SubmissionValidator
 import org.slf4j.LoggerFactory
-import java.time.Instant
 import io.ktor.utils.io.core.readText
 import io.ktor.utils.io.readRemaining
 
@@ -62,94 +59,6 @@ fun Route.submissionRoutes(feedbackService: FeedbackService = defaultFeedbackSer
     }
 }
 
-private fun validateSubmissionV1(submission: FeedbackSubmissionV1) {
-    if (submission.schemaVersion != 1) {
-        throw ApiErrorException.BadRequestException(
-            "UNSUPPORTED_SCHEMA: schemaVersion=${submission.schemaVersion} is not supported"
-        )
-    }
-
-    if (submission.surveyId.isBlank()) {
-        throw ApiErrorException.BadRequestException("Invalid payload: surveyId must be non-blank")
-    }
-
-    runCatching { Instant.parse(submission.submittedAt) }
-        .getOrElse { throw ApiErrorException.BadRequestException("Invalid payload: submittedAt must be an ISO instant") }
-
-    if (submission.startedAt != null) {
-        runCatching { Instant.parse(submission.startedAt) }
-            .getOrElse { throw ApiErrorException.BadRequestException("Invalid payload: startedAt must be an ISO instant") }
-    }
-
-    if (submission.answers.isEmpty()) {
-        throw ApiErrorException.BadRequestException("Invalid payload: answers must be non-empty")
-    }
-
-    val duplicateFieldIds = submission.answers
-        .groupBy { it.fieldId }
-        .filterValues { it.size > 1 }
-        .keys
-        .toList()
-
-    if (duplicateFieldIds.isNotEmpty()) {
-        throw ApiErrorException.BadRequestException(
-            "Invalid payload: answers.fieldId must be unique (duplicates: ${duplicateFieldIds.joinToString(",")})"
-        )
-    }
-
-    submission.answers.forEach { answer ->
-        when (val value = answer.value) {
-            is AnswerValue.Rating -> {
-                val variant = value.ratingVariant
-                    ?: throw ApiErrorException.BadRequestException("Invalid payload: ratingVariant is required for rating answers")
-                val scale = value.ratingScale
-                    ?: throw ApiErrorException.BadRequestException("Invalid payload: ratingScale is required for rating answers")
-
-                val expectedScale = RatingVariant.getScale(variant)
-                if (scale != expectedScale) {
-                    throw ApiErrorException.BadRequestException(
-                        "Invalid payload: ratingScale=$scale does not match ratingVariant=$variant (expected $expectedScale)"
-                    )
-                }
-
-                val (minRating, maxRating) = if (variant == RatingVariant.NPS) {
-                    0 to 10
-                } else {
-                    1 to scale
-                }
-
-                if (value.rating !in minRating..maxRating) {
-                    throw ApiErrorException.BadRequestException(
-                        "Invalid payload: rating=${value.rating} out of range for ratingVariant=$variant ($minRating-$maxRating)"
-                    )
-                }
-            }
-
-            is AnswerValue.Text -> {
-                // No extra validation (PII redaction happens before storage)
-            }
-
-            is AnswerValue.SingleChoice -> {
-                if (value.selectedOptionId.isBlank()) {
-                    throw ApiErrorException.BadRequestException("Invalid payload: selectedOptionId must be non-blank")
-                }
-            }
-
-            is AnswerValue.MultiChoice -> {
-                if (value.selectedOptionIds.isEmpty()) {
-                    throw ApiErrorException.BadRequestException("Invalid payload: selectedOptionIds must be non-empty")
-                }
-            }
-
-            is AnswerValue.DateValue -> {
-                if (value.date.isBlank()) {
-                    throw ApiErrorException.BadRequestException("Invalid payload: date must be non-blank")
-                }
-            }
-        }
-    }
-}
-
 private suspend fun handleSubmissionV1(
     call: io.ktor.server.application.ApplicationCall,
     feedbackService: FeedbackService
@@ -170,7 +79,7 @@ private suspend fun handleSubmissionV1(
         throw ApiErrorException.BadRequestException("Invalid payload")
     }
 
-    validateSubmissionV1(submission)
+    SubmissionValidator.validateSubmissionV1(submission)
 
     val id = feedbackService.save(
         feedbackJson = body,
