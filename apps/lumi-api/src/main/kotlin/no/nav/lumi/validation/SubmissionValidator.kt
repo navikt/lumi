@@ -52,15 +52,10 @@ object SubmissionValidator {
             )
         }
 
-        val duplicateFieldIds = submission.answers
-            .groupBy { it.fieldId }
-            .filterValues { it.size > 1 }
-            .keys
-            .toList()
-
-        if (duplicateFieldIds.isNotEmpty()) {
+        val uniqueFieldIds = submission.answers.map { it.fieldId }.toSet().size
+        if (uniqueFieldIds != submission.answers.size) {
             throw ApiErrorException.BadRequestException(
-                "Invalid payload: answers.fieldId must be unique (duplicates: ${duplicateFieldIds.joinToString(",")})"
+                "Invalid payload: answers.fieldId must be unique"
             )
         }
 
@@ -210,4 +205,3 @@ object SubmissionValidator {
         return count(jsonObject)
     }
 }
-
