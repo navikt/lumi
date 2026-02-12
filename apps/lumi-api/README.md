@@ -42,6 +42,10 @@ docker run -d --name lumi-db \
 Se også:
 - Survey-widget og integrasjon: https://github.com/navikt/lumi/tree/main/packages/lumi-survey/README.md
 - Oversikt i repoet: https://github.com/navikt/lumi
+- OpenAPI (utkast): [`docs/openapi/lumi-api.yaml`](../../docs/openapi/lumi-api.yaml)
+- Pentest kickoff-underlag: [`docs/security/pentest-kickoff.md`](../../docs/security/pentest-kickoff.md)
+
+Merk: OpenAPI-specen er en statisk fil i repoet og eksponeres ikke automatisk som Swagger-endepunkt i kjørende API.
 
 ## Egenskaper
 
