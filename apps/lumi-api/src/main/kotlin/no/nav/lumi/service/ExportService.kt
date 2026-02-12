@@ -112,9 +112,10 @@ class ExportService(
             )
 
             values.forEachIndexed { columnIndex, value ->
-                row.createCell(columnIndex).setCellValue(value)
-                if (value.length > maxColumnChars[columnIndex]) {
-                    maxColumnChars[columnIndex] = value.length
+                val safeValue = if (value.isPotentialCsvFormula()) "'$value" else value
+                row.createCell(columnIndex).setCellValue(safeValue)
+                if (safeValue.length > maxColumnChars[columnIndex]) {
+                    maxColumnChars[columnIndex] = safeValue.length
                 }
             }
         }

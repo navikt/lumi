@@ -159,6 +159,32 @@ class FeedbackSecurityTest : DescribeSpec({
             retrieved?.feedbackJson shouldNotContain "test.user@example.com"
             retrieved?.feedbackJson shouldContain "[E-POST FJERNET]"
         }
+
+        it("should keep html-like text inert while still redacting sensitive data") {
+            val feedbackJson = """
+                {
+                    "surveyId": "test-survey",
+                    "answers": [
+                        {
+                            "fieldId": "feedback",
+                            "value": {
+                                "type": "text",
+                                "text": "<script>alert('x')</script> kontakt test.user@example.com"
+                            }
+                        }
+                    ]
+                }
+            """.trimIndent()
+
+            val saved = service.save(feedbackJson, "team-test", "test-app")
+            val retrieved = repository.findRawById(saved, "team-test")
+
+            // HTML-like content is preserved as plain text in stored payload (contextual escaping happens at sink/UI).
+            retrieved?.feedbackJson shouldContain "<script>alert('x')</script>"
+            // Sensitive data is still redacted before storage.
+            retrieved?.feedbackJson shouldNotContain "test.user@example.com"
+            retrieved?.feedbackJson shouldContain "[E-POST FJERNET]"
+        }
         
         it("should redact phone numbers") {
             val feedbackJson = """

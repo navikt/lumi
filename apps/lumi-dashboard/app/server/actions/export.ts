@@ -24,11 +24,18 @@ export function csvEscape(value: unknown): string {
   if (value === null || value === undefined) {
     return "";
   }
-  const str = String(value);
+  const raw = String(value);
+  const str = isPotentialCsvFormula(raw) ? `'${raw}` : raw;
   if (/[\n\r",]/.test(str)) {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return str;
+}
+
+function isPotentialCsvFormula(value: string): boolean {
+  const trimmed = value.trimStart();
+  const first = trimmed[0];
+  return first === "=" || first === "+" || first === "-" || first === "@";
 }
 
 export function getFirstRating(
@@ -106,19 +113,33 @@ export async function toMockExcelBase64(
     { header: "metadata", key: "metadata", width: 40 },
   ];
 
+  const sanitize = (v: string) => (isPotentialCsvFormula(v) ? `'${v}` : v);
+
   for (const item of items) {
+    const submittedAt = item.submittedAt;
+    const id = item.id;
+    const app = item.app ?? "";
+    const surveyId = item.surveyId;
+    const deviceType = item.context?.deviceType ?? "";
+    const rating = String(getFirstRating(item) ?? "");
+    const text = getFirstText(item);
+    const tags = item.tags?.join("|") ?? "";
+    const url = item.context?.url ?? "";
+    const pathname = item.context?.pathname ?? "";
+    const metadata = item.metadata ? JSON.stringify(item.metadata) : "";
+
     sheet.addRow({
-      submittedAt: item.submittedAt,
-      id: item.id,
-      app: item.app ?? "",
-      surveyId: item.surveyId,
-      deviceType: item.context?.deviceType ?? "",
-      rating: getFirstRating(item) ?? "",
-      text: getFirstText(item),
-      tags: item.tags?.join("|") ?? "",
-      url: item.context?.url ?? "",
-      pathname: item.context?.pathname ?? "",
-      metadata: item.metadata ? JSON.stringify(item.metadata) : "",
+      submittedAt: sanitize(submittedAt),
+      id: sanitize(id),
+      app: sanitize(app),
+      surveyId: sanitize(surveyId),
+      deviceType: sanitize(deviceType),
+      rating: sanitize(rating),
+      text: sanitize(text),
+      tags: sanitize(tags),
+      url: sanitize(url),
+      pathname: sanitize(pathname),
+      metadata: sanitize(metadata),
     });
   }
 

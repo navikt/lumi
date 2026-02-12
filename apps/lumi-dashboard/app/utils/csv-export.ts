@@ -22,6 +22,24 @@ export interface FeedbackItem {
   answers: FeedbackAnswer[];
 }
 
+export function isPotentialCsvFormula(value: string): boolean {
+  const trimmed = value.trimStart();
+  const first = trimmed[0];
+  return first === "=" || first === "+" || first === "-" || first === "@";
+}
+
+export function escapeCsvValue(value: string): string {
+  if (!value) return "";
+
+  const formulaSafe = isPotentialCsvFormula(value) ? `'${value}` : value;
+  const escaped = formulaSafe
+    .replace(/"/g, '""')
+    .replace(/\n/g, " ")
+    .replace(/\r/g, "");
+
+  return `"${escaped}"`;
+}
+
 export function generateCsvExport(items: FeedbackItem[]): Response {
   if (items.length === 0) {
     return new Response("id,app,surveyId,submittedAt\n", {
@@ -58,16 +76,6 @@ export function generateCsvExport(items: FeedbackItem[]): Response {
     return "";
   }
 
-  // Helper to escape CSV values
-  function escapeCSV(value: string): string {
-    if (!value) return "";
-    const escaped = value
-      .replace(/"/g, '""')
-      .replace(/\n/g, " ")
-      .replace(/\r/g, "");
-    return `"${escaped}"`;
-  }
-
   // Build CSV with readable headers
   const csvRows: string[] = [];
   const fieldIds = Array.from(fieldMap.keys());
@@ -91,7 +99,7 @@ export function generateCsvExport(items: FeedbackItem[]): Response {
       return field.label + typeLabel;
     }),
   ];
-  csvRows.push(headers.map((h) => escapeCSV(h)).join(","));
+  csvRows.push(headers.map((h) => escapeCsvValue(h)).join(","));
 
   // Data rows
   for (const item of items) {
@@ -110,7 +118,7 @@ export function generateCsvExport(items: FeedbackItem[]): Response {
       row.push(getAnswerValue(answer));
     }
 
-    csvRows.push(row.map((v) => escapeCSV(v)).join(","));
+    csvRows.push(row.map((v) => escapeCsvValue(v)).join(","));
   }
 
   // Add BOM for Excel UTF-8 support

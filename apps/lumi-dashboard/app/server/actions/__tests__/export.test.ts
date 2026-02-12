@@ -48,6 +48,18 @@ describe("export helpers", () => {
     expect(csvEscape("a\n b")).toBe('"a\n b"');
   });
 
+  it("csvEscape prefixes potential formulas", () => {
+    expect(csvEscape("=1+1")).toBe("'=1+1");
+    expect(csvEscape("+SUM(A1:A2)")).toBe("'+SUM(A1:A2)");
+    expect(csvEscape("-2+3")).toBe("'-2+3");
+    expect(csvEscape("@calc")).toBe("'@calc");
+  });
+
+  it("csvEscape prefixes formulas even with leading whitespace", () => {
+    expect(csvEscape(" =1+1")).toBe("' =1+1");
+    expect(csvEscape("\t=1+1")).toBe("'\t=1+1");
+  });
+
   it("transformToBackendParams trims and normalizes filters", () => {
     const params = transformToBackendParams({
       format: "csv",

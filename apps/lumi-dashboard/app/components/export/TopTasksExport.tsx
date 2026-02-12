@@ -9,11 +9,17 @@ import {
 } from "@navikt/ds-react";
 import { DashboardCard } from "~/components/dashboard";
 import type { TopTasksResponse } from "~/types/api";
+import { isPotentialCsvFormula } from "~/utils/csv-export";
 import styles from "./TopTasksExport.module.css";
 
 interface TopTasksExportProps {
   data: TopTasksResponse;
   surveyId?: string;
+}
+
+export function escapeCsvCell(value: string): string {
+  const formulaSafe = isPotentialCsvFormula(value) ? `'${value}` : value;
+  return `"${formulaSafe.replace(/"/g, '""')}"`;
 }
 
 /**
@@ -45,10 +51,8 @@ export function TopTasksExport({ data, surveyId }: TopTasksExportProps) {
     ]);
 
     const csvContent = [
-      headers.join(","),
-      ...rows.map((row) =>
-        row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(","),
-      ),
+      headers.map((cell) => escapeCsvCell(cell)).join(","),
+      ...rows.map((row) => row.map((cell) => escapeCsvCell(cell)).join(",")),
     ].join("\n");
 
     downloadFile(
