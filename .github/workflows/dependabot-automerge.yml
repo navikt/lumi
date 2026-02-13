@@ -4,88 +4,9 @@ on:
   pull_request:
     types: [opened, reopened, synchronize]
 
-permissions:
-  contents: write
-  pull-requests: write
-
 jobs:
-  dependabot:
-    runs-on: ubuntu-latest
-    if: >-
-      ${{
-        github.event.pull_request.user.login == 'dependabot[bot]' &&
-        !github.event.pull_request.head.repo.fork
-      }}
-    steps:
-      - name: Fetch Dependabot metadata
-        id: dependabot-metadata
-        uses: dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a
-
-      - name: Decide policy
-        id: policy
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          ecosystem='${{ steps.dependabot-metadata.outputs.package-ecosystem }}'
-          update_type='${{ steps.dependabot-metadata.outputs.update-type }}'
-          dependency_type='${{ steps.dependabot-metadata.outputs.dependency-type }}'
-
-          echo "Dependabot policy inputs: ecosystem=$ecosystem update_type=$update_type dependency_type=$dependency_type"
-
-          should_automerge=false
-
-          case "$ecosystem" in
-            github-actions)
-              [[ "$update_type" == "version-update:semver-patch" || "$update_type" == "version-update:semver-minor" ]] && should_automerge=true
-              echo "Dependabot policy: github-actions allows patch/minor"
-              ;;
-            npm|npm_and_yarn)
-              if [[ "$dependency_type" == "direct:production" ]]; then
-                [[ "$update_type" == "version-update:semver-patch" ]] && should_automerge=true
-                echo "Dependabot policy: npm prod allows patch only"
-              else
-                [[ "$update_type" == "version-update:semver-patch" || "$update_type" == "version-update:semver-minor" ]] && should_automerge=true
-                echo "Dependabot policy: npm dev allows patch/minor"
-              fi
-              ;;
-            gradle)
-              if [[ "$dependency_type" == "direct:production" ]]; then
-                [[ "$update_type" == "version-update:semver-patch" ]] && should_automerge=true
-                echo "Dependabot policy: gradle prod allows patch only"
-              else
-                [[ "$update_type" == "version-update:semver-patch" || "$update_type" == "version-update:semver-minor" ]] && should_automerge=true
-                echo "Dependabot policy: gradle dev allows patch/minor"
-              fi
-              ;;
-            *)
-              should_automerge=false
-              echo "Dependabot policy: no rule for ecosystem=$ecosystem"
-              ;;
-          esac
-
-          echo "Dependabot policy decision: should_automerge=$should_automerge"
-          echo "should_automerge=$should_automerge" >> "$GITHUB_OUTPUT"
-
-      - name: Approve PR (if needed)
-        if: ${{ steps.policy.outputs.should_automerge == 'true' }}
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          decision="$(gh pr view "$PR_URL" --json reviewDecision -q .reviewDecision)"
-          if [[ "$decision" != "APPROVED" ]]; then
-            gh pr review --approve "$PR_URL" -b "Auto-approving safe Dependabot update (patch/minor per policy)."
-          else
-            echo "PR already approved."
-          fi
-
-      - name: Enable auto-merge (squash)
-        if: ${{ steps.policy.outputs.should_automerge == 'true' }}
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          gh pr merge --auto --squash "$PR_URL"
+  automerge:
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: navikt/teamesyfo-github-actions-workflows/.github/workflows/dependabot-automerge.yaml@main
