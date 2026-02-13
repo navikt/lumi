@@ -154,4 +154,31 @@ class ExportServiceTest : FunSpec({
         bytes[0] shouldBe 0x50.toByte()
         bytes[1] shouldBe 0x4B.toByte()
     }
+
+    test("exportToExcel prefixes potential formulas in cell values") {
+        val feedbacks = listOf(
+            FeedbackDto(
+                id = "test-id",
+                submittedAt = "2024-01-15T10:00:00Z",
+                app = "app",
+                surveyId = "survey",
+                answers = listOf(
+                    Answer(
+                        fieldId = "feedback",
+                        fieldType = FieldType.TEXT,
+                        question = Question(label = "Feedback"),
+                        value = AnswerValue.Text("=cmd|' /C calc'!A0")
+                    )
+                ),
+                sensitiveDataRedacted = false
+            )
+        )
+
+        val bytes = service.exportToExcel(feedbacks)
+        val workbook = org.apache.poi.xssf.usermodel.XSSFWorkbook(java.io.ByteArrayInputStream(bytes))
+        val sheet = workbook.getSheetAt(0)
+        val feedbackCell = sheet.getRow(1).getCell(5).stringCellValue
+        feedbackCell shouldBe "'=cmd|' /C calc'!A0"
+        workbook.close()
+    }
 })
