@@ -24,7 +24,7 @@
     "@navikt/oasis": "^4.1.4",
     "@navikt/pino-logger": "^4.5.1",
     "@tanstack/react-query": "^5.90.19",
-    "@tanstack/react-router": "^1.153.2",
+    "@tanstack/react-router": "^1.159.5",
     "@tanstack/react-start": "^1.154.0",
     "@tanstack/zod-adapter": "^1.153.2",
     "dayjs": "^1.11.13",
