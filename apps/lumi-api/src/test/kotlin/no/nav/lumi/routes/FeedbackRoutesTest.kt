@@ -18,7 +18,9 @@ import no.nav.lumi.TestDatabase
 import no.nav.lumi.createTestClient
 import no.nav.lumi.insertTestFeedback
 import no.nav.lumi.insertTestFeedbackWithJson
+import no.nav.lumi.insertTestRatingMarker
 import no.nav.lumi.testModule
+import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.UUID
 
@@ -669,6 +671,83 @@ class FeedbackRoutesTest : FunSpec({
             }
 
             remainingOtherTeamRows shouldBe 1
+        }
+    }
+
+    test("DELETE /api/v1/intern/surveys/{surveyId} also deletes markers for that survey and team") {
+        testApplication {
+            application { testModule() }
+
+            val surveyId = "survey-delete-with-markers"
+            val team = "team-test"
+
+            insertTestFeedbackWithJson(
+                team = team,
+                app = "app-test",
+                feedbackJson = """
+                    {
+                      "surveyId": "$surveyId",
+                      "answers": [
+                        {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 4}}
+                      ]
+                    }
+                """.trimIndent(),
+            )
+
+            insertTestRatingMarker(
+                team = team,
+                surveyId = surveyId,
+                markerDate = LocalDate.parse("2026-02-01"),
+                label = "Skal slettes",
+            )
+            insertTestRatingMarker(
+                team = team,
+                surveyId = "another-survey",
+                markerDate = LocalDate.parse("2026-02-02"),
+                label = "Skal bli igjen",
+            )
+
+            val response = createTestClient().delete("/api/v1/intern/surveys/$surveyId?team=$team") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.OK
+
+            val rowsForDeletedSurvey = TestDatabase.dataSource.connection.use { conn ->
+                conn.prepareStatement(
+                    """
+                    SELECT COUNT(*)
+                    FROM rating_marker
+                    WHERE team = ? AND survey_id = ?
+                    """.trimIndent()
+                ).use { stmt ->
+                    stmt.setString(1, team)
+                    stmt.setString(2, surveyId)
+                    stmt.executeQuery().use { rs ->
+                        rs.next()
+                        rs.getInt(1)
+                    }
+                }
+            }
+            rowsForDeletedSurvey shouldBe 0
+
+            val rowsForOtherSurvey = TestDatabase.dataSource.connection.use { conn ->
+                conn.prepareStatement(
+                    """
+                    SELECT COUNT(*)
+                    FROM rating_marker
+                    WHERE team = ? AND survey_id = ?
+                    """.trimIndent()
+                ).use { stmt ->
+                    stmt.setString(1, team)
+                    stmt.setString(2, "another-survey")
+                    stmt.executeQuery().use { rs ->
+                        rs.next()
+                        rs.getInt(1)
+                    }
+                }
+            }
+            rowsForOtherSurvey shouldBe 1
         }
     }
 

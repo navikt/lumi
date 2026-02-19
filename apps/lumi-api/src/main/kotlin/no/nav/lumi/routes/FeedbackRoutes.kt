@@ -177,7 +177,7 @@ fun Route.surveyFacetRoutes(
     // Delete all feedback for a survey (team-scoped)
     delete<ApiV1Intern.Surveys.Id> { params ->
         val team = call.authorizedTeam
-        val deletedCount = service.deleteSurvey(params.surveyId, team)
+        val deletedCount = service.deleteSurveyWithMarkers(params.surveyId, team)
         if (deletedCount > 0) {
             statsCacheInvalidator.invalidateTeam(team)
         }

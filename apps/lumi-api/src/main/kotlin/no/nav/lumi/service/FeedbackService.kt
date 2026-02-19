@@ -46,6 +46,14 @@ class FeedbackService(
         return repository.deleteSurvey(surveyId, team)
     }
 
+    /**
+     * Permanently delete all markers and feedback for a surveyId in the given team.
+     * Returns number of deleted feedback rows.
+     */
+    suspend fun deleteSurveyWithMarkers(surveyId: String, team: String): Int {
+        return repository.deleteSurveyWithMarkers(surveyId, team)
+    }
+
     private fun redactFeedbackJson(feedbackJson: String): String {
         return try {
             val jsonElement = json.parseToJsonElement(feedbackJson)
