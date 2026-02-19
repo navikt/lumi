@@ -27,5 +27,12 @@ export { fetchSurveysByAppServerFn } from "./fetchSurveys";
 export { fetchTaskPriorityServerFn } from "./fetchTaskPriority";
 // Top Tasks
 export { fetchTopTasksServerFn } from "./fetchTopTasks";
+// Markers
+export {
+  createMarkerServerFn,
+  deleteMarkerServerFn,
+  fetchMarkersServerFn,
+  updateMarkerServerFn,
+} from "./markers";
 // Tags
 export { addTagServerFn, fetchTagsServerFn, removeTagServerFn } from "./tags";
