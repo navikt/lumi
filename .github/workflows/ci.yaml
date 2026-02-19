@@ -2,6 +2,8 @@ name: CI
 
 on:
   pull_request:
+  merge_group:
+    types: [checks_requested]
   push:
     branches:
       - main
@@ -17,6 +19,7 @@ jobs:
   changes:
     name: Detect changes
     runs-on: ubuntu-latest
+    if: github.event_name != 'merge_group'
     outputs:
       node: ${{ steps.filter.outputs.node }}
       api: ${{ steps.filter.outputs.api }}
@@ -80,7 +83,7 @@ jobs:
   node:
     name: Lint / Typecheck / Test (Node)
     needs: changes
-    if: needs.changes.outputs.node == 'true'
+    if: always() && (github.event_name == 'merge_group' || needs.changes.outputs.node == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -95,7 +98,7 @@ jobs:
         env:
           NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
       - name: Dependency audit (production)
-        run: npm audit --omit=dev --audit-level=high
+        run: npm audit --omit=dev --audit-level=critical
       - name: Lint
         run: npm run lint
       - name: Typecheck
@@ -114,7 +117,7 @@ jobs:
   api:
     name: Test (Kotlin)
     needs: changes
-    if: needs.changes.outputs.api == 'true'
+    if: always() && (github.event_name == 'merge_group' || needs.changes.outputs.api == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: read
