@@ -17,6 +17,7 @@ class AnalyticsTeamScopeGuardrailTest : FunSpec({
         "/api/v1/intern/feedback/teams",
         "/api/v1/intern/surveys",
         "/api/v1/intern/surveys/demo/context-tags",
+        "/api/v1/intern/surveys/demo/markers",
         "/api/v1/intern/stats/dashboard",
         "/api/v1/intern/stats/overview",
         "/api/v1/intern/stats/ratings",
@@ -61,4 +62,3 @@ class AnalyticsTeamScopeGuardrailTest : FunSpec({
         }
     }
 })
-

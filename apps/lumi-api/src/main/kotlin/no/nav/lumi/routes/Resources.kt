@@ -156,6 +156,20 @@ class ApiV1Intern {
             val parent: Surveys = Surveys(),
             val surveyId: String,
         ) {
+            @Resource("markers")
+            @Serializable
+            class Markers(
+                val parent: Surveys.Id,
+                /** Start date (YYYY-MM-DD) */
+                val fromDate: String? = null,
+                /** End date (YYYY-MM-DD) */
+                val toDate: String? = null,
+            ) {
+                @Resource("{id}")
+                @Serializable
+                class Id(val parent: Markers, val id: String)
+            }
+
             @Resource("context-tags")
             @Serializable
             class ContextTags(

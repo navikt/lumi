@@ -173,6 +173,124 @@ export const DeleteFeedbackSchema = z.object({
 
 export type DeleteFeedback = z.infer<typeof DeleteFeedbackSchema>;
 
+const IsoDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected date format YYYY-MM-DD");
+const HexColorSchema = z
+  .string()
+  .regex(/^#[0-9A-Fa-f]{6}$/, "Expected color format #RRGGBB");
+
+export const FetchMarkersParamsSchema = z.object({
+  surveyId: z.string(),
+  fromDate: IsoDateSchema.optional(),
+  toDate: IsoDateSchema.optional(),
+  team: z.string().optional(),
+});
+
+export type FetchMarkersParams = z.infer<typeof FetchMarkersParamsSchema>;
+
+export const CreateMarkerInputSchema = z.object({
+  markerDate: IsoDateSchema,
+  label: z.string().trim().min(1).max(80),
+  description: z.string().max(500).optional(),
+  color: HexColorSchema.optional(),
+});
+
+export const CreateMarkerSchema = CreateMarkerInputSchema.extend({
+  surveyId: z.string(),
+  team: z.string().optional(),
+});
+
+export type CreateMarker = z.infer<typeof CreateMarkerSchema>;
+
+const UpdateMarkerInputBaseSchema = z.object({
+  markerDate: IsoDateSchema.optional(),
+  label: z.string().trim().min(1).max(80).optional(),
+  description: z.string().max(500).optional(),
+  color: HexColorSchema.optional(),
+  clearDescription: z.boolean().optional(),
+  clearColor: z.boolean().optional(),
+});
+
+function hasAnyUpdateField(value: {
+  markerDate?: string;
+  label?: string;
+  description?: string;
+  color?: string;
+  clearDescription?: boolean;
+  clearColor?: boolean;
+}) {
+  return (
+    value.markerDate !== undefined ||
+    value.label !== undefined ||
+    value.description !== undefined ||
+    value.color !== undefined ||
+    value.clearDescription === true ||
+    value.clearColor === true
+  );
+}
+
+function validateClearConflicts(
+  value: {
+    description?: string;
+    color?: string;
+    clearDescription?: boolean;
+    clearColor?: boolean;
+  },
+  ctx: z.RefinementCtx,
+) {
+  if (value.clearDescription && value.description !== undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "description cannot be set when clearDescription is true",
+      path: ["clearDescription"],
+    });
+  }
+  if (value.clearColor && value.color !== undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "color cannot be set when clearColor is true",
+      path: ["clearColor"],
+    });
+  }
+}
+
+export const UpdateMarkerInputSchema = UpdateMarkerInputBaseSchema.superRefine(
+  (value, ctx) => {
+    if (!hasAnyUpdateField(value)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one field must be provided",
+      });
+    }
+    validateClearConflicts(value, ctx);
+  },
+);
+
+export const UpdateMarkerSchema = UpdateMarkerInputBaseSchema.extend({
+  id: z.string(),
+  surveyId: z.string(),
+  team: z.string().optional(),
+}).superRefine((value, ctx) => {
+  if (!hasAnyUpdateField(value)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "At least one field must be provided",
+    });
+  }
+  validateClearConflicts(value, ctx);
+});
+
+export type UpdateMarker = z.infer<typeof UpdateMarkerSchema>;
+
+export const DeleteMarkerSchema = z.object({
+  id: z.string(),
+  surveyId: z.string(),
+  team: z.string().optional(),
+});
+
+export type DeleteMarker = z.infer<typeof DeleteMarkerSchema>;
+
 export const ContextTagsParamsSchema = z.object({
   surveyId: z.string(),
   team: z.string().optional(),
@@ -699,6 +817,21 @@ export const DeleteSurveyResultSchema = z.object({
   deletedCount: z.number(),
   surveyId: z.string(),
 });
+
+export const RatingMarkerSchema = z.object({
+  id: z.string(),
+  team: z.string(),
+  surveyId: z.string(),
+  markerDate: IsoDateSchema,
+  label: z.string(),
+  description: z.string().nullable().optional(),
+  color: HexColorSchema.nullable().optional(),
+  createdBy: z.string().nullable().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const RatingMarkersSchema = z.array(RatingMarkerSchema);
 
 export const SurveysByAppSchema = z.record(z.string(), z.array(z.string()));
 
