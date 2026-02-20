@@ -11,6 +11,8 @@ updates:
       - github-npm
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 10
     groups:
       vitest:
@@ -31,6 +33,8 @@ updates:
     directory: "/apps/lumi-api"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 10
     ignore:
       # CodeQL supports Kotlin < 2.2.30; keep Kotlin pinned until support lands.
@@ -42,6 +46,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 10
     groups:
       actions:
