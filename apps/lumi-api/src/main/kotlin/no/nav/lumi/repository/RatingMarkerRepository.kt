@@ -152,21 +152,6 @@ class RatingMarkerRepository {
         }
     }
 
-    suspend fun countBySurvey(
-        surveyId: String,
-        team: String,
-    ): Int {
-        return dbQuery {
-            RatingMarkerTable.selectAll()
-                .where {
-                    (RatingMarkerTable.team eq team) and
-                        (RatingMarkerTable.surveyId eq surveyId)
-                }
-                .count()
-                .toInt()
-        }
-    }
-
     private fun ResultRow.toDto(): MarkerDto {
         return MarkerDto(
             id = this[RatingMarkerTable.id].toString(),

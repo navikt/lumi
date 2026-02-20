@@ -98,13 +98,16 @@ export function useMarkers(
     createMarker: createMutation.mutate,
     createMarkerAsync: createMutation.mutateAsync,
     isCreating: createMutation.isPending,
+    createError: createMutation.error,
 
     updateMarker: updateMutation.mutate,
     updateMarkerAsync: updateMutation.mutateAsync,
     isUpdating: updateMutation.isPending,
+    updateError: updateMutation.error,
 
     deleteMarker: deleteMutation.mutate,
     deleteMarkerAsync: deleteMutation.mutateAsync,
     isDeleting: deleteMutation.isPending,
+    deleteError: deleteMutation.error,
   };
 }

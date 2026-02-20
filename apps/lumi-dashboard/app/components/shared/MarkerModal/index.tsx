@@ -44,6 +44,7 @@ interface MarkerModalProps {
   toDate?: string;
   isSubmitting?: boolean;
   isDeleting?: boolean;
+  error?: Error | null;
   onClose: () => void;
   onSave: (
     input: CreateMarkerInput | ({ id: string } & UpdateMarkerInput),
@@ -77,6 +78,7 @@ export function MarkerModal({
   toDate,
   isSubmitting = false,
   isDeleting = false,
+  error,
   onClose,
   onSave,
   onDelete,
@@ -356,6 +358,12 @@ export function MarkerModal({
           {confirmDelete && (
             <Alert variant="warning" size="small">
               Klikk "Slett markør" en gang til for å bekrefte.
+            </Alert>
+          )}
+
+          {error && (
+            <Alert variant="error" size="small">
+              Noe gikk galt. Prøv igjen.
             </Alert>
           )}
         </VStack>

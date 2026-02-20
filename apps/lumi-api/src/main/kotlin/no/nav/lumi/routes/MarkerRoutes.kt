@@ -56,10 +56,6 @@ fun Route.markerRoutes(
         validateDescription(description)
         validateColor(color)
 
-        if (markerRepository.countBySurvey(params.parent.surveyId, team) >= MAX_MARKERS_PER_SURVEY) {
-            throw ApiErrorException.BadRequestException("Maximum number of markers ($MAX_MARKERS_PER_SURVEY) reached for survey")
-        }
-
         val createdBy = call.authorizedPrincipal.navIdent ?: call.authorizedPrincipal.email
         val marker = try {
             markerRepository.create(

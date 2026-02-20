@@ -270,6 +270,11 @@ export function RatingDashboard({
         onDelete={handleDeleteMarker}
         isSubmitting={markerState.isCreating || markerState.isUpdating}
         isDeleting={markerState.isDeleting}
+        error={
+          markerState.createError ||
+          markerState.updateError ||
+          markerState.deleteError
+        }
       />
     </>
   );
