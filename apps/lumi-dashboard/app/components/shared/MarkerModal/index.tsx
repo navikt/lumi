@@ -238,7 +238,11 @@ export function MarkerModal({
       }
 
       const originalColor = normalizeOptionalColor(marker.color);
-      if (didChangeColor && normalizedColor !== originalColor) {
+      if (
+        didChangeColor &&
+        normalizedColor &&
+        normalizedColor !== originalColor
+      ) {
         updatePayload.color = normalizedColor;
       }
 
@@ -255,7 +259,7 @@ export function MarkerModal({
       markerDate: normalizedMarkerDate,
       label: trimmedLabel,
       description: trimmedDescription || undefined,
-      color: normalizedColor,
+      color: normalizedColor || undefined,
     });
   };
 

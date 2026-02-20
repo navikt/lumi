@@ -49,8 +49,8 @@ fun Route.markerRoutes(
         val markerDate = parseDateOrThrow("markerDate", request.markerDate)
             ?: throw ApiErrorException.BadRequestException("Invalid markerDate: expected YYYY-MM-DD")
         val label = request.label.trim()
-        val description = request.description?.trim()
-        val color = request.color?.trim()
+        val description = request.description?.trim()?.takeIf { it.isNotEmpty() }
+        val color = request.color?.trim()?.takeIf { it.isNotEmpty() }
 
         validateLabel(label)
         validateDescription(description)
@@ -111,8 +111,8 @@ fun Route.markerRoutes(
                 ?: throw ApiErrorException.BadRequestException("Invalid markerDate: expected YYYY-MM-DD")
         }
         val label = request.label?.trim()
-        val description = request.description?.trim()
-        val color = request.color?.trim()
+        val description = request.description?.trim()?.takeIf { it.isNotEmpty() }
+        val color = request.color?.trim()?.takeIf { it.isNotEmpty() }
 
         label?.let { validateLabel(it) }
         if (!clearDescription) {
