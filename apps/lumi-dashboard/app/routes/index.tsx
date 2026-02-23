@@ -42,36 +42,42 @@ const SURVEY_CONFIG: Record<
   {
     label: string;
     variant: TagProps["variant"];
-    dashboard: (hasSurveyFilter: boolean) => ReactNode;
+    dashboard: (hasSurveyFilter: boolean, isRatingSurvey: boolean) => ReactNode;
   }
 > = {
   topTasks: {
     label: "Top Tasks",
     variant: "info",
-    dashboard: () => <TopTasksOverview />,
+    dashboard: (_hasSurveyFilter, _isRatingSurvey) => <TopTasksOverview />,
   },
   rating: {
     label: "Vurdering",
     variant: "success",
-    dashboard: (hasSurveyFilter) => (
-      <RatingDashboard hasSurveyFilter={hasSurveyFilter} />
+    dashboard: (hasSurveyFilter, isRatingSurvey) => (
+      <RatingDashboard
+        hasSurveyFilter={hasSurveyFilter}
+        isRatingSurvey={isRatingSurvey}
+      />
     ),
   },
   discovery: {
     label: "Discovery",
     variant: "warning",
-    dashboard: () => <DiscoveryDashboard />,
+    dashboard: (_hasSurveyFilter, _isRatingSurvey) => <DiscoveryDashboard />,
   },
   taskPriority: {
     label: "Task Priority",
     variant: "alt1",
-    dashboard: () => <TaskPriorityDashboard />,
+    dashboard: (_hasSurveyFilter, _isRatingSurvey) => <TaskPriorityDashboard />,
   },
   custom: {
     label: "Custom",
     variant: "neutral",
-    dashboard: (hasSurveyFilter) => (
-      <RatingDashboard hasSurveyFilter={hasSurveyFilter} />
+    dashboard: (hasSurveyFilter, isRatingSurvey) => (
+      <RatingDashboard
+        hasSurveyFilter={hasSurveyFilter}
+        isRatingSurvey={isRatingSurvey}
+      />
     ),
   },
 };
@@ -192,7 +198,7 @@ function DashboardPage() {
     }
 
     if (config) {
-      return config.dashboard(hasSurveyFilter);
+      return config.dashboard(hasSurveyFilter, surveyType === "rating");
     }
 
     return <OverviewDashboard />;

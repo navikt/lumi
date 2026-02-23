@@ -109,7 +109,7 @@ internal fun validateDateRange(fromDate: String?, toDate: String?) {
     }
 }
 
-private fun parseDateOrThrow(name: String, value: String?): LocalDate? {
+internal fun parseDateOrThrow(name: String, value: String?): LocalDate? {
     if (value.isNullOrBlank()) return null
 
     return try {

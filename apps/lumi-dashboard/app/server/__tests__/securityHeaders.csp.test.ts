@@ -46,4 +46,15 @@ describe("security headers", () => {
     expect(styleSrcElem).toBe("style-src-elem 'self' https://cdn.nav.no");
     expect(styleSrcAttr).toBe("style-src-attr 'unsafe-inline'");
   });
+
+  it("allows inline style elements in development for Vite CSS HMR", () => {
+    const csp = buildCspHeaderValue({ isDev: true });
+
+    const styleSrcElem = csp
+      .split(";")
+      .map((d) => d.trim())
+      .find((d) => d.startsWith("style-src-elem "));
+
+    expect(styleSrcElem).toContain("'unsafe-inline'");
+  });
 });

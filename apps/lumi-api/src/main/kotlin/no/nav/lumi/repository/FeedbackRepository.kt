@@ -82,6 +82,24 @@ class FeedbackRepository(
         }
     }
 
+    /**
+     * Atomically deletes markers and feedback for a survey within one transaction.
+     * Returns number of deleted feedback rows.
+     */
+    suspend fun deleteSurveyWithMarkers(surveyId: String, team: String): Int {
+        return dbQuery {
+            RatingMarkerTable.deleteWhere {
+                (RatingMarkerTable.team eq team) and
+                    (RatingMarkerTable.surveyId eq surveyId)
+            }
+
+            FeedbackTable.deleteWhere {
+                (JsonExtract(FeedbackTable.feedbackJson, listOf("surveyId")) eq surveyId) and
+                    (FeedbackTable.team eq team)
+            }
+        }
+    }
+
     suspend fun addTag(id: String, team: String, tag: String): Boolean {
         return dbQuery {
             val normalized = normalizeTag(tag) ?: return@dbQuery false

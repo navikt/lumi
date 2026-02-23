@@ -1,0 +1,27 @@
+.swatches {
+  flex-wrap: wrap;
+}
+
+.swatch {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 4px;
+  border: 1px solid var(--ax-border-neutral-subtle);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.swatchSelected {
+  border: 3px solid var(--ax-border-focus);
+}
+
+.checkmark {
+  color: white;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.6));
+}
+
+.footerRow {
+  width: 100%;
+}

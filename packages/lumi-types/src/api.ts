@@ -432,6 +432,39 @@ export interface TaskPriorityResponse {
 }
 
 // ============================================
+// Rating Marker Types
+// ============================================
+
+export interface RatingMarker {
+  id: string;
+  team: string;
+  surveyId: string;
+  markerDate: string; // YYYY-MM-DD
+  label: string;
+  description?: string | null;
+  color?: string | null;
+  createdBy?: string | null;
+  createdAt: string; // ISO-8601
+  updatedAt: string; // ISO-8601
+}
+
+export interface CreateMarkerInput {
+  markerDate: string;
+  label: string;
+  description?: string;
+  color?: string;
+}
+
+export interface UpdateMarkerInput {
+  markerDate?: string;
+  label?: string;
+  description?: string;
+  color?: string;
+  clearDescription?: boolean;
+  clearColor?: boolean;
+}
+
+// ============================================
 // Delete Survey Types
 // ============================================
 

@@ -22,10 +22,12 @@ import no.nav.lumi.routes.feedbackRoutes
 import no.nav.lumi.routes.internalRoutes
 import no.nav.lumi.routes.statsRoutes
 import no.nav.lumi.routes.exportRoutes
+import no.nav.lumi.routes.markerRoutes
 import no.nav.lumi.routes.surveyFacetRoutes
 import no.nav.lumi.routes.submissionRoutes
 import no.nav.lumi.routes.discoveryRoutes
 import no.nav.lumi.repository.FeedbackStatsRepository
+import java.time.LocalDate
 import java.sql.Timestamp
 import no.nav.lumi.service.FeedbackService
 import no.nav.lumi.service.StatsCacheInvalidator
@@ -188,6 +190,39 @@ fun insertTestTheme(
     return id
 }
 
+fun insertTestRatingMarker(
+    id: String = UUID.randomUUID().toString(),
+    team: String = "team-test",
+    surveyId: String,
+    markerDate: LocalDate = LocalDate.now(),
+    label: String = "Lansering",
+    description: String? = null,
+    color: String? = "#1C64F2",
+    createdBy: String? = "A123456",
+): String {
+    TestDatabase.dataSource.connection.use { conn ->
+        conn.prepareStatement(
+            """
+            INSERT INTO rating_marker (id, team, survey_id, marker_date, label, description, color, created_by)
+            VALUES (?::uuid, ?, ?, ?, ?, ?, ?, ?)
+            """.trimIndent()
+        ).use { stmt ->
+            stmt.setString(1, id)
+            stmt.setString(2, team)
+            stmt.setString(3, surveyId)
+            stmt.setObject(4, markerDate)
+            stmt.setString(5, label)
+            stmt.setString(6, description)
+            stmt.setString(7, color)
+            stmt.setString(8, createdBy)
+            stmt.executeUpdate()
+        }
+        conn.commit()
+    }
+
+    return id
+}
+
 /**
  * Test application module with authentication bypassed
  */
@@ -264,6 +299,7 @@ fun Application.testModule(
             
             feedbackRoutes(feedbackService, statsCacheInvalidator)
             surveyFacetRoutes(feedbackService, statsCacheInvalidator)
+            markerRoutes()
             statsRoutes(statsService)
             exportRoutes(exportService)
             discoveryRoutes()

@@ -17,6 +17,12 @@ export function buildCspHeaderValue(options?: {
   const connectSrc = isDev ? "'self' ws: wss:" : "'self'";
   const scriptSrcParts = ["'self'", "https://cdn.nav.no"];
   const styleSrcParts = ["'self'", "https://cdn.nav.no", "'unsafe-inline'"];
+  const styleSrcElemParts = ["'self'", "https://cdn.nav.no"];
+
+  if (isDev) {
+    // Vite CSS HMR injects inline <style> tags in development.
+    styleSrcElemParts.push("'unsafe-inline'");
+  }
 
   if (nonce) {
     scriptSrcParts.push(`'nonce-${nonce}'`);
@@ -31,7 +37,7 @@ export function buildCspHeaderValue(options?: {
     // CSP level 3 split:
     // - style-src-elem governs <style> and stylesheet links
     // - style-src-attr governs style="" attributes
-    "style-src-elem 'self' https://cdn.nav.no",
+    `style-src-elem ${styleSrcElemParts.join(" ")}`,
     "style-src-attr 'unsafe-inline'",
     "img-src 'self' data: https://cdn.nav.no",
     "font-src 'self' data: https://cdn.nav.no",
