@@ -19,6 +19,7 @@ import java.util.UUID
 
 private val defaultMarkerRepository = RatingMarkerRepository()
 private val hexColorRegex = Regex("^#[0-9A-Fa-f]{6}$")
+private const val PG_CHECK_VIOLATION = "23514"
 private const val MAX_MARKERS_PER_SURVEY = 50
 private const val MAX_LABEL_LENGTH = 80
 private const val MAX_DESCRIPTION_LENGTH = 500
@@ -68,7 +69,7 @@ fun Route.markerRoutes(
                 createdBy = createdBy,
             )
         } catch (exception: SQLException) {
-            if (exception.sqlState == "23514") {
+            if (exception.sqlState == PG_CHECK_VIOLATION) {
                 throw ApiErrorException.BadRequestException(
                     "Maximum number of markers ($MAX_MARKERS_PER_SURVEY) reached for survey",
                 )
