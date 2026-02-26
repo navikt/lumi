@@ -105,7 +105,11 @@ const getStorage = async (key: string): Promise<StorageResult> => {
 
   const controller = getConsentController();
 
-  if (!controller) {
+  if (
+    !controller ||
+    typeof controller.isStorageKeyAllowed !== "function" ||
+    typeof controller.getCurrentConsent !== "function"
+  ) {
     return { storage: null, allowed: false };
   }
 
@@ -143,7 +147,11 @@ const getStorage = async (key: string): Promise<StorageResult> => {
     console.log(`[Lumi] Storage key "${key}" is allowed - persistence enabled`);
   }
 
-  return { storage: window.localStorage, allowed: true };
+  try {
+    return { storage: window.localStorage, allowed: true };
+  } catch {
+    return { storage: null, allowed: false };
+  }
 };
 
 export const readConsentValue = async (key: string): Promise<string | null> => {
