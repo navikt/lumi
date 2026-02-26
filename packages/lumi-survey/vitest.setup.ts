@@ -25,3 +25,15 @@ Object.defineProperty(globalThis, "localStorage", {
   value: localStorageMock,
   writable: true,
 });
+
+// Set up consent API globals so the consent storage strategy resolves immediately
+(globalThis as unknown as Record<string, unknown>).__DECORATOR_DATA__ = {
+  mock: true,
+};
+(globalThis as unknown as Record<string, unknown>).webStorageController = {
+  isStorageKeyAllowed: (key: string) => key.startsWith("flexjar-"),
+  getCurrentConsent: () => ({
+    consent: { analytics: true, surveys: true },
+    userActionTaken: true,
+  }),
+};

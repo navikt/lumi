@@ -113,13 +113,16 @@ Backend mottar `submission.transportPayload` fra frontend, gjør token exchange,
 | **Sluttbruker** (nav.no innlogget, arbeidsgiver, privatperson) | TokenX | `POST /api/tokenx/v1/feedback` |
 | **Intern** (Modia, veiledersystemer, fagsystemer) | AzureAD | `POST /api/azure/v1/feedback` |
 
-Sett `LUMI_API_HOST` i NAIS-manifestet:
+Sett miljøvariabler i NAIS-manifestet. `LUMI_API_HOST` er påkrevd. For AzureAD (OBO) trenger du i tillegg lumi-api sin client ID på formatet `<cluster>.<namespace>.<app>`:
 
 ```yaml
 spec:
   env:
     - name: LUMI_API_HOST
-      value: http://lumi-api
+      value: http://lumi-api.team-esyfo
+    # Kun for AzureAD OBO — brukes som scope/audience ved token exchange
+    - name: LUMI_API_AAD_APP_CLIENT_ID
+      value: "<cluster>.team-esyfo.lumi-api"   # f.eks. dev-gcp.team-esyfo.lumi-api
 ```
 
 Du må også aktivere riktig auth i appen din i NAIS (avhengig av flate):

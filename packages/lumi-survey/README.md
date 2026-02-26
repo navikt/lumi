@@ -133,21 +133,17 @@ Widgeten husker at brukeren har lukket (dismissed) surveyen, og respekterer en v
 
 | Flate | Strategi | Merknad |
 | :--- | :--- | :--- |
-| Sluttbruker (nav.no) | `consent` (default) | Krever `@navikt/nav-dekoratoren-moduler` |
+| Sluttbruker (nav.no) | `consent` (default) | Krever at NAV consent API er tilgjengelig på siden |
 | Intern (Modia, fagsystemer) | `localStorage` | Ingen ekstra avhengigheter |
 | Ingen persistering | `none` | Surveyen vises hver gang |
 
-> ⚠️ **Interne flater (Modia o.l.):** Default er `consent`, som krever NAV-dekoratørens consent-API. Uten dekoratøren vil widgeten ikke kunne huske at brukeren lukket surveyen. Sett `storageStrategy: "localStorage"`:
+> ⚠️ **Interne flater (Modia o.l.):** Default er `consent`, som krever NAV consent API (`window.webStorageController`). Uten consent API-et vil widgeten ikke kunne huske at brukeren lukket surveyen. Sett `storageStrategy: "localStorage"`:
 >
 > ```tsx
 > <LumiSurveyDock behavior={{ storageStrategy: "localStorage" }} />
 > ```
 
-For `consent`-strategi på eksterne flater, installer peer dependency:
-
-```sh
-npm install @navikt/nav-dekoratoren-moduler
-```
+`consent`-strategien leser direkte fra window-globals (`window.__DECORATOR_DATA__` og `window.webStorageController`) som settes av NAV-dekoratøren på nav.no — ingen ekstra npm-pakke er nødvendig.
 
 <details>
 <summary><strong>Ferdiglagde presets</strong></summary>
@@ -337,4 +333,4 @@ const surveyWithLogic = {
 - **Ingen data i dashboard:** Verifiser at backend sender `submission.transportPayload` til riktig
   endepunkt (`/api/tokenx/v1/feedback` eller `/api/azure/v1/feedback`).
 - **Layout virker "tom":** Sørg for at `@navikt/ds-css` og `@navikt/lumi-survey/styles.css` er importert.
-- **Dismissed-tilstand persisteres ikke (intern flate):** Du bruker sannsynligvis default `consent`-strategi uten NAV-dekoratøren. Sett `storageStrategy: "localStorage"`.
+- **Dismissed-tilstand persisteres ikke (intern flate):** Du bruker sannsynligvis default `consent`-strategi uten NAV consent API. Sett `storageStrategy: "localStorage"`.

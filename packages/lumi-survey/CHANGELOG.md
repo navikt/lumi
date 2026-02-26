@@ -6,6 +6,14 @@ This project follows SemVer.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-02-26
+
+### Changed
+
+- Removed `@navikt/nav-dekoratoren-moduler` dependency. The `consent` storage strategy now reads directly from the NAV consent API window globals (`window.__DECORATOR_DATA__` and `window.webStorageController`). No extra npm package needed — behavior is identical.
+- Simplified consent API polling logic (setInterval instead of recursive setTimeout).
+- Cleaned up Storybook config (removed module aliasing and viteFinal override).
+
 ## [0.0.5] - 2026-01-21
 
 ### Changed
