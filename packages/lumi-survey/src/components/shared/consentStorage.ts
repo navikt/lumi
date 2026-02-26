@@ -1,13 +1,35 @@
+/**
+ * Consent-based storage for environments with the NAV consent API.
+ *
+ * On nav.no pages the NAV decorator sets `window.__DECORATOR_DATA__` and
+ * `window.webStorageController` when it initializes. This module polls for
+ * those globals and uses the consent API to gate localStorage access.
+ */
+
 interface StorageLike {
   getItem: (key: string) => string | null;
   setItem: (key: string, value: string) => void;
   removeItem: (key: string) => void;
 }
 
-interface ConsentModule {
-  awaitDecoratorData?: () => Promise<void>;
-  isStorageKeyAllowed?: (key: string) => boolean;
-  navLocalStorage?: StorageLike;
+interface Consent {
+  consent: {
+    analytics: boolean;
+    surveys: boolean;
+  };
+  userActionTaken: boolean;
+}
+
+interface WebStorageController {
+  isStorageKeyAllowed: (key: string) => boolean;
+  getCurrentConsent: () => Consent;
+  getAllowedStorage?: () => unknown[];
+}
+
+/** Window shape when the NAV consent API globals are present. */
+interface ConsentWindow extends Window {
+  __DECORATOR_DATA__?: unknown;
+  webStorageController?: WebStorageController;
 }
 
 interface StorageResult {
@@ -21,137 +43,99 @@ interface WriteResult {
   error?: unknown;
 }
 
-let modulePromise: Promise<ConsentModule | null> | null = null;
+const CONSENT_READY_TIMEOUT_MS = 5000;
+const CONSENT_POLL_INTERVAL_MS = 50;
 
-const loadConsentModule = async (): Promise<ConsentModule | null> => {
+let consentReady: Promise<boolean> | null = null;
+
+const awaitConsentApi = (): Promise<boolean> => {
   if (typeof window === "undefined") {
-    return null;
+    return Promise.resolve(false);
   }
 
-  if (!modulePromise) {
-    modulePromise = (async () => {
-      try {
-        const mod = await import("@navikt/nav-dekoratoren-moduler");
-        if (typeof mod.awaitDecoratorData === "function") {
-          try {
-            await mod.awaitDecoratorData();
-          } catch (error) {
-            if (process.env.NODE_ENV === "development") {
-              // eslint-disable-next-line no-console -- development diagnostics only
-              console.warn("Lumi: awaitDecoratorData failed", error);
-            }
+  if (!consentReady) {
+    const w = window as ConsentWindow;
+
+    if (w.__DECORATOR_DATA__ && w.webStorageController) {
+      consentReady = Promise.resolve(true);
+    } else {
+      consentReady = new Promise((resolve) => {
+        const interval = setInterval(() => {
+          if (w.__DECORATOR_DATA__ && w.webStorageController) {
+            clearInterval(interval);
+            clearTimeout(timeout);
+            resolve(true);
           }
-        }
-        return {
-          awaitDecoratorData: mod.awaitDecoratorData,
-          isStorageKeyAllowed: mod.isStorageKeyAllowed,
-          navLocalStorage: mod.navLocalStorage,
-        } satisfies ConsentModule;
-      } catch (_error) {
-        if (process.env.NODE_ENV === "development") {
-          // eslint-disable-next-line no-console -- development diagnostics only
-          console.log(
-            "[Lumi] @navikt/nav-dekoratoren-moduler not available - using initialOpen without persistence",
-          );
-        }
-        return null;
-      }
-    })();
+        }, CONSENT_POLL_INTERVAL_MS);
+
+        const timeout = setTimeout(() => {
+          clearInterval(interval);
+          if (process.env.NODE_ENV === "development") {
+            // eslint-disable-next-line no-console -- development diagnostics only
+            console.log(
+              "[Lumi] Consent API not detected within timeout - consent storage unavailable",
+            );
+          }
+          resolve(false);
+        }, CONSENT_READY_TIMEOUT_MS);
+      });
+    }
   }
 
-  return modulePromise;
+  return consentReady;
+};
+
+const getConsentController = (): WebStorageController | null => {
+  if (typeof window === "undefined") return null;
+  return (window as ConsentWindow).webStorageController ?? null;
 };
 
 const getStorage = async (key: string): Promise<StorageResult> => {
-  const module = await loadConsentModule();
+  const ready = await awaitConsentApi();
 
-  if (!module) {
+  if (!ready) {
     if (process.env.NODE_ENV === "development") {
       // eslint-disable-next-line no-console -- development diagnostics only
       console.log(
-        "[Lumi] Consent module not available - using initialOpen without persistence",
+        "[Lumi] Consent API not available - using initialOpen without persistence",
       );
     }
-    return {
-      storage: null,
-      allowed: false,
-    };
+    return { storage: null, allowed: false };
   }
 
-  const { navLocalStorage, isStorageKeyAllowed } = module;
+  const controller = getConsentController();
 
-  if (!navLocalStorage) {
+  if (!controller) {
+    return { storage: null, allowed: false };
+  }
+
+  if (!controller.isStorageKeyAllowed(key)) {
     if (process.env.NODE_ENV === "development") {
       // eslint-disable-next-line no-console -- development diagnostics only
       console.log(
-        "[Lumi] navLocalStorage not available - using initialOpen without persistence",
+        `[Lumi] Storage key "${key}" not in allowed storage list - using initialOpen without persistence. (Temporary: Lumi still uses the legacy "flexjar-*" key pattern until a new pattern is allowlisted.)`,
       );
     }
-    return {
-      storage: null,
-      allowed: false,
-    };
+    return { storage: null, allowed: false };
   }
 
-  if (typeof isStorageKeyAllowed !== "function") {
-    if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console -- development diagnostics only
-      console.log(
-        "[Lumi] isStorageKeyAllowed not available - using initialOpen without persistence",
-      );
-    }
-    return {
-      storage: null,
-      allowed: false,
-    };
-  }
-
-  const allowed = isStorageKeyAllowed(key);
-
-  if (!allowed) {
-    if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console -- development diagnostics only
-      console.log(
-        `[Lumi] Storage key "${key}" not in NAV's allowed storage list - using initialOpen without persistence. (Temporary: Lumi still uses the legacy "flexjar-*" key pattern until NAV allowlists a new pattern.)`,
-      );
-    }
-    return {
-      storage: null,
-      allowed: false,
-    };
-  }
-
-  // Check if user has granted surveys consent
   try {
-    const getCurrentConsent = module.awaitDecoratorData
-      ? (await import("@navikt/nav-dekoratoren-moduler")).getCurrentConsent
-      : undefined;
-
-    if (getCurrentConsent) {
-      const consent = getCurrentConsent();
-      if (!consent?.consent?.surveys) {
-        if (process.env.NODE_ENV === "development") {
-          // eslint-disable-next-line no-console -- development diagnostics only
-          console.log(
-            "[Lumi] User has not granted surveys consent - using initialOpen without persistence",
-          );
-        }
-        return {
-          storage: null,
-          allowed: false,
-        };
+    const consent = controller.getCurrentConsent();
+    if (!consent?.consent?.surveys) {
+      if (process.env.NODE_ENV === "development") {
+        // eslint-disable-next-line no-console -- development diagnostics only
+        console.log(
+          "[Lumi] User has not granted surveys consent - using initialOpen without persistence",
+        );
       }
+      return { storage: null, allowed: false };
     }
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
       // eslint-disable-next-line no-console -- development diagnostics only
       console.log("[Lumi] Could not check consent:", error);
     }
-    // If we can't check consent, don't allow persistence to be safe
-    return {
-      storage: null,
-      allowed: false,
-    };
+    return { storage: null, allowed: false };
   }
 
   if (process.env.NODE_ENV === "development") {
@@ -159,10 +143,7 @@ const getStorage = async (key: string): Promise<StorageResult> => {
     console.log(`[Lumi] Storage key "${key}" is allowed - persistence enabled`);
   }
 
-  return {
-    storage: navLocalStorage,
-    allowed: true,
-  };
+  return { storage: window.localStorage, allowed: true };
 };
 
 export const readConsentValue = async (key: string): Promise<string | null> => {
@@ -177,8 +158,6 @@ export const readConsentValue = async (key: string): Promise<string | null> => {
       }
     }
   }
-
-  // No storage available - return null to use initialOpen behavior
   return null;
 };
 
@@ -201,7 +180,6 @@ export const writeConsentValue = async (
     }
   }
 
-  // No storage available - don't persist, just return not persisted
   return { persisted: false, allowed: false };
 };
 
@@ -217,7 +195,6 @@ export const removeConsentValue = async (key: string): Promise<void> => {
       }
     }
   }
-  // No need to manage memoryFallback since we don't use it anymore
 };
 
 export type { WriteResult };

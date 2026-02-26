@@ -1,7 +1,11 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "types": ["node"]
+    "rootDir": "..",
+    "types": ["node", "react", "react-dom"],
+    "verbatimModuleSyntax": false,
+    "noEmit": true
   },
-  "include": ["./**/*.ts", "./**/*.tsx"]
+  "include": ["./**/*.ts", "./**/*.tsx"],
+  "exclude": []
 }

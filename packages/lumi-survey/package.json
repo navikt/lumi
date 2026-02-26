@@ -38,11 +38,7 @@
     "react": ">=18",
     "react-dom": ">=18"
   },
-  "peerDependenciesMeta": {
-    "@navikt/nav-dekoratoren-moduler": {
-      "optional": true
-    }
-  },
+  "peerDependenciesMeta": {},
   "devDependencies": {
     "@navikt/ds-css": "^8.5.2",
     "@navikt/ds-react": "^8.5.2",
