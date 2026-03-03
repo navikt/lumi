@@ -26,29 +26,47 @@ fun Application.configureRouting() {
         // Public submission API - issuer-specific endpoints (/api/tokenx/* and /api/azure/*)
         submissionRoutes()
         
-        // Protected analytics API - requires Azure AD from frontend
-        authenticate(AZURE_REALM) {
-            // Validate that caller is the allowed lumi-dashboard frontend
-            install(ClientAuthorizationPlugin) {
-                allowedClientId = getDashboardClientId()
-            }
-            
-            // Enforce team authorization based on user's AD groups
-            install(TeamAuthorizationPlugin)
+        // Analytics API is browser-facing (dashboard) and needs CORS.
+        // CORS is scoped here so server-to-server submission routes are not
+        // affected by forwarded Origin headers from calling apps.
+        createChild(CorsScopeSelector).apply {
+            installCors()
 
-            rateLimit(AnalyticsRateLimit) {
-                filterRoutes()
-                feedbackRoutes()
-                surveyFacetRoutes()
-                markerRoutes()
-                statsRoutes()
-                discoveryRoutes()
-                teamsRoutes()
-            }
+            // Protected analytics API - requires Azure AD from frontend
+            authenticate(AZURE_REALM) {
+                // Validate that caller is the allowed lumi-dashboard frontend
+                install(ClientAuthorizationPlugin) {
+                    allowedClientId = getDashboardClientId()
+                }
+                
+                // Enforce team authorization based on user's AD groups
+                install(TeamAuthorizationPlugin)
 
-            rateLimit(ExportRateLimit) {
-                exportRoutes()
+                rateLimit(AnalyticsRateLimit) {
+                    filterRoutes()
+                    feedbackRoutes()
+                    surveyFacetRoutes()
+                    markerRoutes()
+                    statsRoutes()
+                    discoveryRoutes()
+                    teamsRoutes()
+                }
+
+                rateLimit(ExportRateLimit) {
+                    exportRoutes()
+                }
             }
         }
     }
+}
+
+/**
+ * Transparent route selector used to scope CORS to analytics routes only.
+ * Does not consume path segments — child routes keep their original paths.
+ */
+private object CorsScopeSelector : RouteSelector() {
+    override suspend fun evaluate(context: RoutingResolveContext, segmentIndex: Int) =
+        RouteSelectorEvaluation.Transparent
+
+    override fun toString() = "(cors-scope)"
 }
