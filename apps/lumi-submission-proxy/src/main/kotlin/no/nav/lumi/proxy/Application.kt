@@ -12,6 +12,7 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation as ServerContentNegotiation
 import io.ktor.server.plugins.calllogging.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
@@ -35,7 +36,7 @@ fun Application.module() {
     val config = ProxyConfig.fromEnvironment()
 
     install(CallLogging) { level = Level.INFO }
-    install(io.ktor.server.plugins.contentnegotiation.ContentNegotiation) {
+    install(ServerContentNegotiation) {
         json(Json { ignoreUnknownKeys = true })
     }
     install(StatusPages) {
