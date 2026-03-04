@@ -54,7 +54,8 @@ jobs:
           push_image: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
 
   deploy-dev:
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    # TODO: Fjern change-tenant-branchen før merge
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/change-tenant' || github.event_name == 'workflow_dispatch'
     needs: build
     runs-on: ubuntu-latest
     permissions:
