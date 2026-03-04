@@ -17,6 +17,8 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.utils.io.core.readText
+import io.ktor.utils.io.readRemaining
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -118,11 +120,15 @@ private const val MAX_BODY_BYTES = 1_048_576L
 
 private suspend fun receiveBody(call: ApplicationCall): String {
     val contentLength = call.request.headers[HttpHeaders.ContentLength]?.toLongOrNull()
-    if (contentLength != null && contentLength > MAX_BODY_BYTES) {
+    if (contentLength == null) {
+        throw ProxyPayloadException("Missing Content-Length header")
+    }
+    if (contentLength > MAX_BODY_BYTES) {
         throw ProxyPayloadException("Payload too large")
     }
 
-    val text = call.receiveText()
+    val packet = call.receiveChannel().readRemaining(MAX_BODY_BYTES + 1)
+    val text = packet.readText()
     if (text.toByteArray().size > MAX_BODY_BYTES) {
         throw ProxyPayloadException("Payload too large")
     }
