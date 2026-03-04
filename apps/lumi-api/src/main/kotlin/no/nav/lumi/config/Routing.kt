@@ -14,6 +14,7 @@ import no.nav.lumi.routes.markerRoutes
 import no.nav.lumi.routes.surveyFacetRoutes
 import no.nav.lumi.routes.statsRoutes
 import no.nav.lumi.routes.internalRoutes
+import no.nav.lumi.routes.internalSubmissionRoutes
 import no.nav.lumi.routes.submissionRoutes
 import no.nav.lumi.routes.teamsRoutes
 
@@ -22,6 +23,9 @@ fun Application.configureRouting() {
     routing {
         // Health checks - no auth
         internalRoutes()
+        
+        // Internal proxy-forwarded submissions (dev only, PSK-protected)
+        internalSubmissionRoutes()
         
         // Public submission API - issuer-specific endpoints (/api/tokenx/* and /api/azure/*)
         submissionRoutes()

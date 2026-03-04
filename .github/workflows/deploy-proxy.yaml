@@ -1,0 +1,66 @@
+name: Deploy Submission Proxy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/lumi-submission-proxy/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      image: ${{ steps.docker-build-push.outputs.image }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Setup Java
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@f29f5a9d7b09a7c6b29859002d29d24e1674c884
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-overwrite-existing: true
+
+      - name: Build with Gradle
+        working-directory: apps/lumi-submission-proxy
+        run: ./gradlew build
+
+      - name: Push docker image to GAR
+        uses: nais/docker-build-push@87f920b0411b987d9a1fd4113aa384e1e3b54f2c
+        id: docker-build-push
+        with:
+          team: team-esyfo
+          identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
+          project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
+          dockerfile: apps/lumi-submission-proxy/Dockerfile
+          docker_context: apps/lumi-submission-proxy
+          push_image: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+
+  deploy-dev:
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: nais/deploy/actions/deploy@fa754451577294aae42872a69b888b3470478ec1
+        env:
+          CLUSTER: dev-gcp
+          RESOURCE: apps/lumi-submission-proxy/nais/dev.yaml
+          VAR: image=${{ needs.build.outputs.image }}
