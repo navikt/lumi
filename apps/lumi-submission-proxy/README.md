@@ -1,7 +1,7 @@
 # lumi-submission-proxy
 
-Lettvekts-proxy som brukes **kun i dev-gcp** for å brygge
-survey-innsendinger på tvers av Azure AD-tenants.
+Lettvekts-proxy som brukes **kun i dev-gcp** for å kunne sende 
+survey-svar på tvers av Azure AD-tenants.
 
 ## Hvorfor?
 
