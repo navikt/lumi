@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - change-tenant # TODO: Fjern denne branchen før merge
     paths:
       - 'apps/lumi-submission-proxy/**'
       # Workflow-filen selv — behold denne permanent slik at endringer i workflowen også trigger deploy
@@ -54,8 +53,7 @@ jobs:
           push_image: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
 
   deploy-dev:
-    # TODO: Fjern change-tenant-branchen før merge
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/change-tenant' || github.event_name == 'workflow_dispatch'
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     needs: build
     runs-on: ubuntu-latest
     permissions:
