@@ -4,8 +4,11 @@ on:
   push:
     branches:
       - main
+      - change-tenant # TODO: Fjern denne branchen før merge
     paths:
       - 'apps/lumi-submission-proxy/**'
+      # Workflow-filen selv — behold denne permanent slik at endringer i workflowen også trigger deploy
+      - '.github/workflows/deploy-proxy.yaml'
   workflow_dispatch:
 
 permissions:
