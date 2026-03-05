@@ -159,6 +159,7 @@ jobs:
           project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
           dockerfile: apps/lumi-dashboard/Dockerfile
           docker_context: apps/lumi-dashboard
+          image_suffix: dashboard
 
   deploy-demo:
     name: Deploy to dev-gcp (Demo)
