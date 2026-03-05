@@ -37,7 +37,7 @@ export const ExamplePage = (props: LumiSurveyDockProps) => {
 
   const handleReset = useCallback(() => {
     void (async () => {
-      await removeConsentValue(`flexjar-dismissed-${props.surveyId}`);
+      await removeConsentValue(`lumi-dismissed-${props.surveyId}`);
       setResetToken((token) => token + 1);
     })();
   }, [props.surveyId]);

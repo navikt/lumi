@@ -31,7 +31,7 @@ Object.defineProperty(globalThis, "localStorage", {
   mock: true,
 };
 (globalThis as unknown as Record<string, unknown>).webStorageController = {
-  isStorageKeyAllowed: (key: string) => key.startsWith("flexjar-"),
+  isStorageKeyAllowed: (key: string) => key.startsWith("lumi-"),
   getCurrentConsent: () => ({
     consent: { analytics: true, surveys: true },
     userActionTaken: true,

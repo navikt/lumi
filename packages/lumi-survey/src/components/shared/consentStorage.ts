@@ -117,7 +117,7 @@ const getStorage = async (key: string): Promise<StorageResult> => {
     if (process.env.NODE_ENV === "development") {
       // eslint-disable-next-line no-console -- development diagnostics only
       console.log(
-        `[Lumi] Storage key "${key}" not in allowed storage list - using initialOpen without persistence. (Temporary: Lumi still uses the legacy "flexjar-*" key pattern until a new pattern is allowlisted.)`,
+        `[Lumi] Storage key "${key}" not in allowed storage list - using initialOpen without persistence.`,
       );
     }
     return { storage: null, allowed: false };

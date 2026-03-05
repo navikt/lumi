@@ -35,7 +35,7 @@ if (typeof window !== "undefined") {
     mock: true,
   };
   (window as unknown as Record<string, unknown>).webStorageController = {
-    isStorageKeyAllowed: (key: string) => key.startsWith("flexjar-"),
+    isStorageKeyAllowed: (key: string) => key.startsWith("lumi-"),
     getCurrentConsent: () => ({
       consent: {
         analytics: getStoredConsent(),
