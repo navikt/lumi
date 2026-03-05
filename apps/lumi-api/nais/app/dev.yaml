@@ -50,6 +50,7 @@ spec:
         - application: narmesteleder-frontend
         - application: syfomodiaperson
           namespace: teamsykefravr
+        - application: lumi-submission-proxy
     outbound:
       external:
         - host: console.nav.cloud.nais.io
@@ -66,6 +67,7 @@ spec:
       access: readwrite
   envFrom:
     - secret: nais-api-key
+    - secret: lumi
   env:
     - name: NAIS_CLUSTER_NAME
       value: dev-gcp

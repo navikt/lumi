@@ -2,15 +2,23 @@ package no.nav.lumi.config
 
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
-import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.plugins.cors.routing.CORS
+import io.ktor.server.routing.Route
 import org.slf4j.LoggerFactory
 import java.net.URI
 
 private val log = LoggerFactory.getLogger("Cors")
 
-fun Application.configureCors() {
+/**
+ * Installs CORS on this route scope.
+ *
+ * Only browser-facing routes (analytics/dashboard) should have CORS.
+ * Server-to-server submission routes must NOT be covered, because calling
+ * apps may forward the browser Origin header, which would trigger a 403
+ * from the CORS plugin if the origin is not in the allow-list.
+ */
+fun Route.installCors() {
     val env = ServerEnv.current
     val configuredOrigins = System.getenv("LUMI_CORS_ALLOWED_ORIGINS")
         ?.split(",")
