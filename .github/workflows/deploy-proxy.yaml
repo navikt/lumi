@@ -50,6 +50,7 @@ jobs:
           project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }}
           dockerfile: apps/lumi-submission-proxy/Dockerfile
           docker_context: apps/lumi-submission-proxy
+          image_suffix: submission-proxy
           push_image: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
 
   deploy-dev:
