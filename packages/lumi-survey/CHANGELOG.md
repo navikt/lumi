@@ -10,7 +10,7 @@ This project follows SemVer.
 
 ### Changed
 
-- **Breaking (storage)**: localStorage key prefix changed from `flexjar-*` to `lumi-*`. Previously dismissed surveys will reappear once as the old keys are no longer read. Requires `lumi-*` to be allowlisted in the NAV consent API.
+- localStorage key prefix changed from `flexjar-*` to `lumi-*`. Previously dismissed surveys will reappear once as the old keys are no longer read. Requires `lumi-*` to be allowlisted in the NAV consent API.
 
 ### Removed
 
