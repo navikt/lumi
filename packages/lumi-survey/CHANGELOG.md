@@ -6,6 +6,17 @@ This project follows SemVer.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-03-05
+
+### Changed
+
+- **Breaking (storage)**: localStorage key prefix changed from `flexjar-*` to `lumi-*`. Previously dismissed surveys will reappear once as the old keys are no longer read. Requires `lumi-*` to be allowlisted in the NAV consent API.
+
+### Removed
+
+- Removed all legacy `flexjar` references from source, mocks, and documentation.
+- Removed duplicate test file `FlexJarDock.test.tsx` (covered by `LumiSurveyDock.test.tsx`).
+
 ## [0.1.0] - 2026-02-26
 
 ### Changed

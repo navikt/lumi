@@ -26,7 +26,7 @@ npm -w packages/lumi-survey run storybook
 
 ## Repo-specific notes
 
-- Consent/storage compatibility may need to preserve legacy key allowlisting (historically `flexjar-*`) when required.
+- Consent/storage uses the `lumi-*` localStorage key pattern, allowlisted in the NAV consent API.
 
 ## Boundaries
 

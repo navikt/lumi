@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { LumiSurveyEvents } from "../../../core/types.js";
+import type { LumiSurveyEvents } from "../../../core";
 import {
   readConsentValue,
   removeConsentValue,
@@ -139,7 +139,7 @@ export const usePersistedDismissal = (
     storageStrategy,
   } = options;
 
-  const storageKey = useMemo(() => `flexjar-dismissed-${surveyId}`, [surveyId]);
+  const storageKey = useMemo(() => `lumi-dismissed-${surveyId}`, [surveyId]);
 
   const storageAdapter = useMemo(
     () => getStorageAdapter(storageStrategy),
