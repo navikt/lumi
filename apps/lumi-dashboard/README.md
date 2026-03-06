@@ -1,11 +1,13 @@
 # Lumi Dashboard
 
+> 📖 **Bruker dashboardet?** Se [Dashboard-dokumentasjonen](https://navikt.github.io/lumi/dashboard/tilgang) for tilgang og bruk.
+
 Analyse-dashboard for Lumi survey-data. Bygget med TanStack Start.
 
 ## Kom i gang
 
 ```bash
-# Forutsetninger: Node.js 20+
+# Forutsetninger: Node.js 22+
 
 # 1. Klon og installer
 git clone https://github.com/navikt/lumi.git
@@ -50,8 +52,8 @@ npm run dev
 
 ### Forutsetninger
 
-- Node.js 20+
-- npm or yarn
+- Node.js 22
+- npm
 
 ### Oppsett
 

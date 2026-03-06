@@ -1,0 +1,27 @@
+:root {
+  /* NAV deepblue brand colors */
+  --vp-c-brand-1: #0067c5;
+  --vp-c-brand-2: #005aa4;
+  --vp-c-brand-3: #368dcf;
+  --vp-c-brand-soft: rgba(0, 103, 197, 0.12);
+
+  /* Hero gradient */
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(
+    135deg,
+    #0067c5 0%,
+    #005aa4 50%,
+    #368dcf 100%
+  );
+
+  /* Brand buttons */
+  --vp-button-brand-border: transparent;
+  --vp-button-brand-text: #ffffff;
+  --vp-button-brand-bg: #0067c5;
+  --vp-button-brand-hover-border: transparent;
+  --vp-button-brand-hover-text: #ffffff;
+  --vp-button-brand-hover-bg: #005aa4;
+  --vp-button-brand-active-border: transparent;
+  --vp-button-brand-active-text: #ffffff;
+  --vp-button-brand-active-bg: #004a80;
+}

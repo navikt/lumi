@@ -2,7 +2,7 @@
 
 Backend for Lumi survey analytics, bygget med Ktor.
 
-> **Integrerer du mot Lumi?** Se [Kom i gang](../../README.md#kom-i-gang) i rot-README for fullstendig integrasjonsguide (widget → backend → token exchange → NAIS-tilgang).
+> 📖 **Bruker Lumi?** Se [Lumi-dokumentasjonen](https://navikt.github.io/lumi/) for integrasjonsguide og API-referanse.
 
 ## Kjør lokalt
 
@@ -26,7 +26,7 @@ docker run -d --name lumi-db \
 | `POST /api/tokenx/v1/feedback` | TokenX | Sluttbruker-flater (nav.no) |
 | `POST /api/azure/v1/feedback` | AzureAD | Veileder-/Modia-/fagsystem-flater |
 
-Kallene er backend-til-backend (token exchange server-side). Integrasjonsmønsteret er beskrevet i [rot-README steg 3](../../README.md#3-sett-opp-backend-token-exchange--forwarding).
+Kallene er backend-til-backend (token exchange server-side). Integrasjonsmønsteret er beskrevet i [Koble til backend](https://navikt.github.io/lumi/kom-i-gang/koble-til-backend).
 
 ### Analyse & Dashboard
 
@@ -194,7 +194,5 @@ Deployes til NAIS via GitHub Actions.
 
 ## Se også
 
-- [Rot-README — integrasjonsguide](../../README.md#kom-i-gang)
+- [Lumi-dokumentasjon](https://navikt.github.io/lumi/)
 - [Survey-widget — konfigurasjon og presets](../../packages/lumi-survey/README.md)
-- [OpenAPI-spec (utkast)](../../docs/openapi/lumi-api.yaml)
-- [Pentest kickoff](../../docs/security/pentest-kickoff.md)

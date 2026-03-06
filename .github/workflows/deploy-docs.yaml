@@ -1,0 +1,57 @@
+name: Deploy docs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'packages/lumi-survey/src/**'
+      - 'packages/lumi-survey/.storybook/**'
+      - '.github/workflows/deploy-docs.yaml'
+  workflow_dispatch:
+
+concurrency:
+  group: docs-deploy
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: Build docs + Storybook
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install and build VitePress
+        run: cd docs && npm ci && npm run build
+      - name: Install workspace deps
+        run: npm ci
+        env:
+          NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
+      - name: Build Storybook
+        run: npm run build-storybook:survey
+      - name: Copy Storybook into VitePress dist
+        run: cp -r packages/lumi-survey/storybook-static docs/.vitepress/dist/storybook
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: docs/.vitepress/dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+        id: deployment
