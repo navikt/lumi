@@ -388,6 +388,10 @@ export interface LumiSurveyEvents {
    * Fired when the dock cannot persist its dismissal flag due to storage restrictions (for example when consent is denied).
    */
   onDismissalPersistFailed?: (cause: unknown) => void;
+  /**
+   * Fired when the current step changes in step mode.
+   */
+  onStepChange?: (currentStep: number, totalSteps: number) => void;
 }
 
 export type LumiSurveyStatus = "idle" | "submitting" | "success" | "error";

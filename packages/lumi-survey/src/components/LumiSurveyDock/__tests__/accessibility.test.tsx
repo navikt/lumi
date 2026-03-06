@@ -119,6 +119,42 @@ describe("LumiSurveyDock Accessibility", () => {
     });
   });
 
+  it("should have no axe violations in intro state", async () => {
+    const { container } = render(
+      <LumiSurveyDock
+        surveyId="a11y-intro-test"
+        survey={survey}
+        transport={mockTransport}
+        intro={{ title: "Hei!", body: "Vi vil gjerne høre fra deg." }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /hei!/i }),
+      ).toBeInTheDocument();
+    });
+
+    const results = await axe.run(container);
+    expect(results.violations).toEqual([]);
+  });
+
+  it("intro heading has correct id for aria-labelledby", async () => {
+    render(
+      <LumiSurveyDock
+        surveyId="intro-id-test"
+        survey={survey}
+        transport={mockTransport}
+        intro={{ title: "Velkommen" }}
+      />,
+    );
+
+    await waitFor(() => {
+      const heading = screen.getByRole("heading", { name: /velkommen/i });
+      expect(heading).toHaveAttribute("id", "intro-id-test-dock-intro-heading");
+    });
+  });
+
   it("announces success state to screen readers", async () => {
     const user = userEvent.setup();
     render(
@@ -162,6 +198,36 @@ describe("LumiSurveyDock Accessibility", () => {
     await waitFor(() => {
       const radiogroup = screen.getByRole("radiogroup");
       expect(radiogroup).toHaveAttribute("aria-labelledby");
+    });
+  });
+
+  it("moves focus to question heading after clicking Start in intro", async () => {
+    const user = userEvent.setup();
+    render(
+      <LumiSurveyDock
+        surveyId="focus-intro-test"
+        survey={survey}
+        transport={mockTransport}
+        intro={{ title: "Velkommen", body: "Kort intro" }}
+      />,
+    );
+
+    // Intro heading is shown initially
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /velkommen/i }),
+      ).toBeInTheDocument();
+    });
+
+    // Click Start
+    await user.click(screen.getByRole("button", { name: /start/i }));
+
+    // After transition, the question heading should have focus
+    await waitFor(() => {
+      const questionHeading = screen.getByRole("heading", {
+        name: /hvor fornøyd er du/i,
+      });
+      expect(questionHeading).toHaveFocus();
     });
   });
 });

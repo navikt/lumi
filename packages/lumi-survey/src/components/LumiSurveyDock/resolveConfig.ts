@@ -5,6 +5,7 @@ import {
 } from "../shared/commonDefaults.js";
 import type {
   LumiSurveyBehavior,
+  LumiSurveyIntroConfig,
   LumiSurveyLabels,
   LumiSurveyStyle,
   LumiSurveySuccessConfig,
@@ -47,6 +48,13 @@ export interface ResolvedConfig {
   personalDataNotice: ReactNode;
   collectLocation: boolean;
   storageStrategy: "consent" | "localStorage" | "none";
+  showProgress: boolean;
+
+  // Intro
+  introTitle?: string;
+  introBody?: ReactNode;
+  introStartLabel: string;
+  hasIntro: boolean;
 }
 
 /**
@@ -57,6 +65,7 @@ export function resolveConfig(
   success?: LumiSurveySuccessConfig,
   style?: LumiSurveyStyle,
   behavior?: LumiSurveyBehavior,
+  intro?: LumiSurveyIntroConfig,
 ): ResolvedConfig {
   return {
     // Labels
@@ -97,5 +106,12 @@ export function resolveConfig(
       behavior?.personalDataNotice ?? DEFAULT_PERSONAL_DATA_NOTICE,
     collectLocation: behavior?.collectLocation ?? false,
     storageStrategy: behavior?.storageStrategy ?? "consent",
+    showProgress: behavior?.showProgress ?? false,
+
+    // Intro
+    introTitle: intro?.title,
+    introBody: intro?.body,
+    introStartLabel: intro?.startLabel ?? "Start",
+    hasIntro: intro != null,
   };
 }

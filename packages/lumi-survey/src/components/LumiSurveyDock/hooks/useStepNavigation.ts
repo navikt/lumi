@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   type BranchingResult,
   evaluateBranching,
@@ -15,6 +15,8 @@ export interface UseStepNavigationOptions {
   metadata?: Record<string, unknown>;
   /** If true, forces step mode even without branching logic */
   forceStepMode?: boolean;
+  /** Callback fired when the current step changes */
+  onStepChange?: (currentStep: number, totalSteps: number) => void;
 }
 
 export interface UseStepNavigationReturn {
@@ -51,7 +53,13 @@ export interface UseStepNavigationReturn {
 export function useStepNavigation(
   options: UseStepNavigationOptions,
 ): UseStepNavigationReturn {
-  const { questions, answers, metadata, forceStepMode = false } = options;
+  const {
+    questions,
+    answers,
+    metadata,
+    forceStepMode = false,
+    onStepChange,
+  } = options;
 
   // Determine if we need step-based navigation
   const hasBranching = useMemo(
@@ -78,6 +86,13 @@ export function useStepNavigation(
   const canGoBack = visitedSteps.length > 1;
   const canGoNext = hasAnsweredCurrent || !currentQuestion?.required;
   const isLastStep = currentStep >= questions.length - 1;
+
+  // Fire onStepChange when step changes
+  useEffect(() => {
+    if (isStepMode && onStepChange) {
+      onStepChange(currentStep, questions.length);
+    }
+  }, [currentStep, isStepMode, onStepChange, questions.length]);
 
   const goToNext = useCallback(() => {
     if (!currentQuestion) return null;

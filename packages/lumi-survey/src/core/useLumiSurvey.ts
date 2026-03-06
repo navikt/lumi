@@ -35,8 +35,10 @@ export interface UseLumiSurveyReturn {
     questionId: string,
     value: LumiSurveyAnswerValue | null | undefined,
   ) => void;
-  submit: () => Promise<LumiSurveySubmitResult>;
-  validate: () => string[];
+  submit: (
+    questionsToValidate?: LumiSurveyQuestion[],
+  ) => Promise<LumiSurveySubmitResult>;
+  validate: (questionsToValidate?: LumiSurveyQuestion[]) => string[];
   reset: () => void;
 }
 
@@ -60,72 +62,80 @@ export function useLumiSurvey(
   const [status, setStatus] = useState<LumiSurveyStatus>("idle");
   const [error, setError] = useState<LumiSurveyError | null>(null);
 
-  const validate = useCallback((): string[] => {
-    return validateAnswers(questions, answers);
-  }, [answers, questions]);
+  const validate = useCallback(
+    (questionsToValidate?: LumiSurveyQuestion[]): string[] => {
+      return validateAnswers(questionsToValidate ?? questions, answers);
+    },
+    [answers, questions],
+  );
 
-  const submit = useCallback(async (): Promise<LumiSurveySubmitResult> => {
-    const missing = validate();
+  const submit = useCallback(
+    async (
+      questionsToValidate?: LumiSurveyQuestion[],
+    ): Promise<LumiSurveySubmitResult> => {
+      const missing = validate(questionsToValidate);
 
-    if (missing.length > 0) {
-      const validationError: LumiSurveyValidationError = {
-        type: "validation",
-        missing,
-      };
-      setStatus("error");
-      setError(validationError);
-      events?.onValidationFailed?.(missing);
-      return { ok: false, error: validationError };
-    }
+      if (missing.length > 0) {
+        const validationError: LumiSurveyValidationError = {
+          type: "validation",
+          missing,
+        };
+        setStatus("error");
+        setError(validationError);
+        events?.onValidationFailed?.(missing);
+        return { ok: false, error: validationError };
+      }
 
-    setStatus("submitting");
-    setError(null);
-
-    const answerSnapshot = cloneAnswers(answers);
-    const submittedAtTimestamp = new Date().toISOString();
-    const submission: LumiSurveySubmission = {
-      surveyId,
-      answers: answerSnapshot,
-      startedAt: startedAtRef.current,
-      submittedAt: submittedAtTimestamp,
-      context: context ? { ...context } : undefined,
-      transportPayload: buildTransportPayload(
-        surveyId,
-        answerSnapshot,
-        questions,
-        surveyType,
-        context,
-        startedAtRef.current,
-        submittedAtTimestamp,
-      ),
-    };
-
-    events?.onSubmitStart?.(submission);
-
-    try {
-      await transport.submit(submission);
-      setStatus("success");
+      setStatus("submitting");
       setError(null);
-      events?.onSubmitSuccess?.(submission);
-      return { ok: true, submission };
-    } catch (cause) {
-      const transportError: LumiSurveyError = { type: "transport", cause };
-      setStatus("error");
-      setError(transportError);
-      events?.onSubmitError?.(cause);
-      return { ok: false, error: transportError };
-    }
-  }, [
-    answers,
-    context,
-    events,
-    questions,
-    startedAtRef,
-    surveyId,
-    surveyType,
-    transport,
-    validate,
-  ]);
+
+      const answerSnapshot = cloneAnswers(answers);
+      const submittedAtTimestamp = new Date().toISOString();
+      const submission: LumiSurveySubmission = {
+        surveyId,
+        answers: answerSnapshot,
+        startedAt: startedAtRef.current,
+        submittedAt: submittedAtTimestamp,
+        context: context ? { ...context } : undefined,
+        transportPayload: buildTransportPayload(
+          surveyId,
+          answerSnapshot,
+          questions,
+          surveyType,
+          context,
+          startedAtRef.current,
+          submittedAtTimestamp,
+        ),
+      };
+
+      events?.onSubmitStart?.(submission);
+
+      try {
+        await transport.submit(submission);
+        setStatus("success");
+        setError(null);
+        events?.onSubmitSuccess?.(submission);
+        return { ok: true, submission };
+      } catch (cause) {
+        const transportError: LumiSurveyError = { type: "transport", cause };
+        setStatus("error");
+        setError(transportError);
+        events?.onSubmitError?.(cause);
+        return { ok: false, error: transportError };
+      }
+    },
+    [
+      answers,
+      context,
+      events,
+      questions,
+      startedAtRef,
+      surveyId,
+      surveyType,
+      transport,
+      validate,
+    ],
+  );
 
   const reset = useCallback(() => {
     resetAnswers();
