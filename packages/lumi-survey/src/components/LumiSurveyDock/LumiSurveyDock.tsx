@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   LumiSurveyContext,
   LumiSurveyEvents,
@@ -13,7 +13,7 @@ import {
   shouldShowSubmitButton,
   useLumiSurvey,
 } from "../../core";
-import { surveyHasBranchingLogic } from "../../core/branchingEngine.js";
+
 import type { LumiSurveyRenderQuestionProps } from "../../types.js";
 import { DefaultQuestionRenderer, RatingQuestionField } from "../questions";
 import { buildCanonicalSurvey } from "../shared/canonicalSurvey.js";
@@ -30,6 +30,7 @@ import "./LumiSurveyDock.fallback.css";
 
 import type {
   LumiSurveyBehavior,
+  LumiSurveyIntroConfig,
   LumiSurveyLabels,
   LumiSurveyStyle,
   LumiSurveySuccessConfig,
@@ -95,6 +96,12 @@ export interface LumiSurveyDockProps {
   events?: LumiSurveyEvents;
 
   /**
+   * Optional intro screen configuration.
+   * When set, an introduction screen is shown before the first question.
+   */
+  intro?: LumiSurveyIntroConfig;
+
+  /**
    * Structured context for segmentation (tags) and debugging (debug).
    * System fields (viewport, deviceType, userAgent) are auto-collected.
    * Note: `deviceType` is derived from viewport width breakpoints (not the
@@ -117,14 +124,25 @@ export const LumiSurveyDock = ({
   success,
   style,
   behavior,
+  intro,
 }: LumiSurveyDockProps) => {
   // Resolve all config with defaults
   const config = useMemo(
-    () => resolveConfig(labels, success, style, behavior),
-    [labels, success, style, behavior],
+    () => resolveConfig(labels, success, style, behavior, intro),
+    [labels, success, style, behavior, intro],
   );
 
   // IMPORTANT: Call all hooks before any conditional returns to comply with Rules of Hooks
+
+  // Intro state — starts true when intro is configured
+  const [showIntro, setShowIntro] = useState(config.hasIntro);
+
+  const handleIntroStart = useCallback(() => {
+    setShowIntro(false);
+  }, []);
+
+  // Track previous showIntro value to detect intro → question transition
+  const prevShowIntroRef = useRef(showIntro);
 
   /*
    * Use the new flexible survey builder.
@@ -141,7 +159,16 @@ export const LumiSurveyDock = ({
     ? `${promptQuestion.id}-dock-description`
     : undefined;
   const successHeadingId = `${surveyId}-dock-success-heading`;
+  const introHeadingId = `${surveyId}-dock-intro-heading`;
   const panelId = `${surveyId}-dock-panel`;
+
+  // Focus the question heading when transitioning from intro → questions
+  useEffect(() => {
+    if (prevShowIntroRef.current && !showIntro) {
+      document.getElementById(promptHeadingId)?.focus();
+    }
+    prevShowIntroRef.current = showIntro;
+  }, [showIntro, promptHeadingId]);
 
   // Auto-collect system context and merge with user-provided context
   const enrichedContext = useEnrichedContext(context, {
@@ -157,6 +184,40 @@ export const LumiSurveyDock = ({
     surveyType,
   });
 
+  const forceStepMode = config.questionLayout === "steps";
+  const forceSinglePage = config.questionLayout === "singlePage";
+
+  const {
+    isStepMode: stepModeFromSurvey,
+    currentStep,
+    currentQuestion: currentStepQuestion,
+    canGoBack,
+    canGoNext,
+    isLastStep,
+    shouldSubmit,
+    goToNext,
+    goToPrevious,
+    resetNavigation,
+    visitedSteps,
+  } = useStepNavigation({
+    questions,
+    answers,
+    forceStepMode,
+    onStepChange: events?.onStepChange,
+  });
+
+  // When the consumer explicitly requests "singlePage", always disable step
+  // mode so that every question renders on one page — even for surveys that
+  // contain branching logic.
+  const isStepMode = forceSinglePage ? false : stepModeFromSurvey;
+
+  // Combined reset: clears survey answers, resets step navigation, and restores intro screen
+  const handleFullReset = useCallback(() => {
+    reset();
+    resetNavigation();
+    setShowIntro(config.hasIntro);
+  }, [reset, resetNavigation, config.hasIntro]);
+
   const { dismissed, shouldHideCompletely, isLoading, closeDock, reopenDock } =
     usePersistedDismissal({
       surveyId,
@@ -164,7 +225,7 @@ export const LumiSurveyDock = ({
       dismissCooldownDays: config.dismissCooldownDays,
       events,
       resetOnClose: config.resetOnClose,
-      onReset: reset,
+      onReset: handleFullReset,
       storageStrategy: config.storageStrategy,
     });
 
@@ -181,34 +242,13 @@ export const LumiSurveyDock = ({
     [questions, answers],
   );
 
-  // Step navigation for branching logic
-  const hasBranching = useMemo(
-    () => surveyHasBranchingLogic(questions),
-    [questions],
-  );
-
-  const forceStepMode = config.questionLayout === "steps";
-  const forceSinglePage = config.questionLayout === "singlePage";
-
-  const {
-    isStepMode: stepModeFromSurvey,
-    currentStep,
-    currentQuestion: currentStepQuestion,
-    canGoBack,
-    canGoNext,
-    isLastStep,
-    shouldSubmit,
-    goToNext,
-    goToPrevious,
-  } = useStepNavigation({
-    questions,
-    answers,
-    forceStepMode,
-  });
-
-  // "singlePage" is only meaningful when there is no branching.
-  // If branching exists we keep step mode to preserve correct navigation.
-  const isStepMode = forceSinglePage ? hasBranching : stepModeFromSurvey;
+  // In step mode with branching, only validate questions the user actually visited.
+  // This prevents validation failures on required questions in unvisited branches.
+  const visitedQuestions = useMemo(() => {
+    if (!isStepMode) return undefined;
+    const uniqueIndices = [...new Set(visitedSteps)];
+    return uniqueIndices.map((index) => questions[index]).filter(Boolean);
+  }, [isStepMode, visitedSteps, questions]);
 
   const showPersonalDataNotice = useMemo(() => {
     if (!config.showPersonalDataNotice) return false;
@@ -232,18 +272,18 @@ export const LumiSurveyDock = ({
     }
 
     try {
-      await submit();
+      await submit(visitedQuestions);
     } catch {
       // useLumiSurvey sets error state; avoid unhandled rejections
     }
-  }, [goToNext, submit]);
+  }, [goToNext, submit, visitedQuestions]);
 
   const handleSubmit = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-      await submit();
+      await submit(visitedQuestions);
     },
-    [submit],
+    [submit, visitedQuestions],
   );
 
   const isSubmitting = status === "submitting";
@@ -397,6 +437,7 @@ export const LumiSurveyDock = ({
           promptHeadingId={promptHeadingId}
           promptDescriptionId={promptDescriptionId}
           successHeadingId={successHeadingId}
+          introHeadingId={introHeadingId}
           successTitle={config.successTitle}
           successBody={config.successBody}
           successPrimaryLabel={config.successPrimaryLabel}
@@ -426,6 +467,16 @@ export const LumiSurveyDock = ({
           isLastStep={isLastStep || shouldSubmit}
           onNext={handleNext}
           onBack={goToPrevious}
+          // Intro props
+          isIntro={showIntro}
+          introTitle={config.introTitle}
+          introBody={config.introBody}
+          introStartLabel={config.introStartLabel}
+          onIntroStart={handleIntroStart}
+          // Progress bar props
+          showProgress={config.showProgress}
+          totalSteps={questions.length}
+          visitedSteps={visitedSteps}
         />
       )}
     </aside>

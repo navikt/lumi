@@ -4,6 +4,7 @@ export {
 } from "./components/LumiSurveyDock/index.js";
 export type {
   LumiSurveyBehavior,
+  LumiSurveyIntroConfig,
   LumiSurveyLabels,
   LumiSurveyStyle,
   LumiSurveySuccessConfig,

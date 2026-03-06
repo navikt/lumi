@@ -1,4 +1,4 @@
-import type { BoxNewProps } from "@navikt/ds-react/Box";
+import type { BoxProps } from "@navikt/ds-react/Box";
 import type { ReactNode } from "react";
 
 /**
@@ -49,9 +49,9 @@ export interface LumiSurveyStyle {
   /** Additional CSS class for panel. */
   panelClassName?: string;
   /** Panel background color (Aksel token). @default "default" */
-  panelBackground?: BoxNewProps["background"];
+  panelBackground?: BoxProps["background"];
   /** Panel border color (Aksel token). @default "neutral-subtle" */
-  panelBorderColor?: BoxNewProps["borderColor"];
+  panelBorderColor?: BoxProps["borderColor"];
 }
 
 /**
@@ -69,6 +69,18 @@ export type StorageStrategy = "consent" | "localStorage" | "none";
  * - "steps": always show one question at a time with Next/Back
  */
 export type QuestionLayout = "auto" | "singlePage" | "steps";
+
+/**
+ * Configuration for the intro screen shown before the first question.
+ */
+export interface LumiSurveyIntroConfig {
+  /** Title shown on intro screen. */
+  title: string;
+  /** Optional body content on intro screen. */
+  body?: ReactNode;
+  /** Label for the start button. @default "Start" */
+  startLabel?: string;
+}
 
 /**
  * Behavior options for the dock.
@@ -105,4 +117,11 @@ export interface LumiSurveyBehavior {
    * @default "consent"
    */
   storageStrategy?: StorageStrategy;
+
+  /**
+   * Show a progress bar in step mode.
+   * Only visible when questionLayout is "steps" or branching is active.
+   * @default false
+   */
+  showProgress?: boolean;
 }

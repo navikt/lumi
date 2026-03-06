@@ -438,4 +438,67 @@ describe("useLumiSurvey", () => {
 
     expect(result.current.answers).not.toHaveProperty("feedback");
   });
+
+  it("submit validates only the provided question subset (branching)", async () => {
+    const submitMock = vi.fn(async (payload: LumiSurveySubmission) => {
+      void payload;
+    });
+    const transport: LumiSurveyTransport = {
+      submit: submitMock,
+    };
+
+    // Survey where Q2 (feedback) is required but would be skipped via branching
+    const { result } = renderHook(() =>
+      useLumiSurvey({
+        surveyId: SURVEY_ID,
+        questions: requiredQuestions,
+        transport,
+      }),
+    );
+
+    // Only answer the rating question
+    await act(() => {
+      result.current.setAnswer("rating", 4);
+    });
+
+    // Without override: should fail because "feedback" is required but unanswered
+    let submission: LumiSurveySubmitResult | undefined;
+    await act(async () => {
+      submission = await result.current.submit();
+    });
+    expect(submission?.ok).toBe(false);
+
+    // With override: pass only the rating question as the visited subset
+    const visitedQuestions = [requiredQuestions[0]]; // only rating
+    await act(async () => {
+      submission = await result.current.submit(visitedQuestions);
+    });
+
+    expect(submission?.ok).toBe(true);
+    expect(submitMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("validate accepts optional question subset", () => {
+    const transport: LumiSurveyTransport = {
+      submit: vi.fn(),
+    };
+
+    const { result } = renderHook(() =>
+      useLumiSurvey({
+        surveyId: SURVEY_ID,
+        questions: requiredQuestions,
+        transport,
+      }),
+    );
+
+    act(() => {
+      result.current.setAnswer("rating", 3);
+    });
+
+    // Without override: should include "feedback" as missing
+    expect(result.current.validate()).toEqual(["feedback"]);
+
+    // With override: only check rating (which is answered)
+    expect(result.current.validate([requiredQuestions[0]])).toEqual([]);
+  });
 });
