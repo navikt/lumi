@@ -1,6 +1,6 @@
-import { defineConfig } from "vitepress";
+import { withMermaid } from "vitepress-plugin-mermaid";
 
-export default defineConfig({
+export default withMermaid({
   title: "Lumi",
   description: "Personvernvennlig survey-infrastruktur for NAV",
   base: "/lumi/",
