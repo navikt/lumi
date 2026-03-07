@@ -200,8 +200,8 @@ Alle spørsmålstyper deler disse:
 | `description` | `string` | Valgfri hjelpetekst under spørsmålet |
 | `required` | `boolean` | Krever svar for å sende inn |
 | `analyticsId` | `string` | Valgfri ID for analytics (bruker `id` om ikke satt) |
-| `visibleIf` | `LogicCondition` | Betinget visning — se [Betinget synlighet](/bruk/betinget-synlighet) |
-| `logic` | `LogicRule[]` | Branching-regler — se [Avansert](/tilpasning/avansert) |
+| `visibleIf` | `LogicCondition` | Betinget visning — se [Betinget synlighet](/guider/betinget-synlighet) |
+| `logic` | `LogicRule[]` | Branching-regler — se [Avansert](/guider/branching) |
 
 ## Komplett eksempel
 
@@ -267,5 +267,5 @@ export function MyPage() {
 ```
 
 ::: tip Bruk presets for vanlige mønstre
-For de fleste tilfeller trenger du ikke bygge surveyen fra scratch. Se [Presets](/bruk/presets) for ferdige konfigurasjoner.
+For de fleste tilfeller trenger du ikke bygge surveyen fra scratch. Se [Presets](/guider/presets) for ferdige konfigurasjoner.
 :::

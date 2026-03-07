@@ -33,7 +33,7 @@ interface LumiSurveyConfig {
 }
 ```
 
-Se [Spørsmålstyper](/bruk/sporsmalstyper) for detaljer om spørsmål-objektene.
+Se [Spørsmålstyper](/guider/sporsmalstyper) for detaljer om spørsmål-objektene.
 
 ## `transport` — `LumiSurveyTransport`
 
@@ -43,7 +43,7 @@ interface LumiSurveyTransport {
 }
 ```
 
-`submission.transportPayload` er den ferdig-formaterte payloaden du sender til din backend. Se [Presets → Go-live sjekkliste](/bruk/presets#go-live-sjekkliste) for oppsett.
+`submission.transportPayload` er den ferdig-formaterte payloaden du sender til din backend. Se [Presets → Go-live sjekkliste](/guider/presets#go-live-sjekkliste) for oppsett.
 
 ## `behavior` — `LumiSurveyBehavior`
 
@@ -137,11 +137,11 @@ Visuell tilpasning av dock-panelet.
 />
 ```
 
-Se [Styling](/tilpasning/styling) for mer om visuell tilpasning.
+Se [Styling](/guider/styling) for mer om visuell tilpasning.
 
 ## `events` — `LumiSurveyEvents`
 
-Event-callbacks for livssyklus og sporing. Se [Events](/tilpasning/events) for fullstendig dokumentasjon med brukseksempler.
+Event-callbacks for livssyklus og sporing. Se [Events](/referanse/events) for fullstendig dokumentasjon med brukseksempler.
 
 ## `intro` — `LumiSurveyIntroConfig`
 
@@ -165,7 +165,7 @@ Viser en intro-skjerm før første spørsmål.
 
 ## `context` — `LumiSurveyContext`
 
-Metadata for segmentering og feilsøking. Se [Context & tags](/bruk/context-og-tags) for fullstendig dokumentasjon.
+Metadata for segmentering og feilsøking. Se [Context & tags](/guider/context-og-tags) for fullstendig dokumentasjon.
 
 ```ts
 interface LumiSurveyContext {

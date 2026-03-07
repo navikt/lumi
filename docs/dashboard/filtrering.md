@@ -28,7 +28,7 @@ Datoer tolkes i tidssone `Europe/Oslo`.
 Bruk søkefeltet for å gjøre **fulltekstsøk** i fritekst-tilbakemeldinger. Søket matcher mot innholdet i brukerens svar.
 
 ::: tip
-Sensitive data som fødselsnummer og e-post er maskert av backend, så disse vil ikke dukke opp i søkeresultater. Se [PII-maskeringen](/sikkerhet/arkitektur#pii-maskering) for detaljer.
+Sensitive data som fødselsnummer og e-post er maskert av backend, så disse vil ikke dukke opp i søkeresultater. Se [PII-maskeringen](/referanse/sikkerhet#pii-maskering) for detaljer.
 :::
 
 ### Forhåndsdefinerte filtre

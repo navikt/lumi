@@ -184,7 +184,7 @@ Default er `consent`, som krever Nav consent API (`window.webStorageController`)
 ```
 :::
 
-Se [Lagring](/bruk/lagring) for detaljer om cooldown og dismissal-logikk.
+Se [Lagring](/guider/lagring) for detaljer om cooldown og dismissal-logikk.
 
 ## Komplett sjekkliste
 

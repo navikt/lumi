@@ -4,7 +4,7 @@ title: Avansert
 
 # Avansert branching med `logic`
 
-Bruk `logic` når du trenger å endre flyten i surveyen — hoppe til et annet spørsmål, skippe neste steg, eller avslutte tidlig. For enkel vis/skjul bruker du heller [`visibleIf`](/bruk/betinget-synlighet).
+Bruk `logic` når du trenger å endre flyten i surveyen — hoppe til et annet spørsmål, skippe neste steg, eller avslutte tidlig. For enkel vis/skjul bruker du heller [`visibleIf`](/guider/betinget-synlighet).
 
 ::: info Når bruke hva?
 - **Vis/skjul spørsmål** → `visibleIf`

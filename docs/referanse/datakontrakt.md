@@ -135,4 +135,4 @@ Backend mapper `surveyType`-strenger til enums:
 ## Se også
 
 - [API-endepunkter](/referanse/api-endepunkter) — endepunktene som mottar denne payloaden
-- [Context & tags](/bruk/context-og-tags) — hvordan du konfigurerer context i widgeten
+- [Context & tags](/guider/context-og-tags) — hvordan du konfigurerer context i widgeten

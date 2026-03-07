@@ -46,9 +46,6 @@ import "@navikt/lumi-survey/styles.css";
 Her er et minimalt eksempel som viser en survey-widget i appen din:
 
 ```tsx
-import "@navikt/ds-css";
-import "@navikt/lumi-survey/styles.css";
-
 import {
   LumiSurveyDock,
   DEFAULT_SURVEY_RATING,

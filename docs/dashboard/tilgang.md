@@ -4,7 +4,7 @@ title: Tilgang
 
 # Tilgang
 
-Lumi-dashboardet er tilgjengelig for NAV-ansatte som er medlem av et NAIS-team som har data i Lumi.
+Lumi-dashboardet er tilgjengelig for Nav-ansatte som er medlem av et NAIS-team som har data i Lumi.
 
 ## Autentisering
 
@@ -48,5 +48,5 @@ Begge krever Nav-innlogging (Azure AD). Dev-miljøet bruker Nav sitt dev-AD-tena
 
 ## Se også
 
-- [Sikkerhetsarkitektur](/sikkerhet/arkitektur) — detaljer om autorisasjonslagene
+- [Sikkerhetsarkitektur](/referanse/sikkerhet) — detaljer om autorisasjonslagene
 - [API-endepunkter](/referanse/api-endepunkter) — teknisk referanse for backend-API-et

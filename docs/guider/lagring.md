@@ -106,7 +106,7 @@ Default er `consent`, som krever Nav consent API (`window.webStorageController`)
 
 ## Events ved lagringsfeil
 
-Hvis lagring feiler (f.eks. consent nektet), fyres `onDismissalPersistFailed`-eventet. Se [Events](/tilpasning/events) for detaljer.
+Hvis lagring feiler (f.eks. consent nektet), fyres `onDismissalPersistFailed`-eventet. Se [Events](/referanse/events) for detaljer.
 
 ```tsx
 <LumiSurveyDock

@@ -139,7 +139,7 @@ import "@navikt/lumi-survey/styles.css"; // Lumi widget-styles
 />
 ```
 
-Se [Lagring](/bruk/lagring) for full oversikt over lagringsstrategier.
+Se [Lagring](/guider/lagring) for full oversikt over lagringsstrategier.
 
 ::: info Feilsøk med events
 Du kan lytte på `onDismissalPersistFailed` for å oppdage dette:
@@ -175,8 +175,8 @@ Du kan lytte på `onDismissalPersistFailed` for å oppdage dette:
 
 ## Trenger du mer hjelp?
 
-- **Styling-problemer:** Se [Styling](/tilpasning/styling)
-- **Props-oversikt:** Se [Props-referanse](/tilpasning/props-referanse)
-- **Branching fungerer ikke:** Se [Avansert](/tilpasning/avansert)
-- **Lagring og cooldown:** Se [Lagring](/bruk/lagring)
+- **Styling-problemer:** Se [Styling](/guider/styling)
+- **Props-oversikt:** Se [Props-referanse](/referanse/props-referanse)
+- **Branching fungerer ikke:** Se [Avansert](/guider/branching)
+- **Lagring og cooldown:** Se [Lagring](/guider/lagring)
 - **Opprett en issue:** [github.com/navikt/lumi/issues](https://github.com/navikt/lumi/issues)

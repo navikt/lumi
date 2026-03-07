@@ -12,9 +12,9 @@ export default withMermaid({
 
     nav: [
       { text: "Kom i gang", link: "/kom-i-gang/hva-er-lumi" },
-      { text: "Bruk", link: "/bruk/sporsmalstyper" },
+      { text: "Guider", link: "/guider/presets" },
       { text: "Dashboard", link: "/dashboard/tilgang" },
-      { text: "Referanse", link: "/referanse/api-endepunkter" },
+      { text: "Referanse", link: "/referanse/props-referanse" },
       { text: "Feilsøking", link: "/feilsoking" },
     ],
 
@@ -39,29 +39,20 @@ export default withMermaid({
           ],
         },
       ],
-      "/bruk/": [
+      "/guider/": [
         {
-          text: "Bruk",
+          text: "Guider",
           items: [
-            { text: "Spørsmålstyper", link: "/bruk/sporsmalstyper" },
-            { text: "Presets", link: "/bruk/presets" },
+            { text: "Presets & surveytyper", link: "/guider/presets" },
+            { text: "Spørsmålstyper", link: "/guider/sporsmalstyper" },
             {
               text: "Betinget synlighet",
-              link: "/bruk/betinget-synlighet",
+              link: "/guider/betinget-synlighet",
             },
-            { text: "Context & tags", link: "/bruk/context-og-tags" },
-            { text: "Lagring", link: "/bruk/lagring" },
-          ],
-        },
-      ],
-      "/tilpasning/": [
-        {
-          text: "Tilpasning",
-          items: [
-            { text: "Props-referanse", link: "/tilpasning/props-referanse" },
-            { text: "Events", link: "/tilpasning/events" },
-            { text: "Styling", link: "/tilpasning/styling" },
-            { text: "Avansert", link: "/tilpasning/avansert" },
+            { text: "Branching (logic)", link: "/guider/branching" },
+            { text: "Context & tags", link: "/guider/context-og-tags" },
+            { text: "Lagring", link: "/guider/lagring" },
+            { text: "Styling", link: "/guider/styling" },
           ],
         },
       ],
@@ -80,26 +71,24 @@ export default withMermaid({
           text: "Referanse",
           items: [
             {
+              text: "Props-referanse",
+              link: "/referanse/props-referanse",
+            },
+            { text: "Events", link: "/referanse/events" },
+            {
               text: "API-endepunkter",
               link: "/referanse/api-endepunkter",
             },
             { text: "Datakontrakt", link: "/referanse/datakontrakt" },
             {
+              text: "Sikkerhet & arkitektur",
+              link: "/referanse/sikkerhet",
+            },
+            {
               text: "Miljøer & lenker",
               link: "/referanse/miljoer",
             },
             { text: "Changelog", link: "/referanse/changelog" },
-          ],
-        },
-      ],
-      "/sikkerhet/": [
-        {
-          text: "Sikkerhet",
-          items: [
-            {
-              text: "Arkitektur & PII",
-              link: "/sikkerhet/arkitektur",
-            },
           ],
         },
       ],

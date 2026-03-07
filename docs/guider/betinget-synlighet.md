@@ -145,7 +145,7 @@ Du kan også vise spørsmål basert på metadata (kontekst-verdier) i stedet for
 
 `visibleIf` er perfekt for progressiv disclosure — vis/skjul oppfølgingsspørsmål basert på tidligere svar. Men noen ganger trenger du å faktisk *endre flyten*: hoppe til et annet spørsmål, skippe neste steg, eller avslutte surveyen tidlig.
 
-Da bruker du `logic` i stedet. Se [Avansert branching](/tilpasning/avansert) for full dokumentasjon.
+Da bruker du `logic` i stedet. Se [Avansert branching](/guider/branching) for full dokumentasjon.
 
 ::: info Tommelfingerregel
 - **Vis/skjul spørsmål** → `visibleIf`

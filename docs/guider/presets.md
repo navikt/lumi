@@ -163,8 +163,8 @@ Start med `rating` eller `discovery`, og gå videre til `topTasks`/`taskPriority
 
 - **Hold det kort**: 1–2 spørsmål er ofte nok (rating + valgfri tekst)
 - **Still spørsmål om en konkret opplevelse** («etter du gjorde X»), ikke hele produktet
-- **Bruk progresjon**: vis fritekst først etter at rating er valgt ([`visibleIf`](/bruk/betinget-synlighet))
-- **Bruk `context.tags`** for segmentering (lav kardinalitet) — se [Context & tags](/bruk/context-og-tags)
+- **Bruk progresjon**: vis fritekst først etter at rating er valgt ([`visibleIf`](/guider/betinget-synlighet))
+- **Bruk `context.tags`** for segmentering (lav kardinalitet) — se [Context & tags](/guider/context-og-tags)
 - **Velg en stabil `surveyId`** per flate/bruksmønster (ikke per deploy)
 
 ## Go-live sjekkliste
@@ -174,6 +174,6 @@ Før du sender til produksjon:
 - [ ] **CSS importert**: `@navikt/ds-css` og `@navikt/lumi-survey/styles.css`
 - [ ] **Transport implementert**: `transport.submit` sender `submission.transportPayload` til din backend
 - [ ] **Token exchange server-side**: Backend gjør TokenX/AzureAD-exchange og kaller riktig endepunkt
-- [ ] **Riktig `storageStrategy`**: `consent` for nav.no, `localStorage` for interne flater — se [Lagring](/bruk/lagring)
+- [ ] **Riktig `storageStrategy`**: `consent` for nav.no, `localStorage` for interne flater — se [Lagring](/guider/lagring)
 - [ ] **NAIS policies**: Outbound-regel til `lumi-api` i din apps NAIS-manifest
 - [ ] **Ende-til-ende-test**: Verifiser at innsending dukker opp i dashboardet

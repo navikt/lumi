@@ -40,14 +40,7 @@ Du kan justere posisjon, farger og legge til egne CSS-klasser via `style`-propen
 
 ### Tilgjengelige style-properties
 
-| Property | Type | Default | Beskrivelse |
-| :--- | :--- | :--- | :--- |
-| `position` | `"bottom-right" \| "bottom-left"` | `"bottom-right"` | Posisjon på skjermen |
-| `offset` | `number` | `24` | Avstand fra viewport-kant i px |
-| `containerClassName` | `string` | — | Ekstra CSS-klasse for ytre container |
-| `panelClassName` | `string` | — | Ekstra CSS-klasse for panelet |
-| `panelBackground` | Aksel background-token | `"default"` | Bakgrunnsfarge (Aksel `Box`-token) |
-| `panelBorderColor` | Aksel borderColor-token | `"neutral-subtle"` | Kantfarge (Aksel `Box`-token) |
+Se [Props-referanse → style](/referanse/props-referanse#style-lumisurveystyle) for komplett oversikt over alle style-properties.
 
 ## Aksel-kompatibilitet
 

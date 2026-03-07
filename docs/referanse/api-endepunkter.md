@@ -151,7 +151,7 @@ Analyse-endepunktene krever tre autorisasjonslag:
 2. **Client-autorisasjon** — kun dashboardet har tilgang
 3. **Team-autorisasjon** — brukerens NAIS-teammedlemskap verifiseres
 
-Se [tilgang](/dashboard/tilgang) og [sikkerhetsarkitektur](/sikkerhet/arkitektur) for mer detaljer.
+Se [tilgang](/dashboard/tilgang) og [sikkerhetsarkitektur](/referanse/sikkerhet) for mer detaljer.
 
 ## Se også
 
