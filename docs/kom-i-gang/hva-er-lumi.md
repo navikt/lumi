@@ -4,14 +4,15 @@ title: Hva er Lumi?
 
 # Hva er Lumi?
 
-Lumi er en personvernvennlig survey-infrastruktur for NAV. Den lar deg samle brukerinnsikt rett i din app — uten at data forlater clusteret, med full støtte for Zero Trust og universell utforming.
+Lumi er et verktøy for å kjøre personvernvennlige surveys i Nav-apper. Du definerer spørsmålene i TypeScript, widgeten kjører i din app, og all data forblir i Nav-clusteret.
 
 ## Hvorfor Lumi?
 
-- **Privacy by design** — all data blir i NAV-clusteret, og PII maskeres automatisk
-- **Rask integrasjon** — installer en React-widget, koble til backend, ferdig
-- **Aksel-basert** — widgeten bruker NAVs designsystem og følger WCAG
-- **Dashboard** — filtrer, segmenter og eksporter survey-data med teambasert tilgangsstyring
+- **Survey as code** — definer spørsmål i TypeScript, rett i kodebasen din. Ingen ekstern tjeneste.
+- **Privacy by design** — all data blir i Nav-clusteret, og personopplysninger maskeres automatisk.
+- **Aksel-basert** — widgeten bruker Navs designsystem og følger WCAG.
+- **Rask integrasjon** — installer en React-widget, koble til backend, ferdig.
+- **Dashboard** — filtrer, segmenter og eksporter survey-data med teambasert tilgangsstyring.
 
 ## Arkitektur
 
@@ -52,15 +53,14 @@ flowchart LR
 | [`lumi-api`](https://github.com/navikt/lumi/tree/main/apps/lumi-api) | Backend & Analyse API | Kotlin, Ktor, Postgres |
 | [`lumi-dashboard`](https://github.com/navikt/lumi/tree/main/apps/lumi-dashboard) | Admin-dashboard | TanStack Start, React |
 
-Som integrator trenger du bare å forholde deg til **`@navikt/lumi-survey`** — de to andre pakkene driftes av Lumi-teamet.
+Du trenger kun å forholde deg til **`@navikt/lumi-survey`** — de to andre pakkene driftes av Team eSyfo.
 
 ## Hvem er Lumi for?
 
-Lumi er laget for **NAV-team som vil samle brukerinnsikt** i sine flater — enten det er en sluttbrukerflate på nav.no eller et internt verktøy som Modia. Du trenger:
+Lumi er laget for **Nav-team som vil samle brukerinnsikt** i sine flater — enten det er en sluttbrukerflate på nav.no eller en intern løsning som Modia. Du trenger:
 
-- En React-app (eller en app som kan rendre React-komponenter)
-- En backend/API-route som kan gjøre token exchange (TokenX eller AzureAD)
-- En app som kjører på NAIS
+- En React-app som kjører på NAIS
+- Mulighet til å gjøre token exchange (TokenX eller AzureAD) for å sende inn svar
 
 ## Neste steg
 

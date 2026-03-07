@@ -130,4 +130,4 @@ Debug-verdier vises kun i detaljvisningen for enkeltinnsendinger. De brukes *ikk
 - Backend (lumi-api) maskerer PII automatisk, men unngå å sende det i utgangspunktet
 :::
 
-Lumi er designet for **privacy by design** — all data forblir i NAV-clusteret, og PII reduseres i hele kjeden. Kontekst-feltet skal brukes til å forstå *mønstre*, ikke identifisere enkeltpersoner.
+Lumi er designet for **privacy by design** — all data forblir i Nav-clusteret, og PII reduseres i hele kjeden. Kontekst-feltet skal brukes til å forstå *mønstre*, ikke identifisere enkeltpersoner.

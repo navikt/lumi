@@ -172,12 +172,12 @@ Widgeten kan huske at brukeren har lukket surveyen. Velg strategi basert på fla
 
 | Flate | Strategi | Merknad |
 | :--- | :--- | :--- |
-| Sluttbruker (nav.no) | `consent` (default) | Bruker NAV consent API — ingen ekstra oppsett |
+| Sluttbruker (nav.no) | `consent` (default) | Bruker Nav consent API — ingen ekstra oppsett |
 | Intern (Modia, fagsystemer) | `localStorage` | Ingen ekstra avhengigheter |
 | Ingen persistering | `none` | Surveyen vises hver gang |
 
 ::: warning Interne flater
-Default er `consent`, som krever NAV consent API (`window.webStorageController`). Uten dette vil widgeten ikke huske at brukeren lukket surveyen. Sett `storageStrategy: "localStorage"`:
+Default er `consent`, som krever Nav consent API (`window.webStorageController`). Uten dette vil widgeten ikke huske at brukeren lukket surveyen. Sett `storageStrategy: "localStorage"`:
 
 ```tsx
 <LumiSurveyDock behavior={{ storageStrategy: "localStorage" }} />

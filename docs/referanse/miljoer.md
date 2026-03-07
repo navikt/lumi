@@ -13,7 +13,7 @@ Oversikt over alle Lumi-URLer og ressurser.
 | Dev | https://lumi-dashboard.ansatt.dev.nav.no |
 | Prod | https://lumi-dashboard.ansatt.nav.no |
 
-Begge krever NAV Azure AD-innlogging. Se [tilgang](/dashboard/tilgang) for detaljer.
+Begge krever Nav Azure AD-innlogging. Se [tilgang](/dashboard/tilgang) for detaljer.
 
 ## Storybook
 

@@ -129,7 +129,7 @@ import "@navikt/lumi-survey/styles.css"; // Lumi widget-styles
 
 **Symptom:** Brukeren lukker surveyen, men den dukker opp igjen ved neste sidelast. Typisk på interne flater (Modia, fagsystemer).
 
-**Årsak:** Default storage-strategi er `consent`, som krever NAV-dekoratørens consent-API (`window.webStorageController`). Interne flater har vanligvis ikke denne.
+**Årsak:** Default storage-strategi er `consent`, som krever Nav-dekoratørens consent-API (`window.webStorageController`). Interne flater har vanligvis ikke denne.
 
 **Løsning:**
 

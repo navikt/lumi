@@ -94,7 +94,7 @@ API-et maskerer automatisk personlig identifiserbar informasjon (PII) i fritekst
 | Mønster | Eksempel | Erstatning |
 | :--- | :--- | :--- |
 | Fødselsnummer | `12345678901` | `[FØDSELSNUMMER FJERNET]` |
-| NAV-ident | `A123456` | `[NAVIDENT FJERNET]` |
+| Nav-ident | `A123456` | `[NAVIDENT FJERNET]` |
 | E-post | `test@nav.no` | `[E-POST FJERNET]` |
 | Telefonnummer | `12345678` | `[TELEFON FJERNET]` |
 | Kortnummer | `1234 5678 9012 3456` | `[KORTNUMMER FJERNET]` |

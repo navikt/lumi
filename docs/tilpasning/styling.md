@@ -4,7 +4,7 @@ title: Styling
 
 # Styling
 
-Lumi-widgeten er bygget med Aksel (NAVs designsystem) og krever to CSS-importer for å fungere riktig.
+Lumi-widgeten er bygget med Aksel (Navs designsystem) og krever to CSS-importer for å fungere riktig.
 
 ## CSS-import
 

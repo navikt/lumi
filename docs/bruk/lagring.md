@@ -10,13 +10,13 @@ Widgeten husker at brukeren har lukket (dismissed) surveyen, og kan vente en coo
 
 | Strategi | Flate | Avhengigheter | Merknad |
 | :--- | :--- | :--- | :--- |
-| `consent` (default) | Sluttbruker (nav.no) | NAV-dekoratørens consent-API | Respekterer brukerens samtykke |
+| `consent` (default) | Sluttbruker (nav.no) | Nav-dekoratørens consent-API | Respekterer brukerens samtykke |
 | `localStorage` | Intern (Modia, fagsystemer) | Ingen | Lagrer direkte i localStorage |
 | `none` | Alle | Ingen | Ingen persistering — surveyen vises hver gang |
 
 ## `consent` (default)
 
-Default-strategien for nav.no-flater. Widgeten leser fra `window.__DECORATOR_DATA__` og bruker `window.webStorageController` som settes av NAV-dekoratøren. Ingen ekstra npm-pakke er nødvendig.
+Default-strategien for nav.no-flater. Widgeten leser fra `window.__DECORATOR_DATA__` og bruker `window.webStorageController` som settes av Nav-dekoratøren. Ingen ekstra npm-pakke er nødvendig.
 
 ```tsx
 <LumiSurveyDock
@@ -27,13 +27,13 @@ Default-strategien for nav.no-flater. Widgeten leser fra `window.__DECORATOR_DAT
 />
 ```
 
-::: warning Krever NAV-dekoratøren
-`consent`-strategien fungerer kun på sider med NAV-dekoratøren (nav.no). Uten den kan ikke widgeten lagre dismissed-tilstand, og surveyen vil dukke opp igjen ved hver sidelast.
+::: warning Krever Nav-dekoratøren
+`consent`-strategien fungerer kun på sider med Nav-dekoratøren (nav.no). Uten den kan ikke widgeten lagre dismissed-tilstand, og surveyen vil dukke opp igjen ved hver sidelast.
 :::
 
 ## `localStorage`
 
-For interne flater (Modia, fagsystemer) som ikke har NAV-dekoratøren:
+For interne flater (Modia, fagsystemer) som ikke har Nav-dekoratøren:
 
 ```tsx
 <LumiSurveyDock
@@ -95,7 +95,7 @@ flowchart TD
 ```
 
 ::: danger Vanlig feil på interne flater
-Default er `consent`, som krever NAV consent API (`window.webStorageController`). Uten consent-API-et vil widgeten ikke kunne huske at brukeren lukket surveyen — den dukker opp igjen og igjen.
+Default er `consent`, som krever Nav consent API (`window.webStorageController`). Uten consent-API-et vil widgeten ikke kunne huske at brukeren lukket surveyen — den dukker opp igjen og igjen.
 
 **Løsning:** Sett `storageStrategy: "localStorage"` for alle interne flater.
 

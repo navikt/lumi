@@ -2,7 +2,7 @@ import { withMermaid } from "vitepress-plugin-mermaid";
 
 export default withMermaid({
   title: "Lumi",
-  description: "Personvernvennlig survey-infrastruktur for NAV",
+  description: "Personvernvennlige surveys for Nav",
   base: "/lumi/",
   lang: "nb-NO",
   themeConfig: {
@@ -128,7 +128,7 @@ export default withMermaid({
     },
 
     footer: {
-      message: "Laget med ❤️ av Team Esyfo i NAV",
+      message: "Laget med ❤️ av Team eSyfo i Nav",
     },
 
     outline: {

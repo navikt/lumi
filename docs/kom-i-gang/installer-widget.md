@@ -14,10 +14,6 @@ Denne siden viser deg hvordan du installerer `@navikt/lumi-survey` og får widge
 @navikt:registry=https://npm.pkg.github.com
 ```
 
-::: tip Allerede bruker Aksel?
-Hvis du allerede bruker `@navikt/ds-react` har du sannsynligvis denne `.npmrc`-filen fra før, og kan hoppe over dette steget.
-:::
-
 ## 2. Installer pakken
 
 ```sh
@@ -25,7 +21,7 @@ npm install @navikt/lumi-survey @navikt/ds-react @navikt/ds-css
 ```
 
 ::: info Peer dependencies
-`@navikt/lumi-survey` krever `@navikt/ds-react` og `@navikt/ds-css` som peer dependencies. Har du disse fra før, trenger du bare:
+`@navikt/lumi-survey` krever Aksel v8 (`@navikt/ds-react` og `@navikt/ds-css` versjon 8 eller nyere) som peer dependencies. Har du disse fra før, trenger du bare:
 
 ```sh
 npm install @navikt/lumi-survey
@@ -87,7 +83,7 @@ La oss bryte ned de viktigste delene:
 - **`transport`** — et objekt med en `submit`-funksjon som sender data til din backend. Widgeten kaller denne med `submission.transportPayload` som inneholder alle svar
 
 ::: tip Transport-endepunktet
-`/api/lumi/feedback` i eksempelet over er din egen API-route. Den mottar payloaden fra widgeten, gjør token exchange, og videresender til Lumi API. Vi setter opp dette i [Koble til backend](/kom-i-gang/koble-til-backend).
+`/api/lumi/feedback` i eksempelet over er ditt eget endepunkt. Det mottar payloaden fra widgeten, gjør token exchange, og videresender til Lumi API. Vi setter opp dette i [Koble til backend](/kom-i-gang/koble-til-backend).
 :::
 
 ## Verifiser at det fungerer

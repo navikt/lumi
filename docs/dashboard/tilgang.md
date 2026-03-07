@@ -44,7 +44,7 @@ Dersom NAIS Console API er utilgjengelig, returnerer backend **503** — ingen d
 | Dev | https://lumi-dashboard.ansatt.dev.nav.no |
 | Prod | https://lumi-dashboard.ansatt.nav.no |
 
-Begge krever NAV-innlogging (Azure AD). Dev-miljøet bruker NAV sitt dev-AD-tenant.
+Begge krever Nav-innlogging (Azure AD). Dev-miljøet bruker Nav sitt dev-AD-tenant.
 
 ## Se også
 
