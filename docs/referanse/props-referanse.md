@@ -43,7 +43,7 @@ interface LumiSurveyTransport {
 }
 ```
 
-`submission.transportPayload` er den ferdig-formaterte payloaden du sender til din backend. Se [Presets → Go-live sjekkliste](/guider/presets#go-live-sjekkliste) for oppsett.
+`submission.transportPayload` er den ferdig-formaterte payloaden du sender til din backend. Se [Koble til backend → Sjekkliste](/kom-i-gang/koble-til-backend#komplett-sjekkliste) for oppsett.
 
 ## `behavior` — `LumiSurveyBehavior`
 

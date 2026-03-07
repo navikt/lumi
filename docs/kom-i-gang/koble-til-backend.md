@@ -10,7 +10,7 @@ Denne siden viser deg hvordan du setter opp backend-delen: token exchange, vider
 
 Flyten ser slik ut:
 
-1. Widgeten sender `submission.transportPayload` til **din** API-route
+1. Widgeten sender `submission.transportPayload` til **ditt** server-side endepunkt
 2. Din backend gjør **token exchange** (TokenX eller AzureAD)
 3. Din backend videresender payloaden til **Lumi API** med det nye tokenet
 
@@ -29,68 +29,81 @@ Hvilket endepunkt du bruker avhenger av hvem brukeren er:
 
 ## 2. Sett miljøvariabler i NAIS
 
-Legg til disse miljøvariablene i NAIS-manifestet til appen din:
+### TokenX (sluttbrukerflater)
+
+**Produksjon:**
 
 ```yaml
 spec:
   env:
     - name: LUMI_API_HOST
       value: http://lumi-api.team-esyfo
+    - name: LUMI_AUDIENCE
+      value: "prod-gcp:team-esyfo:lumi-api"
 ```
 
-::: tip AzureAD (OBO)
-Bruker du AzureAD trenger du i tillegg `LUMI_API_AAD_APP_CLIENT_ID` — dette er Lumi API sin client ID som brukes som scope/audience ved token exchange:
+**Dev:**
 
 ```yaml
 spec:
   env:
     - name: LUMI_API_HOST
       value: http://lumi-api.team-esyfo
-    - name: LUMI_API_AAD_APP_CLIENT_ID
-      value: "<cluster>.team-esyfo.lumi-api"   # f.eks. dev-gcp.team-esyfo.lumi-api
+    - name: LUMI_AUDIENCE
+      value: "dev-gcp:team-esyfo:lumi-api"
 ```
+
+### AzureAD (interne flater)
+
+**Produksjon:**
+
+```yaml
+spec:
+  env:
+    - name: LUMI_API_HOST
+      value: http://lumi-api.team-esyfo
+    - name: LUMI_AUDIENCE
+      value: "api://prod-gcp.team-esyfo.lumi-api/.default"
+```
+
+**Dev:**
+
+```yaml
+spec:
+  env:
+    - name: LUMI_API_HOST
+      value: http://lumi-submission-proxy.team-esyfo
+    - name: LUMI_AUDIENCE
+      value: "api://dev-gcp.team-esyfo.lumi-submission-proxy/.default"
+```
+
+::: warning Tenant-mismatch i dev
+Lumi API bruker Azure-tenant `nav.no`. Hvis appen din bruker tenant `trygdeetaten.no` i dev (f.eks. Modia-apper), kan ikke AzureAD OBO-tokens krysse tenantgrensen. I dev må du derfor rute trafikken via `lumi-submission-proxy` — en proxyapp som brokerer mellom tenantene.
+
+I **prod** bruker alle apper `nav.no`-tenant, og du kan kalle `lumi-api` direkte.
 :::
 
-## 3. Aktiver auth i NAIS
+## 3. Send inn svar til Lumi API
 
-Appen din trenger riktig auth-mekanisme aktivert. Legg til én av disse i NAIS-manifestet:
-
-**Sluttbrukerflate (TokenX):**
-
-```yaml
-spec:
-  tokenx:
-    enabled: true
-```
-
-**Intern flate (AzureAD):**
-
-```yaml
-spec:
-  azure:
-    application:
-      enabled: true
-```
-
-## 4. Implementer API-routen
-
-Her er et eksempel for hver flate. Begge følger samme mønster: motta payload, gjør token exchange, videresend til Lumi API.
-
-### Sluttbrukerflate (TokenX)
+Widgeten gir deg en `transportPayload` som du sender videre til Lumi API fra server-side. Her er et eksempel med [`@navikt/oasis`](https://github.com/navikt/oasis) for token exchange:
 
 ```ts
-// API-route i din app (f.eks. /api/lumi/feedback)
-export async function POST(req: Request) {
-  const payload = await req.json();
-  const token = await tokenxExchangeFor("lumi-api");
+import { requestOboToken } from "@navikt/oasis";
+
+export async function submitFeedback(
+  token: string,
+  payload: LumiSurveyTransportPayload,
+) {
+  const obo = await requestOboToken(token, process.env.LUMI_AUDIENCE);
+  if (!obo.ok) throw new Error("Token exchange feilet");
 
   const response = await fetch(
     `${process.env.LUMI_API_HOST}/api/tokenx/v1/feedback`,
     {
       method: "POST",
       headers: {
-        authorization: `Bearer ${token}`,
-        "content-type": "application/json",
+        Authorization: `Bearer ${obo.token}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
     },
@@ -99,44 +112,10 @@ export async function POST(req: Request) {
   if (!response.ok) {
     throw new Error(`Lumi API svarte med ${response.status}`);
   }
-
-  return new Response(null, { status: 204 });
 }
 ```
 
-### Intern flate (AzureAD / Modia)
-
-```ts
-// API-route i din app (f.eks. /api/lumi/feedback)
-export async function POST(req: Request) {
-  const payload = await req.json();
-  const token = await azureOboFor("lumi-api");
-
-  const response = await fetch(
-    `${process.env.LUMI_API_HOST}/api/azure/v1/feedback`,
-    {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${token}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    },
-  );
-
-  if (!response.ok) {
-    throw new Error(`Lumi API svarte med ${response.status}`);
-  }
-
-  return new Response(null, { status: 204 });
-}
-```
-
-::: warning Token exchange-funksjoner
-`tokenxExchangeFor` og `azureOboFor` i eksemplene over er pseudokode. Den faktiske implementasjonen avhenger av hvilket rammeverk du bruker. Sjekk [NAIS-dokumentasjonen for token exchange](https://docs.nais.io/auth/) for detaljer.
-:::
-
-## 5. Konfigurer access policies
+## 4. Konfigurer access policies
 
 Begge parter må konfigurere tilgangspolicyer (Zero Trust).
 
@@ -155,7 +134,7 @@ spec:
 
 ### Lumi API (inbound)
 
-Lumi-teamet må legge til din app som inbound. **Opprett en issue i [Lumi-repoet](https://github.com/navikt/lumi)** eller lag en PR som legger til din app:
+Team eSyfo må legge til din app som inbound. [**Opprett en issue**](https://github.com/navikt/lumi/issues/new?title=Inbound+access+policy+for+%5Bdin-app%5D&body=%23%23+App-info%0A%0A-+**App-navn**%3A+%0A-+**Namespace**%3A+%0A-+**Cluster**%3A+dev-gcp+%2F+prod-gcp%0A-+**Auth**%3A+TokenX+%2F+AzureAD%0A&labels=access-policy) med app-navn og namespace, så ordner vi resten:
 
 ```yaml
 spec:
@@ -166,9 +145,9 @@ spec:
           namespace: ditt-team
 ```
 
-## 6. Storage-strategi
+## 5. Storage-strategi
 
-Widgeten kan huske at brukeren har lukket surveyen. Velg strategi basert på flate:
+Widgeten kan huske at brukeren har lukket surveyen, slik at den ikke dukker opp igjen på en gitt periode (cooldown). Velg strategi basert på flate:
 
 | Flate | Strategi | Merknad |
 | :--- | :--- | :--- |
@@ -177,7 +156,7 @@ Widgeten kan huske at brukeren har lukket surveyen. Velg strategi basert på fla
 | Ingen persistering | `none` | Surveyen vises hver gang |
 
 ::: warning Interne flater
-Default er `consent`, som krever Nav consent API (`window.webStorageController`). Uten dette vil widgeten ikke huske at brukeren lukket surveyen. Sett `storageStrategy: "localStorage"`:
+Default er `consent`, som kun fungerer på sluttbrukerflater på nav.no. For interne flater, sett `storageStrategy: "localStorage"`:
 
 ```tsx
 <LumiSurveyDock behavior={{ storageStrategy: "localStorage" }} />
@@ -192,11 +171,28 @@ Før du deployer, verifiser at du har:
 
 - [ ] Importert `@navikt/ds-css` og `@navikt/lumi-survey/styles.css`
 - [ ] Implementert `transport.submit` som sender `submission.transportPayload` til din backend
-- [ ] Token exchange i din API-route (TokenX eller AzureAD)
+- [ ] Token exchange i ditt endepunkt (TokenX eller AzureAD)
 - [ ] Riktig endepunkt (`/api/tokenx/v1/feedback` eller `/api/azure/v1/feedback`)
-- [ ] `LUMI_API_HOST` satt i NAIS-manifest
-- [ ] Auth aktivert i NAIS (`tokenx.enabled` eller `azure.application.enabled`)
+- [ ] `LUMI_API_HOST` og `LUMI_AUDIENCE` satt i NAIS-manifest
 - [ ] Outbound access policy mot `lumi-api` i `team-esyfo`
-- [ ] Inbound access policy i Lumi API (opprett issue/PR)
+- [ ] Inbound access policy i Lumi API ([opprett issue](https://github.com/navikt/lumi/issues/new?title=Inbound+access+policy+for+%5Bdin-app%5D&body=%23%23+App-info%0A%0A-+**App-navn**%3A+%0A-+**Namespace**%3A+%0A-+**Cluster**%3A+dev-gcp+%2F+prod-gcp%0A-+**Auth**%3A+TokenX+%2F+AzureAD%0A&labels=access-policy))
 - [ ] Riktig `storageStrategy` (`consent` / `localStorage` / `none`)
-- [ ] Testet ende-til-ende: innsending → data synlig i dashboard
+- [ ] Testet i dev — innsending → data synlig i dashboardet
+
+## Test i dev
+
+Deploy appen din til dev-gcp og verifiser at surveyen fungerer ende-til-ende:
+
+1. Åpne appen din i dev og send inn et survey-svar
+2. Sjekk at svaret dukker opp i [dashboardet (dev)](https://lumi-dashboard.ansatt.dev.nav.no)
+
+Hvis innsendingen feiler, sjekk [Feilsøking](/feilsoking) for vanlige problemer.
+
+## Videre lesing
+
+Du er i gang! 🎉 Her er noen nyttige guider for å tilpasse Lumi videre:
+
+- [Surveytyper](/guider/surveytyper) — velg riktig type for ditt bruksområde
+- [Spørsmålstyper](/guider/sporsmalstyper) — rating, tekst, radio og flervalg
+- [Betinget synlighet](/guider/betinget-synlighet) — vis spørsmål basert på tidligere svar
+- [Context og tags](/guider/context-og-tags) — legg til metadata for filtrering i dashboardet

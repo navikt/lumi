@@ -72,6 +72,7 @@ Tags brukes til segmentering og grafer i dashboardet. Hold kardinaliteten lav �
 ```
 
 ✅ **Gode tags**: `rolle: "arbeidsgiver"`, `harSykmelding: true`, `steg: "kvittering"`
+
 ❌ **Dårlige tags**: `behandlingId: "abc-123"`, `timestamp: 1699000000`
 
 ### `context.debug` — høy kardinalitet OK

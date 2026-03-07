@@ -6,47 +6,29 @@ title: Tilgang
 
 Lumi-dashboardet er tilgjengelig for Nav-ansatte som er medlem av et NAIS-team som har data i Lumi.
 
-## Autentisering
+## Innlogging
 
-Dashboardet bruker **Wonderwall + Microsoft Entra ID (Azure AD)** for innlogging:
+Innlogging skjer automatisk via Microsoft Entra ID (Azure AD) første gang du åpner dashboardet — du trenger ikke sette opp noe selv.
 
-1. Du åpner dashboardet i nettleseren.
-2. Wonderwall (NAIS-sidecar) oppdager at du ikke har en gyldig sesjon og sender deg til Azure AD-innlogging.
-3. Etter innlogging legger Wonderwall et token på alle forespørsler.
-4. Dashboardet bytter til et OBO-token (On-Behalf-Of) for å kalle backend-API-et på vegne av deg.
+## Team-tilgang
 
-::: info Ingen manuell konfigurasjon
-Du trenger ikke sette opp noe selv — innlogging skjer automatisk første gang du åpner dashboardet.
-:::
-
-## Autorisasjon (team-tilgang)
-
-Dashboardet viser kun data som tilhører teamene dine. Autorisasjon fungerer slik:
-
-1. Backend leser e-posten din fra Azure AD-tokenet.
-2. E-posten slås opp mot **NAIS Console GraphQL API** for å finne hvilke team du er medlem av.
-3. Kun data tilhørende dine team er tilgjengelig — alle database-spørringer er scopet til det valgte teamet.
-
-Hvis du ikke er medlem av et NAIS-team som har data i Lumi, får du en feilmelding.
+Dashboardet viser kun data fra teamene dine. Hvilke team du tilhører hentes automatisk fra NAIS Console.
 
 ::: tip Mangler du tilgang?
 Sjekk at du er lagt til som medlem i riktig NAIS-team via [NAIS Console](https://console.nav.cloud.nais.io). Teammedlemskap caches i opptil 1 time, så det kan ta litt tid før endringer trer i kraft.
 :::
 
-### Fail closed
-
-Dersom NAIS Console API er utilgjengelig, returnerer backend **503** — ingen data lekker. Systemet er designet for å feile lukket fremfor å gi utilsiktet tilgang.
-
 ## Dashboard-URLer
 
 | Miljø | URL |
 | :--- | :--- |
+| Demo | https://lumi-dashboard-demo.ekstern.dev.nav.no |
 | Dev | https://lumi-dashboard.ansatt.dev.nav.no |
 | Prod | https://lumi-dashboard.ansatt.nav.no |
 
-Begge krever Nav-innlogging (Azure AD). Dev-miljøet bruker Nav sitt dev-AD-tenant.
+Demo-miljøet er åpent for alle og viser testdata. Dev og prod krever Nav-innlogging.
 
 ## Se også
 
-- [Sikkerhetsarkitektur](/referanse/sikkerhet) — detaljer om autorisasjonslagene
-- [API-endepunkter](/referanse/api-endepunkter) — teknisk referanse for backend-API-et
+- [Filtrering](/dashboard/filtrering) — hvordan bruke filtrene i dashboardet
+- [Eksport](/dashboard/eksport) — eksporter data

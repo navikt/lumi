@@ -9,8 +9,11 @@ hero:
       text: Kom i gang →
       link: /kom-i-gang/hva-er-lumi
     - theme: alt
-      text: Se på GitHub
-      link: https://github.com/navikt/lumi
+      text: Se dashboardet
+      link: https://lumi-dashboard-demo.ekstern.dev.nav.no
+    - theme: alt
+      text: Utforsk widgeten
+      link: https://navikt.github.io/lumi/storybook/
 features:
   - icon: 🧩
     title: Survey as code
@@ -25,3 +28,7 @@ features:
     title: Dashboard med innsikt
     details: Filtrer, segmenter og eksporter survey-data. Teambasert tilgangsstyring.
 ---
+
+---
+
+💬 Spørsmål? Bli med i [#lumi på Slack](https://nav-it.slack.com/archives/C0AG2FKSSMD)

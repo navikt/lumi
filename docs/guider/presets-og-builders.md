@@ -1,10 +1,12 @@
 ---
-title: Presets
+title: Presets og builders
 ---
 
-# Presets
+# Presets og builders
 
-Lumi har ferdige survey-presets og builder-funksjoner for de vanligste brukscasene. Start med en preset — tilpass etterpå hvis du trenger det.
+Ferdiglagde snarveier for vanlige survey-mønster. For full kontroll, definer surveyen selv — se [Konfigurer survey](/kom-i-gang/konfigurer-survey).
+
+Usikker på hvilken type som passer? Se [Surveytyper](/guider/surveytyper) for veiledning.
 
 ## Ferdiglagde presets
 
@@ -22,9 +24,6 @@ Disse kan brukes direkte uten konfigurasjon:
 ### Eksempel: Bruk en preset direkte
 
 ```tsx
-import "@navikt/ds-css";
-import "@navikt/lumi-survey/styles.css";
-
 import {
   LumiSurveyDock,
   DEFAULT_SURVEY_RATING,
@@ -137,43 +136,8 @@ const survey = createTaskPrioritySurvey({
     { value: "find-info", label: "Finne informasjon" },
     // ... 20-50 oppgaver
   ],
-  maxSelections: 5,       // default: 5
-  randomize: true,        // default: true — kritisk for validitet
-  variant: "combobox",    // default: "combobox" — best for mange oppgaver
+  maxSelections: 5,
+  randomize: true,
+  variant: "combobox",
 });
 ```
-
-## Velg riktig surveytype
-
-Poenget er å få **handlingsbare** data med minst mulig friksjon for brukeren.
-
-| Surveytype | Når bruke | Hva du får ut | Typiske fallgruver |
-| :--- | :--- | :--- | :--- |
-| `rating` | «Pulse» etter en konkret oppgave | Trend over tid + årsak i fritekst | For generelt spørsmål, for mange spørsmål |
-| `discovery` | Utforske hva brukeren kom for å gjøre | Frie tekstsvar + suksess-rate | For mye tekst, dårlig segmentering |
-| `topTasks` | Måle suksess for kjerneoppgaver (McGovern) | Suksess/feil per oppgave + blocker | For mange/få oppgaver, uklare oppgavenavn |
-| `taskPriority` | Strategisk: hva er viktigst å prioritere? | Rangering av viktigste oppgaver (top N) | For få tasks, ikke randomisert |
-| `custom` | Når du kombinerer eller branch'er | Skreddersydd spørreflyt | Blir fort «for mye» |
-
-::: tip Start enkelt
-Start med `rating` eller `discovery`, og gå videre til `topTasks`/`taskPriority` når dere har en tydelig hypoteseliste.
-:::
-
-## Best practices
-
-- **Hold det kort**: 1–2 spørsmål er ofte nok (rating + valgfri tekst)
-- **Still spørsmål om en konkret opplevelse** («etter du gjorde X»), ikke hele produktet
-- **Bruk progresjon**: vis fritekst først etter at rating er valgt ([`visibleIf`](/guider/betinget-synlighet))
-- **Bruk `context.tags`** for segmentering (lav kardinalitet) — se [Context & tags](/guider/context-og-tags)
-- **Velg en stabil `surveyId`** per flate/bruksmønster (ikke per deploy)
-
-## Go-live sjekkliste
-
-Før du sender til produksjon:
-
-- [ ] **CSS importert**: `@navikt/ds-css` og `@navikt/lumi-survey/styles.css`
-- [ ] **Transport implementert**: `transport.submit` sender `submission.transportPayload` til din backend
-- [ ] **Token exchange server-side**: Backend gjør TokenX/AzureAD-exchange og kaller riktig endepunkt
-- [ ] **Riktig `storageStrategy`**: `consent` for nav.no, `localStorage` for interne flater — se [Lagring](/guider/lagring)
-- [ ] **NAIS policies**: Outbound-regel til `lumi-api` i din apps NAIS-manifest
-- [ ] **Ende-til-ende-test**: Verifiser at innsending dukker opp i dashboardet

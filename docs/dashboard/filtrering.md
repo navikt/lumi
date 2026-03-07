@@ -68,7 +68,7 @@ Resultatlisten pagineres med konfigurerbar sidestørrelse. API-et bruker 0-indek
 
 ## URL-drevne filtre
 
-Alle filtre er **URL-drevne** — de lagres i URL-en som query-parametere via TanStack Router. Det betyr at du kan:
+Alle filtre er **URL-drevne** — de lagres i URL-en som query-parametere. Det betyr at du kan:
 
 - **Dele en filtrert visning** ved å kopiere URL-en
 - **Bruke nettleserhistorikk** for å navigere mellom filterstater
@@ -76,5 +76,5 @@ Alle filtre er **URL-drevne** — de lagres i URL-en som query-parametere via Ta
 
 ## Se også
 
-- [API query-parametre](/referanse/api-endepunkter#query-parametre) — full oversikt over alle filtreringsparametre
 - [Eksport](/dashboard/eksport) — eksporter filtrerte resultater
+- [Context & tags](/guider/context-og-tags) — legg til metadata for filtrering

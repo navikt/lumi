@@ -212,7 +212,7 @@ import "@navikt/ds-css";
 import "@navikt/lumi-survey/styles.css";
 
 import { LumiSurveyDock } from "@navikt/lumi-survey";
-import type { LumiSurveyTransport } from "@navikt/lumi-survey";
+import type { LumiSurveyConfig, LumiSurveyTransport } from "@navikt/lumi-survey";
 
 const transport: LumiSurveyTransport = {
   submit: async (submission) => {
@@ -225,35 +225,35 @@ const transport: LumiSurveyTransport = {
 };
 
 const survey = {
-  type: "custom" as const,
+  type: "custom",
   questions: [
     {
       id: "rating",
-      type: "rating" as const,
-      variant: "emoji" as const,
+      type: "rating",
+      variant: "emoji",
       prompt: "Hvordan var opplevelsen din?",
       required: true,
     },
     {
       id: "reason",
-      type: "singleChoice" as const,
+      type: "singleChoice",
       prompt: "Hva var du her for å gjøre?",
       options: [
         { value: "apply", label: "Søke om noe" },
         { value: "status", label: "Sjekke status" },
         { value: "other", label: "Annet" },
       ],
-      visibleIf: { field: "ANSWER" as const, questionId: "rating", operator: "EXISTS" as const },
+      visibleIf: { field: "ANSWER", questionId: "rating", operator: "EXISTS" },
     },
     {
       id: "comment",
-      type: "text" as const,
+      type: "text",
       prompt: "Har du andre tilbakemeldinger?",
       maxLength: 1000,
-      visibleIf: { field: "ANSWER" as const, questionId: "rating", operator: "EXISTS" as const },
+      visibleIf: { field: "ANSWER", questionId: "rating", operator: "EXISTS" },
     },
   ],
-};
+} satisfies LumiSurveyConfig;
 
 export function MyPage() {
   return (
@@ -267,5 +267,5 @@ export function MyPage() {
 ```
 
 ::: tip Bruk presets for vanlige mønstre
-For de fleste tilfeller trenger du ikke bygge surveyen fra scratch. Se [Presets](/guider/presets) for ferdige konfigurasjoner.
+For de fleste tilfeller trenger du ikke bygge surveyen fra scratch. Se [Presets og builders](/guider/presets-og-builders) for ferdige konfigurasjoner.
 :::

@@ -5,14 +5,16 @@ export default withMermaid({
   description: "Personvernvennlige surveys for Nav",
   base: "/lumi/",
   lang: "nb-NO",
+  head: [["link", { rel: "icon", href: "/lumi/lumi.png" }]],
   themeConfig: {
+    logo: "/lumi.png",
     search: {
       provider: "local",
     },
 
     nav: [
       { text: "Kom i gang", link: "/kom-i-gang/hva-er-lumi" },
-      { text: "Guider", link: "/guider/presets" },
+      { text: "Guider", link: "/guider/surveytyper" },
       { text: "Dashboard", link: "/dashboard/tilgang" },
       { text: "Referanse", link: "/referanse/props-referanse" },
       { text: "Feilsøking", link: "/feilsoking" },
@@ -43,7 +45,8 @@ export default withMermaid({
         {
           text: "Guider",
           items: [
-            { text: "Presets & surveytyper", link: "/guider/presets" },
+            { text: "Surveytyper", link: "/guider/surveytyper" },
+            { text: "Presets & builders", link: "/guider/presets-og-builders" },
             { text: "Spørsmålstyper", link: "/guider/sporsmalstyper" },
             {
               text: "Betinget synlighet",
@@ -81,7 +84,7 @@ export default withMermaid({
             },
             { text: "Datakontrakt", link: "/referanse/datakontrakt" },
             {
-              text: "Sikkerhet & arkitektur",
+              text: "Sikkerhet & personvern",
               link: "/referanse/sikkerhet",
             },
             {

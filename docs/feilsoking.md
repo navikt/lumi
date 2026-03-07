@@ -175,8 +175,11 @@ Du kan lytte på `onDismissalPersistFailed` for å oppdage dette:
 
 ## Trenger du mer hjelp?
 
-- **Styling-problemer:** Se [Styling](/guider/styling)
-- **Props-oversikt:** Se [Props-referanse](/referanse/props-referanse)
-- **Branching fungerer ikke:** Se [Avansert](/guider/branching)
-- **Lagring og cooldown:** Se [Lagring](/guider/lagring)
-- **Opprett en issue:** [github.com/navikt/lumi/issues](https://github.com/navikt/lumi/issues)
+Spør i **[#lumi](https://nav-it.slack.com/archives/C0AG2FKSSMD)** på Slack — vi hjelper gjerne!
+
+Du kan også sjekke disse sidene:
+- [Styling](/guider/styling) — styling-problemer
+- [Props-referanse](/referanse/props-referanse) — alle props
+- [Branching](/guider/branching) — avansert flyt
+- [Lagring](/guider/lagring) — lagring og cooldown
+- [Opprett en issue](https://github.com/navikt/lumi/issues) — rapporter feil

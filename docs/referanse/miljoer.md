@@ -8,13 +8,20 @@ Oversikt over alle Lumi-URLer og ressurser.
 
 ## Dashboard
 
-Se [Dashboard → Tilgang](/dashboard/tilgang) for URLer og innlogging.
+| Miljø | URL |
+| :--- | :--- |
+| Demo | https://lumi-dashboard-demo.ekstern.dev.nav.no |
+| Dev | https://lumi-dashboard.ansatt.dev.nav.no |
+| Prod | https://lumi-dashboard.ansatt.nav.no |
 
-## Storybook
+Demo-miljøet er åpent for alle og viser testdata. Dev og prod krever Nav-innlogging — se [Tilgang](/dashboard/tilgang) for detaljer.
+
+## Widget
 
 | Ressurs | URL |
 | :--- | :--- |
 | Storybook | https://navikt.github.io/lumi/storybook/ |
+| `@navikt/lumi-survey` | [GitHub Packages](https://github.com/navikt/lumi/packages) |
 
 Storybook viser survey-widgeten med interaktive eksempler — nyttig for å utforske spørsmålstyper, presets og konfigurasjon.
 
@@ -24,8 +31,10 @@ Storybook viser survey-widgeten med interaktive eksempler — nyttig for å utfo
 | :--- | :--- |
 | GitHub-repo | https://github.com/navikt/lumi |
 
-## Pakker
+## Fellesskap
 
-| Pakke | Registry |
+| Kanal | Lenke |
 | :--- | :--- |
-| `@navikt/lumi-survey` | [GitHub Packages](https://github.com/navikt/lumi/packages) |
+| Slack | [#lumi](https://nav-it.slack.com/archives/C0AG2FKSSMD) |
+
+Spørsmål, tilbakemeldinger eller forslag? Bli med i **#lumi** på Slack!

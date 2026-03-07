@@ -25,7 +25,7 @@ flowchart LR
 	end
 
 	subgraph App["Din app"]
-		B["API-route / server action"]
+		B["Ditt endepunkt"]
 		C["Token exchange (TokenX / AzureAD)"]
 	end
 
