@@ -14,8 +14,6 @@ import {
   useLumiSurvey,
 } from "../../core";
 
-import type { LumiSurveyRenderQuestionProps } from "../../types.js";
-import { DefaultQuestionRenderer, RatingQuestionField } from "../questions";
 import { buildCanonicalSurvey } from "../shared/canonicalSurvey.js";
 import type { LumiSurveyConfig } from "../surveyTypes.js";
 import { CLASS_NAMES, joinClassNames } from "./classNames.js";
@@ -341,69 +339,6 @@ export const LumiSurveyDock = ({
     overflowY: "auto",
   };
 
-  const defaultQuestionRenderer = useCallback(
-    (props: LumiSurveyRenderQuestionProps) => {
-      /**
-       * Special rendering for the rating question type.
-       * Can now be any question in the list, but we keep the special UI for it.
-       */
-      if (props.question.type === "rating") {
-        const rating = props.question as RatingQuestion;
-        const isPromptQuestion = props.question.id === promptQuestion.id;
-        const shouldHideInternalHeading =
-          Boolean(props.hideLabel) || isPromptQuestion;
-
-        return (
-          <div className={CLASS_NAMES.ratingSection}>
-            <div className={CLASS_NAMES.ratingField}>
-              <RatingQuestionField
-                question={rating}
-                value={props.value}
-                onChange={props.onChange}
-                validationErrorMessage={config.validationErrorMessage}
-                isMissing={props.isMissing}
-                disabled={props.disabled}
-                fieldsetClassName={CLASS_NAMES.ratingFieldset}
-                hidePrompt={shouldHideInternalHeading}
-                hideDescription={shouldHideInternalHeading}
-                hideValueLabels
-                wrap={false}
-                ariaLabelledBy={
-                  shouldHideInternalHeading ? promptHeadingId : undefined
-                }
-                ariaDescribedBy={
-                  shouldHideInternalHeading ? promptDescriptionId : undefined
-                }
-                rowClassName={CLASS_NAMES.ratingRow}
-                buttonClassName={CLASS_NAMES.ratingButton}
-                fieldsetPaddingBlock="space-8"
-                fieldsetPaddingInline="space-0"
-              />
-            </div>
-          </div>
-        );
-      }
-
-      return (
-        <DefaultQuestionRenderer
-          question={props.question}
-          value={props.value}
-          onChange={props.onChange}
-          isMissing={props.isMissing}
-          disabled={props.disabled}
-          validationErrorMessage={config.validationErrorMessage}
-          hideLabel={props.hideLabel}
-        />
-      );
-    },
-    [
-      promptDescriptionId,
-      promptHeadingId,
-      promptQuestion.id,
-      config.validationErrorMessage,
-    ],
-  );
-
   const noticeContent = config.personalDataNotice;
 
   // Don't render anything while loading persisted state
@@ -443,19 +378,12 @@ export const LumiSurveyDock = ({
           panelBackground={config.panelBackground}
           panelBorderColor={config.panelBorderColor}
           promptQuestion={promptQuestion}
-          promptHeadingId={promptHeadingId}
-          promptDescriptionId={promptDescriptionId}
           successHeadingId={successHeadingId}
           introHeadingId={introHeadingId}
-          successTitle={config.successTitle}
-          successBody={config.successBody}
-          successPrimaryLabel={config.successPrimaryLabel}
-          isSuccess={isSuccess}
           onClose={handleCloseDock}
           onSubmit={handleSubmit}
           orderedQuestions={visibleQuestions}
           answers={answers}
-          renderQuestion={defaultQuestionRenderer}
           validationMissing={validationMissing}
           isSubmitting={isSubmitting}
           submitLabel={config.submitLabel}
@@ -467,25 +395,40 @@ export const LumiSurveyDock = ({
           hasTransportError={Boolean(hasTransportError)}
           transportErrorMessage={config.transportErrorMessage}
           onQuestionChange={setAnswer}
-          // Step mode props for branching
-          isStepMode={isStepMode}
-          currentStep={currentStep}
-          currentStepQuestion={currentStepQuestion}
-          canGoBack={canGoBack}
-          canGoNext={canGoNext}
-          isLastStep={isLastStep}
-          onNext={handleNext}
-          onBack={goToPrevious}
-          // Intro props
-          isIntro={showIntro}
-          introTitle={config.introTitle}
-          introBody={config.introBody}
-          introStartLabel={config.introStartLabel}
-          onIntroStart={handleIntroStart}
-          // Progress bar props
-          showProgress={config.showProgress}
-          totalSteps={questions.length}
-          hasBranching={hasBranching}
+          stepNavigation={{
+            isStepMode,
+            currentStep,
+            currentStepQuestion,
+            canGoBack,
+            canGoNext,
+            isLastStep,
+            onNext: handleNext,
+            onBack: goToPrevious,
+          }}
+          progress={{
+            showProgress: config.showProgress,
+            totalSteps: questions.length,
+            hasBranching,
+          }}
+          questionContext={{
+            promptQuestionId: promptQuestion.id,
+            promptHeadingId,
+            promptDescriptionId,
+            validationErrorMessage: config.validationErrorMessage,
+          }}
+          intro={{
+            isIntro: showIntro,
+            introTitle: config.introTitle,
+            introBody: config.introBody,
+            introStartLabel: config.introStartLabel,
+            onIntroStart: handleIntroStart,
+          }}
+          success={{
+            isSuccess,
+            successTitle: config.successTitle,
+            successBody: config.successBody,
+            successPrimaryLabel: config.successPrimaryLabel,
+          }}
         />
       )}
     </aside>
