@@ -1,5 +1,5 @@
 ---
-title: Avansert
+title: Avansert branching
 ---
 
 # Avansert branching med `logic`

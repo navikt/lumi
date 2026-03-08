@@ -14,7 +14,7 @@ Feltet `type` i `LumiSurveyConfig` bestemmer hva surveyen måler og hvordan data
 | `discovery` | Utforske hva brukeren kom for å gjøre | Frie tekstsvar + suksess-rate | For mye tekst, dårlig segmentering |
 | `topTasks` | Måle suksess for kjerneoppgaver (McGovern) | Suksess/feil per oppgave + blocker | For mange/få oppgaver, uklare oppgavenavn |
 | `taskPriority` | Strategisk: hva er viktigst å prioritere? | Rangering av viktigste oppgaver (top N) | For få tasks, ikke randomisert |
-| `custom` | Når du kombinerer eller branch'er | Skreddersydd spørreflyt | Blir fort «for mye» |
+| `custom` | Når du kombinerer eller bruker branching | Skreddersydd spørreflyt | Blir fort «for mye» |
 
 ::: tip Start enkelt
 Start med `rating` eller `discovery`, og gå videre til `topTasks`/`taskPriority` når dere har en tydelig hypoteseliste.

@@ -6,7 +6,7 @@ title: Context & tags
 
 Kontekst gir deg metadata om *hvem* og *hvor* tilbakemeldingen kom fra — uten å samle personopplysninger. Bruk det til å segmentere data i dashboardet.
 
-## Auto-collected
+## Automatisk innsamling
 
 Widgeten samler automatisk disse verdiene fra browseren:
 
@@ -20,11 +20,11 @@ Widgeten samler automatisk disse verdiene fra browseren:
 `deviceType` utledes fra viewport-bredde, ikke den fysiske enheten. Hvis DevTools er åpent, kan viewporten bli smalere enn forventet.
 :::
 
-### Hva auto-collectes *ikke*
+### Hva som *ikke* samles inn automatisk
 
 `url` og `pathname` samles **ikke** automatisk. Dette er bevisst — dynamiske ruter kan inneholde identifikatorer (f.eks. `/sak/12345`).
 
-## Opt-in: `collectLocation`
+## Valgfri innsamling: `collectLocation`
 
 Hvis rutene dine er statiske og ikke inneholder identifikatorer, kan du slå på automatisk location-collecting:
 
@@ -48,7 +48,7 @@ Hvis rutene *kan* inneholde ID-er, send heller en sanitert verdi via `context`:
 />
 ```
 
-## Tags vs debug
+## Forskjellen mellom `tags` og `debug`
 
 Kontekst-objektet har to separate felt for tilleggsinformasjon:
 

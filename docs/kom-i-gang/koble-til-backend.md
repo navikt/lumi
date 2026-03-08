@@ -88,6 +88,7 @@ I **prod** bruker alle apper `nav.no`-tenant, og du kan kalle `lumi-api` direkte
 Widgeten gir deg en `transportPayload` som du sender videre til Lumi API fra server-side. Her er et eksempel med [`@navikt/oasis`](https://github.com/navikt/oasis) for token exchange:
 
 ```ts
+import type { LumiSurveyTransportPayload } from "@navikt/lumi-survey";
 import { requestOboToken } from "@navikt/oasis";
 
 export async function submitFeedback(

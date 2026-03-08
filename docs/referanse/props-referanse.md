@@ -170,11 +170,13 @@ Metadata for segmentering og feilsøking. Se [Context & tags](/guider/context-og
 ```ts
 interface LumiSurveyContext {
   // Auto-collected
-  url?: string;
-  pathname?: string;
   viewport?: { width: number; height: number };
   deviceType?: "mobile" | "tablet" | "desktop";
   userAgent?: string;
+
+  // Opt-in (krever collectLocation: true)
+  url?: string;
+  pathname?: string;
 
   // Manuelt satt
   tags?: Record<string, string | number | boolean>;

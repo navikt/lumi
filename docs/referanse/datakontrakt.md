@@ -12,6 +12,8 @@ Widgeten samler inn svar og sender en strukturert JSON-payload til backend. Payl
 
 | Felt | Påkrevd | Beskrivelse |
 | :--- | :--- | :--- |
+| `schemaVersion` | ✅ | Alltid `1` (gjeldende versjon) |
+| `submittedAt` | ✅ | ISO 8601 tidsstempel for innsending |
 | `surveyId` | ✅ | Unik survey-identifikator |
 | `surveyType` | ✅ | En av: `"rating"`, `"topTasks"`, `"discovery"`, `"taskPriority"`, `"custom"` |
 | `answers` | ✅ | Strukturert array med svar (se under) |
@@ -29,7 +31,7 @@ interface TransportAnswer {
   question: {
     label: string;       // Spørsmålsteksten vist til bruker
     description?: string;
-    options?: Option[];  // Påkrevd for valg-typer (for label-oppslag)
+    options?: Array<{ id: string; label: string }>;  // Påkrevd for valg-typer (for label-oppslag)
   };
 }
 ```
@@ -54,19 +56,18 @@ interface TransportAnswer {
 
 ## Context-objektet {#context}
 
-Widgeten samler automatisk nettleserkontekst og merger med bruker-definert segmenteringsdata:
+Widgeten samler automatisk nettleserkontekst og slår sammen med bruker-definert segmenteringsdata:
 
 ```typescript
 interface LumiContext {
   // Auto-samlet av widgeten
-  url?: string;              // Gjeldende side-URL
-  pathname?: string;         // URL pathname
   deviceType?: DeviceType;   // "mobile" | "tablet" | "desktop"
   viewport?: { width: number; height: number };
   userAgent?: string;
 
-  // Bruker-definert
-  app?: string;              // Applikasjonsidentifikator
+  // Opt-in (krever collectLocation: true)
+  url?: string;              // Gjeldende side-URL
+  pathname?: string;         // URL pathname
 
   // Segmentering (LAV KARDINALITET → dashboard-grafer)
   tags?: Record<string, string | number | boolean>;
@@ -103,13 +104,14 @@ Backend mapper `surveyType`-strenger til enums:
 
 ```json
 {
+  "schemaVersion": 1,
+  "submittedAt": "2024-12-03T14:22:00.000Z",
   "surveyId": "sykepenger-rating",
   "surveyType": "rating",
   "context": {
     "url": "https://nav.no/sykepenger",
     "pathname": "/sykepenger",
     "deviceType": "mobile",
-    "app": "sykepenger-frontend",
     "tags": {
       "harAktivSykmelding": true,
       "rolle": "bruker"

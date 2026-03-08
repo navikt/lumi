@@ -18,6 +18,7 @@ export default withMermaid({
       { text: "Dashboard", link: "/dashboard/tilgang" },
       { text: "Referanse", link: "/referanse/props-referanse" },
       { text: "Feilsøking", link: "/feilsoking" },
+      { text: "Utvikling", link: "/utvikling/bidra" },
     ],
 
     sidebar: {
@@ -102,12 +103,6 @@ export default withMermaid({
             { text: "Bidra til Lumi", link: "/utvikling/bidra" },
             { text: "Release-prosess", link: "/utvikling/release" },
           ],
-        },
-      ],
-      "/feilsoking": [
-        {
-          text: "Feilsøking",
-          items: [{ text: "Vanlige problemer", link: "/feilsoking" }],
         },
       ],
     },
