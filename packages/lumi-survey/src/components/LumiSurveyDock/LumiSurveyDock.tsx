@@ -154,10 +154,7 @@ export const LumiSurveyDock = ({
   // The first question is used as the "prompt" question in the header
   const promptQuestion = questions[0];
 
-  const promptHeadingId = `${promptQuestion.id}-dock-heading`;
-  const promptDescriptionId = promptQuestion.description
-    ? `${promptQuestion.id}-dock-description`
-    : undefined;
+  const promptHeadingId = `${surveyId}-${promptQuestion.id}-dock-heading`;
   const successHeadingId = `${surveyId}-dock-success-heading`;
   const introHeadingId = `${surveyId}-dock-intro-heading`;
   const panelId = `${surveyId}-dock-panel`;
@@ -199,6 +196,7 @@ export const LumiSurveyDock = ({
     goToPrevious,
     resetNavigation,
     visitedSteps,
+    hasBranching,
   } = useStepNavigation({
     questions,
     answers,
@@ -210,6 +208,12 @@ export const LumiSurveyDock = ({
   // mode so that every question renders on one page — even for surveys that
   // contain branching logic.
   const isStepMode = forceSinglePage ? false : stepModeFromSurvey;
+
+  const activeDescriptionQuestion =
+    isStepMode && currentStepQuestion ? currentStepQuestion : promptQuestion;
+  const promptDescriptionId = activeDescriptionQuestion.description
+    ? `${surveyId}-${activeDescriptionQuestion.id}-dock-description`
+    : undefined;
 
   // Combined reset: clears survey answers, resets step navigation, and restores intro screen
   const handleFullReset = useCallback(() => {
@@ -245,10 +249,16 @@ export const LumiSurveyDock = ({
   // In step mode with branching, only validate questions the user actually visited.
   // This prevents validation failures on required questions in unvisited branches.
   const visitedQuestions = useMemo(() => {
-    if (!isStepMode) return undefined;
-    const uniqueIndices = [...new Set(visitedSteps)];
-    return uniqueIndices.map((index) => questions[index]).filter(Boolean);
-  }, [isStepMode, visitedSteps, questions]);
+    if (isStepMode) {
+      const uniqueIndices = [...new Set(visitedSteps)];
+      return uniqueIndices.map((index) => questions[index]).filter(Boolean);
+    }
+    if (forceSinglePage) {
+      // SinglePage with branching: only validate visible questions
+      return visibleQuestions;
+    }
+    return undefined;
+  }, [isStepMode, forceSinglePage, visitedSteps, questions, visibleQuestions]);
 
   const showPersonalDataNotice = useMemo(() => {
     if (!config.showPersonalDataNotice) return false;
@@ -476,7 +486,7 @@ export const LumiSurveyDock = ({
           // Progress bar props
           showProgress={config.showProgress}
           totalSteps={questions.length}
-          visitedSteps={visitedSteps}
+          hasBranching={hasBranching}
         />
       )}
     </aside>

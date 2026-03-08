@@ -112,7 +112,7 @@ describe("LumiSurveyDock", () => {
     });
 
     await user.click(screen.getByRole("radio", { name: /ja/i }));
-    await user.click(screen.getByRole("button", { name: /neste/i }));
+    await user.click(screen.getByRole("button", { name: /send/i }));
 
     expect(
       screen.queryByText(/ikke skriv inn navn eller andre personopplysninger/i),
@@ -266,7 +266,7 @@ describe("LumiSurveyDock", () => {
     });
 
     await user.click(screen.getByRole("radio", { name: /^ja$/i }));
-    await user.click(screen.getByRole("button", { name: /neste/i }));
+    await user.click(screen.getByRole("button", { name: /send/i }));
 
     await waitFor(() => {
       expect(transportSubmit).toHaveBeenCalledTimes(1);

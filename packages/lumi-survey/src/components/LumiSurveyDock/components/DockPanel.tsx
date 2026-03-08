@@ -20,6 +20,31 @@ import { SuccessContent } from "./SuccessContent.js";
 
 const noop = () => {};
 
+const CloseButton = ({
+  onClick,
+  label,
+}: {
+  onClick: () => void;
+  label: string;
+}) => (
+  <Button
+    data-color="neutral"
+    variant="tertiary"
+    size="small"
+    icon={<XMarkIcon aria-hidden />}
+    onClick={onClick}
+    aria-label={label}
+    style={{
+      borderRadius: "50%",
+      width: "32px",
+      height: "32px",
+      minWidth: "32px",
+      padding: 0,
+      flexShrink: 0,
+    }}
+  />
+);
+
 type BoxProps = ComponentProps<typeof Box>;
 
 interface DockPanelProps {
@@ -77,7 +102,7 @@ interface DockPanelProps {
   // Progress bar props
   showProgress?: boolean;
   totalSteps?: number;
-  visitedSteps?: number[];
+  hasBranching?: boolean;
 }
 
 export const DockPanel = ({
@@ -132,7 +157,7 @@ export const DockPanel = ({
   // Progress bar props
   showProgress = false,
   totalSteps = 0,
-  visitedSteps,
+  hasBranching = false,
 }: DockPanelProps) => {
   return (
     <div style={{ position: "relative" }}>
@@ -176,22 +201,7 @@ export const DockPanel = ({
                 </Heading>
               </div>
               {/* Close button */}
-              <Button
-                data-color="neutral"
-                variant="tertiary"
-                size="small"
-                icon={<XMarkIcon aria-hidden />}
-                onClick={onClose}
-                aria-label={cancelLabel ?? "Avbryt"}
-                style={{
-                  borderRadius: "50%",
-                  width: "32px",
-                  height: "32px",
-                  minWidth: "32px",
-                  padding: 0,
-                  flexShrink: 0,
-                }}
-              />
+              <CloseButton onClick={onClose} label={cancelLabel ?? "Avbryt"} />
             </HStack>
             <IntroContent
               headingId={introHeadingId}
@@ -258,30 +268,19 @@ export const DockPanel = ({
                 )}
               </div>
               {/* Close button - circular hover effect for better affordance */}
-              <Button
-                data-color="neutral"
-                variant="tertiary"
-                size="small"
-                icon={<XMarkIcon aria-hidden />}
-                onClick={onClose}
-                aria-label={cancelLabel ?? "Avbryt"}
-                style={{
-                  borderRadius: "50%",
-                  width: "32px",
-                  height: "32px",
-                  minWidth: "32px",
-                  padding: 0,
-                  flexShrink: 0,
-                }}
-              />
+              <CloseButton onClick={onClose} label={cancelLabel ?? "Avbryt"} />
             </HStack>
 
             {showProgress && isStepMode && !isSuccess && totalSteps > 0 && (
               <ProgressBar
-                value={visitedSteps ? visitedSteps.length : currentStep + 1}
+                value={currentStep + 1}
                 valueMax={totalSteps}
                 size="small"
-                aria-label={`Steg ${visitedSteps ? visitedSteps.length : currentStep + 1} av ${totalSteps}`}
+                aria-label={
+                  hasBranching
+                    ? `Steg ${currentStep + 1}`
+                    : `Steg ${currentStep + 1} av ${totalSteps}`
+                }
               />
             )}
 

@@ -98,6 +98,12 @@ const DINESYKMELDTE_SURVEY: LumiSurveyConfig = {
       required: true,
       maxLength: 500,
       minRows: 3,
+      visibleIf: {
+        field: "ANSWER",
+        questionId: "vanskeligst",
+        operator: "CONTAINS",
+        value: "annet",
+      },
     },
     {
       id: "lettere",
