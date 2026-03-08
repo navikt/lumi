@@ -1,5 +1,5 @@
 import { Alert, Button, HStack, ProgressBar, VStack } from "@navikt/ds-react";
-import React from "react";
+import React, { useCallback, useRef } from "react";
 import type { LumiSurveyAnswerValue, LumiSurveyQuestion } from "../../../core";
 import { DockQuestionRenderer } from "./DockQuestionRenderer.js";
 
@@ -85,6 +85,29 @@ export const SurveyFormContent = React.memo(
     transportErrorMessage,
     disabled,
   }: SurveyFormContentProps) => {
+    // Stable onChange handlers per question-id so React.memo on
+    // DockQuestionRenderer can skip re-renders when props haven't changed.
+    const onQuestionChangeRef = useRef(onQuestionChange);
+    onQuestionChangeRef.current = onQuestionChange;
+
+    const handlersRef = useRef(
+      new Map<
+        string,
+        (value: LumiSurveyAnswerValue | null | undefined) => void
+      >(),
+    );
+
+    const getChangeHandler = useCallback((questionId: string) => {
+      let handler = handlersRef.current.get(questionId);
+      if (!handler) {
+        handler = (value: LumiSurveyAnswerValue | null | undefined) => {
+          onQuestionChangeRef.current(questionId, value);
+        };
+        handlersRef.current.set(questionId, handler);
+      }
+      return handler;
+    }, []);
+
     return (
       <>
         {showProgress && isStepMode && totalSteps > 0 && (
@@ -109,9 +132,7 @@ export const SurveyFormContent = React.memo(
                   <DockQuestionRenderer
                     question={currentStepQuestion}
                     value={answers[currentStepQuestion.id]}
-                    onChange={(nextValue) =>
-                      onQuestionChange(currentStepQuestion.id, nextValue)
-                    }
+                    onChange={getChangeHandler(currentStepQuestion.id)}
                     isMissing={validationMissing.includes(
                       currentStepQuestion.id,
                     )}
@@ -175,18 +196,13 @@ export const SurveyFormContent = React.memo(
                 {orderedQuestions.map((question) => {
                   const value = answers[question.id];
                   const isMissing = validationMissing.includes(question.id);
-                  const handleChange = (
-                    nextValue: LumiSurveyAnswerValue | null | undefined,
-                  ) => {
-                    onQuestionChange(question.id, nextValue);
-                  };
 
                   return (
                     <div key={question.id} className="lumi-survey-question">
                       <DockQuestionRenderer
                         question={question}
                         value={value}
-                        onChange={handleChange}
+                        onChange={getChangeHandler(question.id)}
                         isMissing={isMissing}
                         disabled={disabled}
                         hideLabel={question.id === promptQuestionId}
