@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { IntroContent } from "../IntroContent.js";
 
 describe("IntroContent", () => {
-  it("renders title and start button with default label", () => {
+  it("renders title and start button", () => {
     render(
       <IntroContent
         headingId="test-heading-id"

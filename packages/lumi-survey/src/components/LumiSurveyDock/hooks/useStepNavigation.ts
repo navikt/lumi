@@ -40,6 +40,8 @@ export interface UseStepNavigationReturn {
   goToPrevious: () => void;
   /** Reset navigation to the first question */
   resetNavigation: () => void;
+  /** Whether any question in the survey has branching logic */
+  hasBranching: boolean;
   /** Array of visited question indices for back navigation */
   visitedSteps: number[];
   /** Get all questions that should be visible (for non-step mode) */
@@ -85,7 +87,27 @@ export function useStepNavigation(
 
   const canGoBack = visitedSteps.length > 1;
   const canGoNext = hasAnsweredCurrent || !currentQuestion?.required;
-  const isLastStep = currentStep >= questions.length - 1;
+  const isLastStep = useMemo(() => {
+    if (!currentQuestion) return false;
+    if (currentStep >= questions.length - 1) return true;
+    // Check if branching would trigger SUBMIT for current answer
+    if (!hasAnsweredCurrent) return false;
+    const result = evaluateBranching(
+      currentQuestion,
+      currentAnswer,
+      metadata,
+      questions,
+      currentStep,
+    );
+    return result.nextIndex === -1;
+  }, [
+    currentQuestion,
+    currentAnswer,
+    metadata,
+    questions,
+    currentStep,
+    hasAnsweredCurrent,
+  ]);
 
   // Fire onStepChange when step changes
   useEffect(() => {
@@ -120,7 +142,11 @@ export function useStepNavigation(
     // Only add to visited if we're going to a new step
     if (nextIndex !== currentStep) {
       setCurrentStep(nextIndex);
-      setVisitedSteps((prev) => [...prev, nextIndex]);
+      setVisitedSteps((prev) => {
+        const existingIndex = prev.indexOf(nextIndex);
+        if (existingIndex !== -1) return prev.slice(0, existingIndex + 1);
+        return [...prev, nextIndex];
+      });
       setShouldSubmit(false);
     }
 
@@ -161,6 +187,7 @@ export function useStepNavigation(
     goToNext,
     goToPrevious,
     resetNavigation,
+    hasBranching,
     visitedSteps,
     getVisibleQuestions,
   };
