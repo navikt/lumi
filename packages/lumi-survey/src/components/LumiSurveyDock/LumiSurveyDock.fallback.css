@@ -76,6 +76,9 @@
   gap: var(--ax-space-12);
   justify-content: space-between;
   width: 100%;
+}
+
+.lumi-survey-dock__rating-row.lumi-survey-dock__rating-row {
   flex-wrap: nowrap;
 }
 
@@ -86,6 +89,9 @@
   flex-direction: column;
   align-items: center;
   gap: var(--ax-space-4);
+}
+
+.lumi-survey-dock__rating-button.lumi-survey-dock__rating-button {
   min-width: 0;
 }
 
