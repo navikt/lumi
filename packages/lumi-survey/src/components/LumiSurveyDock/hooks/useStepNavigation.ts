@@ -9,6 +9,16 @@ import type {
   LumiSurveyQuestion,
 } from "../../../core/types.js";
 
+/** Check whether a survey answer value is non-empty. */
+export function isAnswered(value: LumiSurveyAnswerValue | undefined): boolean {
+  return (
+    value !== undefined &&
+    value !== null &&
+    value !== "" &&
+    !(Array.isArray(value) && value.length === 0)
+  );
+}
+
 export interface UseStepNavigationOptions {
   questions: LumiSurveyQuestion[];
   answers: Record<string, LumiSurveyAnswerValue>;
@@ -30,10 +40,8 @@ export interface UseStepNavigationReturn {
   canGoBack: boolean;
   /** Whether the user can go forward (has answered current question) */
   canGoNext: boolean;
-  /** Whether this is the last question based on current path */
+  /** Whether this is the last question based on current path (includes branching SUBMIT) */
   isLastStep: boolean;
-  /** Whether the current step should trigger submit (from branching) */
-  shouldSubmit: boolean;
   /** Navigate to the next question based on branching logic */
   goToNext: () => BranchingResult | null;
   /** Navigate to the previous question in history */
@@ -44,8 +52,6 @@ export interface UseStepNavigationReturn {
   hasBranching: boolean;
   /** Array of visited question indices for back navigation */
   visitedSteps: number[];
-  /** Get all questions that should be visible (for non-step mode) */
-  getVisibleQuestions: () => LumiSurveyQuestion[];
 }
 
 /**
@@ -73,33 +79,26 @@ export function useStepNavigation(
   // Navigation state
   const [currentStep, setCurrentStep] = useState(0);
   const [visitedSteps, setVisitedSteps] = useState<number[]>([0]);
-  const [shouldSubmit, setShouldSubmit] = useState(false);
 
   const currentQuestion = questions[currentStep];
 
   // Check if current question has been answered
   const currentAnswer = answers[currentQuestion?.id];
-  const hasAnsweredCurrent =
-    currentAnswer !== undefined &&
-    currentAnswer !== null &&
-    currentAnswer !== "" &&
-    !(Array.isArray(currentAnswer) && currentAnswer.length === 0);
+  const hasAnsweredCurrent = isAnswered(currentAnswer);
 
   const canGoBack = visitedSteps.length > 1;
   const canGoNext = hasAnsweredCurrent || !currentQuestion?.required;
-  const isLastStep = useMemo(() => {
-    if (!currentQuestion) return false;
-    if (currentStep >= questions.length - 1) return true;
-    // Check if branching would trigger SUBMIT for current answer
-    if (!hasAnsweredCurrent) return false;
-    const result = evaluateBranching(
+
+  // Shared branching evaluation — used by both isLastStep and goToNext
+  const branchingResult = useMemo(() => {
+    if (!currentQuestion || !hasAnsweredCurrent) return null;
+    return evaluateBranching(
       currentQuestion,
       currentAnswer,
       metadata,
       questions,
       currentStep,
     );
-    return result.nextIndex === -1;
   }, [
     currentQuestion,
     currentAnswer,
@@ -108,6 +107,14 @@ export function useStepNavigation(
     currentStep,
     hasAnsweredCurrent,
   ]);
+
+  // True when on the last linear step OR branching evaluates to SUBMIT
+  const isLastStep = useMemo(() => {
+    if (!currentQuestion) return false;
+    if (currentStep >= questions.length - 1) return true;
+    if (!branchingResult) return false;
+    return branchingResult.nextIndex === -1;
+  }, [currentQuestion, currentStep, questions.length, branchingResult]);
 
   // Fire onStepChange when step changes
   useEffect(() => {
@@ -119,17 +126,19 @@ export function useStepNavigation(
   const goToNext = useCallback(() => {
     if (!currentQuestion) return null;
 
-    const result = evaluateBranching(
-      currentQuestion,
-      currentAnswer,
-      metadata,
-      questions,
-      currentStep,
-    );
+    // Use pre-computed branching result when available, otherwise evaluate fresh
+    const result =
+      branchingResult ??
+      evaluateBranching(
+        currentQuestion,
+        currentAnswer,
+        metadata,
+        questions,
+        currentStep,
+      );
 
     if (result.nextIndex === -1) {
-      // SUBMIT action triggered
-      setShouldSubmit(true);
+      // SUBMIT action triggered — no navigation, consumer handles submission
       return result;
     }
 
@@ -147,11 +156,17 @@ export function useStepNavigation(
         if (existingIndex !== -1) return prev.slice(0, existingIndex + 1);
         return [...prev, nextIndex];
       });
-      setShouldSubmit(false);
     }
 
     return result;
-  }, [currentQuestion, currentAnswer, metadata, questions, currentStep]);
+  }, [
+    currentQuestion,
+    currentAnswer,
+    metadata,
+    questions,
+    currentStep,
+    branchingResult,
+  ]);
 
   const goToPrevious = useCallback(() => {
     if (visitedSteps.length <= 1) return;
@@ -162,19 +177,12 @@ export function useStepNavigation(
 
     setVisitedSteps(newHistory);
     setCurrentStep(previousStep);
-    setShouldSubmit(false);
   }, [visitedSteps]);
 
   const resetNavigation = useCallback(() => {
     setCurrentStep(0);
     setVisitedSteps([0]);
-    setShouldSubmit(false);
   }, []);
-
-  // For non-step mode: return all questions
-  const getVisibleQuestions = useCallback(() => {
-    return questions;
-  }, [questions]);
 
   return {
     isStepMode,
@@ -183,12 +191,10 @@ export function useStepNavigation(
     canGoBack,
     canGoNext,
     isLastStep,
-    shouldSubmit,
     goToNext,
     goToPrevious,
     resetNavigation,
     hasBranching,
     visitedSteps,
-    getVisibleQuestions,
   };
 }
