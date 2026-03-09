@@ -1,6 +1,7 @@
 import { Alert, Button, HStack, ProgressBar, VStack } from "@navikt/ds-react";
 import React, { useCallback, useRef } from "react";
 import type { LumiSurveyAnswerValue, LumiSurveyQuestion } from "../../../core";
+import { CLASS_NAMES } from "../classNames.js";
 import { DockQuestionRenderer } from "./DockQuestionRenderer.js";
 
 interface SurveyFormContentProps {
@@ -128,7 +129,7 @@ export const SurveyFormContent = React.memo(
             {isStepMode && currentStepQuestion ? (
               // Step mode: Show only the current question
               <>
-                <div className="lumi-survey-question">
+                <div className={CLASS_NAMES.question}>
                   <DockQuestionRenderer
                     question={currentStepQuestion}
                     value={answers[currentStepQuestion.id]}
@@ -147,7 +148,7 @@ export const SurveyFormContent = React.memo(
 
                 {/* Show privacy notice when a text field is visible */}
                 {showPersonalDataNotice && (
-                  <Alert variant="warning" role="alert">
+                  <Alert variant="warning" role="status">
                     {personalDataNoticeBody}
                   </Alert>
                 )}
@@ -198,7 +199,7 @@ export const SurveyFormContent = React.memo(
                   const isMissing = validationMissing.includes(question.id);
 
                   return (
-                    <div key={question.id} className="lumi-survey-question">
+                    <div key={question.id} className={CLASS_NAMES.question}>
                       <DockQuestionRenderer
                         question={question}
                         value={value}
@@ -216,7 +217,7 @@ export const SurveyFormContent = React.memo(
                 })}
 
                 {showPersonalDataNotice && (
-                  <Alert variant="warning" role="alert">
+                  <Alert variant="warning" role="status">
                     {personalDataNoticeBody}
                   </Alert>
                 )}

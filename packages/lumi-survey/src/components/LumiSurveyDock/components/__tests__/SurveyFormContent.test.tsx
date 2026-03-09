@@ -236,11 +236,11 @@ describe("SurveyFormContent", () => {
       screen.getByText(/ikke skriv personopplysninger/i),
     ).toBeInTheDocument();
 
-    // Alert should have warning variant (role="alert")
+    // Alert should have warning variant (role="status" for non-urgent info)
     expect(
       screen
         .getByText(/ikke skriv personopplysninger/i)
-        .closest('[role="alert"]'),
+        .closest('[role="status"]'),
     ).toBeInTheDocument();
   });
 

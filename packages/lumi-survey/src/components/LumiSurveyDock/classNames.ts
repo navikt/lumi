@@ -15,6 +15,7 @@ export const CLASS_NAMES = {
   ratingButton: styles.ratingButton ?? "lumi-survey-dock__rating-button",
   minimizedButton:
     styles.minimizedButton ?? "lumi-survey-dock__minimized-button",
+  question: styles.question ?? "lumi-survey-question",
 };
 
 export const joinClassNames = (
