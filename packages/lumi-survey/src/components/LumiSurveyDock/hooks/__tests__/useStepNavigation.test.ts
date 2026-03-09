@@ -115,7 +115,7 @@ describe("useStepNavigation", () => {
       );
 
       expect(result.current.currentStep).toBe(0);
-      expect(result.current.currentQuestion.id).toBe("q1");
+      expect(result.current.currentQuestion?.id).toBe("q1");
     });
 
     it("goToNext advances to the next step when answer is provided", () => {
@@ -132,7 +132,7 @@ describe("useStepNavigation", () => {
       });
 
       expect(result.current.currentStep).toBe(1);
-      expect(result.current.currentQuestion.id).toBe("q2");
+      expect(result.current.currentQuestion?.id).toBe("q2");
     });
 
     it("goToPrevious goes back to the previous step", () => {
@@ -407,7 +407,7 @@ describe("useStepNavigation", () => {
       act(() => {
         result.current.goToNext();
       });
-      expect(result.current.currentQuestion.id).toBe("q2");
+      expect(result.current.currentQuestion?.id).toBe("q2");
 
       // No answer for q2, but it's optional
       expect(result.current.canGoNext).toBe(true);
@@ -545,7 +545,7 @@ describe("useStepNavigation", () => {
 
       // Should jump directly to q3 (index 2), skipping q2
       expect(result.current.currentStep).toBe(2);
-      expect(result.current.currentQuestion.id).toBe("q3");
+      expect(result.current.currentQuestion?.id).toBe("q3");
       expect(result.current.visitedSteps).toEqual([0, 2]);
     });
 

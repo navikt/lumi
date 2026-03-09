@@ -390,6 +390,7 @@ export interface LumiSurveyEvents {
   onDismissalPersistFailed?: (cause: unknown) => void;
   /**
    * Fired when the current step changes in step mode.
+   * Also fires on initial render (step 0) when step mode is active.
    */
   onStepChange?: (currentStep: number, totalSteps: number) => void;
 }

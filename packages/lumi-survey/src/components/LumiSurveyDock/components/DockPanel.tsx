@@ -159,6 +159,9 @@ export const DockPanel = ({
   totalSteps = 0,
   hasBranching = false,
 }: DockPanelProps) => {
+  const activeQuestion =
+    isStepMode && currentStepQuestion ? currentStepQuestion : promptQuestion;
+
   return (
     <div style={{ position: "relative" }}>
       <Box
@@ -245,23 +248,15 @@ export const DockPanel = ({
                       id={promptHeadingId}
                       tabIndex={-1}
                     >
-                      {/* In step mode, show current step's prompt; otherwise show first question */}
-                      {isStepMode && currentStepQuestion
-                        ? formatQuestionPrompt(currentStepQuestion)
-                        : formatQuestionPrompt(promptQuestion)}
+                      {formatQuestionPrompt(activeQuestion)}
                     </Heading>
-                    {/* Show description from current step in step mode, or from first question otherwise */}
-                    {(isStepMode && currentStepQuestion
-                      ? currentStepQuestion.description
-                      : promptQuestion.description) && (
+                    {activeQuestion.description && (
                       <BodyShort
                         size="small"
                         className={CLASS_NAMES.ratingDescription}
                         id={promptDescriptionId}
                       >
-                        {isStepMode && currentStepQuestion
-                          ? currentStepQuestion.description
-                          : promptQuestion.description}
+                        {activeQuestion.description}
                       </BodyShort>
                     )}
                   </>

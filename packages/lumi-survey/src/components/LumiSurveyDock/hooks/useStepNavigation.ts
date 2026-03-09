@@ -34,8 +34,8 @@ export interface UseStepNavigationReturn {
   isStepMode: boolean;
   /** Current question index */
   currentStep: number;
-  /** The current question to display */
-  currentQuestion: LumiSurveyQuestion;
+  /** The current question to display (undefined when the questions array is empty) */
+  currentQuestion: LumiSurveyQuestion | undefined;
   /** Whether the user can go back */
   canGoBack: boolean;
   /** Whether the user can go forward (has answered current question) */

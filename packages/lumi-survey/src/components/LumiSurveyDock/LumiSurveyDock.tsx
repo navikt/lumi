@@ -200,7 +200,7 @@ export const LumiSurveyDock = ({
     questions,
     answers,
     forceStepMode,
-    onStepChange: events?.onStepChange,
+    onStepChange: forceSinglePage ? undefined : events?.onStepChange,
   });
 
   // When the consumer explicitly requests "singlePage", always disable step
