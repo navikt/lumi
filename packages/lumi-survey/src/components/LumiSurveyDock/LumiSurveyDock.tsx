@@ -191,7 +191,6 @@ export const LumiSurveyDock = ({
     canGoBack,
     canGoNext,
     isLastStep,
-    shouldSubmit,
     goToNext,
     goToPrevious,
     resetNavigation,
@@ -474,7 +473,7 @@ export const LumiSurveyDock = ({
           currentStepQuestion={currentStepQuestion}
           canGoBack={canGoBack}
           canGoNext={canGoNext}
-          isLastStep={isLastStep || shouldSubmit}
+          isLastStep={isLastStep}
           onNext={handleNext}
           onBack={goToPrevious}
           // Intro props

@@ -1,7 +1,32 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { LumiSurveyQuestion } from "../../../../core/types.js";
-import { useStepNavigation } from "../useStepNavigation.js";
+import { isAnswered, useStepNavigation } from "../useStepNavigation.js";
+
+// ============================================
+// isAnswered – pure utility
+// ============================================
+
+describe("isAnswered", () => {
+  it.each([
+    { label: "undefined", value: undefined },
+    { label: "null (defensive)", value: null },
+    { label: 'empty string ""', value: "" },
+    { label: "empty array []", value: [] },
+  ])("returns false for $label", ({ value }) => {
+    // biome-ignore lint/suspicious/noExplicitAny: testing defensive null handling
+    expect(isAnswered(value as any)).toBe(false);
+  });
+
+  it.each([
+    { label: '"a" (non-empty string)', value: "a" },
+    { label: "0 (NPS-rating)", value: 0 },
+    { label: "5 (numeric value)", value: 5 },
+    { label: '["x", "y"] (multiChoice)', value: ["x", "y"] },
+  ])("returns true for $label", ({ value }) => {
+    expect(isAnswered(value)).toBe(true);
+  });
+});
 
 // ============================================
 // Fixtures
@@ -419,7 +444,7 @@ describe("useStepNavigation", () => {
   // 7. resetNavigation
   // ------------------------------------------
   describe("resetNavigation", () => {
-    it("resets currentStep, visitedSteps, and shouldSubmit", () => {
+    it("resets currentStep and visitedSteps", () => {
       const { result } = renderHook(() =>
         useStepNavigation({
           questions: BRANCHING_QUESTIONS,
@@ -427,11 +452,12 @@ describe("useStepNavigation", () => {
         }),
       );
 
-      // Navigate so shouldSubmit is set
+      // isLastStep is true because branching evaluates to SUBMIT for answer "b"
+      expect(result.current.isLastStep).toBe(true);
+
       act(() => {
         result.current.goToNext();
       });
-      expect(result.current.shouldSubmit).toBe(true);
 
       act(() => {
         result.current.resetNavigation();
@@ -439,7 +465,6 @@ describe("useStepNavigation", () => {
 
       expect(result.current.currentStep).toBe(0);
       expect(result.current.visitedSteps).toEqual([0]);
-      expect(result.current.shouldSubmit).toBe(false);
     });
 
     it("resets after multi-step navigation", () => {
@@ -524,7 +549,7 @@ describe("useStepNavigation", () => {
       expect(result.current.visitedSteps).toEqual([0, 2]);
     });
 
-    it("SUBMIT action sets shouldSubmit and returns nextIndex -1", () => {
+    it("SUBMIT action makes isLastStep true and goToNext returns nextIndex -1", () => {
       // Answer "b" on q1 → EXISTS matches → SUBMIT
       const { result } = renderHook(() =>
         useStepNavigation({
@@ -533,6 +558,9 @@ describe("useStepNavigation", () => {
         }),
       );
 
+      // isLastStep should already be true (branching evaluates to SUBMIT)
+      expect(result.current.isLastStep).toBe(true);
+
       act(() => {
         const branchingResult = result.current.goToNext();
         expect(branchingResult).not.toBeNull();
@@ -540,7 +568,6 @@ describe("useStepNavigation", () => {
         expect(branchingResult?.triggeredByRule).toBe(true);
       });
 
-      expect(result.current.shouldSubmit).toBe(true);
       // Step should remain at 0 since we didn't navigate
       expect(result.current.currentStep).toBe(0);
     });
