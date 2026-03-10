@@ -1,5 +1,7 @@
 # Lumi Survey
 
+> 📖 **Ny bruker?** Se [Kom i gang-guiden](https://navikt.github.io/lumi/kom-i-gang/hva-er-lumi) for å komme raskt i gang.
+
 Aksel-basert React-widget for å samle inn brukertilbakemeldinger via Lumi.
 
 > **Ny her?** Følg [Kom i gang](../../README.md#kom-i-gang) i rot-README for installasjon, backend-oppsett og NAIS-tilgang. Denne guiden dekker widget-konfigurasjon og avanserte features.
@@ -216,7 +218,7 @@ Anbefaling: Start med `rating` eller `discovery`, og gå videre til `topTasks`/`
 
 - Importer styling: `@navikt/ds-css` og `@navikt/lumi-survey/styles.css`.
 - Implementer `transport.submit` som sender `submission.transportPayload` til din backend.
-- Gjør token exchange server-side og kall riktig endepunkt (se [rot-README steg 3](../../README.md#3-sett-opp-backend-token-exchange--forwarding)).
+- Gjør token exchange server-side og kall riktig endepunkt (se [Koble til backend](https://navikt.github.io/lumi/kom-i-gang/koble-til-backend)).
 - Sett riktig `storageStrategy` (`consent` / `localStorage` / `none`).
 - Sjekk NAIS policies og test ende-til-ende (innsending → dashboard).
 
@@ -245,7 +247,7 @@ versjonert (`schemaVersion: 1`). Den inkluderer:
 - `answers`: Normalisert struktur per spørsmål
 - `context`: tags/debug/auto-collectet miljøinfo
 
-Backend-oppsett (token exchange, NAIS-tilgang) er beskrevet i [rot-README steg 3–4](../../README.md#3-sett-opp-backend-token-exchange--forwarding).
+Backend-oppsett (token exchange, NAIS-tilgang) er beskrevet i [Koble til backend](https://navikt.github.io/lumi/kom-i-gang/koble-til-backend).
 
 ## Kontekst og personvern
 

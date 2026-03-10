@@ -23,6 +23,7 @@ jobs:
     outputs:
       node: ${{ steps.filter.outputs.node }}
       api: ${{ steps.filter.outputs.api }}
+      docs: ${{ steps.filter.outputs.docs }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - id: filter
@@ -40,10 +41,12 @@ jobs:
             api:
               - '.github/workflows/**'
               - 'apps/lumi-api/**'
+            docs:
+              - 'docs/**'
 
   required:
     name: Merge gate
-    needs: [changes, node, api]
+    needs: [changes, node, api, docs]
     runs-on: ubuntu-latest
     if: always()
     permissions:
@@ -60,6 +63,7 @@ jobs:
             "changes=${{ needs.changes.result }}"
             "node=${{ needs.node.result }}"
             "api=${{ needs.api.result }}"
+            "docs=${{ needs.docs.result }}"
           )
           printf '%s\n' "${results[@]}"
 
@@ -136,3 +140,22 @@ jobs:
       - name: Run tests
         working-directory: apps/lumi-api
         run: ./gradlew test
+
+  docs:
+    name: Build docs
+    needs: changes
+    if: always() && (github.event_name == 'merge_group' || needs.changes.outputs.docs == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+      - name: Install docs deps
+        run: cd docs && npm ci
+      - name: Build docs
+        run: cd docs && npm run build
