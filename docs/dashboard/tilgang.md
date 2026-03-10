@@ -7,9 +7,9 @@ title: Tilgang
 Lumi-dashboardet er tilgjengelig for Nav-ansatte som er medlem av et NAIS-team som har data i Lumi.
 
 <div style="display: flex; gap: 12px; flex-wrap: wrap; margin: 24px 0;">
-  <a href="https://lumi-dashboard.ansatt.nav.no" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: #0067c5; color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">Prod</a>
-  <a href="https://lumi-dashboard.ansatt.dev.nav.no" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: #f1f1f1; color: #222; border-radius: 8px; text-decoration: none; font-weight: 500;">Dev</a>
-  <a href="https://lumi-dashboard-demo.ekstern.dev.nav.no" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: #f1f1f1; color: #222; border-radius: 8px; text-decoration: none; font-weight: 500;">Demo</a>
+  <a href="https://lumi-dashboard.ansatt.nav.no" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: #0067c5; color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">🚀 Prod</a>
+  <a href="https://lumi-dashboard.ansatt.dev.nav.no" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: #f1f1f1; color: #222; border-radius: 8px; text-decoration: none; font-weight: 500;">🧪 Dev</a>
+  <a href="https://lumi-dashboard-demo.ekstern.dev.nav.no" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: #f1f1f1; color: #222; border-radius: 8px; text-decoration: none; font-weight: 500;">👀 Demo</a>
 </div>
 
 Demo-miljøet er åpent for alle. Dev og prod krever Nav-innlogging.
