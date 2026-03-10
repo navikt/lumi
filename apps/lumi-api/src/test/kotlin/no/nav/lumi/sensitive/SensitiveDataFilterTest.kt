@@ -61,11 +61,40 @@ class SensitiveDataFilterTest : FunSpec({
             result.wasRedacted shouldBe true
         }
 
+        test("should detect fødselsnummer with dot separator") {
+            val text = "Mitt fnr er 010203.49294"
+            val matches = filter.detect(text)
+
+            matches.any { it.patternName == "fødselsnummer" && it.matchedValue == "010203.49294" } shouldBe true
+        }
+
+        test("should redact fødselsnummer with dot separator") {
+            val result = filter.redact("Fnr: 010203.49294 registrert")
+
+            result.redactedText shouldNotContain "010203.49294"
+            result.redactedText shouldContain "[FØDSELSNUMMER FJERNET]"
+            result.wasRedacted shouldBe true
+        }
+
         test("should not flag sequence that fails MOD11 as fødselsnummer") {
             // 12345678901 does not pass MOD11 check digits → must not be reported as fødselsnummer.
             // It may still match the kontonummer pattern.
             val matches = filter.detect("12345678901")
 
+            matches.none { it.patternName == "fødselsnummer" } shouldBe true
+        }
+        test("should not flag MOD11-invalid number with space separator as fødselsnummer") {
+            val matches = filter.detect("123456 78901")
+            matches.none { it.patternName == "fødselsnummer" } shouldBe true
+        }
+
+        test("should not flag MOD11-invalid number with dash separator as fødselsnummer") {
+            val matches = filter.detect("123456-78901")
+            matches.none { it.patternName == "fødselsnummer" } shouldBe true
+        }
+
+        test("should not flag MOD11-invalid number with dot separator as fødselsnummer") {
+            val matches = filter.detect("123456.78901")
             matches.none { it.patternName == "fødselsnummer" } shouldBe true
         }
     }
@@ -343,6 +372,138 @@ class SensitiveDataFilterTest : FunSpec({
             (redacted["feedback"] as String) shouldNotContain validFnr
             // validFnr matches both fødselsnummer and kontonummer patterns
             matches.size shouldBe 3
+        }
+    }
+
+    // --- Patterns only in ALL_PATTERNS (tested via STRICT filter) ---
+
+    context("Organisation number detection (STRICT)") {
+        val strictFilter = SensitiveDataFilter.STRICT
+
+        test("should detect 9-digit organisation number") {
+            val text = "Org.nr: 123456789"
+            val matches = strictFilter.detect(text)
+
+            matches.any { it.patternName == "organisasjonsnummer" } shouldBe true
+        }
+
+        test("should redact organisation number") {
+            val result = strictFilter.redact("Bedrift med orgnr 987654321 er registrert")
+
+            result.redactedText shouldNotContain "987654321"
+            result.redactedText shouldContain "[ORGNUMMER FJERNET]"
+            result.wasRedacted shouldBe true
+        }
+
+        test("should not match 8-digit number as organisation number") {
+            val text = "Tallet 12345678 er for kort"
+            val matches = strictFilter.detect(text)
+
+            matches.none { it.patternName == "organisasjonsnummer" } shouldBe true
+        }
+    }
+
+    context("License plate detection (STRICT)") {
+        val strictFilter = SensitiveDataFilter.STRICT
+
+        test("should detect license plate without space") {
+            val text = "Bilen har skiltnummer AB12345"
+            val matches = strictFilter.detect(text)
+
+            matches.any { it.patternName == "bilnummer" && it.matchedValue == "AB12345" } shouldBe true
+        }
+
+        test("should redact license plate with space") {
+            val result = strictFilter.redact("Registrert på EK 54321")
+
+            result.redactedText shouldNotContain "EK 54321"
+            result.redactedText shouldContain "[BILNUMMER FJERNET]"
+            result.wasRedacted shouldBe true
+        }
+
+        test("should not match lowercase letters as license plate") {
+            val text = "Koden er ab12345"
+            val matches = strictFilter.detect(text)
+
+            matches.none { it.patternName == "bilnummer" } shouldBe true
+        }
+    }
+
+    context("Search query parameter detection (STRICT)") {
+        val strictFilter = SensitiveDataFilter.STRICT
+
+        test("should detect search query parameter") {
+            val text = "Bruker søkte på https://nav.no/sok?q=sykepenger+uføre"
+            val matches = strictFilter.detect(text)
+
+            matches.any { it.patternName == "søkeparameter" } shouldBe true
+        }
+
+        test("should redact search query parameter") {
+            val result = strictFilter.redact("URL: https://example.com/search?query=hemmelig+info&page=1")
+
+            result.redactedText shouldNotContain "query=hemmelig+info"
+            result.redactedText shouldContain "[SØKEPARAMETER FJERNET]"
+            result.wasRedacted shouldBe true
+        }
+
+        test("should not match non-search query parameters") {
+            val text = "https://nav.no/page?page=2&sort=desc"
+            val matches = strictFilter.detect(text)
+
+            matches.none { it.patternName == "søkeparameter" } shouldBe true
+        }
+    }
+
+    context("Possible name detection (STRICT)") {
+        val strictFilter = SensitiveDataFilter.STRICT
+
+        test("should detect two capitalized words as possible name") {
+            val text = "Melding fra Ola Nordmann om saken"
+            val matches = strictFilter.detect(text)
+
+            matches.any { it.patternName == "mulig_navn" && it.matchedValue == "Ola Nordmann" } shouldBe true
+        }
+
+        test("should redact possible name with Norwegian characters") {
+            val result = strictFilter.redact("Bruker Åse Ødegård tok kontakt")
+
+            result.redactedText shouldNotContain "Åse Ødegård"
+            result.redactedText shouldContain "[MULIG NAVN FJERNET]"
+            result.wasRedacted shouldBe true
+        }
+
+        test("should not match lowercase words as name") {
+            val text = "dette er en vanlig setning uten navn"
+            val matches = strictFilter.detect(text)
+
+            matches.none { it.patternName == "mulig_navn" } shouldBe true
+        }
+    }
+
+    context("Possible address detection (STRICT)") {
+        val strictFilter = SensitiveDataFilter.STRICT
+
+        test("should detect postal code with place name") {
+            val text = "Bor i 0170 Oslo sentrum"
+            val matches = strictFilter.detect(text)
+
+            matches.any { it.patternName == "mulig_adresse" } shouldBe true
+        }
+
+        test("should redact address with postal code") {
+            val result = strictFilter.redact("Sendt til 5003 Bergen")
+
+            result.redactedText shouldNotContain "5003 Bergen"
+            result.redactedText shouldContain "[MULIG ADRESSE FJERNET]"
+            result.wasRedacted shouldBe true
+        }
+
+        test("should not match four digits without following place name") {
+            val text = "Kode 1234 er godkjent"
+            val matches = strictFilter.detect(text)
+
+            matches.none { it.patternName == "mulig_adresse" } shouldBe true
         }
     }
 })

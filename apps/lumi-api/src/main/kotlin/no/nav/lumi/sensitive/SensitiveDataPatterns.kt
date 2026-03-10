@@ -8,19 +8,21 @@ object SensitiveDataPatterns {
 
     /**
      * Norwegian national identity number (fødselsnummer) - 11 digits.
-     * Format: DDMMYYXXXXX, optionally with a single space or dash between the
-     * 6-digit date part and the 5-digit individual number (e.g. "010203 12345"
-     * or "010203-12345").
+     * Format: DDMMYYXXXXX, optionally with a single space, dash or dot between the
+     * 6-digit date part and the 5-digit individual number (e.g. "010203 12345",
+     * "010203-12345" or "010203.12345").
      */
-    val FODSELSNUMMER = Regex("""\b\d{6}[\s-]?\d{5}\b""")
+    val FODSELSNUMMER = Regex("""\b\d{6}[\s.-]?\d{5}\b""")
 
     /**
      * Validates a fødselsnummer candidate using the MOD11 algorithm.
-     * Separators (space, dash) are stripped before validation.
+     * Weights follow Skatteetatens specification for control digits in
+     * Norwegian national identity numbers (fødselsnummer/d-nummer).
+     * Separators (space, dash, dot) are stripped before validation.
      * Returns true only for numbers with correct check digits.
      */
     fun isValidFodselsnummer(value: String): Boolean {
-        val digits = value.replace(Regex("[\\s-]"), "")
+        val digits = value.replace(Regex("[\\s.-]"), "")
         if (digits.length != 11 || digits.any { !it.isDigit() }) return false
 
         val d = digits.map { it.digitToInt() }
@@ -106,36 +108,59 @@ object SensitiveDataPatterns {
      */
     val SEARCH_QUERY = Regex("""[?&](?:q|query|search|k|ord)=[^&]+""")
     
+    // -- Reusable SensitivePattern instances to avoid duplication across pattern lists --
+
+    private val fnrPattern = SensitivePattern("fødselsnummer", FODSELSNUMMER, "[FØDSELSNUMMER FJERNET]", ::isValidFodselsnummer)
+    private val navidentPattern = SensitivePattern("navident", NAVIDENT, "[NAVIDENT FJERNET]")
+    private val emailPattern = SensitivePattern("e-post", EMAIL, "[E-POST FJERNET]")
+    private val ipPattern = SensitivePattern("ip-adresse", IP_ADDRESS, "[IP-ADRESSE FJERNET]")
+    private val phonePattern = SensitivePattern("telefonnummer", PHONE_NUMBER, "[TELEFON FJERNET]")
+    private val bankCardPattern = SensitivePattern("bankkort", BANK_CARD, "[KORTNUMMER FJERNET]")
+    private val namePattern = SensitivePattern("mulig_navn", POSSIBLE_NAME, "[MULIG NAVN FJERNET]")
+    private val addressPattern = SensitivePattern("mulig_adresse", POSSIBLE_ADDRESS, "[MULIG ADRESSE FJERNET]")
+    private val secretAddressPattern = SensitivePattern("hemmelig_adresse", SECRET_ADDRESS, "[HEMMELIG ADRESSE]")
+    private val bankAccountPattern = SensitivePattern("kontonummer", BANK_ACCOUNT, "[KONTONUMMER FJERNET]")
+    private val orgNumberPattern = SensitivePattern("organisasjonsnummer", ORG_NUMBER, "[ORGNUMMER FJERNET]")
+    private val licensePlatePattern = SensitivePattern("bilnummer", LICENSE_PLATE, "[BILNUMMER FJERNET]")
+    private val searchQueryPattern = SensitivePattern("søkeparameter", SEARCH_QUERY, "[SØKEPARAMETER FJERNET]")
+
     /**
      * All patterns with their labels for reporting
      */
     val ALL_PATTERNS: List<SensitivePattern> = listOf(
-        SensitivePattern("fødselsnummer", FODSELSNUMMER, "[FØDSELSNUMMER FJERNET]", ::isValidFodselsnummer),
-        SensitivePattern("navident", NAVIDENT, "[NAVIDENT FJERNET]"),
-        SensitivePattern("e-post", EMAIL, "[E-POST FJERNET]"),
-        SensitivePattern("ip-adresse", IP_ADDRESS, "[IP-ADRESSE FJERNET]"),
-        SensitivePattern("telefonnummer", PHONE_NUMBER, "[TELEFON FJERNET]"),
-        SensitivePattern("bankkort", BANK_CARD, "[KORTNUMMER FJERNET]"),
-        SensitivePattern("mulig_navn", POSSIBLE_NAME, "[MULIG NAVN FJERNET]"),
-        SensitivePattern("mulig_adresse", POSSIBLE_ADDRESS, "[MULIG ADRESSE FJERNET]"),
-        SensitivePattern("hemmelig_adresse", SECRET_ADDRESS, "[HEMMELIG ADRESSE]"),
-        SensitivePattern("kontonummer", BANK_ACCOUNT, "[KONTONUMMER FJERNET]"),
-        SensitivePattern("organisasjonsnummer", ORG_NUMBER, "[ORGNUMMER FJERNET]"),
-        SensitivePattern("bilnummer", LICENSE_PLATE, "[BILNUMMER FJERNET]"),
-        SensitivePattern("søkeparameter", SEARCH_QUERY, "[SØKEPARAMETER FJERNET]"),
+        fnrPattern,
+        navidentPattern,
+        emailPattern,
+        ipPattern,
+        phonePattern,
+        bankCardPattern,
+        namePattern,
+        addressPattern,
+        secretAddressPattern,
+        bankAccountPattern,
+        orgNumberPattern,
+        licensePlatePattern,
+        searchQueryPattern,
     )
 
     /**
-     * High-confidence patterns that should always be filtered
+     * High-confidence patterns suitable for default/production filtering.
+     *
+     * This list intentionally excludes patterns with a high false-positive rate:
+     * names ([POSSIBLE_NAME]), addresses ([POSSIBLE_ADDRESS]), organisation numbers
+     * ([ORG_NUMBER]), license plates ([LICENSE_PLATE]), search query parameters
+     * ([SEARCH_QUERY]) and IP addresses ([IP_ADDRESS]). Use [ALL_PATTERNS] via
+     * [SensitiveDataFilter.STRICT] when maximum protection is required and a higher
+     * false-positive rate is acceptable.
      */
     val HIGH_CONFIDENCE_PATTERNS: List<SensitivePattern> = listOf(
-        SensitivePattern("fødselsnummer", FODSELSNUMMER, "[FØDSELSNUMMER FJERNET]", ::isValidFodselsnummer),
-        SensitivePattern("navident", NAVIDENT, "[NAVIDENT FJERNET]"),
-        SensitivePattern("e-post", EMAIL, "[E-POST FJERNET]"),
-        SensitivePattern("telefonnummer", PHONE_NUMBER, "[TELEFON FJERNET]"),
-        SensitivePattern("bankkort", BANK_CARD, "[KORTNUMMER FJERNET]"),
-        SensitivePattern("kontonummer", BANK_ACCOUNT, "[KONTONUMMER FJERNET]"),
-        SensitivePattern("hemmelig_adresse", SECRET_ADDRESS, "[HEMMELIG ADRESSE]"),
+        fnrPattern,
+        navidentPattern,
+        emailPattern,
+        phonePattern,
+        bankCardPattern,
+        bankAccountPattern,
+        secretAddressPattern,
     )
 }
 

@@ -38,7 +38,7 @@ class FeedbackServiceTest : FunSpec({
                             "fieldId": "text-answer",
                             "value": {
                                 "type": "text",
-                                "text": "Mitt fødselsnummer er 12345678901"
+                                "text": "Mitt fødselsnummer er 01020349294"
                             }
                         }
                     ]
@@ -48,8 +48,8 @@ class FeedbackServiceTest : FunSpec({
             val id = service.save(feedbackJson, "flex", "test-app")
             
             val saved = repository.findRawById(id, "flex").shouldNotBeNull()
-            saved.feedbackJson shouldNotContain "12345678901"
-            saved.feedbackJson shouldContain "FJERNET"
+            saved.feedbackJson shouldNotContain "01020349294"
+            saved.feedbackJson shouldContain "[FØDSELSNUMMER FJERNET]"
 
             // Persisted flag for robust UI/export indication
             val savedJson = Json.parseToJsonElement(saved.feedbackJson).jsonObject
