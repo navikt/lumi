@@ -71,6 +71,18 @@ export type StorageStrategy = "consent" | "localStorage" | "none";
 export type QuestionLayout = "auto" | "singlePage" | "steps";
 
 /**
+ * Configuration for the intro screen shown before the first question.
+ */
+export interface LumiSurveyIntroConfig {
+  /** Title shown on intro screen. */
+  title: string;
+  /** Optional body content on intro screen. */
+  body?: ReactNode;
+  /** Label for the start button. @default "Start" */
+  startLabel?: string;
+}
+
+/**
  * Behavior options for the dock.
  */
 export interface LumiSurveyBehavior {
