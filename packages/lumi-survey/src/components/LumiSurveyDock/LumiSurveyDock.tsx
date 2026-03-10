@@ -13,7 +13,7 @@ import {
   shouldShowSubmitButton,
   useLumiSurvey,
 } from "../../core";
-import { surveyHasBranchingLogic } from "../../core/branchingEngine.js";
+
 import type { LumiSurveyRenderQuestionProps } from "../../types.js";
 import { DefaultQuestionRenderer, RatingQuestionField } from "../questions";
 import { buildCanonicalSurvey } from "../shared/canonicalSurvey.js";
@@ -136,10 +136,7 @@ export const LumiSurveyDock = ({
   // The first question is used as the "prompt" question in the header
   const promptQuestion = questions[0];
 
-  const promptHeadingId = `${promptQuestion.id}-dock-heading`;
-  const promptDescriptionId = promptQuestion.description
-    ? `${promptQuestion.id}-dock-description`
-    : undefined;
+  const promptHeadingId = `${surveyId}-${promptQuestion.id}-dock-heading`;
   const successHeadingId = `${surveyId}-dock-success-heading`;
   const panelId = `${surveyId}-dock-panel`;
 
@@ -157,6 +154,45 @@ export const LumiSurveyDock = ({
     surveyType,
   });
 
+  const forceStepMode = config.questionLayout === "steps";
+  const forceSinglePage = config.questionLayout === "singlePage";
+
+  const {
+    isStepMode: stepModeFromSurvey,
+    currentStep,
+    currentQuestion: currentStepQuestion,
+    canGoBack,
+    canGoNext,
+    isLastStep,
+    goToNext,
+    goToPrevious,
+    resetNavigation,
+    visitedSteps,
+    hasBranching,
+  } = useStepNavigation({
+    questions,
+    answers,
+    forceStepMode,
+    onStepChange: forceSinglePage ? undefined : events?.onStepChange,
+  });
+
+  // When the consumer explicitly requests "singlePage", always disable step
+  // mode so that every question renders on one page — even for surveys that
+  // contain branching logic.
+  const isStepMode = forceSinglePage ? false : stepModeFromSurvey;
+
+  const activeDescriptionQuestion =
+    isStepMode && currentStepQuestion ? currentStepQuestion : promptQuestion;
+  const promptDescriptionId = activeDescriptionQuestion.description
+    ? `${surveyId}-${activeDescriptionQuestion.id}-dock-description`
+    : undefined;
+
+  // Combined reset: clears survey answers and resets step navigation
+  const handleFullReset = useCallback(() => {
+    reset();
+    resetNavigation();
+  }, [reset, resetNavigation]);
+
   const { dismissed, shouldHideCompletely, isLoading, closeDock, reopenDock } =
     usePersistedDismissal({
       surveyId,
@@ -164,7 +200,7 @@ export const LumiSurveyDock = ({
       dismissCooldownDays: config.dismissCooldownDays,
       events,
       resetOnClose: config.resetOnClose,
-      onReset: reset,
+      onReset: handleFullReset,
       storageStrategy: config.storageStrategy,
     });
 
@@ -181,34 +217,19 @@ export const LumiSurveyDock = ({
     [questions, answers],
   );
 
-  // Step navigation for branching logic
-  const hasBranching = useMemo(
-    () => surveyHasBranchingLogic(questions),
-    [questions],
-  );
-
-  const forceStepMode = config.questionLayout === "steps";
-  const forceSinglePage = config.questionLayout === "singlePage";
-
-  const {
-    isStepMode: stepModeFromSurvey,
-    currentStep,
-    currentQuestion: currentStepQuestion,
-    canGoBack,
-    canGoNext,
-    isLastStep,
-    shouldSubmit,
-    goToNext,
-    goToPrevious,
-  } = useStepNavigation({
-    questions,
-    answers,
-    forceStepMode,
-  });
-
-  // "singlePage" is only meaningful when there is no branching.
-  // If branching exists we keep step mode to preserve correct navigation.
-  const isStepMode = forceSinglePage ? hasBranching : stepModeFromSurvey;
+  // In step mode with branching, only validate questions the user actually visited.
+  // This prevents validation failures on required questions in unvisited branches.
+  const visitedQuestions = useMemo(() => {
+    if (isStepMode) {
+      const uniqueIndices = [...new Set(visitedSteps)];
+      return uniqueIndices.map((index) => questions[index]).filter(Boolean);
+    }
+    if (forceSinglePage) {
+      // SinglePage with branching: only validate visible questions
+      return visibleQuestions;
+    }
+    return undefined;
+  }, [isStepMode, forceSinglePage, visitedSteps, questions, visibleQuestions]);
 
   const showPersonalDataNotice = useMemo(() => {
     if (!config.showPersonalDataNotice) return false;
@@ -232,18 +253,18 @@ export const LumiSurveyDock = ({
     }
 
     try {
-      await submit();
+      await submit(visitedQuestions);
     } catch {
       // useLumiSurvey sets error state; avoid unhandled rejections
     }
-  }, [goToNext, submit]);
+  }, [goToNext, submit, visitedQuestions]);
 
   const handleSubmit = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-      await submit();
+      await submit(visitedQuestions);
     },
-    [submit],
+    [submit, visitedQuestions],
   );
 
   const isSubmitting = status === "submitting";
@@ -423,9 +444,13 @@ export const LumiSurveyDock = ({
           currentStepQuestion={currentStepQuestion}
           canGoBack={canGoBack}
           canGoNext={canGoNext}
-          isLastStep={isLastStep || shouldSubmit}
+          isLastStep={isLastStep}
           onNext={handleNext}
           onBack={goToPrevious}
+          // Progress bar props
+          showProgress={config.showProgress}
+          totalSteps={questions.length}
+          hasBranching={hasBranching}
         />
       )}
     </aside>

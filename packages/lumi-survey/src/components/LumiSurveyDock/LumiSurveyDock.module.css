@@ -19,7 +19,6 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: var(--ax-space-16);
-  margin-bottom: var(--ax-space-8);
 }
 
 .headerText {
@@ -60,6 +59,9 @@
   gap: var(--ax-space-12);
   justify-content: space-between;
   width: 100%;
+}
+
+.ratingRow.ratingRow {
   flex-wrap: nowrap;
 }
 
@@ -70,6 +72,9 @@
   flex-direction: column;
   align-items: center;
   gap: var(--ax-space-4);
+}
+
+.ratingButton.ratingButton {
   min-width: 0;
 }
 

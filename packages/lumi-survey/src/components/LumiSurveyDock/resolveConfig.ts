@@ -47,6 +47,7 @@ export interface ResolvedConfig {
   personalDataNotice: ReactNode;
   collectLocation: boolean;
   storageStrategy: "consent" | "localStorage" | "none";
+  showProgress: boolean;
 }
 
 /**
@@ -97,5 +98,6 @@ export function resolveConfig(
       behavior?.personalDataNotice ?? DEFAULT_PERSONAL_DATA_NOTICE,
     collectLocation: behavior?.collectLocation ?? false,
     storageStrategy: behavior?.storageStrategy ?? "consent",
+    showProgress: behavior?.showProgress ?? false,
   };
 }

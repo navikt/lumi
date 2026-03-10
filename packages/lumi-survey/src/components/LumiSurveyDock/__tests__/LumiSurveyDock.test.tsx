@@ -112,7 +112,7 @@ describe("LumiSurveyDock", () => {
     });
 
     await user.click(screen.getByRole("radio", { name: /ja/i }));
-    await user.click(screen.getByRole("button", { name: /neste/i }));
+    await user.click(screen.getByRole("button", { name: /send/i }));
 
     expect(
       screen.queryByText(/ikke skriv inn navn eller andre personopplysninger/i),
@@ -199,9 +199,8 @@ describe("LumiSurveyDock", () => {
       screen.queryByText(/ikke skriv inn navn eller andre personopplysninger/i),
     ).not.toBeInTheDocument();
 
-    expect(
-      screen.queryByRole("button", { name: /send/i }),
-    ).not.toBeInTheDocument();
+    const blockedButton = screen.getByRole("button", { name: /send/i });
+    expect(blockedButton).toBeDisabled();
 
     await user.click(screen.getByRole("radio", { name: /5\./i }));
 
@@ -212,7 +211,7 @@ describe("LumiSurveyDock", () => {
       screen.getByText(/ikke skriv inn navn eller andre personopplysninger/i),
     ).toBeInTheDocument();
 
-    expect(screen.getByRole("button", { name: /send/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /send/i })).toBeEnabled();
   });
 
   it("submits answers via the transport and shows success state", async () => {
@@ -267,7 +266,7 @@ describe("LumiSurveyDock", () => {
     });
 
     await user.click(screen.getByRole("radio", { name: /^ja$/i }));
-    await user.click(screen.getByRole("button", { name: /neste/i }));
+    await user.click(screen.getByRole("button", { name: /send/i }));
 
     await waitFor(() => {
       expect(transportSubmit).toHaveBeenCalledTimes(1);
