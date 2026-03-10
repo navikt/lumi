@@ -27,7 +27,9 @@ export const IntroContent = React.memo(
           </Heading>
         )}
         {body && <BodyLong>{body}</BodyLong>}
-        <Button onClick={onStart}>{startLabel}</Button>
+        <Button type="button" onClick={onStart}>
+          {startLabel}
+        </Button>
       </VStack>
     );
   },
