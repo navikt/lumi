@@ -17,12 +17,6 @@ export default withMermaid({
       { text: "Guider", link: "/guider/surveytyper" },
       { text: "Dashboard", link: "/dashboard/tilgang" },
       { text: "Referanse", link: "/referanse/props-referanse" },
-      { text: "Feilsøking", link: "/feilsoking" },
-      { text: "Utvikling", link: "/utvikling/bidra" },
-      {
-        text: "Dashboardet ↗",
-        link: "https://lumi-dashboard.ansatt.nav.no",
-      },
     ],
 
     sidebar: {
@@ -61,6 +55,7 @@ export default withMermaid({
             { text: "Context & tags", link: "/guider/context-og-tags" },
             { text: "Lagring", link: "/guider/lagring" },
             { text: "Styling", link: "/guider/styling" },
+            { text: "Feilsøking", link: "/guider/feilsoking" },
           ],
         },
       ],
@@ -97,15 +92,6 @@ export default withMermaid({
               link: "/referanse/miljoer",
             },
             { text: "Changelog", link: "/referanse/changelog" },
-          ],
-        },
-      ],
-      "/utvikling/": [
-        {
-          text: "Utvikling",
-          items: [
-            { text: "Bidra til Lumi", link: "/utvikling/bidra" },
-            { text: "Release-prosess", link: "/utvikling/release" },
           ],
         },
       ],

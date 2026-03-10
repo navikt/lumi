@@ -16,7 +16,7 @@ import "@navikt/lumi-survey/styles.css"; // Lumi widget-styles
 ```
 
 ::: warning Mangler CSS?
-Hvis widgeten vises uten styling (ingen farger, rar layout), sjekk at begge CSS-importene er med. Se også [Feilsøking](/feilsoking#layout-virker-tom).
+Hvis widgeten vises uten styling (ingen farger, rar layout), sjekk at begge CSS-importene er med. Se også [Feilsøking](/guider/feilsoking#layout-virker-tom).
 :::
 
 ## `style`-prop

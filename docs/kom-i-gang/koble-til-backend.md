@@ -187,7 +187,7 @@ Deploy appen din til dev-gcp og verifiser at surveyen fungerer ende-til-ende:
 1. Åpne appen din i dev og send inn et survey-svar
 2. Sjekk at svaret dukker opp i [dashboardet (dev)](https://lumi-dashboard.ansatt.dev.nav.no)
 
-Hvis innsendingen feiler, sjekk [Feilsøking](/feilsoking) for vanlige problemer.
+Hvis innsendingen feiler, sjekk [Feilsøking](/guider/feilsoking) for vanlige problemer.
 
 ## Videre lesing
 
