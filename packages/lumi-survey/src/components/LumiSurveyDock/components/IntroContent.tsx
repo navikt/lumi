@@ -30,7 +30,6 @@ export const IntroContent = React.memo(
         <Button type="button" onClick={onStart}>
           {startLabel}
         </Button>
-        <Button onClick={onStart}>{startLabel}</Button>
       </VStack>
     );
   },
