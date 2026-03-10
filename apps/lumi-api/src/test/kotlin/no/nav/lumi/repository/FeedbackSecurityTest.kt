@@ -96,7 +96,7 @@ class FeedbackSecurityTest : DescribeSpec({
                             "fieldId": "feedback",
                             "value": {
                                 "type": "text",
-                                "text": "Min fødselsnummer er 12345678901 og jeg har problemer"
+                                "text": "Min fødselsnummer er 01020349294 og jeg har problemer"
                             }
                         }
                     ]
@@ -106,12 +106,12 @@ class FeedbackSecurityTest : DescribeSpec({
             val saved = service.save(feedbackJson, "team-test", "test-app")
             val retrieved = repository.findRawById(saved, "team-test")
             
-            retrieved?.feedbackJson shouldNotContain "12345678901"
+            retrieved?.feedbackJson shouldNotContain "01020349294"
         }
 
         it("should store a clean placeholder when 11-digit patterns overlap") {
-            // Dummy 11-digit sequence (not real PII). Matches both fødselsnummer and kontonummer patterns.
-            val digits = "12345678901"
+            // 01020349294 is a MOD11-valid fødselsnummer. It also matches the kontonummer pattern.
+            val digits = "01020349294"
             val feedbackJson = """
                 {
                     "surveyId": "test-survey",
