@@ -3,6 +3,7 @@ package no.nav.lumi.config
 import io.ktor.server.application.*
 import io.ktor.server.plugins.ratelimit.*
 import no.nav.lumi.config.auth.CallerIdentityKey
+import no.nav.lumi.config.auth.UserRateLimitHashKey
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -13,6 +14,7 @@ import kotlin.time.Duration.Companion.minutes
  */
 
 val SubmissionRateLimit = RateLimitName("submission")
+val UserSubmissionRateLimit = RateLimitName("user-submission")
 val AnalyticsRateLimit = RateLimitName("analytics")
 val ExportRateLimit = RateLimitName("export")
 
@@ -21,6 +23,17 @@ fun Application.configureRateLimiting() {
         register(SubmissionRateLimit) {
             rateLimiter(limit = 100, refillPeriod = 1.minutes)
             requestKey { call -> call.rateLimitKey() }
+        }
+
+        register(UserSubmissionRateLimit) {
+            rateLimiter(limit = 15, refillPeriod = 1.minutes)
+            requestKey { call ->
+                call.attributes.getOrNull(UserRateLimitHashKey)
+                    ?: call.rateLimitKey()
+            }
+            requestWeight { call, _ ->
+                if (call.attributes.getOrNull(UserRateLimitHashKey) != null) 1 else 0
+            }
         }
         
         register(AnalyticsRateLimit) {

@@ -3,9 +3,17 @@ package no.nav.lumi.config.auth
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
+import io.ktor.util.AttributeKey
 import no.nav.lumi.config.ServerEnv
 import no.nav.lumi.config.exception.ApiErrorException
 import org.slf4j.LoggerFactory
+
+/**
+ * Attribute key for storing a hashed per-user rate limit key.
+ * The value is a SHA-256 hash of the user's unique identifier,
+ * never the raw identifier itself.
+ */
+val UserRateLimitHashKey = AttributeKey<String>("UserRateLimitHash")
 
 private val log = LoggerFactory.getLogger("SubmissionAuthPlugin")
 
@@ -25,7 +33,8 @@ private fun createSubmissionAuthPlugin(
     identityProvider: String,
     endpointHint: String,
     callerIdentityClaim: String,
-    extractCallerId: (TexasIntrospectionResult) -> String?
+    extractCallerId: (TexasIntrospectionResult) -> String?,
+    extractUserKey: (TexasIntrospectionResult) -> String?
 ) = createRouteScopedPlugin(
     name = pluginName,
     createConfiguration = ::SubmissionAuthPluginConfig,
@@ -52,6 +61,7 @@ private fun createSubmissionAuthPlugin(
                     name = null
                 )
             )
+            call.attributes.put(UserRateLimitHashKey, "user:local-dev:local-app:mock")
             return@onCall
         }
         
@@ -92,7 +102,8 @@ private fun createSubmissionAuthPlugin(
 
         val identity = parseCallerIdentity(
             callerId = callerId,
-            // Submission routes should not use/store user identifiers.
+            // Submission routes should not store raw user identifiers.
+            // A hashed per-user key is stored separately for rate limiting only.
             navIdent = null,
             name = null
         )
@@ -103,6 +114,12 @@ private fun createSubmissionAuthPlugin(
 
         log.info("$pluginName: Authenticated submission from team=${identity.team} app=${identity.app}")
         call.attributes.put(CallerIdentityKey, identity)
+
+        val userKey = extractUserKey(introspectionResult)
+        if (userKey != null) {
+            val hash = sha256Hex(userKey)
+            call.attributes.put(UserRateLimitHashKey, "user:${identity.team}:${identity.app}:$hash")
+        }
     }
 }
 
@@ -111,7 +128,8 @@ val TokenXSubmissionAuthPlugin = createSubmissionAuthPlugin(
     identityProvider = "tokenx",
     endpointHint = "/api/tokenx/v1/feedback",
     callerIdentityClaim = "client_id",
-    extractCallerId = { it.clientId }
+    extractCallerId = { it.clientId },
+    extractUserKey = { it.sub }
 )
 
 val AzureSubmissionAuthPlugin = createSubmissionAuthPlugin(
@@ -119,7 +137,8 @@ val AzureSubmissionAuthPlugin = createSubmissionAuthPlugin(
     identityProvider = "azuread",
     endpointHint = "/api/azure/v1/feedback",
     callerIdentityClaim = "azp_name",
-    extractCallerId = { it.azp_name }
+    extractCallerId = { it.azp_name },
+    extractUserKey = { it.sub }
 )
 
 /**

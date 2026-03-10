@@ -4,7 +4,7 @@ import java.security.MessageDigest
 
 private const val HASH_LENGTH = 12
 
-private fun sha256Hex(value: String): String =
+internal fun sha256Hex(value: String): String =
     MessageDigest.getInstance("SHA-256")
         .digest(value.toByteArray())
         .joinToString("") { "%02x".format(it) }
