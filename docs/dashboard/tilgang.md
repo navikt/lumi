@@ -4,6 +4,10 @@ title: Tilgang
 
 # Tilgang
 
+::: tip Gå til dashboardet
+[Prod](https://lumi-dashboard.ansatt.nav.no) · [Dev](https://lumi-dashboard.ansatt.dev.nav.no) · [Demo (åpen)](https://lumi-dashboard-demo.ekstern.dev.nav.no)
+:::
+
 Lumi-dashboardet er tilgjengelig for Nav-ansatte som er medlem av et NAIS-team som har data i Lumi.
 
 ## Innlogging
