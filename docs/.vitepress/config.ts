@@ -19,6 +19,10 @@ export default withMermaid({
       { text: "Referanse", link: "/referanse/props-referanse" },
       { text: "Feilsøking", link: "/feilsoking" },
       { text: "Utvikling", link: "/utvikling/bidra" },
+      {
+        text: "Dashboardet ↗",
+        link: "https://lumi-dashboard.ansatt.nav.no",
+      },
     ],
 
     sidebar: {

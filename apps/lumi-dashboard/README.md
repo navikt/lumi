@@ -52,7 +52,7 @@ npm run dev
 
 ### Forutsetninger
 
-- Node.js 22
+- Node.js 22+
 - npm
 
 ### Oppsett
