@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LumiSurveyEvents } from "../../../core";
-import {
-  readConsentValue,
-  removeConsentValue,
-  writeConsentValue,
-} from "../../shared/consentStorage.js";
 import type { StorageStrategy } from "../propTypes.js";
+import { getStorageAdapter } from "./storageAdapters.js";
 
 const MS_IN_DAY = 86_400_000;
 
@@ -38,74 +34,6 @@ const isResumeExpired = (resumeAt: string | null | undefined): boolean => {
   }
 
   return resumeTime <= Date.now();
-};
-
-// Simple localStorage wrapper
-const localStorageAdapter = {
-  async read(key: string): Promise<string | null> {
-    if (typeof window === "undefined") return null;
-    try {
-      return window.localStorage.getItem(key);
-    } catch {
-      return null;
-    }
-  },
-  async write(
-    key: string,
-    value: string,
-  ): Promise<{ persisted: boolean; allowed: boolean; error?: unknown }> {
-    if (typeof window === "undefined")
-      return { persisted: false, allowed: false };
-    try {
-      window.localStorage.setItem(key, value);
-      return { persisted: true, allowed: true };
-    } catch (error) {
-      return { persisted: false, allowed: false, error };
-    }
-  },
-  async remove(key: string): Promise<void> {
-    if (typeof window === "undefined") return;
-    try {
-      window.localStorage.removeItem(key);
-    } catch {
-      // ignore
-    }
-  },
-};
-
-// No-op storage for "none" strategy
-const noopStorageAdapter = {
-  async read(): Promise<string | null> {
-    return null;
-  },
-  async write(): Promise<{
-    persisted: boolean;
-    allowed: boolean;
-    error?: unknown;
-  }> {
-    return { persisted: false, allowed: true };
-  },
-  async remove(): Promise<void> {
-    // no-op
-  },
-};
-
-// Consent storage adapter (existing behavior)
-const consentStorageAdapter = {
-  read: readConsentValue,
-  write: writeConsentValue,
-  remove: removeConsentValue,
-};
-
-const getStorageAdapter = (strategy: StorageStrategy) => {
-  switch (strategy) {
-    case "localStorage":
-      return localStorageAdapter;
-    case "none":
-      return noopStorageAdapter;
-    default:
-      return consentStorageAdapter;
-  }
 };
 
 export interface UsePersistedDismissalOptions {
