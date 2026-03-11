@@ -1,4 +1,3 @@
-import { XMarkIcon } from "@navikt/aksel-icons";
 import {
   BodyShort,
   Box,
@@ -12,77 +11,19 @@ import type { ComponentProps } from "react";
 import type { LumiSurveyAnswerValue, LumiSurveyQuestion } from "../../../core";
 import { formatQuestionPrompt } from "../../questions/utils/formatQuestionPrompt.js";
 import { CLASS_NAMES, joinClassNames } from "../classNames.js";
+import type {
+  IntroProps,
+  ProgressProps,
+  QuestionContextProps,
+  StepNavigationProps,
+  SuccessProps,
+} from "../dockTypes.js";
+import { CloseButton } from "./CloseButton.js";
 import { IntroContent } from "./IntroContent.js";
 import { SuccessContent } from "./SuccessContent.js";
 import { SurveyFormContent } from "./SurveyFormContent.js";
 
-export interface StepNavigationProps {
-  isStepMode?: boolean;
-  currentStep?: number;
-  currentStepQuestion?: LumiSurveyQuestion;
-  canGoBack?: boolean;
-  canGoNext?: boolean;
-  isLastStep?: boolean;
-  onNext?: () => void;
-  onBack?: () => void;
-  nextLabel?: string;
-  backLabel?: string;
-}
-
-export interface ProgressProps {
-  showProgress?: boolean;
-  totalSteps?: number;
-  hasBranching?: boolean;
-}
-
-export interface QuestionContextProps {
-  promptQuestionId: string;
-  promptHeadingId: string;
-  promptDescriptionId?: string;
-  validationErrorMessage: string;
-}
-
-export interface IntroProps {
-  isIntro?: boolean;
-  introTitle?: string;
-  introBody?: React.ReactNode;
-  introStartLabel?: string;
-  onIntroStart?: () => void;
-}
-
-export interface SuccessProps {
-  isSuccess: boolean;
-  successTitle: string;
-  successBody?: React.ReactNode;
-  successPrimaryLabel: string;
-}
-
 const noop = () => {};
-
-const CloseButton = ({
-  onClick,
-  label,
-}: {
-  onClick: () => void;
-  label: string;
-}) => (
-  <Button
-    data-color="neutral"
-    variant="tertiary"
-    size="small"
-    icon={<XMarkIcon aria-hidden />}
-    onClick={onClick}
-    aria-label={label}
-    style={{
-      borderRadius: "50%",
-      width: "32px",
-      height: "32px",
-      minWidth: "32px",
-      padding: 0,
-      flexShrink: 0,
-    }}
-  />
-);
 
 type BoxProps = ComponentProps<typeof Box>;
 
@@ -153,33 +94,7 @@ export const DockPanel = ({
   intro,
   success,
 }: DockPanelProps) => {
-  // Destructure grouped props with defaults
-  const {
-    isStepMode = false,
-    currentStep = 0,
-    currentStepQuestion,
-    canGoBack = false,
-    canGoNext = true,
-    isLastStep = false,
-    onNext,
-    onBack,
-    nextLabel = "Neste",
-    backLabel = "Tilbake",
-  } = stepNavigation;
-
-  const {
-    showProgress = false,
-    totalSteps = 0,
-    hasBranching = false,
-  } = progress;
-
-  const {
-    promptQuestionId,
-    promptHeadingId,
-    promptDescriptionId,
-    validationErrorMessage,
-  } = questionContext;
-
+  // Destructure intro/success — DockPanel uses these for header rendering
   const {
     isIntro = false,
     introTitle,
@@ -189,6 +104,14 @@ export const DockPanel = ({
   } = intro;
 
   const { isSuccess, successTitle, successBody, successPrimaryLabel } = success;
+
+  // Destructure only what DockPanel needs for its own rendering
+  const {
+    isStepMode = false,
+    currentStep = 0,
+    currentStepQuestion,
+  } = stepNavigation;
+  const { promptHeadingId, promptDescriptionId } = questionContext;
 
   const activeQuestion =
     isStepMode && currentStepQuestion ? currentStepQuestion : promptQuestion;
@@ -317,24 +240,10 @@ export const DockPanel = ({
                 orderedQuestions={orderedQuestions}
                 answers={answers}
                 onQuestionChange={onQuestionChange}
-                promptQuestionId={promptQuestionId}
-                promptHeadingId={promptHeadingId}
-                promptDescriptionId={promptDescriptionId}
                 validationMissing={validationMissing}
-                validationErrorMessage={validationErrorMessage}
-                isStepMode={isStepMode}
-                currentStepQuestion={currentStepQuestion}
-                canGoBack={canGoBack}
-                canGoNext={canGoNext}
-                isLastStep={isLastStep}
-                onNext={onNext}
-                onBack={onBack}
-                nextLabel={nextLabel}
-                backLabel={backLabel}
-                showProgress={showProgress}
-                currentStep={currentStep}
-                totalSteps={totalSteps}
-                hasBranching={hasBranching}
+                stepNavigation={stepNavigation}
+                progress={progress}
+                questionContext={questionContext}
                 showPersonalDataNotice={showPersonalDataNotice}
                 personalDataNoticeBody={personalDataNotice}
                 hasTransportError={hasTransportError}

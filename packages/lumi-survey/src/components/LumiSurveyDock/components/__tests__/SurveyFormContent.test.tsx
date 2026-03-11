@@ -60,24 +60,28 @@ function defaultProps(
     orderedQuestions: allQuestions,
     answers: {},
     onQuestionChange: vi.fn(),
-    promptQuestionId: "rating",
-    promptHeadingId: "heading-id",
     validationMissing: [],
-    validationErrorMessage: "Feltet er påkrevd",
 
-    // Step navigation (default: no step mode)
-    isStepMode: false,
-    canGoBack: false,
-    canGoNext: true,
-    isLastStep: false,
-    nextLabel: "Neste",
-    backLabel: "Tilbake",
-
-    // Progress
-    showProgress: false,
-    currentStep: 0,
-    totalSteps: 3,
-    hasBranching: false,
+    // Grouped props
+    stepNavigation: {
+      isStepMode: false,
+      currentStep: 0,
+      canGoBack: false,
+      canGoNext: true,
+      isLastStep: false,
+      nextLabel: "Neste",
+      backLabel: "Tilbake",
+    },
+    progress: {
+      showProgress: false,
+      totalSteps: 3,
+      hasBranching: false,
+    },
+    questionContext: {
+      promptQuestionId: "rating",
+      promptHeadingId: "heading-id",
+      validationErrorMessage: "Feltet er påkrevd",
+    },
 
     // Notices
     showPersonalDataNotice: false,
@@ -102,8 +106,10 @@ describe("SurveyFormContent", () => {
       render(
         <SurveyFormContent
           {...defaultProps({
-            isStepMode: true,
-            currentStepQuestion: ratingQuestion,
+            stepNavigation: {
+              isStepMode: true,
+              currentStepQuestion: ratingQuestion,
+            },
           })}
         />,
       );
@@ -117,9 +123,11 @@ describe("SurveyFormContent", () => {
       render(
         <SurveyFormContent
           {...defaultProps({
-            isStepMode: true,
-            currentStepQuestion: textQuestion,
-            canGoBack: true,
+            stepNavigation: {
+              isStepMode: true,
+              currentStepQuestion: textQuestion,
+              canGoBack: true,
+            },
           })}
         />,
       );
@@ -133,9 +141,11 @@ describe("SurveyFormContent", () => {
       render(
         <SurveyFormContent
           {...defaultProps({
-            isStepMode: true,
-            currentStepQuestion: ratingQuestion,
-            canGoBack: false,
+            stepNavigation: {
+              isStepMode: true,
+              currentStepQuestion: ratingQuestion,
+              canGoBack: false,
+            },
           })}
         />,
       );
@@ -149,9 +159,11 @@ describe("SurveyFormContent", () => {
       render(
         <SurveyFormContent
           {...defaultProps({
-            isStepMode: true,
-            currentStepQuestion: choiceQuestion,
-            isLastStep: true,
+            stepNavigation: {
+              isStepMode: true,
+              currentStepQuestion: choiceQuestion,
+              isLastStep: true,
+            },
           })}
         />,
       );
@@ -166,9 +178,11 @@ describe("SurveyFormContent", () => {
       render(
         <SurveyFormContent
           {...defaultProps({
-            isStepMode: true,
-            currentStepQuestion: ratingQuestion,
-            isLastStep: false,
+            stepNavigation: {
+              isStepMode: true,
+              currentStepQuestion: ratingQuestion,
+              isLastStep: false,
+            },
           })}
         />,
       );
@@ -189,10 +203,12 @@ describe("SurveyFormContent", () => {
       render(
         <SurveyFormContent
           {...defaultProps({
-            isStepMode: true,
-            currentStepQuestion: textQuestion,
-            canGoBack: true,
-            onBack,
+            stepNavigation: {
+              isStepMode: true,
+              currentStepQuestion: textQuestion,
+              canGoBack: true,
+              onBack,
+            },
           })}
         />,
       );
@@ -303,12 +319,16 @@ describe("SurveyFormContent", () => {
     render(
       <SurveyFormContent
         {...defaultProps({
-          isStepMode: true,
-          currentStepQuestion: ratingQuestion,
-          showProgress: true,
-          currentStep: 1,
-          totalSteps: 3,
-          hasBranching: false,
+          stepNavigation: {
+            isStepMode: true,
+            currentStep: 1,
+            currentStepQuestion: ratingQuestion,
+          },
+          progress: {
+            showProgress: true,
+            totalSteps: 3,
+            hasBranching: false,
+          },
         })}
       />,
     );
@@ -325,12 +345,16 @@ describe("SurveyFormContent", () => {
     render(
       <SurveyFormContent
         {...defaultProps({
-          isStepMode: true,
-          currentStepQuestion: ratingQuestion,
-          showProgress: true,
-          currentStep: 0,
-          totalSteps: 4,
-          hasBranching: true,
+          stepNavigation: {
+            isStepMode: true,
+            currentStep: 0,
+            currentStepQuestion: ratingQuestion,
+          },
+          progress: {
+            showProgress: true,
+            totalSteps: 4,
+            hasBranching: true,
+          },
         })}
       />,
     );
@@ -344,11 +368,15 @@ describe("SurveyFormContent", () => {
     render(
       <SurveyFormContent
         {...defaultProps({
-          isStepMode: true,
-          currentStepQuestion: ratingQuestion,
-          showProgress: false,
-          currentStep: 0,
-          totalSteps: 3,
+          stepNavigation: {
+            isStepMode: true,
+            currentStep: 0,
+            currentStepQuestion: ratingQuestion,
+          },
+          progress: {
+            showProgress: false,
+            totalSteps: 3,
+          },
         })}
       />,
     );

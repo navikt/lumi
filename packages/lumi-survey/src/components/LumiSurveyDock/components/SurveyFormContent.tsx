@@ -2,6 +2,11 @@ import { Alert, Button, HStack, ProgressBar, VStack } from "@navikt/ds-react";
 import React, { useCallback, useRef } from "react";
 import type { LumiSurveyAnswerValue, LumiSurveyQuestion } from "../../../core";
 import { CLASS_NAMES } from "../classNames.js";
+import type {
+  ProgressProps,
+  QuestionContextProps,
+  StepNavigationProps,
+} from "../dockTypes.js";
 import { DockQuestionRenderer } from "./DockQuestionRenderer.js";
 
 interface SurveyFormContentProps {
@@ -19,28 +24,12 @@ interface SurveyFormContentProps {
     questionId: string,
     value: LumiSurveyAnswerValue | null | undefined,
   ) => void;
-  promptQuestionId: string;
-  promptHeadingId: string;
-  promptDescriptionId?: string;
   validationMissing: string[];
-  validationErrorMessage: string;
 
-  // Step navigation
-  isStepMode: boolean;
-  currentStepQuestion?: LumiSurveyQuestion;
-  canGoBack: boolean;
-  canGoNext: boolean;
-  isLastStep: boolean;
-  onNext?: () => void;
-  onBack?: () => void;
-  nextLabel: string;
-  backLabel: string;
-
-  // Progress
-  showProgress: boolean;
-  currentStep: number;
-  totalSteps: number;
-  hasBranching: boolean;
+  // Grouped props
+  stepNavigation: StepNavigationProps;
+  progress: ProgressProps;
+  questionContext: QuestionContextProps;
 
   // Notices
   showPersonalDataNotice: boolean;
@@ -62,30 +51,42 @@ export const SurveyFormContent = React.memo(
     orderedQuestions,
     answers,
     onQuestionChange,
-    promptQuestionId,
-    promptHeadingId,
-    promptDescriptionId,
     validationMissing,
-    validationErrorMessage,
-    isStepMode,
-    currentStepQuestion,
-    canGoBack,
-    canGoNext,
-    isLastStep,
-    onNext,
-    onBack,
-    nextLabel,
-    backLabel,
-    showProgress,
-    currentStep,
-    totalSteps,
-    hasBranching,
+    stepNavigation,
+    progress,
+    questionContext,
     showPersonalDataNotice,
     personalDataNoticeBody,
     hasTransportError,
     transportErrorMessage,
     disabled,
   }: SurveyFormContentProps) => {
+    // Destructure grouped props
+    const {
+      isStepMode = false,
+      currentStep = 0,
+      currentStepQuestion,
+      canGoBack = false,
+      canGoNext = true,
+      isLastStep = false,
+      onNext,
+      onBack,
+      nextLabel = "Neste",
+      backLabel = "Tilbake",
+    } = stepNavigation;
+
+    const {
+      showProgress = false,
+      totalSteps = 0,
+      hasBranching = false,
+    } = progress;
+
+    const {
+      promptQuestionId,
+      promptHeadingId,
+      promptDescriptionId,
+      validationErrorMessage,
+    } = questionContext;
     // Stable onChange handlers per question-id so React.memo on
     // DockQuestionRenderer can skip re-renders when props haven't changed.
     const onQuestionChangeRef = useRef(onQuestionChange);
