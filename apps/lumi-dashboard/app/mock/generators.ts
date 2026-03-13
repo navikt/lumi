@@ -20,6 +20,17 @@ function randomFloat(): number {
   return randomBuffer[0] / 2 ** 32;
 }
 
+function pickVariantForRating(rating: number): "A" | "B" {
+  const rand = randomFloat();
+  if (rating >= 4) {
+    return rand < 0.7 ? "A" : "B";
+  }
+  if (rating <= 2) {
+    return rand < 0.7 ? "B" : "A";
+  }
+  return rand < 0.5 ? "A" : "B";
+}
+
 export interface SurveyConfig {
   app: string;
   surveyId: string;
@@ -154,6 +165,9 @@ export function generateSurveyData(
       path = `${config.basePath}${normalPaths[i % normalPaths.length]}`;
     }
 
+    const metadata = config.metadataGenerator?.() ?? {};
+    metadata.abTest = pickVariantForRating(poolItem.rating);
+
     items.push({
       id: `gen-${config.surveyId}-${i}`,
       submittedAt: timestamp,
@@ -162,7 +176,7 @@ export function generateSurveyData(
       surveyType: "rating",
       context: createContext(path, device, width, height),
       tags: poolItem.tags,
-      metadata: config.metadataGenerator?.(),
+      metadata,
       answers,
       sensitiveDataRedacted: poolItem.isRedacted,
     });
@@ -416,8 +430,7 @@ export function generateTopTasksMockData(): FeedbackDto[] {
         ],
         // Add metadata to match segment data
         metadata: {
-          harAktivSykmelding: randomFloat() > 0.33 ? "Ja" : "Nei",
-          ukeSykefravær: String(Math.floor(randomFloat() * 8) + 1),
+          abTest: randomFloat() > 0.5 ? "A" : "B",
         },
         sensitiveDataRedacted: false,
       });
@@ -689,8 +702,7 @@ export function generateDiscoveryMockData(): FeedbackDto[] {
       answers,
       // Add metadata to match the segment data returned by fetchContextTags
       metadata: {
-        harAktivSykmelding: randomFloat() > 0.33 ? "Ja" : "Nei", // ~67% Ja, ~33% Nei
-        ukeSykefravær: String(Math.floor(randomFloat() * 8) + 1), // 1-8
+        abTest: randomFloat() > 0.5 ? "A" : "B",
       },
       sensitiveDataRedacted: false,
     });
@@ -783,8 +795,7 @@ export function generateTaskPriorityMockData(): FeedbackDto[] {
       ],
       // Add metadata to match segment data
       metadata: {
-        harAktivSykmelding: randomFloat() > 0.33 ? "Ja" : "Nei",
-        ukeSykefravær: String(Math.floor(randomFloat() * 8) + 1),
+        abTest: randomFloat() > 0.5 ? "A" : "B",
       },
       sensitiveDataRedacted: false,
     });

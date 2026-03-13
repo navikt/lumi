@@ -8,8 +8,8 @@
  * Format: "key:value,key:value" => { key: value }
  *
  * @example
- * parseSegmentParam("harAktivSykmelding:Ja,uke:3")
- * // => { harAktivSykmelding: "Ja", uke: "3" }
+ * parseSegmentParam("abTest:A,uke:3")
+ * // => { abTest: "A", uke: "3" }
  */
 export function parseSegmentParam(
   segment: string | undefined,
@@ -34,8 +34,8 @@ export function parseSegmentParam(
  * Stringify segment filters back to URL param format.
  *
  * @example
- * stringifySegmentFilters({ harAktivSykmelding: "Ja", uke: "3" })
- * // => "harAktivSykmelding:Ja,uke:3"
+ * stringifySegmentFilters({ abTest: "A", uke: "3" })
+ * // => "abTest:A,uke:3"
  */
 export function stringifySegmentFilters(
   filters: Record<string, string>,
@@ -50,7 +50,7 @@ export function stringifySegmentFilters(
  * In production, labels should ideally come from API response.
  *
  * @example
- * formatMetadataLabel("harAktivSykmelding") // => "Har Aktiv Sykmelding"
+ * formatMetadataLabel("abTest") // => "Ab Test"
  */
 export function formatMetadataLabel(key: string): string {
   return key

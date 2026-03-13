@@ -52,7 +52,7 @@ Filtrer på brukerens enhetstype:
 
 ### Segmenter
 
-Filtrer på segmenterings-tags som ble sendt med fra widgeten, f.eks. `rolle:arbeidsgiver` eller `harSykmelding:true`.
+Filtrer på segmenterings-tags som ble sendt med fra widgeten, f.eks. `rolle:arbeidsgiver` eller `abTest:A`.
 
 ### Survey-ID
 

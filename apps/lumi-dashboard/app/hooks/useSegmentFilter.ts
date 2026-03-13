@@ -13,10 +13,10 @@ import {
  * const { activeSegments, addSegment, removeSegment } = useSegmentFilter();
  *
  * // Add filter when clicking a segment bar
- * addSegment("harAktivSykmelding", "Ja");
+ * addSegment("abTest", "A");
  *
  * // Remove filter when clicking X
- * removeSegment("harAktivSykmelding:Ja");
+ * removeSegment("abTest:A");
  * ```
  */
 export function useSegmentFilter() {

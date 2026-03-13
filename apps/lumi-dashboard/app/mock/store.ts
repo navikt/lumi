@@ -39,8 +39,7 @@ export const mockFeedbackItems: FeedbackDto[] = [
       textLabel: "Legg gjerne til en begrunnelse",
     },
     metadataGenerator: () => ({
-      harAktivSykmelding: Math.random() > 0.4 ? "Ja" : "Nei",
-      ukeSykefravær: String(Math.floor(Math.random() * 8) + 1),
+      abTest: Math.random() > 0.5 ? "A" : "B",
     }),
   }),
 
