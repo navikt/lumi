@@ -5,8 +5,8 @@ plugins {
     // Keep this at 2.3.0 for now; current CodeQL (linked tools v2.24.1) does not support 2.3.10 yet.
     kotlin("jvm")
     kotlin("plugin.serialization")
-    id("io.ktor.plugin") version "3.4.0"
-    id("com.gradleup.shadow") version "9.3.1"
+    id("io.ktor.plugin") version "3.4.1"
+    id("com.gradleup.shadow") version "9.3.2"
     id("com.github.ben-manes.versions") version "0.53.0"
     application
 }
@@ -25,17 +25,17 @@ repositories {
     }
 }
 
-val ktorVersion = "3.4.0"
+val ktorVersion = "3.4.1"
 val logbackVersion = "1.5.32"
 val logstashVersion = "9.0"
 val postgresVersion = "42.7.10"
 val hikariVersion = "7.0.2"
-val flywayVersion = "12.0.2"
-val kotestVersion = "6.1.3"
+val flywayVersion = "12.0.3"
+val kotestVersion = "6.1.4"
 val mockkVersion = "1.14.9"
 val testcontainersVersion = "1.21.4"
 val tokenSupportVersion = "5.0.13"
-val exposedVersion = "1.1.0"
+val exposedVersion = "1.1.1"
 val micrometerVersion = "1.16.3"
 val log4jVersion = "2.25.3"
 
