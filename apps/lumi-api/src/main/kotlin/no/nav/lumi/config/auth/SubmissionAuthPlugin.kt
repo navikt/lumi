@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory
  * The value is a SHA-256 hash of the user's unique identifier,
  * never the raw identifier itself.
  */
-val UserRateLimitHashKey = AttributeKey<String>("UserRateLimitHash")
+internal val UserRateLimitHashKey = AttributeKey<String>("UserRateLimitHash")
 
 private val log = LoggerFactory.getLogger("SubmissionAuthPlugin")
 
@@ -116,7 +116,7 @@ private fun createSubmissionAuthPlugin(
         call.attributes.put(CallerIdentityKey, identity)
 
         val userKey = extractUserKey(introspectionResult)
-        if (userKey != null) {
+        if (!userKey.isNullOrBlank()) {
             val hash = sha256Hex(userKey)
             call.attributes.put(UserRateLimitHashKey, "user:${identity.team}:${identity.app}:$hash")
         }
