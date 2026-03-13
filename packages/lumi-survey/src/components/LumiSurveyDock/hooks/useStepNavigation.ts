@@ -14,7 +14,7 @@ export function isAnswered(value: LumiSurveyAnswerValue | undefined): boolean {
   return (
     value !== undefined &&
     value !== null &&
-    value !== "" &&
+    (typeof value === "string" ? value.trim() !== "" : true) &&
     !(Array.isArray(value) && value.length === 0)
   );
 }

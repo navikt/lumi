@@ -12,6 +12,7 @@ describe("isAnswered", () => {
     { label: "undefined", value: undefined },
     { label: "null (defensive)", value: null },
     { label: 'empty string ""', value: "" },
+    { label: '"   " (whitespace-only string)', value: "   " },
     { label: "empty array []", value: [] },
   ])("returns false for $label", ({ value }) => {
     // biome-ignore lint/suspicious/noExplicitAny: testing defensive null handling
