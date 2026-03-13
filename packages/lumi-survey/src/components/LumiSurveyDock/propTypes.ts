@@ -105,4 +105,11 @@ export interface LumiSurveyBehavior {
    * @default "consent"
    */
   storageStrategy?: StorageStrategy;
+
+  /**
+   * Show a progress bar in step mode.
+   * Only visible when questionLayout is "steps" or branching is active.
+   * @default false
+   */
+  showProgress?: boolean;
 }

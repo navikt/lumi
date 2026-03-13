@@ -6,6 +6,7 @@ import {
   Button,
   Heading,
   HStack,
+  ProgressBar,
   VStack,
 } from "@navikt/ds-react";
 import type React from "react";
@@ -15,6 +16,31 @@ import type { LumiSurveyRenderQuestionProps } from "../../../types.js";
 import { formatQuestionPrompt } from "../../questions/utils/formatQuestionPrompt.js";
 import { CLASS_NAMES, joinClassNames } from "../classNames.js";
 import { SuccessContent } from "./SuccessContent.js";
+
+const CloseButton = ({
+  onClick,
+  label,
+}: {
+  onClick: () => void;
+  label: string;
+}) => (
+  <Button
+    data-color="neutral"
+    variant="tertiary"
+    size="small"
+    icon={<XMarkIcon aria-hidden />}
+    onClick={onClick}
+    aria-label={label}
+    style={{
+      borderRadius: "50%",
+      width: "32px",
+      height: "32px",
+      minWidth: "32px",
+      padding: 0,
+      flexShrink: 0,
+    }}
+  />
+);
 
 type BoxProps = ComponentProps<typeof Box>;
 
@@ -63,6 +89,10 @@ interface DockPanelProps {
   onBack?: () => void;
   nextLabel?: string;
   backLabel?: string;
+  // Progress bar props
+  showProgress?: boolean;
+  totalSteps?: number;
+  hasBranching?: boolean;
 }
 
 export const DockPanel = ({
@@ -107,7 +137,14 @@ export const DockPanel = ({
   onBack,
   nextLabel = "Neste",
   backLabel = "Tilbake",
+  // Progress bar props
+  showProgress = false,
+  totalSteps = 0,
+  hasBranching = false,
 }: DockPanelProps) => {
+  const activeQuestion =
+    isStepMode && currentStepQuestion ? currentStepQuestion : promptQuestion;
+
   return (
     <div style={{ position: "relative" }}>
       <Box
@@ -124,206 +161,197 @@ export const DockPanel = ({
         aria-labelledby={isSuccess ? successHeadingId : promptHeadingId}
         id={panelId}
       >
-        <HStack
-          className={CLASS_NAMES.header}
-          justify="space-between"
-          align="start"
-          gap="space-8"
-          wrap={false}
-        >
-          <div
-            className={CLASS_NAMES.headerText}
-            role={isSuccess ? "status" : undefined}
-            aria-live={isSuccess ? "polite" : undefined}
-            style={{ flex: 1 }}
+        <VStack gap="space-12">
+          <HStack
+            className={CLASS_NAMES.header}
+            justify="space-between"
+            align="start"
+            gap="space-8"
+            wrap={false}
           >
-            {isSuccess ? (
-              <Heading
-                level="2"
-                size="medium"
-                className={CLASS_NAMES.ratingHeading}
-                id={successHeadingId}
-              >
-                {successTitle}
-              </Heading>
-            ) : (
-              <>
+            <div
+              className={CLASS_NAMES.headerText}
+              role={isSuccess ? "status" : undefined}
+              aria-live={isSuccess ? "polite" : undefined}
+              style={{ flex: 1 }}
+            >
+              {isSuccess ? (
                 <Heading
                   level="2"
                   size="medium"
                   className={CLASS_NAMES.ratingHeading}
-                  id={promptHeadingId}
+                  id={successHeadingId}
                 >
-                  {/* In step mode, show current step's prompt; otherwise show first question */}
-                  {isStepMode && currentStepQuestion
-                    ? formatQuestionPrompt(currentStepQuestion)
-                    : formatQuestionPrompt(promptQuestion)}
+                  {successTitle}
                 </Heading>
-                {/* Show description from current step in step mode, or from first question otherwise */}
-                {(isStepMode && currentStepQuestion
-                  ? currentStepQuestion.description
-                  : promptQuestion.description) && (
-                  <BodyShort
-                    size="small"
-                    className={CLASS_NAMES.ratingDescription}
-                    id={promptDescriptionId}
-                  >
-                    {isStepMode && currentStepQuestion
-                      ? currentStepQuestion.description
-                      : promptQuestion.description}
-                  </BodyShort>
-                )}
-              </>
-            )}
-          </div>
-          {/* Close button - circular hover effect for better affordance */}
-          <Button
-            data-color="neutral"
-            variant="tertiary"
-            size="small"
-            icon={<XMarkIcon aria-hidden />}
-            onClick={onClose}
-            aria-label={cancelLabel ?? "Avbryt"}
-            style={{
-              borderRadius: "50%",
-              width: "32px",
-              height: "32px",
-              minWidth: "32px",
-              padding: 0,
-              flexShrink: 0,
-            }}
-          />
-        </HStack>
-
-        {isSuccess ? (
-          <VStack gap="space-16">
-            <SuccessContent
-              title={successTitle}
-              body={successBody}
-              showTitle={false}
-              announce={Boolean(successBody)}
-            />
-            <Button onClick={onClose}>{successPrimaryLabel}</Button>
-          </VStack>
-        ) : (
-          <form onSubmit={onSubmit} noValidate>
-            <VStack gap="space-16">
-              {isStepMode && currentStepQuestion ? (
-                // Step mode: Show only the current question
-                <>
-                  <div className="lumi-survey-question">
-                    {renderQuestion({
-                      question: currentStepQuestion,
-                      value: answers[currentStepQuestion.id],
-                      onChange: (nextValue) =>
-                        onQuestionChange(currentStepQuestion.id, nextValue),
-                      isMissing: validationMissing.includes(
-                        currentStepQuestion.id,
-                      ),
-                      disabled: isSubmitting,
-                      hideLabel: true, // Header now shows current step's prompt
-                    })}
-                  </div>
-
-                  {/* Show privacy notice when a text field is visible */}
-                  {showPersonalDataNotice && (
-                    <Alert variant="warning" role="alert">
-                      {personalDataNotice}
-                    </Alert>
-                  )}
-
-                  {hasTransportError && (
-                    <Alert variant="error" role="alert">
-                      {transportErrorMessage}
-                    </Alert>
-                  )}
-
-                  <HStack gap="space-8" wrap>
-                    {canGoBack && (
-                      <Button
-                        variant="secondary"
-                        type="button"
-                        onClick={onBack}
-                        disabled={isSubmitting}
-                      >
-                        {backLabel}
-                      </Button>
-                    )}
-                    {isLastStep ? (
-                      <Button
-                        key="submit-btn"
-                        type="submit"
-                        loading={isSubmitting}
-                        disabled={isSubmitting || !canGoNext}
-                      >
-                        {isSubmitting ? submitPendingLabel : submitLabel}
-                      </Button>
-                    ) : (
-                      <Button
-                        key="next-btn"
-                        type="button"
-                        onClick={onNext}
-                        disabled={isSubmitting || !canGoNext}
-                      >
-                        {nextLabel}
-                      </Button>
-                    )}
-                  </HStack>
-                </>
               ) : (
-                // All visible questions mode
                 <>
-                  {orderedQuestions.map((question) => {
-                    const value = answers[question.id];
-                    const isMissing = validationMissing.includes(question.id);
-                    const handleChange = (
-                      nextValue: LumiSurveyAnswerValue | null | undefined,
-                    ) => {
-                      onQuestionChange(question.id, nextValue);
-                    };
-
-                    return (
-                      <div key={question.id} className="lumi-survey-question">
-                        {renderQuestion({
-                          question,
-                          value,
-                          onChange: handleChange,
-                          isMissing,
-                          disabled: isSubmitting,
-                          hideLabel: question.id === promptQuestion.id,
-                        })}
-                      </div>
-                    );
-                  })}
-
-                  {showPersonalDataNotice && (
-                    <Alert variant="warning" role="alert">
-                      {personalDataNotice}
-                    </Alert>
-                  )}
-
-                  <HStack gap="space-8" wrap>
-                    {!isSubmitBlocked && (
-                      <Button
-                        type="submit"
-                        loading={isSubmitting}
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? submitPendingLabel : submitLabel}
-                      </Button>
-                    )}
-                  </HStack>
-
-                  {hasTransportError && (
-                    <Alert variant="error" role="alert">
-                      {transportErrorMessage}
-                    </Alert>
+                  <Heading
+                    level="2"
+                    size="medium"
+                    className={CLASS_NAMES.ratingHeading}
+                    id={promptHeadingId}
+                    tabIndex={-1}
+                  >
+                    {formatQuestionPrompt(activeQuestion)}
+                  </Heading>
+                  {activeQuestion.description && (
+                    <BodyShort
+                      size="small"
+                      className={CLASS_NAMES.ratingDescription}
+                      id={promptDescriptionId}
+                    >
+                      {activeQuestion.description}
+                    </BodyShort>
                   )}
                 </>
               )}
+            </div>
+            {/* Close button - circular hover effect for better affordance */}
+            <CloseButton onClick={onClose} label={cancelLabel ?? "Avbryt"} />
+          </HStack>
+
+          {showProgress && isStepMode && !isSuccess && totalSteps > 0 && (
+            <ProgressBar
+              value={currentStep + 1}
+              valueMax={totalSteps}
+              size="small"
+              aria-label={
+                hasBranching
+                  ? `Steg ${currentStep + 1}`
+                  : `Steg ${currentStep + 1} av ${totalSteps}`
+              }
+            />
+          )}
+
+          {isSuccess ? (
+            <VStack gap="space-16">
+              <SuccessContent
+                title={successTitle}
+                body={successBody}
+                showTitle={false}
+                announce={Boolean(successBody)}
+              />
+              <Button onClick={onClose}>{successPrimaryLabel}</Button>
             </VStack>
-          </form>
-        )}
+          ) : (
+            <form onSubmit={onSubmit} noValidate>
+              <VStack gap="space-16">
+                {isStepMode && currentStepQuestion ? (
+                  // Step mode: Show only the current question
+                  <>
+                    <div className="lumi-survey-question">
+                      {renderQuestion({
+                        question: currentStepQuestion,
+                        value: answers[currentStepQuestion.id],
+                        onChange: (nextValue) =>
+                          onQuestionChange(currentStepQuestion.id, nextValue),
+                        isMissing: validationMissing.includes(
+                          currentStepQuestion.id,
+                        ),
+                        disabled: isSubmitting,
+                        hideLabel: true, // Header now shows current step's prompt
+                      })}
+                    </div>
+
+                    {/* Show privacy notice when a text field is visible */}
+                    {showPersonalDataNotice && (
+                      <Alert variant="warning" role="alert">
+                        {personalDataNotice}
+                      </Alert>
+                    )}
+
+                    {hasTransportError && (
+                      <Alert variant="error" role="alert">
+                        {transportErrorMessage}
+                      </Alert>
+                    )}
+
+                    <HStack gap="space-8" wrap>
+                      {canGoBack && (
+                        <Button
+                          variant="secondary"
+                          type="button"
+                          onClick={onBack}
+                          disabled={isSubmitting}
+                        >
+                          {backLabel}
+                        </Button>
+                      )}
+                      {isLastStep ? (
+                        <Button
+                          key="submit-btn"
+                          type="submit"
+                          loading={isSubmitting}
+                          disabled={isSubmitting || !canGoNext}
+                        >
+                          {isSubmitting ? submitPendingLabel : submitLabel}
+                        </Button>
+                      ) : (
+                        <Button
+                          key="next-btn"
+                          type="button"
+                          onClick={onNext}
+                          disabled={isSubmitting || !canGoNext}
+                        >
+                          {nextLabel}
+                        </Button>
+                      )}
+                    </HStack>
+                  </>
+                ) : (
+                  // All visible questions mode
+                  <>
+                    {orderedQuestions.map((question) => {
+                      const value = answers[question.id];
+                      const isMissing = validationMissing.includes(question.id);
+                      const handleChange = (
+                        nextValue: LumiSurveyAnswerValue | null | undefined,
+                      ) => {
+                        onQuestionChange(question.id, nextValue);
+                      };
+
+                      return (
+                        <div key={question.id} className="lumi-survey-question">
+                          {renderQuestion({
+                            question,
+                            value,
+                            onChange: handleChange,
+                            isMissing,
+                            disabled: isSubmitting,
+                            hideLabel: question.id === promptQuestion.id,
+                          })}
+                        </div>
+                      );
+                    })}
+
+                    {showPersonalDataNotice && (
+                      <Alert variant="warning" role="alert">
+                        {personalDataNotice}
+                      </Alert>
+                    )}
+
+                    <HStack gap="space-8" wrap>
+                      <Button
+                        type="submit"
+                        loading={isSubmitting}
+                        disabled={isSubmitBlocked || isSubmitting}
+                      >
+                        {isSubmitting ? submitPendingLabel : submitLabel}
+                      </Button>
+                    </HStack>
+
+                    {hasTransportError && (
+                      <Alert variant="error" role="alert">
+                        {transportErrorMessage}
+                      </Alert>
+                    )}
+                  </>
+                )}
+              </VStack>
+            </form>
+          )}
+        </VStack>
       </Box>
     </div>
   );
