@@ -53,7 +53,7 @@ jobs:
         run: ./gradlew shadowJar
 
       - name: Push docker image to GAR
-        uses: nais/docker-build-push@ae613eff6f44f0323476eda1c3994a7c518761c3
+        uses: nais/docker-build-push@078e460885ed0424b60d45ce9220b4be1748be9d
         id: docker-build-push
         with:
           team: team-esyfo
