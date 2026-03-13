@@ -4,7 +4,6 @@
   align-items: center;
   justify-content: flex-start;
   flex-wrap: wrap;
-  padding: var(--ax-space-12) var(--ax-space-16);
 }
 
 .fieldset {
