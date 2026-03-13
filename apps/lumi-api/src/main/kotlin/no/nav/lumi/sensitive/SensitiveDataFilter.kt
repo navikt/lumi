@@ -22,14 +22,16 @@ class SensitiveDataFilter(
         
         for (pattern in patterns) {
             pattern.pattern.findAll(text).forEach { matchResult ->
-                matches.add(
-                    SensitiveDataMatch(
-                        patternName = pattern.name,
-                        matchedValue = matchResult.value,
-                        startIndex = matchResult.range.first,
-                        endIndex = matchResult.range.last + 1
+                if (pattern.validator == null || pattern.validator(matchResult.value)) {
+                    matches.add(
+                        SensitiveDataMatch(
+                            patternName = pattern.name,
+                            matchedValue = matchResult.value,
+                            startIndex = matchResult.range.first,
+                            endIndex = matchResult.range.last + 1
+                        )
                     )
-                )
+                }
             }
         }
         
