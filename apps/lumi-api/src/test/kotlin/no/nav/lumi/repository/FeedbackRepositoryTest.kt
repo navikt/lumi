@@ -658,7 +658,7 @@ class FeedbackRepositoryTest : FunSpec({
                         result.keys shouldContain "abTest"
                         val values = result["abTest"].shouldNotBeNull()
                         values shouldHaveSize 1
-                        values.first().value shouldBe "Ja"
+                        values.first().value shouldBe "A"
                         values.first().count shouldBe 1
                 }
 

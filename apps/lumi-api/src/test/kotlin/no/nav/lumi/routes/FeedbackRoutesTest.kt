@@ -381,8 +381,8 @@ class FeedbackRoutesTest : FunSpec({
                 it.jsonObject["value"]?.jsonPrimitive?.content.orEmpty() to
                     it.jsonObject["count"]?.jsonPrimitive?.int
             }
-            countsByValue["Ja"] shouldBe 2
-            countsByValue["Nei"] shouldBe 1
+            countsByValue["A"] shouldBe 2
+            countsByValue["B"] shouldBe 1
         }
     }
 
@@ -470,8 +470,8 @@ class FeedbackRoutesTest : FunSpec({
                             it.jsonObject["value"]?.jsonPrimitive?.content.orEmpty() to
                                 it.jsonObject["count"]?.jsonPrimitive?.int
                         }
-                        countsByValue["Ja"] shouldBe 1
-                        countsByValue.containsKey("Nei") shouldBe false
+                        countsByValue["A"] shouldBe 1
+                        countsByValue.containsKey("B") shouldBe false
                 }
         }
 
