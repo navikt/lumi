@@ -1,49 +1,29 @@
-import { XMarkIcon } from "@navikt/aksel-icons";
 import {
-  Alert,
   BodyShort,
   Box,
   Button,
   Heading,
   HStack,
-  ProgressBar,
   VStack,
 } from "@navikt/ds-react";
 import type React from "react";
 import type { ComponentProps } from "react";
 import type { LumiSurveyAnswerValue, LumiSurveyQuestion } from "../../../core";
-import type { LumiSurveyRenderQuestionProps } from "../../../types.js";
 import { formatQuestionPrompt } from "../../questions/utils/formatQuestionPrompt.js";
 import { CLASS_NAMES, joinClassNames } from "../classNames.js";
+import type {
+  IntroProps,
+  ProgressProps,
+  QuestionContextProps,
+  StepNavigationProps,
+  SuccessProps,
+} from "../dockTypes.js";
+import { CloseButton } from "./CloseButton.js";
 import { IntroContent } from "./IntroContent.js";
 import { SuccessContent } from "./SuccessContent.js";
+import { SurveyFormContent } from "./SurveyFormContent.js";
 
 const noop = () => {};
-
-const CloseButton = ({
-  onClick,
-  label,
-}: {
-  onClick: () => void;
-  label: string;
-}) => (
-  <Button
-    data-color="neutral"
-    variant="tertiary"
-    size="small"
-    icon={<XMarkIcon aria-hidden />}
-    onClick={onClick}
-    aria-label={label}
-    style={{
-      borderRadius: "50%",
-      width: "32px",
-      height: "32px",
-      minWidth: "32px",
-      padding: 0,
-      flexShrink: 0,
-    }}
-  />
-);
 
 type BoxProps = ComponentProps<typeof Box>;
 
@@ -55,19 +35,12 @@ interface DockPanelProps {
   panelBackground: BoxProps["background"];
   panelBorderColor?: BoxProps["borderColor"];
   promptQuestion: LumiSurveyQuestion;
-  promptHeadingId: string;
-  promptDescriptionId?: string;
   successHeadingId: string;
   introHeadingId: string;
-  successTitle: string;
-  successBody?: React.ReactNode;
-  successPrimaryLabel: string;
-  isSuccess: boolean;
   onClose: () => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
   orderedQuestions: LumiSurveyQuestion[];
   answers: Record<string, LumiSurveyAnswerValue>;
-  renderQuestion: (props: LumiSurveyRenderQuestionProps) => React.ReactNode;
   validationMissing: string[];
   isSubmitting: boolean;
   submitLabel: string;
@@ -82,27 +55,12 @@ interface DockPanelProps {
     questionId: string,
     value: LumiSurveyAnswerValue | null | undefined,
   ) => void;
-  // Step mode props (branching logic)
-  isStepMode?: boolean;
-  currentStep?: number;
-  currentStepQuestion?: LumiSurveyQuestion;
-  canGoBack?: boolean;
-  canGoNext?: boolean;
-  isLastStep?: boolean;
-  onNext?: () => void;
-  onBack?: () => void;
-  nextLabel?: string;
-  backLabel?: string;
-  // Intro props
-  isIntro?: boolean;
-  introTitle?: string;
-  introBody?: React.ReactNode;
-  introStartLabel?: string;
-  onIntroStart?: () => void;
-  // Progress bar props
-  showProgress?: boolean;
-  totalSteps?: number;
-  hasBranching?: boolean;
+  // Grouped props
+  stepNavigation: StepNavigationProps;
+  progress: ProgressProps;
+  questionContext: QuestionContextProps;
+  intro: IntroProps;
+  success: SuccessProps;
 }
 
 export const DockPanel = ({
@@ -113,19 +71,12 @@ export const DockPanel = ({
   panelBackground,
   panelBorderColor,
   promptQuestion,
-  promptHeadingId,
-  promptDescriptionId,
   successHeadingId,
   introHeadingId,
-  successTitle,
-  successBody,
-  successPrimaryLabel,
-  isSuccess,
   onClose,
   onSubmit,
   orderedQuestions,
   answers,
-  renderQuestion,
   validationMissing,
   isSubmitting,
   submitLabel,
@@ -137,28 +88,31 @@ export const DockPanel = ({
   hasTransportError,
   transportErrorMessage,
   onQuestionChange,
-  // Step mode props
-  isStepMode = false,
-  currentStep = 0,
-  currentStepQuestion,
-  canGoBack = false,
-  canGoNext = true,
-  isLastStep = false,
-  onNext,
-  onBack,
-  nextLabel = "Neste",
-  backLabel = "Tilbake",
-  // Intro props
-  isIntro = false,
-  introTitle,
-  introBody,
-  introStartLabel = "Start",
-  onIntroStart,
-  // Progress bar props
-  showProgress = false,
-  totalSteps = 0,
-  hasBranching = false,
+  stepNavigation,
+  progress,
+  questionContext,
+  intro,
+  success,
 }: DockPanelProps) => {
+  // Destructure intro/success — DockPanel uses these for header rendering
+  const {
+    isIntro = false,
+    introTitle,
+    introBody,
+    introStartLabel = "Start",
+    onIntroStart,
+  } = intro;
+
+  const { isSuccess, successTitle, successBody, successPrimaryLabel } = success;
+
+  // Destructure only what DockPanel needs for its own rendering
+  const {
+    isStepMode = false,
+    currentStep = 0,
+    currentStepQuestion,
+  } = stepNavigation;
+  const { promptHeadingId, promptDescriptionId } = questionContext;
+
   const activeQuestion =
     isStepMode && currentStepQuestion ? currentStepQuestion : promptQuestion;
 
@@ -266,19 +220,6 @@ export const DockPanel = ({
               <CloseButton onClick={onClose} label={cancelLabel ?? "Avbryt"} />
             </HStack>
 
-            {showProgress && isStepMode && !isSuccess && totalSteps > 0 && (
-              <ProgressBar
-                value={currentStep + 1}
-                valueMax={totalSteps}
-                size="small"
-                aria-label={
-                  hasBranching
-                    ? `Steg ${currentStep + 1}`
-                    : `Steg ${currentStep + 1} av ${totalSteps}`
-                }
-              />
-            )}
-
             {isSuccess ? (
               <VStack gap="space-16">
                 <SuccessContent
@@ -290,126 +231,25 @@ export const DockPanel = ({
                 <Button onClick={onClose}>{successPrimaryLabel}</Button>
               </VStack>
             ) : (
-              <form onSubmit={onSubmit} noValidate>
-                <VStack gap="space-16">
-                  {isStepMode && currentStepQuestion ? (
-                    // Step mode: Show only the current question
-                    <>
-                      <div className="lumi-survey-question">
-                        {renderQuestion({
-                          question: currentStepQuestion,
-                          value: answers[currentStepQuestion.id],
-                          onChange: (nextValue) =>
-                            onQuestionChange(currentStepQuestion.id, nextValue),
-                          isMissing: validationMissing.includes(
-                            currentStepQuestion.id,
-                          ),
-                          disabled: isSubmitting,
-                          hideLabel: true, // Header now shows current step's prompt
-                        })}
-                      </div>
-
-                      {/* Show privacy notice when a text field is visible */}
-                      {showPersonalDataNotice && (
-                        <Alert variant="warning" role="alert">
-                          {personalDataNotice}
-                        </Alert>
-                      )}
-
-                      {hasTransportError && (
-                        <Alert variant="error" role="alert">
-                          {transportErrorMessage}
-                        </Alert>
-                      )}
-
-                      <HStack gap="space-8" wrap>
-                        {canGoBack && (
-                          <Button
-                            variant="secondary"
-                            type="button"
-                            onClick={onBack}
-                            disabled={isSubmitting}
-                          >
-                            {backLabel}
-                          </Button>
-                        )}
-                        {isLastStep ? (
-                          <Button
-                            key="submit-btn"
-                            type="submit"
-                            loading={isSubmitting}
-                            disabled={isSubmitting || !canGoNext}
-                          >
-                            {isSubmitting ? submitPendingLabel : submitLabel}
-                          </Button>
-                        ) : (
-                          <Button
-                            key="next-btn"
-                            type="button"
-                            onClick={onNext}
-                            disabled={isSubmitting || !canGoNext}
-                          >
-                            {nextLabel}
-                          </Button>
-                        )}
-                      </HStack>
-                    </>
-                  ) : (
-                    // All visible questions mode
-                    <>
-                      {orderedQuestions.map((question) => {
-                        const value = answers[question.id];
-                        const isMissing = validationMissing.includes(
-                          question.id,
-                        );
-                        const handleChange = (
-                          nextValue: LumiSurveyAnswerValue | null | undefined,
-                        ) => {
-                          onQuestionChange(question.id, nextValue);
-                        };
-
-                        return (
-                          <div
-                            key={question.id}
-                            className="lumi-survey-question"
-                          >
-                            {renderQuestion({
-                              question,
-                              value,
-                              onChange: handleChange,
-                              isMissing,
-                              disabled: isSubmitting,
-                              hideLabel: question.id === promptQuestion.id,
-                            })}
-                          </div>
-                        );
-                      })}
-
-                      {showPersonalDataNotice && (
-                        <Alert variant="warning" role="alert">
-                          {personalDataNotice}
-                        </Alert>
-                      )}
-
-                      <HStack gap="space-8" wrap>
-                        <Button
-                          type="submit"
-                          loading={isSubmitting}
-                          disabled={isSubmitBlocked || isSubmitting}
-                        >
-                          {isSubmitting ? submitPendingLabel : submitLabel}
-                        </Button>
-                      </HStack>
-
-                      {hasTransportError && (
-                        <Alert variant="error" role="alert">
-                          {transportErrorMessage}
-                        </Alert>
-                      )}
-                    </>
-                  )}
-                </VStack>
-              </form>
+              <SurveyFormContent
+                onSubmit={onSubmit}
+                isSubmitting={isSubmitting}
+                isSubmitBlocked={isSubmitBlocked}
+                submitLabel={submitLabel}
+                submitPendingLabel={submitPendingLabel}
+                orderedQuestions={orderedQuestions}
+                answers={answers}
+                onQuestionChange={onQuestionChange}
+                validationMissing={validationMissing}
+                stepNavigation={stepNavigation}
+                progress={progress}
+                questionContext={questionContext}
+                showPersonalDataNotice={showPersonalDataNotice}
+                personalDataNoticeBody={personalDataNotice}
+                hasTransportError={hasTransportError}
+                transportErrorMessage={transportErrorMessage}
+                disabled={isSubmitting}
+              />
             )}
           </VStack>
         )}
