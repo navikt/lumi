@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   LumiSurveyContext,
   LumiSurveyEvents,
@@ -30,6 +30,7 @@ import "./LumiSurveyDock.fallback.css";
 
 import type {
   LumiSurveyBehavior,
+  LumiSurveyIntroConfig,
   LumiSurveyLabels,
   LumiSurveyStyle,
   LumiSurveySuccessConfig,
@@ -95,6 +96,12 @@ export interface LumiSurveyDockProps {
   events?: LumiSurveyEvents;
 
   /**
+   * Optional intro screen configuration.
+   * When set, an introduction screen is shown before the first question.
+   */
+  intro?: LumiSurveyIntroConfig;
+
+  /**
    * Structured context for segmentation (tags) and debugging (debug).
    * System fields (viewport, deviceType, userAgent) are auto-collected.
    * Note: `deviceType` is derived from viewport width breakpoints (not the
@@ -117,14 +124,25 @@ export const LumiSurveyDock = ({
   success,
   style,
   behavior,
+  intro,
 }: LumiSurveyDockProps) => {
   // Resolve all config with defaults
   const config = useMemo(
-    () => resolveConfig(labels, success, style, behavior),
-    [labels, success, style, behavior],
+    () => resolveConfig(labels, success, style, behavior, intro),
+    [labels, success, style, behavior, intro],
   );
 
   // IMPORTANT: Call all hooks before any conditional returns to comply with Rules of Hooks
+
+  // Intro state — starts true when intro is configured
+  const [showIntro, setShowIntro] = useState(config.hasIntro);
+
+  const handleIntroStart = useCallback(() => {
+    setShowIntro(false);
+  }, []);
+
+  // Track previous showIntro value to detect intro → question transition
+  const prevShowIntroRef = useRef(showIntro);
 
   /*
    * Use the new flexible survey builder.
@@ -138,7 +156,16 @@ export const LumiSurveyDock = ({
 
   const promptHeadingId = `${surveyId}-${promptQuestion.id}-dock-heading`;
   const successHeadingId = `${surveyId}-dock-success-heading`;
+  const introHeadingId = `${surveyId}-dock-intro-heading`;
   const panelId = `${surveyId}-dock-panel`;
+
+  // Focus the question heading when transitioning from intro → questions
+  useEffect(() => {
+    if (prevShowIntroRef.current && !showIntro) {
+      document.getElementById(promptHeadingId)?.focus();
+    }
+    prevShowIntroRef.current = showIntro;
+  }, [showIntro, promptHeadingId]);
 
   // Auto-collect system context and merge with user-provided context
   const enrichedContext = useEnrichedContext(context, {
@@ -187,11 +214,12 @@ export const LumiSurveyDock = ({
     ? `${surveyId}-${activeDescriptionQuestion.id}-dock-description`
     : undefined;
 
-  // Combined reset: clears survey answers and resets step navigation
+  // Combined reset: clears survey answers, resets step navigation, and restores intro screen
   const handleFullReset = useCallback(() => {
     reset();
     resetNavigation();
-  }, [reset, resetNavigation]);
+    setShowIntro(config.hasIntro);
+  }, [reset, resetNavigation, config.hasIntro]);
 
   const { dismissed, shouldHideCompletely, isLoading, closeDock, reopenDock } =
     usePersistedDismissal({
@@ -418,6 +446,7 @@ export const LumiSurveyDock = ({
           promptHeadingId={promptHeadingId}
           promptDescriptionId={promptDescriptionId}
           successHeadingId={successHeadingId}
+          introHeadingId={introHeadingId}
           successTitle={config.successTitle}
           successBody={config.successBody}
           successPrimaryLabel={config.successPrimaryLabel}
@@ -447,6 +476,12 @@ export const LumiSurveyDock = ({
           isLastStep={isLastStep}
           onNext={handleNext}
           onBack={goToPrevious}
+          // Intro props
+          isIntro={showIntro}
+          introTitle={config.introTitle}
+          introBody={config.introBody}
+          introStartLabel={config.introStartLabel}
+          onIntroStart={handleIntroStart}
           // Progress bar props
           showProgress={config.showProgress}
           totalSteps={questions.length}

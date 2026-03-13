@@ -77,16 +77,6 @@ export function {ComponentName}({
 ### Responsive Grid Layout
 
 ```tsx
-<HGrid columns={{ xs: 1, md: 2, lg: 3 }} gap="4">
-  {items.map((item) => (
-    <Card key={item.id} {...item} />
-  ))}
-</HGrid>
-```
-
-Prefer spacing tokens for `gap` as well:
-
-```tsx
 <HGrid columns={{ xs: 1, md: 2, lg: 3 }} gap="space-16">
   {items.map((item) => (
     <Card key={item.id} {...item} />
