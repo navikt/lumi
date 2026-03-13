@@ -8,6 +8,7 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import no.nav.lumi.config.SubmissionRateLimit
+import no.nav.lumi.config.UserSubmissionRateLimit
 import no.nav.lumi.config.auth.AzureSubmissionAuthPlugin
 import no.nav.lumi.config.auth.TokenXSubmissionAuthPlugin
 import no.nav.lumi.config.auth.getCallerIdentity
@@ -41,20 +42,25 @@ private val strictJson = Json {
  * - TokenX: client_id
  * - AzureAD: azp_name
  * 
- * Rate limited to 100 requests per minute per calling application.
+ * Rate limited to 100 requests per minute per calling application,
+ * and 15 requests per minute per individual user.
  */
 fun Route.submissionRoutes(feedbackService: FeedbackService = defaultFeedbackService) {
     route("/api/tokenx") {
         install(TokenXSubmissionAuthPlugin)
         rateLimit(SubmissionRateLimit) {
-            post("/v1/feedback") { handleSubmissionV1(call, feedbackService) }
+            rateLimit(UserSubmissionRateLimit) {
+                post("/v1/feedback") { handleSubmissionV1(call, feedbackService) }
+            }
         }
     }
 
     route("/api/azure") {
         install(AzureSubmissionAuthPlugin)
         rateLimit(SubmissionRateLimit) {
-            post("/v1/feedback") { handleSubmissionV1(call, feedbackService) }
+            rateLimit(UserSubmissionRateLimit) {
+                post("/v1/feedback") { handleSubmissionV1(call, feedbackService) }
+            }
         }
     }
 }
