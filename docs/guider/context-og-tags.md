@@ -63,7 +63,7 @@ Tags brukes til segmentering og grafer i dashboardet. Hold kardinaliteten lav �
   transport={transport}
   context={{
     tags: {
-      harSykmelding: true,
+      abTest: "A",
       rolle: "arbeidsgiver",
       tjeneste: "dine-sykmeldte",
     },
@@ -71,7 +71,7 @@ Tags brukes til segmentering og grafer i dashboardet. Hold kardinaliteten lav �
 />
 ```
 
-✅ **Gode tags**: `rolle: "arbeidsgiver"`, `harSykmelding: true`, `steg: "kvittering"`
+✅ **Gode tags**: `rolle: "arbeidsgiver"`, `abTest: "A"`, `steg: "kvittering"`
 
 ❌ **Dårlige tags**: `behandlingId: "abc-123"`, `timestamp: 1699000000`
 
@@ -98,7 +98,7 @@ Debug-verdier vises kun i detaljvisningen for enkeltinnsendinger. De brukes *ikk
 
 | Felt | Kardinalitet | Brukes til | Eksempel |
 | :--- | :--- | :--- | :--- |
-| `context.tags` | Lav | Segmentering, grafer i dashboard | `rolle`, `tjeneste`, `harSykmelding` |
+| `context.tags` | Lav | Segmentering, grafer i dashboard | `rolle`, `tjeneste`, `abTest` |
 | `context.debug` | Høy OK | Feilsøking av enkeltinnsendinger | `sessionId`, `buildVersion` |
 
 ## Komplett eksempel
@@ -112,7 +112,7 @@ Debug-verdier vises kun i detaljvisningen for enkeltinnsendinger. De brukes *ikk
   context={{
     pathname: "/dine-sykmeldte",
     tags: {
-      harSykmelding: true,
+      abTest: "A",
       rolle: "arbeidsgiver",
     },
     debug: {

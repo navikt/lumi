@@ -15,7 +15,7 @@ function makeFeedback(partial: Partial<FeedbackDto>): FeedbackDto {
       url: "https://example.test/foo",
       pathname: "/foo",
     },
-    metadata: partial.metadata ?? { harAktivSykmelding: "Ja" },
+    metadata: partial.metadata ?? { abTest: "A" },
     answers: partial.answers ?? [
       {
         fieldId: "rating",
@@ -57,7 +57,7 @@ describe("getMockContextTags", () => {
         surveyId,
         submittedAt: "2026-01-01T10:00:00Z",
         context: { deviceType: "mobile" },
-        metadata: { harAktivSykmelding: "Ja" },
+        metadata: { abTest: "A" },
         answers: [
           {
             fieldId: "rating",
@@ -78,7 +78,7 @@ describe("getMockContextTags", () => {
         surveyId,
         submittedAt: "2026-01-01T11:00:00Z",
         context: { deviceType: "desktop" },
-        metadata: { harAktivSykmelding: "Ja" },
+        metadata: { abTest: "A" },
         answers: [
           {
             fieldId: "rating",
@@ -99,7 +99,7 @@ describe("getMockContextTags", () => {
         surveyId,
         submittedAt: "2026-01-02T11:00:00Z",
         context: { deviceType: "mobile" },
-        metadata: { harAktivSykmelding: "Nei" },
+        metadata: { abTest: "B" },
         answers: [
           {
             fieldId: "rating",
@@ -122,7 +122,7 @@ describe("getMockContextTags", () => {
       undefined,
       15,
       undefined,
-      "harAktivSykmelding:Ja",
+      "abTest:A",
       "2026-01-01",
       "2026-01-01",
       "mobile",
@@ -130,6 +130,6 @@ describe("getMockContextTags", () => {
       true,
     );
 
-    expect(tags.harAktivSykmelding).toEqual([{ value: "Ja", count: 1 }]);
+    expect(tags.abTest).toEqual([{ value: "A", count: 1 }]);
   });
 });

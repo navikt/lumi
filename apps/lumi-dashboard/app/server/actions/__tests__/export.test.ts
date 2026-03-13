@@ -20,7 +20,7 @@ function makeFeedback(partial: Partial<FeedbackDto> = {}): FeedbackDto {
       url: "https://example.test/foo",
       pathname: "/foo",
     },
-    metadata: partial.metadata ?? { harAktivSykmelding: "Ja" },
+    metadata: partial.metadata ?? { abTest: "A" },
     answers: partial.answers ?? [
       {
         fieldId: "rating",

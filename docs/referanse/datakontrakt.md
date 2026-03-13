@@ -81,7 +81,7 @@ interface LumiContext {
 
 | Felt | Kardinalitet | Bruksområde | Eksempel |
 | :--- | :--- | :--- | :--- |
-| `tags` | Lav (< 10 verdier) | Grafer, segmentering | `{ harSykmelding: true, rolle: "arbeidsgiver" }` |
+| `tags` | Lav (< 10 verdier) | Grafer, segmentering | `{ abTest: "A", rolle: "arbeidsgiver" }` |
 | `debug` | Høy (OK) | Inspeksjon av enkeltinnslag | `{ sessionId: "abc-123", behandlingId: "..." }` |
 
 ::: warning Ikke legg høy-kardinalitet i tags
@@ -113,7 +113,7 @@ Backend mapper `surveyType`-strenger til enums:
     "pathname": "/sykepenger",
     "deviceType": "mobile",
     "tags": {
-      "harAktivSykmelding": true,
+      "abTest": "A",
       "rolle": "bruker"
     }
   },

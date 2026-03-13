@@ -34,7 +34,7 @@ class SubmissionRoutesTest : FunSpec({
                                                 "pathname": "/soknad",
                                                 "deviceType": "mobile",
                                                 "viewport": { "width": 390, "height": 844 },
-                                                "tags": { "rolle": "privatperson", "uke": 3, "harAktivSykmelding": true }
+                                                "tags": { "rolle": "privatperson", "uke": 3, "abTest": "A" }
                       },
                                             "answers": [
                         {

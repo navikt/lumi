@@ -317,7 +317,7 @@ class TopTasksRoutesTest : FunSpec({
 
             val t0 = OffsetDateTime.now()
 
-            // With segment: harAktivSykmelding = Ja
+            // With segment: abTest = A
             insertTestFeedbackWithJson(
                 team = team,
                 app = app,
@@ -328,7 +328,7 @@ class TopTasksRoutesTest : FunSpec({
                       "surveyType": "topTasks",
                       "context": {
                         "deviceType": "desktop",
-                        "tags": {"harAktivSykmelding": "Ja"}
+                        "tags": {"abTest": "A"}
                       },
                       "answers": [
                         {"fieldId": "task", "fieldType": "SINGLE_CHOICE", "question": {"label": "Hva?"}, "value": {"type": "singleChoice", "selectedOptionId": "a"}},
@@ -339,7 +339,7 @@ class TopTasksRoutesTest : FunSpec({
                 opprettet = t0
             )
 
-            // With segment: harAktivSykmelding = Nei
+            // With segment: abTest = B
             insertTestFeedbackWithJson(
                 team = team,
                 app = app,
@@ -350,7 +350,7 @@ class TopTasksRoutesTest : FunSpec({
                       "surveyType": "topTasks",
                       "context": {
                         "deviceType": "desktop",
-                        "tags": {"harAktivSykmelding": "Nei"}
+                        "tags": {"abTest": "B"}
                       },
                       "answers": [
                         {"fieldId": "task", "fieldType": "SINGLE_CHOICE", "question": {"label": "Hva?"}, "value": {"type": "singleChoice", "selectedOptionId": "b"}},
@@ -365,13 +365,13 @@ class TopTasksRoutesTest : FunSpec({
                 insertTestFeedbackWithJson(
                     team = team,
                     app = app,
-                    feedbackJson = ratingJson(surveyId, contextTagsJson = """{"harAktivSykmelding": "Ja"}"""),
+                    feedbackJson = ratingJson(surveyId, contextTagsJson = """{"abTest": "A"}"""),
                     opprettet = t0.plusMinutes((2 + offset).toLong())
                 )
             }
 
             // Filter by segment
-            val response = createTestClient().get("/api/v1/intern/stats/top-tasks?team=$team&app=$app&surveyId=$surveyId&segment=harAktivSykmelding:Ja") {
+            val response = createTestClient().get("/api/v1/intern/stats/top-tasks?team=$team&app=$app&surveyId=$surveyId&segment=abTest:A") {
                 header(HttpHeaders.Authorization, "Bearer test-token")
             }
 

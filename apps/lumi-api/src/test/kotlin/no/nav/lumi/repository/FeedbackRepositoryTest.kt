@@ -574,7 +574,7 @@ class FeedbackRepositoryTest : FunSpec({
                                             "surveyId": "$surveyId",
                                             "context": {
                                                 "deviceType": "mobile",
-                                                "tags": {"harAktivSykmelding": "Ja"}
+                                                "tags": {"abTest": "A"}
                                             },
                                             "answers": [
                                                 {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 2}},
@@ -594,7 +594,7 @@ class FeedbackRepositoryTest : FunSpec({
                                             "surveyId": "$surveyId",
                                             "context": {
                                                 "deviceType": "mobile",
-                                                "tags": {"harAktivSykmelding": "Nei"}
+                                                "tags": {"abTest": "B"}
                                             },
                                             "answers": [
                                                 {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 2}},
@@ -614,7 +614,7 @@ class FeedbackRepositoryTest : FunSpec({
                                             "surveyId": "$surveyId",
                                             "context": {
                                                 "deviceType": "mobile",
-                                                "tags": {"harAktivSykmelding": "Ja"}
+                                                "tags": {"abTest": "A"}
                                             },
                                             "answers": [
                                                 {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 2}},
@@ -634,7 +634,7 @@ class FeedbackRepositoryTest : FunSpec({
                                             "surveyId": "$surveyId",
                                             "context": {
                                                 "deviceType": "desktop",
-                                                "tags": {"harAktivSykmelding": "Ja"}
+                                                "tags": {"abTest": "A"}
                                             },
                                             "answers": [
                                                 {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 2}},
@@ -647,7 +647,7 @@ class FeedbackRepositoryTest : FunSpec({
                         val result = repository.findContextTagsForSurvey(
                                 surveyId = surveyId,
                                 team = "team-test",
-                                segments = listOf("harAktivSykmelding" to "Ja"),
+                                segments = listOf("abTest" to "A"),
                                 fromDate = "2026-01-01",
                                 toDate = "2026-01-01",
                                 deviceType = "mobile",
@@ -655,10 +655,10 @@ class FeedbackRepositoryTest : FunSpec({
                                 lowRating = true,
                         )
 
-                        result.keys shouldContain "harAktivSykmelding"
-                        val values = result["harAktivSykmelding"].shouldNotBeNull()
+                        result.keys shouldContain "abTest"
+                        val values = result["abTest"].shouldNotBeNull()
                         values shouldHaveSize 1
-                        values.first().value shouldBe "Ja"
+                        values.first().value shouldBe "A"
                         values.first().count shouldBe 1
                 }
 

@@ -315,7 +315,7 @@ export type DeviceType = "mobile" | "tablet" | "desktop";
  * ```tsx
  * <LumiSurveyDock
  *   context={{
- *     tags: { harSykmelding: true, rolle: "arbeidsgiver" },
+ *     tags: { abTest: "A", rolle: "arbeidsgiver" },
  *     debug: { sessionId: "abc-123" }
  *   }}
  * />
@@ -346,7 +346,7 @@ export interface LumiSurveyContext {
   /**
    * Low-cardinality tags for analytics segmentation.
    *
-   * ✅ Good: { harSykmelding: true, rolle: "arbeidsgiver" }
+   * ✅ Good: { abTest: "A", rolle: "arbeidsgiver" }
    * ❌ Bad: { behandlingId: "123...", timestamp: 169... }
    */
   tags?: Record<string, string | number | boolean>;

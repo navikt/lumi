@@ -45,8 +45,7 @@ export const Rating: Story = {
     survey: DEFAULT_SURVEY_SERVICE_FEEDBACK,
     context: {
       tags: {
-        harAktivSykmelding: "Ja",
-        ukeSykefravær: "3",
+        abTest: "A",
       },
     },
   },
@@ -54,7 +53,7 @@ export const Rating: Story = {
     docs: {
       description: {
         story:
-          "Tjenesteorientert rating-undersøkelse med `DEFAULT_SURVEY_SERVICE_FEEDBACK` preset og `context.tags` for segmentering. Tags matcher analytics mock data-format for sykefraværsoppfølging.",
+          'Tjenesteorientert rating-undersøkelse med `DEFAULT_SURVEY_SERVICE_FEEDBACK` preset og `context.tags` for A/B-segmentering. `abTest: "A"` representerer den mer positive testvarianten i mockdata.',
       },
     },
   },

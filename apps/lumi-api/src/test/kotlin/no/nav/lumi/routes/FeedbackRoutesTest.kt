@@ -327,7 +327,7 @@ class FeedbackRoutesTest : FunSpec({
                 feedbackJson = """
                     {
                                                                                         "surveyId": "$surveyId",
-                      "context": {"tags": {"harAktivSykmelding": "Ja"}},
+                      "context": {"tags": {"abTest": "A"}},
                       "answers": [
                                                 {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 4}}
                       ]
@@ -340,7 +340,7 @@ class FeedbackRoutesTest : FunSpec({
                 feedbackJson = """
                     {
                                                                                         "surveyId": "$surveyId",
-                      "context": {"tags": {"harAktivSykmelding": "Ja"}},
+                      "context": {"tags": {"abTest": "A"}},
                       "answers": [
                                                 {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 5}}
                       ]
@@ -353,7 +353,7 @@ class FeedbackRoutesTest : FunSpec({
                 feedbackJson = """
                     {
                                             "surveyId": "$surveyId",
-                      "context": {"tags": {"harAktivSykmelding": "Nei"}},
+                      "context": {"tags": {"abTest": "B"}},
                       "answers": [
                                                 {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 3}}
                       ]
@@ -374,15 +374,15 @@ class FeedbackRoutesTest : FunSpec({
 
             body["surveyId"]?.jsonPrimitive?.content shouldBe surveyId
             val contextTags = body["contextTags"].shouldNotBeNull().jsonObject
-            contextTags shouldContainKey "harAktivSykmelding"
+            contextTags shouldContainKey "abTest"
 
-            val values = contextTags["harAktivSykmelding"].shouldNotBeNull().jsonArray
+            val values = contextTags["abTest"].shouldNotBeNull().jsonArray
             val countsByValue = values.associate {
                 it.jsonObject["value"]?.jsonPrimitive?.content.orEmpty() to
                     it.jsonObject["count"]?.jsonPrimitive?.int
             }
-            countsByValue["Ja"] shouldBe 2
-            countsByValue["Nei"] shouldBe 1
+            countsByValue["A"] shouldBe 2
+            countsByValue["B"] shouldBe 1
         }
     }
 
@@ -404,7 +404,7 @@ class FeedbackRoutesTest : FunSpec({
                                             "surveyId": "$surveyId",
                                             "context": {
                                                 "deviceType": "mobile",
-                                                "tags": {"harAktivSykmelding": "Ja"}
+                                                "tags": {"abTest": "A"}
                                             },
                                             "answers": [
                                                 {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 2}},
@@ -424,7 +424,7 @@ class FeedbackRoutesTest : FunSpec({
                                             "surveyId": "$surveyId",
                                             "context": {
                                                 "deviceType": "desktop",
-                                                "tags": {"harAktivSykmelding": "Ja"}
+                                                "tags": {"abTest": "A"}
                                             },
                                             "answers": [
                                                 {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 1}},
@@ -444,7 +444,7 @@ class FeedbackRoutesTest : FunSpec({
                                             "surveyId": "$surveyId",
                                             "context": {
                                                 "deviceType": "mobile",
-                                                "tags": {"harAktivSykmelding": "Nei"}
+                                                "tags": {"abTest": "B"}
                                             },
                                             "answers": [
                                                 {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 2}},
@@ -465,13 +465,13 @@ class FeedbackRoutesTest : FunSpec({
                         val json = Json { ignoreUnknownKeys = true }
                         val body = json.parseToJsonElement(response.bodyAsText()).jsonObject
                         val contextTags = body["contextTags"].shouldNotBeNull().jsonObject
-                        val values = contextTags["harAktivSykmelding"].shouldNotBeNull().jsonArray
+                        val values = contextTags["abTest"].shouldNotBeNull().jsonArray
                         val countsByValue = values.associate {
                             it.jsonObject["value"]?.jsonPrimitive?.content.orEmpty() to
                                 it.jsonObject["count"]?.jsonPrimitive?.int
                         }
-                        countsByValue["Ja"] shouldBe 1
-                        countsByValue.containsKey("Nei") shouldBe false
+                        countsByValue["A"] shouldBe 1
+                        countsByValue.containsKey("B") shouldBe false
                 }
         }
 

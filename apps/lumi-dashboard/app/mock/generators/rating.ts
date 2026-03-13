@@ -12,6 +12,28 @@ import {
   type SurveyConfig,
 } from "./common";
 
+const cryptoApi = globalThis.crypto;
+const randomBuffer = new Uint32Array(1);
+
+function randomFloat(): number {
+  if (!cryptoApi) {
+    throw new Error("Crypto API not available for mock data generation.");
+  }
+  cryptoApi.getRandomValues(randomBuffer);
+  return randomBuffer[0] / 2 ** 32;
+}
+
+function pickVariantForRating(rating: number): "A" | "B" {
+  const rand = randomFloat();
+  if (rating >= 4) {
+    return rand < 0.7 ? "A" : "B";
+  }
+  if (rating <= 2) {
+    return rand < 0.7 ? "B" : "A";
+  }
+  return rand < 0.5 ? "A" : "B";
+}
+
 /**
  * Generate rating survey feedback data from topics configuration.
  */
@@ -45,7 +67,7 @@ export function generateSurveyData(
 
   // 2. Shuffle the pool to get random order
   for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(randomFloat() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
 
@@ -54,12 +76,12 @@ export function generateSurveyData(
     const poolItem = pool[i % pool.length];
 
     // Random date within last 60 days
-    const daysAgo = Math.floor(Math.random() * 60);
+    const daysAgo = Math.floor(randomFloat() * 60);
     const date = new Date(now);
     date.setDate(date.getDate() - daysAgo);
     const dateStr = date.toISOString().split("T")[0];
-    const hour = 7 + Math.floor(Math.random() * 15);
-    const minute = Math.floor(Math.random() * 60);
+    const hour = 7 + Math.floor(randomFloat() * 15);
+    const minute = Math.floor(randomFloat() * 60);
     const timestamp = `${dateStr}T${hour.toString().padStart(2, "0")}:${minute
       .toString()
       .padStart(2, "0")}:00Z`;
@@ -95,7 +117,7 @@ export function generateSurveyData(
     }
 
     // Device distribution
-    const deviceRand = Math.random();
+    const deviceRand = randomFloat();
     let device: "mobile" | "tablet" | "desktop";
     let width: number;
     let height: number;
@@ -131,6 +153,9 @@ export function generateSurveyData(
       path = `${config.basePath}${normalPaths[i % normalPaths.length]}`;
     }
 
+    const metadata = config.metadataGenerator?.() ?? {};
+    metadata.abTest = pickVariantForRating(poolItem.rating);
+
     items.push({
       id: `gen-${config.surveyId}-${i}`,
       submittedAt: timestamp,
@@ -139,7 +164,7 @@ export function generateSurveyData(
       surveyType: "rating",
       context: createContext(path, device, width, height),
       tags: poolItem.tags,
-      metadata: config.metadataGenerator?.(),
+      metadata,
       answers,
       sensitiveDataRedacted: poolItem.isRedacted,
     });

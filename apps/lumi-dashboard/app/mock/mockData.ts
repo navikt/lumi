@@ -97,8 +97,7 @@ export const mockFeedbackItems: FeedbackDto[] = [
     },
     // Showcase custom metadata fields - keys match what's returned by fetchMetadata mock
     metadataGenerator: () => ({
-      harAktivSykmelding: Math.random() > 0.4 ? "Ja" : "Nei",
-      ukeSykefravær: String(Math.floor(Math.random() * 8) + 1),
+      abTest: Math.random() > 0.5 ? "A" : "B",
     }),
   }),
 
@@ -310,7 +309,7 @@ function applyFilters(
       if (item.tags?.some((tag) => tagList.includes(tag))) {
         return true;
       }
-      // Check metadata (key:value tags like "harAktivSykmelding:Ja")
+      // Check metadata (key:value tags like "abTest:A")
       for (const tagFilter of tagList) {
         if (tagFilter.includes(":")) {
           const [key, value] = tagFilter.split(":");
