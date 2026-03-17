@@ -6,6 +6,23 @@ This project follows SemVer.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-03-17
+
+### Added
+
+- Added optional `intro` support to `LumiSurveyDock`, so surveys can start with an intro screen before the first question.
+- Added `behavior.showProgress` and `events.onStepChange` for step-based surveys, including progress feedback based on visible steps.
+- Added `DEFAULT_SURVEY_THUMBS`, `DEFAULT_SURVEY_STARS`, and `DEFAULT_SURVEY_NPS` exports for ready-made rating surveys.
+
+### Changed
+
+- `useLumiSurvey().validate()` and `submit()` now accept an optional question subset, so step-based and branched flows can validate only the questions in the active path.
+
+### Fixed
+
+- Step navigation now respects `visibleIf` conditions when moving through branched surveys.
+- Removed the horizontal scrollbar on emoji rating rows and improved smiley alignment.
+
 ## [0.1.1] - 2026-03-05
 
 ### Changed
