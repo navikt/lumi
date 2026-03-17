@@ -48,6 +48,7 @@ spec:
         - application: bro-frontend
         - application: syfo-oppfolgingsplan-frontend
         - application: narmesteleder-frontend
+        - application: dinesykmeldte
         - application: syfomodiaperson
           namespace: teamsykefravr
     outbound:
