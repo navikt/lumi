@@ -133,6 +133,30 @@ describe("evaluateVisibility", () => {
         evaluateVisibility(condition, { tasks: ["check", "status"] }),
       ).toBe(false);
     });
+
+    it("returns true when string contains substring (case-insensitive)", () => {
+      const condition = {
+        field: "ANSWER" as const,
+        questionId: "feedback",
+        operator: "CONTAINS" as const,
+        value: "good",
+      };
+      expect(
+        evaluateVisibility(condition, { feedback: "Very Good feedback" }),
+      ).toBe(true);
+    });
+
+    it("returns false when string does not contain substring", () => {
+      const condition = {
+        field: "ANSWER" as const,
+        questionId: "feedback",
+        operator: "CONTAINS" as const,
+        value: "bad",
+      };
+      expect(
+        evaluateVisibility(condition, { feedback: "Very Good feedback" }),
+      ).toBe(false);
+    });
   });
 
   describe("with METADATA field", () => {

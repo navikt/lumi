@@ -194,9 +194,12 @@ export const LumiSurveyDock = ({
     resetNavigation,
     visitedSteps,
     hasBranching,
+    visibleStepIndex,
+    totalVisibleSteps,
   } = useStepNavigation({
     questions,
     answers,
+    metadata: enrichedContext?.tags,
     forceStepMode,
     onStepChange: forceSinglePage ? undefined : events?.onStepChange,
   });
@@ -243,19 +246,28 @@ export const LumiSurveyDock = ({
     [questions, answers],
   );
 
-  // In step mode with branching, only validate questions the user actually visited.
-  // This prevents validation failures on required questions in unvisited branches.
+  // In step mode with branching, only validate questions the user actually visited
+  // AND that are currently visible. This prevents validation failures on required
+  // questions that became hidden after the user changed an earlier answer.
   const visitedQuestions = useMemo(() => {
     if (isStepMode) {
       const uniqueIndices = [...new Set(visitedSteps)];
-      return uniqueIndices.map((index) => questions[index]).filter(Boolean);
+      const visited = uniqueIndices
+        .map((index) => questions[index])
+        .filter(Boolean);
+      return getVisibleQuestions(visited, answers, enrichedContext?.tags);
     }
-    if (forceSinglePage) {
-      // SinglePage with branching: only validate visible questions
-      return visibleQuestions;
-    }
-    return undefined;
-  }, [isStepMode, forceSinglePage, visitedSteps, questions, visibleQuestions]);
+    // Non-step mode: only validate visible questions (hidden questions are
+    // excluded regardless of whether they were previously visible).
+    return visibleQuestions;
+  }, [
+    isStepMode,
+    visitedSteps,
+    questions,
+    visibleQuestions,
+    answers,
+    enrichedContext?.tags,
+  ]);
 
   const showPersonalDataNotice = useMemo(() => {
     if (!config.showPersonalDataNotice) return false;
@@ -397,7 +409,7 @@ export const LumiSurveyDock = ({
           onQuestionChange={setAnswer}
           stepNavigation={{
             isStepMode,
-            currentStep,
+            currentStep: visibleStepIndex,
             currentStepQuestion,
             canGoBack,
             canGoNext,
@@ -407,7 +419,7 @@ export const LumiSurveyDock = ({
           }}
           progress={{
             showProgress: config.showProgress,
-            totalSteps: questions.length,
+            totalSteps: totalVisibleSteps,
             hasBranching,
           }}
           questionContext={{

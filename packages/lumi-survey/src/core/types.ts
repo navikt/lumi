@@ -390,9 +390,11 @@ export interface LumiSurveyEvents {
   onDismissalPersistFailed?: (cause: unknown) => void;
   /**
    * Fired when the current step changes in step mode.
-   * Also fires on initial render (step 0) when step mode is active.
+   * Also fires on initial render when step mode is active.
+   * Receives 0-based visible step index and total visible step count
+   * (hidden questions are excluded from both values).
    */
-  onStepChange?: (currentStep: number, totalSteps: number) => void;
+  onStepChange?: (visibleStepIndex: number, totalVisibleSteps: number) => void;
 }
 
 export type LumiSurveyStatus = "idle" | "submitting" | "success" | "error";

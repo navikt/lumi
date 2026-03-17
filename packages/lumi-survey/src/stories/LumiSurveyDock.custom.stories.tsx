@@ -76,20 +76,6 @@ const CUSTOM_SURVEY: LumiSurveyConfig = {
         },
         { value: "annet", label: "Annet" },
       ],
-      logic: [
-        {
-          condition: {
-            field: "ANSWER",
-            operator: "CONTAINS",
-            value: "annet",
-          },
-          action: { type: "JUMP_TO", targetId: "vanskeligst-annet" },
-        },
-        {
-          condition: { field: "ANSWER", operator: "EXISTS" },
-          action: { type: "JUMP_TO", targetId: "lettere" },
-        },
-      ],
     },
     {
       id: "vanskeligst-annet",
@@ -172,7 +158,7 @@ const meta: Meta<typeof LumiSurveyDock> = {
     docs: {
       description: {
         component:
-          "Tilpasset survey med singleChoice, multiChoice, text og logisk branching. Viser mangfoldet av spørsmålstyper og konfigurasjonsmuligheter.",
+          "Tilpasset survey med singleChoice, multiChoice, text og visibleIf. Viser mangfoldet av spørsmålstyper og konfigurasjonsmuligheter.",
       },
     },
   },
@@ -207,7 +193,7 @@ export const Custom: Story = {
     docs: {
       description: {
         story:
-          "Step-by-step survey uten intro – hopper direkte til første spørsmål. Viser singleChoice, multiChoice, text og logisk branching (velg «Annet» på spørsmål 4).",
+          "Step-by-step survey uten intro – hopper direkte til første spørsmål. Viser singleChoice, multiChoice, text og visibleIf (velg «Annet» på spørsmål 4 for å se oppfølgingsspørsmål).",
       },
     },
   },
@@ -239,7 +225,7 @@ export const MedIntro: Story = {
     docs: {
       description: {
         story:
-          "Samme survey med intro-skjerm, progress bar og logisk branching. Klikk «Start» for å se spørsmålene.",
+          "Samme survey med intro-skjerm, progress bar og visibleIf. Klikk «Start» for å se spørsmålene.",
       },
     },
   },
