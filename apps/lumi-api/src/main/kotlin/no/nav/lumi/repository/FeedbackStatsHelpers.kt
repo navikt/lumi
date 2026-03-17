@@ -26,12 +26,20 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
     val answersByField = mutableMapOf<String, MutableList<Pair<FeedbackDto, Answer>>>()
 
     // Preserve the survey question order as seen in submissions.
-    // We use a representative submission (most answers) as the primary ordering source,
-    // then fall back to first-seen across all submissions for any missing/optional fields.
+    // We use the most complete submission as the primary ordering source and break ties
+    // explicitly on submittedAt and id so ordering does not depend on input order.
+    // We then fall back to first-seen across all submissions for any missing/optional fields.
     val fieldOrder = mutableMapOf<String, Int>()
     var nextOrderIndex = 0
 
-    val representativeAnswers = records.maxByOrNull { it.answers.size }?.answers.orEmpty()
+    val representativeAnswers = records
+        .maxWithOrNull(
+            compareBy<FeedbackDto> { it.answers.size }
+                .thenBy { parseSubmittedAt(it.submittedAt) }
+                .thenBy { it.id }
+        )
+        ?.answers
+        .orEmpty()
     for (answer in representativeAnswers) {
         if (answer.fieldId !in fieldOrder) {
             fieldOrder[answer.fieldId] = nextOrderIndex++
