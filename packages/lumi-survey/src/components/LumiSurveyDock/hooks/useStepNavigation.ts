@@ -1,23 +1,29 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type BranchingResult,
   evaluateBranching,
   surveyHasBranchingLogic,
 } from "../../../core/branchingEngine.js";
+import { evaluateVisibility } from "../../../core/evaluateVisibility.js";
 import type {
   LumiSurveyAnswerValue,
   LumiSurveyQuestion,
 } from "../../../core/types.js";
+import {
+  findLastVisibleInHistory,
+  findNextVisibleIndex,
+  findRedirectTarget,
+  hasReachableQuestionsAfter,
+  isAnswered,
+} from "./stepNavigationUtils.js";
 
-/** Check whether a survey answer value is non-empty. */
-export function isAnswered(value: LumiSurveyAnswerValue | undefined): boolean {
-  return (
-    value !== undefined &&
-    value !== null &&
-    (typeof value === "string" ? value.trim() !== "" : true) &&
-    !(Array.isArray(value) && value.length === 0)
-  );
-}
+export {
+  findLastVisibleInHistory,
+  findNextVisibleIndex,
+  findRedirectTarget,
+  hasReachableQuestionsAfter,
+  isAnswered,
+} from "./stepNavigationUtils.js";
 
 export interface UseStepNavigationOptions {
   questions: LumiSurveyQuestion[];
@@ -25,16 +31,16 @@ export interface UseStepNavigationOptions {
   metadata?: Record<string, unknown>;
   /** If true, forces step mode even without branching logic */
   forceStepMode?: boolean;
-  /** Callback fired when the current step changes */
-  onStepChange?: (currentStep: number, totalSteps: number) => void;
+  /** Callback fired when the visible step changes (receives 0-based visible index and total visible count) */
+  onStepChange?: (visibleStepIndex: number, totalVisibleSteps: number) => void;
 }
 
 export interface UseStepNavigationReturn {
   /** Whether step-based navigation is active (has branching or forceStepMode) */
   isStepMode: boolean;
-  /** Current question index */
+  /** Current question index (-1 when no questions are visible) */
   currentStep: number;
-  /** The current question to display (undefined when the questions array is empty) */
+  /** The current question to display (undefined when no visible questions exist) */
   currentQuestion: LumiSurveyQuestion | undefined;
   /** Whether the user can go back */
   canGoBack: boolean;
@@ -52,6 +58,10 @@ export interface UseStepNavigationReturn {
   hasBranching: boolean;
   /** Array of visited question indices for back navigation */
   visitedSteps: number[];
+  /** 0-based index among currently visible questions (-1 when none visible) */
+  visibleStepIndex: number;
+  /** Total count of currently visible questions */
+  totalVisibleSteps: number;
 }
 
 /**
@@ -76,9 +86,15 @@ export function useStepNavigation(
   );
   const isStepMode = hasBranching || forceStepMode;
 
-  // Navigation state
-  const [currentStep, setCurrentStep] = useState(0);
-  const [visitedSteps, setVisitedSteps] = useState<number[]>([0]);
+  // Navigation state — start on the first visible question (skip any that are
+  // hidden by visibleIf on initial render). Uses -1 when no questions are visible.
+  const [currentStep, setCurrentStep] = useState(() =>
+    findNextVisibleIndex(questions, answers, metadata, 0),
+  );
+  const [visitedSteps, setVisitedSteps] = useState<number[]>(() => {
+    const firstVisible = findNextVisibleIndex(questions, answers, metadata, 0);
+    return firstVisible === -1 ? [] : [firstVisible];
+  });
 
   const currentQuestion = questions[currentStep];
 
@@ -87,9 +103,12 @@ export function useStepNavigation(
   const hasAnsweredCurrent = isAnswered(currentAnswer);
 
   const canGoBack = visitedSteps.length > 1;
-  const canGoNext = hasAnsweredCurrent || !currentQuestion?.required;
+  const canGoNext =
+    !!currentQuestion && (hasAnsweredCurrent || !currentQuestion.required);
 
-  // Shared branching evaluation — used by both isLastStep and goToNext
+  // Shared branching evaluation — used by both isLastStep and goToNext.
+  // Only computed when the current question has been answered, since branching
+  // rules evaluate against the current answer.
   const branchingResult = useMemo(() => {
     if (!currentQuestion || !hasAnsweredCurrent) return null;
     return evaluateBranching(
@@ -108,25 +127,89 @@ export function useStepNavigation(
     hasAnsweredCurrent,
   ]);
 
-  // True when on the last linear step OR branching evaluates to SUBMIT
+  // Determines whether the current step is the last one in the survey path.
+  // Three cases make this true:
+  // 1. Branching explicitly says SUBMIT (nextIndex === -1)
+  // 2. Question is unanswered, and no later questions are reachable (visible
+  //    now, or dependent on the current answer and thus potentially visible)
+  // 3. Question is answered, and no visible questions exist after the
+  //    branching-determined next index
   const isLastStep = useMemo(() => {
     if (!currentQuestion) return false;
-    if (currentStep >= questions.length - 1) return true;
-    if (!branchingResult) return false;
-    return branchingResult.nextIndex === -1;
-  }, [currentQuestion, currentStep, questions.length, branchingResult]);
+    if (branchingResult?.nextIndex === -1) return true;
 
-  // Fire onStepChange when step changes
-  useEffect(() => {
-    if (isStepMode && onStepChange) {
-      onStepChange(currentStep, questions.length);
+    if (!hasAnsweredCurrent) {
+      // When the user hasn't answered yet, we can't evaluate branching rules.
+      // Instead, check if any later question is currently visible OR depends on
+      // this question's answer (meaning it could become visible once answered).
+      return !hasReachableQuestionsAfter(
+        questions,
+        currentStep,
+        currentQuestion.id,
+        answers,
+        metadata,
+      );
     }
-  }, [currentStep, isStepMode, onStepChange, questions.length]);
+
+    // Question is answered — use branching result to determine where we'd go
+    // next, then check if any visible question exists from that point forward.
+    const nextStartIndex = branchingResult
+      ? Math.max(0, branchingResult.nextIndex)
+      : currentStep + 1;
+
+    return (
+      findNextVisibleIndex(questions, answers, metadata, nextStartIndex) === -1
+    );
+  }, [
+    currentQuestion,
+    currentStep,
+    branchingResult,
+    hasAnsweredCurrent,
+    questions,
+    answers,
+    metadata,
+  ]);
+
+  // Compute visible step metrics for progress reporting.
+  // visibleStepIndex is the 0-based position among currently visible questions.
+  const totalVisibleSteps = useMemo(
+    () =>
+      questions.filter((q) =>
+        evaluateVisibility(q.visibleIf, answers, metadata),
+      ).length,
+    [questions, answers, metadata],
+  );
+  const visibleStepIndex = useMemo(() => {
+    if (currentStep < 0) return -1;
+    let count = 0;
+    for (let i = 0; i < currentStep; i++) {
+      if (evaluateVisibility(questions[i].visibleIf, answers, metadata)) {
+        count++;
+      }
+    }
+    return count;
+  }, [currentStep, questions, answers, metadata]);
+
+  // Fire onStepChange when the user actually moves to a different step.
+  // Uses a ref to avoid spurious re-fires when onStepChange reference changes.
+  const prevStepRef = useRef<number | null>(null);
+  const onStepChangeRef = useRef(onStepChange);
+  onStepChangeRef.current = onStepChange;
+
+  useEffect(() => {
+    if (!isStepMode || currentStep < 0) return;
+    if (prevStepRef.current === currentStep) return;
+    prevStepRef.current = currentStep;
+    onStepChangeRef.current?.(visibleStepIndex, totalVisibleSteps);
+  }, [currentStep, isStepMode, visibleStepIndex, totalVisibleSteps]);
 
   const goToNext = useCallback(() => {
     if (!currentQuestion) return null;
+    // Guard: don't advance if the current question is required and unanswered
+    if (currentQuestion.required && !hasAnsweredCurrent) return null;
 
-    // Use pre-computed branching result when available, otherwise evaluate fresh
+    // Evaluate branching rules to get the raw next index. This may point to a
+    // hidden question, so we scan forward to find the first visible one.
     const result =
       branchingResult ??
       evaluateBranching(
@@ -142,47 +225,139 @@ export function useStepNavigation(
       return result;
     }
 
-    // Clamp to valid range
-    const nextIndex = Math.min(
-      Math.max(0, result.nextIndex),
-      questions.length - 1,
+    // Clamp to valid range, then scan for next visible question
+    const nextStartIndex = Math.max(0, result.nextIndex);
+    const nextVisibleIndex = findNextVisibleIndex(
+      questions,
+      answers,
+      metadata,
+      nextStartIndex,
     );
 
-    // Only add to visited if we're going to a new step
-    if (nextIndex !== currentStep) {
-      setCurrentStep(nextIndex);
+    // No visible questions ahead — signal submit to the consumer
+    if (nextVisibleIndex === -1) {
+      return { ...result, nextIndex: -1 };
+    }
+
+    // Navigate and record in history. If we revisit an earlier step (e.g. via
+    // JUMP_TO), truncate history to avoid loops like [0,1,2,1,0,1,2].
+    if (nextVisibleIndex !== currentStep) {
+      setCurrentStep(nextVisibleIndex);
       setVisitedSteps((prev) => {
-        const existingIndex = prev.indexOf(nextIndex);
+        const existingIndex = prev.indexOf(nextVisibleIndex);
         if (existingIndex !== -1) return prev.slice(0, existingIndex + 1);
-        return [...prev, nextIndex];
+        return [...prev, nextVisibleIndex];
       });
     }
 
-    return result;
+    // Return the actual navigation target so the consumer knows where we went
+    return { ...result, nextIndex: nextVisibleIndex };
   }, [
     currentQuestion,
     currentAnswer,
+    hasAnsweredCurrent,
     metadata,
     questions,
     currentStep,
     branchingResult,
+    answers,
   ]);
 
+  // Navigate backward through visited history, skipping any steps that have
+  // become hidden since they were visited (e.g. because the user changed an
+  // earlier answer that affected visibleIf conditions).
   const goToPrevious = useCallback(() => {
     if (visitedSteps.length <= 1) return;
 
-    // Remove current step from history and go to previous
-    const newHistory = visitedSteps.slice(0, -1);
-    const previousStep = newHistory[newHistory.length - 1];
+    // Remove current step and search backward for a still-visible step
+    const previousHistory = visitedSteps.slice(0, -1);
+    const result = findLastVisibleInHistory(
+      previousHistory,
+      questions,
+      answers,
+      metadata,
+    );
 
-    setVisitedSteps(newHistory);
-    setCurrentStep(previousStep);
-  }, [visitedSteps]);
+    if (result) {
+      setVisitedSteps(result.history);
+      setCurrentStep(result.step);
+      return;
+    }
 
+    // No visited steps are visible — fall back to first visible question
+    const firstVisible = findNextVisibleIndex(questions, answers, metadata, 0);
+    if (firstVisible === -1) return;
+    setVisitedSteps([firstVisible]);
+    setCurrentStep(firstVisible);
+  }, [visitedSteps, questions, answers, metadata]);
+
+  // Reset to the beginning — used when the survey definition changes or
+  // the consumer explicitly wants to start over.
   const resetNavigation = useCallback(() => {
-    setCurrentStep(0);
-    setVisitedSteps([0]);
-  }, []);
+    const firstVisible = findNextVisibleIndex(questions, answers, metadata, 0);
+    setCurrentStep(firstVisible);
+    setVisitedSteps(firstVisible === -1 ? [] : [firstVisible]);
+  }, [questions, answers, metadata]);
+
+  // Auto-navigation effect: handles two scenarios:
+  // 1. Current step is -1 (no visible questions) but questions have since become
+  //    visible (e.g. metadata arrived async) → navigate to first visible.
+  // 2. Current step became invisible (e.g. user went back and changed an answer
+  //    that affected a visibleIf condition) → redirect to best available step,
+  //    or fall back to -1 if nothing is visible anymore.
+  useEffect(() => {
+    if (!isStepMode) return;
+
+    // Recovery: no current question — try to find one
+    if (!currentQuestion) {
+      const firstVisible = findNextVisibleIndex(
+        questions,
+        answers,
+        metadata,
+        0,
+      );
+      if (firstVisible === -1) return;
+      setCurrentStep(firstVisible);
+      setVisitedSteps([firstVisible]);
+      return;
+    }
+
+    // Current step is still visible — nothing to do
+    if (evaluateVisibility(currentQuestion.visibleIf, answers, metadata))
+      return;
+
+    const target = findRedirectTarget(
+      questions,
+      answers,
+      metadata,
+      currentStep,
+      visitedSteps,
+    );
+
+    // All questions became hidden — enter no-visible state
+    if (target === -1) {
+      setCurrentStep(-1);
+      setVisitedSteps([]);
+      return;
+    }
+
+    if (target === currentStep) return;
+
+    setCurrentStep(target);
+    setVisitedSteps((prev) => {
+      const existingIndex = prev.indexOf(target);
+      if (existingIndex !== -1) return prev.slice(0, existingIndex + 1);
+      return [...prev, target];
+    });
+  }, [
+    isStepMode,
+    currentQuestion,
+    questions,
+    answers,
+    metadata,
+    currentStep,
+    visitedSteps,
+  ]);
 
   return {
     isStepMode,
@@ -196,5 +371,7 @@ export function useStepNavigation(
     resetNavigation,
     hasBranching,
     visitedSteps,
+    visibleStepIndex,
+    totalVisibleSteps,
   };
 }

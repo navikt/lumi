@@ -24,7 +24,7 @@ Send et `events`-objekt til `LumiSurveyDock`:
     onValidationFailed: (missingQuestionIds) => { /* ... */ },
     onReset: () => { /* ... */ },
     onDismissalPersistFailed: (cause) => { /* ... */ },
-    onStepChange: (currentStep, totalSteps) => { /* ... */ },
+    onStepChange: (visibleStepIndex, totalVisibleSteps) => { /* ... */ },
   }}
 />
 ```
@@ -97,10 +97,10 @@ onDismissalPersistFailed?: (cause: unknown) => void;
 
 ### `onStepChange`
 
-Fyres når brukeren navigerer mellom steg i step-modus.
+Fyres når brukeren navigerer mellom steg i step-modus. Indeksene reflekterer kun synlige spørsmål — skjulte spørsmål (via `visibleIf`) telles ikke med.
 
 ```ts
-onStepChange?: (currentStep: number, totalSteps: number) => void;
+onStepChange?: (visibleStepIndex: number, totalVisibleSteps: number) => void;
 ```
 
 ## Brukseksempler
@@ -157,8 +157,8 @@ import * as amplitude from "@amplitude/analytics-browser";
   transport={transport}
   behavior={{ questionLayout: "steps", showProgress: true }}
   events={{
-    onStepChange: (current, total) => {
-      console.log(`Steg ${current} av ${total}`);
+    onStepChange: (step, total) => {
+      console.log(`Steg ${step + 1} av ${total}`);
     },
     onValidationFailed: (missing) => {
       console.warn("Mangler svar på:", missing);
@@ -179,6 +179,6 @@ interface LumiSurveyEvents {
   onValidationFailed?: (missingQuestionIds: string[]) => void;
   onReset?: () => void;
   onDismissalPersistFailed?: (cause: unknown) => void;
-  onStepChange?: (currentStep: number, totalSteps: number) => void;
+  onStepChange?: (visibleStepIndex: number, totalVisibleSteps: number) => void;
 }
 ```

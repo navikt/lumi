@@ -1,33 +1,40 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { LumiSurveyQuestion } from "../../../../core/types.js";
-import { isAnswered, useStepNavigation } from "../useStepNavigation.js";
+import type { BranchingResult } from "../../../../core/branchingEngine.js";
+import type {
+  LumiSurveyAnswerValue,
+  LumiSurveyQuestion,
+} from "../../../../core/types.js";
+import { useStepNavigation } from "../useStepNavigation.js";
 
-// ============================================
-// isAnswered – pure utility
-// ============================================
-
-describe("isAnswered", () => {
-  it.each([
-    { label: "undefined", value: undefined },
-    { label: "null (defensive)", value: null },
-    { label: 'empty string ""', value: "" },
-    { label: '"   " (whitespace-only string)', value: "   " },
-    { label: "empty array []", value: [] },
-  ])("returns false for $label", ({ value }) => {
-    // biome-ignore lint/suspicious/noExplicitAny: testing defensive null handling
-    expect(isAnswered(value as any)).toBe(false);
-  });
-
-  it.each([
-    { label: '"a" (non-empty string)', value: "a" },
-    { label: "0 (NPS-rating)", value: 0 },
-    { label: "5 (numeric value)", value: 5 },
-    { label: '["x", "y"] (multiChoice)', value: ["x", "y"] },
-  ])("returns true for $label", ({ value }) => {
-    expect(isAnswered(value)).toBe(true);
-  });
-});
+const ALL_HIDDEN_QUESTIONS: LumiSurveyQuestion[] = [
+  {
+    id: "q1",
+    type: "text",
+    prompt: "Hidden 1",
+    required: false,
+    maxLength: 500,
+    visibleIf: {
+      field: "METADATA" as const,
+      key: "show",
+      operator: "EQ" as const,
+      value: "yes",
+    },
+  },
+  {
+    id: "q2",
+    type: "text",
+    prompt: "Hidden 2",
+    required: false,
+    maxLength: 500,
+    visibleIf: {
+      field: "METADATA" as const,
+      key: "show",
+      operator: "EQ" as const,
+      value: "yes",
+    },
+  },
+];
 
 // ============================================
 // Fixtures
@@ -93,6 +100,125 @@ const BRANCHING_QUESTIONS: LumiSurveyQuestion[] = [
     type: "text",
     prompt: "Spørsmål 3",
     required: true,
+    maxLength: 500,
+  },
+];
+
+const VISIBLE_IF_QUESTIONS: LumiSurveyQuestion[] = [
+  {
+    id: "q1",
+    type: "singleChoice",
+    prompt: "Steg 1",
+    required: true,
+    options: [
+      { value: "show", label: "Vis" },
+      { value: "show-q3", label: "Vis kun q3" },
+      { value: "hide", label: "Skjul" },
+    ],
+  },
+  {
+    id: "q2",
+    type: "text",
+    prompt: "Steg 2",
+    required: false,
+    maxLength: 500,
+    visibleIf: {
+      field: "ANSWER",
+      questionId: "q1",
+      operator: "EQ",
+      value: "show",
+    },
+  },
+  {
+    id: "q3",
+    type: "text",
+    prompt: "Steg 3",
+    required: false,
+    maxLength: 500,
+    visibleIf: {
+      field: "ANSWER",
+      questionId: "q1",
+      operator: "EQ",
+      value: "show-q3",
+    },
+  },
+  {
+    id: "q4",
+    type: "text",
+    prompt: "Steg 4",
+    required: false,
+    maxLength: 500,
+  },
+];
+
+const JUMP_TO_VISIBLE_IF_QUESTIONS: LumiSurveyQuestion[] = [
+  {
+    id: "q1",
+    type: "singleChoice",
+    prompt: "Steg 1",
+    required: true,
+    options: [
+      { value: "a", label: "A" },
+      { value: "b", label: "B" },
+    ],
+    logic: [
+      {
+        condition: { field: "ANSWER", operator: "EQ", value: "a" },
+        action: { type: "JUMP_TO", targetId: "q2" },
+      },
+    ],
+  },
+  {
+    id: "q2",
+    type: "text",
+    prompt: "Steg 2",
+    required: false,
+    maxLength: 500,
+    visibleIf: {
+      field: "ANSWER",
+      questionId: "q1",
+      operator: "EQ",
+      value: "visible-q2",
+    },
+  },
+  {
+    id: "q3",
+    type: "text",
+    prompt: "Steg 3",
+    required: false,
+    maxLength: 500,
+  },
+];
+
+const MULTI_CHOICE_VISIBLE_IF_QUESTIONS: LumiSurveyQuestion[] = [
+  {
+    id: "q1",
+    type: "multiChoice",
+    prompt: "Velg flere",
+    required: true,
+    options: [
+      { value: "alpha", label: "Alpha" },
+      { value: "beta", label: "Beta" },
+    ],
+  },
+  {
+    id: "q2",
+    type: "text",
+    prompt: "Vises kun når alpha er valgt",
+    required: false,
+    maxLength: 500,
+    visibleIf: {
+      field: "ANSWER",
+      questionId: "q1",
+      operator: "CONTAINS",
+      value: "alpha",
+    },
+  },
+  {
+    id: "q3",
+    type: "text",
+    prompt: "Fallback",
+    required: false,
     maxLength: 500,
   },
 ];
@@ -574,11 +700,328 @@ describe("useStepNavigation", () => {
     });
   });
 
+  describe("visibleIf in step mode", () => {
+    it("skips one invisible question", () => {
+      const { result } = renderHook(() =>
+        useStepNavigation({
+          questions: VISIBLE_IF_QUESTIONS,
+          answers: { q1: "show-q3" },
+          forceStepMode: true,
+        }),
+      );
+
+      act(() => {
+        result.current.goToNext();
+      });
+
+      expect(result.current.currentQuestion?.id).toBe("q3");
+    });
+
+    it("skips multiple invisible questions in sequence", () => {
+      const { result } = renderHook(() =>
+        useStepNavigation({
+          questions: VISIBLE_IF_QUESTIONS,
+          answers: { q1: "hide" },
+          forceStepMode: true,
+        }),
+      );
+
+      act(() => {
+        result.current.goToNext();
+      });
+
+      expect(result.current.currentStep).toBe(3);
+      expect(result.current.currentQuestion?.id).toBe("q4");
+    });
+
+    it("returns submit signal when all remaining questions are invisible", () => {
+      const { result } = renderHook(() =>
+        useStepNavigation({
+          questions: VISIBLE_IF_QUESTIONS.slice(0, 3),
+          answers: { q1: "hide" },
+          forceStepMode: true,
+        }),
+      );
+
+      act(() => {
+        const navigation = result.current.goToNext();
+        expect(navigation?.nextIndex).toBe(-1);
+      });
+
+      expect(result.current.currentStep).toBe(0);
+    });
+
+    it("scans forward when JUMP_TO targets an invisible question", () => {
+      const { result } = renderHook(() =>
+        useStepNavigation({
+          questions: JUMP_TO_VISIBLE_IF_QUESTIONS,
+          answers: { q1: "a" },
+        }),
+      );
+
+      act(() => {
+        const branchingResult = result.current.goToNext();
+        expect(branchingResult?.triggeredByRule).toBe(true);
+      });
+
+      expect(result.current.currentQuestion?.id).toBe("q3");
+      expect(result.current.currentStep).toBe(2);
+    });
+
+    it("goToNext returns adjusted nextIndex when visibility skips questions", () => {
+      const { result } = renderHook(() =>
+        useStepNavigation({
+          questions: JUMP_TO_VISIBLE_IF_QUESTIONS,
+          answers: { q1: "a" },
+        }),
+      );
+
+      act(() => {
+        const branchingResult: BranchingResult | null =
+          result.current.goToNext();
+        expect(branchingResult?.nextIndex).toBe(2);
+      });
+
+      // JUMP_TO targets q2 (index 1) but q2 is hidden, so actual navigation goes to q3 (index 2)
+      expect(result.current.currentStep).toBe(2);
+    });
+
+    it("sets isLastStep=true when all later steps are invisible", () => {
+      const { result } = renderHook(() =>
+        useStepNavigation({
+          questions: VISIBLE_IF_QUESTIONS.slice(0, 3),
+          answers: { q1: "hide" },
+          forceStepMode: true,
+        }),
+      );
+
+      expect(result.current.isLastStep).toBe(true);
+    });
+
+    it("isLastStep is true for unanswered optional question when all later steps are invisible", () => {
+      const questions: LumiSurveyQuestion[] = [
+        {
+          id: "q1",
+          type: "singleChoice",
+          prompt: "Steg 1",
+          required: true,
+          options: [{ value: "a", label: "A" }],
+        },
+        {
+          id: "q2",
+          type: "text",
+          prompt: "Steg 2 (valgfri)",
+          required: false,
+          maxLength: 500,
+        },
+        {
+          id: "q3",
+          type: "text",
+          prompt: "Steg 3 (skjult)",
+          required: false,
+          maxLength: 500,
+          visibleIf: {
+            field: "ANSWER",
+            questionId: "q1",
+            operator: "EQ",
+            value: "show-q3",
+          },
+        },
+      ];
+
+      const { result } = renderHook(() =>
+        useStepNavigation({
+          questions,
+          answers: { q1: "a" },
+          forceStepMode: true,
+        }),
+      );
+
+      act(() => {
+        result.current.goToNext();
+      });
+
+      expect(result.current.currentQuestion?.id).toBe("q2");
+      expect(result.current.isLastStep).toBe(true);
+    });
+
+    it("isLastStep is false for unanswered question when later step depends on current question", () => {
+      const questions: LumiSurveyQuestion[] = [
+        {
+          id: "rating",
+          type: "singleChoice",
+          prompt: "Hvordan var opplevelsen?",
+          required: false,
+          options: [{ value: "5", label: "5" }],
+        },
+        {
+          id: "feedback",
+          type: "text",
+          prompt: "Hva kan vi forbedre?",
+          required: false,
+          maxLength: 500,
+          visibleIf: {
+            field: "ANSWER",
+            questionId: "rating",
+            operator: "EXISTS",
+          },
+        },
+      ];
+
+      const { result } = renderHook(() =>
+        useStepNavigation({
+          questions,
+          answers: {},
+          forceStepMode: true,
+        }),
+      );
+
+      expect(result.current.currentQuestion?.id).toBe("rating");
+      expect(result.current.isLastStep).toBe(false);
+    });
+
+    it("supports CONTAINS operator for multiChoice visibleIf", () => {
+      const { result } = renderHook(() =>
+        useStepNavigation({
+          questions: MULTI_CHOICE_VISIBLE_IF_QUESTIONS,
+          answers: { q1: ["alpha"] },
+          forceStepMode: true,
+        }),
+      );
+
+      act(() => {
+        result.current.goToNext();
+      });
+
+      expect(result.current.currentQuestion?.id).toBe("q2");
+    });
+
+    it("keeps back navigation safe when visited hidden steps", () => {
+      const { result, rerender } = renderHook(
+        ({ answers }) =>
+          useStepNavigation({
+            questions: VISIBLE_IF_QUESTIONS,
+            answers,
+            forceStepMode: true,
+          }),
+        {
+          initialProps: { answers: { q1: "show", q2: "x", q3: "y" } },
+        },
+      );
+
+      act(() => {
+        result.current.goToNext();
+      });
+      act(() => {
+        result.current.goToNext();
+      });
+      expect(result.current.currentQuestion?.id).toBe("q4");
+
+      rerender({ answers: { q1: "hide", q2: "x", q3: "y" } });
+
+      act(() => {
+        result.current.goToPrevious();
+      });
+
+      expect(result.current.currentQuestion?.id).toBe("q1");
+      expect(result.current.currentStep).toBe(0);
+    });
+
+    it("auto-navigates when current step becomes invisible after answer changes", async () => {
+      const { result, rerender } = renderHook(
+        ({ answers }) =>
+          useStepNavigation({
+            questions: VISIBLE_IF_QUESTIONS,
+            answers,
+            forceStepMode: true,
+          }),
+        {
+          initialProps: { answers: { q1: "show", q2: "text" } },
+        },
+      );
+
+      act(() => {
+        result.current.goToNext();
+      });
+      expect(result.current.currentQuestion?.id).toBe("q2");
+
+      rerender({ answers: { q1: "hide", q2: "text" } });
+
+      await waitFor(() => {
+        expect(result.current.currentQuestion?.id).toBe("q4");
+      });
+    });
+
+    it("auto-navigates to last visited step when current becomes invisible and no later steps visible", async () => {
+      const questions: LumiSurveyQuestion[] = [
+        {
+          id: "q1",
+          type: "singleChoice",
+          prompt: "Steg 1",
+          required: true,
+          options: [
+            { value: "show", label: "Vis" },
+            { value: "hide", label: "Skjul" },
+          ],
+        },
+        {
+          id: "q2",
+          type: "text",
+          prompt: "Steg 2",
+          required: false,
+          maxLength: 500,
+          visibleIf: {
+            field: "ANSWER",
+            questionId: "q1",
+            operator: "EQ",
+            value: "show",
+          },
+        },
+      ];
+
+      const { result, rerender } = renderHook(
+        ({ answers }) =>
+          useStepNavigation({
+            questions,
+            answers,
+            forceStepMode: true,
+          }),
+        {
+          initialProps: {
+            answers: {
+              q1: "show",
+              q2: "text",
+            } as Record<string, LumiSurveyAnswerValue>,
+          },
+        },
+      );
+
+      // Navigate to q2
+      act(() => {
+        result.current.goToNext();
+      });
+      expect(result.current.currentQuestion?.id).toBe("q2");
+
+      // Change answer so q2 becomes hidden, no later steps
+      rerender({
+        answers: { q1: "hide", q2: "text" } as Record<
+          string,
+          LumiSurveyAnswerValue
+        >,
+      });
+
+      await waitFor(() => {
+        // Should fall back to q1 (last visited), not stay on hidden q2
+        expect(result.current.currentQuestion?.id).toBe("q1");
+      });
+    });
+  });
+
   // ------------------------------------------
   // onStepChange callback
   // ------------------------------------------
   describe("onStepChange callback", () => {
-    it("fires onStepChange when step changes in step mode", () => {
+    it("fires onStepChange with visible step index and total visible count", () => {
       const onStepChange = vi.fn();
 
       const { result } = renderHook(() =>
@@ -590,7 +1033,7 @@ describe("useStepNavigation", () => {
         }),
       );
 
-      // Called once on initial render (step 0)
+      // Called once on initial render (visible step 0 of 3)
       expect(onStepChange).toHaveBeenCalledWith(0, 3);
 
       act(() => {
@@ -598,6 +1041,182 @@ describe("useStepNavigation", () => {
       });
 
       expect(onStepChange).toHaveBeenCalledWith(1, 3);
+    });
+
+    it("reports correct visible index when hidden questions are skipped", () => {
+      const onStepChange = vi.fn();
+
+      const { result } = renderHook(() =>
+        useStepNavigation({
+          questions: VISIBLE_IF_QUESTIONS,
+          answers: { q1: "show-q3" },
+          forceStepMode: true,
+          onStepChange,
+        }),
+      );
+
+      // q1 is visible (step 0 of 3 visible: q1, q3, q4)
+      expect(onStepChange).toHaveBeenCalledWith(0, 3);
+
+      act(() => {
+        result.current.goToNext();
+      });
+
+      // Skips q2 (hidden), lands on q3 — visible step 1 of 3
+      expect(onStepChange).toHaveBeenCalledWith(1, 3);
+    });
+
+    it("does not fire onStepChange when no questions are visible", () => {
+      const onStepChange = vi.fn();
+
+      renderHook(() =>
+        useStepNavigation({
+          questions: ALL_HIDDEN_QUESTIONS,
+          answers: {},
+          forceStepMode: true,
+          onStepChange,
+        }),
+      );
+
+      expect(onStepChange).not.toHaveBeenCalled();
+    });
+  });
+
+  // ------------------------------------------
+  // Edge cases: no visible questions
+  // ------------------------------------------
+  describe("no visible questions", () => {
+    it("returns undefined currentQuestion when all questions are hidden", () => {
+      const { result } = renderHook(() =>
+        useStepNavigation({
+          questions: ALL_HIDDEN_QUESTIONS,
+          answers: {},
+          forceStepMode: true,
+        }),
+      );
+
+      expect(result.current.currentQuestion).toBeUndefined();
+      expect(result.current.currentStep).toBe(-1);
+      expect(result.current.canGoNext).toBe(false);
+      expect(result.current.canGoBack).toBe(false);
+      expect(result.current.isLastStep).toBe(false);
+    });
+
+    it("goToNext returns null when all questions are hidden", () => {
+      const { result } = renderHook(() =>
+        useStepNavigation({
+          questions: ALL_HIDDEN_QUESTIONS,
+          answers: {},
+          forceStepMode: true,
+        }),
+      );
+
+      act(() => {
+        expect(result.current.goToNext()).toBeNull();
+      });
+    });
+
+    it("returns undefined currentQuestion for empty questions array", () => {
+      const { result } = renderHook(() =>
+        useStepNavigation({
+          questions: [],
+          answers: {},
+          forceStepMode: true,
+        }),
+      );
+
+      expect(result.current.currentQuestion).toBeUndefined();
+      expect(result.current.currentStep).toBe(-1);
+      expect(result.current.canGoNext).toBe(false);
+    });
+
+    it("recovers from -1 state when questions become visible", async () => {
+      const { result, rerender } = renderHook(
+        ({ metadata }) =>
+          useStepNavigation({
+            questions: ALL_HIDDEN_QUESTIONS,
+            answers: {},
+            metadata,
+            forceStepMode: true,
+          }),
+        { initialProps: { metadata: {} as Record<string, unknown> } },
+      );
+
+      expect(result.current.currentStep).toBe(-1);
+      expect(result.current.currentQuestion).toBeUndefined();
+
+      // Metadata changes to make questions visible
+      rerender({ metadata: { show: "yes" } });
+
+      await waitFor(() => {
+        expect(result.current.currentStep).toBe(0);
+        expect(result.current.currentQuestion?.id).toBe("q1");
+      });
+    });
+
+    it("transitions to -1 when all visible questions become hidden", async () => {
+      const questions: LumiSurveyQuestion[] = [
+        {
+          id: "q1",
+          type: "text",
+          prompt: "Only question",
+          required: false,
+          maxLength: 500,
+          visibleIf: {
+            field: "METADATA" as const,
+            key: "show",
+            operator: "EQ" as const,
+            value: "yes",
+          },
+        },
+      ];
+
+      const { result, rerender } = renderHook(
+        ({ metadata }) =>
+          useStepNavigation({
+            questions,
+            answers: {},
+            metadata,
+            forceStepMode: true,
+          }),
+        {
+          initialProps: {
+            metadata: { show: "yes" } as Record<string, unknown>,
+          },
+        },
+      );
+
+      expect(result.current.currentStep).toBe(0);
+      expect(result.current.currentQuestion?.id).toBe("q1");
+
+      // Metadata changes to hide all questions
+      rerender({ metadata: { show: "no" } });
+
+      await waitFor(() => {
+        expect(result.current.currentStep).toBe(-1);
+        expect(result.current.currentQuestion).toBeUndefined();
+      });
+    });
+  });
+  describe("goToNext guard", () => {
+    it("returns null when required question is unanswered", () => {
+      const { result } = renderHook(() =>
+        useStepNavigation({
+          questions: LINEAR_QUESTIONS,
+          answers: {},
+          forceStepMode: true,
+        }),
+      );
+
+      expect(result.current.currentQuestion?.required).toBe(true);
+      expect(result.current.canGoNext).toBe(false);
+
+      act(() => {
+        expect(result.current.goToNext()).toBeNull();
+      });
+
+      // Should not have moved
+      expect(result.current.currentStep).toBe(0);
     });
   });
 });

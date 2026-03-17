@@ -75,11 +75,15 @@ function evaluateOperator(
         actual < expected
       );
     case "CONTAINS":
+      if (typeof actual === "string") {
+        return actual.toLowerCase().includes(String(expected).toLowerCase());
+      }
       return Array.isArray(actual) && actual.includes(expected);
     case "EXISTS":
       return actual !== undefined;
     default:
-      return true;
+      // Unknown operator — fail closed to avoid showing questions by mistake
+      return false;
   }
 }
 
