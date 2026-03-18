@@ -137,9 +137,9 @@ export interface TextStats {
 
 export interface ChoiceStats {
   type: "choice";
-  responseCount: number;
-  responseRate: number;
-  totalSelections: number;
+  responseCount?: number;
+  responseRate?: number;
+  totalSelections?: number;
   distribution: Record<
     string,
     { label: string; count: number; percentage: number }

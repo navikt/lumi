@@ -25,22 +25,19 @@ export function ChoiceFieldCard({ field, totalCount }: FieldCardProps) {
     .sort((a, b) => b.count - a.count);
 
   const maxCount = Math.max(...choices.map((c) => c.count), 1);
-  const hasExplicitResponseCount = Number.isFinite(stats.responseCount);
-  const hasExplicitTotalSelections = Number.isFinite(stats.totalSelections);
-  const totalSelections = hasExplicitTotalSelections
-    ? stats.totalSelections
-    : choices.reduce((sum, choice) => sum + choice.count, 0);
+  const selectionSum = choices.reduce((sum, choice) => sum + choice.count, 0);
+  const totalSelections = stats.totalSelections ?? selectionSum;
   // Dashboard and API deploy separately, so keep one rollout window compatible with older payloads.
-  const responseCount = hasExplicitResponseCount
-    ? stats.responseCount
-    : field.fieldType === "MULTI_CHOICE"
+  const responseCount =
+    stats.responseCount ??
+    (field.fieldType === "MULTI_CHOICE"
       ? Math.min(totalSelections, totalCount)
-      : totalSelections;
+      : totalSelections);
   const responsePct =
     totalCount > 0 ? Math.round((responseCount / totalCount) * 100) : 0;
   const showSelectionsSummary =
     field.fieldType === "MULTI_CHOICE" &&
-    hasExplicitTotalSelections &&
+    stats.totalSelections != null &&
     totalSelections > 0 &&
     totalSelections !== responseCount;
 

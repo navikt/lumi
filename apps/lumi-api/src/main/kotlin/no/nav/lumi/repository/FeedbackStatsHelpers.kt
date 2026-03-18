@@ -145,7 +145,7 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
                             if (value.selectedOptionIds.isNotEmpty()) {
                                 responseCount += 1
                             }
-                            for (id in value.selectedOptionIds) {
+                            for (id in value.selectedOptionIds.toSet()) {
                                 counts[id] = (counts[id] ?: 0) + 1
                             }
                         }
