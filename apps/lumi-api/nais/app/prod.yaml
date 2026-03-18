@@ -51,6 +51,7 @@ spec:
         - application: dinesykmeldte
         - application: syfomodiaperson
           namespace: teamsykefravr
+        - application: oppfolgingsplan-frontend
     outbound:
       external:
         - host: console.nav.cloud.nais.io

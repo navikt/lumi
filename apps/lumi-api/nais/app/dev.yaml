@@ -52,6 +52,7 @@ spec:
         - application: syfomodiaperson
           namespace: teamsykefravr
         - application: lumi-submission-proxy
+        - application: oppfolgingsplan-frontend
     outbound:
       external:
         - host: console.nav.cloud.nais.io
