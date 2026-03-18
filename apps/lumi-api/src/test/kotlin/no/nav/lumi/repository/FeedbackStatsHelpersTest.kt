@@ -123,4 +123,40 @@ class FeedbackStatsHelpersTest : FunSpec({
             "multi-choice"
         )
     }
+
+    test("buildFieldStats fallback ordering for optional fields does not depend on input order") {
+        val representative = feedbackDto(
+            id = "zzz",
+            submittedAt = "2026-01-21T10:00:00Z",
+            answers = listOf(
+                ratingAnswer(),
+                singleChoiceAnswer(),
+                textAnswer()
+            )
+        )
+        val optionalFieldRecord = feedbackDto(
+            id = "aaa",
+            submittedAt = "2026-01-21T10:00:00Z",
+            answers = listOf(
+                ratingAnswer(),
+                singleChoiceAnswer(),
+                multiChoiceAnswer()
+            )
+        )
+
+        val fieldIdsInForwardOrder = buildFieldStats(
+            listOf(representative, optionalFieldRecord)
+        ).map { it.fieldId }
+        val fieldIdsInReverseOrder = buildFieldStats(
+            listOf(optionalFieldRecord, representative)
+        ).map { it.fieldId }
+
+        fieldIdsInForwardOrder shouldBe listOf(
+            "svar",
+            "single-choice",
+            "text-comment",
+            "multi-choice"
+        )
+        fieldIdsInReverseOrder shouldBe fieldIdsInForwardOrder
+    }
 })
