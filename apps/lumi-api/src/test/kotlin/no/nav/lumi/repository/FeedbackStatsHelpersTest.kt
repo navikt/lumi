@@ -4,6 +4,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.lumi.domain.Answer
 import no.nav.lumi.domain.AnswerValue
+import no.nav.lumi.domain.ChoiceOption
 import no.nav.lumi.domain.FeedbackDto
 import no.nav.lumi.domain.FieldType
 import no.nav.lumi.domain.Question
@@ -12,9 +13,9 @@ import no.nav.lumi.domain.SubmissionContext
 
 class FeedbackStatsHelpersTest : FunSpec({
     val choiceOptions = listOf(
-        no.nav.lumi.domain.ChoiceOption(id = "often", label = "Ofte"),
-        no.nav.lumi.domain.ChoiceOption(id = "time", label = "Tid"),
-        no.nav.lumi.domain.ChoiceOption(id = "rules", label = "Regler")
+        ChoiceOption(id = "often", label = "Ofte"),
+        ChoiceOption(id = "time", label = "Tid"),
+        ChoiceOption(id = "rules", label = "Regler")
     )
 
     fun ratingAnswer() = Answer(
