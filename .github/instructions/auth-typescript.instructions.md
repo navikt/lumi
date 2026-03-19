@@ -1,4 +1,5 @@
 ---
+description: 'Autentisering i TypeScript med Oasis — token-validering og on-behalf-of'
 applyTo: "**/*.{ts,tsx}"
 ---
 <!-- Managed by esyfo-cli. Do not edit manually. Changes will be overwritten.
