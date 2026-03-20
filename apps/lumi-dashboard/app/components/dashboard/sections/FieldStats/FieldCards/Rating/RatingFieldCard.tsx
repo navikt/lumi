@@ -95,6 +95,9 @@ export function RatingFieldCard({ field, totalCount }: FieldCardProps) {
           variant={ratingVariant}
           distribution={distribution}
           ratingValues={ratingValuesForVariant(ratingVariant)}
+          activeRatingValue={undefined}
+          onRatingSelect={() => {}}
+          onRatingClear={() => {}}
         />
       )}
     </DashboardCard>

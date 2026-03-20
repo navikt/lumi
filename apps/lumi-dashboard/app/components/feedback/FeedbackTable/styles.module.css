@@ -292,24 +292,24 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+  align-items: center;
 }
 
-.choiceOption {
+.unselectedOption {
   display: inline-flex;
   align-items: center;
-  padding: 0.375rem 0.75rem;
-  background: var(--ax-bg-neutral-soft);
-  border-radius: 6px;
-  font-size: 0.8125rem;
+  padding: 0.25rem 0.5rem;
   color: var(--ax-text-subtle);
-  border: 1px solid transparent;
+  font-size: 0.875rem;
 }
 
-.choiceOptionSelected {
-  background: var(--ax-bg-accent-soft);
-  color: var(--ax-text-accent);
-  border-color: var(--ax-border-accent);
-  font-weight: 500;
+.clickableTag {
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.clickableTag:hover {
+  transform: scale(1.02);
 }
 
 /* Rating emoji display */

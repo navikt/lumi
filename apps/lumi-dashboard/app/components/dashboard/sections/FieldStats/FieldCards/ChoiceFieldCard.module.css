@@ -15,6 +15,40 @@
   margin-left: 0.5rem;
 }
 
+.choiceButton {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: var(--a-spacing-2);
+  margin: 0; /* Reset default button margin */
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--a-border-radius-medium);
+  transition:
+    opacity 0.2s ease,
+    background-color 0.1s ease;
+  /* Reset button styles */
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  /* Remove default outline */
+  outline: none;
+}
+
+.choiceButton:hover {
+  background-color: var(--ax-bg-neutral-soft);
+}
+
+.choiceButton:focus-visible {
+  box-shadow: var(--ax-shadow-focus);
+}
+
+.choiceButtonInactive {
+  opacity: 0.35;
+}
+
 .choiceBar {
   width: 100%;
   height: 8px;

@@ -11,6 +11,7 @@ import {
   Detail,
   HStack,
   Label,
+  Tag,
   Tooltip,
   VStack,
 } from "@navikt/ds-react";
@@ -60,9 +61,11 @@ function AnswerCardLayout({
 export function RenderAnswer({
   answer,
   styles,
+  onChoiceFilter,
 }: {
   answer: Answer;
   styles: Record<string, string>;
+  onChoiceFilter?: (fieldId: string, optionId: string) => void;
 }) {
   switch (answer.fieldType) {
     case "RATING": {
@@ -272,15 +275,33 @@ export function RenderAnswer({
         >
           {options.length > 0 ? (
             <div className={styles.choiceOptions}>
-              {options.map((opt) => (
-                <span
-                  key={opt.id}
-                  className={`${styles.choiceOption} ${selectedIds.includes(opt.id) ? styles.choiceOptionSelected : ""}`}
-                >
-                  {selectedIds.includes(opt.id) ? "✓ " : ""}
-                  {opt.label}
-                </span>
-              ))}
+              {options.map((opt) => {
+                const isSelected = selectedIds.includes(opt.id);
+
+                if (isSelected) {
+                  return (
+                    <Tooltip key={opt.id} content="Klikk for å filtrere">
+                      <Tag
+                        variant="neutral"
+                        size="small"
+                        className={styles.clickableTag}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onChoiceFilter?.(answer.fieldId, opt.id);
+                        }}
+                      >
+                        {opt.label}
+                      </Tag>
+                    </Tooltip>
+                  );
+                }
+
+                return (
+                  <span key={opt.id} className={styles.unselectedOption}>
+                    {opt.label}
+                  </span>
+                );
+              })}
             </div>
           ) : (
             <BodyShort>{selectedIds.join(", ") || "Ingen valgt"}</BodyShort>
