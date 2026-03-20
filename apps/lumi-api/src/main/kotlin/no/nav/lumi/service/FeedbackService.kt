@@ -89,8 +89,7 @@ class FeedbackService(
                             val type = valueObj["type"]?.jsonPrimitive?.contentOrNull
                             if (type == "text") {
                                 val originalText = valueObj["text"]?.jsonPrimitive?.contentOrNull ?: ""
-                                val sanitizedText = htmlSanitizer.stripTags(originalText)
-                                val redacted = sensitiveDataFilter.redact(sanitizedText)
+                                val redacted = sensitiveDataFilter.redact(originalText)
                                 if (redacted.wasRedacted) {
                                     hasRedactions = true
                                     log.info("Redacted sensitive data from answer fieldId=${answerObj["fieldId"]}: ${redacted.matchedPatterns}")

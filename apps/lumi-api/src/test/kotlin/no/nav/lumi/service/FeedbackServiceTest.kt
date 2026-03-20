@@ -60,13 +60,13 @@ class FeedbackServiceTest : FunSpec({
             dto.sensitiveDataRedacted shouldBe true
         }
 
-        test("strips html tags in text answers and context before storage") {
+        test("preserves html in text answers but strips html tags from context before storage") {
             val feedbackJson = """
                 {
                     "context": {
-                        "url": "https://www.nav.no/<b>soknad</b>",
+                        "url": "https://www.nav.no/<script>test</script>",
                         "pathname": "/<i>arbeid</i>",
-                        "userAgent": "<script>bot</script>Mozilla",
+                        "userAgent": "bot<img>Mozilla",
                         "tags": {
                             "segment": "<b>intern</b>"
                         }
@@ -86,12 +86,12 @@ class FeedbackServiceTest : FunSpec({
             val id = service.save(feedbackJson, "flex", "test-app")
             val saved = repository.findRawById(id, "flex").shouldNotBeNull()
 
-            saved.feedbackJson shouldNotContain "<b>"
-            saved.feedbackJson shouldNotContain "<script>"
-            saved.feedbackJson shouldContain "\"text\":\"Hei team\""
-            saved.feedbackJson shouldContain "\"pathname\":\"/arbeid\""
-            saved.feedbackJson shouldContain "\"userAgent\":\"botMozilla\""
-            saved.feedbackJson shouldContain "\"segment\":\"intern\""
+            saved.feedbackJson shouldContain "Hei <b>team</b>"
+            saved.feedbackJson shouldNotContain "<script>test</script>"
+            saved.feedbackJson shouldNotContain "<img>"
+            saved.feedbackJson shouldContain "\"pathname\": \"/arbeid\""
+            saved.feedbackJson shouldContain "\"userAgent\": \"botMozilla\""
+            saved.feedbackJson shouldContain "\"segment\": \"intern\""
         }
     }
 
