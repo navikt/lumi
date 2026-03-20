@@ -56,6 +56,17 @@ class FeedbackService(
         return repository.deleteSurveyWithMarkers(surveyId, team)
     }
 
+    /**
+     * Sanitize and redact feedback JSON before persistence.
+     *
+     * Security strategy:
+     * 1. Context fields (url, pathname, userAgent, tags) — HTML tags stripped (defense-in-depth)
+     * 2. Text answers — PII redacted, but HTML preserved (React escapes at render)
+     * 3. Metadata fields (question.label, options[].label etc.) — NOT sanitized
+     *    These are survey-defined by the team admin, not user-authored free text.
+     *    SubmissionValidator enforces length limits on all metadata fields.
+     *    React escapes all output, so stored HTML is inert in the dashboard.
+     */
     private fun redactFeedbackJson(feedbackJson: String): String {
         return try {
             val jsonElement = json.parseToJsonElement(feedbackJson)

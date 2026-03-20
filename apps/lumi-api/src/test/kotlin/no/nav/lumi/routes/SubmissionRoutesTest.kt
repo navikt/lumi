@@ -477,6 +477,42 @@ class SubmissionRoutesTest : FunSpec({
         }
     }
 
+    test("should reject context url containing credentials") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+
+            val payload = """
+                {
+                  "schemaVersion": 1,
+                  "surveyId": "dp-feedback",
+                  "surveyType": "rating",
+                  "submittedAt": "2026-01-10T12:00:12Z",
+                  "context": {
+                    "url": "https://user:pass@nav.no/path"
+                  },
+                  "answers": [
+                    {
+                      "fieldId": "rating",
+                      "fieldType": "RATING",
+                      "question": { "label": "Hvor fornøyd er du?" },
+                      "value": { "type": "rating", "rating": 4, "ratingVariant": "emoji", "ratingScale": 5 }
+                    }
+                  ]
+                }
+            """.trimIndent()
+
+            val response = client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(payload)
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            val message = Json.parseToJsonElement(response.bodyAsText()).jsonObject["message"]?.jsonPrimitive?.content
+            (message?.contains("context.url must not contain credentials", ignoreCase = true) == true) shouldBe true
+        }
+    }
+
     test("should reject invalid context pathname") {
         testApplication {
             application { testModule() }

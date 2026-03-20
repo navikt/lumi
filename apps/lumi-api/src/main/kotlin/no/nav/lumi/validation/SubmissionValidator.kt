@@ -88,6 +88,10 @@ object SubmissionValidator {
                 if (uri.host.isNullOrBlank()) {
                     throw ApiErrorException.BadRequestException("Invalid payload: context.url must include host")
                 }
+
+                if (!uri.userInfo.isNullOrEmpty()) {
+                    throw ApiErrorException.BadRequestException("Invalid payload: context.url must not contain credentials")
+                }
             }
 
             context.pathname?.let { pathname ->
