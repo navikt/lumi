@@ -34,6 +34,10 @@ export interface FilterParams {
   ratingFieldId?: string;
   /** Filter by a specific rating value (stringified number) */
   ratingValue?: string;
+  /** Filter by a specific choice question fieldId */
+  choiceFieldId?: string;
+  /** Filter by selected choice option id */
+  choiceValue?: string;
 }
 
 // ============================================
@@ -159,6 +163,30 @@ export function applyFeedbackFilters(
     }
   }
 
+  // Specific choice filter (fieldId + option id)
+  if (filters.choiceFieldId && filters.choiceValue) {
+    const { choiceFieldId, choiceValue } = filters;
+
+    filtered = filtered.filter((item) =>
+      item.answers.some((a) => {
+        if (a.fieldId !== choiceFieldId) return false;
+
+        if (
+          a.fieldType === "SINGLE_CHOICE" &&
+          a.value.type === "singleChoice"
+        ) {
+          return a.value.selectedOptionId === choiceValue;
+        }
+
+        if (a.fieldType === "MULTI_CHOICE" && a.value.type === "multiChoice") {
+          return a.value.selectedOptionIds.includes(choiceValue);
+        }
+
+        return false;
+      }),
+    );
+  }
+
   return filtered;
 }
 
@@ -189,6 +217,8 @@ function normalizeParams(params: FilterParams | URLSearchParams): FilterParams {
       theme: params.get("theme") ?? undefined,
       ratingFieldId: params.get("ratingFieldId") ?? undefined,
       ratingValue: params.get("ratingValue") ?? undefined,
+      choiceFieldId: params.get("choiceFieldId") ?? undefined,
+      choiceValue: params.get("choiceValue") ?? undefined,
     };
   }
   return params;

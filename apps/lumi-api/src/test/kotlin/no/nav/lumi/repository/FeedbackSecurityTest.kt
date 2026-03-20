@@ -4,6 +4,9 @@ import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -11,6 +14,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.int
 import no.nav.lumi.TestDatabase
 import no.nav.lumi.service.FeedbackService
+import org.slf4j.LoggerFactory
 
 class FeedbackSecurityTest : DescribeSpec({
 
@@ -80,6 +84,49 @@ class FeedbackSecurityTest : DescribeSpec({
             val escaped = input.escapeLikePattern()
             
             escaped shouldBe "\\%\\%\\_\\_\\\\\\\\"
+        }
+    }
+
+    describe("JSONPath choice filter safety") {
+        val log = LoggerFactory.getLogger("FeedbackSecurityTest")
+
+        it("should reject choice values with JSONPath special characters") {
+            isSafeChoiceValue("opt-1") shouldBe true
+            isSafeChoiceValue("Svært ofte") shouldBe true
+
+            isSafeChoiceValue("opt\"1") shouldBe false
+            isSafeChoiceValue("opt\\1") shouldBe false
+            isSafeChoiceValue("opt\$1") shouldBe false
+            isSafeChoiceValue("opt@1") shouldBe false
+            isSafeChoiceValue("opt?1") shouldBe false
+            isSafeChoiceValue("opt(1)") shouldBe false
+        }
+
+        it("should build singleChoice and multiChoice JSONPath for safe input") {
+            val paths = buildChoiceJsonPaths(
+                choiceFieldId = "task_choice",
+                choiceValue = "Svært ofte",
+                log = log
+            )
+
+            paths?.singleChoicePath shouldBe
+                "$.answers[*] ? (@.fieldId == \"task_choice\" && @.value.type == \"singleChoice\" && @.value.selectedOptionId == \"Svært ofte\")"
+            paths?.multiChoicePath shouldBe
+                "$.answers[*] ? (@.fieldId == \"task_choice\" && @.value.type == \"multiChoice\" && exists(@.value.selectedOptionIds[*] ? (@ == \"Svært ofte\")))"
+        }
+
+        it("should reject JSONPath builder input when fieldId or choiceValue is unsafe") {
+            buildChoiceJsonPaths("task\"choice", "opt-1", log) shouldBe null
+            buildChoiceJsonPaths("task_choice", "opt\"1", log) shouldBe null
+        }
+
+        it("should log warning when choiceFieldId is unsafe without logging raw value") {
+            val mockedLogger = mockk<org.slf4j.Logger>(relaxed = true)
+            every { mockedLogger.warn(any<String>()) } returns Unit
+
+            validateJsonPathFieldId("task\"choice", "choiceFieldId", mockedLogger) shouldBe null
+
+            verify(exactly = 1) { mockedLogger.warn("Rejected unsafe choiceFieldId") }
         }
     }
 

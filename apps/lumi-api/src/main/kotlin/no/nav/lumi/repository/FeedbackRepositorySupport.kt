@@ -10,8 +10,6 @@ import org.slf4j.Logger
 import java.time.LocalDate
 import java.time.ZoneId
 
-private const val MAX_VALUE_LENGTH = 200
-
 /**
  * Escape special characters for SQL LIKE patterns to prevent SQL injection.
  * Escapes %, _, and \ which have special meaning in LIKE clauses.
@@ -106,34 +104,22 @@ internal fun applyCommonFilters(query: Query, criteria: FeedbackQuery, log: Logg
     // Filter by specific rating answer (fieldId + rating)
     val ratingFieldId = criteria.ratingFieldId
     val ratingValue = criteria.ratingValue
-    if (!ratingFieldId.isNullOrBlank() && ratingValue != null) {
-        // Avoid JSONPath injection by only allowing simple fieldId characters.
-        val isSafeFieldId = ratingFieldId.all { it.isLetterOrDigit() || it == '-' || it == '_' }
-        if (isSafeFieldId) {
-            val ratingTextForField = JsonbPathQueryFirstText(
-                FeedbackTable.feedbackJson,
-                "$.answers[*] ? (@.fieldId == \"$ratingFieldId\" && @.value.type == \"rating\").value.rating"
-            )
-            val ratingExpr = Cast(ratingTextForField, IntegerColumnType())
-            query.andWhere { ratingExpr eq ratingValue }
-        }
+    val safeRatingFieldId = validateJsonPathFieldId(ratingFieldId, "ratingFieldId", log)
+    if (safeRatingFieldId != null && ratingValue != null) {
+        val ratingTextForField = JsonbPathQueryFirstText(
+            FeedbackTable.feedbackJson,
+            "$.answers[*] ? (@.fieldId == \"$safeRatingFieldId\" && @.value.type == \"rating\").value.rating"
+        )
+        val ratingExpr = Cast(ratingTextForField, IntegerColumnType())
+        query.andWhere { ratingExpr eq ratingValue }
     }
 
     // Filter by specific choice answer (fieldId + selected option id)
-    val choiceFieldId = criteria.choiceFieldId
-    val choiceValue = criteria.choiceValue?.trim()?.takeIf { it.isNotBlank() }?.take(MAX_VALUE_LENGTH)
-    if (!choiceFieldId.isNullOrBlank() && choiceValue != null) {
-        // Avoid JSONPath injection by only allowing simple fieldId characters.
-        val isSafeFieldId = choiceFieldId.all { it.isLetterOrDigit() || it == '-' || it == '_' }
-        if (isSafeFieldId) {
-            val singleChoicePath =
-                "$.answers[*] ? (@.fieldId == \"$choiceFieldId\" && @.value.type == \"singleChoice\" && @.value.selectedOptionId == \"$choiceValue\")"
-            val multiChoicePath =
-                "$.answers[*] ? (@.fieldId == \"$choiceFieldId\" && @.value.type == \"multiChoice\" && exists(@.value.selectedOptionIds[*] ? (@ == \"$choiceValue\")))"
-            query.andWhere {
-                JsonbPathExists(FeedbackTable.feedbackJson, singleChoicePath) or
-                    JsonbPathExists(FeedbackTable.feedbackJson, multiChoicePath)
-            }
+    val choiceJsonPaths = buildChoiceJsonPaths(criteria.choiceFieldId, criteria.choiceValue, log)
+    if (choiceJsonPaths != null) {
+        query.andWhere {
+            JsonbPathExists(FeedbackTable.feedbackJson, choiceJsonPaths.singleChoicePath) or
+                JsonbPathExists(FeedbackTable.feedbackJson, choiceJsonPaths.multiChoicePath)
         }
     }
 }

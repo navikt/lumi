@@ -148,19 +148,3 @@
   color: var(--ax-text-neutral-subtle);
   font-size: 0.75rem;
 }
-
-.resetButton {
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px dashed var(--ax-border-neutral-subtle);
-  background: transparent;
-  cursor: pointer;
-  color: var(--ax-text-neutral-subtle);
-  font-size: 0.875rem;
-  width: fit-content;
-}
-
-.resetButton:hover {
-  background-color: var(--ax-bg-neutral-soft);
-  color: var(--ax-text-neutral);
-}

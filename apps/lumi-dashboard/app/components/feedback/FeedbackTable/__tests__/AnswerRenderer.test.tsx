@@ -61,4 +61,35 @@ describe("AnswerRenderer", () => {
 
     expect(onChoiceFilter).toHaveBeenCalledWith("task_choice", "opt-1");
   });
+
+  it("supports keyboard activation on selected choice filter button", async () => {
+    const user = userEvent.setup();
+    const onChoiceFilter = vi.fn();
+
+    const answer: Answer = {
+      fieldId: "task_choice",
+      fieldType: "SINGLE_CHOICE",
+      question: {
+        label: "Hva skulle du gjøre?",
+        options: [{ id: "opt-1", label: "Søknad" }],
+      },
+      value: { type: "singleChoice", selectedOptionId: "opt-1" },
+    };
+
+    render(
+      <RenderAnswer
+        answer={answer}
+        styles={styles}
+        onChoiceFilter={onChoiceFilter}
+      />,
+    );
+
+    const filterButton = screen.getByRole("button", {
+      name: "Filtrer på Søknad",
+    });
+    filterButton.focus();
+    await user.keyboard("{Enter}");
+
+    expect(onChoiceFilter).toHaveBeenCalledWith("task_choice", "opt-1");
+  });
 });

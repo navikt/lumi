@@ -1,4 +1,4 @@
-import { HStack, VStack } from "@navikt/ds-react";
+import { Button, HStack, VStack } from "@navikt/ds-react";
 import type { RatingVariant } from "~/utils/ratingDisplay";
 import styles from "./RatingFieldCard.module.css";
 
@@ -67,9 +67,11 @@ export function RatingBars({
           const isDimmed = isFiltering && !isActive;
 
           return (
-            <button
+            <Button
               key={rating}
               type="button"
+              variant="tertiary"
+              data-color="neutral"
               onClick={() => onRatingSelect(rating)}
               className={`${styles.barRowButton} ${
                 isDimmed ? styles.barRowDimmed : ""
@@ -90,19 +92,21 @@ export function RatingBars({
 
                 <span className={styles.barCount}>{count}</span>
               </HStack>
-            </button>
+            </Button>
           );
         })}
       </VStack>
 
       {isFiltering && (
-        <button
+        <Button
           type="button"
           onClick={onRatingClear}
-          className={styles.resetButton}
+          variant="tertiary"
+          size="xsmall"
+          style={{ alignSelf: "flex-start" }}
         >
           Nullstill filter
-        </button>
+        </Button>
       )}
     </VStack>
   );

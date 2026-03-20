@@ -281,17 +281,23 @@ export function RenderAnswer({
                 if (isSelected) {
                   return (
                     <Tooltip key={opt.id} content="Klikk for å filtrere">
-                      <Tag
-                        variant="neutral"
-                        size="small"
-                        className={styles.clickableTag}
+                      <button
+                        type="button"
+                        className={styles.clickableTagButton}
                         onClick={(e) => {
                           e.stopPropagation();
                           onChoiceFilter?.(answer.fieldId, opt.id);
                         }}
+                        aria-label={`Filtrer på ${opt.label}`}
                       >
-                        {opt.label}
-                      </Tag>
+                        <Tag
+                          variant="neutral"
+                          size="small"
+                          className={styles.clickableTag}
+                        >
+                          {opt.label}
+                        </Tag>
+                      </button>
                     </Tooltip>
                   );
                 }

@@ -158,7 +158,8 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
     params.segment ||
     params.task ||
     params.ratingFieldId ||
-    params.ratingValue;
+    params.ratingValue ||
+    params.choiceFieldId;
 
   // isPending: no cached data AND fetching (TanStack Query v5 best practice)
   // With placeholderData: keepPreviousData, isPending stays false during refetches

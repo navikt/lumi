@@ -101,6 +101,41 @@ class FeedbackStatsRepositoryTest : FunSpec({
             stats.totalCount shouldBe 0L
         }
 
+        test("ignores unsafe choiceValue filter to prevent JSONPath injection") {
+            insertTestFeedbackWithJson(
+                id = "choice-a",
+                team = "flex",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-choice",
+                        "answers": [
+                            {"fieldId": "task_choice", "fieldType": "SINGLE_CHOICE", "question": {"label": "Velg"}, "value": {"type": "singleChoice", "selectedOptionId": "opt-1"}}
+                        ]
+                    }
+                """.trimIndent()
+            )
+            insertTestFeedbackWithJson(
+                id = "choice-b",
+                team = "flex",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-choice",
+                        "answers": [
+                            {"fieldId": "task_choice", "fieldType": "SINGLE_CHOICE", "question": {"label": "Velg"}, "value": {"type": "singleChoice", "selectedOptionId": "opt-2"}}
+                        ]
+                    }
+                """.trimIndent()
+            )
+
+            val stats = repository.getStats(
+                StatsQuery(team = "flex", choiceFieldId = "task_choice", choiceValue = "opt\"1")
+            )
+
+            stats.totalCount shouldBe 2L
+        }
+
         test("filters by choice and rating together with AND semantics") {
             insertTestFeedbackWithJson(
                 id = "match-both",

@@ -135,4 +135,64 @@ describe("applyFeedbackFilters", () => {
     });
     expect(filtered.map((i) => i.id)).toEqual(["a"]);
   });
+
+  it("filters by choiceFieldId + choiceValue for single and multi choice", () => {
+    const withChoices: FeedbackDto[] = [
+      makeItem({
+        id: "single-match",
+        answers: [
+          {
+            fieldId: "task_choice",
+            fieldType: "SINGLE_CHOICE",
+            question: {
+              label: "Oppgave",
+              options: [{ id: "opt-1", label: "Søknad" }],
+            },
+            value: { type: "singleChoice", selectedOptionId: "opt-1" },
+          },
+        ],
+      }),
+      makeItem({
+        id: "multi-match",
+        answers: [
+          {
+            fieldId: "task_choice",
+            fieldType: "MULTI_CHOICE",
+            question: {
+              label: "Oppgave",
+              options: [{ id: "opt-1", label: "Søknad" }],
+            },
+            value: {
+              type: "multiChoice",
+              selectedOptionIds: ["opt-1", "opt-2"],
+            },
+          },
+        ],
+      }),
+      makeItem({
+        id: "no-match",
+        answers: [
+          {
+            fieldId: "task_choice",
+            fieldType: "SINGLE_CHOICE",
+            question: {
+              label: "Oppgave",
+              options: [{ id: "opt-2", label: "Oppfølging" }],
+            },
+            value: { type: "singleChoice", selectedOptionId: "opt-2" },
+          },
+        ],
+      }),
+    ];
+
+    const filtered = applyFeedbackFilters(withChoices, {
+      choiceFieldId: "task_choice",
+      choiceValue: "opt-1",
+    });
+
+    expect(filtered.map((i) => i.id).sort()).toEqual([
+      "multi-match",
+      "single-match",
+    ]);
+  });
 });

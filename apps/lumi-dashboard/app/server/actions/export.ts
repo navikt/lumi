@@ -173,6 +173,8 @@ function transformToBackendParams(data: Record<string, string | undefined>) {
     segment: data.segment?.split(",").filter(Boolean),
     ratingFieldId: data.ratingFieldId,
     ratingValue: data.ratingValue,
+    choiceFieldId: data.choiceFieldId,
+    choiceValue: data.choiceValue,
   };
 }
 
@@ -204,6 +206,8 @@ export const exportServerFn = createServerFn({ method: "POST" })
         lowRating: data.lowRating,
         ratingFieldId: data.ratingFieldId,
         ratingValue: data.ratingValue,
+        choiceFieldId: data.choiceFieldId,
+        choiceValue: data.choiceValue,
       }).slice(0, 10_000);
 
       const extension = data.format === "excel" ? "xlsx" : data.format;
