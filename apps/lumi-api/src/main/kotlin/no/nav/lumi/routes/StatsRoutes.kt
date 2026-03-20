@@ -26,7 +26,9 @@ private fun buildStatsQuery(
     segment: List<String>? = null,
     task: String? = null,
     ratingFieldId: String? = null,
-    ratingValue: Int? = null
+    ratingValue: Int? = null,
+    choiceFieldId: String? = null,
+    choiceValue: String? = null,
 ) = StatsQuery(
     team = team,
     app = app?.takeIf { it != FILTER_ALL },
@@ -42,7 +44,9 @@ private fun buildStatsQuery(
         ?: emptyList(),
     task = task,
     ratingFieldId = ratingFieldId,
-    ratingValue = ratingValue
+    ratingValue = ratingValue,
+    choiceFieldId = choiceFieldId,
+    choiceValue = choiceValue,
 )
 
 /**
@@ -57,7 +61,20 @@ fun Route.statsRoutes(
         val team = call.authorizedTeam
         val p = params.parent
 
-        val query = buildStatsQuery(team, p.app, p.fromDate, p.toDate, p.surveyId, p.deviceType, p.segment, p.task, p.ratingFieldId, p.ratingValue)
+        val query = buildStatsQuery(
+            team = team,
+            app = p.app,
+            fromDate = p.fromDate,
+            toDate = p.toDate,
+            surveyId = p.surveyId,
+            deviceType = p.deviceType,
+            segment = p.segment,
+            task = p.task,
+            ratingFieldId = p.ratingFieldId,
+            ratingValue = p.ratingValue,
+            choiceFieldId = p.choiceFieldId,
+            choiceValue = p.choiceValue,
+        )
         val stats = statsService.getDashboardStats(query)
         call.respond(stats)
     }
@@ -67,7 +84,19 @@ fun Route.statsRoutes(
         val team = call.authorizedTeam
         val p = params.parent
         
-        val query = buildStatsQuery(team, p.app, p.fromDate, p.toDate, p.surveyId, p.deviceType, p.segment, ratingFieldId = p.ratingFieldId, ratingValue = p.ratingValue)
+        val query = buildStatsQuery(
+            team = team,
+            app = p.app,
+            fromDate = p.fromDate,
+            toDate = p.toDate,
+            surveyId = p.surveyId,
+            deviceType = p.deviceType,
+            segment = p.segment,
+            ratingFieldId = p.ratingFieldId,
+            ratingValue = p.ratingValue,
+            choiceFieldId = p.choiceFieldId,
+            choiceValue = p.choiceValue,
+        )
         val overview = statsService.getStatsOverview(query)
         call.respond(overview)
     }
@@ -77,7 +106,19 @@ fun Route.statsRoutes(
         val team = call.authorizedTeam
         val p = params.parent
         
-        val query = buildStatsQuery(team, p.app, p.fromDate, p.toDate, p.surveyId, p.deviceType, p.segment, ratingFieldId = p.ratingFieldId, ratingValue = p.ratingValue)
+        val query = buildStatsQuery(
+            team = team,
+            app = p.app,
+            fromDate = p.fromDate,
+            toDate = p.toDate,
+            surveyId = p.surveyId,
+            deviceType = p.deviceType,
+            segment = p.segment,
+            ratingFieldId = p.ratingFieldId,
+            ratingValue = p.ratingValue,
+            choiceFieldId = p.choiceFieldId,
+            choiceValue = p.choiceValue,
+        )
         val distribution = statsService.getRatingDistribution(query)
         call.respond(distribution)
     }
@@ -87,7 +128,19 @@ fun Route.statsRoutes(
         val team = call.authorizedTeam
         val p = params.parent
 
-        val query = buildStatsQuery(team, p.app, p.fromDate, p.toDate, p.surveyId, p.deviceType, p.segment, ratingFieldId = p.ratingFieldId, ratingValue = p.ratingValue)
+        val query = buildStatsQuery(
+            team = team,
+            app = p.app,
+            fromDate = p.fromDate,
+            toDate = p.toDate,
+            surveyId = p.surveyId,
+            deviceType = p.deviceType,
+            segment = p.segment,
+            ratingFieldId = p.ratingFieldId,
+            ratingValue = p.ratingValue,
+            choiceFieldId = p.choiceFieldId,
+            choiceValue = p.choiceValue,
+        )
         val timeline = statsService.getTimeline(query)
         call.respond(timeline)
     }
@@ -97,7 +150,20 @@ fun Route.statsRoutes(
         val team = call.authorizedTeam
         val p = params.parent
 
-        val query = buildStatsQuery(team, p.app, p.fromDate, p.toDate, p.surveyId, p.deviceType, p.segment, p.task, p.ratingFieldId, p.ratingValue)
+        val query = buildStatsQuery(
+            team = team,
+            app = p.app,
+            fromDate = p.fromDate,
+            toDate = p.toDate,
+            surveyId = p.surveyId,
+            deviceType = p.deviceType,
+            segment = p.segment,
+            task = p.task,
+            ratingFieldId = p.ratingFieldId,
+            ratingValue = p.ratingValue,
+            choiceFieldId = p.choiceFieldId,
+            choiceValue = p.choiceValue,
+        )
         val stats = statsService.getTopTasksStats(query)
         call.respond(stats)
     }
@@ -107,7 +173,20 @@ fun Route.statsRoutes(
         val team = call.authorizedTeam
         val p = params.parent
 
-        val query = buildStatsQuery(team, p.app, p.fromDate, p.toDate, p.surveyId, p.deviceType, p.segment, p.task, p.ratingFieldId, p.ratingValue)
+        val query = buildStatsQuery(
+            team = team,
+            app = p.app,
+            fromDate = p.fromDate,
+            toDate = p.toDate,
+            surveyId = p.surveyId,
+            deviceType = p.deviceType,
+            segment = p.segment,
+            task = p.task,
+            ratingFieldId = p.ratingFieldId,
+            ratingValue = p.ratingValue,
+            choiceFieldId = p.choiceFieldId,
+            choiceValue = p.choiceValue,
+        )
         val stats = statsService.getBlockerStats(query)
         call.respond(stats)
     }
@@ -117,7 +196,19 @@ fun Route.statsRoutes(
         val team = call.authorizedTeam
         val p = params.parent
 
-        val query = buildStatsQuery(team, p.app, p.fromDate, p.toDate, p.surveyId, p.deviceType, p.segment, ratingFieldId = p.ratingFieldId, ratingValue = p.ratingValue)
+        val query = buildStatsQuery(
+            team = team,
+            app = p.app,
+            fromDate = p.fromDate,
+            toDate = p.toDate,
+            surveyId = p.surveyId,
+            deviceType = p.deviceType,
+            segment = p.segment,
+            ratingFieldId = p.ratingFieldId,
+            ratingValue = p.ratingValue,
+            choiceFieldId = p.choiceFieldId,
+            choiceValue = p.choiceValue,
+        )
         val stats = statsService.getTaskPriorityStats(query)
         call.respond(stats)
     }
@@ -127,7 +218,19 @@ fun Route.statsRoutes(
         val team = call.authorizedTeam
         val p = params.parent
 
-        val query = buildStatsQuery(team, p.app, p.fromDate, p.toDate, null, p.deviceType, p.segment, ratingFieldId = p.ratingFieldId, ratingValue = p.ratingValue)
+        val query = buildStatsQuery(
+            team = team,
+            app = p.app,
+            fromDate = p.fromDate,
+            toDate = p.toDate,
+            surveyId = null,
+            deviceType = p.deviceType,
+            segment = p.segment,
+            ratingFieldId = p.ratingFieldId,
+            ratingValue = p.ratingValue,
+            choiceFieldId = p.choiceFieldId,
+            choiceValue = p.choiceValue,
+        )
         val distribution = statsService.getSurveyTypeDistribution(query)
         call.respond(distribution)
     }

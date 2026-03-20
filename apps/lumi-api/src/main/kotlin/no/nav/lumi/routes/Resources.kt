@@ -41,6 +41,10 @@ class ApiV1Intern {
         val ratingFieldId: String? = null,
         /** Filter by a specific rating value */
         val ratingValue: Int? = null,
+        /** Filter by a specific choice question fieldId */
+        val choiceFieldId: String? = null,
+        /** Filter by a specific choice option value/id */
+        val choiceValue: String? = null,
     ) {
         @Resource("{id}")
         @Serializable
@@ -91,6 +95,10 @@ class ApiV1Intern {
         val ratingFieldId: String? = null,
         /** Filter by a specific rating value */
         val ratingValue: Int? = null,
+        /** Filter by a specific choice question fieldId */
+        val choiceFieldId: String? = null,
+        /** Filter by a specific choice option value/id */
+        val choiceValue: String? = null,
     ) {
         @Resource("dashboard")
         @Serializable
@@ -245,5 +253,9 @@ class ApiV1Intern {
         val ratingFieldId: String? = null,
         /** Filter by a specific rating value */
         val ratingValue: Int? = null,
+        /** Filter by a specific choice question fieldId */
+        val choiceFieldId: String? = null,
+        /** Filter by a specific choice option value/id */
+        val choiceValue: String? = null,
     )
 }

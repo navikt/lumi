@@ -6,6 +6,7 @@ import no.nav.lumi.TestDatabase
 import no.nav.lumi.config.DatabaseHolder
 import no.nav.lumi.domain.StatsQuery
 import no.nav.lumi.insertTestFeedback
+import no.nav.lumi.insertTestFeedbackWithJson
 
 class FeedbackStatsRepositoryTest : FunSpec({
     val repository = FeedbackStatsRepository()
@@ -28,6 +29,54 @@ class FeedbackStatsRepositoryTest : FunSpec({
             val stats = repository.getStats(StatsQuery(team = "flex"))
             
             stats.totalCount shouldBe 3L
+        }
+
+        test("filters by choiceFieldId and choiceValue for singleChoice and multiChoice") {
+            insertTestFeedbackWithJson(
+                id = "single-match",
+                team = "flex",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-choice",
+                        "answers": [
+                            {"fieldId": "task_choice", "fieldType": "SINGLE_CHOICE", "question": {"label": "Velg"}, "value": {"type": "singleChoice", "selectedOptionId": "opt-1"}}
+                        ]
+                    }
+                """.trimIndent()
+            )
+            insertTestFeedbackWithJson(
+                id = "multi-match",
+                team = "flex",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-choice",
+                        "answers": [
+                            {"fieldId": "task_choice", "fieldType": "MULTI_CHOICE", "question": {"label": "Velg"}, "value": {"type": "multiChoice", "selectedOptionIds": ["opt-1", "opt-2"]}}
+                        ]
+                    }
+                """.trimIndent()
+            )
+            insertTestFeedbackWithJson(
+                id = "no-match",
+                team = "flex",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-choice",
+                        "answers": [
+                            {"fieldId": "task_choice", "fieldType": "SINGLE_CHOICE", "question": {"label": "Velg"}, "value": {"type": "singleChoice", "selectedOptionId": "opt-9"}}
+                        ]
+                    }
+                """.trimIndent()
+            )
+
+            val stats = repository.getStats(
+                StatsQuery(team = "flex", choiceFieldId = "task_choice", choiceValue = "opt-1")
+            )
+
+            stats.totalCount shouldBe 2L
         }
     }
 })

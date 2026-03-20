@@ -60,6 +60,8 @@ class StatsService(
             "task" to task,
             "ratingFieldId" to ratingFieldId,
             "ratingValue" to ratingValue?.toString(),
+            "choiceFieldId" to choiceFieldId,
+            "choiceValue" to choiceValue,
         )
             .filter { (_, value) -> value != null }
             .map { (key, value) -> "${enc(key)}=${enc(value!!)}" }

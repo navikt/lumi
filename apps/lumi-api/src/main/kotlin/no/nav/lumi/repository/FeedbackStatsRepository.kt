@@ -20,6 +20,9 @@ class FeedbackStatsRepository {
         
         /** Maximum variants to return per word for blocker analysis */
         const val MAX_VARIANTS = 5
+
+        /** Maximum length accepted for dynamic filter values used in JSONPath */
+        const val MAX_VALUE_LENGTH = 200
     }
 
     data class FeedbackAnalyticsStats(
@@ -565,6 +568,24 @@ class FeedbackStatsRepository {
                 )
                 val ratingExpr = Cast(ratingTextForField, IntegerColumnType())
                 query.andWhere { ratingExpr eq ratingValue }
+            }
+        }
+
+        // Filter by specific choice answer (fieldId + selected option id)
+        val choiceFieldId = criteria.choiceFieldId
+        val choiceValue = criteria.choiceValue?.trim()?.takeIf { it.isNotBlank() }?.take(MAX_VALUE_LENGTH)
+        if (!choiceFieldId.isNullOrBlank() && choiceValue != null) {
+            // Avoid JSONPath injection by only allowing simple fieldId characters.
+            val isSafeFieldId = choiceFieldId.all { it.isLetterOrDigit() || it == '-' || it == '_' }
+            if (isSafeFieldId) {
+                val singleChoicePath =
+                    "$.answers[*] ? (@.fieldId == \"$choiceFieldId\" && @.value.type == \"singleChoice\" && @.value.selectedOptionId == \"$choiceValue\")"
+                val multiChoicePath =
+                    "$.answers[*] ? (@.fieldId == \"$choiceFieldId\" && @.value.type == \"multiChoice\" && exists(@.value.selectedOptionIds[*] ? (@ == \"$choiceValue\")))"
+                query.andWhere {
+                    JsonbPathExists(FeedbackTable.feedbackJson, singleChoicePath) or
+                        JsonbPathExists(FeedbackTable.feedbackJson, multiChoicePath)
+                }
             }
         }
     }

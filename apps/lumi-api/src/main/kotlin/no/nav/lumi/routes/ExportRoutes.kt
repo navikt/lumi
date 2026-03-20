@@ -48,6 +48,8 @@ fun Route.exportRoutes(exportService: ExportService = defaultExportService) {
             segments = segments,
             ratingFieldId = params.ratingFieldId,
             ratingValue = params.ratingValue,
+            choiceFieldId = params.choiceFieldId,
+            choiceValue = params.choiceValue,
         )
         
         val feedbacks = exportService.getFeedbackForExport(query)

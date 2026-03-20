@@ -347,6 +347,70 @@ class FeedbackRepositoryTest : FunSpec({
             content.first().id shouldBe "rating-1"
         }
 
+        test("filters by choiceFieldId and choiceValue for singleChoice and multiChoice") {
+            insertTestFeedbackWithJson(
+                id = "choice-single-match",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-choice",
+                        "answers": [
+                            {
+                                "fieldId": "task_choice",
+                                "fieldType": "SINGLE_CHOICE",
+                                "question": {"label": "Hva skulle du gjøre?"},
+                                "value": {"type": "singleChoice", "selectedOptionId": "opt-1"}
+                            }
+                        ]
+                    }
+                """.trimIndent()
+            )
+            insertTestFeedbackWithJson(
+                id = "choice-multi-match",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-choice",
+                        "answers": [
+                            {
+                                "fieldId": "task_choice",
+                                "fieldType": "MULTI_CHOICE",
+                                "question": {"label": "Hva gjorde du?"},
+                                "value": {"type": "multiChoice", "selectedOptionIds": ["opt-2", "opt-1"]}
+                            }
+                        ]
+                    }
+                """.trimIndent()
+            )
+            insertTestFeedbackWithJson(
+                id = "choice-no-match",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-choice",
+                        "answers": [
+                            {
+                                "fieldId": "task_choice",
+                                "fieldType": "SINGLE_CHOICE",
+                                "question": {"label": "Hva skulle du gjøre?"},
+                                "value": {"type": "singleChoice", "selectedOptionId": "opt-9"}
+                            }
+                        ]
+                    }
+                """.trimIndent()
+            )
+
+            val (content, _, _) = repository.findPaginated(
+                FeedbackQuery(team = "team-test", choiceFieldId = "task_choice", choiceValue = "opt-1")
+            )
+
+            content shouldHaveSize 2
+            content.map { it.id }.toSet() shouldBe setOf("choice-single-match", "choice-multi-match")
+        }
+
         test("filters by segments") {
             insertTestFeedbackWithJson(
                 id = "segment-match",
