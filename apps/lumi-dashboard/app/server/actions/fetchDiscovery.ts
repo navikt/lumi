@@ -41,6 +41,8 @@ export const fetchDiscoveryServerFn = createServerFn({ method: "GET" })
       deviceType: data.deviceType,
       ratingFieldId: data.ratingFieldId,
       ratingValue: data.ratingValue,
+      choiceFieldId: data.choiceFieldId,
+      choiceValue: data.choiceValue,
     };
 
     const url = buildUrl(

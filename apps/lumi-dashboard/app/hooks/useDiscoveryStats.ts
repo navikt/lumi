@@ -23,6 +23,8 @@ export function useDiscoveryStats() {
       params.deviceType,
       params.ratingFieldId,
       params.ratingValue,
+      params.choiceFieldId,
+      params.choiceValue,
     ],
     queryFn: () =>
       fetchDiscoveryServerFn({
@@ -35,6 +37,8 @@ export function useDiscoveryStats() {
           deviceType: params.deviceType,
           ratingFieldId: params.ratingFieldId,
           ratingValue: params.ratingValue,
+          choiceFieldId: params.choiceFieldId,
+          choiceValue: params.choiceValue,
         },
       }),
     staleTime: 60000, // 1 minute

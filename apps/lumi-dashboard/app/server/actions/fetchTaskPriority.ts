@@ -43,6 +43,8 @@ export const fetchTaskPriorityServerFn = createServerFn({ method: "GET" })
       segment: data.segment?.split(",").filter(Boolean),
       ratingFieldId: data.ratingFieldId,
       ratingValue: data.ratingValue,
+      choiceFieldId: data.choiceFieldId,
+      choiceValue: data.choiceValue,
     };
 
     const url = buildUrl(

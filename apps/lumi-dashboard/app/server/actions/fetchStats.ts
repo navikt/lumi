@@ -26,6 +26,8 @@ export function transformStatsToBackendParams(data: {
   task?: string;
   ratingFieldId?: string;
   ratingValue?: string;
+  choiceFieldId?: string;
+  choiceValue?: string;
 }) {
   return {
     team: data.team,
@@ -38,6 +40,8 @@ export function transformStatsToBackendParams(data: {
     task: data.task,
     ratingFieldId: data.ratingFieldId,
     ratingValue: data.ratingValue,
+    choiceFieldId: data.choiceFieldId,
+    choiceValue: data.choiceValue,
   };
 }
 
@@ -54,6 +58,8 @@ export function buildStatsDashboardUrl(
     task?: string;
     ratingFieldId?: string;
     ratingValue?: string;
+    choiceFieldId?: string;
+    choiceValue?: string;
   },
 ) {
   return buildUrl(

@@ -30,6 +30,12 @@ export interface SearchParams {
 
   /** Filter by a specific rating value for ratingFieldId (e.g. 2=Ja, 1=Nei) */
   ratingValue?: string;
+
+  /** Filter by a specific choice fieldId */
+  choiceFieldId?: string;
+
+  /** Filter by a specific choice value for choiceFieldId */
+  choiceValue?: string;
 }
 
 // Store for managing search params reactively

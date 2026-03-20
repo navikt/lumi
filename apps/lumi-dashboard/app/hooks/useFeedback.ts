@@ -53,6 +53,8 @@ export function useFeedback() {
       params.segment,
       params.ratingFieldId,
       params.ratingValue,
+      params.choiceFieldId,
+      params.choiceValue,
     ],
     queryFn: () =>
       fetchFeedbackServerFn({
@@ -74,6 +76,8 @@ export function useFeedback() {
           segment: params.segment,
           ratingFieldId: params.ratingFieldId,
           ratingValue: params.ratingValue,
+          choiceFieldId: params.choiceFieldId,
+          choiceValue: params.choiceValue,
         },
       }),
     staleTime: 10000, // 10 seconds

@@ -42,6 +42,8 @@ export const fetchBlockerServerFn = createServerFn({ method: "GET" })
       task: data.task,
       ratingFieldId: data.ratingFieldId,
       ratingValue: data.ratingValue,
+      choiceFieldId: data.choiceFieldId,
+      choiceValue: data.choiceValue,
     };
 
     const url = buildUrl(

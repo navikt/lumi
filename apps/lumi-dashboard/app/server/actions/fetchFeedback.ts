@@ -45,6 +45,8 @@ function transformToBackendParams(data: Record<string, string | undefined>) {
 
     ratingFieldId: data.ratingFieldId,
     ratingValue: data.ratingValue,
+    choiceFieldId: data.choiceFieldId,
+    choiceValue: data.choiceValue,
   };
 }
 
