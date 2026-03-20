@@ -58,6 +58,8 @@ export function ExportPanel() {
           segment: params.segment,
           ratingFieldId: params.ratingFieldId,
           ratingValue: params.ratingValue,
+          choiceFieldId: params.choiceFieldId,
+          choiceValue: params.choiceValue,
         },
       });
 
