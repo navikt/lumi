@@ -18,6 +18,7 @@ export interface ProgressProps {
   showProgress?: boolean;
   totalSteps?: number;
   hasBranching?: boolean;
+  hasIntro?: boolean;
 }
 
 export interface QuestionContextProps {

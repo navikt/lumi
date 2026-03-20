@@ -79,6 +79,7 @@ export const SurveyFormContent = React.memo(
       showProgress = false,
       totalSteps = 0,
       hasBranching = false,
+      hasIntro = false,
     } = progress;
 
     const {
@@ -112,18 +113,21 @@ export const SurveyFormContent = React.memo(
 
     return (
       <>
-        {showProgress && isStepMode && totalSteps > 0 && currentStep > 0 && (
-          <ProgressBar
-            value={currentStep + 1}
-            valueMax={totalSteps}
-            size="small"
-            aria-label={
-              hasBranching
-                ? `Steg ${currentStep + 1}`
-                : `Steg ${currentStep + 1} av ${totalSteps}`
-            }
-          />
-        )}
+        {showProgress &&
+          isStepMode &&
+          totalSteps > 0 &&
+          (hasIntro || currentStep > 0) && (
+            <ProgressBar
+              value={currentStep + 1}
+              valueMax={totalSteps}
+              size="small"
+              aria-label={
+                hasBranching
+                  ? `Steg ${currentStep + 1}`
+                  : `Steg ${currentStep + 1} av ${totalSteps}`
+              }
+            />
+          )}
 
         <form onSubmit={onSubmit} noValidate>
           <VStack gap="space-16">

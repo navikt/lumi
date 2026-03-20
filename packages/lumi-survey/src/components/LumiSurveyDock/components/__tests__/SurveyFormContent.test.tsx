@@ -362,6 +362,30 @@ describe("SurveyFormContent", () => {
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
 
+  it("shows ProgressBar on step 0 when survey has intro (hasIntro)", () => {
+    render(
+      <SurveyFormContent
+        {...defaultProps({
+          stepNavigation: {
+            isStepMode: true,
+            currentStep: 0,
+            currentStepQuestion: ratingQuestion,
+          },
+          progress: {
+            showProgress: true,
+            totalSteps: 3,
+            hasBranching: false,
+            hasIntro: true,
+          },
+        })}
+      />,
+    );
+
+    const progressBar = screen.getByRole("progressbar");
+    expect(progressBar).toBeInTheDocument();
+    expect(progressBar).toHaveAttribute("aria-label", "Steg 1 av 3");
+  });
+
   it("shows ProgressBar with branching-aware label when hasBranching is true (after step 1)", () => {
     render(
       <SurveyFormContent
