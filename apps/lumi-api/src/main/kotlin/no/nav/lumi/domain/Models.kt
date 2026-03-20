@@ -320,6 +320,9 @@ sealed class FieldStats {
     @Serializable
     @SerialName("choice")
     data class Choice(
+        val responseCount: Int,
+        val responseRate: Double,
+        val totalSelections: Int,
         val distribution: Map<String, ChoiceDistributionEntry>
     ) : FieldStats()
 }

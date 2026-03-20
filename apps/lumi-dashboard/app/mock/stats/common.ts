@@ -206,6 +206,10 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
 
       case "SINGLE_CHOICE":
       case "MULTI_CHOICE": {
+        const totalSelections = Array.from(field.optionCounts.values()).reduce(
+          (sum, option) => sum + option.count,
+          0,
+        );
         const distribution: Record<
           string,
           { label: string; count: number; percentage: number }
@@ -222,6 +226,9 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
         }
         stats = {
           type: "choice",
+          responseCount: field.totalChoices,
+          responseRate: totalItems > 0 ? field.totalChoices / totalItems : 0,
+          totalSelections,
           distribution,
         };
         break;

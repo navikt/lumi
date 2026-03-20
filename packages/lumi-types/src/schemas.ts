@@ -636,6 +636,9 @@ const TextStatsSchema = z.object({
 
 const ChoiceStatsSchema = z.object({
   type: z.literal("choice"),
+  responseCount: z.number().optional(),
+  responseRate: z.number().optional(),
+  totalSelections: z.number().optional(),
   distribution: z.record(
     z.string(),
     z.object({

@@ -25,10 +25,21 @@ export function ChoiceFieldCard({ field, totalCount }: FieldCardProps) {
     .sort((a, b) => b.count - a.count);
 
   const maxCount = Math.max(...choices.map((c) => c.count), 1);
-  const totalResponses = choices.reduce((sum, c) => sum + c.count, 0);
-
+  const selectionSum = choices.reduce((sum, choice) => sum + choice.count, 0);
+  const totalSelections = stats.totalSelections ?? selectionSum;
+  // Dashboard and API deploy separately, so keep one rollout window compatible with older payloads.
+  const responseCount =
+    stats.responseCount ??
+    (field.fieldType === "MULTI_CHOICE"
+      ? Math.min(totalSelections, totalCount)
+      : totalSelections);
   const responsePct =
-    totalCount > 0 ? Math.round((totalResponses / totalCount) * 100) : 0;
+    totalCount > 0 ? Math.round((responseCount / totalCount) * 100) : 0;
+  const showSelectionsSummary =
+    field.fieldType === "MULTI_CHOICE" &&
+    stats.totalSelections != null &&
+    totalSelections > 0 &&
+    totalSelections !== responseCount;
 
   return (
     <DashboardCard padding="space-20" className={styles.cardContent}>
@@ -36,10 +47,13 @@ export function ChoiceFieldCard({ field, totalCount }: FieldCardProps) {
         icon={<ChatElipsisIcon fontSize="1.25rem" aria-hidden />}
         label={field.label}
         titleTestId={`field-stat-title-${field.fieldId}`}
-        subtitle={`${totalResponses} av ${totalCount} har svart (${responsePct}%)`}
+        subtitle={`${responseCount} av ${totalCount} har svart (${responsePct}%)`}
       />
 
       <VStack gap="space-8" marginBlock="space-12 space-0">
+        {showSelectionsSummary ? (
+          <BodyShort size="small">{totalSelections} valg totalt</BodyShort>
+        ) : null}
         {choices.map((choice, index) => {
           const barColorClass =
             CHOICE_BAR_COLOR_CLASSES[index % CHOICE_BAR_COLOR_CLASSES.length];

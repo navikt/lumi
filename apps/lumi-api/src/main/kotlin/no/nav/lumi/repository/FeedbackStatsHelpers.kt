@@ -132,15 +132,20 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
             FieldType.SINGLE_CHOICE, FieldType.MULTI_CHOICE -> {
                 val optionLabels = first.question.options.orEmpty().associate { it.id to it.label }
                 val counts = mutableMapOf<String, Int>()
+                var responseCount = 0
 
                 for ((_, answer) in entries) {
                     when (val value = answer.value) {
                         is AnswerValue.SingleChoice -> {
+                            responseCount += 1
                             counts[value.selectedOptionId] = (counts[value.selectedOptionId] ?: 0) + 1
                         }
 
                         is AnswerValue.MultiChoice -> {
-                            for (id in value.selectedOptionIds) {
+                            if (value.selectedOptionIds.isNotEmpty()) {
+                                responseCount += 1
+                            }
+                            for (id in value.selectedOptionIds.toSet()) {
                                 counts[id] = (counts[id] ?: 0) + 1
                             }
                         }
@@ -150,13 +155,18 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
                 }
 
                 val totalSelections = counts.values.sum()
-                if (totalSelections == 0) continue
+                if (responseCount == 0 || totalSelections == 0) continue
+                val responseRate = if (totalFeedbackCount > 0) {
+                    responseCount.toDouble() / totalFeedbackCount
+                } else {
+                    0.0
+                }
 
                 val distribution = counts
                     .entries
                     .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
                     .associate { (optionId, count) ->
-                        val percentage = kotlin.math.round((count.toDouble() / totalSelections) * 100.0).toInt()
+                        val percentage = kotlin.math.round((count.toDouble() / responseCount) * 100.0).toInt()
                         optionId to ChoiceDistributionEntry(
                             label = optionLabels[optionId] ?: optionId,
                             count = count,
@@ -169,7 +179,12 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
                         fieldId = fieldId,
                         fieldType = fieldType,
                         label = label,
-                        stats = FieldStats.Choice(distribution = distribution)
+                        stats = FieldStats.Choice(
+                            responseCount = responseCount,
+                            responseRate = responseRate,
+                            totalSelections = totalSelections,
+                            distribution = distribution
+                        )
                     )
                 )
             }

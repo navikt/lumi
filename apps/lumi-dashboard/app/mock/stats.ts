@@ -263,6 +263,15 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
         (sum, c) => sum + c,
         0,
       );
+      const responseCount = field.values.filter((value) => {
+        if (value.type === "singleChoice") {
+          return value.selectedOptionId.length > 0;
+        }
+        if (value.type === "multiChoice") {
+          return value.selectedOptionIds.length > 0;
+        }
+        return false;
+      }).length;
 
       const distribution: Record<
         string,
@@ -274,9 +283,7 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
           label: opt.label,
           count,
           percentage:
-            totalSelections > 0
-              ? Math.round((count / totalSelections) * 100)
-              : 0,
+            responseCount > 0 ? Math.round((count / responseCount) * 100) : 0,
         };
       }
 
@@ -286,6 +293,9 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
         label: field.label,
         stats: {
           type: "choice",
+          responseCount,
+          responseRate: items.length > 0 ? responseCount / items.length : 0,
+          totalSelections,
           distribution,
         },
       });
