@@ -411,6 +411,92 @@ class FeedbackRepositoryTest : FunSpec({
             content.map { it.id }.toSet() shouldBe setOf("choice-single-match", "choice-multi-match")
         }
 
+        test("returns empty result for unknown choice optionId") {
+            insertTestFeedbackWithJson(
+                id = "choice-single-match",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-choice",
+                        "answers": [
+                            {
+                                "fieldId": "task_choice",
+                                "fieldType": "SINGLE_CHOICE",
+                                "question": {"label": "Hva skulle du gjøre?"},
+                                "value": {"type": "singleChoice", "selectedOptionId": "opt-1"}
+                            }
+                        ]
+                    }
+                """.trimIndent()
+            )
+
+            val (content, total, _) = repository.findPaginated(
+                FeedbackQuery(team = "team-test", choiceFieldId = "task_choice", choiceValue = "unknown-option")
+            )
+
+            content.shouldBeEmpty()
+            total shouldBe 0
+        }
+
+        test("filters by choice and rating together with AND semantics") {
+            insertTestFeedbackWithJson(
+                id = "match-both",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-choice-rating",
+                        "answers": [
+                            {"fieldId": "task_choice", "fieldType": "SINGLE_CHOICE", "question": {"label": "Oppgave"}, "value": {"type": "singleChoice", "selectedOptionId": "opt-1"}},
+                            {"fieldId": "rating_main", "fieldType": "RATING", "question": {"label": "Hvordan gikk det?"}, "value": {"type": "rating", "rating": 1}}
+                        ]
+                    }
+                """.trimIndent()
+            )
+            insertTestFeedbackWithJson(
+                id = "match-choice-only",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-choice-rating",
+                        "answers": [
+                            {"fieldId": "task_choice", "fieldType": "SINGLE_CHOICE", "question": {"label": "Oppgave"}, "value": {"type": "singleChoice", "selectedOptionId": "opt-1"}},
+                            {"fieldId": "rating_main", "fieldType": "RATING", "question": {"label": "Hvordan gikk det?"}, "value": {"type": "rating", "rating": 3}}
+                        ]
+                    }
+                """.trimIndent()
+            )
+            insertTestFeedbackWithJson(
+                id = "match-rating-only",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-choice-rating",
+                        "answers": [
+                            {"fieldId": "task_choice", "fieldType": "SINGLE_CHOICE", "question": {"label": "Oppgave"}, "value": {"type": "singleChoice", "selectedOptionId": "opt-2"}},
+                            {"fieldId": "rating_main", "fieldType": "RATING", "question": {"label": "Hvordan gikk det?"}, "value": {"type": "rating", "rating": 1}}
+                        ]
+                    }
+                """.trimIndent()
+            )
+
+            val (content, _, _) = repository.findPaginated(
+                FeedbackQuery(
+                    team = "team-test",
+                    choiceFieldId = "task_choice",
+                    choiceValue = "opt-1",
+                    ratingFieldId = "rating_main",
+                    ratingValue = 1
+                )
+            )
+
+            content shouldHaveSize 1
+            content.first().id shouldBe "match-both"
+        }
+
         test("filters by segments") {
             insertTestFeedbackWithJson(
                 id = "segment-match",

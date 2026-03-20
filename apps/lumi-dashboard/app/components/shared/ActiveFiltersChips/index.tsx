@@ -104,6 +104,42 @@ export function ActiveFiltersChips() {
     });
   }
 
+  // Choice field filter (e.g. choice cards drill-down)
+  if (params.choiceFieldId && params.choiceValue) {
+    const field = statsQuery.data?.fieldStats?.find(
+      (f) => f.fieldId === params.choiceFieldId,
+    );
+
+    const fieldLabel = field?.label ?? "Valg";
+
+    let valueLabel = params.choiceValue;
+    if (
+      field &&
+      (field.fieldType === "SINGLE_CHOICE" ||
+        field.fieldType === "MULTI_CHOICE")
+    ) {
+      const stats = field.stats as unknown as {
+        distribution?: Record<string, { label?: string }>;
+      };
+      const optionLabel = stats.distribution?.[params.choiceValue]?.label;
+      if (optionLabel) {
+        valueLabel = optionLabel;
+      }
+    }
+
+    chips.push({
+      key: `choice-${params.choiceFieldId}-${params.choiceValue}`,
+      label: fieldLabel,
+      value: valueLabel,
+      onRemove: () =>
+        setParams({
+          choiceFieldId: undefined,
+          choiceValue: undefined,
+          page: "1",
+        }),
+    });
+  }
+
   // Segment filters (metadata)
   for (const [key, value] of Object.entries(activeFilters)) {
     chips.push({
