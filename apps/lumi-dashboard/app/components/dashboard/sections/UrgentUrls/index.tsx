@@ -93,21 +93,45 @@ export function UrgentUrls() {
 /**
  * URL link component with truncation support for mobile
  */
-function UrlLink({
+export function isValidNavUrl(path: string): boolean {
+  if (path.startsWith("/")) {
+    const lowerCasePath = path.toLowerCase();
+    return !lowerCasePath.includes("javascript:") && !path.includes("//");
+  }
+
+  try {
+    const parsedUrl = new URL(path);
+    const hostname = parsedUrl.hostname.toLowerCase();
+    const isNavDomain = hostname === "nav.no" || hostname.endsWith(".nav.no");
+
+    return parsedUrl.protocol === "https:" && isNavDomain;
+  } catch {
+    return false;
+  }
+}
+
+export function UrlLink({
   path,
   truncate = false,
 }: {
   path: string;
   truncate?: boolean;
 }) {
-  const href = path.startsWith("http") ? path : `https://www.nav.no${path}`;
+  const className = `${styles.urlLink} ${truncate ? styles.urlLinkTruncate : ""}`;
+  const isRelativePath = path.startsWith("/");
+
+  if (!isValidNavUrl(path)) {
+    return <span className={className}>{path}</span>;
+  }
+
+  const href = isRelativePath ? `https://www.nav.no${path}` : path;
 
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className={`${styles.urlLink} ${truncate ? styles.urlLinkTruncate : ""}`}
+      className={className}
     >
       {path}
     </a>

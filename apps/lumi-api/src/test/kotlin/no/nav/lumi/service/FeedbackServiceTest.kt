@@ -59,6 +59,40 @@ class FeedbackServiceTest : FunSpec({
             val dto = repository.findById(id, "flex").shouldNotBeNull()
             dto.sensitiveDataRedacted shouldBe true
         }
+
+        test("strips html tags in text answers and context before storage") {
+            val feedbackJson = """
+                {
+                    "context": {
+                        "url": "https://www.nav.no/<b>soknad</b>",
+                        "pathname": "/<i>arbeid</i>",
+                        "userAgent": "<script>bot</script>Mozilla",
+                        "tags": {
+                            "segment": "<b>intern</b>"
+                        }
+                    },
+                    "answers": [
+                        {
+                            "fieldId": "text-answer",
+                            "value": {
+                                "type": "text",
+                                "text": "Hei <b>team</b>"
+                            }
+                        }
+                    ]
+                }
+            """.trimIndent()
+
+            val id = service.save(feedbackJson, "flex", "test-app")
+            val saved = repository.findRawById(id, "flex").shouldNotBeNull()
+
+            saved.feedbackJson shouldNotContain "<b>"
+            saved.feedbackJson shouldNotContain "<script>"
+            saved.feedbackJson shouldContain "\"text\":\"Hei team\""
+            saved.feedbackJson shouldContain "\"pathname\":\"/arbeid\""
+            saved.feedbackJson shouldContain "\"userAgent\":\"botMozilla\""
+            saved.feedbackJson shouldContain "\"segment\":\"intern\""
+        }
     }
 
     context("delete") {

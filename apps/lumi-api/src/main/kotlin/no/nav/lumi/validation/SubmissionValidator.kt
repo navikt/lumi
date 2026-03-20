@@ -7,12 +7,22 @@ import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.AnswerValue
 import no.nav.lumi.domain.FeedbackSubmissionV1
 import no.nav.lumi.domain.RatingVariant
+import java.net.URI
 import java.time.Instant
 
 object SubmissionValidator {
     private const val MAX_SURVEY_ID_LENGTH = 200
     private const val MAX_ANSWERS_PER_SUBMISSION = 50
+    private const val MAX_ANSWER_FIELD_ID_LENGTH = 200
+    private const val MAX_QUESTION_LABEL_LENGTH = 500
+    private const val MAX_QUESTION_DESCRIPTION_LENGTH = 2_000
+    private const val MAX_OPTION_ID_LENGTH = 200
+    private const val MAX_OPTION_LABEL_LENGTH = 500
     private const val MAX_TEXT_ANSWER_LENGTH = 2_000
+    private const val MAX_SELECTED_OPTION_ID_LENGTH = 200
+    private const val MAX_CONTEXT_URL_LENGTH = 2_048
+    private const val MAX_CONTEXT_PATHNAME_LENGTH = 2_048
+    private const val MAX_CONTEXT_USER_AGENT_LENGTH = 1_000
     private const val MAX_CONTEXT_TAGS = 20
     private const val MAX_CONTEXT_TAG_KEY_LENGTH = 50
     private const val MAX_CONTEXT_TAG_VALUE_LENGTH = 100
@@ -61,6 +71,46 @@ object SubmissionValidator {
         }
 
         submission.context?.let { context ->
+            context.url?.let { url ->
+                if (url.length > MAX_CONTEXT_URL_LENGTH) {
+                    throw ApiErrorException.BadRequestException(
+                        "Invalid payload: context.url max length is $MAX_CONTEXT_URL_LENGTH"
+                    )
+                }
+
+                val uri = runCatching { URI(url) }
+                    .getOrElse { throw ApiErrorException.BadRequestException("Invalid payload: context.url must be a valid URI") }
+
+                if (uri.scheme?.lowercase() != "https") {
+                    throw ApiErrorException.BadRequestException("Invalid payload: context.url must use https scheme")
+                }
+
+                if (uri.host.isNullOrBlank()) {
+                    throw ApiErrorException.BadRequestException("Invalid payload: context.url must include host")
+                }
+            }
+
+            context.pathname?.let { pathname ->
+                if (pathname.length > MAX_CONTEXT_PATHNAME_LENGTH) {
+                    throw ApiErrorException.BadRequestException(
+                        "Invalid payload: context.pathname max length is $MAX_CONTEXT_PATHNAME_LENGTH"
+                    )
+                }
+                if (pathname.isBlank() || !pathname.startsWith("/")) {
+                    throw ApiErrorException.BadRequestException(
+                        "Invalid payload: context.pathname must start with /"
+                    )
+                }
+            }
+
+            context.userAgent?.let { userAgent ->
+                if (userAgent.length > MAX_CONTEXT_USER_AGENT_LENGTH) {
+                    throw ApiErrorException.BadRequestException(
+                        "Invalid payload: context.userAgent max length is $MAX_CONTEXT_USER_AGENT_LENGTH"
+                    )
+                }
+            }
+
             val tags = context.tags
             if (tags != null) {
                 if (tags.size > MAX_CONTEXT_TAGS) {
@@ -119,6 +169,33 @@ object SubmissionValidator {
             if (answer.fieldId.isBlank()) {
                 throw ApiErrorException.BadRequestException("Invalid payload: answers.fieldId must be non-blank")
             }
+            if (answer.fieldId.length > MAX_ANSWER_FIELD_ID_LENGTH) {
+                throw ApiErrorException.BadRequestException(
+                    "Invalid payload: answers.fieldId max length is $MAX_ANSWER_FIELD_ID_LENGTH"
+                )
+            }
+            if (answer.question.label.length > MAX_QUESTION_LABEL_LENGTH) {
+                throw ApiErrorException.BadRequestException(
+                    "Invalid payload: answers.question.label max length is $MAX_QUESTION_LABEL_LENGTH"
+                )
+            }
+            if (answer.question.description != null && answer.question.description.length > MAX_QUESTION_DESCRIPTION_LENGTH) {
+                throw ApiErrorException.BadRequestException(
+                    "Invalid payload: answers.question.description max length is $MAX_QUESTION_DESCRIPTION_LENGTH"
+                )
+            }
+            answer.question.options?.forEach { option ->
+                if (option.id.length > MAX_OPTION_ID_LENGTH) {
+                    throw ApiErrorException.BadRequestException(
+                        "Invalid payload: answers.question.options.id max length is $MAX_OPTION_ID_LENGTH"
+                    )
+                }
+                if (option.label.length > MAX_OPTION_LABEL_LENGTH) {
+                    throw ApiErrorException.BadRequestException(
+                        "Invalid payload: answers.question.options.label max length is $MAX_OPTION_LABEL_LENGTH"
+                    )
+                }
+            }
 
             when (val value = answer.value) {
                 is AnswerValue.Rating -> {
@@ -159,11 +236,26 @@ object SubmissionValidator {
                     if (value.selectedOptionId.isBlank()) {
                         throw ApiErrorException.BadRequestException("Invalid payload: selectedOptionId must be non-blank")
                     }
+                    if (value.selectedOptionId.length > MAX_SELECTED_OPTION_ID_LENGTH) {
+                        throw ApiErrorException.BadRequestException(
+                            "Invalid payload: selectedOptionId max length is $MAX_SELECTED_OPTION_ID_LENGTH"
+                        )
+                    }
                 }
 
                 is AnswerValue.MultiChoice -> {
                     if (value.selectedOptionIds.isEmpty()) {
                         throw ApiErrorException.BadRequestException("Invalid payload: selectedOptionIds must be non-empty")
+                    }
+                    value.selectedOptionIds.forEach { selectedOptionId ->
+                        if (selectedOptionId.isBlank()) {
+                            throw ApiErrorException.BadRequestException("Invalid payload: selectedOptionIds must be non-blank")
+                        }
+                        if (selectedOptionId.length > MAX_SELECTED_OPTION_ID_LENGTH) {
+                            throw ApiErrorException.BadRequestException(
+                                "Invalid payload: selectedOptionIds max length is $MAX_SELECTED_OPTION_ID_LENGTH"
+                            )
+                        }
                     }
                 }
 

@@ -4,12 +4,14 @@ import kotlinx.serialization.json.*
 import no.nav.lumi.domain.FeedbackDto
 import no.nav.lumi.domain.FeedbackQuery
 import no.nav.lumi.repository.FeedbackRepository
+import no.nav.lumi.sensitive.HtmlSanitizer
 import no.nav.lumi.sensitive.SensitiveDataFilter
 import org.slf4j.LoggerFactory
 
 class FeedbackService(
     private val repository: FeedbackRepository = FeedbackRepository(),
-    private val sensitiveDataFilter: SensitiveDataFilter = SensitiveDataFilter.DEFAULT
+    private val sensitiveDataFilter: SensitiveDataFilter = SensitiveDataFilter.DEFAULT,
+    private val htmlSanitizer: HtmlSanitizer = HtmlSanitizer.DEFAULT
 ) {
     private val log = LoggerFactory.getLogger(FeedbackService::class.java)
     private val json = Json { ignoreUnknownKeys = true }
@@ -59,6 +61,11 @@ class FeedbackService(
             val jsonElement = json.parseToJsonElement(feedbackJson)
             val jsonObj = jsonElement.jsonObject.toMutableMap()
             var hasRedactions = false
+
+            val context = jsonObj["context"] as? JsonObject
+            if (context != null) {
+                jsonObj["context"] = sanitizeContext(context)
+            }
             
             val answers = jsonObj["answers"] as? JsonArray
             if (answers != null) {
@@ -71,13 +78,14 @@ class FeedbackService(
                             val type = valueObj["type"]?.jsonPrimitive?.contentOrNull
                             if (type == "text") {
                                 val originalText = valueObj["text"]?.jsonPrimitive?.contentOrNull ?: ""
-                                val redacted = sensitiveDataFilter.redact(originalText)
+                                val sanitizedText = htmlSanitizer.stripTags(originalText)
+                                val redacted = sensitiveDataFilter.redact(sanitizedText)
                                 if (redacted.wasRedacted) {
                                     hasRedactions = true
-                                    valueObj["text"] = JsonPrimitive(redacted.redactedText)
-                                    answerObj["value"] = JsonObject(valueObj)
                                     log.info("Redacted sensitive data from answer fieldId=${answerObj["fieldId"]}: ${redacted.matchedPatterns}")
                                 }
+                                valueObj["text"] = JsonPrimitive(redacted.redactedText)
+                                answerObj["value"] = JsonObject(valueObj)
                             }
                         }
                         JsonObject(answerObj)
@@ -97,5 +105,28 @@ class FeedbackService(
             log.warn("Failed to redact feedback JSON, returning original", e)
             feedbackJson
         }
+    }
+
+    private fun sanitizeContext(context: JsonObject): JsonObject {
+        val sanitized = context.toMutableMap()
+        sanitizeStringField(sanitized, "url")
+        sanitizeStringField(sanitized, "pathname")
+        sanitizeStringField(sanitized, "userAgent")
+
+        val tags = sanitized["tags"] as? JsonObject
+        if (tags != null) {
+            val sanitizedTags = tags.mapValues { (_, value) ->
+                val content = (value as? JsonPrimitive)?.contentOrNull
+                if (content != null) JsonPrimitive(htmlSanitizer.stripTags(content)) else value
+            }
+            sanitized["tags"] = JsonObject(sanitizedTags)
+        }
+
+        return JsonObject(sanitized)
+    }
+
+    private fun sanitizeStringField(container: MutableMap<String, JsonElement>, fieldName: String) {
+        val rawValue = container[fieldName]?.jsonPrimitive?.contentOrNull ?: return
+        container[fieldName] = JsonPrimitive(htmlSanitizer.stripTags(rawValue))
     }
 }
