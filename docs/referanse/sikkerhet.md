@@ -35,6 +35,12 @@ API-et håndhever rate limiting på flere nivåer for å beskytte mot misbruk:
 | Eksport | 30 req/min | Per bruker |
 | Global | 1000 req/min | Alle kall samlet |
 
+## Inndatavalidering
+
+Alle submissions valideres nå strengt i API-et før lagring. Dette inkluderer lengdegrenser og formatsjekker på alle relevante felter, URL-validering med krav om `https`, validering av pathname-format, og begrensninger på størrelse/dybde i `debug`-objektet.
+
+For integratører betyr dette at ugyldig payload avvises tidlig med tydelig valideringsfeil, i stedet for å bli lagret med uforutsigbar struktur.
+
 ## Penetrasjonstest
 
 Lumi har gjennomgått en penetrasjonstest utført av Team SåPe, Navs interne sikkerhetstest-team.
@@ -45,7 +51,9 @@ Team SåPe gjennomførte testen i februar 2026. Testingen inkluderte kildekodegj
 Ingen sårbarheter med høy eller kritisk alvorlighetsgrad ble funnet. Fundamentale sikkerhetsmekanismer som autentisering og autorisasjon fungerer etter hensikten.
 :::
 
-Rapporten fremhever at React sin innebygde auto-escaping gir god beskyttelse mot XSS, understøttet av tiltak mot CSV-injeksjon. Totalt ble 5 funn identifisert — 2 med middels alvorlighetsgrad og 3 informasjonelle — alle relatert til forbedringspotensial i inndatavalidering. Funnene utbedres løpende.
+Rapporten fremhever at React sin innebygde auto-escaping gir god beskyttelse mot XSS, understøttet av tiltak mot CSV-injeksjon. Totalt ble 5 funn identifisert — 2 med middels alvorlighetsgrad og 3 informasjonelle. Alle funn er utbedret per mars 2026.
+
+Oppfølgingen omfattet blant annet strengere inndatavalidering i API-et, HTML-sanitering av kontekstfelt før lagring, samt URL-hardening i dashboardet der kun gyldige `https://*.nav.no`-lenker vises som klikkbare.
 
 ## Risiko- og sårbarhetsanalyse (ROS)
 
