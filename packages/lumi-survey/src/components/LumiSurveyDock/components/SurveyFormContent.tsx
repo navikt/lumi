@@ -112,7 +112,7 @@ export const SurveyFormContent = React.memo(
 
     return (
       <>
-        {showProgress && isStepMode && totalSteps > 0 && (
+        {showProgress && isStepMode && totalSteps > 0 && currentStep > 0 && (
           <ProgressBar
             value={currentStep + 1}
             valueMax={totalSteps}

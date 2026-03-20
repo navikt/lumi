@@ -315,7 +315,7 @@ describe("SurveyFormContent", () => {
 
   // ---- ProgressBar ----
 
-  it("shows ProgressBar when showProgress is true in step mode", () => {
+  it("shows ProgressBar when showProgress is true in step mode (after step 1)", () => {
     render(
       <SurveyFormContent
         {...defaultProps({
@@ -341,13 +341,34 @@ describe("SurveyFormContent", () => {
     expect(progressBar).toHaveAttribute("aria-valuemax", "3");
   });
 
-  it("shows ProgressBar with branching-aware label when hasBranching is true", () => {
+  it("does NOT show ProgressBar on the first step (step 0)", () => {
     render(
       <SurveyFormContent
         {...defaultProps({
           stepNavigation: {
             isStepMode: true,
             currentStep: 0,
+            currentStepQuestion: ratingQuestion,
+          },
+          progress: {
+            showProgress: true,
+            totalSteps: 3,
+            hasBranching: false,
+          },
+        })}
+      />,
+    );
+
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+  });
+
+  it("shows ProgressBar with branching-aware label when hasBranching is true (after step 1)", () => {
+    render(
+      <SurveyFormContent
+        {...defaultProps({
+          stepNavigation: {
+            isStepMode: true,
+            currentStep: 1,
             currentStepQuestion: ratingQuestion,
           },
           progress: {
@@ -361,7 +382,7 @@ describe("SurveyFormContent", () => {
 
     const progressBar = screen.getByRole("progressbar");
     // When branching, label omits " av X" since total is unpredictable
-    expect(progressBar).toHaveAttribute("aria-label", "Steg 1");
+    expect(progressBar).toHaveAttribute("aria-label", "Steg 2");
   });
 
   it("does NOT show ProgressBar when showProgress is false", () => {

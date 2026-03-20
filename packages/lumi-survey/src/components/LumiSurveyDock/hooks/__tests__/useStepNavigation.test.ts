@@ -1219,4 +1219,455 @@ describe("useStepNavigation", () => {
       expect(result.current.currentStep).toBe(0);
     });
   });
+
+  // ------------------------------------------
+  // Bug: progress total jumps with visibleIf
+  // ------------------------------------------
+  describe("progress with dynamically visible questions", () => {
+    const CHAINED_QUESTIONS: LumiSurveyQuestion[] = [
+      {
+        id: "q1",
+        type: "singleChoice" as const,
+        prompt: "First question",
+        required: true,
+        options: [
+          { value: "a", label: "A" },
+          { value: "b", label: "B" },
+        ],
+      },
+      {
+        id: "q2",
+        type: "text" as const,
+        prompt: "Second (visible after q1)",
+        required: false,
+        maxLength: 500,
+        visibleIf: {
+          field: "ANSWER" as const,
+          questionId: "q1",
+          operator: "EXISTS" as const,
+        },
+      },
+      {
+        id: "q3",
+        type: "text" as const,
+        prompt: "Third (visible after q2)",
+        required: false,
+        maxLength: 500,
+        visibleIf: {
+          field: "ANSWER" as const,
+          questionId: "q2",
+          operator: "EXISTS" as const,
+        },
+      },
+    ];
+    const BRANCHED_QUESTIONS: LumiSurveyQuestion[] = [
+      {
+        id: "q1",
+        type: "singleChoice" as const,
+        prompt: "Branch root",
+        required: true,
+        options: [
+          { value: "a", label: "A" },
+          { value: "b", label: "B" },
+        ],
+      },
+      {
+        id: "q2",
+        type: "text" as const,
+        prompt: "Branch A step 1",
+        required: false,
+        maxLength: 500,
+        visibleIf: {
+          field: "ANSWER" as const,
+          questionId: "q1",
+          operator: "EQ" as const,
+          value: "a",
+        },
+      },
+      {
+        id: "q3",
+        type: "text" as const,
+        prompt: "Branch A step 2",
+        required: false,
+        maxLength: 500,
+        visibleIf: {
+          field: "ANSWER" as const,
+          questionId: "q2",
+          operator: "EXISTS" as const,
+        },
+      },
+      {
+        id: "q4",
+        type: "text" as const,
+        prompt: "Branch B step 1",
+        required: false,
+        maxLength: 500,
+        visibleIf: {
+          field: "ANSWER" as const,
+          questionId: "q1",
+          operator: "EQ" as const,
+          value: "b",
+        },
+      },
+    ];
+
+    it("should not report totalSteps as 1 when only first question is visible", () => {
+      const onStepChange = vi.fn();
+
+      renderHook(() =>
+        useStepNavigation({
+          questions: CHAINED_QUESTIONS,
+          answers: {},
+          forceStepMode: true,
+          onStepChange,
+        }),
+      );
+
+      // Bug: onStepChange is called with (0, 1) because only q1 is visible.
+      // This makes the progress bar show 100% complete on the first step.
+      // Expected: totalSteps should account for questions that WILL become
+      // visible as the user progresses, not just currently visible ones.
+      const [, totalSteps] = onStepChange.mock.calls[0];
+      expect(totalSteps).toBeGreaterThan(1);
+    });
+
+    it("should not decrease totalSteps as user progresses through chained questions", () => {
+      const onStepChange = vi.fn();
+
+      const { rerender } = renderHook(
+        ({ answers }: { answers: Record<string, LumiSurveyAnswerValue> }) =>
+          useStepNavigation({
+            questions: CHAINED_QUESTIONS,
+            answers,
+            forceStepMode: true,
+            onStepChange,
+          }),
+        { initialProps: { answers: {} } },
+      );
+
+      const initialTotal = onStepChange.mock.calls[0][1];
+
+      // User answers q1 → q2 becomes visible
+      rerender({ answers: { q1: "a" } });
+
+      const afterQ1Total =
+        onStepChange.mock.calls[onStepChange.mock.calls.length - 1][1];
+
+      // The total should not have been 1 initially and then jumped to 2.
+      // Progress bar should never go backwards.
+      expect(afterQ1Total).toBeGreaterThanOrEqual(initialTotal);
+    });
+
+    it("should reset high-water mark when resetNavigation is called", () => {
+      const { result, rerender } = renderHook(
+        ({ answers }: { answers: Record<string, LumiSurveyAnswerValue> }) =>
+          useStepNavigation({
+            questions: BRANCHED_QUESTIONS,
+            answers,
+            forceStepMode: true,
+          }),
+        { initialProps: { answers: {} } },
+      );
+
+      // Initial estimate assumes the longest reachable branch (q1 -> q2 -> q3)
+      expect(result.current.totalVisibleSteps).toBe(3);
+
+      // User picks shorter branch "b". Raw estimate is now 2, but HWM keeps 3.
+      rerender({ answers: { q1: "b" } });
+      expect(result.current.totalVisibleSteps).toBe(3);
+
+      act(() => {
+        result.current.resetNavigation();
+      });
+
+      rerender({ answers: { q1: "b" } });
+
+      // After reset, HWM is cleared and estimate can drop to the current path size.
+      expect(result.current.totalVisibleSteps).toBe(2);
+    });
+
+    it("should reset high-water mark when questions change", () => {
+      const NEW_SURVEY_QUESTIONS: LumiSurveyQuestion[] = [
+        {
+          id: "new-q1",
+          type: "text",
+          prompt: "Only question in new survey",
+          required: false,
+          maxLength: 500,
+        },
+      ];
+
+      const { result, rerender } = renderHook(
+        ({
+          questions,
+          answers,
+        }: {
+          questions: LumiSurveyQuestion[];
+          answers: Record<string, LumiSurveyAnswerValue>;
+        }) =>
+          useStepNavigation({
+            questions,
+            answers,
+            forceStepMode: true,
+          }),
+        {
+          initialProps: {
+            questions: BRANCHED_QUESTIONS,
+            answers: {},
+          },
+        },
+      );
+
+      expect(result.current.totalVisibleSteps).toBe(3);
+
+      rerender({
+        questions: BRANCHED_QUESTIONS,
+        answers: { q1: "b" },
+      });
+      expect(result.current.totalVisibleSteps).toBe(3);
+
+      rerender({
+        questions: NEW_SURVEY_QUESTIONS,
+        answers: {},
+      });
+
+      expect(result.current.totalVisibleSteps).toBe(1);
+    });
+
+    it("should keep new survey high-water mark after questions change and subsequent answer updates", () => {
+      const NEW_SURVEY_QUESTIONS: LumiSurveyQuestion[] = BRANCHED_QUESTIONS.map(
+        (question) => ({ ...question }),
+      );
+
+      const { result, rerender } = renderHook(
+        ({
+          questions,
+          answers,
+        }: {
+          questions: LumiSurveyQuestion[];
+          answers: Record<string, LumiSurveyAnswerValue>;
+        }) =>
+          useStepNavigation({
+            questions,
+            answers,
+            forceStepMode: true,
+          }),
+        {
+          initialProps: {
+            questions: CHAINED_QUESTIONS,
+            answers: {},
+          },
+        },
+      );
+
+      expect(result.current.totalVisibleSteps).toBe(3);
+
+      rerender({
+        questions: NEW_SURVEY_QUESTIONS,
+        answers: {},
+      });
+      expect(result.current.totalVisibleSteps).toBe(3);
+
+      rerender({
+        questions: NEW_SURVEY_QUESTIONS,
+        answers: { q1: "b" },
+      });
+
+      expect(result.current.totalVisibleSteps).toBe(3);
+    });
+
+    /**
+     * Real-world reproduction: survey with deep chained visibleIf (like
+     * oppfølgingsplan medvirkning-survey). 10 questions where each step
+     * depends on the previous answer via EXISTS, plus conditional branches
+     * (LT/GT on rating, EQ on singleChoice).
+     *
+     * The progress bar starts at 100%, jumps to 50%, then oscillates as
+     * conditional text fields appear and disappear.
+     */
+    it("should handle real-world survey with deep chained visibleIf correctly", () => {
+      const REAL_WORLD_SURVEY: LumiSurveyQuestion[] = [
+        {
+          id: "opplevelse",
+          type: "rating" as const,
+          variant: "emoji" as const,
+          prompt: "Hvordan opplevde du å lage planen?",
+          required: true,
+        },
+        {
+          id: "samarbeid",
+          type: "singleChoice" as const,
+          prompt: "Hvordan var samarbeidet?",
+          required: true,
+          options: [
+            { value: "sammen", label: "Sammen" },
+            { value: "snakket", label: "Snakket" },
+            { value: "uten-meg", label: "Uten meg" },
+            { value: "annet", label: "Annet" },
+          ],
+          visibleIf: {
+            field: "ANSWER" as const,
+            questionId: "opplevelse",
+            operator: "EXISTS" as const,
+          },
+        },
+        {
+          id: "samarbeid-annet",
+          type: "text" as const,
+          prompt: "Fortell mer",
+          required: false,
+          maxLength: 500,
+          visibleIf: {
+            field: "ANSWER" as const,
+            questionId: "samarbeid",
+            operator: "EQ" as const,
+            value: "annet",
+          },
+        },
+        {
+          id: "behov",
+          type: "rating" as const,
+          variant: "emoji" as const,
+          prompt: "Tar planen opp det viktige?",
+          required: true,
+          visibleIf: {
+            field: "ANSWER" as const,
+            questionId: "samarbeid",
+            operator: "EXISTS" as const,
+          },
+        },
+        {
+          id: "hva-savner-du",
+          type: "text" as const,
+          prompt: "Hva savner du?",
+          required: false,
+          maxLength: 500,
+          visibleIf: {
+            field: "ANSWER" as const,
+            questionId: "behov",
+            operator: "LT" as const,
+            value: 4,
+          },
+        },
+        {
+          id: "hva-fungerer",
+          type: "text" as const,
+          prompt: "Hva fungerer bra?",
+          required: false,
+          maxLength: 500,
+          visibleIf: {
+            field: "ANSWER" as const,
+            questionId: "behov",
+            operator: "GT" as const,
+            value: 3,
+          },
+        },
+        {
+          id: "deling-kunnskap",
+          type: "singleChoice" as const,
+          prompt: "Visste du om delingen?",
+          required: true,
+          options: [
+            { value: "ja", label: "Ja" },
+            { value: "nei", label: "Nei" },
+          ],
+          visibleIf: {
+            field: "ANSWER" as const,
+            questionId: "behov",
+            operator: "EXISTS" as const,
+          },
+        },
+        {
+          id: "deling-holdning",
+          type: "singleChoice" as const,
+          prompt: "Hvor greit er dette?",
+          required: true,
+          options: [
+            { value: "helt-greit", label: "Helt greit" },
+            { value: "ikke-greit", label: "Ikke greit" },
+          ],
+          visibleIf: {
+            field: "ANSWER" as const,
+            questionId: "deling-kunnskap",
+            operator: "EXISTS" as const,
+          },
+        },
+        {
+          id: "forbedring",
+          type: "singleChoice" as const,
+          prompt: "Hva ville vært viktigst?",
+          required: false,
+          options: [
+            { value: "lese", label: "Kunne lese først" },
+            { value: "ingen", label: "Ingen endring" },
+          ],
+          visibleIf: {
+            field: "ANSWER" as const,
+            questionId: "deling-holdning",
+            operator: "EXISTS" as const,
+          },
+        },
+        {
+          id: "annet",
+          type: "text" as const,
+          prompt: "Noe annet?",
+          required: false,
+          maxLength: 500,
+          visibleIf: {
+            field: "ANSWER" as const,
+            questionId: "deling-holdning",
+            operator: "EXISTS" as const,
+          },
+        },
+      ];
+
+      const onStepChange = vi.fn();
+
+      const { rerender } = renderHook(
+        ({ answers }: { answers: Record<string, LumiSurveyAnswerValue> }) =>
+          useStepNavigation({
+            questions: REAL_WORLD_SURVEY,
+            answers,
+            forceStepMode: true,
+            onStepChange,
+          }),
+        { initialProps: { answers: {} } },
+      );
+
+      // Step 1: Only "opplevelse" is visible. Bug: totalSteps = 1 → 100%
+      const [, initialTotal] = onStepChange.mock.calls[0];
+      expect(initialTotal).toBeGreaterThan(1);
+
+      // Simulate user progressing through the survey
+      const progressTotals: number[] = [initialTotal];
+
+      // Answer opplevelse → samarbeid appears
+      rerender({ answers: { opplevelse: 4 } });
+      progressTotals.push(
+        onStepChange.mock.calls[onStepChange.mock.calls.length - 1][1],
+      );
+
+      // Answer samarbeid → behov appears
+      rerender({ answers: { opplevelse: 4, samarbeid: "sammen" } });
+      progressTotals.push(
+        onStepChange.mock.calls[onStepChange.mock.calls.length - 1][1],
+      );
+
+      // Answer behov with high rating → hva-fungerer + deling-kunnskap appear
+      rerender({
+        answers: { opplevelse: 4, samarbeid: "sammen", behov: 5 },
+      });
+      progressTotals.push(
+        onStepChange.mock.calls[onStepChange.mock.calls.length - 1][1],
+      );
+
+      // Progress total should never decrease (no jumping backwards)
+      for (let i = 1; i < progressTotals.length; i++) {
+        expect(
+          progressTotals[i],
+          `totalSteps decreased from ${progressTotals[i - 1]} to ${progressTotals[i]} at step ${i}`,
+        ).toBeGreaterThanOrEqual(progressTotals[i - 1]);
+      }
+    });
+  });
 });

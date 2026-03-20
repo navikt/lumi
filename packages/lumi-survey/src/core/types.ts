@@ -391,8 +391,7 @@ export interface LumiSurveyEvents {
   /**
    * Fired when the current step changes in step mode.
    * Also fires on initial render when step mode is active.
-   * Receives 0-based visible step index and total visible step count
-   * (hidden questions are excluded from both values).
+   * Receives 0-based visible step index and estimated total reachable steps.
    */
   onStepChange?: (visibleStepIndex: number, totalVisibleSteps: number) => void;
 }
