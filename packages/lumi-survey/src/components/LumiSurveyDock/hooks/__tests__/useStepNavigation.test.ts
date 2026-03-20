@@ -1331,7 +1331,7 @@ describe("useStepNavigation", () => {
       expect(totalSteps).toBeGreaterThan(1);
     });
 
-    it("should not decrease totalSteps as user progresses through chained questions", () => {
+    it("should have monotonically increasing progress percentage through chained questions", () => {
       const onStepChange = vi.fn();
 
       const { rerender } = renderHook(
@@ -1346,19 +1346,23 @@ describe("useStepNavigation", () => {
       );
 
       const initialTotal = onStepChange.mock.calls[0][1];
+      expect(initialTotal).toBeGreaterThan(1);
 
       // User answers q1 → q2 becomes visible
       rerender({ answers: { q1: "a" } });
 
-      const afterQ1Total =
-        onStepChange.mock.calls[onStepChange.mock.calls.length - 1][1];
-
-      // The total should not have been 1 initially and then jumped to 2.
-      // Progress bar should never go backwards.
-      expect(afterQ1Total).toBeGreaterThanOrEqual(initialTotal);
+      const calls = onStepChange.mock.calls;
+      // Verify each step's percentage is >= previous
+      for (let i = 1; i < calls.length; i++) {
+        const [prevStep, prevTotal] = calls[i - 1];
+        const [currStep, currTotal] = calls[i];
+        const prevPct = (prevStep + 1) / prevTotal;
+        const currPct = (currStep + 1) / currTotal;
+        expect(currPct).toBeGreaterThanOrEqual(prevPct);
+      }
     });
 
-    it("should reset high-water mark when resetNavigation is called", () => {
+    it("should reflect actual reachable steps when user picks shorter branch", () => {
       const { result, rerender } = renderHook(
         ({ answers }: { answers: Record<string, LumiSurveyAnswerValue> }) =>
           useStepNavigation({
@@ -1372,21 +1376,12 @@ describe("useStepNavigation", () => {
       // Initial estimate assumes the longest reachable branch (q1 -> q2 -> q3)
       expect(result.current.totalVisibleSteps).toBe(3);
 
-      // User picks shorter branch "b". Raw estimate is now 2, but HWM keeps 3.
+      // User picks shorter branch "b". Without HWM, estimate drops to actual path size.
       rerender({ answers: { q1: "b" } });
-      expect(result.current.totalVisibleSteps).toBe(3);
-
-      act(() => {
-        result.current.resetNavigation();
-      });
-
-      rerender({ answers: { q1: "b" } });
-
-      // After reset, HWM is cleared and estimate can drop to the current path size.
       expect(result.current.totalVisibleSteps).toBe(2);
     });
 
-    it("should reset high-water mark when questions change", () => {
+    it("should reflect new survey size when questions change", () => {
       const NEW_SURVEY_QUESTIONS: LumiSurveyQuestion[] = [
         {
           id: "new-q1",
@@ -1424,7 +1419,7 @@ describe("useStepNavigation", () => {
         questions: BRANCHED_QUESTIONS,
         answers: { q1: "b" },
       });
-      expect(result.current.totalVisibleSteps).toBe(3);
+      expect(result.current.totalVisibleSteps).toBe(2);
 
       rerender({
         questions: NEW_SURVEY_QUESTIONS,
@@ -1434,7 +1429,7 @@ describe("useStepNavigation", () => {
       expect(result.current.totalVisibleSteps).toBe(1);
     });
 
-    it("should keep new survey high-water mark after questions change and subsequent answer updates", () => {
+    it("should reflect actual path size after questions change and answer updates", () => {
       const NEW_SURVEY_QUESTIONS: LumiSurveyQuestion[] = BRANCHED_QUESTIONS.map(
         (question) => ({ ...question }),
       );
@@ -1473,7 +1468,212 @@ describe("useStepNavigation", () => {
         answers: { q1: "b" },
       });
 
-      expect(result.current.totalVisibleSteps).toBe(3);
+      expect(result.current.totalVisibleSteps).toBe(2);
+    });
+
+    it("should naturally reach 100% on the last step without isLastStep hack", () => {
+      const { result, rerender } = renderHook(
+        ({ answers }: { answers: Record<string, LumiSurveyAnswerValue> }) =>
+          useStepNavigation({
+            questions: CHAINED_QUESTIONS,
+            answers,
+            forceStepMode: true,
+          }),
+        { initialProps: { answers: {} } },
+      );
+
+      // Answer all questions and navigate to last step
+      rerender({ answers: { q1: "a" } });
+      act(() => {
+        result.current.goToNext();
+      });
+      rerender({ answers: { q1: "a", q2: "b" } });
+      act(() => {
+        result.current.goToNext();
+      });
+
+      // On last step: visibleStepIndex + 1 should equal totalVisibleSteps
+      const { visibleStepIndex, totalVisibleSteps, isLastStep } =
+        result.current;
+      expect(isLastStep).toBe(true);
+      expect(visibleStepIndex + 1).toBe(totalVisibleSteps);
+    });
+
+    it("should reduce totalVisibleSteps when branch is definitively eliminated", () => {
+      const { result, rerender } = renderHook(
+        ({ answers }: { answers: Record<string, LumiSurveyAnswerValue> }) =>
+          useStepNavigation({
+            questions: BRANCHED_QUESTIONS,
+            answers,
+            forceStepMode: true,
+          }),
+        { initialProps: { answers: {} } },
+      );
+
+      // Before answering: estimates include longest branch
+      const initialTotal = result.current.totalVisibleSteps;
+      expect(initialTotal).toBe(3);
+
+      // Answer q1 = "b" → q2 (EQ "a") is eliminated, only q3 remains
+      rerender({ answers: { q1: "b" } });
+      expect(result.current.totalVisibleSteps).toBe(2);
+      // Total decreased because a branch was definitively eliminated
+      expect(result.current.totalVisibleSteps).toBeLessThan(initialTotal);
+    });
+
+    it("should maintain monotonically increasing percentage with SM-style branching survey", () => {
+      const SM_STYLE_QUESTIONS: LumiSurveyQuestion[] = [
+        {
+          id: "rating",
+          type: "rating",
+          variant: "emoji",
+          prompt: "Rate",
+          required: true,
+        },
+        {
+          id: "choice",
+          type: "singleChoice",
+          prompt: "Choose",
+          required: true,
+          options: [
+            { value: "a", label: "A" },
+            { value: "b", label: "B" },
+            { value: "other", label: "Other" },
+          ],
+          visibleIf: {
+            field: "ANSWER",
+            questionId: "rating",
+            operator: "EXISTS",
+          },
+        },
+        {
+          id: "other-detail",
+          type: "text",
+          prompt: "Detail",
+          required: false,
+          maxLength: 500,
+          visibleIf: {
+            field: "ANSWER",
+            questionId: "choice",
+            operator: "EQ",
+            value: "other",
+          },
+        },
+        {
+          id: "second-rating",
+          type: "rating",
+          variant: "emoji",
+          prompt: "Rate 2",
+          required: true,
+          visibleIf: {
+            field: "ANSWER",
+            questionId: "choice",
+            operator: "EXISTS",
+          },
+        },
+        {
+          id: "low-feedback",
+          type: "text",
+          prompt: "What was bad?",
+          required: false,
+          maxLength: 500,
+          visibleIf: {
+            field: "ANSWER",
+            questionId: "second-rating",
+            operator: "LT",
+            value: 4,
+          },
+        },
+        {
+          id: "high-feedback",
+          type: "text",
+          prompt: "What was good?",
+          required: false,
+          maxLength: 500,
+          visibleIf: {
+            field: "ANSWER",
+            questionId: "second-rating",
+            operator: "GT",
+            value: 3,
+          },
+        },
+        {
+          id: "final",
+          type: "text",
+          prompt: "Anything else?",
+          required: false,
+          maxLength: 500,
+          visibleIf: {
+            field: "ANSWER",
+            questionId: "second-rating",
+            operator: "EXISTS",
+          },
+        },
+      ];
+
+      const { result, rerender } = renderHook(
+        ({ answers }: { answers: Record<string, LumiSurveyAnswerValue> }) =>
+          useStepNavigation({
+            questions: SM_STYLE_QUESTIONS,
+            answers,
+            forceStepMode: true,
+          }),
+        { initialProps: { answers: {} } },
+      );
+
+      // Track percentage at each step
+      const percentages: number[] = [];
+      const recordPercentage = () => {
+        const { visibleStepIndex, totalVisibleSteps } = result.current;
+        if (totalVisibleSteps > 0) {
+          percentages.push((visibleStepIndex + 1) / totalVisibleSteps);
+        }
+      };
+
+      // Step through the survey: rating=4, choice="a", second-rating=5, final
+      recordPercentage(); // step 0
+
+      rerender({ answers: { rating: 4 } });
+      act(() => {
+        result.current.goToNext();
+      });
+      recordPercentage(); // step 1
+
+      rerender({ answers: { rating: 4, choice: "a" } });
+      act(() => {
+        result.current.goToNext();
+      });
+      recordPercentage(); // step 2 (other-detail skipped, second-rating)
+
+      rerender({ answers: { rating: 4, choice: "a", "second-rating": 5 } });
+      act(() => {
+        result.current.goToNext();
+      });
+      recordPercentage(); // step 3 (high-feedback)
+
+      rerender({
+        answers: {
+          rating: 4,
+          choice: "a",
+          "second-rating": 5,
+          "high-feedback": "great",
+        },
+      });
+      act(() => {
+        result.current.goToNext();
+      });
+      recordPercentage(); // step 4 (final)
+
+      // Verify monotonically increasing percentages
+      for (let i = 1; i < percentages.length; i++) {
+        expect(
+          percentages[i],
+          `Percentage decreased at step ${i}: ${(percentages[i - 1] * 100).toFixed(1)}% → ${(percentages[i] * 100).toFixed(1)}%`,
+        ).toBeGreaterThanOrEqual(percentages[i - 1]);
+      }
+
+      // Verify last step reaches 100%
+      expect(percentages[percentages.length - 1]).toBeCloseTo(1.0);
     });
 
     /**
@@ -1639,34 +1839,35 @@ describe("useStepNavigation", () => {
       expect(initialTotal).toBeGreaterThan(1);
 
       // Simulate user progressing through the survey
-      const progressTotals: number[] = [initialTotal];
+      const progressPercentages: number[] = [];
+      const initialCall =
+        onStepChange.mock.calls[onStepChange.mock.calls.length - 1];
+      progressPercentages.push((initialCall[0] + 1) / initialCall[1]);
 
       // Answer opplevelse → samarbeid appears
       rerender({ answers: { opplevelse: 4 } });
-      progressTotals.push(
-        onStepChange.mock.calls[onStepChange.mock.calls.length - 1][1],
-      );
+      let lastCall =
+        onStepChange.mock.calls[onStepChange.mock.calls.length - 1];
+      progressPercentages.push((lastCall[0] + 1) / lastCall[1]);
 
       // Answer samarbeid → behov appears
       rerender({ answers: { opplevelse: 4, samarbeid: "sammen" } });
-      progressTotals.push(
-        onStepChange.mock.calls[onStepChange.mock.calls.length - 1][1],
-      );
+      lastCall = onStepChange.mock.calls[onStepChange.mock.calls.length - 1];
+      progressPercentages.push((lastCall[0] + 1) / lastCall[1]);
 
       // Answer behov with high rating → hva-fungerer + deling-kunnskap appear
       rerender({
         answers: { opplevelse: 4, samarbeid: "sammen", behov: 5 },
       });
-      progressTotals.push(
-        onStepChange.mock.calls[onStepChange.mock.calls.length - 1][1],
-      );
+      lastCall = onStepChange.mock.calls[onStepChange.mock.calls.length - 1];
+      progressPercentages.push((lastCall[0] + 1) / lastCall[1]);
 
-      // Progress total should never decrease (no jumping backwards)
-      for (let i = 1; i < progressTotals.length; i++) {
+      // Progress percentage should never decrease
+      for (let i = 1; i < progressPercentages.length; i++) {
         expect(
-          progressTotals[i],
-          `totalSteps decreased from ${progressTotals[i - 1]} to ${progressTotals[i]} at step ${i}`,
-        ).toBeGreaterThanOrEqual(progressTotals[i - 1]);
+          progressPercentages[i],
+          `Progress decreased from ${(progressPercentages[i - 1] * 100).toFixed(1)}% to ${(progressPercentages[i] * 100).toFixed(1)}% at step ${i}`,
+        ).toBeGreaterThanOrEqual(progressPercentages[i - 1]);
       }
     });
   });

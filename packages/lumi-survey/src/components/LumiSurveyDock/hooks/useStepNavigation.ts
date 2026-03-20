@@ -61,7 +61,7 @@ export interface UseStepNavigationReturn {
   visitedSteps: number[];
   /** 0-based index among currently visible questions (-1 when none visible) */
   visibleStepIndex: number;
-  /** Estimated total reachable steps along the current path (high-water mark; never decreases within a session) */
+  /** Estimated total reachable steps along the current path */
   totalVisibleSteps: number;
 }
 
@@ -96,9 +96,6 @@ export function useStepNavigation(
     const firstVisible = findNextVisibleIndex(questions, answers, metadata, 0);
     return firstVisible === -1 ? [] : [firstVisible];
   });
-  const highWaterMarkRef = useRef(0);
-  const previousQuestionsRef = useRef(questions);
-
   const currentQuestion = questions[currentStep];
 
   // Check if current question has been answered
@@ -179,17 +176,7 @@ export function useStepNavigation(
     () => computeReachableSteps(questions, answers, metadata),
     [questions, answers, metadata],
   );
-  // Intentional derived-state reset (similar to getDerivedStateFromProps):
-  // when the questions array identity changes, restart HWM tracking for that set.
-  if (previousQuestionsRef.current !== questions) {
-    previousQuestionsRef.current = questions;
-    highWaterMarkRef.current = 0;
-  }
-  const totalVisibleSteps = Math.max(highWaterMarkRef.current, reachableSteps);
-  // Intentionally no dependency array: persist the latest HWM to the ref after every render.
-  useEffect(() => {
-    highWaterMarkRef.current = totalVisibleSteps;
-  });
+  const totalVisibleSteps = reachableSteps;
   const visibleStepIndex = useMemo(() => {
     if (currentStep < 0) return -1;
     let count = 0;
@@ -305,7 +292,6 @@ export function useStepNavigation(
   // Reset to the beginning — used when the survey definition changes or
   // the consumer explicitly wants to start over.
   const resetNavigation = useCallback(() => {
-    highWaterMarkRef.current = 0;
     const firstVisible = findNextVisibleIndex(questions, answers, metadata, 0);
     setCurrentStep(firstVisible);
     setVisitedSteps(firstVisible === -1 ? [] : [firstVisible]);
