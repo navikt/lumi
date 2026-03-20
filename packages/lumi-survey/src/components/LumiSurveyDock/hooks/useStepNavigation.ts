@@ -176,7 +176,14 @@ export function useStepNavigation(
     () => computeReachableSteps(questions, answers, metadata),
     [questions, answers, metadata],
   );
-  const totalVisibleSteps = reachableSteps;
+  // Snapshot reachable steps for navigation handlers to avoid stale closures
+  // without adding answer-driven dependencies to callbacks.
+  const reachableStepsRef = useRef(reachableSteps);
+  reachableStepsRef.current = reachableSteps;
+
+  // Progress-bar total that only updates during navigation transitions.
+  const [displayedTotal, setDisplayedTotal] = useState(reachableSteps);
+  const totalVisibleSteps = displayedTotal;
   const visibleStepIndex = useMemo(() => {
     if (currentStep < 0) return -1;
     let count = 0;
@@ -193,6 +200,14 @@ export function useStepNavigation(
   const prevStepRef = useRef<number | null>(null);
   const onStepChangeRef = useRef(onStepChange);
   onStepChangeRef.current = onStepChange;
+
+  // Sync progress total when a different survey definition is loaded.
+  const previousQuestionsRef = useRef(questions);
+  useEffect(() => {
+    if (previousQuestionsRef.current === questions) return;
+    previousQuestionsRef.current = questions;
+    setDisplayedTotal(reachableSteps);
+  }, [questions, reachableSteps]);
 
   useEffect(() => {
     if (!isStepMode || currentStep < 0) return;
@@ -246,6 +261,7 @@ export function useStepNavigation(
         if (existingIndex !== -1) return prev.slice(0, existingIndex + 1);
         return [...prev, nextVisibleIndex];
       });
+      setDisplayedTotal(reachableStepsRef.current);
     }
 
     // Return the actual navigation target so the consumer knows where we went
@@ -279,6 +295,7 @@ export function useStepNavigation(
     if (result) {
       setVisitedSteps(result.history);
       setCurrentStep(result.step);
+      setDisplayedTotal(reachableStepsRef.current);
       return;
     }
 
@@ -287,6 +304,7 @@ export function useStepNavigation(
     if (firstVisible === -1) return;
     setVisitedSteps([firstVisible]);
     setCurrentStep(firstVisible);
+    setDisplayedTotal(reachableStepsRef.current);
   }, [visitedSteps, questions, answers, metadata]);
 
   // Reset to the beginning — used when the survey definition changes or
@@ -295,6 +313,7 @@ export function useStepNavigation(
     const firstVisible = findNextVisibleIndex(questions, answers, metadata, 0);
     setCurrentStep(firstVisible);
     setVisitedSteps(firstVisible === -1 ? [] : [firstVisible]);
+    setDisplayedTotal(reachableStepsRef.current);
   }, [questions, answers, metadata]);
 
   // Auto-navigation effect: handles two scenarios:
@@ -317,6 +336,7 @@ export function useStepNavigation(
       if (firstVisible === -1) return;
       setCurrentStep(firstVisible);
       setVisitedSteps([firstVisible]);
+      setDisplayedTotal(reachableStepsRef.current);
       return;
     }
 
@@ -347,6 +367,7 @@ export function useStepNavigation(
       if (existingIndex !== -1) return prev.slice(0, existingIndex + 1);
       return [...prev, target];
     });
+    setDisplayedTotal(reachableStepsRef.current);
   }, [
     isStepMode,
     currentQuestion,

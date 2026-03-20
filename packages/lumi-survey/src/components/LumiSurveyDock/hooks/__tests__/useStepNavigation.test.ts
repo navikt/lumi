@@ -1376,8 +1376,13 @@ describe("useStepNavigation", () => {
       // Initial estimate assumes the longest reachable branch (q1 -> q2 -> q3)
       expect(result.current.totalVisibleSteps).toBe(3);
 
-      // User picks shorter branch "b". Without HWM, estimate drops to actual path size.
+      // User picks shorter branch "b", but progress total should not update until navigation.
       rerender({ answers: { q1: "b" } });
+      expect(result.current.totalVisibleSteps).toBe(3);
+
+      act(() => {
+        result.current.goToNext();
+      });
       expect(result.current.totalVisibleSteps).toBe(2);
     });
 
@@ -1419,7 +1424,7 @@ describe("useStepNavigation", () => {
         questions: BRANCHED_QUESTIONS,
         answers: { q1: "b" },
       });
-      expect(result.current.totalVisibleSteps).toBe(2);
+      expect(result.current.totalVisibleSteps).toBe(3);
 
       rerender({
         questions: NEW_SURVEY_QUESTIONS,
@@ -1468,7 +1473,7 @@ describe("useStepNavigation", () => {
         answers: { q1: "b" },
       });
 
-      expect(result.current.totalVisibleSteps).toBe(2);
+      expect(result.current.totalVisibleSteps).toBe(3);
     });
 
     it("should naturally reach 100% on the last step without isLastStep hack", () => {
@@ -1514,11 +1519,84 @@ describe("useStepNavigation", () => {
       const initialTotal = result.current.totalVisibleSteps;
       expect(initialTotal).toBe(3);
 
-      // Answer q1 = "b" → q2 (EQ "a") is eliminated, only q3 remains
+      // Answer q1 = "b" → q2 (EQ "a") is eliminated, but displayed total is unchanged before navigation.
       rerender({ answers: { q1: "b" } });
+      expect(result.current.totalVisibleSteps).toBe(3);
+
+      act(() => {
+        result.current.goToNext();
+      });
       expect(result.current.totalVisibleSteps).toBe(2);
       // Total decreased because a branch was definitively eliminated
       expect(result.current.totalVisibleSteps).toBeLessThan(initialTotal);
+    });
+
+    it("should not update totalVisibleSteps when answer changes mid-step (only on navigation)", () => {
+      const CHECKBOX_SURVEY: LumiSurveyQuestion[] = [
+        {
+          id: "q1",
+          type: "multiChoice" as const,
+          prompt: "Select items",
+          required: true,
+          variant: "checkbox" as const,
+          options: [
+            { value: "a", label: "A" },
+            { value: "b", label: "B" },
+            { value: "other", label: "Other" },
+          ],
+        },
+        {
+          id: "q1-other",
+          type: "text" as const,
+          prompt: "Describe other",
+          required: false,
+          maxLength: 500,
+          visibleIf: {
+            field: "ANSWER" as const,
+            questionId: "q1",
+            operator: "CONTAINS" as const,
+            value: "other",
+          },
+        },
+        {
+          id: "q2",
+          type: "text" as const,
+          prompt: "Final thoughts",
+          required: false,
+          maxLength: 500,
+          visibleIf: {
+            field: "ANSWER" as const,
+            questionId: "q1",
+            operator: "EXISTS" as const,
+          },
+        },
+      ];
+
+      const { result, rerender } = renderHook(
+        ({ answers }: { answers: Record<string, LumiSurveyAnswerValue> }) =>
+          useStepNavigation({
+            questions: CHECKBOX_SURVEY,
+            answers,
+            forceStepMode: true,
+          }),
+        { initialProps: { answers: {} } },
+      );
+
+      const initialTotal = result.current.totalVisibleSteps;
+
+      rerender({ answers: { q1: ["a"] } });
+      expect(result.current.totalVisibleSteps).toBe(initialTotal);
+
+      rerender({ answers: { q1: ["a", "other"] } });
+      expect(result.current.totalVisibleSteps).toBe(initialTotal);
+
+      rerender({ answers: { q1: ["a"] } });
+      expect(result.current.totalVisibleSteps).toBe(initialTotal);
+
+      act(() => {
+        result.current.goToNext();
+      });
+      expect(result.current.totalVisibleSteps).toBeGreaterThan(0);
     });
 
     it("should maintain monotonically increasing percentage with SM-style branching survey", () => {
