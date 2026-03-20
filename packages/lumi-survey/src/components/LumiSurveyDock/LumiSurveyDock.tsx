@@ -184,7 +184,6 @@ export const LumiSurveyDock = ({
 
   const {
     isStepMode: stepModeFromSurvey,
-    currentStep,
     currentQuestion: currentStepQuestion,
     canGoBack,
     canGoNext,

@@ -6,6 +6,22 @@ This project follows SemVer.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-20
+
+### Added
+
+- `hasIntro` prop on `ProgressProps` — shows progress bar from step 0 when survey has intro page
+
+### Fixed
+
+- Progress bar no longer jumps/oscillates with chained `visibleIf` conditions (Closes #163)
+- Progress bar now reaches 100% on the last step in branching surveys
+- Progress bar only updates on navigation events, preventing visual jitter from checkbox interactions
+
+### Changed
+
+- Replaced high-water mark mechanism with direct reachability estimation via `computeReachableSteps` algorithm
+
 ## [0.2.0] - 2026-03-17
 
 ### Added
