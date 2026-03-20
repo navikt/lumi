@@ -407,7 +407,7 @@ export function ThemeModal({
                   (examplesPage - 1) * EXAMPLES_PER_PAGE,
                   examplesPage * EXAMPLES_PER_PAGE,
                 )
-                .map((example, idx) => {
+                .map((example) => {
                   // Highlight keyword using cumulative position as key
                   const keyword = initialKeywords[0];
                   const highlightTerm = example.text
@@ -424,7 +424,7 @@ export function ThemeModal({
                   const parts = example.text.split(regex);
                   return (
                     <Box
-                      key={`${example.submittedAt}-${idx}`}
+                      key={`${example.text}-${example.submittedAt}`}
                       padding="space-12"
                       background="neutral-soft"
                       borderRadius="8"
@@ -432,7 +432,7 @@ export function ThemeModal({
                       <BodyShort size="small">
                         "
                         {parts.map((part, partIdx) => {
-                          const key = `${idx}-${partIdx}`;
+                          const key = `${example.submittedAt}-${partIdx}`;
                           return part.toLowerCase() ===
                             highlightTerm.toLowerCase() ? (
                             <strong key={key} className={styles.highlight}>

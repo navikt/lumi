@@ -62,9 +62,9 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
             Siste svar
           </BodyShort>
           <VStack gap="space-8">
-            {stats.recentResponses.map((response, index) => (
+            {stats.recentResponses.map((response) => (
               <div
-                key={`${response.submittedAt}-${index}`}
+                key={`${response.text}-${response.submittedAt}`}
                 className={styles.responseCard}
               >
                 <BodyShort size="small" className={styles.responseText}>
