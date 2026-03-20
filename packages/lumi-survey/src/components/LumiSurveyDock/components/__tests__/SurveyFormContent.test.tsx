@@ -409,6 +409,32 @@ describe("SurveyFormContent", () => {
     expect(progressBar).toHaveAttribute("aria-label", "Steg 2");
   });
 
+  it("shows ProgressBar at 100% on the last step", () => {
+    render(
+      <SurveyFormContent
+        {...defaultProps({
+          stepNavigation: {
+            isStepMode: true,
+            currentStep: 2,
+            currentStepQuestion: choiceQuestion,
+            isLastStep: true,
+          },
+          progress: {
+            showProgress: true,
+            totalSteps: 5,
+            hasBranching: true,
+          },
+        })}
+      />,
+    );
+
+    const progressBar = screen.getByRole("progressbar");
+    expect(progressBar).toBeInTheDocument();
+    // isLastStep → value should equal totalSteps (100%)
+    expect(progressBar).toHaveAttribute("aria-valuenow", "5");
+    expect(progressBar).toHaveAttribute("aria-valuemax", "5");
+  });
+
   it("does NOT show ProgressBar when showProgress is false", () => {
     render(
       <SurveyFormContent

@@ -118,7 +118,7 @@ export const SurveyFormContent = React.memo(
           totalSteps > 0 &&
           (hasIntro || currentStep > 0) && (
             <ProgressBar
-              value={currentStep + 1}
+              value={isLastStep ? totalSteps : currentStep + 1}
               valueMax={totalSteps}
               size="small"
               aria-label={
