@@ -34,6 +34,7 @@ interface FeedbackCardProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   onDelete: () => void;
+  onChoiceFilter?: (fieldId: string, optionId: string) => void;
   isDeleting: boolean;
 }
 
@@ -47,6 +48,7 @@ export function FeedbackCard({
   isExpanded,
   onToggleExpand,
   onDelete,
+  onChoiceFilter,
   isDeleting,
 }: FeedbackCardProps) {
   const ratings = getAllRatings(feedback);
@@ -133,12 +135,20 @@ export function FeedbackCard({
                 </span>
                 {/* Timeline on larger screens, simple cards on small screens */}
                 {showTimeline ? (
-                  <TimelineView answers={feedback.answers} styles={styles} />
+                  <TimelineView
+                    answers={feedback.answers}
+                    styles={styles}
+                    onChoiceFilter={onChoiceFilter}
+                  />
                 ) : (
                   <VStack gap="space-8">
                     {feedback.answers.map((answer) => (
                       <div key={answer.fieldId} className={styles.answerCard}>
-                        <RenderAnswer answer={answer} styles={styles} />
+                        <RenderAnswer
+                          answer={answer}
+                          styles={styles}
+                          onChoiceFilter={onChoiceFilter}
+                        />
                       </div>
                     ))}
                   </VStack>

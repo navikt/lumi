@@ -41,11 +41,16 @@ export function RatingFieldCard({ field, totalCount }: FieldCardProps) {
   const activeRatingFieldId = params.ratingFieldId;
   const activeRatingValue = params.ratingValue;
   const isFilteringThisField = activeRatingFieldId === field.fieldId;
+  const parsedActiveRatingValue = Number(activeRatingValue);
+  const activeRatingNumericValue =
+    isFilteringThisField && Number.isFinite(parsedActiveRatingValue)
+      ? parsedActiveRatingValue
+      : undefined;
 
   const responsePct =
     totalCount > 0 ? Math.round((fieldTotalResponses / totalCount) * 100) : 0;
 
-  const onSelectThumb = (nextValue: "1" | "2") => {
+  const onSelectRating = (nextValue: string) => {
     const isAlreadySelected =
       isFilteringThisField && activeRatingValue === String(nextValue);
 
@@ -56,12 +61,15 @@ export function RatingFieldCard({ field, totalCount }: FieldCardProps) {
     });
   };
 
-  const onClearThumb = () =>
+  const onClearRating = () =>
     setParams({
       ratingFieldId: undefined,
       ratingValue: undefined,
       page: "1",
     });
+
+  const onSelectThumb = (nextValue: "1" | "2") => onSelectRating(nextValue);
+  const onClearThumb = () => onClearRating();
 
   return (
     <DashboardCard padding="space-20">
@@ -95,9 +103,9 @@ export function RatingFieldCard({ field, totalCount }: FieldCardProps) {
           variant={ratingVariant}
           distribution={distribution}
           ratingValues={ratingValuesForVariant(ratingVariant)}
-          activeRatingValue={undefined}
-          onRatingSelect={() => {}}
-          onRatingClear={() => {}}
+          activeRatingValue={activeRatingNumericValue}
+          onRatingSelect={(value) => onSelectRating(String(value))}
+          onRatingClear={onClearRating}
         />
       )}
     </DashboardCard>
