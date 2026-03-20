@@ -20,7 +20,13 @@ import {
   generateTopTasksMockData,
 } from "./generators";
 
-import { createContext, createRatingAnswer, createTextAnswer } from "./helpers";
+import {
+  createContext,
+  createMultiChoiceAnswer,
+  createRatingAnswer,
+  createSingleChoiceAnswer,
+  createTextAnswer,
+} from "./helpers";
 
 export {
   generateSurveyData,
@@ -66,13 +72,31 @@ function generateFieldStatsOrderingSurveyData(count: number): FeedbackDto[] {
       submittedAt: timestamp,
       app: "syfo-oppfolgingsplan-frontend",
       surveyId: "survey-ordering",
-      surveyType: "rating",
+      surveyType: "custom",
       context: createContext("/ordering", "desktop"),
       answers: [
         createRatingAnswer("svar", "Ordering Q1", 5),
-        // Intentionally picked fieldIds that would swap if sorted lexicographically.
-        createTextAnswer("text-z", "Ordering Q2", `second-${i}`),
-        createTextAnswer("text-a", "Ordering Q3", `third-${i}`),
+        createSingleChoiceAnswer(
+          "single-choice",
+          "Ordering Q2",
+          "often",
+          undefined,
+          [
+            { id: "often", label: "Ofte" },
+            { id: "rarely", label: "Sjelden" },
+          ],
+        ),
+        createTextAnswer("text-comment", "Ordering Q3", `third-${i}`),
+        createMultiChoiceAnswer(
+          "multi-choice",
+          "Ordering Q4",
+          ["time", "rules"],
+          undefined,
+          [
+            { id: "time", label: "Tid" },
+            { id: "rules", label: "Regelverk" },
+          ],
+        ),
       ],
       sensitiveDataRedacted: false,
     });

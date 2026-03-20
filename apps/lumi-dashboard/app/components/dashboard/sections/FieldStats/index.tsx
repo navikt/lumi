@@ -18,12 +18,6 @@ export function FieldStatsSection() {
     return null;
   }
 
-  const ratingFields = stats.fieldStats.filter((f) => f.fieldType === "RATING");
-  const textFields = stats.fieldStats.filter((f) => f.fieldType === "TEXT");
-  const choiceFields = stats.fieldStats.filter(
-    (f) => f.fieldType === "SINGLE_CHOICE" || f.fieldType === "MULTI_CHOICE",
-  );
-
   return (
     <VStack
       data-testid="field-stats-section"
@@ -38,27 +32,37 @@ export function FieldStatsSection() {
         minColumnWidth="280px"
         gap={{ xs: "space-16", md: "space-24" }}
       >
-        {ratingFields.map((field) => (
-          <RatingFieldCard
-            key={field.fieldId}
-            field={field}
-            totalCount={stats.totalCount}
-          />
-        ))}
-        {textFields.map((field) => (
-          <TextFieldCard
-            key={field.fieldId}
-            field={field}
-            totalCount={stats.totalCount}
-          />
-        ))}
-        {choiceFields.map((field) => (
-          <ChoiceFieldCard
-            key={field.fieldId}
-            field={field}
-            totalCount={stats.totalCount}
-          />
-        ))}
+        {stats.fieldStats.map((field) => {
+          switch (field.fieldType) {
+            case "RATING":
+              return (
+                <RatingFieldCard
+                  key={field.fieldId}
+                  field={field}
+                  totalCount={stats.totalCount}
+                />
+              );
+            case "TEXT":
+              return (
+                <TextFieldCard
+                  key={field.fieldId}
+                  field={field}
+                  totalCount={stats.totalCount}
+                />
+              );
+            case "SINGLE_CHOICE":
+            case "MULTI_CHOICE":
+              return (
+                <ChoiceFieldCard
+                  key={field.fieldId}
+                  field={field}
+                  totalCount={stats.totalCount}
+                />
+              );
+            default:
+              return null;
+          }
+        })}
       </DashboardGrid>
     </VStack>
   );
