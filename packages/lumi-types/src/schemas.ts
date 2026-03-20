@@ -25,6 +25,10 @@ export const StatsParamsSchema = z.object({
   ratingFieldId: z.string().optional(),
   /** Filter by a specific rating value (number as string) */
   ratingValue: z.string().optional(),
+  /** Filter by a specific choice question fieldId */
+  choiceFieldId: z.string().optional(),
+  /** Filter by a specific choice value (option id) */
+  choiceValue: z.string().optional(),
 });
 
 export type StatsParams = z.infer<typeof StatsParamsSchema>;
@@ -58,6 +62,10 @@ export const FeedbackParamsSchema = z.object({
   ratingFieldId: z.string().optional(),
   /** Filter by a specific rating value (number as string) */
   ratingValue: z.string().optional(),
+  /** Filter by a specific choice question fieldId */
+  choiceFieldId: z.string().optional(),
+  /** Filter by a specific choice value (option id) */
+  choiceValue: z.string().optional(),
 });
 
 export type FeedbackParams = z.infer<typeof FeedbackParamsSchema>;
@@ -75,6 +83,10 @@ export const TopTasksParamsSchema = z.object({
   ratingFieldId: z.string().optional(),
   /** Filter by a specific rating value (number as string) */
   ratingValue: z.string().optional(),
+  /** Filter by a specific choice question fieldId */
+  choiceFieldId: z.string().optional(),
+  /** Filter by a specific choice value (option id) */
+  choiceValue: z.string().optional(),
 });
 
 export type TopTasksParams = z.infer<typeof TopTasksParamsSchema>;
@@ -90,6 +102,10 @@ export const DiscoveryParamsSchema = z.object({
   ratingFieldId: z.string().optional(),
   /** Filter by a specific rating value (number as string) */
   ratingValue: z.string().optional(),
+  /** Filter by a specific choice question fieldId */
+  choiceFieldId: z.string().optional(),
+  /** Filter by a specific choice value (option id) */
+  choiceValue: z.string().optional(),
 });
 
 export type DiscoveryParams = z.infer<typeof DiscoveryParamsSchema>;
@@ -107,6 +123,10 @@ export const BlockerParamsSchema = z.object({
   ratingFieldId: z.string().optional(),
   /** Filter by a specific rating value (number as string) */
   ratingValue: z.string().optional(),
+  /** Filter by a specific choice question fieldId */
+  choiceFieldId: z.string().optional(),
+  /** Filter by a specific choice value (option id) */
+  choiceValue: z.string().optional(),
 });
 
 export type BlockerParams = z.infer<typeof BlockerParamsSchema>;
@@ -123,6 +143,10 @@ export const TaskPriorityParamsSchema = z.object({
   ratingFieldId: z.string().optional(),
   /** Filter by a specific rating value (number as string) */
   ratingValue: z.string().optional(),
+  /** Filter by a specific choice question fieldId */
+  choiceFieldId: z.string().optional(),
+  /** Filter by a specific choice value (option id) */
+  choiceValue: z.string().optional(),
 });
 
 export type TaskPriorityParams = z.infer<typeof TaskPriorityParamsSchema>;
@@ -337,6 +361,10 @@ export const ExportParamsSchema = z.object({
   ratingFieldId: z.string().optional(),
   /** Filter by a specific rating value (number as string) */
   ratingValue: z.string().optional(),
+  /** Filter by a specific choice question fieldId */
+  choiceFieldId: z.string().optional(),
+  /** Filter by a specific choice value (option id) */
+  choiceValue: z.string().optional(),
 });
 
 export type ExportParams = z.infer<typeof ExportParamsSchema>;
