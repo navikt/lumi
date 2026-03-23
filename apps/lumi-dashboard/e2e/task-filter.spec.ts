@@ -41,6 +41,15 @@ test.describe("Top Tasks - Task Filter", () => {
     await page.goto("/?surveyId=survey-top-tasks&task=TestTask");
     await expect(page.locator("main")).toBeVisible({ timeout: 15000 });
 
+    // Wait for URL to stabilize — the period selector adds fromDate/toDate
+    // defaults after initial render. Clicking before that finishes causes a
+    // race where the default-navigation overwrites our removal.
+    await expect
+      .poll(() => new URL(page.url()).searchParams.has("fromDate"), {
+        timeout: 5000,
+      })
+      .toBe(true);
+
     // Wait for the chip to render
     const chipText = page.getByText("Oppgave: TestTask");
     await expect(chipText).toBeVisible({ timeout: 5000 });
