@@ -318,9 +318,7 @@ function ChoiceFilterChips({
 }) {
   return (
     <VStack gap="space-4">
-      <BodyShort size="small" weight="semibold">
-        {field.label}
-      </BodyShort>
+      <BodyShort size="small">{field.label}</BodyShort>
       <Chips size="small">
         {Object.entries(field.stats.distribution).map(([optionId, data]) => (
           <Chips.Toggle
@@ -364,9 +362,7 @@ function RatingFilterChips({
 
   return (
     <VStack gap="space-4">
-      <BodyShort size="small" weight="semibold">
-        {field.label}
-      </BodyShort>
+      <BodyShort size="small">{field.label}</BodyShort>
       <Chips size="small">
         {getRatingValues(variant).map((value) => (
           <Chips.Toggle
