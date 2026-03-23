@@ -77,14 +77,6 @@ vi.mock("@navikt/ds-react", async () => {
     return <button type="button">{children}</button>;
   }
 
-  function BodyShort({ children }: SimpleProps) {
-    return <span>{children}</span>;
-  }
-
-  function Label({ children }: SimpleProps) {
-    return <span>{children}</span>;
-  }
-
   function Tag({ children }: SimpleProps) {
     return <span>{children}</span>;
   }
@@ -208,13 +200,11 @@ vi.mock("@navikt/ds-react", async () => {
 
   return {
     ActionMenu,
-    BodyShort,
     Box: SimpleDiv,
     Button,
     Chips,
     HGrid: SimpleDiv,
     HStack: SimpleDiv,
-    Label,
     Tag,
     VStack: SimpleDiv,
   };
