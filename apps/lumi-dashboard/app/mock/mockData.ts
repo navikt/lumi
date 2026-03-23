@@ -325,6 +325,22 @@ function applyFilters(
       );
     }
   }
+  // Filter by choice answer (singleChoice / multiChoice fieldId + value)
+  const choiceFieldId = params.get("choiceFieldId");
+  const choiceValue = params.get("choiceValue");
+  if (choiceFieldId && choiceValue) {
+    filtered = filtered.filter((item) =>
+      item.answers.some((a) => {
+        if (a.fieldId !== choiceFieldId) return false;
+        if (a.fieldType === "SINGLE_CHOICE" && a.value.type === "singleChoice")
+          return a.value.selectedOptionId === choiceValue;
+        if (a.fieldType === "MULTI_CHOICE" && a.value.type === "multiChoice")
+          return a.value.selectedOptionIds.includes(choiceValue);
+        return false;
+      }),
+    );
+  }
+
   // Filter by tags (supports both item.tags array and metadata key:value format)
   if (tag) {
     const tagList = tag.split(",").map((t) => t.trim());

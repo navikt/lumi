@@ -1,5 +1,19 @@
-import { createRouter } from "@tanstack/react-router";
+import {
+  createRouter,
+  parseSearchWith,
+  stringifySearchWith,
+} from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
+
+/**
+ * Flat-string search serializer.
+ *
+ * TanStack Router defaults to JSON-first encoding which wraps parseable
+ * strings in quotes (e.g. page="1" → %221%22). Since every search param in
+ * this app is a plain string, we use a simple key=value format instead.
+ */
+const stringifySearch = stringifySearchWith((value) => String(value));
+const parseSearch = parseSearchWith((value) => value);
 
 export async function getRouter() {
   let nonce: string | undefined;
@@ -13,6 +27,8 @@ export async function getRouter() {
   return createRouter({
     routeTree,
     scrollRestoration: true,
+    stringifySearch,
+    parseSearch,
     ssr: nonce ? { nonce } : undefined,
   });
 }
