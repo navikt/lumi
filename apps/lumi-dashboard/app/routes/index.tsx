@@ -198,7 +198,7 @@ function DashboardPage() {
       <Box
         paddingBlock={{ xs: "space-16", md: "space-24" }}
         paddingInline={{ xs: "space-12", sm: "space-16" }}
-        className={styles.mainContainer}
+        className="main-container"
         as="main"
       >
         <VStack gap={{ xs: "space-16", md: "space-24" }}>

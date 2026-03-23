@@ -1,4 +1,4 @@
-import { Alert, Heading, VStack } from "@navikt/ds-react";
+import { Alert, Box, Heading, VStack } from "@navikt/ds-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { ExportPanel } from "~/components/export/Panel";
@@ -16,7 +16,12 @@ function ExportPage() {
     <>
       <Header />
 
-      <main className="main-content">
+      <Box
+        paddingBlock={{ xs: "space-16", md: "space-24" }}
+        paddingInline={{ xs: "space-12", sm: "space-16" }}
+        className="main-container"
+        as="main"
+      >
         <VStack gap="space-24">
           <Heading size="large">Eksporter data</Heading>
 
@@ -29,7 +34,7 @@ function ExportPage() {
 
           <ExportPanel />
         </VStack>
-      </main>
+      </Box>
     </>
   );
 }
