@@ -1,6 +1,7 @@
 import { FunnelIcon } from "@navikt/aksel-icons";
 import {
   ActionMenu,
+  BodyShort,
   Box,
   Button,
   Chips,
@@ -52,13 +53,22 @@ export function FilterMenu({
     removeRating,
   } = useRatingFilter();
 
+  const answerFilterFields = stats?.fieldStats?.filter(
+    (field) => isChoiceField(field) || isRatingField(field),
+  );
+  const showAnswerFilters =
+    !!params.surveyId && (answerFilterFields?.length ?? 0) > 0;
+  const hasRatingAnswerFilter =
+    answerFilterFields?.some((f) => isRatingField(f)) ?? false;
+  const hasActiveChartFilters = Boolean(params.task || params.theme);
+
   const activeCount =
     [
       params.task,
       params.theme,
       params.deviceType && params.deviceType !== "alle",
       params.hasText === "true",
-      params.lowRating === "true",
+      !hasRatingAnswerFilter && params.lowRating === "true",
       selectedTags.length > 0,
       params.segment,
     ].filter(Boolean).length +
@@ -68,13 +78,6 @@ export function FilterMenu({
   const themeValueLabel =
     themeLabel ??
     (params.theme === "uncategorized" ? "Annet" : (params.theme ?? ""));
-
-  const answerFilterFields = stats?.fieldStats?.filter(
-    (field) => isChoiceField(field) || isRatingField(field),
-  );
-  const showAnswerFilters =
-    !!params.surveyId && (answerFilterFields?.length ?? 0) > 0;
-  const hasActiveChartFilters = Boolean(params.task || params.theme);
 
   return (
     <ActionMenu>
@@ -97,220 +100,285 @@ export function FilterMenu({
       </ActionMenu.Trigger>
       <ActionMenu.Content className={styles.actionMenuContent}>
         <Box padding="space-12">
-          <HGrid columns={{ xs: 1, md: 2 }} gap="space-16">
-            <VStack gap="space-12">
-              {features.showDeviceFilter ? (
-                <ActionMenu.RadioGroup
-                  label="Enhet"
-                  value={params.deviceType ?? ""}
-                  onValueChange={(value) =>
-                    setParams({
-                      deviceType: value || undefined,
-                      page: "1",
-                    })
-                  }
-                >
-                  <ActionMenu.RadioItem value="">
-                    Alle enheter
-                  </ActionMenu.RadioItem>
-                  <ActionMenu.RadioItem value="desktop">
-                    Desktop
-                  </ActionMenu.RadioItem>
-                  <ActionMenu.RadioItem value="mobile">
-                    Mobil
-                  </ActionMenu.RadioItem>
-                  <ActionMenu.RadioItem value="tablet">
-                    Nettbrett
-                  </ActionMenu.RadioItem>
-                </ActionMenu.RadioGroup>
-              ) : null}
+          <VStack gap="space-16">
+            {/* General filters: 2-column grid */}
+            <HGrid columns={{ xs: 1, md: 2 }} gap="space-16">
+              <VStack gap="space-12">
+                {features.showDeviceFilter ? (
+                  <ActionMenu.RadioGroup
+                    label="Enhet"
+                    value={params.deviceType ?? ""}
+                    onValueChange={(value) =>
+                      setParams({
+                        deviceType: value || undefined,
+                        page: "1",
+                      })
+                    }
+                  >
+                    <ActionMenu.RadioItem value="">
+                      Alle enheter
+                    </ActionMenu.RadioItem>
+                    <ActionMenu.RadioItem value="desktop">
+                      Desktop
+                    </ActionMenu.RadioItem>
+                    <ActionMenu.RadioItem value="mobile">
+                      Mobil
+                    </ActionMenu.RadioItem>
+                    <ActionMenu.RadioItem value="tablet">
+                      Nettbrett
+                    </ActionMenu.RadioItem>
+                  </ActionMenu.RadioGroup>
+                ) : null}
 
-              {features.showTextFilter || features.showRatingFilter ? (
-                <ActionMenu.Group label="Vis kun">
-                  {features.showTextFilter ? (
-                    <ActionMenu.CheckboxItem
-                      checked={params.hasText === "true"}
-                      onCheckedChange={(checked) =>
-                        setParams({
-                          hasText: checked ? "true" : undefined,
-                          page: "1",
-                        })
-                      }
-                    >
-                      Med tekstsvar
-                    </ActionMenu.CheckboxItem>
-                  ) : null}
+                {features.showTextFilter ||
+                (features.showRatingFilter && !hasRatingAnswerFilter) ? (
+                  <ActionMenu.Group label="Vis kun">
+                    {features.showTextFilter ? (
+                      <ActionMenu.CheckboxItem
+                        checked={params.hasText === "true"}
+                        onCheckedChange={(checked) =>
+                          setParams({
+                            hasText: checked ? "true" : undefined,
+                            page: "1",
+                          })
+                        }
+                      >
+                        Med tekstsvar
+                      </ActionMenu.CheckboxItem>
+                    ) : null}
 
-                  {features.showRatingFilter ? (
-                    <ActionMenu.CheckboxItem
-                      checked={params.lowRating === "true"}
-                      onCheckedChange={(checked) =>
-                        setParams({
-                          lowRating: checked ? "true" : undefined,
-                          page: "1",
-                        })
-                      }
-                    >
-                      Lav score (1-2)
-                    </ActionMenu.CheckboxItem>
-                  ) : null}
-                </ActionMenu.Group>
-              ) : null}
-            </VStack>
+                    {features.showRatingFilter && !hasRatingAnswerFilter ? (
+                      <ActionMenu.CheckboxItem
+                        checked={params.lowRating === "true"}
+                        onCheckedChange={(checked) =>
+                          setParams({
+                            lowRating: checked ? "true" : undefined,
+                            page: "1",
+                          })
+                        }
+                      >
+                        Lav score (1-2)
+                      </ActionMenu.CheckboxItem>
+                    ) : null}
+                  </ActionMenu.Group>
+                ) : null}
+              </VStack>
 
-            <VStack gap="space-12">
-              {features.showTagsFilter && allTags.length > 0 ? (
-                <ActionMenu.Group label="Tags">
-                  {allTags.map((tag) => (
-                    <ActionMenu.CheckboxItem
-                      key={tag}
-                      checked={selectedTags.includes(tag)}
-                      onCheckedChange={(checked) => {
-                        const newTags = checked
-                          ? [...selectedTags, tag]
-                          : selectedTags.filter(
-                              (selectedTag) => selectedTag !== tag,
-                            );
-                        setParams({
-                          tag:
-                            newTags.length > 0 ? newTags.join(",") : undefined,
-                          page: "1",
-                        });
-                      }}
-                    >
-                      {tag}
-                    </ActionMenu.CheckboxItem>
-                  ))}
-                </ActionMenu.Group>
-              ) : null}
+              <VStack gap="space-12">
+                {features.showTagsFilter && allTags.length > 0 ? (
+                  <ActionMenu.Group label="Tags">
+                    {allTags.map((tag) => (
+                      <ActionMenu.CheckboxItem
+                        key={tag}
+                        checked={selectedTags.includes(tag)}
+                        onCheckedChange={(checked) => {
+                          const newTags = checked
+                            ? [...selectedTags, tag]
+                            : selectedTags.filter(
+                                (selectedTag) => selectedTag !== tag,
+                              );
+                          setParams({
+                            tag:
+                              newTags.length > 0
+                                ? newTags.join(",")
+                                : undefined,
+                            page: "1",
+                          });
+                        }}
+                      >
+                        {tag}
+                      </ActionMenu.CheckboxItem>
+                    ))}
+                  </ActionMenu.Group>
+                ) : null}
 
-              {params.surveyId ? (
-                <ContextTagsFilter surveyId={params.surveyId} />
-              ) : null}
+                {params.surveyId ? (
+                  <ContextTagsFilter surveyId={params.surveyId} />
+                ) : null}
+              </VStack>
+            </HGrid>
 
-              {showAnswerFilters ? (
-                <>
-                  <div className={styles.menuDivider} />
-
-                  <VStack gap="space-12" className={styles.menuSection}>
-                    <Label size="small">Svar-filtre</Label>
-
-                    {/* v1: Single-select per field (RadioGroup) — also for MULTI_CHOICE.
-                        Multi-select per field is a future enhancement. */}
+            {/* Answer filters: full-width section with horizontal Chips */}
+            {showAnswerFilters ? (
+              <>
+                <div className={styles.menuDivider} />
+                <VStack gap="space-8">
+                  <Label size="small">Svar-filtre</Label>
+                  <HGrid
+                    columns={{
+                      xs: 1,
+                      md: (answerFilterFields?.length ?? 0) > 1 ? 2 : 1,
+                    }}
+                    gap="space-12"
+                  >
                     {answerFilterFields?.map((field) => {
                       if (isChoiceField(field)) {
                         return (
-                          <ActionMenu.RadioGroup
+                          <ChoiceFilterChips
                             key={field.fieldId}
-                            label={field.label}
-                            value={activeChoiceFilters[field.fieldId] ?? ""}
-                            onValueChange={(value) => {
-                              if (value === "") {
-                                removeChoice(field.fieldId);
-                              } else {
-                                toggleChoice(field.fieldId, value);
-                              }
-                            }}
-                          >
-                            <ActionMenu.RadioItem value="">
-                              Alle
-                            </ActionMenu.RadioItem>
-                            {Object.entries(field.stats.distribution).map(
-                              ([optionId, data]) => (
-                                <ActionMenu.RadioItem
-                                  key={optionId}
-                                  value={optionId}
-                                >
-                                  {`${data.label} (${data.count})`}
-                                </ActionMenu.RadioItem>
-                              ),
-                            )}
-                          </ActionMenu.RadioGroup>
+                            field={field}
+                            activeValue={
+                              activeChoiceFilters[field.fieldId] ?? null
+                            }
+                            onToggle={(optionId) =>
+                              toggleChoice(field.fieldId, optionId)
+                            }
+                            onClear={() => removeChoice(field.fieldId)}
+                          />
                         );
                       }
 
-                      const ratingStats = field.stats as RatingStats & {
-                        ratingVariant?: string;
-                      };
-                      const variant = inferRatingVariantFromDistribution(
-                        field.stats.distribution,
-                        ratingStats.ratingVariant,
-                      );
-
                       return (
-                        <ActionMenu.RadioGroup
+                        <RatingFilterChips
                           key={field.fieldId}
-                          label={field.label}
-                          value={activeRatingFilters[field.fieldId] ?? ""}
-                          onValueChange={(value) => {
-                            if (value === "") {
-                              removeRating(field.fieldId);
-                            } else {
-                              toggleRating(field.fieldId, value);
-                            }
-                          }}
-                        >
-                          <ActionMenu.RadioItem value="">
-                            Alle
-                          </ActionMenu.RadioItem>
-                          {getRatingValues(variant).map((value) => (
-                            <ActionMenu.RadioItem
-                              key={value}
-                              value={String(value)}
-                            >
-                              {`${formatRatingFilterLabel(value, variant)} (${field.stats.distribution[String(value)] ?? 0})`}
-                            </ActionMenu.RadioItem>
-                          ))}
-                        </ActionMenu.RadioGroup>
+                          field={field}
+                          activeValue={
+                            activeRatingFilters[field.fieldId] ?? null
+                          }
+                          onToggle={(value) =>
+                            toggleRating(field.fieldId, value)
+                          }
+                          onClear={() => removeRating(field.fieldId)}
+                        />
                       );
                     })}
-                  </VStack>
-                </>
-              ) : null}
+                  </HGrid>
+                </VStack>
+              </>
+            ) : null}
 
-              {hasActiveChartFilters ? (
-                <>
-                  <div className={styles.menuDivider} />
+            {/* Active chart filters */}
+            {hasActiveChartFilters ? (
+              <>
+                <div className={styles.menuDivider} />
+                <VStack gap="space-8">
+                  <Label size="small">Aktive grafer-filtre</Label>
+                  <Chips size="small">
+                    {params.theme ? (
+                      <Chips.Removable
+                        variant="neutral"
+                        onDelete={() =>
+                          setParams({
+                            theme: undefined,
+                            page: "1",
+                          })
+                        }
+                      >
+                        {`Tema: ${themeValueLabel}`}
+                      </Chips.Removable>
+                    ) : null}
 
-                  <VStack gap="space-8" className={styles.menuSection}>
-                    <Label size="small">Aktive grafer-filtre</Label>
-                    <Chips size="small">
-                      {params.theme ? (
-                        <Chips.Removable
-                          variant="neutral"
-                          onDelete={() =>
-                            setParams({
-                              theme: undefined,
-                              page: "1",
-                            })
-                          }
-                        >
-                          {`Tema: ${themeValueLabel}`}
-                        </Chips.Removable>
-                      ) : null}
-
-                      {params.task ? (
-                        <Chips.Removable
-                          variant="neutral"
-                          onDelete={() =>
-                            setParams({
-                              task: undefined,
-                              page: "1",
-                            })
-                          }
-                        >
-                          {`Oppgave: ${params.task}`}
-                        </Chips.Removable>
-                      ) : null}
-                    </Chips>
-                  </VStack>
-                </>
-              ) : null}
-            </VStack>
-          </HGrid>
+                    {params.task ? (
+                      <Chips.Removable
+                        variant="neutral"
+                        onDelete={() =>
+                          setParams({
+                            task: undefined,
+                            page: "1",
+                          })
+                        }
+                      >
+                        {`Oppgave: ${params.task}`}
+                      </Chips.Removable>
+                    ) : null}
+                  </Chips>
+                </VStack>
+              </>
+            ) : null}
+          </VStack>
         </Box>
       </ActionMenu.Content>
     </ActionMenu>
+  );
+}
+
+function ChoiceFilterChips({
+  field,
+  activeValue,
+  onToggle,
+  onClear,
+}: {
+  field: FieldStat & { stats: ChoiceStats };
+  activeValue: string | null;
+  onToggle: (optionId: string) => void;
+  onClear: () => void;
+}) {
+  return (
+    <VStack gap="space-4">
+      <BodyShort
+        size="small"
+        weight="semibold"
+        className={styles.answerFilterLabel}
+      >
+        {field.label}
+      </BodyShort>
+      <Chips size="small">
+        {Object.entries(field.stats.distribution).map(([optionId, data]) => (
+          <Chips.Toggle
+            key={optionId}
+            selected={activeValue === optionId}
+            onClick={() => {
+              if (activeValue === optionId) {
+                onClear();
+              } else {
+                onToggle(optionId);
+              }
+            }}
+          >
+            {data.label}
+          </Chips.Toggle>
+        ))}
+      </Chips>
+    </VStack>
+  );
+}
+
+function RatingFilterChips({
+  field,
+  activeValue,
+  onToggle,
+  onClear,
+}: {
+  field: FieldStat & { stats: RatingStats };
+  activeValue: string | null;
+  onToggle: (value: string) => void;
+  onClear: () => void;
+}) {
+  const ratingStats = field.stats as RatingStats & {
+    ratingVariant?: string;
+  };
+  const variant = inferRatingVariantFromDistribution(
+    field.stats.distribution,
+    ratingStats.ratingVariant,
+  );
+
+  return (
+    <VStack gap="space-4">
+      <BodyShort
+        size="small"
+        weight="semibold"
+        className={styles.answerFilterLabel}
+      >
+        {field.label}
+      </BodyShort>
+      <Chips size="small">
+        {getRatingValues(variant).map((value) => (
+          <Chips.Toggle
+            key={value}
+            selected={activeValue === String(value)}
+            onClick={() => {
+              if (activeValue === String(value)) {
+                onClear();
+              } else {
+                onToggle(String(value));
+              }
+            }}
+          >
+            {formatRatingFilterLabel(value, variant)}
+          </Chips.Toggle>
+        ))}
+      </Chips>
+    </VStack>
   );
 }
 

@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -63,12 +63,22 @@ vi.mock("@navikt/ds-react", async () => {
     onDelete?: () => void;
   }
 
+  interface ChipToggleProps {
+    children?: React.ReactNode;
+    selected?: boolean;
+    onClick?: () => void;
+  }
+
   function SimpleDiv({ children, className }: SimpleProps) {
     return <div className={className}>{children}</div>;
   }
 
   function Button({ children }: SimpleProps) {
     return <button type="button">{children}</button>;
+  }
+
+  function BodyShort({ children }: SimpleProps) {
+    return <span>{children}</span>;
   }
 
   function Label({ children }: SimpleProps) {
@@ -174,6 +184,14 @@ vi.mock("@navikt/ds-react", async () => {
     );
   }
 
+  function ChipsToggle({ children, selected, onClick }: ChipToggleProps) {
+    return (
+      <button type="button" aria-pressed={Boolean(selected)} onClick={onClick}>
+        {children}
+      </button>
+    );
+  }
+
   const ActionMenu = Object.assign(ActionMenuRoot, {
     Trigger: ActionMenuTrigger,
     Content: ActionMenuContent,
@@ -185,10 +203,12 @@ vi.mock("@navikt/ds-react", async () => {
 
   const Chips = Object.assign(ChipsRoot, {
     Removable: ChipsRemovable,
+    Toggle: ChipsToggle,
   });
 
   return {
     ActionMenu,
+    BodyShort,
     Box: SimpleDiv,
     Button,
     Chips,
@@ -317,13 +337,26 @@ describe("FilterMenu", () => {
     expect(screen.queryByText("Valgt fra grafer")).not.toBeInTheDocument();
     expect(screen.getByText("Aktive grafer-filtre")).toBeInTheDocument();
 
-    expect(screen.getByRole("radio", { name: "Chat (5)" })).toBeChecked();
-    expect(screen.getByRole("radio", { name: "Ja (8)" })).toBeChecked();
+    // Choice chips
     expect(
-      screen.getByRole("radio", { name: "Telefon (3)" }),
+      screen.getByRole("button", { name: "Chat", pressed: true }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Ja (8)" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "10 (3)" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Telefon", pressed: false }),
+    ).toBeInTheDocument();
+
+    // Rating chips (thumbs variant inferred: Ja/Nei)
+    expect(
+      screen.getByRole("button", { name: "Ja", pressed: true }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Nei", pressed: false }),
+    ).toBeInTheDocument();
+
+    // NPS rating chips
+    expect(screen.getByRole("button", { name: "10" })).toBeInTheDocument();
+
+    // Chart filters
     expect(screen.getByText("Tema: Annet")).toBeInTheDocument();
     expect(screen.getByText("Oppgave: Søknad")).toBeInTheDocument();
   });
@@ -339,31 +372,16 @@ describe("FilterMenu", () => {
 
     renderFilterMenu({ surveyId: "survey-1" });
 
-    await user.click(screen.getByRole("radio", { name: "Telefon (3)" }));
+    // Click an unselected choice chip → toggleChoice
+    await user.click(screen.getByRole("button", { name: "Telefon" }));
     expect(toggleChoice).toHaveBeenCalledWith("choice-1", "phone");
 
-    const thumbsFieldset = screen
-      .getByText("Fikk du hjelp?")
-      .closest("fieldset");
-    expect(thumbsFieldset).not.toBeNull();
-
-    await user.click(
-      within(thumbsFieldset as HTMLFieldSetElement).getByRole("radio", {
-        name: "Alle",
-      }),
-    );
+    // Click the already-selected rating chip → removeRating (deselect)
+    await user.click(screen.getByRole("button", { name: "Ja", pressed: true }));
     expect(removeRating).toHaveBeenCalledWith("rating-1");
 
-    const npsFieldset = screen
-      .getByText("Hvor sannsynlig er det at du anbefaler oss?")
-      .closest("fieldset");
-    expect(npsFieldset).not.toBeNull();
-
-    await user.click(
-      within(npsFieldset as HTMLFieldSetElement).getByRole("radio", {
-        name: "10 (3)",
-      }),
-    );
+    // Click an NPS rating chip → toggleRating
+    await user.click(screen.getByRole("button", { name: "10" }));
     expect(toggleRating).toHaveBeenCalledWith("rating-2", "10");
   });
 });
