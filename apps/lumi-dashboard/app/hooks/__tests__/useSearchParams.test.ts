@@ -1,100 +1,166 @@
-import { act, renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { createMemoryHistory } from "@tanstack/history";
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  RouterProvider,
+} from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { act, render, waitFor } from "@testing-library/react";
+import { createElement } from "react";
+import { describe, expect, it } from "vitest";
 import { useSearchParams } from "~/hooks/useSearchParams";
+import { searchSchema } from "~/schemas/searchSchema";
+
+type SearchParamsHook = ReturnType<typeof useSearchParams>;
+
+async function setup(initialEntries: Array<string> = ["/"]) {
+  const state: { current?: SearchParamsHook } = {};
+
+  function TestComponent() {
+    state.current = useSearchParams();
+    return null;
+  }
+
+  const rootRoute = createRootRoute({
+    component: Outlet,
+  });
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    validateSearch: zodValidator(searchSchema),
+    component: TestComponent,
+  });
+  const routeTree = rootRoute.addChildren([indexRoute]);
+  const history = createMemoryHistory({ initialEntries });
+  const router = createRouter({ routeTree, history });
+
+  await router.load();
+  render(createElement(RouterProvider, { router }));
+  await waitFor(() => expect(state.current).toBeDefined());
+
+  return {
+    router,
+    getResult: () => {
+      if (!state.current) {
+        throw new Error("Hook state is not available yet");
+      }
+      return state.current;
+    },
+  };
+}
 
 describe("useSearchParams", () => {
-  beforeEach(() => {
-    // Reset URL before each test
-    window.history.pushState({}, "", "/");
+  it("returns empty params when URL has no search params", async () => {
+    const { getResult } = await setup();
+
+    expect(getResult().params).toEqual({});
   });
 
-  it("returns empty params when URL has no search params", () => {
-    const { result } = renderHook(() => useSearchParams());
-    expect(result.current.params).toEqual({});
+  it("parses existing search params from URL", async () => {
+    const { getResult } = await setup(["/?team=flex&app=spinnsyn"]);
+
+    expect(getResult().params.team).toBe("flex");
+    expect(getResult().params.app).toBe("spinnsyn");
   });
 
-  it("parses existing search params from URL", () => {
-    window.history.pushState({}, "", "/?team=flex&app=spinnsyn");
+  it("setParam adds a new parameter", async () => {
+    const { router, getResult } = await setup();
 
-    const { result } = renderHook(() => useSearchParams());
-
-    expect(result.current.params.team).toBe("flex");
-    expect(result.current.params.app).toBe("spinnsyn");
-  });
-
-  it("setParam adds a new parameter", () => {
-    const { result } = renderHook(() => useSearchParams());
-
-    act(() => {
-      result.current.setParam("team", "flex");
+    await act(async () => {
+      getResult().setParam("team", "flex");
     });
 
-    expect(window.location.search).toBe("?team=flex");
-    expect(result.current.params.team).toBe("flex");
+    await waitFor(() => {
+      expect(router.state.location.searchStr).toBe("?team=flex");
+      expect(getResult().params.team).toBe("flex");
+    });
   });
 
-  it("setParam removes parameter when value is undefined", () => {
-    window.history.pushState({}, "", "/?team=flex&app=spinnsyn");
-    const { result } = renderHook(() => useSearchParams());
+  it("setParam removes parameter when value is undefined", async () => {
+    const { router, getResult } = await setup(["/?team=flex&app=spinnsyn"]);
 
-    act(() => {
-      result.current.setParam("team", undefined);
+    await act(async () => {
+      getResult().setParam("team", undefined);
     });
 
-    expect(window.location.search).toBe("?app=spinnsyn");
-    expect(result.current.params.team).toBeUndefined();
+    await waitFor(() => {
+      expect(router.state.location.searchStr).toBe("?app=spinnsyn");
+      expect(getResult().params.team).toBeUndefined();
+    });
   });
 
-  it("setParam removes parameter when value is empty string", () => {
-    window.history.pushState({}, "", "/?team=flex");
-    const { result } = renderHook(() => useSearchParams());
+  it("setParam removes parameter when value is empty string", async () => {
+    const { router, getResult } = await setup(["/?team=flex"]);
 
-    act(() => {
-      result.current.setParam("team", "");
+    await act(async () => {
+      getResult().setParam("team", "");
     });
 
-    expect(window.location.search).toBe("");
+    await waitFor(() => {
+      expect(router.state.location.searchStr).toBe("");
+    });
   });
 
-  it("setParams sets multiple parameters at once", () => {
-    const { result } = renderHook(() => useSearchParams());
+  it("setParams sets multiple parameters at once", async () => {
+    const { router, getResult } = await setup();
 
-    act(() => {
-      result.current.setParams({
+    await act(async () => {
+      getResult().setParams({
         team: "flex",
         app: "spinnsyn",
         fromDate: "2024-01-01",
       });
     });
 
-    expect(result.current.params.team).toBe("flex");
-    expect(result.current.params.app).toBe("spinnsyn");
-    expect(result.current.params.fromDate).toBe("2024-01-01");
+    await waitFor(() => {
+      expect(router.state.location.searchStr).toBe(
+        "?team=flex&app=spinnsyn&fromDate=2024-01-01",
+      );
+      expect(getResult().params.team).toBe("flex");
+      expect(getResult().params.app).toBe("spinnsyn");
+      expect(getResult().params.fromDate).toBe("2024-01-01");
+    });
   });
 
-  it("resetParams clears all parameters", () => {
-    window.history.pushState(
-      {},
-      "",
+  it("setParams removes existing parameters when passed undefined", async () => {
+    const { router, getResult } = await setup(["/?team=flex&app=spinnsyn"]);
+
+    await act(async () => {
+      getResult().setParams({ team: undefined });
+    });
+
+    await waitFor(() => {
+      expect(router.state.location.searchStr).toBe("?app=spinnsyn");
+      expect(getResult().params.team).toBeUndefined();
+    });
+  });
+
+  it("resetParams clears all parameters", async () => {
+    const { router, getResult } = await setup([
       "/?team=flex&app=spinnsyn&fromDate=2024-01-01",
-    );
-    const { result } = renderHook(() => useSearchParams());
+    ]);
 
-    act(() => {
-      result.current.resetParams();
+    await act(async () => {
+      getResult().resetParams();
     });
 
-    expect(window.location.search).toBe("");
-    expect(result.current.params).toEqual({});
+    await waitFor(() => {
+      expect(router.state.location.searchStr).toBe("");
+      expect(getResult().params).toEqual({});
+    });
   });
 
-  it("handles special characters in parameter values", () => {
-    const { result } = renderHook(() => useSearchParams());
+  it("handles special characters in parameter values", async () => {
+    const { getResult } = await setup();
 
-    act(() => {
-      result.current.setParam("query", "søk med æøå");
+    await act(async () => {
+      getResult().setParam("query", "søk med æøå");
     });
 
-    expect(result.current.params.query).toBe("søk med æøå");
+    await waitFor(() => {
+      expect(getResult().params.query).toBe("søk med æøå");
+    });
   });
 });

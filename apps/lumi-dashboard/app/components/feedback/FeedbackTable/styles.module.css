@@ -295,35 +295,23 @@
   align-items: center;
 }
 
-.unselectedOption {
+.choiceOption {
   display: inline-flex;
   align-items: center;
-  padding: 0.25rem 0.5rem;
-  color: var(--ax-text-subtle);
-  font-size: 0.875rem;
+  gap: var(--ax-space-4, 0.25rem);
+  padding: var(--ax-space-4, 0.25rem) var(--ax-space-8, 0.5rem);
+  border-radius: var(--ax-border-radius-medium, 6px);
+  background: var(--ax-bg-neutral-soft, #f5f5f5);
+  border: 1px solid transparent;
+  font-size: var(--ax-font-size-medium, 0.875rem);
+  line-height: 1.5;
 }
 
-.clickableTag {
-  cursor: pointer;
-  transition: transform 0.1s;
-}
-
-.clickableTagButton {
-  border: none;
-  background: transparent;
-  padding: 0;
-  margin: 0;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.clickableTagButton:focus-visible {
-  outline: 2px solid var(--ax-border-focus);
-  outline-offset: 2px;
-}
-
-.clickableTag:hover {
-  transform: scale(1.02);
+.choiceOptionSelected {
+  composes: choiceOption;
+  background: var(--ax-bg-accent-soft, #e6f0ff);
+  border-color: var(--ax-border-accent, #99c4ff);
+  font-weight: 500;
 }
 
 /* Rating emoji display */

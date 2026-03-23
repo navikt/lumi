@@ -8,17 +8,13 @@ import { deviceToIcon, formatMetadataKey, formatMetadataValue } from "./utils";
 
 interface FeedbackExpandedViewProps {
   feedback: FeedbackDto;
-  onChoiceFilter?: (fieldId: string, optionId: string) => void;
 }
 
 /**
  * Expanded view shown when a feedback row is clicked.
  * Displays full answers, context, metadata, and tags.
  */
-export function FeedbackExpandedView({
-  feedback,
-  onChoiceFilter,
-}: FeedbackExpandedViewProps) {
+export function FeedbackExpandedView({ feedback }: FeedbackExpandedViewProps) {
   return (
     <Table.Row className={styles.expandedRow}>
       <Table.DataCell colSpan={5} className={styles.expandedCell}>
@@ -26,11 +22,7 @@ export function FeedbackExpandedView({
           <VStack gap="space-20">
             {/* Answers Timeline */}
             <ExpandedSection label={`Svar(${feedback.answers.length})`}>
-              <TimelineView
-                answers={feedback.answers}
-                styles={styles}
-                onChoiceFilter={onChoiceFilter}
-              />
+              <TimelineView answers={feedback.answers} styles={styles} />
             </ExpandedSection>
 
             {/* Tags Editor */}

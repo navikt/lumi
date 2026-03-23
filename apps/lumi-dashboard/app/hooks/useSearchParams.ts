@@ -1,129 +1,60 @@
-import { useCallback, useSyncExternalStore } from "react";
+import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
+import { useCallback } from "react";
+import type { SearchParams } from "~/schemas/searchSchema";
 
-export interface SearchParams {
-  team?: string;
-  app?: string;
-  page?: string;
-  size?: string;
-  fromDate?: string;
-  toDate?: string;
-  hasText?: string;
-  query?: string;
-  tag?: string;
-  surveyId?: string;
-  /** Filter by low ratings (1-2) */
-  lowRating?: string;
-  /** Filter by device type */
-  deviceType?: string;
+export type { SearchParams } from "~/schemas/searchSchema";
 
-  /** Filter by theme (for discovery drill-down) */
-  theme?: string;
-
-  /** Filter by context.tags (format: "key:value,key:value") */
-  segment?: string;
-
-  /** Filter by specific task (for Top Tasks drill-down) */
-  task?: string;
-
-  /** Filter by a specific rating fieldId (e.g. thumbs question) */
-  ratingFieldId?: string;
-
-  /** Filter by a specific rating value for ratingFieldId (e.g. 2=Ja, 1=Nei) */
-  ratingValue?: string;
-
-  /** Filter by a specific choice fieldId */
-  choiceFieldId?: string;
-
-  /** Filter by a specific choice value for choiceFieldId */
-  choiceValue?: string;
-}
-
-// Store for managing search params reactively
-let listeners: Array<() => void> = [];
-
-function subscribe(listener: () => void) {
-  listeners.push(listener);
-
-  // Also listen to browser events
-  if (typeof window !== "undefined") {
-    window.addEventListener("popstate", listener);
-  }
-
-  return () => {
-    listeners = listeners.filter((l) => l !== listener);
-    if (typeof window !== "undefined") {
-      window.removeEventListener("popstate", listener);
-    }
-  };
-}
-
-function getSnapshot(): string {
-  if (typeof window === "undefined") return "";
-  return window.location.search;
-}
-
-function getServerSnapshot(): string {
-  return "";
-}
-
-function notifyListeners() {
-  for (const listener of listeners) {
-    listener();
-  }
+function removeEmptyParams(
+  params: Partial<SearchParams>,
+): Partial<SearchParams> {
+  return Object.fromEntries(
+    Object.entries(params).filter(
+      ([, value]) => value !== undefined && value !== "",
+    ),
+  ) as Partial<SearchParams>;
 }
 
 export function useSearchParams() {
-  // Use useSyncExternalStore for SSR-safe reactive URL params
-  const search = useSyncExternalStore(
-    subscribe,
-    getSnapshot,
-    getServerSnapshot,
-  );
-
-  // Parse params from the search string
-  const params: SearchParams = search
-    ? (Object.fromEntries(new URLSearchParams(search)) as SearchParams)
-    : {};
+  const navigate = useNavigate();
+  const router = useRouter();
+  const params: SearchParams = useSearch({ strict: false });
+  const currentPath = router.state.location.pathname;
 
   const setParam = useCallback(
     (key: keyof SearchParams, value: string | undefined) => {
-      if (typeof window === "undefined") return;
-
-      const url = new URL(window.location.href);
-      if (value === undefined || value === "") {
-        url.searchParams.delete(key);
-      } else {
-        url.searchParams.set(key, value);
-      }
-      window.history.pushState({}, "", url.toString());
-      notifyListeners();
+      void navigate({
+        to: currentPath,
+        search: removeEmptyParams({
+          ...params,
+          [key]: value || undefined,
+        }),
+        replace: true,
+      });
     },
-    [],
+    [currentPath, navigate, params],
   );
 
-  const setParams = useCallback((newParams: Partial<SearchParams>) => {
-    if (typeof window === "undefined") return;
-
-    const url = new URL(window.location.href);
-    for (const [key, value] of Object.entries(newParams)) {
-      if (value === undefined || value === "") {
-        url.searchParams.delete(key);
-      } else {
-        url.searchParams.set(key, value);
-      }
-    }
-    window.history.pushState({}, "", url.toString());
-    notifyListeners();
-  }, []);
+  const setParams = useCallback(
+    (newParams: Partial<SearchParams>) => {
+      void navigate({
+        to: currentPath,
+        search: removeEmptyParams({
+          ...params,
+          ...newParams,
+        }),
+        replace: true,
+      });
+    },
+    [currentPath, navigate, params],
+  );
 
   const resetParams = useCallback(() => {
-    if (typeof window === "undefined") return;
-
-    const url = new URL(window.location.href);
-    url.search = "";
-    window.history.pushState({}, "", url.toString());
-    notifyListeners();
-  }, []);
+    void navigate({
+      to: currentPath,
+      search: {},
+      replace: true,
+    });
+  }, [currentPath, navigate]);
 
   return { params, setParam, setParams, resetParams };
 }

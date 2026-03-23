@@ -31,7 +31,7 @@ import styles from "./styles.module.css";
  * Supports expand/collapse for detailed view, deletion, and filtering.
  */
 export function FeedbackTable() {
-  const { params, setParam, setParams } = useSearchParams();
+  const { params, setParam } = useSearchParams();
   const page = Number.parseInt(params.page || "1", 10);
   const { data, error, isPending } = useFeedback();
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -67,20 +67,6 @@ export function FeedbackTable() {
   const totalPages = data?.totalPages || 1;
   const totalElements = data?.totalElements || 0;
   const selectedSurvey = params.surveyId;
-  const activeChoiceFieldId = params.choiceFieldId;
-  const activeChoiceValue = params.choiceValue;
-
-  const handleChoiceFilter = (fieldId: string, optionId: string) => {
-    const isAlreadyFiltered =
-      activeChoiceFieldId === fieldId && activeChoiceValue === optionId;
-
-    setParams({
-      choiceFieldId: isAlreadyFiltered ? undefined : fieldId,
-      choiceValue: isAlreadyFiltered ? undefined : optionId,
-      page: "1",
-    });
-  };
-
   return (
     <div className={styles.table}>
       {/* Toolbar with bulk actions when survey is selected */}
@@ -127,10 +113,7 @@ export function FeedbackTable() {
                         }
                       />
                       {expandedRows.has(feedback.id) && (
-                        <FeedbackExpandedView
-                          feedback={feedback}
-                          onChoiceFilter={handleChoiceFilter}
-                        />
+                        <FeedbackExpandedView feedback={feedback} />
                       )}
                     </React.Fragment>
                   ))}
@@ -149,7 +132,6 @@ export function FeedbackTable() {
                   isExpanded={expandedRows.has(feedback.id)}
                   onToggleExpand={() => toggleExpanded(feedback.id)}
                   onDelete={() => setFeedbackToDelete(feedback.id)}
-                  onChoiceFilter={handleChoiceFilter}
                   isDeleting={
                     deleteFeedbackMutation.isPending &&
                     feedbackToDelete === feedback.id

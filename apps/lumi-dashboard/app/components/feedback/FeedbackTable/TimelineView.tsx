@@ -6,11 +6,9 @@ import { RenderAnswer } from "./AnswerRenderer";
 export function TimelineView({
   answers,
   styles,
-  onChoiceFilter,
 }: {
   answers: Answer[];
   styles: Record<string, string>;
-  onChoiceFilter?: (fieldId: string, optionId: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [lines, setLines] = useState<{ top: number; height: number }[]>([]);
@@ -79,11 +77,7 @@ export function TimelineView({
           <div className={`${styles.answerNumber} js-answer-number`}>
             {index + 1}
           </div>
-          <RenderAnswer
-            answer={answer}
-            styles={styles}
-            onChoiceFilter={onChoiceFilter}
-          />
+          <RenderAnswer answer={answer} styles={styles} />
         </div>
       ))}
     </div>

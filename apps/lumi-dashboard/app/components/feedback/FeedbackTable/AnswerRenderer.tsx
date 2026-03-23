@@ -11,7 +11,6 @@ import {
   Detail,
   HStack,
   Label,
-  Tag,
   Tooltip,
   VStack,
 } from "@navikt/ds-react";
@@ -61,11 +60,9 @@ function AnswerCardLayout({
 export function RenderAnswer({
   answer,
   styles,
-  onChoiceFilter,
 }: {
   answer: Answer;
   styles: Record<string, string>;
-  onChoiceFilter?: (fieldId: string, optionId: string) => void;
 }) {
   switch (answer.fieldType) {
     case "RATING": {
@@ -273,45 +270,24 @@ export function RenderAnswer({
           label={answer.question.label}
           description={answer.question.description}
         >
-          {options.length > 0 ? (
-            <div className={styles.choiceOptions}>
-              {options.map((opt) => {
-                const isSelected = selectedIds.includes(opt.id);
-
-                if (isSelected) {
-                  return (
-                    <Tooltip key={opt.id} content="Klikk for å filtrere">
-                      <button
-                        type="button"
-                        className={styles.clickableTagButton}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onChoiceFilter?.(answer.fieldId, opt.id);
-                        }}
-                        aria-label={`Filtrer på ${opt.label}`}
-                      >
-                        <Tag
-                          variant="neutral"
-                          size="small"
-                          className={styles.clickableTag}
-                        >
-                          {opt.label}
-                        </Tag>
-                      </button>
-                    </Tooltip>
-                  );
-                }
-
-                return (
-                  <span key={opt.id} className={styles.unselectedOption}>
-                    {opt.label}
-                  </span>
-                );
-              })}
-            </div>
-          ) : (
-            <BodyShort>{selectedIds.join(", ") || "Ingen valgt"}</BodyShort>
-          )}
+          <div className={styles.choiceOptions}>
+            {options.map((opt) => {
+              const isSelected = selectedIds.includes(opt.id);
+              return (
+                <span
+                  key={opt.id}
+                  className={
+                    isSelected
+                      ? styles.choiceOptionSelected
+                      : styles.choiceOption
+                  }
+                >
+                  {isSelected && "✓ "}
+                  {opt.label}
+                </span>
+              );
+            })}
+          </div>
         </AnswerCardLayout>
       );
     }

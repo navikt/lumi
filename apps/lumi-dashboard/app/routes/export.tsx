@@ -1,10 +1,13 @@
 import { Alert, Heading, VStack } from "@navikt/ds-react";
 import { createFileRoute } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { ExportPanel } from "~/components/export/Panel";
 import { FilterBar } from "~/components/shared/FilterBar";
 import { Header } from "~/components/shared/Header";
+import { searchSchema } from "~/schemas/searchSchema";
 
 export const Route = createFileRoute("/export")({
+  validateSearch: zodValidator(searchSchema),
   component: ExportPage,
 });
 

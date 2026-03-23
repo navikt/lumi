@@ -1,6 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { Answer } from "~/types/api";
 import { RenderAnswer } from "../AnswerRenderer";
@@ -32,10 +31,7 @@ const styles = {
 };
 
 describe("AnswerRenderer", () => {
-  it("calls onChoiceFilter with fieldId and optionId when selected Tag is clicked", async () => {
-    const user = userEvent.setup();
-    const onChoiceFilter = vi.fn();
-
+  it("renders selected choice options as pills with a checkmark", () => {
     const answer: Answer = {
       fieldId: "task_choice",
       fieldType: "SINGLE_CHOICE",
@@ -49,47 +45,9 @@ describe("AnswerRenderer", () => {
       value: { type: "singleChoice", selectedOptionId: "opt-1" },
     };
 
-    render(
-      <RenderAnswer
-        answer={answer}
-        styles={styles}
-        onChoiceFilter={onChoiceFilter}
-      />,
-    );
+    render(<RenderAnswer answer={answer} styles={styles} />);
 
-    await user.click(screen.getByText("Søknad"));
-
-    expect(onChoiceFilter).toHaveBeenCalledWith("task_choice", "opt-1");
-  });
-
-  it("supports keyboard activation on selected choice filter button", async () => {
-    const user = userEvent.setup();
-    const onChoiceFilter = vi.fn();
-
-    const answer: Answer = {
-      fieldId: "task_choice",
-      fieldType: "SINGLE_CHOICE",
-      question: {
-        label: "Hva skulle du gjøre?",
-        options: [{ id: "opt-1", label: "Søknad" }],
-      },
-      value: { type: "singleChoice", selectedOptionId: "opt-1" },
-    };
-
-    render(
-      <RenderAnswer
-        answer={answer}
-        styles={styles}
-        onChoiceFilter={onChoiceFilter}
-      />,
-    );
-
-    const filterButton = screen.getByRole("button", {
-      name: "Filtrer på Søknad",
-    });
-    filterButton.focus();
-    await user.keyboard("{Enter}");
-
-    expect(onChoiceFilter).toHaveBeenCalledWith("task_choice", "opt-1");
+    expect(screen.getByText("✓ Søknad")).toBeInTheDocument();
+    expect(screen.getByText("Oppfølging")).toBeInTheDocument();
   });
 });
