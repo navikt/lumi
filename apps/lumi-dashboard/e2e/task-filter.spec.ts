@@ -41,14 +41,19 @@ test.describe("Top Tasks - Task Filter", () => {
     await page.goto("/?surveyId=survey-top-tasks&task=TestTask");
     await expect(page.locator("main")).toBeVisible({ timeout: 15000 });
 
-    // Chip aria-label includes the value: "Fjern filter Oppgave: TestTask"
-    const removeButton = page.locator('[aria-label^="Fjern filter Oppgave"]');
+    // Wait for the chip to render
+    const chipText = page.getByText("Oppgave: TestTask");
+    await expect(chipText).toBeVisible({ timeout: 5000 });
 
-    await expect(removeButton).toBeVisible({ timeout: 5000 });
-    await removeButton.click();
+    // Click the remove button using getByRole for reliable interaction
+    await page.getByRole("button", { name: /Fjern filter Oppgave/ }).click();
 
     // URL should no longer contain task parameter
-    await expect(page).not.toHaveURL(/[?&]task=/, { timeout: 5000 });
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("task"), {
+        timeout: 5000,
+      })
+      .toBeNull();
   });
 
   test("task filter persists in URL after page reload", async ({ page }) => {

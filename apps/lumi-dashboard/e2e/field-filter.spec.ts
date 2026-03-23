@@ -56,12 +56,17 @@ test.describe("Field filters", () => {
   test("choice and rating filters can be active at the same time", async ({
     page,
   }) => {
-    await gotoSurveyCustom(
-      page,
+    await page.goto(
       "/?surveyId=survey-custom&choice=role%3AArbeidsgiver&rating=satisfaction%3A5",
     );
+    await expect(page.locator("main")).toBeVisible({ timeout: 15000 });
 
-    await expect(page.getByText("Rolle: Arbeidsgiver")).toBeVisible();
-    await expect(page.getByText("Hvor fornøyd er du?: 5")).toBeVisible();
+    // Both filter chips should be visible regardless of field stats
+    await expect(page.getByText("Rolle: Arbeidsgiver")).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(page.getByText("Hvor fornøyd er du?: 5")).toBeVisible({
+      timeout: 5000,
+    });
   });
 });
