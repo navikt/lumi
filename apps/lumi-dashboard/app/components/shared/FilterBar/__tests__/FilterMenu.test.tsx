@@ -81,10 +81,6 @@ vi.mock("@navikt/ds-react", async () => {
     return <span>{children}</span>;
   }
 
-  function Label({ children }: SimpleProps) {
-    return <span>{children}</span>;
-  }
-
   function Tag({ children }: SimpleProps) {
     return <span>{children}</span>;
   }
@@ -214,7 +210,6 @@ vi.mock("@navikt/ds-react", async () => {
     Chips,
     HGrid: SimpleDiv,
     HStack: SimpleDiv,
-    Label,
     Tag,
     VStack: SimpleDiv,
   };

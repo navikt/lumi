@@ -7,7 +7,6 @@ import {
   Chips,
   HGrid,
   HStack,
-  Label,
   Tag,
   VStack,
 } from "@navikt/ds-react";
@@ -217,8 +216,7 @@ export function FilterMenu({
                   borderRadius="8"
                   padding="space-12"
                 >
-                  <VStack gap="space-8">
-                    <Label size="small">Svar-filtre</Label>
+                  <ActionMenu.Group label="Svar-filtre">
                     <HGrid
                       columns={{
                         xs: 1,
@@ -258,7 +256,7 @@ export function FilterMenu({
                         );
                       })}
                     </HGrid>
-                  </VStack>
+                  </ActionMenu.Group>
                 </Box>
               </>
             ) : null}
@@ -267,8 +265,7 @@ export function FilterMenu({
             {hasActiveChartFilters ? (
               <>
                 <div className={styles.menuDivider} />
-                <VStack gap="space-8">
-                  <Label size="small">Aktive grafer-filtre</Label>
+                <ActionMenu.Group label="Aktive grafer-filtre">
                   <Chips size="small">
                     {params.theme ? (
                       <Chips.Removable
@@ -298,7 +295,7 @@ export function FilterMenu({
                       </Chips.Removable>
                     ) : null}
                   </Chips>
-                </VStack>
+                </ActionMenu.Group>
               </>
             ) : null}
           </VStack>
