@@ -102,6 +102,13 @@ class FeedbackSecurityTest : DescribeSpec({
             isSafeChoiceValue("opt(1)") shouldBe false
         }
 
+        it("should reject choice values with control characters") {
+            isSafeChoiceValue("opt\n1") shouldBe false
+            isSafeChoiceValue("opt\r1") shouldBe false
+            isSafeChoiceValue("opt\u00001") shouldBe false
+            isSafeChoiceValue("opt\t1") shouldBe false
+        }
+
         it("should build singleChoice and multiChoice JSONPath for safe input") {
             val paths = buildChoiceJsonPaths(
                 choiceFieldId = "task_choice",

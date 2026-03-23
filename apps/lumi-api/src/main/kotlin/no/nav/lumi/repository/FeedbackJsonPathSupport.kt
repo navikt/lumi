@@ -37,7 +37,7 @@ internal fun normalizeChoiceValue(choiceValue: String?): String? {
 }
 
 internal fun isSafeChoiceValue(choiceValue: String): Boolean {
-    return choiceValue.none { it in JSON_PATH_SPECIAL_CHARS }
+    return choiceValue.none { it in JSON_PATH_SPECIAL_CHARS || it.code < 32 }
 }
 
 internal fun buildChoiceJsonPaths(

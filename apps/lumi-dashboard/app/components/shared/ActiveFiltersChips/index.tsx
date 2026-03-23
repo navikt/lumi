@@ -112,8 +112,10 @@ export function ActiveFiltersChips() {
 
     const fieldLabel = field?.label ?? "Valg";
 
-    let valueLabel = params.choiceValue;
-    if (
+    let valueLabel: string;
+    if (statsQuery.isPending) {
+      valueLabel = "…";
+    } else if (
       field &&
       (field.fieldType === "SINGLE_CHOICE" ||
         field.fieldType === "MULTI_CHOICE")
@@ -121,10 +123,10 @@ export function ActiveFiltersChips() {
       const stats = field.stats as unknown as {
         distribution?: Record<string, { label?: string }>;
       };
-      const optionLabel = stats.distribution?.[params.choiceValue]?.label;
-      if (optionLabel) {
-        valueLabel = optionLabel;
-      }
+      valueLabel =
+        stats.distribution?.[params.choiceValue]?.label ?? params.choiceValue;
+    } else {
+      valueLabel = params.choiceValue;
     }
 
     chips.push({

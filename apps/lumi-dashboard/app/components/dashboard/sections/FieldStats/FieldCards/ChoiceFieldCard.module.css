@@ -33,8 +33,6 @@
   color: inherit;
   display: flex;
   flex-direction: column;
-  /* Remove default outline */
-  outline: none;
 }
 
 .choiceButton:hover {
@@ -42,7 +40,8 @@
 }
 
 .choiceButton:focus-visible {
-  box-shadow: var(--ax-shadow-focus);
+  outline: 2px solid var(--ax-border-focus);
+  outline-offset: 2px;
 }
 
 .choiceButtonInactive {
