@@ -209,56 +209,53 @@ export function FilterMenu({
 
             {/* Answer filters: full-width section with horizontal Chips */}
             {showAnswerFilters ? (
-              <>
-                <div className={styles.menuDivider} />
+              <ActionMenu.Group label="Svar-filtre">
                 <Box
                   background="neutral-soft"
                   borderRadius="8"
                   padding="space-12"
                 >
-                  <ActionMenu.Group label="Svar-filtre">
-                    <HGrid
-                      columns={{
-                        xs: 1,
-                        md: (visibleFields?.length ?? 0) > 1 ? 2 : 1,
-                      }}
-                      gap="space-12"
-                    >
-                      {visibleFields?.map((field) => {
-                        if (isChoiceField(field)) {
-                          return (
-                            <ChoiceFilterChips
-                              key={field.fieldId}
-                              field={field}
-                              activeValue={
-                                activeChoiceFilters[field.fieldId] ?? null
-                              }
-                              onToggle={(optionId) =>
-                                toggleChoice(field.fieldId, optionId)
-                              }
-                              onClear={() => removeChoice(field.fieldId)}
-                            />
-                          );
-                        }
-
+                  <HGrid
+                    columns={{
+                      xs: 1,
+                      md: (visibleFields?.length ?? 0) > 1 ? 2 : 1,
+                    }}
+                    gap="space-12"
+                  >
+                    {visibleFields?.map((field) => {
+                      if (isChoiceField(field)) {
                         return (
-                          <RatingFilterChips
+                          <ChoiceFilterChips
                             key={field.fieldId}
                             field={field}
                             activeValue={
-                              activeRatingFilters[field.fieldId] ?? null
+                              activeChoiceFilters[field.fieldId] ?? null
                             }
-                            onToggle={(value) =>
-                              toggleRating(field.fieldId, value)
+                            onToggle={(optionId) =>
+                              toggleChoice(field.fieldId, optionId)
                             }
-                            onClear={() => removeRating(field.fieldId)}
+                            onClear={() => removeChoice(field.fieldId)}
                           />
                         );
-                      })}
-                    </HGrid>
-                  </ActionMenu.Group>
+                      }
+
+                      return (
+                        <RatingFilterChips
+                          key={field.fieldId}
+                          field={field}
+                          activeValue={
+                            activeRatingFilters[field.fieldId] ?? null
+                          }
+                          onToggle={(value) =>
+                            toggleRating(field.fieldId, value)
+                          }
+                          onClear={() => removeRating(field.fieldId)}
+                        />
+                      );
+                    })}
+                  </HGrid>
                 </Box>
-              </>
+              </ActionMenu.Group>
             ) : null}
 
             {/* Active chart filters */}
