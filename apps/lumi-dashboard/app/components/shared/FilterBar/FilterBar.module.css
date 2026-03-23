@@ -50,7 +50,7 @@
 }
 
 .actionMenuContent {
-  width: min(42rem, calc(100vw - 2rem));
+  width: min(38rem, calc(100vw - 2rem));
   min-width: 320px;
   /* Aksel ActionMenu handles scroll internally — don't add overflow here */
 }

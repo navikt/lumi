@@ -11,6 +11,7 @@ import {
   Tag,
   VStack,
 } from "@navikt/ds-react";
+import { useRef } from "react";
 import { ContextTagsFilter } from "~/components/dashboard/ContextTagsFilter";
 import type { SurveyFeatureConfig } from "~/config/surveyConfig";
 import { useChoiceFilter } from "~/hooks/useChoiceFilter";
@@ -56,10 +57,19 @@ export function FilterMenu({
   const answerFilterFields = stats?.fieldStats?.filter(
     (field) => isChoiceField(field) || isRatingField(field),
   );
+
+  // Cache the last non-empty answer filter fields so filters survive
+  // the anonymity threshold (fieldStats is emptied when count < 5)
+  const cachedFieldsRef = useRef(answerFilterFields);
+  if (answerFilterFields && answerFilterFields.length > 0) {
+    cachedFieldsRef.current = answerFilterFields;
+  }
+  const visibleFields = cachedFieldsRef.current;
+
   const showAnswerFilters =
-    !!params.surveyId && (answerFilterFields?.length ?? 0) > 0;
+    !!params.surveyId && (visibleFields?.length ?? 0) > 0;
   const hasRatingAnswerFilter =
-    answerFilterFields?.some((f) => isRatingField(f)) ?? false;
+    visibleFields?.some((f) => isRatingField(f)) ?? false;
   const hasActiveChartFilters = Boolean(params.task || params.theme);
 
   const activeCount =
@@ -202,48 +212,54 @@ export function FilterMenu({
             {showAnswerFilters ? (
               <>
                 <div className={styles.menuDivider} />
-                <VStack gap="space-8">
-                  <Label size="small">Svar-filtre</Label>
-                  <HGrid
-                    columns={{
-                      xs: 1,
-                      md: (answerFilterFields?.length ?? 0) > 1 ? 2 : 1,
-                    }}
-                    gap="space-12"
-                  >
-                    {answerFilterFields?.map((field) => {
-                      if (isChoiceField(field)) {
+                <Box
+                  background="neutral-soft"
+                  borderRadius="8"
+                  padding="space-12"
+                >
+                  <VStack gap="space-8">
+                    <Label size="small">Svar-filtre</Label>
+                    <HGrid
+                      columns={{
+                        xs: 1,
+                        md: (visibleFields?.length ?? 0) > 1 ? 2 : 1,
+                      }}
+                      gap="space-12"
+                    >
+                      {visibleFields?.map((field) => {
+                        if (isChoiceField(field)) {
+                          return (
+                            <ChoiceFilterChips
+                              key={field.fieldId}
+                              field={field}
+                              activeValue={
+                                activeChoiceFilters[field.fieldId] ?? null
+                              }
+                              onToggle={(optionId) =>
+                                toggleChoice(field.fieldId, optionId)
+                              }
+                              onClear={() => removeChoice(field.fieldId)}
+                            />
+                          );
+                        }
+
                         return (
-                          <ChoiceFilterChips
+                          <RatingFilterChips
                             key={field.fieldId}
                             field={field}
                             activeValue={
-                              activeChoiceFilters[field.fieldId] ?? null
+                              activeRatingFilters[field.fieldId] ?? null
                             }
-                            onToggle={(optionId) =>
-                              toggleChoice(field.fieldId, optionId)
+                            onToggle={(value) =>
+                              toggleRating(field.fieldId, value)
                             }
-                            onClear={() => removeChoice(field.fieldId)}
+                            onClear={() => removeRating(field.fieldId)}
                           />
                         );
-                      }
-
-                      return (
-                        <RatingFilterChips
-                          key={field.fieldId}
-                          field={field}
-                          activeValue={
-                            activeRatingFilters[field.fieldId] ?? null
-                          }
-                          onToggle={(value) =>
-                            toggleRating(field.fieldId, value)
-                          }
-                          onClear={() => removeRating(field.fieldId)}
-                        />
-                      );
-                    })}
-                  </HGrid>
-                </VStack>
+                      })}
+                    </HGrid>
+                  </VStack>
+                </Box>
               </>
             ) : null}
 
@@ -316,6 +332,7 @@ function ChoiceFilterChips({
         {Object.entries(field.stats.distribution).map(([optionId, data]) => (
           <Chips.Toggle
             key={optionId}
+            data-color="neutral"
             selected={activeValue === optionId}
             onClick={() => {
               if (activeValue === optionId) {
@@ -365,6 +382,7 @@ function RatingFilterChips({
         {getRatingValues(variant).map((value) => (
           <Chips.Toggle
             key={value}
+            data-color="neutral"
             selected={activeValue === String(value)}
             onClick={() => {
               if (activeValue === String(value)) {
@@ -401,8 +419,8 @@ function isRatingField(
 
 function getRatingValues(variant: RatingVariant): number[] {
   if (variant === "thumbs") return [2, 1];
-  if (variant === "nps") return [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0];
-  return [5, 4, 3, 2, 1];
+  if (variant === "nps") return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  return [1, 2, 3, 4, 5];
 }
 
 function formatRatingFilterLabel(
