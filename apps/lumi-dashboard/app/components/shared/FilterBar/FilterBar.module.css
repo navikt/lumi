@@ -55,18 +55,6 @@
   /* Aksel ActionMenu handles scroll internally — don't add overflow here */
 }
 
-/* Match Aksel ActionMenu group label style for consistency */
-.sectionLabel {
-  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
-  font-size: var(--ax-font-size-small, 0.875rem);
-  user-select: none;
-}
-
-.fieldLabel {
-  color: var(--ax-text-neutral-subtle, var(--a-text-subtle));
-  font-size: var(--ax-font-size-small, 0.875rem);
-}
-
 .menuDivider {
   height: 1px;
   background-color: var(--ax-border-neutral-subtle);

@@ -1,11 +1,13 @@
 import { FunnelIcon } from "@navikt/aksel-icons";
 import {
   ActionMenu,
+  BodyShort,
   Box,
   Button,
   Chips,
   HGrid,
   HStack,
+  Label,
   Tag,
   VStack,
 } from "@navikt/ds-react";
@@ -216,7 +218,7 @@ export function FilterMenu({
                   padding="space-12"
                 >
                   <VStack gap="space-8">
-                    <span className={styles.sectionLabel}>Svar-filtre</span>
+                    <Label size="small">Svar-filtre</Label>
                     <HGrid
                       columns={{
                         xs: 1,
@@ -266,9 +268,7 @@ export function FilterMenu({
               <>
                 <div className={styles.menuDivider} />
                 <VStack gap="space-8">
-                  <span className={styles.sectionLabel}>
-                    Aktive grafer-filtre
-                  </span>
+                  <Label size="small">Aktive grafer-filtre</Label>
                   <Chips size="small">
                     {params.theme ? (
                       <Chips.Removable
@@ -321,7 +321,9 @@ function ChoiceFilterChips({
 }) {
   return (
     <VStack gap="space-4">
-      <span className={styles.fieldLabel}>{field.label}</span>
+      <BodyShort size="small" weight="semibold">
+        {field.label}
+      </BodyShort>
       <Chips size="small">
         {Object.entries(field.stats.distribution).map(([optionId, data]) => (
           <Chips.Toggle
@@ -365,7 +367,9 @@ function RatingFilterChips({
 
   return (
     <VStack gap="space-4">
-      <span className={styles.fieldLabel}>{field.label}</span>
+      <BodyShort size="small" weight="semibold">
+        {field.label}
+      </BodyShort>
       <Chips size="small">
         {getRatingValues(variant).map((value) => (
           <Chips.Toggle
