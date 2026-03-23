@@ -12,7 +12,7 @@ import { routeTree } from "./routeTree.gen";
  * entirely and use standard URLSearchParams for predictable key=value
  * round-trips.
  */
-function stringifySearch(search: Record<string, unknown>): string {
+export function stringifySearch(search: Record<string, unknown>): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(search)) {
     if (value !== undefined && value !== null && value !== "") {
@@ -23,7 +23,7 @@ function stringifySearch(search: Record<string, unknown>): string {
   return str ? `?${str}` : "";
 }
 
-function parseSearch(searchStr: string): Record<string, string> {
+export function parseSearch(searchStr: string): Record<string, string> {
   if (searchStr.startsWith("?")) {
     searchStr = searchStr.slice(1);
   }

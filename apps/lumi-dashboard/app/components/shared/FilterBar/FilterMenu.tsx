@@ -16,12 +16,15 @@ import { useChoiceFilter } from "~/hooks/useChoiceFilter";
 import { useRatingFilter } from "~/hooks/useRatingFilter";
 import type { SearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
-import { getFilterLabels } from "~/utils/filterLabels";
+import type { ChoiceStats, FieldStat, RatingStats } from "~/types/api";
+import {
+  inferRatingVariantFromDistribution,
+  type RatingVariant,
+} from "~/utils/ratingDisplay";
 import styles from "./FilterBar.module.css";
 
 interface FilterMenuProps {
   params: SearchParams;
-  setParam: (key: keyof SearchParams, value: string | undefined) => void;
   setParams: (params: Partial<SearchParams>) => void;
   features: SurveyFeatureConfig;
   allTags: string[];
@@ -31,7 +34,6 @@ interface FilterMenuProps {
 
 export function FilterMenu({
   params,
-  setParam,
   setParams,
   features,
   allTags,
@@ -39,9 +41,16 @@ export function FilterMenu({
   themeLabel,
 }: FilterMenuProps) {
   const { data: stats } = useStats();
-  const { removeChoice } = useChoiceFilter();
-  const { removeRating } = useRatingFilter();
-  const { choiceFilters, ratingFilters } = getFilterLabels({ params, stats });
+  const {
+    activeFilters: activeChoiceFilters,
+    toggleChoice,
+    removeChoice,
+  } = useChoiceFilter();
+  const {
+    activeFilters: activeRatingFilters,
+    toggleRating,
+    removeRating,
+  } = useRatingFilter();
 
   const activeCount =
     [
@@ -53,12 +62,19 @@ export function FilterMenu({
       selectedTags.length > 0,
       params.segment,
     ].filter(Boolean).length +
-    ratingFilters.length +
-    choiceFilters.length;
+    Object.keys(activeRatingFilters).length +
+    Object.keys(activeChoiceFilters).length;
 
   const themeValueLabel =
     themeLabel ??
     (params.theme === "uncategorized" ? "Annet" : (params.theme ?? ""));
+
+  const answerFilterFields = stats?.fieldStats?.filter(
+    (field) => isChoiceField(field) || isRatingField(field),
+  );
+  const showAnswerFilters =
+    !!params.surveyId && (answerFilterFields?.length ?? 0) > 0;
+  const hasActiveChartFilters = Boolean(params.task || params.theme);
 
   return (
     <ActionMenu>
@@ -171,68 +187,163 @@ export function FilterMenu({
               {params.surveyId ? (
                 <ContextTagsFilter surveyId={params.surveyId} />
               ) : null}
+
+              {showAnswerFilters ? (
+                <>
+                  <div className={styles.menuDivider} />
+
+                  <VStack gap="space-12" className={styles.menuSection}>
+                    <Label size="small">Svar-filtre</Label>
+
+                    {/* v1: Single-select per field (RadioGroup) — also for MULTI_CHOICE.
+                        Multi-select per field is a future enhancement. */}
+                    {answerFilterFields?.map((field) => {
+                      if (isChoiceField(field)) {
+                        return (
+                          <ActionMenu.RadioGroup
+                            key={field.fieldId}
+                            label={field.label}
+                            value={activeChoiceFilters[field.fieldId] ?? ""}
+                            onValueChange={(value) => {
+                              if (value === "") {
+                                removeChoice(field.fieldId);
+                              } else {
+                                toggleChoice(field.fieldId, value);
+                              }
+                            }}
+                          >
+                            <ActionMenu.RadioItem value="">
+                              Alle
+                            </ActionMenu.RadioItem>
+                            {Object.entries(field.stats.distribution).map(
+                              ([optionId, data]) => (
+                                <ActionMenu.RadioItem
+                                  key={optionId}
+                                  value={optionId}
+                                >
+                                  {`${data.label} (${data.count})`}
+                                </ActionMenu.RadioItem>
+                              ),
+                            )}
+                          </ActionMenu.RadioGroup>
+                        );
+                      }
+
+                      const ratingStats = field.stats as RatingStats & {
+                        ratingVariant?: string;
+                      };
+                      const variant = inferRatingVariantFromDistribution(
+                        field.stats.distribution,
+                        ratingStats.ratingVariant,
+                      );
+
+                      return (
+                        <ActionMenu.RadioGroup
+                          key={field.fieldId}
+                          label={field.label}
+                          value={activeRatingFilters[field.fieldId] ?? ""}
+                          onValueChange={(value) => {
+                            if (value === "") {
+                              removeRating(field.fieldId);
+                            } else {
+                              toggleRating(field.fieldId, value);
+                            }
+                          }}
+                        >
+                          <ActionMenu.RadioItem value="">
+                            Alle
+                          </ActionMenu.RadioItem>
+                          {getRatingValues(variant).map((value) => (
+                            <ActionMenu.RadioItem
+                              key={value}
+                              value={String(value)}
+                            >
+                              {`${formatRatingFilterLabel(value, variant)} (${field.stats.distribution[String(value)] ?? 0})`}
+                            </ActionMenu.RadioItem>
+                          ))}
+                        </ActionMenu.RadioGroup>
+                      );
+                    })}
+                  </VStack>
+                </>
+              ) : null}
+
+              {hasActiveChartFilters ? (
+                <>
+                  <div className={styles.menuDivider} />
+
+                  <VStack gap="space-8" className={styles.menuSection}>
+                    <Label size="small">Aktive grafer-filtre</Label>
+                    <Chips size="small">
+                      {params.theme ? (
+                        <Chips.Removable
+                          variant="neutral"
+                          onDelete={() =>
+                            setParams({
+                              theme: undefined,
+                              page: "1",
+                            })
+                          }
+                        >
+                          {`Tema: ${themeValueLabel}`}
+                        </Chips.Removable>
+                      ) : null}
+
+                      {params.task ? (
+                        <Chips.Removable
+                          variant="neutral"
+                          onDelete={() =>
+                            setParams({
+                              task: undefined,
+                              page: "1",
+                            })
+                          }
+                        >
+                          {`Oppgave: ${params.task}`}
+                        </Chips.Removable>
+                      ) : null}
+                    </Chips>
+                  </VStack>
+                </>
+              ) : null}
             </VStack>
           </HGrid>
-
-          {params.task ||
-          params.theme ||
-          ratingFilters.length > 0 ||
-          choiceFilters.length > 0 ? (
-            <Box paddingBlock="space-16">
-              <div className={styles.menuDivider} />
-
-              <VStack gap="space-8" className={styles.selectedFromCharts}>
-                <Label size="small">Valgt fra grafer</Label>
-                <Chips size="small">
-                  {params.theme ? (
-                    <Chips.Removable
-                      variant="neutral"
-                      onDelete={() => {
-                        setParam("theme", undefined);
-                        setParam("page", "1");
-                      }}
-                    >
-                      {`Tema: ${themeValueLabel}`}
-                    </Chips.Removable>
-                  ) : null}
-
-                  {params.task ? (
-                    <Chips.Removable
-                      variant="neutral"
-                      onDelete={() => {
-                        setParam("task", undefined);
-                        setParam("page", "1");
-                      }}
-                    >
-                      {`Oppgave: ${params.task}`}
-                    </Chips.Removable>
-                  ) : null}
-
-                  {ratingFilters.map((filter) => (
-                    <Chips.Removable
-                      key={filter.key}
-                      variant="neutral"
-                      onDelete={() => removeRating(filter.fieldId)}
-                    >
-                      {`${filter.label}: ${filter.value}`}
-                    </Chips.Removable>
-                  ))}
-
-                  {choiceFilters.map((filter) => (
-                    <Chips.Removable
-                      key={filter.key}
-                      variant="neutral"
-                      onDelete={() => removeChoice(filter.fieldId)}
-                    >
-                      {`${filter.label}: ${filter.value}`}
-                    </Chips.Removable>
-                  ))}
-                </Chips>
-              </VStack>
-            </Box>
-          ) : null}
         </Box>
       </ActionMenu.Content>
     </ActionMenu>
   );
+}
+
+function isChoiceField(field: FieldStat): field is FieldStat & {
+  fieldType: "SINGLE_CHOICE" | "MULTI_CHOICE";
+  stats: ChoiceStats;
+} {
+  return (
+    (field.fieldType === "SINGLE_CHOICE" ||
+      field.fieldType === "MULTI_CHOICE") &&
+    field.stats.type === "choice"
+  );
+}
+
+function isRatingField(
+  field: FieldStat,
+): field is FieldStat & { fieldType: "RATING"; stats: RatingStats } {
+  return field.fieldType === "RATING" && field.stats.type === "rating";
+}
+
+function getRatingValues(variant: RatingVariant): number[] {
+  if (variant === "thumbs") return [2, 1];
+  if (variant === "nps") return [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0];
+  return [5, 4, 3, 2, 1];
+}
+
+function formatRatingFilterLabel(
+  value: number,
+  variant: RatingVariant,
+): string {
+  if (variant === "thumbs") {
+    return value === 2 ? "Ja" : "Nei";
+  }
+
+  return String(value);
 }

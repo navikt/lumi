@@ -26,7 +26,7 @@ function ratingValuesForVariant(variant: RatingVariant): number[] {
 }
 
 export function RatingFieldCard({ field, totalCount }: FieldCardProps) {
-  const { activeFilters, toggleRating } = useRatingFilter();
+  const { activeFilters, toggleRating, removeRating } = useRatingFilter();
 
   const stats = field.stats as RatingStats;
   const distribution = stats.distribution as unknown as Record<string, number>;
@@ -51,9 +51,7 @@ export function RatingFieldCard({ field, totalCount }: FieldCardProps) {
   };
 
   const onClearRating = () => {
-    if (activeRatingValue) {
-      toggleRating(field.fieldId, activeRatingValue);
-    }
+    removeRating(field.fieldId);
   };
 
   const onSelectThumb = (nextValue: "1" | "2") => onSelectRating(nextValue);

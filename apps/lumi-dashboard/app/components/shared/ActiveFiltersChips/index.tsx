@@ -5,6 +5,7 @@ import { useRatingFilter } from "~/hooks/useRatingFilter";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
 import { useStats } from "~/hooks/useStats";
+import { useThemes } from "~/hooks/useThemes";
 import { getFilterLabels } from "~/utils/filterLabels";
 import { formatMetadataLabel } from "~/utils/segmentUtils";
 import styles from "./ActiveFiltersChips.module.css";
@@ -28,9 +29,11 @@ export function ActiveFiltersChips() {
   const { removeChoice } = useChoiceFilter();
   const { removeRating } = useRatingFilter();
   const statsQuery = useStats();
-  const { choiceFilters, ratingFilters } = getFilterLabels({
+  const { themes } = useThemes();
+  const { choiceFilters, ratingFilters, themeLabel } = getFilterLabels({
     params,
     stats: statsQuery.data,
+    themes,
   });
 
   const chips: FilterChip[] = [];
@@ -56,6 +59,19 @@ export function ActiveFiltersChips() {
       onRemove: () =>
         setParams({
           task: undefined,
+          page: "1",
+        }),
+    });
+  }
+
+  if (themeLabel) {
+    chips.push({
+      key: "theme",
+      label: "Tema",
+      value: themeLabel,
+      onRemove: () =>
+        setParams({
+          theme: undefined,
           page: "1",
         }),
     });

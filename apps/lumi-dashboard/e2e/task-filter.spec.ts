@@ -37,21 +37,18 @@ test.describe("Top Tasks - Task Filter", () => {
   });
 
   test("removing task filter chip clears URL parameter", async ({ page }) => {
-    // Set task filter directly in URL
-    await page.goto("/?surveyId=top-tasks-survey&task=TestTask");
+    // Set task filter directly in URL (survey-top-tasks is the mock survey ID)
+    await page.goto("/?surveyId=survey-top-tasks&task=TestTask");
+    await expect(page.locator("main")).toBeVisible({ timeout: 15000 });
 
-    // Check for filter chip with remove button
-    const removeButton = page.locator(
-      '[aria-label="Fjern filter Oppgave"], button:near(:text("Oppgave:"))',
-    );
+    // Chip aria-label includes the value: "Fjern filter Oppgave: TestTask"
+    const removeButton = page.locator('[aria-label^="Fjern filter Oppgave"]');
 
-    // If chip is visible, click to remove
-    if (await removeButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await removeButton.click();
+    await expect(removeButton).toBeVisible({ timeout: 5000 });
+    await removeButton.click();
 
-      // URL should no longer contain task parameter
-      await expect(page).not.toHaveURL(/[?&]task=/, { timeout: 5000 });
-    }
+    // URL should no longer contain task parameter
+    await expect(page).not.toHaveURL(/[?&]task=/, { timeout: 5000 });
   });
 
   test("task filter persists in URL after page reload", async ({ page }) => {

@@ -11,6 +11,7 @@ import { act, render, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 import { useSearchParams } from "~/hooks/useSearchParams";
+import { parseSearch, stringifySearch } from "~/router";
 import { searchSchema } from "~/schemas/searchSchema";
 
 type SearchParamsHook = ReturnType<typeof useSearchParams>;
@@ -32,7 +33,12 @@ async function setup(initialEntries: Array<string> = ["/"]) {
   });
   const routeTree = rootRoute.addChildren([indexRoute]);
   const history = createMemoryHistory({ initialEntries });
-  const router = createRouter({ routeTree, history });
+  const router = createRouter({
+    routeTree,
+    history,
+    stringifySearch,
+    parseSearch,
+  });
 
   await router.load();
   render(createElement(RouterProvider, { router }));
@@ -178,6 +184,46 @@ describe("useSearchParams", () => {
 
     await waitFor(() => {
       expect(getResult().params.query).toBe("søk med æøå");
+    });
+  });
+
+  describe("legacy URL param migration", () => {
+    it("migrates choiceFieldId/choiceValue to choice param", async () => {
+      const { getResult } = await setup([
+        "/?choiceFieldId=role&choiceValue=Arbeidsgiver",
+      ]);
+
+      await waitFor(() => {
+        expect(getResult().params.choice).toBe("role:Arbeidsgiver");
+      });
+    });
+
+    it("migrates ratingFieldId/ratingValue to rating param", async () => {
+      const { getResult } = await setup([
+        "/?ratingFieldId=tilfredshet&ratingValue=5",
+      ]);
+
+      await waitFor(() => {
+        expect(getResult().params.rating).toBe("tilfredshet:5");
+      });
+    });
+
+    it("preserves new choice param over legacy params", async () => {
+      const { getResult } = await setup([
+        "/?choice=role:Saksbehandler&choiceFieldId=role&choiceValue=Arbeidsgiver",
+      ]);
+
+      await waitFor(() => {
+        expect(getResult().params.choice).toBe("role:Saksbehandler");
+      });
+    });
+
+    it("does not migrate when only one legacy param is present", async () => {
+      const { getResult } = await setup(["/?choiceFieldId=role"]);
+
+      await waitFor(() => {
+        expect(getResult().params.choice).toBeUndefined();
+      });
     });
   });
 });

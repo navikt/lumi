@@ -14,12 +14,13 @@ const mockUseRatingFilter = vi.mocked(useRatingFilter);
 
 function givenRatingFilter(activeFilters: Record<string, string> = {}) {
   const toggleRating = vi.fn();
+  const removeRating = vi.fn();
 
   mockUseRatingFilter.mockReturnValue({
     activeFilters,
     hasFilters: Object.keys(activeFilters).length > 0,
     toggleRating,
-    removeRating: vi.fn(),
+    removeRating,
     clearRatings: vi.fn(),
     isActive: vi.fn((fieldId: string, ratingValue?: string) => {
       if (ratingValue === undefined) {
@@ -29,7 +30,7 @@ function givenRatingFilter(activeFilters: Record<string, string> = {}) {
     }),
   });
 
-  return { toggleRating };
+  return { toggleRating, removeRating };
 }
 
 function makeRatingField(
@@ -84,15 +85,15 @@ describe("RatingFieldCard", () => {
     expect(secondHighestRatingButton).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("reuses toggleRating to clear the active rating filter", async () => {
+  it("uses removeRating to clear the active rating filter", async () => {
     const user = userEvent.setup();
-    const { toggleRating } = givenRatingFilter({ "rating-1": "4" });
+    const { removeRating } = givenRatingFilter({ "rating-1": "4" });
 
     render(<RatingFieldCard field={makeRatingField()} totalCount={100} />);
 
     await user.click(screen.getByRole("button", { name: /Nullstill filter/i }));
 
-    expect(toggleRating).toHaveBeenCalledWith("rating-1", "4");
+    expect(removeRating).toHaveBeenCalledWith("rating-1");
   });
 
   it("passes thumbs interactions through the rating hook", async () => {

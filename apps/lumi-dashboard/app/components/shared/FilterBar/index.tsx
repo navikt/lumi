@@ -27,7 +27,7 @@ interface FilterBarProps {
 }
 
 export function FilterBar({ showDetails = false }: FilterBarProps) {
-  const { params, setParam, setParams, resetParams } = useSearchParams();
+  const { params, setParams, resetParams } = useSearchParams();
   const { data: bootstrap, isPending: isPendingBootstrap } =
     useFilterBootstrap();
   const { data: stats, isPending: isPendingStats } = useStats();
@@ -244,7 +244,6 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
               {showDetails && (
                 <FilterMenu
                   params={params}
-                  setParam={setParam}
                   setParams={setParams}
                   features={features}
                   allTags={allTags}
@@ -340,7 +339,6 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                 {showDetails && (
                   <FilterMenu
                     params={params}
-                    setParam={setParam}
                     setParams={setParams}
                     features={features}
                     allTags={allTags}
