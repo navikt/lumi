@@ -8,6 +8,8 @@ import type {
   TeamsAndApps,
   TopTasksResponse,
 } from "~/types/api";
+import { parseChoiceParam } from "~/utils/choiceFilterUtils";
+import { parseRatingParam } from "~/utils/ratingFilterUtils";
 
 import {
   generateComplexSurveyData,
@@ -258,8 +260,7 @@ function applyFilters(
   const tag = params.get("tag");
   const theme = params.get("theme");
   const segment = params.get("segment");
-  const ratingFieldId = params.get("ratingFieldId");
-  const ratingValue = params.get("ratingValue");
+  const rating = params.get("rating");
 
   if (app) {
     filtered = filtered.filter((item) => item.app === app);
@@ -310,34 +311,48 @@ function applyFilters(
     filtered = filtered.filter((item) => item.surveyId === surveyId);
   }
 
-  // Filter by specific rating answer (fieldId + value)
-  if (ratingFieldId && ratingValue) {
-    const parsed = Number.parseInt(ratingValue, 10);
-    if (!Number.isNaN(parsed)) {
-      filtered = filtered.filter((item) =>
-        item.answers.some(
-          (a) =>
-            a.fieldType === "RATING" &&
-            a.fieldId === ratingFieldId &&
-            a.value.type === "rating" &&
-            a.value.rating === parsed,
-        ),
-      );
-    }
-  }
-  // Filter by choice answer (singleChoice / multiChoice fieldId + value)
-  const choiceFieldId = params.get("choiceFieldId");
-  const choiceValue = params.get("choiceValue");
-  if (choiceFieldId && choiceValue) {
+  const ratingFilters = Object.entries(parseRatingParam(rating ?? undefined));
+  if (ratingFilters.length > 0) {
     filtered = filtered.filter((item) =>
-      item.answers.some((a) => {
-        if (a.fieldId !== choiceFieldId) return false;
-        if (a.fieldType === "SINGLE_CHOICE" && a.value.type === "singleChoice")
-          return a.value.selectedOptionId === choiceValue;
-        if (a.fieldType === "MULTI_CHOICE" && a.value.type === "multiChoice")
-          return a.value.selectedOptionIds.includes(choiceValue);
-        return false;
+      ratingFilters.every(([fieldId, ratingValue]) => {
+        const parsed = Number.parseInt(ratingValue, 10);
+        if (Number.isNaN(parsed)) {
+          return false;
+        }
+
+        return item.answers.some(
+          (answer) =>
+            answer.fieldType === "RATING" &&
+            answer.fieldId === fieldId &&
+            answer.value.type === "rating" &&
+            answer.value.rating === parsed,
+        );
       }),
+    );
+  }
+
+  const choice = params.get("choice");
+  const choiceFilters = Object.entries(parseChoiceParam(choice ?? undefined));
+  if (choiceFilters.length > 0) {
+    filtered = filtered.filter((item) =>
+      choiceFilters.every(([fieldId, optionId]) =>
+        item.answers.some((answer) => {
+          if (answer.fieldId !== fieldId) return false;
+          if (
+            answer.fieldType === "SINGLE_CHOICE" &&
+            answer.value.type === "singleChoice"
+          ) {
+            return answer.value.selectedOptionId === optionId;
+          }
+          if (
+            answer.fieldType === "MULTI_CHOICE" &&
+            answer.value.type === "multiChoice"
+          ) {
+            return answer.value.selectedOptionIds.includes(optionId);
+          }
+          return false;
+        }),
+      ),
     );
   }
 

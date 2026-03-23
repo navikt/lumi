@@ -1,14 +1,11 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { fetchBlockerServerFn } from "~/server/actions/fetchBlocker";
+import { splitChoiceParam } from "~/utils/choiceFilterUtils";
+import { splitRatingParam } from "~/utils/ratingFilterUtils";
 
-// Re-export BlockerResponse type for components that need it
 export type { BlockerResponse } from "~/types/api";
 
-/**
- * Hook to fetch Blocker pattern statistics for Top Tasks.
- * Returns word frequency, themes (patterns), and recent blocker text.
- */
 export function useBlockerStats() {
   const { params } = useSearchParams();
 
@@ -21,11 +18,9 @@ export function useBlockerStats() {
       params.toDate,
       params.surveyId,
       params.deviceType,
-      params.task, // Task filter for drill-down
-      params.ratingFieldId,
-      params.ratingValue,
-      params.choiceFieldId,
-      params.choiceValue,
+      params.task,
+      params.rating,
+      params.choice,
     ],
     queryFn: () =>
       fetchBlockerServerFn({
@@ -36,14 +31,12 @@ export function useBlockerStats() {
           fromDate: params.fromDate,
           toDate: params.toDate,
           deviceType: params.deviceType,
-          task: params.task, // Pass task filter to backend
-          ratingFieldId: params.ratingFieldId,
-          ratingValue: params.ratingValue,
-          choiceFieldId: params.choiceFieldId,
-          choiceValue: params.choiceValue,
+          task: params.task,
+          rating: splitRatingParam(params.rating),
+          choice: splitChoiceParam(params.choice),
         },
       }),
-    staleTime: 60000, // 1 minute
+    staleTime: 60000,
     placeholderData: keepPreviousData,
   });
 }

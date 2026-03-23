@@ -13,6 +13,8 @@ describe("fetchFeedback helpers", () => {
       hasText: "false",
       theme: "theme-1",
       task: "Oppfolging",
+      rating: ["rating-1:5", "thumbs-1:2"],
+      choice: ["choice-1:opt-a"],
     });
 
     expect(params.page).toBe("1");
@@ -23,5 +25,7 @@ describe("fetchFeedback helpers", () => {
     expect(params.hasText).toBeUndefined();
     expect(params.theme).toBe("theme-1");
     expect(params.task).toBe("Oppfolging");
+    expect(params.rating).toEqual(["rating-1:5", "thumbs-1:2"]);
+    expect(params.choice).toEqual(["choice-1:opt-a"]);
   });
 });

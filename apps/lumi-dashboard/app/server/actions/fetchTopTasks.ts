@@ -13,9 +13,35 @@ import type { TopTasksResponse } from "~/types/api";
 import { TopTasksParamsSchema } from "~/types/schemas";
 import { handleApiResponse } from "../fetchUtils";
 
-/**
- * Fetch Top Tasks statistics for task completion analysis.
- */
+interface TopTasksActionParams {
+  team?: string;
+  app?: string;
+  surveyId?: string;
+  fromDate?: string;
+  toDate?: string;
+  deviceType?: string;
+  task?: string;
+  rating?: string[];
+  choice?: string[];
+}
+
+function toMockSearchParams(data: TopTasksActionParams): URLSearchParams {
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(data)) {
+    if (Array.isArray(value)) {
+      if (value.length > 0) {
+        searchParams.set(key, value.join(","));
+      }
+      continue;
+    }
+
+    if (value) {
+      searchParams.set(key, value);
+    }
+  }
+  return searchParams;
+}
+
 export const fetchTopTasksServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(TopTasksParamsSchema))
@@ -24,11 +50,7 @@ export const fetchTopTasksServerFn = createServerFn({ method: "GET" })
 
     if (isMockMode()) {
       await mockDelay();
-      const searchParams = new URLSearchParams();
-      for (const [key, value] of Object.entries(data)) {
-        if (value) searchParams.set(key, value);
-      }
-      return getMockTopTasksStats(searchParams);
+      return getMockTopTasksStats(toMockSearchParams(data));
     }
 
     const backendParams = {
@@ -39,10 +61,8 @@ export const fetchTopTasksServerFn = createServerFn({ method: "GET" })
       toDate: data.toDate,
       deviceType: data.deviceType,
       task: data.task,
-      ratingFieldId: data.ratingFieldId,
-      ratingValue: data.ratingValue,
-      choiceFieldId: data.choiceFieldId,
-      choiceValue: data.choiceValue,
+      rating: data.rating,
+      choice: data.choice,
     };
 
     const url = buildUrl(

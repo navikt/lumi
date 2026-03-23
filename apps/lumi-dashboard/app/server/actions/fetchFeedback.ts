@@ -13,16 +13,51 @@ import type { FeedbackPage } from "~/types/api";
 import { FeedbackParamsSchema } from "~/types/schemas";
 import { handleApiResponse } from "../fetchUtils";
 
-/**
- * Transform frontend URL params to backend API params.
- */
-function transformToBackendParams(data: Record<string, string | undefined>) {
-  // Backend uses 0-indexed pages
-  const page = data.page ? String(Number.parseInt(data.page, 10) - 1) : "0";
+interface FeedbackActionParams {
+  team?: string;
+  app?: string;
+  surveyId?: string;
+  page?: string;
+  size?: string;
+  fromDate?: string;
+  toDate?: string;
+  hasText?: string;
+  query?: string;
+  tag?: string;
+  lowRating?: string;
+  deviceType?: string;
+  theme?: string;
+  task?: string;
+  segment?: string;
+  choice?: string[];
+  rating?: string[];
+}
 
+function toMockSearchParams(data: FeedbackActionParams): URLSearchParams {
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(data)) {
+    if (Array.isArray(value)) {
+      if (value.length > 0) {
+        searchParams.set(key, value.join(","));
+      }
+      continue;
+    }
+
+    if (value) {
+      searchParams.set(key, value);
+    }
+  }
+
+  const page = data.page ? String(Number.parseInt(data.page, 10) - 1) : "0";
+  searchParams.set("page", page);
+  return searchParams;
+}
+
+function transformToBackendParams(data: FeedbackActionParams) {
+  const page = data.page ? String(Number.parseInt(data.page, 10) - 1) : "0";
   const tag = data.tag
     ?.split(",")
-    .map((t) => t.trim())
+    .map((entry) => entry.trim())
     .filter(Boolean);
 
   return {
@@ -40,21 +75,14 @@ function transformToBackendParams(data: Record<string, string | undefined>) {
     deviceType: data.deviceType,
     theme: data.theme,
     task: data.task,
-    // Transform segment format: "key:value,key:value" -> repeated params handled by buildUrl
     segment: data.segment?.split(",").filter(Boolean),
-
-    ratingFieldId: data.ratingFieldId,
-    ratingValue: data.ratingValue,
-    choiceFieldId: data.choiceFieldId,
-    choiceValue: data.choiceValue,
+    choice: data.choice,
+    rating: data.rating,
   };
 }
 
 export { transformToBackendParams };
 
-/**
- * Fetch paginated feedback items with filtering support.
- */
 export const fetchFeedbackServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(FeedbackParamsSchema))
@@ -63,19 +91,10 @@ export const fetchFeedbackServerFn = createServerFn({ method: "GET" })
 
     if (isMockMode()) {
       await mockDelay();
-      const searchParams = new URLSearchParams();
-      for (const [key, value] of Object.entries(data)) {
-        if (value) searchParams.set(key, value);
-      }
-      // Backend uses 0-indexed pages, frontend uses 1-indexed
-      const page = data.page ? String(Number.parseInt(data.page, 10) - 1) : "0";
-      searchParams.set("page", page);
-      return getMockFeedback(searchParams);
+      return getMockFeedback(toMockSearchParams(data));
     }
 
-    // Transform to backend param names
     const backendParams = transformToBackendParams(data);
-
     const url = buildUrl(backendUrl, "/api/v1/intern/feedback", backendParams);
     const response = await fetch(url, {
       headers: getHeaders(oboToken),

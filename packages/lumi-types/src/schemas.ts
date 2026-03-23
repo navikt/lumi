@@ -21,14 +21,10 @@ export const StatsParamsSchema = z.object({
   segment: z.string().optional(),
   /** Filter by specific task (Top Tasks drill-down) */
   task: z.string().optional(),
-  /** Filter by a specific rating question fieldId */
-  ratingFieldId: z.string().optional(),
-  /** Filter by a specific rating value (number as string) */
-  ratingValue: z.string().optional(),
-  /** Filter by a specific choice question fieldId */
-  choiceFieldId: z.string().optional(),
-  /** Filter by a specific choice value (option id) */
-  choiceValue: z.string().optional(),
+  /** Choice filters as repeated query params, each in format "fieldId:value" */
+  choice: z.array(z.string()).optional(),
+  /** Rating filters as repeated query params, each in format "fieldId:value" */
+  rating: z.array(z.string()).optional(),
 });
 
 export type StatsParams = z.infer<typeof StatsParamsSchema>;
@@ -58,14 +54,10 @@ export const FeedbackParamsSchema = z.object({
   /** Segment filters (format: "key:value,key:value") */
   segment: z.string().optional(),
 
-  /** Filter by a specific rating question fieldId */
-  ratingFieldId: z.string().optional(),
-  /** Filter by a specific rating value (number as string) */
-  ratingValue: z.string().optional(),
-  /** Filter by a specific choice question fieldId */
-  choiceFieldId: z.string().optional(),
-  /** Filter by a specific choice value (option id) */
-  choiceValue: z.string().optional(),
+  /** Choice filters as repeated query params, each in format "fieldId:value" */
+  choice: z.array(z.string()).optional(),
+  /** Rating filters as repeated query params, each in format "fieldId:value" */
+  rating: z.array(z.string()).optional(),
 });
 
 export type FeedbackParams = z.infer<typeof FeedbackParamsSchema>;
@@ -79,14 +71,10 @@ export const TopTasksParamsSchema = z.object({
   deviceType: z.string().optional(),
   /** Filter by specific task name (drill-down from quadrant) */
   task: z.string().optional(),
-  /** Filter by a specific rating question fieldId */
-  ratingFieldId: z.string().optional(),
-  /** Filter by a specific rating value (number as string) */
-  ratingValue: z.string().optional(),
-  /** Filter by a specific choice question fieldId */
-  choiceFieldId: z.string().optional(),
-  /** Filter by a specific choice value (option id) */
-  choiceValue: z.string().optional(),
+  /** Choice filters as repeated query params, each in format "fieldId:value" */
+  choice: z.array(z.string()).optional(),
+  /** Rating filters as repeated query params, each in format "fieldId:value" */
+  rating: z.array(z.string()).optional(),
 });
 
 export type TopTasksParams = z.infer<typeof TopTasksParamsSchema>;
@@ -98,14 +86,10 @@ export const DiscoveryParamsSchema = z.object({
   fromDate: z.string().optional(),
   toDate: z.string().optional(),
   deviceType: z.string().optional(),
-  /** Filter by a specific rating question fieldId */
-  ratingFieldId: z.string().optional(),
-  /** Filter by a specific rating value (number as string) */
-  ratingValue: z.string().optional(),
-  /** Filter by a specific choice question fieldId */
-  choiceFieldId: z.string().optional(),
-  /** Filter by a specific choice value (option id) */
-  choiceValue: z.string().optional(),
+  /** Choice filters as repeated query params, each in format "fieldId:value" */
+  choice: z.array(z.string()).optional(),
+  /** Rating filters as repeated query params, each in format "fieldId:value" */
+  rating: z.array(z.string()).optional(),
 });
 
 export type DiscoveryParams = z.infer<typeof DiscoveryParamsSchema>;
@@ -119,14 +103,10 @@ export const BlockerParamsSchema = z.object({
   deviceType: z.string().optional(),
   /** Filter by specific task name (drill-down from quadrant) */
   task: z.string().optional(),
-  /** Filter by a specific rating question fieldId */
-  ratingFieldId: z.string().optional(),
-  /** Filter by a specific rating value (number as string) */
-  ratingValue: z.string().optional(),
-  /** Filter by a specific choice question fieldId */
-  choiceFieldId: z.string().optional(),
-  /** Filter by a specific choice value (option id) */
-  choiceValue: z.string().optional(),
+  /** Choice filters as repeated query params, each in format "fieldId:value" */
+  choice: z.array(z.string()).optional(),
+  /** Rating filters as repeated query params, each in format "fieldId:value" */
+  rating: z.array(z.string()).optional(),
 });
 
 export type BlockerParams = z.infer<typeof BlockerParamsSchema>;
@@ -139,14 +119,10 @@ export const TaskPriorityParamsSchema = z.object({
   toDate: z.string().optional(),
   deviceType: z.string().optional(),
   segment: z.string().optional(),
-  /** Filter by a specific rating question fieldId */
-  ratingFieldId: z.string().optional(),
-  /** Filter by a specific rating value (number as string) */
-  ratingValue: z.string().optional(),
-  /** Filter by a specific choice question fieldId */
-  choiceFieldId: z.string().optional(),
-  /** Filter by a specific choice value (option id) */
-  choiceValue: z.string().optional(),
+  /** Choice filters as repeated query params, each in format "fieldId:value" */
+  choice: z.array(z.string()).optional(),
+  /** Rating filters as repeated query params, each in format "fieldId:value" */
+  rating: z.array(z.string()).optional(),
 });
 
 export type TaskPriorityParams = z.infer<typeof TaskPriorityParamsSchema>;
@@ -357,14 +333,10 @@ export const ExportParamsSchema = z.object({
   task: z.string().optional(),
   /** Segment filters (format: "key:value,key:value") */
   segment: z.string().optional(),
-  /** Filter by a specific rating question fieldId */
-  ratingFieldId: z.string().optional(),
-  /** Filter by a specific rating value (number as string) */
-  ratingValue: z.string().optional(),
-  /** Filter by a specific choice question fieldId */
-  choiceFieldId: z.string().optional(),
-  /** Filter by a specific choice value (option id) */
-  choiceValue: z.string().optional(),
+  /** Choice filters as repeated query params, each in format "fieldId:value" */
+  choice: z.array(z.string()).optional(),
+  /** Rating filters as repeated query params, each in format "fieldId:value" */
+  rating: z.array(z.string()).optional(),
 });
 
 export type ExportParams = z.infer<typeof ExportParamsSchema>;

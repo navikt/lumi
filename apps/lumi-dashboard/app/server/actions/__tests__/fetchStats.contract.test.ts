@@ -22,6 +22,8 @@ describe("fetchStats contract", () => {
       deviceType: "mobile",
       segment: "k:v,,x:y",
       task: "task-123",
+      rating: ["rating-1:5", "thumbs-1:2"],
+      choice: ["choice-1:opt-a", "choice-2:opt-b"],
     });
 
     expect(params).toEqual({
@@ -33,19 +35,31 @@ describe("fetchStats contract", () => {
       deviceType: "mobile",
       segment: ["k:v", "x:y"],
       task: "task-123",
+      rating: ["rating-1:5", "thumbs-1:2"],
+      choice: ["choice-1:opt-a", "choice-2:opt-b"],
     });
   });
 
-  it("builds a URL with repeated segment params", () => {
+  it("builds a URL with repeated segment, rating and choice params", () => {
     const url = buildStatsDashboardUrl("https://backend.example", {
       team: "team-1",
       segment: "a:b,,c:d",
+      rating: ["rating-1:5", "thumbs-1:2"],
+      choice: ["choice-1:opt-a", "choice-2:opt-b"],
     });
 
     const parsed = new URL(url);
     expect(parsed.pathname).toBe(STATS_DASHBOARD_PATH);
     expect(parsed.searchParams.get("team")).toBe("team-1");
     expect(parsed.searchParams.getAll("segment")).toEqual(["a:b", "c:d"]);
+    expect(parsed.searchParams.getAll("rating")).toEqual([
+      "rating-1:5",
+      "thumbs-1:2",
+    ]);
+    expect(parsed.searchParams.getAll("choice")).toEqual([
+      "choice-1:opt-a",
+      "choice-2:opt-b",
+    ]);
   });
 
   it("accepts real-world dashboard payload shape (incl. privacy)", () => {

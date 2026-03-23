@@ -14,16 +14,13 @@ interface ActiveFiltersProps {
   params: SearchParams;
 }
 
-/**
- * Displays active filter parameters in a readable format.
- */
 export function ActiveFilters({ params }: ActiveFiltersProps) {
   const segments = parseSegmentParam(params.segment);
   const segmentEntries = Object.entries(segments);
   const { data: stats } = useStats();
   const { themes } = useThemes();
 
-  const { ratingLabel, ratingValueLabel, themeLabel } = getFilterLabels({
+  const { choiceFilters, ratingFilters, themeLabel } = getFilterLabels({
     params,
     stats,
     themes,
@@ -93,11 +90,16 @@ export function ActiveFilters({ params }: ActiveFiltersProps) {
           <strong>Oppgave:</strong> {params.task}
         </BodyShort>
       )}
-      {ratingLabel && ratingValueLabel && (
-        <BodyShort size="small" spacing>
-          <strong>{ratingLabel}:</strong> {ratingValueLabel}
+      {ratingFilters.map((filter) => (
+        <BodyShort key={filter.key} size="small" spacing>
+          <strong>{filter.label}:</strong> {filter.value}
         </BodyShort>
-      )}
+      ))}
+      {choiceFilters.map((filter) => (
+        <BodyShort key={filter.key} size="small" spacing>
+          <strong>{filter.label}:</strong> {filter.value}
+        </BodyShort>
+      ))}
 
       {segmentEntries.length > 0 && (
         <VStack gap="space-4">

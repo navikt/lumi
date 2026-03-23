@@ -12,7 +12,11 @@ import {
 } from "@navikt/ds-react";
 import { ContextTagsFilter } from "~/components/dashboard/ContextTagsFilter";
 import type { SurveyFeatureConfig } from "~/config/surveyConfig";
+import { useChoiceFilter } from "~/hooks/useChoiceFilter";
+import { useRatingFilter } from "~/hooks/useRatingFilter";
 import type { SearchParams } from "~/hooks/useSearchParams";
+import { useStats } from "~/hooks/useStats";
+import { getFilterLabels } from "~/utils/filterLabels";
 import styles from "./FilterBar.module.css";
 
 interface FilterMenuProps {
@@ -22,15 +26,9 @@ interface FilterMenuProps {
   features: SurveyFeatureConfig;
   allTags: string[];
   selectedTags: string[];
-  ratingFilterLabel?: string;
-  ratingFilterValue?: string;
   themeLabel?: string;
 }
 
-/**
- * ActionMenu-based filter with CheckboxItems for toggles.
- * Follows Aksel filter pattern.
- */
 export function FilterMenu({
   params,
   setParam,
@@ -38,21 +36,25 @@ export function FilterMenu({
   features,
   allTags,
   selectedTags,
-  ratingFilterLabel,
-  ratingFilterValue,
   themeLabel,
 }: FilterMenuProps) {
-  // Count active filters to show badge (including segment + tags)
-  const activeCount = [
-    params.task,
-    params.theme,
-    params.deviceType && params.deviceType !== "alle",
-    params.hasText === "true",
-    params.lowRating === "true",
-    selectedTags.length > 0,
-    params.segment, // Count segmentation filter
-    params.ratingFieldId && params.ratingValue,
-  ].filter(Boolean).length;
+  const { data: stats } = useStats();
+  const { removeChoice } = useChoiceFilter();
+  const { removeRating } = useRatingFilter();
+  const { choiceFilters, ratingFilters } = getFilterLabels({ params, stats });
+
+  const activeCount =
+    [
+      params.task,
+      params.theme,
+      params.deviceType && params.deviceType !== "alle",
+      params.hasText === "true",
+      params.lowRating === "true",
+      selectedTags.length > 0,
+      params.segment,
+    ].filter(Boolean).length +
+    ratingFilters.length +
+    choiceFilters.length;
 
   const themeValueLabel =
     themeLabel ??
@@ -69,11 +71,11 @@ export function FilterMenu({
         >
           <HStack gap="space-4" align="center">
             <span>Filter</span>
-            {activeCount > 0 && (
+            {activeCount > 0 ? (
               <Tag data-color="info" size="small" variant="outline">
                 {activeCount}
               </Tag>
-            )}
+            ) : null}
           </HStack>
         </Button>
       </ActionMenu.Trigger>
@@ -81,14 +83,13 @@ export function FilterMenu({
         <Box padding="space-12">
           <HGrid columns={{ xs: 1, md: 2 }} gap="space-16">
             <VStack gap="space-12">
-              {/* Device filter */}
-              {features.showDeviceFilter && (
+              {features.showDeviceFilter ? (
                 <ActionMenu.RadioGroup
                   label="Enhet"
                   value={params.deviceType ?? ""}
                   onValueChange={(value) =>
                     setParams({
-                      deviceType: value ? value : undefined,
+                      deviceType: value || undefined,
                       page: "1",
                     })
                   }
@@ -106,12 +107,11 @@ export function FilterMenu({
                     Nettbrett
                   </ActionMenu.RadioItem>
                 </ActionMenu.RadioGroup>
-              )}
+              ) : null}
 
-              {/* Quick toggles */}
-              {(features.showTextFilter || features.showRatingFilter) && (
+              {features.showTextFilter || features.showRatingFilter ? (
                 <ActionMenu.Group label="Vis kun">
-                  {features.showTextFilter && (
+                  {features.showTextFilter ? (
                     <ActionMenu.CheckboxItem
                       checked={params.hasText === "true"}
                       onCheckedChange={(checked) =>
@@ -123,9 +123,9 @@ export function FilterMenu({
                     >
                       Med tekstsvar
                     </ActionMenu.CheckboxItem>
-                  )}
+                  ) : null}
 
-                  {features.showRatingFilter && (
+                  {features.showRatingFilter ? (
                     <ActionMenu.CheckboxItem
                       checked={params.lowRating === "true"}
                       onCheckedChange={(checked) =>
@@ -137,14 +137,13 @@ export function FilterMenu({
                     >
                       Lav score (1-2)
                     </ActionMenu.CheckboxItem>
-                  )}
+                  ) : null}
                 </ActionMenu.Group>
-              )}
+              ) : null}
             </VStack>
 
             <VStack gap="space-12">
-              {/* Tags */}
-              {features.showTagsFilter && allTags.length > 0 && (
+              {features.showTagsFilter && allTags.length > 0 ? (
                 <ActionMenu.Group label="Tags">
                   {allTags.map((tag) => (
                     <ActionMenu.CheckboxItem
@@ -153,7 +152,9 @@ export function FilterMenu({
                       onCheckedChange={(checked) => {
                         const newTags = checked
                           ? [...selectedTags, tag]
-                          : selectedTags.filter((t) => t !== tag);
+                          : selectedTags.filter(
+                              (selectedTag) => selectedTag !== tag,
+                            );
                         setParams({
                           tag:
                             newTags.length > 0 ? newTags.join(",") : undefined,
@@ -165,25 +166,25 @@ export function FilterMenu({
                     </ActionMenu.CheckboxItem>
                   ))}
                 </ActionMenu.Group>
-              )}
+              ) : null}
 
-              {/* Segmentation */}
-              {params.surveyId && (
+              {params.surveyId ? (
                 <ContextTagsFilter surveyId={params.surveyId} />
-              )}
+              ) : null}
             </VStack>
           </HGrid>
 
-          {(params.task ||
-            params.theme ||
-            (params.ratingFieldId && params.ratingValue)) && (
+          {params.task ||
+          params.theme ||
+          ratingFilters.length > 0 ||
+          choiceFilters.length > 0 ? (
             <Box paddingBlock="space-16">
               <div className={styles.menuDivider} />
 
               <VStack gap="space-8" className={styles.selectedFromCharts}>
                 <Label size="small">Valgt fra grafer</Label>
                 <Chips size="small">
-                  {params.theme && (
+                  {params.theme ? (
                     <Chips.Removable
                       variant="neutral"
                       onDelete={() => {
@@ -193,9 +194,9 @@ export function FilterMenu({
                     >
                       {`Tema: ${themeValueLabel}`}
                     </Chips.Removable>
-                  )}
+                  ) : null}
 
-                  {params.task && (
+                  {params.task ? (
                     <Chips.Removable
                       variant="neutral"
                       onDelete={() => {
@@ -205,26 +206,31 @@ export function FilterMenu({
                     >
                       {`Oppgave: ${params.task}`}
                     </Chips.Removable>
-                  )}
+                  ) : null}
 
-                  {params.ratingFieldId && params.ratingValue && (
+                  {ratingFilters.map((filter) => (
                     <Chips.Removable
+                      key={filter.key}
                       variant="neutral"
-                      onDelete={() => {
-                        setParam("ratingFieldId", undefined);
-                        setParam("ratingValue", undefined);
-                        setParam("page", "1");
-                      }}
+                      onDelete={() => removeRating(filter.fieldId)}
                     >
-                      {`${ratingFilterLabel ?? "Vurdering"}: ${
-                        ratingFilterValue ?? params.ratingValue
-                      }`}
+                      {`${filter.label}: ${filter.value}`}
                     </Chips.Removable>
-                  )}
+                  ))}
+
+                  {choiceFilters.map((filter) => (
+                    <Chips.Removable
+                      key={filter.key}
+                      variant="neutral"
+                      onDelete={() => removeChoice(filter.fieldId)}
+                    >
+                      {`${filter.label}: ${filter.value}`}
+                    </Chips.Removable>
+                  ))}
                 </Chips>
               </VStack>
             </Box>
-          )}
+          ) : null}
         </Box>
       </ActionMenu.Content>
     </ActionMenu>

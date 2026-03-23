@@ -28,25 +28,18 @@ interface FilterBarProps {
 
 export function FilterBar({ showDetails = false }: FilterBarProps) {
   const { params, setParam, setParams, resetParams } = useSearchParams();
-
-  // Use centralized filter bootstrap for all dropdown data
   const { data: bootstrap, isPending: isPendingBootstrap } =
     useFilterBootstrap();
   const { data: stats, isPending: isPendingStats } = useStats();
   const { themes } = useThemes();
 
-  // Determine active features based on survey type
   const features = getSurveyFeatures(stats?.surveyType);
-
-  const { ratingLabel, ratingValueLabel, themeLabel } = getFilterLabels({
+  const { themeLabel } = getFilterLabels({
     params,
     stats,
     themes,
   });
-  const ratingFilterLabel = ratingLabel;
-  const ratingFilterValue = ratingValueLabel;
 
-  // Parse current tag filter (comma-separated)
   const selectedTags = params.tag
     ? params.tag
         .split(",")
@@ -54,29 +47,22 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
         .filter(Boolean)
     : [];
 
-  // Get available apps from bootstrap data
   const availableApps = bootstrap?.apps ?? [];
   const apps = ["alle", ...availableApps];
 
   const availableTeams = bootstrap?.availableTeams ?? [];
   const selectedTeam = params.team ?? bootstrap?.selectedTeam;
 
-  // Get surveys by app from bootstrap data
   const surveysByApp = bootstrap?.surveysByApp ?? {};
-
-  // Get all available tags from bootstrap data
   const allTags = bootstrap?.tags ?? [];
 
-  // Get available surveys - filter by selected app if one is chosen
   const getAvailableSurveys = (): string[] => {
     if (!surveysByApp || Object.keys(surveysByApp).length === 0) return [];
 
     if (params.app) {
-      // Show only surveys for the selected app
       return surveysByApp[params.app] || [];
     }
 
-    // Show all surveys from all apps (deduplicated)
     const allSurveys = new Set<string>();
     for (const surveys of Object.values(surveysByApp)) {
       for (const survey of surveys) {
@@ -89,18 +75,15 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
   const availableSurveys = getAvailableSurveys();
   const surveys = ["alle", ...availableSurveys];
 
-  // Reset surveyId when app changes and current surveyId is not available for new app
   const handleAppChange = (newApp: string | undefined) => {
     setParams({
       app: newApp,
       page: "1",
     });
 
-    // If a surveyId is selected, check if it's valid for the new app
     if (params.surveyId && surveysByApp) {
       const surveysForApp = newApp ? surveysByApp[newApp] : [];
       if (newApp && surveysForApp && !surveysForApp.includes(params.surveyId)) {
-        // Clear surveyId if it's not available for the new app
         setParams({
           surveyId: undefined,
           page: "1",
@@ -112,7 +95,6 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
   const handleReset = () => {
     const team = params.team;
     resetParams();
-    // Default to last 30 days on reset
     const end = dayjs();
     const start = dayjs().subtract(29, "day");
 
@@ -128,7 +110,6 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
   const handleTeamChange = (newTeam: string) => {
     setParams({
       team: newTeam,
-      // Keep period, reset the rest to avoid invalid cross-team combinations.
       fromDate: params.fromDate,
       toDate: params.toDate,
       app: undefined,
@@ -141,12 +122,13 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
       segment: undefined,
       task: undefined,
       theme: undefined,
+      choice: undefined,
+      rating: undefined,
       page: undefined,
       size: undefined,
     });
   };
 
-  // Only count filters that user has explicitly set (exclude default date range)
   const hasActiveFilters =
     params.query ||
     params.surveyId ||
@@ -157,12 +139,10 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
     params.tag ||
     params.segment ||
     params.task ||
-    params.ratingFieldId ||
-    params.ratingValue ||
-    params.choiceFieldId;
+    params.theme ||
+    params.choice ||
+    params.rating;
 
-  // isPending: no cached data AND fetching (TanStack Query v5 best practice)
-  // With placeholderData: keepPreviousData, isPending stays false during refetches
   const isPending = isPendingBootstrap || isPendingStats;
 
   if (isPending) {
@@ -176,7 +156,6 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
 
   return (
     <VStack gap="space-12" className={styles.root}>
-      {/* Primary Row: All filters in one line */}
       <Box
         padding={{ xs: "space-12", md: "space-16" }}
         background="raised"
@@ -185,10 +164,8 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
         borderColor="neutral-subtle"
         borderWidth="1"
       >
-        {/* Desktop layout */}
         <Show above="md">
           <HStack gap="space-12" align="end" justify="space-between" wrap>
-            {/* Left side: Compact dropdowns + Search */}
             <HStack gap="space-12" align="end" wrap>
               {availableTeams.length > 1 && selectedTeam && (
                 <Select
@@ -247,7 +224,6 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                 ))}
               </Select>
 
-              {/* Search field - visible when showDetails */}
               {showDetails && features.showTextFilter && (
                 <TextField
                   label="Søk"
@@ -265,7 +241,6 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                 />
               )}
 
-              {/* ActionMenu-based filter */}
               {showDetails && (
                 <FilterMenu
                   params={params}
@@ -274,14 +249,11 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                   features={features}
                   allTags={allTags}
                   selectedTags={selectedTags}
-                  ratingFilterLabel={ratingFilterLabel}
-                  ratingFilterValue={ratingFilterValue}
                   themeLabel={themeLabel}
                 />
               )}
             </HStack>
 
-            {/* Right side: Period + Reset */}
             <HStack gap="space-8" align="end">
               <PeriodSelector />
               {hasActiveFilters && (
@@ -301,10 +273,8 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
           </HStack>
         </Show>
 
-        {/* Mobile/Tablet layout */}
         <Hide above="md">
           <VStack gap="space-8">
-            {/* First row: Team (optional) + App + Survey */}
             <HStack gap="space-8" wrap>
               {availableTeams.length > 1 && selectedTeam && (
                 <Select
@@ -364,7 +334,6 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
               </Select>
             </HStack>
 
-            {/* Second row: Period + Filter + Reset */}
             <HStack gap="space-8" justify="space-between" align="center">
               <HStack gap="space-8" align="center">
                 <PeriodSelector />
@@ -376,8 +345,6 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                     features={features}
                     allTags={allTags}
                     selectedTags={selectedTags}
-                    ratingFilterLabel={ratingFilterLabel}
-                    ratingFilterValue={ratingFilterValue}
                     themeLabel={themeLabel}
                   />
                 )}
@@ -395,7 +362,6 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
               )}
             </HStack>
 
-            {/* Third row: Search (mobile) */}
             {showDetails && features.showTextFilter && (
               <TextField
                 label="Søk"

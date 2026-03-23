@@ -17,7 +17,7 @@ const CHOICE_BAR_COLOR_CLASSES = [
 ];
 
 export interface ChoiceFieldCardProps extends FieldCardProps {
-  activeChoiceValue?: string;
+  activeChoiceFilters?: Record<string, string>;
   onChoiceSelect?: (optionId: string) => void;
   onChoiceClear?: () => void;
 }
@@ -25,21 +25,21 @@ export interface ChoiceFieldCardProps extends FieldCardProps {
 export function ChoiceFieldCard({
   field,
   totalCount,
-  activeChoiceValue,
+  activeChoiceFilters,
   onChoiceSelect,
   onChoiceClear,
 }: ChoiceFieldCardProps) {
   const stats = field.stats as ChoiceStats;
   const distribution = stats.distribution;
+  const activeChoiceValue = activeChoiceFilters?.[field.fieldId];
 
   const choices = Object.entries(distribution)
     .map(([id, data]) => ({ id, ...data }))
     .sort((a, b) => b.count - a.count);
 
-  const maxCount = Math.max(...choices.map((c) => c.count), 1);
+  const maxCount = Math.max(...choices.map((choice) => choice.count), 1);
   const selectionSum = choices.reduce((sum, choice) => sum + choice.count, 0);
   const totalSelections = stats.totalSelections ?? selectionSum;
-  // Dashboard and API deploy separately, so keep one rollout window compatible with older payloads.
   const responseCount =
     stats.responseCount ??
     (field.fieldType === "MULTI_CHOICE"

@@ -1,14 +1,11 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { fetchTaskPriorityServerFn } from "~/server/actions";
+import { splitChoiceParam } from "~/utils/choiceFilterUtils";
+import { splitRatingParam } from "~/utils/ratingFilterUtils";
 
-// Re-export TaskPriorityResponse type for components that need it
 export type { TaskPriorityResponse } from "~/types/api";
 
-/**
- * Hook to fetch Task Priority survey statistics.
- * Returns the "Long Neck" distribution of task votes.
- */
 export function useTaskPriorityStats() {
   const { params } = useSearchParams();
 
@@ -22,10 +19,8 @@ export function useTaskPriorityStats() {
       params.surveyId,
       params.deviceType,
       params.segment,
-      params.ratingFieldId,
-      params.ratingValue,
-      params.choiceFieldId,
-      params.choiceValue,
+      params.rating,
+      params.choice,
     ],
     queryFn: () =>
       fetchTaskPriorityServerFn({
@@ -37,13 +32,11 @@ export function useTaskPriorityStats() {
           toDate: params.toDate,
           deviceType: params.deviceType,
           segment: params.segment,
-          ratingFieldId: params.ratingFieldId,
-          ratingValue: params.ratingValue,
-          choiceFieldId: params.choiceFieldId,
-          choiceValue: params.choiceValue,
+          rating: splitRatingParam(params.rating),
+          choice: splitChoiceParam(params.choice),
         },
       }),
-    staleTime: 60000, // 1 minute
+    staleTime: 60000,
     placeholderData: keepPreviousData,
   });
 }

@@ -2,7 +2,7 @@ import { StarIcon } from "@navikt/aksel-icons";
 import { HStack } from "@navikt/ds-react";
 
 import { DashboardCard } from "~/components/dashboard";
-import { useSearchParams } from "~/hooks/useSearchParams";
+import { useRatingFilter } from "~/hooks/useRatingFilter";
 import type { FieldStat, RatingStats } from "~/types/api";
 import {
   inferRatingVariantFromDistribution,
@@ -26,7 +26,7 @@ function ratingValuesForVariant(variant: RatingVariant): number[] {
 }
 
 export function RatingFieldCard({ field, totalCount }: FieldCardProps) {
-  const { params, setParams } = useSearchParams();
+  const { activeFilters, toggleRating } = useRatingFilter();
 
   const stats = field.stats as RatingStats;
   const distribution = stats.distribution as unknown as Record<string, number>;
@@ -37,36 +37,24 @@ export function RatingFieldCard({ field, totalCount }: FieldCardProps) {
   );
 
   const fieldTotalResponses = sumDistribution(distribution);
-
-  const activeRatingFieldId = params.ratingFieldId;
-  const activeRatingValue = params.ratingValue;
-  const isFilteringThisField = activeRatingFieldId === field.fieldId;
+  const activeRatingValue = activeFilters[field.fieldId];
   const parsedActiveRatingValue = Number(activeRatingValue);
-  const activeRatingNumericValue =
-    isFilteringThisField && Number.isFinite(parsedActiveRatingValue)
-      ? parsedActiveRatingValue
-      : undefined;
+  const activeRatingNumericValue = Number.isFinite(parsedActiveRatingValue)
+    ? parsedActiveRatingValue
+    : undefined;
 
   const responsePct =
     totalCount > 0 ? Math.round((fieldTotalResponses / totalCount) * 100) : 0;
 
   const onSelectRating = (nextValue: string) => {
-    const isAlreadySelected =
-      isFilteringThisField && activeRatingValue === String(nextValue);
-
-    setParams({
-      ratingFieldId: isAlreadySelected ? undefined : field.fieldId,
-      ratingValue: isAlreadySelected ? undefined : String(nextValue),
-      page: "1",
-    });
+    toggleRating(field.fieldId, String(nextValue));
   };
 
-  const onClearRating = () =>
-    setParams({
-      ratingFieldId: undefined,
-      ratingValue: undefined,
-      page: "1",
-    });
+  const onClearRating = () => {
+    if (activeRatingValue) {
+      toggleRating(field.fieldId, activeRatingValue);
+    }
+  };
 
   const onSelectThumb = (nextValue: "1" | "2") => onSelectRating(nextValue);
   const onClearThumb = () => onClearRating();
@@ -94,7 +82,7 @@ export function RatingFieldCard({ field, totalCount }: FieldCardProps) {
           distribution={distribution}
           fieldTotalResponses={fieldTotalResponses}
           activeRatingValue={activeRatingValue}
-          isFilteringThisField={isFilteringThisField}
+          isFilteringThisField={activeRatingValue !== undefined}
           onSelect={onSelectThumb}
           onClear={onClearThumb}
         />

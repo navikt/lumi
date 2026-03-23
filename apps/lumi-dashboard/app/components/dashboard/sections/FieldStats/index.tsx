@@ -1,5 +1,6 @@
 import { Heading, VStack } from "@navikt/ds-react";
 import { DashboardGrid } from "~/components/dashboard";
+import { useChoiceFilter } from "~/hooks/useChoiceFilter";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import { ChoiceFieldCard, RatingFieldCard, TextFieldCard } from "./FieldCards";
@@ -7,10 +8,10 @@ import { Skeleton } from "./Skeleton";
 
 export function FieldStatsSection() {
   const { data: stats, isPending } = useStats();
-  const { params, setParams } = useSearchParams();
+  const { params } = useSearchParams();
+  const { activeFilters: activeChoiceFilters, toggleChoice } =
+    useChoiceFilter();
   const hasSurveyFilter = !!params.surveyId;
-  const activeChoiceFieldId = params.choiceFieldId;
-  const activeChoiceValue = params.choiceValue;
 
   if (isPending && hasSurveyFilter) {
     return <Skeleton />;
@@ -53,43 +54,24 @@ export function FieldStatsSection() {
                 />
               );
             case "SINGLE_CHOICE":
-            case "MULTI_CHOICE": {
-              const isFilteringThisField =
-                activeChoiceFieldId === field.fieldId;
-              const activeValueForField = isFilteringThisField
-                ? activeChoiceValue
-                : undefined;
-
-              const onChoiceSelect = (optionId: string) => {
-                const isAlreadySelected =
-                  isFilteringThisField && activeChoiceValue === optionId;
-
-                setParams({
-                  choiceFieldId: isAlreadySelected ? undefined : field.fieldId,
-                  choiceValue: isAlreadySelected ? undefined : optionId,
-                  page: "1",
-                });
-              };
-
-              const onChoiceClear = () => {
-                setParams({
-                  choiceFieldId: undefined,
-                  choiceValue: undefined,
-                  page: "1",
-                });
-              };
-
+            case "MULTI_CHOICE":
               return (
                 <ChoiceFieldCard
                   key={field.fieldId}
                   field={field}
                   totalCount={stats.totalCount}
-                  activeChoiceValue={activeValueForField}
-                  onChoiceSelect={onChoiceSelect}
-                  onChoiceClear={onChoiceClear}
+                  activeChoiceFilters={activeChoiceFilters}
+                  onChoiceSelect={(optionId) =>
+                    toggleChoice(field.fieldId, optionId)
+                  }
+                  onChoiceClear={() => {
+                    const activeOptionId = activeChoiceFilters[field.fieldId];
+                    if (activeOptionId) {
+                      toggleChoice(field.fieldId, activeOptionId);
+                    }
+                  }}
                 />
               );
-            }
             default:
               return null;
           }

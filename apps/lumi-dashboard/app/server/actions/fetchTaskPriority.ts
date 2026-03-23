@@ -13,10 +13,35 @@ import type { TaskPriorityResponse } from "~/types/api";
 import { TaskPriorityParamsSchema } from "~/types/schemas";
 import { handleApiResponse } from "../fetchUtils";
 
-/**
- * Fetch Task Priority survey statistics for vote-based task analysis.
- * Returns the "Long Neck" distribution of task votes.
- */
+interface TaskPriorityActionParams {
+  team?: string;
+  app?: string;
+  surveyId?: string;
+  fromDate?: string;
+  toDate?: string;
+  deviceType?: string;
+  segment?: string;
+  rating?: string[];
+  choice?: string[];
+}
+
+function toMockSearchParams(data: TaskPriorityActionParams): URLSearchParams {
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(data)) {
+    if (Array.isArray(value)) {
+      if (value.length > 0) {
+        searchParams.set(key, value.join(","));
+      }
+      continue;
+    }
+
+    if (value) {
+      searchParams.set(key, value);
+    }
+  }
+  return searchParams;
+}
+
 export const fetchTaskPriorityServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(TaskPriorityParamsSchema))
@@ -25,11 +50,7 @@ export const fetchTaskPriorityServerFn = createServerFn({ method: "GET" })
 
     if (isMockMode()) {
       await mockDelay();
-      const searchParams = new URLSearchParams();
-      for (const [key, value] of Object.entries(data)) {
-        if (value) searchParams.set(key, value);
-      }
-      return getMockTaskPriorityStats(searchParams);
+      return getMockTaskPriorityStats(toMockSearchParams(data));
     }
 
     const backendParams = {
@@ -39,12 +60,9 @@ export const fetchTaskPriorityServerFn = createServerFn({ method: "GET" })
       fromDate: data.fromDate,
       toDate: data.toDate,
       deviceType: data.deviceType,
-      // Backend expects repeated params: segment=key:value&segment=key:value
       segment: data.segment?.split(",").filter(Boolean),
-      ratingFieldId: data.ratingFieldId,
-      ratingValue: data.ratingValue,
-      choiceFieldId: data.choiceFieldId,
-      choiceValue: data.choiceValue,
+      rating: data.rating,
+      choice: data.choice,
     };
 
     const url = buildUrl(

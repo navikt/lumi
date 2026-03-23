@@ -21,10 +21,8 @@ export const searchSchema = z.object({
   theme: optionalStringParam,
   segment: optionalStringParam,
   task: optionalStringParam,
-  ratingFieldId: optionalStringParam,
-  ratingValue: optionalStringParam,
-  choiceFieldId: optionalStringParam,
-  choiceValue: optionalStringParam,
+  choice: optionalStringParam,
+  rating: optionalStringParam,
 });
 
 export type SearchParams = z.infer<typeof searchSchema>;

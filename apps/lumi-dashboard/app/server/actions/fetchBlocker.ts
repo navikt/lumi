@@ -13,10 +13,35 @@ import type { BlockerResponse } from "~/types/api";
 import { BlockerParamsSchema } from "~/types/schemas";
 import { handleApiResponse } from "../fetchUtils";
 
-/**
- * Fetch Blocker pattern statistics for Top Tasks.
- * Returns word frequency, themes (patterns), and recent blocker text.
- */
+interface BlockerActionParams {
+  team?: string;
+  app?: string;
+  surveyId?: string;
+  fromDate?: string;
+  toDate?: string;
+  deviceType?: string;
+  task?: string;
+  rating?: string[];
+  choice?: string[];
+}
+
+function toMockSearchParams(data: BlockerActionParams): URLSearchParams {
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(data)) {
+    if (Array.isArray(value)) {
+      if (value.length > 0) {
+        searchParams.set(key, value.join(","));
+      }
+      continue;
+    }
+
+    if (value) {
+      searchParams.set(key, value);
+    }
+  }
+  return searchParams;
+}
+
 export const fetchBlockerServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(BlockerParamsSchema))
@@ -25,11 +50,7 @@ export const fetchBlockerServerFn = createServerFn({ method: "GET" })
 
     if (isMockMode()) {
       await mockDelay();
-      const searchParams = new URLSearchParams();
-      for (const [key, value] of Object.entries(data)) {
-        if (value) searchParams.set(key, value);
-      }
-      return getMockBlockerStats(searchParams);
+      return getMockBlockerStats(toMockSearchParams(data));
     }
 
     const backendParams = {
@@ -40,10 +61,8 @@ export const fetchBlockerServerFn = createServerFn({ method: "GET" })
       toDate: data.toDate,
       deviceType: data.deviceType,
       task: data.task,
-      ratingFieldId: data.ratingFieldId,
-      ratingValue: data.ratingValue,
-      choiceFieldId: data.choiceFieldId,
-      choiceValue: data.choiceValue,
+      rating: data.rating,
+      choice: data.choice,
     };
 
     const url = buildUrl(

@@ -59,7 +59,7 @@ describe("ChoiceFieldCard", () => {
     expect(screen.queryByText("62 valg totalt")).not.toBeInTheDocument();
   });
 
-  it("calls onChoiceSelect with correct optionId when clicking a choice", async () => {
+  it("calls onChoiceSelect with the clicked option id", async () => {
     const user = userEvent.setup();
     const onChoiceSelect = vi.fn();
 
@@ -88,5 +88,38 @@ describe("ChoiceFieldCard", () => {
     await user.click(screen.getByRole("button", { name: /Tid/ }));
 
     expect(onChoiceSelect).toHaveBeenCalledWith("time");
+  });
+
+  it("shows active state from the field-specific filter map", () => {
+    render(
+      <ChoiceFieldCard
+        totalCount={10}
+        activeChoiceFilters={{ hindringer: "time", rolle: "arbeidsgiver" }}
+        field={{
+          fieldId: "hindringer",
+          fieldType: "MULTI_CHOICE",
+          label: "Hva er de største hindringene?",
+          stats: {
+            type: "choice",
+            responseCount: 10,
+            responseRate: 1,
+            totalSelections: 14,
+            distribution: {
+              time: { label: "Tid", count: 8, percentage: 80 },
+              rules: { label: "Regelverk", count: 6, percentage: 60 },
+            },
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /Tid/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: /Regelverk/ })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
   });
 });

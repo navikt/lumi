@@ -23,9 +23,7 @@ async function setup(initialEntries: Array<string> = ["/"]) {
     return null;
   }
 
-  const rootRoute = createRootRoute({
-    component: Outlet,
-  });
+  const rootRoute = createRootRoute({ component: Outlet });
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
@@ -104,13 +102,10 @@ describe("useSearchParams", () => {
   });
 
   it("setParam merges sequential updates in the same handler", async () => {
-    const { router, getResult } = await setup([
-      "/?ratingFieldId=field-1&ratingValue=5&team=flex",
-    ]);
+    const { router, getResult } = await setup(["/?rating=field-1:5&team=flex"]);
 
     await act(async () => {
-      getResult().setParam("ratingFieldId", undefined);
-      getResult().setParam("ratingValue", undefined);
+      getResult().setParam("rating", undefined);
       getResult().setParam("page", "1");
     });
 
@@ -119,8 +114,7 @@ describe("useSearchParams", () => {
         page: "1",
         team: "flex",
       });
-      expect(getResult().params.ratingFieldId).toBeUndefined();
-      expect(getResult().params.ratingValue).toBeUndefined();
+      expect(getResult().params.rating).toBeUndefined();
       expect(getResult().params.page).toBe("1");
       expect(getResult().params.team).toBe("flex");
     });

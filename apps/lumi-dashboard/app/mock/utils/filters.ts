@@ -1,23 +1,14 @@
 /**
  * Unified filter utilities for mock data.
- *
- * Provides a single implementation of feedback filtering logic,
- * replacing the duplicated applyFilters and applyFiltersToItems functions.
  */
 
 import type { FeedbackDto } from "~/types/api";
+import { parseChoiceParam } from "~/utils/choiceFilterUtils";
+import { parseRatingParam } from "~/utils/ratingFilterUtils";
 import { mockThemes } from "../themes";
 import { getTaskNameFromFeedback } from "./extractors";
 import { matchesThemeKeywords } from "./textAnalysis";
 
-// ============================================
-// Filter Parameters Interface
-// ============================================
-
-/**
- * Filter parameters for feedback queries.
- * These can come from URLSearchParams or be passed directly.
- */
 export interface FilterParams {
   app?: string;
   surveyId?: string;
@@ -29,49 +20,26 @@ export interface FilterParams {
   hasText?: string;
   lowRating?: string;
   theme?: string;
-
-  /** Filter by a specific rating question fieldId */
-  ratingFieldId?: string;
-  /** Filter by a specific rating value (stringified number) */
-  ratingValue?: string;
-  /** Filter by a specific choice question fieldId */
-  choiceFieldId?: string;
-  /** Filter by selected choice option id */
-  choiceValue?: string;
+  rating?: string;
+  choice?: string;
 }
 
-// ============================================
-// Core Filter Function
-// ============================================
-
-/**
- * Apply filters to a list of feedback items.
- * Single source of truth for all filtering logic.
- *
- * @param items - The feedback items to filter
- * @param params - Filter parameters (from URL or direct)
- * @returns Filtered feedback items
- */
 export function applyFeedbackFilters(
   items: FeedbackDto[],
   params: FilterParams | URLSearchParams,
 ): FeedbackDto[] {
-  // Normalize params to FilterParams object
   const filters = normalizeParams(params);
 
   let filtered = [...items];
 
-  // App filter
   if (filters.app) {
     filtered = filtered.filter((item) => item.app === filters.app);
   }
 
-  // Survey ID filter
   if (filters.surveyId) {
     filtered = filtered.filter((item) => item.surveyId === filters.surveyId);
   }
 
-  // Date range filters
   if (filters.fromDate) {
     const fromDate = filters.fromDate;
     filtered = filtered.filter((item) => item.submittedAt >= fromDate);
@@ -83,19 +51,18 @@ export function applyFeedbackFilters(
     );
   }
 
-  // Device type filter
   if (filters.deviceType) {
     filtered = filtered.filter(
       (item) => item.context?.deviceType === filters.deviceType,
     );
   }
 
-  // Segment filter (format: "key:value,key:value")
   if (filters.segment) {
-    const segmentFilters = filters.segment.split(",").map((t) => {
-      const [key, value] = t.split(":");
+    const segmentFilters = filters.segment.split(",").map((part) => {
+      const [key, value] = part.split(":");
       return { key, value };
     });
+
     filtered = filtered.filter((item) => {
       if (!item.metadata) return false;
       return segmentFilters.every(
@@ -104,86 +71,92 @@ export function applyFeedbackFilters(
     });
   }
 
-  // Task filter (for Top Tasks drill-down)
   if (filters.task) {
-    filtered = filtered.filter((item) => {
-      const taskName = getTaskNameFromFeedback(item);
-      return taskName === filters.task;
-    });
+    filtered = filtered.filter(
+      (item) => getTaskNameFromFeedback(item) === filters.task,
+    );
   }
 
-  // Theme filter (themeId or "uncategorized")
   if (filters.theme) {
     if (filters.theme === "uncategorized") {
       filtered = filtered.filter((item) => {
         const text = getFeedbackText(item);
         if (!text) return true;
-        return !mockThemes.some((t) => matchesThemeKeywords(text, t.keywords));
+        return !mockThemes.some((theme) =>
+          matchesThemeKeywords(text, theme.keywords),
+        );
       });
     } else {
-      const targetTheme = mockThemes.find((t) => t.id === filters.theme);
-      if (targetTheme && targetTheme.keywords.length > 0) {
-        filtered = filtered.filter((item) => {
-          const text = getFeedbackText(item);
-          return matchesThemeKeywords(text, targetTheme.keywords);
-        });
+      const targetTheme = mockThemes.find(
+        (theme) => theme.id === filters.theme,
+      );
+      if (targetTheme?.keywords.length) {
+        filtered = filtered.filter((item) =>
+          matchesThemeKeywords(getFeedbackText(item), targetTheme.keywords),
+        );
       }
     }
   }
 
-  // Text filter (has text response)
   if (filters.hasText === "true") {
     filtered = filtered.filter((item) =>
-      item.answers.some((a) => a.fieldType === "TEXT" && a.value.text?.trim()),
-    );
-  }
-
-  // Low rating filter (1-2)
-  if (filters.lowRating === "true") {
-    filtered = filtered.filter((item) =>
       item.answers.some(
-        (a) => a.fieldType === "RATING" && (a.value.rating ?? 3) <= 2,
+        (answer) => answer.fieldType === "TEXT" && answer.value.text?.trim(),
       ),
     );
   }
 
-  // Specific rating filter (fieldId + rating value)
-  if (filters.ratingFieldId && filters.ratingValue) {
-    const parsed = Number.parseInt(filters.ratingValue, 10);
-    if (!Number.isNaN(parsed)) {
-      filtered = filtered.filter((item) =>
-        item.answers.some(
-          (a) =>
-            a.fieldType === "RATING" &&
-            a.fieldId === filters.ratingFieldId &&
-            a.value.type === "rating" &&
-            a.value.rating === parsed,
-        ),
-      );
-    }
+  if (filters.lowRating === "true") {
+    filtered = filtered.filter((item) =>
+      item.answers.some(
+        (answer) =>
+          answer.fieldType === "RATING" && (answer.value.rating ?? 3) <= 2,
+      ),
+    );
   }
 
-  // Specific choice filter (fieldId + option id)
-  if (filters.choiceFieldId && filters.choiceValue) {
-    const { choiceFieldId, choiceValue } = filters;
-
+  const ratingFilters = parseRatingParam(filters.rating);
+  if (Object.keys(ratingFilters).length > 0) {
     filtered = filtered.filter((item) =>
-      item.answers.some((a) => {
-        if (a.fieldId !== choiceFieldId) return false;
+      Object.entries(ratingFilters).every(([fieldId, ratingValue]) => {
+        const parsed = Number.parseInt(ratingValue, 10);
+        if (Number.isNaN(parsed)) return false;
 
-        if (
-          a.fieldType === "SINGLE_CHOICE" &&
-          a.value.type === "singleChoice"
-        ) {
-          return a.value.selectedOptionId === choiceValue;
-        }
-
-        if (a.fieldType === "MULTI_CHOICE" && a.value.type === "multiChoice") {
-          return a.value.selectedOptionIds.includes(choiceValue);
-        }
-
-        return false;
+        return item.answers.some(
+          (answer) =>
+            answer.fieldType === "RATING" &&
+            answer.fieldId === fieldId &&
+            answer.value.type === "rating" &&
+            answer.value.rating === parsed,
+        );
       }),
+    );
+  }
+
+  const choiceFilters = parseChoiceParam(filters.choice);
+  if (Object.keys(choiceFilters).length > 0) {
+    filtered = filtered.filter((item) =>
+      Object.entries(choiceFilters).every(([fieldId, choiceValue]) =>
+        item.answers.some((answer) => {
+          if (answer.fieldId !== fieldId) return false;
+
+          if (
+            answer.fieldType === "SINGLE_CHOICE" &&
+            answer.value.type === "singleChoice"
+          ) {
+            return answer.value.selectedOptionId === choiceValue;
+          }
+
+          if (
+            answer.fieldType === "MULTI_CHOICE" &&
+            answer.value.type === "multiChoice"
+          ) {
+            return answer.value.selectedOptionIds.includes(choiceValue);
+          }
+
+          return false;
+        }),
+      ),
     );
   }
 
@@ -191,17 +164,10 @@ export function applyFeedbackFilters(
 }
 
 function getFeedbackText(item: FeedbackDto): string {
-  const textAnswer = item.answers.find((a) => a.fieldType === "TEXT");
+  const textAnswer = item.answers.find((answer) => answer.fieldType === "TEXT");
   return textAnswer?.fieldType === "TEXT" ? (textAnswer.value.text ?? "") : "";
 }
 
-// ============================================
-// Helper Functions
-// ============================================
-
-/**
- * Normalize filter parameters from URLSearchParams or FilterParams object.
- */
 function normalizeParams(params: FilterParams | URLSearchParams): FilterParams {
   if (params instanceof URLSearchParams) {
     return {
@@ -215,19 +181,14 @@ function normalizeParams(params: FilterParams | URLSearchParams): FilterParams {
       hasText: params.get("hasText") ?? undefined,
       lowRating: params.get("lowRating") ?? undefined,
       theme: params.get("theme") ?? undefined,
-      ratingFieldId: params.get("ratingFieldId") ?? undefined,
-      ratingValue: params.get("ratingValue") ?? undefined,
-      choiceFieldId: params.get("choiceFieldId") ?? undefined,
-      choiceValue: params.get("choiceValue") ?? undefined,
+      rating: params.get("rating") ?? undefined,
+      choice: params.get("choice") ?? undefined,
     };
   }
+
   return params;
 }
 
-/**
- * Convert FilterParams to URLSearchParams.
- * Useful for testing.
- */
 export function toURLSearchParams(params: FilterParams): URLSearchParams {
   const searchParams = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
