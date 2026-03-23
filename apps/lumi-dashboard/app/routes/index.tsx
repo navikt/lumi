@@ -153,15 +153,11 @@ function DashboardPage() {
     hasAppliedDefaultPeriodRef.current = true;
   }, [setParams]);
 
+  // Clean up params that are only used on the feedback route (not the dashboard).
+  // page/size are kept because filter changes set page=1, and theme is used by discovery.
   useEffect(() => {
     const hasUnsupported =
-      !!params.hasText ||
-      !!params.lowRating ||
-      !!params.query ||
-      !!params.tag ||
-      !!params.theme ||
-      !!params.page ||
-      !!params.size;
+      !!params.hasText || !!params.lowRating || !!params.query || !!params.tag;
 
     if (!hasUnsupported) return;
 
@@ -170,20 +166,8 @@ function DashboardPage() {
       lowRating: undefined,
       query: undefined,
       tag: undefined,
-      theme: undefined,
-      page: undefined,
-      size: undefined,
     });
-  }, [
-    params.hasText,
-    params.lowRating,
-    params.query,
-    params.tag,
-    params.theme,
-    params.page,
-    params.size,
-    setParams,
-  ]);
+  }, [params.hasText, params.lowRating, params.query, params.tag, setParams]);
 
   const config = surveyType ? SURVEY_CONFIG[surveyType] : null;
 
