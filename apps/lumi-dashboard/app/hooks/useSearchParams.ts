@@ -4,9 +4,9 @@ import type { SearchParams } from "~/schemas/searchSchema";
 
 export type { SearchParams } from "~/schemas/searchSchema";
 
-function removeEmptyParams(
-  params: Partial<SearchParams>,
-): Partial<SearchParams> {
+type LooseSearchParams = Record<string, unknown>;
+
+function removeEmptyParams(params: LooseSearchParams): LooseSearchParams {
   return Object.fromEntries(
     Object.entries(params).filter(
       ([, value]) => value !== undefined && value !== "",
@@ -22,36 +22,42 @@ export function useSearchParams() {
 
   const setParam = useCallback(
     (key: keyof SearchParams, value: string | undefined) => {
+      const search = ((prev: LooseSearchParams) =>
+        removeEmptyParams({
+          ...prev,
+          [key]: value || undefined,
+        })) as never;
+
       void navigate({
         to: currentPath,
-        search: removeEmptyParams({
-          ...params,
-          [key]: value || undefined,
-        }),
+        search,
         replace: true,
       });
     },
-    [currentPath, navigate, params],
+    [currentPath, navigate],
   );
 
   const setParams = useCallback(
     (newParams: Partial<SearchParams>) => {
+      const search = ((prev: LooseSearchParams) =>
+        removeEmptyParams({
+          ...prev,
+          ...newParams,
+        })) as never;
+
       void navigate({
         to: currentPath,
-        search: removeEmptyParams({
-          ...params,
-          ...newParams,
-        }),
+        search,
         replace: true,
       });
     },
-    [currentPath, navigate, params],
+    [currentPath, navigate],
   );
 
   const resetParams = useCallback(() => {
     void navigate({
       to: currentPath,
-      search: {},
+      search: {} as never,
       replace: true,
     });
   }, [currentPath, navigate]);

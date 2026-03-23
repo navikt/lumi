@@ -50,4 +50,35 @@ describe("AnswerRenderer", () => {
     expect(screen.getByText("✓ Søknad")).toBeInTheDocument();
     expect(screen.getByText("Oppfølging")).toBeInTheDocument();
   });
+
+  it("renders selected single-choice value as plain text when options are missing", () => {
+    const answer: Answer = {
+      fieldId: "task_choice",
+      fieldType: "SINGLE_CHOICE",
+      question: {
+        label: "Hva skulle du gjøre?",
+      },
+      value: { type: "singleChoice", selectedOptionId: "opt-1" },
+    };
+
+    render(<RenderAnswer answer={answer} styles={styles} />);
+
+    expect(screen.getByText("opt-1")).toBeInTheDocument();
+  });
+
+  it('renders "Ingen valgt" when multi-choice options and values are missing', () => {
+    const answer: Answer = {
+      fieldId: "task_choice",
+      fieldType: "MULTI_CHOICE",
+      question: {
+        label: "Hva valgte du?",
+        options: [],
+      },
+      value: { type: "multiChoice", selectedOptionIds: [] },
+    };
+
+    render(<RenderAnswer answer={answer} styles={styles} />);
+
+    expect(screen.getByText("Ingen valgt")).toBeInTheDocument();
+  });
 });

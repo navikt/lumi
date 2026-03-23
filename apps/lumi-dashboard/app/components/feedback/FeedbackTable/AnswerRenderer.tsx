@@ -56,6 +56,12 @@ function AnswerCardLayout({
   );
 }
 
+function renderChoiceFallback(selectedValues: string[]) {
+  const fallbackText = selectedValues.filter(Boolean).join(", ");
+
+  return <BodyShort>{fallbackText || "Ingen valgt"}</BodyShort>;
+}
+
 // Render a single answer based on its type
 export function RenderAnswer({
   answer,
@@ -252,7 +258,8 @@ export function RenderAnswer({
           : answer.value.type === "multiChoice"
             ? answer.value.selectedOptionIds
             : [];
-      const options = answer.question.options || [];
+      const options = answer.question.options ?? [];
+      const hasOptions = options.length > 0;
 
       return (
         <AnswerCardLayout
@@ -270,24 +277,28 @@ export function RenderAnswer({
           label={answer.question.label}
           description={answer.question.description}
         >
-          <div className={styles.choiceOptions}>
-            {options.map((opt) => {
-              const isSelected = selectedIds.includes(opt.id);
-              return (
-                <span
-                  key={opt.id}
-                  className={
-                    isSelected
-                      ? styles.choiceOptionSelected
-                      : styles.choiceOption
-                  }
-                >
-                  {isSelected && "✓ "}
-                  {opt.label}
-                </span>
-              );
-            })}
-          </div>
+          {hasOptions ? (
+            <div className={styles.choiceOptions}>
+              {options.map((opt) => {
+                const isSelected = selectedIds.includes(opt.id);
+                return (
+                  <span
+                    key={opt.id}
+                    className={
+                      isSelected
+                        ? styles.choiceOptionSelected
+                        : styles.choiceOption
+                    }
+                  >
+                    {isSelected && "✓ "}
+                    {opt.label}
+                  </span>
+                );
+              })}
+            </div>
+          ) : (
+            renderChoiceFallback(selectedIds)
+          )}
         </AnswerCardLayout>
       );
     }

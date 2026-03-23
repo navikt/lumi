@@ -103,6 +103,29 @@ describe("useSearchParams", () => {
     });
   });
 
+  it("setParam merges sequential updates in the same handler", async () => {
+    const { router, getResult } = await setup([
+      "/?ratingFieldId=field-1&ratingValue=5&team=flex",
+    ]);
+
+    await act(async () => {
+      getResult().setParam("ratingFieldId", undefined);
+      getResult().setParam("ratingValue", undefined);
+      getResult().setParam("page", "1");
+    });
+
+    await waitFor(() => {
+      expect(router.state.location.search).toMatchObject({
+        page: "1",
+        team: "flex",
+      });
+      expect(getResult().params.ratingFieldId).toBeUndefined();
+      expect(getResult().params.ratingValue).toBeUndefined();
+      expect(getResult().params.page).toBe("1");
+      expect(getResult().params.team).toBe("flex");
+    });
+  });
+
   it("setParams sets multiple parameters at once", async () => {
     const { router, getResult } = await setup();
 
