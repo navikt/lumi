@@ -60,6 +60,13 @@ export function FilterMenu({
   // Cache the last non-empty answer filter fields so filters survive
   // the anonymity threshold (fieldStats is emptied when count < 5)
   const cachedFieldsRef = useRef(answerFilterFields);
+  const lastSurveyIdRef = useRef(params.surveyId);
+
+  // Reset cache when survey changes to avoid showing stale fields
+  if (params.surveyId !== lastSurveyIdRef.current) {
+    cachedFieldsRef.current = undefined;
+    lastSurveyIdRef.current = params.surveyId;
+  }
   if (answerFilterFields && answerFilterFields.length > 0) {
     cachedFieldsRef.current = answerFilterFields;
   }
@@ -209,7 +216,10 @@ export function FilterMenu({
 
             {/* Answer filters: full-width section with horizontal Chips */}
             {showAnswerFilters ? (
-              <ActionMenu.Group label="Svar-filtre">
+              <VStack gap="space-4">
+                <BodyShort size="small" weight="semibold">
+                  Svar-filtre
+                </BodyShort>
                 <Box
                   background="neutral-soft"
                   borderRadius="8"
@@ -255,7 +265,7 @@ export function FilterMenu({
                     })}
                   </HGrid>
                 </Box>
-              </ActionMenu.Group>
+              </VStack>
             ) : null}
 
             {/* Active chart filters */}

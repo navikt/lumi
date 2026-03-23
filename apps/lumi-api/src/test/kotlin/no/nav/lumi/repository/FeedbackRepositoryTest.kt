@@ -340,7 +340,7 @@ class FeedbackRepositoryTest : FunSpec({
             )
 
             val (content, _, _) = repository.findPaginated(
-                FeedbackQuery(team = "team-test", ratingFieldId = "rating_main", ratingValue = 1)
+                FeedbackQuery(team = "team-test", ratingFilters = listOf("rating_main" to 1))
             )
 
             content shouldHaveSize 1
@@ -404,7 +404,7 @@ class FeedbackRepositoryTest : FunSpec({
             )
 
             val (content, _, _) = repository.findPaginated(
-                FeedbackQuery(team = "team-test", choiceFieldId = "task_choice", choiceValue = "opt-1")
+                FeedbackQuery(team = "team-test", choiceFilters = listOf("task_choice" to "opt-1"))
             )
 
             content shouldHaveSize 2
@@ -432,7 +432,7 @@ class FeedbackRepositoryTest : FunSpec({
             )
 
             val (content, total, _) = repository.findPaginated(
-                FeedbackQuery(team = "team-test", choiceFieldId = "task_choice", choiceValue = "unknown-option")
+                FeedbackQuery(team = "team-test", choiceFilters = listOf("task_choice" to "unknown-option"))
             )
 
             content.shouldBeEmpty()
@@ -486,10 +486,8 @@ class FeedbackRepositoryTest : FunSpec({
             val (content, _, _) = repository.findPaginated(
                 FeedbackQuery(
                     team = "team-test",
-                    choiceFieldId = "task_choice",
-                    choiceValue = "opt-1",
-                    ratingFieldId = "rating_main",
-                    ratingValue = 1
+                    choiceFilters = listOf("task_choice" to "opt-1"),
+                    ratingFilters = listOf("rating_main" to 1),
                 )
             )
 

@@ -46,10 +46,8 @@ fun Route.exportRoutes(exportService: ExportService = defaultExportService) {
             theme = params.theme,
             task = params.task,
             segments = segments,
-            ratingFieldId = params.ratingFieldId,
-            ratingValue = params.ratingValue,
-            choiceFieldId = params.choiceFieldId,
-            choiceValue = params.choiceValue,
+            choiceFilters = parseChoiceFilters(params.choice, params.choiceFieldId, params.choiceValue),
+            ratingFilters = parseRatingFilters(params.rating, params.ratingFieldId, params.ratingValue),
         )
         
         val feedbacks = exportService.getFeedbackForExport(query)

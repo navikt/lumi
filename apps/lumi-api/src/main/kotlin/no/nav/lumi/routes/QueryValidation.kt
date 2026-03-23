@@ -1,8 +1,11 @@
 package no.nav.lumi.routes
 
 import no.nav.lumi.config.exception.ApiErrorException
+import no.nav.lumi.repository.MAX_CHOICE_VALUE_LENGTH
+import org.slf4j.LoggerFactory
 import java.time.LocalDate
 
+private val log = LoggerFactory.getLogger("QueryValidation")
 private const val MAX_PAGE_SIZE = 200
 private const val MAX_QUERY_LENGTH = 200
 private const val MAX_TAGS = 20
@@ -117,4 +120,72 @@ internal fun parseDateOrThrow(name: String, value: String?): LocalDate? {
     } catch (_: Exception) {
         throw ApiErrorException.BadRequestException("Invalid $name: expected YYYY-MM-DD")
     }
+}
+
+private const val MAX_FIELD_FILTERS = 20
+
+/**
+ * Parse repeated "fieldId:optionId" choice filter params into pairs.
+ * Also merges in legacy single-value params for backward compat.
+ */
+internal fun parseChoiceFilters(
+    choice: List<String>?,
+    legacyFieldId: String?,
+    legacyValue: String?,
+): List<Pair<String, String>> {
+    val filters = mutableListOf<Pair<String, String>>()
+
+    choice?.forEach { filter ->
+        val colonIndex = filter.indexOf(':')
+        if (colonIndex <= 0) return@forEach
+        val fieldId = filter.substring(0, colonIndex).trim()
+        val value = filter.substring(colonIndex + 1).trim()
+        if (fieldId.isNotBlank() && value.isNotBlank() && value.length <= MAX_CHOICE_VALUE_LENGTH) {
+            filters.add(fieldId to value)
+        }
+    }
+
+    if (!legacyFieldId.isNullOrBlank() && !legacyValue.isNullOrBlank()) {
+        filters.add(legacyFieldId.trim() to legacyValue.trim())
+    }
+
+    if (filters.size > MAX_FIELD_FILTERS) {
+        log.warn("Too many choice filters ({}), truncating to {}", filters.size, MAX_FIELD_FILTERS)
+        return filters.take(MAX_FIELD_FILTERS)
+    }
+
+    return filters
+}
+
+/**
+ * Parse repeated "fieldId:ratingValue" rating filter params into pairs.
+ * Also merges in legacy single-value params for backward compat.
+ */
+internal fun parseRatingFilters(
+    rating: List<String>?,
+    legacyFieldId: String?,
+    legacyValue: Int?,
+): List<Pair<String, Int>> {
+    val filters = mutableListOf<Pair<String, Int>>()
+
+    rating?.forEach { filter ->
+        val colonIndex = filter.indexOf(':')
+        if (colonIndex <= 0) return@forEach
+        val fieldId = filter.substring(0, colonIndex).trim()
+        val value = filter.substring(colonIndex + 1).trim().toIntOrNull()
+        if (fieldId.isNotBlank() && value != null) {
+            filters.add(fieldId to value)
+        }
+    }
+
+    if (!legacyFieldId.isNullOrBlank() && legacyValue != null) {
+        filters.add(legacyFieldId.trim() to legacyValue)
+    }
+
+    if (filters.size > MAX_FIELD_FILTERS) {
+        log.warn("Too many rating filters ({}), truncating to {}", filters.size, MAX_FIELD_FILTERS)
+        return filters.take(MAX_FIELD_FILTERS)
+    }
+
+    return filters
 }

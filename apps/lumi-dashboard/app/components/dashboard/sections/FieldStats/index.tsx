@@ -9,8 +9,11 @@ import { Skeleton } from "./Skeleton";
 export function FieldStatsSection() {
   const { data: stats, isPending } = useStats();
   const { params } = useSearchParams();
-  const { activeFilters: activeChoiceFilters, toggleChoice } =
-    useChoiceFilter();
+  const {
+    activeFilters: activeChoiceFilters,
+    toggleChoice,
+    removeChoice,
+  } = useChoiceFilter();
   const hasSurveyFilter = !!params.surveyId;
 
   if (isPending && hasSurveyFilter) {
@@ -64,12 +67,7 @@ export function FieldStatsSection() {
                   onChoiceSelect={(optionId) =>
                     toggleChoice(field.fieldId, optionId)
                   }
-                  onChoiceClear={() => {
-                    const activeOptionId = activeChoiceFilters[field.fieldId];
-                    if (activeOptionId) {
-                      toggleChoice(field.fieldId, activeOptionId);
-                    }
-                  }}
+                  onChoiceClear={() => removeChoice(field.fieldId)}
                 />
               );
             default:

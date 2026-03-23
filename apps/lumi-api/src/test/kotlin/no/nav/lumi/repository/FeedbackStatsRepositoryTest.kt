@@ -73,7 +73,7 @@ class FeedbackStatsRepositoryTest : FunSpec({
             )
 
             val stats = repository.getStats(
-                StatsQuery(team = "flex", choiceFieldId = "task_choice", choiceValue = "opt-1")
+                StatsQuery(team = "flex", choiceFilters = listOf("task_choice" to "opt-1"))
             )
 
             stats.totalCount shouldBe 2L
@@ -95,7 +95,7 @@ class FeedbackStatsRepositoryTest : FunSpec({
             )
 
             val stats = repository.getStats(
-                StatsQuery(team = "flex", choiceFieldId = "task_choice", choiceValue = "unknown-option")
+                StatsQuery(team = "flex", choiceFilters = listOf("task_choice" to "unknown-option"))
             )
 
             stats.totalCount shouldBe 0L
@@ -130,7 +130,7 @@ class FeedbackStatsRepositoryTest : FunSpec({
             )
 
             val stats = repository.getStats(
-                StatsQuery(team = "flex", choiceFieldId = "task_choice", choiceValue = "opt\"1")
+                StatsQuery(team = "flex", choiceFilters = listOf("task_choice" to "opt\"1"))
             )
 
             stats.totalCount shouldBe 2L
@@ -183,10 +183,8 @@ class FeedbackStatsRepositoryTest : FunSpec({
             val stats = repository.getStats(
                 StatsQuery(
                     team = "flex",
-                    choiceFieldId = "task_choice",
-                    choiceValue = "opt-1",
-                    ratingFieldId = "rating_main",
-                    ratingValue = 1
+                    choiceFilters = listOf("task_choice" to "opt-1"),
+                    ratingFilters = listOf("rating_main" to 1),
                 )
             )
 

@@ -3,6 +3,7 @@ package no.nav.lumi.repository
 import org.slf4j.Logger
 
 internal const val MAX_CHOICE_VALUE_LENGTH = 200
+internal const val MAX_FIELD_ID_LENGTH = 200
 
 private val JSON_PATH_SPECIAL_CHARS = setOf('"', '\\', '$', '@', '?', '(', ')')
 
@@ -17,6 +18,10 @@ internal fun validateJsonPathFieldId(
     log: Logger
 ): String? {
     val normalizedFieldId = fieldId?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    if (normalizedFieldId.length > MAX_FIELD_ID_LENGTH) {
+        log.warn("Rejected oversized JSONPath field id for {}: length {}", fieldName, normalizedFieldId.length)
+        return null
+    }
     val isSafeFieldId = normalizedFieldId.all { it.isLetterOrDigit() || it == '-' || it == '_' }
     if (!isSafeFieldId) {
         if (fieldName == "choiceFieldId") {

@@ -37,13 +37,14 @@ class ApiV1Intern {
         val task: String? = null,
         /** Segment filter - repeated params like segment=key:value */
         val segment: List<String>? = null,
-        /** Filter by a specific rating question fieldId */
+        /** Choice filters — repeated params, each in format "fieldId:optionId" */
+        val choice: List<String>? = null,
+        /** Rating filters — repeated params, each in format "fieldId:ratingValue" */
+        val rating: List<String>? = null,
+        // Legacy single-value params (backward compat for bookmarked URLs)
         val ratingFieldId: String? = null,
-        /** Filter by a specific rating value */
         val ratingValue: Int? = null,
-        /** Filter by a specific choice question fieldId */
         val choiceFieldId: String? = null,
-        /** Filter by a specific choice option value/id */
         val choiceValue: String? = null,
     ) {
         @Resource("{id}")
@@ -91,13 +92,14 @@ class ApiV1Intern {
         val segment: List<String>? = null,
         /** Task filter for Top Tasks drill-down */
         val task: String? = null,
-        /** Filter by a specific rating question fieldId */
+        /** Choice filters — repeated params, each in format "fieldId:optionId" */
+        val choice: List<String>? = null,
+        /** Rating filters — repeated params, each in format "fieldId:ratingValue" */
+        val rating: List<String>? = null,
+        // Legacy single-value params (backward compat for bookmarked URLs)
         val ratingFieldId: String? = null,
-        /** Filter by a specific rating value */
         val ratingValue: Int? = null,
-        /** Filter by a specific choice question fieldId */
         val choiceFieldId: String? = null,
-        /** Filter by a specific choice option value/id */
         val choiceValue: String? = null,
     ) {
         @Resource("dashboard")
@@ -249,13 +251,14 @@ class ApiV1Intern {
         val theme: String? = null,
         /** Task filter for Top Tasks drill-down */
         val task: String? = null,
-        /** Filter by a specific rating question fieldId */
+        /** Choice filters — repeated params, each in format "fieldId:optionId" */
+        val choice: List<String>? = null,
+        /** Rating filters — repeated params, each in format "fieldId:ratingValue" */
+        val rating: List<String>? = null,
+        // Legacy single-value params (backward compat for bookmarked URLs)
         val ratingFieldId: String? = null,
-        /** Filter by a specific rating value */
         val ratingValue: Int? = null,
-        /** Filter by a specific choice question fieldId */
         val choiceFieldId: String? = null,
-        /** Filter by a specific choice option value/id */
         val choiceValue: String? = null,
     )
 }

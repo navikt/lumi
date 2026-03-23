@@ -49,6 +49,16 @@ class StatsService(
             ?.sortedBy { (k, v) -> "${k.trim()}:${v.trim()}" }
             ?.joinToString(",") { (k, v) -> "${k.trim()}:${v.trim()}" }
 
+        val choiceValue = choiceFilters
+            .takeIf { it.isNotEmpty() }
+            ?.sortedBy { (k, v) -> "$k:$v" }
+            ?.joinToString(",") { (k, v) -> "$k:$v" }
+
+        val ratingValue = ratingFilters
+            .takeIf { it.isNotEmpty() }
+            ?.sortedBy { (k, v) -> "$k:$v" }
+            ?.joinToString(",") { (k, v) -> "$k:$v" }
+
         val parts = listOf(
             "team" to team,
             "app" to app,
@@ -58,10 +68,8 @@ class StatsService(
             "deviceType" to deviceType,
             "segment" to segmentValue,
             "task" to task,
-            "ratingFieldId" to ratingFieldId,
-            "ratingValue" to ratingValue?.toString(),
-            "choiceFieldId" to choiceFieldId,
-            "choiceValue" to choiceValue,
+            "choice" to choiceValue,
+            "rating" to ratingValue,
         )
             .filter { (_, value) -> value != null }
             .map { (key, value) -> "${enc(key)}=${enc(value!!)}" }

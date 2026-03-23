@@ -25,10 +25,12 @@ private fun buildStatsQuery(
     deviceType: String?,
     segment: List<String>? = null,
     task: String? = null,
-    ratingFieldId: String? = null,
-    ratingValue: Int? = null,
-    choiceFieldId: String? = null,
-    choiceValue: String? = null,
+    choice: List<String>? = null,
+    rating: List<String>? = null,
+    legacyChoiceFieldId: String? = null,
+    legacyChoiceValue: String? = null,
+    legacyRatingFieldId: String? = null,
+    legacyRatingValue: Int? = null,
 ) = StatsQuery(
     team = team,
     app = app?.takeIf { it != FILTER_ALL },
@@ -43,10 +45,8 @@ private fun buildStatsQuery(
         }
         ?: emptyList(),
     task = task,
-    ratingFieldId = ratingFieldId,
-    ratingValue = ratingValue,
-    choiceFieldId = choiceFieldId,
-    choiceValue = choiceValue,
+    choiceFilters = parseChoiceFilters(choice, legacyChoiceFieldId, legacyChoiceValue),
+    ratingFilters = parseRatingFilters(rating, legacyRatingFieldId, legacyRatingValue),
 )
 
 /**
@@ -70,10 +70,12 @@ fun Route.statsRoutes(
             deviceType = p.deviceType,
             segment = p.segment,
             task = p.task,
-            ratingFieldId = p.ratingFieldId,
-            ratingValue = p.ratingValue,
-            choiceFieldId = p.choiceFieldId,
-            choiceValue = p.choiceValue,
+            choice = p.choice,
+            rating = p.rating,
+            legacyChoiceFieldId = p.choiceFieldId,
+            legacyChoiceValue = p.choiceValue,
+            legacyRatingFieldId = p.ratingFieldId,
+            legacyRatingValue = p.ratingValue,
         )
         val stats = statsService.getDashboardStats(query)
         call.respond(stats)
@@ -92,10 +94,12 @@ fun Route.statsRoutes(
             surveyId = p.surveyId,
             deviceType = p.deviceType,
             segment = p.segment,
-            ratingFieldId = p.ratingFieldId,
-            ratingValue = p.ratingValue,
-            choiceFieldId = p.choiceFieldId,
-            choiceValue = p.choiceValue,
+            choice = p.choice,
+            rating = p.rating,
+            legacyChoiceFieldId = p.choiceFieldId,
+            legacyChoiceValue = p.choiceValue,
+            legacyRatingFieldId = p.ratingFieldId,
+            legacyRatingValue = p.ratingValue,
         )
         val overview = statsService.getStatsOverview(query)
         call.respond(overview)
@@ -114,10 +118,12 @@ fun Route.statsRoutes(
             surveyId = p.surveyId,
             deviceType = p.deviceType,
             segment = p.segment,
-            ratingFieldId = p.ratingFieldId,
-            ratingValue = p.ratingValue,
-            choiceFieldId = p.choiceFieldId,
-            choiceValue = p.choiceValue,
+            choice = p.choice,
+            rating = p.rating,
+            legacyChoiceFieldId = p.choiceFieldId,
+            legacyChoiceValue = p.choiceValue,
+            legacyRatingFieldId = p.ratingFieldId,
+            legacyRatingValue = p.ratingValue,
         )
         val distribution = statsService.getRatingDistribution(query)
         call.respond(distribution)
@@ -136,10 +142,12 @@ fun Route.statsRoutes(
             surveyId = p.surveyId,
             deviceType = p.deviceType,
             segment = p.segment,
-            ratingFieldId = p.ratingFieldId,
-            ratingValue = p.ratingValue,
-            choiceFieldId = p.choiceFieldId,
-            choiceValue = p.choiceValue,
+            choice = p.choice,
+            rating = p.rating,
+            legacyChoiceFieldId = p.choiceFieldId,
+            legacyChoiceValue = p.choiceValue,
+            legacyRatingFieldId = p.ratingFieldId,
+            legacyRatingValue = p.ratingValue,
         )
         val timeline = statsService.getTimeline(query)
         call.respond(timeline)
@@ -159,10 +167,12 @@ fun Route.statsRoutes(
             deviceType = p.deviceType,
             segment = p.segment,
             task = p.task,
-            ratingFieldId = p.ratingFieldId,
-            ratingValue = p.ratingValue,
-            choiceFieldId = p.choiceFieldId,
-            choiceValue = p.choiceValue,
+            choice = p.choice,
+            rating = p.rating,
+            legacyChoiceFieldId = p.choiceFieldId,
+            legacyChoiceValue = p.choiceValue,
+            legacyRatingFieldId = p.ratingFieldId,
+            legacyRatingValue = p.ratingValue,
         )
         val stats = statsService.getTopTasksStats(query)
         call.respond(stats)
@@ -182,10 +192,12 @@ fun Route.statsRoutes(
             deviceType = p.deviceType,
             segment = p.segment,
             task = p.task,
-            ratingFieldId = p.ratingFieldId,
-            ratingValue = p.ratingValue,
-            choiceFieldId = p.choiceFieldId,
-            choiceValue = p.choiceValue,
+            choice = p.choice,
+            rating = p.rating,
+            legacyChoiceFieldId = p.choiceFieldId,
+            legacyChoiceValue = p.choiceValue,
+            legacyRatingFieldId = p.ratingFieldId,
+            legacyRatingValue = p.ratingValue,
         )
         val stats = statsService.getBlockerStats(query)
         call.respond(stats)
@@ -204,10 +216,12 @@ fun Route.statsRoutes(
             surveyId = p.surveyId,
             deviceType = p.deviceType,
             segment = p.segment,
-            ratingFieldId = p.ratingFieldId,
-            ratingValue = p.ratingValue,
-            choiceFieldId = p.choiceFieldId,
-            choiceValue = p.choiceValue,
+            choice = p.choice,
+            rating = p.rating,
+            legacyChoiceFieldId = p.choiceFieldId,
+            legacyChoiceValue = p.choiceValue,
+            legacyRatingFieldId = p.ratingFieldId,
+            legacyRatingValue = p.ratingValue,
         )
         val stats = statsService.getTaskPriorityStats(query)
         call.respond(stats)
@@ -226,10 +240,12 @@ fun Route.statsRoutes(
             surveyId = null,
             deviceType = p.deviceType,
             segment = p.segment,
-            ratingFieldId = p.ratingFieldId,
-            ratingValue = p.ratingValue,
-            choiceFieldId = p.choiceFieldId,
-            choiceValue = p.choiceValue,
+            choice = p.choice,
+            rating = p.rating,
+            legacyChoiceFieldId = p.choiceFieldId,
+            legacyChoiceValue = p.choiceValue,
+            legacyRatingFieldId = p.ratingFieldId,
+            legacyRatingValue = p.ratingValue,
         )
         val distribution = statsService.getSurveyTypeDistribution(query)
         call.respond(distribution)
