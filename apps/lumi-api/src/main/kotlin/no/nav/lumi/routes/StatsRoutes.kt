@@ -44,41 +44,49 @@ internal fun ApiV1Intern.Stats.toStatsQuery(
 fun Route.statsRoutes(
     statsService: StatsService = defaultStatsService
 ) {
+    // Dashboard stats (primary endpoint used by lumi-dashboard)
     get<ApiV1Intern.Stats.Dashboard> { params ->
         val query = params.parent.toStatsQuery(call.authorizedTeam)
         call.respond(statsService.getDashboardStats(query))
     }
 
+    // Stats overview (consolidated totals + rating distribution)
     get<ApiV1Intern.Stats.Overview> { params ->
         val query = params.parent.toStatsQuery(call.authorizedTeam)
         call.respond(statsService.getStatsOverview(query))
     }
 
+    // Rating distribution
     get<ApiV1Intern.Stats.Ratings> { params ->
         val query = params.parent.toStatsQuery(call.authorizedTeam)
         call.respond(statsService.getRatingDistribution(query))
     }
 
+    // Timeline data (counts by date)
     get<ApiV1Intern.Stats.Timeline> { params ->
         val query = params.parent.toStatsQuery(call.authorizedTeam)
         call.respond(statsService.getTimeline(query))
     }
 
+    // Top Tasks statistics
     get<ApiV1Intern.Stats.TopTasks> { params ->
         val query = params.parent.toStatsQuery(call.authorizedTeam)
         call.respond(statsService.getTopTasksStats(query))
     }
 
+    // Blocker statistics for Top Tasks (word frequency + theme clustering)
     get<ApiV1Intern.Stats.Blockers> { params ->
         val query = params.parent.toStatsQuery(call.authorizedTeam)
         call.respond(statsService.getBlockerStats(query))
     }
 
+    // Task Priority statistics ("long neck" distribution)
     get<ApiV1Intern.Stats.TaskPriority> { params ->
         val query = params.parent.toStatsQuery(call.authorizedTeam)
         call.respond(statsService.getTaskPriorityStats(query))
     }
 
+    // Survey Type distribution (surveyId forced to null — counts across all surveys)
     get<ApiV1Intern.Stats.SurveyTypes> { params ->
         val query = params.parent.toStatsQuery(call.authorizedTeam, surveyIdOverride = null)
         call.respond(statsService.getSurveyTypeDistribution(query))

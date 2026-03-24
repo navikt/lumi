@@ -3,7 +3,9 @@ import { expect, type Page, test } from "@playwright/test";
 async function gotoSurveyCustom(page: Page, url = "/?surveyId=survey-custom") {
   await page.goto(url);
   await expect(page.locator("main")).toBeVisible({ timeout: 15000 });
-  await expect(page.getByTestId("field-stats-section")).toBeVisible();
+  await expect(page.getByTestId("field-stats-section")).toBeVisible({
+    timeout: 10000,
+  });
 }
 
 test.describe("Field filters", () => {

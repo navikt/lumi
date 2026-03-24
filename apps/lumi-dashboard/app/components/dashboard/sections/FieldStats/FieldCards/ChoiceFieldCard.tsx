@@ -33,9 +33,10 @@ export function ChoiceFieldCard({
   const distribution = stats.distribution;
   const activeChoiceValue = activeChoiceFilters?.[field.fieldId];
 
-  const choices = Object.entries(distribution)
-    .map(([id, data]) => ({ id, ...data }))
-    .sort((a, b) => b.count - a.count);
+  const choices = Object.entries(distribution).map(([id, data]) => ({
+    id,
+    ...data,
+  }));
 
   const maxCount = Math.max(...choices.map((choice) => choice.count), 1);
   const selectionSum = choices.reduce((sum, choice) => sum + choice.count, 0);

@@ -92,6 +92,15 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
     }
   };
 
+  const handleSurveyChange = (newSurveyId: string | undefined) => {
+    setParams({
+      surveyId: newSurveyId,
+      choice: undefined,
+      rating: undefined,
+      page: "1",
+    });
+  };
+
   const handleReset = () => {
     const team = params.team;
     resetParams();
@@ -209,11 +218,9 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                 size="small"
                 value={params.surveyId || "alle"}
                 onChange={(e) =>
-                  setParams({
-                    surveyId:
-                      e.target.value === "alle" ? undefined : e.target.value,
-                    page: "1",
-                  })
+                  handleSurveyChange(
+                    e.target.value === "alle" ? undefined : e.target.value,
+                  )
                 }
                 className={styles.desktopSurveySelect}
               >
@@ -317,11 +324,9 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                 size="small"
                 value={params.surveyId || "alle"}
                 onChange={(e) =>
-                  setParams({
-                    surveyId:
-                      e.target.value === "alle" ? undefined : e.target.value,
-                    page: "1",
-                  })
+                  handleSurveyChange(
+                    e.target.value === "alle" ? undefined : e.target.value,
+                  )
                 }
                 className={styles.mobileSurveySelect}
               >
