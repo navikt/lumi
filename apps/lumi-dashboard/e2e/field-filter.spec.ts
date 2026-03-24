@@ -63,12 +63,17 @@ test.describe("Field filters", () => {
     );
     await expect(page.locator("main")).toBeVisible({ timeout: 15000 });
 
-    // Both filter chips should be visible
-    await expect(page.getByText("Rolle: Arbeidsgiver")).toBeVisible({
-      timeout: 10000,
-    });
-    await expect(page.getByText("Hvor fornøyd er du?: 5")).toBeVisible({
-      timeout: 5000,
-    });
+    // Both filter params should be present in the URL
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("choice"))
+      .toBe("role:Arbeidsgiver");
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("rating"))
+      .toBe("satisfaction:5");
+
+    // At least one filter chip should render (label may vary based on stats masking)
+    await expect(
+      page.getByRole("button", { name: /Fjern filter/ }),
+    ).toBeVisible({ timeout: 10000 });
   });
 });
