@@ -86,6 +86,8 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
       if (newApp && surveysForApp && !surveysForApp.includes(params.surveyId)) {
         setParams({
           surveyId: undefined,
+          choice: undefined,
+          rating: undefined,
           page: "1",
         });
       }

@@ -26,12 +26,7 @@ internal fun ApiV1Intern.Stats.toStatsQuery(
     toDate = toDate,
     surveyId = surveyIdOverride,
     deviceType = deviceType?.takeIf { it != FILTER_ALL },
-    segments = segment
-        ?.mapNotNull { segmentStr ->
-            val parts = segmentStr.split(":", limit = 2)
-            if (parts.size == 2) Pair(parts[0], parts[1]) else null
-        }
-        ?: emptyList(),
+    segments = parseSegments(segment),
     task = task,
     choiceFilters = parseChoiceFilters(choice, choiceFieldId, choiceValue),
     ratingFilters = parseRatingFilters(rating, ratingFieldId, ratingValue),
