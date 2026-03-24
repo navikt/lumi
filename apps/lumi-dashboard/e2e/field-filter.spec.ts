@@ -71,9 +71,9 @@ test.describe("Field filters", () => {
       .poll(() => new URL(page.url()).searchParams.get("rating"))
       .toBe("satisfaction:5");
 
-    // At least one filter chip should render (label may vary based on stats masking)
-    await expect(
-      page.getByRole("button", { name: /Fjern filter/ }),
-    ).toBeVisible({ timeout: 10000 });
+    // Both filter chips should render (labels may use fallbacks when stats are masked)
+    const removeButtons = page.getByRole("button", { name: /Fjern filter/ });
+    await expect(removeButtons.first()).toBeVisible({ timeout: 10000 });
+    await expect(removeButtons).toHaveCount(2);
   });
 });
