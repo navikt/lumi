@@ -5,7 +5,7 @@ import org.slf4j.Logger
 internal const val MAX_CHOICE_VALUE_LENGTH = 200
 internal const val MAX_FIELD_ID_LENGTH = 200
 
-private val JSON_PATH_SPECIAL_CHARS = setOf('"', '\\', '$', '@', '?', '(', ')')
+private val JSON_PATH_SPECIAL_CHARS = setOf('"', '\\', '$', '@', '?', '(', ')', ',')
 
 internal data class ChoiceJsonPaths(
     val singleChoicePath: String,

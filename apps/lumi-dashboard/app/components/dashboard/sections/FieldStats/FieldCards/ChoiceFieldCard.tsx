@@ -107,7 +107,7 @@ export function ChoiceFieldCard({
             variant="tertiary"
             size="xsmall"
             onClick={onChoiceClear}
-            style={{ alignSelf: "flex-start" }}
+            className={styles.resetButton}
           >
             Nullstill filter
           </Button>
