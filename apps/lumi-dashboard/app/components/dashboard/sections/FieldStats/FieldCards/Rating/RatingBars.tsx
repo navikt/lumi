@@ -67,11 +67,9 @@ export function RatingBars({
           const isDimmed = isFiltering && !isActive;
 
           return (
-            <Button
+            <button
               key={rating}
               type="button"
-              variant="tertiary"
-              data-color="neutral"
               onClick={() => onRatingSelect(rating)}
               className={`${styles.barRowButton} ${
                 isDimmed ? styles.barRowDimmed : ""
@@ -92,7 +90,7 @@ export function RatingBars({
 
                 <span className={styles.barCount}>{count}</span>
               </HStack>
-            </Button>
+            </button>
           );
         })}
       </VStack>

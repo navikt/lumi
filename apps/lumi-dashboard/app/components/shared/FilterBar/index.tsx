@@ -76,22 +76,22 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
   const surveys = ["alle", ...availableSurveys];
 
   const handleAppChange = (newApp: string | undefined) => {
+    const shouldClearSurvey =
+      params.surveyId &&
+      surveysByApp &&
+      newApp &&
+      surveysByApp[newApp] &&
+      !surveysByApp[newApp].includes(params.surveyId);
+
     setParams({
       app: newApp,
       page: "1",
+      ...(shouldClearSurvey && {
+        surveyId: undefined,
+        choice: undefined,
+        rating: undefined,
+      }),
     });
-
-    if (params.surveyId && surveysByApp) {
-      const surveysForApp = newApp ? surveysByApp[newApp] : [];
-      if (newApp && surveysForApp && !surveysForApp.includes(params.surveyId)) {
-        setParams({
-          surveyId: undefined,
-          choice: undefined,
-          rating: undefined,
-          page: "1",
-        });
-      }
-    }
   };
 
   const handleSurveyChange = (newSurveyId: string | undefined) => {

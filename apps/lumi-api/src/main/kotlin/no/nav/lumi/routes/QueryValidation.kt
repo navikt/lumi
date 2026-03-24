@@ -3,6 +3,7 @@ package no.nav.lumi.routes
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.repository.MAX_CHOICE_VALUE_LENGTH
 import no.nav.lumi.repository.MAX_FIELD_ID_LENGTH
+import no.nav.lumi.repository.isSafeChoiceValue
 import java.time.LocalDate
 
 private const val MAX_PAGE_SIZE = 200
@@ -165,13 +166,24 @@ internal fun parseChoiceFilters(
                 "Invalid choice filter: value exceeds max length $MAX_CHOICE_VALUE_LENGTH"
             )
         }
+        if (!isSafeChoiceValue(value)) {
+            throw ApiErrorException.BadRequestException(
+                "Invalid choice filter: value contains illegal characters"
+            )
+        }
         requireValidFieldId(fieldId, "choice")
         filters.add(fieldId to value)
     }
 
     if (!legacyFieldId.isNullOrBlank() && !legacyValue.isNullOrBlank()) {
+        val trimmedLegacyValue = legacyValue.trim()
         requireValidFieldId(legacyFieldId.trim(), "choice")
-        filters.add(legacyFieldId.trim() to legacyValue.trim())
+        if (!isSafeChoiceValue(trimmedLegacyValue)) {
+            throw ApiErrorException.BadRequestException(
+                "Invalid choice filter: value contains illegal characters"
+            )
+        }
+        filters.add(legacyFieldId.trim() to trimmedLegacyValue)
     }
 
     if (filters.size > MAX_FIELD_FILTERS) {

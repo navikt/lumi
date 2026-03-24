@@ -19,7 +19,9 @@ private val defaultStatsService = StatsService(statsCache = defaultStatsCache)
 internal fun ApiV1Intern.Stats.toStatsQuery(
     team: String,
     surveyIdOverride: String? = surveyId,
-): StatsQuery = StatsQuery(
+): StatsQuery {
+    validateDateRange(fromDate, toDate)
+    return StatsQuery(
     team = team,
     app = app?.takeIf { it != FILTER_ALL },
     fromDate = fromDate,
@@ -31,6 +33,7 @@ internal fun ApiV1Intern.Stats.toStatsQuery(
     choiceFilters = parseChoiceFilters(choice, choiceFieldId, choiceValue),
     ratingFilters = parseRatingFilters(rating, ratingFieldId, ratingValue),
 )
+}
 
 /**
  * Routes for feedback statistics endpoints.
