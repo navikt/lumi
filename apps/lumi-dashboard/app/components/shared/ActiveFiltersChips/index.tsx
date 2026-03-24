@@ -1,9 +1,12 @@
 import { XMarkIcon } from "@navikt/aksel-icons";
 import { HStack, Tag } from "@navikt/ds-react";
+import { useChoiceFilter } from "~/hooks/useChoiceFilter";
+import { useRatingFilter } from "~/hooks/useRatingFilter";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
 import { useStats } from "~/hooks/useStats";
-import { inferRatingVariantFromDistribution } from "~/utils/ratingDisplay";
+import { useThemes } from "~/hooks/useThemes";
+import { getFilterLabels } from "~/utils/filterLabels";
 import { formatMetadataLabel } from "~/utils/segmentUtils";
 import styles from "./ActiveFiltersChips.module.css";
 
@@ -20,22 +23,21 @@ const DEVICE_LABELS: Record<string, string> = {
   desktop: "Desktop",
 };
 
-/**
- * Displays active drill-down filters as removable chips.
- * Only shows filters that are NOT already visible in FilterBar.
- *
- * - App/Survey/Period: Already shown in FilterBar → no chip
- * - DeviceType: NOT shown on dashboard → show chip
- * - Segment: Metadata filters from SegmentBreakdown → global chip
- */
 export function ActiveFiltersChips() {
   const { params, setParams } = useSearchParams();
-  const { activeFilters, removeSegment } = useSegmentFilter();
+  const { activeFilters: activeSegments, removeSegment } = useSegmentFilter();
+  const { removeChoice } = useChoiceFilter();
+  const { removeRating } = useRatingFilter();
   const statsQuery = useStats();
+  const { themes } = useThemes();
+  const { choiceFilters, ratingFilters, themeLabel } = getFilterLabels({
+    params,
+    stats: statsQuery.data,
+    themes,
+  });
 
   const chips: FilterChip[] = [];
 
-  // Device type filter - NOT shown in FilterBar on dashboard
   if (params.deviceType && params.deviceType !== "alle") {
     chips.push({
       key: "deviceType",
@@ -49,7 +51,6 @@ export function ActiveFiltersChips() {
     });
   }
 
-  // Task filter (Top Tasks drill-down)
   if (params.task) {
     chips.push({
       key: "task",
@@ -63,53 +64,42 @@ export function ActiveFiltersChips() {
     });
   }
 
-  // Rating field filter (e.g. thumbs donut drill-down)
-  if (params.ratingFieldId && params.ratingValue) {
-    const field = statsQuery.data?.fieldStats?.find(
-      (f) => f.fieldId === params.ratingFieldId,
-    );
-
-    const fieldLabel = field?.label ?? "Vurdering";
-
-    let valueLabel = params.ratingValue;
-    if (field?.fieldType === "RATING") {
-      const stats = field.stats as unknown as {
-        distribution?: Record<string, number>;
-        ratingVariant?: string;
-      };
-      const ratingVariant = inferRatingVariantFromDistribution(
-        stats.distribution ?? {},
-        stats.ratingVariant,
-      );
-      if (ratingVariant === "thumbs") {
-        valueLabel =
-          params.ratingValue === "2"
-            ? "Ja"
-            : params.ratingValue === "1"
-              ? "Nei"
-              : params.ratingValue;
-      }
-    }
-
+  if (themeLabel) {
     chips.push({
-      key: `rating-${params.ratingFieldId}-${params.ratingValue}`,
-      label: fieldLabel,
-      value: valueLabel,
+      key: "theme",
+      label: "Tema",
+      value: themeLabel,
       onRemove: () =>
         setParams({
-          ratingFieldId: undefined,
-          ratingValue: undefined,
+          theme: undefined,
           page: "1",
         }),
     });
   }
 
-  // Segment filters (metadata)
-  for (const [key, value] of Object.entries(activeFilters)) {
+  for (const filter of ratingFilters) {
+    chips.push({
+      key: filter.key,
+      label: filter.label,
+      value: filter.value,
+      onRemove: () => removeRating(filter.fieldId),
+    });
+  }
+
+  for (const filter of choiceFilters) {
+    chips.push({
+      key: filter.key,
+      label: filter.label,
+      value: filter.value,
+      onRemove: () => removeChoice(filter.fieldId),
+    });
+  }
+
+  for (const [key, value] of Object.entries(activeSegments)) {
     chips.push({
       key: `segment-${key}-${value}`,
       label: formatMetadataLabel(key),
-      value: value,
+      value,
       onRemove: () => removeSegment(`${key}:${value}`),
     });
   }
@@ -135,7 +125,7 @@ export function ActiveFiltersChips() {
             type="button"
             onClick={chip.onRemove}
             className={styles.removeButton}
-            aria-label={`Fjern filter ${chip.label}`}
+            aria-label={`Fjern filter ${chip.label}: ${chip.value}`}
           >
             <XMarkIcon fontSize="1rem" className={styles.removeIcon} />
           </button>

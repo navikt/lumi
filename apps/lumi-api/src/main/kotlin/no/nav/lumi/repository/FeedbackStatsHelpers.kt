@@ -169,17 +169,34 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
                     0.0
                 }
 
-                val distribution = counts
-                    .entries
-                    .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
-                    .associate { (optionId, count) ->
+                // Use survey options list as source of truth for order and completeness.
+                // Options with 0 responses are included so the frontend shows the full picture.
+                val surveyOptions = first.question.options.orEmpty()
+                val distribution = linkedMapOf<String, ChoiceDistributionEntry>()
+
+                for (opt in surveyOptions) {
+                    val count = counts[opt.id] ?: 0
+                    val percentage = if (responseCount > 0) {
+                        kotlin.math.round((count.toDouble() / responseCount) * 100.0).toInt()
+                    } else 0
+                    distribution[opt.id] = ChoiceDistributionEntry(
+                        label = opt.label,
+                        count = count,
+                        percentage = percentage
+                    )
+                }
+
+                // Include any responses for option IDs not in the survey definition (legacy data)
+                for ((optionId, count) in counts) {
+                    if (optionId !in distribution) {
                         val percentage = kotlin.math.round((count.toDouble() / responseCount) * 100.0).toInt()
-                        optionId to ChoiceDistributionEntry(
+                        distribution[optionId] = ChoiceDistributionEntry(
                             label = optionLabels[optionId] ?: optionId,
                             count = count,
                             percentage = percentage
                         )
                     }
+                }
 
                 result.add(
                     FieldStat(

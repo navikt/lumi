@@ -101,19 +101,27 @@ internal fun applyCommonFilters(query: Query, criteria: FeedbackQuery, log: Logg
         }
     }
 
-    // Filter by specific rating answer (fieldId + rating)
-    val ratingFieldId = criteria.ratingFieldId
-    val ratingValue = criteria.ratingValue
-    if (!ratingFieldId.isNullOrBlank() && ratingValue != null) {
-        // Avoid JSONPath injection by only allowing simple fieldId characters.
-        val isSafeFieldId = ratingFieldId.all { it.isLetterOrDigit() || it == '-' || it == '_' }
-        if (isSafeFieldId) {
+    // Filter by specific rating answers (multi-value)
+    criteria.ratingFilters.forEach { (fieldId, ratingVal) ->
+        val safeFieldId = validateJsonPathFieldId(fieldId, "ratingFieldId", log)
+        if (safeFieldId != null) {
             val ratingTextForField = JsonbPathQueryFirstText(
                 FeedbackTable.feedbackJson,
-                "$.answers[*] ? (@.fieldId == \"$ratingFieldId\" && @.value.type == \"rating\").value.rating"
+                "$.answers[*] ? (@.fieldId == \"$safeFieldId\" && @.value.type == \"rating\").value.rating"
             )
             val ratingExpr = Cast(ratingTextForField, IntegerColumnType())
-            query.andWhere { ratingExpr eq ratingValue }
+            query.andWhere { ratingExpr eq ratingVal }
+        }
+    }
+
+    // Filter by specific choice answers (multi-value)
+    criteria.choiceFilters.forEach { (fieldId, value) ->
+        val choiceJsonPaths = buildChoiceJsonPaths(fieldId, value, log)
+        if (choiceJsonPaths != null) {
+            query.andWhere {
+                JsonbPathExists(FeedbackTable.feedbackJson, choiceJsonPaths.singleChoicePath) or
+                    JsonbPathExists(FeedbackTable.feedbackJson, choiceJsonPaths.multiChoicePath)
+            }
         }
     }
 }

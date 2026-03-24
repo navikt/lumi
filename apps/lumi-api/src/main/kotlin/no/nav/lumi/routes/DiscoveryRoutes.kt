@@ -130,19 +130,7 @@ fun Route.discoveryRoutes(
     // ============================================
 
     get<ApiV1Intern.Stats.Discovery> { params ->
-        val team = call.authorizedTeam
-
-        val query = StatsQuery(
-            team = team,
-            app = params.parent.app?.takeIf { it != FILTER_ALL },
-            fromDate = params.parent.fromDate,
-            toDate = params.parent.toDate,
-            surveyId = params.parent.surveyId,
-            deviceType = params.parent.deviceType?.takeIf { it != FILTER_ALL },
-            ratingFieldId = params.parent.ratingFieldId,
-            ratingValue = params.parent.ratingValue,
-        )
-
+        val query = params.parent.toStatsQuery(call.authorizedTeam)
         val stats = discoveryService.getStats(query)
         call.respond(stats)
     }

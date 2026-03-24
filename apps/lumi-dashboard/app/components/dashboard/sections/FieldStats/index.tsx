@@ -1,5 +1,6 @@
 import { Heading, VStack } from "@navikt/ds-react";
 import { DashboardGrid } from "~/components/dashboard";
+import { useChoiceFilter } from "~/hooks/useChoiceFilter";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import { ChoiceFieldCard, RatingFieldCard, TextFieldCard } from "./FieldCards";
@@ -8,6 +9,11 @@ import { Skeleton } from "./Skeleton";
 export function FieldStatsSection() {
   const { data: stats, isPending } = useStats();
   const { params } = useSearchParams();
+  const {
+    activeFilters: activeChoiceFilters,
+    toggleChoice,
+    removeChoice,
+  } = useChoiceFilter();
   const hasSurveyFilter = !!params.surveyId;
 
   if (isPending && hasSurveyFilter) {
@@ -57,6 +63,11 @@ export function FieldStatsSection() {
                   key={field.fieldId}
                   field={field}
                   totalCount={stats.totalCount}
+                  activeChoiceFilters={activeChoiceFilters}
+                  onChoiceSelect={(optionId) =>
+                    toggleChoice(field.fieldId, optionId)
+                  }
+                  onChoiceClear={() => removeChoice(field.fieldId)}
                 />
               );
             default:

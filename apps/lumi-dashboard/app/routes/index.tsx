@@ -1,6 +1,7 @@
 import type { TagProps } from "@navikt/ds-react";
 import { Box, Heading, HStack, Tag, Tooltip, VStack } from "@navikt/ds-react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
 import dayjs from "dayjs";
 import { type ReactNode, useEffect, useRef } from "react";
 import { DiscoveryDashboard } from "~/components/dashboard/views/Discovery/Dashboard";
@@ -14,6 +15,7 @@ import { Header } from "~/components/shared/Header";
 import { PrivacyMaskedNotice } from "~/components/shared/PrivacyMaskedNotice";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
+import { searchSchema } from "~/schemas/searchSchema";
 import { fetchFilterBootstrapServerFn } from "~/server/actions";
 import type { SurveyType } from "~/types/api";
 import styles from "./index.module.css";
@@ -83,6 +85,7 @@ const SURVEY_CONFIG: Record<
 };
 
 export const Route = createFileRoute("/")({
+  validateSearch: zodValidator(searchSchema),
   beforeLoad: async ({ location }) => {
     // Ensure `team` is present before route components render.
     // This prevents an initial fetch with team=undefined followed by a second fetch after `team` is injected.
@@ -150,15 +153,11 @@ function DashboardPage() {
     hasAppliedDefaultPeriodRef.current = true;
   }, [setParams]);
 
+  // Clean up params that are only used on the feedback route (not the dashboard).
+  // page/size are kept because filter changes set page=1, and theme is used by discovery.
   useEffect(() => {
     const hasUnsupported =
-      !!params.hasText ||
-      !!params.lowRating ||
-      !!params.query ||
-      !!params.tag ||
-      !!params.theme ||
-      !!params.page ||
-      !!params.size;
+      !!params.hasText || !!params.lowRating || !!params.query || !!params.tag;
 
     if (!hasUnsupported) return;
 
@@ -167,20 +166,8 @@ function DashboardPage() {
       lowRating: undefined,
       query: undefined,
       tag: undefined,
-      theme: undefined,
-      page: undefined,
-      size: undefined,
     });
-  }, [
-    params.hasText,
-    params.lowRating,
-    params.query,
-    params.tag,
-    params.theme,
-    params.page,
-    params.size,
-    setParams,
-  ]);
+  }, [params.hasText, params.lowRating, params.query, params.tag, setParams]);
 
   const config = surveyType ? SURVEY_CONFIG[surveyType] : null;
 
@@ -211,7 +198,7 @@ function DashboardPage() {
       <Box
         paddingBlock={{ xs: "space-16", md: "space-24" }}
         paddingInline={{ xs: "space-12", sm: "space-16" }}
-        className={styles.mainContainer}
+        className="main-container"
         as="main"
       >
         <VStack gap={{ xs: "space-16", md: "space-24" }}>

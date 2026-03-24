@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 
 import type { ChoiceStats } from "~/types/api";
 import { ChoiceFieldCard } from "../ChoiceFieldCard";
@@ -56,5 +57,69 @@ describe("ChoiceFieldCard", () => {
 
     expect(screen.getByText("26 av 26 har svart (100%)")).toBeInTheDocument();
     expect(screen.queryByText("62 valg totalt")).not.toBeInTheDocument();
+  });
+
+  it("calls onChoiceSelect with the clicked option id", async () => {
+    const user = userEvent.setup();
+    const onChoiceSelect = vi.fn();
+
+    render(
+      <ChoiceFieldCard
+        totalCount={10}
+        onChoiceSelect={onChoiceSelect}
+        field={{
+          fieldId: "hindringer",
+          fieldType: "MULTI_CHOICE",
+          label: "Hva er de største hindringene?",
+          stats: {
+            type: "choice",
+            responseCount: 10,
+            responseRate: 1,
+            totalSelections: 14,
+            distribution: {
+              time: { label: "Tid", count: 8, percentage: 80 },
+              rules: { label: "Regelverk", count: 6, percentage: 60 },
+            },
+          },
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Tid/ }));
+
+    expect(onChoiceSelect).toHaveBeenCalledWith("time");
+  });
+
+  it("shows active state from the field-specific filter map", () => {
+    render(
+      <ChoiceFieldCard
+        totalCount={10}
+        activeChoiceFilters={{ hindringer: "time", rolle: "arbeidsgiver" }}
+        field={{
+          fieldId: "hindringer",
+          fieldType: "MULTI_CHOICE",
+          label: "Hva er de største hindringene?",
+          stats: {
+            type: "choice",
+            responseCount: 10,
+            responseRate: 1,
+            totalSelections: 14,
+            distribution: {
+              time: { label: "Tid", count: 8, percentage: 80 },
+              rules: { label: "Regelverk", count: 6, percentage: 60 },
+            },
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /Tid/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: /Regelverk/ })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
   });
 });

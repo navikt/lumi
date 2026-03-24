@@ -13,37 +13,27 @@ private val defaultStatsCache = ValkeyStatsCache.fromEnvOrFallback()
 private val defaultStatsService = StatsService(statsCache = defaultStatsCache)
 
 /**
- * Helper to build StatsQuery from resource params.
- * Maps new param names (fromDate, toDate, surveyId) from resource.
+ * Extension to convert Stats resource params into a StatsQuery.
+ * Handles FILTER_ALL normalization, segment parsing, and legacy filter compat.
  */
-private fun buildStatsQuery(
+internal fun ApiV1Intern.Stats.toStatsQuery(
     team: String,
-    app: String?,
-    fromDate: String?,
-    toDate: String?,
-    surveyId: String?,
-    deviceType: String?,
-    segment: List<String>? = null,
-    task: String? = null,
-    ratingFieldId: String? = null,
-    ratingValue: Int? = null
-) = StatsQuery(
+    surveyIdOverride: String? = surveyId,
+): StatsQuery {
+    validateDateRange(fromDate, toDate)
+    return StatsQuery(
     team = team,
     app = app?.takeIf { it != FILTER_ALL },
     fromDate = fromDate,
     toDate = toDate,
-    surveyId = surveyId,
+    surveyId = surveyIdOverride,
     deviceType = deviceType?.takeIf { it != FILTER_ALL },
-    segments = segment
-        ?.mapNotNull { segmentStr ->
-            val parts = segmentStr.split(":", limit = 2)
-            if (parts.size == 2) Pair(parts[0], parts[1]) else null
-        }
-        ?: emptyList(),
+    segments = parseSegments(segment),
     task = task,
-    ratingFieldId = ratingFieldId,
-    ratingValue = ratingValue
+    choiceFilters = parseChoiceFilters(choice, choiceFieldId, choiceValue),
+    ratingFilters = parseRatingFilters(rating, ratingFieldId, ratingValue),
 )
+}
 
 /**
  * Routes for feedback statistics endpoints.
@@ -54,81 +44,49 @@ fun Route.statsRoutes(
 ) {
     // Dashboard stats (primary endpoint used by lumi-dashboard)
     get<ApiV1Intern.Stats.Dashboard> { params ->
-        val team = call.authorizedTeam
-        val p = params.parent
-
-        val query = buildStatsQuery(team, p.app, p.fromDate, p.toDate, p.surveyId, p.deviceType, p.segment, p.task, p.ratingFieldId, p.ratingValue)
-        val stats = statsService.getDashboardStats(query)
-        call.respond(stats)
+        val query = params.parent.toStatsQuery(call.authorizedTeam)
+        call.respond(statsService.getDashboardStats(query))
     }
 
-    // Get stats overview (new consolidated endpoint)
+    // Stats overview (consolidated totals + rating distribution)
     get<ApiV1Intern.Stats.Overview> { params ->
-        val team = call.authorizedTeam
-        val p = params.parent
-        
-        val query = buildStatsQuery(team, p.app, p.fromDate, p.toDate, p.surveyId, p.deviceType, p.segment, ratingFieldId = p.ratingFieldId, ratingValue = p.ratingValue)
-        val overview = statsService.getStatsOverview(query)
-        call.respond(overview)
+        val query = params.parent.toStatsQuery(call.authorizedTeam)
+        call.respond(statsService.getStatsOverview(query))
     }
-    
-    // Get rating distribution
+
+    // Rating distribution
     get<ApiV1Intern.Stats.Ratings> { params ->
-        val team = call.authorizedTeam
-        val p = params.parent
-        
-        val query = buildStatsQuery(team, p.app, p.fromDate, p.toDate, p.surveyId, p.deviceType, p.segment, ratingFieldId = p.ratingFieldId, ratingValue = p.ratingValue)
-        val distribution = statsService.getRatingDistribution(query)
-        call.respond(distribution)
+        val query = params.parent.toStatsQuery(call.authorizedTeam)
+        call.respond(statsService.getRatingDistribution(query))
     }
-    
-    // Get timeline data
+
+    // Timeline data (counts by date)
     get<ApiV1Intern.Stats.Timeline> { params ->
-        val team = call.authorizedTeam
-        val p = params.parent
-
-        val query = buildStatsQuery(team, p.app, p.fromDate, p.toDate, p.surveyId, p.deviceType, p.segment, ratingFieldId = p.ratingFieldId, ratingValue = p.ratingValue)
-        val timeline = statsService.getTimeline(query)
-        call.respond(timeline)
+        val query = params.parent.toStatsQuery(call.authorizedTeam)
+        call.respond(statsService.getTimeline(query))
     }
 
-    // Get Top Tasks statistics
+    // Top Tasks statistics
     get<ApiV1Intern.Stats.TopTasks> { params ->
-        val team = call.authorizedTeam
-        val p = params.parent
-
-        val query = buildStatsQuery(team, p.app, p.fromDate, p.toDate, p.surveyId, p.deviceType, p.segment, p.task, p.ratingFieldId, p.ratingValue)
-        val stats = statsService.getTopTasksStats(query)
-        call.respond(stats)
+        val query = params.parent.toStatsQuery(call.authorizedTeam)
+        call.respond(statsService.getTopTasksStats(query))
     }
 
-    // Get blocker statistics for Top Tasks (word frequency + theme clustering)
+    // Blocker statistics for Top Tasks (word frequency + theme clustering)
     get<ApiV1Intern.Stats.Blockers> { params ->
-        val team = call.authorizedTeam
-        val p = params.parent
-
-        val query = buildStatsQuery(team, p.app, p.fromDate, p.toDate, p.surveyId, p.deviceType, p.segment, p.task, p.ratingFieldId, p.ratingValue)
-        val stats = statsService.getBlockerStats(query)
-        call.respond(stats)
+        val query = params.parent.toStatsQuery(call.authorizedTeam)
+        call.respond(statsService.getBlockerStats(query))
     }
 
-    // Get Task Priority statistics ("long neck" distribution)
+    // Task Priority statistics ("long neck" distribution)
     get<ApiV1Intern.Stats.TaskPriority> { params ->
-        val team = call.authorizedTeam
-        val p = params.parent
-
-        val query = buildStatsQuery(team, p.app, p.fromDate, p.toDate, p.surveyId, p.deviceType, p.segment, ratingFieldId = p.ratingFieldId, ratingValue = p.ratingValue)
-        val stats = statsService.getTaskPriorityStats(query)
-        call.respond(stats)
+        val query = params.parent.toStatsQuery(call.authorizedTeam)
+        call.respond(statsService.getTaskPriorityStats(query))
     }
 
-    // Get Survey Type distribution
+    // Survey Type distribution (surveyId forced to null — counts across all surveys)
     get<ApiV1Intern.Stats.SurveyTypes> { params ->
-        val team = call.authorizedTeam
-        val p = params.parent
-
-        val query = buildStatsQuery(team, p.app, p.fromDate, p.toDate, null, p.deviceType, p.segment, ratingFieldId = p.ratingFieldId, ratingValue = p.ratingValue)
-        val distribution = statsService.getSurveyTypeDistribution(query)
-        call.respond(distribution)
+        val query = params.parent.toStatsQuery(call.authorizedTeam, surveyIdOverride = null)
+        call.respond(statsService.getSurveyTypeDistribution(query))
     }
 }

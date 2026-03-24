@@ -19,14 +19,12 @@ import { DashboardCard, DashboardGrid } from "~/components/dashboard";
 import { ActiveFilters } from "~/components/export/ActiveFilters";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { exportServerFn } from "~/server/actions";
+import { splitChoiceParam } from "~/utils/choiceFilterUtils";
+import { splitRatingParam } from "~/utils/ratingFilterUtils";
 import styles from "./Panel.module.css";
 
 type ExportFormat = "csv" | "json" | "excel";
 
-/**
- * Panel for exporting feedback data in various formats.
- * Uses server function for authenticated backend access.
- */
 export function ExportPanel() {
   const { params } = useSearchParams();
   const [format, setFormat] = useState<ExportFormat>("csv");
@@ -56,12 +54,11 @@ export function ExportPanel() {
           task: params.task,
           tag: params.tag,
           segment: params.segment,
-          ratingFieldId: params.ratingFieldId,
-          ratingValue: params.ratingValue,
+          choice: splitChoiceParam(params.choice),
+          rating: splitRatingParam(params.rating),
         },
       });
 
-      // Convert base64 back to blob and download
       const binaryString = atob(result.data);
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {

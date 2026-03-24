@@ -13,10 +13,34 @@ import type { DiscoveryResponse } from "~/types/api";
 import { DiscoveryParamsSchema } from "~/types/schemas";
 import { handleApiResponse } from "../fetchUtils";
 
-/**
- * Fetch Discovery survey statistics for user intent analysis.
- * Returns word frequency, themes, and recent responses.
- */
+interface DiscoveryActionParams {
+  team?: string;
+  app?: string;
+  surveyId?: string;
+  fromDate?: string;
+  toDate?: string;
+  deviceType?: string;
+  rating?: string[];
+  choice?: string[];
+}
+
+function toMockSearchParams(data: DiscoveryActionParams): URLSearchParams {
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(data)) {
+    if (Array.isArray(value)) {
+      if (value.length > 0) {
+        searchParams.set(key, value.join(","));
+      }
+      continue;
+    }
+
+    if (value) {
+      searchParams.set(key, value);
+    }
+  }
+  return searchParams;
+}
+
 export const fetchDiscoveryServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(DiscoveryParamsSchema))
@@ -25,11 +49,7 @@ export const fetchDiscoveryServerFn = createServerFn({ method: "GET" })
 
     if (isMockMode()) {
       await mockDelay();
-      const searchParams = new URLSearchParams();
-      for (const [key, value] of Object.entries(data)) {
-        if (value) searchParams.set(key, value);
-      }
-      return getMockDiscoveryStats(searchParams);
+      return getMockDiscoveryStats(toMockSearchParams(data));
     }
 
     const backendParams = {
@@ -39,8 +59,8 @@ export const fetchDiscoveryServerFn = createServerFn({ method: "GET" })
       fromDate: data.fromDate,
       toDate: data.toDate,
       deviceType: data.deviceType,
-      ratingFieldId: data.ratingFieldId,
-      ratingValue: data.ratingValue,
+      rating: data.rating,
+      choice: data.choice,
     };
 
     const url = buildUrl(

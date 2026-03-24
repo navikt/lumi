@@ -24,6 +24,11 @@
   cursor: pointer;
 }
 
+.chip:focus-visible {
+  outline: 2px solid var(--ax-border-focus);
+  outline-offset: 2px;
+}
+
 .chipSelected {
   border: 2px solid var(--ax-border-neutral);
 }
@@ -61,4 +66,9 @@
   cursor: pointer;
   color: var(--ax-text-neutral-subtle);
   font-size: 0.875rem;
+}
+
+.resetButton:focus-visible {
+  outline: 2px solid var(--ax-border-focus);
+  outline-offset: 2px;
 }

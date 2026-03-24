@@ -37,21 +37,32 @@ test.describe("Top Tasks - Task Filter", () => {
   });
 
   test("removing task filter chip clears URL parameter", async ({ page }) => {
-    // Set task filter directly in URL
-    await page.goto("/?surveyId=top-tasks-survey&task=TestTask");
+    // Set task filter directly in URL (survey-top-tasks is the mock survey ID)
+    await page.goto("/?surveyId=survey-top-tasks&task=TestTask");
+    await expect(page.locator("main")).toBeVisible({ timeout: 15000 });
 
-    // Check for filter chip with remove button
-    const removeButton = page.locator(
-      '[aria-label="Fjern filter Oppgave"], button:near(:text("Oppgave:"))',
-    );
+    // Wait for URL to stabilize — the period selector adds fromDate/toDate
+    // defaults after initial render. Clicking before that finishes causes a
+    // race where the default-navigation overwrites our removal.
+    await expect
+      .poll(() => new URL(page.url()).searchParams.has("fromDate"), {
+        timeout: 5000,
+      })
+      .toBe(true);
 
-    // If chip is visible, click to remove
-    if (await removeButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await removeButton.click();
+    // Wait for the chip to render
+    const chipText = page.getByText("Oppgave: TestTask");
+    await expect(chipText).toBeVisible({ timeout: 5000 });
 
-      // URL should no longer contain task parameter
-      await expect(page).not.toHaveURL(/[?&]task=/, { timeout: 5000 });
-    }
+    // Click the remove button using getByRole for reliable interaction
+    await page.getByRole("button", { name: /Fjern filter Oppgave/ }).click();
+
+    // URL should no longer contain task parameter
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("task"), {
+        timeout: 5000,
+      })
+      .toBeNull();
   });
 
   test("task filter persists in URL after page reload", async ({ page }) => {

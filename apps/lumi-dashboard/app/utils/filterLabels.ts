@@ -1,6 +1,15 @@
 import type { SearchParams } from "~/hooks/useSearchParams";
-import type { FeedbackStats, TextTheme } from "~/types/api";
+import type { ChoiceStats, FeedbackStats, TextTheme } from "~/types/api";
+import { parseChoiceParam } from "~/utils/choiceFilterUtils";
 import { inferRatingVariantFromDistribution } from "~/utils/ratingDisplay";
+import { parseRatingParam } from "~/utils/ratingFilterUtils";
+
+export interface ActiveFilterLabel {
+  fieldId: string;
+  key: string;
+  label: string;
+  value: string;
+}
 
 interface FilterLabelInput {
   params: SearchParams;
@@ -8,52 +17,97 @@ interface FilterLabelInput {
   themes?: TextTheme[];
 }
 
+export function getThemeLabel({
+  params,
+  themes,
+}: Pick<FilterLabelInput, "params" | "themes">): string | undefined {
+  return params.theme === "uncategorized"
+    ? "Annet"
+    : params.theme
+      ? (themes?.find((theme) => theme.id === params.theme)?.name ??
+        params.theme)
+      : undefined;
+}
+
+export function getActiveRatingFilterLabels({
+  params,
+  stats,
+}: Pick<FilterLabelInput, "params" | "stats">): ActiveFilterLabel[] {
+  return Object.entries(parseRatingParam(params.rating)).map(
+    ([fieldId, ratingValue]) => {
+      const field = stats?.fieldStats?.find(
+        (candidate) => candidate.fieldId === fieldId,
+      );
+      const label = field?.fieldType === "RATING" ? field.label : "Vurdering";
+
+      let value = ratingValue;
+      if (field?.fieldType === "RATING") {
+        const ratingStats = field.stats as unknown as {
+          distribution?: Record<string, number>;
+          ratingVariant?: string;
+        };
+        const ratingVariant = inferRatingVariantFromDistribution(
+          ratingStats.distribution,
+          ratingStats.ratingVariant,
+        );
+        if (ratingVariant === "thumbs") {
+          value =
+            ratingValue === "2"
+              ? "Ja"
+              : ratingValue === "1"
+                ? "Nei"
+                : ratingValue;
+        }
+      }
+
+      return {
+        fieldId,
+        key: `rating-${fieldId}-${ratingValue}`,
+        label,
+        value,
+      };
+    },
+  );
+}
+
+export function getActiveChoiceFilterLabels({
+  params,
+  stats,
+}: Pick<FilterLabelInput, "params" | "stats">): ActiveFilterLabel[] {
+  return Object.entries(parseChoiceParam(params.choice)).map(
+    ([fieldId, optionId]) => {
+      const field = stats?.fieldStats?.find(
+        (candidate) => candidate.fieldId === fieldId,
+      );
+      const label =
+        field &&
+        (field.fieldType === "SINGLE_CHOICE" ||
+          field.fieldType === "MULTI_CHOICE")
+          ? field.label
+          : "Valg";
+
+      const choiceStats = field?.stats as ChoiceStats | undefined;
+      const resolvedLabel = choiceStats?.distribution?.[optionId]?.label;
+      const value = resolvedLabel ?? (stats ? optionId : "…");
+
+      return {
+        fieldId,
+        key: `choice-${fieldId}-${optionId}`,
+        label,
+        value,
+      };
+    },
+  );
+}
+
 export function getFilterLabels({ params, stats, themes }: FilterLabelInput): {
-  ratingLabel?: string;
-  ratingValueLabel?: string;
+  choiceFilters: ActiveFilterLabel[];
+  ratingFilters: ActiveFilterLabel[];
   themeLabel?: string;
 } {
-  const themeLabel =
-    params.theme === "uncategorized"
-      ? "Annet"
-      : params.theme
-        ? (themes?.find((theme) => theme.id === params.theme)?.name ??
-          params.theme)
-        : undefined;
-
-  const ratingField = stats?.fieldStats?.find(
-    (field) => field.fieldId === params.ratingFieldId,
-  );
-  const ratingLabel =
-    ratingField && ratingField.fieldType === "RATING"
-      ? ratingField.label
-      : params.ratingFieldId
-        ? "Vurdering"
-        : undefined;
-
-  let ratingValueLabel = params.ratingValue;
-  if (
-    params.ratingFieldId &&
-    params.ratingValue &&
-    ratingField?.fieldType === "RATING"
-  ) {
-    const ratingStats = ratingField.stats as unknown as {
-      distribution?: Record<string, number>;
-      ratingVariant?: string;
-    };
-    const ratingVariant = inferRatingVariantFromDistribution(
-      ratingStats.distribution,
-      ratingStats.ratingVariant,
-    );
-    if (ratingVariant === "thumbs") {
-      ratingValueLabel =
-        params.ratingValue === "2"
-          ? "Ja"
-          : params.ratingValue === "1"
-            ? "Nei"
-            : params.ratingValue;
-    }
-  }
-
-  return { ratingLabel, ratingValueLabel, themeLabel };
+  return {
+    choiceFilters: getActiveChoiceFilterLabels({ params, stats }),
+    ratingFilters: getActiveRatingFilterLabels({ params, stats }),
+    themeLabel: getThemeLabel({ params, themes }),
+  };
 }

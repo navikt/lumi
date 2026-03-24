@@ -15,7 +15,7 @@ import { handleApiResponse } from "../fetchUtils";
 
 export const STATS_DASHBOARD_PATH = "/api/v1/intern/stats/dashboard" as const;
 
-export function transformStatsToBackendParams(data: {
+interface StatsActionParams {
   team?: string;
   app?: string;
   surveyId?: string;
@@ -24,9 +24,28 @@ export function transformStatsToBackendParams(data: {
   deviceType?: string;
   segment?: string;
   task?: string;
-  ratingFieldId?: string;
-  ratingValue?: string;
-}) {
+  rating?: string[];
+  choice?: string[];
+}
+
+function toMockSearchParams(data: StatsActionParams): URLSearchParams {
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(data)) {
+    if (Array.isArray(value)) {
+      if (value.length > 0) {
+        searchParams.set(key, value.join(","));
+      }
+      continue;
+    }
+
+    if (value) {
+      searchParams.set(key, value);
+    }
+  }
+  return searchParams;
+}
+
+export function transformStatsToBackendParams(data: StatsActionParams) {
   return {
     team: data.team,
     app: data.app,
@@ -36,25 +55,14 @@ export function transformStatsToBackendParams(data: {
     deviceType: data.deviceType,
     segment: data.segment?.split(",").filter(Boolean),
     task: data.task,
-    ratingFieldId: data.ratingFieldId,
-    ratingValue: data.ratingValue,
+    rating: data.rating,
+    choice: data.choice,
   };
 }
 
 export function buildStatsDashboardUrl(
   backendUrl: string,
-  data: {
-    team?: string;
-    app?: string;
-    surveyId?: string;
-    fromDate?: string;
-    toDate?: string;
-    deviceType?: string;
-    segment?: string;
-    task?: string;
-    ratingFieldId?: string;
-    ratingValue?: string;
-  },
+  data: StatsActionParams,
 ) {
   return buildUrl(
     backendUrl,
@@ -63,10 +71,6 @@ export function buildStatsDashboardUrl(
   );
 }
 
-/**
- * Fetch aggregated feedback statistics.
- * Supports filtering by app, date range, survey, and device type.
- */
 export const fetchStatsServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(StatsParamsSchema))
@@ -75,11 +79,7 @@ export const fetchStatsServerFn = createServerFn({ method: "GET" })
 
     if (isMockMode()) {
       await mockDelay();
-      const searchParams = new URLSearchParams();
-      for (const [key, value] of Object.entries(data)) {
-        if (value) searchParams.set(key, value);
-      }
-      return getMockStats(searchParams);
+      return getMockStats(toMockSearchParams(data));
     }
 
     const url = buildStatsDashboardUrl(backendUrl, data);

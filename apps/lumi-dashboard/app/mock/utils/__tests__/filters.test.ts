@@ -89,10 +89,9 @@ describe("applyFeedbackFilters", () => {
 
   const items = [itemA, itemB, itemC];
 
-  it("filters by ratingFieldId + ratingValue", () => {
+  it("filters by rating field filters", () => {
     const filtered = applyFeedbackFilters(items, {
-      ratingFieldId: "rating",
-      ratingValue: "5",
+      rating: "rating:5",
     });
 
     expect(filtered.map((i) => i.id)).toEqual(["b"]);
@@ -134,5 +133,136 @@ describe("applyFeedbackFilters", () => {
       lowRating: "true",
     });
     expect(filtered.map((i) => i.id)).toEqual(["a"]);
+  });
+
+  it("filters by choice field filters for single and multi choice", () => {
+    const withChoices: FeedbackDto[] = [
+      makeItem({
+        id: "single-match",
+        answers: [
+          {
+            fieldId: "task_choice",
+            fieldType: "SINGLE_CHOICE",
+            question: {
+              label: "Oppgave",
+              options: [{ id: "opt-1", label: "Søknad" }],
+            },
+            value: { type: "singleChoice", selectedOptionId: "opt-1" },
+          },
+        ],
+      }),
+      makeItem({
+        id: "multi-match",
+        answers: [
+          {
+            fieldId: "task_choice",
+            fieldType: "MULTI_CHOICE",
+            question: {
+              label: "Oppgave",
+              options: [{ id: "opt-1", label: "Søknad" }],
+            },
+            value: {
+              type: "multiChoice",
+              selectedOptionIds: ["opt-1", "opt-2"],
+            },
+          },
+        ],
+      }),
+      makeItem({
+        id: "no-match",
+        answers: [
+          {
+            fieldId: "task_choice",
+            fieldType: "SINGLE_CHOICE",
+            question: {
+              label: "Oppgave",
+              options: [{ id: "opt-2", label: "Oppfølging" }],
+            },
+            value: { type: "singleChoice", selectedOptionId: "opt-2" },
+          },
+        ],
+      }),
+    ];
+
+    const filtered = applyFeedbackFilters(withChoices, {
+      choice: "task_choice:opt-1",
+    });
+
+    expect(filtered.map((i) => i.id).sort()).toEqual([
+      "multi-match",
+      "single-match",
+    ]);
+  });
+
+  it("AND-filters multiple rating and choice fields", () => {
+    const withMultipleFields: FeedbackDto[] = [
+      makeItem({
+        id: "match",
+        answers: [
+          {
+            fieldId: "rating-main",
+            fieldType: "RATING",
+            question: { label: "Hvordan?" },
+            value: { type: "rating", rating: 5 },
+          },
+          {
+            fieldId: "choice-main",
+            fieldType: "SINGLE_CHOICE",
+            question: {
+              label: "Oppgave",
+              options: [{ id: "opt-1", label: "Søknad" }],
+            },
+            value: { type: "singleChoice", selectedOptionId: "opt-1" },
+          },
+        ],
+      }),
+      makeItem({
+        id: "wrong-rating",
+        answers: [
+          {
+            fieldId: "rating-main",
+            fieldType: "RATING",
+            question: { label: "Hvordan?" },
+            value: { type: "rating", rating: 4 },
+          },
+          {
+            fieldId: "choice-main",
+            fieldType: "SINGLE_CHOICE",
+            question: {
+              label: "Oppgave",
+              options: [{ id: "opt-1", label: "Søknad" }],
+            },
+            value: { type: "singleChoice", selectedOptionId: "opt-1" },
+          },
+        ],
+      }),
+      makeItem({
+        id: "wrong-choice",
+        answers: [
+          {
+            fieldId: "rating-main",
+            fieldType: "RATING",
+            question: { label: "Hvordan?" },
+            value: { type: "rating", rating: 5 },
+          },
+          {
+            fieldId: "choice-main",
+            fieldType: "SINGLE_CHOICE",
+            question: {
+              label: "Oppgave",
+              options: [{ id: "opt-2", label: "Oppfølging" }],
+            },
+            value: { type: "singleChoice", selectedOptionId: "opt-2" },
+          },
+        ],
+      }),
+    ];
+
+    const filtered = applyFeedbackFilters(withMultipleFields, {
+      rating: "rating-main:5",
+      choice: "choice-main:opt-1",
+    });
+
+    expect(filtered.map((i) => i.id)).toEqual(["match"]);
   });
 });

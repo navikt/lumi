@@ -11,13 +11,32 @@ import {
   isMockMode,
   mockDelay,
 } from "~/server/utils";
-import { ExportParamsSchema } from "~/types/schemas";
+import { type ExportParams, ExportParamsSchema } from "~/types/schemas";
 import { handleApiResponse } from "../fetchUtils";
 
 interface ExportResult {
   data: string;
   filename: string;
   contentType: string;
+}
+
+function toMockSearchParams(data: ExportParams): URLSearchParams {
+  const searchParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(data)) {
+    if (Array.isArray(value)) {
+      if (value.length > 0) {
+        searchParams.set(key, value.join(","));
+      }
+      continue;
+    }
+
+    if (value) {
+      searchParams.set(key, value);
+    }
+  }
+
+  return searchParams;
 }
 
 export function csvEscape(value: unknown): string {
@@ -147,10 +166,7 @@ export async function toMockExcelBase64(
   return Buffer.from(buffer).toString("base64");
 }
 
-/**
- * Transform frontend URL params to backend API params.
- */
-function transformToBackendParams(data: Record<string, string | undefined>) {
+function transformToBackendParams(data: ExportParams) {
   const tag = data.tag
     ?.split(",")
     .map((t) => t.trim())
@@ -171,17 +187,13 @@ function transformToBackendParams(data: Record<string, string | undefined>) {
     theme: data.theme,
     task: data.task,
     segment: data.segment?.split(",").filter(Boolean),
-    ratingFieldId: data.ratingFieldId,
-    ratingValue: data.ratingValue,
+    choice: data.choice?.length ? data.choice : undefined,
+    rating: data.rating?.length ? data.rating : undefined,
   };
 }
 
 export { transformToBackendParams };
 
-/**
- * Export feedback data in various formats (CSV, JSON, Excel).
- * Returns base64-encoded blob data for client to download.
- */
 export const exportServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(ExportParamsSchema))
@@ -191,20 +203,10 @@ export const exportServerFn = createServerFn({ method: "POST" })
     if (isMockMode()) {
       await mockDelay();
 
-      const filtered = applyFeedbackFilters(mockFeedbackItems, {
-        app: data.app,
-        surveyId: data.surveyId,
-        fromDate: data.fromDate,
-        toDate: data.toDate,
-        deviceType: data.deviceType,
-        segment: data.segment,
-        task: data.task,
-        theme: data.theme,
-        hasText: data.hasText,
-        lowRating: data.lowRating,
-        ratingFieldId: data.ratingFieldId,
-        ratingValue: data.ratingValue,
-      }).slice(0, 10_000);
+      const filtered = applyFeedbackFilters(
+        mockFeedbackItems,
+        toMockSearchParams(data),
+      ).slice(0, 10_000);
 
       const extension = data.format === "excel" ? "xlsx" : data.format;
       const filename = `lumi-export-mock.${extension}`;
@@ -243,7 +245,6 @@ export const exportServerFn = createServerFn({ method: "POST" })
 
     await handleApiResponse(response);
 
-    // Get blob and convert to base64
     const arrayBuffer = await response.arrayBuffer();
     const base64 = Buffer.from(arrayBuffer).toString("base64");
 

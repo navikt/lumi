@@ -1,5 +1,5 @@
 import { ChatElipsisIcon } from "@navikt/aksel-icons";
-import { BodyShort, HStack, VStack } from "@navikt/ds-react";
+import { BodyShort, Button, HStack, VStack } from "@navikt/ds-react";
 
 import { DashboardCard } from "~/components/dashboard";
 import type { ChoiceStats } from "~/types/api";
@@ -16,18 +16,31 @@ const CHOICE_BAR_COLOR_CLASSES = [
   styles.choiceBarCyan,
 ];
 
-export function ChoiceFieldCard({ field, totalCount }: FieldCardProps) {
+export interface ChoiceFieldCardProps extends FieldCardProps {
+  activeChoiceFilters?: Record<string, string>;
+  onChoiceSelect?: (optionId: string) => void;
+  onChoiceClear?: () => void;
+}
+
+export function ChoiceFieldCard({
+  field,
+  totalCount,
+  activeChoiceFilters,
+  onChoiceSelect,
+  onChoiceClear,
+}: ChoiceFieldCardProps) {
   const stats = field.stats as ChoiceStats;
   const distribution = stats.distribution;
+  const activeChoiceValue = activeChoiceFilters?.[field.fieldId];
 
-  const choices = Object.entries(distribution)
-    .map(([id, data]) => ({ id, ...data }))
-    .sort((a, b) => b.count - a.count);
+  const choices = Object.entries(distribution).map(([id, data]) => ({
+    id,
+    ...data,
+  }));
 
-  const maxCount = Math.max(...choices.map((c) => c.count), 1);
+  const maxCount = Math.max(...choices.map((choice) => choice.count), 1);
   const selectionSum = choices.reduce((sum, choice) => sum + choice.count, 0);
   const totalSelections = stats.totalSelections ?? selectionSum;
-  // Dashboard and API deploy separately, so keep one rollout window compatible with older payloads.
   const responseCount =
     stats.responseCount ??
     (field.fieldType === "MULTI_CHOICE"
@@ -40,6 +53,8 @@ export function ChoiceFieldCard({ field, totalCount }: FieldCardProps) {
     stats.totalSelections != null &&
     totalSelections > 0 &&
     totalSelections !== responseCount;
+
+  const isFiltering = !!activeChoiceValue;
 
   return (
     <DashboardCard padding="space-20" className={styles.cardContent}>
@@ -57,26 +72,46 @@ export function ChoiceFieldCard({ field, totalCount }: FieldCardProps) {
         {choices.map((choice, index) => {
           const barColorClass =
             CHOICE_BAR_COLOR_CLASSES[index % CHOICE_BAR_COLOR_CLASSES.length];
+          const isActive = activeChoiceValue === choice.id;
+          const isInactive = isFiltering && !isActive;
 
           return (
-            <VStack key={choice.id} gap="space-4">
-              <HStack justify="space-between" align="center">
-                <BodyShort size="small" className={styles.choiceLabel}>
-                  {choice.label}
-                </BodyShort>
-                <BodyShort size="small" className={styles.choiceValue}>
-                  {choice.count} ({choice.percentage}%)
-                </BodyShort>
-              </HStack>
-              <progress
-                className={`${styles.choiceBar} ${barColorClass}`}
-                value={choice.count}
-                max={maxCount}
-                aria-hidden="true"
-              />
-            </VStack>
+            <button
+              key={choice.id}
+              type="button"
+              className={`${styles.choiceButton} ${isInactive ? styles.choiceButtonInactive : ""}`}
+              onClick={() => onChoiceSelect?.(choice.id)}
+              aria-pressed={isActive}
+            >
+              <VStack gap="space-4" width="100%">
+                <HStack justify="space-between" align="center" width="100%">
+                  <BodyShort size="small" className={styles.choiceLabel}>
+                    {choice.label}
+                  </BodyShort>
+                  <BodyShort size="small" className={styles.choiceValue}>
+                    {choice.count} ({choice.percentage}%)
+                  </BodyShort>
+                </HStack>
+                <progress
+                  className={`${styles.choiceBar} ${barColorClass}`}
+                  value={choice.count}
+                  max={maxCount}
+                  aria-hidden="true"
+                />
+              </VStack>
+            </button>
           );
         })}
+        {isFiltering && (
+          <Button
+            variant="tertiary"
+            size="xsmall"
+            onClick={onChoiceClear}
+            className={styles.resetButton}
+          >
+            Nullstill filter
+          </Button>
+        )}
       </VStack>
     </DashboardCard>
   );

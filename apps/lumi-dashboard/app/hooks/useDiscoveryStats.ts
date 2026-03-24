@@ -1,14 +1,11 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { fetchDiscoveryServerFn } from "~/server/actions";
+import { splitChoiceParam } from "~/utils/choiceFilterUtils";
+import { splitRatingParam } from "~/utils/ratingFilterUtils";
 
-// Re-export DiscoveryResponse type for components that need it
 export type { DiscoveryResponse } from "~/types/api";
 
-/**
- * Hook to fetch Discovery survey statistics.
- * Returns word frequency, themes, and recent responses for intent analysis.
- */
 export function useDiscoveryStats() {
   const { params } = useSearchParams();
 
@@ -21,8 +18,8 @@ export function useDiscoveryStats() {
       params.toDate,
       params.surveyId,
       params.deviceType,
-      params.ratingFieldId,
-      params.ratingValue,
+      params.rating,
+      params.choice,
     ],
     queryFn: () =>
       fetchDiscoveryServerFn({
@@ -33,11 +30,11 @@ export function useDiscoveryStats() {
           fromDate: params.fromDate,
           toDate: params.toDate,
           deviceType: params.deviceType,
-          ratingFieldId: params.ratingFieldId,
-          ratingValue: params.ratingValue,
+          rating: splitRatingParam(params.rating),
+          choice: splitChoiceParam(params.choice),
         },
       }),
-    staleTime: 60000, // 1 minute
+    staleTime: 60000,
     placeholderData: keepPreviousData,
   });
 }

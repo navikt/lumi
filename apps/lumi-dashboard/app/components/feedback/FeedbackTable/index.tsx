@@ -67,7 +67,6 @@ export function FeedbackTable() {
   const totalPages = data?.totalPages || 1;
   const totalElements = data?.totalElements || 0;
   const selectedSurvey = params.surveyId;
-
   return (
     <div className={styles.table}>
       {/* Toolbar with bulk actions when survey is selected */}

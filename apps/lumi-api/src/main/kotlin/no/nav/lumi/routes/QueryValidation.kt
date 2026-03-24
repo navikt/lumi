@@ -1,6 +1,9 @@
 package no.nav.lumi.routes
 
 import no.nav.lumi.config.exception.ApiErrorException
+import no.nav.lumi.repository.MAX_CHOICE_VALUE_LENGTH
+import no.nav.lumi.repository.MAX_FIELD_ID_LENGTH
+import no.nav.lumi.repository.isSafeChoiceValue
 import java.time.LocalDate
 
 private const val MAX_PAGE_SIZE = 200
@@ -117,4 +120,118 @@ internal fun parseDateOrThrow(name: String, value: String?): LocalDate? {
     } catch (_: Exception) {
         throw ApiErrorException.BadRequestException("Invalid $name: expected YYYY-MM-DD")
     }
+}
+
+private const val MAX_FIELD_FILTERS = 20
+
+/** Validate fieldId: alphanumeric, hyphens, underscores only — same rules as [validateJsonPathFieldId]. */
+private fun requireValidFieldId(fieldId: String, filterType: String): String {
+    if (fieldId.length > MAX_FIELD_ID_LENGTH) {
+        throw ApiErrorException.BadRequestException(
+            "Invalid $filterType filter: fieldId exceeds max length $MAX_FIELD_ID_LENGTH"
+        )
+    }
+    if (!fieldId.all { it.isLetterOrDigit() || it == '-' || it == '_' }) {
+        throw ApiErrorException.BadRequestException(
+            "Invalid $filterType filter: fieldId contains illegal characters"
+        )
+    }
+    return fieldId
+}
+
+/**
+ * Parse repeated "fieldId:optionId" choice filter params into pairs.
+ * Also merges in legacy single-value params for backward compat.
+ * Throws 400 on malformed input or exceeding limits.
+ */
+internal fun parseChoiceFilters(
+    choice: List<String>?,
+    legacyFieldId: String?,
+    legacyValue: String?,
+): List<Pair<String, String>> {
+    val filters = mutableListOf<Pair<String, String>>()
+
+    choice?.forEach { filter ->
+        val colonIndex = filter.indexOf(':')
+        if (colonIndex <= 0) {
+            throw ApiErrorException.BadRequestException("Invalid choice filter: expected format fieldId:value")
+        }
+        val fieldId = filter.substring(0, colonIndex).trim()
+        val value = filter.substring(colonIndex + 1).trim()
+        if (fieldId.isBlank() || value.isBlank()) {
+            throw ApiErrorException.BadRequestException("Invalid choice filter: fieldId and value must be non-blank")
+        }
+        if (value.length > MAX_CHOICE_VALUE_LENGTH) {
+            throw ApiErrorException.BadRequestException(
+                "Invalid choice filter: value exceeds max length $MAX_CHOICE_VALUE_LENGTH"
+            )
+        }
+        if (!isSafeChoiceValue(value)) {
+            throw ApiErrorException.BadRequestException(
+                "Invalid choice filter: value contains illegal characters"
+            )
+        }
+        requireValidFieldId(fieldId, "choice")
+        filters.add(fieldId to value)
+    }
+
+    if (!legacyFieldId.isNullOrBlank() && !legacyValue.isNullOrBlank()) {
+        val trimmedLegacyValue = legacyValue.trim()
+        requireValidFieldId(legacyFieldId.trim(), "choice")
+        if (!isSafeChoiceValue(trimmedLegacyValue)) {
+            throw ApiErrorException.BadRequestException(
+                "Invalid choice filter: value contains illegal characters"
+            )
+        }
+        filters.add(legacyFieldId.trim() to trimmedLegacyValue)
+    }
+
+    if (filters.size > MAX_FIELD_FILTERS) {
+        throw ApiErrorException.BadRequestException(
+            "Too many choice filters: max is $MAX_FIELD_FILTERS"
+        )
+    }
+
+    return filters
+}
+
+/**
+ * Parse repeated "fieldId:ratingValue" rating filter params into pairs.
+ * Also merges in legacy single-value params for backward compat.
+ * Throws 400 on malformed input or exceeding limits.
+ */
+internal fun parseRatingFilters(
+    rating: List<String>?,
+    legacyFieldId: String?,
+    legacyValue: Int?,
+): List<Pair<String, Int>> {
+    val filters = mutableListOf<Pair<String, Int>>()
+
+    rating?.forEach { filter ->
+        val colonIndex = filter.indexOf(':')
+        if (colonIndex <= 0) {
+            throw ApiErrorException.BadRequestException("Invalid rating filter: expected format fieldId:value")
+        }
+        val fieldId = filter.substring(0, colonIndex).trim()
+        val value = filter.substring(colonIndex + 1).trim().toIntOrNull()
+            ?: throw ApiErrorException.BadRequestException("Invalid rating filter: value must be an integer")
+        if (fieldId.isBlank()) {
+            throw ApiErrorException.BadRequestException("Invalid rating filter: fieldId must be non-blank")
+        }
+        requireValidFieldId(fieldId, "rating")
+        filters.add(fieldId to value)
+    }
+
+    if (!legacyFieldId.isNullOrBlank() && legacyValue != null) {
+        requireValidFieldId(legacyFieldId.trim(), "rating")
+        filters.add(legacyFieldId.trim() to legacyValue)
+    }
+
+    if (filters.size > MAX_FIELD_FILTERS) {
+        throw ApiErrorException.BadRequestException(
+            "Too many rating filters: max is $MAX_FIELD_FILTERS"
+        )
+    }
+
+    return filters
 }

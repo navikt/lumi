@@ -50,18 +50,13 @@
 }
 
 .actionMenuContent {
-  width: min(42rem, calc(100vw - 2rem));
+  width: min(38rem, calc(100vw - 2rem));
   min-width: 320px;
-  max-height: 70vh;
-  overflow-y: auto;
+  /* Aksel ActionMenu handles scroll internally — don't add overflow here */
 }
 
 .menuDivider {
   height: 1px;
   background-color: var(--ax-border-neutral-subtle);
   width: 100%;
-}
-
-.selectedFromCharts {
-  padding-top: var(--ax-space-4);
 }

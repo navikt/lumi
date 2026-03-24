@@ -17,6 +17,36 @@
 
 .barRow {
   font-size: 0.875rem;
+  width: 100%;
+}
+
+.barRowButton {
+  all: unset;
+  display: block;
+  width: 100%;
+  cursor: pointer;
+  border-radius: 4px;
+  transition:
+    opacity 0.2s,
+    background-color 0.2s;
+  /* Add padding to account for focus ring space if needed, or use outline-offset */
+}
+
+.barRowButton:hover {
+  background-color: var(--ax-bg-neutral-soft);
+}
+
+.barRowButton:focus-visible {
+  outline: 2px solid var(--ax-border-focus);
+  outline-offset: 2px;
+}
+
+.barRowDimmed {
+  opacity: 0.35;
+}
+
+.barRowDimmed:hover {
+  opacity: 1;
 }
 
 .barLabel {
@@ -54,62 +84,62 @@
 }
 
 .barFillPositive::-webkit-progress-value {
-  background-color: #22c55e;
+  background-color: var(--ax-bg-success-strong);
   border-radius: 5px;
 }
 
 .barFillGood::-webkit-progress-value {
-  background-color: #84cc16;
+  background-color: var(--ax-bg-success-moderate);
   border-radius: 5px;
 }
 
 .barFillMedium::-webkit-progress-value {
-  background-color: #eab308;
+  background-color: var(--ax-bg-warning-moderate);
   border-radius: 5px;
 }
 
 .barFillWarning::-webkit-progress-value {
-  background-color: #f97316;
+  background-color: var(--ax-bg-warning-strong);
   border-radius: 5px;
 }
 
 .barFillNegative::-webkit-progress-value {
-  background-color: #ef4444;
+  background-color: var(--ax-bg-danger-strong);
   border-radius: 5px;
 }
 
 .barFillNeutral::-webkit-progress-value {
-  background-color: #9ca3af;
+  background-color: var(--ax-bg-neutral-strong);
   border-radius: 5px;
 }
 
 .barFillPositive::-moz-progress-bar {
-  background-color: #22c55e;
+  background-color: var(--ax-bg-success-strong);
   border-radius: 5px;
 }
 
 .barFillGood::-moz-progress-bar {
-  background-color: #84cc16;
+  background-color: var(--ax-bg-success-moderate);
   border-radius: 5px;
 }
 
 .barFillMedium::-moz-progress-bar {
-  background-color: #eab308;
+  background-color: var(--ax-bg-warning-moderate);
   border-radius: 5px;
 }
 
 .barFillWarning::-moz-progress-bar {
-  background-color: #f97316;
+  background-color: var(--ax-bg-warning-strong);
   border-radius: 5px;
 }
 
 .barFillNegative::-moz-progress-bar {
-  background-color: #ef4444;
+  background-color: var(--ax-bg-danger-strong);
   border-radius: 5px;
 }
 
 .barFillNeutral::-moz-progress-bar {
-  background-color: #9ca3af;
+  background-color: var(--ax-bg-neutral-strong);
   border-radius: 5px;
 }
 

@@ -292,23 +292,25 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+  align-items: center;
 }
 
 .choiceOption {
   display: inline-flex;
   align-items: center;
-  padding: 0.375rem 0.75rem;
-  background: var(--ax-bg-neutral-soft);
-  border-radius: 6px;
-  font-size: 0.8125rem;
-  color: var(--ax-text-subtle);
+  gap: var(--ax-space-4, 0.25rem);
+  padding: var(--ax-space-4, 0.25rem) var(--ax-space-8, 0.5rem);
+  border-radius: var(--ax-border-radius-medium, 6px);
+  background: var(--ax-bg-neutral-soft, #f5f5f5);
   border: 1px solid transparent;
+  font-size: var(--ax-font-size-medium, 0.875rem);
+  line-height: 1.5;
 }
 
 .choiceOptionSelected {
-  background: var(--ax-bg-accent-soft);
-  color: var(--ax-text-accent);
-  border-color: var(--ax-border-accent);
+  composes: choiceOption;
+  background: var(--ax-bg-accent-soft, #e6f0ff);
+  border-color: var(--ax-border-accent, #99c4ff);
   font-weight: 500;
 }
 

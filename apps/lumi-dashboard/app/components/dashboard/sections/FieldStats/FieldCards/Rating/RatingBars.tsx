@@ -1,16 +1,24 @@
-import { HStack, VStack } from "@navikt/ds-react";
+import { Button, HStack, VStack } from "@navikt/ds-react";
 import type { RatingVariant } from "~/utils/ratingDisplay";
 import styles from "./RatingFieldCard.module.css";
+
+export interface RatingBarsProps {
+  variant: RatingVariant;
+  distribution: Record<string, number>;
+  ratingValues: number[];
+  activeRatingValue?: number;
+  onRatingSelect: (value: number) => void;
+  onRatingClear: () => void;
+}
 
 export function RatingBars({
   variant,
   distribution,
   ratingValues,
-}: {
-  variant: RatingVariant;
-  distribution: Record<string, number>;
-  ratingValues: number[];
-}) {
+  activeRatingValue,
+  onRatingSelect,
+  onRatingClear,
+}: RatingBarsProps) {
   const maxCount = Math.max(
     ...ratingValues.map((v) => distribution[String(v)] || 0),
     1,
@@ -47,34 +55,57 @@ export function RatingBars({
     return styles.barFillNeutral;
   };
 
+  const isFiltering = typeof activeRatingValue === "number";
+
   return (
     <VStack gap="space-4" marginBlock="space-12 space-0">
-      {ratingValues.map((rating) => {
-        const count = distribution[String(rating)] || 0;
-        const fillClass = getFillClass(rating);
+      <VStack gap="space-2">
+        {ratingValues.map((rating) => {
+          const count = distribution[String(rating)] || 0;
+          const fillClass = getFillClass(rating);
+          const isActive = activeRatingValue === rating;
+          const isDimmed = isFiltering && !isActive;
 
-        return (
-          <HStack
-            key={rating}
-            gap="space-8"
-            align="center"
-            className={styles.barRow}
-          >
-            <span className={`${styles.barLabel} ${labelClass}`}>
-              {label(rating)}
-            </span>
+          return (
+            <button
+              key={rating}
+              type="button"
+              onClick={() => onRatingSelect(rating)}
+              className={`${styles.barRowButton} ${
+                isDimmed ? styles.barRowDimmed : ""
+              }`}
+              aria-pressed={isActive}
+            >
+              <HStack gap="space-8" align="center" className={styles.barRow}>
+                <span className={`${styles.barLabel} ${labelClass}`}>
+                  {label(rating)}
+                </span>
 
-            <progress
-              className={`${styles.barTrack} ${fillClass}`}
-              value={count}
-              max={maxCount}
-              aria-hidden="true"
-            />
+                <progress
+                  className={`${styles.barTrack} ${fillClass}`}
+                  value={count}
+                  max={maxCount}
+                  aria-hidden="true"
+                />
 
-            <span className={styles.barCount}>{count}</span>
-          </HStack>
-        );
-      })}
+                <span className={styles.barCount}>{count}</span>
+              </HStack>
+            </button>
+          );
+        })}
+      </VStack>
+
+      {isFiltering && (
+        <Button
+          type="button"
+          onClick={onRatingClear}
+          variant="tertiary"
+          size="xsmall"
+          style={{ alignSelf: "flex-start" }}
+        >
+          Nullstill filter
+        </Button>
+      )}
     </VStack>
   );
 }

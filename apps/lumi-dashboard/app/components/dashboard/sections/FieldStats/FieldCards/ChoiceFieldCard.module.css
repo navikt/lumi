@@ -15,6 +15,39 @@
   margin-left: 0.5rem;
 }
 
+.choiceButton {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: var(--ax-space-2, 0.5rem);
+  margin: 0; /* Reset default button margin */
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--ax-border-radius-medium, 8px);
+  transition:
+    opacity 0.2s ease,
+    background-color 0.1s ease;
+  /* Reset button styles */
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+}
+
+.choiceButton:hover {
+  background-color: var(--ax-bg-neutral-soft);
+}
+
+.choiceButton:focus-visible {
+  outline: 2px solid var(--ax-border-focus);
+  outline-offset: 2px;
+}
+
+.choiceButtonInactive {
+  opacity: 0.35;
+}
+
 .choiceBar {
   width: 100%;
   height: 8px;
@@ -30,61 +63,65 @@
 }
 
 .choiceBarBlue::-webkit-progress-value {
-  background-color: #3b82f6;
+  background-color: var(--ax-bg-info-strong, #3b82f6);
   border-radius: 4px;
 }
 
 .choiceBarGreen::-webkit-progress-value {
-  background-color: #22c55e;
+  background-color: var(--ax-bg-success-strong, #22c55e);
   border-radius: 4px;
 }
 
 .choiceBarAmber::-webkit-progress-value {
-  background-color: #f59e0b;
+  background-color: var(--ax-bg-warning-strong, #f59e0b);
   border-radius: 4px;
 }
 
 .choiceBarPurple::-webkit-progress-value {
-  background-color: #8b5cf6;
+  background-color: var(--ax-bg-brand-2-strong, #8b5cf6);
   border-radius: 4px;
 }
 
 .choiceBarPink::-webkit-progress-value {
-  background-color: #ec4899;
+  background-color: var(--ax-bg-danger-strong, #ec4899);
   border-radius: 4px;
 }
 
 .choiceBarCyan::-webkit-progress-value {
-  background-color: #06b6d4;
+  background-color: var(--ax-bg-brand-3-strong, #06b6d4);
   border-radius: 4px;
 }
 
 .choiceBarBlue::-moz-progress-bar {
-  background-color: #3b82f6;
+  background-color: var(--ax-bg-info-strong, #3b82f6);
   border-radius: 4px;
 }
 
 .choiceBarGreen::-moz-progress-bar {
-  background-color: #22c55e;
+  background-color: var(--ax-bg-success-strong, #22c55e);
   border-radius: 4px;
 }
 
 .choiceBarAmber::-moz-progress-bar {
-  background-color: #f59e0b;
+  background-color: var(--ax-bg-warning-strong, #f59e0b);
   border-radius: 4px;
 }
 
 .choiceBarPurple::-moz-progress-bar {
-  background-color: #8b5cf6;
+  background-color: var(--ax-bg-brand-2-strong, #8b5cf6);
   border-radius: 4px;
 }
 
 .choiceBarPink::-moz-progress-bar {
-  background-color: #ec4899;
+  background-color: var(--ax-bg-danger-strong, #ec4899);
   border-radius: 4px;
 }
 
 .choiceBarCyan::-moz-progress-bar {
-  background-color: #06b6d4;
+  background-color: var(--ax-bg-brand-3-strong, #06b6d4);
   border-radius: 4px;
+}
+
+.resetButton {
+  align-self: flex-start;
 }

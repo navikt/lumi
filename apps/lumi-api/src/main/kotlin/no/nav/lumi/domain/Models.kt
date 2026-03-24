@@ -404,10 +404,10 @@ data class FeedbackQuery(
     val task: String? = null,
     /** Segment filters (context.tags) as key:value pairs */
     val segments: List<Pair<String, String>> = emptyList(),
-    /** Filter by a specific rating question fieldId */
-    val ratingFieldId: String? = null,
-    /** Filter by a specific rating value */
-    val ratingValue: Int? = null,
+    /** Multi-value choice filters: list of (fieldId, optionId) pairs */
+    val choiceFilters: List<Pair<String, String>> = emptyList(),
+    /** Multi-value rating filters: list of (fieldId, ratingValue) pairs */
+    val ratingFilters: List<Pair<String, Int>> = emptyList(),
 )
 
 /**
@@ -430,10 +430,10 @@ data class StatsQuery(
     val segments: List<Pair<String, String>> = emptyList(),
     /** Task filter for Top Tasks drill-down */
     val task: String? = null,
-    /** Filter by a specific rating question fieldId */
-    val ratingFieldId: String? = null,
-    /** Filter by a specific rating value */
-    val ratingValue: Int? = null,
+    /** Multi-value choice filters: list of (fieldId, optionId) pairs */
+    val choiceFilters: List<Pair<String, String>> = emptyList(),
+    /** Multi-value rating filters: list of (fieldId, ratingValue) pairs */
+    val ratingFilters: List<Pair<String, Int>> = emptyList(),
 )
 
 // ============================================
