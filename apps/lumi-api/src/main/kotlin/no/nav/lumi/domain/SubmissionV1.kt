@@ -21,6 +21,7 @@ data class SubmissionContextV1(
     val pathname: String? = null,
     val deviceType: DeviceType? = null,
     val viewport: Viewport? = null,
+    val screenResolution: Viewport? = null,
     val userAgent: String? = null,
     val tags: Map<String, JsonPrimitive>? = null,
     val debug: JsonObject? = null

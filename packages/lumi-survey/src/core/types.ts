@@ -332,7 +332,9 @@ export interface LumiSurveyContext {
   pathname?: string;
   /** Browser viewport dimensions */
   viewport?: { width: number; height: number };
-  /** Device type based on viewport width */
+  /** Physical screen resolution (unaffected by window size) */
+  screenResolution?: { width: number; height: number };
+  /** Device type derived from UA Client Hints, user-agent parsing, or viewport fallback */
   deviceType?: DeviceType;
   /** Browser user agent */
   userAgent?: string;

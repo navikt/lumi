@@ -68,6 +68,7 @@ export interface SubmissionContextV1 {
   pathname?: string | null;
   deviceType?: DeviceType | null;
   viewport?: Viewport | null;
+  screenResolution?: Viewport | null;
   userAgent?: string | null;
   tags?: Record<string, JsonPrimitive> | null;
   debug?: Record<string, unknown> | null;

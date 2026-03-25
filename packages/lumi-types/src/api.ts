@@ -20,6 +20,7 @@ export interface SubmissionContextV1 {
   pathname?: string | null;
   deviceType?: DeviceType | null;
   viewport?: Viewport | null;
+  screenResolution?: Viewport | null;
   userAgent?: string | null;
   /** Low-cardinality segmentation tags (values must be JSON primitives). */
   tags?: Record<string, JsonPrimitive> | null;
@@ -167,6 +168,8 @@ export interface SubmissionContext {
   deviceType?: DeviceType;
   viewportWidth?: number;
   viewportHeight?: number;
+  screenWidth?: number;
+  screenHeight?: number;
   tags?: Record<string, string>;
 }
 
