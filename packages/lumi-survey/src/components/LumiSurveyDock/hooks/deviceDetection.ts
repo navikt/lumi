@@ -11,7 +11,8 @@ const MOBILE_UA =
  * 1. UA string tablet patterns (distinctive, checked first)
  * 2. UA Client Hints (navigator.userAgentData) for mobile vs desktop
  * 3. UA string mobile patterns
- * 4. Viewport width fallback (SSR, unknown UA)
+ * 4. iPadOS 13+ heuristic (Macintosh UA + multi-touch)
+ * 5. Viewport width fallback (SSR, unknown UA)
  */
 export function detectDeviceType(viewportWidth: number): DeviceType {
   if (typeof navigator === "undefined") {
@@ -37,7 +38,19 @@ export function detectDeviceType(viewportWidth: number): DeviceType {
     if (MOBILE_UA.test(ua)) {
       return "mobile";
     }
-    // UA present but no mobile match → desktop
+
+    // iPadOS 13+ Safari sends a Mac-like UA without "iPad" and no Client Hints.
+    // Detect via Macintosh UA + multi-touch support (real Macs have 0 touch points).
+    const isMacLike =
+      ua.includes("Macintosh") || navigator.platform === "MacIntel";
+    const hasTouch =
+      typeof navigator.maxTouchPoints === "number" &&
+      navigator.maxTouchPoints > 1;
+    if (isMacLike && hasTouch) {
+      return "tablet";
+    }
+
+    // UA present but no mobile/tablet match → desktop
     return "desktop";
   }
 

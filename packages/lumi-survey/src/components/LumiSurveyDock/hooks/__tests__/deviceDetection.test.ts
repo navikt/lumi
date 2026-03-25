@@ -10,6 +10,10 @@ describe("detectDeviceType", () => {
     Navigator.prototype,
     "userAgentData",
   );
+  const originalMaxTouchPoints = Object.getOwnPropertyDescriptor(
+    Navigator.prototype,
+    "maxTouchPoints",
+  );
 
   afterEach(() => {
     if (originalUserAgent === undefined) {
@@ -29,6 +33,16 @@ describe("detectDeviceType", () => {
         Navigator.prototype,
         "userAgentData",
         originalUserAgentData,
+      );
+    }
+
+    if (originalMaxTouchPoints === undefined) {
+      Reflect.deleteProperty(Navigator.prototype, "maxTouchPoints");
+    } else {
+      Object.defineProperty(
+        Navigator.prototype,
+        "maxTouchPoints",
+        originalMaxTouchPoints,
       );
     }
   });
@@ -86,6 +100,24 @@ describe("detectDeviceType", () => {
     });
 
     expect(detectDeviceType(500)).toBe("desktop");
+  });
+
+  it("detects iPadOS 13+ Safari as tablet via Macintosh UA + touch support", () => {
+    Object.defineProperty(Navigator.prototype, "userAgentData", {
+      value: undefined,
+      configurable: true,
+    });
+    Object.defineProperty(Navigator.prototype, "userAgent", {
+      value:
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+      configurable: true,
+    });
+    Object.defineProperty(Navigator.prototype, "maxTouchPoints", {
+      value: 5,
+      configurable: true,
+    });
+
+    expect(detectDeviceType(1024)).toBe("tablet");
   });
 
   it("falls back to viewport width when user agent signals are unavailable", () => {
