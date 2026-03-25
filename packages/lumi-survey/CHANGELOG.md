@@ -6,6 +6,17 @@ This project follows SemVer.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-03-25
+
+### Added
+
+- Multi-signal device detection: uses UA Client Hints, UA string parsing, and iPadOS 13+ heuristic (`maxTouchPoints`) before falling back to viewport width (Closes #168)
+- `screenResolution` field in submission context — captures actual screen dimensions via `window.screen`
+
+### Changed
+
+- `deviceType` classification is now based on actual device signals instead of viewport width alone, fixing misclassification when browser DevTools is open
+
 ## [0.3.0] - 2026-03-20
 
 ### Added
