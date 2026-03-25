@@ -101,9 +101,9 @@ export interface LumiSurveyDockProps {
 
   /**
    * Structured context for segmentation (tags) and debugging (debug).
-   * System fields (viewport, deviceType, userAgent) are auto-collected.
-   * Note: `deviceType` is derived from viewport width breakpoints (not the
-   * physical device). If DevTools is open, the viewport may be narrower.
+   * System fields (viewport, screenResolution, deviceType, userAgent) are
+   * auto-collected. `deviceType` uses browser client hints and user-agent
+   * parsing first, with viewport width as a final fallback.
    *
    * Note: `url` is never auto-collected. `pathname` can be auto-collected if
    * `behavior.collectLocation` is enabled. Only use this if your routes do not

@@ -449,6 +449,7 @@ export const SubmissionContextV1Schema = z.object({
   pathname: z.string().nullable().optional(),
   deviceType: DeviceTypeSchema.nullable().optional(),
   viewport: ViewportSchema.nullable().optional(),
+  screenResolution: ViewportSchema.nullable().optional(),
   userAgent: z.string().nullable().optional(),
   tags: z.record(z.string(), JsonPrimitiveSchema).nullable().optional(),
   debug: z.record(z.string(), z.unknown()).nullable().optional(),
@@ -588,6 +589,8 @@ const SubmissionContextSchema = z.object({
   deviceType: DeviceTypeSchema.optional(),
   viewportWidth: z.number().optional(),
   viewportHeight: z.number().optional(),
+  screenWidth: z.number().optional(),
+  screenHeight: z.number().optional(),
   tags: z.record(z.string(), z.string()).optional(),
 });
 

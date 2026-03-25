@@ -1,14 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import type { DeviceType, LumiSurveyContext } from "../../../core/types.js";
-
-/**
- * Derives device type from viewport width.
- */
-function getDeviceType(width: number): DeviceType {
-  if (width < 768) return "mobile";
-  if (width < 1024) return "tablet";
-  return "desktop";
-}
+import type { LumiSurveyContext } from "../../../core/types.js";
+import { detectDeviceType } from "./deviceDetection.js";
 
 const LUMI_SURVEY_NAVIGATION_EVENT = "lumi-survey:navigation";
 
@@ -60,7 +52,7 @@ export interface EnrichedContextOptions {
  * Note: This hook is client-only - the widget is never server-rendered.
  *
  * @param userContext - Optional user-provided context (app, tags, debug)
- * @returns Enriched context with system fields (viewport, deviceType, userAgent)
+ * @returns Enriched context with system fields (viewport, deviceType, userAgent, screenResolution)
  */
 export function useEnrichedContext(
   userContext?: LumiSurveyContext,
@@ -124,8 +116,11 @@ export function useEnrichedContext(
     return {
       // System-collected
       viewport,
-      deviceType: getDeviceType(viewport.width),
+      deviceType: detectDeviceType(viewport.width),
       userAgent: isBrowser ? navigator.userAgent : undefined,
+      screenResolution: isBrowser
+        ? { width: window.screen.width, height: window.screen.height }
+        : undefined,
       // User-provided
       // NOTE: url/pathname are opt-in. If you enable auto-collection, make sure
       // your routes do not include identifiers. Prefer passing a sanitized
