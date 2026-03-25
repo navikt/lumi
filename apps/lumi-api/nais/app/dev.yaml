@@ -51,6 +51,8 @@ spec:
         - application: dinesykmeldte
         - application: syfomodiaperson
           namespace: teamsykefravr
+        - application: modiapersonoversikt-api
+          namespace: personoversikt
         - application: lumi-submission-proxy
         - application: oppfolgingsplan-frontend
     outbound:
