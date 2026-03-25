@@ -27,7 +27,7 @@
     "@tanstack/react-router": "^1.153.2",
     "@tanstack/react-start": "^1.166.7",
     "@tanstack/zod-adapter": "^1.166.7",
-    "dayjs": "^1.11.13",
+    "dayjs": "^1.11.20",
     "exceljs": "^4.4.0",
     "nitro": "3.0.1-alpha.2",
     "pino": "^10.3.1",
