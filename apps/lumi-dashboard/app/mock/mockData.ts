@@ -31,11 +31,11 @@ import {
 } from "./helpers";
 
 export {
-  generateSurveyData,
-  generateTopTasksMockData,
-  generateDiscoveryMockData,
-  generateTaskPriorityMockData,
   generateComplexSurveyData,
+  generateDiscoveryMockData,
+  generateSurveyData,
+  generateTaskPriorityMockData,
+  generateTopTasksMockData,
 };
 
 import { calculateStats } from "./stats";
