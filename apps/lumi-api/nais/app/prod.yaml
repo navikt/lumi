@@ -51,8 +51,6 @@ spec:
         - application: dinesykmeldte
         - application: syfomodiaperson
           namespace: teamsykefravr
-        - application: modiapersonoversikt-api
-          namespace: personoversikt
         - application: oppfolgingsplan-frontend
     outbound:
       external:

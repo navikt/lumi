@@ -41,6 +41,8 @@ spec:
       rules:
         - application: syfomodiaperson
           namespace: teamsykefravr
+        - application: modiapersonoversikt-api
+          namespace: personoversikt
     outbound:
       rules:
         - application: lumi-api
