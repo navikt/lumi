@@ -44,6 +44,8 @@ If app-local `agents/`, `instructions/`, or `skills/` are present, they are supp
 
 ## Working agreement
 
+- **Never push directly to `main`** — always create a feature branch and open a PR.
+- Run `npm run lint` and `npm run typecheck` before pushing — CI will reject lint errors.
 - Keep changes scoped and consistent with existing patterns.
 - Do not introduce new auth mechanisms or DB migration semantics without explicit user confirmation.
 - Use `npm` for scripts and installs (not `pnpm`/`yarn`).

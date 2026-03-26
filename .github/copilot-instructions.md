@@ -9,7 +9,8 @@ Monorepo for Lumi survey analytics:
 
 ## Quality Standards & Workflow
 
-- Always run `npm run lint` (Biome) and `npm run typecheck` before finishing a task.
+- **Never push directly to `main`** — always create a feature branch and PR.
+- Always run `npm run lint` (Biome) and `npm run typecheck` before pushing.
 - Run `npm test` when making logic changes.
 - For backend changes: run `npm run api:test` (or `cd apps/lumi-api && ./gradlew test`).
 - Use `npm` only for installs and scripts. Do not use `pnpm` or `yarn`.
