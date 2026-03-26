@@ -1,0 +1,56 @@
+name: Tilgangsforespørsel
+description: Be om tilgang til å sende feedback til Lumi API
+title: "[Tilgang]: "
+labels: ["access-request"]
+projects: ["navikt/157"]
+body:
+  - type: input
+    id: app-name
+    attributes:
+      label: Applikasjonsnavn
+      description: Navnet på appen som trenger tilgang
+      placeholder: "f.eks. min-frontend"
+    validations:
+      required: true
+  - type: input
+    id: namespace
+    attributes:
+      label: Namespace (team)
+      description: NAIS-namespacet appen kjører i
+      placeholder: "f.eks. mitt-team"
+    validations:
+      required: true
+  - type: dropdown
+    id: auth-type
+    attributes:
+      label: Auth-type
+      description: Hvilken autentiseringsmekanisme bruker appen?
+      options:
+        - TokenX (sluttbrukerflater — nav.no, arbeidsgiver, privatperson)
+        - AzureAD (interne flater — Modia, veiledersystemer, fagsystemer)
+    validations:
+      required: true
+  - type: checkboxes
+    id: environments
+    attributes:
+      label: Miljø
+      description: Hvilke miljøer trenger tilgang?
+      options:
+        - label: dev-gcp
+          required: true
+        - label: prod-gcp
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Sjekkliste
+      description: Bekreft at du har gjort følgende
+      options:
+        - label: "Lagt til `lumi-api` (namespace: `team-esyfo`) som outbound i appens `nais.yaml`"
+          required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Tilleggsinformasjon
+      description: Eventuell ekstra kontekst om bruksområdet
+    validations:
+      required: false

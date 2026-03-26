@@ -135,7 +135,7 @@ spec:
 
 ### Lumi API (inbound)
 
-Team eSyfo må legge til din app som inbound. [**Opprett en issue**](https://github.com/navikt/lumi/issues/new?title=Inbound+access+policy+for+%5Bdin-app%5D&body=%23%23+App-info%0A%0A-+**App-navn**%3A+%0A-+**Namespace**%3A+%0A-+**Cluster**%3A+dev-gcp+%2F+prod-gcp%0A-+**Auth**%3A+TokenX+%2F+AzureAD%0A&labels=access-policy) med app-navn og namespace, så ordner vi resten:
+Team eSyfo må legge til din app som inbound. [**Opprett en issue**](https://github.com/navikt/lumi/issues/new?template=access-request.yml) med app-navn, namespace og auth-type, så ordner vi resten:
 
 ```yaml
 spec:
@@ -176,7 +176,7 @@ Før du deployer, verifiser at du har:
 - [ ] Riktig endepunkt (`/api/tokenx/v1/feedback` eller `/api/azure/v1/feedback`)
 - [ ] `LUMI_API_HOST` og `LUMI_AUDIENCE` satt i NAIS-manifest
 - [ ] Outbound access policy mot `lumi-api` i `team-esyfo`
-- [ ] Inbound access policy i Lumi API ([opprett issue](https://github.com/navikt/lumi/issues/new?title=Inbound+access+policy+for+%5Bdin-app%5D&body=%23%23+App-info%0A%0A-+**App-navn**%3A+%0A-+**Namespace**%3A+%0A-+**Cluster**%3A+dev-gcp+%2F+prod-gcp%0A-+**Auth**%3A+TokenX+%2F+AzureAD%0A&labels=access-policy))
+- [ ] Inbound access policy i Lumi API ([opprett issue](https://github.com/navikt/lumi/issues/new?template=access-request.yml))
 - [ ] Riktig `storageStrategy` (`consent` / `localStorage` / `none`)
 - [ ] Testet i dev — innsending → data synlig i dashboardet
 
