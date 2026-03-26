@@ -1,9 +1,15 @@
 name: Tilgangsforespørsel
 description: Be om tilgang til å sende feedback til Lumi API
-title: "[Tilgang]: "
+title: "[Tilgang] <app-navn> (<team>)"
 labels: ["access-request"]
 projects: ["navikt/157"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Fyll ut skjemaet under for å be om tilgang til Lumi API.
+        Vi gir appen din inbound-tilgang så den kan sende inn feedback.
+        Se [integrasjonsguiden](https://navikt.github.io/lumi/kom-i-gang/koble-til-backend) for komplett oppsett.
   - type: input
     id: app-name
     attributes:
@@ -23,7 +29,7 @@ body:
   - type: dropdown
     id: auth-type
     attributes:
-      label: Auth-type
+      label: Autentiseringstype
       description: Hvilken autentiseringsmekanisme bruker appen?
       options:
         - TokenX (sluttbrukerflater — nav.no, arbeidsgiver, privatperson)
