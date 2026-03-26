@@ -39,14 +39,19 @@ body:
         - label: dev-gcp
           required: true
         - label: prod-gcp
-  - type: checkboxes
-    id: checklist
+  - type: markdown
     attributes:
-      label: Sjekkliste
-      description: Bekreft at du har gjort følgende
-      options:
-        - label: "Lagt til `lumi-api` (namespace: `team-esyfo`) som outbound i appens `nais.yaml`"
-          required: true
+      value: |
+        ### Husk før deploy
+        Du må legge til `lumi-api` (namespace: `team-esyfo`) som **outbound** i appens `nais.yaml` før du deployer:
+        ```yaml
+        spec:
+          accessPolicy:
+            outbound:
+              rules:
+                - application: lumi-api
+                  namespace: team-esyfo
+        ```
   - type: textarea
     id: context
     attributes:
