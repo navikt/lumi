@@ -23,7 +23,7 @@
     "@navikt/lumi-types": "0.0.0",
     "@navikt/oasis": "^4.1.4",
     "@navikt/pino-logger": "^4.5.1",
-    "@tanstack/react-query": "^5.95.2",
+    "@tanstack/react-query": "^5.96.1",
     "@tanstack/react-router": "^1.153.2",
     "@tanstack/react-start": "^1.166.17",
     "@tanstack/zod-adapter": "^1.166.9",
