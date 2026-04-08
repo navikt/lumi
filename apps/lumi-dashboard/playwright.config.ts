@@ -31,7 +31,7 @@ export default defineConfig({
   ],
   webServer: {
     // Force the expected port so Playwright doesn't probe the wrong server if 3000 is taken.
-    command: `pnpm run dev -- --port ${E2E_PORT} --strictPort`,
+    command: `pnpm run dev --port ${E2E_PORT} --strictPort`,
     // Avoid depending on SSR route readiness: Vite always serves this when the dev server is up.
     url: `http://localhost:${E2E_PORT}/@vite/client`,
     reuseExistingServer: !process.env.CI,
