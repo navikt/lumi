@@ -39,13 +39,13 @@ importers:
         specifier: ^4.5.1
         version: 4.5.1(pino@10.3.1)
       '@tanstack/react-query':
-        specifier: ^5.95.2
+        specifier: ^5.96.1
         version: 5.96.2(react@19.2.4)
       '@tanstack/react-router':
         specifier: ^1.153.2
         version: 1.168.10(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@tanstack/react-start':
-        specifier: ^1.166.17
+        specifier: ^1.167.16
         version: 1.167.16(crossws@0.4.4(srvx@0.10.1))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vite@7.3.2(@types/node@25.5.2)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
       '@tanstack/router-core':
         specifier: ^1.168.9
@@ -88,7 +88,7 @@ importers:
         specifier: ^4.11.1
         version: 4.11.1(playwright-core@1.59.1)
       '@playwright/test':
-        specifier: ^1.58.2
+        specifier: ^1.59.0
         version: 1.59.1
       '@tanstack/history':
         specifier: ^1.161.6
@@ -124,7 +124,7 @@ importers:
         specifier: ^28.1.0
         version: 28.1.0
       lru-cache:
-        specifier: ^11.2.5
+        specifier: ^11.2.7
         version: 11.3.2
       pino-pretty:
         specifier: ^13.1.3
