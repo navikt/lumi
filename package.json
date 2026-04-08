@@ -11,7 +11,6 @@
     "lint:fix": "biome check --write .",
     "typecheck": "pnpm --filter @navikt/lumi-types run typecheck && pnpm --filter @navikt/lumi-survey run typecheck && pnpm --filter lumi-dashboard run typecheck",
     "verify:lumi-survey": "pnpm --filter @navikt/lumi-survey run build && node scripts/verify-lumi-survey-package.mjs",
-    "tanstack:mcp": "node scripts/tanstack-mcp.mjs",
     "test": "pnpm --filter lumi-dashboard run test",
     "e2e": "pnpm --filter lumi-dashboard run e2e",
     "docs:dev": "pnpm --dir docs --ignore-workspace run dev",
