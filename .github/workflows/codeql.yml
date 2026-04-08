@@ -34,7 +34,7 @@ jobs:
         uses: gradle/actions/setup-gradle@39e147cb9de83bb9910b8ef8bd7fff0ee20fcd6f
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@0d579ffd059c29b07949a3cce3983f0780820c98
+        uses: github/codeql-action/init@c10b8064de6f491fea524254123dbe5e09572f13
         with:
           languages: "java-kotlin"
           build-mode: "manual"
@@ -46,7 +46,7 @@ jobs:
         working-directory: apps/lumi-api
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@0d579ffd059c29b07949a3cce3983f0780820c98
+        uses: github/codeql-action/analyze@c10b8064de6f491fea524254123dbe5e09572f13
 
   analyze-js:
     name: Analyze (JavaScript/TypeScript)
@@ -57,10 +57,10 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@0d579ffd059c29b07949a3cce3983f0780820c98
+        uses: github/codeql-action/init@c10b8064de6f491fea524254123dbe5e09572f13
         with:
           languages: "javascript-typescript"
           build-mode: "none"
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@0d579ffd059c29b07949a3cce3983f0780820c98
+        uses: github/codeql-action/analyze@c10b8064de6f491fea524254123dbe5e09572f13
