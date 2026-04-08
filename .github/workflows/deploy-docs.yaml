@@ -6,6 +6,11 @@ on:
       - main
     paths:
       - 'docs/**'
+      - '.npmrc'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'packages/lumi-survey/package.json'
       - 'packages/lumi-survey/src/**'
       - 'packages/lumi-survey/.storybook/**'
       - '.github/workflows/deploy-docs.yaml'

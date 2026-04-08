@@ -2,10 +2,6 @@
   "name": "lumi",
   "private": true,
   "packageManager": "pnpm@10.32.1",
-  "workspaces": [
-    "apps/lumi-dashboard",
-    "packages/*"
-  ],
   "scripts": {
     "dev": "pnpm --filter @navikt/lumi-types run build && pnpm --filter lumi-dashboard run dev",
     "build": "pnpm --filter @navikt/lumi-types run build && pnpm --filter @navikt/lumi-survey run build && pnpm --filter lumi-dashboard run build",

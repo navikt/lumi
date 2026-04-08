@@ -25,6 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
@@ -55,6 +57,18 @@ jobs:
 
       - name: Pack (dry-run)
         run: pnpm --filter @navikt/lumi-survey pack --dry-run
+
+      - name: Enforce publish policy (main branch only)
+        if: ${{ inputs.dry_run == 'false' }}
+        run: |
+          if [ "${GITHUB_REF_TYPE}" != "branch" ] || [ "${GITHUB_REF_NAME}" != "main" ]; then
+            echo "Publishing is only allowed from the main branch."
+            echo "Run the workflow with dry_run=true for tags or non-main branches."
+            exit 1
+          fi
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
 
       - name: Guard against 0.0.0 publish
         if: ${{ inputs.dry_run == 'false' }}
@@ -127,7 +141,7 @@ jobs:
 
       - name: Publish
         if: ${{ inputs.dry_run == 'false' }}
-        run: pnpm --filter @navikt/lumi-survey publish
+        run: pnpm --filter @navikt/lumi-survey publish --publish-branch main
         env:
           NPM_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
