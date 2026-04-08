@@ -87,7 +87,7 @@ jobs:
           node - <<'NODE'
           const pkg = require('./packages/lumi-survey/package.json');
           if (pkg.private) {
-            console.error('packages/lumi-survey/package.json has private=true. npm will refuse to publish.');
+            console.error('packages/lumi-survey/package.json has private=true. pnpm publish will refuse.');
             process.exit(1);
           }
           NODE

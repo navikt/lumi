@@ -6,10 +6,10 @@ Dette dokumentet gjelder kun for `@navikt/lumi-survey`.
 
 Kjør fra repo root:
 
-- `npm ci`
-- `npm run lint`
-- `npm run typecheck`
-- `npm -w @navikt/lumi-survey test`
+- `pnpm install --frozen-lockfile`
+- `pnpm run lint`
+- `pnpm run typecheck`
+- `pnpm --filter @navikt/lumi-survey test`
 
 ## Lage ny versjon av `@navikt/lumi-survey`
 
@@ -29,12 +29,12 @@ Vi holder kontrakten dependency-free (ingen Zod) for å minimere runtime-avhengi
 2. Oppdater versjon i `packages/lumi-survey/package.json`.
 2. Oppdater changelog: `packages/lumi-survey/CHANGELOG.md`.
 3. Kjør kvalitetssjekker:
-   - `npm run lint`
-   - `npm run typecheck`
-   - `npm run verify:lumi-survey`
-   - `npm -w @navikt/lumi-survey test`
+   - `pnpm run lint`
+   - `pnpm run typecheck`
+   - `pnpm run verify:lumi-survey`
+   - `pnpm --filter @navikt/lumi-survey test`
 4. Verifiser pakkeinnhold lokalt:
-   - `npm -w @navikt/lumi-survey pack --dry-run`
+   - `pnpm --filter @navikt/lumi-survey pack --dry-run`
    - Sjekk at `dist/` inneholder `index.js`, `index.d.ts` og `index.css`.
 
 ## Versjonering (SemVer)
@@ -72,15 +72,15 @@ Publisering er en “to-trinns” prosess:
 1. Lag PR med endringen du vil slippe.
 2. Velg SemVer-bump (patch/minor/major) basert på reglene over.
 3. Oppdater versjon lokalt (anbefalt kommando):
-   - `npm version patch -w @navikt/lumi-survey --no-git-tag-version`
-   - eller `npm version minor -w @navikt/lumi-survey --no-git-tag-version`
-   - eller `npm version major -w @navikt/lumi-survey --no-git-tag-version`
+   - `pnpm --filter @navikt/lumi-survey version patch --no-git-tag-version`
+   - eller `pnpm --filter @navikt/lumi-survey version minor --no-git-tag-version`
+   - eller `pnpm --filter @navikt/lumi-survey version major --no-git-tag-version`
 4. Kjør sjekklista:
-   - `npm run lint`
-   - `npm run typecheck`
-   - `npm run verify:lumi-survey`
-   - `npm -w @navikt/lumi-survey test`
-   - `npm -w @navikt/lumi-survey pack --dry-run`
+   - `pnpm run lint`
+   - `pnpm run typecheck`
+   - `pnpm run verify:lumi-survey`
+   - `pnpm --filter @navikt/lumi-survey test`
+   - `pnpm --filter @navikt/lumi-survey pack --dry-run`
 5. Commit og push PR-en. Få PR-en merget til `main`.
 6. Publiser:
    - GitHub → Actions → `Publish @navikt/lumi-survey (GitHub Packages)`
@@ -99,4 +99,4 @@ For å publisere manuelt må du ha en token som kan skrive til GitHub Packages o
 
 Publiser fra repo root:
 
-- `npm -w @navikt/lumi-survey publish`
+- `pnpm --filter @navikt/lumi-survey publish --publish-branch main`
