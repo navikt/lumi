@@ -154,8 +154,8 @@ Internal endpoints are implemented as **server handlers** in route files under `
 
 This repo uses **Vitest** + Testing Library.
 
-- Run unit tests: `npm test`
-- Run E2E tests: `npm run e2e`
+- Run unit tests: `pnpm run test`
+- Run E2E tests: `pnpm run e2e`
 
 ## Boundaries
 

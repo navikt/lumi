@@ -12,13 +12,13 @@ Analyse-dashboard for Lumi survey-data. Bygget med TanStack Start.
 # 1. Klon og installer
 git clone https://github.com/navikt/lumi.git
 cd lumi
-npm install
+pnpm install
 
 # 2. Sett miljøvariabler (valgfritt – default fungerer lokalt)
 export LUMI_API_URL=http://localhost:8080
 
 # 3. Start dev-server
-npm run dev
+pnpm run dev
 # Åpne http://localhost:3000
 ```
 
@@ -53,22 +53,24 @@ npm run dev
 ### Forutsetninger
 
 - Node.js 22+
-- npm
+- pnpm 10+
 
 ### Oppsett
 
 ```bash
+# Kjør fra repo-roten
+
 # Installer avhengigheter
-npm install
+pnpm install
 
 # Start dev-server
-npm run dev
+pnpm run dev
 
 # Bygg for produksjon
-npm run build
+pnpm --filter lumi-dashboard run build
 
 # Start produksjonsserver
-npm run start
+pnpm --filter lumi-dashboard run start
 ```
 
 ### Miljøvariabler

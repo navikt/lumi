@@ -1,5 +1,5 @@
 import { Theme } from "@navikt/ds-react/Theme";
-import type { Preview } from "@storybook/react";
+import type { Preview } from "@storybook/react-vite";
 
 export const previewAnnotations: Preview = {
   decorators: [

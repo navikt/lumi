@@ -6,9 +6,9 @@ title: Installer widget
 
 Denne siden viser deg hvordan du installerer `@navikt/lumi-survey` og får widgeten til å rendre i appen din.
 
-## 1. Konfigurer npm-registry
+## 1. Konfigurer registry
 
-`@navikt/lumi-survey` publiseres til GitHub Packages. Legg til en `.npmrc`-fil i roten av prosjektet ditt (ved siden av `package.json`):
+`@navikt/lumi-survey` publiseres til GitHub Packages. Legg til en `.npmrc`-fil i roten av prosjektet ditt (ved siden av `package.json`). Denne konfigurasjonen brukes av npm-kompatible package managere som pnpm, npm og Yarn:
 
 ```properties
 @navikt:registry=https://npm.pkg.github.com
@@ -17,14 +17,18 @@ Denne siden viser deg hvordan du installerer `@navikt/lumi-survey` og får widge
 ## 2. Installer pakken
 
 ```sh
-npm install @navikt/lumi-survey @navikt/ds-react @navikt/ds-css
+pnpm add @navikt/lumi-survey @navikt/ds-react @navikt/ds-css
+# eller: npm install @navikt/lumi-survey @navikt/ds-react @navikt/ds-css
+# eller: yarn add @navikt/lumi-survey @navikt/ds-react @navikt/ds-css
 ```
 
 ::: info Peer dependencies
 `@navikt/lumi-survey` krever Aksel v8 (`@navikt/ds-react` og `@navikt/ds-css` versjon 8 eller nyere) som peer dependencies. Har du disse fra før, trenger du bare:
 
 ```sh
-npm install @navikt/lumi-survey
+pnpm add @navikt/lumi-survey
+# eller: npm install @navikt/lumi-survey
+# eller: yarn add @navikt/lumi-survey
 ```
 :::
 

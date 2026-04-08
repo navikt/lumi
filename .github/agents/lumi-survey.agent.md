@@ -11,10 +11,10 @@ Aksel-based React widget for configurable Lumi surveys.
 ## Commands
 
 ```bash
-npm -w packages/lumi-survey run build
-npm -w packages/lumi-survey run typecheck
-npm -w packages/lumi-survey run test
-npm -w packages/lumi-survey run storybook
+pnpm --filter @navikt/lumi-survey run build
+pnpm --filter @navikt/lumi-survey run typecheck
+pnpm --filter @navikt/lumi-survey run test
+pnpm --filter @navikt/lumi-survey run storybook
 ```
 
 ## Core patterns

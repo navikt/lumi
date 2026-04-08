@@ -12,9 +12,9 @@ Ktor 3.x backend for Lumi survey analytics with PostgreSQL storage.
 
 ```bash
 # from repo root
-npm run api:run
-npm run api:test
-npm run api:build
+pnpm run api:run
+pnpm run api:test
+pnpm run api:build
 
 # or directly
 cd apps/lumi-api

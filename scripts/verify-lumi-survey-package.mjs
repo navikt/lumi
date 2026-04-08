@@ -111,7 +111,7 @@ async function main() {
   // 4) dist must be present and must not reference forbidden packages.
   if (!(await fileExists(distIndexJs)) || !(await fileExists(distIndexDts))) {
     fail(
-      "packages/lumi-survey/dist is missing build artifacts. Run: npm -w @navikt/lumi-survey run build",
+      "packages/lumi-survey/dist is missing build artifacts. Run: pnpm --filter @navikt/lumi-survey run build",
     );
   }
 

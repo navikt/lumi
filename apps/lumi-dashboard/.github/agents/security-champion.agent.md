@@ -10,12 +10,12 @@ Frontend dashboard + server routes (TanStack Start). Backend redacts PII; this a
 ## Commands
 
 ```bash
-npm run lint
-npm run typecheck
-npm test
+pnpm run lint
+pnpm run typecheck
+pnpm run test
 
 # Optional dependency check
-npm audit
+pnpm audit
 ```
 
 ## Key areas in this repo
@@ -35,7 +35,7 @@ npm audit
 
 ### ✅ Always
 
-- Run `npm run lint` and `npm run typecheck` before finishing changes.
+- Run `pnpm run lint` and `pnpm run typecheck` before finishing changes.
 - Keep auth/token handling inside established middleware/utilities.
 
 ### ⚠️ Ask First

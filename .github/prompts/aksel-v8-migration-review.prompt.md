@@ -6,14 +6,14 @@ Use this prompt when reviewing or finishing an Aksel v8 upgrade (or when someone
 
 Run from repo root:
 
-- `npm run lint`
-- `npm run typecheck`
-- `npm test`
+- `pnpm run lint`
+- `pnpm run typecheck`
+- `pnpm run test`
 
 Optional (visual/manual):
 
-- `npm run dev` (dashboard)
-- `npm -w packages/lumi-survey run storybook` (if available)
+- `pnpm run dev` (dashboard)
+- `pnpm run storybook:survey` (if available)
 
 ## Fast grep checks
 

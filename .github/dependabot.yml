@@ -5,6 +5,7 @@ registries:
     url: https://npm.pkg.github.com
     token: ${{ secrets.READER_TOKEN }}
 updates:
+  # Root workspace packages are managed by pnpm from the repository root.
   - package-ecosystem: "npm"
     directory: "/"
     registries:
@@ -29,6 +30,14 @@ updates:
       navikt:
         patterns:
           - "@navikt/*"
+  # Docs stay outside the root workspace and keep their own pnpm lockfile.
+  - package-ecosystem: "npm"
+    directory: "/docs"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 10
   - package-ecosystem: "gradle"
     directory: "/apps/lumi-api"
     schedule:

@@ -12,8 +12,8 @@ This repo is a TanStack Start app (React + TypeScript).
 ## Commands
 
 ```sh
-npm run test
-npm run e2e
+pnpm run test
+pnpm run e2e
 ```
 
 ## Vitest
@@ -50,7 +50,7 @@ describe("ErrorComponent", () => {
 
 - Keep E2E tests focused on user-critical flows.
 - Prefer accessible selectors (`getByRole`) over brittle CSS selectors.
-- **Run E2E before marking work as done** — either locally (`npm run e2e` from `apps/lumi-dashboard`) or verify the CI run passes. If Playwright hangs locally, push and check CI, but do NOT skip verification entirely.
+- **Run E2E before marking work as done** — either locally (`pnpm run e2e` from repo root, or `pnpm run e2e` in `apps/lumi-dashboard`) or verify the CI run passes. If Playwright hangs locally, push and check CI, but do NOT skip verification entirely.
 
 ### Mock data and privacy masking
 
@@ -79,7 +79,7 @@ await expect(page.getByText("Rolle: Arbeidsgiver")).toBeVisible();
 
 - Add tests for new logic
 - Cover both happy path and failure path
-- Run `npm run test` before opening a PR
+- Run `pnpm run test` before opening a PR
 
 ### ⚠️ Ask First
 
