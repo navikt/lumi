@@ -3,5 +3,5 @@ module.exports = {
   "**/*.{js,jsx,ts,tsx,cjs,mjs,cts,mts,json,jsonc,css,scss}": [
     "biome check --write --files-ignore-unknown=true",
   ],
-  "*.{ts,tsx}": () => "npm run typecheck",
+  "*.{ts,tsx}": () => "pnpm run typecheck",
 };

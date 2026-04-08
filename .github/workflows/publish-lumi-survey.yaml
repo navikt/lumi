@@ -26,34 +26,35 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
 
       - name: Install
-        run: npm ci
+        run: pnpm install --frozen-lockfile
         env:
           # Repo uses .npmrc with ${NPM_AUTH_TOKEN}
           NPM_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Dependency audit (production)
-        run: npm audit --omit=dev --audit-level=high
+        run: pnpm audit --prod --audit-level=high
 
       - name: Lint
-        run: npm run lint
+        run: pnpm run lint
 
       - name: Typecheck
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       - name: Verify publish boundaries
-        run: npm run verify:lumi-survey
+        run: pnpm run verify:lumi-survey
 
       - name: Unit tests
-        run: npm -w @navikt/lumi-survey test
+        run: pnpm --filter @navikt/lumi-survey test
 
       - name: Pack (dry-run)
-        run: npm -w @navikt/lumi-survey pack --dry-run
+        run: pnpm --filter @navikt/lumi-survey pack --dry-run
 
       - name: Guard against 0.0.0 publish
         if: ${{ inputs.dry_run == 'false' }}
@@ -126,7 +127,7 @@ jobs:
 
       - name: Publish
         if: ${{ inputs.dry_run == 'false' }}
-        run: npm -w @navikt/lumi-survey publish
+        run: pnpm --filter @navikt/lumi-survey publish
         env:
           NPM_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -33,22 +33,23 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: ${{ inputs.ref || github.ref }}
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
         env:
           NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
       - name: Dependency audit (production)
-        run: npm audit --omit=dev --audit-level=critical
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run test
+        run: pnpm audit --prod --audit-level=critical
+      - run: pnpm run lint
+      - run: pnpm run typecheck
+      - run: pnpm test
       - name: Install Playwright
-        run: npx playwright install chromium --with-deps
+        run: pnpm --filter lumi-dashboard exec playwright install chromium --with-deps
       - name: Run E2E tests
-        run: npm run e2e
+        run: pnpm run e2e
         env:
           USE_MOCK_DATA: 'true'
 
@@ -65,19 +66,20 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: ${{ inputs.ref || github.ref }}
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
         env:
           NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
 
       - name: Build shared types
-        run: npm -w packages/lumi-types run build
+        run: pnpm --filter @navikt/lumi-types run build
 
       - name: Build dashboard (with mock data)
-        run: npm -w apps/lumi-dashboard run build
+        run: pnpm --filter lumi-dashboard run build
         env:
           VITE_MOCK_DATA: 'true'
           CDN_BASE_PATH: '/lumi-dashboard-demo'
@@ -120,19 +122,20 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: ${{ inputs.ref || github.ref }}
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
         env:
           NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
 
       - name: Build shared types
-        run: npm -w packages/lumi-types run build
+        run: pnpm --filter @navikt/lumi-types run build
 
       - name: Build dashboard (production)
-        run: npm -w apps/lumi-dashboard run build
+        run: pnpm --filter lumi-dashboard run build
         env:
           CDN_BASE_PATH: '/lumi-dashboard'
 
