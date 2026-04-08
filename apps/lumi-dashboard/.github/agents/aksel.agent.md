@@ -38,7 +38,7 @@ pnpm dlx @navikt/aksel codemod v8-primitive-spacing  # React primitives
 pnpm dlx @navikt/aksel codemod v8-token-spacing      # CSS/SCSS/Less
 
 # Run checks after changes
-cd apps/my-copilot && mise check
+cd apps/lumi-dashboard && pnpm run lint && pnpm run typecheck
 ```
 
 **Search tools**: Use `grep_search` to find Tailwind conflicts:

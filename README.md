@@ -49,7 +49,11 @@ flowchart LR
 ### Hurtigstart
 
 ```bash
+pnpm add @navikt/lumi-survey
+# eller
 npm install @navikt/lumi-survey
+# eller
+yarn add @navikt/lumi-survey
 ```
 
 Se [Kom i gang](https://navikt.github.io/lumi/kom-i-gang/hva-er-lumi) for komplett guide.

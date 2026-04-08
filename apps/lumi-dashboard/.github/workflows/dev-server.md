@@ -10,7 +10,7 @@ description: Start the development server for local testing
 
 1. Navigate to the project directory:
 ```bash
-cd /Users/kreps1/IdeaProjects/lumi-dashboard
+cd apps/lumi-dashboard
 ```
 
 2. Install dependencies (if needed):
@@ -22,7 +22,6 @@ pnpm install
 ```bash
 pnpm run dev
 ```
-cd lumi-dashboard
 4. Open the browser to http://localhost:3000
 
 ## Mock Mode
