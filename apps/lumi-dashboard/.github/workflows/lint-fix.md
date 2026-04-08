@@ -11,8 +11,14 @@ Use this workflow to fix code quality issues before committing.
 ## Step 1: Run Linter
 
 ```bash
-cd lumi-dashboard
+cd apps/lumi-dashboard
 pnpm run lint
+```
+
+Or run the same command from the repo root:
+
+```bash
+pnpm --dir apps/lumi-dashboard run lint
 ```
 
 ## Step 2: Auto-fix Linting Issues

@@ -32,13 +32,16 @@ pnpm run api:build
 
 ## Copilot config location
 
-This monorepo keeps Copilot guidance **only** under the repo root `.github/`:
+The repo root `.github/` is the primary source of truth for Copilot guidance:
 
 - `.github/copilot-instructions.md` (this file)
 - `.github/instructions/` (scoped rules via `applyTo`)
 - `.github/agents/`, `.github/prompts/`, `.github/skills/`
 
-Avoid duplicating Copilot files inside `apps/*/.github/` to prevent drift and conflicting instructions.
+Some app-local `.github/` files still exist in `apps/*/.github/` as
+supplementary or deprecated guidance during the transition. Keep root guidance
+authoritative, and avoid adding new duplicated app-local instructions unless
+there is a clear app-specific need.
 Always check `.github/instructions/`, `.github/agents/`, `.github/prompts/`, and `.github/skills/` for relevant guidance before acting.
 
 ## Conventions
