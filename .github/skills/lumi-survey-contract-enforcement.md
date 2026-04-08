@@ -10,7 +10,7 @@ Keep `@navikt/lumi-survey` publishable for external consumers without requiring 
 
 ## How to verify
 From repo root:
-- `npm run verify:lumi-survey`
+- `pnpm run verify:lumi-survey`
 
 This will build `@navikt/lumi-survey` and fail if forbidden dependencies leak into source or `dist`.
 

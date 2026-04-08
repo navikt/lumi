@@ -10,10 +10,10 @@ This repo uses TanStack Start (`@tanstack/react-start`) with file-based TanStack
 ## Commands
 
 ```bash
-npm run dev
-npm run lint
-npm run typecheck
-npm test
+pnpm run dev
+pnpm run lint
+pnpm run typecheck
+pnpm run test
 ```
 
 ## Core patterns

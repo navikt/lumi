@@ -56,4 +56,4 @@ Se [Kom i gang](https://navikt.github.io/lumi/kom-i-gang/hva-er-lumi) for komple
 
 ## Utvikling
 
-Se [utviklerguiden](https://navikt.github.io/lumi/utvikling/bidra) for lokal utvikling og bidrag.
+Internt i repoet brukes `pnpm` for workspace-installasjon og scripts. Se [utviklerguiden](https://navikt.github.io/lumi/utvikling/bidra) for lokal utvikling og bidrag.

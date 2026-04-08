@@ -34,8 +34,8 @@ Run with `run_in_terminal`:
 pnpm add @navikt/ds-react @navikt/ds-css
 
 # Run v8 spacing migration codemods
-npx @navikt/aksel codemod v8-primitive-spacing  # React primitives
-npx @navikt/aksel codemod v8-token-spacing      # CSS/SCSS/Less
+pnpm dlx @navikt/aksel codemod v8-primitive-spacing  # React primitives
+pnpm dlx @navikt/aksel codemod v8-token-spacing      # CSS/SCSS/Less
 
 # Run checks after changes
 cd apps/my-copilot && mise check
@@ -93,9 +93,9 @@ Always use Aksel spacing tokens through the Box, VStack, HStack, and HGrid compo
 
 If migrating from legacy `spacing-{n}` tokens, use the codemod:
 ```bash
-npx @navikt/aksel codemod v8-primitive-spacing  # Updates React primitives
-npx @navikt/aksel codemod v8-token-spacing      # Updates CSS/SCSS/Less
-npx @navikt/aksel codemod v8-token-spacing-js   # Updates JS token imports
+pnpm dlx @navikt/aksel codemod v8-primitive-spacing  # Updates React primitives
+pnpm dlx @navikt/aksel codemod v8-token-spacing      # Updates CSS/SCSS/Less
+pnpm dlx @navikt/aksel codemod v8-token-spacing-js   # Updates JS token imports
 ```
 
 | Old (legacy) | New | Value |

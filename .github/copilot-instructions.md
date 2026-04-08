@@ -9,25 +9,25 @@ Monorepo for Lumi survey analytics:
 
 ## Quality Standards & Workflow
 
-- Always run `npm run lint` (Biome) and `npm run typecheck` before finishing a task.
-- Run `npm test` when making logic changes.
-- For backend changes: run `npm run api:test` (or `cd apps/lumi-api && ./gradlew test`).
-- Use `npm` only for installs and scripts. Do not use `pnpm` or `yarn`.
+- Always run `pnpm run lint` (Biome) and `pnpm run typecheck` before finishing a task.
+- Run `pnpm run test` when making logic changes.
+- For backend changes: run `pnpm run api:test` (or `cd apps/lumi-api && ./gradlew test`).
+- Use `pnpm` for workspace installs and scripts. Do not use `npm` or `yarn`.
 - Keep changes scoped and consistent with existing patterns.
 
 ## Commands (repo root)
 
 ```sh
-npm run dev
-npm run lint
-npm run lint:fix
-npm run typecheck
-npm test
-npm run e2e
+pnpm run dev
+pnpm run lint
+pnpm run lint:fix
+pnpm run typecheck
+pnpm run test
+pnpm run e2e
 
-npm run api:run
-npm run api:test
-npm run api:build
+pnpm run api:run
+pnpm run api:test
+pnpm run api:build
 ```
 
 ## Copilot config location

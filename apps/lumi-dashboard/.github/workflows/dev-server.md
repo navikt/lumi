@@ -15,12 +15,12 @@ cd /Users/kreps1/IdeaProjects/lumi-dashboard
 
 2. Install dependencies (if needed):
 ```bash
-npm install
+pnpm install
 ```
 
 3. Start the development server:
 ```bash
-npm run dev
+pnpm run dev
 ```
 cd lumi-dashboard
 4. Open the browser to http://localhost:3000
@@ -31,21 +31,19 @@ The app runs with mock data by default in development. This is controlled by the
 
 To run with real API:
 ```bash
-DEMO_MODE=false npm run dev
+DEMO_MODE=false pnpm run dev
 ```
 
 ## Available Scripts
 
-- `npm run dev` - Start development server with hot reload
-- `npm run build` - Build for production
-- `npm run lint` - Run ESLint
-- `npm run format` - Format code with Biome
-- `npm test` - Run tests
-- `npm run lint` - Run Biome checks
-- `npm run lint:fix` - Auto-fix Biome issues
-- `npm run typecheck` - TypeScript check
-- `npm run test` - Run unit/integration tests (Vitest)
-- `npm run e2e` - Run E2E tests (Playwright)
+- `pnpm run dev` - Start development server with hot reload
+- `pnpm run build` - Build for production
+- `pnpm run lint` - Run Biome checks
+- `pnpm run lint:fix` - Auto-fix Biome issues
+- `pnpm run start` - Start production server
+- `pnpm run typecheck` - TypeScript check
+- `pnpm run test` - Run unit/integration tests (Vitest)
+- `pnpm run e2e` - Run E2E tests (Playwright)
 ### Port already in use
 ```bash
 # Find and kill process on port 3000
@@ -55,6 +53,6 @@ lsof -i :3000 | grep LISTEN | awk '{print $2}' | xargs kill -9
 ### Clear cache and reinstall
 ```bash
 rm -rf node_modules .vinxi
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```

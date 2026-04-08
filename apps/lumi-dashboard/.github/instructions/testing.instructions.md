@@ -14,8 +14,8 @@ This repo is a TanStack Start app (React + TypeScript).
 ## Commands
 
 ```sh
-npm run test
-npm run e2e
+pnpm run test
+pnpm run e2e
 ```
 
 ## Vitest
@@ -59,7 +59,7 @@ describe("ErrorComponent", () => {
 
 - Add tests for new logic
 - Cover both happy path and failure path
-- Run `npm run test` before opening a PR
+- Run `pnpm run test` before opening a PR
 
 ### ⚠️ Ask First
 
