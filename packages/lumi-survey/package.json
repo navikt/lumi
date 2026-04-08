@@ -40,8 +40,8 @@
   },
   "peerDependenciesMeta": {},
   "devDependencies": {
-    "@navikt/ds-css": "^8.7.0",
-    "@navikt/ds-react": "^8.7.0",
+    "@navikt/ds-css": "^8.9.0",
+    "@navikt/ds-react": "^8.9.0",
     "@storybook/addon-a11y": "^10.3.3",
     "@storybook/react-vite": "^10.3.3",
     "@testing-library/jest-dom": "^6.6.3",
