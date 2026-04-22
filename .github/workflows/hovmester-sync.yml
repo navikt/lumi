@@ -12,7 +12,7 @@ jobs:
   sync:
     uses: navikt/hovmester/.github/workflows/hovmester-sync.yml@main
     with:
-      collections: "hovmester"
+      collections: "hovmester,backend,frontend"
       github_project: "navikt/157"
       pr_app_id: "2906300"
     secrets:
