@@ -109,11 +109,12 @@ class McpStdioClient {
   }
 
   #send(message) {
-    if (!this.process || !this.process.stdin.writable) {
+    const stdin = this.process?.stdin;
+    if (!stdin || !stdin.writable) {
       throw new Error("MCP process is not writable");
     }
 
-    this.process.stdin.write(`${JSON.stringify(message)}\n`);
+    stdin.write(`${JSON.stringify(message)}\n`);
   }
 
   #drainBuffer() {

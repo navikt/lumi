@@ -66,7 +66,7 @@ export function generateCsvExport(items: FeedbackItem[]): Response {
 
   // Helper to extract actual value from answer
   function getAnswerValue(answer: FeedbackAnswer | undefined): string {
-    if (!answer || !answer.value) return "";
+    if (!answer?.value) return "";
     const val = answer.value;
     if (val.type === "rating") return String(val.rating);
     if (val.type === "text") return val.text || "";

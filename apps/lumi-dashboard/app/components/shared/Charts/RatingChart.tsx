@@ -207,7 +207,7 @@ export function RatingChart() {
         <YAxis hide />
         <Tooltip
           content={({ active, payload }) => {
-            if (active && payload && payload.length && payload[0]) {
+            if (active && payload?.length && payload[0]) {
               const item = payload[0].payload as {
                 label: string;
                 count: number;

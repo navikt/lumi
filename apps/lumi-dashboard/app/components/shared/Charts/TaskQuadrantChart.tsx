@@ -276,7 +276,7 @@ export function TaskQuadrantChart({
         <Tooltip
           cursor={{ strokeDasharray: "3 3" }}
           content={({ active, payload }) => {
-            if (active && payload && payload.length && payload[0]) {
+            if (active && payload?.length && payload[0]) {
               const d = payload[0].payload as TaskDataPoint;
               const zoneLabels = {
                 crisis: "🔴 KRISE - Mange prøver, få lykkes",
