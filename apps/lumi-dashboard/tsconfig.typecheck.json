@@ -1,7 +1,6 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "~/*": ["./app/*"],
       "@navikt/lumi-types": ["../../packages/lumi-types/src/index.ts"],

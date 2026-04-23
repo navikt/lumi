@@ -3,6 +3,11 @@ declare module "*.module.css" {
   export default classes;
 }
 
+declare module "*.css" {
+  const css: string;
+  export default css;
+}
+
 interface NavigatorUAData {
   readonly mobile: boolean;
   readonly platform: string;

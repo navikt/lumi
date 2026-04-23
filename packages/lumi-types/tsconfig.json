@@ -7,7 +7,9 @@
     "declaration": true,
     "declarationMap": true,
     "isolatedModules": true,
+    "ignoreDeprecations": "6.0",
     "skipLibCheck": true,
+    "rootDir": "src",
     "types": [],
     "lib": ["ES2022"],
     "resolveJsonModule": true
