@@ -109,7 +109,7 @@ class McpStdioClient {
   }
 
   #send(message) {
-    if (!this.process || !this.process.stdin.writable) {
+    if (!this.process?.stdin.writable) {
       throw new Error("MCP process is not writable");
     }
 

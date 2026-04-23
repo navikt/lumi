@@ -107,7 +107,7 @@ export function TopPathsChart() {
         />
         <Tooltip
           content={({ active, payload }) => {
-            if (active && payload && payload.length && payload[0]) {
+            if (active && payload?.length && payload[0]) {
               const point = payload[0].payload as {
                 pathname: string;
                 count: number;

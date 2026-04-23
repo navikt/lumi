@@ -111,7 +111,7 @@ export function TopTasksTimelineChart() {
         />
         <Tooltip
           content={({ active, payload }) => {
-            if (active && payload && payload.length) {
+            if (active && payload?.length) {
               const d = payload[0].payload;
               return (
                 <div
