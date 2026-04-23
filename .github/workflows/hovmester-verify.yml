@@ -56,8 +56,10 @@ jobs:
           while IFS= read -r file; do
             [[ -z "$file" ]] && continue
             case "$file" in
+              .github/copilot-instructions.md|\
               .github/agents/*|\
               .github/instructions/*|\
+              .github/prompts/*|\
               .github/skills/*|\
               .github/ISSUE_TEMPLATE/*|\
               .github/PULL_REQUEST_TEMPLATE.md|\

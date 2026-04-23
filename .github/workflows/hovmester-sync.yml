@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   sync:
-    uses: navikt/hovmester/.github/workflows/hovmester-sync.yml@main
+    uses: navikt/hovmester/.github/workflows/hovmester-sync.yml@9147e8090826d82ed8a310c33c6032fe9b08f2e1 # pin privileged reusable workflow to reviewed commit on navikt/hovmester main
     with:
       collections: "hovmester,backend,frontend"
       github_project: "navikt/157"
