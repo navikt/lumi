@@ -24,7 +24,7 @@
     "@navikt/oasis": "^4.1.4",
     "@navikt/pino-logger": "^4.5.1",
     "@tanstack/react-query": "^5.96.1",
-    "@tanstack/react-router": "^1.153.2",
+    "@tanstack/react-router": "^1.168.10",
     "@tanstack/router-core": "^1.168.9",
     "@tanstack/react-start": "^1.167.16",
     "@tanstack/start-storage-context": "^1.166.23",
@@ -50,7 +50,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^5.1.4",
-    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/coverage-v8": "^4.1.3",
     "chokidar": "^5.0.0",
     "jsdom": "^28.1.0",
     "lru-cache": "^11.2.7",
@@ -58,7 +58,7 @@
     "typescript": "^5.7.2",
     "vite": "^7.3.2",
     "vite-tsconfig-paths": "^6.1.1",
-    "vitest": "^4.0.17"
+    "vitest": "^4.1.3"
   },
   "engines": {
     "node": ">=22"
