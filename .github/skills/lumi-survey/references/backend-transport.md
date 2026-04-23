@@ -1,5 +1,3 @@
-<!-- Managed by esyfo-cli. Do not edit manually. Changes will be overwritten.
-     For repo-specific customizations, create your own files without this header. -->
 ## Fase 5: Backend-endepunkt
 
 Widgeten sender tilbakemelding til DITT backend, som utveksler token og videresender til Lumi API.
