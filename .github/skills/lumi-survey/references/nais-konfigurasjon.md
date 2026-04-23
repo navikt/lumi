@@ -1,5 +1,3 @@
-<!-- Managed by esyfo-cli. Do not edit manually. Changes will be overwritten.
-     For repo-specific customizations, create your own files without this header. -->
 ## Fase 6: NAIS-konfigurasjon
 
 Legg til i NAIS-manifest(ene). **Merk:** Verdiene avhenger av auth-type og miljø.

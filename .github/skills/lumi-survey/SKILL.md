@@ -1,8 +1,7 @@
 ---
+name: lumi-survey
 description: Integrer @navikt/lumi-survey tilbakemeldingswidget i en Nav-frontendapplikasjon
 ---
-<!-- Managed by esyfo-cli. Do not edit manually. Changes will be overwritten.
-     For repo-specific customizations, create your own files without this header. -->
 
 # Lumi Survey-integrasjon
 

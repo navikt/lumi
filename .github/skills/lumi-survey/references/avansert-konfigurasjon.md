@@ -1,5 +1,3 @@
-<!-- Managed by esyfo-cli. Do not edit manually. Changes will be overwritten.
-     For repo-specific customizations, create your own files without this header. -->
 ## Avansert konfigurasjon
 
 For avanserte brukstilfeller (forgreningslogikk, steg-for-steg-flyter, egendefinerte events, intro-skjermer, egne labels, styling):
