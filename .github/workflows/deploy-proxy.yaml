@@ -32,7 +32,7 @@ jobs:
           java-version: 21
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@39e147cb9de83bb9910b8ef8bd7fff0ee20fcd6f
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           cache-overwrite-existing: true
@@ -42,7 +42,7 @@ jobs:
         run: ./gradlew build
 
       - name: Push docker image to GAR
-        uses: nais/docker-build-push@45d352fb62fb52ccb5ff6cba22c047fa02b35321
+        uses: nais/docker-build-push@cd5ec5663feb0e05c3fa374d1fb442605b046c6b
         id: docker-build-push
         with:
           team: team-esyfo
