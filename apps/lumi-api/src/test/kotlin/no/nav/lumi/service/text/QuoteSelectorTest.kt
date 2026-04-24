@@ -4,6 +4,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import no.nav.lumi.domain.ConfidenceLevel
 
 class QuoteSelectorTest : FunSpec({
 
@@ -44,18 +45,18 @@ class QuoteSelectorTest : FunSpec({
 
     context("confidenceLevel") {
         test("low for fewer than 30 responses") {
-            QuoteSelector.confidenceLevel(0) shouldBe "low"
-            QuoteSelector.confidenceLevel(29) shouldBe "low"
+            QuoteSelector.confidenceLevel(0) shouldBe ConfidenceLevel.LOW
+            QuoteSelector.confidenceLevel(29) shouldBe ConfidenceLevel.LOW
         }
 
         test("medium for 30-100 responses") {
-            QuoteSelector.confidenceLevel(30) shouldBe "medium"
-            QuoteSelector.confidenceLevel(100) shouldBe "medium"
+            QuoteSelector.confidenceLevel(30) shouldBe ConfidenceLevel.MEDIUM
+            QuoteSelector.confidenceLevel(100) shouldBe ConfidenceLevel.MEDIUM
         }
 
         test("high for more than 100 responses") {
-            QuoteSelector.confidenceLevel(101) shouldBe "high"
-            QuoteSelector.confidenceLevel(1000) shouldBe "high"
+            QuoteSelector.confidenceLevel(101) shouldBe ConfidenceLevel.HIGH
+            QuoteSelector.confidenceLevel(1000) shouldBe ConfidenceLevel.HIGH
         }
     }
 })

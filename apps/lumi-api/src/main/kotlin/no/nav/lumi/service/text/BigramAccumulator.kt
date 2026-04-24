@@ -26,7 +26,9 @@ class BigramAccumulator(val stemKey: String) {
         if (responseId in seenResponseIds) return
         seenResponseIds.add(responseId)
         surfaceCounts[surface] = (surfaceCounts[surface] ?: 0) + 1
-        _sourceResponseIds.add(responseId)
+        if (_sourceResponseIds.size < DEFAULT_MAX_SOURCE_IDS) {
+            _sourceResponseIds.add(responseId)
+        }
     }
 
     /** Get canonical surface form (most common, tiebreaker alphabetical) */

@@ -161,7 +161,7 @@ class DiscoveryServiceTest : FunSpec({
             test("confidenceLevel reflects total submissions") {
                 val fewFeedbacks = (1..10).map { createDiscoveryFeedback("tekst $it", "yes") }
                 val result = service.processStats(fewFeedbacks, emptyList())
-                result.confidenceLevel shouldBe "low"
+                result.confidenceLevel shouldBe ConfidenceLevel.LOW
             }
 
             test("wordFrequency is unchanged with bigram addition") {

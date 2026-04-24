@@ -44,6 +44,15 @@ class BigramAccumulatorTest : FunSpec({
         entry.count shouldBe 10
     }
 
+    test("caps internal sourceResponseIds at default max") {
+        val acc = BigramAccumulator("test|key")
+        repeat(20) { acc.addOccurrence("test phrase", "r$it") }
+        // Internal list capped at DEFAULT_MAX_SOURCE_IDS (5), but count tracks all
+        val entry = acc.toPhraseEntry()
+        entry.sourceResponseIds shouldHaveSize BigramAccumulator.DEFAULT_MAX_SOURCE_IDS
+        entry.count shouldBe 20
+    }
+
     test("empty accumulator returns stemKey as canonical") {
         val acc = BigramAccumulator("foo|bar")
         acc.getCanonicalSurface() shouldBe "foo|bar"

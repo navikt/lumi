@@ -1,5 +1,6 @@
 package no.nav.lumi.domain
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -131,6 +132,17 @@ data class QuoteEntry(
 )
 
 /**
+ * Confidence level for text analysis based on response volume.
+ * Determines how much weight to give bigram phrases vs. individual quotes.
+ */
+@Serializable
+enum class ConfidenceLevel {
+    @SerialName("low") LOW,
+    @SerialName("medium") MEDIUM,
+    @SerialName("high") HIGH,
+}
+
+/**
  * Full discovery statistics response
  */
 @Serializable
@@ -141,7 +153,7 @@ data class DiscoveryStatsResponse(
     val recentResponses: List<DiscoveryRecentResponse>,
     val phrases: List<PhraseEntry> = emptyList(),
     val quotes: List<QuoteEntry> = emptyList(),
-    val confidenceLevel: String = "low",
+    val confidenceLevel: ConfidenceLevel = ConfidenceLevel.LOW,
 )
 
 // ============================================
@@ -172,5 +184,5 @@ data class BlockerStatsResponse(
     val recentBlockers: List<RecentBlockerResponse>,
     val phrases: List<PhraseEntry> = emptyList(),
     val quotes: List<QuoteEntry> = emptyList(),
-    val confidenceLevel: String = "low",
+    val confidenceLevel: ConfidenceLevel = ConfidenceLevel.LOW,
 )

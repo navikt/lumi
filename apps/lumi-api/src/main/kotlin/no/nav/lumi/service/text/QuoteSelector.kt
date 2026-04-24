@@ -1,5 +1,6 @@
 package no.nav.lumi.service.text
 
+import no.nav.lumi.domain.ConfidenceLevel
 import no.nav.lumi.domain.QuoteEntry
 import kotlin.random.Random
 
@@ -43,11 +44,11 @@ object QuoteSelector {
      * - "medium": 30–100 responses — bigrams are useful alongside quotes
      * - "high": more than 100 responses — bigrams provide strong signal
      */
-    fun confidenceLevel(totalResponses: Int): String {
+    fun confidenceLevel(totalResponses: Int): ConfidenceLevel {
         return when {
-            totalResponses < 30 -> "low"
-            totalResponses <= 100 -> "medium"
-            else -> "high"
+            totalResponses < 30 -> ConfidenceLevel.LOW
+            totalResponses <= 100 -> ConfidenceLevel.MEDIUM
+            else -> ConfidenceLevel.HIGH
         }
     }
 }

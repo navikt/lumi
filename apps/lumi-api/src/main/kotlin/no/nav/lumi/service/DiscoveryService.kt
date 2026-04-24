@@ -143,8 +143,9 @@ class DiscoveryService(
             .take(MAX_PHRASES)
             .map { it.toPhraseEntry(maxSourceIds = MAX_SOURCE_RESPONSES_DISCOVERY) }
 
-        // Select representative quotes
-        val quotes = QuoteSelector.selectQuotes(quoteCandidates, seed = feedbacks.size.toLong())
+        // Select representative quotes (seed combines size + first ID for uniqueness per dataset)
+        val quoteSeed = feedbacks.size.toLong() xor (feedbacks.firstOrNull()?.id?.hashCode()?.toLong() ?: 0L)
+        val quotes = QuoteSelector.selectQuotes(quoteCandidates, seed = quoteSeed)
         val confidence = QuoteSelector.confidenceLevel(feedbacks.size)
         
         // Build theme results (exclude empty themes)

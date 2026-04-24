@@ -382,7 +382,7 @@ class FeedbackStatsRepository {
             dbQuery.map { it.toDbRecord() }
         }
 
-        val dtos = records.map { it.toDto() }
+        val dtos = records.map { it.toDto() }.sortedBy { it.submittedAt }
 
         val blockerResponses = mutableListOf<RecentBlockerResponse>()
         val bigramAccumulators = mutableMapOf<String, BigramAccumulator>()
@@ -454,7 +454,8 @@ class FeedbackStatsRepository {
             .take(MAX_PHRASES_BLOCKER)
             .map { it.toPhraseEntry(maxSourceIds = MAX_SOURCE_RESPONSES_BLOCKER) }
 
-        val quotes = QuoteSelector.selectQuotes(quoteCandidates, seed = blockerResponses.size.toLong())
+        val quoteSeed = blockerResponses.size.toLong() xor (dtos.firstOrNull()?.id?.hashCode()?.toLong() ?: 0L)
+        val quotes = QuoteSelector.selectQuotes(quoteCandidates, seed = quoteSeed)
         val confidence = QuoteSelector.confidenceLevel(blockerResponses.size)
 
         val themeAccumulators = themes.map { theme ->
