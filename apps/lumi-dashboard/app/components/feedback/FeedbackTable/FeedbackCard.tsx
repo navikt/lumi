@@ -140,9 +140,11 @@ export function FeedbackCard({
                 ) : (
                   <VStack gap="space-8">
                     {feedback.answers.map((answer) => (
-                      <div key={answer.fieldId} className={styles.answerCard}>
-                        <RenderAnswer answer={answer} styles={styles} />
-                      </div>
+                      <RenderAnswer
+                        key={answer.fieldId}
+                        answer={answer}
+                        styles={styles}
+                      />
                     ))}
                   </VStack>
                 )}
