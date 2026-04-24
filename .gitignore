@@ -35,3 +35,4 @@ lumi-export-*.json
 
 # OS
 .DS_Store
+.playwright-mcp/
