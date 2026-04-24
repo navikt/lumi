@@ -94,6 +94,17 @@ class TextProcessorTest : FunSpec({
             words shouldNotContain "fjernet"
             words shouldContain "mail"
         }
+
+        test("strips redaction markers without FJERNET suffix like HEMMELIG ADRESSE") {
+            val words = TextProcessor.extractWords(
+                "Bor på [HEMMELIG ADRESSE] og trenger hjelp"
+            )
+
+            words shouldNotContain "hemmelig"
+            words shouldNotContain "adresse"
+            words shouldContain "trenger"
+            words shouldContain "hjelp"
+        }
     }
 
     context("tokenize") {

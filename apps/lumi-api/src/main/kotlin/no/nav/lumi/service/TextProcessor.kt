@@ -7,7 +7,8 @@ import no.nav.lumi.service.text.NorwegianLightStemmer
  * Consolidates text processing logic used across different services and repositories.
  */
 object TextProcessor {
-    private val redactionMarkerRegex = Regex("\\[[A-ZÆØÅ][A-ZÆØÅ\\s-]*FJERNET]")
+    // Matches all redaction markers: [FØDSELSNUMMER FJERNET], [HEMMELIG ADRESSE], etc.
+    private val redactionMarkerRegex = Regex("\\[[A-ZÆØÅ][A-ZÆØÅ\\s-]+]")
     private val tokenCleanupRegex = Regex("[^a-zæøåA-ZÆØÅ0-9\\s]")
     private val whitespaceRegex = Regex("\\s+")
 

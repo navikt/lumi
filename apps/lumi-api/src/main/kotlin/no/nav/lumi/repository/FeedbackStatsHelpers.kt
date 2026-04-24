@@ -115,7 +115,8 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
                         bigramCounts[bigram] = (bigramCounts[bigram] ?: 0) + 1
                     }
 
-                    for (bigram in bigrams) {
+                    // Dedup surfaces per response to avoid bias from repeated phrases
+                    for (bigram in bigrams.distinctBy { it.stemKey to it.surface }) {
                         val surfaces = bigramSurfaces.getOrPut(bigram.stemKey) { mutableMapOf() }
                         surfaces[bigram.surface] = (surfaces[bigram.surface] ?: 0) + 1
                     }

@@ -3,25 +3,14 @@ import { expect, test } from "@playwright/test";
 test.describe("TextFieldCard phrases", () => {
   test("displays clickable phrases in text field card", async ({ page }) => {
     // Rating survey has a TEXT field ("Legg gjerne til en begrunnelse")
+    // with 120 items cycling through a fixed topic pool — bigrams are guaranteed
     await page.goto("/?surveyId=survey-vurdering");
     await page.waitForLoadState("networkidle");
     await expect(page.locator("main")).toBeVisible({ timeout: 15000 });
 
-    // Look for phrase heading in the text field card
+    // Phrase heading must be visible
     const heading = page.getByText("Hyppigste fraser");
-
-    // Skip if no phrases available (mock data may not generate enough bigrams)
-    if (
-      !(await heading
-        .first()
-        .isVisible({ timeout: 5000 })
-        .catch(() => false))
-    ) {
-      test.skip(true, "No phrases available in mock data for this survey");
-      return;
-    }
-
-    await expect(heading.first()).toBeVisible();
+    await expect(heading.first()).toBeVisible({ timeout: 10000 });
 
     // Should have an ordered list of phrase links
     const phraseList = page.getByRole("list", { name: /hyppigste fraser/i });
@@ -47,16 +36,7 @@ test.describe("TextFieldCard phrases", () => {
     const phraseLinks = page.getByRole("link", {
       name: /Vis \d+ tilbakemeldinger som inneholder frasen/i,
     });
-
-    if (
-      !(await phraseLinks
-        .first()
-        .isVisible({ timeout: 5000 })
-        .catch(() => false))
-    ) {
-      test.skip(true, "No phrase links available in mock data");
-      return;
-    }
+    await expect(phraseLinks.first()).toBeVisible({ timeout: 10000 });
 
     // Extract phrase text from aria-label before clicking
     const firstLink = phraseLinks.first();
