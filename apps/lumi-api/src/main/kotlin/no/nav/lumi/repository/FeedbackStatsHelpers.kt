@@ -2,6 +2,7 @@ package no.nav.lumi.repository
 
 import no.nav.lumi.domain.*
 import no.nav.lumi.service.TextProcessor
+import no.nav.lumi.service.text.StemWordAccumulator
 import java.time.Instant
 import java.time.OffsetDateTime
 
@@ -90,7 +91,7 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
 
             FieldType.TEXT -> {
                 val texts = mutableListOf<RecentTextResponse>()
-                val keywordCounts = mutableMapOf<String, Int>()
+                val wordAccumulators = mutableMapOf<String, StemWordAccumulator>()
                 var responseCount = 0
 
                 for ((dto, answer) in entries) {
@@ -102,7 +103,8 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
 
                     for (word in TextProcessor.extractWords(text)) {
                         val stem = TextProcessor.stemNorwegian(word)
-                        keywordCounts[stem] = (keywordCounts[stem] ?: 0) + 1
+                        val acc = wordAccumulators.getOrPut(stem) { StemWordAccumulator(stem) }
+                        acc.addOccurrence(word)
                     }
                 }
 
@@ -112,10 +114,10 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
                     0.0
                 }
 
-                val topKeywords = keywordCounts.entries
-                    .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+                val topKeywords = wordAccumulators.values
+                    .sortedWith(compareByDescending<StemWordAccumulator> { it.totalCount }.thenBy { it.stem })
                     .take(10)
-                    .map { (word, count) -> KeywordCount(word = word, count = count) }
+                    .map { acc -> KeywordCount(word = acc.getCanonicalForm(), count = acc.totalCount) }
 
                 val recentResponses = texts
                     .sortedByDescending { parseSubmittedAt(it.submittedAt) }
