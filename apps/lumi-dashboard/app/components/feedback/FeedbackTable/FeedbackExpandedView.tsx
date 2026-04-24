@@ -40,6 +40,14 @@ export function FeedbackExpandedView({ feedback }: FeedbackExpandedViewProps) {
               </ExpandedSection>
             )}
 
+            {/* Segment (context.tags) */}
+            {feedback.context?.tags &&
+              Object.keys(feedback.context.tags).length > 0 && (
+                <ExpandedSection label="🏷️ Segment">
+                  <MetadataGrid metadata={feedback.context.tags} />
+                </ExpandedSection>
+              )}
+
             {/* Custom Metadata */}
             {feedback.metadata && Object.keys(feedback.metadata).length > 0 && (
               <ExpandedSection label="📋 Metadata">

@@ -24,6 +24,8 @@ import styles from "./styles.module.css";
 import { TimelineView } from "./TimelineView";
 import {
   deviceToIcon,
+  formatMetadataKey,
+  formatMetadataValue,
   getAllRatings,
   getFeedbackPreview,
   getMainTextPreview,
@@ -204,6 +206,30 @@ export function FeedbackCard({
               </div>
             </div>
 
+            {/* Section: Segment (context.tags) */}
+            {feedback.context?.tags &&
+              Object.keys(feedback.context.tags).length > 0 && (
+                <div className={styles.expandedSection}>
+                  <span className={styles.expandedSectionLabel}>🏷️ Segment</span>
+                  <div className={styles.contextGrid}>
+                    {Object.entries(feedback.context.tags).map(
+                      ([key, value]) => (
+                        <div key={key} className={styles.contextItem}>
+                          <div className={styles.contextContent}>
+                            <span className={styles.contextLabel}>
+                              {formatMetadataKey(key)}
+                            </span>
+                            <span className={styles.contextValue}>
+                              {formatMetadataValue(value)}
+                            </span>
+                          </div>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </div>
+              )}
+
             {/* Section: Tags */}
             {feedback.tags && feedback.tags.length > 0 && (
               <div className={styles.expandedSection}>
@@ -231,8 +257,12 @@ export function FeedbackCard({
                   {Object.entries(feedback.metadata).map(([key, value]) => (
                     <div key={key} className={styles.contextItem}>
                       <div className={styles.contextContent}>
-                        <span className={styles.contextLabel}>{key}</span>
-                        <span className={styles.contextValue}>{value}</span>
+                        <span className={styles.contextLabel}>
+                          {formatMetadataKey(key)}
+                        </span>
+                        <span className={styles.contextValue}>
+                          {formatMetadataValue(value)}
+                        </span>
                       </div>
                     </div>
                   ))}
