@@ -15,6 +15,7 @@ import { parseChoiceParam } from "~/utils/choiceFilterUtils";
 import { parseRatingParam } from "~/utils/ratingFilterUtils";
 import { getTopKeywords, IGNORED_WORDS } from "~/utils/wordAnalysis";
 import { getRating, hasTextResponse } from "./helpers";
+import { extractPhrases } from "./stats/phrases";
 
 // Note: circular dependency if we import mockFeedbackItems here directly while mockData imports stats.
 // To avoid this, we will accept items as arguments in the functions.
@@ -221,6 +222,12 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
         )
         .slice(0, 3);
 
+      // Extract top bigram phrases from text responses
+      const { phrases } = extractPhrases(field.textResponses);
+      const topPhrases = phrases
+        .slice(0, 10)
+        .map((p) => ({ text: p.text, count: p.count }));
+
       fieldStats.push({
         fieldId: field.fieldId,
         fieldType: "TEXT",
@@ -232,6 +239,7 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
           responseRate: 0,
           topKeywords,
           recentResponses,
+          ...(topPhrases.length > 0 ? { topPhrases } : {}),
         },
       });
     } else if (

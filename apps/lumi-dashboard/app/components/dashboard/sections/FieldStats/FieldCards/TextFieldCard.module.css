@@ -13,6 +13,58 @@
   font-size: 0.75rem;
 }
 
+.phraseList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.phraseLink {
+  display: block;
+  padding: var(--ax-space-4) var(--ax-space-8);
+  border-radius: var(--ax-border-radius-medium);
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 0.15s ease;
+}
+
+.phraseLink:hover {
+  background-color: var(--ax-bg-neutral-moderate-hover);
+}
+
+.phraseLink:focus-visible {
+  outline: 2px solid var(--ax-border-focus);
+  outline-offset: 2px;
+}
+
+.phraseProgress {
+  width: 50px;
+  height: 5px;
+  border-radius: 3px;
+  appearance: none;
+  overflow: hidden;
+  background: var(--ax-bg-neutral-moderate);
+}
+
+.phraseProgress::-webkit-progress-bar {
+  background: var(--ax-bg-neutral-moderate);
+  border-radius: 3px;
+}
+
+.phraseProgress::-webkit-progress-value {
+  background: var(--ax-border-accent);
+  border-radius: 3px;
+}
+
+.phraseProgress::-moz-progress-bar {
+  background: var(--ax-border-accent);
+  border-radius: 3px;
+}
+
+.phraseMeta {
+  flex-shrink: 0;
+}
+
 .responseCard {
   padding: 0.5rem 0.75rem;
   background-color: var(--ax-bg-neutral-soft);

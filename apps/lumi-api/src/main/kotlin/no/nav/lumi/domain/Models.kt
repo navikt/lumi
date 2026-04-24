@@ -314,6 +314,7 @@ sealed class FieldStats {
         val responseCount: Int,
         val responseRate: Double,
         val topKeywords: List<KeywordCount> = emptyList(),
+        val topPhrases: List<TextPhrase> = emptyList(),
         val recentResponses: List<RecentTextResponse> = emptyList()
     ) : FieldStats()
 
@@ -332,6 +333,9 @@ data class KeywordCount(
     val word: String,
     val count: Int
 )
+
+@Serializable
+data class TextPhrase(val text: String, val count: Int)
 
 @Serializable
 data class RecentTextResponse(

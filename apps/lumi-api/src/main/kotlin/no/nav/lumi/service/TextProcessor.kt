@@ -7,6 +7,10 @@ import no.nav.lumi.service.text.NorwegianLightStemmer
  * Consolidates text processing logic used across different services and repositories.
  */
 object TextProcessor {
+    // Matches all redaction markers: [FØDSELSNUMMER FJERNET], [HEMMELIG ADRESSE], etc.
+    private val redactionMarkerRegex = Regex("\\[[A-ZÆØÅ][A-ZÆØÅ\\s-]+]")
+    private val tokenCleanupRegex = Regex("[^a-zæøåA-ZÆØÅ0-9\\s]")
+    private val whitespaceRegex = Regex("\\s+")
 
     /**
      * Norwegian stop words — data-driven from analysis of 1 283 production survey responses.
@@ -73,10 +77,15 @@ object TextProcessor {
      * Used for theme matching where any word — including stopwords — may be a keyword.
      */
     fun tokenize(text: String): List<String> {
-        return text.lowercase()
-            .replace(Regex("[^a-zæøåA-ZÆØÅ0-9\\s]"), " ")
-            .split(Regex("\\s+"))
-            .filter { it.length > 2 }
+        return rawTokens(text).filter { it.length > 2 }
+    }
+
+    private fun rawTokens(text: String): List<String> {
+        return text.replace(redactionMarkerRegex, " ")
+            .lowercase()
+            .replace(tokenCleanupRegex, " ")
+            .split(whitespaceRegex)
+            .filter { it.isNotBlank() }
     }
 
     /**

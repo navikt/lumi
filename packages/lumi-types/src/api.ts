@@ -134,6 +134,8 @@ export interface TextStats {
   topKeywords: Array<{ word: string; count: number }>;
   /** Most recent text responses with timestamps */
   recentResponses: Array<{ text: string; submittedAt: string }>;
+  /** Top bigram phrases extracted from text responses */
+  topPhrases?: Array<{ text: string; count: number }>;
 }
 
 export interface ChoiceStats {
@@ -346,7 +348,8 @@ export interface WordFrequency {
 export interface PhraseEntry {
   text: string;
   count: number;
-  sourceResponseIds: string[];
+  /** UUIDer til kildesvar for frasen. Optional fordi TextStats-konteksten ikke beregner dette. */
+  sourceResponseIds?: string[];
 }
 
 export interface QuoteEntry {

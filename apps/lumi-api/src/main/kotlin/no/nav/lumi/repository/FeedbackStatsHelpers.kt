@@ -92,6 +92,8 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
             FieldType.TEXT -> {
                 val texts = mutableListOf<RecentTextResponse>()
                 val wordAccumulators = mutableMapOf<String, StemWordAccumulator>()
+                val bigramCounts = mutableMapOf<String, Int>()
+                val bigramSurfaces = mutableMapOf<String, MutableMap<String, Int>>()
                 var responseCount = 0
 
                 for ((dto, answer) in entries) {
@@ -106,6 +108,18 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
                         val acc = wordAccumulators.getOrPut(stem) { StemWordAccumulator(stem) }
                         acc.addOccurrence(word)
                     }
+
+                    val bigrams = TextProcessor.extractBigrams(text)
+
+                    for (bigram in bigrams.map { it.stemKey }.toSet()) {
+                        bigramCounts[bigram] = (bigramCounts[bigram] ?: 0) + 1
+                    }
+
+                    // Dedup surfaces per response to avoid bias from repeated phrases
+                    for (bigram in bigrams.distinctBy { it.stemKey to it.surface }) {
+                        val surfaces = bigramSurfaces.getOrPut(bigram.stemKey) { mutableMapOf() }
+                        surfaces[bigram.surface] = (surfaces[bigram.surface] ?: 0) + 1
+                    }
                 }
 
                 val responseRate = if (totalFeedbackCount > 0) {
@@ -118,6 +132,17 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
                     .sortedWith(compareByDescending<StemWordAccumulator> { it.totalCount }.thenBy { it.stem })
                     .take(10)
                     .map { acc -> KeywordCount(word = acc.getCanonicalForm(), count = acc.totalCount) }
+
+                val topPhrases = bigramCounts.entries
+                    .asSequence()
+                    .filter { it.value >= 2 }
+                    .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+                    .take(10)
+                    .map { (stemKey, count) ->
+                        val bestSurface = bigramSurfaces[stemKey]?.maxByOrNull { it.value }?.key ?: stemKey
+                        TextPhrase(text = bestSurface, count = count)
+                    }
+                    .toList()
 
                 val recentResponses = texts
                     .sortedByDescending { parseSubmittedAt(it.submittedAt) }
@@ -132,6 +157,7 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
                             responseCount = responseCount,
                             responseRate = responseRate,
                             topKeywords = topKeywords,
+                            topPhrases = topPhrases,
                             recentResponses = recentResponses
                         )
                     )

@@ -84,6 +84,27 @@ class TextProcessorTest : FunSpec({
             words shouldContain "very"
             words shouldContain "good"
         }
+
+        test("strips redaction markers so PII labels do not appear as keywords") {
+            val words = TextProcessor.extractWords(
+                "Min fnr er [FØDSELSNUMMER FJERNET] og mail er [E-POST FJERNET]"
+            )
+
+            words shouldNotContain "fødselsnummer"
+            words shouldNotContain "fjernet"
+            words shouldContain "mail"
+        }
+
+        test("strips redaction markers without FJERNET suffix like HEMMELIG ADRESSE") {
+            val words = TextProcessor.extractWords(
+                "Bor på [HEMMELIG ADRESSE] og trenger hjelp"
+            )
+
+            words shouldNotContain "hemmelig"
+            words shouldNotContain "adresse"
+            words shouldContain "trenger"
+            words shouldContain "hjelp"
+        }
     }
 
     context("tokenize") {
@@ -133,6 +154,21 @@ class TextProcessorTest : FunSpec({
         test("stem key uses pipe separator") {
             val bigrams = TextProcessor.extractBigrams("dårlig design")
             bigrams[0].stemKey.contains("|") shouldBe true
+        }
+
+        test("strips redaction markers before forming bigrams") {
+            val bigrams = TextProcessor.extractBigrams("ring [TELEFON FJERNET] snarest")
+
+            bigrams.map { it.surface } shouldNotContain "telefon"
+            bigrams.any { it.surface == "ring snarest" } shouldBe true
+        }
+
+        test("strips multi-word redaction markers like MULIG NAVN FJERNET") {
+            val bigrams = TextProcessor.extractBigrams("kontaktet [MULIG NAVN FJERNET] igår")
+
+            bigrams.flatMap { it.surface.split(" ") } shouldNotContain "mulig"
+            bigrams.flatMap { it.surface.split(" ") } shouldNotContain "navn"
+            bigrams.any { it.surface == "kontaktet igår" } shouldBe true
         }
     }
 
