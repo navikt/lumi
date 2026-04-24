@@ -92,7 +92,7 @@
   background: transparent;
 }
 
-/* Inner expanded content box is handled by Box.New */
+/* Inner expanded content box is handled by Box */
 
 /* Expanded section label (used with Aksel Detail component) */
 .expandedSectionLabel {

@@ -181,7 +181,7 @@ export function FeedbackCard({
                     value={
                       feedback.context.deviceType +
                       (feedback.context.viewportWidth
-                        ? ` (viewport ${feedback.context.viewportWidth}×${feedback.context.viewportHeight})`
+                        ? ` (viewport ${feedback.context.viewportWidth}×${feedback.context.viewportHeight ?? "?"})`
                         : "")
                     }
                   />

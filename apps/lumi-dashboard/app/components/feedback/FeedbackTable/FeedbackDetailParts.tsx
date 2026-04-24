@@ -83,7 +83,7 @@ export function ContextGrid({
         <ContextItem
           icon="🖼️"
           label="Viewport"
-          value={`${context.viewportWidth || "?"}×${context.viewportHeight || "?"} `}
+          value={`${context.viewportWidth || "?"}×${context.viewportHeight || "?"}`}
         />
       )}
     </HGrid>
