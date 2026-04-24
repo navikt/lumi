@@ -48,6 +48,41 @@ class TextProcessorTest : FunSpec({
             words shouldNotContain "nav"
             words shouldContain "hjelpen"
         }
+
+        test("filters modal verbs and opinion verbs") {
+            val text = "jeg synes man bør kunne opplever tror vet"
+            val words = TextProcessor.extractWords(text)
+
+            words shouldNotContain "synes"
+            words shouldNotContain "bør"
+            words shouldNotContain "opplever"
+            words shouldNotContain "tror"
+            words shouldNotContain "vet"
+        }
+
+        test("filters nynorsk function words") {
+            val text = "ikkje meir nokon korleis kvifor eigen"
+            val words = TextProcessor.extractWords(text)
+
+            words shouldNotContain "ikkje"
+            words shouldNotContain "meir"
+            words shouldNotContain "nokon"
+            words shouldNotContain "korleis"
+            words shouldNotContain "kvifor"
+            words shouldNotContain "eigen"
+        }
+
+        test("does not filter English content words (no English stopwords)") {
+            val text = "the feedback was very good and helpful"
+            val words = TextProcessor.extractWords(text)
+
+            // English words are NOT stopwords — they pass through as content
+            words shouldContain "the"
+            words shouldContain "feedback"
+            words shouldContain "was"
+            words shouldContain "very"
+            words shouldContain "good"
+        }
     }
 
     context("tokenize") {

@@ -9,44 +9,52 @@ import no.nav.lumi.service.text.NorwegianLightStemmer
 object TextProcessor {
 
     /**
-     * Norwegian stop words — union of backend and frontend lists, plus Nav-specific terms.
+     * Norwegian stop words — data-driven from analysis of 1 283 production survey responses.
+     * Covers bokmål and nynorsk function words. No English (< 1% of text, not useful).
      * These are filtered out before word frequency / bigram analysis.
      */
     val STOP_WORDS = setOf(
-        // --- Core Norwegian function words ---
+        // --- Core bokmål function words ---
         "og", "i", "jeg", "det", "at", "en", "et", "den", "til", "er", "som",
-        "på", "de", "med", "han", "av", "ikke", "ikkje", "der", "så", "var", "meg",
+        "på", "de", "med", "han", "av", "ikke", "der", "så", "var", "meg",
         "seg", "men", "ett", "har", "om", "vi", "min", "mitt", "ha", "hadde",
         "hun", "nå", "over", "da", "ved", "fra", "du", "ut", "sin", "dem",
         "oss", "opp", "man", "kan", "hans", "hvor", "eller", "hva", "skal",
-        "selv", "sjøl", "her", "alle", "vil", "bli", "ble", "blei", "blitt", "kunne",
+        "selv", "sjøl", "her", "alle", "vil", "bli", "ble", "blei", "blitt",
         "inn", "når", "være", "kom", "noen", "noe", "ville", "dere", "deres",
-        "kun", "ja", "etter", "ned", "skulle", "denne", "for", "deg", "to",
-        "måtte", "få", "fikk", "fått", "gjøre", "gjort", "gjør",
+        "kun", "ja", "etter", "ned", "denne", "for", "deg", "to",
+
+        // --- Modal / auxiliary verbs ---
+        "kunne", "skulle", "måtte", "må", "bør", "burde",
+        "få", "fikk", "fått", "får",
+        "gjøre", "gjort", "gjør",
 
         // --- Pronouns, determiners, conjunctions ---
         "si", "sine", "sitt", "mot", "å", "meget", "hvorfor", "dette", "disse",
         "uten", "hvordan", "ingen", "din", "ditt", "blir", "samme", "hvilken",
-        "hvilke", "sånn", "inni", "mellom", "vår", "hver", "hvem", "vors",
+        "hvilke", "sånn", "inni", "mellom", "vår", "hver", "hvem",
         "hvis", "både", "bare", "fordi", "før", "mange", "også", "slik",
         "vært", "begge", "siden", "henne", "hennar", "hennes", "enten",
         "verken", "heller", "likevel", "altså", "derfor", "dersom", "imidlertid",
 
-        // --- Common English stop words (surveys may contain English) ---
-        "the", "and", "that", "this", "was", "were", "been", "have", "has", "had",
-        "are", "is", "will", "would", "could", "should", "may", "might", "must",
-        "shall", "can", "need", "you", "your", "yours", "they", "their", "theirs",
-        "them", "she", "her", "hers", "him", "his", "its", "our", "ours",
-        "who", "whom", "whose", "what", "which", "where", "when", "why", "how",
-        "all", "each", "every", "both", "few", "more", "most", "other", "some",
-        "such", "only", "own", "than", "too", "very", "just", "but", "because",
-        "with", "about", "into", "through", "during", "before", "after", "above",
-        "below", "between", "under", "again", "further", "then", "once", "here",
-        "there", "any", "not",
+        // --- Quantifiers, degree adverbs, modal particles ---
+        "mer", "mye", "lite", "flere", "alt", "andre", "enn", "nok",
+        "litt", "veldig", "ganske", "helt", "svært",
+        "kanskje", "alltid", "aldri", "ofte", "gjerne", "igjen",
+        "jo", "vel",
 
-        // --- Short / noise words (Norwegian) ---
-        "litt", "veldig", "ganske", "helt", "går", "gå", "gikk", "gått",
-        "ser", "sett", "tar", "tok", "tatt", "får",
+        // --- Common opinion / perception verbs (no content value) ---
+        "synes", "tror", "tenker", "vet", "vite", "mener",
+        "opplever", "føler", "føles",
+        "kommer", "komme",
+
+        // --- Short / noise verb forms ---
+        "går", "gå", "gikk", "gått",
+        "ser", "sett", "tar", "tok", "tatt",
+
+        // --- Nynorsk function words ---
+        "ikkje", "meir", "mykje", "nokon", "noko", "deira",
+        "korleis", "kvifor", "heilt", "sjølv", "eigen", "kvar", "kven",
 
         // --- Nav-specific noise ---
         "nav", "takk", "fjernet",
