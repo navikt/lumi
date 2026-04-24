@@ -1,5 +1,14 @@
 import { TagIcon } from "@navikt/aksel-icons";
-import { Box, Detail, HStack, Label, Table, VStack } from "@navikt/ds-react";
+import {
+  BodyShort,
+  Box,
+  Detail,
+  HGrid,
+  HStack,
+  Label,
+  Table,
+  VStack,
+} from "@navikt/ds-react";
 import type { FeedbackDto } from "~/types/api";
 import { TagEditor } from "../TagEditor";
 import styles from "./styles.module.css";
@@ -56,13 +65,13 @@ export function FeedbackExpandedView({ feedback }: FeedbackExpandedViewProps) {
             )}
 
             {/* IDs Footer */}
-            <div className={styles.metadata}>
+            <HStack className={styles.metadata} gap="space-16" wrap>
               <Detail textColor="subtle">ID: {feedback.id}</Detail>
               <Detail textColor="subtle">Survey: {feedback.surveyId}</Detail>
               {feedback.surveyVersion && (
                 <Detail textColor="subtle">v{feedback.surveyVersion}</Detail>
               )}
-            </div>
+            </HStack>
           </VStack>
         </Box>
       </Table.DataCell>
@@ -83,7 +92,7 @@ function ExpandedSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className={styles.expandedSection}>
+    <VStack gap="space-8">
       <Label size="small" className={styles.expandedSectionLabel}>
         {icon ? (
           <HStack gap="space-4" align="center">
@@ -95,7 +104,7 @@ function ExpandedSection({
         )}
       </Label>
       {children}
-    </div>
+    </VStack>
   );
 }
 
@@ -108,7 +117,7 @@ function ContextGrid({
   context: NonNullable<FeedbackDto["context"]>;
 }) {
   return (
-    <div className={styles.contextGrid}>
+    <HGrid columns="repeat(auto-fit, minmax(180px, 1fr))" gap="space-12">
       {context.pathname && (
         <ContextItem icon="📍" label="Side" value={context.pathname} />
       )}
@@ -126,7 +135,7 @@ function ContextGrid({
           value={`${context.viewportWidth || "?"}×${context.viewportHeight || "?"} `}
         />
       )}
-    </div>
+    </HGrid>
   );
 }
 
@@ -145,10 +154,12 @@ function ContextItem({
   return (
     <div className={styles.contextItem}>
       <span className={styles.contextIcon}>{icon}</span>
-      <div className={styles.contextContent}>
-        <span className={styles.contextLabel}>{label}</span>
-        <span className={styles.contextValue}>{value}</span>
-      </div>
+      <VStack gap="space-2">
+        <Detail className={styles.contextLabel} textColor="subtle">
+          {label}
+        </Detail>
+        <BodyShort className={styles.contextValue}>{value}</BodyShort>
+      </VStack>
     </div>
   );
 }
@@ -158,19 +169,19 @@ function ContextItem({
  */
 function MetadataGrid({ metadata }: { metadata: Record<string, string> }) {
   return (
-    <div className={styles.contextGrid}>
+    <HGrid columns="repeat(auto-fit, minmax(180px, 1fr))" gap="space-12">
       {Object.entries(metadata).map(([key, value]) => (
         <div key={key} className={styles.contextItem}>
-          <div className={styles.contextContent}>
-            <span className={styles.contextLabel}>
+          <VStack gap="space-2">
+            <Detail className={styles.contextLabel} textColor="subtle">
               {formatMetadataKey(key)}
-            </span>
-            <span className={styles.contextValue}>
+            </Detail>
+            <BodyShort className={styles.contextValue}>
               {formatMetadataValue(value)}
-            </span>
-          </div>
+            </BodyShort>
+          </VStack>
         </div>
       ))}
-    </div>
+    </HGrid>
   );
 }

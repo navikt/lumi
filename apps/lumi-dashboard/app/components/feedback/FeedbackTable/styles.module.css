@@ -94,32 +94,19 @@
 
 /* Inner expanded content box is handled by Box.New */
 
-.expandedSection {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
+/* Expanded section label (used with Aksel Label component) */
 .expandedSectionLabel {
   color: var(--ax-text-subtle);
-  font-weight: 500;
   text-transform: uppercase;
   font-size: 0.6875rem;
   letter-spacing: 0.05em;
 }
 
-/* Context grid for expanded view */
-.contextGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.75rem;
-}
-
 .contextItem {
   display: flex;
   align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.875rem 1rem;
+  gap: var(--ax-space-12, 0.75rem);
+  padding: 0.875rem var(--ax-space-16, 1rem);
   background: var(--ax-bg-default);
   border-radius: 8px;
   border: 1px solid var(--ax-border-subtle);
@@ -140,34 +127,24 @@
   margin-top: 0.125rem;
 }
 
-.contextContent {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  min-width: 0;
-}
-
+/* Context label (used with Aksel Detail component — color handled by textColor prop) */
 .contextLabel {
   font-size: 0.6875rem;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--ax-text-subtle);
 }
 
+/* Context value (used with Aksel BodyShort component — color handled by default) */
 .contextValue {
   font-size: 0.9375rem;
   font-weight: 500;
-  color: var(--ax-text-default);
   word-break: break-word;
 }
 
-/* Metadata row */
+/* Metadata footer row (layout handled by Aksel HStack) */
 .metadata {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  padding-top: 0.75rem;
+  padding-top: var(--ax-space-12, 0.75rem);
   border-top: 1px solid var(--ax-border-subtle);
 }
 

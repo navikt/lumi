@@ -9,7 +9,9 @@ import {
   Button,
   CopyButton,
   Detail,
+  HGrid,
   HStack,
+  Label,
   Tag,
   Tooltip,
   VStack,
@@ -129,10 +131,10 @@ export function FeedbackCard({
           <VStack gap="space-16">
             {/* Section: Svar (Answers) */}
             {feedback.answers && feedback.answers.length > 0 && (
-              <div className={styles.expandedSection}>
-                <span className={styles.expandedSectionLabel}>
+              <VStack gap="space-8">
+                <Label size="small" className={styles.expandedSectionLabel}>
                   Svar ({feedback.answers.length})
-                </span>
+                </Label>
                 {/* Timeline on larger screens, simple cards on small screens */}
                 {showTimeline ? (
                   <TimelineView answers={feedback.answers} styles={styles} />
@@ -145,45 +147,59 @@ export function FeedbackCard({
                     ))}
                   </VStack>
                 )}
-              </div>
+              </VStack>
             )}
 
             {/* Section: Kontekst (Context) - using contextGrid styling */}
-            <div className={styles.expandedSection}>
-              <span className={styles.expandedSectionLabel}>Kontekst</span>
-              <div className={styles.contextGrid}>
+            <VStack gap="space-8">
+              <Label size="small" className={styles.expandedSectionLabel}>
+                Kontekst
+              </Label>
+              <HGrid
+                columns="repeat(auto-fit, minmax(180px, 1fr))"
+                gap="space-12"
+              >
                 {/* Survey */}
                 <div className={styles.contextItem}>
                   <span className={styles.contextIcon}>📋</span>
-                  <div className={styles.contextContent}>
-                    <span className={styles.contextLabel}>Survey</span>
-                    <span className={styles.contextValue}>
+                  <VStack gap="space-2">
+                    <Detail className={styles.contextLabel} textColor="subtle">
+                      Survey
+                    </Detail>
+                    <BodyShort className={styles.contextValue}>
                       {feedback.surveyId}
-                    </span>
-                  </div>
+                    </BodyShort>
+                  </VStack>
                 </div>
 
                 {/* Timestamp */}
                 <div className={styles.contextItem}>
                   <span className={styles.contextIcon}>🕐</span>
-                  <div className={styles.contextContent}>
-                    <span className={styles.contextLabel}>Tidspunkt</span>
-                    <span className={styles.contextValue}>
+                  <VStack gap="space-2">
+                    <Detail className={styles.contextLabel} textColor="subtle">
+                      Tidspunkt
+                    </Detail>
+                    <BodyShort className={styles.contextValue}>
                       {dayjs(feedback.submittedAt).format("DD. MMM, HH:mm")}
-                    </span>
-                  </div>
+                    </BodyShort>
+                  </VStack>
                 </div>
 
                 {/* URL/Pathname */}
                 {feedback.context?.pathname && (
                   <div className={styles.contextItem}>
                     <span className={styles.contextIcon}>📍</span>
-                    <div className={styles.contextContent}>
-                      <span className={styles.contextLabel}>Side</span>
-                      <span className={styles.contextValue}>
+                    <VStack gap="space-2">
+                      <Detail
+                        className={styles.contextLabel}
+                        textColor="subtle"
+                      >
+                        Side
+                      </Detail>
+                      <BodyShort className={styles.contextValue}>
                         {feedback.context.pathname}
-                      </span>
-                    </div>
+                      </BodyShort>
+                    </VStack>
                   </div>
                 )}
 
@@ -193,47 +209,62 @@ export function FeedbackCard({
                     <span className={styles.contextIcon}>
                       {deviceToIcon(feedback.context.deviceType)}
                     </span>
-                    <div className={styles.contextContent}>
-                      <span className={styles.contextLabel}>Enhet</span>
-                      <span className={styles.contextValue}>
+                    <VStack gap="space-2">
+                      <Detail
+                        className={styles.contextLabel}
+                        textColor="subtle"
+                      >
+                        Enhet
+                      </Detail>
+                      <BodyShort className={styles.contextValue}>
                         {feedback.context.deviceType}
                         {feedback.context.viewportWidth &&
                           ` (viewport ${feedback.context.viewportWidth}×${feedback.context.viewportHeight})`}
-                      </span>
-                    </div>
+                      </BodyShort>
+                    </VStack>
                   </div>
                 )}
-              </div>
-            </div>
+              </HGrid>
+            </VStack>
 
             {/* Section: Segment (context.tags) */}
             {feedback.context?.tags &&
               Object.keys(feedback.context.tags).length > 0 && (
-                <div className={styles.expandedSection}>
-                  <span className={styles.expandedSectionLabel}>🏷️ Segment</span>
-                  <div className={styles.contextGrid}>
+                <VStack gap="space-8">
+                  <Label size="small" className={styles.expandedSectionLabel}>
+                    🏷️ Segment
+                  </Label>
+                  <HGrid
+                    columns="repeat(auto-fit, minmax(180px, 1fr))"
+                    gap="space-12"
+                  >
                     {Object.entries(feedback.context.tags).map(
                       ([key, value]) => (
                         <div key={key} className={styles.contextItem}>
-                          <div className={styles.contextContent}>
-                            <span className={styles.contextLabel}>
+                          <VStack gap="space-2">
+                            <Detail
+                              className={styles.contextLabel}
+                              textColor="subtle"
+                            >
                               {formatMetadataKey(key)}
-                            </span>
-                            <span className={styles.contextValue}>
+                            </Detail>
+                            <BodyShort className={styles.contextValue}>
                               {formatMetadataValue(value)}
-                            </span>
-                          </div>
+                            </BodyShort>
+                          </VStack>
                         </div>
                       ),
                     )}
-                  </div>
-                </div>
+                  </HGrid>
+                </VStack>
               )}
 
             {/* Section: Tags */}
             {feedback.tags && feedback.tags.length > 0 && (
-              <div className={styles.expandedSection}>
-                <span className={styles.expandedSectionLabel}>🏷️ Tagger</span>
+              <VStack gap="space-8">
+                <Label size="small" className={styles.expandedSectionLabel}>
+                  🏷️ Tagger
+                </Label>
                 <HStack gap="space-8" wrap>
                   {feedback.tags.map((tag) => (
                     <Tag
@@ -246,28 +277,36 @@ export function FeedbackCard({
                     </Tag>
                   ))}
                 </HStack>
-              </div>
+              </VStack>
             )}
 
             {/* Section: Metadata */}
             {feedback.metadata && Object.keys(feedback.metadata).length > 0 && (
-              <div className={styles.expandedSection}>
-                <span className={styles.expandedSectionLabel}>📋 Metadata</span>
-                <div className={styles.contextGrid}>
+              <VStack gap="space-8">
+                <Label size="small" className={styles.expandedSectionLabel}>
+                  📋 Metadata
+                </Label>
+                <HGrid
+                  columns="repeat(auto-fit, minmax(180px, 1fr))"
+                  gap="space-12"
+                >
                   {Object.entries(feedback.metadata).map(([key, value]) => (
                     <div key={key} className={styles.contextItem}>
-                      <div className={styles.contextContent}>
-                        <span className={styles.contextLabel}>
+                      <VStack gap="space-2">
+                        <Detail
+                          className={styles.contextLabel}
+                          textColor="subtle"
+                        >
                           {formatMetadataKey(key)}
-                        </span>
-                        <span className={styles.contextValue}>
+                        </Detail>
+                        <BodyShort className={styles.contextValue}>
                           {formatMetadataValue(value)}
-                        </span>
-                      </div>
+                        </BodyShort>
+                      </VStack>
                     </div>
                   ))}
-                </div>
-              </div>
+                </HGrid>
+              </VStack>
             )}
 
             {/* Sensitive data warning */}
@@ -278,12 +317,12 @@ export function FeedbackCard({
             )}
 
             {/* IDs Footer */}
-            <div className={styles.metadata}>
+            <HStack className={styles.metadata} gap="space-16" wrap>
               <Detail textColor="subtle">ID: {feedback.id}</Detail>
               {feedback.surveyVersion && (
                 <Detail textColor="subtle">v{feedback.surveyVersion}</Detail>
               )}
-            </div>
+            </HStack>
           </VStack>
         )}
 
