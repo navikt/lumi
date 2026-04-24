@@ -93,12 +93,38 @@ object TextProcessor {
     data class StemmedWord(val surface: String, val stem: String)
 
     /**
+     * A bigram (two-word phrase) with its stemmed key for grouping.
+     */
+    data class StemmedBigram(
+        val surface: String,
+        val stemKey: String,
+    )
+
+    /**
      * Extract words from text with their stems.
      * @return List of (surfaceForm, stem) pairs
      */
     fun extractStemmedWords(text: String): List<StemmedWord> {
         return extractWords(text).map { word ->
             StemmedWord(surface = word, stem = stemNorwegian(word))
+        }
+    }
+
+    /**
+     * Extract content-word bigrams from text.
+     * Stopwords are filtered first, then adjacent content words are paired.
+     * This means stopwords between content words are skipped:
+     * "vanskelig å svare" → ["vanskelig", "svare"] → bigram "vanskelig svare"
+     */
+    fun extractBigrams(text: String): List<StemmedBigram> {
+        val contentWords = extractWords(text)
+        if (contentWords.size < 2) return emptyList()
+
+        return contentWords.zipWithNext().map { (w1, w2) ->
+            StemmedBigram(
+                surface = "$w1 $w2",
+                stemKey = "${stemNorwegian(w1)}|${stemNorwegian(w2)}",
+            )
         }
     }
 }

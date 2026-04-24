@@ -343,6 +343,19 @@ export interface WordFrequency {
   sourceResponses?: SourceResponse[];
 }
 
+export interface PhraseEntry {
+  text: string;
+  count: number;
+  sourceResponseIds: string[];
+}
+
+export interface QuoteEntry {
+  text: string;
+  answeredAt: string;
+}
+
+export type ConfidenceLevel = "low" | "medium" | "high";
+
 export interface DiscoveryTheme {
   theme: string;
   count: number;
@@ -360,6 +373,9 @@ export interface DiscoveryResponse {
     blocker?: string;
     submittedAt: string;
   }>;
+  phrases?: PhraseEntry[];
+  quotes?: QuoteEntry[];
+  confidenceLevel?: ConfidenceLevel;
 }
 
 // ============================================
@@ -383,6 +399,9 @@ export interface BlockerResponse {
     task: string;
     submittedAt: string;
   }>;
+  phrases?: PhraseEntry[];
+  quotes?: QuoteEntry[];
+  confidenceLevel?: ConfidenceLevel;
 }
 
 // ============================================
