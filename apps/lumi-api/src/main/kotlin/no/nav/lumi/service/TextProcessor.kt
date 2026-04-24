@@ -54,12 +54,21 @@ object TextProcessor {
 
     /**
      * Extract words from text, filtering stop words and short words.
+     * Used for frequency analysis / word clouds where noise should be removed.
      */
     fun extractWords(text: String): List<String> {
+        return tokenize(text).filter { it !in STOP_WORDS }
+    }
+
+    /**
+     * Tokenize text into lowercase words (length > 2), without stopword filtering.
+     * Used for theme matching where any word — including stopwords — may be a keyword.
+     */
+    fun tokenize(text: String): List<String> {
         return text.lowercase()
             .replace(Regex("[^a-zæøåA-ZÆØÅ0-9\\s]"), " ")
             .split(Regex("\\s+"))
-            .filter { it.length > 2 && it !in STOP_WORDS }
+            .filter { it.length > 2 }
     }
 
     /**

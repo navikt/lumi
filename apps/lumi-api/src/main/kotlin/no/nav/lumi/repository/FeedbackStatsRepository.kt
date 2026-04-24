@@ -452,7 +452,7 @@ class FeedbackStatsRepository {
         )
 
         for (response in blockerResponses) {
-            val blockerWordStems = TextProcessor.extractWords(response.blocker).map { TextProcessor.stemNorwegian(it) }
+            val blockerWordStems = TextProcessor.tokenize(response.blocker).map { TextProcessor.stemNorwegian(it) }
             var matchedAny = false
 
             for (acc in themeAccumulators) {

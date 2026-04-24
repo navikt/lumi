@@ -50,6 +50,24 @@ class TextProcessorTest : FunSpec({
         }
     }
 
+    context("tokenize") {
+        test("includes stopwords (for theme matching)") {
+            val tokens = TextProcessor.tokenize("Takk for nav hjelpen")
+
+            tokens shouldContain "takk"
+            tokens shouldContain "nav"
+            tokens shouldContain "hjelpen"
+            tokens shouldContain "for" // tokenize keeps ALL words > 2 chars, including stopwords
+        }
+
+        test("preserves all words longer than 2 chars") {
+            val tokens = TextProcessor.tokenize("enten disse veldig mange fordi")
+            tokens shouldContain "enten"
+            tokens shouldContain "disse"
+            tokens shouldContain "veldig"
+        }
+    }
+
     context("NorwegianLightStemmer") {
         test("stems definite plural (-ene)") {
             NorwegianLightStemmer.stem("søknadene") shouldBe "søknad"

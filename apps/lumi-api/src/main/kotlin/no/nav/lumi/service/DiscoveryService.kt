@@ -136,11 +136,11 @@ class DiscoveryService(
 
     /**
      * Match text to a theme based on keywords.
-     * Uses simple Norwegian stemming for better matching (e.g., "søknad" matches "søknaden").
+     * Uses tokenize() (not extractWords()) so stopwords can still be theme keywords.
      * Returns the name of the first matching theme (by priority) or "Annet".
      */
     internal fun matchTheme(text: String, themes: List<TextThemeDto>): String {
-        val textWords = TextProcessor.extractWords(text).map { TextProcessor.stemNorwegian(it) }.toSet()
+        val textWords = TextProcessor.tokenize(text).map { TextProcessor.stemNorwegian(it) }.toSet()
         
         for (theme in themes.sortedByDescending { it.priority }) {
             val keywordStems = theme.keywords.map { TextProcessor.stemNorwegian(it.lowercase()) }.toSet()
