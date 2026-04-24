@@ -11,7 +11,6 @@ import {
   Detail,
   HGrid,
   HStack,
-  Label,
   Tag,
   Tooltip,
   VStack,
@@ -132,9 +131,9 @@ export function FeedbackCard({
             {/* Section: Svar (Answers) */}
             {feedback.answers && feedback.answers.length > 0 && (
               <VStack gap="space-8">
-                <Label size="small" className={styles.expandedSectionLabel}>
+                <Detail className={styles.expandedSectionLabel}>
                   Svar ({feedback.answers.length})
-                </Label>
+                </Detail>
                 {/* Timeline on larger screens, simple cards on small screens */}
                 {showTimeline ? (
                   <TimelineView answers={feedback.answers} styles={styles} />
@@ -152,9 +151,7 @@ export function FeedbackCard({
 
             {/* Section: Kontekst (Context) - using contextGrid styling */}
             <VStack gap="space-8">
-              <Label size="small" className={styles.expandedSectionLabel}>
-                Kontekst
-              </Label>
+              <Detail className={styles.expandedSectionLabel}>Kontekst</Detail>
               <HGrid
                 columns="repeat(auto-fit, minmax(180px, 1fr))"
                 gap="space-12"
@@ -231,9 +228,9 @@ export function FeedbackCard({
             {feedback.context?.tags &&
               Object.keys(feedback.context.tags).length > 0 && (
                 <VStack gap="space-8">
-                  <Label size="small" className={styles.expandedSectionLabel}>
+                  <Detail className={styles.expandedSectionLabel}>
                     🏷️ Segment
-                  </Label>
+                  </Detail>
                   <HGrid
                     columns="repeat(auto-fit, minmax(180px, 1fr))"
                     gap="space-12"
@@ -262,9 +259,9 @@ export function FeedbackCard({
             {/* Section: Tags */}
             {feedback.tags && feedback.tags.length > 0 && (
               <VStack gap="space-8">
-                <Label size="small" className={styles.expandedSectionLabel}>
+                <Detail className={styles.expandedSectionLabel}>
                   🏷️ Tagger
-                </Label>
+                </Detail>
                 <HStack gap="space-8" wrap>
                   {feedback.tags.map((tag) => (
                     <Tag
@@ -283,9 +280,9 @@ export function FeedbackCard({
             {/* Section: Metadata */}
             {feedback.metadata && Object.keys(feedback.metadata).length > 0 && (
               <VStack gap="space-8">
-                <Label size="small" className={styles.expandedSectionLabel}>
+                <Detail className={styles.expandedSectionLabel}>
                   📋 Metadata
-                </Label>
+                </Detail>
                 <HGrid
                   columns="repeat(auto-fit, minmax(180px, 1fr))"
                   gap="space-12"

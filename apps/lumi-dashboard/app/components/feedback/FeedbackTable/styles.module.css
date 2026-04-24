@@ -94,7 +94,7 @@
 
 /* Inner expanded content box is handled by Box.New */
 
-/* Expanded section label (used with Aksel Label component) */
+/* Expanded section label (used with Aksel Detail component) */
 .expandedSectionLabel {
   color: var(--ax-text-subtle);
   text-transform: uppercase;

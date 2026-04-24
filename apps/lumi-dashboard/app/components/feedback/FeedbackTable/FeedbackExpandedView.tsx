@@ -5,7 +5,6 @@ import {
   Detail,
   HGrid,
   HStack,
-  Label,
   Table,
   VStack,
 } from "@navikt/ds-react";
@@ -93,16 +92,14 @@ function ExpandedSection({
 }) {
   return (
     <VStack gap="space-8">
-      <Label size="small" className={styles.expandedSectionLabel}>
-        {icon ? (
-          <HStack gap="space-4" align="center">
-            {icon}
-            {label}
-          </HStack>
-        ) : (
-          label
-        )}
-      </Label>
+      {icon ? (
+        <HStack gap="space-4" align="center">
+          {icon}
+          <Detail className={styles.expandedSectionLabel}>{label}</Detail>
+        </HStack>
+      ) : (
+        <Detail className={styles.expandedSectionLabel}>{label}</Detail>
+      )}
       {children}
     </VStack>
   );
