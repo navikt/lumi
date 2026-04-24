@@ -1,10 +1,14 @@
 import { TagIcon } from "@navikt/aksel-icons";
-import { Box, Detail, HStack, Label, Table, VStack } from "@navikt/ds-react";
+import { Box, Detail, HStack, Table, VStack } from "@navikt/ds-react";
 import type { FeedbackDto } from "~/types/api";
 import { TagEditor } from "../TagEditor";
+import {
+  ContextGrid,
+  ExpandedSection,
+  MetadataGrid,
+} from "./FeedbackDetailParts";
 import styles from "./styles.module.css";
 import { TimelineView } from "./TimelineView";
-import { deviceToIcon, formatMetadataKey, formatMetadataValue } from "./utils";
 
 interface FeedbackExpandedViewProps {
   feedback: FeedbackDto;
@@ -40,6 +44,14 @@ export function FeedbackExpandedView({ feedback }: FeedbackExpandedViewProps) {
               </ExpandedSection>
             )}
 
+            {/* Segment (context.tags) */}
+            {feedback.context?.tags &&
+              Object.keys(feedback.context.tags).length > 0 && (
+                <ExpandedSection label="🏷️ Segment">
+                  <MetadataGrid metadata={feedback.context.tags} />
+                </ExpandedSection>
+              )}
+
             {/* Custom Metadata */}
             {feedback.metadata && Object.keys(feedback.metadata).length > 0 && (
               <ExpandedSection label="📋 Metadata">
@@ -48,121 +60,16 @@ export function FeedbackExpandedView({ feedback }: FeedbackExpandedViewProps) {
             )}
 
             {/* IDs Footer */}
-            <div className={styles.metadata}>
+            <HStack className={styles.metadata} gap="space-16" wrap>
               <Detail textColor="subtle">ID: {feedback.id}</Detail>
               <Detail textColor="subtle">Survey: {feedback.surveyId}</Detail>
               {feedback.surveyVersion && (
                 <Detail textColor="subtle">v{feedback.surveyVersion}</Detail>
               )}
-            </div>
+            </HStack>
           </VStack>
         </Box>
       </Table.DataCell>
     </Table.Row>
-  );
-}
-
-/**
- * Reusable section wrapper with label.
- */
-function ExpandedSection({
-  label,
-  icon,
-  children,
-}: {
-  label: string;
-  icon?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={styles.expandedSection}>
-      <Label size="small" className={styles.expandedSectionLabel}>
-        {icon ? (
-          <HStack gap="space-4" align="center">
-            {icon}
-            {label}
-          </HStack>
-        ) : (
-          label
-        )}
-      </Label>
-      {children}
-    </div>
-  );
-}
-
-/**
- * Displays submission context (pathname, device, viewport).
- */
-function ContextGrid({
-  context,
-}: {
-  context: NonNullable<FeedbackDto["context"]>;
-}) {
-  return (
-    <div className={styles.contextGrid}>
-      {context.pathname && (
-        <ContextItem icon="📍" label="Side" value={context.pathname} />
-      )}
-      {context.deviceType && (
-        <ContextItem
-          icon={deviceToIcon(context.deviceType)}
-          label="Enhet"
-          value={context.deviceType}
-        />
-      )}
-      {(context.viewportWidth || context.viewportHeight) && (
-        <ContextItem
-          icon="🖼️"
-          label="Viewport"
-          value={`${context.viewportWidth || "?"}×${context.viewportHeight || "?"} `}
-        />
-      )}
-    </div>
-  );
-}
-
-/**
- * Single item in the context grid.
- */
-function ContextItem({
-  icon,
-  label,
-  value,
-}: {
-  icon: string;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className={styles.contextItem}>
-      <span className={styles.contextIcon}>{icon}</span>
-      <div className={styles.contextContent}>
-        <span className={styles.contextLabel}>{label}</span>
-        <span className={styles.contextValue}>{value}</span>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Displays custom metadata key-value pairs.
- */
-function MetadataGrid({ metadata }: { metadata: Record<string, string> }) {
-  return (
-    <div className={styles.contextGrid}>
-      {Object.entries(metadata).map(([key, value]) => (
-        <div key={key} className={styles.contextItem}>
-          <div className={styles.contextContent}>
-            <span className={styles.contextLabel}>
-              {formatMetadataKey(key)}
-            </span>
-            <span className={styles.contextValue}>
-              {formatMetadataValue(value)}
-            </span>
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }
