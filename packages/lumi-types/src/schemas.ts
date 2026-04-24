@@ -635,6 +635,9 @@ const TextStatsSchema = z.object({
   recentResponses: z.array(
     z.object({ text: z.string(), submittedAt: z.string() }),
   ),
+  topPhrases: z
+    .array(z.object({ text: z.string(), count: z.number() }))
+    .optional(),
 });
 
 const ChoiceStatsSchema = z.object({
@@ -764,7 +767,7 @@ const WordFrequencySchema = z.object({
 const PhraseEntrySchema = z.object({
   text: z.string(),
   count: z.number(),
-  sourceResponseIds: z.array(z.string()),
+  sourceResponseIds: z.array(z.string()).optional(),
 });
 
 const QuoteEntrySchema = z.object({

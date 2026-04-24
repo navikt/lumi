@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { FeedbackStatsSchema } from "~/types/schemas";
+import { DiscoveryResponseSchema, FeedbackStatsSchema } from "~/types/schemas";
 import {
   buildStatsDashboardUrl,
   STATS_DASHBOARD_PATH,
@@ -85,5 +85,109 @@ describe("fetchStats contract", () => {
     };
 
     expect(() => FeedbackStatsSchema.parse(payload)).not.toThrow();
+  });
+
+  it("accepts TextStats field with topPhrases", () => {
+    const payload = {
+      totalCount: 10,
+      countWithText: 4,
+      countWithoutText: 6,
+      byRating: { "1": 1, "2": 2, "3": 3, "4": 2, "5": 2 },
+      byApp: { "app-1": 10 },
+      byDate: { "2026-01-21": 10 },
+      bySurveyId: { "survey-1": 10 },
+      averageRating: 3.2,
+      ratingByDate: {
+        "2026-01-21": { average: 3.2, count: 10 },
+      },
+      byDevice: { mobile: { count: 10, averageRating: 3.2 } },
+      byPathname: { "/": { count: 10, averageRating: 3.2 } },
+      lowestRatingPaths: {},
+      fieldStats: [
+        {
+          fieldId: "text-1",
+          fieldType: "TEXT",
+          label: "Hva synes du?",
+          stats: {
+            type: "text",
+            responseCount: 4,
+            responseRate: 0.4,
+            topKeywords: [{ word: "vanskelig", count: 3 }],
+            recentResponses: [
+              { text: "Alt var bra", submittedAt: "2026-01-21T10:00:00Z" },
+            ],
+            topPhrases: [{ text: "vanskelig forstå", count: 5 }],
+          },
+        },
+      ],
+      surveyType: "rating",
+      period: { fromDate: "2026-01-01", toDate: "2026-01-21", days: 21 },
+      privacy: { masked: false, threshold: 5 },
+    };
+
+    const parsed = FeedbackStatsSchema.parse(payload);
+    const textField = parsed.fieldStats[0]?.stats;
+    expect(textField).toBeDefined();
+    if (textField?.type === "text") {
+      expect(textField.topPhrases).toEqual([
+        { text: "vanskelig forstå", count: 5 },
+      ]);
+    }
+  });
+
+  it("accepts TextStats field without topPhrases (backwards-compat)", () => {
+    const payload = {
+      totalCount: 5,
+      countWithText: 2,
+      countWithoutText: 3,
+      byRating: {},
+      byApp: {},
+      byDate: {},
+      bySurveyId: {},
+      averageRating: null,
+      ratingByDate: {},
+      byDevice: {},
+      byPathname: {},
+      lowestRatingPaths: {},
+      fieldStats: [
+        {
+          fieldId: "text-1",
+          fieldType: "TEXT",
+          label: "Kommentar",
+          stats: {
+            type: "text",
+            responseCount: 2,
+            responseRate: 0.4,
+            topKeywords: [],
+            recentResponses: [],
+          },
+        },
+      ],
+      period: { fromDate: null, toDate: null, days: 0 },
+    };
+
+    const parsed = FeedbackStatsSchema.parse(payload);
+    const textField = parsed.fieldStats[0]?.stats;
+    expect(textField).toBeDefined();
+    if (textField?.type === "text") {
+      expect(textField.topPhrases).toBeUndefined();
+    }
+  });
+
+  it("accepts PhraseEntry without sourceResponseIds (backwards-compat)", () => {
+    const discoveryPayload = {
+      totalSubmissions: 10,
+      wordFrequency: [],
+      themes: [],
+      recentResponses: [],
+      phrases: [
+        { text: "vanskelig svare", count: 8 },
+        { text: "greie spørsmål", count: 4, sourceResponseIds: ["id-1"] },
+      ],
+    };
+
+    const parsed = DiscoveryResponseSchema.parse(discoveryPayload);
+    expect(parsed.phrases?.[0]?.sourceResponseIds).toBeUndefined();
+    expect(parsed.phrases?.[1]?.sourceResponseIds).toEqual(["id-1"]);
   });
 });
