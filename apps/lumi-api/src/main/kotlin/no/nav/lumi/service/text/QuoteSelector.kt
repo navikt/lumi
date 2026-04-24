@@ -18,7 +18,7 @@ object QuoteSelector {
      * Filters to quotes between [MIN_QUOTE_LENGTH] and [MAX_QUOTE_LENGTH] characters,
      * then shuffles with a deterministic seed for reproducibility within the same dataset.
      *
-     * @param candidates List of (text, submittedAt) pairs
+     * @param candidates List of (text, answeredAt) pairs
      * @param targetCount Maximum number of quotes to return (default 5)
      * @param seed Random seed for reproducible shuffling
      */
@@ -35,7 +35,7 @@ object QuoteSelector {
         return eligible
             .shuffled(Random(seed))
             .take(targetCount)
-            .map { (text, submittedAt) -> QuoteEntry(text = text, answeredAt = submittedAt) }
+            .map { (text, answeredAt) -> QuoteEntry(text = text, answeredAt = answeredAt) }
     }
 
     /**

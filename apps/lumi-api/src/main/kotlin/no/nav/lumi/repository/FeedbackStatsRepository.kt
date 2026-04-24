@@ -454,7 +454,7 @@ class FeedbackStatsRepository {
             .take(MAX_PHRASES_BLOCKER)
             .map { it.toPhraseEntry(maxSourceIds = MAX_SOURCE_RESPONSES_BLOCKER) }
 
-        val quoteSeed = blockerResponses.size.toLong() xor (dtos.firstOrNull()?.id?.hashCode()?.toLong() ?: 0L)
+        val quoteSeed = blockerResponses.size.toLong() xor (quoteCandidates.firstOrNull()?.first?.hashCode()?.toLong() ?: 0L)
         val quotes = QuoteSelector.selectQuotes(quoteCandidates, seed = quoteSeed)
         val confidence = QuoteSelector.confidenceLevel(blockerResponses.size)
 
