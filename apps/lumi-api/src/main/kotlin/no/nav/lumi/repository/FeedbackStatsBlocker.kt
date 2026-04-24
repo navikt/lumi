@@ -1,7 +1,6 @@
 package no.nav.lumi.repository
 
 import no.nav.lumi.domain.BlockerThemeResult
-import no.nav.lumi.service.text.StemWordAccumulator
 
 internal class ThemeAccumulator(
     val theme: String,
