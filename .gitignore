@@ -29,5 +29,9 @@ docs/.vitepress/dist
 *.log
 error.log
 
+# Data exports (local testing only — never commit)
+lumi-export-*.csv
+lumi-export-*.json
+
 # OS
 .DS_Store

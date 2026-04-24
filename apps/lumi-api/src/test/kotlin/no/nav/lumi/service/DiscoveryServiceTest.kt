@@ -33,13 +33,13 @@ class DiscoveryServiceTest : FunSpec({
             
             val result = service.processStats(feedbacks, emptyList())
             
-            // 'sjekke' doesn't match any suffix (e is not in suffix list), so stem = 'sjekke'
-            val sjekkeEntry = result.wordFrequency.find { it.stem == "sjekke" }
+            // Lucene Light stems "sjekke" → "sjekk" (strips -e for len > 3)
+            val sjekkeEntry = result.wordFrequency.find { it.stem == "sjekk" }
             sjekkeEntry?.count shouldBe 3
-            sjekkeEntry?.word shouldBe "sjekke"  // canonical = most common form
+            sjekkeEntry?.word shouldBe "sjekke"  // canonical = most common surface form
             
-            // 'status' has no matching suffix, so stem = 'status'
-            val statusEntry = result.wordFrequency.find { it.stem == "status" }
+            // "status" → possessive -s strip → "statu" (Lucene behaviour)
+            val statusEntry = result.wordFrequency.find { it.stem == "statu" }
             statusEntry?.count shouldBe 3
         }
 
@@ -71,8 +71,8 @@ class DiscoveryServiceTest : FunSpec({
             
             val result = service.processStats(feedbacks, emptyList())
             
-            // 'sjekke' stem stays 'sjekke'
-            val sjekkeEntry = result.wordFrequency.find { it.stem == "sjekke" }
+            // Lucene Light stems "sjekke" → "sjekk"
+            val sjekkeEntry = result.wordFrequency.find { it.stem == "sjekk" }
             sjekkeEntry?.sourceResponses?.size?.shouldBeGreaterThan(0)
             sjekkeEntry?.sourceResponses?.first()?.text shouldBe "Sjekke sykepenger status"
         }

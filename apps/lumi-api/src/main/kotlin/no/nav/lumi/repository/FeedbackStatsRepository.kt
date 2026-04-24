@@ -3,6 +3,7 @@ package no.nav.lumi.repository
 import kotlinx.serialization.json.*
 import no.nav.lumi.domain.*
 import no.nav.lumi.service.TextProcessor
+import no.nav.lumi.service.text.StemWordAccumulator
 import org.jetbrains.exposed.v1.core.*
 import org.jetbrains.exposed.v1.jdbc.*
 import org.slf4j.LoggerFactory
@@ -19,10 +20,6 @@ class FeedbackStatsRepository {
         
         /** Maximum source responses per word for blocker analysis */
         const val MAX_SOURCE_RESPONSES_BLOCKER = 5
-        
-        /** Maximum variants to return per word for blocker analysis */
-        const val MAX_VARIANTS = 5
-
     }
 
     data class FeedbackAnalyticsStats(
@@ -415,11 +412,11 @@ class FeedbackStatsRepository {
             )
         }
 
-        val wordAccumulators = mutableMapOf<String, BlockerStemWordAccumulator>()
+        val wordAccumulators = mutableMapOf<String, StemWordAccumulator>()
         for (response in blockerResponses) {
             val seenStemsInResponse = mutableSetOf<String>()
             TextProcessor.extractStemmedWords(response.blocker).forEach { (surface, stem) ->
-                val acc = wordAccumulators.getOrPut(stem) { BlockerStemWordAccumulator(stem) }
+                val acc = wordAccumulators.getOrPut(stem) { StemWordAccumulator(stem) }
                 acc.addOccurrence(surface)
 
                 if (!seenStemsInResponse.contains(stem) && acc.sourceResponses.size < MAX_SOURCE_RESPONSES_BLOCKER) {
@@ -455,7 +452,7 @@ class FeedbackStatsRepository {
         )
 
         for (response in blockerResponses) {
-            val blockerWordStems = TextProcessor.extractWords(response.blocker).map { TextProcessor.stemNorwegian(it) }
+            val blockerWordStems = TextProcessor.tokenize(response.blocker).map { TextProcessor.stemNorwegian(it) }
             var matchedAny = false
 
             for (acc in themeAccumulators) {

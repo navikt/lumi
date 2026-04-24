@@ -163,7 +163,7 @@ internal fun matchesThemeFilter(
 }
 
 private fun matchThemeName(text: String, themes: List<TextThemeDto>): String {
-    val textWords = TextProcessor.extractWords(text)
+    val textWords = TextProcessor.tokenize(text)
         .map { TextProcessor.stemNorwegian(it) }
         .toSet()
 
