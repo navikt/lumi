@@ -1,22 +1,55 @@
 package no.nav.lumi.service
 
+import no.nav.lumi.service.text.NorwegianLightStemmer
+
 /**
  * Utility for processing and stemming Norwegian text for analytics.
  * Consolidates text processing logic used across different services and repositories.
  */
 object TextProcessor {
 
-    /** Norwegian stop words to filter from word clouds and analysis */
+    /**
+     * Norwegian stop words — union of backend and frontend lists, plus Nav-specific terms.
+     * These are filtered out before word frequency / bigram analysis.
+     */
     val STOP_WORDS = setOf(
+        // --- Core Norwegian function words ---
         "og", "i", "jeg", "det", "at", "en", "et", "den", "til", "er", "som",
-        "på", "de", "med", "han", "av", "ikke", "der", "så", "var", "meg",
+        "på", "de", "med", "han", "av", "ikke", "ikkje", "der", "så", "var", "meg",
         "seg", "men", "ett", "har", "om", "vi", "min", "mitt", "ha", "hadde",
         "hun", "nå", "over", "da", "ved", "fra", "du", "ut", "sin", "dem",
         "oss", "opp", "man", "kan", "hans", "hvor", "eller", "hva", "skal",
-        "selv", "sjøl", "her", "alle", "vil", "bli", "ble", "blitt", "kunne",
-        "inn", "når", "være", "kom", "noe", "ville", "dere", "deres",
+        "selv", "sjøl", "her", "alle", "vil", "bli", "ble", "blei", "blitt", "kunne",
+        "inn", "når", "være", "kom", "noen", "noe", "ville", "dere", "deres",
         "kun", "ja", "etter", "ned", "skulle", "denne", "for", "deg", "to",
-        "måtte", "få", "fikk", "fått", "gjøre", "gjort", "gjør"
+        "måtte", "få", "fikk", "fått", "gjøre", "gjort", "gjør",
+
+        // --- Pronouns, determiners, conjunctions ---
+        "si", "sine", "sitt", "mot", "å", "meget", "hvorfor", "dette", "disse",
+        "uten", "hvordan", "ingen", "din", "ditt", "blir", "samme", "hvilken",
+        "hvilke", "sånn", "inni", "mellom", "vår", "hver", "hvem", "vors",
+        "hvis", "både", "bare", "fordi", "før", "mange", "også", "slik",
+        "vært", "begge", "siden", "henne", "hennar", "hennes", "enten",
+        "verken", "heller", "likevel", "altså", "derfor", "dersom", "imidlertid",
+
+        // --- Common English stop words (surveys may contain English) ---
+        "the", "and", "that", "this", "was", "were", "been", "have", "has", "had",
+        "are", "is", "will", "would", "could", "should", "may", "might", "must",
+        "shall", "can", "need", "you", "your", "yours", "they", "their", "theirs",
+        "them", "she", "her", "hers", "him", "his", "its", "our", "ours",
+        "who", "whom", "whose", "what", "which", "where", "when", "why", "how",
+        "all", "each", "every", "both", "few", "more", "most", "other", "some",
+        "such", "only", "own", "than", "too", "very", "just", "but", "because",
+        "with", "about", "into", "through", "during", "before", "after", "above",
+        "below", "between", "under", "again", "further", "then", "once", "here",
+        "there", "any", "not",
+
+        // --- Short / noise words (Norwegian) ---
+        "litt", "veldig", "ganske", "helt", "går", "gå", "gikk", "gått",
+        "ser", "sett", "tar", "tok", "tatt", "får",
+
+        // --- Nav-specific noise ---
+        "nav", "takk", "fjernet",
     )
 
     /**
@@ -30,33 +63,11 @@ object TextProcessor {
     }
 
     /**
-     * Simple Norwegian stemmer that removes common suffixes.
-     * Handles definite articles, plurals, and verb forms.
+     * Stem a Norwegian word using the Lucene NorwegianLightStemmer algorithm.
+     * The stem is used for **grouping** — use [StemmedWord.surface] for display.
      */
     fun stemNorwegian(word: String): String {
-        var stem = word.lowercase().trim()
-
-        // Order matters: check longer suffixes first
-        val suffixes = listOf(
-            // Definite plural
-            "ene", "ane",
-            // Definite singular
-            "en", "et", "a",
-            // Indefinite plural
-            "er", "ar",
-            // Verb past tense
-            "te", "de",
-            // Adjective endings
-            "ere", "est"
-        )
-
-        for (suffix in suffixes) {
-            if (stem.length > suffix.length + 2 && stem.endsWith(suffix)) {
-                return stem.dropLast(suffix.length)
-            }
-        }
-
-        return stem
+        return NorwegianLightStemmer.stem(word.lowercase().trim())
     }
 
     /**
