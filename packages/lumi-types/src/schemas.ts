@@ -761,6 +761,19 @@ const WordFrequencySchema = z.object({
   sourceResponses: z.array(SourceResponseSchema).optional(),
 });
 
+const PhraseEntrySchema = z.object({
+  text: z.string(),
+  count: z.number(),
+  sourceResponseIds: z.array(z.string()),
+});
+
+const QuoteEntrySchema = z.object({
+  text: z.string(),
+  answeredAt: z.string(),
+});
+
+const ConfidenceLevelSchema = z.enum(["low", "medium", "high"]);
+
 // Discovery schemas
 const DiscoveryThemeSchema = z.object({
   theme: z.string(),
@@ -781,6 +794,9 @@ export const DiscoveryResponseSchema = z.object({
       submittedAt: z.string(),
     }),
   ),
+  phrases: z.array(PhraseEntrySchema).optional(),
+  quotes: z.array(QuoteEntrySchema).optional(),
+  confidenceLevel: ConfidenceLevelSchema.optional(),
 });
 
 // Blocker schemas (for Top Tasks)
@@ -803,6 +819,9 @@ export const BlockerResponseSchema = z.object({
       submittedAt: z.string(),
     }),
   ),
+  phrases: z.array(PhraseEntrySchema).optional(),
+  quotes: z.array(QuoteEntrySchema).optional(),
+  confidenceLevel: ConfidenceLevelSchema.optional(),
 });
 
 // Task Priority schemas

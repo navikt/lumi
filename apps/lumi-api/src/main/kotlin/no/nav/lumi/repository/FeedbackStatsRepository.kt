@@ -3,6 +3,8 @@ package no.nav.lumi.repository
 import kotlinx.serialization.json.*
 import no.nav.lumi.domain.*
 import no.nav.lumi.service.TextProcessor
+import no.nav.lumi.service.text.BigramAccumulator
+import no.nav.lumi.service.text.QuoteSelector
 import no.nav.lumi.service.text.StemWordAccumulator
 import org.jetbrains.exposed.v1.core.*
 import org.jetbrains.exposed.v1.jdbc.*
@@ -20,6 +22,9 @@ class FeedbackStatsRepository {
         
         /** Maximum source responses per word for blocker analysis */
         const val MAX_SOURCE_RESPONSES_BLOCKER = 5
+
+        private const val MAX_PHRASES_BLOCKER = 30
+        private const val MIN_PHRASE_OCCURRENCES = 2
     }
 
     data class FeedbackAnalyticsStats(
@@ -377,9 +382,11 @@ class FeedbackStatsRepository {
             dbQuery.map { it.toDbRecord() }
         }
 
-        val dtos = records.map { it.toDto() }
+        val dtos = records.map { it.toDto() }.sortedBy { it.submittedAt }
 
         val blockerResponses = mutableListOf<RecentBlockerResponse>()
+        val bigramAccumulators = mutableMapOf<String, BigramAccumulator>()
+        val quoteCandidates = mutableListOf<Pair<String, String>>()
 
         for (feedback in dtos) {
             val blockerAnswer = feedback.answers.find { a ->
@@ -410,6 +417,13 @@ class FeedbackStatsRepository {
                     submittedAt = feedback.submittedAt
                 )
             )
+
+            // Track bigrams and quote candidates for this blocker text
+            TextProcessor.extractBigrams(blockerText).forEach { bg ->
+                val acc = bigramAccumulators.getOrPut(bg.stemKey) { BigramAccumulator(bg.stemKey) }
+                acc.addOccurrence(bg.surface, feedback.id)
+            }
+            quoteCandidates.add(blockerText to feedback.submittedAt)
         }
 
         val wordAccumulators = mutableMapOf<String, StemWordAccumulator>()
@@ -433,6 +447,16 @@ class FeedbackStatsRepository {
             .sortedByDescending { it.totalCount }
             .take(30)
             .map { it.toWordFrequencyEntry() }
+
+        val phrases = bigramAccumulators.values
+            .filter { it.totalCount >= MIN_PHRASE_OCCURRENCES }
+            .sortedByDescending { it.totalCount }
+            .take(MAX_PHRASES_BLOCKER)
+            .map { it.toPhraseEntry(maxSourceIds = MAX_SOURCE_RESPONSES_BLOCKER) }
+
+        val quoteSeed = blockerResponses.size.toLong() xor (quoteCandidates.firstOrNull()?.first?.hashCode()?.toLong() ?: 0L)
+        val quotes = QuoteSelector.selectQuotes(quoteCandidates, seed = quoteSeed)
+        val confidence = QuoteSelector.confidenceLevel(blockerResponses.size)
 
         val themeAccumulators = themes.map { theme ->
             ThemeAccumulator(
@@ -493,7 +517,10 @@ class FeedbackStatsRepository {
             totalBlockers = blockerResponses.size,
             wordFrequency = wordFrequency,
             themes = themeResults,
-            recentBlockers = recentBlockers
+            recentBlockers = recentBlockers,
+            phrases = phrases,
+            quotes = quotes,
+            confidenceLevel = confidence,
         )
     }
 

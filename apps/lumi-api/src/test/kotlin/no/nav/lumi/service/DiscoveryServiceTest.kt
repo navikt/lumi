@@ -135,6 +135,46 @@ class DiscoveryServiceTest : FunSpec({
             
             result.recentResponses shouldHaveSize DiscoveryService.MAX_RECENT_RESPONSES
         }
+
+        context("bigram extraction in processStats") {
+            test("extracts phrases from repeated bigrams") {
+                val feedbacks = listOf(
+                    createDiscoveryFeedback("vanskelig å svare på spørsmålene", "no"),
+                    createDiscoveryFeedback("vanskelig å svare riktig", "partial"),
+                    createDiscoveryFeedback("helt greit å bruke skjemaet", "yes"),
+                )
+                val result = service.processStats(feedbacks, emptyList())
+
+                result.phrases.any { it.text.contains("vanskelig") && it.text.contains("svar") } shouldBe true
+                result.phrases.first { it.text.contains("vanskelig") }.count shouldBe 2
+            }
+
+            test("bigrams with only 1 occurrence are excluded") {
+                val feedbacks = listOf(
+                    createDiscoveryFeedback("dårlig design overalt", "no"),
+                    createDiscoveryFeedback("god brukeropplevelse ellers", "yes"),
+                )
+                val result = service.processStats(feedbacks, emptyList())
+                result.phrases.shouldBeEmpty()
+            }
+
+            test("confidenceLevel reflects total submissions") {
+                val fewFeedbacks = (1..10).map { createDiscoveryFeedback("tekst $it", "yes") }
+                val result = service.processStats(fewFeedbacks, emptyList())
+                result.confidenceLevel shouldBe ConfidenceLevel.LOW
+            }
+
+            test("wordFrequency is unchanged with bigram addition") {
+                val feedbacks = listOf(
+                    createDiscoveryFeedback("vanskelig å svare", "no"),
+                    createDiscoveryFeedback("vanskelig å svare riktig", "partial"),
+                )
+                val result = service.processStats(feedbacks, emptyList())
+
+                result.wordFrequency.isNotEmpty() shouldBe true
+                result.phrases.isNotEmpty() shouldBe true
+            }
+        }
     }
 })
 

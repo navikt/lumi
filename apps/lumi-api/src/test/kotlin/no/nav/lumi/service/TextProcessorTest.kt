@@ -2,6 +2,7 @@ package no.nav.lumi.service
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
 import no.nav.lumi.service.text.NorwegianLightStemmer
@@ -100,6 +101,38 @@ class TextProcessorTest : FunSpec({
             tokens shouldContain "enten"
             tokens shouldContain "disse"
             tokens shouldContain "veldig"
+        }
+    }
+
+    context("extractBigrams") {
+        test("pairs adjacent content words, skipping stopwords") {
+            val bigrams = TextProcessor.extractBigrams("vanskelig å svare")
+            bigrams shouldHaveSize 1
+            bigrams[0].surface shouldBe "vanskelig svare"
+        }
+
+        test("generates multiple bigrams from content words") {
+            val bigrams = TextProcessor.extractBigrams("dårlig design er helt forvirrende")
+            bigrams shouldHaveSize 2
+            bigrams[0].surface shouldBe "dårlig design"
+            bigrams[1].surface shouldBe "design forvirrende"
+        }
+
+        test("returns empty for text with fewer than 2 content words") {
+            TextProcessor.extractBigrams("bare stoppord og ja") shouldHaveSize 0
+            TextProcessor.extractBigrams("hjelp") shouldHaveSize 0
+            TextProcessor.extractBigrams("") shouldHaveSize 0
+        }
+
+        test("stem key groups inflected forms") {
+            val bg1 = TextProcessor.extractBigrams("digitale søknader")
+            val bg2 = TextProcessor.extractBigrams("digital søknaden")
+            bg1[0].stemKey shouldBe bg2[0].stemKey
+        }
+
+        test("stem key uses pipe separator") {
+            val bigrams = TextProcessor.extractBigrams("dårlig design")
+            bigrams[0].stemKey.contains("|") shouldBe true
         }
     }
 

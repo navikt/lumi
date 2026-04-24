@@ -1,5 +1,6 @@
 package no.nav.lumi.domain
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -112,6 +113,36 @@ data class DiscoveryRecentResponse(
 )
 
 /**
+ * A frequently occurring two-word phrase (bigram) extracted from free-text responses.
+ */
+@Serializable
+data class PhraseEntry(
+    val text: String,
+    val count: Int,
+    val sourceResponseIds: List<String> = emptyList()
+)
+
+/**
+ * A representative quote from a free-text response.
+ */
+@Serializable
+data class QuoteEntry(
+    val text: String,
+    val answeredAt: String,
+)
+
+/**
+ * Confidence level for text analysis based on response volume.
+ * Determines how much weight to give bigram phrases vs. individual quotes.
+ */
+@Serializable
+enum class ConfidenceLevel {
+    @SerialName("low") LOW,
+    @SerialName("medium") MEDIUM,
+    @SerialName("high") HIGH,
+}
+
+/**
  * Full discovery statistics response
  */
 @Serializable
@@ -119,7 +150,10 @@ data class DiscoveryStatsResponse(
     val totalSubmissions: Int,
     val wordFrequency: List<WordFrequencyEntry>,
     val themes: List<ThemeResult>,
-    val recentResponses: List<DiscoveryRecentResponse>
+    val recentResponses: List<DiscoveryRecentResponse>,
+    val phrases: List<PhraseEntry> = emptyList(),
+    val quotes: List<QuoteEntry> = emptyList(),
+    val confidenceLevel: ConfidenceLevel = ConfidenceLevel.LOW,
 )
 
 // ============================================
@@ -147,6 +181,8 @@ data class BlockerStatsResponse(
     val totalBlockers: Int,
     val wordFrequency: List<WordFrequencyEntry>,  // Uses unified WordFrequencyEntry
     val themes: List<BlockerThemeResult>,
-    val recentBlockers: List<RecentBlockerResponse>
+    val recentBlockers: List<RecentBlockerResponse>,
+    val phrases: List<PhraseEntry> = emptyList(),
+    val quotes: List<QuoteEntry> = emptyList(),
+    val confidenceLevel: ConfidenceLevel = ConfidenceLevel.LOW,
 )
-
