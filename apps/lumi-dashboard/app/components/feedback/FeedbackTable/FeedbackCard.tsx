@@ -20,13 +20,16 @@ import { DashboardCard } from "~/components/dashboard";
 import { useBreakpoint } from "~/hooks/useBreakpoint";
 import type { FeedbackDto } from "~/types/api";
 import { RenderAnswer } from "./AnswerRenderer";
+import {
+  ContextItem,
+  ExpandedSection,
+  MetadataGrid,
+} from "./FeedbackDetailParts";
 import { RatingBadge } from "./RatingBadge";
 import styles from "./styles.module.css";
 import { TimelineView } from "./TimelineView";
 import {
   deviceToIcon,
-  formatMetadataKey,
-  formatMetadataValue,
   getAllRatings,
   getFeedbackPreview,
   getMainTextPreview,
@@ -130,10 +133,7 @@ export function FeedbackCard({
           <VStack gap="space-16">
             {/* Section: Svar (Answers) */}
             {feedback.answers && feedback.answers.length > 0 && (
-              <VStack gap="space-8">
-                <Detail className={styles.expandedSectionLabel}>
-                  Svar ({feedback.answers.length})
-                </Detail>
+              <ExpandedSection label={`Svar (${feedback.answers.length})`}>
                 {/* Timeline on larger screens, simple cards on small screens */}
                 {showTimeline ? (
                   <TimelineView answers={feedback.answers} styles={styles} />
@@ -146,122 +146,58 @@ export function FeedbackCard({
                     ))}
                   </VStack>
                 )}
-              </VStack>
+              </ExpandedSection>
             )}
 
-            {/* Section: Kontekst (Context) - using contextGrid styling */}
-            <VStack gap="space-8">
-              <Detail className={styles.expandedSectionLabel}>Kontekst</Detail>
+            {/* Section: Kontekst (Context) */}
+            <ExpandedSection label="Kontekst">
               <HGrid
                 columns="repeat(auto-fit, minmax(180px, 1fr))"
                 gap="space-12"
               >
-                {/* Survey */}
-                <div className={styles.contextItem}>
-                  <span className={styles.contextIcon}>📋</span>
-                  <VStack gap="space-2">
-                    <Detail className={styles.contextLabel} textColor="subtle">
-                      Survey
-                    </Detail>
-                    <BodyShort className={styles.contextValue}>
-                      {feedback.surveyId}
-                    </BodyShort>
-                  </VStack>
-                </div>
-
-                {/* Timestamp */}
-                <div className={styles.contextItem}>
-                  <span className={styles.contextIcon}>🕐</span>
-                  <VStack gap="space-2">
-                    <Detail className={styles.contextLabel} textColor="subtle">
-                      Tidspunkt
-                    </Detail>
-                    <BodyShort className={styles.contextValue}>
-                      {dayjs(feedback.submittedAt).format("DD. MMM, HH:mm")}
-                    </BodyShort>
-                  </VStack>
-                </div>
-
-                {/* URL/Pathname */}
+                <ContextItem
+                  icon="📋"
+                  label="Survey"
+                  value={feedback.surveyId}
+                />
+                <ContextItem
+                  icon="🕐"
+                  label="Tidspunkt"
+                  value={dayjs(feedback.submittedAt).format("DD. MMM, HH:mm")}
+                />
                 {feedback.context?.pathname && (
-                  <div className={styles.contextItem}>
-                    <span className={styles.contextIcon}>📍</span>
-                    <VStack gap="space-2">
-                      <Detail
-                        className={styles.contextLabel}
-                        textColor="subtle"
-                      >
-                        Side
-                      </Detail>
-                      <BodyShort className={styles.contextValue}>
-                        {feedback.context.pathname}
-                      </BodyShort>
-                    </VStack>
-                  </div>
+                  <ContextItem
+                    icon="📍"
+                    label="Side"
+                    value={feedback.context.pathname}
+                  />
                 )}
-
-                {/* Device info */}
                 {feedback.context?.deviceType && (
-                  <div className={styles.contextItem}>
-                    <span className={styles.contextIcon}>
-                      {deviceToIcon(feedback.context.deviceType)}
-                    </span>
-                    <VStack gap="space-2">
-                      <Detail
-                        className={styles.contextLabel}
-                        textColor="subtle"
-                      >
-                        Enhet
-                      </Detail>
-                      <BodyShort className={styles.contextValue}>
-                        {feedback.context.deviceType}
-                        {feedback.context.viewportWidth &&
-                          ` (viewport ${feedback.context.viewportWidth}×${feedback.context.viewportHeight})`}
-                      </BodyShort>
-                    </VStack>
-                  </div>
+                  <ContextItem
+                    icon={deviceToIcon(feedback.context.deviceType)}
+                    label="Enhet"
+                    value={
+                      feedback.context.deviceType +
+                      (feedback.context.viewportWidth
+                        ? ` (viewport ${feedback.context.viewportWidth}×${feedback.context.viewportHeight})`
+                        : "")
+                    }
+                  />
                 )}
               </HGrid>
-            </VStack>
+            </ExpandedSection>
 
             {/* Section: Segment (context.tags) */}
             {feedback.context?.tags &&
               Object.keys(feedback.context.tags).length > 0 && (
-                <VStack gap="space-8">
-                  <Detail className={styles.expandedSectionLabel}>
-                    🏷️ Segment
-                  </Detail>
-                  <HGrid
-                    columns="repeat(auto-fit, minmax(180px, 1fr))"
-                    gap="space-12"
-                  >
-                    {Object.entries(feedback.context.tags).map(
-                      ([key, value]) => (
-                        <div key={key} className={styles.contextItem}>
-                          <VStack gap="space-2">
-                            <Detail
-                              className={styles.contextLabel}
-                              textColor="subtle"
-                            >
-                              {formatMetadataKey(key)}
-                            </Detail>
-                            <BodyShort className={styles.contextValue}>
-                              {formatMetadataValue(value)}
-                            </BodyShort>
-                          </VStack>
-                        </div>
-                      ),
-                    )}
-                  </HGrid>
-                </VStack>
+                <ExpandedSection label="🏷️ Segment">
+                  <MetadataGrid metadata={feedback.context.tags} />
+                </ExpandedSection>
               )}
 
             {/* Section: Tags */}
             {feedback.tags && feedback.tags.length > 0 && (
-              <VStack gap="space-8">
-                <Detail className={styles.expandedSectionLabel}>
-                  🏷️ Tagger
-                </Detail>
+              <ExpandedSection label="🏷️ Tagger">
                 <HStack gap="space-8" wrap>
                   {feedback.tags.map((tag) => (
                     <Tag
@@ -274,36 +210,14 @@ export function FeedbackCard({
                     </Tag>
                   ))}
                 </HStack>
-              </VStack>
+              </ExpandedSection>
             )}
 
             {/* Section: Metadata */}
             {feedback.metadata && Object.keys(feedback.metadata).length > 0 && (
-              <VStack gap="space-8">
-                <Detail className={styles.expandedSectionLabel}>
-                  📋 Metadata
-                </Detail>
-                <HGrid
-                  columns="repeat(auto-fit, minmax(180px, 1fr))"
-                  gap="space-12"
-                >
-                  {Object.entries(feedback.metadata).map(([key, value]) => (
-                    <div key={key} className={styles.contextItem}>
-                      <VStack gap="space-2">
-                        <Detail
-                          className={styles.contextLabel}
-                          textColor="subtle"
-                        >
-                          {formatMetadataKey(key)}
-                        </Detail>
-                        <BodyShort className={styles.contextValue}>
-                          {formatMetadataValue(value)}
-                        </BodyShort>
-                      </VStack>
-                    </div>
-                  ))}
-                </HGrid>
-              </VStack>
+              <ExpandedSection label="📋 Metadata">
+                <MetadataGrid metadata={feedback.metadata} />
+              </ExpandedSection>
             )}
 
             {/* Sensitive data warning */}

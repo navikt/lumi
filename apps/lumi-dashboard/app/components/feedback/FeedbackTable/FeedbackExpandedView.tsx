@@ -1,18 +1,14 @@
 import { TagIcon } from "@navikt/aksel-icons";
-import {
-  BodyShort,
-  Box,
-  Detail,
-  HGrid,
-  HStack,
-  Table,
-  VStack,
-} from "@navikt/ds-react";
+import { Box, Detail, HStack, Table, VStack } from "@navikt/ds-react";
 import type { FeedbackDto } from "~/types/api";
 import { TagEditor } from "../TagEditor";
+import {
+  ContextGrid,
+  ExpandedSection,
+  MetadataGrid,
+} from "./FeedbackDetailParts";
 import styles from "./styles.module.css";
 import { TimelineView } from "./TimelineView";
-import { deviceToIcon, formatMetadataKey, formatMetadataValue } from "./utils";
 
 interface FeedbackExpandedViewProps {
   feedback: FeedbackDto;
@@ -75,110 +71,5 @@ export function FeedbackExpandedView({ feedback }: FeedbackExpandedViewProps) {
         </Box>
       </Table.DataCell>
     </Table.Row>
-  );
-}
-
-/**
- * Reusable section wrapper with label.
- */
-function ExpandedSection({
-  label,
-  icon,
-  children,
-}: {
-  label: string;
-  icon?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <VStack gap="space-8">
-      {icon ? (
-        <HStack gap="space-4" align="center">
-          {icon}
-          <Detail className={styles.expandedSectionLabel}>{label}</Detail>
-        </HStack>
-      ) : (
-        <Detail className={styles.expandedSectionLabel}>{label}</Detail>
-      )}
-      {children}
-    </VStack>
-  );
-}
-
-/**
- * Displays submission context (pathname, device, viewport).
- */
-function ContextGrid({
-  context,
-}: {
-  context: NonNullable<FeedbackDto["context"]>;
-}) {
-  return (
-    <HGrid columns="repeat(auto-fit, minmax(180px, 1fr))" gap="space-12">
-      {context.pathname && (
-        <ContextItem icon="📍" label="Side" value={context.pathname} />
-      )}
-      {context.deviceType && (
-        <ContextItem
-          icon={deviceToIcon(context.deviceType)}
-          label="Enhet"
-          value={context.deviceType}
-        />
-      )}
-      {(context.viewportWidth || context.viewportHeight) && (
-        <ContextItem
-          icon="🖼️"
-          label="Viewport"
-          value={`${context.viewportWidth || "?"}×${context.viewportHeight || "?"} `}
-        />
-      )}
-    </HGrid>
-  );
-}
-
-/**
- * Single item in the context grid.
- */
-function ContextItem({
-  icon,
-  label,
-  value,
-}: {
-  icon: string;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className={styles.contextItem}>
-      <span className={styles.contextIcon}>{icon}</span>
-      <VStack gap="space-2">
-        <Detail className={styles.contextLabel} textColor="subtle">
-          {label}
-        </Detail>
-        <BodyShort className={styles.contextValue}>{value}</BodyShort>
-      </VStack>
-    </div>
-  );
-}
-
-/**
- * Displays custom metadata key-value pairs.
- */
-function MetadataGrid({ metadata }: { metadata: Record<string, string> }) {
-  return (
-    <HGrid columns="repeat(auto-fit, minmax(180px, 1fr))" gap="space-12">
-      {Object.entries(metadata).map(([key, value]) => (
-        <div key={key} className={styles.contextItem}>
-          <VStack gap="space-2">
-            <Detail className={styles.contextLabel} textColor="subtle">
-              {formatMetadataKey(key)}
-            </Detail>
-            <BodyShort className={styles.contextValue}>
-              {formatMetadataValue(value)}
-            </BodyShort>
-          </VStack>
-        </div>
-      ))}
-    </HGrid>
   );
 }
