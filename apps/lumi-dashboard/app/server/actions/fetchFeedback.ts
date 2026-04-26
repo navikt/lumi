@@ -61,6 +61,9 @@ function transformToBackendParams(data: FeedbackActionParams) {
     .map((entry) => entry.trim())
     .filter(Boolean);
 
+  // Canonicalize: phrase wins over query (same rule as useFeedback)
+  const effectiveQuery = data.phrase ? undefined : data.query;
+
   return {
     team: data.team,
     app: data.app,
@@ -71,7 +74,7 @@ function transformToBackendParams(data: FeedbackActionParams) {
     toDate: data.toDate,
     hasText: data.hasText === "true" ? "true" : undefined,
     lowRating: data.lowRating === "true" ? "true" : undefined,
-    query: data.query,
+    query: effectiveQuery,
     tag: tag && tag.length > 0 ? tag : undefined,
     deviceType: data.deviceType,
     theme: data.theme,

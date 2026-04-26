@@ -103,7 +103,7 @@
   padding: var(--ax-space-8) var(--ax-space-12);
   background-color: var(--ax-bg-neutral-soft);
   border-radius: var(--ax-border-radius-medium);
-  border-left: var(--ax-space-4) solid var(--ax-border-info);
+  border-left: 2px solid var(--ax-border-info);
 }
 
 .responseText {

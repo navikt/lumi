@@ -32,7 +32,12 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
   return (
     <DashboardCard padding="space-20" className={styles.cardContent}>
       <FieldCardHeader
-        icon={<ChatExclamationmarkIcon fontSize="1.25rem" aria-hidden />}
+        icon={
+          <ChatExclamationmarkIcon
+            fontSize="var(--ax-font-size-xlarge)"
+            aria-hidden
+          />
+        }
         label={field.label}
         titleTestId={`field-stat-title-${field.fieldId}`}
         subtitle={`${stats.responseCount} av ${totalCount} har svart (${responseRate}%)`}
@@ -90,7 +95,7 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
                             {phrase.count}
                           </Detail>
                           <ArrowRightIcon
-                            fontSize="1rem"
+                            fontSize="var(--ax-font-size-medium)"
                             className={styles.phraseArrow}
                             aria-hidden
                           />

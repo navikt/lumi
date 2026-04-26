@@ -86,11 +86,13 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
     setParams({
       app: newApp,
       page: "1",
+      // phrase, choice and rating are field-bound (belong to a specific survey
+      // in a specific app) — always clear on app change to avoid stale filters.
+      phrase: undefined,
+      choice: undefined,
+      rating: undefined,
       ...(shouldClearSurvey && {
         surveyId: undefined,
-        choice: undefined,
-        rating: undefined,
-        phrase: undefined,
       }),
     });
   };

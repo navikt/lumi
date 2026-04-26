@@ -60,7 +60,7 @@ export function RatingFieldCard({ field, totalCount }: FieldCardProps) {
   return (
     <DashboardCard padding="space-20">
       <FieldCardHeader
-        icon={<StarIcon fontSize="1.25rem" aria-hidden />}
+        icon={<StarIcon fontSize="var(--ax-font-size-xlarge)" aria-hidden />}
         label={field.label}
         titleTestId={`field-stat-title-${field.fieldId}`}
         subtitle={`${fieldTotalResponses} av ${totalCount} har svart (${responsePct}%)`}

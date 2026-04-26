@@ -201,6 +201,7 @@ export function applyFeedbackFilters(
 
     const [phraseWord1, phraseWord2] = phraseFilter.surface
       .toLowerCase()
+      .replace(/[^\wæøå\s]/g, "")
       .split(" ");
 
     filtered = filtered.filter((item) =>
@@ -208,7 +209,11 @@ export function applyFeedbackFilters(
         if (answer.fieldId !== phraseFilter.fieldId) return false;
         if (answer.fieldType !== "TEXT") return false;
         const text = (answer.value.text ?? "").toLowerCase();
-        const words = text.split(/\s+/).filter(Boolean);
+        // Strip punctuation before splitting — matches extractPhrases normalization
+        const words = text
+          .replace(/[^\wæøå\s]/g, "")
+          .split(/\s+/)
+          .filter(Boolean);
 
         for (let i = 0; i < words.length - 1; i++) {
           // Direct adjacency

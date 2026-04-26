@@ -172,6 +172,9 @@ function transformToBackendParams(data: ExportParams) {
     .map((t) => t.trim())
     .filter(Boolean);
 
+  // Canonicalize: phrase wins over query (same rule as useFeedback)
+  const effectiveQuery = data.phrase ? undefined : data.query;
+
   return {
     format: data.format,
     team: data.team,
@@ -181,7 +184,7 @@ function transformToBackendParams(data: ExportParams) {
     toDate: data.toDate,
     hasText: data.hasText === "true" ? "true" : undefined,
     lowRating: data.lowRating === "true" ? "true" : undefined,
-    query: data.query,
+    query: effectiveQuery,
     tag: tag && tag.length > 0 ? tag : undefined,
     deviceType: data.deviceType,
     theme: data.theme,

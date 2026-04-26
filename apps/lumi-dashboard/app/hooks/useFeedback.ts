@@ -9,6 +9,10 @@ export type { FeedbackPage } from "~/types/api";
 export function useFeedback() {
   const { params } = useSearchParams();
 
+  // Canonicalize: when phrase is active, ignore free-text query to avoid
+  // conflicting filters (phrase is the more specific filter).
+  const effectiveQuery = params.phrase ? undefined : params.query;
+
   return useQuery({
     queryKey: [
       "feedback",
@@ -20,7 +24,7 @@ export function useFeedback() {
       params.fromDate,
       params.toDate,
       params.hasText,
-      params.query,
+      effectiveQuery,
       params.tag,
       params.lowRating,
       params.deviceType,
@@ -42,7 +46,7 @@ export function useFeedback() {
           fromDate: params.fromDate,
           toDate: params.toDate,
           hasText: params.hasText,
-          query: params.query,
+          query: effectiveQuery,
           tag: params.tag,
           lowRating: params.lowRating,
           deviceType: params.deviceType,
