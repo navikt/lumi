@@ -4,6 +4,7 @@
 
 import type { FeedbackDto } from "~/types/api";
 import { parseChoiceParam } from "~/utils/choiceFilterUtils";
+import { parsePhraseParam } from "~/utils/phraseFilterUtils";
 import { parseRatingParam } from "~/utils/ratingFilterUtils";
 import { mockThemes } from "../themes";
 import { getTaskNameFromFeedback } from "./extractors";
@@ -22,6 +23,7 @@ export interface FilterParams {
   theme?: string;
   rating?: string;
   choice?: string;
+  phrase?: string;
 }
 
 export function applyFeedbackFilters(
@@ -160,6 +162,79 @@ export function applyFeedbackFilters(
     );
   }
 
+  const phraseFilter = parsePhraseParam(filters.phrase);
+  if (phraseFilter) {
+    // Simplified adjacency matching for mock — backend does full stem-bigram matching.
+    // We split the text into words and check if the two phrase words appear adjacent
+    // (or separated by at most one stopword). This is a deliberate simplification;
+    // real matching uses Norwegian stemming on server side.
+    const STOPWORDS = new Set([
+      "og",
+      "i",
+      "på",
+      "er",
+      "det",
+      "en",
+      "et",
+      "å",
+      "som",
+      "for",
+      "med",
+      "av",
+      "til",
+      "den",
+      "de",
+      "har",
+      "jeg",
+      "fra",
+      "var",
+      "vi",
+      "kan",
+      "om",
+      "men",
+      "da",
+      "ikke",
+      "så",
+      "han",
+      "hun",
+    ]);
+
+    const [phraseWord1, phraseWord2] = phraseFilter.surface
+      .toLowerCase()
+      .replace(/[^\wæøå\s]/g, "")
+      .split(" ");
+
+    filtered = filtered.filter((item) =>
+      item.answers.some((answer) => {
+        if (answer.fieldId !== phraseFilter.fieldId) return false;
+        if (answer.fieldType !== "TEXT") return false;
+        const text = (answer.value.text ?? "").toLowerCase();
+        // Strip punctuation before splitting — matches extractPhrases normalization
+        const words = text
+          .replace(/[^\wæøå\s]/g, "")
+          .split(/\s+/)
+          .filter(Boolean);
+
+        for (let i = 0; i < words.length - 1; i++) {
+          // Direct adjacency
+          if (words[i] === phraseWord1 && words[i + 1] === phraseWord2) {
+            return true;
+          }
+          // One stopword in between
+          if (
+            i < words.length - 2 &&
+            words[i] === phraseWord1 &&
+            STOPWORDS.has(words[i + 1]) &&
+            words[i + 2] === phraseWord2
+          ) {
+            return true;
+          }
+        }
+        return false;
+      }),
+    );
+  }
+
   return filtered;
 }
 
@@ -183,6 +258,7 @@ function normalizeParams(params: FilterParams | URLSearchParams): FilterParams {
       theme: params.get("theme") ?? undefined,
       rating: params.get("rating") ?? undefined,
       choice: params.get("choice") ?? undefined,
+      phrase: params.get("phrase") ?? undefined,
     };
   }
 

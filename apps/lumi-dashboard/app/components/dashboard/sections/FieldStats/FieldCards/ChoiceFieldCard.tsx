@@ -59,7 +59,9 @@ export function ChoiceFieldCard({
   return (
     <DashboardCard padding="space-20" className={styles.cardContent}>
       <FieldCardHeader
-        icon={<ChatElipsisIcon fontSize="1.25rem" aria-hidden />}
+        icon={
+          <ChatElipsisIcon fontSize="var(--ax-font-size-xlarge)" aria-hidden />
+        }
         label={field.label}
         titleTestId={`field-stat-title-${field.fieldId}`}
         subtitle={`${responseCount} av ${totalCount} har svart (${responsePct}%)`}

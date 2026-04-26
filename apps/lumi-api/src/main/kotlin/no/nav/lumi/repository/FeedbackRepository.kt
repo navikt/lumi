@@ -145,7 +145,9 @@ class FeedbackRepository(
         } else {
             emptyList()
         }
-        val needsInMemoryFiltering = !query.task.isNullOrBlank() || !query.theme.isNullOrBlank()
+        val phraseFilter = query.phraseFilter
+        val needsInMemoryFiltering =
+            !query.task.isNullOrBlank() || !query.theme.isNullOrBlank() || phraseFilter != null
 
         if (!needsInMemoryFiltering) {
             val snapshot = dbQuery {
@@ -201,10 +203,12 @@ class FeedbackRepository(
         }
 
         val taskFilter = query.task?.trim()?.takeIf { it.isNotBlank() }
+        val phraseMatcher = phraseFilter?.let { it.fieldId to buildPhraseStemKey(it.surface) }
 
         val filtered = dtos.filter { feedback ->
             matchesTaskFilter(feedback, taskFilter) &&
-                matchesThemeFilter(feedback, themeFilter, themes)
+                matchesThemeFilter(feedback, themeFilter, themes) &&
+                (phraseMatcher == null || matchesPhraseFilter(feedback, phraseMatcher.first, phraseMatcher.second))
         }
 
         val total = filtered.size.toLong()

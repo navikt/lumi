@@ -58,6 +58,7 @@ fun Route.feedbackRoutes(
             segments = segments,
             choiceFilters = parseChoiceFilters(params.choice, params.choiceFieldId, params.choiceValue),
             ratingFilters = parseRatingFilters(params.rating, params.ratingFieldId, params.ratingValue),
+            phraseFilter = parsePhraseFilter(params.phrase),
         )
         
         val (content, total, page) = service.findPaginated(query)

@@ -1,9 +1,10 @@
-import { ChatExclamationmarkIcon } from "@navikt/aksel-icons";
+import { ArrowRightIcon, ChatExclamationmarkIcon } from "@navikt/aksel-icons";
 import { BodyShort, Detail, HStack, Tag, VStack } from "@navikt/ds-react";
 import { Link } from "@tanstack/react-router";
 
 import { DashboardCard } from "~/components/dashboard";
 import type { TextStats } from "~/types/api";
+import { stringifyPhraseFilter } from "~/utils/phraseFilterUtils";
 import { formatRelativeTime } from "~/utils/wordAnalysis";
 
 import { FieldCardHeader } from "./FieldCardHeader";
@@ -31,7 +32,12 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
   return (
     <DashboardCard padding="space-20" className={styles.cardContent}>
       <FieldCardHeader
-        icon={<ChatExclamationmarkIcon fontSize="1.25rem" aria-hidden />}
+        icon={
+          <ChatExclamationmarkIcon
+            fontSize="var(--ax-font-size-xlarge)"
+            aria-hidden
+          />
+        }
         label={field.label}
         titleTestId={`field-stat-title-${field.fieldId}`}
         subtitle={`${stats.responseCount} av ${totalCount} har svart (${responseRate}%)`}
@@ -47,41 +53,55 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
             Hyppigste fraser
           </BodyShort>
           <ol className={styles.phraseList} aria-label="Hyppigste fraser">
-            {displayedPhrases.map((phrase) => (
-              <li key={phrase.text}>
+            {displayedPhrases.map((phrase, index) => (
+              <li key={phrase.text} className={styles.phraseItem}>
                 <Link
                   to="/feedback"
                   search={(prev) => ({
                     ...prev,
-                    query: phrase.text,
+                    phrase: stringifyPhraseFilter(field.fieldId, phrase.text),
+                    query: undefined,
                     page: "1",
                     hasText: "true",
                   })}
                   className={styles.phraseLink}
-                  aria-label={`Vis ${phrase.count} tilbakemeldinger som inneholder frasen «${phrase.text}»`}
+                  aria-label={`Vis ${phrase.count} tilbakemeldinger med frasen «${phrase.text}»`}
                 >
-                  <HStack
-                    align="center"
-                    gap="space-8"
-                    justify="space-between"
-                    wrap={false}
-                  >
-                    <BodyShort size="small" weight="semibold" truncate>
-                      {phrase.text}
-                    </BodyShort>
-                    <HStack
-                      gap="space-8"
-                      align="center"
-                      className={styles.phraseMeta}
-                    >
-                      <progress
-                        className={styles.phraseProgress}
-                        value={phrase.count}
-                        max={maxCount}
-                        aria-hidden
+                  <HStack align="center" gap="space-8" wrap={false}>
+                    <span className={styles.phraseRank}>{index + 1}</span>
+                    <span className={styles.phraseBar}>
+                      <span
+                        className={styles.phraseBarFill}
+                        style={{
+                          width: `${Math.round((phrase.count / maxCount) * 100)}%`,
+                        }}
                       />
-                      <Detail>{phrase.count}</Detail>
-                    </HStack>
+                      <HStack
+                        align="center"
+                        gap="space-8"
+                        justify="space-between"
+                        wrap={false}
+                        className={styles.phraseContent}
+                      >
+                        <BodyShort size="small" weight="semibold" truncate>
+                          {phrase.text}
+                        </BodyShort>
+                        <HStack
+                          gap="space-8"
+                          align="center"
+                          className={styles.phraseMeta}
+                        >
+                          <Detail className={styles.phraseCount}>
+                            {phrase.count}
+                          </Detail>
+                          <ArrowRightIcon
+                            fontSize="var(--ax-font-size-medium)"
+                            className={styles.phraseArrow}
+                            aria-hidden
+                          />
+                        </HStack>
+                      </HStack>
+                    </span>
                   </HStack>
                 </Link>
               </li>
@@ -125,7 +145,7 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
             Siste svar
           </BodyShort>
           <VStack gap="space-8">
-            {stats.recentResponses.map((response) => (
+            {stats.recentResponses.slice(0, 3).map((response) => (
               <div
                 key={`${response.text}-${response.submittedAt}`}
                 className={styles.responseCard}

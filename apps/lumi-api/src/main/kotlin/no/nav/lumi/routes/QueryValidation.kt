@@ -1,9 +1,13 @@
 package no.nav.lumi.routes
 
 import no.nav.lumi.config.exception.ApiErrorException
+import no.nav.lumi.domain.PhraseFilter
 import no.nav.lumi.repository.MAX_CHOICE_VALUE_LENGTH
 import no.nav.lumi.repository.MAX_FIELD_ID_LENGTH
 import no.nav.lumi.repository.isSafeChoiceValue
+import no.nav.lumi.repository.validateJsonPathFieldId
+import no.nav.lumi.service.TextProcessor
+import org.slf4j.LoggerFactory
 import java.time.LocalDate
 
 private const val MAX_PAGE_SIZE = 200
@@ -13,6 +17,9 @@ private const val MAX_TAG_LENGTH = 50
 private const val MAX_SEGMENTS = 20
 private const val MAX_SEGMENT_KEY_LENGTH = 50
 private const val MAX_SEGMENT_VALUE_LENGTH = 100
+private const val MAX_PHRASE_WORD_LENGTH = 30
+private const val MAX_PHRASE_TOTAL_LENGTH = 80
+private val validationLog = LoggerFactory.getLogger("QueryValidation")
 
 internal data class Paging(
     val page: Int,
@@ -234,4 +241,35 @@ internal fun parseRatingFilters(
     }
 
     return filters
+}
+
+internal fun parsePhraseFilter(raw: List<String>?): PhraseFilter? {
+    if (raw.isNullOrEmpty()) return null
+    if (raw.size > 1) {
+        throw ApiErrorException.BadRequestException("Only a single phrase filter is supported")
+    }
+
+    val filter = raw.single()
+    val parts = filter.split(":", limit = 2)
+    if (parts.size != 2) {
+        throw ApiErrorException.BadRequestException("Invalid phrase format")
+    }
+
+    val fieldId = validateJsonPathFieldId(parts[0], "phraseFieldId", validationLog)
+        ?: throw ApiErrorException.BadRequestException("Invalid phrase format")
+
+    val normalizedWords = TextProcessor.extractWords(parts[1])
+    if (normalizedWords.size != 2) {
+        throw ApiErrorException.BadRequestException("Invalid phrase format")
+    }
+    if (normalizedWords.any { it.length > MAX_PHRASE_WORD_LENGTH }) {
+        throw ApiErrorException.BadRequestException("Invalid phrase format")
+    }
+
+    val normalizedSurface = normalizedWords.joinToString(" ")
+    if (normalizedSurface.length > MAX_PHRASE_TOTAL_LENGTH) {
+        throw ApiErrorException.BadRequestException("Invalid phrase format")
+    }
+
+    return PhraseFilter(fieldId = fieldId, surface = normalizedSurface)
 }

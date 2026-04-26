@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useChoiceFilter } from "~/hooks/useChoiceFilter";
+import { usePhraseFilter } from "~/hooks/usePhraseFilter";
 import { useRatingFilter } from "~/hooks/useRatingFilter";
 import type { SearchParams } from "~/hooks/useSearchParams";
 import { useSearchParams } from "~/hooks/useSearchParams";
@@ -26,6 +27,10 @@ vi.mock("~/hooks/useChoiceFilter", () => ({
 
 vi.mock("~/hooks/useRatingFilter", () => ({
   useRatingFilter: vi.fn(),
+}));
+
+vi.mock("~/hooks/usePhraseFilter", () => ({
+  usePhraseFilter: vi.fn(),
 }));
 
 vi.mock("~/hooks/useStats", () => ({
@@ -60,12 +65,14 @@ const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseSegmentFilter = vi.mocked(useSegmentFilter);
 const mockUseChoiceFilter = vi.mocked(useChoiceFilter);
 const mockUseRatingFilter = vi.mocked(useRatingFilter);
+const mockUsePhraseFilter = vi.mocked(usePhraseFilter);
 const mockUseStats = vi.mocked(useStats);
 const mockUseThemes = vi.mocked(useThemes);
 
 const removeSegment = vi.fn();
 const removeChoice = vi.fn();
 const removeRating = vi.fn();
+const removePhrase = vi.fn();
 const setParams = vi.fn();
 
 const stats = {
@@ -90,6 +97,18 @@ const stats = {
         type: "rating",
         average: 1.8,
         distribution: { "1": 2, "2": 8 },
+      },
+    },
+    {
+      fieldId: "comment",
+      fieldType: "TEXT",
+      label: "Legg gjerne til en begrunnelse",
+      stats: {
+        type: "text",
+        responseCount: 42,
+        responseRate: 70,
+        topKeywords: [],
+        recentResponses: [],
       },
     },
   ],
@@ -135,6 +154,12 @@ beforeEach(() => {
     removeRating,
     clearRatings: vi.fn(),
     isActive: vi.fn(),
+  } as never);
+
+  mockUsePhraseFilter.mockReturnValue({
+    activeFilter: null,
+    setPhrase: vi.fn(),
+    removePhrase,
   } as never);
 
   mockUseStats.mockReturnValue({
@@ -302,5 +327,56 @@ describe("ActiveFiltersChips", () => {
     expect(screen.getByText("Fikk du hjelp?: Ja")).toBeInTheDocument();
     expect(screen.getByText("User Type: Arbeidsgiver")).toBeInTheDocument();
     expect(screen.getAllByRole("button")).toHaveLength(5);
+  });
+
+  it("renders a phrase filter chip with field label and quoted surface", () => {
+    mockUsePhraseFilter.mockReturnValue({
+      activeFilter: { fieldId: "comment", surface: "vanskelig forstå" },
+      setPhrase: vi.fn(),
+      removePhrase,
+    } as never);
+
+    renderActiveFiltersChips({
+      phrase: "comment:vanskelig forstå",
+    });
+
+    expect(
+      screen.getByText("Legg gjerne til en begrunnelse: «vanskelig forstå»"),
+    ).toBeInTheDocument();
+  });
+
+  it("phrase chip falls back to 'Frase' when field not found in stats", () => {
+    mockUsePhraseFilter.mockReturnValue({
+      activeFilter: { fieldId: "unknown-field", surface: "test phrase" },
+      setPhrase: vi.fn(),
+      removePhrase,
+    } as never);
+
+    renderActiveFiltersChips({
+      phrase: "unknown-field:test phrase",
+    });
+
+    expect(screen.getByText("Frase: «test phrase»")).toBeInTheDocument();
+  });
+
+  it("clicking the remove button on phrase chip calls removePhrase", async () => {
+    const user = userEvent.setup();
+    mockUsePhraseFilter.mockReturnValue({
+      activeFilter: { fieldId: "comment", surface: "vanskelig forstå" },
+      setPhrase: vi.fn(),
+      removePhrase,
+    } as never);
+
+    renderActiveFiltersChips({
+      phrase: "comment:vanskelig forstå",
+    });
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Fjern filter Legg gjerne til en begrunnelse: «vanskelig forstå»",
+      }),
+    );
+
+    expect(removePhrase).toHaveBeenCalled();
   });
 });

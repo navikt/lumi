@@ -4,6 +4,7 @@ import type { SearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import { useThemes } from "~/hooks/useThemes";
 import { getFilterLabels } from "~/utils/filterLabels";
+import { parsePhraseParam } from "~/utils/phraseFilterUtils";
 import {
   formatMetadataLabel,
   formatMetadataValue,
@@ -25,6 +26,12 @@ export function ActiveFilters({ params }: ActiveFiltersProps) {
     stats,
     themes,
   });
+
+  const phraseFilter = parsePhraseParam(params.phrase);
+  const phraseLabel = phraseFilter
+    ? (stats?.fieldStats?.find((f) => f.fieldId === phraseFilter.fieldId)
+        ?.label ?? "Frase")
+    : undefined;
 
   return (
     <VStack gap="space-12">
@@ -100,6 +107,12 @@ export function ActiveFilters({ params }: ActiveFiltersProps) {
           <strong>{filter.label}:</strong> {filter.value}
         </BodyShort>
       ))}
+
+      {phraseFilter && phraseLabel && (
+        <BodyShort size="small" spacing>
+          <strong>{phraseLabel}:</strong> «{phraseFilter.surface}»
+        </BodyShort>
+      )}
 
       {segmentEntries.length > 0 && (
         <VStack gap="space-4">

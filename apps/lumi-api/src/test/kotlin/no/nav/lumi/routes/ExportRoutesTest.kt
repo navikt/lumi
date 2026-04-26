@@ -122,6 +122,20 @@ class ExportRoutesTest : FunSpec({
         }
     }
 
+    test("GET /api/v1/intern/export rejects multiple phrase filters") {
+        testApplication {
+            application { testModule() }
+
+            val response = createTestClient().get(
+                "/api/v1/intern/export?team=flex&phrase=feedback:vanskelig%20svare&phrase=feedback:digital%20soknad"
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+        }
+    }
+
     test("GET /api/v1/intern/export rejects too long query") {
         testApplication {
             application { testModule() }

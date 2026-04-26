@@ -5,7 +5,9 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
 import no.nav.lumi.config.exception.ApiErrorException
+import no.nav.lumi.domain.PhraseFilter
 
 class QueryValidationTest : FunSpec({
 
@@ -143,6 +145,80 @@ class QueryValidationTest : FunSpec({
                 parseRatingFilters(filters, null, null)
             }
             ex.message shouldContain "Too many"
+        }
+    }
+
+    context("parsePhraseFilter") {
+        test("parses valid phrase filter") {
+            val result = parsePhraseFilter(listOf("fieldId:vanskelig svare"))
+
+            result shouldBe PhraseFilter(fieldId = "fieldId", surface = "vanskelig svare")
+        }
+
+        test("returns null for null input") {
+            parsePhraseFilter(null) shouldBe null
+        }
+
+        test("returns null for empty input") {
+            parsePhraseFilter(emptyList()) shouldBe null
+        }
+
+        test("rejects missing colon separator") {
+            val rawInput = "fieldId vanskelig svare"
+            val ex = shouldThrow<ApiErrorException.BadRequestException> {
+                parsePhraseFilter(listOf(rawInput))
+            }
+
+            ex.message shouldContain "Invalid phrase format"
+            ex.message.shouldNotContain(rawInput)
+        }
+
+        test("rejects blank surface after normalization") {
+            val rawInput = "fieldId:!!!"
+            val ex = shouldThrow<ApiErrorException.BadRequestException> {
+                parsePhraseFilter(listOf(rawInput))
+            }
+
+            ex.message shouldContain "Invalid phrase format"
+            ex.message.shouldNotContain(rawInput)
+        }
+
+        test("rejects phrase with only stopwords") {
+            val rawInput = "fieldId:og en"
+            val ex = shouldThrow<ApiErrorException.BadRequestException> {
+                parsePhraseFilter(listOf(rawInput))
+            }
+
+            ex.message shouldContain "Invalid phrase format"
+            ex.message.shouldNotContain(rawInput)
+        }
+
+        test("rejects phrase with more than two content words") {
+            val rawInput = "fieldId:vanskelig svare spørsmål"
+            val ex = shouldThrow<ApiErrorException.BadRequestException> {
+                parsePhraseFilter(listOf(rawInput))
+            }
+
+            ex.message shouldContain "Invalid phrase format"
+            ex.message.shouldNotContain(rawInput)
+        }
+
+        test("rejects invalid fieldId") {
+            val rawInput = "field\$id:vanskelig svare"
+            val ex = shouldThrow<ApiErrorException.BadRequestException> {
+                parsePhraseFilter(listOf(rawInput))
+            }
+
+            ex.message shouldContain "Invalid phrase format"
+            ex.message.shouldNotContain(rawInput)
+        }
+
+        test("rejects more than one phrase filter") {
+            val ex = shouldThrow<ApiErrorException.BadRequestException> {
+                parsePhraseFilter(listOf("fieldId:vanskelig svare", "fieldId:enkelt svar"))
+            }
+
+            ex.message shouldContain "Only a single phrase filter is supported"
         }
     }
 

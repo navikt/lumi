@@ -86,10 +86,13 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
     setParams({
       app: newApp,
       page: "1",
+      // phrase, choice and rating are field-bound (belong to a specific survey
+      // in a specific app) — always clear on app change to avoid stale filters.
+      phrase: undefined,
+      choice: undefined,
+      rating: undefined,
       ...(shouldClearSurvey && {
         surveyId: undefined,
-        choice: undefined,
-        rating: undefined,
       }),
     });
   };
@@ -99,6 +102,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
       surveyId: newSurveyId,
       choice: undefined,
       rating: undefined,
+      phrase: undefined,
       page: "1",
     });
   };
@@ -135,6 +139,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
       theme: undefined,
       choice: undefined,
       rating: undefined,
+      phrase: undefined,
       page: undefined,
       size: undefined,
     });
@@ -152,7 +157,8 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
     params.task ||
     params.theme ||
     params.choice ||
-    params.rating;
+    params.rating ||
+    params.phrase;
 
   const isPending = isPendingBootstrap || isPendingStats;
 
@@ -242,6 +248,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                   onChange={(e) =>
                     setParams({
                       query: e.target.value || undefined,
+                      phrase: undefined,
                       page: "1",
                     })
                   }
@@ -376,6 +383,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                 onChange={(e) =>
                   setParams({
                     query: e.target.value || undefined,
+                    phrase: undefined,
                     page: "1",
                   })
                 }

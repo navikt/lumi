@@ -375,6 +375,11 @@ data class TeamsAndApps(
     val teams: Map<String, Set<String>>
 )
 
+data class PhraseFilter(
+    val fieldId: String,
+    val surface: String
+)
+
 /**
  * Query parameters for feedback list.
  * 
@@ -412,6 +417,8 @@ data class FeedbackQuery(
     val choiceFilters: List<Pair<String, String>> = emptyList(),
     /** Multi-value rating filters: list of (fieldId, ratingValue) pairs */
     val ratingFilters: List<Pair<String, Int>> = emptyList(),
+    /** Single phrase filter for exact bigram matching */
+    val phraseFilter: PhraseFilter? = null,
 )
 
 /**

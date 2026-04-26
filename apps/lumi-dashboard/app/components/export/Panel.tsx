@@ -56,6 +56,7 @@ export function ExportPanel() {
           segment: params.segment,
           choice: splitChoiceParam(params.choice),
           rating: splitRatingParam(params.rating),
+          phrase: params.phrase,
         },
       });
 

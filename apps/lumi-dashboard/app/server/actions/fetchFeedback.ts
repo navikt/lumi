@@ -31,6 +31,7 @@ interface FeedbackActionParams {
   segment?: string;
   choice?: string[];
   rating?: string[];
+  phrase?: string;
 }
 
 function toMockSearchParams(data: FeedbackActionParams): URLSearchParams {
@@ -60,6 +61,9 @@ function transformToBackendParams(data: FeedbackActionParams) {
     .map((entry) => entry.trim())
     .filter(Boolean);
 
+  // Canonicalize: phrase wins over query (same rule as useFeedback)
+  const effectiveQuery = data.phrase ? undefined : data.query;
+
   return {
     team: data.team,
     app: data.app,
@@ -70,7 +74,7 @@ function transformToBackendParams(data: FeedbackActionParams) {
     toDate: data.toDate,
     hasText: data.hasText === "true" ? "true" : undefined,
     lowRating: data.lowRating === "true" ? "true" : undefined,
-    query: data.query,
+    query: effectiveQuery,
     tag: tag && tag.length > 0 ? tag : undefined,
     deviceType: data.deviceType,
     theme: data.theme,
@@ -78,6 +82,7 @@ function transformToBackendParams(data: FeedbackActionParams) {
     segment: data.segment?.split(",").filter(Boolean),
     choice: data.choice,
     rating: data.rating,
+    phrase: data.phrase,
   };
 }
 

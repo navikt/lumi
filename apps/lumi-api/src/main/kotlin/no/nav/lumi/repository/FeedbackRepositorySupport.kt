@@ -162,6 +162,22 @@ internal fun matchesThemeFilter(
     return matchedTheme == targetTheme.name
 }
 
+internal fun buildPhraseStemKey(surface: String): String {
+    val words = TextProcessor.extractWords(surface)
+    require(words.size == 2) { "Invalid phrase filter" }
+    return "${TextProcessor.stemNorwegian(words[0])}|${TextProcessor.stemNorwegian(words[1])}"
+}
+
+internal fun matchesPhraseFilter(feedback: FeedbackDto, fieldId: String, expectedStemKey: String): Boolean {
+    return feedback.answers
+        .asSequence()
+        .filter { it.fieldId == fieldId && it.fieldType == FieldType.TEXT }
+        .mapNotNull { (it.value as? AnswerValue.Text)?.text }
+        .any { text ->
+            TextProcessor.extractBigrams(text).any { it.stemKey == expectedStemKey }
+        }
+}
+
 private fun matchThemeName(text: String, themes: List<TextThemeDto>): String {
     val textWords = TextProcessor.tokenize(text)
         .map { TextProcessor.stemNorwegian(it) }

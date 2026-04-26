@@ -1,6 +1,7 @@
 import { XMarkIcon } from "@navikt/aksel-icons";
 import { HStack, Tag } from "@navikt/ds-react";
 import { useChoiceFilter } from "~/hooks/useChoiceFilter";
+import { usePhraseFilter } from "~/hooks/usePhraseFilter";
 import { useRatingFilter } from "~/hooks/useRatingFilter";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
@@ -28,6 +29,7 @@ export function ActiveFiltersChips() {
   const { activeFilters: activeSegments, removeSegment } = useSegmentFilter();
   const { removeChoice } = useChoiceFilter();
   const { removeRating } = useRatingFilter();
+  const { activeFilter: phraseFilter, removePhrase } = usePhraseFilter();
   const statsQuery = useStats();
   const { themes } = useThemes();
   const { choiceFilters, ratingFilters, themeLabel } = getFilterLabels({
@@ -104,6 +106,19 @@ export function ActiveFiltersChips() {
     });
   }
 
+  if (phraseFilter) {
+    const fieldLabel =
+      statsQuery.data?.fieldStats?.find(
+        (f) => f.fieldId === phraseFilter.fieldId,
+      )?.label ?? "Frase";
+    chips.push({
+      key: `phrase-${phraseFilter.fieldId}`,
+      label: fieldLabel,
+      value: `«${phraseFilter.surface}»`,
+      onRemove: () => removePhrase(),
+    });
+  }
+
   if (chips.length === 0) {
     return null;
   }
@@ -127,7 +142,10 @@ export function ActiveFiltersChips() {
             className={styles.removeButton}
             aria-label={`Fjern filter ${chip.label}: ${chip.value}`}
           >
-            <XMarkIcon fontSize="1rem" className={styles.removeIcon} />
+            <XMarkIcon
+              fontSize="var(--ax-font-size-medium)"
+              className={styles.removeIcon}
+            />
           </button>
         </Tag>
       ))}
