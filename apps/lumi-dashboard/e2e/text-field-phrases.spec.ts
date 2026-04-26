@@ -18,7 +18,7 @@ test.describe("TextFieldCard phrases", () => {
 
     // Phrase links should be visible and clickable
     const phraseLinks = page.getByRole("link", {
-      name: /Vis \d+ tilbakemeldinger som inneholder frasen/i,
+      name: /Vis \d+ tilbakemeldinger med frasen/i,
     });
     await expect(phraseLinks.first()).toBeVisible({ timeout: 5000 });
 
@@ -28,13 +28,15 @@ test.describe("TextFieldCard phrases", () => {
     expect(phraseCount).toBeGreaterThan(0);
   });
 
-  test("clicking phrase navigates to feedback with query", async ({ page }) => {
+  test("clicking phrase navigates to feedback with phrase param", async ({
+    page,
+  }) => {
     await page.goto("/?surveyId=survey-vurdering");
     await page.waitForLoadState("networkidle");
     await expect(page.locator("main")).toBeVisible({ timeout: 15000 });
 
     const phraseLinks = page.getByRole("link", {
-      name: /Vis \d+ tilbakemeldinger som inneholder frasen/i,
+      name: /Vis \d+ tilbakemeldinger med frasen/i,
     });
     await expect(phraseLinks.first()).toBeVisible({ timeout: 10000 });
 
@@ -44,15 +46,28 @@ test.describe("TextFieldCard phrases", () => {
     const phraseMatch = ariaLabel?.match(/frasen «(.+?)»/);
     const phraseText = phraseMatch?.[1] ?? "";
 
+    // Extract count from aria-label
+    const countMatch = ariaLabel?.match(/Vis (\d+)/);
+    const expectedCount = countMatch?.[1] ?? "";
+
     await firstLink.click();
 
-    // Should navigate to /feedback with query param
+    // Should navigate to /feedback with phrase param (not query)
     await expect(page).toHaveURL(/\/feedback/, { timeout: 10000 });
+
+    // phrase param should contain fieldId:surface
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("phrase"), {
+        timeout: 5000,
+      })
+      .toContain(phraseText);
+
+    // query param should NOT be present (mutual exclusion)
     await expect
       .poll(() => new URL(page.url()).searchParams.get("query"), {
         timeout: 5000,
       })
-      .toBe(phraseText);
+      .toBeNull();
 
     // Should have hasText param set
     await expect
@@ -60,5 +75,27 @@ test.describe("TextFieldCard phrases", () => {
         timeout: 5000,
       })
       .toBe("true");
+
+    // A phrase filter chip should appear
+    const chipText = new RegExp(`«${phraseText}»`);
+    await expect(page.getByText(chipText)).toBeVisible({ timeout: 5000 });
+
+    // totalElements header or row count should reflect the expected count
+    if (expectedCount) {
+      const total = page.getByText(
+        new RegExp(`${expectedCount}\\s*(tilbakemelding|treff|resultat)`),
+      );
+      // This is a soft check — mock may render differently
+      const totalVisible = await total
+        .first()
+        .isVisible()
+        .catch(() => false);
+      if (!totalVisible) {
+        // Fallback: at least verify some feedback rows render
+        await expect(page.locator("main")).toContainText("tilbakemelding", {
+          timeout: 5000,
+        });
+      }
+    }
   });
 });

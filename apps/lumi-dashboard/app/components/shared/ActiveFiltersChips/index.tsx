@@ -1,6 +1,7 @@
 import { XMarkIcon } from "@navikt/aksel-icons";
 import { HStack, Tag } from "@navikt/ds-react";
 import { useChoiceFilter } from "~/hooks/useChoiceFilter";
+import { usePhraseFilter } from "~/hooks/usePhraseFilter";
 import { useRatingFilter } from "~/hooks/useRatingFilter";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
@@ -28,6 +29,7 @@ export function ActiveFiltersChips() {
   const { activeFilters: activeSegments, removeSegment } = useSegmentFilter();
   const { removeChoice } = useChoiceFilter();
   const { removeRating } = useRatingFilter();
+  const { activeFilter: phraseFilter, removePhrase } = usePhraseFilter();
   const statsQuery = useStats();
   const { themes } = useThemes();
   const { choiceFilters, ratingFilters, themeLabel } = getFilterLabels({
@@ -101,6 +103,19 @@ export function ActiveFiltersChips() {
       label: formatMetadataLabel(key),
       value,
       onRemove: () => removeSegment(`${key}:${value}`),
+    });
+  }
+
+  if (phraseFilter) {
+    const fieldLabel =
+      statsQuery.data?.fieldStats?.find(
+        (f) => f.fieldId === phraseFilter.fieldId,
+      )?.label ?? "Frase";
+    chips.push({
+      key: `phrase-${phraseFilter.fieldId}`,
+      label: fieldLabel,
+      value: `«${phraseFilter.surface}»`,
+      onRemove: () => removePhrase(),
     });
   }
 

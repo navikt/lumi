@@ -29,6 +29,7 @@ export function useFeedback() {
       params.segment,
       params.rating,
       params.choice,
+      params.phrase,
     ],
     queryFn: () =>
       fetchFeedbackServerFn({
@@ -50,6 +51,7 @@ export function useFeedback() {
           segment: params.segment,
           rating: splitRatingParam(params.rating),
           choice: splitChoiceParam(params.choice),
+          phrase: params.phrase,
         },
       }),
     staleTime: 10000,

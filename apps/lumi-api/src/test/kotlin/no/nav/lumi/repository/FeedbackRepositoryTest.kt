@@ -9,8 +9,14 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import no.nav.lumi.TestDatabase
 import no.nav.lumi.config.DatabaseHolder
+import no.nav.lumi.domain.Answer
+import no.nav.lumi.domain.AnswerValue
 import no.nav.lumi.domain.FieldType
+import no.nav.lumi.domain.FeedbackDto
 import no.nav.lumi.domain.FeedbackQuery
+import no.nav.lumi.domain.PhraseFilter
+import no.nav.lumi.domain.Question
+import no.nav.lumi.domain.SubmissionContext
 import no.nav.lumi.domain.StatsQuery
 import no.nav.lumi.insertTestFeedback
 import no.nav.lumi.insertTestFeedbackWithJson
@@ -495,6 +501,73 @@ class FeedbackRepositoryTest : FunSpec({
             content.first().id shouldBe "match-both"
         }
 
+        test("filters by phrase with same bigram pipeline as dashboard stats") {
+            insertTestFeedbackWithJson(
+                id = "phrase-match-1",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-phrase",
+                        "answers": [
+                            {
+                                "fieldId": "feedback",
+                                "fieldType": "TEXT",
+                                "question": {"label": "Hvorfor?"},
+                                "value": {"type": "text", "text": "Det er vanskelig å svare raskt"}
+                            }
+                        ]
+                    }
+                """.trimIndent()
+            )
+            insertTestFeedbackWithJson(
+                id = "phrase-match-2",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-phrase",
+                        "answers": [
+                            {
+                                "fieldId": "feedback",
+                                "fieldType": "TEXT",
+                                "question": {"label": "Hvorfor?"},
+                                "value": {"type": "text", "text": "Dette var vanskelige svaret å gi"}
+                            }
+                        ]
+                    }
+                """.trimIndent()
+            )
+            insertTestFeedbackWithJson(
+                id = "phrase-other-field",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-phrase",
+                        "answers": [
+                            {
+                                "fieldId": "other",
+                                "fieldType": "TEXT",
+                                "question": {"label": "Annet?"},
+                                "value": {"type": "text", "text": "Det er vanskelig å svare raskt"}
+                            }
+                        ]
+                    }
+                """.trimIndent()
+            )
+
+            val (content, total, _) = repository.findPaginated(
+                FeedbackQuery(
+                    team = "team-test",
+                    phraseFilter = PhraseFilter(fieldId = "feedback", surface = "vanskelig svare")
+                )
+            )
+
+            total shouldBe 2
+            content.map { it.id }.toSet() shouldBe setOf("phrase-match-1", "phrase-match-2")
+        }
+
         test("filters by segments") {
             insertTestFeedbackWithJson(
                 id = "segment-match",
@@ -531,6 +604,76 @@ class FeedbackRepositoryTest : FunSpec({
 
             content shouldHaveSize 1
             content.first().id shouldBe "segment-match"
+        }
+    }
+
+    context("matchesPhraseFilter") {
+        fun feedbackWithText(vararg answers: Pair<String, String>): FeedbackDto {
+            return FeedbackDto(
+                id = UUID.randomUUID().toString(),
+                submittedAt = Instant.parse("2026-01-21T09:00:00Z").toString(),
+                app = "app-test",
+                surveyId = "survey-test",
+                context = SubmissionContext(),
+                answers = answers.map { (fieldId, text) ->
+                    Answer(
+                        fieldId = fieldId,
+                        fieldType = FieldType.TEXT,
+                        question = Question(label = fieldId),
+                        value = AnswerValue.Text(text)
+                    )
+                }
+            )
+        }
+
+        test("matches via stemming across normalized bigrams") {
+            val filter = PhraseFilter(fieldId = "feedback", surface = "vanskelig svare")
+            val expectedStemKey = buildPhraseStemKey(filter.surface)
+
+            matchesPhraseFilter(
+                feedbackWithText("feedback" to "Det er vanskelig å svare raskt"),
+                filter.fieldId,
+                expectedStemKey
+            ) shouldBe true
+
+            matchesPhraseFilter(
+                feedbackWithText("feedback" to "Dette var vanskelige svaret å gi"),
+                filter.fieldId,
+                expectedStemKey
+            ) shouldBe true
+        }
+
+        test("respects fieldId when the same phrase exists in another field") {
+            val filter = PhraseFilter(fieldId = "feedback", surface = "vanskelig svare")
+            val expectedStemKey = buildPhraseStemKey(filter.surface)
+
+            matchesPhraseFilter(
+                feedbackWithText("other" to "Det er vanskelig å svare raskt"),
+                filter.fieldId,
+                expectedStemKey
+            ) shouldBe false
+        }
+
+        test("returns false for empty text answers") {
+            val filter = PhraseFilter(fieldId = "feedback", surface = "vanskelig svare")
+            val expectedStemKey = buildPhraseStemKey(filter.surface)
+
+            matchesPhraseFilter(
+                feedbackWithText("feedback" to "   "),
+                filter.fieldId,
+                expectedStemKey
+            ) shouldBe false
+        }
+
+        test("constructs the same stem key as the dashboard bigram pipeline") {
+            val filter = PhraseFilter(fieldId = "feedback", surface = "vanskelige svarene")
+            val expectedStemKey = buildPhraseStemKey(filter.surface)
+
+            matchesPhraseFilter(
+                feedbackWithText("feedback" to "Det er vanskelig å svare raskt"),
+                filter.fieldId,
+                expectedStemKey
+            ) shouldBe true
         }
     }
 

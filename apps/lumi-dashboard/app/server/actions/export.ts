@@ -189,6 +189,7 @@ function transformToBackendParams(data: ExportParams) {
     segment: data.segment?.split(",").filter(Boolean),
     choice: data.choice?.length ? data.choice : undefined,
     rating: data.rating?.length ? data.rating : undefined,
+    phrase: data.phrase,
   };
 }
 

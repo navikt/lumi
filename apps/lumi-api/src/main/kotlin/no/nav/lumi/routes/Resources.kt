@@ -41,6 +41,8 @@ class ApiV1Intern {
         val choice: List<String>? = null,
         /** Rating filters — repeated params, each in format "fieldId:ratingValue" */
         val rating: List<String>? = null,
+        /** Phrase filter — repeated param support is validated server-side, single value only */
+        val phrase: List<String>? = null,
         // Legacy single-value params (backward compat for bookmarked URLs)
         val ratingFieldId: String? = null,
         val ratingValue: Int? = null,
@@ -255,6 +257,8 @@ class ApiV1Intern {
         val choice: List<String>? = null,
         /** Rating filters — repeated params, each in format "fieldId:ratingValue" */
         val rating: List<String>? = null,
+        /** Phrase filter — repeated param support is validated server-side, single value only */
+        val phrase: List<String>? = null,
         // Legacy single-value params (backward compat for bookmarked URLs)
         val ratingFieldId: String? = null,
         val ratingValue: Int? = null,

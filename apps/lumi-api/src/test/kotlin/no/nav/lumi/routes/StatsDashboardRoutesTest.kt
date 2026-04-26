@@ -11,11 +11,14 @@ import io.ktor.client.request.delete
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.encodeURLParameter
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
@@ -316,6 +319,70 @@ class StatsDashboardRoutesTest : FunSpec({
             val textStats = textField.stats as FieldStats.Text
             textStats.responseCount shouldBe 5
             textStats.responseRate shouldBe (1.0 plusOrMinus 0.0001)
+        }
+    }
+
+    test("dashboard top phrase counts match feedback phrase filter totals") {
+        testApplication {
+            application { testModule() }
+
+            val team = "flex"
+            val app = "spinnsyn"
+            val surveyId = "survey-phrase-contract"
+            val submittedAt = OffsetDateTime.parse("2026-01-21T10:00:00+01:00")
+
+            val texts = listOf(
+                "Digital søknad er vanskelig å svare på",
+                "Digital søknad har vanskelig å svare flyt",
+                "Digital søknaden gir vanskelig svar i skjema",
+                "Anker Bjerk lager anker bjerk igjen",
+                "Anker Bjerk og digital søknad dukker opp"
+            )
+
+            texts.forEachIndexed { idx, text ->
+                val time = submittedAt.minusMinutes(idx.toLong())
+                insertTestFeedbackWithJson(
+                    team = team,
+                    app = app,
+                    feedbackJson = feedbackJson(
+                        surveyId = surveyId,
+                        pathname = "/survey",
+                        deviceType = "desktop",
+                        rating = 4,
+                        text = text,
+                        startedAt = time.minusSeconds(30),
+                        submittedAt = time,
+                    ),
+                    opprettet = time,
+                )
+            }
+
+            val client = createTestClient()
+
+            val statsResponse = client.get("/api/v1/intern/stats/dashboard?team=$team&app=$app&surveyId=$surveyId") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            statsResponse.status shouldBe HttpStatusCode.OK
+
+            val stats = json.decodeFromString<FeedbackStats>(statsResponse.bodyAsText())
+            val textField = stats.fieldStats.first { it.fieldId == "feedback" }
+            val textStats = textField.stats as FieldStats.Text
+            textStats.topPhrases.isEmpty() shouldBe false
+
+            textStats.topPhrases.forEach { phrase ->
+                val encodedPhrase = "feedback:${phrase.text}".encodeURLParameter()
+                val feedbackResponse = client.get(
+                    "/api/v1/intern/feedback?team=$team&app=$app&surveyId=$surveyId&hasText=true&size=200&phrase=$encodedPhrase"
+                ) {
+                    header(HttpHeaders.Authorization, "Bearer test-token")
+                }
+
+                feedbackResponse.status shouldBe HttpStatusCode.OK
+
+                val feedbackPage = Json.parseToJsonElement(feedbackResponse.bodyAsText()).jsonObject
+                feedbackPage["totalElements"]?.jsonPrimitive?.content?.toInt() shouldBe phrase.count
+            }
         }
     }
 

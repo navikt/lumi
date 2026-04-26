@@ -96,7 +96,7 @@ describe("TextFieldCard", () => {
     expect(phraseLinks).toHaveLength(5);
   });
 
-  it("frase-lenker har korrekte søkeparametere", async () => {
+  it("frase-lenker bruker phrase-param i stedet for query", async () => {
     await renderWithRouter(
       <TextFieldCard
         field={mockField(mockTextStatsWithPhrases)}
@@ -110,10 +110,12 @@ describe("TextFieldCard", () => {
 
     const href = link.getAttribute("href") ?? "";
     expect(href).toContain("/feedback");
-    expect(href).toMatch(
-      /query=vanskelig(%20|\+| )forst%C3%A5|query=vanskelig\+forst%C3%A5|query=vanskelig%20forst%C3%A5|query=vanskelig.forst/,
-    );
-    // TanStack Router serializes string values — "true" and "1" may be quoted
+    // Should use phrase param with fieldId:surface format
+    expect(href).toMatch(/phrase=comment-field/);
+    expect(href).toMatch(/vanskelig/);
+    // Should NOT have query param (mutual exclusion)
+    expect(href).not.toMatch(/query=/);
+    // Should have hasText and page
     expect(href).toMatch(/hasText=(%22|"|)true(%22|"|)/);
     expect(href).toMatch(/page=(%22|"|)1(%22|"|)/);
   });
@@ -153,7 +155,7 @@ describe("TextFieldCard", () => {
     expect(screen.getByText("Ingen tekstsvar ennå")).toBeInTheDocument();
   });
 
-  it("fraser har korrekte aria-labels", async () => {
+  it("fraser har korrekte aria-labels med «»-format", async () => {
     await renderWithRouter(
       <TextFieldCard
         field={mockField(mockTextStatsWithPhrases)}
@@ -171,8 +173,37 @@ describe("TextFieldCard", () => {
     for (const phraseLink of allLinks) {
       expect(phraseLink).toHaveAttribute(
         "aria-label",
-        expect.stringMatching(/Vis \d+ tilbakemeldinger som inneholder frasen/),
+        expect.stringMatching(/Vis \d+ tilbakemeldinger med frasen/),
       );
     }
+  });
+
+  it("viser maks 3 siste svar selv om backend leverer flere", async () => {
+    const statsWithManyResponses: TextStats = {
+      type: "text",
+      responseCount: 50,
+      responseRate: 80,
+      topKeywords: [],
+      recentResponses: [
+        { text: "Svar 1", submittedAt: "2024-01-15T10:00:00Z" },
+        { text: "Svar 2", submittedAt: "2024-01-14T10:00:00Z" },
+        { text: "Svar 3", submittedAt: "2024-01-13T10:00:00Z" },
+        { text: "Svar 4", submittedAt: "2024-01-12T10:00:00Z" },
+        { text: "Svar 5", submittedAt: "2024-01-11T10:00:00Z" },
+      ],
+    };
+
+    await renderWithRouter(
+      <TextFieldCard
+        field={mockField(statsWithManyResponses)}
+        totalCount={60}
+      />,
+    );
+
+    expect(screen.getByText('"Svar 1"')).toBeInTheDocument();
+    expect(screen.getByText('"Svar 2"')).toBeInTheDocument();
+    expect(screen.getByText('"Svar 3"')).toBeInTheDocument();
+    expect(screen.queryByText('"Svar 4"')).not.toBeInTheDocument();
+    expect(screen.queryByText('"Svar 5"')).not.toBeInTheDocument();
   });
 });

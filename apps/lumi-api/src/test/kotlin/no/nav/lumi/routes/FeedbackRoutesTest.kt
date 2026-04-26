@@ -107,6 +107,83 @@ class FeedbackRoutesTest : FunSpec({
         }
     }
 
+    test("GET /api/v1/intern/feedback supports phrase filtering") {
+        testApplication {
+            application { testModule() }
+
+            val team = "team-test"
+            val app = "app-test"
+            val surveyId = "survey-phrase-route"
+
+            insertTestFeedbackWithJson(
+                team = team,
+                app = app,
+                feedbackJson = """
+                    {
+                      "schemaVersion": 1,
+                      "surveyId": "$surveyId",
+                      "surveyType": "rating",
+                      "context": { "pathname": "/phrase", "deviceType": "desktop" },
+                      "answers": [
+                        {
+                          "fieldId": "feedback",
+                          "fieldType": "TEXT",
+                          "question": { "label": "Har du tilbakemelding?" },
+                          "value": { "type": "text", "text": "Det er vanskelig å svare raskt" }
+                        }
+                      ],
+                      "submittedAt": "2026-01-21T09:00:00Z"
+                    }
+                """.trimIndent()
+            )
+            insertTestFeedbackWithJson(
+                team = team,
+                app = app,
+                feedbackJson = """
+                    {
+                      "schemaVersion": 1,
+                      "surveyId": "$surveyId",
+                      "surveyType": "rating",
+                      "context": { "pathname": "/phrase", "deviceType": "desktop" },
+                      "answers": [
+                        {
+                          "fieldId": "feedback",
+                          "fieldType": "TEXT",
+                          "question": { "label": "Har du tilbakemelding?" },
+                          "value": { "type": "text", "text": "Dette er lett å lese" }
+                        }
+                      ],
+                      "submittedAt": "2026-01-21T09:05:00Z"
+                    }
+                """.trimIndent()
+            )
+
+            val response = createTestClient().get(
+                "/api/v1/intern/feedback?team=$team&app=$app&surveyId=$surveyId&phrase=feedback:vanskelig%20svare"
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.OK
+            val body = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+            body["totalElements"]?.jsonPrimitive?.int shouldBe 1
+        }
+    }
+
+    test("GET /api/v1/intern/feedback rejects multiple phrase filters") {
+        testApplication {
+            application { testModule() }
+
+            val response = createTestClient().get(
+                "/api/v1/intern/feedback?team=team-test&phrase=feedback:vanskelig%20svare&phrase=feedback:digital%20soknad"
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+        }
+    }
+
     test("GET /api/v1/intern/feedback/tags returns list of tags") {
         testApplication {
             application { testModule() }

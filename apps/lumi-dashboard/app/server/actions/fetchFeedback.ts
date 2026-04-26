@@ -31,6 +31,7 @@ interface FeedbackActionParams {
   segment?: string;
   choice?: string[];
   rating?: string[];
+  phrase?: string;
 }
 
 function toMockSearchParams(data: FeedbackActionParams): URLSearchParams {
@@ -78,6 +79,7 @@ function transformToBackendParams(data: FeedbackActionParams) {
     segment: data.segment?.split(",").filter(Boolean),
     choice: data.choice,
     rating: data.rating,
+    phrase: data.phrase,
   };
 }
 

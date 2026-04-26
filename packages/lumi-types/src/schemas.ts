@@ -58,6 +58,8 @@ export const FeedbackParamsSchema = z.object({
   choice: z.array(z.string()).optional(),
   /** Rating filters as repeated query params, each in format "fieldId:value" */
   rating: z.array(z.string()).optional(),
+  /** Phrase filter in format "fieldId:word1 word2" — exact bigram match */
+  phrase: z.string().optional(),
 });
 
 export type FeedbackParams = z.infer<typeof FeedbackParamsSchema>;
@@ -337,6 +339,8 @@ export const ExportParamsSchema = z.object({
   choice: z.array(z.string()).optional(),
   /** Rating filters as repeated query params, each in format "fieldId:value" */
   rating: z.array(z.string()).optional(),
+  /** Phrase filter in format "fieldId:word1 word2" — exact bigram match */
+  phrase: z.string().optional(),
 });
 
 export type ExportParams = z.infer<typeof ExportParamsSchema>;

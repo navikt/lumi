@@ -90,6 +90,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
         surveyId: undefined,
         choice: undefined,
         rating: undefined,
+        phrase: undefined,
       }),
     });
   };
@@ -99,6 +100,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
       surveyId: newSurveyId,
       choice: undefined,
       rating: undefined,
+      phrase: undefined,
       page: "1",
     });
   };
@@ -135,6 +137,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
       theme: undefined,
       choice: undefined,
       rating: undefined,
+      phrase: undefined,
       page: undefined,
       size: undefined,
     });
@@ -152,7 +155,8 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
     params.task ||
     params.theme ||
     params.choice ||
-    params.rating;
+    params.rating ||
+    params.phrase;
 
   const isPending = isPendingBootstrap || isPendingStats;
 
@@ -242,6 +246,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                   onChange={(e) =>
                     setParams({
                       query: e.target.value || undefined,
+                      phrase: undefined,
                       page: "1",
                     })
                   }
@@ -376,6 +381,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                 onChange={(e) =>
                   setParams({
                     query: e.target.value || undefined,
+                    phrase: undefined,
                     page: "1",
                   })
                 }

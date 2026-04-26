@@ -24,6 +24,7 @@ export const searchSchema = z
     task: optionalStringParam,
     choice: optionalStringParam,
     rating: optionalStringParam,
+    phrase: optionalStringParam,
     // Legacy params — kept temporarily for bookmarked URL migration
     choiceFieldId: optionalStringParam,
     choiceValue: optionalStringParam,
