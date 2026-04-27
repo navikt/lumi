@@ -62,6 +62,12 @@ Lumi er laget for **Nav-team som vil samle brukerinnsikt** i sine flater — ent
 - En React-app som kjører på NAIS
 - Mulighet til å gjøre token exchange (TokenX eller AzureAD) for å sende inn svar
 
+## Før du starter
+
+::: tip Les bruksvilkårene
+Før du setter opp din første survey, les [bruksvilkårene](/referanse/bruksvilkar) for å forstå ansvar, personvern og hva Lumi sporer.
+:::
+
 ## Neste steg
 
 Klar til å komme i gang? Gå videre til [Installer widget](/kom-i-gang/installer-widget) for å sette opp pakken i prosjektet ditt.
