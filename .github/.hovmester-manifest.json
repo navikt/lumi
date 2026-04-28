@@ -1,6 +1,6 @@
 {
   "source": "navikt/hovmester",
-  "source_sha": "f20543b9058dd08e599fb7cbaa5c7f0d636e1d1d",
+  "source_sha": "47657ea314ab3e386ad6ef45e97df33c9ad58de7",
   "files": [
     ".github/ISSUE_TEMPLATE/bug.yml",
     ".github/ISSUE_TEMPLATE/config.yml",
@@ -16,10 +16,12 @@
     ".github/agents/konditor.agent.md",
     ".github/agents/souschef.agent.md",
     ".github/instructions/accessibility.instructions.md",
+    ".github/instructions/copilot-review.instructions.md",
     ".github/instructions/docker.instructions.md",
     ".github/instructions/frontend.instructions.md",
     ".github/instructions/github-actions.instructions.md",
     ".github/instructions/kotlin.instructions.md",
+    ".github/instructions/norwegian-text.instructions.md",
     ".github/instructions/security.instructions.md",
     ".github/skills/accessibility-review/SKILL.md",
     ".github/skills/aksel-design/SKILL.md",
@@ -62,6 +64,7 @@
     ".github/skills/lumi-survey/references/nais-konfigurasjon.md",
     ".github/skills/nais-manifest/SKILL.md",
     ".github/skills/nais-manifest/references/naisjob-example.md",
+    ".github/skills/nais-manifest/references/pod-lifecycle.md",
     ".github/skills/nav-architecture-review/SKILL.md",
     ".github/skills/nav-architecture-review/references/adr-template.md",
     ".github/skills/nav-architecture-review/references/perspektiv-sjekklister.md",
