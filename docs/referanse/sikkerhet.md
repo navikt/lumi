@@ -63,5 +63,6 @@ Det er gjennomført risiko- og sårbarhetsanalyse (ROS) for Lumi. Analysen holde
 
 ## Se også
 
+- [Bruksvilkår](/referanse/bruksvilkar) — vilkår, ansvar og sjekkliste for bruk av Lumi
 - [Koble til backend](/kom-i-gang/koble-til-backend) — token exchange og NAIS-oppsett
 - [Tilgang](/dashboard/tilgang) — hvem som har tilgang til dashboardet

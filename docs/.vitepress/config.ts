@@ -88,6 +88,10 @@ export default withMermaid({
               link: "/referanse/sikkerhet",
             },
             {
+              text: "Bruksvilkår",
+              link: "/referanse/bruksvilkar",
+            },
+            {
               text: "Miljøer & lenker",
               link: "/referanse/miljoer",
             },
