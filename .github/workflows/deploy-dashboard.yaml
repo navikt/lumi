@@ -33,8 +33,8 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: ${{ inputs.ref || github.ref }}
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+      - uses: pnpm/action-setup@903f9c1a6ebcba6cf41d87230be49611ac97822e # v6.0.3
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version: 22
           cache: pnpm
@@ -66,8 +66,8 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: ${{ inputs.ref || github.ref }}
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+      - uses: pnpm/action-setup@903f9c1a6ebcba6cf41d87230be49611ac97822e # v6.0.3
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version: 22
           cache: pnpm
@@ -90,7 +90,7 @@ jobs:
           cp -r .output/public .output/client
 
       - name: Upload static files to NAV CDN
-        uses: nais/deploy/actions/cdn-upload/v2@fa754451577294aae42872a69b888b3470478ec1
+        uses: nais/deploy/actions/cdn-upload/v2@2f28259ff29ea37915f5a0c9e2a8e3542c429df7
         with:
           team: team-esyfo
           source: ./apps/lumi-dashboard/.output/client
@@ -99,7 +99,7 @@ jobs:
           identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Push to GAR
-        uses: nais/docker-build-push@cd5ec5663feb0e05c3fa374d1fb442605b046c6b
+        uses: nais/docker-build-push@be85229e81c0293c265c646c084f05317fb6e0d2
         id: docker-build-push
         with:
           team: team-esyfo
@@ -122,8 +122,8 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: ${{ inputs.ref || github.ref }}
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+      - uses: pnpm/action-setup@903f9c1a6ebcba6cf41d87230be49611ac97822e # v6.0.3
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version: 22
           cache: pnpm
@@ -145,7 +145,7 @@ jobs:
           cp -r .output/public .output/client
 
       - name: Upload static files to NAV CDN
-        uses: nais/deploy/actions/cdn-upload/v2@fa754451577294aae42872a69b888b3470478ec1
+        uses: nais/deploy/actions/cdn-upload/v2@2f28259ff29ea37915f5a0c9e2a8e3542c429df7
         with:
           team: team-esyfo
           source: ./apps/lumi-dashboard/.output/client
@@ -154,7 +154,7 @@ jobs:
           identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Push to GAR
-        uses: nais/docker-build-push@cd5ec5663feb0e05c3fa374d1fb442605b046c6b
+        uses: nais/docker-build-push@be85229e81c0293c265c646c084f05317fb6e0d2
         id: docker-build-push
         with:
           team: team-esyfo
@@ -176,7 +176,7 @@ jobs:
       url: https://lumi-dashboard-demo.ekstern.dev.nav.no
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: nais/deploy/actions/deploy@fa754451577294aae42872a69b888b3470478ec1
+      - uses: nais/deploy/actions/deploy@2f28259ff29ea37915f5a0c9e2a8e3542c429df7
         env:
           CLUSTER: dev-gcp
           RESOURCE: apps/lumi-dashboard/nais/demo.yaml
@@ -194,7 +194,7 @@ jobs:
       url: https://lumi-dashboard.ansatt.dev.nav.no
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: nais/deploy/actions/deploy@fa754451577294aae42872a69b888b3470478ec1
+      - uses: nais/deploy/actions/deploy@2f28259ff29ea37915f5a0c9e2a8e3542c429df7
         env:
           CLUSTER: dev-gcp
           RESOURCE: apps/lumi-dashboard/nais/dev.yaml
@@ -212,7 +212,7 @@ jobs:
       url: https://lumi-dashboard.ansatt.nav.no
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: nais/deploy/actions/deploy@fa754451577294aae42872a69b888b3470478ec1
+      - uses: nais/deploy/actions/deploy@2f28259ff29ea37915f5a0c9e2a8e3542c429df7
         env:
           CLUSTER: prod-gcp
           RESOURCE: apps/lumi-dashboard/nais/prod.yaml
