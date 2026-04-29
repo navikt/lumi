@@ -22,30 +22,6 @@
   min-width: 0;
 }
 
-.lumi-survey-dock__close-button.lumi-survey-dock__close-button {
-  position: absolute;
-  top: -0.75rem;
-  right: 1rem;
-  z-index: 10;
-  background-color: var(--ax-bg-accent-strong);
-  color: var(--ax-text-accent-contrast);
-  border-radius: var(--ax-radius-full);
-  box-shadow: var(--a-shadow-medium);
-  min-width: 2rem;
-  min-height: 2rem;
-  padding: 0;
-}
-
-.lumi-survey-dock__close-button.lumi-survey-dock__close-button:hover {
-  background-color: var(--ax-bg-accent-strong-hover);
-  color: var(--ax-text-accent-contrast);
-}
-
-.lumi-survey-dock__close-button.lumi-survey-dock__close-button:focus-visible {
-  outline: none;
-  box-shadow: var(--a-shadow-focus), var(--a-shadow-medium);
-}
-
 .lumi-survey-dock__rating {
   display: flex;
   flex-direction: column;
