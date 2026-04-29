@@ -68,6 +68,15 @@ data class DefinitionDiff(
     }
 }
 
+/**
+ * Compute a structural SHA-256 hash over the survey definition.
+ *
+ * HASH STABILITY CONTRACT: The canonical JSON format used for hashing must NEVER change
+ * once deployed to production. Any change invalidates all stored hashes and breaks
+ * immutability enforcement. fieldType uses Kotlin enum .name (e.g. "SINGLE_CHOICE"),
+ * while surveyType and ratingVariant use their @SerialName values (e.g. "topTasks", "emoji").
+ * This is intentional and must remain stable.
+ */
 fun SurveyDefinition.computeHash(): String {
     val canonicalJson = toCanonicalJson()
     val digest = MessageDigest.getInstance("SHA-256").digest(canonicalJson.toByteArray(Charsets.UTF_8))

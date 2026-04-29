@@ -39,6 +39,21 @@ class DefinitionHashTest : FunSpec({
             SurveyDefinition.fromSubmission(relabeled).computeHash()
     }
 
+    test("computeHash produces stable value (golden test)") {
+        // This test guards against accidental changes to the canonical JSON format.
+        // If this test breaks, ALL stored definition hashes in production are invalidated.
+        val definition = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("rating", FieldType.RATING, RatingVariant.EMOJI, 5, null),
+                FieldDefinition("reason", FieldType.TEXT, null, null, null)
+            )
+        )
+
+        definition.computeHash() shouldBe "4c13205b861b8bfc219f8215b9fca979692c48ce7f2b6994f0fdc022e99102c2"
+    }
+
     test("computeHash treats structural option order as significant") {
         val first = submission(
             surveyId = "survey-choice",

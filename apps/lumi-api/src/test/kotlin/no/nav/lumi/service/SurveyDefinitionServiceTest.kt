@@ -11,6 +11,7 @@ import no.nav.lumi.domain.Answer
 import no.nav.lumi.domain.AnswerValue
 import no.nav.lumi.domain.ChoiceOption
 import no.nav.lumi.domain.FeedbackSubmissionV1
+import no.nav.lumi.domain.FieldDefinition
 import no.nav.lumi.domain.FieldType
 import no.nav.lumi.domain.Question
 import no.nav.lumi.domain.RatingVariant
@@ -167,6 +168,41 @@ class SurveyDefinitionServiceTest : FunSpec({
         val result = service.registerOrValidate("team-a", submission)
 
         result shouldBe RegistrationResult("survey-1", definitionHash)
+    }
+
+    test("handles concurrent insert with different hash - throws 409") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val submission = ratingSubmission()
+
+        // Stored definition has same rating field (answers pass validation)
+        // but also an extra field, giving a different hash
+        val differentDefinition = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("rating", FieldType.RATING, RatingVariant.EMOJI, 5, null),
+                FieldDefinition("followup", FieldType.TEXT, null, null, null)
+            )
+        )
+
+        coEvery { repository.findByTeamAndSurveyId("team-a", "survey-1") } returnsMany listOf(
+            null,
+            StoredSurveyDefinition(
+                team = "team-a",
+                surveyId = "survey-1",
+                definitionHash = differentDefinition.computeHash(),
+                definition = differentDefinition
+            )
+        )
+        coEvery { repository.countByTeam("team-a") } returns 10
+        coEvery { repository.insertIgnore("team-a", any(), any()) } returns false
+
+        val exception = shouldThrowConflict {
+            service.registerOrValidate("team-a", submission)
+        }
+
+        exception.message shouldContain "Survey definition conflict"
     }
 })
 
