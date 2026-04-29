@@ -39,6 +39,51 @@ class FeedbackRepositoryTest : FunSpec({
         TestDatabase.clearAllData()
     }
 
+    context("save") {
+        test("returns existing id for duplicate deduplication key") {
+            val feedbackJson = """
+                {
+                    "schemaVersion": 1,
+                    "surveyId": "survey-dedup",
+                    "surveyType": "rating",
+                    "submittedAt": "2026-01-10T12:00:12Z",
+                    "answers": [
+                        {
+                            "fieldId": "rating",
+                            "fieldType": "RATING",
+                            "question": { "label": "Hvor fornøyd er du?" },
+                            "value": { "type": "rating", "rating": 4, "ratingVariant": "emoji", "ratingScale": 5 }
+                        }
+                    ]
+                }
+            """.trimIndent()
+
+            val firstId = repository.save(
+                feedbackJson = feedbackJson,
+                team = "team-test",
+                app = "app-test",
+                surveyId = "survey-dedup",
+                definitionHash = "a".repeat(64),
+                deduplicationKeyHash = "b".repeat(64)
+            )
+
+            val secondId = repository.save(
+                feedbackJson = feedbackJson,
+                team = "team-test",
+                app = "app-test",
+                surveyId = "survey-dedup",
+                definitionHash = "a".repeat(64),
+                deduplicationKeyHash = "b".repeat(64)
+            )
+
+            firstId shouldBe secondId
+
+            val (content, total, _) = repository.findPaginated(FeedbackQuery(team = "team-test"))
+            total shouldBe 1
+            content.single().id shouldBe firstId
+        }
+    }
+
     context("findPaginated") {
         test("returns empty list when no feedback exists") {
             val (content, total, _) = repository.findPaginated(FeedbackQuery(team = "nonexistent"))

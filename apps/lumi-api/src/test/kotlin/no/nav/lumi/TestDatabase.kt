@@ -80,7 +80,7 @@ object TestDatabase {
     fun clearAllData() {
         dataSource.connection.use { conn ->
             conn.createStatement().use { stmt ->
-                stmt.execute("TRUNCATE TABLE rating_marker, feedback CASCADE")
+                stmt.execute("TRUNCATE TABLE rating_marker, feedback, survey_definitions CASCADE")
             }
             conn.commit()
         }

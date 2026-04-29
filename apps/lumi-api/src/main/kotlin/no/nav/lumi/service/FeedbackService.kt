@@ -24,9 +24,16 @@ class FeedbackService(
 
     suspend fun findDistinctApps(team: String) = repository.findDistinctApps(team)
 
-    suspend fun save(feedbackJson: String, team: String, app: String): String {
+    suspend fun save(
+        feedbackJson: String,
+        team: String,
+        app: String,
+        surveyId: String? = null,
+        definitionHash: String? = null,
+        deduplicationKeyHash: String? = null
+    ): String {
         val sanitizedJson = redactFeedbackJson(feedbackJson)
-        return repository.save(sanitizedJson, team, app)
+        return repository.save(sanitizedJson, team, app, surveyId, definitionHash, deduplicationKeyHash)
     }
 
     suspend fun addTag(id: String, team: String, tag: String) = repository.addTag(id, team, tag)

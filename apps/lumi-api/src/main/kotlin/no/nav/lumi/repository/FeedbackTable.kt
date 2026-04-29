@@ -21,6 +21,9 @@ object FeedbackTable : Table("feedback") {
     val feedbackJson = registerColumn<String>("feedback_json", JsonbColumnType())
     val team = varchar("team", 255)
     val app = varchar("app", 255)
+    val surveyId = varchar("survey_id", 255).nullable()
+    val definitionHash = varchar("definition_hash", 64).nullable()
+    val deduplicationKeyHash = varchar("deduplication_key_hash", 64).nullable()
 
     override val primaryKey = PrimaryKey(id)
 }
