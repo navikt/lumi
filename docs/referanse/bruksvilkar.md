@@ -67,7 +67,7 @@ Selv om Lumi ikke ber om personopplysninger, kan de dukke opp på tre måter:
 
 Lumi maskerer personopplysninger automatisk i **fritekst-svar** ved lagring *og* ved lesing. Følgende mønstre fanges opp: fødselsnummer, Nav-ident, e-post, telefonnummer, kortnummer, kontonummer og hemmelig adresse.
 
-Maskeringen erstatter sensitive data med plassholdere som `[FØDSELSNUMMER FJERNET]`, slik at klartekst aldri lagres i databasen.
+Maskeringen erstatter sensitive data med plassholdere som `[FØDSELSNUMMER FJERNET]`. De vanligste mønstrene fjernes ved lagring, og en ekstra sjekk kjøres ved lesing som sikkerhetsnett.
 
 ::: warning Maskering gjelder kun fritekst-svar
 URL-er, pathname, context-tags og svaralternativer maskeres **ikke** automatisk. Du er selv ansvarlig for at disse feltene ikke inneholder personopplysninger.
