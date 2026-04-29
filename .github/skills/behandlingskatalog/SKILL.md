@@ -42,7 +42,7 @@ Etter at behandlingen er opprettet, legg inn opplysningstyper:
 - Debug-info (feilsøking)
 
 **Potensielt via fritekst (overskuddsinformasjon, maskeres automatisk):**
-- Fødselsnummer, Nav-ident, e-post, telefon, kortnummer, kontonummer
+- Fødselsnummer, Nav-ident, e-post, telefon, kortnummer, kontonummer, hemmelig adresse (kode 6/7)
 
 ### 4. Avklar ansvar
 
@@ -73,5 +73,5 @@ Oppdater behandlingen når:
 
 - [Felt-guide med tekstutkast](references/felt-guide.md)
 - [Eksempler: Umami og Skyra](references/eksempler.md)
-- [Etterlevelse E449](https://etterlevelse.ansatt.nav.no/etterlevelse/E449)
+- [Etterlevelse E726](https://etterlevelse.ansatt.nav.no/etterlevelse/E726)
 - [Behandlingskatalogen](https://behandlingskatalog.ansatt.nav.no)

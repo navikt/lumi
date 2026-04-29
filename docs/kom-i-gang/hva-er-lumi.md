@@ -64,8 +64,8 @@ Lumi er laget for **Nav-team som vil samle brukerinnsikt** i sine flater — ent
 
 ## Før du starter
 
-::: tip Les bruksvilkårene
-Før du setter opp din første survey, les [bruksvilkårene](/referanse/bruksvilkar) for å forstå ansvar, personvern og hva Lumi sporer.
+::: warning Påkrevd: Les bruksvilkårene
+Før du setter opp din første survey, les [bruksvilkårene](/referanse/bruksvilkar). Du må blant annet fylle ut [etterlevelsesdokumentasjon](https://etterlevelse.ansatt.nav.no/etterlevelse/E726) og forstå hvordan personopplysninger håndteres.
 :::
 
 ## Neste steg

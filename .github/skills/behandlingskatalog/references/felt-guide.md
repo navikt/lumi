@@ -17,7 +17,7 @@ Innsiktsarbeid: Personvernvennlige brukerundersøkelser med Lumi
 ```
 Skaffe innsikt om brukernes opplevelse av Nav-tjenester gjennom anonyme
 tilbakemeldinger, for å forbedre tjenestene. Konkrete formål per undersøkelse
-dokumenteres i etterlevelse E449.
+dokumenteres i etterlevelse E726.
 ```
 
 ## 4. Ytterligere beskrivelse
@@ -25,7 +25,9 @@ dokumenteres i etterlevelse E449.
 ```
 Lumi er et internt Nav-verktøy for spørreundersøkelser på interne og eksterne
 flater. Personopplysninger samles ikke inn tilsiktet. Fritekst-svar gjennomgår
-automatisk PII-maskering ved lagring og lesing. Svarene er anonyme — ingen
+automatisk PII-maskering ved lagring og lesing (fødselsnummer, Nav-ident, e-post,
+telefon, kortnummer, kontonummer, hemmelig adresse). URL, pathname, tags og
+svaralternativer maskeres ikke automatisk. Svarene er anonyme — ingen
 brukeridentifikator lagres.
 ```
 
@@ -33,7 +35,7 @@ brukeridentifikator lagres.
 
 **Art. 6(1)(a) – Samtykke**
 
-Brukeren velger selv å svare. På eksterne flater dekker Nav-dekoratørens cookie-banner kategorien «surveys». På interne flater er deltakelse frivillig.
+Brukeren velger selv å svare. På eksterne flater dekker Nav-dekoratørens cookie-banner kategorien «surveys». Lumi bruker ingen egne cookies.
 
 ## 6. Er behandlingen innført?
 
@@ -104,7 +106,7 @@ i Lumi-dashboardet.
 
 **Nei**
 
-Begrunnelse: Ingen særlige kategorier personopplysninger behandles. Fritekst-svar gjennomgår automatisk PII-maskering. Vurderingen er dokumentert i ROS-analysen i TryggNok og pentest fra team SåPe (feb 2026, ingen høye/kritiske funn).
+Begrunnelse: Ingen særlige kategorier personopplysninger behandles. Fritekst-svar gjennomgår automatisk PII-maskering. Vurderingen er dokumentert i ROS-analysen i TryggNok og pentest fra team SåPe (ingen høye/kritiske funn).
 
 ## 21. Status
 

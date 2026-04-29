@@ -68,7 +68,7 @@ Status:      Ferdig dokumentert
 | Databehandler | Skyra (ekstern SaaS) | GCP (Nav-intern plattform) |
 | PII-håndtering | Manuell daglig sjekk + filter | Automatisk maskering |
 | Cookies | Ja | Nei |
-| Tegnbegrensning | Maks 50 tegn anbefalt i fritekst | Ingen begrensning (maskering håndterer PII) |
+| Fritekst-PII | Maks 50 tegn anbefalt + filter | Auto-maskering ved lagring og lesing |
 | Organisering | ResearchOps | Team eSyfo |
 
 ## Samlet sammenligning
@@ -82,7 +82,7 @@ Status:      Ferdig dokumentert
 | PII-håndtering | Manuell sjekk + filter | Proxy med auto-vask | Auto-maskering i API |
 | Cookies | Ja | Nei (men sesjons-ID) | Nei |
 | PVK | Nei | Uavklart | Nei |
-| Etterlevelse | E449 | E458 | E449 |
+| Etterlevelse | E449 | E458 | E726 |
 | Status | Ferdig dokumentert | Under arbeid | Mål: Ferdig dokumentert |
 
 ## Bruk denne sammenligningen til
