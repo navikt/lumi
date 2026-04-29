@@ -16,7 +16,7 @@ Du kan bruke Lumi til å samle tilbakemeldinger på både interne og eksterne fl
 
 Før du tar i bruk Lumi, må du:
 
-1. **Fylle ut etterlevelsesdokumentasjon** — gjenbruk [etterlevelsesmalen for Lumi (E726)](https://etterlevelse.ansatt.nav.no/etterlevelse/E726) og tilpass til din bruk
+1. **Fylle ut etterlevelsesdokumentasjon** — gjenbruk [etterlevelsesmalen for Lumi (E726)](https://etterlevelse.ansatt.nav.no/dokumentasjon/201b8151-d312-4c76-bf44-2716d40a417a) og tilpass til din bruk
 2. **Lese denne siden** og [Sikkerhet & personvern](/referanse/sikkerhet) for å forstå hvordan data håndteres
 3. **Vurdere om du trenger PVK** (personvernkonsekvensvurdering) for din bruk av Lumi — avklar med personvernombudet ved tvil
 
@@ -96,7 +96,7 @@ Likevel bør du:
 
 Sjekkliste før du lanserer en survey:
 
-- [ ] [Etterlevelsesdokumentasjon (E726)](https://etterlevelse.ansatt.nav.no/etterlevelse/E726) er fylt ut for din bruk
+- [ ] [Etterlevelsesdokumentasjon (E726)](https://etterlevelse.ansatt.nav.no/dokumentasjon/201b8151-d312-4c76-bf44-2716d40a417a) er fylt ut for din bruk
 - [ ] Spørsmålene samler ikke inn personopplysninger bevisst
 - [ ] Fritekstfelt har veiledningstekst om å unngå personopplysninger
 - [ ] URL-er og pathname du samler inn inneholder ikke sensitive parametere (fødselsnummer, tokens osv.)
