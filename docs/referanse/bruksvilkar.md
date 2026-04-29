@@ -75,6 +75,13 @@ URL-er, pathname, context-tags og svaralternativer maskeres **ikke** automatisk.
 
 Se [Sikkerhet & personvern](/referanse/sikkerhet#pii-maskering) for fullstendig liste over mønstre og eksempler.
 
+## Informasjonsplikt
+
+Du må opplyse brukerne om at Lumi brukes til innsiktsarbeid. Avhengig av flaten:
+
+- **Ekstern flate (nav.no)**: Sørg for at bruken av Lumi er dekket av cookie-banneret og personvernerklæringen på siden der surveyen vises.
+- **Intern flate**: Informer brukerne om at tilbakemeldinger samles inn, for eksempel gjennom en kort tekst i surveyen eller på siden.
+
 ## Bruk av fritekstfelt
 
 Lumi maskerer automatisk de vanligste personopplysningene i fritekst. Du trenger ikke sette opp egne filtre eller gjøre manuelle sjekker.
@@ -95,6 +102,19 @@ Sjekkliste før du lanserer en survey:
 - [ ] URL-er og pathname du samler inn inneholder ikke sensitive parametere (fødselsnummer, tokens osv.)
 - [ ] Svaralternativer avslører ikke sensitiv informasjon om brukeren
 - [ ] Du har testet surveyen i dev-miljø
+- [ ] Personvernerklæring eller cookie-banner dekker bruken av Lumi (ekstern flate)
+
+## Avvikshåndtering og sletting
+
+Selv med automatisk maskering kan personopplysninger unntaksvis komme gjennom — for eksempel uvanlige formater eller kontekst som gjør svar identifiserbare.
+
+Hvis du oppdager personopplysninger i svarene:
+
+1. **Vurder alvorlighetsgrad.** Er det direkte identifiserbare opplysninger (fødselsnummer, navn) eller indirekte (kombinasjon av svar)?
+2. **Kontakt Team eSyfo** via [#lumi på Slack](https://nav-it.slack.com/archives/C0AG2FKSSMD) — vi kan slette eller maskere enkeltdata.
+3. **Meld avvik** hvis personopplysninger er lagret utilsiktet, via [Navs avviksportal](https://navno.sharepoint.com/sites/intranett-avvik).
+
+Du har taushetsplikt om opplysninger som samles inn, også dersom de er samlet inn ved uhell.
 
 ## Brukerstøtte
 
