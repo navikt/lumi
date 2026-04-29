@@ -110,9 +110,9 @@ Selv med automatisk maskering kan personopplysninger unntaksvis komme gjennom �
 
 Hvis du oppdager personopplysninger i svarene:
 
-1. **Vurder alvorlighetsgrad.** Er det direkte identifiserbare opplysninger (fødselsnummer, navn) eller indirekte (kombinasjon av svar)?
-2. **Kontakt Team eSyfo** via [#lumi på Slack](https://nav-it.slack.com/archives/C0AG2FKSSMD) — vi kan slette eller maskere enkeltdata.
-3. **Meld avvik** hvis personopplysninger er lagret utilsiktet, via [Navs avviksportal](https://navno.sharepoint.com/sites/intranett-avvik).
+1. **Slett tilbakemeldingen** direkte i dashboardet — du har sletteknapp på hvert enkelt svar.
+2. **Vurder alvorlighetsgrad.** Er det direkte identifiserbare opplysninger (fødselsnummer, navn) eller indirekte (kombinasjon av svar)?
+3. **Meld avvik** hvis det dreier seg om sensitive personopplysninger, via [Navs avviksportal](https://navno.sharepoint.com/sites/intranett-avvik).
 
 Du har taushetsplikt om opplysninger som samles inn, også dersom de er samlet inn ved uhell.
 
