@@ -93,6 +93,133 @@ class FeedbackServiceTest : FunSpec({
             saved.feedbackJson shouldContain "\"userAgent\": \"botMozilla\""
             saved.feedbackJson shouldContain "\"segment\": \"intern\""
         }
+
+        test("redacts fødselsnummer in URL query parameter") {
+            val feedbackJson = """
+                {
+                    "context": {
+                        "url": "https://nav.no/sok?soek=01020349294&page=1"
+                    },
+                    "answers": []
+                }
+            """.trimIndent()
+
+            val id = service.save(feedbackJson, "flex", "test-app")
+            val saved = repository.findRawById(id, "flex").shouldNotBeNull()
+
+            saved.feedbackJson shouldNotContain "01020349294"
+            saved.feedbackJson shouldContain "soek="
+
+            val savedJson = Json.parseToJsonElement(saved.feedbackJson).jsonObject
+            savedJson["sensitiveDataRedacted"]?.jsonPrimitive?.content shouldBe "true"
+        }
+
+        test("redacts fødselsnummer in URL path") {
+            val feedbackJson = """
+                {
+                    "context": {
+                        "url": "https://nav.no/bruker/01020349294/status"
+                    },
+                    "answers": []
+                }
+            """.trimIndent()
+
+            val id = service.save(feedbackJson, "flex", "test-app")
+            val saved = repository.findRawById(id, "flex").shouldNotBeNull()
+            saved.feedbackJson shouldNotContain "01020349294"
+            saved.feedbackJson shouldContain "[FØDSELSNUMMER FJERNET]"
+        }
+
+        test("redacts PII in tag values") {
+            val feedbackJson = """
+                {
+                    "context": {
+                        "tags": {
+                            "team": "flex",
+                            "bruker": "01020349294"
+                        }
+                    },
+                    "answers": []
+                }
+            """.trimIndent()
+
+            val id = service.save(feedbackJson, "flex", "test-app")
+            val saved = repository.findRawById(id, "flex").shouldNotBeNull()
+            saved.feedbackJson shouldNotContain "01020349294"
+            saved.feedbackJson shouldContain "[FØDSELSNUMMER FJERNET]"
+            saved.feedbackJson shouldContain "\"team\""
+            saved.feedbackJson shouldContain "\"flex\""
+
+            val savedJson = Json.parseToJsonElement(saved.feedbackJson).jsonObject
+            savedJson["sensitiveDataRedacted"]?.jsonPrimitive?.content shouldBe "true"
+        }
+
+        test("redacts PII in tag keys") {
+            val feedbackJson = """
+                {
+                    "context": {
+                        "tags": {
+                            "01020349294": "ja"
+                        }
+                    },
+                    "answers": []
+                }
+            """.trimIndent()
+
+            val id = service.save(feedbackJson, "flex", "test-app")
+            val saved = repository.findRawById(id, "flex").shouldNotBeNull()
+            saved.feedbackJson shouldNotContain "01020349294"
+            saved.feedbackJson shouldContain "REDACTED_KEY"
+
+            val savedJson = Json.parseToJsonElement(saved.feedbackJson).jsonObject
+            savedJson["sensitiveDataRedacted"]?.jsonPrimitive?.content shouldBe "true"
+        }
+
+        test("redacts PII in debug recursively") {
+            val feedbackJson = """
+                {
+                    "context": {
+                        "debug": {
+                            "nested": {
+                                "value": "ring 98765432"
+                            }
+                        }
+                    },
+                    "answers": []
+                }
+            """.trimIndent()
+
+            val id = service.save(feedbackJson, "flex", "test-app")
+            val saved = repository.findRawById(id, "flex").shouldNotBeNull()
+            saved.feedbackJson shouldNotContain "98765432"
+            saved.feedbackJson shouldContain "[TELEFON FJERNET]"
+
+            val savedJson = Json.parseToJsonElement(saved.feedbackJson).jsonObject
+            savedJson["sensitiveDataRedacted"]?.jsonPrimitive?.content shouldBe "true"
+        }
+
+        test("no redaction leaves sensitiveDataRedacted as false") {
+            val feedbackJson = """
+                {
+                    "context": {
+                        "url": "https://nav.no/arbeid",
+                        "tags": {"team": "flex"}
+                    },
+                    "answers": [
+                        {
+                            "fieldId": "q1",
+                            "value": {"type": "text", "text": "Alt er bra"}
+                        }
+                    ]
+                }
+            """.trimIndent()
+
+            val id = service.save(feedbackJson, "flex", "test-app")
+            val saved = repository.findRawById(id, "flex").shouldNotBeNull()
+
+            val savedJson = Json.parseToJsonElement(saved.feedbackJson).jsonObject
+            savedJson["sensitiveDataRedacted"]?.jsonPrimitive?.content shouldBe "false"
+        }
     }
 
     context("delete") {

@@ -5,13 +5,17 @@ import no.nav.lumi.domain.FeedbackDto
 import no.nav.lumi.domain.FeedbackQuery
 import no.nav.lumi.repository.FeedbackRepository
 import no.nav.lumi.sensitive.HtmlSanitizer
+import no.nav.lumi.sensitive.JsonRedactor
 import no.nav.lumi.sensitive.SensitiveDataFilter
+import no.nav.lumi.sensitive.UrlRedactor
 import org.slf4j.LoggerFactory
 
 class FeedbackService(
     private val repository: FeedbackRepository = FeedbackRepository(),
     private val sensitiveDataFilter: SensitiveDataFilter = SensitiveDataFilter.DEFAULT,
-    private val htmlSanitizer: HtmlSanitizer = HtmlSanitizer.DEFAULT
+    private val htmlSanitizer: HtmlSanitizer = HtmlSanitizer.DEFAULT,
+    private val urlRedactor: UrlRedactor = UrlRedactor(),
+    private val jsonRedactor: JsonRedactor = JsonRedactor()
 ) {
     private val log = LoggerFactory.getLogger(FeedbackService::class.java)
     private val json = Json { ignoreUnknownKeys = true }
@@ -61,8 +65,11 @@ class FeedbackService(
      *
      * Security strategy:
      * 1. Context fields (url, pathname, userAgent, tags) — HTML tags stripped (defense-in-depth)
-     * 2. Text answers — PII redacted, but HTML preserved (React escapes at render)
-     * 3. Metadata fields (question.label, options[].label etc.) — NOT sanitized
+     * 2. Context URL — PII redacted per query-param + full-string fallback for path
+     * 3. Context tags — PII redacted in both keys and values
+     * 4. Context debug — recursive PII redaction of all string values and keys
+     * 5. Text answers — PII redacted, but HTML preserved (React escapes at render)
+     * 6. Metadata fields (question.label, options[].label etc.) — NOT sanitized
      *    These are survey-defined by the team admin, not user-authored free text.
      *    SubmissionValidator enforces length limits on all metadata fields.
      *    React escapes all output, so stored HTML is inert in the dashboard.
@@ -75,7 +82,9 @@ class FeedbackService(
 
             val context = jsonObj["context"] as? JsonObject
             if (context != null) {
-                jsonObj["context"] = sanitizeContext(context)
+                val (sanitizedContext, contextHadRedactions) = sanitizeAndRedactContext(context)
+                jsonObj["context"] = sanitizedContext
+                if (contextHadRedactions) hasRedactions = true
             }
             
             val answers = jsonObj["answers"] as? JsonArray
@@ -117,22 +126,91 @@ class FeedbackService(
         }
     }
 
-    private fun sanitizeContext(context: JsonObject): JsonObject {
+    /**
+     * Sanitize context fields (HTML strip) AND redact PII from URL, tags, and debug.
+     * Returns the sanitized context and whether any PII was redacted.
+     */
+    private fun sanitizeAndRedactContext(context: JsonObject): Pair<JsonObject, Boolean> {
         val sanitized = context.toMutableMap()
-        sanitizeStringField(sanitized, "url")
-        sanitizeStringField(sanitized, "pathname")
-        sanitizeStringField(sanitized, "userAgent")
+        var wasRedacted = false
 
-        val tags = sanitized["tags"] as? JsonObject
-        if (tags != null) {
-            val sanitizedTags = tags.mapValues { (_, value) ->
-                val content = (value as? JsonPrimitive)?.contentOrNull
-                if (content != null) JsonPrimitive(htmlSanitizer.stripTags(content)) else value
+        // HTML-strip + PII-redact URL
+        sanitizeStringField(sanitized, "url")
+        val urlValue = sanitized["url"]?.jsonPrimitive?.contentOrNull
+        if (urlValue != null) {
+            val urlResult = urlRedactor.redactUrl(urlValue)
+            if (urlResult.wasRedacted) {
+                wasRedacted = true
+                sanitized["url"] = JsonPrimitive(urlResult.redactedUrl)
             }
-            sanitized["tags"] = JsonObject(sanitizedTags)
         }
 
-        return JsonObject(sanitized)
+        // HTML-strip + PII-redact pathname
+        sanitizeStringField(sanitized, "pathname")
+        val pathValue = sanitized["pathname"]?.jsonPrimitive?.contentOrNull
+        if (pathValue != null) {
+            val pathResult = sensitiveDataFilter.redact(pathValue)
+            if (pathResult.wasRedacted) {
+                wasRedacted = true
+                sanitized["pathname"] = JsonPrimitive(pathResult.redactedText)
+            }
+        }
+
+        sanitizeStringField(sanitized, "userAgent")
+
+        // PII-redact tags (keys and values)
+        val tags = sanitized["tags"] as? JsonObject
+        if (tags != null) {
+            val (redactedTags, tagsRedacted) = redactTags(tags)
+            sanitized["tags"] = redactedTags
+            if (tagsRedacted) wasRedacted = true
+        }
+
+        // PII-redact debug recursively
+        val debug = sanitized["debug"]
+        if (debug != null && debug is JsonObject) {
+            val (redactedDebug, debugRedacted) = jsonRedactor.redactJsonElement(debug)
+            sanitized["debug"] = redactedDebug
+            if (debugRedacted) wasRedacted = true
+        }
+
+        return JsonObject(sanitized) to wasRedacted
+    }
+
+    /**
+     * Redact PII from tag keys and values. Also strips HTML from values.
+     */
+    private fun redactTags(tags: JsonObject): Pair<JsonObject, Boolean> {
+        var wasRedacted = false
+        var keyCounter = 0
+        val result = mutableMapOf<String, JsonElement>()
+
+        for ((key, value) in tags) {
+            // Redact PII in key
+            val keyResult = sensitiveDataFilter.redact(key)
+            val finalKey = if (keyResult.wasRedacted) {
+                wasRedacted = true
+                keyCounter++
+                "[REDACTED_KEY_$keyCounter]"
+            } else {
+                key
+            }
+
+            // Redact PII in value + HTML strip
+            val content = (value as? JsonPrimitive)?.contentOrNull
+            val finalValue = if (content != null) {
+                val stripped = htmlSanitizer.stripTags(content)
+                val redacted = sensitiveDataFilter.redact(stripped)
+                if (redacted.wasRedacted) wasRedacted = true
+                JsonPrimitive(redacted.redactedText)
+            } else {
+                value
+            }
+
+            result[finalKey] = finalValue
+        }
+
+        return JsonObject(result) to wasRedacted
     }
 
     private fun sanitizeStringField(container: MutableMap<String, JsonElement>, fieldName: String) {
