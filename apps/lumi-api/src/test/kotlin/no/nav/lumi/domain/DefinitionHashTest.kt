@@ -51,7 +51,7 @@ class DefinitionHashTest : FunSpec({
             )
         )
 
-        definition.computeHash() shouldBe "4c13205b861b8bfc219f8215b9fca979692c48ce7f2b6994f0fdc022e99102c2"
+        definition.computeHash() shouldBe "38202779b74caab0a97c5d0bcc1556660322ce19a700d665b02712a90af3fc9c"
     }
 
     test("computeHash treats structural option order as significant") {

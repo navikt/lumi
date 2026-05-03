@@ -73,9 +73,8 @@ data class DefinitionDiff(
  *
  * HASH STABILITY CONTRACT: The canonical JSON format used for hashing must NEVER change
  * once deployed to production. Any change invalidates all stored hashes and breaks
- * immutability enforcement. fieldType uses Kotlin enum .name (e.g. "SINGLE_CHOICE"),
- * while surveyType and ratingVariant use their @SerialName values (e.g. "topTasks", "emoji").
- * This is intentional and must remain stable.
+ * immutability enforcement. All enums use Kotlin .name (e.g. "RATING", "SINGLE_CHOICE",
+ * "EMOJI") for consistency and predictability.
  */
 fun SurveyDefinition.computeHash(): String {
     val canonicalJson = toCanonicalJson()
@@ -130,7 +129,7 @@ fun diff(stored: SurveyDefinition, incoming: SurveyDefinition): DefinitionDiff {
 private fun SurveyDefinition.toCanonicalJson(): String {
     return buildString {
         append("{\"surveyType\":")
-        append(jsonString(surveyType.serializedValue()))
+        append(jsonString(surveyType.name))
         append(",\"fields\":[")
         fields.forEachIndexed { index, field ->
             if (index > 0) append(",")
@@ -139,7 +138,7 @@ private fun SurveyDefinition.toCanonicalJson(): String {
             append(",\"fieldType\":")
             append(jsonString(field.fieldType.name))
             append(",\"ratingVariant\":")
-            appendJsonStringOrNull(field.ratingVariant?.serializedValue())
+            appendJsonStringOrNull(field.ratingVariant?.name)
             append(",\"ratingScale\":")
             append(field.ratingScale ?: "null")
             append(",\"optionIds\":")
@@ -157,21 +156,6 @@ private fun SurveyDefinition.toCanonicalJson(): String {
         }
         append("]}")
     }
-}
-
-private fun SurveyType.serializedValue(): String = when (this) {
-    SurveyType.RATING -> "rating"
-    SurveyType.TOP_TASKS -> "topTasks"
-    SurveyType.DISCOVERY -> "discovery"
-    SurveyType.TASK_PRIORITY -> "taskPriority"
-    SurveyType.CUSTOM -> "custom"
-}
-
-private fun RatingVariant.serializedValue(): String = when (this) {
-    RatingVariant.EMOJI -> "emoji"
-    RatingVariant.THUMBS -> "thumbs"
-    RatingVariant.STARS -> "stars"
-    RatingVariant.NPS -> "nps"
 }
 
 private fun StringBuilder.appendJsonStringOrNull(value: String?) {
