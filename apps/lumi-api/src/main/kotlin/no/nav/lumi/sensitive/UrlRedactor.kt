@@ -51,11 +51,11 @@ class UrlRedactor(
                 url.substring(questionIdx + 1)
             }
             queryString = afterQuestion.ifEmpty { null }
-            fragment = if (fragmentIdx >= 0) url.substring(fragmentIdx) else null
+            fragment = if (fragmentIdx >= 0) url.substring(fragmentIdx + 1) else null
         } else {
             baseUrl = if (fragmentIdx >= 0) url.substring(0, fragmentIdx) else url
             queryString = null
-            fragment = if (fragmentIdx >= 0) url.substring(fragmentIdx) else null
+            fragment = if (fragmentIdx >= 0) url.substring(fragmentIdx + 1) else null
         }
 
         // Redact PII in path/base via full-string redaction
@@ -63,29 +63,65 @@ class UrlRedactor(
         val redactedBase = baseResult.redactedText
         if (baseResult.wasRedacted) wasRedacted = true
 
-        // Redact each query parameter value individually
+        // Redact each query parameter (both key and value)
         val redactedQuery = if (queryString != null) {
             val params = queryString.split("&").map { param ->
                 val eqIdx = param.indexOf('=')
-                if (eqIdx < 0) return@map param
-
-                val key = param.substring(0, eqIdx)
-                val rawValue = param.substring(eqIdx + 1)
-                val decodedValue = try {
-                    URLDecoder.decode(rawValue, Charsets.UTF_8.name())
-                } catch (_: Exception) {
-                    rawValue
-                }
-
-                val redacted = sensitiveDataFilter.redact(decodedValue)
-                if (redacted.wasRedacted) {
-                    wasRedacted = true
-                    "$key=${URLEncoder.encode(redacted.redactedText, Charsets.UTF_8.name())}"
+                if (eqIdx < 0) {
+                    // Bare token without '=' — redact it as data
+                    val decoded = try {
+                        URLDecoder.decode(param, Charsets.UTF_8.name())
+                    } catch (_: Exception) { param }
+                    val redacted = sensitiveDataFilter.redact(decoded)
+                    if (redacted.wasRedacted) {
+                        wasRedacted = true
+                        URLEncoder.encode(redacted.redactedText, Charsets.UTF_8.name())
+                    } else {
+                        param
+                    }
                 } else {
-                    param
+                    val rawKey = param.substring(0, eqIdx)
+                    val rawValue = param.substring(eqIdx + 1)
+
+                    // Redact key
+                    val decodedKey = try {
+                        URLDecoder.decode(rawKey, Charsets.UTF_8.name())
+                    } catch (_: Exception) { rawKey }
+                    val keyResult = sensitiveDataFilter.redact(decodedKey)
+                    val finalKey = if (keyResult.wasRedacted) {
+                        wasRedacted = true
+                        URLEncoder.encode(keyResult.redactedText, Charsets.UTF_8.name())
+                    } else {
+                        rawKey
+                    }
+
+                    // Redact value
+                    val decodedValue = try {
+                        URLDecoder.decode(rawValue, Charsets.UTF_8.name())
+                    } catch (_: Exception) { rawValue }
+                    val valueResult = sensitiveDataFilter.redact(decodedValue)
+                    val finalValue = if (valueResult.wasRedacted) {
+                        wasRedacted = true
+                        URLEncoder.encode(valueResult.redactedText, Charsets.UTF_8.name())
+                    } else {
+                        rawValue
+                    }
+
+                    "$finalKey=$finalValue"
                 }
             }
             params.joinToString("&")
+        } else null
+
+        // Redact PII in fragment
+        val redactedFragment = if (fragment != null) {
+            val fragResult = sensitiveDataFilter.redact(fragment)
+            if (fragResult.wasRedacted) {
+                wasRedacted = true
+                fragResult.redactedText
+            } else {
+                fragment
+            }
         } else null
 
         val result = buildString {
@@ -94,7 +130,10 @@ class UrlRedactor(
                 append('?')
                 if (redactedQuery != null) append(redactedQuery)
             }
-            if (fragment != null) append(fragment)
+            if (redactedFragment != null) {
+                append('#')
+                append(redactedFragment)
+            }
         }
 
         return UrlRedactionResult(result, wasRedacted)

@@ -32,9 +32,26 @@ class UrlRedactorTest : FunSpec({
             result.wasRedacted shouldBe true
         }
 
-        test("preserves fragment") {
+        test("preserves clean fragment") {
             val result = redactor.redactUrl("https://nav.no/sok?q=01020349294#section")
             result.redactedUrl shouldBe "https://nav.no/sok?q=%5BF%C3%98DSELSNUMMER+FJERNET%5D#section"
+            result.wasRedacted shouldBe true
+        }
+
+        test("redacts PII in fragment") {
+            val result = redactor.redactUrl("https://nav.no/page#fnr=01020349294")
+            result.wasRedacted shouldBe true
+            result.redactedUrl shouldBe "https://nav.no/page#fnr=[FØDSELSNUMMER FJERNET]"
+        }
+
+        test("redacts PII in query param key") {
+            val result = redactor.redactUrl("https://nav.no/sok?01020349294=value")
+            result.wasRedacted shouldBe true
+            result.redactedUrl shouldBe "https://nav.no/sok?%5BF%C3%98DSELSNUMMER+FJERNET%5D=value"
+        }
+
+        test("redacts bare query token without equals") {
+            val result = redactor.redactUrl("https://nav.no/sok?01020349294")
             result.wasRedacted shouldBe true
         }
 
