@@ -166,9 +166,9 @@ class FeedbackService(
             if (tagsRedacted) wasRedacted = true
         }
 
-        // PII-redact debug recursively
+        // PII-redact debug recursively (handles both JsonObject and JsonArray)
         val debug = sanitized["debug"]
-        if (debug != null && debug is JsonObject) {
+        if (debug != null && (debug is JsonObject || debug is JsonArray)) {
             val (redactedDebug, debugRedacted) = jsonRedactor.redactJsonElement(debug)
             sanitized["debug"] = redactedDebug
             if (debugRedacted) wasRedacted = true

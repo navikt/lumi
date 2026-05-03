@@ -79,6 +79,23 @@ class UrlRedactorTest : FunSpec({
             result.wasRedacted shouldBe true
             result.redactedUrl shouldBe "https://nav.no/sok?q=%5BF%C3%98DSELSNUMMER+FJERNET%5D"
         }
+
+        test("double URL-encoded PII is caught via iterative decode") {
+            // %2530%2531... → %30%31... → 01020349294
+            val result = redactor.redactUrl("https://nav.no/sok?q=%2530%2531%2530%2532%2530%2533%2534%2539%2532%2539%2534")
+            result.wasRedacted shouldBe true
+        }
+
+        test("URL-encoded PII in fragment is decoded and redacted") {
+            val result = redactor.redactUrl("https://nav.no/page#user=%30%31%30%32%30%33%34%39%32%39%34")
+            result.wasRedacted shouldBe true
+            result.redactedUrl shouldBe "https://nav.no/page#user=[FØDSELSNUMMER FJERNET]"
+        }
+
+        test("URL-encoded PII in path is decoded and redacted") {
+            val result = redactor.redactUrl("https://nav.no/bruker/%30%31%30%32%30%33%34%39%32%39%34/status")
+            result.wasRedacted shouldBe true
+        }
     }
 
     context("PII in URL path (fallback full-string redaction)") {

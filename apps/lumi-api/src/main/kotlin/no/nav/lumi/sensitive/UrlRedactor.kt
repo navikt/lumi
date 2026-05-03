@@ -1,6 +1,5 @@
 package no.nav.lumi.sensitive
 
-import java.net.URI
 import java.net.URLDecoder
 import java.net.URLEncoder
 
@@ -11,8 +10,12 @@ data class UrlRedactionResult(
 
 /**
  * Redacts PII from URLs by:
- * 1. Parsing query parameters and redacting each value individually
- * 2. Running full-string PII redaction on the non-query portion (path, etc.)
+ * 1. Parsing query parameters and redacting each key+value individually
+ * 2. Running full-string PII redaction on the path (URL-decoded first)
+ * 3. Redacting PII in fragments (URL-decoded first)
+ *
+ * Assumes standard URL ordering (path?query#fragment).
+ * Falls back to plain-text redaction for unparseable input.
  */
 class UrlRedactor(
     private val sensitiveDataFilter: SensitiveDataFilter = SensitiveDataFilter.DEFAULT
@@ -35,7 +38,7 @@ class UrlRedactor(
     private fun redactParsedUrl(url: String): UrlRedactionResult {
         var wasRedacted = false
 
-        // Split on '?' to separate base from query
+        // Split on '?' to separate base from query (standard ordering assumed)
         val questionIdx = url.indexOf('?')
         val fragmentIdx = url.indexOf('#', if (questionIdx >= 0) questionIdx else 0)
 
@@ -58,10 +61,15 @@ class UrlRedactor(
             fragment = if (fragmentIdx >= 0) url.substring(fragmentIdx + 1) else null
         }
 
-        // Redact PII in path/base via full-string redaction
-        val baseResult = sensitiveDataFilter.redact(baseUrl)
-        val redactedBase = baseResult.redactedText
-        if (baseResult.wasRedacted) wasRedacted = true
+        // Redact PII in path/base — decode first to catch percent-encoded PII
+        val decodedBase = decodeUntilStable(baseUrl)
+        val baseResult = sensitiveDataFilter.redact(decodedBase)
+        val redactedBase = if (baseResult.wasRedacted) {
+            wasRedacted = true
+            baseResult.redactedText
+        } else {
+            baseUrl // preserve original encoding when no PII found
+        }
 
         // Redact each query parameter (both key and value)
         val redactedQuery = if (queryString != null) {
@@ -69,9 +77,7 @@ class UrlRedactor(
                 val eqIdx = param.indexOf('=')
                 if (eqIdx < 0) {
                     // Bare token without '=' — redact it as data
-                    val decoded = try {
-                        URLDecoder.decode(param, Charsets.UTF_8.name())
-                    } catch (_: Exception) { param }
+                    val decoded = decodeUntilStable(param)
                     val redacted = sensitiveDataFilter.redact(decoded)
                     if (redacted.wasRedacted) {
                         wasRedacted = true
@@ -84,9 +90,7 @@ class UrlRedactor(
                     val rawValue = param.substring(eqIdx + 1)
 
                     // Redact key
-                    val decodedKey = try {
-                        URLDecoder.decode(rawKey, Charsets.UTF_8.name())
-                    } catch (_: Exception) { rawKey }
+                    val decodedKey = decodeUntilStable(rawKey)
                     val keyResult = sensitiveDataFilter.redact(decodedKey)
                     val finalKey = if (keyResult.wasRedacted) {
                         wasRedacted = true
@@ -96,9 +100,7 @@ class UrlRedactor(
                     }
 
                     // Redact value
-                    val decodedValue = try {
-                        URLDecoder.decode(rawValue, Charsets.UTF_8.name())
-                    } catch (_: Exception) { rawValue }
+                    val decodedValue = decodeUntilStable(rawValue)
                     val valueResult = sensitiveDataFilter.redact(decodedValue)
                     val finalValue = if (valueResult.wasRedacted) {
                         wasRedacted = true
@@ -113,9 +115,10 @@ class UrlRedactor(
             params.joinToString("&")
         } else null
 
-        // Redact PII in fragment
+        // Redact PII in fragment — decode first
         val redactedFragment = if (fragment != null) {
-            val fragResult = sensitiveDataFilter.redact(fragment)
+            val decodedFragment = decodeUntilStable(fragment)
+            val fragResult = sensitiveDataFilter.redact(decodedFragment)
             if (fragResult.wasRedacted) {
                 wasRedacted = true
                 fragResult.redactedText
@@ -137,5 +140,24 @@ class UrlRedactor(
         }
 
         return UrlRedactionResult(result, wasRedacted)
+    }
+
+    /**
+     * Iteratively URL-decode until the string no longer changes.
+     * Prevents double-encoding bypass (e.g. %2530%2531... → %30%31... → 01...).
+     * Limited to 3 passes to avoid infinite loops on pathological input.
+     */
+    private fun decodeUntilStable(input: String): String {
+        var current = input
+        repeat(3) {
+            val decoded = try {
+                URLDecoder.decode(current, Charsets.UTF_8.name())
+            } catch (_: Exception) {
+                return current
+            }
+            if (decoded == current) return current
+            current = decoded
+        }
+        return current
     }
 }
