@@ -32,7 +32,8 @@ ALTER TABLE feedback ADD COLUMN deduplication_key_hash VARCHAR(64)
 CREATE INDEX idx_feedback_definition_hash ON feedback(definition_hash)
     WHERE definition_hash IS NOT NULL;
 
-CREATE INDEX idx_feedback_survey_id_column ON feedback(team, survey_id);
+CREATE INDEX idx_feedback_survey_id_column ON feedback(team, survey_id)
+    WHERE survey_id IS NOT NULL;
 
 CREATE UNIQUE INDEX idx_feedback_dedup_key
     ON feedback(team, survey_id, deduplication_key_hash)
