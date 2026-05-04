@@ -186,14 +186,15 @@ class FeedbackService(
         val result = mutableMapOf<String, JsonElement>()
 
         for ((key, value) in tags) {
-            // Redact PII in key
-            val keyResult = sensitiveDataFilter.redact(key)
+            // HTML-strip + PII-redact key
+            val strippedKey = htmlSanitizer.stripTags(key)
+            val keyResult = sensitiveDataFilter.redact(strippedKey)
             val finalKey = if (keyResult.wasRedacted) {
                 wasRedacted = true
                 keyCounter++
-                "[REDACTED_KEY_$keyCounter]"
+                generateUniqueKey(result, keyCounter)
             } else {
-                key
+                strippedKey
             }
 
             // Redact PII in value + HTML strip
@@ -211,6 +212,16 @@ class FeedbackService(
         }
 
         return JsonObject(result) to wasRedacted
+    }
+
+    private fun generateUniqueKey(existing: Map<String, *>, startCounter: Int): String {
+        var candidate = "[REDACTED_KEY_$startCounter]"
+        var suffix = startCounter
+        while (existing.containsKey(candidate)) {
+            suffix++
+            candidate = "[REDACTED_KEY_$suffix]"
+        }
+        return candidate
     }
 
     private fun sanitizeStringField(container: MutableMap<String, JsonElement>, fieldName: String) {

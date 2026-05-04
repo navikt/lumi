@@ -26,12 +26,11 @@ class JsonRedactor(
                 is JsonObject -> {
                     val newEntries = mutableMapOf<String, JsonElement>()
                     for ((key, value) in el) {
-                        // Check if key contains PII
                         val keyResult = sensitiveDataFilter.redact(key)
                         val finalKey = if (keyResult.wasRedacted) {
                             wasRedacted = true
                             keyCounter++
-                            "[REDACTED_KEY_$keyCounter]"
+                            generateUniqueKey(newEntries, keyCounter)
                         } else {
                             key
                         }
@@ -63,5 +62,15 @@ class JsonRedactor(
 
         val result = walk(element)
         return result to wasRedacted
+    }
+
+    private fun generateUniqueKey(existing: Map<String, *>, startCounter: Int): String {
+        var candidate = "[REDACTED_KEY_$startCounter]"
+        var suffix = startCounter
+        while (existing.containsKey(candidate)) {
+            suffix++
+            candidate = "[REDACTED_KEY_$suffix]"
+        }
+        return candidate
     }
 }
