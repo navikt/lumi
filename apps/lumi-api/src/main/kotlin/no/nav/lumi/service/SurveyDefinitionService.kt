@@ -174,6 +174,8 @@ class SurveyDefinitionService(
         }
 
         definition.fields.forEach { field ->
+            validateFieldId(field.fieldId)
+
             when (field.fieldType) {
                 FieldType.SINGLE_CHOICE, FieldType.MULTI_CHOICE -> {
                     if (field.optionIds.isNullOrEmpty()) {
@@ -181,12 +183,7 @@ class SurveyDefinitionService(
                             "Invalid payload: fieldId=${field.fieldId} (${field.fieldType}) requires at least one option"
                         )
                     }
-                    val blankIds = field.optionIds.filter { it.isBlank() }
-                    if (blankIds.isNotEmpty()) {
-                        throw ApiErrorException.BadRequestException(
-                            "Invalid payload: fieldId=${field.fieldId} has blank optionIds"
-                        )
-                    }
+                    field.optionIds.forEach { validateOptionId(it, field.fieldId) }
                     val duplicates = field.optionIds.groupBy { it }.filter { it.value.size > 1 }.keys
                     if (duplicates.isNotEmpty()) {
                         throw ApiErrorException.BadRequestException(
@@ -214,7 +211,38 @@ class SurveyDefinitionService(
         )
     }
 
+    /** fieldId: alphanumeric + hyphen + underscore, max 200 chars */
+    private fun validateFieldId(fieldId: String) {
+        if (fieldId.isBlank()) {
+            throw ApiErrorException.BadRequestException("Invalid payload: fieldId must be non-blank")
+        }
+        if (fieldId.length > MAX_IDENTIFIER_LENGTH) {
+            throw ApiErrorException.BadRequestException(
+                "Invalid payload: fieldId exceeds max length $MAX_IDENTIFIER_LENGTH"
+            )
+        }
+        if (!fieldId.all { it.isLetterOrDigit() || it == '-' || it == '_' }) {
+            throw ApiErrorException.BadRequestException(
+                "Invalid payload: fieldId=$fieldId contains illegal characters (allowed: alphanumeric, hyphen, underscore)"
+            )
+        }
+    }
+
+    private fun validateOptionId(optionId: String, fieldId: String) {
+        if (optionId.isBlank()) {
+            throw ApiErrorException.BadRequestException(
+                "Invalid payload: fieldId=$fieldId has blank optionIds"
+            )
+        }
+        if (optionId.length > MAX_IDENTIFIER_LENGTH) {
+            throw ApiErrorException.BadRequestException(
+                "Invalid payload: fieldId=$fieldId has optionId exceeding max length $MAX_IDENTIFIER_LENGTH"
+            )
+        }
+    }
+
     private companion object {
         const val MAX_DEFINITIONS_PER_TEAM = 500
+        const val MAX_IDENTIFIER_LENGTH = 200
     }
 }
