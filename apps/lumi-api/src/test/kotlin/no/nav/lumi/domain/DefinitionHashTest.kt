@@ -119,6 +119,95 @@ class DefinitionHashTest : FunSpec({
         definitionDiff.removedFields shouldBe listOf("reason")
         definitionDiff.changedFields.single().change shouldContain "ratingVariant EMOJI -> NPS"
     }
+
+    test("field order does not affect hash (sorted by fieldId)") {
+        val definition1 = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("rating", FieldType.RATING, RatingVariant.EMOJI, 5, null),
+                FieldDefinition("reason", FieldType.TEXT, null, null, null)
+            )
+        )
+
+        val definition2 = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("reason", FieldType.TEXT, null, null, null),
+                FieldDefinition("rating", FieldType.RATING, RatingVariant.EMOJI, 5, null)
+            )
+        )
+
+        definition1.computeHash() shouldBe definition2.computeHash()
+    }
+
+    test("diff detects field reordering") {
+        val stored = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("a", FieldType.TEXT, null, null, null),
+                FieldDefinition("b", FieldType.TEXT, null, null, null)
+            )
+        )
+        val incoming = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("b", FieldType.TEXT, null, null, null),
+                FieldDefinition("a", FieldType.TEXT, null, null, null)
+            )
+        )
+
+        val definitionDiff = diff(stored, incoming)
+
+        definitionDiff.changedFields.any { it.fieldId == "_fieldOrder" } shouldBe true
+    }
+
+    test("fromSubmission excludes options for non-choice types") {
+        val submission = submission(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            answers = listOf(
+                Answer(
+                    fieldId = "rating",
+                    fieldType = FieldType.RATING,
+                    question = Question(
+                        label = "Vurdering",
+                        options = listOf(ChoiceOption("spurious", "Should be ignored"))
+                    ),
+                    value = AnswerValue.Rating(rating = 4, ratingVariant = RatingVariant.EMOJI, ratingScale = 5)
+                )
+            )
+        )
+
+        val definition = SurveyDefinition.fromSubmission(submission)
+
+        definition.fields.first().optionIds shouldBe null
+    }
+
+    test("fromSubmission includes options for choice types") {
+        val submission = submission(
+            surveyId = "survey-choice",
+            surveyType = SurveyType.TOP_TASKS,
+            answers = listOf(
+                Answer(
+                    fieldId = "task",
+                    fieldType = FieldType.SINGLE_CHOICE,
+                    question = Question(
+                        label = "Hva gjorde du?",
+                        options = listOf(ChoiceOption("a", "A"), ChoiceOption("b", "B"))
+                    ),
+                    value = AnswerValue.SingleChoice("a")
+                )
+            )
+        )
+
+        val definition = SurveyDefinition.fromSubmission(submission)
+
+        definition.fields.first().optionIds shouldBe listOf("a", "b")
+    }
 })
 
 private fun submission(

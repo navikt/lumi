@@ -21,6 +21,7 @@ class SurveyDefinitionService(
 ) {
     suspend fun registerOrValidate(team: String, submission: FeedbackSubmissionV1): RegistrationResult {
         val incomingDefinition = SurveyDefinition.fromSubmission(submission)
+        validateDefinitionConsistency(incomingDefinition)
         val incomingHash = incomingDefinition.computeHash()
 
         val stored = repository.findByTeamAndSurveyId(team, submission.surveyId)
@@ -33,16 +34,12 @@ class SurveyDefinitionService(
             throwDefinitionConflict(submission.surveyId, diff(stored.definition, incomingDefinition))
         }
 
-        if (repository.countByTeam(team) >= MAX_DEFINITIONS_PER_TEAM) {
-            throw ApiErrorException.TooManyRequestsException(
-                "Definition limit exceeded for team=$team (max=$MAX_DEFINITIONS_PER_TEAM)"
-            )
-        }
-
-        val inserted = repository.insertIgnore(
+        // Atomic count-check + insert to prevent race condition on team limit
+        val inserted = repository.insertIfUnderLimit(
             team = team,
             definition = incomingDefinition,
-            definitionHash = incomingHash
+            definitionHash = incomingHash,
+            maxDefinitions = MAX_DEFINITIONS_PER_TEAM
         )
 
         if (inserted) {
@@ -127,6 +124,34 @@ class SurveyDefinitionService(
             throw ApiErrorException.BadRequestException(
                 "Invalid payload: fieldId=$fieldId has fieldType=$actual, expected $expected"
             )
+        }
+    }
+
+    /**
+     * Validate structural consistency of a definition before first registration.
+     * Prevents a malformed first submission from permanently locking an invalid structure.
+     */
+    private fun validateDefinitionConsistency(definition: SurveyDefinition) {
+        definition.fields.forEach { field ->
+            when (field.fieldType) {
+                FieldType.SINGLE_CHOICE, FieldType.MULTI_CHOICE -> {
+                    if (field.optionIds.isNullOrEmpty()) {
+                        throw ApiErrorException.BadRequestException(
+                            "Invalid payload: fieldId=${field.fieldId} (${field.fieldType}) requires at least one option"
+                        )
+                    }
+                }
+
+                FieldType.RATING -> {
+                    if (field.ratingVariant == null || field.ratingScale == null) {
+                        throw ApiErrorException.BadRequestException(
+                            "Invalid payload: fieldId=${field.fieldId} (RATING) requires ratingVariant and ratingScale"
+                        )
+                    }
+                }
+
+                else -> { /* TEXT, DATE — no structural requirements */ }
+            }
         }
     }
 

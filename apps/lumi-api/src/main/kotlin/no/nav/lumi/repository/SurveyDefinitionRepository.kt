@@ -32,20 +32,26 @@ class SurveyDefinitionRepository {
         }
     }
 
-    suspend fun countByTeam(team: String): Long {
-        return dbQuery {
-            SurveyDefinitionTable.selectAll()
-                .where { SurveyDefinitionTable.team eq team }
-                .count()
-        }
-    }
-
-    suspend fun insertIgnore(
+    /**
+     * Atomically check team count limit and insert if under limit.
+     * Returns true if inserted, false if duplicate (UNIQUE constraint).
+     * Throws if team is at or over the limit.
+     */
+    suspend fun insertIfUnderLimit(
         team: String,
         definition: SurveyDefinition,
-        definitionHash: String
+        definitionHash: String,
+        maxDefinitions: Int
     ): Boolean {
         return dbQuery {
+            val count = SurveyDefinitionTable.selectAll()
+                .where { SurveyDefinitionTable.team eq team }
+                .count()
+            if (count >= maxDefinitions) {
+                throw no.nav.lumi.config.exception.ApiErrorException.TooManyRequestsException(
+                    "Definition limit exceeded for team=$team (max=$maxDefinitions)"
+                )
+            }
             SurveyDefinitionTable.insertIgnore {
                 it[SurveyDefinitionTable.team] = team
                 it[SurveyDefinitionTable.surveyId] = definition.surveyId

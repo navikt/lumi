@@ -100,7 +100,7 @@ private suspend fun handleSubmissionV1(
         app = identity.app,
         surveyId = definitionResult.surveyId,
         definitionHash = definitionResult.definitionHash,
-        deduplicationKeyHash = null
+        deduplicationKeyHash = null // Dedup wiring planned for #274 (widget v2)
     )
 
     log.info(

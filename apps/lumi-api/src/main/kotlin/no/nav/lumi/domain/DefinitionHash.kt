@@ -21,12 +21,13 @@ data class SurveyDefinition(
     companion object {
         fun fromSubmission(submission: FeedbackSubmissionV1): SurveyDefinition {
             val fields = submission.answers.map { answer ->
+                val isChoiceType = answer.fieldType in setOf(FieldType.SINGLE_CHOICE, FieldType.MULTI_CHOICE)
                 FieldDefinition(
                     fieldId = answer.fieldId,
                     fieldType = answer.fieldType,
                     ratingVariant = (answer.value as? AnswerValue.Rating)?.ratingVariant,
                     ratingScale = (answer.value as? AnswerValue.Rating)?.ratingScale,
-                    optionIds = answer.question.options?.map { it.id }
+                    optionIds = if (isChoiceType) answer.question.options?.map { it.id } else null
                 )
             }
 
@@ -94,7 +95,15 @@ fun diff(stored: SurveyDefinition, incoming: SurveyDefinition): DefinitionDiff {
             add(FieldChange("_surveyType", "${stored.surveyType} -> ${incoming.surveyType}"))
         }
 
-        for (fieldId in storedFieldsById.keys.intersect(incomingFieldsById.keys).sorted()) {
+        // Detect field reordering
+        val commonIds = storedFieldsById.keys.intersect(incomingFieldsById.keys)
+        val storedOrder = stored.fields.map { it.fieldId }.filter { it in commonIds }
+        val incomingOrder = incoming.fields.map { it.fieldId }.filter { it in commonIds }
+        if (storedOrder != incomingOrder) {
+            add(FieldChange("_fieldOrder", "field order changed"))
+        }
+
+        for (fieldId in commonIds.sorted()) {
             val storedField = storedFieldsById.getValue(fieldId)
             val incomingField = incomingFieldsById.getValue(fieldId)
 
@@ -127,11 +136,12 @@ fun diff(stored: SurveyDefinition, incoming: SurveyDefinition): DefinitionDiff {
 }
 
 private fun SurveyDefinition.toCanonicalJson(): String {
+    val sortedFields = fields.sortedBy { it.fieldId }
     return buildString {
         append("{\"surveyType\":")
         append(jsonString(surveyType.name))
         append(",\"fields\":[")
-        fields.forEachIndexed { index, field ->
+        sortedFields.forEachIndexed { index, field ->
             if (index > 0) append(",")
             append("{\"fieldId\":")
             append(jsonString(field.fieldId))

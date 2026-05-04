@@ -29,13 +29,12 @@ class SurveyDefinitionServiceTest : FunSpec({
         val expectedHash = SurveyDefinition.fromSubmission(submission).computeHash()
 
         coEvery { repository.findByTeamAndSurveyId("team-a", "survey-1") } returns null
-        coEvery { repository.countByTeam("team-a") } returns 42
-        coEvery { repository.insertIgnore("team-a", any(), expectedHash) } returns true
+        coEvery { repository.insertIfUnderLimit("team-a", any(), expectedHash, any()) } returns true
 
         val result = service.registerOrValidate("team-a", submission)
 
         result shouldBe RegistrationResult("survey-1", expectedHash)
-        coVerify(exactly = 1) { repository.insertIgnore("team-a", any(), expectedHash) }
+        coVerify(exactly = 1) { repository.insertIfUnderLimit("team-a", any(), expectedHash, any()) }
     }
 
     test("structure change returns 409 with concrete diff") {
@@ -137,7 +136,8 @@ class SurveyDefinitionServiceTest : FunSpec({
         val service = SurveyDefinitionService(repository)
 
         coEvery { repository.findByTeamAndSurveyId("team-a", "survey-1") } returns null
-        coEvery { repository.countByTeam("team-a") } returns 500
+        coEvery { repository.insertIfUnderLimit("team-a", any(), any(), any()) } throws
+            ApiErrorException.TooManyRequestsException("Definition limit exceeded for team=team-a (max=500)")
 
         val exception = shouldThrowTooManyRequests {
             service.registerOrValidate("team-a", ratingSubmission())
@@ -162,8 +162,7 @@ class SurveyDefinitionServiceTest : FunSpec({
                 definition = definition
             )
         )
-        coEvery { repository.countByTeam("team-a") } returns 10
-        coEvery { repository.insertIgnore("team-a", any(), definitionHash) } returns false
+        coEvery { repository.insertIfUnderLimit("team-a", any(), definitionHash, any()) } returns false
 
         val result = service.registerOrValidate("team-a", submission)
 
@@ -195,14 +194,63 @@ class SurveyDefinitionServiceTest : FunSpec({
                 definition = differentDefinition
             )
         )
-        coEvery { repository.countByTeam("team-a") } returns 10
-        coEvery { repository.insertIgnore("team-a", any(), any()) } returns false
+        coEvery { repository.insertIfUnderLimit("team-a", any(), any(), any()) } returns false
 
         val exception = shouldThrowConflict {
             service.registerOrValidate("team-a", submission)
         }
 
         exception.message shouldContain "Survey definition conflict"
+    }
+
+    test("rejects choice field without options (self-validation)") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val submission = FeedbackSubmissionV1(
+            schemaVersion = 1,
+            surveyId = "survey-bad",
+            surveyType = SurveyType.TOP_TASKS,
+            submittedAt = "2026-01-10T12:00:12Z",
+            answers = listOf(
+                Answer(
+                    fieldId = "task",
+                    fieldType = FieldType.SINGLE_CHOICE,
+                    question = Question(label = "Hva gjorde du?"),
+                    value = AnswerValue.SingleChoice("apply")
+                )
+            )
+        )
+
+        val exception = shouldThrowBadRequest {
+            service.registerOrValidate("team-a", submission)
+        }
+
+        exception.message shouldContain "requires at least one option"
+    }
+
+    test("rejects rating field without ratingVariant (self-validation)") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val submission = FeedbackSubmissionV1(
+            schemaVersion = 1,
+            surveyId = "survey-bad",
+            surveyType = SurveyType.RATING,
+            submittedAt = "2026-01-10T12:00:12Z",
+            answers = listOf(
+                Answer(
+                    fieldId = "rating",
+                    fieldType = FieldType.RATING,
+                    question = Question(label = "Vurdering"),
+                    value = AnswerValue.Text("not a rating")
+                )
+            )
+        )
+
+        val exception = shouldThrowBadRequest {
+            service.registerOrValidate("team-a", submission)
+        }
+
+        exception.message shouldContain "requires ratingVariant and ratingScale"
     }
 })
 
