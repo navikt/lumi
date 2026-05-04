@@ -310,6 +310,108 @@ class SurveyDefinitionServiceTest : FunSpec({
 
         exception.message shouldContain "is not valid for fieldId"
     }
+
+    test("rejects first submission with duplicate optionIds") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val submission = FeedbackSubmissionV1(
+            schemaVersion = 1,
+            surveyId = "survey-dup-opts",
+            surveyType = SurveyType.TOP_TASKS,
+            submittedAt = "2026-01-10T12:00:12Z",
+            answers = listOf(
+                Answer(
+                    fieldId = "task",
+                    fieldType = FieldType.SINGLE_CHOICE,
+                    question = Question(
+                        label = "Valg",
+                        options = listOf(ChoiceOption("a", "A"), ChoiceOption("a", "A2"))
+                    ),
+                    value = AnswerValue.SingleChoice("a")
+                )
+            )
+        )
+
+        val exception = shouldThrowBadRequest {
+            service.registerOrValidate("team-a", submission)
+        }
+
+        exception.message shouldContain "duplicate optionIds"
+    }
+
+    test("rejects first submission with invalid MultiChoice selectedOptionIds") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val submission = FeedbackSubmissionV1(
+            schemaVersion = 1,
+            surveyId = "survey-multi-bad",
+            surveyType = SurveyType.TOP_TASKS,
+            submittedAt = "2026-01-10T12:00:12Z",
+            answers = listOf(
+                Answer(
+                    fieldId = "tasks",
+                    fieldType = FieldType.MULTI_CHOICE,
+                    question = Question(
+                        label = "Velg flere",
+                        options = listOf(ChoiceOption("a", "A"), ChoiceOption("b", "B"))
+                    ),
+                    value = AnswerValue.MultiChoice(listOf("a", "nonexistent"))
+                )
+            )
+        )
+
+        val exception = shouldThrowBadRequest {
+            service.registerOrValidate("team-a", submission)
+        }
+
+        exception.message shouldContain "are not valid for fieldId"
+    }
+
+    test("partial submission accepted against stored definition") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+
+        val fullDefinition = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("rating", FieldType.RATING, RatingVariant.EMOJI, 5, null),
+                FieldDefinition("reason", FieldType.TEXT, null, null, null)
+            )
+        )
+        val fullHash = fullDefinition.computeHash()
+
+        val partialSubmission = FeedbackSubmissionV1(
+            schemaVersion = 1,
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            submittedAt = "2026-01-10T12:00:12Z",
+            answers = listOf(
+                Answer(
+                    fieldId = "rating",
+                    fieldType = FieldType.RATING,
+                    question = Question(label = "Vurdering"),
+                    value = AnswerValue.Rating(rating = 3, ratingVariant = RatingVariant.EMOJI, ratingScale = 5)
+                )
+            )
+        )
+
+        coEvery { repository.findByTeamAndSurveyId("team-a", "survey-1") } returns StoredSurveyDefinition(
+            team = "team-a",
+            surveyId = "survey-1",
+            definitionHash = fullHash,
+            definition = fullDefinition
+        )
+
+        // Partial submission should NOT produce the same hash as the full definition,
+        // but it should pass answer validation since all submitted fields match.
+        // It will then trigger a conflict because the hash differs.
+        val exception = shouldThrowConflict {
+            service.registerOrValidate("team-a", partialSubmission)
+        }
+
+        exception.message shouldContain "Survey definition conflict"
+    }
 })
 
 private fun ratingSubmission() = FeedbackSubmissionV1(

@@ -53,6 +53,9 @@ class SurveyDefinitionService(
         val existingAfterRace = repository.findByTeamAndSurveyId(team, submission.surveyId)
 
         if (existingAfterRace == null) {
+            // 429 used for quota exhaustion. Semantically closer to 403/422, but 429
+            // is conventional in this codebase and the 500-limit is generous enough
+            // that this path is rarely hit. Clients should not auto-retry.
             throw ApiErrorException.TooManyRequestsException(
                 "Definition limit exceeded for team=$team (max=$MAX_DEFINITIONS_PER_TEAM)"
             )
@@ -170,6 +173,12 @@ class SurveyDefinitionService(
                     if (field.optionIds.isNullOrEmpty()) {
                         throw ApiErrorException.BadRequestException(
                             "Invalid payload: fieldId=${field.fieldId} (${field.fieldType}) requires at least one option"
+                        )
+                    }
+                    val duplicates = field.optionIds.groupBy { it }.filter { it.value.size > 1 }.keys
+                    if (duplicates.isNotEmpty()) {
+                        throw ApiErrorException.BadRequestException(
+                            "Invalid payload: fieldId=${field.fieldId} has duplicate optionIds=$duplicates"
                         )
                     }
                 }

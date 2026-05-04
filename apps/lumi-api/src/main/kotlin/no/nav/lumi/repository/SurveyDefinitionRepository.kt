@@ -33,9 +33,12 @@ class SurveyDefinitionRepository {
     }
 
     /**
-     * Atomically check team count limit and insert if under limit using a single SQL statement.
-     * Uses INSERT ... SELECT ... WHERE count < max ON CONFLICT DO NOTHING to avoid
-     * TOCTOU race under READ COMMITTED isolation.
+     * Atomically check team count limit and insert if under limit.
+     *
+     * Uses pg_advisory_xact_lock to serialize inserts per team, preventing
+     * concurrent transactions from both reading count=499 and overshooting
+     * the limit under READ COMMITTED isolation. The advisory lock is scoped
+     * to the transaction and released automatically on commit/rollback.
      *
      * Returns:
      *  - 1 if inserted successfully
@@ -48,6 +51,18 @@ class SurveyDefinitionRepository {
         maxDefinitions: Int
     ): Int {
         return dbQuery {
+            val definitionJson = json.encodeToString(definition)
+            val transaction = org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager.current()
+            val conn = transaction.connection.connection as java.sql.Connection
+
+            // Acquire transaction-scoped advisory lock keyed on team name hash.
+            // This serializes concurrent inserts for the same team so the count
+            // check is consistent. Lock is auto-released on commit/rollback.
+            conn.prepareStatement("SELECT pg_advisory_xact_lock(hashtext(?))").use { lock ->
+                lock.setString(1, team)
+                lock.execute()
+            }
+
             val sql = """
                 INSERT INTO survey_definitions (id, team, survey_id, definition_hash, definition)
                 SELECT gen_random_uuid(), ?, ?, ?, ?::jsonb
@@ -55,9 +70,6 @@ class SurveyDefinitionRepository {
                 ON CONFLICT (team, survey_id) DO NOTHING
             """.trimIndent()
 
-            val definitionJson = json.encodeToString(definition)
-            val transaction = org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager.current()
-            val conn = transaction.connection.connection as java.sql.Connection
             conn.prepareStatement(sql).use { stmt ->
                 stmt.setString(1, team)
                 stmt.setString(2, definition.surveyId)

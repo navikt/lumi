@@ -86,8 +86,11 @@ data class DefinitionDiff(
  * fingerprint scoped by the (team, surveyId) lookup key. Two surveys with identical
  * structure produce the same hash — this is by design.
  *
- * PARTIAL SUBMISSIONS: Only submitted answers are validated. Not all defined fields
- * need to be present in every submission — partial submissions are a valid use case.
+ * PARTIAL SUBMISSIONS: Only submitted answers are validated against the stored
+ * definition. Not all defined fields need to be present in every submission.
+ * However, the hash is computed from ALL submitted fields, so a submission with
+ * fewer fields will produce a different hash and correctly trigger a 409 if
+ * a definition with more fields is already stored.
  */
 fun SurveyDefinition.computeHash(): String {
     val canonicalJson = toCanonicalJson()
