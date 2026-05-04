@@ -2,6 +2,7 @@ package no.nav.lumi.service
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.collections.shouldContain as collectionShouldContain
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -242,6 +243,45 @@ class FeedbackServiceTest : FunSpec({
 
             val savedJson = Json.parseToJsonElement(saved.feedbackJson).jsonObject
             savedJson["sensitiveDataRedacted"]?.jsonPrimitive?.content shouldBe "true"
+        }
+        test("redacts percent-encoded fødselsnummer in pathname") {
+            val feedbackJson = """
+                {
+                    "context": {
+                        "pathname": "/bruker/%30%31%30%32%30%33%34%39%32%39%34/status"
+                    },
+                    "answers": []
+                }
+            """.trimIndent()
+
+            val id = service.save(feedbackJson, "flex", "test-app")
+            val saved = repository.findRawById(id, "flex").shouldNotBeNull()
+            saved.feedbackJson shouldNotContain "01020349294"
+            saved.feedbackJson shouldContain "[FØDSELSNUMMER FJERNET]"
+        }
+
+        test("HTML-stripped tag keys that collide do not overwrite each other") {
+            val feedbackJson = """
+                {
+                    "context": {
+                        "tags": {
+                            "team": "flex",
+                            "<b>team</b>": "dagpenger"
+                        }
+                    },
+                    "answers": []
+                }
+            """.trimIndent()
+
+            val id = service.save(feedbackJson, "flex", "test-app")
+            val saved = repository.findRawById(id, "flex").shouldNotBeNull()
+            val savedJson = Json.parseToJsonElement(saved.feedbackJson).jsonObject
+            val tags = savedJson["context"]?.jsonObject?.get("tags")?.jsonObject
+            tags.shouldNotBeNull()
+            // Both values should be present (no data loss)
+            val values = tags.values.map { it.jsonPrimitive.content }
+            values collectionShouldContain "flex"
+            values collectionShouldContain "dagpenger"
         }
     }
 

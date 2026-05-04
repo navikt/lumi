@@ -142,68 +142,61 @@ class UrlRedactor(
         return UrlRedactionResult(result, wasRedacted)
     }
 
-    /**
-     * Iteratively percent-decode until the string no longer changes.
-     * Prevents double-encoding bypass (e.g. %2530%2531... → %30%31... → 01...).
-     * Limited to 10 passes to avoid infinite loops on pathological input.
-     *
-     * Uses percent-only decoding: `+` is preserved as literal `+` (not treated as space).
-     * This prevents multi-pass degradation where `%2B` → `+` → ` ` would break
-     * email matching for plus-alias addresses like `ola+alias@nav.no`.
-     */
-    private fun decodeUntilStable(input: String): String {
-        var current = input
-        repeat(10) {
-            val decoded = try {
-                percentDecode(current)
-            } catch (_: Exception) {
-                return current
+    private fun decodeUntilStable(input: String): String = decodePercentEncoding(input)
+
+    companion object {
+        private val VALID_PERCENT = Regex("%[0-9A-Fa-f]{2}")
+
+        /**
+         * Iteratively percent-decode until stable (max 10 passes).
+         * Preserves `+` as literal (no form-encoding interpretation).
+         * Handles malformed percent sequences without throwing.
+         */
+        internal fun decodePercentEncoding(input: String): String {
+            var current = input
+            repeat(10) {
+                val decoded = try {
+                    percentDecode(current)
+                } catch (_: Exception) {
+                    return current
+                }
+                if (decoded == current) return current
+                current = decoded
             }
-            if (decoded == current) return current
-            current = decoded
+            return current
         }
-        return current
-    }
 
-    /**
-     * Decode only %xx sequences, preserving `+` as literal.
-     * Unlike URLDecoder.decode(), this does NOT treat `+` as space.
-     * Invalid percent sequences (lone `%` or `%` not followed by two hex digits)
-     * are escaped to `%25` before decoding so they don't abort the entire decode.
-     */
-    private fun percentDecode(input: String): String {
-        // Protect `+` from URLDecoder's form-encoding interpretation
-        val preserved = input.replace("+", "%2B")
-        // Escape invalid percent sequences so URLDecoder doesn't throw
-        val sanitized = sanitizePercentEncoding(preserved)
-        return URLDecoder.decode(sanitized, Charsets.UTF_8.name())
-    }
+        /**
+         * Decode only %xx sequences, preserving `+` as literal.
+         * Unlike URLDecoder.decode(), this does NOT treat `+` as space.
+         */
+        private fun percentDecode(input: String): String {
+            val preserved = input.replace("+", "%2B")
+            val sanitized = sanitizePercentEncoding(preserved)
+            return URLDecoder.decode(sanitized, Charsets.UTF_8.name())
+        }
 
-    private val VALID_PERCENT = Regex("%[0-9A-Fa-f]{2}")
-
-    /**
-     * Replace lone `%` or `%` not followed by two hex digits with `%25` (literal percent).
-     * This prevents URLDecoder from throwing on malformed input like `value%` or `%zz`.
-     */
-    private fun sanitizePercentEncoding(input: String): String {
-        val sb = StringBuilder(input.length)
-        var i = 0
-        while (i < input.length) {
-            if (input[i] == '%') {
-                if (i + 2 < input.length && VALID_PERCENT.matchesAt(input, i)) {
-                    // Valid %xx — keep as-is
-                    sb.append(input, i, i + 3)
-                    i += 3
+        /**
+         * Replace lone `%` or `%` not followed by two hex digits with `%25` (literal percent).
+         */
+        private fun sanitizePercentEncoding(input: String): String {
+            val sb = StringBuilder(input.length)
+            var i = 0
+            while (i < input.length) {
+                if (input[i] == '%') {
+                    if (i + 2 < input.length && VALID_PERCENT.matchesAt(input, i)) {
+                        sb.append(input, i, i + 3)
+                        i += 3
+                    } else {
+                        sb.append("%25")
+                        i++
+                    }
                 } else {
-                    // Invalid/incomplete percent — escape to literal %
-                    sb.append("%25")
+                    sb.append(input[i])
                     i++
                 }
-            } else {
-                sb.append(input[i])
-                i++
             }
+            return sb.toString()
         }
-        return sb.toString()
     }
 }

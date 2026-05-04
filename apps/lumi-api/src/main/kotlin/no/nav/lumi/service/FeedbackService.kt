@@ -145,11 +145,12 @@ class FeedbackService(
             }
         }
 
-        // HTML-strip + PII-redact pathname
+        // HTML-strip + percent-decode + PII-redact pathname
         sanitizeStringField(sanitized, "pathname")
         val pathValue = sanitized["pathname"]?.jsonPrimitive?.contentOrNull
         if (pathValue != null) {
-            val pathResult = sensitiveDataFilter.redact(pathValue)
+            val decoded = UrlRedactor.decodePercentEncoding(pathValue)
+            val pathResult = sensitiveDataFilter.redact(decoded)
             if (pathResult.wasRedacted) {
                 wasRedacted = true
                 sanitized["pathname"] = JsonPrimitive(pathResult.redactedText)
@@ -192,6 +193,10 @@ class FeedbackService(
             val keyResult = sensitiveDataFilter.redact(strippedKey)
             val finalKey = if (keyResult.wasRedacted) {
                 wasRedacted = true
+                keyCounter++
+                generateUniqueKey(result, originalKeys, keyCounter)
+            } else if (result.containsKey(strippedKey)) {
+                // HTML-stripping caused collision — generate unique key to avoid data loss
                 keyCounter++
                 generateUniqueKey(result, originalKeys, keyCounter)
             } else {
