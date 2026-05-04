@@ -43,8 +43,8 @@ class JsonRedactor(
                     JsonArray(el.map { walk(it) })
                 }
                 is JsonPrimitive -> {
-                    // Check strings and numbers for PII (skip booleans)
-                    if (el.booleanOrNull != null) {
+                    // Skip booleans and null
+                    if (el is JsonNull || el.booleanOrNull != null) {
                         el
                     } else {
                         val content = el.content
@@ -57,7 +57,7 @@ class JsonRedactor(
                         }
                     }
                 }
-                is JsonNull -> el
+                else -> el
             }
         }
 

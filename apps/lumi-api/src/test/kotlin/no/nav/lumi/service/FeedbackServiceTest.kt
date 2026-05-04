@@ -220,6 +220,29 @@ class FeedbackServiceTest : FunSpec({
             val savedJson = Json.parseToJsonElement(saved.feedbackJson).jsonObject
             savedJson["sensitiveDataRedacted"]?.jsonPrimitive?.content shouldBe "false"
         }
+
+        test("redacts PII in debug JsonArray") {
+            val feedbackJson = """
+                {
+                    "context": {
+                        "debug": [
+                            {"fnr": "01020349294"},
+                            {"clean": "ok"}
+                        ]
+                    },
+                    "answers": []
+                }
+            """.trimIndent()
+
+            val id = service.save(feedbackJson, "flex", "test-app")
+            val saved = repository.findRawById(id, "flex").shouldNotBeNull()
+            saved.feedbackJson shouldNotContain "01020349294"
+            saved.feedbackJson shouldContain "[FØDSELSNUMMER FJERNET]"
+            saved.feedbackJson shouldContain "\"clean\""
+
+            val savedJson = Json.parseToJsonElement(saved.feedbackJson).jsonObject
+            savedJson["sensitiveDataRedacted"]?.jsonPrimitive?.content shouldBe "true"
+        }
     }
 
     context("delete") {

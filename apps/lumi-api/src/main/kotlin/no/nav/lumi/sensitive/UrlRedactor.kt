@@ -145,7 +145,7 @@ class UrlRedactor(
     /**
      * Iteratively percent-decode until the string no longer changes.
      * Prevents double-encoding bypass (e.g. %2530%2531... → %30%31... → 01...).
-     * Limited to 3 passes to avoid infinite loops on pathological input.
+     * Limited to 10 passes to avoid infinite loops on pathological input.
      *
      * Uses percent-only decoding: `+` is preserved as literal `+` (not treated as space).
      * This prevents multi-pass degradation where `%2B` → `+` → ` ` would break
@@ -153,7 +153,7 @@ class UrlRedactor(
      */
     private fun decodeUntilStable(input: String): String {
         var current = input
-        repeat(3) {
+        repeat(10) {
             val decoded = try {
                 percentDecode(current)
             } catch (_: Exception) {

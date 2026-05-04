@@ -84,6 +84,7 @@ class UrlRedactorTest : FunSpec({
             // %2530%2531... → %30%31... → 01020349294
             val result = redactor.redactUrl("https://nav.no/sok?q=%2530%2531%2530%2532%2530%2533%2534%2539%2532%2539%2534")
             result.wasRedacted shouldBe true
+            result.redactedUrl shouldBe "https://nav.no/sok?q=%5BF%C3%98DSELSNUMMER+FJERNET%5D"
         }
 
         test("URL-encoded PII in fragment is decoded and redacted") {
@@ -95,6 +96,7 @@ class UrlRedactorTest : FunSpec({
         test("URL-encoded PII in path is decoded and redacted") {
             val result = redactor.redactUrl("https://nav.no/bruker/%30%31%30%32%30%33%34%39%32%39%34/status")
             result.wasRedacted shouldBe true
+            result.redactedUrl shouldBe "https://nav.no/bruker/[FØDSELSNUMMER FJERNET]/status"
         }
     }
 
@@ -136,6 +138,7 @@ class UrlRedactorTest : FunSpec({
             // %2B should decode to + once and stay there, not degrade to space
             val result = redactor.redactUrl("https://nav.no/sok?email=ola%2Balias@nav.no")
             result.wasRedacted shouldBe true
+            result.redactedUrl shouldBe "https://nav.no/sok?email=%5BE-POST+FJERNET%5D"
         }
 
         test("literal plus in path is preserved when no PII") {
