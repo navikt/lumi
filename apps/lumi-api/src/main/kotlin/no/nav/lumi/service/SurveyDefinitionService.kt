@@ -22,6 +22,7 @@ class SurveyDefinitionService(
     suspend fun registerOrValidate(team: String, submission: FeedbackSubmissionV1): RegistrationResult {
         val incomingDefinition = SurveyDefinition.fromSubmission(submission)
         validateDefinitionConsistency(incomingDefinition)
+        validateAnswersAgainstDefinition(incomingDefinition, submission)
         val incomingHash = incomingDefinition.computeHash()
 
         val stored = repository.findByTeamAndSurveyId(team, submission.surveyId)
@@ -34,22 +35,28 @@ class SurveyDefinitionService(
             throwDefinitionConflict(submission.surveyId, diff(stored.definition, incomingDefinition))
         }
 
-        // Atomic count-check + insert to prevent race condition on team limit
-        val inserted = repository.insertIfUnderLimit(
+        // Single SQL: INSERT ... SELECT ... WHERE count < max ON CONFLICT DO NOTHING
+        // Returns 1 if inserted, 0 if duplicate (race) or limit exceeded.
+        val insertedCount = repository.insertIfUnderLimit(
             team = team,
             definition = incomingDefinition,
             definitionHash = incomingHash,
             maxDefinitions = MAX_DEFINITIONS_PER_TEAM
         )
 
-        if (inserted) {
+        if (insertedCount == 1) {
             return RegistrationResult(submission.surveyId, incomingHash)
         }
 
+        // insertedCount == 0: either UNIQUE conflict (race) or limit exceeded.
+        // Re-read to distinguish: if found → concurrent insert won; if not → limit.
         val existingAfterRace = repository.findByTeamAndSurveyId(team, submission.surveyId)
-            ?: throw ApiErrorException.InternalServerErrorException(
-                "Failed to resolve survey definition after concurrent insert for surveyId=${submission.surveyId}"
+
+        if (existingAfterRace == null) {
+            throw ApiErrorException.TooManyRequestsException(
+                "Definition limit exceeded for team=$team (max=$MAX_DEFINITIONS_PER_TEAM)"
             )
+        }
 
         validateAnswersAgainstStoredDefinition(existingAfterRace, submission)
         if (existingAfterRace.definitionHash == incomingHash) {
@@ -57,6 +64,24 @@ class SurveyDefinitionService(
         }
 
         throwDefinitionConflict(submission.surveyId, diff(existingAfterRace.definition, incomingDefinition))
+    }
+
+    /**
+     * Validate the first submission's answers against its own derived definition.
+     * Prevents a malformed first payload from persisting invalid feedback data
+     * (e.g., SINGLE_CHOICE answer with selectedOptionId not in options).
+     */
+    private fun validateAnswersAgainstDefinition(
+        definition: SurveyDefinition,
+        submission: FeedbackSubmissionV1
+    ) {
+        val synthetic = StoredSurveyDefinition(
+            team = "",
+            surveyId = definition.surveyId,
+            definitionHash = "",
+            definition = definition
+        )
+        validateAnswersAgainstStoredDefinition(synthetic, submission)
     }
 
     private fun validateAnswersAgainstStoredDefinition(
@@ -132,6 +157,13 @@ class SurveyDefinitionService(
      * Prevents a malformed first submission from permanently locking an invalid structure.
      */
     private fun validateDefinitionConsistency(definition: SurveyDefinition) {
+        val duplicateIds = definition.fields.groupBy { it.fieldId }.filter { it.value.size > 1 }.keys
+        if (duplicateIds.isNotEmpty()) {
+            throw ApiErrorException.BadRequestException(
+                "Invalid payload: duplicate fieldIds=$duplicateIds"
+            )
+        }
+
         definition.fields.forEach { field ->
             when (field.fieldType) {
                 FieldType.SINGLE_CHOICE, FieldType.MULTI_CHOICE -> {

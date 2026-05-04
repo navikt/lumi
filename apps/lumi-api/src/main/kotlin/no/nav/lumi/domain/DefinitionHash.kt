@@ -76,6 +76,18 @@ data class DefinitionDiff(
  * once deployed to production. Any change invalidates all stored hashes and breaks
  * immutability enforcement. All enums use Kotlin .name (e.g. "RATING", "SINGLE_CHOICE",
  * "EMOJI") for consistency and predictability.
+ *
+ * FIELD ORDER: Fields are sorted by fieldId in the canonical JSON, making the hash
+ * order-insensitive. This is intentional — submission field order is a client concern,
+ * not a structural property. The diff() function still reports reordering as context
+ * when a real structural conflict exists, but pure reordering alone is accepted.
+ *
+ * SURVEY ID: surveyId is intentionally excluded from the hash. The hash is a structural
+ * fingerprint scoped by the (team, surveyId) lookup key. Two surveys with identical
+ * structure produce the same hash — this is by design.
+ *
+ * PARTIAL SUBMISSIONS: Only submitted answers are validated. Not all defined fields
+ * need to be present in every submission — partial submissions are a valid use case.
  */
 fun SurveyDefinition.computeHash(): String {
     val canonicalJson = toCanonicalJson()

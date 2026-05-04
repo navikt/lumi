@@ -29,7 +29,7 @@ class SurveyDefinitionServiceTest : FunSpec({
         val expectedHash = SurveyDefinition.fromSubmission(submission).computeHash()
 
         coEvery { repository.findByTeamAndSurveyId("team-a", "survey-1") } returns null
-        coEvery { repository.insertIfUnderLimit("team-a", any(), expectedHash, any()) } returns true
+        coEvery { repository.insertIfUnderLimit("team-a", any(), expectedHash, any()) } returns 1
 
         val result = service.registerOrValidate("team-a", submission)
 
@@ -136,8 +136,7 @@ class SurveyDefinitionServiceTest : FunSpec({
         val service = SurveyDefinitionService(repository)
 
         coEvery { repository.findByTeamAndSurveyId("team-a", "survey-1") } returns null
-        coEvery { repository.insertIfUnderLimit("team-a", any(), any(), any()) } throws
-            ApiErrorException.TooManyRequestsException("Definition limit exceeded for team=team-a (max=500)")
+        coEvery { repository.insertIfUnderLimit("team-a", any(), any(), any()) } returns 0
 
         val exception = shouldThrowTooManyRequests {
             service.registerOrValidate("team-a", ratingSubmission())
@@ -162,7 +161,7 @@ class SurveyDefinitionServiceTest : FunSpec({
                 definition = definition
             )
         )
-        coEvery { repository.insertIfUnderLimit("team-a", any(), definitionHash, any()) } returns false
+        coEvery { repository.insertIfUnderLimit("team-a", any(), definitionHash, any()) } returns 0
 
         val result = service.registerOrValidate("team-a", submission)
 
@@ -194,7 +193,7 @@ class SurveyDefinitionServiceTest : FunSpec({
                 definition = differentDefinition
             )
         )
-        coEvery { repository.insertIfUnderLimit("team-a", any(), any(), any()) } returns false
+        coEvery { repository.insertIfUnderLimit("team-a", any(), any(), any()) } returns 0
 
         val exception = shouldThrowConflict {
             service.registerOrValidate("team-a", submission)
@@ -251,6 +250,65 @@ class SurveyDefinitionServiceTest : FunSpec({
         }
 
         exception.message shouldContain "requires ratingVariant and ratingScale"
+    }
+
+    test("rejects duplicate fieldIds (self-validation)") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val submission = FeedbackSubmissionV1(
+            schemaVersion = 1,
+            surveyId = "survey-dup",
+            surveyType = SurveyType.RATING,
+            submittedAt = "2026-01-10T12:00:12Z",
+            answers = listOf(
+                Answer(
+                    fieldId = "same-id",
+                    fieldType = FieldType.TEXT,
+                    question = Question(label = "First"),
+                    value = AnswerValue.Text("a")
+                ),
+                Answer(
+                    fieldId = "same-id",
+                    fieldType = FieldType.TEXT,
+                    question = Question(label = "Second"),
+                    value = AnswerValue.Text("b")
+                )
+            )
+        )
+
+        val exception = shouldThrowBadRequest {
+            service.registerOrValidate("team-a", submission)
+        }
+
+        exception.message shouldContain "duplicate fieldIds"
+    }
+
+    test("rejects first submission with invalid selectedOptionId") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val submission = FeedbackSubmissionV1(
+            schemaVersion = 1,
+            surveyId = "survey-bad-option",
+            surveyType = SurveyType.TOP_TASKS,
+            submittedAt = "2026-01-10T12:00:12Z",
+            answers = listOf(
+                Answer(
+                    fieldId = "task",
+                    fieldType = FieldType.SINGLE_CHOICE,
+                    question = Question(
+                        label = "Hva gjorde du?",
+                        options = listOf(ChoiceOption("a", "A"), ChoiceOption("b", "B"))
+                    ),
+                    value = AnswerValue.SingleChoice("nonexistent")
+                )
+            )
+        )
+
+        val exception = shouldThrowBadRequest {
+            service.registerOrValidate("team-a", submission)
+        }
+
+        exception.message shouldContain "is not valid for fieldId"
     }
 })
 

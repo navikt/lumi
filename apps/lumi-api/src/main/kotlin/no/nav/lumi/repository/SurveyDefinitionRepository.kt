@@ -33,31 +33,40 @@ class SurveyDefinitionRepository {
     }
 
     /**
-     * Atomically check team count limit and insert if under limit.
-     * Returns true if inserted, false if duplicate (UNIQUE constraint).
-     * Throws if team is at or over the limit.
+     * Atomically check team count limit and insert if under limit using a single SQL statement.
+     * Uses INSERT ... SELECT ... WHERE count < max ON CONFLICT DO NOTHING to avoid
+     * TOCTOU race under READ COMMITTED isolation.
+     *
+     * Returns:
+     *  - 1 if inserted successfully
+     *  - 0 if duplicate (UNIQUE constraint on team+surveyId) or team at/over limit
      */
     suspend fun insertIfUnderLimit(
         team: String,
         definition: SurveyDefinition,
         definitionHash: String,
         maxDefinitions: Int
-    ): Boolean {
+    ): Int {
         return dbQuery {
-            val count = SurveyDefinitionTable.selectAll()
-                .where { SurveyDefinitionTable.team eq team }
-                .count()
-            if (count >= maxDefinitions) {
-                throw no.nav.lumi.config.exception.ApiErrorException.TooManyRequestsException(
-                    "Definition limit exceeded for team=$team (max=$maxDefinitions)"
-                )
+            val sql = """
+                INSERT INTO survey_definitions (id, team, survey_id, definition_hash, definition)
+                SELECT gen_random_uuid(), ?, ?, ?, ?::jsonb
+                WHERE (SELECT count(*) FROM survey_definitions WHERE team = ?) < ?
+                ON CONFLICT (team, survey_id) DO NOTHING
+            """.trimIndent()
+
+            val definitionJson = json.encodeToString(definition)
+            val transaction = org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager.current()
+            val conn = transaction.connection.connection as java.sql.Connection
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, team)
+                stmt.setString(2, definition.surveyId)
+                stmt.setString(3, definitionHash)
+                stmt.setString(4, definitionJson)
+                stmt.setString(5, team)
+                stmt.setInt(6, maxDefinitions)
+                stmt.executeUpdate()
             }
-            SurveyDefinitionTable.insertIgnore {
-                it[SurveyDefinitionTable.team] = team
-                it[SurveyDefinitionTable.surveyId] = definition.surveyId
-                it[SurveyDefinitionTable.definitionHash] = definitionHash
-                it[SurveyDefinitionTable.definition] = json.encodeToString(definition)
-            }.insertedCount > 0
         }
     }
 }
