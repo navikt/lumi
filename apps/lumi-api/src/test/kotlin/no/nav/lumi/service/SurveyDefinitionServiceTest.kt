@@ -339,6 +339,34 @@ class SurveyDefinitionServiceTest : FunSpec({
         exception.message shouldContain "duplicate optionIds"
     }
 
+    test("rejects choice field with blank optionIds") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val submission = FeedbackSubmissionV1(
+            schemaVersion = 1,
+            surveyId = "survey-blank-opt",
+            surveyType = SurveyType.TOP_TASKS,
+            submittedAt = "2026-01-10T12:00:12Z",
+            answers = listOf(
+                Answer(
+                    fieldId = "task",
+                    fieldType = FieldType.SINGLE_CHOICE,
+                    question = Question(
+                        label = "Valg",
+                        options = listOf(ChoiceOption("", "Blank"), ChoiceOption("b", "B"))
+                    ),
+                    value = AnswerValue.SingleChoice("b")
+                )
+            )
+        )
+
+        val exception = shouldThrowBadRequest {
+            service.registerOrValidate("team-a", submission)
+        }
+
+        exception.message shouldContain "blank optionIds"
+    }
+
     test("rejects first submission with invalid MultiChoice selectedOptionIds") {
         val repository = mockk<SurveyDefinitionRepository>()
         val service = SurveyDefinitionService(repository)

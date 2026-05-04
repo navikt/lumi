@@ -181,6 +181,12 @@ class SurveyDefinitionService(
                             "Invalid payload: fieldId=${field.fieldId} (${field.fieldType}) requires at least one option"
                         )
                     }
+                    val blankIds = field.optionIds.filter { it.isBlank() }
+                    if (blankIds.isNotEmpty()) {
+                        throw ApiErrorException.BadRequestException(
+                            "Invalid payload: fieldId=${field.fieldId} has blank optionIds"
+                        )
+                    }
                     val duplicates = field.optionIds.groupBy { it }.filter { it.value.size > 1 }.keys
                     if (duplicates.isNotEmpty()) {
                         throw ApiErrorException.BadRequestException(
