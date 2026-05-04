@@ -367,6 +367,34 @@ class SurveyDefinitionServiceTest : FunSpec({
         exception.message shouldContain "are not valid for fieldId"
     }
 
+    test("rejects MultiChoice with duplicate selectedOptionIds") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val submission = FeedbackSubmissionV1(
+            schemaVersion = 1,
+            surveyId = "survey-multi-dup",
+            surveyType = SurveyType.TOP_TASKS,
+            submittedAt = "2026-01-10T12:00:12Z",
+            answers = listOf(
+                Answer(
+                    fieldId = "tasks",
+                    fieldType = FieldType.MULTI_CHOICE,
+                    question = Question(
+                        label = "Velg flere",
+                        options = listOf(ChoiceOption("a", "A"), ChoiceOption("b", "B"))
+                    ),
+                    value = AnswerValue.MultiChoice(listOf("a", "a"))
+                )
+            )
+        )
+
+        val exception = shouldThrowBadRequest {
+            service.registerOrValidate("team-a", submission)
+        }
+
+        exception.message shouldContain "duplicate selectedOptionIds"
+    }
+
     test("partial submission accepted against stored definition") {
         val repository = mockk<SurveyDefinitionRepository>()
         val service = SurveyDefinitionService(repository)

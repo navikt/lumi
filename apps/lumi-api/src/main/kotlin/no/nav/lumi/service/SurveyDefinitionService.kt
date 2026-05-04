@@ -131,6 +131,12 @@ class SurveyDefinitionService(
 
                 is AnswerValue.MultiChoice -> {
                     requireFieldType(answer.fieldId, storedField.fieldType, FieldType.MULTI_CHOICE)
+                    val duplicateSelections = value.selectedOptionIds.groupBy { it }.filter { it.value.size > 1 }.keys
+                    if (duplicateSelections.isNotEmpty()) {
+                        throw ApiErrorException.BadRequestException(
+                            "Invalid payload: duplicate selectedOptionIds=$duplicateSelections for fieldId=${answer.fieldId}"
+                        )
+                    }
                     val optionIds = storedField.optionIds.orEmpty().toSet()
                     val invalidIds = value.selectedOptionIds.filterNot(optionIds::contains)
                     if (invalidIds.isNotEmpty()) {
