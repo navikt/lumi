@@ -143,15 +143,19 @@ class UrlRedactor(
     }
 
     /**
-     * Iteratively URL-decode until the string no longer changes.
+     * Iteratively percent-decode until the string no longer changes.
      * Prevents double-encoding bypass (e.g. %2530%2531... → %30%31... → 01...).
      * Limited to 3 passes to avoid infinite loops on pathological input.
+     *
+     * Uses percent-only decoding: `+` is preserved as literal `+` (not treated as space).
+     * This prevents multi-pass degradation where `%2B` → `+` → ` ` would break
+     * email matching for plus-alias addresses like `ola+alias@nav.no`.
      */
     private fun decodeUntilStable(input: String): String {
         var current = input
         repeat(3) {
             val decoded = try {
-                URLDecoder.decode(current, Charsets.UTF_8.name())
+                percentDecode(current)
             } catch (_: Exception) {
                 return current
             }
@@ -159,5 +163,15 @@ class UrlRedactor(
             current = decoded
         }
         return current
+    }
+
+    /**
+     * Decode only %xx sequences, preserving `+` as literal.
+     * Unlike URLDecoder.decode(), this does NOT treat `+` as space.
+     */
+    private fun percentDecode(input: String): String {
+        // Protect `+` from URLDecoder's form-encoding interpretation
+        val preserved = input.replace("+", "%2B")
+        return URLDecoder.decode(preserved, Charsets.UTF_8.name())
     }
 }

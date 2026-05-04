@@ -5,9 +5,10 @@ import kotlinx.serialization.json.*
 /**
  * Recursively walks a JsonElement tree and redacts PII from:
  * - String primitive values
+ * - Numeric primitive values (converted to string for PII matching)
  * - Object keys containing PII (replaced with [REDACTED_KEY_n])
  *
- * Numbers, booleans, and nulls are left untouched.
+ * Booleans and nulls are left untouched.
  */
 class JsonRedactor(
     private val sensitiveDataFilter: SensitiveDataFilter = SensitiveDataFilter.DEFAULT
@@ -42,7 +43,10 @@ class JsonRedactor(
                     JsonArray(el.map { walk(it) })
                 }
                 is JsonPrimitive -> {
-                    if (el.isString) {
+                    // Check strings and numbers for PII (skip booleans)
+                    if (el.booleanOrNull != null) {
+                        el
+                    } else {
                         val content = el.content
                         val result = sensitiveDataFilter.redact(content)
                         if (result.wasRedacted) {
@@ -51,8 +55,6 @@ class JsonRedactor(
                         } else {
                             el
                         }
-                    } else {
-                        el // numbers, booleans, nulls — leave as-is
                     }
                 }
                 is JsonNull -> el

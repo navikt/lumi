@@ -14,8 +14,8 @@ class FeedbackService(
     private val repository: FeedbackRepository = FeedbackRepository(),
     private val sensitiveDataFilter: SensitiveDataFilter = SensitiveDataFilter.DEFAULT,
     private val htmlSanitizer: HtmlSanitizer = HtmlSanitizer.DEFAULT,
-    private val urlRedactor: UrlRedactor = UrlRedactor(),
-    private val jsonRedactor: JsonRedactor = JsonRedactor()
+    private val urlRedactor: UrlRedactor = UrlRedactor(sensitiveDataFilter),
+    private val jsonRedactor: JsonRedactor = JsonRedactor(sensitiveDataFilter)
 ) {
     private val log = LoggerFactory.getLogger(FeedbackService::class.java)
     private val json = Json { ignoreUnknownKeys = true }

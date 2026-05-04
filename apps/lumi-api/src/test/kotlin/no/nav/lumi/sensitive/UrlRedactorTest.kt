@@ -125,4 +125,23 @@ class UrlRedactorTest : FunSpec({
             result.wasRedacted shouldBe true
         }
     }
+
+    context("plus-sign preservation") {
+        test("plus-alias email in query param is redacted") {
+            val result = redactor.redactUrl("https://nav.no/sok?email=ola+alias@nav.no")
+            result.wasRedacted shouldBe true
+        }
+
+        test("percent-encoded plus in email survives multi-pass decode") {
+            // %2B should decode to + once and stay there, not degrade to space
+            val result = redactor.redactUrl("https://nav.no/sok?email=ola%2Balias@nav.no")
+            result.wasRedacted shouldBe true
+        }
+
+        test("literal plus in path is preserved when no PII") {
+            val result = redactor.redactUrl("https://nav.no/c++/docs")
+            result.wasRedacted shouldBe false
+            result.redactedUrl shouldBe "https://nav.no/c++/docs"
+        }
+    }
 })

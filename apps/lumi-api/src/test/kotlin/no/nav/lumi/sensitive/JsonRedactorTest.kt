@@ -93,13 +93,28 @@ class JsonRedactorTest : FunSpec({
     }
 
     context("number values") {
-        test("number that looks like fødselsnummer is NOT redacted (numbers stay as-is)") {
-            // 11-digit numbers as JSON numbers are extremely unlikely to be PII
-            // and converting them breaks JSON type expectations
+        test("small numbers are not redacted") {
             val input = JsonObject(mapOf("count" to JsonPrimitive(42)))
             val (result, wasRedacted) = redactor.redactJsonElement(input)
             wasRedacted shouldBe false
             result.jsonObject["count"]?.jsonPrimitive?.content shouldBe "42"
+        }
+
+        test("numeric phone number is redacted") {
+            val input = JsonObject(mapOf("phone" to JsonPrimitive(98765432)))
+            val (result, wasRedacted) = redactor.redactJsonElement(input)
+            wasRedacted shouldBe true
+            result.jsonObject["phone"]?.jsonPrimitive?.content shouldBe "[TELEFON FJERNET]"
+        }
+
+        test("numeric value in nested debug object is redacted") {
+            val input = JsonObject(mapOf(
+                "debug" to JsonObject(mapOf(
+                    "callerPhone" to JsonPrimitive(98765432)
+                ))
+            ))
+            val (result, wasRedacted) = redactor.redactJsonElement(input)
+            wasRedacted shouldBe true
         }
     }
 
