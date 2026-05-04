@@ -121,7 +121,7 @@ class FeedbackService(
             
             json.encodeToString(JsonObject.serializer(), JsonObject(jsonObj))
         } catch (e: Exception) {
-            log.warn("Failed to redact feedback JSON, returning original", e)
+            log.error("Failed to redact feedback JSON, storing unredacted — investigate immediately", e)
             feedbackJson
         }
     }
@@ -183,6 +183,7 @@ class FeedbackService(
     private fun redactTags(tags: JsonObject): Pair<JsonObject, Boolean> {
         var wasRedacted = false
         var keyCounter = 0
+        val originalKeys = tags.keys
         val result = mutableMapOf<String, JsonElement>()
 
         for ((key, value) in tags) {
@@ -192,7 +193,7 @@ class FeedbackService(
             val finalKey = if (keyResult.wasRedacted) {
                 wasRedacted = true
                 keyCounter++
-                generateUniqueKey(result, keyCounter)
+                generateUniqueKey(result, originalKeys, keyCounter)
             } else {
                 strippedKey
             }
@@ -214,10 +215,14 @@ class FeedbackService(
         return JsonObject(result) to wasRedacted
     }
 
-    private fun generateUniqueKey(existing: Map<String, *>, startCounter: Int): String {
+    private fun generateUniqueKey(
+        written: Map<String, *>,
+        originalKeys: Set<String>,
+        startCounter: Int
+    ): String {
         var candidate = "[REDACTED_KEY_$startCounter]"
         var suffix = startCounter
-        while (existing.containsKey(candidate)) {
+        while (written.containsKey(candidate) || originalKeys.contains(candidate)) {
             suffix++
             candidate = "[REDACTED_KEY_$suffix]"
         }

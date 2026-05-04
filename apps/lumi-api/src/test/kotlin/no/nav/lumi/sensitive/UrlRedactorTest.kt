@@ -128,6 +128,25 @@ class UrlRedactorTest : FunSpec({
         }
     }
 
+    context("malformed percent-encoding") {
+        test("trailing percent does not abort decode of valid encoded PII") {
+            // The trailing % is malformed, but the encoded fnr should still be decoded and caught
+            val result = redactor.redactUrl("https://nav.no/sok?q=%30%31%30%32%30%33%34%39%32%39%34%")
+            result.wasRedacted shouldBe true
+        }
+
+        test("incomplete percent sequence does not abort decode") {
+            // %z is not valid hex — should not prevent decoding of the rest
+            val result = redactor.redactUrl("https://nav.no/sok?q=%30%31%30%32%30%33%34%39%32%39%34&x=%zz")
+            result.wasRedacted shouldBe true
+        }
+
+        test("lone percent in path does not prevent PII detection") {
+            val result = redactor.redactUrl("https://nav.no/bruker/01020349294/100%")
+            result.wasRedacted shouldBe true
+        }
+    }
+
     context("plus-sign preservation") {
         test("plus-alias email in query param is redacted") {
             val result = redactor.redactUrl("https://nav.no/sok?email=ola+alias@nav.no")

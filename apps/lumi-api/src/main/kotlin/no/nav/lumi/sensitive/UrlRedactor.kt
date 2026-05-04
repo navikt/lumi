@@ -168,10 +168,42 @@ class UrlRedactor(
     /**
      * Decode only %xx sequences, preserving `+` as literal.
      * Unlike URLDecoder.decode(), this does NOT treat `+` as space.
+     * Invalid percent sequences (lone `%` or `%` not followed by two hex digits)
+     * are escaped to `%25` before decoding so they don't abort the entire decode.
      */
     private fun percentDecode(input: String): String {
         // Protect `+` from URLDecoder's form-encoding interpretation
         val preserved = input.replace("+", "%2B")
-        return URLDecoder.decode(preserved, Charsets.UTF_8.name())
+        // Escape invalid percent sequences so URLDecoder doesn't throw
+        val sanitized = sanitizePercentEncoding(preserved)
+        return URLDecoder.decode(sanitized, Charsets.UTF_8.name())
+    }
+
+    private val VALID_PERCENT = Regex("%[0-9A-Fa-f]{2}")
+
+    /**
+     * Replace lone `%` or `%` not followed by two hex digits with `%25` (literal percent).
+     * This prevents URLDecoder from throwing on malformed input like `value%` or `%zz`.
+     */
+    private fun sanitizePercentEncoding(input: String): String {
+        val sb = StringBuilder(input.length)
+        var i = 0
+        while (i < input.length) {
+            if (input[i] == '%') {
+                if (i + 2 < input.length && VALID_PERCENT.matchesAt(input, i)) {
+                    // Valid %xx — keep as-is
+                    sb.append(input, i, i + 3)
+                    i += 3
+                } else {
+                    // Invalid/incomplete percent — escape to literal %
+                    sb.append("%25")
+                    i++
+                }
+            } else {
+                sb.append(input[i])
+                i++
+            }
+        }
+        return sb.toString()
     }
 }

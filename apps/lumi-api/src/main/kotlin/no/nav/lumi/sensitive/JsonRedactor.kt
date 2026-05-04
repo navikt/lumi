@@ -24,13 +24,14 @@ class JsonRedactor(
         fun walk(el: JsonElement): JsonElement {
             return when (el) {
                 is JsonObject -> {
+                    val originalKeys = el.keys
                     val newEntries = mutableMapOf<String, JsonElement>()
                     for ((key, value) in el) {
                         val keyResult = sensitiveDataFilter.redact(key)
                         val finalKey = if (keyResult.wasRedacted) {
                             wasRedacted = true
                             keyCounter++
-                            generateUniqueKey(newEntries, keyCounter)
+                            generateUniqueKey(newEntries, originalKeys, keyCounter)
                         } else {
                             key
                         }
@@ -56,7 +57,6 @@ class JsonRedactor(
                         }
                     }
                 }
-                else -> el
             }
         }
 
@@ -64,10 +64,14 @@ class JsonRedactor(
         return result to wasRedacted
     }
 
-    private fun generateUniqueKey(existing: Map<String, *>, startCounter: Int): String {
+    private fun generateUniqueKey(
+        written: Map<String, *>,
+        originalKeys: Set<String>,
+        startCounter: Int
+    ): String {
         var candidate = "[REDACTED_KEY_$startCounter]"
         var suffix = startCounter
-        while (existing.containsKey(candidate)) {
+        while (written.containsKey(candidate) || originalKeys.contains(candidate)) {
             suffix++
             candidate = "[REDACTED_KEY_$suffix]"
         }

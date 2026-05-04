@@ -1,6 +1,7 @@
 package no.nav.lumi.sensitive
 
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.*
 
@@ -49,6 +50,21 @@ class JsonRedactorTest : FunSpec({
             val (result, wasRedacted) = redactor.redactJsonElement(input)
             wasRedacted shouldBe true
             result.jsonObject.keys shouldBe setOf("[REDACTED_KEY_1]", "[REDACTED_KEY_2]")
+        }
+
+        test("avoids collision with existing key named REDACTED_KEY_1") {
+            val input = JsonObject(mapOf(
+                "01020349294" to JsonPrimitive("pii-data"),
+                "[REDACTED_KEY_1]" to JsonPrimitive("legitimate-data")
+            ))
+            val (result, wasRedacted) = redactor.redactJsonElement(input)
+            wasRedacted shouldBe true
+            // Should skip [REDACTED_KEY_1] since it already exists as an original key
+            val keys = result.jsonObject.keys
+            keys.size shouldBe 2
+            keys shouldContain "[REDACTED_KEY_1]"
+            // The PII key should get a different placeholder
+            result.jsonObject["[REDACTED_KEY_1]"]?.jsonPrimitive?.content shouldBe "legitimate-data"
         }
     }
 
