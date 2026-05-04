@@ -101,7 +101,7 @@ class FeedbackService(
                                 val redacted = sensitiveDataFilter.redact(originalText)
                                 if (redacted.wasRedacted) {
                                     hasRedactions = true
-                                    log.info("Redacted sensitive data from answer fieldId={}: {}", answerObj["fieldId"], redacted.matchedPatterns)
+                                    log.info("Redacted sensitive data from text answer: {}", redacted.matchedPatterns)
                                 }
                                 valueObj["text"] = JsonPrimitive(redacted.redactedText)
                                 answerObj["value"] = JsonObject(valueObj)
