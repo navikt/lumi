@@ -419,6 +419,34 @@ class SurveyDefinitionServiceTest : FunSpec({
         exception.message shouldContain "blank optionIds"
     }
 
+    test("rejects choice field with unsafe optionIds") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val submission = FeedbackSubmissionV1(
+            schemaVersion = 1,
+            surveyId = "survey-unsafe-opt",
+            surveyType = SurveyType.TOP_TASKS,
+            submittedAt = "2026-01-10T12:00:12Z",
+            answers = listOf(
+                Answer(
+                    fieldId = "task",
+                    fieldType = FieldType.SINGLE_CHOICE,
+                    question = Question(
+                        label = "Valg",
+                        options = listOf(ChoiceOption("unsafe\"opt", "Unsafe"), ChoiceOption("b", "B"))
+                    ),
+                    value = AnswerValue.SingleChoice("b")
+                )
+            )
+        )
+
+        val exception = shouldThrowBadRequest {
+            service.registerOrValidate("team-a", submission)
+        }
+
+        exception.message shouldContain "optionId containing illegal characters"
+    }
+
     test("rejects first submission with invalid MultiChoice selectedOptionIds") {
         val repository = mockk<SurveyDefinitionRepository>()
         val service = SurveyDefinitionService(repository)

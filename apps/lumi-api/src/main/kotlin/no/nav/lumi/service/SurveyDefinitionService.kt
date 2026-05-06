@@ -11,6 +11,7 @@ import no.nav.lumi.domain.diff
 import no.nav.lumi.domain.mergeWith
 import no.nav.lumi.repository.StoredSurveyDefinition
 import no.nav.lumi.repository.SurveyDefinitionRepository
+import no.nav.lumi.repository.isSafeChoiceValue
 
 data class RegistrationResult(
     val surveyId: String,
@@ -273,6 +274,11 @@ class SurveyDefinitionService(
         if (optionId.length > MAX_IDENTIFIER_LENGTH) {
             throw ApiErrorException.BadRequestException(
                 "Invalid payload: fieldId=$fieldId has optionId exceeding max length $MAX_IDENTIFIER_LENGTH"
+            )
+        }
+        if (!isSafeChoiceValue(optionId)) {
+            throw ApiErrorException.BadRequestException(
+                "Invalid payload: fieldId=$fieldId has optionId containing illegal characters"
             )
         }
     }

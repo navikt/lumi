@@ -15,7 +15,7 @@ data class StoredSurveyDefinition(
 )
 
 class SurveyDefinitionRepository {
-    private val json = Json { ignoreUnknownKeys = false }
+    private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun findByTeamAndSurveyId(team: String, surveyId: String): StoredSurveyDefinition? {
         return dbQuery {
