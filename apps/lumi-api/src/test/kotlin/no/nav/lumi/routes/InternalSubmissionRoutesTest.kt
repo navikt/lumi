@@ -70,6 +70,82 @@ class InternalSubmissionRoutesTest : FunSpec({
         }
     }
 
+    test("should apply immutable definition validation on internal route") {
+        testApplication {
+            application {
+                configureSerialization()
+                configureStatusPages()
+                routing {
+                    internalSubmissionRoutes(
+                        feedbackService = FeedbackService(),
+                        submissionKey = TEST_PSK
+                    )
+                }
+            }
+
+            val firstResponse = client.post("/api/internal/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                header("X-Lumi-Submission-Key", TEST_PSK)
+                header("X-Lumi-Caller-Identity", VALID_IDENTITY)
+                setBody(
+                    """
+                    {
+                      "schemaVersion": 1,
+                      "surveyId": "internal-immutable",
+                      "surveyType": "topTasks",
+                      "submittedAt": "2026-01-10T12:00:12Z",
+                      "answers": [
+                        {
+                          "fieldId": "task",
+                          "fieldType": "SINGLE_CHOICE",
+                          "question": {
+                            "label": "Hva gjorde du?",
+                            "options": [{ "id": "apply", "label": "Søknad" }]
+                          },
+                          "value": { "type": "singleChoice", "selectedOptionId": "apply" }
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+            }
+
+            firstResponse.status shouldBe HttpStatusCode.Created
+
+            val secondResponse = client.post("/api/internal/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                header("X-Lumi-Submission-Key", TEST_PSK)
+                header("X-Lumi-Caller-Identity", VALID_IDENTITY)
+                setBody(
+                    """
+                    {
+                      "schemaVersion": 1,
+                      "surveyId": "internal-immutable",
+                      "surveyType": "topTasks",
+                      "submittedAt": "2026-01-10T12:01:12Z",
+                      "answers": [
+                        {
+                          "fieldId": "task",
+                          "fieldType": "SINGLE_CHOICE",
+                          "question": {
+                            "label": "Hva gjorde du?",
+                            "options": [
+                              { "id": "apply", "label": "Søknad" },
+                              { "id": "follow-up", "label": "Oppfølging" }
+                            ]
+                          },
+                          "value": { "type": "singleChoice", "selectedOptionId": "apply" }
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+            }
+
+            secondResponse.status shouldBe HttpStatusCode.Conflict
+        }
+    }
+
     test("should return 401 when PSK is missing") {
         testApplication {
             application {

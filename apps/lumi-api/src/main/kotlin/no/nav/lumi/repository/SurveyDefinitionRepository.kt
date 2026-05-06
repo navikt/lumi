@@ -5,6 +5,7 @@ import kotlinx.serialization.json.Json
 import no.nav.lumi.domain.SurveyDefinition
 import org.jetbrains.exposed.v1.core.*
 import org.jetbrains.exposed.v1.jdbc.*
+import java.time.Instant
 
 data class StoredSurveyDefinition(
     val team: String,
@@ -79,6 +80,27 @@ class SurveyDefinitionRepository {
                 stmt.setInt(6, maxDefinitions)
                 stmt.executeUpdate()
             }
+        }
+    }
+
+    suspend fun updateDefinitionIfHashMatches(
+        team: String,
+        surveyId: String,
+        expectedDefinitionHash: String,
+        definition: SurveyDefinition,
+        newDefinitionHash: String
+    ): Boolean {
+        return dbQuery {
+            val definitionJson = json.encodeToString(definition)
+            SurveyDefinitionTable.update({
+                (SurveyDefinitionTable.team eq team) and
+                    (SurveyDefinitionTable.surveyId eq surveyId) and
+                    (SurveyDefinitionTable.definitionHash eq expectedDefinitionHash)
+            }) {
+                it[SurveyDefinitionTable.definitionHash] = newDefinitionHash
+                it[SurveyDefinitionTable.definition] = definitionJson
+                it[SurveyDefinitionTable.updatedAt] = Instant.now()
+            } > 0
         }
     }
 }

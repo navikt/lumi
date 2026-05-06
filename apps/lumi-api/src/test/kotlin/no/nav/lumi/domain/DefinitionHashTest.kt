@@ -142,7 +142,7 @@ class DefinitionHashTest : FunSpec({
         definition1.computeHash() shouldBe definition2.computeHash()
     }
 
-    test("diff detects field reordering") {
+    test("diff ignores pure field reordering") {
         val stored = SurveyDefinition(
             surveyId = "survey-1",
             surveyType = SurveyType.RATING,
@@ -162,7 +162,27 @@ class DefinitionHashTest : FunSpec({
 
         val definitionDiff = diff(stored, incoming)
 
-        definitionDiff.changedFields.any { it.fieldId == "_fieldOrder" } shouldBe true
+        definitionDiff.changedFields shouldBe emptyList()
+    }
+
+    test("mergeWith keeps known fields and appends newly answered fields") {
+        val stored = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("rating", FieldType.RATING, RatingVariant.EMOJI, 5, null)
+            )
+        )
+        val incoming = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("rating", FieldType.RATING, RatingVariant.EMOJI, 5, null),
+                FieldDefinition("reason", FieldType.TEXT, null, null, null)
+            )
+        )
+
+        stored.mergeWith(incoming) shouldBe incoming
     }
 
     test("fromSubmission excludes options for non-choice types") {

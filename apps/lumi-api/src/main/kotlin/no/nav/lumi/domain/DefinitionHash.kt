@@ -40,6 +40,29 @@ data class SurveyDefinition(
     }
 }
 
+fun FieldDefinition.isStructurallyEqualTo(other: FieldDefinition): Boolean {
+    return fieldType == other.fieldType &&
+        ratingVariant == other.ratingVariant &&
+        ratingScale == other.ratingScale &&
+        optionIds == other.optionIds
+}
+
+fun SurveyDefinition.mergeWith(incoming: SurveyDefinition): SurveyDefinition {
+    val storedFieldsById = fields.associateBy { it.fieldId }
+    val incomingFieldsById = incoming.fields.associateBy { it.fieldId }
+
+    val mergedFields = buildList {
+        addAll(fields.map { storedField -> incomingFieldsById[storedField.fieldId] ?: storedField })
+        addAll(incoming.fields.filterNot { it.fieldId in storedFieldsById })
+    }
+
+    return SurveyDefinition(
+        surveyId = surveyId,
+        surveyType = incoming.surveyType,
+        fields = mergedFields
+    )
+}
+
 data class FieldChange(
     val fieldId: String,
     val change: String
@@ -86,11 +109,10 @@ data class DefinitionDiff(
  * fingerprint scoped by the (team, surveyId) lookup key. Two surveys with identical
  * structure produce the same hash — this is by design.
  *
- * PARTIAL SUBMISSIONS: Only submitted answers are validated against the stored
- * definition. Not all defined fields need to be present in every submission.
- * However, the hash is computed from ALL submitted fields, so a submission with
- * fewer fields will produce a different hash and correctly trigger a 409 if
- * a definition with more fields is already stored.
+ * PARTIAL SUBMISSIONS: Widget v1 may send only answered questions. Missing fields
+ * are therefore treated as "unknown so far", not as structural removals. When a
+ * later submission adds new non-overlapping fields, the stored definition is
+ * widened by union. Structural changes to already-known fields still conflict.
  */
 fun SurveyDefinition.computeHash(): String {
     val canonicalJson = toCanonicalJson()
@@ -110,14 +132,7 @@ fun diff(stored: SurveyDefinition, incoming: SurveyDefinition): DefinitionDiff {
             add(FieldChange("_surveyType", "${stored.surveyType} -> ${incoming.surveyType}"))
         }
 
-        // Detect field reordering
         val commonIds = storedFieldsById.keys.intersect(incomingFieldsById.keys)
-        val storedOrder = stored.fields.map { it.fieldId }.filter { it in commonIds }
-        val incomingOrder = incoming.fields.map { it.fieldId }.filter { it in commonIds }
-        if (storedOrder != incomingOrder) {
-            add(FieldChange("_fieldOrder", "field order changed"))
-        }
-
         for (fieldId in commonIds.sorted()) {
             val storedField = storedFieldsById.getValue(fieldId)
             val incomingField = incomingFieldsById.getValue(fieldId)

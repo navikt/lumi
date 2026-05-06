@@ -8,6 +8,7 @@ import no.nav.lumi.domain.FieldType
 import no.nav.lumi.domain.SurveyDefinition
 import no.nav.lumi.domain.computeHash
 import no.nav.lumi.domain.diff
+import no.nav.lumi.domain.mergeWith
 import no.nav.lumi.repository.StoredSurveyDefinition
 import no.nav.lumi.repository.SurveyDefinitionRepository
 
@@ -22,51 +23,45 @@ class SurveyDefinitionService(
     suspend fun registerOrValidate(team: String, submission: FeedbackSubmissionV1): RegistrationResult {
         val incomingDefinition = SurveyDefinition.fromSubmission(submission)
         validateDefinitionConsistency(incomingDefinition)
-        validateAnswersAgainstDefinition(incomingDefinition, submission)
+        validateAnswersAgainstIncomingDefinition(incomingDefinition, submission)
         val incomingHash = incomingDefinition.computeHash()
 
-        val stored = repository.findByTeamAndSurveyId(team, submission.surveyId)
-        if (stored != null) {
-            validateAnswersAgainstStoredDefinition(stored, submission)
-            if (stored.definitionHash == incomingHash) {
-                return RegistrationResult(submission.surveyId, stored.definitionHash)
+        repeat(MAX_REGISTRATION_ATTEMPTS) {
+            val stored = repository.findByTeamAndSurveyId(team, submission.surveyId)
+            if (stored != null) {
+                when (val result = handleExistingDefinition(team, stored, incomingDefinition)) {
+                    is ExistingDefinitionResult.Resolved -> return result.registrationResult
+                    ExistingDefinitionResult.Retry -> return@repeat
+                }
             }
 
-            throwDefinitionConflict(submission.surveyId, diff(stored.definition, incomingDefinition))
-        }
-
-        // Single SQL: INSERT ... SELECT ... WHERE count < max ON CONFLICT DO NOTHING
-        // Returns 1 if inserted, 0 if duplicate (race) or limit exceeded.
-        val insertedCount = repository.insertIfUnderLimit(
-            team = team,
-            definition = incomingDefinition,
-            definitionHash = incomingHash,
-            maxDefinitions = MAX_DEFINITIONS_PER_TEAM
-        )
-
-        if (insertedCount == 1) {
-            return RegistrationResult(submission.surveyId, incomingHash)
-        }
-
-        // insertedCount == 0: either UNIQUE conflict (race) or limit exceeded.
-        // Re-read to distinguish: if found → concurrent insert won; if not → limit.
-        val existingAfterRace = repository.findByTeamAndSurveyId(team, submission.surveyId)
-
-        if (existingAfterRace == null) {
-            // 429 used for quota exhaustion. Semantically closer to 403/422, but 429
-            // is conventional in this codebase and the 500-limit is generous enough
-            // that this path is rarely hit. Clients should not auto-retry.
-            throw ApiErrorException.TooManyRequestsException(
-                "Definition limit exceeded for team=$team (max=$MAX_DEFINITIONS_PER_TEAM)"
+            val insertedCount = repository.insertIfUnderLimit(
+                team = team,
+                definition = incomingDefinition,
+                definitionHash = incomingHash,
+                maxDefinitions = MAX_DEFINITIONS_PER_TEAM
             )
+
+            if (insertedCount == 1) {
+                return RegistrationResult(submission.surveyId, incomingHash)
+            }
+
+            val existingAfterRace = repository.findByTeamAndSurveyId(team, submission.surveyId)
+            if (existingAfterRace == null) {
+                throw ApiErrorException.TooManyRequestsException(
+                    "Definition limit exceeded for team=$team (max=$MAX_DEFINITIONS_PER_TEAM)"
+                )
+            }
+
+            when (val result = handleExistingDefinition(team, existingAfterRace, incomingDefinition)) {
+                is ExistingDefinitionResult.Resolved -> return result.registrationResult
+                ExistingDefinitionResult.Retry -> return@repeat
+            }
         }
 
-        validateAnswersAgainstStoredDefinition(existingAfterRace, submission)
-        if (existingAfterRace.definitionHash == incomingHash) {
-            return RegistrationResult(submission.surveyId, existingAfterRace.definitionHash)
-        }
-
-        throwDefinitionConflict(submission.surveyId, diff(existingAfterRace.definition, incomingDefinition))
+        throw ApiErrorException.InternalServerErrorException(
+            "Failed to register survey definition for surveyId=${submission.surveyId} after retrying concurrent updates"
+        )
     }
 
     /**
@@ -74,7 +69,7 @@ class SurveyDefinitionService(
      * Prevents a malformed first payload from persisting invalid feedback data
      * (e.g., SINGLE_CHOICE answer with selectedOptionId not in options).
      */
-    private fun validateAnswersAgainstDefinition(
+    private fun validateAnswersAgainstIncomingDefinition(
         definition: SurveyDefinition,
         submission: FeedbackSubmissionV1
     ) {
@@ -85,6 +80,47 @@ class SurveyDefinitionService(
             definition = definition
         )
         validateAnswersAgainstStoredDefinition(synthetic, submission)
+    }
+
+    private suspend fun handleExistingDefinition(
+        team: String,
+        stored: StoredSurveyDefinition,
+        incomingDefinition: SurveyDefinition
+    ): ExistingDefinitionResult {
+        val mergedDefinition = stored.definition.mergeWith(incomingDefinition)
+        val definitionDiff = diff(stored.definition, mergedDefinition)
+        if (definitionDiff.changedFields.isNotEmpty()) {
+            throwDefinitionConflict(stored.surveyId, definitionDiff)
+        }
+
+        if (definitionDiff.addedFields.isEmpty()) {
+            return ExistingDefinitionResult.Resolved(
+                RegistrationResult(stored.surveyId, stored.definitionHash)
+            )
+        }
+
+        val mergedHash = mergedDefinition.computeHash()
+        if (mergedHash == stored.definitionHash) {
+            return ExistingDefinitionResult.Resolved(
+                RegistrationResult(stored.surveyId, stored.definitionHash)
+            )
+        }
+
+        val updated = repository.updateDefinitionIfHashMatches(
+            team = team,
+            surveyId = stored.surveyId,
+            expectedDefinitionHash = stored.definitionHash,
+            definition = mergedDefinition,
+            newDefinitionHash = mergedHash
+        )
+
+        return if (updated) {
+            ExistingDefinitionResult.Resolved(
+                RegistrationResult(stored.surveyId, mergedHash)
+            )
+        } else {
+            ExistingDefinitionResult.Retry
+        }
     }
 
     private fun validateAnswersAgainstStoredDefinition(
@@ -105,9 +141,15 @@ class SurveyDefinitionService(
                 )
             }
 
+            val expectedFieldType = expectedFieldType(answer.value)
+            if (storedField.fieldType != expectedFieldType) {
+                throw ApiErrorException.BadRequestException(
+                    "Invalid payload: fieldId=${answer.fieldId} has fieldType=${storedField.fieldType}, expected $expectedFieldType"
+                )
+            }
+
             when (val value = answer.value) {
                 is AnswerValue.Rating -> {
-                    requireFieldType(answer.fieldId, storedField.fieldType, FieldType.RATING)
                     if (storedField.ratingVariant != value.ratingVariant || storedField.ratingScale != value.ratingScale) {
                         throw ApiErrorException.BadRequestException(
                             "Invalid payload: rating config for fieldId=${answer.fieldId} does not match stored definition"
@@ -115,12 +157,7 @@ class SurveyDefinitionService(
                     }
                 }
 
-                is AnswerValue.Text -> {
-                    requireFieldType(answer.fieldId, storedField.fieldType, FieldType.TEXT)
-                }
-
                 is AnswerValue.SingleChoice -> {
-                    requireFieldType(answer.fieldId, storedField.fieldType, FieldType.SINGLE_CHOICE)
                     val optionIds = storedField.optionIds.orEmpty()
                     if (value.selectedOptionId !in optionIds) {
                         throw ApiErrorException.BadRequestException(
@@ -130,7 +167,6 @@ class SurveyDefinitionService(
                 }
 
                 is AnswerValue.MultiChoice -> {
-                    requireFieldType(answer.fieldId, storedField.fieldType, FieldType.MULTI_CHOICE)
                     val duplicateSelections = value.selectedOptionIds.groupBy { it }.filter { it.value.size > 1 }.keys
                     if (duplicateSelections.isNotEmpty()) {
                         throw ApiErrorException.BadRequestException(
@@ -146,18 +182,18 @@ class SurveyDefinitionService(
                     }
                 }
 
-                is AnswerValue.DateValue -> {
-                    requireFieldType(answer.fieldId, storedField.fieldType, FieldType.DATE)
-                }
+                is AnswerValue.Text, is AnswerValue.DateValue -> Unit
             }
         }
     }
 
-    private fun requireFieldType(fieldId: String, actual: FieldType, expected: FieldType) {
-        if (actual != expected) {
-            throw ApiErrorException.BadRequestException(
-                "Invalid payload: fieldId=$fieldId has fieldType=$actual, expected $expected"
-            )
+    private fun expectedFieldType(value: AnswerValue): FieldType {
+        return when (value) {
+            is AnswerValue.Rating -> FieldType.RATING
+            is AnswerValue.Text -> FieldType.TEXT
+            is AnswerValue.SingleChoice -> FieldType.SINGLE_CHOICE
+            is AnswerValue.MultiChoice -> FieldType.MULTI_CHOICE
+            is AnswerValue.DateValue -> FieldType.DATE
         }
     }
 
@@ -241,8 +277,14 @@ class SurveyDefinitionService(
         }
     }
 
+    private sealed interface ExistingDefinitionResult {
+        data class Resolved(val registrationResult: RegistrationResult) : ExistingDefinitionResult
+        data object Retry : ExistingDefinitionResult
+    }
+
     private companion object {
         const val MAX_DEFINITIONS_PER_TEAM = 500
         const val MAX_IDENTIFIER_LENGTH = 200
+        const val MAX_REGISTRATION_ATTEMPTS = 5
     }
 }

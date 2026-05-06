@@ -97,24 +97,24 @@ class SurveyDefinitionServiceTest : FunSpec({
         result.definitionHash shouldBe storedDefinition.computeHash()
     }
 
-    test("invalid fieldId or fieldType returns 400") {
+    test("overlapping field change returns 409 instead of 400") {
         val repository = mockk<SurveyDefinitionRepository>()
         val service = SurveyDefinitionService(repository)
         val storedSubmission = ratingSubmission()
         val storedDefinition = SurveyDefinition.fromSubmission(storedSubmission)
-        val invalidSubmission = FeedbackSubmissionV1(
+        val changedSubmission = FeedbackSubmissionV1(
             schemaVersion = 1,
             surveyId = "survey-1",
             surveyType = SurveyType.RATING,
             submittedAt = "2026-01-10T12:00:12Z",
             answers = listOf(
                 Answer(
-                    fieldId = "rating",
-                    fieldType = FieldType.TEXT,
-                    question = Question(label = "Hvor fornøyd er du?"),
-                    value = AnswerValue.Text("Feil type")
+                        fieldId = "rating",
+                        fieldType = FieldType.TEXT,
+                        question = Question(label = "Hvor fornøyd er du?"),
+                        value = AnswerValue.Text("Feil type")
+                    )
                 )
-            )
         )
 
         coEvery { repository.findByTeamAndSurveyId("team-a", "survey-1") } returns StoredSurveyDefinition(
@@ -124,11 +124,36 @@ class SurveyDefinitionServiceTest : FunSpec({
             definition = storedDefinition
         )
 
-        val exception = shouldThrowBadRequest {
-            service.registerOrValidate("team-a", invalidSubmission)
+        val exception = shouldThrowConflict {
+            service.registerOrValidate("team-a", changedSubmission)
         }
 
-        exception.message shouldContain "fieldId=rating has fieldType=TEXT, expected RATING"
+        exception.message shouldContain "fieldType RATING -> TEXT"
+    }
+
+    test("fieldType and answer value mismatch returns 400") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val submission = FeedbackSubmissionV1(
+            schemaVersion = 1,
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            submittedAt = "2026-01-10T12:00:12Z",
+            answers = listOf(
+                Answer(
+                    fieldId = "rating",
+                    fieldType = FieldType.TEXT,
+                    question = Question(label = "Hvor fornøyd er du?"),
+                    value = AnswerValue.SingleChoice("a")
+                )
+            )
+        )
+
+        val exception = shouldThrowBadRequest {
+            service.registerOrValidate("team-a", submission)
+        }
+
+        exception.message shouldContain "fieldType=TEXT, expected SINGLE_CHOICE"
     }
 
     test("returns 429 when team exceeds definition limit") {
@@ -168,14 +193,12 @@ class SurveyDefinitionServiceTest : FunSpec({
         result shouldBe RegistrationResult("survey-1", definitionHash)
     }
 
-    test("handles concurrent insert with different hash - throws 409") {
+    test("handles concurrent insert with answered-subset winner by returning stored hash") {
         val repository = mockk<SurveyDefinitionRepository>()
         val service = SurveyDefinitionService(repository)
         val submission = ratingSubmission()
 
-        // Stored definition has same rating field (answers pass validation)
-        // but also an extra field, giving a different hash
-        val differentDefinition = SurveyDefinition(
+        val winningDefinition = SurveyDefinition(
             surveyId = "survey-1",
             surveyType = SurveyType.RATING,
             fields = listOf(
@@ -189,8 +212,37 @@ class SurveyDefinitionServiceTest : FunSpec({
             StoredSurveyDefinition(
                 team = "team-a",
                 surveyId = "survey-1",
-                definitionHash = differentDefinition.computeHash(),
-                definition = differentDefinition
+                definitionHash = winningDefinition.computeHash(),
+                definition = winningDefinition
+            )
+        )
+        coEvery { repository.insertIfUnderLimit("team-a", any(), any(), any()) } returns 0
+
+        val result = service.registerOrValidate("team-a", submission)
+
+        result shouldBe RegistrationResult("survey-1", winningDefinition.computeHash())
+    }
+
+    test("handles concurrent insert with structural conflict by throwing 409") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val submission = ratingSubmission()
+
+        val winningDefinition = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("rating", FieldType.RATING, RatingVariant.NPS, 10, null)
+            )
+        )
+
+        coEvery { repository.findByTeamAndSurveyId("team-a", "survey-1") } returnsMany listOf(
+            null,
+            StoredSurveyDefinition(
+                team = "team-a",
+                surveyId = "survey-1",
+                definitionHash = winningDefinition.computeHash(),
+                definition = winningDefinition
             )
         )
         coEvery { repository.insertIfUnderLimit("team-a", any(), any(), any()) } returns 0
@@ -199,7 +251,7 @@ class SurveyDefinitionServiceTest : FunSpec({
             service.registerOrValidate("team-a", submission)
         }
 
-        exception.message shouldContain "Survey definition conflict"
+        exception.message shouldContain "ratingVariant NPS -> EMOJI"
     }
 
     test("rejects choice field without options (self-validation)") {
@@ -240,7 +292,7 @@ class SurveyDefinitionServiceTest : FunSpec({
                     fieldId = "rating",
                     fieldType = FieldType.RATING,
                     question = Question(label = "Vurdering"),
-                    value = AnswerValue.Text("not a rating")
+                    value = AnswerValue.Rating(rating = 3, ratingVariant = null, ratingScale = null)
                 )
             )
         )
@@ -423,7 +475,7 @@ class SurveyDefinitionServiceTest : FunSpec({
         exception.message shouldContain "duplicate selectedOptionIds"
     }
 
-    test("partial submission accepted against stored definition") {
+    test("partial submission returns stored hash without conflict") {
         val repository = mockk<SurveyDefinitionRepository>()
         val service = SurveyDefinitionService(repository)
 
@@ -459,14 +511,71 @@ class SurveyDefinitionServiceTest : FunSpec({
             definition = fullDefinition
         )
 
-        // Partial submission should NOT produce the same hash as the full definition,
-        // but it should pass answer validation since all submitted fields match.
-        // It will then trigger a conflict because the hash differs.
-        val exception = shouldThrowConflict {
-            service.registerOrValidate("team-a", partialSubmission)
-        }
+        val result = service.registerOrValidate("team-a", partialSubmission)
 
-        exception.message shouldContain "Survey definition conflict"
+        result shouldBe RegistrationResult("survey-1", fullHash)
+    }
+
+    test("new answered field widens stored definition by union") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+
+        val storedDefinition = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("rating", FieldType.RATING, RatingVariant.EMOJI, 5, null)
+            )
+        )
+        val widenedDefinition = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("rating", FieldType.RATING, RatingVariant.EMOJI, 5, null),
+                FieldDefinition("reason", FieldType.TEXT, null, null, null)
+            )
+        )
+        val widenedHash = widenedDefinition.computeHash()
+        val submission = FeedbackSubmissionV1(
+            schemaVersion = 1,
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            submittedAt = "2026-01-10T12:00:12Z",
+            answers = listOf(
+                Answer(
+                    fieldId = "rating",
+                    fieldType = FieldType.RATING,
+                    question = Question(label = "Vurdering"),
+                    value = AnswerValue.Rating(rating = 3, ratingVariant = RatingVariant.EMOJI, ratingScale = 5)
+                ),
+                Answer(
+                    fieldId = "reason",
+                    fieldType = FieldType.TEXT,
+                    question = Question(label = "Hvorfor?"),
+                    value = AnswerValue.Text("Fordi")
+                )
+            )
+        )
+
+        coEvery { repository.findByTeamAndSurveyId("team-a", "survey-1") } returns StoredSurveyDefinition(
+            team = "team-a",
+            surveyId = "survey-1",
+            definitionHash = storedDefinition.computeHash(),
+            definition = storedDefinition
+        )
+        coEvery {
+            repository.updateDefinitionIfHashMatches(
+                "team-a",
+                "survey-1",
+                storedDefinition.computeHash(),
+                widenedDefinition,
+                widenedHash
+            )
+        } returns true
+
+        val result = service.registerOrValidate("team-a", submission)
+
+        result shouldBe RegistrationResult("survey-1", widenedHash)
     }
 })
 
