@@ -2,6 +2,7 @@ package no.nav.lumi.sensitive
 
 import java.net.URLDecoder
 import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 data class UrlRedactionResult(
     val redactedUrl: String,
@@ -26,9 +27,15 @@ class UrlRedactor(
             return UrlRedactionResult(redactedUrl = "", wasRedacted = false)
         }
 
-        return try {
-            redactParsedUrl(url)
-        } catch (_: Exception) {
+        return if (looksLikeStructuredUrl(url)) {
+            try {
+                redactParsedUrl(url)
+            } catch (_: Exception) {
+                // Fallback: treat as plain text
+                val result = sensitiveDataFilter.redact(url)
+                UrlRedactionResult(result.redactedText, result.wasRedacted)
+            }
+        } else {
             // Fallback: treat as plain text
             val result = sensitiveDataFilter.redact(url)
             UrlRedactionResult(result.redactedText, result.wasRedacted)
@@ -66,7 +73,7 @@ class UrlRedactor(
         val baseResult = sensitiveDataFilter.redact(decodedBase)
         val redactedBase = if (baseResult.wasRedacted) {
             wasRedacted = true
-            baseResult.redactedText
+            percentEncodeUriUnsafe(baseResult.redactedText)
         } else {
             baseUrl // preserve original encoding when no PII found
         }
@@ -121,7 +128,7 @@ class UrlRedactor(
             val fragResult = sensitiveDataFilter.redact(decodedFragment)
             if (fragResult.wasRedacted) {
                 wasRedacted = true
-                fragResult.redactedText
+                percentEncodeUriUnsafe(fragResult.redactedText)
             } else {
                 fragment
             }
@@ -142,7 +149,34 @@ class UrlRedactor(
         return UrlRedactionResult(result, wasRedacted)
     }
 
+    /**
+     * Percent-encodes characters that are invalid in a URI path/fragment
+     * while preserving URL structural characters (scheme, host, slashes, etc.).
+     */
+    private fun percentEncodeUriUnsafe(text: String): String {
+        val sb = StringBuilder(text.length + 32)
+        for (char in text) {
+            when {
+                char.code in 0x21..0x7E && char !in " []{}|\\^`" -> sb.append(char)
+                else -> {
+                    for (b in char.toString().toByteArray(StandardCharsets.UTF_8)) {
+                        sb.append('%')
+                        sb.append(String.format("%02X", b.toInt() and 0xFF))
+                    }
+                }
+            }
+        }
+        return sb.toString()
+    }
+
     private fun decodeUntilStable(input: String): String = decodePercentEncoding(input)
+
+    private fun looksLikeStructuredUrl(input: String): Boolean {
+        if (input.startsWith("/")) return true
+        if (input.contains("://")) return true
+        if (!input.contains(' ') && (input.contains('?') || input.contains('#'))) return true
+        return false
+    }
 
     companion object {
         private val VALID_PERCENT = Regex("%[0-9A-Fa-f]{2}")

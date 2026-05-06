@@ -8,6 +8,7 @@ import no.nav.lumi.sensitive.HtmlSanitizer
 import no.nav.lumi.sensitive.JsonRedactor
 import no.nav.lumi.sensitive.SensitiveDataFilter
 import no.nav.lumi.sensitive.UrlRedactor
+import no.nav.lumi.sensitive.generateUniqueKey
 import org.slf4j.LoggerFactory
 
 class FeedbackService(
@@ -121,8 +122,8 @@ class FeedbackService(
             
             json.encodeToString(JsonObject.serializer(), JsonObject(jsonObj))
         } catch (e: Exception) {
-            log.error("Failed to redact feedback JSON, storing unredacted — investigate immediately", e)
-            feedbackJson
+            log.error("Failed to redact feedback JSON, rejecting submission to avoid storing unredacted data", e)
+            throw IllegalStateException("Failed to redact feedback JSON", e)
         }
     }
 
@@ -219,21 +220,6 @@ class FeedbackService(
 
         return JsonObject(result) to wasRedacted
     }
-
-    private fun generateUniqueKey(
-        written: Map<String, *>,
-        originalKeys: Set<String>,
-        startCounter: Int
-    ): String {
-        var candidate = "[REDACTED_KEY_$startCounter]"
-        var suffix = startCounter
-        while (written.containsKey(candidate) || originalKeys.contains(candidate)) {
-            suffix++
-            candidate = "[REDACTED_KEY_$suffix]"
-        }
-        return candidate
-    }
-
     private fun sanitizeStringField(container: MutableMap<String, JsonElement>, fieldName: String) {
         val rawValue = container[fieldName]?.jsonPrimitive?.contentOrNull ?: return
         container[fieldName] = JsonPrimitive(htmlSanitizer.stripTags(rawValue))

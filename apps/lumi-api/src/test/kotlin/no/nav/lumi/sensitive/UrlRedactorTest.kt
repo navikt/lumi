@@ -41,7 +41,7 @@ class UrlRedactorTest : FunSpec({
         test("redacts PII in fragment") {
             val result = redactor.redactUrl("https://nav.no/page#fnr=01020349294")
             result.wasRedacted shouldBe true
-            result.redactedUrl shouldBe "https://nav.no/page#fnr=[FØDSELSNUMMER FJERNET]"
+            result.redactedUrl shouldBe "https://nav.no/page#fnr=%5BF%C3%98DSELSNUMMER%20FJERNET%5D"
         }
 
         test("redacts PII in query param key") {
@@ -90,20 +90,20 @@ class UrlRedactorTest : FunSpec({
         test("URL-encoded PII in fragment is decoded and redacted") {
             val result = redactor.redactUrl("https://nav.no/page#user=%30%31%30%32%30%33%34%39%32%39%34")
             result.wasRedacted shouldBe true
-            result.redactedUrl shouldBe "https://nav.no/page#user=[FØDSELSNUMMER FJERNET]"
+            result.redactedUrl shouldBe "https://nav.no/page#user=%5BF%C3%98DSELSNUMMER%20FJERNET%5D"
         }
 
         test("URL-encoded PII in path is decoded and redacted") {
             val result = redactor.redactUrl("https://nav.no/bruker/%30%31%30%32%30%33%34%39%32%39%34/status")
             result.wasRedacted shouldBe true
-            result.redactedUrl shouldBe "https://nav.no/bruker/[FØDSELSNUMMER FJERNET]/status"
+            result.redactedUrl shouldBe "https://nav.no/bruker/%5BF%C3%98DSELSNUMMER%20FJERNET%5D/status"
         }
     }
 
     context("PII in URL path (fallback full-string redaction)") {
         test("redacts fødselsnummer in path") {
             val result = redactor.redactUrl("https://nav.no/bruker/01020349294/status")
-            result.redactedUrl shouldBe "https://nav.no/bruker/[FØDSELSNUMMER FJERNET]/status"
+            result.redactedUrl shouldBe "https://nav.no/bruker/%5BF%C3%98DSELSNUMMER%20FJERNET%5D/status"
             result.wasRedacted shouldBe true
         }
 
@@ -111,7 +111,7 @@ class UrlRedactorTest : FunSpec({
             val result = redactor.redactUrl("https://nav.no/bruker/01020349294?email=test@nav.no")
             result.wasRedacted shouldBe true
             // Path PII redacted by full-string pass, query PII by param-level
-            result.redactedUrl shouldBe "https://nav.no/bruker/[FØDSELSNUMMER FJERNET]?email=%5BE-POST+FJERNET%5D"
+            result.redactedUrl shouldBe "https://nav.no/bruker/%5BF%C3%98DSELSNUMMER%20FJERNET%5D?email=%5BE-POST+FJERNET%5D"
         }
     }
 
