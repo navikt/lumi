@@ -28,7 +28,7 @@ repositories {
 val ktorVersion = "3.4.3"
 val logbackVersion = "1.5.32"
 val logstashVersion = "9.0"
-val postgresVersion = "42.7.10"
+val postgresVersion = "42.7.11"
 val hikariVersion = "7.0.2"
 val flywayVersion = "12.4.0"
 val kotestVersion = "6.1.11"
