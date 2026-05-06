@@ -155,14 +155,24 @@ class UrlRedactor(
      */
     private fun percentEncodeUriUnsafe(text: String): String {
         val sb = StringBuilder(text.length + 32)
-        for (char in text) {
+        var index = 0
+        while (index < text.length) {
+            val char = text[index]
             when {
-                char.code in 0x21..0x7E && char !in " []{}|\\^`" -> sb.append(char)
+                char == '%' && index + 2 < text.length && VALID_PERCENT.matchesAt(text, index) -> {
+                    sb.append(text, index, index + 3)
+                    index += 3
+                }
+                char.code in 0x21..0x7E && char !in " %[]{}|\\^`" -> {
+                    sb.append(char)
+                    index++
+                }
                 else -> {
                     for (b in char.toString().toByteArray(StandardCharsets.UTF_8)) {
                         sb.append('%')
                         sb.append(String.format("%02X", b.toInt() and 0xFF))
                     }
+                    index++
                 }
             }
         }

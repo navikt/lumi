@@ -144,6 +144,13 @@ class UrlRedactorTest : FunSpec({
         test("lone percent in path does not prevent PII detection") {
             val result = redactor.redactUrl("https://nav.no/bruker/01020349294/100%")
             result.wasRedacted shouldBe true
+            result.redactedUrl shouldBe "https://nav.no/bruker/%5BF%C3%98DSELSNUMMER%20FJERNET%5D/100%25"
+        }
+
+        test("existing valid percent-encoding is preserved when path also contains redacted PII") {
+            val result = redactor.redactUrl("https://nav.no/status%20ok/01020349294")
+            result.wasRedacted shouldBe true
+            result.redactedUrl shouldBe "https://nav.no/status%20ok/%5BF%C3%98DSELSNUMMER%20FJERNET%5D"
         }
     }
 

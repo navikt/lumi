@@ -1,5 +1,6 @@
 package no.nav.lumi.service
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.collections.shouldContain as collectionShouldContain
@@ -11,6 +12,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import no.nav.lumi.TestDatabase
 import no.nav.lumi.config.DatabaseHolder
+import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.insertTestFeedback
 import no.nav.lumi.insertTestFeedbackWithJson
 import no.nav.lumi.repository.FeedbackRepository
@@ -282,6 +284,47 @@ class FeedbackServiceTest : FunSpec({
             val values = tags.values.map { it.jsonPrimitive.content }
             values collectionShouldContain "flex"
             values collectionShouldContain "dagpenger"
+        }
+
+        test("blank tag keys after HTML stripping are replaced with unique redaction key") {
+            val feedbackJson = """
+                {
+                    "context": {
+                        "tags": {
+                            "<b></b>": "skjult",
+                            "team": "flex"
+                        }
+                    },
+                    "answers": []
+                }
+            """.trimIndent()
+
+            val id = service.save(feedbackJson, "flex", "test-app")
+            val saved = repository.findRawById(id, "flex").shouldNotBeNull()
+            val savedJson = Json.parseToJsonElement(saved.feedbackJson).jsonObject
+            val tags = savedJson["context"]?.jsonObject?.get("tags")?.jsonObject
+            tags.shouldNotBeNull()
+
+            tags.keys.any { it.isBlank() } shouldBe false
+            tags.keys.any { it.startsWith("[REDACTED_KEY_") } shouldBe true
+            tags.values.map { it.jsonPrimitive.content } collectionShouldContain "skjult"
+            savedJson["sensitiveDataRedacted"]?.jsonPrimitive?.content shouldBe "true"
+        }
+
+        test("answer redaction failure fails closed with internal server error") {
+            val feedbackJson = """
+                {
+                    "answers": [
+                        "ugyldig-svar"
+                    ]
+                }
+            """.trimIndent()
+
+            val exception = shouldThrow<ApiErrorException.InternalServerErrorException> {
+                service.save(feedbackJson, "flex", "test-app")
+            }
+
+            exception.message shouldBe "Failed to redact feedback JSON"
         }
     }
 

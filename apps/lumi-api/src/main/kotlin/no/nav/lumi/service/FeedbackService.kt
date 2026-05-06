@@ -1,6 +1,7 @@
 package no.nav.lumi.service
 
 import kotlinx.serialization.json.*
+import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.FeedbackDto
 import no.nav.lumi.domain.FeedbackQuery
 import no.nav.lumi.repository.FeedbackRepository
@@ -91,28 +92,23 @@ class FeedbackService(
             val answers = jsonObj["answers"] as? JsonArray
             if (answers != null) {
                 val redactedAnswers = answers.map { answerEl ->
-                    try {
-                        val answerObj = answerEl.jsonObject.toMutableMap()
-                        val valueObj = answerObj["value"]?.jsonObject?.toMutableMap()
-                        
-                        if (valueObj != null) {
-                            val type = valueObj["type"]?.jsonPrimitive?.contentOrNull
-                            if (type == "text") {
-                                val originalText = valueObj["text"]?.jsonPrimitive?.contentOrNull ?: ""
-                                val redacted = sensitiveDataFilter.redact(originalText)
-                                if (redacted.wasRedacted) {
-                                    hasRedactions = true
-                                    log.info("Redacted sensitive data from text answer: {}", redacted.matchedPatterns)
-                                }
-                                valueObj["text"] = JsonPrimitive(redacted.redactedText)
-                                answerObj["value"] = JsonObject(valueObj)
+                    val answerObj = answerEl.jsonObject.toMutableMap()
+                    val valueObj = answerObj["value"]?.jsonObject?.toMutableMap()
+
+                    if (valueObj != null) {
+                        val type = valueObj["type"]?.jsonPrimitive?.contentOrNull
+                        if (type == "text") {
+                            val originalText = valueObj["text"]?.jsonPrimitive?.contentOrNull ?: ""
+                            val redacted = sensitiveDataFilter.redact(originalText)
+                            if (redacted.wasRedacted) {
+                                hasRedactions = true
+                                log.info("Redacted sensitive data from text answer: {}", redacted.matchedPatterns)
                             }
+                            valueObj["text"] = JsonPrimitive(redacted.redactedText)
+                            answerObj["value"] = JsonObject(valueObj)
                         }
-                        JsonObject(answerObj)
-                    } catch (e: Exception) {
-                        log.warn("Failed to process answer for redaction", e)
-                        answerEl
                     }
+                    JsonObject(answerObj)
                 }
                 jsonObj["answers"] = JsonArray(redactedAnswers)
             }
@@ -123,7 +119,7 @@ class FeedbackService(
             json.encodeToString(JsonObject.serializer(), JsonObject(jsonObj))
         } catch (e: Exception) {
             log.error("Failed to redact feedback JSON, rejecting submission to avoid storing unredacted data", e)
-            throw IllegalStateException("Failed to redact feedback JSON", e)
+            throw ApiErrorException.InternalServerErrorException("Failed to redact feedback JSON", e)
         }
     }
 
@@ -192,7 +188,7 @@ class FeedbackService(
             // HTML-strip + PII-redact key
             val strippedKey = htmlSanitizer.stripTags(key)
             val keyResult = sensitiveDataFilter.redact(strippedKey)
-            val finalKey = if (keyResult.wasRedacted) {
+            val finalKey = if (keyResult.wasRedacted || strippedKey.isBlank()) {
                 wasRedacted = true
                 keyCounter++
                 generateUniqueKey(result, originalKeys, keyCounter)
