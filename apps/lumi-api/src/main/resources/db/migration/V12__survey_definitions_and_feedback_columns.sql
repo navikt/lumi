@@ -17,8 +17,6 @@ CREATE TABLE survey_definitions (
     UNIQUE (team, survey_id)
 );
 
-CREATE INDEX idx_survey_definitions_team ON survey_definitions(team);
-
 -- 2. New columns on feedback (all nullable for rolling deploy compatibility)
 ALTER TABLE feedback ADD COLUMN survey_id VARCHAR(255);
 
@@ -32,7 +30,7 @@ ALTER TABLE feedback ADD COLUMN deduplication_key_hash VARCHAR(64)
 CREATE INDEX idx_feedback_definition_hash ON feedback(definition_hash)
     WHERE definition_hash IS NOT NULL;
 
-CREATE INDEX idx_feedback_survey_id_column ON feedback(team, survey_id)
+CREATE INDEX idx_feedback_team_survey_id_column ON feedback(team, survey_id)
     WHERE survey_id IS NOT NULL;
 
 CREATE UNIQUE INDEX idx_feedback_dedup_key
