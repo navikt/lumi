@@ -163,6 +163,8 @@ jobs:
         working-directory: docs
         run: pnpm config set --location=project --json onlyBuiltDependencies '["esbuild"]'
       - name: Install docs deps
-        run: pnpm --dir docs install --frozen-lockfile
+        working-directory: docs
+        run: pnpm install --frozen-lockfile
       - name: Build docs
-        run: pnpm --dir docs run build
+        working-directory: docs
+        run: pnpm run build
