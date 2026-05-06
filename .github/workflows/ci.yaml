@@ -36,6 +36,7 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'biome.json'
               - 'tsconfig*.json'
+              - '.github/skills/**'
               - '.github/workflows/**'
               - 'apps/lumi-dashboard/**'
               - 'packages/**'
