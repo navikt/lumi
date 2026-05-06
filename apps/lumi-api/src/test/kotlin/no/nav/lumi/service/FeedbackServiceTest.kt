@@ -128,7 +128,7 @@ class FeedbackServiceTest : FunSpec({
             val id = service.save(feedbackJson, "flex", "test-app")
             val saved = repository.findRawById(id, "flex").shouldNotBeNull()
             saved.feedbackJson shouldNotContain "01020349294"
-            saved.feedbackJson shouldContain "[FØDSELSNUMMER FJERNET]"
+            saved.feedbackJson shouldContain "%5BF%C3%98DSELSNUMMER%20FJERNET%5D"
         }
 
         test("redacts PII in tag values") {
