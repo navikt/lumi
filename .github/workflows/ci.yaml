@@ -161,5 +161,9 @@ jobs:
           cache-dependency-path: docs/pnpm-lock.yaml
       - name: Install docs deps
         run: pnpm --dir docs install --frozen-lockfile
+        env:
+          NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
       - name: Build docs
         run: pnpm --dir docs run build
+        env:
+          NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}

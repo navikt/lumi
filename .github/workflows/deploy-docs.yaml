@@ -41,6 +41,8 @@ jobs:
             docs/pnpm-lock.yaml
       - name: Install and build VitePress
         run: pnpm --dir docs install --frozen-lockfile && pnpm --dir docs run build
+        env:
+          NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
       - name: Install workspace deps
         run: pnpm install --frozen-lockfile
         env:
