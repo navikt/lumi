@@ -40,11 +40,14 @@ jobs:
           cache-dependency-path: |
             pnpm-lock.yaml
             docs/pnpm-lock.yaml
-      - name: Install and build VitePress
+      - name: Install VitePress deps
         working-directory: docs
-        run: pnpm install --frozen-lockfile --ignore-workspace && pnpm run build
+        run: pnpm install --frozen-lockfile --ignore-workspace
         env:
           NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
+      - name: Build VitePress
+        working-directory: docs
+        run: pnpm --ignore-workspace run build
       - name: Install workspace deps
         run: pnpm install --frozen-lockfile
         env:

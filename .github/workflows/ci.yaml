@@ -167,6 +167,4 @@ jobs:
           NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
       - name: Build docs
         working-directory: docs
-        run: pnpm run build
-        env:
-          NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
+        run: pnpm --ignore-workspace run build
