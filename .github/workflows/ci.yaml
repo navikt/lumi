@@ -159,12 +159,7 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: docs/pnpm-lock.yaml
-      - name: Approve docs build deps
-        working-directory: docs
-        run: pnpm config set --location=project --json onlyBuiltDependencies '["esbuild"]'
       - name: Install docs deps
-        working-directory: docs
-        run: pnpm install --frozen-lockfile
+        run: pnpm --dir docs install --frozen-lockfile
       - name: Build docs
-        working-directory: docs
-        run: pnpm run build
+        run: pnpm --dir docs run build

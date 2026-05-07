@@ -40,7 +40,7 @@ jobs:
             pnpm-lock.yaml
             docs/pnpm-lock.yaml
       - name: Install and build VitePress
-        run: pnpm --dir docs install --ignore-workspace --frozen-lockfile && pnpm --dir docs --ignore-workspace run build
+        run: pnpm --dir docs install --frozen-lockfile && pnpm --dir docs run build
       - name: Install workspace deps
         run: pnpm install --frozen-lockfile
         env:
