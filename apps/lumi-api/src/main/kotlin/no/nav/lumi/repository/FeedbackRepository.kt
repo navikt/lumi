@@ -1,5 +1,6 @@
 package no.nav.lumi.repository
 
+import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.*
 import org.jetbrains.exposed.v1.core.*
 import org.jetbrains.exposed.v1.jdbc.*
@@ -34,19 +35,59 @@ class FeedbackRepository(
         }
     }
 
-    suspend fun save(feedbackJson: String, team: String, app: String): String {
+    suspend fun save(
+        feedbackJson: String,
+        team: String,
+        app: String,
+        surveyId: String? = null,
+        definitionHash: String? = null,
+        deduplicationKeyHash: String? = null
+    ): String {
         val id = UUID.randomUUID().toString()
-        
-        dbQuery {
-            FeedbackTable.insert {
-                it[FeedbackTable.id] = id
-                it[FeedbackTable.opprettet] = Instant.now()
-                it[FeedbackTable.feedbackJson] = feedbackJson
-                it[FeedbackTable.team] = team
-                it[FeedbackTable.app] = app
+
+        return dbQuery {
+            if (surveyId != null && deduplicationKeyHash != null) {
+                val inserted = FeedbackTable.insertIgnore {
+                    it[FeedbackTable.id] = id
+                    it[FeedbackTable.opprettet] = Instant.now()
+                    it[FeedbackTable.feedbackJson] = feedbackJson
+                    it[FeedbackTable.team] = team
+                    it[FeedbackTable.app] = app
+                    it[FeedbackTable.surveyId] = surveyId
+                    it[FeedbackTable.definitionHash] = definitionHash
+                    it[FeedbackTable.deduplicationKeyHash] = deduplicationKeyHash
+                }.insertedCount > 0
+
+                if (inserted) {
+                    id
+                } else {
+                    FeedbackTable.select(FeedbackTable.id)
+                        .where {
+                            (FeedbackTable.team eq team) and
+                                (FeedbackTable.surveyId eq surveyId) and
+                                (FeedbackTable.deduplicationKeyHash eq deduplicationKeyHash)
+                        }
+                        .singleOrNull()
+                        ?.get(FeedbackTable.id)
+                        ?: throw ApiErrorException.InternalServerErrorException(
+                            "Duplicate deduplication key detected but existing feedback row was not found"
+                        )
+                }
+            } else {
+                FeedbackTable.insert {
+                    it[FeedbackTable.id] = id
+                    it[FeedbackTable.opprettet] = Instant.now()
+                    it[FeedbackTable.feedbackJson] = feedbackJson
+                    it[FeedbackTable.team] = team
+                    it[FeedbackTable.app] = app
+                    it[FeedbackTable.surveyId] = surveyId
+                    it[FeedbackTable.definitionHash] = definitionHash
+                    it[FeedbackTable.deduplicationKeyHash] = deduplicationKeyHash
+                }
+
+                id
             }
         }
-        return id
     }
 
     suspend fun updateJson(id: String, team: String, feedbackJson: String): Boolean {

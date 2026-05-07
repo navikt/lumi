@@ -8,6 +8,7 @@ export enum ErrorType {
   ILLEGAL_ARGUMENT = "ILLEGAL_ARGUMENT",
   BAD_REQUEST = "BAD_REQUEST",
   CONFLICT = "CONFLICT",
+  RATE_LIMITED = "RATE_LIMITED",
 }
 
 export const ApiErrorSchema = z.object({

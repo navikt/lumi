@@ -10,7 +10,8 @@ enum class ErrorType {
     INTERNAL_SERVER_ERROR,
     ILLEGAL_ARGUMENT,
     BAD_REQUEST,
-    CONFLICT
+    CONFLICT,
+    RATE_LIMITED
 }
 
 @Serializable
@@ -67,6 +68,14 @@ data class ApiError(
         fun payloadTooLarge(message: String, path: String? = null) = ApiError(
             status = HttpStatusCode.PayloadTooLarge.value,
             type = ErrorType.BAD_REQUEST,
+            message = message,
+            timestamp = java.time.Instant.now().toString(),
+            path = path,
+        )
+
+        fun rateLimited(message: String, path: String? = null) = ApiError(
+            status = HttpStatusCode.TooManyRequests.value,
+            type = ErrorType.RATE_LIMITED,
             message = message,
             timestamp = java.time.Instant.now().toString(),
             path = path,

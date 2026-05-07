@@ -126,6 +126,14 @@ sealed class ApiErrorException(
             path = path,
         )
     }
+
+    class TooManyRequestsException(
+        val errorMessage: String = "Too many requests",
+        cause: Throwable? = null,
+        type: ErrorType = ErrorType.RATE_LIMITED
+    ) : ApiErrorException(errorMessage, type, cause) {
+        override fun toApiError(path: String?) = ApiError.rateLimited(errorMessage, path)
+    }
 }
 
 // Legacy aliases for backwards compatibility

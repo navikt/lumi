@@ -9,6 +9,7 @@ import no.nav.lumi.config.auth.CallerIdentityKey
 import no.nav.lumi.config.auth.parseCallerIdentity
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.service.FeedbackService
+import no.nav.lumi.service.SurveyDefinitionService
 import no.nav.lumi.validation.SubmissionValidator
 import org.slf4j.LoggerFactory
 import io.ktor.utils.io.core.readText
@@ -38,6 +39,7 @@ private val strictJson = Json {
  */
 fun Route.internalSubmissionRoutes(
     feedbackService: FeedbackService = FeedbackService(),
+    surveyDefinitionService: SurveyDefinitionService = SurveyDefinitionService(),
     submissionKey: String? = System.getenv("LUMI_INTERNAL_SUBMISSION_KEY")
 ) {
     if (submissionKey.isNullOrBlank()) {
@@ -84,14 +86,20 @@ fun Route.internalSubmissionRoutes(
             }
 
             SubmissionValidator.validateSubmissionV1(submission)
+            val definitionResult = surveyDefinitionService.registerOrValidate(identity.team, submission)
 
             val id = feedbackService.save(
                 feedbackJson = body,
                 team = identity.team,
-                app = identity.app
+                app = identity.app,
+                surveyId = definitionResult.surveyId,
+                definitionHash = definitionResult.definitionHash,
+                deduplicationKeyHash = null
             )
 
-            log.info("Internal submission: saved feedback id=$id team=${identity.team} app=${identity.app} surveyId=${submission.surveyId}")
+            log.info(
+                "Internal submission: saved feedback id=$id team=${identity.team} app=${identity.app} surveyId=${submission.surveyId} definitionHash=${definitionResult.definitionHash}"
+            )
             call.respond(HttpStatusCode.Created, mapOf("id" to id))
         }
     }

@@ -9,10 +9,21 @@ import io.ktor.server.testing.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import no.nav.lumi.TestDatabase
+import no.nav.lumi.config.DatabaseHolder
 import no.nav.lumi.createTestClient
 import no.nav.lumi.testModule
 
 class SubmissionRoutesTest : FunSpec({
+    beforeSpec {
+        DatabaseHolder.initializeForTesting(TestDatabase.dataSource)
+        TestDatabase.initialize()
+    }
+
+    beforeTest {
+        DatabaseHolder.initializeForTesting(TestDatabase.dataSource)
+        TestDatabase.clearAllData()
+    }
 
     test("should accept canonical schemaVersion=1 submissions") {
         testApplication {
@@ -83,9 +94,284 @@ class SubmissionRoutesTest : FunSpec({
                                 )
                         }
 
-                        response.status shouldBe HttpStatusCode.Created
-                }
+            response.status shouldBe HttpStatusCode.Created
         }
+    }
+
+    test("should reject structural survey definition changes with 409") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+
+            val firstResponse = client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """
+                    {
+                      "schemaVersion": 1,
+                      "surveyId": "immutable-survey",
+                      "surveyType": "topTasks",
+                      "submittedAt": "2026-01-10T12:00:12Z",
+                      "answers": [
+                        {
+                          "fieldId": "task",
+                          "fieldType": "SINGLE_CHOICE",
+                          "question": {
+                            "label": "Hva gjorde du?",
+                            "options": [{ "id": "apply", "label": "Søknad" }]
+                          },
+                          "value": { "type": "singleChoice", "selectedOptionId": "apply" }
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+            }
+
+            firstResponse.status shouldBe HttpStatusCode.Created
+
+            val secondResponse = client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """
+                    {
+                      "schemaVersion": 1,
+                      "surveyId": "immutable-survey",
+                      "surveyType": "topTasks",
+                      "submittedAt": "2026-01-10T12:01:12Z",
+                      "answers": [
+                        {
+                          "fieldId": "task",
+                          "fieldType": "SINGLE_CHOICE",
+                          "question": {
+                            "label": "Hva gjorde du?",
+                            "options": [
+                              { "id": "apply", "label": "Søknad" },
+                              { "id": "follow-up", "label": "Oppfølging" }
+                            ]
+                          },
+                          "value": { "type": "singleChoice", "selectedOptionId": "apply" }
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+            }
+
+            secondResponse.status shouldBe HttpStatusCode.Conflict
+            val message = Json.parseToJsonElement(secondResponse.bodyAsText()).jsonObject["message"]?.jsonPrimitive?.content
+            (message?.contains("Survey definition conflict for surveyId=immutable-survey") == true) shouldBe true
+            (message?.contains("optionIds [apply] -> [apply, follow-up]") == true) shouldBe true
+        }
+    }
+
+    test("should accept label-only survey definition changes") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+
+            val firstResponse = client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """
+                    {
+                      "schemaVersion": 1,
+                      "surveyId": "label-survey",
+                      "surveyType": "topTasks",
+                      "submittedAt": "2026-01-10T12:00:12Z",
+                      "answers": [
+                        {
+                          "fieldId": "task",
+                          "fieldType": "SINGLE_CHOICE",
+                          "question": {
+                            "label": "Hva gjorde du?",
+                            "options": [{ "id": "apply", "label": "Søknad" }]
+                          },
+                          "value": { "type": "singleChoice", "selectedOptionId": "apply" }
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+            }
+
+            firstResponse.status shouldBe HttpStatusCode.Created
+
+            val secondResponse = client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """
+                    {
+                      "schemaVersion": 1,
+                      "surveyId": "label-survey",
+                      "surveyType": "topTasks",
+                      "submittedAt": "2026-01-10T12:01:12Z",
+                      "answers": [
+                        {
+                          "fieldId": "task",
+                          "fieldType": "SINGLE_CHOICE",
+                          "question": {
+                            "label": "Hva prøvde du å gjøre?",
+                            "options": [{ "id": "apply", "label": "Ny label" }]
+                          },
+                          "value": { "type": "singleChoice", "selectedOptionId": "apply" }
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+            }
+
+            secondResponse.status shouldBe HttpStatusCode.Created
+        }
+    }
+
+    test("should widen stored definition when later v1 submissions answer more fields") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+
+            val firstResponse = client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """
+                    {
+                      "schemaVersion": 1,
+                      "surveyId": "subset-survey",
+                      "surveyType": "rating",
+                      "submittedAt": "2026-01-10T12:00:12Z",
+                      "answers": [
+                        {
+                          "fieldId": "rating",
+                          "fieldType": "RATING",
+                          "question": { "label": "Hvor fornøyd er du?" },
+                          "value": { "type": "rating", "rating": 4, "ratingVariant": "emoji", "ratingScale": 5 }
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+            }
+
+            firstResponse.status shouldBe HttpStatusCode.Created
+
+            val secondResponse = client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """
+                    {
+                      "schemaVersion": 1,
+                      "surveyId": "subset-survey",
+                      "surveyType": "rating",
+                      "submittedAt": "2026-01-10T12:01:12Z",
+                      "answers": [
+                        {
+                          "fieldId": "rating",
+                          "fieldType": "RATING",
+                          "question": { "label": "Hvor fornøyd er du?" },
+                          "value": { "type": "rating", "rating": 5, "ratingVariant": "emoji", "ratingScale": 5 }
+                        },
+                        {
+                          "fieldId": "reason",
+                          "fieldType": "TEXT",
+                          "question": { "label": "Hvorfor?" },
+                          "value": { "type": "text", "text": "Fordi" }
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+            }
+
+            secondResponse.status shouldBe HttpStatusCode.Created
+        }
+    }
+
+    test("should return 409 when overlapping field changes after definition widening") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+
+            client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """
+                    {
+                      "schemaVersion": 1,
+                      "surveyId": "subset-conflict-survey",
+                      "surveyType": "rating",
+                      "submittedAt": "2026-01-10T12:00:12Z",
+                      "answers": [
+                        {
+                          "fieldId": "rating",
+                          "fieldType": "RATING",
+                          "question": { "label": "Hvor fornøyd er du?" },
+                          "value": { "type": "rating", "rating": 4, "ratingVariant": "emoji", "ratingScale": 5 }
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+            }.status shouldBe HttpStatusCode.Created
+
+            client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """
+                    {
+                      "schemaVersion": 1,
+                      "surveyId": "subset-conflict-survey",
+                      "surveyType": "rating",
+                      "submittedAt": "2026-01-10T12:01:12Z",
+                      "answers": [
+                        {
+                          "fieldId": "rating",
+                          "fieldType": "RATING",
+                          "question": { "label": "Hvor fornøyd er du?" },
+                          "value": { "type": "rating", "rating": 5, "ratingVariant": "emoji", "ratingScale": 5 }
+                        },
+                        {
+                          "fieldId": "reason",
+                          "fieldType": "TEXT",
+                          "question": { "label": "Hvorfor?" },
+                          "value": { "type": "text", "text": "Fordi" }
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+            }.status shouldBe HttpStatusCode.Created
+
+            val conflictResponse = client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """
+                    {
+                      "schemaVersion": 1,
+                      "surveyId": "subset-conflict-survey",
+                      "surveyType": "rating",
+                      "submittedAt": "2026-01-10T12:02:12Z",
+                      "answers": [
+                        {
+                          "fieldId": "reason",
+                          "fieldType": "SINGLE_CHOICE",
+                          "question": {
+                            "label": "Hvorfor?",
+                            "options": [{ "id": "a", "label": "A" }]
+                          },
+                          "value": { "type": "singleChoice", "selectedOptionId": "a" }
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+            }
+
+            conflictResponse.status shouldBe HttpStatusCode.Conflict
+            val message = Json.parseToJsonElement(conflictResponse.bodyAsText()).jsonObject["message"]?.jsonPrimitive?.content
+            (message?.contains("fieldType TEXT -> SINGLE_CHOICE") == true) shouldBe true
+        }
+    }
 
     test("legacy /api/v1/feedback should not exist") {
         testApplication {

@@ -15,6 +15,7 @@ import no.nav.lumi.config.auth.getCallerIdentity
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.FeedbackSubmissionV1
 import no.nav.lumi.service.FeedbackService
+import no.nav.lumi.service.SurveyDefinitionService
 import no.nav.lumi.validation.SubmissionValidator
 import org.slf4j.LoggerFactory
 import io.ktor.utils.io.core.readText
@@ -22,6 +23,7 @@ import io.ktor.utils.io.readRemaining
 
 private val log = LoggerFactory.getLogger("SubmissionRoutes")
 private val defaultFeedbackService = FeedbackService()
+private val defaultSurveyDefinitionService = SurveyDefinitionService()
 
 private const val MAX_SUBMISSION_BYTES = 1_048_576L
 
@@ -45,12 +47,15 @@ private val strictJson = Json {
  * Rate limited to 100 requests per minute per calling application,
  * and 15 requests per minute per individual user.
  */
-fun Route.submissionRoutes(feedbackService: FeedbackService = defaultFeedbackService) {
+fun Route.submissionRoutes(
+    feedbackService: FeedbackService = defaultFeedbackService,
+    surveyDefinitionService: SurveyDefinitionService = defaultSurveyDefinitionService
+) {
     route("/api/tokenx") {
         install(TokenXSubmissionAuthPlugin)
         rateLimit(SubmissionRateLimit) {
             rateLimit(UserSubmissionRateLimit) {
-                post("/v1/feedback") { handleSubmissionV1(call, feedbackService) }
+                post("/v1/feedback") { handleSubmissionV1(call, feedbackService, surveyDefinitionService) }
             }
         }
     }
@@ -59,7 +64,7 @@ fun Route.submissionRoutes(feedbackService: FeedbackService = defaultFeedbackSer
         install(AzureSubmissionAuthPlugin)
         rateLimit(SubmissionRateLimit) {
             rateLimit(UserSubmissionRateLimit) {
-                post("/v1/feedback") { handleSubmissionV1(call, feedbackService) }
+                post("/v1/feedback") { handleSubmissionV1(call, feedbackService, surveyDefinitionService) }
             }
         }
     }
@@ -67,7 +72,8 @@ fun Route.submissionRoutes(feedbackService: FeedbackService = defaultFeedbackSer
 
 private suspend fun handleSubmissionV1(
     call: io.ktor.server.application.ApplicationCall,
-    feedbackService: FeedbackService
+    feedbackService: FeedbackService,
+    surveyDefinitionService: SurveyDefinitionService
 ) {
     val identity = call.getCallerIdentity()
     val body = receiveTextWithLimit(call)
@@ -86,14 +92,20 @@ private suspend fun handleSubmissionV1(
     }
 
     SubmissionValidator.validateSubmissionV1(submission)
+    val definitionResult = surveyDefinitionService.registerOrValidate(identity.team, submission)
 
     val id = feedbackService.save(
         feedbackJson = body,
         team = identity.team,
-        app = identity.app
+        app = identity.app,
+        surveyId = definitionResult.surveyId,
+        definitionHash = definitionResult.definitionHash,
+        deduplicationKeyHash = null // Dedup wiring planned for #274 (widget v2)
     )
 
-    log.info("Saved feedback id=$id team=${identity.team} app=${identity.app} surveyId=${submission.surveyId}")
+    log.info(
+        "Saved feedback id=$id team=${identity.team} app=${identity.app} surveyId=${submission.surveyId} definitionHash=${definitionResult.definitionHash}"
+    )
     call.respond(HttpStatusCode.Created, mapOf("id" to id))
 }
 
