@@ -36,6 +36,7 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'biome.json'
               - 'tsconfig*.json'
+              - '.github/skills/**'
               - '.github/workflows/**'
               - 'apps/lumi-dashboard/**'
               - 'packages/**'
@@ -44,6 +45,7 @@ jobs:
               - 'apps/lumi-api/**'
             docs:
               - 'docs/**'
+              - 'packages/lumi-survey/CHANGELOG.md'
 
   required:
     name: Merge gate
@@ -159,6 +161,10 @@ jobs:
           cache: pnpm
           cache-dependency-path: docs/pnpm-lock.yaml
       - name: Install docs deps
-        run: pnpm --dir docs install --ignore-workspace --frozen-lockfile
+        working-directory: docs
+        run: pnpm install --frozen-lockfile --ignore-workspace
+        env:
+          NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
       - name: Build docs
-        run: pnpm --dir docs --ignore-workspace run build
+        working-directory: docs
+        run: pnpm --ignore-workspace run build
