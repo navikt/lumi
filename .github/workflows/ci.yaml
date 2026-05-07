@@ -45,6 +45,7 @@ jobs:
               - 'apps/lumi-api/**'
             docs:
               - 'docs/**'
+              - 'packages/lumi-survey/CHANGELOG.md'
 
   required:
     name: Merge gate

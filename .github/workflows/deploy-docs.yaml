@@ -10,6 +10,7 @@ on:
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
+      - 'packages/lumi-survey/CHANGELOG.md'
       - 'packages/lumi-survey/package.json'
       - 'packages/lumi-survey/src/**'
       - 'packages/lumi-survey/.storybook/**'
