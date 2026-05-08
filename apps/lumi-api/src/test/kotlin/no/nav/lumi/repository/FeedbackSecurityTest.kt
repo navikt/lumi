@@ -13,14 +13,9 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.int
 import no.nav.lumi.TestDatabase
-import no.nav.lumi.domain.SaveResult
+import no.nav.lumi.createdId
 import no.nav.lumi.service.FeedbackService
 import org.slf4j.LoggerFactory
-
-private fun SaveResult.createdId(): String = when (this) {
-    is SaveResult.Created -> id
-    is SaveResult.Duplicate -> error("Expected created save result, got duplicate")
-}
 
 class FeedbackSecurityTest : DescribeSpec({
 

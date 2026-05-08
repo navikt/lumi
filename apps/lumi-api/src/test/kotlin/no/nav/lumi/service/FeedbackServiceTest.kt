@@ -14,16 +14,12 @@ import no.nav.lumi.TestDatabase
 import no.nav.lumi.config.DatabaseHolder
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.SaveResult
+import no.nav.lumi.createdId
 import no.nav.lumi.insertTestFeedback
 import no.nav.lumi.insertTestFeedbackWithJson
 import no.nav.lumi.repository.FeedbackRepository
 import no.nav.lumi.service.computeDeduplicationKeyHash
 import java.util.UUID
-
-private fun SaveResult.createdId(): String = when (this) {
-    is SaveResult.Created -> id
-    is SaveResult.Duplicate -> error("Expected created save result, got duplicate")
-}
 
 class FeedbackServiceTest : FunSpec({
 
