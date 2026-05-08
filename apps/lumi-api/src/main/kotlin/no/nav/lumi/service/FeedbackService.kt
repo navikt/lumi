@@ -164,6 +164,8 @@ class FeedbackService(
         } catch (e: ApiErrorException) {
             throw e
         } catch (e: Exception) {
+            // Do not log or propagate the throwable here. kotlinx.serialization parse exceptions can embed
+            // raw JSON input (including deduplicationKey), and upstream exception logging must never leak it.
             if (feedbackJson.contains("\"deduplicationKey\"")) {
                 log.error(
                     "Failed to redact feedback JSON with deduplication key, rejecting submission. errorType={}",
@@ -186,12 +188,12 @@ class FeedbackService(
         }
         val primitive = rawElement as? JsonPrimitive
             ?: throw ApiErrorException.BadRequestException(
-                "Invalid payload: deduplicationKey must be 16-128 characters and contain only letters, digits, '.', '_', ':', or '-'"
+                DeduplicationKeyValidator.ERROR_MESSAGE
             )
 
         if (!primitive.isString) {
             throw ApiErrorException.BadRequestException(
-                "Invalid payload: deduplicationKey must be 16-128 characters and contain only letters, digits, '.', '_', ':', or '-'"
+                DeduplicationKeyValidator.ERROR_MESSAGE
             )
         }
 

@@ -6,7 +6,7 @@ object DeduplicationKeyValidator {
     private const val MIN_DEDUPLICATION_KEY_LENGTH = 16
     private const val MAX_DEDUPLICATION_KEY_LENGTH = 128
     private val DEDUPLICATION_KEY_PATTERN = Regex("^[A-Za-z0-9._:-]+$")
-    private const val ERROR_MESSAGE =
+    internal const val ERROR_MESSAGE =
         "Invalid payload: deduplicationKey must be 16-128 characters and contain only letters, digits, '.', '_', ':', or '-'"
 
     fun validate(deduplicationKey: String?) {
