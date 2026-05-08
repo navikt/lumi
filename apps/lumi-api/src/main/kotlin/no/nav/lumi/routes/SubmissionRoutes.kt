@@ -6,6 +6,8 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.serialization.json.Json
 import no.nav.lumi.config.SubmissionRateLimit
 import no.nav.lumi.config.UserSubmissionRateLimit
@@ -14,7 +16,9 @@ import no.nav.lumi.config.auth.TokenXSubmissionAuthPlugin
 import no.nav.lumi.config.auth.getCallerIdentity
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.FeedbackSubmissionV1
+import no.nav.lumi.domain.SaveResult
 import no.nav.lumi.service.FeedbackService
+import no.nav.lumi.service.SubmissionService
 import no.nav.lumi.service.SurveyDefinitionService
 import no.nav.lumi.validation.SubmissionValidator
 import org.slf4j.LoggerFactory
@@ -49,13 +53,14 @@ private val strictJson = Json {
  */
 fun Route.submissionRoutes(
     feedbackService: FeedbackService = defaultFeedbackService,
-    surveyDefinitionService: SurveyDefinitionService = defaultSurveyDefinitionService
+    surveyDefinitionService: SurveyDefinitionService = defaultSurveyDefinitionService,
+    submissionService: SubmissionService = SubmissionService(feedbackService, surveyDefinitionService)
 ) {
     route("/api/tokenx") {
         install(TokenXSubmissionAuthPlugin)
         rateLimit(SubmissionRateLimit) {
             rateLimit(UserSubmissionRateLimit) {
-                post("/v1/feedback") { handleSubmissionV1(call, feedbackService, surveyDefinitionService) }
+                post("/v1/feedback") { handleSubmissionV1(call, submissionService) }
             }
         }
     }
@@ -64,7 +69,7 @@ fun Route.submissionRoutes(
         install(AzureSubmissionAuthPlugin)
         rateLimit(SubmissionRateLimit) {
             rateLimit(UserSubmissionRateLimit) {
-                post("/v1/feedback") { handleSubmissionV1(call, feedbackService, surveyDefinitionService) }
+                post("/v1/feedback") { handleSubmissionV1(call, submissionService) }
             }
         }
     }
@@ -72,8 +77,7 @@ fun Route.submissionRoutes(
 
 private suspend fun handleSubmissionV1(
     call: io.ktor.server.application.ApplicationCall,
-    feedbackService: FeedbackService,
-    surveyDefinitionService: SurveyDefinitionService
+    submissionService: SubmissionService
 ) {
     val identity = call.getCallerIdentity()
     val body = receiveTextWithLimit(call)
@@ -81,7 +85,9 @@ private suspend fun handleSubmissionV1(
     val jsonElement = try {
         strictJson.parseToJsonElement(body)
     } catch (e: Exception) {
-        log.warn("Invalid JSON in feedback submission from team=${identity.team} app=${identity.app}", e)
+        log.warn(
+            "Invalid JSON in feedback submission from team=${identity.team} app=${identity.app} parseErrorType=${e::class.simpleName}"
+        )
         throw ApiErrorException.BadRequestException("Invalid JSON")
     }
 
@@ -92,21 +98,33 @@ private suspend fun handleSubmissionV1(
     }
 
     SubmissionValidator.validateSubmissionV1(submission)
-    val definitionResult = surveyDefinitionService.registerOrValidate(identity.team, submission)
-
-    val id = feedbackService.save(
+    val submissionOutcome = submissionService.submit(
         feedbackJson = body,
         team = identity.team,
         app = identity.app,
-        surveyId = definitionResult.surveyId,
-        definitionHash = definitionResult.definitionHash,
-        deduplicationKeyHash = null // Dedup wiring planned for #274 (widget v2)
+        submission = submission
     )
 
-    log.info(
-        "Saved feedback id=$id team=${identity.team} app=${identity.app} surveyId=${submission.surveyId} definitionHash=${definitionResult.definitionHash}"
-    )
-    call.respond(HttpStatusCode.Created, mapOf("id" to id))
+    when (val saveResult = submissionOutcome.saveResult) {
+        is SaveResult.Created -> {
+            log.info(
+                "Saved feedback id=${saveResult.id} team=${identity.team} app=${identity.app} surveyId=${submission.surveyId} definitionHash=${submissionOutcome.definitionHash}"
+            )
+            call.respond(HttpStatusCode.Created, mapOf("id" to saveResult.id))
+        }
+        is SaveResult.Duplicate -> {
+            log.info(
+                "Deduplicated feedback id=${saveResult.id} team=${identity.team} app=${identity.app} surveyId=${submission.surveyId}"
+            )
+            call.respond(
+                HttpStatusCode.OK,
+                buildJsonObject {
+                    put("id", saveResult.id)
+                    put("duplicate", true)
+                }
+            )
+        }
+    }
 }
 
 private suspend fun receiveTextWithLimit(call: io.ktor.server.application.ApplicationCall): String {

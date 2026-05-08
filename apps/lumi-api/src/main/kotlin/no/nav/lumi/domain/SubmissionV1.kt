@@ -38,6 +38,7 @@ data class FeedbackSubmissionV1(
     val submittedAt: String,
     val startedAt: String? = null,
     val timeToCompleteMs: Long? = null,
+    val deduplicationKey: String? = null,
     val context: SubmissionContextV1? = null,
     val answers: List<Answer>
 )

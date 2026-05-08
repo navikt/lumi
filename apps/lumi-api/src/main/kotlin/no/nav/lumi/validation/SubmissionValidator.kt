@@ -46,6 +46,8 @@ object SubmissionValidator {
             )
         }
 
+        DeduplicationKeyValidator.validate(submission.deduplicationKey)
+
         runCatching { Instant.parse(submission.submittedAt) }
             .getOrElse { throw ApiErrorException.BadRequestException("Invalid payload: submittedAt must be an ISO instant") }
 

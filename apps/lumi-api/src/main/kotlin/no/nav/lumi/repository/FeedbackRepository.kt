@@ -4,6 +4,7 @@ import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.*
 import org.jetbrains.exposed.v1.core.*
 import org.jetbrains.exposed.v1.jdbc.*
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.util.*
@@ -35,6 +36,30 @@ class FeedbackRepository(
         }
     }
 
+    suspend fun findIdByDeduplicationKeyHash(team: String, surveyId: String, deduplicationKeyHash: String): String? {
+        return dbQuery {
+            findIdByDeduplicationKeyHashInCurrentTransaction(team, surveyId, deduplicationKeyHash)
+        }
+    }
+
+    suspend fun <T> withScopedDeduplicationLock(
+        team: String,
+        surveyId: String,
+        deduplicationKeyHash: String,
+        block: suspend () -> T
+    ): T {
+        return dbQuery {
+            val conn = TransactionManager.current().connection.connection as java.sql.Connection
+            conn.prepareStatement("SELECT pg_advisory_xact_lock(hashtext(?), hashtext(?))").use { stmt ->
+                stmt.setString(1, "$team:$surveyId")
+                stmt.setString(2, deduplicationKeyHash)
+                stmt.execute()
+            }
+
+            block()
+        }
+    }
+
     suspend fun save(
         feedbackJson: String,
         team: String,
@@ -42,51 +67,72 @@ class FeedbackRepository(
         surveyId: String? = null,
         definitionHash: String? = null,
         deduplicationKeyHash: String? = null
-    ): String {
+    ): SaveResult {
+        return dbQuery {
+            saveInCurrentTransaction(feedbackJson, team, app, surveyId, definitionHash, deduplicationKeyHash)
+        }
+    }
+
+    internal fun findIdByDeduplicationKeyHashInCurrentTransaction(
+        team: String,
+        surveyId: String,
+        deduplicationKeyHash: String
+    ): String? {
+        return FeedbackTable.select(FeedbackTable.id)
+            .where {
+                (FeedbackTable.team eq team) and
+                    (FeedbackTable.surveyId eq surveyId) and
+                    (FeedbackTable.deduplicationKeyHash eq deduplicationKeyHash)
+            }
+            .singleOrNull()
+            ?.get(FeedbackTable.id)
+    }
+
+    internal fun saveInCurrentTransaction(
+        feedbackJson: String,
+        team: String,
+        app: String,
+        surveyId: String? = null,
+        definitionHash: String? = null,
+        deduplicationKeyHash: String? = null
+    ): SaveResult {
         val id = UUID.randomUUID().toString()
 
-        return dbQuery {
-            if (surveyId != null && deduplicationKeyHash != null) {
-                val inserted = FeedbackTable.insertIgnore {
-                    it[FeedbackTable.id] = id
-                    it[FeedbackTable.opprettet] = Instant.now()
-                    it[FeedbackTable.feedbackJson] = feedbackJson
-                    it[FeedbackTable.team] = team
-                    it[FeedbackTable.app] = app
-                    it[FeedbackTable.surveyId] = surveyId
-                    it[FeedbackTable.definitionHash] = definitionHash
-                    it[FeedbackTable.deduplicationKeyHash] = deduplicationKeyHash
-                }.insertedCount > 0
+        return if (surveyId != null && deduplicationKeyHash != null) {
+            val inserted = FeedbackTable.insertIgnore {
+                it[FeedbackTable.id] = id
+                it[FeedbackTable.opprettet] = Instant.now()
+                it[FeedbackTable.feedbackJson] = feedbackJson
+                it[FeedbackTable.team] = team
+                it[FeedbackTable.app] = app
+                it[FeedbackTable.surveyId] = surveyId
+                it[FeedbackTable.definitionHash] = definitionHash
+                it[FeedbackTable.deduplicationKeyHash] = deduplicationKeyHash
+            }.insertedCount > 0
 
-                if (inserted) {
-                    id
-                } else {
-                    FeedbackTable.select(FeedbackTable.id)
-                        .where {
-                            (FeedbackTable.team eq team) and
-                                (FeedbackTable.surveyId eq surveyId) and
-                                (FeedbackTable.deduplicationKeyHash eq deduplicationKeyHash)
-                        }
-                        .singleOrNull()
-                        ?.get(FeedbackTable.id)
-                        ?: throw ApiErrorException.InternalServerErrorException(
-                            "Duplicate deduplication key detected but existing feedback row was not found"
-                        )
-                }
+            if (inserted) {
+                SaveResult.Created(id)
             } else {
-                FeedbackTable.insert {
-                    it[FeedbackTable.id] = id
-                    it[FeedbackTable.opprettet] = Instant.now()
-                    it[FeedbackTable.feedbackJson] = feedbackJson
-                    it[FeedbackTable.team] = team
-                    it[FeedbackTable.app] = app
-                    it[FeedbackTable.surveyId] = surveyId
-                    it[FeedbackTable.definitionHash] = definitionHash
-                    it[FeedbackTable.deduplicationKeyHash] = deduplicationKeyHash
-                }
+                val existingId = findIdByDeduplicationKeyHashInCurrentTransaction(team, surveyId, deduplicationKeyHash)
+                    ?: throw ApiErrorException.InternalServerErrorException(
+                        "Duplicate deduplication key detected but existing feedback row was not found"
+                    )
 
-                id
+                SaveResult.Duplicate(existingId)
             }
+        } else {
+            FeedbackTable.insert {
+                it[FeedbackTable.id] = id
+                it[FeedbackTable.opprettet] = Instant.now()
+                it[FeedbackTable.feedbackJson] = feedbackJson
+                it[FeedbackTable.team] = team
+                it[FeedbackTable.app] = app
+                it[FeedbackTable.surveyId] = surveyId
+                it[FeedbackTable.definitionHash] = definitionHash
+                it[FeedbackTable.deduplicationKeyHash] = deduplicationKeyHash
+            }
+
+            SaveResult.Created(id)
         }
     }
 

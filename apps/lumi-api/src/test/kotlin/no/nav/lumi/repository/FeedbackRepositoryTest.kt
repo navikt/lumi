@@ -7,6 +7,10 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import no.nav.lumi.TestDatabase
 import no.nav.lumi.config.DatabaseHolder
 import no.nav.lumi.domain.Answer
@@ -16,6 +20,7 @@ import no.nav.lumi.domain.FeedbackDto
 import no.nav.lumi.domain.FeedbackQuery
 import no.nav.lumi.domain.PhraseFilter
 import no.nav.lumi.domain.Question
+import no.nav.lumi.domain.SaveResult
 import no.nav.lumi.domain.SubmissionContext
 import no.nav.lumi.domain.StatsQuery
 import no.nav.lumi.insertTestFeedback
@@ -40,7 +45,7 @@ class FeedbackRepositoryTest : FunSpec({
     }
 
     context("save") {
-        test("returns existing id for duplicate deduplication key") {
+        test("returns created first and duplicate with existing id for same deduplication key") {
             val feedbackJson = """
                 {
                     "schemaVersion": 1,
@@ -58,7 +63,16 @@ class FeedbackRepositoryTest : FunSpec({
                 }
             """.trimIndent()
 
-            val firstId = repository.save(
+            val first = repository.save(
+                feedbackJson = feedbackJson,
+                team = "team-test",
+                app = "app-test",
+                surveyId = "survey-dedup",
+                definitionHash = "a".repeat(64),
+                deduplicationKeyHash = "b".repeat(64)
+            ) as SaveResult.Created
+
+            val second = repository.save(
                 feedbackJson = feedbackJson,
                 team = "team-test",
                 app = "app-test",
@@ -67,20 +81,170 @@ class FeedbackRepositoryTest : FunSpec({
                 deduplicationKeyHash = "b".repeat(64)
             )
 
-            val secondId = repository.save(
-                feedbackJson = feedbackJson,
-                team = "team-test",
-                app = "app-test",
-                surveyId = "survey-dedup",
-                definitionHash = "a".repeat(64),
-                deduplicationKeyHash = "b".repeat(64)
-            )
-
-            firstId shouldBe secondId
+            second shouldBe SaveResult.Duplicate(first.id)
 
             val (content, total, _) = repository.findPaginated(FeedbackQuery(team = "team-test"))
             total shouldBe 1
-            content.single().id shouldBe firstId
+            content.single().id shouldBe first.id
+        }
+
+        test("returns duplicate existing id even when payload differs") {
+            val first = repository.save(
+                feedbackJson = """{"answers":[{"fieldId":"q1","fieldType":"TEXT","question":{"label":"Hvorfor?"},"value":{"type":"text","text":"første"}}]}""",
+                team = "team-test",
+                app = "app-test",
+                surveyId = "survey-dedup",
+                definitionHash = "a".repeat(64),
+                deduplicationKeyHash = "c".repeat(64)
+            ) as SaveResult.Created
+
+            val second = repository.save(
+                feedbackJson = """{"answers":[{"fieldId":"q1","fieldType":"TEXT","question":{"label":"Hvorfor?"},"value":{"type":"text","text":"andre"}}]}""",
+                team = "team-test",
+                app = "app-test",
+                surveyId = "survey-dedup",
+                definitionHash = "a".repeat(64),
+                deduplicationKeyHash = "c".repeat(64)
+            )
+
+            second shouldBe SaveResult.Duplicate(first.id)
+
+            val (content, total, _) = repository.findPaginated(FeedbackQuery(team = "team-test"))
+            total shouldBe 1
+            content.single().id shouldBe first.id
+        }
+
+        test("stores same deduplication key hash separately for different surveys and teams") {
+            val first = repository.save(
+                feedbackJson = """{"answers":[{"fieldId":"q1","fieldType":"TEXT","question":{"label":"Hvorfor?"},"value":{"type":"text","text":"første"}}]}""",
+                team = "team-a",
+                app = "app-test",
+                surveyId = "survey-a",
+                definitionHash = "a".repeat(64),
+                deduplicationKeyHash = "d".repeat(64)
+            ) as SaveResult.Created
+
+            val second = repository.save(
+                feedbackJson = """{"answers":[{"fieldId":"q1","fieldType":"TEXT","question":{"label":"Hvorfor?"},"value":{"type":"text","text":"andre"}}]}""",
+                team = "team-a",
+                app = "app-test",
+                surveyId = "survey-b",
+                definitionHash = "a".repeat(64),
+                deduplicationKeyHash = "d".repeat(64)
+            ) as SaveResult.Created
+
+            val third = repository.save(
+                feedbackJson = """{"answers":[{"fieldId":"q1","fieldType":"TEXT","question":{"label":"Hvorfor?"},"value":{"type":"text","text":"tredje"}}]}""",
+                team = "team-b",
+                app = "app-test",
+                surveyId = "survey-a",
+                definitionHash = "a".repeat(64),
+                deduplicationKeyHash = "d".repeat(64)
+            ) as SaveResult.Created
+
+            (second.id == first.id) shouldBe false
+            (third.id == first.id) shouldBe false
+        }
+
+        test("does not deduplicate when deduplication key hash is absent") {
+            val first = repository.save(
+                feedbackJson = """{"answers":[{"fieldId":"q1","fieldType":"TEXT","question":{"label":"Hvorfor?"},"value":{"type":"text","text":"første"}}]}""",
+                team = "team-test",
+                app = "app-test",
+                surveyId = "survey-dedup",
+                definitionHash = "a".repeat(64),
+                deduplicationKeyHash = null
+            ) as SaveResult.Created
+
+            val second = repository.save(
+                feedbackJson = """{"answers":[{"fieldId":"q1","fieldType":"TEXT","question":{"label":"Hvorfor?"},"value":{"type":"text","text":"første"}}]}""",
+                team = "team-test",
+                app = "app-test",
+                surveyId = "survey-dedup",
+                definitionHash = "a".repeat(64),
+                deduplicationKeyHash = null
+            ) as SaveResult.Created
+
+            (second.id == first.id) shouldBe false
+
+            val (_, total, _) = repository.findPaginated(FeedbackQuery(team = "team-test"))
+            total shouldBe 2
+        }
+
+        test("deduplicates across apps for the same team survey and key") {
+            val first = repository.save(
+                feedbackJson = """{"answers":[{"fieldId":"q1","fieldType":"TEXT","question":{"label":"Hvorfor?"},"value":{"type":"text","text":"første"}}]}""",
+                team = "team-test",
+                app = "app-a",
+                surveyId = "survey-dedup",
+                definitionHash = "a".repeat(64),
+                deduplicationKeyHash = "f".repeat(64)
+            ) as SaveResult.Created
+
+            val second = repository.save(
+                feedbackJson = """{"answers":[{"fieldId":"q1","fieldType":"TEXT","question":{"label":"Hvorfor?"},"value":{"type":"text","text":"andre"}}]}""",
+                team = "team-test",
+                app = "app-b",
+                surveyId = "survey-dedup",
+                definitionHash = "a".repeat(64),
+                deduplicationKeyHash = "f".repeat(64)
+            )
+
+            second shouldBe SaveResult.Duplicate(first.id)
+
+            val (content, total, _) = repository.findPaginated(FeedbackQuery(team = "team-test"))
+            total shouldBe 1
+            content.single().app shouldBe "app-a"
+        }
+
+        test("handles concurrent duplicate inserts without creating duplicate rows") {
+            val results = coroutineScope {
+                (1..8).map { index ->
+                    async(Dispatchers.Default) {
+                        repository.save(
+                            feedbackJson = """{"answers":[{"fieldId":"q1","fieldType":"TEXT","question":{"label":"Hvorfor?"},"value":{"type":"text","text":"payload-$index"}}]}""",
+                            team = "team-test",
+                            app = "app-test",
+                            surveyId = "survey-dedup",
+                            definitionHash = "a".repeat(64),
+                            deduplicationKeyHash = "e".repeat(64)
+                        )
+                    }
+                }.awaitAll()
+            }
+
+            results.count { it is SaveResult.Created } shouldBe 1
+            val createdId = (results.first { it is SaveResult.Created } as SaveResult.Created).id
+            results.filterIsInstance<SaveResult.Duplicate>().forEach { duplicate ->
+                duplicate.id shouldBe createdId
+            }
+
+            val (content, total, _) = repository.findPaginated(FeedbackQuery(team = "team-test"))
+            total shouldBe 1
+            content.single().id shouldBe createdId
+        }
+
+        test("finds existing id by scoped deduplication key hash") {
+            val created = repository.save(
+                feedbackJson = """{"answers":[{"fieldId":"q1","fieldType":"TEXT","question":{"label":"Hvorfor?"},"value":{"type":"text","text":"første"}}]}""",
+                team = "team-test",
+                app = "app-test",
+                surveyId = "survey-dedup",
+                definitionHash = "a".repeat(64),
+                deduplicationKeyHash = "f".repeat(64)
+            ) as SaveResult.Created
+
+            repository.findIdByDeduplicationKeyHash(
+                team = "team-test",
+                surveyId = "survey-dedup",
+                deduplicationKeyHash = "f".repeat(64)
+            ) shouldBe created.id
+
+            repository.findIdByDeduplicationKeyHash(
+                team = "team-test",
+                surveyId = "survey-other",
+                deduplicationKeyHash = "f".repeat(64)
+            ) shouldBe null
         }
     }
 

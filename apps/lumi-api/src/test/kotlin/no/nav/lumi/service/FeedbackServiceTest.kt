@@ -13,10 +13,17 @@ import kotlinx.serialization.json.jsonPrimitive
 import no.nav.lumi.TestDatabase
 import no.nav.lumi.config.DatabaseHolder
 import no.nav.lumi.config.exception.ApiErrorException
+import no.nav.lumi.domain.SaveResult
 import no.nav.lumi.insertTestFeedback
 import no.nav.lumi.insertTestFeedbackWithJson
 import no.nav.lumi.repository.FeedbackRepository
+import no.nav.lumi.service.computeDeduplicationKeyHash
 import java.util.UUID
+
+private fun SaveResult.createdId(): String = when (this) {
+    is SaveResult.Created -> id
+    is SaveResult.Duplicate -> error("Expected created save result, got duplicate")
+}
 
 class FeedbackServiceTest : FunSpec({
 
@@ -48,7 +55,7 @@ class FeedbackServiceTest : FunSpec({
                 }
             """.trimIndent()
             
-            val id = service.save(feedbackJson, "flex", "test-app")
+            val id = service.save(feedbackJson, "flex", "test-app").createdId()
             
             val saved = repository.findRawById(id, "flex").shouldNotBeNull()
             saved.feedbackJson shouldNotContain "01020349294"
@@ -86,7 +93,7 @@ class FeedbackServiceTest : FunSpec({
                 }
             """.trimIndent()
 
-            val id = service.save(feedbackJson, "flex", "test-app")
+            val id = service.save(feedbackJson, "flex", "test-app").createdId()
             val saved = repository.findRawById(id, "flex").shouldNotBeNull()
 
             saved.feedbackJson shouldContain "Hei <b>team</b>"
@@ -107,7 +114,7 @@ class FeedbackServiceTest : FunSpec({
                 }
             """.trimIndent()
 
-            val id = service.save(feedbackJson, "flex", "test-app")
+            val id = service.save(feedbackJson, "flex", "test-app").createdId()
             val saved = repository.findRawById(id, "flex").shouldNotBeNull()
 
             saved.feedbackJson shouldNotContain "01020349294"
@@ -127,7 +134,7 @@ class FeedbackServiceTest : FunSpec({
                 }
             """.trimIndent()
 
-            val id = service.save(feedbackJson, "flex", "test-app")
+            val id = service.save(feedbackJson, "flex", "test-app").createdId()
             val saved = repository.findRawById(id, "flex").shouldNotBeNull()
             saved.feedbackJson shouldNotContain "01020349294"
             saved.feedbackJson shouldContain "%5BF%C3%98DSELSNUMMER%20FJERNET%5D"
@@ -146,7 +153,7 @@ class FeedbackServiceTest : FunSpec({
                 }
             """.trimIndent()
 
-            val id = service.save(feedbackJson, "flex", "test-app")
+            val id = service.save(feedbackJson, "flex", "test-app").createdId()
             val saved = repository.findRawById(id, "flex").shouldNotBeNull()
             saved.feedbackJson shouldNotContain "01020349294"
             saved.feedbackJson shouldContain "[FØDSELSNUMMER FJERNET]"
@@ -169,7 +176,7 @@ class FeedbackServiceTest : FunSpec({
                 }
             """.trimIndent()
 
-            val id = service.save(feedbackJson, "flex", "test-app")
+            val id = service.save(feedbackJson, "flex", "test-app").createdId()
             val saved = repository.findRawById(id, "flex").shouldNotBeNull()
             saved.feedbackJson shouldNotContain "01020349294"
             saved.feedbackJson shouldContain "REDACTED_KEY"
@@ -192,7 +199,7 @@ class FeedbackServiceTest : FunSpec({
                 }
             """.trimIndent()
 
-            val id = service.save(feedbackJson, "flex", "test-app")
+            val id = service.save(feedbackJson, "flex", "test-app").createdId()
             val saved = repository.findRawById(id, "flex").shouldNotBeNull()
             saved.feedbackJson shouldNotContain "98765432"
             saved.feedbackJson shouldContain "[TELEFON FJERNET]"
@@ -217,7 +224,7 @@ class FeedbackServiceTest : FunSpec({
                 }
             """.trimIndent()
 
-            val id = service.save(feedbackJson, "flex", "test-app")
+            val id = service.save(feedbackJson, "flex", "test-app").createdId()
             val saved = repository.findRawById(id, "flex").shouldNotBeNull()
 
             val savedJson = Json.parseToJsonElement(saved.feedbackJson).jsonObject
@@ -237,7 +244,7 @@ class FeedbackServiceTest : FunSpec({
                 }
             """.trimIndent()
 
-            val id = service.save(feedbackJson, "flex", "test-app")
+            val id = service.save(feedbackJson, "flex", "test-app").createdId()
             val saved = repository.findRawById(id, "flex").shouldNotBeNull()
             saved.feedbackJson shouldNotContain "01020349294"
             saved.feedbackJson shouldContain "[FØDSELSNUMMER FJERNET]"
@@ -256,7 +263,7 @@ class FeedbackServiceTest : FunSpec({
                 }
             """.trimIndent()
 
-            val id = service.save(feedbackJson, "flex", "test-app")
+            val id = service.save(feedbackJson, "flex", "test-app").createdId()
             val saved = repository.findRawById(id, "flex").shouldNotBeNull()
             saved.feedbackJson shouldNotContain "01020349294"
             saved.feedbackJson shouldContain "[FØDSELSNUMMER FJERNET]"
@@ -275,7 +282,7 @@ class FeedbackServiceTest : FunSpec({
                 }
             """.trimIndent()
 
-            val id = service.save(feedbackJson, "flex", "test-app")
+            val id = service.save(feedbackJson, "flex", "test-app").createdId()
             val saved = repository.findRawById(id, "flex").shouldNotBeNull()
             val savedJson = Json.parseToJsonElement(saved.feedbackJson).jsonObject
             val tags = savedJson["context"]?.jsonObject?.get("tags")?.jsonObject
@@ -299,7 +306,7 @@ class FeedbackServiceTest : FunSpec({
                 }
             """.trimIndent()
 
-            val id = service.save(feedbackJson, "flex", "test-app")
+            val id = service.save(feedbackJson, "flex", "test-app").createdId()
             val saved = repository.findRawById(id, "flex").shouldNotBeNull()
             val savedJson = Json.parseToJsonElement(saved.feedbackJson).jsonObject
             val tags = savedJson["context"]?.jsonObject?.get("tags")?.jsonObject
@@ -325,6 +332,280 @@ class FeedbackServiceTest : FunSpec({
             }
 
             exception.message shouldBe "Failed to redact feedback JSON"
+        }
+
+        test("computes scoped deduplication hash with length-prefixed sha-256") {
+            computeDeduplicationKeyHash(
+                team = "flex",
+                surveyId = "survey-123",
+                deduplicationKey = "dedup-key-123456"
+            ) shouldBe "1eea9655aab33d16947b8a6c4a2abbf641df30ebcc38c453ec6b2b835e5d9e02"
+        }
+
+        test("strips deduplicationKey before persistence and returns duplicate for same team survey and key") {
+            val firstPayload = """
+                {
+                    "schemaVersion": 1,
+                    "surveyId": "survey-dedup",
+                    "surveyType": "rating",
+                    "submittedAt": "2026-01-10T12:00:12Z",
+                    "deduplicationKey": "client-key-123456",
+                    "answers": [
+                        {
+                            "fieldId": "feedback",
+                            "fieldType": "TEXT",
+                            "question": { "label": "Hvorfor?" },
+                            "value": { "type": "text", "text": "Første payload" }
+                        }
+                    ]
+                }
+            """.trimIndent()
+            val secondPayload = """
+                {
+                    "schemaVersion": 1,
+                    "surveyId": "survey-dedup",
+                    "surveyType": "rating",
+                    "submittedAt": "2026-01-10T12:01:12Z",
+                    "deduplicationKey": "client-key-123456",
+                    "answers": [
+                        {
+                            "fieldId": "feedback",
+                            "fieldType": "TEXT",
+                            "question": { "label": "Hvorfor?" },
+                            "value": { "type": "text", "text": "Andre payload" }
+                        }
+                    ]
+                }
+            """.trimIndent()
+
+            val firstId = service.save(
+                feedbackJson = firstPayload,
+                team = "flex",
+                app = "test-app",
+                surveyId = "survey-dedup",
+                definitionHash = "a".repeat(64)
+            ).createdId()
+
+            val second = service.save(
+                feedbackJson = secondPayload,
+                team = "flex",
+                app = "test-app",
+                surveyId = "survey-dedup",
+                definitionHash = "a".repeat(64)
+            )
+
+            second shouldBe SaveResult.Duplicate(firstId)
+
+            val saved = repository.findRawById(firstId, "flex").shouldNotBeNull()
+            saved.feedbackJson shouldNotContain "deduplicationKey"
+            saved.feedbackJson shouldContain "Første payload"
+            saved.feedbackJson shouldNotContain "Andre payload"
+        }
+
+        test("uses provided surveyId for dedup scope when payload surveyId differs") {
+            val payload = """
+                {
+                    "schemaVersion": 1,
+                    "surveyId": "payload-survey",
+                    "surveyType": "rating",
+                    "submittedAt": "2026-01-10T12:00:12Z",
+                    "deduplicationKey": "client-key-123456",
+                    "answers": [
+                        {
+                            "fieldId": "feedback",
+                            "fieldType": "TEXT",
+                            "question": { "label": "Hvorfor?" },
+                            "value": { "type": "text", "text": "Payload" }
+                        }
+                    ]
+                }
+            """.trimIndent()
+
+            val first = service.save(
+                feedbackJson = payload,
+                team = "flex",
+                app = "test-app",
+                surveyId = "service-scope-a",
+                definitionHash = "a".repeat(64)
+            ).createdId()
+
+            val second = service.save(
+                feedbackJson = payload.replace("12:00:12Z", "12:01:12Z"),
+                team = "flex",
+                app = "test-app",
+                surveyId = "service-scope-b",
+                definitionHash = "a".repeat(64)
+            ).createdId()
+
+            (first == second) shouldBe false
+
+            val firstSaved = repository.findRawById(first, "flex").shouldNotBeNull()
+            val secondSaved = repository.findRawById(second, "flex").shouldNotBeNull()
+            firstSaved.feedbackJson shouldNotContain "deduplicationKey"
+            secondSaved.feedbackJson shouldNotContain "deduplicationKey"
+
+            val (_, total, _) = repository.findPaginated(no.nav.lumi.domain.FeedbackQuery(team = "flex"))
+            total shouldBe 2
+        }
+
+        test("fails closed when malformed json contains deduplicationKey and persists nothing") {
+            val malformedPayload = """
+                {
+                    "schemaVersion": 1,
+                    "surveyId": "survey-dedup",
+                    "surveyType": "rating",
+                    "deduplicationKey": "client-key-123456",
+                    "answers": [
+                }
+            """.trimIndent()
+
+            val exception = shouldThrow<ApiErrorException.InternalServerErrorException> {
+                service.save(
+                    feedbackJson = malformedPayload,
+                    team = "flex",
+                    app = "test-app",
+                    surveyId = "survey-dedup",
+                    definitionHash = "a".repeat(64)
+                )
+            }
+
+            exception.message shouldBe "Failed to redact feedback JSON"
+            exception.cause shouldBe null
+            val (_, total, _) = repository.findPaginated(no.nav.lumi.domain.FeedbackQuery(team = "flex"))
+            total shouldBe 0
+        }
+
+        test("treats explicit deduplicationKey null as absent and does not persist the raw field") {
+            val payload = """
+                {
+                    "schemaVersion": 1,
+                    "surveyId": "survey-dedup",
+                    "surveyType": "rating",
+                    "submittedAt": "2026-01-10T12:00:12Z",
+                    "deduplicationKey": null,
+                    "answers": [
+                        {
+                            "fieldId": "feedback",
+                            "fieldType": "TEXT",
+                            "question": { "label": "Hvorfor?" },
+                            "value": { "type": "text", "text": "Payload" }
+                        }
+                    ]
+                }
+            """.trimIndent()
+
+            val firstId = service.save(
+                feedbackJson = payload,
+                team = "flex",
+                app = "test-app",
+                surveyId = "survey-dedup",
+                definitionHash = "a".repeat(64)
+            ).createdId()
+
+            val secondId = service.save(
+                feedbackJson = payload.replace("12:00:12Z", "12:01:12Z"),
+                team = "flex",
+                app = "test-app",
+                surveyId = "survey-dedup",
+                definitionHash = "a".repeat(64)
+            ).createdId()
+
+            (firstId == secondId) shouldBe false
+
+            val firstSaved = repository.findRawById(firstId, "flex").shouldNotBeNull()
+            val secondSaved = repository.findRawById(secondId, "flex").shouldNotBeNull()
+            firstSaved.feedbackJson shouldNotContain "deduplicationKey"
+            secondSaved.feedbackJson shouldNotContain "deduplicationKey"
+        }
+
+        test("rejects invalid deduplicationKey format at service boundary without echoing raw value") {
+            val payload = """
+                {
+                    "schemaVersion": 1,
+                    "surveyId": "survey-dedup",
+                    "surveyType": "rating",
+                    "submittedAt": "2026-01-10T12:00:12Z",
+                    "deduplicationKey": "bad key with spaces",
+                    "answers": []
+                }
+            """.trimIndent()
+
+            val exception = shouldThrow<ApiErrorException.BadRequestException> {
+                service.save(
+                    feedbackJson = payload,
+                    team = "flex",
+                    app = "test-app",
+                    surveyId = "survey-dedup",
+                    definitionHash = "a".repeat(64)
+                )
+            }
+
+            exception.message shouldContain "deduplicationKey"
+            exception.message shouldNotContain "bad key with spaces"
+        }
+
+        test("rejects deduplicationKey when surveyId is missing and persists nothing") {
+            val payload = """
+                {
+                    "schemaVersion": 1,
+                    "surveyType": "rating",
+                    "submittedAt": "2026-01-10T12:00:12Z",
+                    "deduplicationKey": "client-key-123456",
+                    "answers": []
+                }
+            """.trimIndent()
+
+            val exception = shouldThrow<ApiErrorException.BadRequestException> {
+                service.save(
+                    feedbackJson = payload,
+                    team = "flex",
+                    app = "test-app"
+                )
+            }
+
+            exception.message shouldBe "Invalid payload: deduplicationKey requires surveyId"
+            val (_, total, _) = repository.findPaginated(no.nav.lumi.domain.FeedbackQuery(team = "flex"))
+            total shouldBe 0
+        }
+
+        test("finds existing duplicate submission id before definition handling") {
+            val payload = """
+                {
+                    "schemaVersion": 1,
+                    "surveyId": "survey-dedup",
+                    "surveyType": "rating",
+                    "submittedAt": "2026-01-10T12:00:12Z",
+                    "deduplicationKey": "client-key-123456",
+                    "answers": []
+                }
+            """.trimIndent()
+
+            val id = service.save(
+                feedbackJson = payload,
+                team = "flex",
+                app = "test-app",
+                surveyId = "survey-dedup",
+                definitionHash = "a".repeat(64)
+            ).createdId()
+
+            service.findDuplicateSubmissionId(
+                team = "flex",
+                surveyId = "survey-dedup",
+                deduplicationKey = "client-key-123456"
+            ) shouldBe id
+        }
+
+        test("findDuplicateSubmissionId rejects invalid deduplicationKey without echoing raw value") {
+            val exception = shouldThrow<ApiErrorException.BadRequestException> {
+                service.findDuplicateSubmissionId(
+                    team = "flex",
+                    surveyId = "survey-dedup",
+                    deduplicationKey = "bad key with spaces"
+                )
+            }
+
+            exception.message shouldContain "deduplicationKey"
+            exception.message shouldNotContain "bad key with spaces"
         }
     }
 
