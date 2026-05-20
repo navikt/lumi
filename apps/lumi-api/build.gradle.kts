@@ -98,7 +98,7 @@ dependencies {
     testImplementation("io.mockk:mockk:$mockkVersion")
     testImplementation("org.testcontainers:testcontainers:$testcontainersVersion")
     testImplementation("org.testcontainers:postgresql:$testcontainersVersion")
-    testImplementation("no.nav.security:mock-oauth2-server:3.0.1")
+    testImplementation("no.nav.security:mock-oauth2-server:3.0.3")
 }
 
 java {
