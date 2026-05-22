@@ -22,10 +22,24 @@ describe("submission contract regression", () => {
       expect(payload.answers.length).toBeGreaterThan(0);
     });
 
-    it("does NOT have definition or deduplicationKey", () => {
+    it("does NOT have definition and may omit deduplicationKey at runtime", () => {
       const payload = v1RatingPayload as unknown as Record<string, unknown>;
       expect(payload).not.toHaveProperty("definition");
       expect(payload).not.toHaveProperty("deduplicationKey");
+    });
+
+    it("allows optional deduplicationKey in the v1 type contract", () => {
+      const withNull: FeedbackSubmissionV1 = {
+        ...v1RatingPayload,
+        deduplicationKey: null,
+      };
+      const withString: FeedbackSubmissionV1 = {
+        ...v1RatingPayload,
+        deduplicationKey: "dedup-key-01234567890123456",
+      };
+
+      expect(withNull.deduplicationKey).toBeNull();
+      expect(withString.deduplicationKey).toBe("dedup-key-01234567890123456");
     });
 
     it("is assignable to FeedbackSubmission union", () => {
@@ -102,13 +116,13 @@ describe("submission contract regression", () => {
   });
 
   describe("v1/v2 structural differences", () => {
-    it("v1 lacks v2-only fields", () => {
+    it("v1 fixture still omits definition and optional deduplicationKey at runtime", () => {
       const v1 = v1RatingPayload as unknown as Record<string, unknown>;
       expect(v1).not.toHaveProperty("definition");
       expect(v1).not.toHaveProperty("deduplicationKey");
     });
 
-    it("v2 has all v1 required fields plus definition and deduplicationKey", () => {
+    it("v2 has all v1 required fields plus required definition and deduplicationKey", () => {
       const v2 = v2CompletePayload;
       // Shared fields
       expect(v2.surveyId).toBeDefined();

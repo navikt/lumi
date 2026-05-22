@@ -556,6 +556,142 @@ const SubmissionAnswerSchema = z.discriminatedUnion("fieldType", [
   SubmissionDateAnswerSchema,
 ]);
 
+const SubmissionFieldIdSchema = z.string().min(1);
+
+const SubmissionOptionIdsSchema = z
+  .array(z.string().min(1))
+  .min(1)
+  .superRefine((optionIds, ctx) => {
+    const seen = new Set<string>();
+    for (let i = 0; i < optionIds.length; i += 1) {
+      const optionId = optionIds[i];
+      if (!optionId) continue;
+      if (seen.has(optionId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `optionIds must be unique (duplicate: ${optionId})`,
+          path: [i],
+        });
+      }
+      seen.add(optionId);
+    }
+  });
+
+const SubmissionFieldDefinitionBaseSchema = z.object({
+  fieldId: SubmissionFieldIdSchema,
+});
+
+const SubmissionRatingFieldDefinitionSchema =
+  SubmissionFieldDefinitionBaseSchema.extend({
+    fieldType: z.literal("RATING"),
+    ratingVariant: RatingVariantSchema,
+    ratingScale: z.number().int(),
+  });
+
+const SubmissionTextFieldDefinitionSchema =
+  SubmissionFieldDefinitionBaseSchema.extend({
+    fieldType: z.literal("TEXT"),
+  });
+
+const SubmissionSingleChoiceFieldDefinitionSchema =
+  SubmissionFieldDefinitionBaseSchema.extend({
+    fieldType: z.literal("SINGLE_CHOICE"),
+    optionIds: SubmissionOptionIdsSchema,
+  });
+
+const SubmissionMultiChoiceFieldDefinitionSchema =
+  SubmissionFieldDefinitionBaseSchema.extend({
+    fieldType: z.literal("MULTI_CHOICE"),
+    optionIds: SubmissionOptionIdsSchema,
+  });
+
+const SubmissionDateFieldDefinitionSchema =
+  SubmissionFieldDefinitionBaseSchema.extend({
+    fieldType: z.literal("DATE"),
+  });
+
+export const SubmissionFieldDefinitionSchema = z.discriminatedUnion(
+  "fieldType",
+  [
+    SubmissionRatingFieldDefinitionSchema,
+    SubmissionTextFieldDefinitionSchema,
+    SubmissionSingleChoiceFieldDefinitionSchema,
+    SubmissionMultiChoiceFieldDefinitionSchema,
+    SubmissionDateFieldDefinitionSchema,
+  ],
+);
+
+export const SubmissionDefinitionSchema = z
+  .object({
+    surveyType: SurveyTypeSchema,
+    fields: z.array(SubmissionFieldDefinitionSchema).min(1),
+  })
+  .superRefine((definition, ctx) => {
+    const expectedScaleByVariant: Record<
+      z.infer<typeof RatingVariantSchema>,
+      number
+    > = {
+      emoji: 5,
+      thumbs: 2,
+      stars: 5,
+      nps: 11,
+    };
+
+    const seen = new Set<string>();
+    for (let i = 0; i < definition.fields.length; i += 1) {
+      const field = definition.fields[i];
+      const fieldId = field?.fieldId;
+      if (!fieldId) continue;
+      if (seen.has(fieldId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `definition.fields.fieldId must be unique (duplicate: ${fieldId})`,
+          path: ["fields", i, "fieldId"],
+        });
+      }
+      seen.add(fieldId);
+
+      if (field.fieldType === "RATING") {
+        const expectedScale = expectedScaleByVariant[field.ratingVariant];
+        if (field.ratingScale !== expectedScale) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `ratingScale=${field.ratingScale} does not match ratingVariant=${field.ratingVariant} (expected ${expectedScale})`,
+            path: ["fields", i, "ratingScale"],
+          });
+        }
+      }
+    }
+  });
+
+const DeduplicationKeySchema = z
+  .string()
+  .min(16)
+  .max(128)
+  .regex(
+    /^[A-Za-z0-9._:-]+$/,
+    "deduplicationKey must contain only letters, digits, '.', '_', ':', or '-'",
+  );
+
+function validateUniqueAnswerFieldIds(
+  submission: { answers: Array<{ fieldId: string }> },
+  ctx: z.RefinementCtx,
+) {
+  const seen = new Set<string>();
+  for (let i = 0; i < submission.answers.length; i += 1) {
+    const fieldId = submission.answers[i]?.fieldId;
+    if (!fieldId) continue;
+    if (seen.has(fieldId)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `answers.fieldId must be unique (duplicate: ${fieldId})`,
+        path: ["answers", i, "fieldId"],
+      });
+    }
+    seen.add(fieldId);
+  }
+}
+
 export const FeedbackSubmissionV1Schema = z
   .object({
     schemaVersion: z.literal(1),
@@ -564,24 +700,42 @@ export const FeedbackSubmissionV1Schema = z
     submittedAt: IsoInstantSchema,
     startedAt: IsoInstantSchema.nullable().optional(),
     timeToCompleteMs: z.number().int().nonnegative().nullable().optional(),
+    deduplicationKey: DeduplicationKeySchema.nullable().optional(),
     context: SubmissionContextV1Schema.nullable().optional(),
     answers: z.array(SubmissionAnswerSchema).min(1),
   })
   .superRefine((submission, ctx) => {
-    const seen = new Set<string>();
-    for (let i = 0; i < submission.answers.length; i += 1) {
-      const fieldId = submission.answers[i]?.fieldId;
-      if (!fieldId) continue;
-      if (seen.has(fieldId)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `answers.fieldId must be unique (duplicate: ${fieldId})`,
-          path: ["answers", i, "fieldId"],
-        });
-      }
-      seen.add(fieldId);
+    validateUniqueAnswerFieldIds(submission, ctx);
+  });
+
+export const FeedbackSubmissionV2Schema = z
+  .object({
+    schemaVersion: z.literal(2),
+    surveyId: z.string().min(1),
+    surveyType: SurveyTypeSchema,
+    submittedAt: IsoInstantSchema,
+    startedAt: IsoInstantSchema.nullable().optional(),
+    timeToCompleteMs: z.number().int().nonnegative().nullable().optional(),
+    deduplicationKey: DeduplicationKeySchema,
+    definition: SubmissionDefinitionSchema,
+    context: SubmissionContextV1Schema.nullable().optional(),
+    answers: z.array(SubmissionAnswerSchema).min(1),
+  })
+  .superRefine((submission, ctx) => {
+    validateUniqueAnswerFieldIds(submission, ctx);
+    if (submission.surveyType !== submission.definition.surveyType) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "surveyType must match definition.surveyType",
+        path: ["surveyType"],
+      });
     }
   });
+
+export const FeedbackSubmissionSchema = z.union([
+  FeedbackSubmissionV1Schema,
+  FeedbackSubmissionV2Schema,
+]);
 
 export const SubmissionCreatedResponseSchema = z.object({
   id: z.string(),

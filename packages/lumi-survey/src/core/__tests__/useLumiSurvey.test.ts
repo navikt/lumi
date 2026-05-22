@@ -158,10 +158,15 @@ describe("useLumiSurvey", () => {
     expect(payload.answers).toEqual({ rating: 5 });
     expect(payload.surveyId).toBe(SURVEY_ID);
     expect(payload.transportPayload).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: 2,
       surveyId: SURVEY_ID,
-      surveyType: "rating",
+      definition: {
+        surveyType: "rating",
+      },
     });
+    expect(payload.transportPayload.deduplicationKey).toMatch(
+      /^[A-Za-z0-9._:-]+$/,
+    );
     expect(payload.transportPayload).not.toHaveProperty("rating");
     expect(payload.transportPayload).not.toHaveProperty("feedback");
     expect(payload.transportPayload.answers).toHaveLength(1);
@@ -210,7 +215,7 @@ describe("useLumiSurvey", () => {
     });
 
     const payload = submitMock.mock.calls[0][0];
-    expect(payload.transportPayload.surveyType).toBe("topTasks");
+    expect(payload.transportPayload.definition.surveyType).toBe("topTasks");
   });
 
   it("submits answers when validation passes", async () => {
@@ -252,13 +257,16 @@ describe("useLumiSurvey", () => {
       "free-text": "Alt fungerer fint",
     });
     expect(payload.transportPayload).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: 2,
       surveyId: SURVEY_ID,
     });
+    expect(payload.transportPayload.deduplicationKey).toMatch(
+      /^[A-Za-z0-9._:-]+$/,
+    );
     expect(payload.transportPayload).not.toHaveProperty("rating");
     expect(payload.transportPayload).not.toHaveProperty("feedback");
     expect(payload.transportPayload).not.toHaveProperty("free-text");
-    expect(payload.transportPayload.surveyType).toBe("rating");
+    expect(payload.transportPayload.definition.surveyType).toBe("rating");
     expect(payload.transportPayload.answers).toHaveLength(3);
     expect(payload.transportPayload.answers[0]).toMatchObject({
       fieldId: "rating",

@@ -125,6 +125,7 @@ export interface FeedbackSubmissionV1 {
   submittedAt: string;
   startedAt?: string | null;
   timeToCompleteMs?: number | null;
+  deduplicationKey?: string | null;
   context?: SubmissionContextV1 | null;
   answers: Answer[];
 }

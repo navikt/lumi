@@ -4,9 +4,11 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import no.nav.lumi.config.exception.ApiErrorException
+import no.nav.lumi.domain.Answer
 import no.nav.lumi.domain.AnswerValue
 import no.nav.lumi.domain.FeedbackSubmissionV1
 import no.nav.lumi.domain.RatingVariant
+import no.nav.lumi.domain.SubmissionContextV1
 import java.net.URI
 import java.time.Instant
 
@@ -31,48 +33,70 @@ object SubmissionValidator {
     private const val MAX_CONTEXT_DEBUG_KEYS = 50
 
     fun validateSubmissionV1(submission: FeedbackSubmissionV1) {
-        if (submission.schemaVersion != 1) {
+        validateCommonSubmission(
+            schemaVersion = submission.schemaVersion,
+            expectedSchemaVersion = 1,
+            surveyId = submission.surveyId,
+            submittedAt = submission.submittedAt,
+            startedAt = submission.startedAt,
+            deduplicationKey = submission.deduplicationKey,
+            context = submission.context,
+            answers = submission.answers
+        )
+    }
+
+    internal fun validateCommonSubmission(
+        schemaVersion: Int,
+        expectedSchemaVersion: Int,
+        surveyId: String,
+        submittedAt: String,
+        startedAt: String?,
+        deduplicationKey: String?,
+        context: SubmissionContextV1?,
+        answers: List<Answer>
+    ) {
+        if (schemaVersion != expectedSchemaVersion) {
             throw ApiErrorException.BadRequestException(
-                "UNSUPPORTED_SCHEMA: schemaVersion=${submission.schemaVersion} is not supported"
+                "UNSUPPORTED_SCHEMA: schemaVersion=$schemaVersion is not supported"
             )
         }
 
-        if (submission.surveyId.isBlank()) {
+        if (surveyId.isBlank()) {
             throw ApiErrorException.BadRequestException("Invalid payload: surveyId must be non-blank")
         }
-        if (submission.surveyId.length > MAX_SURVEY_ID_LENGTH) {
+        if (surveyId.length > MAX_SURVEY_ID_LENGTH) {
             throw ApiErrorException.BadRequestException(
                 "Invalid payload: surveyId max length is $MAX_SURVEY_ID_LENGTH"
             )
         }
 
-        DeduplicationKeyValidator.validate(submission.deduplicationKey)
+        DeduplicationKeyValidator.validate(deduplicationKey)
 
-        runCatching { Instant.parse(submission.submittedAt) }
+        runCatching { Instant.parse(submittedAt) }
             .getOrElse { throw ApiErrorException.BadRequestException("Invalid payload: submittedAt must be an ISO instant") }
 
-        if (submission.startedAt != null) {
-            runCatching { Instant.parse(submission.startedAt) }
+        if (startedAt != null) {
+            runCatching { Instant.parse(startedAt) }
                 .getOrElse { throw ApiErrorException.BadRequestException("Invalid payload: startedAt must be an ISO instant") }
         }
 
-        if (submission.answers.isEmpty()) {
+        if (answers.isEmpty()) {
             throw ApiErrorException.BadRequestException("Invalid payload: answers must be non-empty")
         }
-        if (submission.answers.size > MAX_ANSWERS_PER_SUBMISSION) {
+        if (answers.size > MAX_ANSWERS_PER_SUBMISSION) {
             throw ApiErrorException.BadRequestException(
                 "Invalid payload: answers max count is $MAX_ANSWERS_PER_SUBMISSION"
             )
         }
 
-        val uniqueFieldIds = submission.answers.map { it.fieldId }.toSet().size
-        if (uniqueFieldIds != submission.answers.size) {
+        val uniqueFieldIds = answers.map { it.fieldId }.toSet().size
+        if (uniqueFieldIds != answers.size) {
             throw ApiErrorException.BadRequestException(
                 "Invalid payload: answers.fieldId must be unique"
             )
         }
 
-        submission.context?.let { context ->
+        context?.let { context ->
             context.url?.let { url ->
                 if (url.length > MAX_CONTEXT_URL_LENGTH) {
                     throw ApiErrorException.BadRequestException(
@@ -171,7 +195,7 @@ object SubmissionValidator {
             }
         }
 
-        submission.answers.forEach { answer ->
+        answers.forEach { answer ->
             if (answer.fieldId.isBlank()) {
                 throw ApiErrorException.BadRequestException("Invalid payload: answers.fieldId must be non-blank")
             }

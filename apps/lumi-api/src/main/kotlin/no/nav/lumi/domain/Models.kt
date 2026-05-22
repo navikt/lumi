@@ -79,7 +79,7 @@ enum class RatingVariant {
         )
 
         /** Get the fixed scale for a variant */
-        fun getScale(variant: RatingVariant): Int = fixedScales[variant] ?: 5
+        fun getScale(variant: RatingVariant): Int = fixedScales.getValue(variant)
     }
 }
 

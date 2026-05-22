@@ -5,8 +5,12 @@ import io.ktor.server.plugins.ratelimit.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.serialization.MissingFieldException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.Json
 import no.nav.lumi.config.SubmissionRateLimit
@@ -16,11 +20,13 @@ import no.nav.lumi.config.auth.TokenXSubmissionAuthPlugin
 import no.nav.lumi.config.auth.getCallerIdentity
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.FeedbackSubmissionV1
+import no.nav.lumi.domain.FeedbackSubmissionV2
 import no.nav.lumi.domain.SaveResult
 import no.nav.lumi.service.FeedbackService
 import no.nav.lumi.service.SubmissionService
 import no.nav.lumi.service.SurveyDefinitionService
 import no.nav.lumi.validation.SubmissionValidator
+import no.nav.lumi.validation.SubmissionV2Validator
 import org.slf4j.LoggerFactory
 import io.ktor.utils.io.core.readText
 import io.ktor.utils.io.readRemaining
@@ -60,7 +66,7 @@ fun Route.submissionRoutes(
         install(TokenXSubmissionAuthPlugin)
         rateLimit(SubmissionRateLimit) {
             rateLimit(UserSubmissionRateLimit) {
-                post("/v1/feedback") { handleSubmissionV1(call, submissionService) }
+                post("/v1/feedback") { handleSubmission(call, submissionService) }
             }
         }
     }
@@ -69,13 +75,13 @@ fun Route.submissionRoutes(
         install(AzureSubmissionAuthPlugin)
         rateLimit(SubmissionRateLimit) {
             rateLimit(UserSubmissionRateLimit) {
-                post("/v1/feedback") { handleSubmissionV1(call, submissionService) }
+                post("/v1/feedback") { handleSubmission(call, submissionService) }
             }
         }
     }
 }
 
-private suspend fun handleSubmissionV1(
+private suspend fun handleSubmission(
     call: io.ktor.server.application.ApplicationCall,
     submissionService: SubmissionService
 ) {
@@ -91,20 +97,99 @@ private suspend fun handleSubmissionV1(
         throw ApiErrorException.BadRequestException("Invalid JSON")
     }
 
-    val submission = try {
+    val schemaVersion = extractSchemaVersion(jsonElement)
+
+    when (schemaVersion) {
+        1 -> {
+            val submission = decodeSubmissionV1(jsonElement)
+            SubmissionValidator.validateSubmissionV1(submission)
+            respondWithSubmissionResult(
+                call = call,
+                identity = identity,
+                submission = submission,
+                submissionOutcome = submissionService.submit(
+                    feedbackJson = body,
+                    team = identity.team,
+                    app = identity.app,
+                    submission = submission
+                )
+            )
+        }
+
+        2 -> {
+            val submission = decodeSubmissionV2(jsonElement)
+            SubmissionV2Validator.validateSubmissionV2(submission)
+            val v1CompatibleSubmission = FeedbackSubmissionV1(
+                schemaVersion = submission.schemaVersion,
+                surveyId = submission.surveyId,
+                surveyType = submission.surveyType,
+                submittedAt = submission.submittedAt,
+                startedAt = submission.startedAt,
+                timeToCompleteMs = submission.timeToCompleteMs,
+                deduplicationKey = submission.deduplicationKey,
+                context = submission.context,
+                answers = submission.answers
+            )
+            respondWithSubmissionResult(
+                call = call,
+                identity = identity,
+                submission = v1CompatibleSubmission,
+                submissionOutcome = submissionService.submit(
+                    feedbackJson = body,
+                    team = identity.team,
+                    app = identity.app,
+                    submission = v1CompatibleSubmission,
+                    definition = submission.definition.toSurveyDefinition(submission.surveyId),
+                    allowDefinitionExpansion = false
+                )
+            )
+        }
+
+        else -> throw ApiErrorException.BadRequestException(
+            "UNSUPPORTED_SCHEMA: schemaVersion=$schemaVersion is not supported"
+        )
+    }
+}
+
+private fun extractSchemaVersion(jsonElement: kotlinx.serialization.json.JsonElement): Int {
+    val jsonObject = runCatching { jsonElement.jsonObject }
+        .getOrElse { throw ApiErrorException.BadRequestException("Invalid payload") }
+
+    val rawSchemaVersion = jsonObject["schemaVersion"]
+        ?: throw ApiErrorException.BadRequestException("Invalid payload: schemaVersion is required")
+
+    return rawSchemaVersion.jsonPrimitive.intOrNull
+        ?: throw ApiErrorException.BadRequestException("Invalid payload: schemaVersion must be an integer")
+}
+
+private fun decodeSubmissionV1(jsonElement: kotlinx.serialization.json.JsonElement): FeedbackSubmissionV1 {
+    return try {
         strictJson.decodeFromJsonElement(FeedbackSubmissionV1.serializer(), jsonElement)
     } catch (e: SerializationException) {
         throw ApiErrorException.BadRequestException("Invalid payload")
     }
+}
 
-    SubmissionValidator.validateSubmissionV1(submission)
-    val submissionOutcome = submissionService.submit(
-        feedbackJson = body,
-        team = identity.team,
-        app = identity.app,
-        submission = submission
-    )
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+private fun decodeSubmissionV2(jsonElement: kotlinx.serialization.json.JsonElement): FeedbackSubmissionV2 {
+    return try {
+        strictJson.decodeFromJsonElement(FeedbackSubmissionV2.serializer(), jsonElement)
+    } catch (e: MissingFieldException) {
+        if (e.missingFields.contains("definition")) {
+            throw ApiErrorException.BadRequestException("Invalid payload: definition is required for schemaVersion=2")
+        }
+        throw ApiErrorException.BadRequestException("Invalid payload")
+    } catch (e: SerializationException) {
+        throw ApiErrorException.BadRequestException("Invalid payload")
+    }
+}
 
+private suspend fun respondWithSubmissionResult(
+    call: io.ktor.server.application.ApplicationCall,
+    identity: no.nav.lumi.config.auth.CallerIdentity,
+    submission: FeedbackSubmissionV1,
+    submissionOutcome: no.nav.lumi.service.SubmissionOutcome
+) {
     when (val saveResult = submissionOutcome.saveResult) {
         is SaveResult.Created -> {
             log.info(
@@ -112,6 +197,7 @@ private suspend fun handleSubmissionV1(
             )
             call.respond(HttpStatusCode.Created, mapOf("id" to saveResult.id))
         }
+
         is SaveResult.Duplicate -> {
             log.info(
                 "Deduplicated feedback id=${saveResult.id} team=${identity.team} app=${identity.app} surveyId=${submission.surveyId}"

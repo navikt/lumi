@@ -122,6 +122,7 @@ class FeedbackService(
             var hasRedactions = false
             val deduplicationKey = extractDeduplicationKey(jsonObj)
             jsonObj.remove("deduplicationKey")
+            jsonObj.remove("definition")
 
             val context = jsonObj["context"] as? JsonObject
             if (context != null) {

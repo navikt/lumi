@@ -1,3 +1,4 @@
+import { buildDefinitionBlock } from "./definitionBlock.js";
 import type {
   ChoiceOption,
   LumiSurveyAnswerValue,
@@ -49,6 +50,7 @@ export function buildTransportPayload(
   surveyId: string,
   answers: Record<string, LumiSurveyAnswerValue>,
   questions: LumiSurveyQuestion[],
+  deduplicationKey: string,
   surveyType?: SurveyType,
   context?: LumiSurveyContext,
   startedAt?: string,
@@ -60,12 +62,17 @@ export function buildTransportPayload(
 
   // Add survey type - use provided or infer from questions
   const resolvedSurveyType = surveyType ?? inferSurveyType(questions);
+
+  const definition = buildDefinitionBlock(questions, resolvedSurveyType);
+
   const payload: LumiSurveyTransportPayload = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     surveyId,
     surveyType: resolvedSurveyType,
     submittedAt,
     startedAt,
+    deduplicationKey,
+    definition,
     context,
     answers: [],
   };
@@ -83,6 +90,7 @@ export function buildTransportPayload(
   }
 
   // Add structured answers array (rich metadata for analytics)
+  // Only includes actually answered questions
   const answersList: TransportAnswer[] = [];
 
   for (const question of questions) {

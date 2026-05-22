@@ -2,6 +2,7 @@ package no.nav.lumi.service
 
 import no.nav.lumi.domain.FeedbackSubmissionV1
 import no.nav.lumi.domain.SaveResult
+import no.nav.lumi.domain.SurveyDefinition
 import no.nav.lumi.repository.FeedbackRepository
 
 data class SubmissionOutcome(
@@ -19,10 +20,18 @@ class SubmissionService(
         feedbackJson: String,
         team: String,
         app: String,
-        submission: FeedbackSubmissionV1
+        submission: FeedbackSubmissionV1,
+        definition: SurveyDefinition? = null,
+        allowDefinitionExpansion: Boolean = definition == null
     ): SubmissionOutcome {
         if (submission.deduplicationKey == null) {
-            val definitionResult = surveyDefinitionService.registerOrValidate(team, submission)
+            val definitionResult = registerDefinition(
+                team = team,
+                submission = submission,
+                definition = definition,
+                allowDefinitionExpansion = allowDefinitionExpansion,
+                inCurrentTransaction = false
+            )
             val saveResult = feedbackService.save(
                 feedbackJson = feedbackJson,
                 team = team,
@@ -59,7 +68,13 @@ class SubmissionService(
                 return@withScopedDeduplicationLock SubmissionOutcome(SaveResult.Duplicate(existingId))
             }
 
-            val definitionResult = surveyDefinitionService.registerOrValidateInCurrentTransaction(team, submission)
+            val definitionResult = registerDefinition(
+                team = team,
+                submission = submission,
+                definition = definition,
+                allowDefinitionExpansion = allowDefinitionExpansion,
+                inCurrentTransaction = true
+            )
             val saveResult = feedbackRepository.saveInCurrentTransaction(
                 feedbackJson = prepared.feedbackJson,
                 team = team,
@@ -73,6 +88,34 @@ class SubmissionService(
                 saveResult = saveResult,
                 definitionHash = definitionResult.definitionHash.takeIf { saveResult is SaveResult.Created }
             )
+        }
+    }
+
+    private suspend fun registerDefinition(
+        team: String,
+        submission: FeedbackSubmissionV1,
+        definition: SurveyDefinition?,
+        allowDefinitionExpansion: Boolean,
+        inCurrentTransaction: Boolean
+    ): RegistrationResult {
+        return when {
+            definition == null && inCurrentTransaction ->
+                surveyDefinitionService.registerOrValidateInCurrentTransaction(team, submission)
+
+            definition == null ->
+                surveyDefinitionService.registerOrValidate(team, submission)
+
+            allowDefinitionExpansion && inCurrentTransaction ->
+                surveyDefinitionService.registerOrValidateInCurrentTransaction(team, submission)
+
+            allowDefinitionExpansion ->
+                surveyDefinitionService.registerOrValidate(team, submission)
+
+            inCurrentTransaction ->
+                surveyDefinitionService.registerOrValidateV2InCurrentTransaction(team, submission, definition)
+
+            else ->
+                surveyDefinitionService.registerOrValidateV2(team, submission, definition)
         }
     }
 }

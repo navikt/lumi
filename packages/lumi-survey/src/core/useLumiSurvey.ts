@@ -1,5 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { cloneAnswers, useAnswerState } from "./answers.js";
+import { generateDeduplicationKey } from "./deduplicationKey.js";
 import { buildTransportPayload } from "./transportPayload.js";
 import type {
   LumiSurveyAnswerValue,
@@ -61,6 +62,7 @@ export function useLumiSurvey(
   });
   const [status, setStatus] = useState<LumiSurveyStatus>("idle");
   const [error, setError] = useState<LumiSurveyError | null>(null);
+  const deduplicationKeyRef = useRef<string>(generateDeduplicationKey());
 
   const validate = useCallback(
     (questionsToValidate?: LumiSurveyQuestion[]): string[] => {
@@ -101,6 +103,7 @@ export function useLumiSurvey(
           surveyId,
           answerSnapshot,
           questions,
+          deduplicationKeyRef.current,
           surveyType,
           context,
           startedAtRef.current,
@@ -114,6 +117,8 @@ export function useLumiSurvey(
         await transport.submit(submission);
         setStatus("success");
         setError(null);
+        // Rotate deduplication key after successful submit
+        deduplicationKeyRef.current = generateDeduplicationKey();
         events?.onSubmitSuccess?.(submission);
         return { ok: true, submission };
       } catch (cause) {
@@ -141,6 +146,8 @@ export function useLumiSurvey(
     resetAnswers();
     setStatus("idle");
     setError(null);
+    // Rotate deduplication key on reset
+    deduplicationKeyRef.current = generateDeduplicationKey();
     events?.onReset?.();
   }, [events, resetAnswers]);
 

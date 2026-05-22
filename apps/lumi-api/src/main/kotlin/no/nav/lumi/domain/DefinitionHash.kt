@@ -73,13 +73,41 @@ data class DefinitionDiff(
     val removedFields: List<String>,
     val changedFields: List<FieldChange>
 ) {
+    fun hasChanges(): Boolean = addedFields.isNotEmpty() || removedFields.isNotEmpty() || changedFields.isNotEmpty()
+
     fun describe(): String {
+        return describeInternal(redactIdentifiers = false)
+    }
+
+    fun describeRedacted(): String {
+        return describeInternal(redactIdentifiers = true)
+    }
+
+    private fun describeInternal(redactIdentifiers: Boolean): String {
+        val fieldAliases = if (redactIdentifiers) {
+            (addedFields + removedFields + changedFields.map { it.fieldId })
+                .filterNot { it == "_surveyType" }
+                .distinct()
+                .sorted()
+                .mapIndexed { index, fieldId -> fieldId to "field_${index + 1}" }
+                .toMap()
+        } else {
+            emptyMap()
+        }
+
+        fun redactFieldId(fieldId: String): String = fieldAliases[fieldId] ?: fieldId
+
+        fun redactChange(change: String): String {
+            if (!redactIdentifiers) return change
+            return change.replace(Regex("""optionIds \[[^\]]*] -> \[[^\]]*]"""), "optionIds [REDACTED] -> [REDACTED]")
+        }
+
         val parts = buildList {
-            if (addedFields.isNotEmpty()) add("addedFields=$addedFields")
-            if (removedFields.isNotEmpty()) add("removedFields=$removedFields")
+            if (addedFields.isNotEmpty()) add("addedFields=${addedFields.map(::redactFieldId)}")
+            if (removedFields.isNotEmpty()) add("removedFields=${removedFields.map(::redactFieldId)}")
             if (changedFields.isNotEmpty()) {
                 add(
-                    "changedFields=${changedFields.map { "${it.fieldId}: ${it.change}" }}"
+                    "changedFields=${changedFields.map { "${redactFieldId(it.fieldId)}: ${redactChange(it.change)}" }}"
                 )
             }
         }
