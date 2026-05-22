@@ -13,6 +13,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.int
 import no.nav.lumi.TestDatabase
+import no.nav.lumi.createdId
 import no.nav.lumi.service.FeedbackService
 import org.slf4j.LoggerFactory
 
@@ -157,7 +158,7 @@ class FeedbackSecurityTest : DescribeSpec({
                 }
             """.trimIndent()
             
-            val saved = service.save(feedbackJson, "team-test", "test-app")
+            val saved = service.save(feedbackJson, "team-test", "test-app").createdId()
             val retrieved = repository.findRawById(saved, "team-test")
             
             retrieved?.feedbackJson shouldNotContain "01020349294"
@@ -181,7 +182,7 @@ class FeedbackSecurityTest : DescribeSpec({
                 }
             """.trimIndent()
 
-            val saved = service.save(feedbackJson, "team-test", "test-app")
+            val saved = service.save(feedbackJson, "team-test", "test-app").createdId()
             val retrieved = repository.findRawById(saved, "team-test")
 
             retrieved?.feedbackJson shouldNotContain digits
@@ -207,7 +208,7 @@ class FeedbackSecurityTest : DescribeSpec({
                 }
             """.trimIndent()
             
-            val saved = service.save(feedbackJson, "team-test", "test-app")
+            val saved = service.save(feedbackJson, "team-test", "test-app").createdId()
             val retrieved = repository.findRawById(saved, "team-test")
             
             retrieved?.feedbackJson shouldNotContain "test.user@example.com"
@@ -230,7 +231,7 @@ class FeedbackSecurityTest : DescribeSpec({
                 }
             """.trimIndent()
 
-            val saved = service.save(feedbackJson, "team-test", "test-app")
+            val saved = service.save(feedbackJson, "team-test", "test-app").createdId()
             val retrieved = repository.findRawById(saved, "team-test")
 
             // HTML-like content is preserved as plain text in stored payload (contextual escaping happens at sink/UI).
@@ -256,7 +257,7 @@ class FeedbackSecurityTest : DescribeSpec({
                 }
             """.trimIndent()
             
-            val saved = service.save(feedbackJson, "team-test", "test-app")
+            val saved = service.save(feedbackJson, "team-test", "test-app").createdId()
             val retrieved = repository.findRawById(saved, "team-test")
             
             retrieved?.feedbackJson shouldNotContain "98765432"
@@ -279,7 +280,7 @@ class FeedbackSecurityTest : DescribeSpec({
                 }
             """.trimIndent()
             
-            val saved = service.save(feedbackJson, "team-test", "test-app")
+            val saved = service.save(feedbackJson, "team-test", "test-app").createdId()
             val retrieved = repository.findRawById(saved, "team-test")
 
             val body = Json.parseToJsonElement(retrieved?.feedbackJson ?: "").jsonObject
@@ -295,7 +296,7 @@ class FeedbackSecurityTest : DescribeSpec({
         it("should handle JSON without answers gracefully") {
             val feedbackJson = """{"surveyId": "simple"}"""
             
-            val saved = repository.save(feedbackJson, "team-test", "test-app")
+            val saved = repository.save(feedbackJson, "team-test", "test-app").createdId()
             val retrieved = repository.findRawById(saved, "team-test")
             
             retrieved?.feedbackJson shouldContain "simple"
@@ -308,10 +309,10 @@ class FeedbackSecurityTest : DescribeSpec({
 
         it("should isolate tags between teams") {
             // Seed data for two teams
-            val idA = service.save("""{"surveyId":"A","answers":[{"fieldId":"f","value":{"type":"text","text":"..."}}]}""", "team-A", "app")
+            val idA = service.save("""{"surveyId":"A","answers":[{"fieldId":"f","value":{"type":"text","text":"..."}}]}""", "team-A", "app").createdId()
             service.addTag(idA, "team-A", "tag-A")
             
-            val idB = service.save("""{"surveyId":"B","answers":[{"fieldId":"f","value":{"type":"text","text":"..."}}]}""", "team-B", "app")
+            val idB = service.save("""{"surveyId":"B","answers":[{"fieldId":"f","value":{"type":"text","text":"..."}}]}""", "team-B", "app").createdId()
             service.addTag(idB, "team-B", "tag-B")
 
             // Verify team-A only sees its tags
@@ -320,8 +321,8 @@ class FeedbackSecurityTest : DescribeSpec({
         }
 
         it("should isolate distinct apps between teams") {
-            service.save("""{"surveyId":"A"}""", "team-A", "app-A")
-            service.save("""{"surveyId":"B"}""", "team-B", "app-B")
+            service.save("""{"surveyId":"A"}""", "team-A", "app-A").createdId()
+            service.save("""{"surveyId":"B"}""", "team-B", "app-B").createdId()
 
             repository.findDistinctApps("team-A") shouldBe listOf("app-A")
             repository.findDistinctApps("team-B") shouldBe listOf("app-B")
@@ -331,8 +332,8 @@ class FeedbackSecurityTest : DescribeSpec({
             val feedbackA = """{"surveyId":"S","context":{"tags":{"key-A":"val-A"}},"answers":[{"fieldId":"f","value":{"type":"text","text":"..."}}]}"""
             val feedbackB = """{"surveyId":"S","context":{"tags":{"key-B":"val-B"}},"answers":[{"fieldId":"f","value":{"type":"text","text":"..."}}]}"""
             
-            service.save(feedbackA, "team-A", "app")
-            service.save(feedbackB, "team-B", "app")
+            service.save(feedbackA, "team-A", "app").createdId()
+            service.save(feedbackB, "team-B", "app").createdId()
 
             val keysA = repository.findMetadataKeysForSurvey("S", "team-A")
             keysA.keys shouldBe setOf("key-A")
@@ -343,7 +344,7 @@ class FeedbackSecurityTest : DescribeSpec({
         }
 
         it("should deny access to feedback from another team") {
-            val idA = service.save("""{"surveyId":"S","answers":[{"fieldId":"f","value":{"type":"text","text":"..."}}]}""", "team-A", "app")
+            val idA = service.save("""{"surveyId":"S","answers":[{"fieldId":"f","value":{"type":"text","text":"..."}}]}""", "team-A", "app").createdId()
             
             // Should be found by authorized team
             service.findById(idA, "team-A")?.id shouldBe idA

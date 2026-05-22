@@ -5,10 +5,13 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import no.nav.lumi.config.auth.CallerIdentityKey
 import no.nav.lumi.config.auth.parseCallerIdentity
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.service.FeedbackService
+import no.nav.lumi.service.SubmissionService
 import no.nav.lumi.service.SurveyDefinitionService
 import no.nav.lumi.validation.SubmissionValidator
 import org.slf4j.LoggerFactory
@@ -16,6 +19,7 @@ import io.ktor.utils.io.core.readText
 import io.ktor.utils.io.readRemaining
 import kotlinx.serialization.SerializationException
 import no.nav.lumi.domain.FeedbackSubmissionV1
+import no.nav.lumi.domain.SaveResult
 import java.security.MessageDigest
 
 private val log = LoggerFactory.getLogger("InternalSubmissionRoutes")
@@ -40,6 +44,7 @@ private val strictJson = Json {
 fun Route.internalSubmissionRoutes(
     feedbackService: FeedbackService = FeedbackService(),
     surveyDefinitionService: SurveyDefinitionService = SurveyDefinitionService(),
+    submissionService: SubmissionService = SubmissionService(feedbackService, surveyDefinitionService),
     submissionKey: String? = System.getenv("LUMI_INTERNAL_SUBMISSION_KEY")
 ) {
     if (submissionKey.isNullOrBlank()) {
@@ -75,7 +80,9 @@ fun Route.internalSubmissionRoutes(
             val jsonElement = try {
                 strictJson.parseToJsonElement(body)
             } catch (e: Exception) {
-                log.warn("Internal submission: invalid JSON from ${identity.team}/${identity.app}", e)
+                log.warn(
+                    "Internal submission: invalid JSON from ${identity.team}/${identity.app} parseErrorType=${e::class.simpleName}"
+                )
                 throw ApiErrorException.BadRequestException("Invalid JSON")
             }
 
@@ -86,21 +93,33 @@ fun Route.internalSubmissionRoutes(
             }
 
             SubmissionValidator.validateSubmissionV1(submission)
-            val definitionResult = surveyDefinitionService.registerOrValidate(identity.team, submission)
-
-            val id = feedbackService.save(
+            val submissionOutcome = submissionService.submit(
                 feedbackJson = body,
                 team = identity.team,
                 app = identity.app,
-                surveyId = definitionResult.surveyId,
-                definitionHash = definitionResult.definitionHash,
-                deduplicationKeyHash = null
+                submission = submission
             )
 
-            log.info(
-                "Internal submission: saved feedback id=$id team=${identity.team} app=${identity.app} surveyId=${submission.surveyId} definitionHash=${definitionResult.definitionHash}"
-            )
-            call.respond(HttpStatusCode.Created, mapOf("id" to id))
+            when (val saveResult = submissionOutcome.saveResult) {
+                is SaveResult.Created -> {
+                    log.info(
+                        "Internal submission: saved feedback id=${saveResult.id} team=${identity.team} app=${identity.app} surveyId=${submission.surveyId} definitionHash=${submissionOutcome.definitionHash}"
+                    )
+                    call.respond(HttpStatusCode.Created, mapOf("id" to saveResult.id))
+                }
+                is SaveResult.Duplicate -> {
+                    log.info(
+                        "Internal submission: deduplicated feedback id=${saveResult.id} team=${identity.team} app=${identity.app} surveyId=${submission.surveyId}"
+                    )
+                    call.respond(
+                        HttpStatusCode.OK,
+                        buildJsonObject {
+                            put("id", saveResult.id)
+                            put("duplicate", true)
+                        }
+                    )
+                }
+            }
         }
     }
 }

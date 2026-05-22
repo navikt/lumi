@@ -22,39 +22,68 @@ class SurveyDefinitionService(
     private val repository: SurveyDefinitionRepository = SurveyDefinitionRepository()
 ) {
     suspend fun registerOrValidate(team: String, submission: FeedbackSubmissionV1): RegistrationResult {
+        return registerOrValidate(
+            team = team,
+            submission = submission,
+            findStored = repository::findByTeamAndSurveyId,
+            insertDefinition = repository::insertIfUnderLimit,
+            updateDefinition = repository::updateDefinitionIfHashMatches
+        )
+    }
+
+    internal suspend fun registerOrValidateInCurrentTransaction(
+        team: String,
+        submission: FeedbackSubmissionV1
+    ): RegistrationResult {
+        return registerOrValidate(
+            team = team,
+            submission = submission,
+            findStored = repository::findByTeamAndSurveyIdInCurrentTransaction,
+            insertDefinition = repository::insertIfUnderLimitInCurrentTransaction,
+            updateDefinition = repository::updateDefinitionIfHashMatchesInCurrentTransaction
+        )
+    }
+
+    private suspend fun registerOrValidate(
+        team: String,
+        submission: FeedbackSubmissionV1,
+        findStored: suspend (String, String) -> StoredSurveyDefinition?,
+        insertDefinition: suspend (String, SurveyDefinition, String, Int) -> Int,
+        updateDefinition: suspend (String, String, String, SurveyDefinition, String) -> Boolean
+    ): RegistrationResult {
         val incomingDefinition = SurveyDefinition.fromSubmission(submission)
         validateDefinitionConsistency(incomingDefinition)
         validateAnswersAgainstIncomingDefinition(incomingDefinition, submission)
         val incomingHash = incomingDefinition.computeHash()
 
         repeat(MAX_REGISTRATION_ATTEMPTS) {
-            val stored = repository.findByTeamAndSurveyId(team, submission.surveyId)
+            val stored = findStored(team, submission.surveyId)
             if (stored != null) {
-                when (val result = handleExistingDefinition(team, stored, incomingDefinition)) {
+                when (val result = handleExistingDefinition(team, stored, incomingDefinition, updateDefinition)) {
                     is ExistingDefinitionResult.Resolved -> return result.registrationResult
                     ExistingDefinitionResult.Retry -> return@repeat
                 }
             }
 
-            val insertedCount = repository.insertIfUnderLimit(
-                team = team,
-                definition = incomingDefinition,
-                definitionHash = incomingHash,
-                maxDefinitions = MAX_DEFINITIONS_PER_TEAM
+            val insertedCount = insertDefinition(
+                team,
+                incomingDefinition,
+                incomingHash,
+                MAX_DEFINITIONS_PER_TEAM
             )
 
             if (insertedCount == 1) {
                 return RegistrationResult(submission.surveyId, incomingHash)
             }
 
-            val existingAfterRace = repository.findByTeamAndSurveyId(team, submission.surveyId)
+            val existingAfterRace = findStored(team, submission.surveyId)
             if (existingAfterRace == null) {
                 throw ApiErrorException.TooManyRequestsException(
                     "Definition limit exceeded for team=$team (max=$MAX_DEFINITIONS_PER_TEAM)"
                 )
             }
 
-            when (val result = handleExistingDefinition(team, existingAfterRace, incomingDefinition)) {
+            when (val result = handleExistingDefinition(team, existingAfterRace, incomingDefinition, updateDefinition)) {
                 is ExistingDefinitionResult.Resolved -> return result.registrationResult
                 ExistingDefinitionResult.Retry -> return@repeat
             }
@@ -86,7 +115,8 @@ class SurveyDefinitionService(
     private suspend fun handleExistingDefinition(
         team: String,
         stored: StoredSurveyDefinition,
-        incomingDefinition: SurveyDefinition
+        incomingDefinition: SurveyDefinition,
+        updateDefinition: suspend (String, String, String, SurveyDefinition, String) -> Boolean
     ): ExistingDefinitionResult {
         val mergedDefinition = stored.definition.mergeWith(incomingDefinition)
         val definitionDiff = diff(stored.definition, mergedDefinition)
@@ -107,13 +137,7 @@ class SurveyDefinitionService(
             )
         }
 
-        val updated = repository.updateDefinitionIfHashMatches(
-            team = team,
-            surveyId = stored.surveyId,
-            expectedDefinitionHash = stored.definitionHash,
-            definition = mergedDefinition,
-            newDefinitionHash = mergedHash
-        )
+        val updated = updateDefinition(team, stored.surveyId, stored.definitionHash, mergedDefinition, mergedHash)
 
         return if (updated) {
             ExistingDefinitionResult.Resolved(

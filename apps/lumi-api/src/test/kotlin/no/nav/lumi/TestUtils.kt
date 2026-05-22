@@ -16,6 +16,7 @@ import no.nav.lumi.config.configureSerialization
 import no.nav.lumi.config.configureStatusPages
 import no.nav.lumi.config.configureRateLimiting
 import no.nav.lumi.config.DatabaseHolder
+import no.nav.lumi.domain.SaveResult
 import no.nav.lumi.integrations.valkey.InMemoryStatsCache
 import no.nav.lumi.repository.FeedbackRepository
 import no.nav.lumi.routes.feedbackRoutes
@@ -35,6 +36,11 @@ import no.nav.lumi.service.StatsService
 import no.nav.lumi.service.ExportService
 import java.time.OffsetDateTime
 import java.util.UUID
+
+fun SaveResult.createdId(): String = when (this) {
+    is SaveResult.Created -> id
+    is SaveResult.Duplicate -> error("Expected created save result, got duplicate")
+}
 
 /**
  * Creates a test client configured with JSON serialization
