@@ -35,7 +35,7 @@ val kotestVersion = "6.1.11"
 val mockkVersion = "1.14.9"
 val testcontainersVersion = "1.21.4"
 val tokenSupportVersion = "5.0.13"
-val exposedVersion = "1.2.0"
+val exposedVersion = "1.3.0"
 val micrometerVersion = "1.16.5"
 val log4jVersion = "2.26.0"
 
