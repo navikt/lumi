@@ -1,5 +1,0 @@
-allowBuilds:
-  esbuild: true
-
-minimumReleaseAge: 4320
-blockExoticSubdeps: true
