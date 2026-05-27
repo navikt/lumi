@@ -37,21 +37,13 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: |
-            pnpm-lock.yaml
-            docs/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
       - name: Install VitePress deps
-        working-directory: docs
-        run: pnpm install --frozen-lockfile --ignore-workspace
+        run: pnpm install --filter lumi-docs --filter @navikt/lumi-survey --frozen-lockfile
         env:
           NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
       - name: Build VitePress
-        working-directory: docs
-        run: pnpm --ignore-workspace run build
-      - name: Install workspace deps
-        run: pnpm install --frozen-lockfile
-        env:
-          NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
+        run: pnpm --filter lumi-docs run build
       - name: Build Storybook
         run: pnpm run build-storybook:survey
       - name: Copy Storybook into VitePress dist

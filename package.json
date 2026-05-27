@@ -1,7 +1,7 @@
 {
   "name": "lumi",
   "private": true,
-  "packageManager": "pnpm@10.32.1",
+  "packageManager": "pnpm@11.3.0",
   "scripts": {
     "dev": "pnpm --filter @navikt/lumi-types run build && pnpm --filter lumi-dashboard run dev",
     "build": "pnpm --filter @navikt/lumi-types run build && pnpm --filter @navikt/lumi-survey run build && pnpm --filter lumi-dashboard run build",
@@ -13,9 +13,9 @@
     "verify:lumi-survey": "pnpm --filter @navikt/lumi-survey run build && node scripts/verify-lumi-survey-package.mjs",
     "test": "pnpm --filter lumi-dashboard run test",
     "e2e": "pnpm --filter lumi-dashboard run e2e",
-    "docs:dev": "pnpm --dir docs --ignore-workspace run dev",
-    "docs:build": "pnpm --dir docs --ignore-workspace run build",
-    "docs:preview": "pnpm --dir docs --ignore-workspace run preview",
+    "docs:dev": "pnpm --filter lumi-docs run dev",
+    "docs:build": "pnpm --filter lumi-docs run build",
+    "docs:preview": "pnpm --filter lumi-docs run preview",
     "api:run": "cd apps/lumi-api && ./gradlew run",
     "api:build": "cd apps/lumi-api && ./gradlew build",
     "api:test": "cd apps/lumi-api && ./gradlew test",
@@ -25,8 +25,5 @@
     "@biomejs/biome": "2.4.10",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0"
-  },
-  "overrides": {
-    "@isaacs/brace-expansion": "5.0.1"
   }
 }

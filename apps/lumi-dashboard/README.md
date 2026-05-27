@@ -53,7 +53,7 @@ pnpm run dev
 ### Forutsetninger
 
 - Node.js 22+
-- pnpm 10+
+- pnpm 11+
 
 ### Oppsett
 

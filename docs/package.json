@@ -7,11 +7,6 @@
     "build": "vitepress build",
     "preview": "vitepress preview"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
-  },
   "devDependencies": {
     "mermaid": "^11.14.0",
     "vitepress": "^1.6.4",
