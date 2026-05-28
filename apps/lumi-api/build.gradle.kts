@@ -38,8 +38,11 @@ val tokenSupportVersion = "5.0.13"
 val exposedVersion = "1.3.0"
 val micrometerVersion = "1.16.5"
 val log4jVersion = "2.26.0"
+val nettyVersion = "4.2.13.Final"
 
 dependencies {
+    implementation(platform("io.netty:netty-bom:$nettyVersion"))
+
     // Ktor Server
     implementation("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-server-netty:$ktorVersion")
