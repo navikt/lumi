@@ -21,8 +21,11 @@ repositories {
 val ktorVersion = "3.4.0"
 val logbackVersion = "1.5.32"
 val logstashVersion = "9.0"
+val nettyVersion = "4.2.13.Final"
 
 dependencies {
+    implementation(platform("io.netty:netty-bom:$nettyVersion"))
+
     // Ktor Server (minimal)
     implementation("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-server-netty:$ktorVersion")
