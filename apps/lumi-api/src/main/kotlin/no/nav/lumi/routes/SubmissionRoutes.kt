@@ -7,10 +7,10 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.MissingFieldException
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.Json
 import no.nav.lumi.config.SubmissionRateLimit
@@ -158,7 +158,10 @@ private fun extractSchemaVersion(jsonElement: kotlinx.serialization.json.JsonEle
     val rawSchemaVersion = jsonObject["schemaVersion"]
         ?: throw ApiErrorException.BadRequestException("Invalid payload: schemaVersion is required")
 
-    return rawSchemaVersion.jsonPrimitive.intOrNull
+    val schemaVersion = rawSchemaVersion as? JsonPrimitive
+        ?: throw ApiErrorException.BadRequestException("Invalid payload: schemaVersion must be an integer")
+
+    return schemaVersion.intOrNull
         ?: throw ApiErrorException.BadRequestException("Invalid payload: schemaVersion must be an integer")
 }
 

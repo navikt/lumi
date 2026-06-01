@@ -437,7 +437,8 @@ class FeedbackServiceTest : FunSpec({
             val saved = repository.findRawById(id, "flex").shouldNotBeNull()
             saved.feedbackJson shouldNotContain "deduplicationKey"
             saved.feedbackJson shouldNotContain "\"definition\""
-            saved.feedbackJson shouldContain "\"surveyType\":\"rating\""
+            val savedJson = Json.parseToJsonElement(saved.feedbackJson).jsonObject
+            savedJson["surveyType"]?.jsonPrimitive?.content shouldBe "rating"
         }
 
         test("uses provided surveyId for dedup scope when payload surveyId differs") {

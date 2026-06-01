@@ -164,11 +164,17 @@ export interface MultiChoiceSubmissionFieldDefinition
   optionIds: string[];
 }
 
+export interface DateSubmissionFieldDefinition
+  extends SubmissionFieldDefinitionBase {
+  fieldType: "DATE";
+}
+
 export type SubmissionFieldDefinition =
   | RatingSubmissionFieldDefinition
   | TextSubmissionFieldDefinition
   | SingleChoiceSubmissionFieldDefinition
-  | MultiChoiceSubmissionFieldDefinition;
+  | MultiChoiceSubmissionFieldDefinition
+  | DateSubmissionFieldDefinition;
 
 export interface SubmissionDefinition {
   surveyType: SurveyType;

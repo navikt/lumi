@@ -62,7 +62,14 @@ export function useLumiSurvey(
   });
   const [status, setStatus] = useState<LumiSurveyStatus>("idle");
   const [error, setError] = useState<LumiSurveyError | null>(null);
-  const deduplicationKeyRef = useRef<string>(generateDeduplicationKey());
+  const deduplicationKeyRef = useRef<string | null>(null);
+
+  const getDeduplicationKey = useCallback(() => {
+    if (deduplicationKeyRef.current === null) {
+      deduplicationKeyRef.current = generateDeduplicationKey();
+    }
+    return deduplicationKeyRef.current;
+  }, []);
 
   const validate = useCallback(
     (questionsToValidate?: LumiSurveyQuestion[]): string[] => {
@@ -93,6 +100,7 @@ export function useLumiSurvey(
 
       const answerSnapshot = cloneAnswers(answers);
       const submittedAtTimestamp = new Date().toISOString();
+      const deduplicationKey = getDeduplicationKey();
       const submission: LumiSurveySubmission = {
         surveyId,
         answers: answerSnapshot,
@@ -103,7 +111,7 @@ export function useLumiSurvey(
           surveyId,
           answerSnapshot,
           questions,
-          deduplicationKeyRef.current,
+          deduplicationKey,
           surveyType,
           context,
           startedAtRef.current,
@@ -133,6 +141,7 @@ export function useLumiSurvey(
       answers,
       context,
       events,
+      getDeduplicationKey,
       questions,
       startedAtRef,
       surveyId,
