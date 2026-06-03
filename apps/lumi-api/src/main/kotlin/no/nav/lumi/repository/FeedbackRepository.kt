@@ -1,7 +1,14 @@
 package no.nav.lumi.repository
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.*
+import no.nav.lumi.sensitive.SensitiveDataFilter
+import no.nav.lumi.service.TextProcessor
 import org.jetbrains.exposed.v1.core.*
 import org.jetbrains.exposed.v1.jdbc.*
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
@@ -15,6 +22,8 @@ class FeedbackRepository(
     private val contextTagsRepository: FeedbackContextTagsRepository = FeedbackContextTagsRepository()
 ) {
     private val log = LoggerFactory.getLogger(FeedbackRepository::class.java)
+    private val json = Json { ignoreUnknownKeys = true }
+    private val sensitiveDataFilter = SensitiveDataFilter.DEFAULT
 
     suspend fun findById(id: String, team: String): FeedbackDto? {
         return dbQuery {
@@ -236,6 +245,10 @@ class FeedbackRepository(
         val needsInMemoryFiltering =
             !query.task.isNullOrBlank() || !query.theme.isNullOrBlank() || phraseFilter != null
 
+        if (phraseFilter != null && query.task.isNullOrBlank() && query.theme.isNullOrBlank()) {
+            return findPaginatedByPhrase(query, phraseFilter)
+        }
+
         if (!needsInMemoryFiltering) {
             val snapshot = dbQuery {
                 val dbQuery = FeedbackTable.selectAll()
@@ -312,6 +325,71 @@ class FeedbackRepository(
         return Triple(pageContent, total, page)
     }
 
+    private suspend fun findPaginatedByPhrase(
+        query: FeedbackQuery,
+        phraseFilter: PhraseFilter
+    ): Triple<List<FeedbackDto>, Long, Int> {
+        val expectedStemKey = buildPhraseStemKey(phraseFilter.surface)
+
+        val snapshot = dbQuery {
+            val dbQuery = FeedbackTable.selectAll()
+            dbQuery.andWhere { FeedbackTable.team eq query.team }
+            query.app?.let { app ->
+                if (app != FILTER_ALL) {
+                    dbQuery.andWhere { FeedbackTable.app eq app }
+                }
+            }
+            applyCommonFilters(dbQuery, query, log)
+
+            val matchingRecords = dbQuery
+                .orderBy(FeedbackTable.opprettet to SortOrder.DESC)
+                .map { it.toDbRecord() }
+                .filter { recordMatchesPhraseFilter(it, phraseFilter.fieldId, expectedStemKey) }
+
+            val total = matchingRecords.size.toLong()
+            val totalPages = if (query.size > 0) ceil(total.toDouble() / query.size).toInt() else 0
+            val page = query.page ?: (totalPages - 1).coerceAtLeast(0)
+            val offset = page * query.size
+            val pageRecords = if (query.size > 0) {
+                matchingRecords.drop(offset).take(query.size)
+            } else {
+                matchingRecords
+            }
+
+            val tagsById = findTagsByFeedbackIds(pageRecords.map { it.id })
+            PaginatedSnapshot(pageRecords, tagsById, total, page)
+        }
+
+        val dtos = snapshot.records.map { record ->
+            record.toDto(snapshot.tagsById[record.id].orEmpty())
+        }
+        return Triple(dtos, snapshot.total, snapshot.page)
+    }
+
+    private fun recordMatchesPhraseFilter(record: FeedbackDbRecord, fieldId: String, expectedStemKey: String): Boolean {
+        val answers = try {
+            val jsonObj = json.parseToJsonElement(record.feedbackJson).jsonObject
+            jsonObj["answers"] as? JsonArray
+        } catch (e: Exception) {
+            log.debug("Failed to parse feedback JSON for phrase filter id=${record.id}", e)
+            null
+        } ?: return false
+
+        return answers.any { answerElement ->
+            val answerObj = answerElement.jsonObject
+            if (answerObj["fieldId"]?.jsonPrimitive?.contentOrNull != fieldId) return@any false
+            if (answerObj["fieldType"]?.jsonPrimitive?.contentOrNull != FieldType.TEXT.name) return@any false
+
+            val valueObj = answerObj["value"]?.jsonObject ?: return@any false
+            if (valueObj["type"]?.jsonPrimitive?.contentOrNull != "text") return@any false
+
+            val text = valueObj["text"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
+            if (text.isBlank()) return@any false
+
+            val redactedText = sensitiveDataFilter.redact(text).redactedText
+            TextProcessor.extractBigrams(redactedText).any { it.stemKey == expectedStemKey }
+        }
+    }
 
     /**
      * Find all tags for a specific team.

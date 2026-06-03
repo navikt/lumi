@@ -524,6 +524,13 @@ class NaisGraphQlClientTest {
         
         assertEquals(setOf("fallback"), result.getOrDefault(setOf("fallback")))
     }
+
+    @Test
+    fun `team cache TTLs keep positive memberships warm while allowing onboarding`() {
+        assertEquals(Duration.ofHours(12), CacheTtl.HAS_TEAMS)
+        assertEquals(Duration.ofMinutes(5), CacheTtl.NO_TEAMS)
+        assertEquals(Duration.ofSeconds(30), CacheTtl.ERROR)
+    }
     
     @Test
     fun `users with teams get cached with longer TTL`() = runBlocking {
@@ -551,7 +558,7 @@ class NaisGraphQlClientTest {
             client = mockClient
         )
         
-        // First call - caches with 1 hour TTL (because user HAS teams)
+        // First call - caches with long TTL (because user HAS teams)
         client.getTeamSlugsForUser("test@nav.no")
         assertEquals(1, callCount)
         

@@ -2,8 +2,7 @@ import type { TagProps } from "@navikt/ds-react";
 import { Box, Heading, HStack, Tag, Tooltip, VStack } from "@navikt/ds-react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
-import dayjs from "dayjs";
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect } from "react";
 import { DiscoveryDashboard } from "~/components/dashboard/views/Discovery/Dashboard";
 import { OverviewDashboard } from "~/components/dashboard/views/Overview/Dashboard";
 import { RatingDashboard } from "~/components/dashboard/views/Rating/Dashboard";
@@ -16,8 +15,8 @@ import { PrivacyMaskedNotice } from "~/components/shared/PrivacyMaskedNotice";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import { searchSchema } from "~/schemas/searchSchema";
-import { fetchFilterBootstrapServerFn } from "~/server/actions";
 import type { SurveyType } from "~/types/api";
+import { applyDashboardSearchDefaults } from "~/utils/dashboardSearchDefaults";
 import styles from "./index.module.css";
 
 /**
@@ -87,34 +86,19 @@ const SURVEY_CONFIG: Record<
 export const Route = createFileRoute("/")({
   validateSearch: zodValidator(searchSchema),
   beforeLoad: async ({ location }) => {
-    // Ensure `team` is present before route components render.
-    // This prevents an initial fetch with team=undefined followed by a second fetch after `team` is injected.
-    const currentTeamRaw = (
-      location.search as Record<string, unknown> | undefined
-    )?.team;
-    const currentTeam =
-      typeof currentTeamRaw === "string" ? currentTeamRaw.trim() : undefined;
-    if (currentTeam) return;
+    // Ensure broad default filters are present before route components render.
+    // This prevents initial unbounded stats queries followed by narrower refetches.
+    const currentSearch = location.search as
+      | Record<string, unknown>
+      | undefined;
+    const defaults = applyDashboardSearchDefaults(currentSearch);
 
-    try {
-      const bootstrap = await fetchFilterBootstrapServerFn({
-        data: { team: undefined },
-      });
-      const selectedTeam = bootstrap?.selectedTeam?.trim();
-      if (!selectedTeam) return;
-
+    if (defaults.changed) {
       throw redirect({
         to: "/",
-        search: {
-          ...(location.search as Record<string, unknown> | undefined),
-          team: selectedTeam,
-        },
+        search: defaults.search,
         replace: true,
       });
-    } catch {
-      // If we're not authenticated yet (or bootstrap fails), don't block rendering.
-      // The UI and existing FilterBar fallback behavior will still work.
-      return;
     }
   },
   component: DashboardPage,
@@ -126,32 +110,6 @@ function DashboardPage() {
   const hasSurveyFilter = !!params.surveyId;
   const surveyType = stats?.surveyType;
   const isPrivacyMasked = stats?.privacy?.masked;
-  const hasAppliedDefaultPeriodRef = useRef(false);
-
-  useEffect(() => {
-    if (hasAppliedDefaultPeriodRef.current) return;
-    if (typeof window === "undefined") return;
-
-    const searchParams = new URLSearchParams(window.location.search);
-    const hasFromDateInUrl = searchParams.has("fromDate");
-    const hasToDateInUrl = searchParams.has("toDate");
-
-    // Respect explicit URL period filters (important for deep-links and e2e tests).
-    if (hasFromDateInUrl || hasToDateInUrl) {
-      hasAppliedDefaultPeriodRef.current = true;
-      return;
-    }
-
-    const end = dayjs();
-    const start = end.subtract(29, "day");
-
-    setParams({
-      fromDate: start.format("YYYY-MM-DD"),
-      toDate: end.format("YYYY-MM-DD"),
-      page: "1",
-    });
-    hasAppliedDefaultPeriodRef.current = true;
-  }, [setParams]);
 
   // Clean up params that are only used on the feedback route (not the dashboard).
   // page/size are kept because filter changes set page=1, and theme is used by discovery.
