@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as ExportRouteImport } from './routes/export'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DiagnosticsNaisAuthRouteImport } from './routes/diagnostics/nais-auth'
 import { Route as ApiInternalMetricsRouteImport } from './routes/api/internal/metrics'
 import { Route as ApiInternalIsReadyRouteImport } from './routes/api/internal/isReady'
 import { Route as ApiInternalIsAliveRouteImport } from './routes/api/internal/isAlive'
@@ -29,6 +30,11 @@ const ExportRoute = ExportRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiagnosticsNaisAuthRoute = DiagnosticsNaisAuthRouteImport.update({
+  id: '/diagnostics/nais-auth',
+  path: '/diagnostics/nais-auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiInternalMetricsRoute = ApiInternalMetricsRouteImport.update({
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/export': typeof ExportRoute
   '/feedback': typeof FeedbackRoute
+  '/diagnostics/nais-auth': typeof DiagnosticsNaisAuthRoute
   '/api/internal/isAlive': typeof ApiInternalIsAliveRoute
   '/api/internal/isReady': typeof ApiInternalIsReadyRoute
   '/api/internal/metrics': typeof ApiInternalMetricsRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/export': typeof ExportRoute
   '/feedback': typeof FeedbackRoute
+  '/diagnostics/nais-auth': typeof DiagnosticsNaisAuthRoute
   '/api/internal/isAlive': typeof ApiInternalIsAliveRoute
   '/api/internal/isReady': typeof ApiInternalIsReadyRoute
   '/api/internal/metrics': typeof ApiInternalMetricsRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/export': typeof ExportRoute
   '/feedback': typeof FeedbackRoute
+  '/diagnostics/nais-auth': typeof DiagnosticsNaisAuthRoute
   '/api/internal/isAlive': typeof ApiInternalIsAliveRoute
   '/api/internal/isReady': typeof ApiInternalIsReadyRoute
   '/api/internal/metrics': typeof ApiInternalMetricsRoute
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/export'
     | '/feedback'
+    | '/diagnostics/nais-auth'
     | '/api/internal/isAlive'
     | '/api/internal/isReady'
     | '/api/internal/metrics'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/export'
     | '/feedback'
+    | '/diagnostics/nais-auth'
     | '/api/internal/isAlive'
     | '/api/internal/isReady'
     | '/api/internal/metrics'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/export'
     | '/feedback'
+    | '/diagnostics/nais-auth'
     | '/api/internal/isAlive'
     | '/api/internal/isReady'
     | '/api/internal/metrics'
@@ -103,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ExportRoute: typeof ExportRoute
   FeedbackRoute: typeof FeedbackRoute
+  DiagnosticsNaisAuthRoute: typeof DiagnosticsNaisAuthRoute
   ApiInternalIsAliveRoute: typeof ApiInternalIsAliveRoute
   ApiInternalIsReadyRoute: typeof ApiInternalIsReadyRoute
   ApiInternalMetricsRoute: typeof ApiInternalMetricsRoute
@@ -129,6 +142,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/diagnostics/nais-auth': {
+      id: '/diagnostics/nais-auth'
+      path: '/diagnostics/nais-auth'
+      fullPath: '/diagnostics/nais-auth'
+      preLoaderRoute: typeof DiagnosticsNaisAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/internal/metrics': {
@@ -159,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ExportRoute: ExportRoute,
   FeedbackRoute: FeedbackRoute,
+  DiagnosticsNaisAuthRoute: DiagnosticsNaisAuthRoute,
   ApiInternalIsAliveRoute: ApiInternalIsAliveRoute,
   ApiInternalIsReadyRoute: ApiInternalIsReadyRoute,
   ApiInternalMetricsRoute: ApiInternalMetricsRoute,

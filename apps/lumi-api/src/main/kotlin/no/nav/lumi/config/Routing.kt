@@ -11,6 +11,7 @@ import no.nav.lumi.routes.feedbackRoutes
 import no.nav.lumi.routes.exportRoutes
 import no.nav.lumi.routes.filterRoutes
 import no.nav.lumi.routes.markerRoutes
+import no.nav.lumi.routes.naisAuthDiagnosticsRoutes
 import no.nav.lumi.routes.surveyFacetRoutes
 import no.nav.lumi.routes.statsRoutes
 import no.nav.lumi.routes.internalRoutes
@@ -44,22 +45,28 @@ fun Application.configureRouting() {
                 install(ClientAuthorizationPlugin) {
                     allowedClientId = getDashboardClientId()
                 }
-                
-                // Enforce team authorization based on user's AD groups
-                install(TeamAuthorizationPlugin)
 
-                rateLimit(AnalyticsRateLimit) {
-                    filterRoutes()
-                    feedbackRoutes()
-                    surveyFacetRoutes()
-                    markerRoutes()
-                    statsRoutes()
-                    discoveryRoutes()
-                    teamsRoutes()
-                }
+                // Dev-only auth diagnostics intentionally run before team authorization,
+                // so we can measure and compare the team lookup strategies themselves.
+                naisAuthDiagnosticsRoutes()
 
-                rateLimit(ExportRateLimit) {
-                    exportRoutes()
+                createChild(TeamAuthorizationScopeSelector).apply {
+                    // Enforce team authorization based on user's NAIS team membership.
+                    install(TeamAuthorizationPlugin)
+
+                    rateLimit(AnalyticsRateLimit) {
+                        filterRoutes()
+                        feedbackRoutes()
+                        surveyFacetRoutes()
+                        markerRoutes()
+                        statsRoutes()
+                        discoveryRoutes()
+                        teamsRoutes()
+                    }
+
+                    rateLimit(ExportRateLimit) {
+                        exportRoutes()
+                    }
                 }
             }
         }
@@ -75,4 +82,16 @@ private object CorsScopeSelector : RouteSelector() {
         RouteSelectorEvaluation.Transparent
 
     override fun toString() = "(cors-scope)"
+}
+
+/**
+ * Transparent route selector used to scope team authorization to ordinary analytics routes.
+ * Diagnostic routes in the same authentication/client-auth scope can then measure team
+ * authorization dependencies without triggering TeamAuthorizationPlugin first.
+ */
+private object TeamAuthorizationScopeSelector : RouteSelector() {
+    override suspend fun evaluate(context: RoutingResolveContext, segmentIndex: Int) =
+        RouteSelectorEvaluation.Transparent
+
+    override fun toString() = "(team-authorization-scope)"
 }

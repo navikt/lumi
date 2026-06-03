@@ -20,7 +20,10 @@ const val AZURE_REALM = "azure"
 private val texasClient by lazy { 
     val endpoint = ServerEnv.current.nais.tokenIntrospectionEndpoint
         ?: "http://localhost:8080/introspect"
-    TexasClient(endpoint)
+    TexasClient(
+        introspectionEndpoint = endpoint,
+        tokenExchangeEndpoint = ServerEnv.current.nais.tokenExchangeEndpoint
+    )
 }
 
 fun Application.configureAuth() {

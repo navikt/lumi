@@ -104,6 +104,50 @@ class TexasClientTest : FunSpec({
 
         calls.get() shouldBe 2
     }
+
+    test("exchanges user token through configured Texas endpoint") {
+        var observedUrl: String? = null
+        val engine = MockEngine { request ->
+            observedUrl = request.url.toString()
+            respond(
+                content = """
+                    {
+                      "access_token": "obo-token",
+                      "expires_in": 3599,
+                      "token_type": "Bearer"
+                    }
+                """.trimIndent(),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+        val httpClient = HttpClient(engine) {
+            install(ContentNegotiation) {
+                json(Json {
+                    ignoreUnknownKeys = true
+                    isLenient = true
+                    encodeDefaults = true
+                })
+            }
+        }
+        val client = TexasClient(
+            introspectionEndpoint = "http://texas/introspect",
+            tokenExchangeEndpoint = "http://texas/exchange",
+            clock = fixedClock,
+            client = httpClient,
+        )
+
+        val result = client.exchangeToken(
+            userToken = "subject-token",
+            identityProvider = "azuread",
+            target = "api://dev-gcp.nais-system.nais-api/.default",
+        )
+
+        observedUrl shouldBe "http://texas/exchange"
+        result?.accessToken shouldBe "obo-token"
+        result?.expiresIn shouldBe 3599
+        result?.tokenType shouldBe "Bearer"
+    }
 })
 
 private fun texasClient(

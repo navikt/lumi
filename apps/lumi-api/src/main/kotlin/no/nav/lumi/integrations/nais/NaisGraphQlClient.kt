@@ -19,7 +19,6 @@ import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.Timer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.Json
 import no.nav.lumi.config.appMicrometerRegistry
 import no.nav.lumi.integrations.valkey.TeamCache
@@ -49,6 +48,16 @@ sealed class NaisApiResult<out T> {
     fun isSuccess(): Boolean = this is Success
     fun isError(): Boolean = this is Error
 }
+
+data class NaisViewerDiagnostics(
+    val typename: String?,
+    val teamSlugs: Set<String>
+)
+
+data class NaisTeamEntraGroup(
+    val slug: String,
+    val entraIdGroupId: String?
+)
 
 /**
  * Cache TTL configuration.
@@ -342,6 +351,116 @@ class NaisGraphQlClient private constructor(
         
         return NaisApiResult.Success(teams)
     }
+
+    /**
+     * Run an uncached `me` query with the provided bearer token.
+     * Used only for dev diagnostics to verify whether a Texas OBO token is
+     * accepted by NAIS API as a user session.
+     */
+    suspend fun diagnoseViewerWithBearerToken(bearerToken: String): NaisApiResult<NaisViewerDiagnostics> {
+        val response = try {
+            client.post(graphqlUrl) {
+                contentType(ContentType.Application.Json)
+                header(HttpHeaders.UserAgent, userAgent)
+                header(HttpHeaders.Authorization, "Bearer $bearerToken")
+                setBody(GraphQlRequest(query = VIEWER_TEAMS_QUERY, variables = EmptyVariables()))
+            }
+        } catch (e: Exception) {
+            recordError("Failed to call NAIS GraphQL viewer diagnostics", e)
+            return NaisApiResult.Error("API call failed", e)
+        }
+
+        if (response.status != HttpStatusCode.OK) {
+            val errorMsg = nonOkMessage("NAIS GraphQL viewer diagnostics returned non-OK status", response)
+            recordError(errorMsg)
+            return NaisApiResult.Error(errorMsg)
+        }
+
+        val body = try {
+            response.body<GraphQlResponse<ViewerTeamsData>>()
+        } catch (e: Exception) {
+            recordError("Failed to parse NAIS GraphQL viewer diagnostics response", e)
+            return NaisApiResult.Error("Response parsing failed", e)
+        }
+
+        if (!body.errors.isNullOrEmpty()) {
+            val errorMsg = "NAIS GraphQL returned errors: ${body.errors.joinToString { it.message }}"
+            recordError(errorMsg)
+            return NaisApiResult.Error(errorMsg)
+        }
+
+        val me = body.data?.me
+        val teams = if (me?.typename == "User") {
+            me.teams?.nodes
+                ?.mapNotNull { it.team.slug }
+                ?.toSet()
+                ?: emptySet()
+        } else {
+            emptySet()
+        }
+
+        return NaisApiResult.Success(
+            NaisViewerDiagnostics(
+                typename = me?.typename,
+                teamSlugs = teams
+            )
+        )
+    }
+
+    /**
+     * Run an uncached user lookup that also returns NAIS team Entra ID group ids.
+     * This lets us compare current NAIS membership with the validated Texas
+     * `groups` claim without logging or returning user identifiers.
+     */
+    suspend fun getTeamEntraGroupsForUserResult(email: String): NaisApiResult<List<NaisTeamEntraGroup>> {
+        val response = try {
+            client.post(graphqlUrl) {
+                contentType(ContentType.Application.Json)
+                header(HttpHeaders.UserAgent, userAgent)
+                header(HttpHeaders.Authorization, "Bearer $apiKey")
+                setBody(
+                    GraphQlRequest(
+                        query = USER_TEAMS_WITH_ENTRA_GROUPS_QUERY,
+                        variables = UserTeamsVariables(email = email)
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            recordError("Failed to call NAIS GraphQL for user team external resources", e)
+            return NaisApiResult.Error("API call failed", e)
+        }
+
+        if (response.status != HttpStatusCode.OK) {
+            val errorMsg = nonOkMessage("NAIS GraphQL user team external resources returned non-OK status", response)
+            recordError(errorMsg)
+            return NaisApiResult.Error(errorMsg)
+        }
+
+        val body = try {
+            response.body<GraphQlResponse<UserTeamsData>>()
+        } catch (e: Exception) {
+            recordError("Failed to parse NAIS GraphQL user team external resources response", e)
+            return NaisApiResult.Error("Response parsing failed", e)
+        }
+
+        if (!body.errors.isNullOrEmpty()) {
+            val errorMsg = "NAIS GraphQL returned errors: ${body.errors.joinToString { it.message }}"
+            recordError(errorMsg)
+            return NaisApiResult.Error(errorMsg)
+        }
+
+        val teams = body.data?.user?.teams?.nodes
+            ?.mapNotNull { node ->
+                val slug = node.team.slug ?: return@mapNotNull null
+                NaisTeamEntraGroup(
+                    slug = slug,
+                    entraIdGroupId = node.team.externalResources?.entraIDGroup?.groupID
+                )
+            }
+            ?: emptyList()
+
+        return NaisApiResult.Success(teams)
+    }
     
     /**
      * Check if the NAIS API is healthy.
@@ -416,6 +535,29 @@ class NaisGraphQlClient private constructor(
         log.warn(message, cause)
     }
 
+    private suspend fun nonOkMessage(prefix: String, response: io.ktor.client.statement.HttpResponse): String {
+        val bodySnippet = try {
+            response.bodyAsText().take(500)
+        } catch (_: Exception) {
+            null
+        }
+        val wwwAuthenticate = if (response.status == HttpStatusCode.Unauthorized || response.status == HttpStatusCode.Forbidden) {
+            response.headers[HttpHeaders.WWWAuthenticate]
+        } else {
+            null
+        }
+
+        return buildString {
+            append("$prefix: ${response.status}")
+            if (!wwwAuthenticate.isNullOrBlank()) {
+                append(" (www-authenticate=$wwwAuthenticate)")
+            }
+            if (!bodySnippet.isNullOrBlank()) {
+                append(" (body=${bodySnippet.replace("\n", " ")})")
+            }
+        }
+    }
+
     companion object {
         private fun tokenFormat(token: String): String {
             // Avoid logging secrets; only log broad format.
@@ -447,6 +589,25 @@ class NaisGraphQlClient private constructor(
                             nodes {
                                 team {
                                     slug
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        private val USER_TEAMS_WITH_ENTRA_GROUPS_QUERY = """
+            query UserTeamsWithEntraGroups(${'$'}email: String) {
+                user(email: ${'$'}email) {
+                    teams(first: 200) {
+                        nodes {
+                            team {
+                                slug
+                                externalResources {
+                                    entraIDGroup {
+                                        groupID
+                                    }
                                 }
                             }
                         }
@@ -615,5 +776,15 @@ private data class TeamMemberNode(
 private data class TeamNode(
     val slug: String? = null,
     @SerialName("externalResources")
-    val externalResources: JsonObject? = null
+    val externalResources: TeamExternalResources? = null
+)
+
+@Serializable
+private data class TeamExternalResources(
+    val entraIDGroup: TeamEntraIDGroup? = null
+)
+
+@Serializable
+private data class TeamEntraIDGroup(
+    val groupID: String? = null
 )

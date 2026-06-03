@@ -531,6 +531,148 @@ class NaisGraphQlClientTest {
         assertEquals(Duration.ofMinutes(5), CacheTtl.NO_TEAMS)
         assertEquals(Duration.ofSeconds(30), CacheTtl.ERROR)
     }
+
+    @Test
+    fun `diagnoseViewerWithBearerToken sends provided bearer token`() = runBlocking {
+        val responseJson = """
+            {
+                "data": {
+                    "me": {
+                        "__typename": "User",
+                        "teams": {
+                            "nodes": [
+                                {"team": {"slug": "team-esyfo"}}
+                            ]
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        var observedAuth: String? = null
+        var observedQuery: String? = null
+        val mockEngine = MockEngine { request ->
+            observedAuth = request.headers[HttpHeaders.Authorization]
+            val bodyText = bodyAsText(request.body)
+            observedQuery = Json.parseToJsonElement(bodyText)
+                .jsonObject["query"]
+                ?.jsonPrimitive
+                ?.content
+
+            respond(
+                content = responseJson,
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+
+        val mockClient = HttpClient(mockEngine) {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true; isLenient = true })
+            }
+        }
+
+        val client = NaisGraphQlClient.forTesting(
+            graphqlUrl = testUrl,
+            apiKey = testApiKey,
+            teamCache = teamCache,
+            clock = fixedClock,
+            client = mockClient
+        )
+
+        val result = client.diagnoseViewerWithBearerToken("obo-token")
+
+        assertEquals("Bearer obo-token", observedAuth)
+        assertTrue(observedQuery!!.contains("query ViewerTeams"))
+        assertTrue(result is NaisApiResult.Success)
+        result as NaisApiResult.Success
+        assertEquals("User", result.value.typename)
+        assertEquals(setOf("team-esyfo"), result.value.teamSlugs)
+    }
+
+    @Test
+    fun `getTeamEntraGroupsForUserResult returns external Entra group ids`() = runBlocking {
+        val responseJson = """
+            {
+                "data": {
+                    "user": {
+                        "teams": {
+                            "nodes": [
+                                {
+                                    "team": {
+                                        "slug": "team-esyfo",
+                                        "externalResources": {
+                                            "entraIDGroup": {
+                                                "groupID": "5066bb56-7f19-4b49-ae48-f1ba66abf546"
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "team": {
+                                        "slug": "flex",
+                                        "externalResources": {
+                                            "entraIDGroup": null
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        var observedAuth: String? = null
+        var observedEmail: String? = null
+        var observedQuery: String? = null
+        val mockEngine = MockEngine { request ->
+            observedAuth = request.headers[HttpHeaders.Authorization]
+            val bodyText = bodyAsText(request.body)
+            val json = Json.parseToJsonElement(bodyText).jsonObject
+            observedQuery = json["query"]?.jsonPrimitive?.content
+            observedEmail = json["variables"]
+                ?.jsonObject
+                ?.get("email")
+                ?.jsonPrimitive
+                ?.content
+
+            respond(
+                content = responseJson,
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+
+        val mockClient = HttpClient(mockEngine) {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true; isLenient = true })
+            }
+        }
+
+        val client = NaisGraphQlClient.forTesting(
+            graphqlUrl = testUrl,
+            apiKey = testApiKey,
+            teamCache = teamCache,
+            clock = fixedClock,
+            client = mockClient
+        )
+
+        val result = client.getTeamEntraGroupsForUserResult("test@nav.no")
+
+        assertEquals("Bearer $testApiKey", observedAuth)
+        assertEquals("test@nav.no", observedEmail)
+        assertTrue(observedQuery!!.contains("externalResources"))
+        assertTrue(result is NaisApiResult.Success)
+        result as NaisApiResult.Success
+        assertEquals(
+            listOf(
+                NaisTeamEntraGroup("team-esyfo", "5066bb56-7f19-4b49-ae48-f1ba66abf546"),
+                NaisTeamEntraGroup("flex", null),
+            ),
+            result.value
+        )
+    }
     
     @Test
     fun `users with teams get cached with longer TTL`() = runBlocking {

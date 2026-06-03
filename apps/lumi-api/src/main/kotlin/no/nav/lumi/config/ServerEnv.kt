@@ -83,7 +83,9 @@ data class ServerEnv(
         /** Current cluster: dev-gcp, prod-gcp, or null for local */
         val clusterName: String?,
         /** Token introspection endpoint for Texas sidecar */
-        val tokenIntrospectionEndpoint: String?
+        val tokenIntrospectionEndpoint: String?,
+        /** Token exchange endpoint for Texas sidecar */
+        val tokenExchangeEndpoint: String?
     ) {
         val isLocal: Boolean get() = clusterName == null
         val isDev: Boolean get() = clusterName == "dev-gcp"
@@ -93,12 +95,14 @@ data class ServerEnv(
         companion object {
             fun fromEnvironment() = NaisEnv(
                 clusterName = System.getenv("NAIS_CLUSTER_NAME"),
-                tokenIntrospectionEndpoint = System.getenv("NAIS_TOKEN_INTROSPECTION_ENDPOINT")
+                tokenIntrospectionEndpoint = System.getenv("NAIS_TOKEN_INTROSPECTION_ENDPOINT"),
+                tokenExchangeEndpoint = System.getenv("NAIS_TOKEN_EXCHANGE_ENDPOINT")
             )
             
             fun forLocal() = NaisEnv(
                 clusterName = null,
-                tokenIntrospectionEndpoint = null
+                tokenIntrospectionEndpoint = null,
+                tokenExchangeEndpoint = null
             )
         }
     }

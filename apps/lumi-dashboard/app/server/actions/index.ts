@@ -19,6 +19,8 @@ export { fetchDiscoveryServerFn } from "./fetchDiscovery";
 export { fetchFeedbackServerFn } from "./fetchFeedback";
 // Filter Bootstrap
 export { fetchFilterBootstrapServerFn } from "./fetchFilterBootstrap";
+// Diagnostics
+export { fetchNaisAuthDiagnosticsServerFn } from "./fetchNaisAuthDiagnostics";
 // Stats
 export { fetchStatsServerFn } from "./fetchStats";
 // Surveys

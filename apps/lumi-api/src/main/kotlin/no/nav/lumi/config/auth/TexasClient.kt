@@ -34,6 +34,7 @@ private val log = LoggerFactory.getLogger("TexasClient")
  */
 class TexasClient(
     private val introspectionEndpoint: String,
+    private val tokenExchangeEndpoint: String? = null,
     private val clock: Clock = Clock.systemUTC(),
     private val client: HttpClient = defaultHttpClient()
 ) {
@@ -89,6 +90,14 @@ class TexasClient(
 
     private val introspectionTimer = Timer.builder("texas_introspection_duration_seconds")
         .description("Duration of Texas introspection HTTP requests")
+        .register(appMicrometerRegistry)
+
+    private val tokenExchangeErrorCounter = Counter.builder("texas_token_exchange_errors_total")
+        .description("Number of Texas token exchange errors")
+        .register(appMicrometerRegistry)
+
+    private val tokenExchangeTimer = Timer.builder("texas_token_exchange_duration_seconds")
+        .description("Duration of Texas token exchange HTTP requests")
         .register(appMicrometerRegistry)
 
     /**
@@ -163,6 +172,53 @@ class TexasClient(
         }
     }
 
+    /**
+     * Exchange an inbound user token for an on-behalf-of token targeting another API.
+     *
+     * Texas handles token caching; this method intentionally does not add a second
+     * application cache around exchange results.
+     */
+    suspend fun exchangeToken(
+        userToken: String,
+        identityProvider: String,
+        target: String,
+        skipCache: Boolean = false
+    ): TexasTokenExchangeResult? {
+        val endpoint = tokenExchangeEndpoint
+        if (endpoint.isNullOrBlank()) {
+            log.warn("Texas token exchange endpoint is not configured")
+            return null
+        }
+
+        val start = System.nanoTime()
+        return try {
+            val response = client.post(endpoint) {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    TexasTokenExchangeRequest(
+                        identityProvider = identityProvider,
+                        target = target,
+                        userToken = userToken,
+                        skipCache = skipCache.takeIf { it }
+                    )
+                )
+            }
+
+            if (response.status != HttpStatusCode.OK) {
+                log.warn("Texas token exchange failed with status: ${response.status}")
+                return null
+            }
+
+            response.body<TexasTokenExchangeResult>()
+        } catch (e: Exception) {
+            tokenExchangeErrorCounter.increment()
+            log.error("Failed to exchange token with Texas", e)
+            null
+        } finally {
+            tokenExchangeTimer.record(Duration.ofNanos(System.nanoTime() - start))
+        }
+    }
+
     private fun cachedResult(cacheKey: String): TexasIntrospectionResult? {
         val entry = cache[cacheKey] ?: return null
         if (entry.expiresAt.isAfter(clock.instant())) {
@@ -216,6 +272,27 @@ data class TexasIntrospectionRequest(
     val identityProvider: String,
     @SerialName("token")
     val token: String
+)
+
+@Serializable
+data class TexasTokenExchangeRequest(
+    @SerialName("identity_provider")
+    val identityProvider: String,
+    val target: String,
+    @SerialName("user_token")
+    val userToken: String,
+    @SerialName("skip_cache")
+    val skipCache: Boolean? = null
+)
+
+@Serializable
+data class TexasTokenExchangeResult(
+    @SerialName("access_token")
+    val accessToken: String,
+    @SerialName("expires_in")
+    val expiresIn: Long? = null,
+    @SerialName("token_type")
+    val tokenType: String? = null
 )
 
 @Serializable
