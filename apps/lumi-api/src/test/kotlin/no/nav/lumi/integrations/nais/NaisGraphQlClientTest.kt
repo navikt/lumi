@@ -603,7 +603,7 @@ class NaisGraphQlClientTest {
                                         "slug": "team-esyfo",
                                         "externalResources": {
                                             "entraIDGroup": {
-                                                "groupID": "5066bb56-7f19-4b49-ae48-f1ba66abf546"
+                                                "groupID": "1fac48f0-9744-4d44-a5b5-e2c8aa2ca42b"
                                             }
                                         }
                                     }
@@ -667,7 +667,7 @@ class NaisGraphQlClientTest {
         result as NaisApiResult.Success
         assertEquals(
             listOf(
-                NaisTeamEntraGroup("team-esyfo", "5066bb56-7f19-4b49-ae48-f1ba66abf546"),
+                NaisTeamEntraGroup("team-esyfo", "1fac48f0-9744-4d44-a5b5-e2c8aa2ca42b"),
                 NaisTeamEntraGroup("flex", null),
             ),
             result.value

@@ -258,8 +258,8 @@ fun Application.testModule(
                         clientId = "dev-gcp:team-esyfo:lumi-dashboard",
                         // Groups are kept for realism, but team access is resolved via NAIS lookup in tests.
                         groups = listOf(
-                            "5066bb56-7f19-4b49-ae48-f1ba66abf546", // teamsykefravr
-                            "ef4e9824-6f3a-4933-8f40-6edf5233d4d2", // team-esyfo
+                            "7c0dd32a-1896-4e14-96f6-a7eadc73f5f5", // teamsykefravr
+                            "1fac48f0-9744-4d44-a5b5-e2c8aa2ca42b", // team-esyfo
                             "00000000-0000-0000-0000-000000000001", // flex (test)
                             "00000000-0000-0000-0000-000000000002"  // team-test
                         )

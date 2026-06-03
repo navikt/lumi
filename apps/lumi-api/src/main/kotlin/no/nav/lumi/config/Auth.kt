@@ -56,8 +56,8 @@ fun Application.configureAuth() {
                             clientId = env.auth.dashboardClientId,
                             // Include both groups for local development
                             groups = listOf(
-                                "5066bb56-7f19-4b49-ae48-f1ba66abf546", // isyfo
-                                "ef4e9824-6f3a-4933-8f40-6edf5233d4d2"  // esyfo
+                                "7c0dd32a-1896-4e14-96f6-a7eadc73f5f5", // teamsykefravr
+                                "1fac48f0-9744-4d44-a5b5-e2c8aa2ca42b"  // team-esyfo
                             )
                         )
                     } else null

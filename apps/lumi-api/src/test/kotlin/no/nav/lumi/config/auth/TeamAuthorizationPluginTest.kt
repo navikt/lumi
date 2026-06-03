@@ -256,7 +256,7 @@ class TeamAuthorizationPluginTest {
                             name = "Test User",
                             email = "test@nav.no",
                             clientId = "client",
-                            groups = listOf("ef4e9824-6f3a-4933-8f40-6edf5233d4d2"),
+                            groups = listOf("1fac48f0-9744-4d44-a5b5-e2c8aa2ca42b"),
                         )
                     }
                 }
@@ -266,8 +266,8 @@ class TeamAuthorizationPluginTest {
                 authenticate(AZURE_REALM) {
                     install(TeamAuthorizationPlugin) {
                         teamEntraGroups = mapOf(
-                            "team-esyfo" to "ef4e9824-6f3a-4933-8f40-6edf5233d4d2",
-                            "teamsykefravr" to "5066bb56-7f19-4b49-ae48-f1ba66abf546",
+                            "team-esyfo" to "1fac48f0-9744-4d44-a5b5-e2c8aa2ca42b",
+                            "teamsykefravr" to "7c0dd32a-1896-4e14-96f6-a7eadc73f5f5",
                         )
                         naisTeamLookupProvider = { ErroringNaisTeamLookup("should not be called") }
                     }
@@ -359,7 +359,7 @@ class TeamAuthorizationPluginTest {
                             email = "test@nav.no",
                             clientId = "client",
                             // Groups should not grant access without NAIS team membership.
-                            groups = listOf("ef4e9824-6f3a-4933-8f40-6edf5233d4d2"),
+                            groups = listOf("1fac48f0-9744-4d44-a5b5-e2c8aa2ca42b"),
                         )
                     }
                 }
