@@ -28,6 +28,11 @@ export interface NaisAuthDiagnosticsResponse {
     teamsMatchedByTokenGroups?: number | null;
     matchedTeamSlugs: string[];
     missingGroupMatchTeamSlugs: string[];
+    teamGroupMappings: Array<{
+      slug: string;
+      entraIdGroupId?: string | null;
+      matchedByTokenGroup: boolean;
+    }>;
     message?: string | null;
   } | null;
   meTargets: Array<{

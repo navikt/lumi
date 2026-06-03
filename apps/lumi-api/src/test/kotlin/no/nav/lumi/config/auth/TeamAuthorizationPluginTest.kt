@@ -242,6 +242,61 @@ class TeamAuthorizationPluginTest {
     }
 
     @Test
+    fun `uses token group mapping without calling NAIS lookup`() = testApplication {
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureStatusPages()
+            install(Authentication) {
+                bearer(AZURE_REALM) {
+                    authenticate { _ ->
+                        BrukerPrincipal(
+                            navIdent = "Z123456",
+                            name = "Test User",
+                            email = "test@nav.no",
+                            clientId = "client",
+                            groups = listOf("ef4e9824-6f3a-4933-8f40-6edf5233d4d2"),
+                        )
+                    }
+                }
+            }
+
+            routing {
+                authenticate(AZURE_REALM) {
+                    install(TeamAuthorizationPlugin) {
+                        teamEntraGroups = mapOf(
+                            "team-esyfo" to "ef4e9824-6f3a-4933-8f40-6edf5233d4d2",
+                            "teamsykefravr" to "5066bb56-7f19-4b49-ae48-f1ba66abf546",
+                        )
+                        naisTeamLookupProvider = { ErroringNaisTeamLookup("should not be called") }
+                    }
+
+                    get("/team") {
+                        call.respond(
+                            TeamResponse(
+                                team = call.authorizedTeam,
+                                teams = call.authorizedTeams.sorted(),
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
+        val response = client.get("/team?team=team-esyfo") {
+            header(HttpHeaders.Authorization, "Bearer whatever")
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.bodyAsText()
+        val json = Json.parseToJsonElement(body).jsonObject
+        assertEquals("team-esyfo", json["team"]?.jsonPrimitive?.content)
+        val teams = json["teams"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
+        assertEquals(listOf("team-esyfo"), teams)
+    }
+
+    @Test
     fun `falls back to viewer teams when email lookup is empty`() = testApplication {
         application {
             install(ContentNegotiation) {

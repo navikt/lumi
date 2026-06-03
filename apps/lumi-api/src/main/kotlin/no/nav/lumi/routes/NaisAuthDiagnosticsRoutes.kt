@@ -164,12 +164,12 @@ private suspend fun diagnoseUserTeamEntraGroups(
 
     return when (result) {
         is NaisApiResult.Success -> {
-            val tokenGroups = principal.groups.toSet()
+            val tokenGroups = principal.groups.mapTo(mutableSetOf()) { it.lowercase() }
             val teams = result.value
             val teamsWithGroup = teams.filter { !it.entraIdGroupId.isNullOrBlank() }
-            val matchedTeams = teamsWithGroup.filter { it.entraIdGroupId in tokenGroups }
+            val matchedTeams = teamsWithGroup.filter { it.entraIdGroupId?.lowercase() in tokenGroups }
             val missingGroupMatch = teams.filter { team ->
-                team.entraIdGroupId.isNullOrBlank() || team.entraIdGroupId !in tokenGroups
+                team.entraIdGroupId.isNullOrBlank() || team.entraIdGroupId.lowercase() !in tokenGroups
             }
 
             UserTeamEntraGroupDiagnostics(
@@ -180,6 +180,13 @@ private suspend fun diagnoseUserTeamEntraGroups(
                 teamsMatchedByTokenGroups = matchedTeams.size,
                 matchedTeamSlugs = matchedTeams.map { it.slug }.sorted(),
                 missingGroupMatchTeamSlugs = missingGroupMatch.map { it.slug }.sorted(),
+                teamGroupMappings = teams.map { team ->
+                    TeamEntraGroupMatchDiagnostics(
+                        slug = team.slug,
+                        entraIdGroupId = team.entraIdGroupId,
+                        matchedByTokenGroup = !team.entraIdGroupId.isNullOrBlank() && team.entraIdGroupId.lowercase() in tokenGroups,
+                    )
+                }.sortedBy { it.slug },
             )
         }
         is NaisApiResult.Error -> UserTeamEntraGroupDiagnostics(
@@ -260,7 +267,15 @@ data class UserTeamEntraGroupDiagnostics(
     val teamsMatchedByTokenGroups: Int? = null,
     val matchedTeamSlugs: List<String> = emptyList(),
     val missingGroupMatchTeamSlugs: List<String> = emptyList(),
+    val teamGroupMappings: List<TeamEntraGroupMatchDiagnostics> = emptyList(),
     val message: String? = null,
+)
+
+@Serializable
+data class TeamEntraGroupMatchDiagnostics(
+    val slug: String,
+    val entraIdGroupId: String? = null,
+    val matchedByTokenGroup: Boolean,
 )
 
 @Serializable

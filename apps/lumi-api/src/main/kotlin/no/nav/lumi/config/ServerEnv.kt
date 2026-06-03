@@ -112,18 +112,38 @@ data class ServerEnv(
      */
     data class AuthEnv(
         /** Allowed client ID for Lumi dashboard (frontend) */
-        val dashboardClientId: String
+        val dashboardClientId: String,
+        /** Maps NAIS team slug to the Entra ID group that grants access to that team. */
+        val teamEntraGroups: Map<String, String>
     ) {
         companion object {
             fun fromEnvironment(clusterName: String?) = AuthEnv(
                 dashboardClientId =
                     System.getenv("LUMI_DASHBOARD_CLIENT_ID")
-                        ?: "${clusterName ?: "dev-gcp"}:team-esyfo:lumi-dashboard"
+                        ?: "${clusterName ?: "dev-gcp"}:team-esyfo:lumi-dashboard",
+                teamEntraGroups = parseTeamEntraGroups(System.getenv("LUMI_TEAM_ENTRA_GROUPS")),
             )
             
             fun forLocal() = AuthEnv(
-                dashboardClientId = "dev-gcp:team-esyfo:lumi-dashboard"
+                dashboardClientId = "dev-gcp:team-esyfo:lumi-dashboard",
+                teamEntraGroups = emptyMap(),
             )
+
+            private fun parseTeamEntraGroups(value: String?): Map<String, String> {
+                if (value.isNullOrBlank()) return emptyMap()
+
+                return value
+                    .split(",", ";")
+                    .mapNotNull { entry ->
+                        val parts = entry.split("=", limit = 2)
+                        if (parts.size != 2) return@mapNotNull null
+
+                        val team = parts[0].trim()
+                        val groupId = parts[1].trim().lowercase()
+                        if (team.isBlank() || groupId.isBlank()) null else team to groupId
+                    }
+                    .toMap()
+            }
         }
     }
     
