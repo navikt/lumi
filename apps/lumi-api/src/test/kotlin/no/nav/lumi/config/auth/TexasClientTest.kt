@@ -1,6 +1,7 @@
 package no.nav.lumi.config.auth
 
 import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIOEngineConfig
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respondError
 import io.ktor.client.engine.mock.respond
@@ -13,6 +14,7 @@ import io.ktor.serialization.kotlinx.json.json
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.coroutines.async
@@ -110,6 +112,28 @@ class TexasClientTest : FunSpec({
         client.introspect("token", identityProvider = "entra_id") shouldBe null
 
         calls.get() shouldBe 2
+    }
+
+    test("requests connection close for texas introspection calls") {
+        var connectionHeader: String? = null
+        val client = texasClient(AtomicInteger(), fixedClock) { request ->
+            connectionHeader = request.headers[HttpHeaders.Connection]
+            jsonReply(activeResponse(exp = fixedClock.instant().epochSecond + 3600))
+        }
+
+        val result = client.introspect("token", identityProvider = "entra_id")
+
+        result shouldNotBe null
+        connectionHeader shouldBe "close"
+    }
+
+    test("configures CIO engine for no keep-alive and a single connect attempt") {
+        val engineConfig = CIOEngineConfig()
+
+        engineConfig.configureTexasSidecarEndpoint()
+
+        engineConfig.endpoint.keepAliveTime shouldBe 0L
+        engineConfig.endpoint.connectAttempts shouldBe 1
     }
 
     test("retries once on transient transport timeout before succeeding") {
@@ -225,11 +249,11 @@ private fun texasClient(
     calls: AtomicInteger,
     fixedClock: Clock,
     meterRegistry: MeterRegistry = SimpleMeterRegistry(),
-    handler: suspend () -> MockTexasReply,
+    handler: suspend (io.ktor.client.request.HttpRequestData) -> MockTexasReply,
 ): TexasClient {
     val engine = MockEngine {
         calls.incrementAndGet()
-        val reply = handler()
+        val reply = handler(it)
         if (reply.body == null) {
             respondError(reply.status)
         } else {

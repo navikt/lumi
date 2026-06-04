@@ -33,6 +33,8 @@ import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
 
 private val log = LoggerFactory.getLogger("TexasClient")
+private const val ENGINE_CONNECT_ATTEMPTS = 1
+private const val ENGINE_KEEP_ALIVE_TIME_MS = 0L
 
 /**
  * Client for NAIS Texas sidecar - Token Exchange as a Service.
@@ -58,6 +60,9 @@ class TexasClient(
 
         private fun defaultHttpClient(): HttpClient {
             return HttpClient(CIO) {
+                engine {
+                    configureTexasSidecarEndpoint()
+                }
                 install(HttpTimeout) {
                     connectTimeoutMillis = CONNECT_TIMEOUT_MS
                     requestTimeoutMillis = REQUEST_TIMEOUT_MS
@@ -162,6 +167,10 @@ class TexasClient(
                     // Introspection happens per request in NAIS; keep this at DEBUG to avoid log spam.
                     log.debug("Introspecting token with Texas: $introspectionEndpoint")
                     val response = client.post(introspectionEndpoint) {
+                        // Texas runs as a localhost sidecar. Ask the HTTP client/server to close
+                        // the connection after each introspection so we do not reuse a stale
+                        // half-dead keep-alive socket that can consume most of the request budget.
+                        header(HttpHeaders.Connection, "close")
                         contentType(ContentType.Application.Json)
                         setBody(TexasIntrospectionRequest(
                             identityProvider = identityProvider,
@@ -352,6 +361,16 @@ class TexasClient(
     
     fun close() {
         client.close()
+    }
+}
+
+internal fun CIOEngineConfig.configureTexasSidecarEndpoint() {
+    endpoint {
+        // Texas runs as a localhost sidecar. Keep CIO from retaining idle pooled sockets
+        // between requests, and avoid extra engine-level connection retries on top of the
+        // explicit single application-level retry in requestIntrospection().
+        keepAliveTime = ENGINE_KEEP_ALIVE_TIME_MS
+        connectAttempts = ENGINE_CONNECT_ATTEMPTS
     }
 }
 
