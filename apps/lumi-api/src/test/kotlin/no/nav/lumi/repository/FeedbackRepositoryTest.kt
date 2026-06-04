@@ -777,6 +777,84 @@ class FeedbackRepositoryTest : FunSpec({
             content.map { it.id }.toSet() shouldBe setOf("phrase-match-1", "phrase-match-2")
         }
 
+        test("filters by phrase before pagination and keeps tags on paged content") {
+            insertTestFeedbackWithJson(
+                id = "phrase-newest",
+                team = "team-test",
+                app = "app-test",
+                tags = "alpha,beta",
+                opprettet = OffsetDateTime.parse("2026-01-03T10:00:00Z"),
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-phrase",
+                        "answers": [
+                            {
+                                "fieldId": "feedback",
+                                "fieldType": "TEXT",
+                                "question": {"label": "Hvorfor?"},
+                                "value": {"type": "text", "text": "Det er vanskelig å svare raskt"}
+                            }
+                        ]
+                    }
+                """.trimIndent()
+            )
+            insertTestFeedbackWithJson(
+                id = "phrase-middle",
+                team = "team-test",
+                app = "app-test",
+                tags = "gamma",
+                opprettet = OffsetDateTime.parse("2026-01-02T10:00:00Z"),
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-phrase",
+                        "answers": [
+                            {
+                                "fieldId": "feedback",
+                                "fieldType": "TEXT",
+                                "question": {"label": "Hvorfor?"},
+                                "value": {"type": "text", "text": "Dette var vanskelige svaret å gi"}
+                            }
+                        ]
+                    }
+                """.trimIndent()
+            )
+            insertTestFeedbackWithJson(
+                id = "phrase-oldest",
+                team = "team-test",
+                app = "app-test",
+                tags = "delta",
+                opprettet = OffsetDateTime.parse("2026-01-01T10:00:00Z"),
+                feedbackJson = """
+                    {
+                        "surveyId": "survey-phrase",
+                        "answers": [
+                            {
+                                "fieldId": "feedback",
+                                "fieldType": "TEXT",
+                                "question": {"label": "Hvorfor?"},
+                                "value": {"type": "text", "text": "Det ble vanskelig å svare senere"}
+                            }
+                        ]
+                    }
+                """.trimIndent()
+            )
+
+            val (content, total, page) = repository.findPaginated(
+                FeedbackQuery(
+                    team = "team-test",
+                    page = 1,
+                    size = 1,
+                    phraseFilter = PhraseFilter(fieldId = "feedback", surface = "vanskelig svare")
+                )
+            )
+
+            total shouldBe 3
+            page shouldBe 1
+            content shouldHaveSize 1
+            content.first().id shouldBe "phrase-middle"
+            content.first().tags shouldBe listOf("gamma")
+        }
+
         test("filters by segments") {
             insertTestFeedbackWithJson(
                 id = "segment-match",

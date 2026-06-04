@@ -332,7 +332,7 @@ class FeedbackRepository(
     ): Triple<List<FeedbackDto>, Long, Int> {
         val expectedStemKey = buildPhraseStemKey(phraseFilter.surface)
 
-        val snapshot = dbQuery {
+        val records = dbQuery {
             val dbQuery = FeedbackTable.selectAll()
             dbQuery.andWhere { FeedbackTable.team eq query.team }
             query.app?.let { app ->
@@ -342,29 +342,27 @@ class FeedbackRepository(
             }
             applyCommonFilters(dbQuery, query, log)
 
-            val matchingRecords = dbQuery
+            dbQuery
                 .orderBy(FeedbackTable.opprettet to SortOrder.DESC)
                 .map { it.toDbRecord() }
-                .filter { recordMatchesPhraseFilter(it, phraseFilter.fieldId, expectedStemKey) }
-
-            val total = matchingRecords.size.toLong()
-            val totalPages = if (query.size > 0) ceil(total.toDouble() / query.size).toInt() else 0
-            val page = query.page ?: (totalPages - 1).coerceAtLeast(0)
-            val offset = page * query.size
-            val pageRecords = if (query.size > 0) {
-                matchingRecords.drop(offset).take(query.size)
-            } else {
-                matchingRecords
-            }
-
-            val tagsById = findTagsByFeedbackIds(pageRecords.map { it.id })
-            PaginatedSnapshot(pageRecords, tagsById, total, page)
         }
 
-        val dtos = snapshot.records.map { record ->
-            record.toDto(snapshot.tagsById[record.id].orEmpty())
+        val matchingRecords = records.filter { recordMatchesPhraseFilter(it, phraseFilter.fieldId, expectedStemKey) }
+        val total = matchingRecords.size.toLong()
+        val totalPages = if (query.size > 0) ceil(total.toDouble() / query.size).toInt() else 0
+        val page = query.page ?: (totalPages - 1).coerceAtLeast(0)
+        val offset = page * query.size
+        val pageRecords = if (query.size > 0) {
+            matchingRecords.drop(offset).take(query.size)
+        } else {
+            matchingRecords
         }
-        return Triple(dtos, snapshot.total, snapshot.page)
+        val tagsById = dbQuery { findTagsByFeedbackIds(pageRecords.map { it.id }) }
+
+        val dtos = pageRecords.map { record ->
+            record.toDto(tagsById[record.id].orEmpty())
+        }
+        return Triple(dtos, total, page)
     }
 
     private fun recordMatchesPhraseFilter(record: FeedbackDbRecord, fieldId: String, expectedStemKey: String): Boolean {
