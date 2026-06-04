@@ -44,9 +44,6 @@ spec:
       claims:
         extra:
           - "NAVident"
-        groups:
-          - id: "1fac48f0-9744-4d44-a5b5-e2c8aa2ca42b" # team-esyfo
-          - id: "7c0dd32a-1896-4e14-96f6-a7eadc73f5f5" # teamsykefravr
   accessPolicy:
     inbound:
       rules:
@@ -81,8 +78,6 @@ spec:
       value: dev-gcp
     - name: LUMI_DASHBOARD_CLIENT_ID
       value: dev-gcp:team-esyfo:lumi-dashboard
-    - name: LUMI_TEAM_ENTRA_GROUPS
-      value: team-esyfo=1fac48f0-9744-4d44-a5b5-e2c8aa2ca42b,teamsykefravr=7c0dd32a-1896-4e14-96f6-a7eadc73f5f5
     - name: NAIS_API_GRAPHQL_URL
       value: https://console.nav.cloud.nais.io/graphql
     - name: LUMI_CORS_ALLOWED_ORIGINS

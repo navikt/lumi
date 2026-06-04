@@ -1,7 +1,6 @@
 package no.nav.lumi.config
 
 import org.slf4j.LoggerFactory
-import java.util.UUID
 
 /**
  * Type-safe environment configuration for the application.
@@ -110,20 +109,16 @@ data class ServerEnv(
     data class AuthEnv(
         /** Allowed client ID for Lumi dashboard (frontend) */
         val dashboardClientId: String,
-        /** Maps NAIS team slug to the Entra ID group that grants access to that team. */
-        val teamEntraGroups: Map<String, String>
     ) {
         companion object {
             fun fromEnvironment(clusterName: String?) = AuthEnv(
                 dashboardClientId =
                     System.getenv("LUMI_DASHBOARD_CLIENT_ID")
                         ?: "${clusterName ?: "dev-gcp"}:team-esyfo:lumi-dashboard",
-                teamEntraGroups = parseTeamEntraGroups(System.getenv("LUMI_TEAM_ENTRA_GROUPS")),
             )
             
             fun forLocal() = AuthEnv(
                 dashboardClientId = "dev-gcp:team-esyfo:lumi-dashboard",
-                teamEntraGroups = emptyMap(),
             )
         }
     }
@@ -201,54 +196,3 @@ data class ServerEnv(
         }
     }
 }
-
-internal fun parseTeamEntraGroups(value: String?): Map<String, String> {
-    if (value.isNullOrBlank()) return emptyMap()
-
-    val mappings = linkedMapOf<String, String>()
-    val teamsByGroupId = linkedMapOf<String, String>()
-
-    value.split(",", ";")
-        .forEachIndexed { index, rawEntry ->
-            val entry = rawEntry.trim()
-            val entryNumber = index + 1
-
-            require(entry.isNotBlank()) {
-                "LUMI_TEAM_ENTRA_GROUPS contains an empty entry at position $entryNumber"
-            }
-
-            val parts = entry.split("=", limit = 2)
-            require(parts.size == 2) {
-                "LUMI_TEAM_ENTRA_GROUPS entry '$entry' must use format team=group-uuid"
-            }
-
-            val team = parts[0].trim()
-            val groupId = parts[1].trim()
-
-            require(team.isNotBlank()) {
-                "LUMI_TEAM_ENTRA_GROUPS entry '$entry' has blank team"
-            }
-            require(groupId.isNotBlank()) {
-                "LUMI_TEAM_ENTRA_GROUPS entry '$entry' has blank group UUID"
-            }
-            require(isValidUuid(groupId)) {
-                "LUMI_TEAM_ENTRA_GROUPS entry '$entry' has invalid group UUID"
-            }
-            require(team !in mappings) {
-                "LUMI_TEAM_ENTRA_GROUPS contains duplicate mapping for team '$team'"
-            }
-            val normalizedGroupId = groupId.lowercase()
-            val existingTeam = teamsByGroupId[normalizedGroupId]
-            require(existingTeam == null) {
-                "LUMI_TEAM_ENTRA_GROUPS contains duplicate mapping for group UUID '$normalizedGroupId' (teams '$existingTeam' and '$team')"
-            }
-
-            mappings[team] = normalizedGroupId
-            teamsByGroupId[normalizedGroupId] = team
-        }
-
-    return mappings
-}
-
-private fun isValidUuid(value: String): Boolean =
-    runCatching { UUID.fromString(value) }.isSuccess

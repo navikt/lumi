@@ -256,13 +256,7 @@ fun Application.testModule(
                         name = "Test User",
                         email = "test.user@nav.no",
                         clientId = "dev-gcp:team-esyfo:lumi-dashboard",
-                        // Groups are kept for realism, but team access is resolved via NAIS lookup in tests.
-                        groups = listOf(
-                            "7c0dd32a-1896-4e14-96f6-a7eadc73f5f5", // teamsykefravr
-                            "1fac48f0-9744-4d44-a5b5-e2c8aa2ca42b", // team-esyfo
-                            "00000000-0000-0000-0000-000000000001", // flex (test)
-                            "00000000-0000-0000-0000-000000000002"  // team-test
-                        )
+                        groups = emptyList(),
                     )
                 } else null
             }

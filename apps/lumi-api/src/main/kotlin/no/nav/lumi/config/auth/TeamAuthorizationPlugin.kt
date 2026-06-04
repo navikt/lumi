@@ -20,9 +20,6 @@ private val viewerFallbackEmptyUserLookupCounter = Counter.builder("team_authori
     .description("Number of times TeamAuthorization falls back to NAIS viewer lookup")
     .tag("reason", "empty_user_lookup")
     .register(appMicrometerRegistry)
-private val tokenGroupResolutionCounter = Counter.builder("team_authorization_token_group_resolution_total")
-    .description("Number of times TeamAuthorization resolved team access from token group claims")
-    .register(appMicrometerRegistry)
 
 /**
  * Minimal abstraction so TeamAuthorizationPlugin can be tested without calling the real NAIS API.
@@ -54,14 +51,6 @@ class TeamAuthorizationConfig {
     var naisTeamLookupProvider: () -> NaisTeamLookup? = {
         NaisGraphQlClient.fromEnvOrNull()?.let { NaisGraphQlTeamLookup(it) }
     }
-
-    /**
-     * NAIS team slug -> Entra ID group ID mapping.
-     *
-     * When the inbound OBO token contains one of these group IDs, the plugin can
-     * resolve team access without calling NAIS GraphQL.
-     */
-    var teamEntraGroups: Map<String, String> = ServerEnv.current.auth.teamEntraGroups
 }
 
 /**
@@ -82,7 +71,6 @@ class TeamAuthorizationConfig {
 val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::TeamAuthorizationConfig) {
 
     val naisLookup = pluginConfig.naisTeamLookupProvider()
-    val teamEntraGroups = pluginConfig.teamEntraGroups.normalizedTeamEntraGroups()
     
     on(AuthenticationChecked) { call ->
         val principal = call.principal<BrukerPrincipal>()
@@ -95,43 +83,29 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
         // Get requested team from query parameter
         val requestedTeam = call.request.queryParameters["team"]
 
-        val teamsFromTokenGroups = resolveTeamsFromTokenGroups(principal.groups, teamEntraGroups)
-
-        val authorizedTeams = if (requestedTeam != null && requestedTeam in teamsFromTokenGroups) {
-            tokenGroupResolutionCounter.increment()
-            log.debug(
-                "Resolved requested team from token groups for {} (count={})",
-                pseudonymizeIdentifier(principal.navIdent),
-                teamsFromTokenGroups.size,
+        val configuredNaisLookup = naisLookup ?: run {
+            log.error("TeamAuthorization: NAIS team lookup is not configured (missing NAIS_API_KEY/TEAMS_TOKEN and/or NAIS_API_GRAPHQL_URL/NAIS_API_ENDPOINT)")
+            throw ApiErrorException.ServiceUnavailableException(
+                errorMessage = "Team lookup via NAIS is not configured",
+                details = "Missing NAIS configuration for team lookup.",
             )
-            teamsFromTokenGroups
-        } else {
-            // Fail safe: without an explicit requested team we must re-confirm access via NAIS
-            // instead of silently defaulting to one of the token-derived teams.
-            val configuredNaisLookup = naisLookup ?: run {
-                log.error("TeamAuthorization: NAIS team lookup is not configured (missing NAIS_API_KEY/TEAMS_TOKEN and/or NAIS_API_GRAPHQL_URL/NAIS_API_ENDPOINT)")
-                throw ApiErrorException.ServiceUnavailableException(
-                    errorMessage = "Team lookup via NAIS is not configured",
-                    details = "Missing NAIS configuration for team lookup.",
-                )
-            }
+        }
 
-            when (val authorizedTeamsResult = resolveAuthorizedTeams(principal, configuredNaisLookup, teamsFromTokenGroups)) {
-                is NaisApiResult.Success -> authorizedTeamsResult.value
-                is NaisApiResult.Error -> {
-                    // NAIS lookup failed (e.g. outage/timeout/401). Treat as temporary service problem.
-                    val msg = "TeamAuthorization: NAIS team lookup failed (${authorizedTeamsResult.message}) for ${pseudonymizeIdentifier(principal.navIdent)}"
-                    if (authorizedTeamsResult.message.contains("cached", ignoreCase = true)) {
-                        log.debug(msg)
-                    } else {
-                        log.warn(msg)
-                    }
-
-                    throw ApiErrorException.ServiceUnavailableException(
-                        errorMessage = "Kunne ikke hente teamtilgang akkurat nå",
-                        details = "Dette er ofte midlertidig (f.eks. NAIS API-nedetid). Prøv igjen om litt.",
-                    )
+        val authorizedTeams = when (val authorizedTeamsResult = resolveAuthorizedTeams(principal, configuredNaisLookup)) {
+            is NaisApiResult.Success -> authorizedTeamsResult.value
+            is NaisApiResult.Error -> {
+                // NAIS lookup failed (e.g. outage/timeout/401). Treat as temporary service problem.
+                val msg = "TeamAuthorization: NAIS team lookup failed (${authorizedTeamsResult.message}) for ${pseudonymizeIdentifier(principal.navIdent)}"
+                if (authorizedTeamsResult.message.contains("cached", ignoreCase = true)) {
+                    log.debug(msg)
+                } else {
+                    log.warn(msg)
                 }
+
+                throw ApiErrorException.ServiceUnavailableException(
+                    errorMessage = "Kunne ikke hente teamtilgang akkurat nå",
+                    details = "Dette er ofte midlertidig (f.eks. NAIS API-nedetid). Prøv igjen om litt.",
+                )
             }
         }
 
@@ -167,7 +141,6 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
 private suspend fun resolveAuthorizedTeams(
     principal: BrukerPrincipal,
     naisLookup: NaisTeamLookup,
-    teamsFromTokenGroups: Set<String>,
 ): NaisApiResult<Set<String>> {
     val email = principal.email
 
@@ -219,29 +192,8 @@ private suspend fun resolveAuthorizedTeams(
         is NaisApiResult.Error -> teamsByEmailResult
     }
 
-    return when (resolvedTeamsResult) {
-        is NaisApiResult.Success -> NaisApiResult.Success(resolvedTeamsResult.value + teamsFromTokenGroups)
-        is NaisApiResult.Error -> resolvedTeamsResult
-    }
+    return resolvedTeamsResult
 }
-
-internal fun resolveTeamsFromTokenGroups(
-    tokenGroups: List<String>,
-    teamEntraGroups: Map<String, String>,
-): Set<String> {
-    if (tokenGroups.isEmpty() || teamEntraGroups.isEmpty()) return emptySet()
-
-    val tokenGroupIds = tokenGroups.mapTo(mutableSetOf()) { it.lowercase() }
-    return teamEntraGroups
-        .filterValues { groupId -> groupId.lowercase() in tokenGroupIds }
-        .keys
-        .toSet()
-}
-
-private fun Map<String, String>.normalizedTeamEntraGroups(): Map<String, String> =
-    mapValues { (_, groupId) -> groupId.lowercase() }
-        .filterKeys { it.isNotBlank() }
-        .filterValues { it.isNotBlank() }
 
 /**
  * Get the authorized team for this request.
