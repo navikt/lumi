@@ -19,7 +19,6 @@ import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.Timer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.Json
 import no.nav.lumi.config.appMicrometerRegistry
 import no.nav.lumi.integrations.valkey.TeamCache
@@ -56,7 +55,7 @@ sealed class NaisApiResult<out T> {
  */
 object CacheTtl {
     /** TTL when user HAS teams - team membership changes rarely */
-    val HAS_TEAMS: Duration = Duration.ofHours(1)
+    val HAS_TEAMS: Duration = Duration.ofHours(12)
     
     /** TTL when user has NO teams - allow quick onboarding */
     val NO_TEAMS: Duration = Duration.ofMinutes(5)
@@ -342,7 +341,7 @@ class NaisGraphQlClient private constructor(
         
         return NaisApiResult.Success(teams)
     }
-    
+
     /**
      * Check if the NAIS API is healthy.
      * Returns true if we've had a successful call recently (within 2 hours).
@@ -613,7 +612,5 @@ private data class TeamMemberNode(
 
 @Serializable
 private data class TeamNode(
-    val slug: String? = null,
-    @SerialName("externalResources")
-    val externalResources: JsonObject? = null
+    val slug: String? = null
 )

@@ -180,10 +180,6 @@ class FeedbackStatsRepository {
             val fieldRecords = if (includeFieldStats) {
                 val fieldQuery = FeedbackTable.selectAll()
                 applyStatsFilters(fieldQuery, query)
-                fieldQuery.orderBy(
-                    FeedbackTable.opprettet to SortOrder.DESC,
-                    FeedbackTable.id to SortOrder.DESC
-                )
                 fieldQuery.map { it.toDbRecord() }
             } else {
                 emptyList()

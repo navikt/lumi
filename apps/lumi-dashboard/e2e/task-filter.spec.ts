@@ -49,6 +49,7 @@ test.describe("Top Tasks - Task Filter", () => {
         timeout: 5000,
       })
       .toBe(true);
+    await page.waitForLoadState("networkidle");
 
     // Wait for the chip to render
     const chipText = page.getByText("Oppgave: TestTask");

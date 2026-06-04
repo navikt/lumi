@@ -44,8 +44,8 @@ fun Application.configureRouting() {
                 install(ClientAuthorizationPlugin) {
                     allowedClientId = getDashboardClientId()
                 }
-                
-                // Enforce team authorization based on user's AD groups
+
+                // Enforce team authorization based on user's NAIS team membership.
                 install(TeamAuthorizationPlugin)
 
                 rateLimit(AnalyticsRateLimit) {

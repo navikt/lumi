@@ -20,6 +20,9 @@ private val viewerFallbackEmptyUserLookupCounter = Counter.builder("team_authori
     .description("Number of times TeamAuthorization falls back to NAIS viewer lookup")
     .tag("reason", "empty_user_lookup")
     .register(appMicrometerRegistry)
+private val tokenGroupResolutionCounter = Counter.builder("team_authorization_token_group_resolution_total")
+    .description("Number of times TeamAuthorization resolved team access from token group claims")
+    .register(appMicrometerRegistry)
 
 /**
  * Minimal abstraction so TeamAuthorizationPlugin can be tested without calling the real NAIS API.
@@ -51,6 +54,14 @@ class TeamAuthorizationConfig {
     var naisTeamLookupProvider: () -> NaisTeamLookup? = {
         NaisGraphQlClient.fromEnvOrNull()?.let { NaisGraphQlTeamLookup(it) }
     }
+
+    /**
+     * NAIS team slug -> Entra ID group ID mapping.
+     *
+     * When the inbound OBO token contains one of these group IDs, the plugin can
+     * resolve team access without calling NAIS GraphQL.
+     */
+    var teamEntraGroups: Map<String, String> = ServerEnv.current.auth.teamEntraGroups
 }
 
 /**
@@ -71,6 +82,7 @@ class TeamAuthorizationConfig {
 val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::TeamAuthorizationConfig) {
 
     val naisLookup = pluginConfig.naisTeamLookupProvider()
+    val teamEntraGroups = pluginConfig.teamEntraGroups.normalizedTeamEntraGroups()
     
     on(AuthenticationChecked) { call ->
         val principal = call.principal<BrukerPrincipal>()
@@ -88,7 +100,15 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
             )
         }
 
-        val authorizedTeamsResult = resolveAuthorizedTeams(principal, naisLookup)
+        // Get requested team from query parameter
+        val requestedTeam = call.request.queryParameters["team"]
+
+        val authorizedTeamsResult = resolveAuthorizedTeams(
+            principal = principal,
+            naisLookup = naisLookup,
+            teamEntraGroups = teamEntraGroups,
+            requestedTeam = requestedTeam,
+        )
 
         val authorizedTeams = when (authorizedTeamsResult) {
             is NaisApiResult.Success -> authorizedTeamsResult.value
@@ -117,9 +137,6 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
             )
         }
         
-        // Get requested team from query parameter
-        val requestedTeam = call.request.queryParameters["team"]
-        
         // Validate requested team or use primary team
         val team = if (requestedTeam != null && requestedTeam in authorizedTeams) {
             requestedTeam
@@ -142,8 +159,21 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
 
 private suspend fun resolveAuthorizedTeams(
     principal: BrukerPrincipal,
-    naisLookup: NaisTeamLookup
+    naisLookup: NaisTeamLookup,
+    teamEntraGroups: Map<String, String>,
+    requestedTeam: String?,
 ): NaisApiResult<Set<String>> {
+    val teamsFromTokenGroups = resolveTeamsFromTokenGroups(principal.groups, teamEntraGroups)
+    if (teamsFromTokenGroups.isNotEmpty() && (requestedTeam == null || requestedTeam in teamsFromTokenGroups)) {
+        tokenGroupResolutionCounter.increment()
+        log.debug(
+            "Resolved teams from token groups for {} (count={})",
+            pseudonymizeIdentifier(principal.navIdent),
+            teamsFromTokenGroups.size,
+        )
+        return NaisApiResult.Success(teamsFromTokenGroups)
+    }
+
     val email = principal.email
 
     val teamsByEmailResult: NaisApiResult<Set<String>> = if (!email.isNullOrBlank()) {
@@ -196,6 +226,24 @@ private suspend fun resolveAuthorizedTeams(
 
     return resolvedTeamsResult
 }
+
+internal fun resolveTeamsFromTokenGroups(
+    tokenGroups: List<String>,
+    teamEntraGroups: Map<String, String>,
+): Set<String> {
+    if (tokenGroups.isEmpty() || teamEntraGroups.isEmpty()) return emptySet()
+
+    val tokenGroupIds = tokenGroups.mapTo(mutableSetOf()) { it.lowercase() }
+    return teamEntraGroups
+        .filterValues { groupId -> groupId.lowercase() in tokenGroupIds }
+        .keys
+        .toSet()
+}
+
+private fun Map<String, String>.normalizedTeamEntraGroups(): Map<String, String> =
+    mapValues { (_, groupId) -> groupId.lowercase() }
+        .filterKeys { it.isNotBlank() }
+        .filterValues { it.isNotBlank() }
 
 /**
  * Get the authorized team for this request.
