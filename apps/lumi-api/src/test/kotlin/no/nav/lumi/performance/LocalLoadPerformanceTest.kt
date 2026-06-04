@@ -158,6 +158,7 @@ private fun insertFeedbackBatch(rows: Int, team: String, app: String, surveyId: 
     val dateWindowMinutes = 30 * 24 * 60
 
     TestDatabase.dataSource.connection.use { conn ->
+        conn.autoCommit = false
         conn.prepareStatement(
             """
             INSERT INTO feedback (id, opprettet, feedback_json, team, app, survey_id)

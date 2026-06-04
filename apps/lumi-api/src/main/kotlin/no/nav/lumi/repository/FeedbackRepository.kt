@@ -2,6 +2,7 @@ package no.nav.lumi.repository
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -376,20 +377,26 @@ class FeedbackRepository(
         } ?: return false
 
         return answers.any { answerElement ->
-            val answerObj = answerElement.jsonObject
-            if (answerObj["fieldId"]?.jsonPrimitive?.contentOrNull != fieldId) return@any false
-            if (answerObj["fieldType"]?.jsonPrimitive?.contentOrNull != FieldType.TEXT.name) return@any false
+            val answerObj = answerElement.asJsonObjectOrNull() ?: return@any false
+            if (answerObj.stringValue("fieldId") != fieldId) return@any false
+            if (answerObj.stringValue("fieldType") != FieldType.TEXT.name) return@any false
 
-            val valueObj = answerObj["value"]?.jsonObject ?: return@any false
-            if (valueObj["type"]?.jsonPrimitive?.contentOrNull != "text") return@any false
+            val valueObj = answerObj["value"].asJsonObjectOrNull() ?: return@any false
+            if (valueObj.stringValue("type") != "text") return@any false
 
-            val text = valueObj["text"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
+            val text = valueObj.stringValue("text")?.trim().orEmpty()
             if (text.isBlank()) return@any false
 
             val redactedText = sensitiveDataFilter.redact(text).redactedText
             TextProcessor.extractBigrams(redactedText).any { it.stemKey == expectedStemKey }
         }
     }
+
+    private fun kotlinx.serialization.json.JsonElement?.asJsonObjectOrNull(): JsonObject? =
+        runCatching { this?.jsonObject }.getOrNull()
+
+    private fun JsonObject.stringValue(key: String): String? =
+        runCatching { this[key]?.jsonPrimitive?.contentOrNull }.getOrNull()
 
     /**
      * Find all tags for a specific team.

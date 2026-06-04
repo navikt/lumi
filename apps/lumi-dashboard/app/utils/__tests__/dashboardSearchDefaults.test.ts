@@ -52,4 +52,15 @@ describe("applyDashboardSearchDefaults", () => {
       page: "1",
     });
   });
+
+  it("uses Europe Oslo date for server-side defaults", () => {
+    const result = applyDashboardSearchDefaults(undefined, {
+      now: dayjs("2026-06-02T22:30:00.000Z"),
+    });
+
+    expect(result.search).toMatchObject({
+      fromDate: "2026-05-05",
+      toDate: "2026-06-03",
+    });
+  });
 });

@@ -1,4 +1,11 @@
 import dayjs, { type Dayjs } from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const OSLO_TIME_ZONE = "Europe/Oslo";
 
 type Search = Record<string, unknown>;
 
@@ -25,7 +32,7 @@ export function applyDashboardSearchDefaults(
   const hasFromDate = hasSearchValue(nextSearch.fromDate);
   const hasToDate = hasSearchValue(nextSearch.toDate);
   if (!hasFromDate && !hasToDate) {
-    const end = options.now ?? dayjs();
+    const end = (options.now ?? dayjs()).tz(OSLO_TIME_ZONE);
     const start = end.subtract(29, "day");
 
     nextSearch.fromDate = start.format("YYYY-MM-DD");
