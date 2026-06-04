@@ -98,7 +98,7 @@ private suspend fun diagnoseMeWithTarget(
     val exchangeStart = System.nanoTime()
     val exchangedToken = texasClient.exchangeToken(
         userToken = bearerToken,
-        identityProvider = "azuread",
+        identityProvider = "entra_id",
         target = target,
         skipCache = skipCache,
     )

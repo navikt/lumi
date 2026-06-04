@@ -32,8 +32,8 @@ class TexasClientTest : FunSpec({
             activeResponse(exp = fixedClock.instant().epochSecond + 3600)
         }
 
-        val first = client.introspect("token", identityProvider = "azuread")
-        val second = client.introspect("token", identityProvider = "azuread")
+        val first = client.introspect("token", identityProvider = "entra_id")
+        val second = client.introspect("token", identityProvider = "entra_id")
 
         first?.NAVident shouldBe "Z123456"
         second shouldBe first
@@ -48,8 +48,8 @@ class TexasClientTest : FunSpec({
         }
 
         coroutineScope {
-            val first = async { client.introspect("token", identityProvider = "azuread") }
-            val second = async { client.introspect("token", identityProvider = "azuread") }
+            val first = async { client.introspect("token", identityProvider = "entra_id") }
+            val second = async { client.introspect("token", identityProvider = "entra_id") }
 
             first.await()?.NAVident shouldBe "Z123456"
             second.await()?.NAVident shouldBe "Z123456"
@@ -63,8 +63,8 @@ class TexasClientTest : FunSpec({
             activeResponse(exp = fixedClock.instant().epochSecond + 30)
         }
 
-        client.introspect("token", identityProvider = "azuread")
-        client.introspect("token", identityProvider = "azuread")
+        client.introspect("token", identityProvider = "entra_id")
+        client.introspect("token", identityProvider = "entra_id")
 
         calls.get() shouldBe 2
     }
@@ -75,8 +75,8 @@ class TexasClientTest : FunSpec({
             activeResponse(exp = fixedClock.instant().epochSecond + 3600)
         }
 
-        client.introspect("token-a", identityProvider = "azuread")
-        client.introspect("token-b", identityProvider = "azuread")
+        client.introspect("token-a", identityProvider = "entra_id")
+        client.introspect("token-b", identityProvider = "entra_id")
 
         calls.get() shouldBe 2
     }
@@ -87,7 +87,7 @@ class TexasClientTest : FunSpec({
             activeResponse(exp = fixedClock.instant().epochSecond + 3600)
         }
 
-        client.introspect("token", identityProvider = "azuread")
+        client.introspect("token", identityProvider = "entra_id")
         client.introspect("token", identityProvider = "tokenx")
 
         calls.get() shouldBe 2
@@ -99,8 +99,8 @@ class TexasClientTest : FunSpec({
             inactiveResponse()
         }
 
-        client.introspect("token", identityProvider = "azuread") shouldBe null
-        client.introspect("token", identityProvider = "azuread") shouldBe null
+        client.introspect("token", identityProvider = "entra_id") shouldBe null
+        client.introspect("token", identityProvider = "entra_id") shouldBe null
 
         calls.get() shouldBe 2
     }
@@ -139,7 +139,7 @@ class TexasClientTest : FunSpec({
 
         val result = client.exchangeToken(
             userToken = "subject-token",
-            identityProvider = "azuread",
+            identityProvider = "entra_id",
             target = "api://dev-gcp.nais-system.nais-api/.default",
         )
 

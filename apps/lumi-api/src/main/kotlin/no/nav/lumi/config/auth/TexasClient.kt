@@ -9,6 +9,7 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.Tags
 import io.micrometer.core.instrument.Timer
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.serialization.SerialName
@@ -45,6 +46,7 @@ class TexasClient(
         private const val MAX_CACHE_ENTRIES = 1_000
         private val CACHE_EXPIRY_SKEW: Duration = Duration.ofSeconds(60)
         private val DEFAULT_CACHE_TTL: Duration = Duration.ofMinutes(5)
+        private val SLOW_INTROSPECTION_THRESHOLD: Duration = Duration.ofSeconds(1)
 
         private fun defaultHttpClient(): HttpClient {
             return HttpClient(CIO) {
@@ -137,6 +139,9 @@ class TexasClient(
 
     private suspend fun requestIntrospection(token: String, identityProvider: String): TexasIntrospectionResult? {
         val start = System.nanoTime()
+        var statusTag = "unknown"
+        var outcomeTag = "unknown"
+        var exceptionTag = "none"
         return try {
             // Introspection happens per request in NAIS; keep this at DEBUG to avoid log spam.
             log.debug("Introspecting token with Texas: $introspectionEndpoint")
@@ -147,8 +152,10 @@ class TexasClient(
                     token = token
                 ))
             }
+            statusTag = response.status.value.toString()
             
             if (response.status != HttpStatusCode.OK) {
+                outcomeTag = "http_error"
                 // Avoid logging response bodies; they may contain claims/PII.
                 log.warn("Texas introspection failed with status: ${response.status}")
                 return null
@@ -157,19 +164,66 @@ class TexasClient(
             val result = response.body<TexasIntrospectionResult>()
             
             if (!result.active) {
+                outcomeTag = "inactive"
                 // Avoid logging full claims payload.
                 log.warn("Token validation failed - token is not active")
                 return null
             }
             
+            outcomeTag = "active"
             result
         } catch (e: Exception) {
+            statusTag = "exception"
+            outcomeTag = "exception"
+            exceptionTag = e.javaClass.simpleName
             errorCounter.increment()
             log.error("Failed to introspect token", e)
             null
         } finally {
-            introspectionTimer.record(Duration.ofNanos(System.nanoTime() - start))
+            val duration = Duration.ofNanos(System.nanoTime() - start)
+            introspectionTimer.record(duration)
+            recordIntrospectionHttpMetrics(
+                duration = duration,
+                identityProvider = identityProvider,
+                status = statusTag,
+                outcome = outcomeTag,
+            )
+            if (duration >= SLOW_INTROSPECTION_THRESHOLD) {
+                log.warn(
+                    "Texas introspection was slow: durationMs={} identityProvider={} status={} outcome={} exception={}",
+                    duration.toMillis(),
+                    identityProvider,
+                    statusTag,
+                    outcomeTag,
+                    exceptionTag,
+                )
+            }
         }
+    }
+
+    private fun recordIntrospectionHttpMetrics(
+        duration: Duration,
+        identityProvider: String,
+        status: String,
+        outcome: String,
+    ) {
+        val tags = Tags.of(
+            "identity_provider", identityProvider,
+            "status", status,
+            "outcome", outcome,
+        )
+
+        Timer.builder("texas_introspection_http_duration_seconds")
+            .description("Duration of Texas introspection HTTP requests by provider, status, and outcome")
+            .tags(tags)
+            .register(appMicrometerRegistry)
+            .record(duration)
+
+        Counter.builder("texas_introspection_http_requests_total")
+            .description("Number of Texas introspection HTTP requests by provider, status, and outcome")
+            .tags(tags)
+            .register(appMicrometerRegistry)
+            .increment()
     }
 
     /**
