@@ -242,7 +242,7 @@ class TeamAuthorizationPluginTest {
     }
 
     @Test
-    fun `uses token group mapping without calling NAIS lookup`() = testApplication {
+    fun `uses token group mapping without NAIS lookup when requested team matches`() = testApplication {
         application {
             install(ContentNegotiation) {
                 json()
@@ -269,7 +269,7 @@ class TeamAuthorizationPluginTest {
                             "team-esyfo" to "1fac48f0-9744-4d44-a5b5-e2c8aa2ca42b",
                             "teamsykefravr" to "7c0dd32a-1896-4e14-96f6-a7eadc73f5f5",
                         )
-                        naisTeamLookupProvider = { ErroringNaisTeamLookup("should not be called") }
+                        naisTeamLookupProvider = { null }
                     }
 
                     get("/team") {
@@ -294,6 +294,60 @@ class TeamAuthorizationPluginTest {
         assertEquals("team-esyfo", json["team"]?.jsonPrimitive?.content)
         val teams = json["teams"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
         assertEquals(listOf("team-esyfo"), teams)
+    }
+
+    @Test
+    fun `uses NAIS teams for bootstrap when token group mapping only grants subset`() = testApplication {
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureStatusPages()
+            install(Authentication) {
+                bearer(AZURE_REALM) {
+                    authenticate { _ ->
+                        BrukerPrincipal(
+                            navIdent = "Z123456",
+                            name = "Test User",
+                            email = "test@nav.no",
+                            clientId = "client",
+                            groups = listOf("1fac48f0-9744-4d44-a5b5-e2c8aa2ca42b"),
+                        )
+                    }
+                }
+            }
+
+            routing {
+                authenticate(AZURE_REALM) {
+                    install(TeamAuthorizationPlugin) {
+                        teamEntraGroups = mapOf(
+                            "team-esyfo" to "1fac48f0-9744-4d44-a5b5-e2c8aa2ca42b",
+                        )
+                        naisTeamLookupProvider = { FakeNaisTeamLookup(teamsByEmail = setOf("team-esyfo", "flex")) }
+                    }
+
+                    get("/team") {
+                        call.respond(
+                            TeamResponse(
+                                team = call.authorizedTeam,
+                                teams = call.authorizedTeams.sorted(),
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
+        val response = client.get("/team") {
+            header(HttpHeaders.Authorization, "Bearer whatever")
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.bodyAsText()
+        val json = Json.parseToJsonElement(body).jsonObject
+        assertEquals("flex", json["team"]?.jsonPrimitive?.content)
+        val teams = json["teams"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
+        assertEquals(listOf("flex", "team-esyfo"), teams)
     }
 
     @Test
@@ -344,6 +398,106 @@ class TeamAuthorizationPluginTest {
     }
 
     @Test
+    fun `returns 503 when requested team is not authorized by token groups and NAIS lookup is disabled`() = testApplication {
+        val handlerInvoked = AtomicBoolean(false)
+
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureStatusPages()
+            install(Authentication) {
+                bearer(AZURE_REALM) {
+                    authenticate { _ ->
+                        BrukerPrincipal(
+                            navIdent = "Z123456",
+                            name = "Test User",
+                            email = "test@nav.no",
+                            clientId = "client",
+                            groups = listOf("1fac48f0-9744-4d44-a5b5-e2c8aa2ca42b"),
+                        )
+                    }
+                }
+            }
+
+            routing {
+                authenticate(AZURE_REALM) {
+                    install(TeamAuthorizationPlugin) {
+                        teamEntraGroups = mapOf(
+                            "team-esyfo" to "1fac48f0-9744-4d44-a5b5-e2c8aa2ca42b",
+                        )
+                        naisTeamLookupProvider = { null }
+                    }
+
+                    get("/team") {
+                        handlerInvoked.set(true)
+                        call.respondText("ok")
+                    }
+                }
+            }
+        }
+
+        val response = client.get("/team?team=flex") {
+            header(HttpHeaders.Authorization, "Bearer whatever")
+        }
+
+        assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
+        assertFalse(handlerInvoked.get())
+        val body = response.bodyAsText()
+        assertTrue(body.contains("Team lookup via NAIS is not configured"))
+    }
+
+    @Test
+    fun `returns 503 when team param is missing and NAIS lookup is disabled even if token groups match`() = testApplication {
+        val handlerInvoked = AtomicBoolean(false)
+
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureStatusPages()
+            install(Authentication) {
+                bearer(AZURE_REALM) {
+                    authenticate { _ ->
+                        BrukerPrincipal(
+                            navIdent = "Z123456",
+                            name = "Test User",
+                            email = "test@nav.no",
+                            clientId = "client",
+                            groups = listOf("1fac48f0-9744-4d44-a5b5-e2c8aa2ca42b"),
+                        )
+                    }
+                }
+            }
+
+            routing {
+                authenticate(AZURE_REALM) {
+                    install(TeamAuthorizationPlugin) {
+                        teamEntraGroups = mapOf(
+                            "team-esyfo" to "1fac48f0-9744-4d44-a5b5-e2c8aa2ca42b",
+                        )
+                        naisTeamLookupProvider = { null }
+                    }
+
+                    get("/team") {
+                        handlerInvoked.set(true)
+                        call.respondText("ok")
+                    }
+                }
+            }
+        }
+
+        val response = client.get("/team") {
+            header(HttpHeaders.Authorization, "Bearer whatever")
+        }
+
+        assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
+        assertFalse(handlerInvoked.get())
+        val body = response.bodyAsText()
+        assertTrue(body.contains("Team lookup via NAIS is not configured"))
+    }
+
+    @Test
     fun `denies access when NAIS lookup resolves no teams (no legacy fallback)`() = testApplication {
         application {
             install(ContentNegotiation) {
@@ -368,6 +522,7 @@ class TeamAuthorizationPluginTest {
             routing {
                 authenticate(AZURE_REALM) {
                     install(TeamAuthorizationPlugin) {
+                        teamEntraGroups = emptyMap()
                         naisTeamLookupProvider = { FakeNaisTeamLookup(teamsByEmail = emptySet(), teamsByViewer = emptySet()) }
                     }
 
