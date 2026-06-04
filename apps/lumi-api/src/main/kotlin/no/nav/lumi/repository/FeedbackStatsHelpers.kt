@@ -25,9 +25,12 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
 
     val totalFeedbackCount = records.size
     val answersByField = mutableMapOf<String, MutableList<Pair<FeedbackDto, Answer>>>()
-    val recordPriority = compareBy<FeedbackDto> { it.answers.size }
-        .thenBy { parseSubmittedAt(it.submittedAt) }
-        .thenBy { it.id }
+    data class PrioritizedFeedback(val dto: FeedbackDto, val submittedAt: Instant)
+
+    val prioritizedRecords = records.map { PrioritizedFeedback(it, parseSubmittedAt(it.submittedAt)) }
+    val recordPriority = compareBy<PrioritizedFeedback> { it.dto.answers.size }
+        .thenBy { it.submittedAt }
+        .thenBy { it.dto.id }
 
     // Preserve the survey question order as seen in submissions.
     // We use the most complete submission as the primary ordering source and break ties
@@ -36,8 +39,9 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
     val fieldOrder = mutableMapOf<String, Int>()
     var nextOrderIndex = 0
 
-    val representativeAnswers = records
+    val representativeAnswers = prioritizedRecords
         .maxWithOrNull(recordPriority)
+        ?.dto
         ?.answers
         .orEmpty()
     for (answer in representativeAnswers) {
@@ -46,7 +50,7 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
         }
     }
 
-    for (dto in records.sortedWith(recordPriority.reversed())) {
+    for ((dto, _) in prioritizedRecords.sortedWith(recordPriority.reversed())) {
         for (answer in dto.answers) {
             answersByField.getOrPut(answer.fieldId) { mutableListOf() }.add(dto to answer)
 

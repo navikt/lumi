@@ -118,6 +118,9 @@ kotlin {
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+    System.getProperties()
+        .filterKeys { it.toString().startsWith("lumi.perf.") }
+        .forEach { (key, value) -> systemProperty(key.toString(), value) }
 }
 
 tasks {

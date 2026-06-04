@@ -160,6 +160,27 @@ describe("useSearchParams", () => {
     });
   });
 
+  it("setParams removes task while preserving selected survey and period", async () => {
+    const { router, getResult } = await setup([
+      "/?surveyId=survey-top-tasks&task=TestTask&fromDate=2026-05-05&toDate=2026-06-03&page=1",
+    ]);
+
+    await act(async () => {
+      getResult().setParams({ task: undefined, page: "1" });
+    });
+
+    await waitFor(() => {
+      expect(router.state.location.search).toMatchObject({
+        surveyId: "survey-top-tasks",
+        fromDate: "2026-05-05",
+        toDate: "2026-06-03",
+        page: "1",
+      });
+      expect(router.state.location.searchStr).not.toContain("task=");
+      expect(getResult().params.task).toBeUndefined();
+    });
+  });
+
   it("resetParams clears all parameters", async () => {
     const { router, getResult } = await setup([
       "/?team=flex&app=spinnsyn&fromDate=2024-01-01",

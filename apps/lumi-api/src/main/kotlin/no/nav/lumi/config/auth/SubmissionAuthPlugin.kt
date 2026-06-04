@@ -134,7 +134,7 @@ val TokenXSubmissionAuthPlugin = createSubmissionAuthPlugin(
 
 val AzureSubmissionAuthPlugin = createSubmissionAuthPlugin(
     pluginName = "AzureSubmissionAuthPlugin",
-    identityProvider = "azuread",
+    identityProvider = "entra_id",
     endpointHint = "/api/azure/v1/feedback",
     callerIdentityClaim = "azp_name",
     extractCallerId = { it.azp_name },
@@ -154,4 +154,3 @@ fun ApplicationCall.getCallerIdentity(): CallerIdentity {
     return attributes.getOrNull(CallerIdentityKey)
         ?: throw ApiErrorException.UnauthorizedException("Caller identity not found - authentication required")
 }
-

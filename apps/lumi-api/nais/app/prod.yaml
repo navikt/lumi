@@ -17,6 +17,9 @@ spec:
   readiness:
     path: /internal/isReady
     initialDelay: 30
+  prometheus:
+    enabled: true
+    path: /internal/prometheus
   resources:
     limits:
       memory: 1024Mi

@@ -289,7 +289,9 @@ class TeamAuthorizationPluginTest {
     }
 
     @Test
-    fun `denies access when NAIS lookup resolves no teams (no legacy fallback)`() = testApplication {
+    fun `returns 503 when requested team is provided and NAIS lookup is disabled`() = testApplication {
+        val handlerInvoked = AtomicBoolean(false)
+
         application {
             install(ContentNegotiation) {
                 json()
@@ -303,8 +305,99 @@ class TeamAuthorizationPluginTest {
                             name = "Test User",
                             email = "test@nav.no",
                             clientId = "client",
-                            // Groups should not grant access without NAIS team membership.
-                            groups = listOf("ef4e9824-6f3a-4933-8f40-6edf5233d4d2"),
+                            groups = emptyList(),
+                        )
+                    }
+                }
+            }
+
+            routing {
+                authenticate(AZURE_REALM) {
+                    install(TeamAuthorizationPlugin) {
+                        naisTeamLookupProvider = { null }
+                    }
+
+                    get("/team") {
+                        handlerInvoked.set(true)
+                        call.respondText("ok")
+                    }
+                }
+            }
+        }
+
+        val response = client.get("/team?team=flex") {
+            header(HttpHeaders.Authorization, "Bearer whatever")
+        }
+
+        assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
+        assertFalse(handlerInvoked.get())
+        val body = response.bodyAsText()
+        assertTrue(body.contains("Team lookup via NAIS is not configured"))
+    }
+
+    @Test
+    fun `returns 503 when team param is missing and NAIS lookup is disabled`() = testApplication {
+        val handlerInvoked = AtomicBoolean(false)
+
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureStatusPages()
+            install(Authentication) {
+                bearer(AZURE_REALM) {
+                    authenticate { _ ->
+                        BrukerPrincipal(
+                            navIdent = "Z123456",
+                            name = "Test User",
+                            email = "test@nav.no",
+                            clientId = "client",
+                            groups = emptyList(),
+                        )
+                    }
+                }
+            }
+
+            routing {
+                authenticate(AZURE_REALM) {
+                    install(TeamAuthorizationPlugin) {
+                        naisTeamLookupProvider = { null }
+                    }
+
+                    get("/team") {
+                        handlerInvoked.set(true)
+                        call.respondText("ok")
+                    }
+                }
+            }
+        }
+
+        val response = client.get("/team") {
+            header(HttpHeaders.Authorization, "Bearer whatever")
+        }
+
+        assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
+        assertFalse(handlerInvoked.get())
+        val body = response.bodyAsText()
+        assertTrue(body.contains("Team lookup via NAIS is not configured"))
+    }
+
+    @Test
+    fun `denies access when NAIS lookup resolves no teams`() = testApplication {
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureStatusPages()
+            install(Authentication) {
+                bearer(AZURE_REALM) {
+                    authenticate { _ ->
+                        BrukerPrincipal(
+                            navIdent = "Z123456",
+                            name = "Test User",
+                            email = "test@nav.no",
+                            clientId = "client",
+                            groups = emptyList(),
                         )
                     }
                 }

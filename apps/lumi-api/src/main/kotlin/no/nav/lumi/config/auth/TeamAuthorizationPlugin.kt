@@ -80,7 +80,10 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
             throw ApiErrorException.UnauthorizedException("Not authenticated")
         }
 
-        if (naisLookup == null) {
+        // Get requested team from query parameter
+        val requestedTeam = call.request.queryParameters["team"]
+
+        val configuredNaisLookup = naisLookup ?: run {
             log.error("TeamAuthorization: NAIS team lookup is not configured (missing NAIS_API_KEY/TEAMS_TOKEN and/or NAIS_API_GRAPHQL_URL/NAIS_API_ENDPOINT)")
             throw ApiErrorException.ServiceUnavailableException(
                 errorMessage = "Team lookup via NAIS is not configured",
@@ -88,9 +91,7 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
             )
         }
 
-        val authorizedTeamsResult = resolveAuthorizedTeams(principal, naisLookup)
-
-        val authorizedTeams = when (authorizedTeamsResult) {
+        val authorizedTeams = when (val authorizedTeamsResult = resolveAuthorizedTeams(principal, configuredNaisLookup)) {
             is NaisApiResult.Success -> authorizedTeamsResult.value
             is NaisApiResult.Error -> {
                 // NAIS lookup failed (e.g. outage/timeout/401). Treat as temporary service problem.
@@ -117,9 +118,6 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
             )
         }
         
-        // Get requested team from query parameter
-        val requestedTeam = call.request.queryParameters["team"]
-        
         // Validate requested team or use primary team
         val team = if (requestedTeam != null && requestedTeam in authorizedTeams) {
             requestedTeam
@@ -142,7 +140,7 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
 
 private suspend fun resolveAuthorizedTeams(
     principal: BrukerPrincipal,
-    naisLookup: NaisTeamLookup
+    naisLookup: NaisTeamLookup,
 ): NaisApiResult<Set<String>> {
     val email = principal.email
 

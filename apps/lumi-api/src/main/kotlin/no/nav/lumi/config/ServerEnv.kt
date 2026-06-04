@@ -108,17 +108,17 @@ data class ServerEnv(
      */
     data class AuthEnv(
         /** Allowed client ID for Lumi dashboard (frontend) */
-        val dashboardClientId: String
+        val dashboardClientId: String,
     ) {
         companion object {
             fun fromEnvironment(clusterName: String?) = AuthEnv(
                 dashboardClientId =
                     System.getenv("LUMI_DASHBOARD_CLIENT_ID")
-                        ?: "${clusterName ?: "dev-gcp"}:team-esyfo:lumi-dashboard"
+                        ?: "${clusterName ?: "dev-gcp"}:team-esyfo:lumi-dashboard",
             )
             
             fun forLocal() = AuthEnv(
-                dashboardClientId = "dev-gcp:team-esyfo:lumi-dashboard"
+                dashboardClientId = "dev-gcp:team-esyfo:lumi-dashboard",
             )
         }
     }
