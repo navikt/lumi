@@ -66,8 +66,8 @@ jobs:
 
   deploy-dev:
     if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_dispatch' && (inputs.target == 'dev' || inputs.target == 'prod'))
+      github.ref == 'refs/heads/main' ||
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'dev')
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -75,8 +75,6 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-        with:
-          ref: ${{ inputs.ref || github.ref }}
       - uses: nais/deploy/actions/deploy@a7f8690f9b367fcbf5348a0a1e21d44f1aae50eb
         env:
           CLUSTER: dev-gcp
@@ -85,7 +83,7 @@ jobs:
 
   deploy-prod:
     if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.ref == 'refs/heads/main' ||
       (github.event_name == 'workflow_dispatch' && inputs.target == 'prod')
     needs: [build, deploy-dev]
     runs-on: ubuntu-latest
@@ -94,8 +92,6 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-        with:
-          ref: ${{ inputs.ref || github.ref }}
       - uses: nais/deploy/actions/deploy@a7f8690f9b367fcbf5348a0a1e21d44f1aae50eb
         env:
           CLUSTER: prod-gcp
