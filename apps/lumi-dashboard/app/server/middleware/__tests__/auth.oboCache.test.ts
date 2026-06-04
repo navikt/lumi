@@ -72,6 +72,36 @@ describe("OBO token cache", () => {
     expect(requestAzureOboToken).toHaveBeenCalledTimes(2);
   });
 
+  it("does not cache a token that is within expiry skew after exchange", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-03T00:00:00Z"));
+
+    const token = jwt({ sub: "user" });
+    // Token expires in 50 seconds — within the 60s skew window
+    const shortLivedOboToken = jwt({
+      exp: Math.floor(Date.now() / 1000) + 50,
+    });
+    const freshOboToken = jwt({
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+    const requestAzureOboToken = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true as const, token: shortLivedOboToken })
+      .mockResolvedValueOnce({ ok: true as const, token: freshOboToken });
+
+    // First call returns the short-lived token but does NOT cache it
+    await expect(
+      getCachedAzureOboToken(token, "audience", requestAzureOboToken),
+    ).resolves.toBe(shortLivedOboToken);
+
+    // Second call must trigger a new exchange since it wasn't cached
+    await expect(
+      getCachedAzureOboToken(token, "audience", requestAzureOboToken),
+    ).resolves.toBe(freshOboToken);
+
+    expect(requestAzureOboToken).toHaveBeenCalledTimes(2);
+  });
+
   it("deduplicates concurrent OBO token requests", async () => {
     const token = jwt({ sub: "user" });
     const oboToken = jwt({ exp: Math.floor(Date.now() / 1000) + 3600 });

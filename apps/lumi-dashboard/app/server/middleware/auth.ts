@@ -109,13 +109,18 @@ export async function getCachedAzureOboToken(
       throw new Error("Token exchange failed");
     }
 
+    const freshNow = Date.now();
     const expiresAtMs =
-      getJwtExpiresAtMs(oboResult.token) ?? now + DEFAULT_OBO_CACHE_TTL_MS;
-    pruneOboTokenCache(now);
-    oboTokenCache.set(cacheKey, {
-      token: oboResult.token,
-      expiresAtMs,
-    });
+      getJwtExpiresAtMs(oboResult.token) ?? freshNow + DEFAULT_OBO_CACHE_TTL_MS;
+
+    // Only cache if the token is still valid outside the skew window
+    if (expiresAtMs - OBO_CACHE_EXPIRY_SKEW_MS > freshNow) {
+      pruneOboTokenCache(freshNow);
+      oboTokenCache.set(cacheKey, {
+        token: oboResult.token,
+        expiresAtMs,
+      });
+    }
 
     return oboResult.token;
   })();
