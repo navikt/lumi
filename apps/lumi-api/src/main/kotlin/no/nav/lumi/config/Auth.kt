@@ -71,7 +71,7 @@ fun Application.configureAuth() {
  * Validate token using NAIS Texas sidecar introspection endpoint.
  */
 private suspend fun validateTokenWithTexas(token: String): BrukerPrincipal? {
-    val result = texasClient.introspect(token, identityProvider = "azuread")
+    val result = texasClient.introspect(token, identityProvider = "entra_id")
 
     if (result == null) {
         logger.warn("Token validation failed - introspection returned null")
