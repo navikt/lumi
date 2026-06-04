@@ -121,4 +121,64 @@ describe("OBO token cache", () => {
     expect(results).toEqual([oboToken, oboToken, oboToken]);
     expect(requestAzureOboToken).toHaveBeenCalledTimes(1);
   });
+
+  it("throws with safe diagnostic message from error.message", async () => {
+    const token = jwt({ sub: "user" });
+    const requestAzureOboToken = vi.fn(async () => ({
+      ok: false as const,
+      error: new Error("interaction_required: user must re-authenticate"),
+    }));
+
+    await expect(
+      getCachedAzureOboToken(token, "audience", requestAzureOboToken),
+    ).rejects.toThrow(
+      "Token exchange failed: interaction_required: user must re-authenticate",
+    );
+  });
+
+  it("throws with safe diagnostic message from result.message", async () => {
+    const token = jwt({ sub: "user" });
+    const requestAzureOboToken = vi.fn(async () => ({
+      ok: false as const,
+      message: "invalid_grant: token expired",
+    }));
+
+    await expect(
+      getCachedAzureOboToken(token, "audience", requestAzureOboToken),
+    ).rejects.toThrow("Token exchange failed: invalid_grant: token expired");
+  });
+
+  it("throws generic message when no diagnostic info available", async () => {
+    const token = jwt({ sub: "user" });
+    const requestAzureOboToken = vi.fn(async () => ({
+      ok: false as const,
+    }));
+
+    await expect(
+      getCachedAzureOboToken(token, "audience", requestAzureOboToken),
+    ).rejects.toThrow("Token exchange failed");
+  });
+
+  it("does not include tokens or PII in error message", async () => {
+    const token = jwt({ sub: "user" });
+    const sensitiveToken = "eyJhbGciOiJSUzI1NiJ9.secret-payload.signature";
+    const fnr = "12345678901";
+    const requestAzureOboToken = vi.fn(async () => ({
+      ok: false as const,
+      error: new Error(`invalid_grant: ${sensitiveToken} ${fnr}`),
+    }));
+
+    const error = await getCachedAzureOboToken(
+      token,
+      "audience",
+      requestAzureOboToken,
+    ).catch((e) => e);
+
+    expect(error.message).not.toContain(sensitiveToken);
+    expect(error.message).not.toContain(fnr);
+    expect(error.message).not.toContain(token);
+    expect(error.message).toBe(
+      "Token exchange failed: invalid_grant: [redacted-jwt] [redacted-id]",
+    );
+  });
 });

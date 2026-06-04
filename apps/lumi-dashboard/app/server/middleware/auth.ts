@@ -30,6 +30,10 @@ const MAX_OBO_CACHE_ENTRIES = 500;
 
 const oboTokenCache = new Map<string, { token: string; expiresAtMs: number }>();
 const inFlightOboRequests = new Map<string, Promise<string>>();
+const JWT_LIKE_VALUE_PATTERN =
+  /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g;
+const NORWEGIAN_ID_NUMBER_PATTERN = /\b\d{11}\b/g;
+const MAX_OBO_DIAGNOSTIC_LENGTH = 500;
 
 function base64UrlDecode(value: string): string {
   return Buffer.from(value, "base64url").toString("utf8");
@@ -87,6 +91,23 @@ function pruneOboTokenCache(now: number): void {
   }
 }
 
+function sanitizeOboDiagnosticMessage(message: string): string {
+  return message
+    .replace(JWT_LIKE_VALUE_PATTERN, "[redacted-jwt]")
+    .replace(NORWEGIAN_ID_NUMBER_PATTERN, "[redacted-id]")
+    .slice(0, MAX_OBO_DIAGNOSTIC_LENGTH);
+}
+
+function extractOboErrorMessage(
+  result: Extract<AzureOboResult, { ok: false }>,
+): string | undefined {
+  const message =
+    result.message ??
+    (result.error instanceof Error ? result.error.message : undefined) ??
+    (typeof result.error === "string" ? result.error : undefined);
+  return message ? sanitizeOboDiagnosticMessage(message) : undefined;
+}
+
 export async function getCachedAzureOboToken(
   token: string,
   audience: string,
@@ -106,7 +127,10 @@ export async function getCachedAzureOboToken(
   const request = (async () => {
     const oboResult = await requestAzureOboToken(token, audience);
     if (!oboResult.ok) {
-      throw new Error("Token exchange failed");
+      const diagnosticMessage = extractOboErrorMessage(oboResult);
+      throw new Error(
+        `Token exchange failed${diagnosticMessage ? `: ${diagnosticMessage}` : ""}`,
+      );
     }
 
     const freshNow = Date.now();
@@ -253,8 +277,15 @@ export const authMiddleware = createMiddleware().server(
         BACKEND_AUDIENCE,
         requestAzureOboToken,
       );
-    } catch {
-      logger.error({ audience: BACKEND_AUDIENCE }, "OBO token exchange failed");
+    } catch (error) {
+      logger.error(
+        {
+          audience: BACKEND_AUDIENCE,
+          errorMessage:
+            error instanceof Error ? error.message : "Unknown error",
+        },
+        "OBO token exchange failed",
+      );
       failWithStatus(502, "Token exchange failed");
     }
 
