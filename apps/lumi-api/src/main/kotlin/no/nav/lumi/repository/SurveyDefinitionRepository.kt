@@ -11,8 +11,14 @@ data class StoredSurveyDefinition(
     val team: String,
     val surveyId: String,
     val definitionHash: String,
-    val definition: SurveyDefinition
+    val definition: SurveyDefinition,
+    val source: String = SurveyDefinitionSource.AUTO
 )
+
+object SurveyDefinitionSource {
+    const val AUTO = "auto"
+    const val API = "api"
+}
 
 class SurveyDefinitionRepository {
     private val json = Json { ignoreUnknownKeys = true }
@@ -46,6 +52,23 @@ class SurveyDefinitionRepository {
         }
     }
 
+    suspend fun insertApiDefinitionIfUnderLimit(
+        team: String,
+        definition: SurveyDefinition,
+        definitionHash: String,
+        maxDefinitions: Int
+    ): Int {
+        return dbQuery {
+            insertIfUnderLimitInCurrentTransaction(
+                team = team,
+                definition = definition,
+                definitionHash = definitionHash,
+                maxDefinitions = maxDefinitions,
+                source = SurveyDefinitionSource.API
+            )
+        }
+    }
+
     suspend fun updateDefinitionIfHashMatches(
         team: String,
         surveyId: String,
@@ -64,6 +87,25 @@ class SurveyDefinitionRepository {
         }
     }
 
+    suspend fun updateApiDefinitionIfHashMatches(
+        team: String,
+        surveyId: String,
+        expectedDefinitionHash: String,
+        definition: SurveyDefinition,
+        newDefinitionHash: String
+    ): Boolean {
+        return dbQuery {
+            updateDefinitionIfHashMatchesInCurrentTransaction(
+                team = team,
+                surveyId = surveyId,
+                expectedDefinitionHash = expectedDefinitionHash,
+                definition = definition,
+                newDefinitionHash = newDefinitionHash,
+                source = SurveyDefinitionSource.API
+            )
+        }
+    }
+
     internal fun findByTeamAndSurveyIdInCurrentTransaction(team: String, surveyId: String): StoredSurveyDefinition? {
         return SurveyDefinitionTable.selectAll()
             .where { (SurveyDefinitionTable.team eq team) and (SurveyDefinitionTable.surveyId eq surveyId) }
@@ -73,7 +115,8 @@ class SurveyDefinitionRepository {
                     team = row[SurveyDefinitionTable.team],
                     surveyId = row[SurveyDefinitionTable.surveyId],
                     definitionHash = row[SurveyDefinitionTable.definitionHash],
-                    definition = json.decodeFromString(row[SurveyDefinitionTable.definition])
+                    definition = json.decodeFromString(row[SurveyDefinitionTable.definition]),
+                    source = row[SurveyDefinitionTable.dbSource]
                 )
             }
     }
@@ -82,7 +125,8 @@ class SurveyDefinitionRepository {
         team: String,
         definition: SurveyDefinition,
         definitionHash: String,
-        maxDefinitions: Int
+        maxDefinitions: Int,
+        source: String = SurveyDefinitionSource.AUTO
     ): Int {
         val definitionJson = json.encodeToString(definition)
         val transaction = org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager.current()
@@ -94,8 +138,8 @@ class SurveyDefinitionRepository {
         }
 
         val sql = """
-            INSERT INTO survey_definitions (id, team, survey_id, definition_hash, definition)
-            SELECT gen_random_uuid(), ?, ?, ?, ?::jsonb
+            INSERT INTO survey_definitions (id, team, survey_id, definition_hash, definition, source)
+            SELECT gen_random_uuid(), ?, ?, ?, ?::jsonb, ?
             WHERE (SELECT count(*) FROM survey_definitions WHERE team = ?) < ?
             ON CONFLICT (team, survey_id) DO NOTHING
         """.trimIndent()
@@ -105,10 +149,26 @@ class SurveyDefinitionRepository {
             stmt.setString(2, definition.surveyId)
             stmt.setString(3, definitionHash)
             stmt.setString(4, definitionJson)
-            stmt.setString(5, team)
-            stmt.setInt(6, maxDefinitions)
+            stmt.setString(5, source)
+            stmt.setString(6, team)
+            stmt.setInt(7, maxDefinitions)
             stmt.executeUpdate()
         }
+    }
+
+    internal fun insertApiDefinitionIfUnderLimitInCurrentTransaction(
+        team: String,
+        definition: SurveyDefinition,
+        definitionHash: String,
+        maxDefinitions: Int
+    ): Int {
+        return insertIfUnderLimitInCurrentTransaction(
+            team = team,
+            definition = definition,
+            definitionHash = definitionHash,
+            maxDefinitions = maxDefinitions,
+            source = SurveyDefinitionSource.API
+        )
     }
 
     internal fun updateDefinitionIfHashMatchesInCurrentTransaction(
@@ -116,7 +176,8 @@ class SurveyDefinitionRepository {
         surveyId: String,
         expectedDefinitionHash: String,
         definition: SurveyDefinition,
-        newDefinitionHash: String
+        newDefinitionHash: String,
+        source: String? = null
     ): Boolean {
         val definitionJson = json.encodeToString(definition)
         return SurveyDefinitionTable.update({
@@ -126,7 +187,27 @@ class SurveyDefinitionRepository {
         }) {
             it[SurveyDefinitionTable.definitionHash] = newDefinitionHash
             it[SurveyDefinitionTable.definition] = definitionJson
+            if (source != null) {
+                it[SurveyDefinitionTable.dbSource] = source
+            }
             it[SurveyDefinitionTable.updatedAt] = Instant.now()
         } > 0
+    }
+
+    internal fun updateApiDefinitionIfHashMatchesInCurrentTransaction(
+        team: String,
+        surveyId: String,
+        expectedDefinitionHash: String,
+        definition: SurveyDefinition,
+        newDefinitionHash: String
+    ): Boolean {
+        return updateDefinitionIfHashMatchesInCurrentTransaction(
+            team = team,
+            surveyId = surveyId,
+            expectedDefinitionHash = expectedDefinitionHash,
+            definition = definition,
+            newDefinitionHash = newDefinitionHash,
+            source = SurveyDefinitionSource.API
+        )
     }
 }

@@ -9,6 +9,7 @@ import no.nav.lumi.domain.diff
 import no.nav.lumi.domain.mergeWith
 import no.nav.lumi.repository.StoredSurveyDefinition
 import no.nav.lumi.repository.SurveyDefinitionRepository
+import no.nav.lumi.repository.SurveyDefinitionSource
 import no.nav.lumi.validation.SurveyDefinitionValidator
 
 data class RegistrationResult(
@@ -25,6 +26,7 @@ class SurveyDefinitionService(
             submission = submission,
             incomingDefinition = SurveyDefinition.fromSubmission(submission),
             allowDefinitionExpansion = true,
+            incomingSource = SurveyDefinitionSource.AUTO,
             findStored = repository::findByTeamAndSurveyId,
             insertDefinition = repository::insertIfUnderLimit,
             updateDefinition = repository::updateDefinitionIfHashMatches
@@ -41,9 +43,10 @@ class SurveyDefinitionService(
             submission = submission,
             incomingDefinition = definition,
             allowDefinitionExpansion = false,
+            incomingSource = SurveyDefinitionSource.API,
             findStored = repository::findByTeamAndSurveyId,
-            insertDefinition = repository::insertIfUnderLimit,
-            updateDefinition = repository::updateDefinitionIfHashMatches
+            insertDefinition = repository::insertApiDefinitionIfUnderLimit,
+            updateDefinition = repository::updateApiDefinitionIfHashMatches
         )
     }
 
@@ -56,9 +59,20 @@ class SurveyDefinitionService(
             submission = submission,
             incomingDefinition = SurveyDefinition.fromSubmission(submission),
             allowDefinitionExpansion = true,
+            incomingSource = SurveyDefinitionSource.AUTO,
             findStored = repository::findByTeamAndSurveyIdInCurrentTransaction,
-            insertDefinition = repository::insertIfUnderLimitInCurrentTransaction,
-            updateDefinition = repository::updateDefinitionIfHashMatchesInCurrentTransaction
+            insertDefinition = { team, definition, definitionHash, maxDefinitions ->
+                repository.insertIfUnderLimitInCurrentTransaction(team, definition, definitionHash, maxDefinitions)
+            },
+            updateDefinition = { team, surveyId, expectedHash, definition, newHash ->
+                repository.updateDefinitionIfHashMatchesInCurrentTransaction(
+                    team,
+                    surveyId,
+                    expectedHash,
+                    definition,
+                    newHash
+                )
+            }
         )
     }
 
@@ -72,9 +86,10 @@ class SurveyDefinitionService(
             submission = submission,
             incomingDefinition = definition,
             allowDefinitionExpansion = false,
+            incomingSource = SurveyDefinitionSource.API,
             findStored = repository::findByTeamAndSurveyIdInCurrentTransaction,
-            insertDefinition = repository::insertIfUnderLimitInCurrentTransaction,
-            updateDefinition = repository::updateDefinitionIfHashMatchesInCurrentTransaction
+            insertDefinition = repository::insertApiDefinitionIfUnderLimitInCurrentTransaction,
+            updateDefinition = repository::updateApiDefinitionIfHashMatchesInCurrentTransaction
         )
     }
 
@@ -83,6 +98,7 @@ class SurveyDefinitionService(
         submission: FeedbackSubmissionV1,
         incomingDefinition: SurveyDefinition,
         allowDefinitionExpansion: Boolean,
+        incomingSource: String,
         findStored: suspend (String, String) -> StoredSurveyDefinition?,
         insertDefinition: suspend (String, SurveyDefinition, String, Int) -> Int,
         updateDefinition: suspend (String, String, String, SurveyDefinition, String) -> Boolean
@@ -100,6 +116,7 @@ class SurveyDefinitionService(
                         stored = stored,
                         incomingDefinition = incomingDefinition,
                         allowDefinitionExpansion = allowDefinitionExpansion,
+                        incomingSource = incomingSource,
                         updateDefinition = updateDefinition
                     )
                 ) {
@@ -132,6 +149,7 @@ class SurveyDefinitionService(
                     stored = existingAfterRace,
                     incomingDefinition = incomingDefinition,
                     allowDefinitionExpansion = allowDefinitionExpansion,
+                    incomingSource = incomingSource,
                     updateDefinition = updateDefinition
                 )
             ) {
@@ -166,12 +184,40 @@ class SurveyDefinitionService(
         stored: StoredSurveyDefinition,
         incomingDefinition: SurveyDefinition,
         allowDefinitionExpansion: Boolean,
+        incomingSource: String,
         updateDefinition: suspend (String, String, String, SurveyDefinition, String) -> Boolean
     ): ExistingDefinitionResult {
         if (!allowDefinitionExpansion) {
             val definitionDiff = diff(stored.definition, incomingDefinition)
+            if (stored.source == SurveyDefinitionSource.AUTO && incomingSource == SurveyDefinitionSource.API) {
+                if (definitionDiff.changedFields.isNotEmpty() || definitionDiff.removedFields.isNotEmpty()) {
+                    throwDefinitionConflict(stored.surveyId, definitionDiff, redactIdentifiers = true)
+                }
+
+                val incomingHash = incomingDefinition.computeHash()
+                val updated = updateDefinition(team, stored.surveyId, stored.definitionHash, incomingDefinition, incomingHash)
+                return if (updated) {
+                    ExistingDefinitionResult.Resolved(
+                        RegistrationResult(stored.surveyId, incomingHash)
+                    )
+                } else {
+                    ExistingDefinitionResult.Retry
+                }
+            }
+
             if (definitionDiff.hasChanges()) {
                 throwDefinitionConflict(stored.surveyId, definitionDiff, redactIdentifiers = true)
+            }
+
+            return ExistingDefinitionResult.Resolved(
+                RegistrationResult(stored.surveyId, stored.definitionHash)
+            )
+        }
+
+        if (stored.source == SurveyDefinitionSource.API) {
+            val definitionDiff = diff(stored.definition, incomingDefinition)
+            if (definitionDiff.changedFields.isNotEmpty() || definitionDiff.addedFields.isNotEmpty()) {
+                throwDefinitionConflict(stored.surveyId, definitionDiff)
             }
 
             return ExistingDefinitionResult.Resolved(

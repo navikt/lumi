@@ -556,7 +556,13 @@ const SubmissionAnswerSchema = z.discriminatedUnion("fieldType", [
   SubmissionDateAnswerSchema,
 ]);
 
-const SubmissionFieldIdSchema = z.string().min(1);
+const SubmissionFieldIdSchema = z
+  .string()
+  .min(1)
+  .regex(
+    /^[A-Za-z0-9_-]+$/,
+    "fieldId must contain only letters, digits, hyphen, or underscore",
+  );
 
 const SubmissionOptionIdsSchema = z
   .array(z.string().min(1))
@@ -729,6 +735,31 @@ export const FeedbackSubmissionV2Schema = z
         message: "surveyType must match definition.surveyType",
         path: ["surveyType"],
       });
+    }
+
+    const fieldsById = new Map(
+      submission.definition.fields.map((field) => [field.fieldId, field]),
+    );
+    for (let i = 0; i < submission.answers.length; i += 1) {
+      const answer = submission.answers[i];
+      if (!answer) continue;
+      const field = fieldsById.get(answer.fieldId);
+      if (!field) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `answers.fieldId must exist in definition.fields (unknown: ${answer.fieldId})`,
+          path: ["answers", i, "fieldId"],
+        });
+        continue;
+      }
+
+      if (field.fieldType !== answer.fieldType) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `answers.fieldType must match definition fieldType for fieldId=${answer.fieldId}`,
+          path: ["answers", i, "fieldType"],
+        });
+      }
     }
   });
 

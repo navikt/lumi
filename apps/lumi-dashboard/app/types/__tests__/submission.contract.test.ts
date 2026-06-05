@@ -303,4 +303,108 @@ describe("submission contract", () => {
       /surveyType must match definition\.surveyType/,
     );
   });
+
+  it("rejects v2 answers whose fieldId is missing from definition", () => {
+    const invalidPayload = {
+      schemaVersion: 2,
+      surveyId: "survey-1",
+      surveyType: "rating",
+      submittedAt: "2026-01-21T12:00:00.000Z",
+      deduplicationKey: "retryable-submit:survey-1",
+      definition: {
+        surveyType: "rating",
+        fields: [
+          {
+            fieldId: "rating",
+            fieldType: "RATING",
+            ratingVariant: "emoji",
+            ratingScale: 5,
+          },
+        ],
+      },
+      answers: [
+        {
+          fieldId: "unknown",
+          fieldType: "TEXT",
+          question: { label: "Unknown" },
+          value: { type: "text", text: "No definition" },
+        },
+      ],
+    };
+
+    expect(() => FeedbackSubmissionV2Schema.parse(invalidPayload)).toThrow(
+      /answers\.fieldId must exist in definition\.fields/,
+    );
+  });
+
+  it("rejects v2 answers whose fieldType differs from definition", () => {
+    const invalidPayload = {
+      schemaVersion: 2,
+      surveyId: "survey-1",
+      surveyType: "rating",
+      submittedAt: "2026-01-21T12:00:00.000Z",
+      deduplicationKey: "retryable-submit:survey-1",
+      definition: {
+        surveyType: "rating",
+        fields: [
+          {
+            fieldId: "rating",
+            fieldType: "RATING",
+            ratingVariant: "emoji",
+            ratingScale: 5,
+          },
+        ],
+      },
+      answers: [
+        {
+          fieldId: "rating",
+          fieldType: "TEXT",
+          question: { label: "Rating" },
+          value: { type: "text", text: "Wrong type" },
+        },
+      ],
+    };
+
+    expect(() => FeedbackSubmissionV2Schema.parse(invalidPayload)).toThrow(
+      /answers\.fieldType must match definition fieldType/,
+    );
+  });
+
+  it("rejects v2 definition fieldIds with backend-illegal characters", () => {
+    const invalidPayload = {
+      schemaVersion: 2,
+      surveyId: "survey-1",
+      surveyType: "rating",
+      submittedAt: "2026-01-21T12:00:00.000Z",
+      deduplicationKey: "retryable-submit:survey-1",
+      definition: {
+        surveyType: "rating",
+        fields: [
+          {
+            fieldId: "rating.field",
+            fieldType: "RATING",
+            ratingVariant: "emoji",
+            ratingScale: 5,
+          },
+        ],
+      },
+      answers: [
+        {
+          fieldId: "rating.field",
+          fieldType: "RATING",
+          question: { label: "How was it?" },
+          value: {
+            type: "rating",
+            rating: 4,
+            ratingVariant: "emoji",
+            ratingScale: 5,
+          },
+        },
+      ],
+    };
+
+    expect(() => FeedbackSubmissionV2Schema.parse(invalidPayload)).toThrow(
+      /fieldId must contain only letters, digits, hyphen, or underscore/,
+    );
+  });
 });

@@ -24,6 +24,7 @@ import no.nav.lumi.domain.SurveyType
 import no.nav.lumi.domain.computeHash
 import no.nav.lumi.repository.StoredSurveyDefinition
 import no.nav.lumi.repository.SurveyDefinitionRepository
+import no.nav.lumi.repository.SurveyDefinitionSource
 
 class SurveyDefinitionServiceTest : FunSpec({
     test("first submission registers definition") {
@@ -141,7 +142,8 @@ class SurveyDefinitionServiceTest : FunSpec({
             team = "team-a",
             surveyId = "survey-1",
             definitionHash = storedDefinition.computeHash(),
-            definition = storedDefinition
+            definition = storedDefinition,
+            source = SurveyDefinitionSource.API
         )
 
         val exception = shouldThrowConflict {
@@ -165,6 +167,126 @@ class SurveyDefinitionServiceTest : FunSpec({
         exception.message shouldContain "Survey definition conflict for surveyId=survey-1"
         exception.message shouldContain "addedFields=[field_1]"
         exception.message shouldNotContain "followup"
+    }
+
+    test("schemaVersion=2 can take over compatible v1-derived partial definition") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val storedDefinition = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("rating", FieldType.RATING, RatingVariant.EMOJI, 5, null)
+            )
+        )
+        val fullDefinition = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("rating", FieldType.RATING, RatingVariant.EMOJI, 5, null),
+                FieldDefinition("followup", FieldType.TEXT, null, null, null)
+            )
+        )
+        val storedHash = storedDefinition.computeHash()
+        val fullHash = fullDefinition.computeHash()
+        val submission = FeedbackSubmissionV1(
+            schemaVersion = 2,
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            submittedAt = "2026-01-10T12:00:12Z",
+            deduplicationKey = "client-key-123456",
+            answers = listOf(
+                Answer(
+                    fieldId = "rating",
+                    fieldType = FieldType.RATING,
+                    question = Question(label = "Hvor fornøyd er du?"),
+                    value = AnswerValue.Rating(rating = 4, ratingVariant = RatingVariant.EMOJI, ratingScale = 5)
+                )
+            )
+        )
+
+        coEvery { repository.findByTeamAndSurveyId("team-a", "survey-1") } returns StoredSurveyDefinition(
+            team = "team-a",
+            surveyId = "survey-1",
+            definitionHash = storedHash,
+            definition = storedDefinition,
+            source = SurveyDefinitionSource.AUTO
+        )
+        coEvery {
+            repository.updateApiDefinitionIfHashMatches("team-a", "survey-1", storedHash, fullDefinition, fullHash)
+        } returns true
+
+        val result = service.registerOrValidateV2("team-a", submission, fullDefinition)
+
+        result shouldBe RegistrationResult("survey-1", fullHash)
+    }
+
+    test("v1 answered subset after schemaVersion=2 definition keeps api definition hash") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val storedDefinition = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("rating", FieldType.RATING, RatingVariant.EMOJI, 5, null),
+                FieldDefinition("followup", FieldType.TEXT, null, null, null)
+            )
+        )
+        val storedHash = storedDefinition.computeHash()
+        val submission = ratingSubmission()
+
+        coEvery { repository.findByTeamAndSurveyId("team-a", "survey-1") } returns StoredSurveyDefinition(
+            team = "team-a",
+            surveyId = "survey-1",
+            definitionHash = storedHash,
+            definition = storedDefinition,
+            source = SurveyDefinitionSource.API
+        )
+
+        val result = service.registerOrValidate("team-a", submission)
+
+        result shouldBe RegistrationResult("survey-1", storedHash)
+        coVerify(exactly = 0) { repository.updateDefinitionIfHashMatches(any(), any(), any(), any(), any()) }
+    }
+
+    test("v1 unknown answered field after schemaVersion=2 definition returns 409") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val storedDefinition = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("rating", FieldType.RATING, RatingVariant.EMOJI, 5, null)
+            )
+        )
+        val submission = FeedbackSubmissionV1(
+            schemaVersion = 1,
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            submittedAt = "2026-01-10T12:00:12Z",
+            answers = listOf(
+                Answer(
+                    fieldId = "followup",
+                    fieldType = FieldType.TEXT,
+                    question = Question(label = "Hva kunne vært bedre?"),
+                    value = AnswerValue.Text("Mer hjelp")
+                )
+            )
+        )
+
+        coEvery { repository.findByTeamAndSurveyId("team-a", "survey-1") } returns StoredSurveyDefinition(
+            team = "team-a",
+            surveyId = "survey-1",
+            definitionHash = storedDefinition.computeHash(),
+            definition = storedDefinition,
+            source = SurveyDefinitionSource.API
+        )
+
+        val exception = shouldThrowConflict {
+            service.registerOrValidate("team-a", submission)
+        }
+
+        exception.message shouldContain "addedFields=[followup]"
     }
 
     test("schemaVersion=2 rejects rating definition with mismatched fixed scale before persistence") {
