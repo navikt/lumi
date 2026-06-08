@@ -22,7 +22,7 @@
     "prepare": "husky"
   },
   "engines": {
-    "node": ">=24"
+    "node": "24.x"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.10",
