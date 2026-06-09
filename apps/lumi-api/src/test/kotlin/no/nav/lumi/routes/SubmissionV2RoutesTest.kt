@@ -334,6 +334,51 @@ class SubmissionV2RoutesTest : FunSpec({
         }
     }
 
+    test("string schemaVersion returns specific 400") {
+        val submissionService = mockk<SubmissionService>()
+
+        testApplication {
+            application { submissionRoutesTestModule(submissionService) }
+            val client = createTestClient()
+
+            val response = client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """
+                    {
+                      "schemaVersion": "2",
+                      "surveyId": "dp-feedback-v2",
+                      "surveyType": "rating",
+                      "submittedAt": "2026-01-10T12:00:12Z",
+                      "deduplicationKey": "client-key-123456",
+                      "definition": {
+                        "surveyType": "rating",
+                        "fields": [
+                          {
+                            "fieldId": "feedback",
+                            "fieldType": "TEXT"
+                          }
+                        ]
+                      },
+                      "answers": [
+                        {
+                          "fieldId": "feedback",
+                          "fieldType": "TEXT",
+                          "question": { "label": "Hvorfor?" },
+                          "value": { "type": "text", "text": "Bra" }
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.bodyAsText() shouldContain "schemaVersion must be an integer"
+            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any()) }
+        }
+    }
+
     test("v2 rejects surveyType mismatch between top-level and definition") {
         val submissionService = mockk<SubmissionService>()
 
