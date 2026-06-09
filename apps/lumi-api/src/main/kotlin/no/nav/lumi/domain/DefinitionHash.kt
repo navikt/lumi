@@ -99,7 +99,10 @@ data class DefinitionDiff(
 
         fun redactChange(change: String): String {
             if (!redactIdentifiers) return change
-            return change.replace(Regex("""optionIds \[[^\]]*] -> \[[^\]]*]"""), "optionIds [REDACTED] -> [REDACTED]")
+            return change.replace(
+                Regex("""optionIds (null|\[[^\]]*]) -> (null|\[[^\]]*])"""),
+                "optionIds [REDACTED] -> [REDACTED]"
+            )
         }
 
         val parts = buildList {
