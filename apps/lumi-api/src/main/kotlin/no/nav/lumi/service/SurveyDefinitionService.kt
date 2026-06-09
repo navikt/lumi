@@ -271,7 +271,7 @@ class SurveyDefinitionService(
         throw ApiErrorException.ConflictException(
             "Survey definition conflict for surveyId=$surveyId: ${
                 if (redactIdentifiers) definitionDiff.describeRedacted() else definitionDiff.describe()
-            }"
+            }. Use a new surveyId for structural changes."
         )
     }
 

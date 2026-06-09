@@ -212,7 +212,7 @@ Anbefaling: Start med `rating` eller `discovery`, og gå videre til `topTasks`/`
 - Bruk progresjon: vis fritekst først etter at rating er valgt (`visibleIf`).
 - Bruk `context.tags` for segmentering (lav kardinalitet), og `context.debug` kun for feilsøking (høy kardinalitet).
 - Unngå identifikatorer i `context` (og ikke auto-collect `pathname` på dynamiske ruter).
-- Velg en stabil `surveyId` per flate/bruksmønster (ikke per deploy).
+- Velg en stabil `surveyId` per flate/bruksmønster (ikke per deploy). Bruk ny `surveyId` når du fjerner, endrer navn på eller endrer type/options for spørsmål, for eksempel `min-flate-feedback-v2`.
 
 **Go-live sjekkliste**
 
@@ -241,11 +241,15 @@ Anbefaling: Start med `rating` eller `discovery`, og gå videre til `topTasks`/`
 ## Transport og payload
 
 Widgeten sender `submission.transportPayload` til din backend. Payloaden er stabil og
-versjonert (`schemaVersion: 1`). Den inkluderer:
+versjonert (`schemaVersion: 2`). Den inkluderer:
 
 - `surveyId`, `surveyType`, `submittedAt`, `startedAt`
+- `deduplicationKey`: stabil nøkkel som gjør retry trygt
+- `definition`: alle spørsmålene i surveyen, også de som ikke er besvart
 - `answers`: Normalisert struktur per spørsmål
 - `context`: tags/debug/auto-collectet miljøinfo
+
+`surveyId` er en del av datakontrakten. Behold samme `surveyId` når du legger til spørsmål, men bruk ny `surveyId` når du fjerner, endrer navn på eller endrer type/options for spørsmål. Da unngår du å blande ulike datastrukturer i samme analyse.
 
 Backend-oppsett (token exchange, NAIS-tilgang) er beskrevet i [Koble til backend](https://navikt.github.io/lumi/kom-i-gang/koble-til-backend).
 

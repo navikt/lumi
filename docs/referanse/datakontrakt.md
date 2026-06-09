@@ -8,16 +8,22 @@ Datakontrakten definerer strukturen på payloaden som sendes fra Lumi Survey-wid
 
 ## Transport payload
 
-Widgeten samler inn svar og sender en strukturert JSON-payload til backend. Payloaden har fire hoveddeler:
+Widgeten samler inn svar og sender en strukturert JSON-payload til backend. Payloaden har disse hoveddelene:
 
 | Felt | Påkrevd | Beskrivelse |
 | :--- | :--- | :--- |
-| `schemaVersion` | ✅ | Alltid `1` (gjeldende versjon) |
+| `schemaVersion` | ✅ | Alltid `2` (gjeldende versjon) |
 | `submittedAt` | ✅ | ISO 8601 tidsstempel for innsending |
 | `surveyId` | ✅ | Unik survey-identifikator |
 | `surveyType` | ✅ | En av: `"rating"`, `"topTasks"`, `"discovery"`, `"taskPriority"`, `"custom"` |
+| `deduplicationKey` | ✅ | Stabil nøkkel som gjør retry trygt |
+| `definition` | ✅ | Alle spørsmålene i surveyen, også de som ikke er besvart |
 | `answers` | ✅ | Strukturert array med svar (se under) |
 | `context` | Anbefalt | Nettleser-/brukerkontekst for segmentering |
+
+::: tip Når skal du endre `surveyId`?
+Behold samme `surveyId` når du legger til spørsmål. Bruk ny `surveyId` når du fjerner, endrer navn på eller endrer type/options for spørsmål. Da unngår du å blande ulike datastrukturer i samme analyse.
+:::
 
 ## Answers-arrayet
 
@@ -104,10 +110,26 @@ Backend mapper `surveyType`-strenger til enums:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "submittedAt": "2024-12-03T14:22:00.000Z",
   "surveyId": "sykepenger-rating",
   "surveyType": "rating",
+  "deduplicationKey": "retryable-submit:sykepenger-rating:abc123",
+  "definition": {
+    "surveyType": "rating",
+    "fields": [
+      {
+        "fieldId": "rating",
+        "fieldType": "RATING",
+        "ratingVariant": "emoji",
+        "ratingScale": 5
+      },
+      {
+        "fieldId": "feedback",
+        "fieldType": "TEXT"
+      }
+    ]
+  },
   "context": {
     "url": "https://nav.no/sykepenger",
     "pathname": "/sykepenger",
