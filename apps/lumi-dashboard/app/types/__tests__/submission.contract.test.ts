@@ -370,6 +370,298 @@ describe("submission contract", () => {
     );
   });
 
+  it("rejects v2 rating answers whose metadata differs from definition", () => {
+    const invalidPayload = {
+      schemaVersion: 2,
+      surveyId: "survey-1",
+      surveyType: "rating",
+      submittedAt: "2026-01-21T12:00:00.000Z",
+      deduplicationKey: "retryable-submit:survey-1",
+      definition: {
+        surveyType: "rating",
+        fields: [
+          {
+            fieldId: "rating",
+            fieldType: "RATING",
+            ratingVariant: "emoji",
+            ratingScale: 5,
+          },
+        ],
+      },
+      answers: [
+        {
+          fieldId: "rating",
+          fieldType: "RATING",
+          question: { label: "How was it?" },
+          value: {
+            type: "rating",
+            rating: 1,
+            ratingVariant: "thumbs",
+            ratingScale: 2,
+          },
+        },
+      ],
+    };
+
+    expect(() => FeedbackSubmissionV2Schema.parse(invalidPayload)).toThrow(
+      /rating config/,
+    );
+  });
+
+  it("rejects v2 choice answers whose options differ from definition", () => {
+    const invalidPayload = {
+      schemaVersion: 2,
+      surveyId: "survey-1",
+      surveyType: "custom",
+      submittedAt: "2026-01-21T12:00:00.000Z",
+      deduplicationKey: "retryable-submit:survey-1",
+      definition: {
+        surveyType: "custom",
+        fields: [
+          {
+            fieldId: "category",
+            fieldType: "SINGLE_CHOICE",
+            optionIds: ["bug", "idea"],
+          },
+        ],
+      },
+      answers: [
+        {
+          fieldId: "category",
+          fieldType: "SINGLE_CHOICE",
+          question: {
+            label: "Category",
+            options: [{ id: "bug", label: "Bug" }],
+          },
+          value: { type: "singleChoice", selectedOptionId: "bug" },
+        },
+      ],
+    };
+
+    expect(() => FeedbackSubmissionV2Schema.parse(invalidPayload)).toThrow(
+      /question\.options must match definition\.optionIds/,
+    );
+  });
+
+  it("rejects v2 single-choice answers with selected option outside definition", () => {
+    const invalidPayload = {
+      schemaVersion: 2,
+      surveyId: "survey-1",
+      surveyType: "custom",
+      submittedAt: "2026-01-21T12:00:00.000Z",
+      deduplicationKey: "retryable-submit:survey-1",
+      definition: {
+        surveyType: "custom",
+        fields: [
+          {
+            fieldId: "category",
+            fieldType: "SINGLE_CHOICE",
+            optionIds: ["bug", "idea"],
+          },
+        ],
+      },
+      answers: [
+        {
+          fieldId: "category",
+          fieldType: "SINGLE_CHOICE",
+          question: {
+            label: "Category",
+            options: [
+              { id: "bug", label: "Bug" },
+              { id: "idea", label: "Idea" },
+            ],
+          },
+          value: { type: "singleChoice", selectedOptionId: "other" },
+        },
+      ],
+    };
+
+    expect(() => FeedbackSubmissionV2Schema.parse(invalidPayload)).toThrow(
+      /selectedOptionId=other is not valid/,
+    );
+  });
+
+  it("rejects v2 multi-choice answers with duplicate or unknown selected options", () => {
+    const invalidPayload = {
+      schemaVersion: 2,
+      surveyId: "survey-1",
+      surveyType: "custom",
+      submittedAt: "2026-01-21T12:00:00.000Z",
+      deduplicationKey: "retryable-submit:survey-1",
+      definition: {
+        surveyType: "custom",
+        fields: [
+          {
+            fieldId: "category",
+            fieldType: "MULTI_CHOICE",
+            optionIds: ["bug", "idea"],
+          },
+        ],
+      },
+      answers: [
+        {
+          fieldId: "category",
+          fieldType: "MULTI_CHOICE",
+          question: {
+            label: "Category",
+            options: [
+              { id: "bug", label: "Bug" },
+              { id: "idea", label: "Idea" },
+            ],
+          },
+          value: {
+            type: "multiChoice",
+            selectedOptionIds: ["bug", "bug", "other"],
+          },
+        },
+      ],
+    };
+
+    expect(() => FeedbackSubmissionV2Schema.parse(invalidPayload)).toThrow(
+      /duplicate selectedOptionIds/,
+    );
+    expect(() => FeedbackSubmissionV2Schema.parse(invalidPayload)).toThrow(
+      /selectedOptionIds=other are not valid/,
+    );
+  });
+
+  it("accepts valid v2 multi-choice answers that match definition", () => {
+    const payload = {
+      schemaVersion: 2,
+      surveyId: "survey-1",
+      surveyType: "custom",
+      submittedAt: "2026-01-21T12:00:00.000Z",
+      deduplicationKey: "retryable-submit:survey-1",
+      definition: {
+        surveyType: "custom",
+        fields: [
+          {
+            fieldId: "category",
+            fieldType: "MULTI_CHOICE",
+            optionIds: ["bug", "idea", "other"],
+          },
+        ],
+      },
+      answers: [
+        {
+          fieldId: "category",
+          fieldType: "MULTI_CHOICE",
+          question: {
+            label: "Category",
+            options: [
+              { id: "bug", label: "Bug" },
+              { id: "idea", label: "Idea" },
+              { id: "other", label: "Other" },
+            ],
+          },
+          value: {
+            type: "multiChoice",
+            selectedOptionIds: ["bug", "other"],
+          },
+        },
+      ],
+    };
+
+    expect(() => FeedbackSubmissionV2Schema.parse(payload)).not.toThrow();
+  });
+
+  it("rejects v2 definitions with backend-forbidden fields for fieldType", () => {
+    const ratingWithOptions = {
+      schemaVersion: 2,
+      surveyId: "survey-1",
+      surveyType: "rating",
+      submittedAt: "2026-01-21T12:00:00.000Z",
+      deduplicationKey: "retryable-submit:survey-1",
+      definition: {
+        surveyType: "rating",
+        fields: [
+          {
+            fieldId: "rating",
+            fieldType: "RATING",
+            ratingVariant: "emoji",
+            ratingScale: 5,
+            optionIds: ["not-allowed"],
+          },
+        ],
+      },
+      answers: [
+        {
+          fieldId: "rating",
+          fieldType: "RATING",
+          question: { label: "How was it?" },
+          value: {
+            type: "rating",
+            rating: 4,
+            ratingVariant: "emoji",
+            ratingScale: 5,
+          },
+        },
+      ],
+    };
+
+    const choiceWithRatingMetadata = {
+      schemaVersion: 2,
+      surveyId: "survey-1",
+      surveyType: "custom",
+      submittedAt: "2026-01-21T12:00:00.000Z",
+      deduplicationKey: "retryable-submit:survey-1",
+      definition: {
+        surveyType: "custom",
+        fields: [
+          {
+            fieldId: "category",
+            fieldType: "SINGLE_CHOICE",
+            optionIds: ["bug"],
+            ratingVariant: "emoji",
+          },
+        ],
+      },
+      answers: [
+        {
+          fieldId: "category",
+          fieldType: "SINGLE_CHOICE",
+          question: {
+            label: "Category",
+            options: [{ id: "bug", label: "Bug" }],
+          },
+          value: { type: "singleChoice", selectedOptionId: "bug" },
+        },
+      ],
+    };
+
+    const textWithOptions = {
+      schemaVersion: 2,
+      surveyId: "survey-1",
+      surveyType: "custom",
+      submittedAt: "2026-01-21T12:00:00.000Z",
+      deduplicationKey: "retryable-submit:survey-1",
+      definition: {
+        surveyType: "custom",
+        fields: [
+          {
+            fieldId: "feedback",
+            fieldType: "TEXT",
+            optionIds: ["not-allowed"],
+          },
+        ],
+      },
+      answers: [
+        {
+          fieldId: "feedback",
+          fieldType: "TEXT",
+          question: { label: "Feedback" },
+          value: { type: "text", text: "Hello" },
+        },
+      ],
+    };
+
+    expect(() => FeedbackSubmissionV2Schema.parse(ratingWithOptions)).toThrow();
+    expect(() =>
+      FeedbackSubmissionV2Schema.parse(choiceWithRatingMetadata),
+    ).toThrow();
+    expect(() => FeedbackSubmissionV2Schema.parse(textWithOptions)).toThrow();
+  });
+
   it("rejects v2 definition fieldIds with backend-illegal characters", () => {
     const invalidPayload = {
       schemaVersion: 2,

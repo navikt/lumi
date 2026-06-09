@@ -22,7 +22,7 @@ Widgeten samler inn svar og sender en strukturert JSON-payload til backend. Payl
 | `context` | Anbefalt | Nettleser-/brukerkontekst for segmentering |
 
 ::: tip Når skal du endre `surveyId`?
-Behold samme `surveyId` når du legger til spørsmål. Bruk ny `surveyId` når du fjerner, endrer navn på eller endrer type/options for spørsmål. Da unngår du å blande ulike datastrukturer i samme analyse.
+Bruk ny `surveyId` når du legger til, fjerner, endrer navn på eller endrer type/options for spørsmål. Da unngår du å blande ulike datastrukturer i samme analyse og 409-feil fra backend.
 :::
 
 ## Answers-arrayet
@@ -51,7 +51,7 @@ interface TransportAnswer {
 { type: "text", text: "Veldig bra!" }
 
 // Rating (tallverdi)
-{ type: "rating", rating: 5 }
+{ type: "rating", rating: 5, ratingVariant: "emoji", ratingScale: 5 }
 
 // Enkeltvalg
 { type: "singleChoice", selectedOptionId: "opt_1" }
@@ -144,7 +144,12 @@ Backend mapper `surveyType`-strenger til enums:
       "fieldId": "rating",
       "fieldType": "RATING",
       "question": { "label": "Hvordan var opplevelsen din?" },
-      "value": { "type": "rating", "rating": 4 }
+      "value": {
+        "type": "rating",
+        "rating": 4,
+        "ratingVariant": "emoji",
+        "ratingScale": 5
+      }
     },
     {
       "fieldId": "feedback",

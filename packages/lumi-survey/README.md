@@ -212,7 +212,7 @@ Anbefaling: Start med `rating` eller `discovery`, og gå videre til `topTasks`/`
 - Bruk progresjon: vis fritekst først etter at rating er valgt (`visibleIf`).
 - Bruk `context.tags` for segmentering (lav kardinalitet), og `context.debug` kun for feilsøking (høy kardinalitet).
 - Unngå identifikatorer i `context` (og ikke auto-collect `pathname` på dynamiske ruter).
-- Velg en stabil `surveyId` per flate/bruksmønster (ikke per deploy). Bruk ny `surveyId` når du fjerner, endrer navn på eller endrer type/options for spørsmål, for eksempel `min-flate-feedback-v2`.
+- Velg en stabil `surveyId` per flate/bruksmønster (ikke per deploy). Bruk ny `surveyId` når du legger til, fjerner, endrer navn på eller endrer type/options for spørsmål, for eksempel `min-flate-feedback-v2`.
 
 **Go-live sjekkliste**
 
@@ -249,7 +249,7 @@ versjonert (`schemaVersion: 2`). Den inkluderer:
 - `answers`: Normalisert struktur per spørsmål
 - `context`: tags/debug/auto-collectet miljøinfo
 
-`surveyId` er en del av datakontrakten. Behold samme `surveyId` når du legger til spørsmål, men bruk ny `surveyId` når du fjerner, endrer navn på eller endrer type/options for spørsmål. Da unngår du å blande ulike datastrukturer i samme analyse.
+`surveyId` er en del av datakontrakten. Bruk ny `surveyId` når du legger til, fjerner, endrer navn på eller endrer type/options for spørsmål. Da unngår du å blande ulike datastrukturer i samme analyse og 409-feil fra backend.
 
 Backend-oppsett (token exchange, NAIS-tilgang) er beskrevet i [Koble til backend](https://navikt.github.io/lumi/kom-i-gang/koble-til-backend).
 

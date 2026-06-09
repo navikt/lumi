@@ -625,29 +625,29 @@ const SubmissionRatingFieldDefinitionSchema =
     fieldType: z.literal("RATING"),
     ratingVariant: RatingVariantSchema,
     ratingScale: z.number().int(),
-  });
+  }).strict();
 
 const SubmissionTextFieldDefinitionSchema =
   SubmissionFieldDefinitionBaseSchema.extend({
     fieldType: z.literal("TEXT"),
-  });
+  }).strict();
 
 const SubmissionSingleChoiceFieldDefinitionSchema =
   SubmissionFieldDefinitionBaseSchema.extend({
     fieldType: z.literal("SINGLE_CHOICE"),
     optionIds: SubmissionOptionIdsSchema,
-  });
+  }).strict();
 
 const SubmissionMultiChoiceFieldDefinitionSchema =
   SubmissionFieldDefinitionBaseSchema.extend({
     fieldType: z.literal("MULTI_CHOICE"),
     optionIds: SubmissionOptionIdsSchema,
-  });
+  }).strict();
 
 const SubmissionDateFieldDefinitionSchema =
   SubmissionFieldDefinitionBaseSchema.extend({
     fieldType: z.literal("DATE"),
-  });
+  }).strict();
 
 export const SubmissionFieldDefinitionSchema = z.discriminatedUnion(
   "fieldType",
@@ -734,6 +734,108 @@ function validateUniqueAnswerFieldIds(
   }
 }
 
+function validateChoiceQuestionOptions(
+  answer:
+    | z.infer<typeof SubmissionSingleChoiceAnswerSchema>
+    | z.infer<typeof SubmissionMultiChoiceAnswerSchema>,
+  field:
+    | z.infer<typeof SubmissionSingleChoiceFieldDefinitionSchema>
+    | z.infer<typeof SubmissionMultiChoiceFieldDefinitionSchema>,
+  answerIndex: number,
+  ctx: z.RefinementCtx,
+) {
+  const answerOptionIds = answer.question.options?.map((option) => option.id);
+  if (!answerOptionIds) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `choice answer fieldId=${answer.fieldId} must include question.options to match definition.optionIds`,
+      path: ["answers", answerIndex, "question", "options"],
+    });
+    return;
+  }
+
+  if (
+    answerOptionIds.length !== field.optionIds.length ||
+    answerOptionIds.some((optionId, i) => optionId !== field.optionIds[i])
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `choice answer fieldId=${answer.fieldId} question.options must match definition.optionIds`,
+      path: ["answers", answerIndex, "question", "options"],
+    });
+  }
+}
+
+function validateAnswerValueAgainstDefinition(
+  answer: z.infer<typeof SubmissionAnswerSchema>,
+  field: z.infer<typeof SubmissionFieldDefinitionSchema>,
+  answerIndex: number,
+  ctx: z.RefinementCtx,
+) {
+  if (answer.fieldType === "RATING" && field.fieldType === "RATING") {
+    if (
+      field.ratingVariant !== answer.value.ratingVariant ||
+      field.ratingScale !== answer.value.ratingScale
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `rating config for fieldId=${answer.fieldId} must match definition`,
+        path: ["answers", answerIndex, "value"],
+      });
+    }
+    return;
+  }
+
+  if (
+    answer.fieldType === "SINGLE_CHOICE" &&
+    field.fieldType === "SINGLE_CHOICE"
+  ) {
+    validateChoiceQuestionOptions(answer, field, answerIndex, ctx);
+    if (!field.optionIds.includes(answer.value.selectedOptionId)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `selectedOptionId=${answer.value.selectedOptionId} is not valid for fieldId=${answer.fieldId}`,
+        path: ["answers", answerIndex, "value", "selectedOptionId"],
+      });
+    }
+    return;
+  }
+
+  if (
+    answer.fieldType === "MULTI_CHOICE" &&
+    field.fieldType === "MULTI_CHOICE"
+  ) {
+    validateChoiceQuestionOptions(answer, field, answerIndex, ctx);
+    const seen = new Set<string>();
+    const duplicateSelections = new Set<string>();
+    for (const selectedOptionId of answer.value.selectedOptionIds) {
+      if (seen.has(selectedOptionId)) {
+        duplicateSelections.add(selectedOptionId);
+      }
+      seen.add(selectedOptionId);
+    }
+
+    if (duplicateSelections.size > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `duplicate selectedOptionIds=${[...duplicateSelections].join(",")} for fieldId=${answer.fieldId}`,
+        path: ["answers", answerIndex, "value", "selectedOptionIds"],
+      });
+    }
+
+    const invalidIds = answer.value.selectedOptionIds.filter(
+      (selectedOptionId) => !field.optionIds.includes(selectedOptionId),
+    );
+    if (invalidIds.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `selectedOptionIds=${invalidIds.join(",")} are not valid for fieldId=${answer.fieldId}`,
+        path: ["answers", answerIndex, "value", "selectedOptionIds"],
+      });
+    }
+  }
+}
+
 export const FeedbackSubmissionV1Schema = z
   .object({
     schemaVersion: z.literal(1),
@@ -795,7 +897,10 @@ export const FeedbackSubmissionV2Schema = z
           message: `answers.fieldType must match definition fieldType for fieldId=${answer.fieldId}`,
           path: ["answers", i, "fieldType"],
         });
+        continue;
       }
+
+      validateAnswerValueAgainstDefinition(answer, field, i, ctx);
     }
   });
 
