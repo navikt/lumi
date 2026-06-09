@@ -540,7 +540,9 @@ describe("submission contract", () => {
       expect(
         () => FeedbackSubmissionV2Schema.parse(invalidPayload),
         `expected non-decimal fieldId "${illegalId}" to be rejected`,
-      ).toThrow(/fieldId must contain only letters, digits, hyphen, or underscore/);
+      ).toThrow(
+        /fieldId must contain only letters, digits, hyphen, or underscore/,
+      );
     }
   });
 
