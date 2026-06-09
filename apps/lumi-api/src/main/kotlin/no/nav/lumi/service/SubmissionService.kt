@@ -99,11 +99,11 @@ class SubmissionService(
         inCurrentTransaction: Boolean
     ): RegistrationResult {
         return when {
-            definition == null && inCurrentTransaction ->
-                surveyDefinitionService.registerOrValidateInCurrentTransaction(team, submission)
+            definition != null && inCurrentTransaction ->
+                surveyDefinitionService.registerOrValidateV2InCurrentTransaction(team, submission, definition)
 
-            definition == null ->
-                surveyDefinitionService.registerOrValidate(team, submission)
+            definition != null ->
+                surveyDefinitionService.registerOrValidateV2(team, submission, definition)
 
             allowDefinitionExpansion && inCurrentTransaction ->
                 surveyDefinitionService.registerOrValidateInCurrentTransaction(team, submission)
@@ -112,10 +112,10 @@ class SubmissionService(
                 surveyDefinitionService.registerOrValidate(team, submission)
 
             inCurrentTransaction ->
-                surveyDefinitionService.registerOrValidateV2InCurrentTransaction(team, submission, definition)
+                surveyDefinitionService.registerOrValidateInCurrentTransaction(team, submission)
 
             else ->
-                surveyDefinitionService.registerOrValidateV2(team, submission, definition)
+                surveyDefinitionService.registerOrValidate(team, submission)
         }
     }
 }
