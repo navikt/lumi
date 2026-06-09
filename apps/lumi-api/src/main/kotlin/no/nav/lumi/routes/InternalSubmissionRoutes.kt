@@ -4,7 +4,6 @@ import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import no.nav.lumi.config.auth.CallerIdentityKey
@@ -13,12 +12,7 @@ import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.service.FeedbackService
 import no.nav.lumi.service.SubmissionService
 import no.nav.lumi.service.SurveyDefinitionService
-import no.nav.lumi.validation.SubmissionValidator
 import org.slf4j.LoggerFactory
-import io.ktor.utils.io.core.readText
-import io.ktor.utils.io.readRemaining
-import kotlinx.serialization.SerializationException
-import no.nav.lumi.domain.FeedbackSubmissionV1
 import no.nav.lumi.domain.SaveResult
 import java.security.MessageDigest
 
@@ -26,13 +20,6 @@ private val log = LoggerFactory.getLogger("InternalSubmissionRoutes")
 
 private const val SUBMISSION_KEY_HEADER = "X-Lumi-Submission-Key"
 private const val CALLER_IDENTITY_HEADER = "X-Lumi-Caller-Identity"
-private const val MAX_SUBMISSION_BYTES = 1_048_576L
-
-private val strictJson = Json {
-    ignoreUnknownKeys = false
-    isLenient = false
-    encodeDefaults = true
-}
 
 /**
  * Internal submission route for cross-tenant proxy forwarding in dev.
@@ -78,7 +65,7 @@ fun Route.internalSubmissionRoutes(
             val body = receiveTextWithLimit(call)
 
             val jsonElement = try {
-                strictJson.parseToJsonElement(body)
+                strictSubmissionJson.parseToJsonElement(body)
             } catch (e: Exception) {
                 log.warn(
                     "Internal submission: invalid JSON from ${identity.team}/${identity.app} parseErrorType=${e::class.simpleName}"
@@ -86,18 +73,14 @@ fun Route.internalSubmissionRoutes(
                 throw ApiErrorException.BadRequestException("Invalid JSON")
             }
 
-            val submission = try {
-                strictJson.decodeFromJsonElement(FeedbackSubmissionV1.serializer(), jsonElement)
-            } catch (e: SerializationException) {
-                throw ApiErrorException.BadRequestException("Invalid payload")
-            }
-
-            SubmissionValidator.validateSubmissionV1(submission)
+            val parsedSubmission = decodeValidatedSubmission(jsonElement)
+            val submission = parsedSubmission.submission
             val submissionOutcome = submissionService.submit(
                 feedbackJson = body,
                 team = identity.team,
                 app = identity.app,
-                submission = submission
+                submission = submission,
+                definition = parsedSubmission.definition
             )
 
             when (val saveResult = submissionOutcome.saveResult) {
@@ -122,19 +105,4 @@ fun Route.internalSubmissionRoutes(
             }
         }
     }
-}
-
-private suspend fun receiveTextWithLimit(call: io.ktor.server.application.ApplicationCall): String {
-    val contentLength = call.request.headers[HttpHeaders.ContentLength]?.toLongOrNull()
-    if (contentLength != null && contentLength > MAX_SUBMISSION_BYTES) {
-        throw ApiErrorException.PayloadTooLargeException("Payload too large")
-    }
-
-    val packet = call.receiveChannel().readRemaining(MAX_SUBMISSION_BYTES + 1)
-    val text = packet.readText()
-    if (text.toByteArray().size > MAX_SUBMISSION_BYTES) {
-        throw ApiErrorException.PayloadTooLargeException("Payload too large")
-    }
-
-    return text
 }

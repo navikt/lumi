@@ -21,15 +21,13 @@ class SubmissionService(
         team: String,
         app: String,
         submission: FeedbackSubmissionV1,
-        definition: SurveyDefinition? = null,
-        allowDefinitionExpansion: Boolean = definition == null
+        definition: SurveyDefinition? = null
     ): SubmissionOutcome {
         if (submission.deduplicationKey == null) {
             val definitionResult = registerDefinition(
                 team = team,
                 submission = submission,
                 definition = definition,
-                allowDefinitionExpansion = allowDefinitionExpansion,
                 inCurrentTransaction = false
             )
             val saveResult = feedbackService.save(
@@ -72,7 +70,6 @@ class SubmissionService(
                 team = team,
                 submission = submission,
                 definition = definition,
-                allowDefinitionExpansion = allowDefinitionExpansion,
                 inCurrentTransaction = true
             )
             val saveResult = feedbackRepository.saveInCurrentTransaction(
@@ -95,7 +92,6 @@ class SubmissionService(
         team: String,
         submission: FeedbackSubmissionV1,
         definition: SurveyDefinition?,
-        allowDefinitionExpansion: Boolean,
         inCurrentTransaction: Boolean
     ): RegistrationResult {
         return when {
@@ -104,12 +100,6 @@ class SubmissionService(
 
             definition != null ->
                 surveyDefinitionService.registerOrValidateV2(team, submission, definition)
-
-            allowDefinitionExpansion && inCurrentTransaction ->
-                surveyDefinitionService.registerOrValidateInCurrentTransaction(team, submission)
-
-            allowDefinitionExpansion ->
-                surveyDefinitionService.registerOrValidate(team, submission)
 
             inCurrentTransaction ->
                 surveyDefinitionService.registerOrValidateInCurrentTransaction(team, submission)

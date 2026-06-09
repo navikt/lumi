@@ -19,7 +19,7 @@ import no.nav.lumi.domain.SurveyType
 import no.nav.lumi.repository.FeedbackRepository
 
 class SubmissionServiceTest : FunSpec({
-    test("provided definition uses v2 registration even when definition expansion is allowed") {
+    test("provided definition uses v2 registration") {
         val feedbackService = mockk<FeedbackService>()
         val surveyDefinitionService = mockk<SurveyDefinitionService>()
         val feedbackRepository = mockk<FeedbackRepository>()
@@ -38,8 +38,7 @@ class SubmissionServiceTest : FunSpec({
                 team = "team-a",
                 app = "app-a",
                 submission = submission,
-                definition = definition,
-                allowDefinitionExpansion = true
+                definition = definition
             )
         }
 
@@ -50,7 +49,7 @@ class SubmissionServiceTest : FunSpec({
         coVerify(exactly = 0) { surveyDefinitionService.registerOrValidateV2InCurrentTransaction(any(), any(), any()) }
     }
 
-    test("provided definition uses v2 registration in current transaction even when definition expansion is allowed") {
+    test("provided definition uses v2 registration in current transaction") {
         val feedbackService = mockk<FeedbackService>()
         val surveyDefinitionService = mockk<SurveyDefinitionService>()
         val feedbackRepository = mockk<FeedbackRepository>()
@@ -96,8 +95,7 @@ class SubmissionServiceTest : FunSpec({
                 team = "team-a",
                 app = "app-a",
                 submission = submission,
-                definition = definition,
-                allowDefinitionExpansion = true
+                definition = definition
             )
         }
 

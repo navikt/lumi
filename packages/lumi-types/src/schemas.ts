@@ -663,7 +663,10 @@ export const SubmissionFieldDefinitionSchema = z.discriminatedUnion(
 export const SubmissionDefinitionSchema = z
   .object({
     surveyType: SurveyTypeSchema,
-    fields: z.array(SubmissionFieldDefinitionSchema).min(1),
+    fields: z
+      .array(SubmissionFieldDefinitionSchema)
+      .min(1)
+      .max(50, "definition.fields must not exceed 50 fields"),
   })
   .superRefine((definition, ctx) => {
     const expectedScaleByVariant: Record<

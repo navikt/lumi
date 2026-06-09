@@ -745,4 +745,62 @@ describe("submission contract", () => {
 
     expect(() => FeedbackSubmissionV2Schema.parse(payload)).not.toThrow();
   });
+
+  it("accepts v2 definition with exactly 50 fields (backend MAX_FIELDS_PER_DEFINITION)", () => {
+    const fields = Array.from({ length: 50 }, (_, i) => ({
+      fieldId: `field-${i + 1}`,
+      fieldType: "TEXT" as const,
+    }));
+    const payload = {
+      schemaVersion: 2,
+      surveyId: "survey-1",
+      surveyType: "custom",
+      submittedAt: "2026-01-21T12:00:00.000Z",
+      deduplicationKey: "retryable-submit:survey-1",
+      definition: {
+        surveyType: "custom",
+        fields,
+      },
+      answers: [
+        {
+          fieldId: "field-1",
+          fieldType: "TEXT",
+          question: { label: "Q1" },
+          value: { type: "text", text: "answer" },
+        },
+      ],
+    };
+
+    expect(() => FeedbackSubmissionV2Schema.parse(payload)).not.toThrow();
+  });
+
+  it("rejects v2 definition with 51 fields (exceeds backend MAX_FIELDS_PER_DEFINITION = 50)", () => {
+    const fields = Array.from({ length: 51 }, (_, i) => ({
+      fieldId: `field-${i + 1}`,
+      fieldType: "TEXT" as const,
+    }));
+    const invalidPayload = {
+      schemaVersion: 2,
+      surveyId: "survey-1",
+      surveyType: "custom",
+      submittedAt: "2026-01-21T12:00:00.000Z",
+      deduplicationKey: "retryable-submit:survey-1",
+      definition: {
+        surveyType: "custom",
+        fields,
+      },
+      answers: [
+        {
+          fieldId: "field-1",
+          fieldType: "TEXT",
+          question: { label: "Q1" },
+          value: { type: "text", text: "answer" },
+        },
+      ],
+    };
+
+    expect(() => FeedbackSubmissionV2Schema.parse(invalidPayload)).toThrow(
+      /definition\.fields must not exceed 50 fields/,
+    );
+  });
 });
