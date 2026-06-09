@@ -559,13 +559,46 @@ const SubmissionAnswerSchema = z.discriminatedUnion("fieldType", [
 const SubmissionFieldIdSchema = z
   .string()
   .min(1)
+  .max(200, "fieldId must not exceed 200 characters")
   .regex(
-    /^[A-Za-z0-9_-]+$/,
+    /^[\p{L}\p{Nd}_-]+$/u,
     "fieldId must contain only letters, digits, hyphen, or underscore",
   );
 
+/**
+ * Mirrors backend isSafeChoiceValue: forbids JSONPath special characters
+ * (", \, $, @, ?, (, ), ,) and control characters (code < 32).
+ * Max length matches backend MAX_IDENTIFIER_LENGTH = 200.
+ */
+const OPTION_ID_FORBIDDEN_CHARS = new Set([
+  '"',
+  "\\",
+  "$",
+  "@",
+  "?",
+  "(",
+  ")",
+  ",",
+]);
+
+const SubmissionOptionIdSchema = z
+  .string()
+  .min(1)
+  .max(200, "optionId must not exceed 200 characters")
+  .refine(
+    (s) => s.trim().length > 0,
+    "optionId must not be blank or whitespace-only",
+  )
+  .refine(
+    (s) =>
+      [...s].every(
+        (c) => !OPTION_ID_FORBIDDEN_CHARS.has(c) && c.charCodeAt(0) >= 32,
+      ),
+    "optionId contains illegal characters (JSONPath special or control characters are not allowed)",
+  );
+
 const SubmissionOptionIdsSchema = z
-  .array(z.string().min(1))
+  .array(SubmissionOptionIdSchema)
   .min(1)
   .superRefine((optionIds, ctx) => {
     const seen = new Set<string>();

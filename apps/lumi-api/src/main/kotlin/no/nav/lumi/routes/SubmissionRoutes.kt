@@ -178,8 +178,14 @@ private fun decodeSubmissionV2(jsonElement: kotlinx.serialization.json.JsonEleme
     return try {
         strictJson.decodeFromJsonElement(FeedbackSubmissionV2.serializer(), jsonElement)
     } catch (e: MissingFieldException) {
-        if (e.missingFields.contains("definition")) {
-            throw ApiErrorException.BadRequestException("Invalid payload: definition is required for schemaVersion=2")
+        when {
+            e.missingFields.contains("definition") -> {
+                throw ApiErrorException.BadRequestException("Invalid payload: definition is required for schemaVersion=2")
+            }
+
+            e.missingFields.contains("deduplicationKey") -> {
+                throw ApiErrorException.BadRequestException("Invalid payload: deduplicationKey is required for schemaVersion=2")
+            }
         }
         throw ApiErrorException.BadRequestException("Invalid payload")
     } catch (e: SerializationException) {

@@ -201,6 +201,91 @@ class SubmissionV2RoutesTest : FunSpec({
             }
 
             response.status shouldBe HttpStatusCode.BadRequest
+            Json.parseToJsonElement(response.bodyAsText()).jsonObject["message"]?.jsonPrimitive?.content shouldBe
+                "Invalid payload: definition is required for schemaVersion=2"
+            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any(), any()) }
+        }
+    }
+
+    test("v2 without deduplicationKey returns specific 400") {
+        val submissionService = mockk<SubmissionService>()
+
+        testApplication {
+            application { submissionRoutesTestModule(submissionService) }
+            val client = createTestClient()
+
+            val response = client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """
+                    {
+                      "schemaVersion": 2,
+                      "surveyId": "dp-feedback-v2",
+                      "surveyType": "rating",
+                      "submittedAt": "2026-01-10T12:00:12Z",
+                      "definition": {
+                        "surveyType": "rating",
+                        "fields": [
+                          {
+                            "fieldId": "feedback",
+                            "fieldType": "TEXT"
+                          }
+                        ]
+                      },
+                      "answers": [
+                        {
+                          "fieldId": "feedback",
+                          "fieldType": "TEXT",
+                          "question": { "label": "Hvorfor?" },
+                          "value": { "type": "text", "text": "Bra" }
+                        }
+                      ]
+                    }
+                    """.trimIndent()
+                )
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            Json.parseToJsonElement(response.bodyAsText()).jsonObject["message"]?.jsonPrimitive?.content shouldBe
+                "Invalid payload: deduplicationKey is required for schemaVersion=2"
+            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any(), any()) }
+        }
+    }
+
+    test("v2 without answers returns generic invalid payload") {
+        val submissionService = mockk<SubmissionService>()
+
+        testApplication {
+            application { submissionRoutesTestModule(submissionService) }
+            val client = createTestClient()
+
+            val response = client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """
+                    {
+                      "schemaVersion": 2,
+                      "surveyId": "dp-feedback-v2",
+                      "surveyType": "rating",
+                      "submittedAt": "2026-01-10T12:00:12Z",
+                      "deduplicationKey": "client-key-123456",
+                      "definition": {
+                        "surveyType": "rating",
+                        "fields": [
+                          {
+                            "fieldId": "feedback",
+                            "fieldType": "TEXT"
+                          }
+                        ]
+                      }
+                    }
+                    """.trimIndent()
+                )
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            Json.parseToJsonElement(response.bodyAsText()).jsonObject["message"]?.jsonPrimitive?.content shouldBe
+                "Invalid payload"
             coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any(), any()) }
         }
     }
