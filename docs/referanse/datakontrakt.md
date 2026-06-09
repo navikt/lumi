@@ -16,13 +16,17 @@ Widgeten samler inn svar og sender en strukturert JSON-payload til backend. Payl
 | `submittedAt` | ✅ | ISO 8601 tidsstempel for innsending |
 | `surveyId` | ✅ | Unik survey-identifikator |
 | `surveyType` | ✅ | En av: `"rating"`, `"topTasks"`, `"discovery"`, `"taskPriority"`, `"custom"` |
-| `deduplicationKey` | ✅ | Stabil nøkkel som gjør retry trygt |
+| `deduplicationKey` | ✅ | Genereres av widgeten og gjør nytt forsøk etter transportfeil trygt |
 | `definition` | ✅ | Alle spørsmålene i surveyen, også de som ikke er besvart |
 | `answers` | ✅ | Strukturert array med svar (se under) |
 | `context` | Anbefalt | Nettleser-/brukerkontekst for segmentering |
 
 ::: tip Når skal du endre `surveyId`?
 Bruk ny `surveyId` når du legger til, fjerner, endrer navn på eller endrer type/options for spørsmål. Da unngår du å blande ulike datastrukturer i samme analyse og 409-feil fra backend.
+:::
+
+::: info Deduplication
+Du trenger ikke sette `deduplicationKey` selv når du bruker widgeten. Den samme nøkkelen brukes når en innsending feiler og brukeren prøver på nytt. Etter vellykket innsending, reset eller ny sidevisning får neste innsending en ny nøkkel.
 :::
 
 ## Answers-arrayet

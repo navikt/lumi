@@ -1,11 +1,22 @@
 ---
 name: lumi-survey
-description: Integrer @navikt/lumi-survey tilbakemeldingswidget i en Nav-frontendapplikasjon
+description: Integrer og konfigurer @navikt/lumi-survey med survey-design, v2-payload, transport, auth, NAIS accessPolicy og validering. Brukes når en agent skal lage, endre eller feilsøke Lumi Survey-widgeter, surveyId-strategi, feedback-endepunkt eller tilhørende NAIS-oppsett i en Nav-app.
 ---
 
 # Lumi Survey-integrasjon
 
 Legg til en Lumi Survey-widget i applikasjonen din. Dekker installasjon, survey-konfigurasjon, backend-transportendepunkt og NAIS-oppsett.
+
+## Agent-defaults
+
+- Bruk alltid ny widget-kontrakt: `submission.transportPayload` sender `schemaVersion: 2`, `definition` og `deduplicationKey`.
+- Utvikleren skal ikke fylle ut `deduplicationKey` eller `definition`; widgeten lager dette.
+- Bruk ny `surveyId` når spørsmål legges til, fjernes, får nytt navn eller endrer type/options. Eksempel: `min-flate-feedback-v2`.
+- Backend/BFF skal videresende payloaden uten å endre JSON-strukturen. Ikke bygg egen payload hvis du kan sende `submission.transportPayload`.
+- `deduplicationKey` brukes bare for nytt forsøk etter transportfeil. Etter vellykket innsending eller reset får neste innsending ny nøkkel.
+- `localStorage`/consent-storage styrer kun UX-state (vist/lukket/sendt), ikke deduplication.
+- Ikke legg PII i `context.tags`, `context.debug`, `surveyId`, `fieldId` eller option values.
+- Lag survey-konfig med stabile, maskinvennlige `id`/`value`-er: bokstaver/tall/`_`/`-`, maks 200 tegn. Ikke bruk punktum, slash, mellomrom eller brukerdata i id-er.
 
 ## Fase 1: Kartlegging
 
@@ -332,6 +343,8 @@ import { survey } from "./survey";
 
 Velg en unik `surveyId` — bruk appnavnet som prefiks (f.eks. `"sykepengesoknad-feedback"`, `"modia-satisfaction"`). Denne ID-en identifiserer surveyen i Lumi-dashboardet.
 
+Når du endrer survey-strukturen senere, skal du lage ny `surveyId`. Gjelder også når du legger til nye spørsmål.
+
 ### 4d. Valgfritt: Kontekst-tags for segmentering
 
 Send med metadata for å muliggjøre filtrering i Lumi-dashboardet:
@@ -387,6 +400,7 @@ Etter implementasjon, verifiser hele flyten:
 - [ ] Aksel v8+ bekreftet (`@navikt/ds-react` ≥ 8.0.0)
 - [ ] `LumiSurveyDock` rendres i appen med en unik `surveyId`
 - [ ] Survey-konfigurasjon bruker `satisfies LumiSurveyConfig`
+- [ ] Spørsmåls-ID-er og option values er stabile og uten PII
 - [ ] Transport sin `submit`-funksjon kaller ditt backend-endepunkt
 - [ ] Backend-endepunkt utveksler token og videresender til Lumi API via `LUMI_FEEDBACK_PATH`
 - [ ] NAIS-manifest har `LUMI_API_HOST`, `LUMI_AUDIENCE`, `LUMI_FEEDBACK_PATH` og `accessPolicy`
@@ -395,6 +409,8 @@ Etter implementasjon, verifiser hele flyten:
 - [ ] Ingen personopplysninger i kontekst-tags
 - [ ] Lagringsstrategi matcher app-type (consent for offentlige, localStorage for interne)
 - [ ] Surveyen dukker opp i riktig Lumi-dashboard etter testinnsending (dev: https://lumi-dashboard.ansatt.dev.nav.no, prod: https://lumi-dashboard.ansatt.nav.no/)
+- [ ] Feilet transport + nytt forsøk gir ikke duplikat
+- [ ] Ny `surveyId` brukes hvis survey-strukturen er endret
 
 ## Hurtigstart: Forhåndsdefinerte surveys
 

@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   const obo = await requestOboToken(token, process.env.LUMI_AUDIENCE!);
   if (!obo.ok) return new Response("Token exchange failed", { status: 502 });
 
-  const body = await request.json();
+  const body = await request.text();
 
   // Endepunkt settes via LUMI_FEEDBACK_PATH (se Fase 6a)
   const response = await fetch(`${process.env.LUMI_API_HOST}${process.env.LUMI_FEEDBACK_PATH}`, {
@@ -28,13 +28,15 @@ export async function POST(request: Request) {
       "Content-Type": "application/json",
       Authorization: `Bearer ${obo.token}`,
     },
-    body: JSON.stringify(body),
+    body,
   });
 
   if (!response.ok) return new Response("Lumi API error", { status: response.status });
   return new Response(null, { status: 204 });
 }
 ```
+
+Videresend rå JSON-tekst. Ikke parse og bygg payloaden på nytt i BFF-en; widgeten har allerede laget `schemaVersion: 2`, `definition` og `deduplicationKey`.
 
 ### Kotlin backend (Ktor / Spring Boot BFF)
 
