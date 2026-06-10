@@ -30,7 +30,7 @@ jobs:
     name: Run checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
           ref: ${{ inputs.ref || github.ref }}
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
@@ -63,7 +63,7 @@ jobs:
     outputs:
       image: ${{ steps.docker-build-push.outputs.image }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
           ref: ${{ inputs.ref || github.ref }}
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
@@ -99,7 +99,7 @@ jobs:
           identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Push to GAR
-        uses: nais/docker-build-push@751a312f0803eb96a05a41fadf51be19b7be362c
+        uses: nais/docker-build-push@05dbb6091b30bd84279c6d64a45ef8782fd410a5
         id: docker-build-push
         with:
           team: team-esyfo
@@ -119,7 +119,7 @@ jobs:
     outputs:
       image: ${{ steps.docker-build-push.outputs.image }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
           ref: ${{ inputs.ref || github.ref }}
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
@@ -154,7 +154,7 @@ jobs:
           identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Push to GAR
-        uses: nais/docker-build-push@751a312f0803eb96a05a41fadf51be19b7be362c
+        uses: nais/docker-build-push@05dbb6091b30bd84279c6d64a45ef8782fd410a5
         id: docker-build-push
         with:
           team: team-esyfo
@@ -175,7 +175,7 @@ jobs:
       name: demo
       url: https://lumi-dashboard-demo.ekstern.dev.nav.no
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - uses: nais/deploy/actions/deploy@a7f8690f9b367fcbf5348a0a1e21d44f1aae50eb
         env:
           CLUSTER: dev-gcp
@@ -193,7 +193,7 @@ jobs:
       name: dev
       url: https://lumi-dashboard.ansatt.dev.nav.no
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - uses: nais/deploy/actions/deploy@a7f8690f9b367fcbf5348a0a1e21d44f1aae50eb
         env:
           CLUSTER: dev-gcp
@@ -211,7 +211,7 @@ jobs:
       name: prod
       url: https://lumi-dashboard.ansatt.nav.no
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - uses: nais/deploy/actions/deploy@a7f8690f9b367fcbf5348a0a1e21d44f1aae50eb
         env:
           CLUSTER: prod-gcp

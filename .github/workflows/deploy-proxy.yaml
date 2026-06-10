@@ -23,7 +23,7 @@ jobs:
     outputs:
       image: ${{ steps.docker-build-push.outputs.image }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
 
       - name: Setup Java
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
@@ -42,7 +42,7 @@ jobs:
         run: ./gradlew build
 
       - name: Push docker image to GAR
-        uses: nais/docker-build-push@751a312f0803eb96a05a41fadf51be19b7be362c
+        uses: nais/docker-build-push@05dbb6091b30bd84279c6d64a45ef8782fd410a5
         id: docker-build-push
         with:
           team: team-esyfo
@@ -61,7 +61,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       - uses: nais/deploy/actions/deploy@a7f8690f9b367fcbf5348a0a1e21d44f1aae50eb
         env:
           CLUSTER: dev-gcp
