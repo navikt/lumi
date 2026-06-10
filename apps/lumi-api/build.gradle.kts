@@ -38,7 +38,7 @@ val tokenSupportVersion = "5.0.13"
 val exposedVersion = "1.3.0"
 val micrometerVersion = "1.16.5"
 val log4jVersion = "2.26.0"
-val nettyVersion = "4.2.14.Final"
+val nettyVersion = "4.2.15.Final"
 
 dependencies {
     implementation(platform("io.netty:netty-bom:$nettyVersion"))
