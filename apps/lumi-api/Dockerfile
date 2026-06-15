@@ -1,4 +1,4 @@
-FROM gcr.io/distroless/java21-debian12:nonroot
+FROM  europe-north1-docker.pkg.dev/cgr-nav/pull-through/nav.no/jre:openjdk-21
 
 WORKDIR /app
 
@@ -9,4 +9,4 @@ ENV JAVA_OPTS="-XX:+UseG1GC -XX:MaxRAMPercentage=75.0"
 
 EXPOSE 8080
 
-CMD ["app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
