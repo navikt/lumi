@@ -6,7 +6,7 @@ plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
     id("io.ktor.plugin") version "3.5.0"
-    id("com.gradleup.shadow") version "9.4.1"
+    id("com.gradleup.shadow") version "9.4.2"
     id("com.github.ben-manes.versions") version "0.54.0"
     application
 }
@@ -26,19 +26,19 @@ repositories {
 }
 
 val ktorVersion = "3.5.0"
-val logbackVersion = "1.5.33"
+val logbackVersion = "1.5.34"
 val logstashVersion = "9.0"
 val postgresVersion = "42.7.11"
 val hikariVersion = "7.0.2"
-val flywayVersion = "12.6.2"
+val flywayVersion = "12.7.0"
 val kotestVersion = "6.1.11"
-val mockkVersion = "1.14.9"
+val mockkVersion = "1.14.11"
 val testcontainersVersion = "1.21.4"
 val tokenSupportVersion = "5.0.13"
 val exposedVersion = "1.3.0"
 val micrometerVersion = "1.16.5"
 val log4jVersion = "2.26.0"
-val nettyVersion = "4.2.14.Final"
+val nettyVersion = "4.2.15.Final"
 
 dependencies {
     implementation(platform("io.netty:netty-bom:$nettyVersion"))
@@ -91,7 +91,7 @@ dependencies {
     implementation("org.apache.poi:poi-ooxml:5.5.1")
     
     // Valkey/Redis cache
-    implementation("redis.clients:jedis:7.5.0")
+    implementation("redis.clients:jedis:7.5.2")
     
     // Testing
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
