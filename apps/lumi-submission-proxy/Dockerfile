@@ -5,8 +5,8 @@ WORKDIR /app
 COPY build/libs/app.jar app.jar
 
 ENV TZ="Europe/Oslo"
-ENV JAVA_TOOL_OPTIONS="-XX:+UseG1GC -XX:MaxRAMPercentage=75.0"
+ENV JDK_JAVA_OPTIONS="-XX:+UseG1GC -XX:MaxRAMPercentage=75.0"
 
 EXPOSE 8080
 
-CMD ["-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
