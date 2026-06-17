@@ -115,11 +115,19 @@ jobs:
         run: pnpm run verify:lumi-survey
       - name: Unit tests
         run: pnpm test
+      - name: Set up Node 22 for Playwright install
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 22
       - name: Install Playwright
         timeout-minutes: 10
         run: pnpm --filter lumi-dashboard exec playwright install chromium --with-deps --only-shell
         env:
           DEBUG: pw:install
+      - name: Restore Node from package.json
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: package.json
       - name: E2E tests
         run: pnpm run e2e
         env:
