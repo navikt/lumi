@@ -7,7 +7,7 @@ Analyse-dashboard for Lumi survey-data. Bygget med TanStack Start.
 ## Kom i gang
 
 ```bash
-# Forutsetninger: Node.js 22+
+# Forutsetninger: Node.js 24
 
 # 1. Klon og installer
 git clone https://github.com/navikt/lumi.git
@@ -42,11 +42,11 @@ pnpm run dev
 
 ## Sider
 
-| Rute | Beskrivelse |
-|-------|-------------|
-| `/` | Dashboard med oversiktsgrafer og statistikk |
-| `/feedback` | Detaljert tabell med filtre |
-| `/export` | Eksport i ulike formater |
+| Rute        | Beskrivelse                                 |
+| ----------- | ------------------------------------------- |
+| `/`         | Dashboard med oversiktsgrafer og statistikk |
+| `/feedback` | Detaljert tabell med filtre                 |
+| `/export`   | Eksport i ulike formater                    |
 
 ## Utvikling
 
@@ -75,11 +75,11 @@ pnpm --filter lumi-dashboard run start
 
 ### Miljøvariabler
 
-| Variabel | Beskrivelse | Standard |
-|----------|-------------|---------|
-| `LUMI_API_URL` | URL til backend-API | `http://localhost:8080` |
-| `LUMI_API_AUDIENCE` | Azure AD-audience for OBO | `api://dev-gcp.team-esyfo.lumi-api/.default` |
-| `NAIS_CLUSTER_NAME` | NAIS cluster (aktiverer auth) | - |
+| Variabel            | Beskrivelse                   | Standard                                     |
+| ------------------- | ----------------------------- | -------------------------------------------- |
+| `LUMI_API_URL`      | URL til backend-API           | `http://localhost:8080`                      |
+| `LUMI_API_AUDIENCE` | Azure AD-audience for OBO     | `api://dev-gcp.team-esyfo.lumi-api/.default` |
+| `NAIS_CLUSTER_NAME` | NAIS cluster (aktiverer auth) | -                                            |
 
 ## Deploy
 

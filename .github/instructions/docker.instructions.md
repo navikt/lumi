@@ -36,7 +36,7 @@ cgr.dev/chainguard/<image>:<tag>
 ```dockerfile
 # ✅ Chainguard fra Navs registry
 FROM europe-north1-docker.pkg.dev/cgr-nav/pull-through/nav.no/jre:openjdk-21
-FROM europe-north1-docker.pkg.dev/cgr-nav/pull-through/nav.no/node:22-slim
+FROM europe-north1-docker.pkg.dev/cgr-nav/pull-through/nav.no/node:24-slim
 
 # ✅ Gratis Chainguard for Go og nginx
 FROM cgr.dev/chainguard/go:latest
@@ -84,7 +84,7 @@ CMD ["java", "-jar", "app.jar"]
 ### Node.js
 
 ```dockerfile
-FROM europe-north1-docker.pkg.dev/cgr-nav/pull-through/nav.no/node:22-slim
+FROM europe-north1-docker.pkg.dev/cgr-nav/pull-through/nav.no/node:24-slim
 ENV NODE_ENV=production
 ENV NPM_CONFIG_CACHE=/tmp
 WORKDIR /app
@@ -97,13 +97,13 @@ CMD ["server/dist/index.js"]
 ### Node.js med bygg i Dockerfile
 
 ```dockerfile
-FROM europe-north1-docker.pkg.dev/cgr-nav/pull-through/nav.no/node:22-dev AS builder
+FROM europe-north1-docker.pkg.dev/cgr-nav/pull-through/nav.no/node:24-dev AS builder
 WORKDIR /app
 COPY . /app
 RUN npm ci
 RUN npm run build
 
-FROM europe-north1-docker.pkg.dev/cgr-nav/pull-through/nav.no/node:22-slim
+FROM europe-north1-docker.pkg.dev/cgr-nav/pull-through/nav.no/node:24-slim
 WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/build ./build

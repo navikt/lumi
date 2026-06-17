@@ -21,6 +21,9 @@
     "api:test": "cd apps/lumi-api && ./gradlew test",
     "prepare": "husky"
   },
+  "engines": {
+    "node": "24"
+  },
   "devDependencies": {
     "@biomejs/biome": "2.4.10",
     "husky": "^9.1.7",

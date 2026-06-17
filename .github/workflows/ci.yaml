@@ -99,7 +99,7 @@ jobs:
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
-          node-version: 22
+          node-version-file: package.json
           cache: pnpm
       - name: Install
         run: pnpm install --frozen-lockfile
@@ -115,8 +115,19 @@ jobs:
         run: pnpm run verify:lumi-survey
       - name: Unit tests
         run: pnpm test
+      - name: Set up Node 22 for Playwright install
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 22
       - name: Install Playwright
-        run: pnpm --filter lumi-dashboard exec playwright install chromium --with-deps
+        timeout-minutes: 10
+        run: pnpm --filter lumi-dashboard exec playwright install chromium --with-deps --only-shell
+        env:
+          DEBUG: pw:install
+      - name: Restore Node from package.json
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: package.json
       - name: E2E tests
         run: pnpm run e2e
         env:
@@ -157,7 +168,7 @@ jobs:
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
-          node-version: 22
+          node-version-file: package.json
           cache: pnpm
       - name: Install docs deps
         run: pnpm install --filter lumi-docs --frozen-lockfile
