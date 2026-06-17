@@ -126,7 +126,7 @@ jobs:
     needs: checks
     runs-on: ubuntu-latest
     if: |
-      github.ref_name == 'main' ||
+      (github.event_name == 'push' && github.ref_name == 'main') ||
       (github.event_name == 'workflow_dispatch' && (inputs.target == 'dev' || inputs.target == 'prod'))
     outputs:
       image: ${{ steps.docker-build-push.outputs.image }}
@@ -200,7 +200,7 @@ jobs:
     needs: build-production
     runs-on: ubuntu-latest
     if: |
-      github.ref_name == 'main' ||
+      (github.event_name == 'push' && github.ref_name == 'main') ||
       (github.event_name == 'workflow_dispatch' && inputs.target == 'dev')
     environment:
       name: dev
@@ -218,7 +218,7 @@ jobs:
     needs: [build-production, deploy-dev]
     runs-on: ubuntu-latest
     if: |
-      github.ref_name == 'main' ||
+      (github.event_name == 'push' && github.ref_name == 'main') ||
       (github.event_name == 'workflow_dispatch' && inputs.target == 'prod')
     environment:
       name: prod
