@@ -116,7 +116,10 @@ jobs:
       - name: Unit tests
         run: pnpm test
       - name: Install Playwright
+        timeout-minutes: 10
         run: pnpm --filter lumi-dashboard exec playwright install chromium --with-deps --only-shell
+        env:
+          DEBUG: pw:install
       - name: E2E tests
         run: pnpm run e2e
         env:
