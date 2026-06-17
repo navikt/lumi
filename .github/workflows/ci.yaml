@@ -92,6 +92,7 @@ jobs:
     needs: changes
     if: always() && (github.event_name == 'merge_group' || needs.changes.outputs.node == 'true')
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
     steps:
@@ -115,9 +116,52 @@ jobs:
         run: pnpm run verify:lumi-survey
       - name: Unit tests
         run: pnpm test
-      - name: Install Playwright
-        timeout-minutes: 10
-        run: pnpm --filter lumi-dashboard exec playwright install chromium --with-deps --only-shell
+      - name: Cache Playwright browsers
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-chromium-shell-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Playwright system dependencies
+        timeout-minutes: 12
+        run: timeout --signal=TERM --kill-after=30s 9m pnpm --filter lumi-dashboard exec playwright install-deps chromium
+      - name: Install Playwright browser
+        timeout-minutes: 20
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cache_dir="${HOME}/.cache/ms-playwright"
+          install_cmd=(
+            pnpm
+            --filter
+            lumi-dashboard
+            exec
+            playwright
+            install
+            chromium
+            --only-shell
+          )
+
+          for attempt in 1 2 3; do
+            echo "Playwright browser install attempt ${attempt}/3 (chromium --only-shell)"
+
+            if timeout --signal=TERM --kill-after=30s 6m "${install_cmd[@]}"; then
+              echo "Playwright browser install succeeded on attempt ${attempt}"
+              exit 0
+            fi
+
+            if [ "$attempt" -eq 3 ]; then
+              echo "Playwright browser install timed out or failed; removing ${cache_dir} before exit"
+              rm -rf "${cache_dir}"
+              mkdir -p "${cache_dir}"
+              echo "Playwright browser install failed after 3 attempts"
+              exit 1
+            fi
+
+            echo "Playwright browser install timed out or failed; removing ${cache_dir} before retry"
+            rm -rf "${cache_dir}"
+            mkdir -p "${cache_dir}"
+          done
         env:
           DEBUG: pw:install
       - name: E2E tests
