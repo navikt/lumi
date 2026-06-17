@@ -69,6 +69,7 @@ jobs:
     needs: checks
     runs-on: ubuntu-latest
     if: |
+      (github.event_name == 'push' && github.ref_name == 'main') ||
       startsWith(github.ref_name, 'demo-') ||
       (github.event_name == 'workflow_dispatch' && inputs.target == 'demo')
     outputs:
@@ -180,6 +181,7 @@ jobs:
     needs: build-demo
     runs-on: ubuntu-latest
     if: |
+      (github.event_name == 'push' && github.ref_name == 'main') ||
       startsWith(github.ref_name, 'demo-') ||
       (github.event_name == 'workflow_dispatch' && inputs.target == 'demo')
     environment:
