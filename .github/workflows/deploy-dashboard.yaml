@@ -69,6 +69,7 @@ jobs:
     needs: checks
     runs-on: ubuntu-latest
     if: |
+      (github.event_name == 'push' && github.ref_name == 'main') ||
       startsWith(github.ref_name, 'demo-') ||
       (github.event_name == 'workflow_dispatch' && inputs.target == 'demo')
     outputs:
@@ -125,7 +126,7 @@ jobs:
     needs: checks
     runs-on: ubuntu-latest
     if: |
-      github.ref_name == 'main' ||
+      (github.event_name == 'push' && github.ref_name == 'main') ||
       (github.event_name == 'workflow_dispatch' && (inputs.target == 'dev' || inputs.target == 'prod'))
     outputs:
       image: ${{ steps.docker-build-push.outputs.image }}
@@ -180,6 +181,7 @@ jobs:
     needs: build-demo
     runs-on: ubuntu-latest
     if: |
+      (github.event_name == 'push' && github.ref_name == 'main') ||
       startsWith(github.ref_name, 'demo-') ||
       (github.event_name == 'workflow_dispatch' && inputs.target == 'demo')
     environment:
@@ -198,7 +200,7 @@ jobs:
     needs: build-production
     runs-on: ubuntu-latest
     if: |
-      github.ref_name == 'main' ||
+      (github.event_name == 'push' && github.ref_name == 'main') ||
       (github.event_name == 'workflow_dispatch' && inputs.target == 'dev')
     environment:
       name: dev
@@ -216,7 +218,7 @@ jobs:
     needs: [build-production, deploy-dev]
     runs-on: ubuntu-latest
     if: |
-      github.ref_name == 'main' ||
+      (github.event_name == 'push' && github.ref_name == 'main') ||
       (github.event_name == 'workflow_dispatch' && inputs.target == 'prod')
     environment:
       name: prod
