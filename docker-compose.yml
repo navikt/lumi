@@ -1,0 +1,54 @@
+# Local development stack for Lumi.
+#
+# Two ways to run, both give lumi-api "local mode" (NAIS_CLUSTER_NAME absent ->
+# auth disabled, any bearer token accepted as a mock identity):
+#
+#   A) Whole stack in containers (one command):
+#        docker compose up -d --build          # postgres + api
+#        ./scripts/lumi-local-smoke.sh
+#
+#   B) Just the database, API on the host (faster iteration):
+#        docker compose up -d postgres
+#        cd apps/lumi-api && ./gradlew run
+#        ./scripts/lumi-local-smoke.sh
+#
+# Flyway migrates on API boot, so a fresh volume gets the full schema. Valkey is
+# omitted: without VALKEY_URI_* the cache factories return Noop implementations.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: lumi-postgres
+    environment:
+      POSTGRES_DB: lumi
+      POSTGRES_USER: lumi
+      POSTGRES_PASSWORD: lumi
+    ports:
+      - "5432:5432"
+    volumes:
+      - lumi-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lumi -d lumi"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ./apps/lumi-api
+      dockerfile: Dockerfile.local
+    container_name: lumi-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_DATABASE: lumi
+      DB_USERNAME: lumi
+      DB_PASSWORD: lumi
+    ports:
+      - "8080:8080"
+
+volumes:
+  lumi-postgres-data:

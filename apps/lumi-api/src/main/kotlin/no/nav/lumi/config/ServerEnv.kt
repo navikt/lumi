@@ -55,13 +55,17 @@ data class ServerEnv(
             
             /**
              * Configuration for local development with Docker Compose or local Postgres.
+             *
+             * Reads standard DB_* env vars (same names as NAIS) so the API can run
+             * inside docker-compose pointing at the `postgres` service, while plain
+             * `./gradlew run` on the host falls back to localhost defaults.
              */
             fun forLocal(
-                host: String = "localhost",
-                port: Int = 5432,
-                database: String = "lumi",
-                username: String = "lumi",
-                password: String = "lumi"
+                host: String = System.getenv("DB_HOST") ?: "localhost",
+                port: Int = System.getenv("DB_PORT")?.toIntOrNull() ?: 5432,
+                database: String = System.getenv("DB_DATABASE") ?: "lumi",
+                username: String = System.getenv("DB_USERNAME") ?: "lumi",
+                password: String = System.getenv("DB_PASSWORD") ?: "lumi"
             ) = DatabaseEnv(
                 jdbcUrl = null,
                 host = host,

@@ -1,0 +1,6 @@
+# Ignore file scoped to Dockerfile.local (BuildKit per-Dockerfile ignore).
+# Keeps the build context small and forces a clean in-container build.
+# Does NOT affect the production Dockerfile.
+build
+.gradle
+*.log

@@ -1,0 +1,18 @@
+# Local-only image used by docker-compose to run the whole stack with one command.
+#
+# The PRODUCTION image is apps/lumi-api/Dockerfile (expects a prebuilt
+# build/libs/app.jar from CI). This one is self-contained: it builds the fat jar
+# inside Docker via the gradle wrapper, then runs it. Not used by any deploy.
+
+FROM eclipse-temurin:21-jdk AS build
+WORKDIR /src
+COPY . .
+RUN ./gradlew --no-daemon clean shadowJar
+
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+COPY --from=build /src/build/libs/app.jar app.jar
+ENV TZ="Europe/Oslo"
+EXPOSE 8080
+# No NAIS_CLUSTER_NAME -> lumi-api runs in local mode (auth disabled, DB_* from env).
+ENTRYPOINT ["java", "-jar", "app.jar"]

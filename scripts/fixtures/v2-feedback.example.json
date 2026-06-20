@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 2,
+  "surveyId": "local-example",
+  "surveyType": "rating",
+  "submittedAt": "2026-06-20T12:00:00.000Z",
+  "deduplicationKey": "manual-example-key",
+  "definition": {
+    "surveyType": "rating",
+    "fields": [
+      {
+        "fieldId": "rating",
+        "fieldType": "RATING",
+        "ratingVariant": "emoji",
+        "ratingScale": 5
+      },
+      { "fieldId": "feedback", "fieldType": "TEXT" }
+    ]
+  },
+  "context": {
+    "url": "http://localhost",
+    "deviceType": "desktop",
+    "tags": { "abTest": "A" }
+  },
+  "answers": [
+    {
+      "fieldId": "rating",
+      "fieldType": "RATING",
+      "question": { "label": "Hvordan var opplevelsen?" },
+      "value": {
+        "type": "rating",
+        "rating": 4,
+        "ratingVariant": "emoji",
+        "ratingScale": 5
+      }
+    },
+    {
+      "fieldId": "feedback",
+      "fieldType": "TEXT",
+      "question": { "label": "Begrunnelse" },
+      "value": { "type": "text", "text": "Manuelt eksempel" }
+    }
+  ]
+}
