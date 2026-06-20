@@ -289,16 +289,40 @@ export interface TransportAnswer {
 }
 
 /**
- * Canonical submission payload (schemaVersion=1).
- * This is the ONLY payload shape that should be sent to analytics backends.
+ * V2 field definition for the transport payload definition block.
+ */
+export type TransportFieldDefinition =
+  | {
+      fieldId: string;
+      fieldType: "RATING";
+      ratingVariant: RatingVariant;
+      ratingScale: number;
+    }
+  | { fieldId: string; fieldType: "TEXT" }
+  | { fieldId: string; fieldType: "SINGLE_CHOICE"; optionIds: string[] }
+  | { fieldId: string; fieldType: "MULTI_CHOICE"; optionIds: string[] };
+
+/**
+ * V2 submission definition block containing survey structure.
+ */
+export interface TransportDefinition {
+  surveyType: SurveyType;
+  fields: TransportFieldDefinition[];
+}
+
+/**
+ * Canonical submission payload (schemaVersion=2).
+ * Includes full definition of all fields and deduplication key.
  */
 export interface LumiSurveyTransportPayload {
-  schemaVersion: 1;
+  schemaVersion: 2;
   surveyId: string;
   surveyType: SurveyType;
   submittedAt: string;
   startedAt?: string;
   timeToCompleteMs?: number;
+  deduplicationKey: string;
+  definition: TransportDefinition;
   context?: LumiSurveyContext;
   answers: TransportAnswer[];
 }

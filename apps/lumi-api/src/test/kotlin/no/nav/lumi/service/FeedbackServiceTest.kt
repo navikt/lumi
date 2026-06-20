@@ -398,6 +398,49 @@ class FeedbackServiceTest : FunSpec({
             saved.feedbackJson shouldNotContain "Andre payload"
         }
 
+        test("strips definition and deduplicationKey before persisting schemaVersion=2 payload") {
+            val payload = """
+                {
+                    "schemaVersion": 2,
+                    "surveyId": "survey-v2",
+                    "surveyType": "rating",
+                    "submittedAt": "2026-01-10T12:00:12Z",
+                    "deduplicationKey": "client-key-123456",
+                    "definition": {
+                        "surveyType": "rating",
+                        "fields": [
+                            {
+                                "fieldId": "feedback",
+                                "fieldType": "TEXT"
+                            }
+                        ]
+                    },
+                    "answers": [
+                        {
+                            "fieldId": "feedback",
+                            "fieldType": "TEXT",
+                            "question": { "label": "Hvorfor?" },
+                            "value": { "type": "text", "text": "Payload" }
+                        }
+                    ]
+                }
+            """.trimIndent()
+
+            val id = service.save(
+                feedbackJson = payload,
+                team = "flex",
+                app = "test-app",
+                surveyId = "survey-v2",
+                definitionHash = "a".repeat(64)
+            ).createdId()
+
+            val saved = repository.findRawById(id, "flex").shouldNotBeNull()
+            saved.feedbackJson shouldNotContain "deduplicationKey"
+            saved.feedbackJson shouldNotContain "\"definition\""
+            val savedJson = Json.parseToJsonElement(saved.feedbackJson).jsonObject
+            savedJson["surveyType"]?.jsonPrimitive?.content shouldBe "rating"
+        }
+
         test("uses provided surveyId for dedup scope when payload surveyId differs") {
             val payload = """
                 {

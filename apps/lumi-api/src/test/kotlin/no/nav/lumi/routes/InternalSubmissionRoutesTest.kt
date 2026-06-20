@@ -13,6 +13,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonObject
@@ -22,9 +25,11 @@ import no.nav.lumi.config.DatabaseHolder
 import no.nav.lumi.config.configureSerialization
 import no.nav.lumi.config.configureStatusPages
 import no.nav.lumi.domain.FeedbackQuery
+import no.nav.lumi.domain.SaveResult
 import no.nav.lumi.repository.FeedbackRepository
 import no.nav.lumi.repository.SurveyDefinitionRepository
 import no.nav.lumi.service.FeedbackService
+import no.nav.lumi.service.SubmissionOutcome
 import no.nav.lumi.service.SubmissionService
 import no.nav.lumi.service.SurveyDefinitionService
 import java.util.concurrent.atomic.AtomicInteger
@@ -71,6 +76,36 @@ private fun validPayloadWithDedup(
 }
 """.trimIndent()
 
+private fun validPayloadV2(
+    submittedAt: String = "2026-01-10T12:00:12Z",
+    deduplicationKey: String = "client-key-123456"
+) = """
+{
+  "schemaVersion": 2,
+  "surveyId": "modia-feedback-v2",
+  "surveyType": "rating",
+  "submittedAt": "$submittedAt",
+  "deduplicationKey": "$deduplicationKey",
+  "definition": {
+    "surveyType": "rating",
+    "fields": [
+      {
+        "fieldId": "feedback",
+        "fieldType": "TEXT"
+      }
+    ]
+  },
+  "answers": [
+    {
+      "fieldId": "feedback",
+      "fieldType": "TEXT",
+      "question": { "label": "Hvorfor?" },
+      "value": { "type": "text", "text": "Bra" }
+    }
+  ]
+}
+""".trimIndent()
+
 class InternalSubmissionRoutesTest : FunSpec({
 
     beforeSpec { TestDatabase.initialize() }
@@ -104,6 +139,54 @@ class InternalSubmissionRoutesTest : FunSpec({
             parsed["id"]?.jsonPrimitive?.content?.isNotBlank() shouldBe true
         }
     }
+
+    test("should accept valid schemaVersion 2 payload on internal route") {
+        val submissionService = mockk<SubmissionService>()
+        coEvery {
+            submissionService.submit(any(), any(), any(), any(), any())
+        } returns SubmissionOutcome(SaveResult.Created("created-v2"), "hash-v2")
+
+        testApplication {
+            application {
+                configureSerialization()
+                configureStatusPages()
+                routing {
+                    internalSubmissionRoutes(
+                        submissionService = submissionService,
+                        submissionKey = TEST_PSK
+                    )
+                }
+            }
+
+            val response = client.post("/api/internal/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                header("X-Lumi-Submission-Key", TEST_PSK)
+                header("X-Lumi-Caller-Identity", VALID_IDENTITY)
+                setBody(validPayloadV2())
+            }
+
+            response.status shouldBe HttpStatusCode.Created
+            Json.parseToJsonElement(response.bodyAsText()).jsonObject["id"]?.jsonPrimitive?.content shouldBe "created-v2"
+            coVerify(exactly = 1) {
+                submissionService.submit(
+                    any(),
+                    "teamsykefravr",
+                    "syfomodiaperson",
+                    match {
+                        it.schemaVersion == 2 &&
+                            it.surveyId == "modia-feedback-v2" &&
+                            it.deduplicationKey == "client-key-123456"
+                    },
+                    match {
+                        it.surveyId == "modia-feedback-v2" &&
+                            it.surveyType.name == "RATING" &&
+                            it.fields.map { field -> field.fieldId } == listOf("feedback")
+                    }
+                )
+            }
+        }
+    }
+
 
     test("should apply immutable definition validation on internal route") {
         testApplication {

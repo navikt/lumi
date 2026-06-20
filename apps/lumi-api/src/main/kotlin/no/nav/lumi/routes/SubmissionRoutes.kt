@@ -5,10 +5,8 @@ import io.ktor.server.plugins.ratelimit.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import kotlinx.serialization.json.Json
 import no.nav.lumi.config.SubmissionRateLimit
 import no.nav.lumi.config.UserSubmissionRateLimit
 import no.nav.lumi.config.auth.AzureSubmissionAuthPlugin
@@ -20,22 +18,11 @@ import no.nav.lumi.domain.SaveResult
 import no.nav.lumi.service.FeedbackService
 import no.nav.lumi.service.SubmissionService
 import no.nav.lumi.service.SurveyDefinitionService
-import no.nav.lumi.validation.SubmissionValidator
 import org.slf4j.LoggerFactory
-import io.ktor.utils.io.core.readText
-import io.ktor.utils.io.readRemaining
 
 private val log = LoggerFactory.getLogger("SubmissionRoutes")
 private val defaultFeedbackService = FeedbackService()
 private val defaultSurveyDefinitionService = SurveyDefinitionService()
-
-private const val MAX_SUBMISSION_BYTES = 1_048_576L
-
-private val strictJson = Json {
-    ignoreUnknownKeys = false
-    isLenient = false
-    encodeDefaults = true
-}
 
 /**
  * Submission routes for feedback collection.
@@ -60,7 +47,7 @@ fun Route.submissionRoutes(
         install(TokenXSubmissionAuthPlugin)
         rateLimit(SubmissionRateLimit) {
             rateLimit(UserSubmissionRateLimit) {
-                post("/v1/feedback") { handleSubmissionV1(call, submissionService) }
+                post("/v1/feedback") { handleSubmission(call, submissionService) }
             }
         }
     }
@@ -69,13 +56,13 @@ fun Route.submissionRoutes(
         install(AzureSubmissionAuthPlugin)
         rateLimit(SubmissionRateLimit) {
             rateLimit(UserSubmissionRateLimit) {
-                post("/v1/feedback") { handleSubmissionV1(call, submissionService) }
+                post("/v1/feedback") { handleSubmission(call, submissionService) }
             }
         }
     }
 }
 
-private suspend fun handleSubmissionV1(
+private suspend fun handleSubmission(
     call: io.ktor.server.application.ApplicationCall,
     submissionService: SubmissionService
 ) {
@@ -83,7 +70,7 @@ private suspend fun handleSubmissionV1(
     val body = receiveTextWithLimit(call)
 
     val jsonElement = try {
-        strictJson.parseToJsonElement(body)
+        strictSubmissionJson.parseToJsonElement(body)
     } catch (e: Exception) {
         log.warn(
             "Invalid JSON in feedback submission from team=${identity.team} app=${identity.app} parseErrorType=${e::class.simpleName}"
@@ -91,20 +78,28 @@ private suspend fun handleSubmissionV1(
         throw ApiErrorException.BadRequestException("Invalid JSON")
     }
 
-    val submission = try {
-        strictJson.decodeFromJsonElement(FeedbackSubmissionV1.serializer(), jsonElement)
-    } catch (e: SerializationException) {
-        throw ApiErrorException.BadRequestException("Invalid payload")
-    }
+    val parsedSubmission = decodeValidatedSubmission(jsonElement)
 
-    SubmissionValidator.validateSubmissionV1(submission)
-    val submissionOutcome = submissionService.submit(
-        feedbackJson = body,
-        team = identity.team,
-        app = identity.app,
-        submission = submission
+    respondWithSubmissionResult(
+        call = call,
+        identity = identity,
+        submission = parsedSubmission.submission,
+        submissionOutcome = submissionService.submit(
+            feedbackJson = body,
+            team = identity.team,
+            app = identity.app,
+            submission = parsedSubmission.submission,
+            definition = parsedSubmission.definition
+        )
     )
+}
 
+private suspend fun respondWithSubmissionResult(
+    call: io.ktor.server.application.ApplicationCall,
+    identity: no.nav.lumi.config.auth.CallerIdentity,
+    submission: FeedbackSubmissionV1,
+    submissionOutcome: no.nav.lumi.service.SubmissionOutcome
+) {
     when (val saveResult = submissionOutcome.saveResult) {
         is SaveResult.Created -> {
             log.info(
@@ -112,6 +107,7 @@ private suspend fun handleSubmissionV1(
             )
             call.respond(HttpStatusCode.Created, mapOf("id" to saveResult.id))
         }
+
         is SaveResult.Duplicate -> {
             log.info(
                 "Deduplicated feedback id=${saveResult.id} team=${identity.team} app=${identity.app} surveyId=${submission.surveyId}"
@@ -125,19 +121,4 @@ private suspend fun handleSubmissionV1(
             )
         }
     }
-}
-
-private suspend fun receiveTextWithLimit(call: io.ktor.server.application.ApplicationCall): String {
-    val contentLength = call.request.headers[HttpHeaders.ContentLength]?.toLongOrNull()
-    if (contentLength != null && contentLength > MAX_SUBMISSION_BYTES) {
-        throw ApiErrorException.PayloadTooLargeException("Payload too large")
-    }
-
-    val packet = call.receiveChannel().readRemaining(MAX_SUBMISSION_BYTES + 1)
-    val text = packet.readText()
-    if (text.toByteArray().size > MAX_SUBMISSION_BYTES) {
-        throw ApiErrorException.PayloadTooLargeException("Payload too large")
-    }
-
-    return text
 }

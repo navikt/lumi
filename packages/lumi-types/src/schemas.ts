@@ -556,6 +556,286 @@ const SubmissionAnswerSchema = z.discriminatedUnion("fieldType", [
   SubmissionDateAnswerSchema,
 ]);
 
+const SubmissionFieldIdSchema = z
+  .string()
+  .min(1)
+  .max(200, "fieldId must not exceed 200 characters")
+  .regex(
+    /^[\p{L}\p{Nd}_-]+$/u,
+    "fieldId must contain only letters, digits, hyphen, or underscore",
+  );
+
+/**
+ * Mirrors backend isSafeChoiceValue: forbids JSONPath special characters
+ * (", \, $, @, ?, (, ), ,) and control characters (code < 32).
+ * Max length matches backend MAX_IDENTIFIER_LENGTH = 200.
+ */
+const OPTION_ID_FORBIDDEN_CHARS = new Set([
+  '"',
+  "\\",
+  "$",
+  "@",
+  "?",
+  "(",
+  ")",
+  ",",
+]);
+
+const SubmissionOptionIdSchema = z
+  .string()
+  .min(1)
+  .max(200, "optionId must not exceed 200 characters")
+  .refine(
+    (s) => s.trim().length > 0,
+    "optionId must not be blank or whitespace-only",
+  )
+  .refine(
+    (s) =>
+      [...s].every(
+        (c) => !OPTION_ID_FORBIDDEN_CHARS.has(c) && c.charCodeAt(0) >= 32,
+      ),
+    "optionId contains illegal characters (JSONPath special or control characters are not allowed)",
+  );
+
+const SubmissionOptionIdsSchema = z
+  .array(SubmissionOptionIdSchema)
+  .min(1)
+  .superRefine((optionIds, ctx) => {
+    const seen = new Set<string>();
+    for (let i = 0; i < optionIds.length; i += 1) {
+      const optionId = optionIds[i];
+      if (!optionId) continue;
+      if (seen.has(optionId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `optionIds must be unique (duplicate: ${optionId})`,
+          path: [i],
+        });
+      }
+      seen.add(optionId);
+    }
+  });
+
+const SubmissionFieldDefinitionBaseSchema = z.object({
+  fieldId: SubmissionFieldIdSchema,
+});
+
+const SubmissionRatingFieldDefinitionSchema =
+  SubmissionFieldDefinitionBaseSchema.extend({
+    fieldType: z.literal("RATING"),
+    ratingVariant: RatingVariantSchema,
+    ratingScale: z.number().int(),
+  }).strict();
+
+const SubmissionTextFieldDefinitionSchema =
+  SubmissionFieldDefinitionBaseSchema.extend({
+    fieldType: z.literal("TEXT"),
+  }).strict();
+
+const SubmissionSingleChoiceFieldDefinitionSchema =
+  SubmissionFieldDefinitionBaseSchema.extend({
+    fieldType: z.literal("SINGLE_CHOICE"),
+    optionIds: SubmissionOptionIdsSchema,
+  }).strict();
+
+const SubmissionMultiChoiceFieldDefinitionSchema =
+  SubmissionFieldDefinitionBaseSchema.extend({
+    fieldType: z.literal("MULTI_CHOICE"),
+    optionIds: SubmissionOptionIdsSchema,
+  }).strict();
+
+const SubmissionDateFieldDefinitionSchema =
+  SubmissionFieldDefinitionBaseSchema.extend({
+    fieldType: z.literal("DATE"),
+  }).strict();
+
+export const SubmissionFieldDefinitionSchema = z.discriminatedUnion(
+  "fieldType",
+  [
+    SubmissionRatingFieldDefinitionSchema,
+    SubmissionTextFieldDefinitionSchema,
+    SubmissionSingleChoiceFieldDefinitionSchema,
+    SubmissionMultiChoiceFieldDefinitionSchema,
+    SubmissionDateFieldDefinitionSchema,
+  ],
+);
+
+export const SubmissionDefinitionSchema = z
+  .object({
+    surveyType: SurveyTypeSchema,
+    fields: z
+      .array(SubmissionFieldDefinitionSchema)
+      .min(1)
+      .max(50, "definition.fields must not exceed 50 fields"),
+  })
+  .superRefine((definition, ctx) => {
+    const expectedScaleByVariant: Record<
+      z.infer<typeof RatingVariantSchema>,
+      number
+    > = {
+      emoji: 5,
+      thumbs: 2,
+      stars: 5,
+      nps: 11,
+    };
+
+    const seen = new Set<string>();
+    for (let i = 0; i < definition.fields.length; i += 1) {
+      const field = definition.fields[i];
+      const fieldId = field?.fieldId;
+      if (!fieldId) continue;
+      if (seen.has(fieldId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `definition.fields.fieldId must be unique (duplicate: ${fieldId})`,
+          path: ["fields", i, "fieldId"],
+        });
+      }
+      seen.add(fieldId);
+
+      if (field.fieldType === "RATING") {
+        const expectedScale = expectedScaleByVariant[field.ratingVariant];
+        if (field.ratingScale !== expectedScale) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `ratingScale=${field.ratingScale} does not match ratingVariant=${field.ratingVariant} (expected ${expectedScale})`,
+            path: ["fields", i, "ratingScale"],
+          });
+        }
+      }
+    }
+  });
+
+const DeduplicationKeySchema = z
+  .string()
+  .min(16)
+  .max(128)
+  .regex(
+    /^[A-Za-z0-9._:-]+$/,
+    "deduplicationKey must contain only letters, digits, '.', '_', ':', or '-'",
+  );
+
+function validateUniqueAnswerFieldIds(
+  submission: { answers: Array<{ fieldId: string }> },
+  ctx: z.RefinementCtx,
+) {
+  const seen = new Set<string>();
+  for (let i = 0; i < submission.answers.length; i += 1) {
+    const fieldId = submission.answers[i]?.fieldId;
+    if (!fieldId) continue;
+    if (seen.has(fieldId)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `answers.fieldId must be unique (duplicate: ${fieldId})`,
+        path: ["answers", i, "fieldId"],
+      });
+    }
+    seen.add(fieldId);
+  }
+}
+
+function validateChoiceQuestionOptions(
+  answer:
+    | z.infer<typeof SubmissionSingleChoiceAnswerSchema>
+    | z.infer<typeof SubmissionMultiChoiceAnswerSchema>,
+  field:
+    | z.infer<typeof SubmissionSingleChoiceFieldDefinitionSchema>
+    | z.infer<typeof SubmissionMultiChoiceFieldDefinitionSchema>,
+  answerIndex: number,
+  ctx: z.RefinementCtx,
+) {
+  const answerOptionIds = answer.question.options?.map((option) => option.id);
+  if (!answerOptionIds) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `choice answer fieldId=${answer.fieldId} must include question.options to match definition.optionIds`,
+      path: ["answers", answerIndex, "question", "options"],
+    });
+    return;
+  }
+
+  if (
+    answerOptionIds.length !== field.optionIds.length ||
+    answerOptionIds.some((optionId, i) => optionId !== field.optionIds[i])
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `choice answer fieldId=${answer.fieldId} question.options must match definition.optionIds`,
+      path: ["answers", answerIndex, "question", "options"],
+    });
+  }
+}
+
+function validateAnswerValueAgainstDefinition(
+  answer: z.infer<typeof SubmissionAnswerSchema>,
+  field: z.infer<typeof SubmissionFieldDefinitionSchema>,
+  answerIndex: number,
+  ctx: z.RefinementCtx,
+) {
+  if (answer.fieldType === "RATING" && field.fieldType === "RATING") {
+    if (
+      field.ratingVariant !== answer.value.ratingVariant ||
+      field.ratingScale !== answer.value.ratingScale
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `rating config for fieldId=${answer.fieldId} must match definition`,
+        path: ["answers", answerIndex, "value"],
+      });
+    }
+    return;
+  }
+
+  if (
+    answer.fieldType === "SINGLE_CHOICE" &&
+    field.fieldType === "SINGLE_CHOICE"
+  ) {
+    validateChoiceQuestionOptions(answer, field, answerIndex, ctx);
+    if (!field.optionIds.includes(answer.value.selectedOptionId)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `selectedOptionId=${answer.value.selectedOptionId} is not valid for fieldId=${answer.fieldId}`,
+        path: ["answers", answerIndex, "value", "selectedOptionId"],
+      });
+    }
+    return;
+  }
+
+  if (
+    answer.fieldType === "MULTI_CHOICE" &&
+    field.fieldType === "MULTI_CHOICE"
+  ) {
+    validateChoiceQuestionOptions(answer, field, answerIndex, ctx);
+    const seen = new Set<string>();
+    const duplicateSelections = new Set<string>();
+    for (const selectedOptionId of answer.value.selectedOptionIds) {
+      if (seen.has(selectedOptionId)) {
+        duplicateSelections.add(selectedOptionId);
+      }
+      seen.add(selectedOptionId);
+    }
+
+    if (duplicateSelections.size > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `duplicate selectedOptionIds=${[...duplicateSelections].join(",")} for fieldId=${answer.fieldId}`,
+        path: ["answers", answerIndex, "value", "selectedOptionIds"],
+      });
+    }
+
+    const invalidIds = answer.value.selectedOptionIds.filter(
+      (selectedOptionId) => !field.optionIds.includes(selectedOptionId),
+    );
+    if (invalidIds.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `selectedOptionIds=${invalidIds.join(",")} are not valid for fieldId=${answer.fieldId}`,
+        path: ["answers", answerIndex, "value", "selectedOptionIds"],
+      });
+    }
+  }
+}
+
 export const FeedbackSubmissionV1Schema = z
   .object({
     schemaVersion: z.literal(1),
@@ -564,24 +844,70 @@ export const FeedbackSubmissionV1Schema = z
     submittedAt: IsoInstantSchema,
     startedAt: IsoInstantSchema.nullable().optional(),
     timeToCompleteMs: z.number().int().nonnegative().nullable().optional(),
+    deduplicationKey: DeduplicationKeySchema.nullable().optional(),
     context: SubmissionContextV1Schema.nullable().optional(),
     answers: z.array(SubmissionAnswerSchema).min(1),
   })
   .superRefine((submission, ctx) => {
-    const seen = new Set<string>();
+    validateUniqueAnswerFieldIds(submission, ctx);
+  });
+
+export const FeedbackSubmissionV2Schema = z
+  .object({
+    schemaVersion: z.literal(2),
+    surveyId: z.string().min(1),
+    surveyType: SurveyTypeSchema,
+    submittedAt: IsoInstantSchema,
+    startedAt: IsoInstantSchema.nullable().optional(),
+    timeToCompleteMs: z.number().int().nonnegative().nullable().optional(),
+    deduplicationKey: DeduplicationKeySchema,
+    definition: SubmissionDefinitionSchema,
+    context: SubmissionContextV1Schema.nullable().optional(),
+    answers: z.array(SubmissionAnswerSchema).min(1),
+  })
+  .superRefine((submission, ctx) => {
+    validateUniqueAnswerFieldIds(submission, ctx);
+    if (submission.surveyType !== submission.definition.surveyType) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "surveyType must match definition.surveyType",
+        path: ["surveyType"],
+      });
+    }
+
+    const fieldsById = new Map(
+      submission.definition.fields.map((field) => [field.fieldId, field]),
+    );
     for (let i = 0; i < submission.answers.length; i += 1) {
-      const fieldId = submission.answers[i]?.fieldId;
-      if (!fieldId) continue;
-      if (seen.has(fieldId)) {
+      const answer = submission.answers[i];
+      if (!answer) continue;
+      const field = fieldsById.get(answer.fieldId);
+      if (!field) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `answers.fieldId must be unique (duplicate: ${fieldId})`,
+          message: `answers.fieldId must exist in definition.fields (unknown: ${answer.fieldId})`,
           path: ["answers", i, "fieldId"],
         });
+        continue;
       }
-      seen.add(fieldId);
+
+      if (field.fieldType !== answer.fieldType) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `answers.fieldType must match definition fieldType for fieldId=${answer.fieldId}`,
+          path: ["answers", i, "fieldType"],
+        });
+        continue;
+      }
+
+      validateAnswerValueAgainstDefinition(answer, field, i, ctx);
     }
   });
+
+export const FeedbackSubmissionSchema = z.union([
+  FeedbackSubmissionV1Schema,
+  FeedbackSubmissionV2Schema,
+]);
 
 export const SubmissionCreatedResponseSchema = z.object({
   id: z.string(),

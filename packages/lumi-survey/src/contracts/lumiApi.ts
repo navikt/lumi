@@ -125,9 +125,76 @@ export interface FeedbackSubmissionV1 {
   submittedAt: string;
   startedAt?: string | null;
   timeToCompleteMs?: number | null;
+  deduplicationKey?: string | null;
   context?: SubmissionContextV1 | null;
   answers: Answer[];
 }
+
+// ============================================
+// V2 Submission Types
+// Matches lumi-types FeedbackSubmissionV2
+// ============================================
+
+export interface SubmissionFieldDefinitionBase {
+  fieldId: string;
+  fieldType: FieldType;
+}
+
+export interface RatingSubmissionFieldDefinition
+  extends SubmissionFieldDefinitionBase {
+  fieldType: "RATING";
+  ratingVariant: "emoji" | "thumbs" | "stars" | "nps";
+  ratingScale: number;
+}
+
+export interface TextSubmissionFieldDefinition
+  extends SubmissionFieldDefinitionBase {
+  fieldType: "TEXT";
+}
+
+export interface SingleChoiceSubmissionFieldDefinition
+  extends SubmissionFieldDefinitionBase {
+  fieldType: "SINGLE_CHOICE";
+  optionIds: string[];
+}
+
+export interface MultiChoiceSubmissionFieldDefinition
+  extends SubmissionFieldDefinitionBase {
+  fieldType: "MULTI_CHOICE";
+  optionIds: string[];
+}
+
+export interface DateSubmissionFieldDefinition
+  extends SubmissionFieldDefinitionBase {
+  fieldType: "DATE";
+}
+
+export type SubmissionFieldDefinition =
+  | RatingSubmissionFieldDefinition
+  | TextSubmissionFieldDefinition
+  | SingleChoiceSubmissionFieldDefinition
+  | MultiChoiceSubmissionFieldDefinition
+  | DateSubmissionFieldDefinition;
+
+export interface SubmissionDefinition {
+  surveyType: SurveyType;
+  fields: SubmissionFieldDefinition[];
+}
+
+export interface FeedbackSubmissionV2 {
+  schemaVersion: 2;
+  surveyId: string;
+  surveyType: SurveyType;
+  submittedAt: string;
+  startedAt?: string | null;
+  timeToCompleteMs?: number | null;
+  deduplicationKey: string;
+  definition: SubmissionDefinition;
+  context?: SubmissionContextV1 | null;
+  answers: Answer[];
+}
+
+export type FeedbackSubmission = FeedbackSubmissionV1 | FeedbackSubmissionV2;
 
 export interface SubmissionCreatedResponse {
   id: string;

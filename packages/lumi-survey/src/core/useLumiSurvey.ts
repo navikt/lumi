@@ -1,5 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { cloneAnswers, useAnswerState } from "./answers.js";
+import { generateDeduplicationKey } from "./deduplicationKey.js";
 import { buildTransportPayload } from "./transportPayload.js";
 import type {
   LumiSurveyAnswerValue,
@@ -61,6 +62,14 @@ export function useLumiSurvey(
   });
   const [status, setStatus] = useState<LumiSurveyStatus>("idle");
   const [error, setError] = useState<LumiSurveyError | null>(null);
+  const deduplicationKeyRef = useRef<string | null>(null);
+
+  const getDeduplicationKey = useCallback(() => {
+    if (deduplicationKeyRef.current === null) {
+      deduplicationKeyRef.current = generateDeduplicationKey();
+    }
+    return deduplicationKeyRef.current;
+  }, []);
 
   const validate = useCallback(
     (questionsToValidate?: LumiSurveyQuestion[]): string[] => {
@@ -91,6 +100,7 @@ export function useLumiSurvey(
 
       const answerSnapshot = cloneAnswers(answers);
       const submittedAtTimestamp = new Date().toISOString();
+      const deduplicationKey = getDeduplicationKey();
       const submission: LumiSurveySubmission = {
         surveyId,
         answers: answerSnapshot,
@@ -101,6 +111,7 @@ export function useLumiSurvey(
           surveyId,
           answerSnapshot,
           questions,
+          deduplicationKey,
           surveyType,
           context,
           startedAtRef.current,
@@ -114,6 +125,8 @@ export function useLumiSurvey(
         await transport.submit(submission);
         setStatus("success");
         setError(null);
+        // Rotate deduplication key after successful submit
+        deduplicationKeyRef.current = generateDeduplicationKey();
         events?.onSubmitSuccess?.(submission);
         return { ok: true, submission };
       } catch (cause) {
@@ -128,6 +141,7 @@ export function useLumiSurvey(
       answers,
       context,
       events,
+      getDeduplicationKey,
       questions,
       startedAtRef,
       surveyId,
@@ -141,6 +155,8 @@ export function useLumiSurvey(
     resetAnswers();
     setStatus("idle");
     setError(null);
+    // Rotate deduplication key on reset
+    deduplicationKeyRef.current = generateDeduplicationKey();
     events?.onReset?.();
   }, [events, resetAnswers]);
 

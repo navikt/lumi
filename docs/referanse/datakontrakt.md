@@ -8,16 +8,26 @@ Datakontrakten definerer strukturen på payloaden som sendes fra Lumi Survey-wid
 
 ## Transport payload
 
-Widgeten samler inn svar og sender en strukturert JSON-payload til backend. Payloaden har fire hoveddeler:
+Widgeten samler inn svar og sender en strukturert JSON-payload til backend. Payloaden har disse hoveddelene:
 
 | Felt | Påkrevd | Beskrivelse |
 | :--- | :--- | :--- |
-| `schemaVersion` | ✅ | Alltid `1` (gjeldende versjon) |
+| `schemaVersion` | ✅ | Nåværende widget sender alltid `2`. Backend godtar også `1` i en overgangsperiode mens eldre widget-versjoner fases ut |
 | `submittedAt` | ✅ | ISO 8601 tidsstempel for innsending |
 | `surveyId` | ✅ | Unik survey-identifikator |
 | `surveyType` | ✅ | En av: `"rating"`, `"topTasks"`, `"discovery"`, `"taskPriority"`, `"custom"` |
+| `deduplicationKey` | ✅ | Genereres av widgeten og gjør nytt forsøk etter transportfeil trygt |
+| `definition` | ✅ | Alle spørsmålene i surveyen, også de som ikke er besvart |
 | `answers` | ✅ | Strukturert array med svar (se under) |
 | `context` | Anbefalt | Nettleser-/brukerkontekst for segmentering |
+
+::: tip Når skal du endre `surveyId`?
+Bruk ny `surveyId` når du legger til, fjerner, endrer navn på eller endrer type/options for spørsmål. Da unngår du å blande ulike datastrukturer i samme analyse og 409-feil fra backend.
+:::
+
+::: info Deduplication
+Du trenger ikke sette `deduplicationKey` selv når du bruker widgeten. Den samme nøkkelen brukes når en innsending feiler og brukeren prøver på nytt. Etter vellykket innsending, reset eller ny sidevisning får neste innsending en ny nøkkel.
+:::
 
 ## Answers-arrayet
 
@@ -45,7 +55,7 @@ interface TransportAnswer {
 { type: "text", text: "Veldig bra!" }
 
 // Rating (tallverdi)
-{ type: "rating", rating: 5 }
+{ type: "rating", rating: 5, ratingVariant: "emoji", ratingScale: 5 }
 
 // Enkeltvalg
 { type: "singleChoice", selectedOptionId: "opt_1" }
@@ -104,10 +114,26 @@ Backend mapper `surveyType`-strenger til enums:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "submittedAt": "2024-12-03T14:22:00.000Z",
   "surveyId": "sykepenger-rating",
   "surveyType": "rating",
+  "deduplicationKey": "retryable-submit:sykepenger-rating:abc123",
+  "definition": {
+    "surveyType": "rating",
+    "fields": [
+      {
+        "fieldId": "rating",
+        "fieldType": "RATING",
+        "ratingVariant": "emoji",
+        "ratingScale": 5
+      },
+      {
+        "fieldId": "feedback",
+        "fieldType": "TEXT"
+      }
+    ]
+  },
   "context": {
     "url": "https://nav.no/sykepenger",
     "pathname": "/sykepenger",
@@ -122,7 +148,12 @@ Backend mapper `surveyType`-strenger til enums:
       "fieldId": "rating",
       "fieldType": "RATING",
       "question": { "label": "Hvordan var opplevelsen din?" },
-      "value": { "type": "rating", "rating": 4 }
+      "value": {
+        "type": "rating",
+        "rating": 4,
+        "ratingVariant": "emoji",
+        "ratingScale": 5
+      }
     },
     {
       "fieldId": "feedback",

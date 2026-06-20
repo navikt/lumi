@@ -3,6 +3,7 @@ package no.nav.lumi.service
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -11,15 +12,19 @@ import no.nav.lumi.domain.Answer
 import no.nav.lumi.domain.AnswerValue
 import no.nav.lumi.domain.ChoiceOption
 import no.nav.lumi.domain.FeedbackSubmissionV1
+import no.nav.lumi.domain.FeedbackSubmissionV2
 import no.nav.lumi.domain.FieldDefinition
 import no.nav.lumi.domain.FieldType
 import no.nav.lumi.domain.Question
 import no.nav.lumi.domain.RatingVariant
+import no.nav.lumi.domain.SubmissionFieldDefinitionPayload
+import no.nav.lumi.domain.SurveyDefinitionPayload
 import no.nav.lumi.domain.SurveyDefinition
 import no.nav.lumi.domain.SurveyType
 import no.nav.lumi.domain.computeHash
 import no.nav.lumi.repository.StoredSurveyDefinition
 import no.nav.lumi.repository.SurveyDefinitionRepository
+import no.nav.lumi.repository.SurveyDefinitionSource
 
 class SurveyDefinitionServiceTest : FunSpec({
     test("first submission registers definition") {
@@ -95,6 +100,322 @@ class SurveyDefinitionServiceTest : FunSpec({
         val result = service.registerOrValidate("team-a", relabeledSubmission)
 
         result.definitionHash shouldBe storedDefinition.computeHash()
+    }
+
+    test("schemaVersion=2 full definition change returns 409 without additive merge") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val storedSubmission = ratingSubmission()
+        val storedDefinition = SurveyDefinition.fromSubmission(storedSubmission)
+        val incomingSubmission = FeedbackSubmissionV2(
+            schemaVersion = 2,
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            submittedAt = "2026-01-10T12:00:12Z",
+            deduplicationKey = "client-key-123456",
+            definition = SurveyDefinitionPayload(
+                surveyType = SurveyType.RATING,
+                fields = listOf(
+                    SubmissionFieldDefinitionPayload(
+                        fieldId = "rating",
+                        fieldType = FieldType.RATING,
+                        ratingVariant = RatingVariant.EMOJI,
+                        ratingScale = 5
+                    ),
+                    SubmissionFieldDefinitionPayload(
+                        fieldId = "followup",
+                        fieldType = FieldType.TEXT
+                    )
+                )
+            ),
+            answers = listOf(
+                Answer(
+                    fieldId = "rating",
+                    fieldType = FieldType.RATING,
+                    question = Question(label = "Hvor fornøyd er du?"),
+                    value = AnswerValue.Rating(rating = 4, ratingVariant = RatingVariant.EMOJI, ratingScale = 5)
+                )
+            )
+        )
+
+        coEvery { repository.findByTeamAndSurveyId("team-a", "survey-1") } returns StoredSurveyDefinition(
+            team = "team-a",
+            surveyId = "survey-1",
+            definitionHash = storedDefinition.computeHash(),
+            definition = storedDefinition,
+            source = SurveyDefinitionSource.API
+        )
+
+        val exception = shouldThrowConflict {
+            service.registerOrValidateV2(
+                "team-a",
+                FeedbackSubmissionV1(
+                    schemaVersion = incomingSubmission.schemaVersion,
+                    surveyId = incomingSubmission.surveyId,
+                    surveyType = incomingSubmission.surveyType,
+                    submittedAt = incomingSubmission.submittedAt,
+                    startedAt = incomingSubmission.startedAt,
+                    timeToCompleteMs = incomingSubmission.timeToCompleteMs,
+                    deduplicationKey = incomingSubmission.deduplicationKey,
+                    context = incomingSubmission.context,
+                    answers = incomingSubmission.answers
+                ),
+                incomingSubmission.definition.toSurveyDefinition(incomingSubmission.surveyId)
+            )
+        }
+
+        exception.message shouldContain "Survey definition conflict for surveyId=survey-1"
+        exception.message shouldContain "addedFields=[field_1]"
+        exception.message shouldNotContain "followup"
+    }
+
+    test("schemaVersion=2 can take over compatible v1-derived partial definition") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val storedDefinition = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("rating", FieldType.RATING, RatingVariant.EMOJI, 5, null)
+            )
+        )
+        val fullDefinition = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("rating", FieldType.RATING, RatingVariant.EMOJI, 5, null),
+                FieldDefinition("followup", FieldType.TEXT, null, null, null)
+            )
+        )
+        val storedHash = storedDefinition.computeHash()
+        val fullHash = fullDefinition.computeHash()
+        val submission = FeedbackSubmissionV1(
+            schemaVersion = 2,
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            submittedAt = "2026-01-10T12:00:12Z",
+            deduplicationKey = "client-key-123456",
+            answers = listOf(
+                Answer(
+                    fieldId = "rating",
+                    fieldType = FieldType.RATING,
+                    question = Question(label = "Hvor fornøyd er du?"),
+                    value = AnswerValue.Rating(rating = 4, ratingVariant = RatingVariant.EMOJI, ratingScale = 5)
+                )
+            )
+        )
+
+        coEvery { repository.findByTeamAndSurveyId("team-a", "survey-1") } returns StoredSurveyDefinition(
+            team = "team-a",
+            surveyId = "survey-1",
+            definitionHash = storedHash,
+            definition = storedDefinition,
+            source = SurveyDefinitionSource.AUTO
+        )
+        coEvery {
+            repository.updateApiDefinitionIfHashMatches("team-a", "survey-1", storedHash, fullDefinition, fullHash)
+        } returns true
+
+        val result = service.registerOrValidateV2("team-a", submission, fullDefinition)
+
+        result shouldBe RegistrationResult("survey-1", fullHash)
+    }
+
+    test("v1 answered subset after schemaVersion=2 definition keeps api definition hash") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val storedDefinition = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("rating", FieldType.RATING, RatingVariant.EMOJI, 5, null),
+                FieldDefinition("followup", FieldType.TEXT, null, null, null)
+            )
+        )
+        val storedHash = storedDefinition.computeHash()
+        val submission = ratingSubmission()
+
+        coEvery { repository.findByTeamAndSurveyId("team-a", "survey-1") } returns StoredSurveyDefinition(
+            team = "team-a",
+            surveyId = "survey-1",
+            definitionHash = storedHash,
+            definition = storedDefinition,
+            source = SurveyDefinitionSource.API
+        )
+
+        val result = service.registerOrValidate("team-a", submission)
+
+        result shouldBe RegistrationResult("survey-1", storedHash)
+        coVerify(exactly = 0) { repository.updateDefinitionIfHashMatches(any(), any(), any(), any(), any()) }
+    }
+
+    test("v1 unknown answered field after schemaVersion=2 definition returns 409") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val storedDefinition = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            fields = listOf(
+                FieldDefinition("rating", FieldType.RATING, RatingVariant.EMOJI, 5, null)
+            )
+        )
+        val submission = FeedbackSubmissionV1(
+            schemaVersion = 1,
+            surveyId = "survey-1",
+            surveyType = SurveyType.RATING,
+            submittedAt = "2026-01-10T12:00:12Z",
+            answers = listOf(
+                Answer(
+                    fieldId = "followup",
+                    fieldType = FieldType.TEXT,
+                    question = Question(label = "Hva kunne vært bedre?"),
+                    value = AnswerValue.Text("Mer hjelp")
+                )
+            )
+        )
+
+        coEvery { repository.findByTeamAndSurveyId("team-a", "survey-1") } returns StoredSurveyDefinition(
+            team = "team-a",
+            surveyId = "survey-1",
+            definitionHash = storedDefinition.computeHash(),
+            definition = storedDefinition,
+            source = SurveyDefinitionSource.API
+        )
+
+        val exception = shouldThrowConflict {
+            service.registerOrValidate("team-a", submission)
+        }
+
+        exception.message shouldContain "addedFields=[followup]"
+    }
+
+    test("schemaVersion=2 rejects rating definition with mismatched fixed scale before persistence") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val submission = FeedbackSubmissionV2(
+            schemaVersion = 2,
+            surveyId = "survey-bad-scale",
+            surveyType = SurveyType.RATING,
+            submittedAt = "2026-01-10T12:00:12Z",
+            deduplicationKey = "client-key-123456",
+            definition = SurveyDefinitionPayload(
+                surveyType = SurveyType.RATING,
+                fields = listOf(
+                    SubmissionFieldDefinitionPayload(
+                        fieldId = "rating",
+                        fieldType = FieldType.RATING,
+                        ratingVariant = RatingVariant.EMOJI,
+                        ratingScale = 4
+                    )
+                )
+            ),
+            answers = listOf(
+                Answer(
+                    fieldId = "rating",
+                    fieldType = FieldType.RATING,
+                    question = Question(label = "Hvor fornøyd er du?"),
+                    value = AnswerValue.Rating(rating = 4, ratingVariant = RatingVariant.EMOJI, ratingScale = 4)
+                )
+            )
+        )
+
+        val exception = shouldThrowBadRequest {
+            service.registerOrValidateV2(
+                "team-a",
+                submission.toV1Submission(),
+                submission.definition.toSurveyDefinition(submission.surveyId)
+            )
+        }
+
+        exception.message shouldContain "ratingScale=4 does not match ratingVariant=EMOJI"
+        coVerify(exactly = 0) { repository.findByTeamAndSurveyId(any(), any()) }
+        coVerify(exactly = 0) { repository.insertIfUnderLimit(any(), any(), any(), any()) }
+    }
+
+    test("schemaVersion=2 rejects choice definition with rating metadata before persistence") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val submission = FeedbackSubmissionV2(
+            schemaVersion = 2,
+            surveyId = "survey-choice-bad",
+            surveyType = SurveyType.TOP_TASKS,
+            submittedAt = "2026-01-10T12:00:12Z",
+            deduplicationKey = "client-key-123456",
+            definition = SurveyDefinitionPayload(
+                surveyType = SurveyType.TOP_TASKS,
+                fields = listOf(
+                    SubmissionFieldDefinitionPayload(
+                        fieldId = "task",
+                        fieldType = FieldType.SINGLE_CHOICE,
+                        ratingVariant = RatingVariant.THUMBS,
+                        ratingScale = 2,
+                        optionIds = listOf("apply", "follow-up")
+                    )
+                )
+            ),
+            answers = listOf(
+                Answer(
+                    fieldId = "task",
+                    fieldType = FieldType.SINGLE_CHOICE,
+                    question = Question(label = "Hva gjorde du?"),
+                    value = AnswerValue.SingleChoice("apply")
+                )
+            )
+        )
+
+        val exception = shouldThrowBadRequest {
+            service.registerOrValidateV2(
+                "team-a",
+                submission.toV1Submission(),
+                submission.definition.toSurveyDefinition(submission.surveyId)
+            )
+        }
+
+        exception.message shouldContain "must not include ratingVariant or ratingScale"
+        coVerify(exactly = 0) { repository.findByTeamAndSurveyId(any(), any()) }
+        coVerify(exactly = 0) { repository.insertIfUnderLimit(any(), any(), any(), any()) }
+    }
+
+    test("schemaVersion=2 rejects text definition with optionIds before persistence") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val submission = FeedbackSubmissionV2(
+            schemaVersion = 2,
+            surveyId = "survey-text-bad",
+            surveyType = SurveyType.CUSTOM,
+            submittedAt = "2026-01-10T12:00:12Z",
+            deduplicationKey = "client-key-123456",
+            definition = SurveyDefinitionPayload(
+                surveyType = SurveyType.CUSTOM,
+                fields = listOf(
+                    SubmissionFieldDefinitionPayload(
+                        fieldId = "comment",
+                        fieldType = FieldType.TEXT,
+                        optionIds = listOf("unexpected")
+                    )
+                )
+            ),
+            answers = listOf(
+                Answer(
+                    fieldId = "comment",
+                    fieldType = FieldType.TEXT,
+                    question = Question(label = "Hvorfor?"),
+                    value = AnswerValue.Text("Bra")
+                )
+            )
+        )
+
+        val exception = shouldThrowBadRequest {
+            service.registerOrValidateV2(
+                "team-a",
+                submission.toV1Submission(),
+                submission.definition.toSurveyDefinition(submission.surveyId)
+            )
+        }
+
+        exception.message shouldContain "must not include optionIds"
+        coVerify(exactly = 0) { repository.findByTeamAndSurveyId(any(), any()) }
+        coVerify(exactly = 0) { repository.insertIfUnderLimit(any(), any(), any(), any()) }
     }
 
     test("overlapping field change returns 409 instead of 400") {
@@ -638,6 +959,18 @@ private fun choiceSubmission(optionLabel: String) = FeedbackSubmissionV1(
             value = AnswerValue.SingleChoice("apply")
         )
     )
+)
+
+private fun FeedbackSubmissionV2.toV1Submission() = FeedbackSubmissionV1(
+    schemaVersion = schemaVersion,
+    surveyId = surveyId,
+    surveyType = surveyType,
+    submittedAt = submittedAt,
+    startedAt = startedAt,
+    timeToCompleteMs = timeToCompleteMs,
+    deduplicationKey = deduplicationKey,
+    context = context,
+    answers = answers
 )
 
 private fun shouldThrowBadRequest(block: suspend () -> Unit): ApiErrorException.BadRequestException {

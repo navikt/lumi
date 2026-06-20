@@ -120,6 +120,32 @@ class DefinitionHashTest : FunSpec({
         definitionDiff.changedFields.single().change shouldContain "ratingVariant EMOJI -> NPS"
     }
 
+    test("redacted diff hides optionIds when fieldType changes between option and non-option fields") {
+        val stored = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.CUSTOM,
+            fields = listOf(
+                FieldDefinition("category", FieldType.TEXT, null, null, null),
+                FieldDefinition("task", FieldType.SINGLE_CHOICE, null, null, listOf("apply", "follow-up"))
+            )
+        )
+        val incoming = SurveyDefinition(
+            surveyId = "survey-1",
+            surveyType = SurveyType.CUSTOM,
+            fields = listOf(
+                FieldDefinition("category", FieldType.SINGLE_CHOICE, null, null, listOf("private-choice")),
+                FieldDefinition("task", FieldType.TEXT, null, null, null)
+            )
+        )
+
+        val description = diff(stored, incoming).describeRedacted()
+
+        description shouldContain "optionIds [REDACTED] -> [REDACTED]"
+        description.contains("private-choice") shouldBe false
+        description.contains("apply") shouldBe false
+        description.contains("follow-up") shouldBe false
+    }
+
     test("field order does not affect hash (sorted by fieldId)") {
         val definition1 = SurveyDefinition(
             surveyId = "survey-1",

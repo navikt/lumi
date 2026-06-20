@@ -2,6 +2,7 @@ package no.nav.lumi.service
 
 import no.nav.lumi.domain.FeedbackSubmissionV1
 import no.nav.lumi.domain.SaveResult
+import no.nav.lumi.domain.SurveyDefinition
 import no.nav.lumi.repository.FeedbackRepository
 
 data class SubmissionOutcome(
@@ -19,10 +20,16 @@ class SubmissionService(
         feedbackJson: String,
         team: String,
         app: String,
-        submission: FeedbackSubmissionV1
+        submission: FeedbackSubmissionV1,
+        definition: SurveyDefinition? = null
     ): SubmissionOutcome {
         if (submission.deduplicationKey == null) {
-            val definitionResult = surveyDefinitionService.registerOrValidate(team, submission)
+            val definitionResult = registerDefinition(
+                team = team,
+                submission = submission,
+                definition = definition,
+                inCurrentTransaction = false
+            )
             val saveResult = feedbackService.save(
                 feedbackJson = feedbackJson,
                 team = team,
@@ -59,7 +66,12 @@ class SubmissionService(
                 return@withScopedDeduplicationLock SubmissionOutcome(SaveResult.Duplicate(existingId))
             }
 
-            val definitionResult = surveyDefinitionService.registerOrValidateInCurrentTransaction(team, submission)
+            val definitionResult = registerDefinition(
+                team = team,
+                submission = submission,
+                definition = definition,
+                inCurrentTransaction = true
+            )
             val saveResult = feedbackRepository.saveInCurrentTransaction(
                 feedbackJson = prepared.feedbackJson,
                 team = team,
@@ -73,6 +85,27 @@ class SubmissionService(
                 saveResult = saveResult,
                 definitionHash = definitionResult.definitionHash.takeIf { saveResult is SaveResult.Created }
             )
+        }
+    }
+
+    private suspend fun registerDefinition(
+        team: String,
+        submission: FeedbackSubmissionV1,
+        definition: SurveyDefinition?,
+        inCurrentTransaction: Boolean
+    ): RegistrationResult {
+        return when {
+            definition != null && inCurrentTransaction ->
+                surveyDefinitionService.registerOrValidateV2InCurrentTransaction(team, submission, definition)
+
+            definition != null ->
+                surveyDefinitionService.registerOrValidateV2(team, submission, definition)
+
+            inCurrentTransaction ->
+                surveyDefinitionService.registerOrValidateInCurrentTransaction(team, submission)
+
+            else ->
+                surveyDefinitionService.registerOrValidate(team, submission)
         }
     }
 }
