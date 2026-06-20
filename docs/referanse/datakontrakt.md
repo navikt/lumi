@@ -12,7 +12,7 @@ Widgeten samler inn svar og sender en strukturert JSON-payload til backend. Payl
 
 | Felt | Påkrevd | Beskrivelse |
 | :--- | :--- | :--- |
-| `schemaVersion` | ✅ | Alltid `2` (gjeldende versjon) |
+| `schemaVersion` | ✅ | Nåværende widget sender alltid `2`. Backend godtar også `1` i en overgangsperiode mens eldre widget-versjoner fases ut |
 | `submittedAt` | ✅ | ISO 8601 tidsstempel for innsending |
 | `surveyId` | ✅ | Unik survey-identifikator |
 | `surveyType` | ✅ | En av: `"rating"`, `"topTasks"`, `"discovery"`, `"taskPriority"`, `"custom"` |

@@ -82,7 +82,7 @@ private fun extractSchemaVersion(jsonElement: JsonElement): Int {
     val schemaVersion = rawSchemaVersion as? JsonPrimitive
         ?: throw ApiErrorException.BadRequestException("Invalid payload: schemaVersion must be an integer")
 
-    if (schemaVersion.toString().startsWith("\"")) {
+    if (schemaVersion.isString) {
         throw ApiErrorException.BadRequestException("Invalid payload: schemaVersion must be an integer")
     }
 
