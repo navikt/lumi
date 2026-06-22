@@ -26,5 +26,6 @@ WORKDIR /app
 COPY --from=build /src/build/libs/app.jar app.jar
 ENV TZ="Europe/Oslo"
 EXPOSE 8080
-# No NAIS_CLUSTER_NAME -> lumi-api runs in local mode (auth disabled, DB_* from env).
+# No NAIS_CLUSTER_NAME -> local mode (auth disabled, DB_* from env). Local mode is
+# fail-closed: docker-compose must set LUMI_LOCAL_AUTH_BYPASS=true or the app refuses to start.
 ENTRYPOINT ["java", "-jar", "app.jar"]

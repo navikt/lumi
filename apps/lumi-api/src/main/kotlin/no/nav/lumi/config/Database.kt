@@ -122,6 +122,20 @@ fun createDataSource(config: ServerEnv.DatabaseEnv): HikariDataSource {
 }
 
 /**
+ * Readiness probe helper: true if a valid connection can be obtained from the pool.
+ * Backs GET /internal/isReady so NAIS pulls the pod from the load balancer when the
+ * database is unreachable. Flyway has already run by the time the server serves
+ * requests, so a live connection is a sufficient readiness signal.
+ */
+fun isDatabaseReady(dataSource: DataSource): Boolean =
+    try {
+        dataSource.connection.use { it.isValid(2) }
+    } catch (e: Exception) {
+        log.warn("Readiness check failed: database not reachable", e)
+        false
+    }
+
+/**
  * Run Flyway database migrations.
  */
 fun runMigrations(dataSource: DataSource) {

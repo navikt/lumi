@@ -132,9 +132,25 @@ data class ServerEnv(
     
     companion object {
         private val log = LoggerFactory.getLogger("ServerEnv")
-        
+
         // Singleton instance (lazy-loaded)
         val current: ServerEnv by lazy { fromEnvironment() }
+
+        /**
+         * Fail-closed guard for the submission-auth bypass. Running outside NAIS
+         * (no NAIS_CLUSTER_NAME) disables submission auth entirely, so it must be
+         * an explicit opt-in via LUMI_LOCAL_AUTH_BYPASS rather than a silent default.
+         */
+        internal fun requireValidLocalAuthPolicy(clusterName: String?, localAuthBypass: Boolean) {
+            if (clusterName == null && !localAuthBypass) {
+                throw IllegalStateException(
+                    "Refusing to start: NAIS_CLUSTER_NAME is absent and LUMI_LOCAL_AUTH_BYPASS " +
+                        "is not 'true'. In this mode submission auth is fully disabled and any " +
+                        "request is accepted. Set LUMI_LOCAL_AUTH_BYPASS=true for local " +
+                        "development, or run on NAIS where NAIS_CLUSTER_NAME is always set."
+                )
+            }
+        }
         
         /**
          * Load environment configuration.
@@ -142,12 +158,17 @@ data class ServerEnv(
          */
         fun fromEnvironment(): ServerEnv {
             val nais = NaisEnv.fromEnvironment()
-            
+            val localAuthBypass = System.getenv("LUMI_LOCAL_AUTH_BYPASS").toBoolean()
+            requireValidLocalAuthPolicy(nais.clusterName, localAuthBypass)
+
             return if (nais.isNais) {
                 log.info("Running in NAIS cluster: ${nais.clusterName}")
                 forProduction(nais)
             } else {
-                log.info("Running in local development mode")
+                log.warn(
+                    "Running in LOCAL mode via LUMI_LOCAL_AUTH_BYPASS — submission auth is " +
+                        "DISABLED and any request is accepted. Never expose this outside local dev."
+                )
                 forLocal()
             }
         }
