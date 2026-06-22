@@ -12,7 +12,7 @@ FROM eclipse-temurin:21-jdk AS build
 WORKDIR /src
 COPY gradlew gradlew.bat settings.gradle.kts build.gradle.kts gradle.properties ./
 COPY gradle ./gradle
-RUN ./gradlew --no-daemon dependencies >/dev/null 2>&1 || true
+RUN ./gradlew --no-daemon dependencies --configuration runtimeClasspath -q
 COPY . .
 RUN ./gradlew --no-daemon clean shadowJar
 

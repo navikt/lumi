@@ -34,8 +34,10 @@ die()   { printf '\n\033[1;31m✗ %s\033[0m\n' "$1" >&2; exit 1; }
 
 FAILED=0
 
-psql_q()    { $COMPOSE exec -T postgres psql -U lumi -d lumi -At -c "$1"; }
-def_source(){ psql_q "SELECT source FROM survey_definitions WHERE survey_id = '$SURVEY_ID';"; }
+# survey_id is passed as a psql variable (:'survey_id'), never interpolated into
+# the SQL string — keeps the repo's "no SQL string-interpolation" rule intact.
+psql_q()    { $COMPOSE exec -T postgres psql -U lumi -d lumi -v survey_id="$SURVEY_ID" -At -c "$1"; }
+def_source(){ psql_q "SELECT source FROM survey_definitions WHERE survey_id = :'survey_id';"; }
 
 post() { # $1 = json file -> echoes HTTP status, body in $TMP/body
   curl -s -o "$TMP/body" -w '%{http_code}' \
@@ -109,8 +111,13 @@ done
 
 # --- 2. API health ------------------------------------------------------------
 note "2/8  lumi-api ($API)"
-curl -fsS -o /dev/null "$API/internal/isAlive" 2>/dev/null \
-  || die "lumi-api svarer ikke på /internal/isAlive.\n  Start den i et eget terminalvindu:\n    cd apps/lumi-api && ./gradlew run"
+# Poll, don't assume: with `docker compose up -d` the api container may still be
+# booting (Ktor + Flyway) when this runs. Retry for ~60s before giving up.
+for i in $(seq 1 30); do
+  curl -fsS --max-time 3 -o /dev/null "$API/internal/isAlive" 2>/dev/null && break
+  [ "$i" = "30" ] && die "lumi-api svarer ikke på /internal/isAlive etter ~60s.\n  Start den i et eget terminalvindu:\n    cd apps/lumi-api && ./gradlew run"
+  sleep 2
+done
 ok "lumi-api oppe (/internal/isAlive)"
 printf '  surveyId for denne kjøringen: \033[1m%s\033[0m\n' "$SURVEY_ID"
 
@@ -143,12 +150,12 @@ printf '    melding: %s\n' "$(cat "$TMP/body")"
 note "8/8  Rader i databasen for $SURVEY_ID"
 echo "  feedback:"
 psql_q "SELECT id, team, app, survey_id, definition_hash, deduplication_key_hash
-        FROM feedback WHERE survey_id = '$SURVEY_ID' ORDER BY opprettet;" | sed 's/^/    /'
+        FROM feedback WHERE survey_id = :'survey_id' ORDER BY opprettet;" | sed 's/^/    /'
 echo "  survey_definitions:"
 psql_q "SELECT survey_id, team, source, definition_hash
-        FROM survey_definitions WHERE survey_id = '$SURVEY_ID';" | sed 's/^/    /'
+        FROM survey_definitions WHERE survey_id = :'survey_id';" | sed 's/^/    /'
 
-FB_COUNT="$(psql_q "SELECT count(*) FROM feedback WHERE survey_id = '$SURVEY_ID';")"
+FB_COUNT="$(psql_q "SELECT count(*) FROM feedback WHERE survey_id = :'survey_id';")"
 note "Oppsummering"
 # v1 (1) + v2 takeover (1) persist; dedup (0) and 409 (0) do not -> 2 rows
 check "$FB_COUNT" "2" "feedback-rader"

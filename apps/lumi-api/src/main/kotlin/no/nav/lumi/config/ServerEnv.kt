@@ -62,7 +62,10 @@ data class ServerEnv(
              */
             fun forLocal(
                 host: String = System.getenv("DB_HOST") ?: "localhost",
-                port: Int = System.getenv("DB_PORT")?.toIntOrNull() ?: 5432,
+                port: Int = System.getenv("DB_PORT")?.let {
+                    it.toIntOrNull()
+                        ?: throw IllegalStateException("DB_PORT is set but not a valid integer: '$it'")
+                } ?: 5432,
                 database: String = System.getenv("DB_DATABASE") ?: "lumi",
                 username: String = System.getenv("DB_USERNAME") ?: "lumi",
                 password: String = System.getenv("DB_PASSWORD") ?: "lumi"
