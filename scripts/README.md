@@ -18,6 +18,11 @@ there.
 
 **Option A — whole stack in containers (one command):**
 
+> **Prerequisite:** the api image runs on the same Chainguard JRE as production,
+> pulled from NAV's registry. Authenticate once with
+> `gcloud auth configure-docker europe-north1-docker.pkg.dev` (needs cgr-nav
+> access). Option B builds no image and skips this.
+
 ```bash
 docker compose up -d --build          # postgres + api (first build takes a few min)
 ./scripts/lumi-local-smoke.sh         # waits for the API, then runs the flow
