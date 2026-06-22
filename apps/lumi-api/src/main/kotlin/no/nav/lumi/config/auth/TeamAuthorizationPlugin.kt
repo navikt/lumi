@@ -84,7 +84,7 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
         val requestedTeam = call.request.queryParameters["team"]
 
         val configuredNaisLookup = naisLookup ?: run {
-            log.error("TeamAuthorization: NAIS team lookup is not configured (missing NAIS_SERVICE_ACCOUNT_TOKEN_PATH/NAIS_API_KEY/TEAMS_TOKEN and/or NAIS_API_GRAPHQL_URL/NAIS_API_ENDPOINT)")
+            log.error("TeamAuthorization: NAIS team lookup is not configured (missing NAIS_SERVICE_ACCOUNT_TOKEN_PATH/NAIS_API_KEY and/or NAIS_API_GRAPHQL_URL/NAIS_API_ENDPOINT)")
             throw ApiErrorException.ServiceUnavailableException(
                 errorMessage = "Team lookup via NAIS is not configured",
                 details = "Missing NAIS configuration for team lookup.",

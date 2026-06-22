@@ -71,7 +71,6 @@ spec:
     - instance: lumi-cache
       access: readwrite
   envFrom:
-    - secret: nais-api-key
     - secret: lumi
   env:
     - name: NAIS_CLUSTER_NAME
