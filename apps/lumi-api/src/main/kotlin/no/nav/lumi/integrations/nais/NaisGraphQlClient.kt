@@ -24,6 +24,8 @@ import no.nav.lumi.config.appMicrometerRegistry
 import no.nav.lumi.integrations.valkey.TeamCache
 import no.nav.lumi.integrations.valkey.ValkeyTeamCache
 import org.slf4j.LoggerFactory
+import java.nio.file.Files
+import java.nio.file.Path
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -82,7 +84,7 @@ object CacheTtl {
  */
 class NaisGraphQlClient private constructor(
     private val graphqlUrl: String,
-    private val apiKey: String,
+    private val tokenProvider: () -> String,
     private val teamCache: TeamCache,
     private val clock: Clock = Clock.systemUTC(),
     private val client: HttpClient = defaultHttpClient()
@@ -161,7 +163,7 @@ class NaisGraphQlClient private constructor(
             client.post(graphqlUrl) {
                 contentType(ContentType.Application.Json)
                 header(HttpHeaders.UserAgent, userAgent)
-                header(HttpHeaders.Authorization, "Bearer $apiKey")
+                header(HttpHeaders.Authorization, "Bearer ${tokenProvider()}")
                 setBody(
                     GraphQlRequest(
                         query = USER_TEAMS_QUERY,
@@ -265,7 +267,7 @@ class NaisGraphQlClient private constructor(
             client.post(graphqlUrl) {
                 contentType(ContentType.Application.Json)
                 header(HttpHeaders.UserAgent, userAgent)
-                header(HttpHeaders.Authorization, "Bearer $apiKey")
+                header(HttpHeaders.Authorization, "Bearer ${tokenProvider()}")
                 setBody(GraphQlRequest(query = VIEWER_TEAMS_QUERY, variables = EmptyVariables()))
             }
         } catch (e: Exception) {
@@ -472,13 +474,19 @@ class NaisGraphQlClient private constructor(
             val urlFromFallback = System.getenv("NAIS_API_ENDPOINT")?.trim()?.takeIf { it.isNotBlank() }
             val url = urlFromPrimary ?: urlFromFallback
 
+            // Preferred: a workload-bound service account token, mounted as a file that NAIS
+            // rotates in-place. It must be re-read on every call. Falls back to the legacy static
+            // API key (env var) for local development and during the migration window.
+            val tokenPath = System.getenv("NAIS_SERVICE_ACCOUNT_TOKEN_PATH")?.trim()?.takeIf { it.isNotBlank() }
             val keyFromPrimary = System.getenv("NAIS_API_KEY")?.trim()?.takeIf { it.isNotBlank() }
             val keyFromFallback = System.getenv("TEAMS_TOKEN")?.trim()?.takeIf { it.isNotBlank() }
-            val key = keyFromPrimary ?: keyFromFallback
+            val staticKey = keyFromPrimary ?: keyFromFallback
 
-            if (url == null && key == null) {
+            val tokenProvider = resolveTokenProvider(tokenPath, staticKey)
+
+            if (url == null && tokenProvider == null) {
                 log.debug(
-                    "NAIS API integration not configured (NAIS_API_GRAPHQL_URL/NAIS_API_ENDPOINT and NAIS_API_KEY/TEAMS_TOKEN not set)"
+                    "NAIS API integration not configured (no NAIS_API_GRAPHQL_URL/NAIS_API_ENDPOINT and no NAIS_SERVICE_ACCOUNT_TOKEN_PATH/NAIS_API_KEY/TEAMS_TOKEN)"
                 )
                 return null
             }
@@ -486,19 +494,55 @@ class NaisGraphQlClient private constructor(
             require(!url.isNullOrBlank()) {
                 "NAIS_API_GRAPHQL_URL must be set when NAIS API integration is enabled"
             }
-            require(!key.isNullOrBlank()) {
-                "NAIS_API_KEY must be set when NAIS API integration is enabled"
+            requireNotNull(tokenProvider) {
+                "NAIS auth must be configured: set NAIS_SERVICE_ACCOUNT_TOKEN_PATH (workload binding, preferred) or NAIS_API_KEY/TEAMS_TOKEN"
             }
 
             // Create cache (Valkey if configured, otherwise in-memory)
             val teamCache = ValkeyTeamCache.fromEnvOrFallback()
-            
+
             val urlSource = if (urlFromPrimary != null) "NAIS_API_GRAPHQL_URL" else "NAIS_API_ENDPOINT"
-            val keySource = if (keyFromPrimary != null) "NAIS_API_KEY" else "TEAMS_TOKEN"
+            val authSource = when {
+                tokenPath != null -> "NAIS_SERVICE_ACCOUNT_TOKEN_PATH(file)"
+                keyFromPrimary != null -> "NAIS_API_KEY"
+                else -> "TEAMS_TOKEN"
+            }
+            // Best-effort: read the token once so we can log its format. A workload-bound token
+            // file may not be present yet at startup; that's fine — the per-call provider retries.
+            val tokenInfo = try {
+                val token = tokenProvider()
+                "keyLength=${token.length}, keyFormat=${tokenFormat(token)}"
+            } catch (e: Exception) {
+                "token not readable at startup (${e.javaClass.simpleName}); will retry per call"
+            }
             log.info(
-                "NAIS API integration enabled (endpoint: ${url.take(50)}..., urlSource=$urlSource, keySource=$keySource, keyLength=${key.length}, keyFormat=${tokenFormat(key)}, cache=${teamCache::class.simpleName})"
+                "NAIS API integration enabled (endpoint: ${url.take(50)}..., urlSource=$urlSource, authSource=$authSource, $tokenInfo, cache=${teamCache::class.simpleName})"
             )
-            return NaisGraphQlClient(graphqlUrl = url, apiKey = key, teamCache = teamCache)
+            return NaisGraphQlClient(graphqlUrl = url, tokenProvider = tokenProvider, teamCache = teamCache)
+        }
+
+        /**
+         * Resolve the bearer-token source.
+         *
+         * Prefers a workload-identity token file (path from NAIS_SERVICE_ACCOUNT_TOKEN_PATH),
+         * which NAIS rotates in-place — so the returned provider re-reads the file on every
+         * invocation. Falls back to a static key (legacy API key / TEAMS_TOKEN). Returns null
+         * when neither is configured. `readFile` is injectable for testing.
+         */
+        internal fun resolveTokenProvider(
+            tokenPath: String?,
+            staticKey: String?,
+            readFile: (String) -> String = { path -> Files.readString(Path.of(path)).trim() }
+        ): (() -> String)? {
+            val path = tokenPath?.trim()?.takeIf { it.isNotBlank() }
+            if (path != null) {
+                return { readFile(path) }
+            }
+            val key = staticKey?.trim()?.takeIf { it.isNotBlank() }
+            if (key != null) {
+                return { key }
+            }
+            return null
         }
         
         /**
@@ -510,10 +554,24 @@ class NaisGraphQlClient private constructor(
             teamCache: TeamCache,
             clock: Clock = Clock.systemUTC(),
             client: HttpClient = defaultHttpClient()
+        ): NaisGraphQlClient = forTesting(
+            graphqlUrl = graphqlUrl,
+            tokenProvider = { apiKey },
+            teamCache = teamCache,
+            clock = clock,
+            client = client
+        )
+
+        fun forTesting(
+            graphqlUrl: String,
+            tokenProvider: () -> String,
+            teamCache: TeamCache,
+            clock: Clock = Clock.systemUTC(),
+            client: HttpClient = defaultHttpClient()
         ): NaisGraphQlClient {
             return NaisGraphQlClient(
                 graphqlUrl = graphqlUrl,
-                apiKey = apiKey,
+                tokenProvider = tokenProvider,
                 teamCache = teamCache,
                 clock = clock,
                 client = client
