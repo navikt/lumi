@@ -1,0 +1,30 @@
+# Local-only image used by docker-compose to run the whole stack with one command.
+#
+# The PRODUCTION image is apps/lumi-api/Dockerfile (expects a prebuilt
+# build/libs/app.jar from CI). This one is self-contained: it builds the fat jar
+# inside Docker via the gradle wrapper, then runs it. Not used by any deploy.
+
+# Build stage: Temurin JDK + the project's own Gradle wrapper. Build images are
+# discarded, so a Docker Hub base here is fine (NAV's docker guide does the same).
+# Copy dependency descriptors first so `docker compose build` can reuse the Gradle
+# cache layer when only source changes.
+FROM eclipse-temurin:21-jdk AS build
+WORKDIR /src
+COPY gradlew gradlew.bat settings.gradle.kts build.gradle.kts gradle.properties ./
+COPY gradle ./gradle
+RUN ./gradlew --no-daemon dependencies --configuration runtimeClasspath -q
+COPY . .
+RUN ./gradlew --no-daemon clean shadowJar
+
+# Runtime stage: the SAME Chainguard JRE as production (apps/lumi-api/Dockerfile),
+# so the local image matches prod and follows NAV's Chainguard standard
+# (.github/instructions/docker.instructions.md). Runs as non-root automatically.
+# NOTE: pulling cgr-nav needs `gcloud auth configure-docker
+# europe-north1-docker.pkg.dev` + cgr-nav access first (see scripts/README.md).
+FROM europe-north1-docker.pkg.dev/cgr-nav/pull-through/nav.no/jre:openjdk-21
+WORKDIR /app
+COPY --from=build /src/build/libs/app.jar app.jar
+ENV TZ="Europe/Oslo"
+EXPOSE 8080
+# No NAIS_CLUSTER_NAME -> lumi-api runs in local mode (auth disabled, DB_* from env).
+ENTRYPOINT ["java", "-jar", "app.jar"]
