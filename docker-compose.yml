@@ -50,6 +50,8 @@ services:
       DB_DATABASE: lumi
       DB_USERNAME: lumi
       DB_PASSWORD: lumi
+      # Local mode disables submission auth — it is fail-closed, so opt in explicitly.
+      LUMI_LOCAL_AUTH_BYPASS: "true"
     ports:
       - "8080:8080"
 

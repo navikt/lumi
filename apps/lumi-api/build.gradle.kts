@@ -116,8 +116,17 @@ kotlin {
     }
 }
 
+tasks.named<JavaExec>("run") {
+    // `./gradlew run` is local dev outside NAIS — opt in to the (fail-closed)
+    // local-mode auth bypass so the app starts.
+    environment("LUMI_LOCAL_AUTH_BYPASS", "true")
+}
+
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+    // Tests run outside NAIS (no NAIS_CLUSTER_NAME), so explicitly opt in to the
+    // local-mode auth bypass — ServerEnv.requireValidLocalAuthPolicy is fail-closed.
+    environment("LUMI_LOCAL_AUTH_BYPASS", "true")
     System.getProperties()
         .filterKeys { it.toString().startsWith("lumi.perf.") }
         .forEach { (key, value) -> systemProperty(key.toString(), value) }

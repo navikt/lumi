@@ -7,12 +7,15 @@ parsing → v1/v2 dispatch → immutable definition + deduplication → Postgres
 persistence — without any real TokenX/Azure token.
 
 This works because lumi-api runs in **local mode** when `NAIS_CLUSTER_NAME` is
-absent: submission auth is disabled entirely — the plugin assigns a mock identity
-(`team=local-dev`) *without inspecting the `Authorization` header at all*. The
-smoke test still sends `Bearer local-dev`, but no token is actually required. See
-`apps/lumi-api/src/main/kotlin/no/nav/lumi/config/auth/SubmissionAuthPlugin.kt`.
-The bypass relies on the NAIS platform guarantee that deployed environments always
-set `NAIS_CLUSTER_NAME`, so it never activates outside local dev.
+absent **and** `LUMI_LOCAL_AUTH_BYPASS=true` is set: submission auth is disabled
+entirely — the plugin assigns a mock identity (`team=local-dev`) *without inspecting
+the `Authorization` header at all*. The smoke test still sends `Bearer local-dev`,
+but no token is actually required. Both `docker compose` and `./gradlew run` set the
+flag for you; the bypass is **fail-closed**, so if the flag is missing in local mode
+the app refuses to start. Deployed environments always have `NAIS_CLUSTER_NAME`, so
+the bypass never activates there. See
+`apps/lumi-api/src/main/kotlin/no/nav/lumi/config/auth/SubmissionAuthPlugin.kt` and
+`config/ServerEnv.kt`.
 
 ### Steps
 
