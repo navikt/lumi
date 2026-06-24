@@ -489,6 +489,90 @@ describe("evaluateBranching", () => {
       }
     });
   });
+
+  describe("cross-question conditions (questionId)", () => {
+    // Regression for #332: a logic rule on the current question references a
+    // DIFFERENT question's answer via condition.questionId. The engine must
+    // evaluate against that referenced answer, not the current question's.
+    const logic: LogicRule[] = [
+      {
+        condition: {
+          field: "ANSWER",
+          questionId: "identifisering",
+          operator: "EQ",
+          value: "nei",
+        },
+        action: { type: "JUMP_TO", targetId: "innspill" },
+      },
+      {
+        condition: {
+          field: "ANSWER",
+          questionId: "prioritering",
+          operator: "EQ",
+          value: "nei",
+        },
+        action: { type: "JUMP_TO", targetId: "innspill" },
+      },
+      {
+        condition: {
+          field: "ANSWER",
+          questionId: "identifisering",
+          operator: "EQ",
+          value: "ja",
+        },
+        action: { type: "SUBMIT" },
+      },
+    ];
+
+    function buildSurvey(): LumiSurveyQuestion[] {
+      return [
+        createChoiceQuestion("identifisering", ["ja", "nei"]),
+        createChoiceQuestion("prioritering", ["ja", "nei"], logic),
+        createQuestion("innspill"),
+      ];
+    }
+
+    it("matches the first rule against the referenced question's answer, not the current one", () => {
+      const questions = buildSurvey();
+      // identifisering = "nei" (first question), prioritering = "ja" (current)
+      const answers = { identifisering: "nei", prioritering: "ja" };
+
+      const result = evaluateBranching(
+        questions[1],
+        answers.prioritering,
+        undefined,
+        questions,
+        1,
+        answers,
+      );
+
+      // Rule 1 (identifisering === "nei") must win → JUMP_TO innspill (index 2).
+      // Before the fix, questionId was ignored and rule 3 (current answer "ja")
+      // matched → SUBMIT (-1), surfacing as a "Send" button instead of "Neste".
+      expect(result.nextIndex).toBe(2);
+      expect(result.matchedRule?.action).toEqual({
+        type: "JUMP_TO",
+        targetId: "innspill",
+      });
+    });
+
+    it("submits only when neither referenced question is 'nei'", () => {
+      const questions = buildSurvey();
+      const answers = { identifisering: "ja", prioritering: "ja" };
+
+      const result = evaluateBranching(
+        questions[1],
+        answers.prioritering,
+        undefined,
+        questions,
+        1,
+        answers,
+      );
+
+      // Rules 1 & 2 (nei) don't match; rule 3 (identifisering === "ja") → SUBMIT.
+      expect(result.nextIndex).toBe(-1);
+    });
+  });
 });
 
 describe("surveyHasBranchingLogic", () => {

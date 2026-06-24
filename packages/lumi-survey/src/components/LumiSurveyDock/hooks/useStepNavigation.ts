@@ -117,6 +117,7 @@ export function useStepNavigation(
       metadata,
       questions,
       currentStep,
+      answers,
     );
   }, [
     currentQuestion,
@@ -125,6 +126,7 @@ export function useStepNavigation(
     questions,
     currentStep,
     hasAnsweredCurrent,
+    answers,
   ]);
 
   // Determines whether the current step is the last one in the survey path.
@@ -231,6 +233,7 @@ export function useStepNavigation(
         metadata,
         questions,
         currentStep,
+        answers,
       );
 
     if (result.nextIndex === -1) {

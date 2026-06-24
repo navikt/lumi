@@ -6,6 +6,10 @@ This project follows SemVer.
 
 ## [Unreleased]
 
+### Fixed
+
+- `logic` conditions that reference another question via `condition.questionId` are now evaluated against that question's answer instead of the current question's. Cross-question branching (e.g. routing on an earlier answer) now works the same way `visibleIf` already did. (#332)
+
 ## [1.0.0] - 2026-06-24
 
 This release switches the widget to the **v2 submission schema**. The widget now always emits `schemaVersion: 2`; the v1 wire format is no longer sent. Requires a backend that accepts schema v2 (`@navikt/lumi-api` with schema v2 support, shipped in #297).

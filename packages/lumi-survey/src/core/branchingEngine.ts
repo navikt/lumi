@@ -25,6 +25,7 @@ function evaluateCondition(
   condition: LogicCondition,
   currentAnswer: LumiSurveyAnswerValue | undefined,
   metadata: Record<string, unknown> | undefined,
+  answers: Record<string, LumiSurveyAnswerValue> | undefined,
 ): boolean {
   // Determine the actual value to compare
   let actualValue: unknown;
@@ -32,8 +33,13 @@ function evaluateCondition(
   if (condition.field === "METADATA") {
     actualValue = metadata?.[condition.key];
   } else {
-    // Default: condition.field is "ANSWER" (or omitted)
-    actualValue = currentAnswer;
+    // Default: condition.field is "ANSWER" (or omitted). A questionId
+    // references another question's answer (cross-question); without one, the
+    // condition applies to the current question's own answer. Mirrors
+    // evaluateVisibility() so logic and visibleIf resolve answers the same way.
+    actualValue = condition.questionId
+      ? answers?.[condition.questionId]
+      : currentAnswer;
   }
 
   // Handle EXISTS operator separately
@@ -139,6 +145,8 @@ function findQuestionIndex(
  * @param metadata - Optional survey metadata for METADATA conditions
  * @param questions - All questions in the survey
  * @param currentIndex - The index of the current question
+ * @param answers - All answers so far, keyed by question id. Used to resolve
+ *   conditions that reference another question via `condition.questionId`.
  * @returns BranchingResult indicating the next question index
  */
 export function evaluateBranching(
@@ -147,6 +155,7 @@ export function evaluateBranching(
   metadata: Record<string, unknown> | undefined,
   questions: LumiSurveyQuestion[],
   currentIndex: number,
+  answers?: Record<string, LumiSurveyAnswerValue>,
 ): BranchingResult {
   const rules = currentQuestion.logic;
 
@@ -160,7 +169,12 @@ export function evaluateBranching(
 
   // Evaluate rules in order - first match wins
   for (const rule of rules) {
-    const matches = evaluateCondition(rule.condition, currentAnswer, metadata);
+    const matches = evaluateCondition(
+      rule.condition,
+      currentAnswer,
+      metadata,
+      answers,
+    );
 
     if (matches) {
       switch (rule.action.type) {
