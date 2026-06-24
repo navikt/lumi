@@ -14,7 +14,8 @@ data class ServerEnv(
     val database: DatabaseEnv,
     val nais: NaisEnv,
     val auth: AuthEnv,
-    val valkey: ValkeyEnv
+    val valkey: ValkeyEnv,
+    val naisApi: NaisApiEnv
 ) {
     /**
      * Database connection configuration.
@@ -129,7 +130,42 @@ data class ServerEnv(
             )
         }
     }
-    
+
+    /**
+     * NAIS Console API integration (team-authorization lookups).
+     *
+     * Env reading lives here so [no.nav.lumi.integrations.nais.NaisGraphQlClient] receives its
+     * configuration injected instead of calling `System.getenv` itself. Note: the workload-bound
+     * token is referenced by *path* (re-read on every call by the client to honor NAIS's in-place
+     * rotation), never as the resolved token string — reading it once here would break rotation.
+     */
+    data class NaisApiEnv(
+        /** GraphQL endpoint, e.g. https://console.nav.cloud.nais.io/graphql */
+        val graphqlUrl: String?,
+        /** Path to the workload-bound, auto-rotated token file (NAIS, preferred). */
+        val tokenPath: String?,
+        /** Static API key — only honored outside NAIS for local development (e.g. `nais api proxy`). */
+        val staticKey: String?,
+    ) {
+        companion object {
+            fun fromEnvironment() = NaisApiEnv(
+                // Support both our naming and the convention used by e.g. appsec-notifiers.
+                graphqlUrl = envOrNull("NAIS_API_GRAPHQL_URL") ?: envOrNull("NAIS_API_ENDPOINT"),
+                tokenPath = envOrNull("NAIS_SERVICE_ACCOUNT_TOKEN_PATH"),
+                staticKey = envOrNull("NAIS_API_KEY"),
+            )
+
+            /**
+             * Local development reads the same env vars (e.g. `nais api proxy` sets NAIS_API_KEY);
+             * there is no localhost default for the Console API.
+             */
+            fun forLocal() = fromEnvironment()
+
+            private fun envOrNull(name: String): String? =
+                System.getenv(name)?.trim()?.takeIf { it.isNotBlank() }
+        }
+    }
+
     companion object {
         private val log = LoggerFactory.getLogger("ServerEnv")
 
@@ -182,7 +218,8 @@ data class ServerEnv(
                 database = DatabaseEnv.fromNais(),
                 nais = nais,
                 auth = AuthEnv.fromEnvironment(nais.clusterName),
-                valkey = ValkeyEnv.fromEnvironment()
+                valkey = ValkeyEnv.fromEnvironment(),
+                naisApi = NaisApiEnv.fromEnvironment()
             )
         }
         
@@ -196,7 +233,8 @@ data class ServerEnv(
                 database = DatabaseEnv.forLocal(),
                 nais = NaisEnv.forLocal(),
                 auth = AuthEnv.forLocal(),
-                valkey = ValkeyEnv.forLocal()
+                valkey = ValkeyEnv.forLocal(),
+                naisApi = NaisApiEnv.forLocal()
             )
         }
         
@@ -219,7 +257,8 @@ data class ServerEnv(
                 ),
                 nais = NaisEnv.forLocal(),
                 auth = AuthEnv.forLocal(),
-                valkey = ValkeyEnv.forLocal()
+                valkey = ValkeyEnv.forLocal(),
+                naisApi = NaisApiEnv(graphqlUrl = null, tokenPath = null, staticKey = null)
             )
         }
     }

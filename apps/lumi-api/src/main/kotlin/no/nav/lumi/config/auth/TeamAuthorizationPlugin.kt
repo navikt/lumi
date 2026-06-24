@@ -49,7 +49,13 @@ class TeamAuthorizationConfig {
      * Defaults to env-based NAIS GraphQL client when configured.
      */
     var naisTeamLookupProvider: () -> NaisTeamLookup? = {
-        NaisGraphQlClient.fromEnvOrNull()?.let { NaisGraphQlTeamLookup(it) }
+        val env = ServerEnv.current
+        NaisGraphQlClient.fromConfig(
+            graphqlUrl = env.naisApi.graphqlUrl,
+            tokenPath = env.naisApi.tokenPath,
+            staticKey = env.naisApi.staticKey,
+            isNaisEnvironment = env.nais.isNais,
+        )?.let { NaisGraphQlTeamLookup(it) }
     }
 }
 
