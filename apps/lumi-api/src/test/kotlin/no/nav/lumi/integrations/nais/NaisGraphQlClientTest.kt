@@ -561,10 +561,90 @@ class NaisGraphQlClientTest {
         // First call - caches with long TTL (because user HAS teams)
         client.getTeamSlugsForUser("test@nav.no")
         assertEquals(1, callCount)
-        
+
         // Even after 30 minutes, cache should still be valid
         // (In real usage, TTL is enforced by Valkey, but InMemoryTeamCache respects the TTL)
         client.getTeamSlugsForUser("test@nav.no")
         assertEquals(1, callCount)
+    }
+
+    @Test
+    fun `resolveTokenProvider reads the token file fresh on each call (rotation)`() {
+        val rotated = ArrayDeque(listOf("token-1", "token-2", "token-3"))
+        val readPaths = mutableListOf<String>()
+        val provider = NaisGraphQlClient.resolveTokenProvider(
+            tokenPath = "/var/run/secrets/nais.io/serviceaccount/token",
+            staticKey = null,
+            readFile = { path -> readPaths.add(path); rotated.removeFirst() }
+        )
+
+        assertNotNull(provider)
+        assertEquals("token-1", provider!!())
+        assertEquals("token-2", provider())
+        assertEquals("token-3", provider())
+        assertEquals(3, readPaths.size, "file must be re-read on every call to pick up rotation")
+        assertTrue(readPaths.all { it == "/var/run/secrets/nais.io/serviceaccount/token" })
+    }
+
+    @Test
+    fun `resolveTokenProvider prefers the token file over the static key`() {
+        val provider = NaisGraphQlClient.resolveTokenProvider(
+            tokenPath = "/path/token",
+            staticKey = "static-key",
+            readFile = { "file-token" }
+        )
+
+        assertEquals("file-token", provider!!())
+    }
+
+    @Test
+    fun `resolveTokenProvider falls back to the static key when no token path`() {
+        val provider = NaisGraphQlClient.resolveTokenProvider(tokenPath = null, staticKey = "static-key")
+
+        assertEquals("static-key", provider!!())
+    }
+
+    @Test
+    fun `resolveTokenProvider ignores a blank token path and falls back to the static key`() {
+        val provider = NaisGraphQlClient.resolveTokenProvider(tokenPath = "   ", staticKey = "static-key")
+
+        assertEquals("static-key", provider!!())
+    }
+
+    @Test
+    fun `resolveTokenProvider returns null when neither token path nor static key is set`() {
+        assertNull(NaisGraphQlClient.resolveTokenProvider(tokenPath = null, staticKey = null))
+    }
+
+    @Test
+    fun `client sends a freshly read token on each request`() = runBlocking {
+        val rotated = ArrayDeque(listOf("rotated-1", "rotated-2"))
+        val observedAuth = mutableListOf<String?>()
+        val mockEngine = MockEngine { request ->
+            observedAuth.add(request.headers[HttpHeaders.Authorization])
+            respond(
+                content = """{"data":{"user":{"teams":{"nodes":[]}}}}""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+        val mockClient = HttpClient(mockEngine) {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true; isLenient = true })
+            }
+        }
+
+        val client = NaisGraphQlClient.forTesting(
+            graphqlUrl = testUrl,
+            tokenProvider = { rotated.removeFirst() },
+            teamCache = teamCache,
+            clock = fixedClock,
+            client = mockClient
+        )
+
+        client.getTeamSlugsForUser("a@nav.no")
+        client.getTeamSlugsForUser("b@nav.no") // different email avoids the cache
+
+        assertEquals(listOf("Bearer rotated-1", "Bearer rotated-2"), observedAuth)
     }
 }
