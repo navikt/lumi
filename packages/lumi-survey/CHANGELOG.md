@@ -6,6 +6,25 @@ This project follows SemVer.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-24
+
+This release switches the widget to the **v2 submission schema**. The widget now always emits `schemaVersion: 2`; the v1 wire format is no longer sent. Requires a backend that accepts schema v2 (`@navikt/lumi-api` with schema v2 support, shipped in #297).
+
+### Changed
+
+- **BREAKING:** Submissions are now sent with `schemaVersion: 2` — the widget no longer emits the v1 payload shape (#297)
+- Each submission now carries a self-describing `definition` block (`SubmissionDefinition` with typed `fields`: `RATING`, `TEXT`, `SINGLE_CHOICE`, `MULTI_CHOICE`, `DATE`), so the survey structure travels with the data
+
+### Added
+
+- `deduplicationKey` on every submission for idempotent delivery: generated client-side, exposed via `getDeduplicationKey` from `useLumiSurvey`, and rotated after a successful submit and on reset
+- New public types re-exported from the package: `LumiApiFeedbackSubmission` (the `V1 | V2` union), `LumiApiFeedbackSubmissionV2`, `LumiApiSubmissionDefinition`, and `LumiApiSubmissionFieldDefinition`
+
+### Internal
+
+- Migrated the workspace from npm to pnpm (#210) and upgraded to TypeScript 6 (#238)
+- Removed unused close-button CSS from the dock fallback styles (#269)
+
 ## [0.4.0] - 2026-03-25
 
 ### Added
