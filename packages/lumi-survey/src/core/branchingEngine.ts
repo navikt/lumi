@@ -147,6 +147,9 @@ function findQuestionIndex(
  * @param currentIndex - The index of the current question
  * @param answers - All answers so far, keyed by question id. Used to resolve
  *   conditions that reference another question via `condition.questionId`.
+ *   Optional for backward compatibility, but cross-question (`questionId`)
+ *   conditions silently fall back to the current answer when it is omitted —
+ *   callers with branching logic should always pass the full answers map.
  * @returns BranchingResult indicating the next question index
  */
 export function evaluateBranching(

@@ -556,20 +556,103 @@ describe("evaluateBranching", () => {
       });
     });
 
-    it("submits only when neither referenced question is 'nei'", () => {
-      const questions = buildSurvey();
-      const answers = { identifisering: "ja", prioritering: "ja" };
+    it("evaluates a cross-question SUBMIT rule against the referenced answer", () => {
+      const logic: LogicRule[] = [
+        {
+          condition: {
+            field: "ANSWER",
+            questionId: "q1",
+            operator: "EQ",
+            value: "ja",
+          },
+          action: { type: "SUBMIT" },
+        },
+      ];
+      const questions = [
+        createChoiceQuestion("q1", ["ja", "nei"]),
+        createChoiceQuestion("q2", ["ja", "nei"], logic),
+        createQuestion("q3"),
+      ];
+      // q1 (referenced) = "ja" drives SUBMIT, but the CURRENT answer (q2) =
+      // "nei" differs. The pre-fix code compared the current answer, so it
+      // would NOT submit — it would fall through to the next question.
+      // nextIndex === -1 is only reachable if questionId is honoured.
+      const answers = { q1: "ja", q2: "nei" };
 
       const result = evaluateBranching(
         questions[1],
-        answers.prioritering,
+        answers.q2,
         undefined,
         questions,
         1,
         answers,
       );
 
-      // Rules 1 & 2 (nei) don't match; rule 3 (identifisering === "ja") → SUBMIT.
+      expect(result.nextIndex).toBe(-1);
+    });
+
+    it("supports cross-question NEQ with a non-adjacent JUMP_TO", () => {
+      const logic: LogicRule[] = [
+        {
+          condition: {
+            field: "ANSWER",
+            questionId: "q1",
+            operator: "NEQ",
+            value: "ja",
+          },
+          action: { type: "JUMP_TO", targetId: "q4" },
+        },
+      ];
+      const questions = [
+        createChoiceQuestion("q1", ["ja", "nei"]),
+        createChoiceQuestion("q2", ["ja", "nei"], logic),
+        createQuestion("q3"),
+        createQuestion("q4"),
+      ];
+      // q1 = "nei" → NEQ "ja" is true → JUMP to q4 (index 3). The current
+      // answer (q2) = "ja" would make the pre-fix code read NEQ "ja" as false
+      // → fall through to the adjacent next (index 2), so the target (3 vs 2)
+      // distinguishes the fix from the bug.
+      const answers = { q1: "nei", q2: "ja" };
+
+      const result = evaluateBranching(
+        questions[1],
+        answers.q2,
+        undefined,
+        questions,
+        1,
+        answers,
+      );
+
+      expect(result.nextIndex).toBe(3);
+    });
+
+    it("still evaluates METADATA conditions after the answers-map change", () => {
+      const logic: LogicRule[] = [
+        {
+          condition: {
+            field: "METADATA",
+            key: "channel",
+            operator: "EQ",
+            value: "app",
+          },
+          action: { type: "SUBMIT" },
+        },
+      ];
+      const questions = [
+        createChoiceQuestion("q1", ["ja", "nei"], logic),
+        createQuestion("q2"),
+      ];
+
+      const result = evaluateBranching(
+        questions[0],
+        "ja",
+        { channel: "app" },
+        questions,
+        0,
+        { q1: "ja" },
+      );
+
       expect(result.nextIndex).toBe(-1);
     });
   });
