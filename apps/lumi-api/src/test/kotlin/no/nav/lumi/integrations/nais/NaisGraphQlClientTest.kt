@@ -598,8 +598,12 @@ class NaisGraphQlClientTest {
     }
 
     @Test
-    fun `resolveTokenProvider falls back to the static key when no token path`() {
-        val provider = NaisGraphQlClient.resolveTokenProvider(tokenPath = null, staticKey = "static-key")
+    fun `resolveTokenProvider falls back to the static key outside NAIS when no token path`() {
+        val provider = NaisGraphQlClient.resolveTokenProvider(
+            tokenPath = null,
+            staticKey = "static-key",
+            allowStaticKeyFallback = true
+        )
 
         assertEquals("static-key", provider!!())
     }
@@ -609,6 +613,42 @@ class NaisGraphQlClientTest {
         val provider = NaisGraphQlClient.resolveTokenProvider(tokenPath = "   ", staticKey = "static-key")
 
         assertEquals("static-key", provider!!())
+    }
+
+    @Test
+    fun `resolveTokenProvider does not fall back to the static key in NAIS`() {
+        val provider = NaisGraphQlClient.resolveTokenProvider(
+            tokenPath = null,
+            staticKey = "static-key",
+            allowStaticKeyFallback = false
+        )
+
+        assertNull(provider)
+    }
+
+    @Test
+    fun `requireSupportedAuthConfiguration fails in NAIS when url is set without token path`() {
+        val exception = assertThrows(IllegalStateException::class.java) {
+            NaisGraphQlClient.requireSupportedAuthConfiguration(
+                url = testUrl,
+                tokenPath = null,
+                isNaisEnvironment = true
+            )
+        }
+
+        assertTrue(exception.message!!.contains("NAIS_SERVICE_ACCOUNT_TOKEN_PATH"))
+        assertTrue(exception.message!!.contains("NAIS_API_KEY is only supported outside NAIS"))
+    }
+
+    @Test
+    fun `requireSupportedAuthConfiguration allows local static key fallback outside NAIS`() {
+        assertDoesNotThrow {
+            NaisGraphQlClient.requireSupportedAuthConfiguration(
+                url = testUrl,
+                tokenPath = null,
+                isNaisEnvironment = false
+            )
+        }
     }
 
     @Test
