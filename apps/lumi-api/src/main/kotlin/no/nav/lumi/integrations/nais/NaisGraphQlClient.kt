@@ -457,34 +457,27 @@ class NaisGraphQlClient private constructor(
         """.trimIndent()
 
         /**
-         * Create a client from environment variables, or null if not configured.
-         * 
-         * Required env vars:
-         * - NAIS_API_GRAPHQL_URL: The GraphQL endpoint (e.g., https://console.nav.cloud.nais.io/graphql)
-         * - Auth, in order of preference:
-         *   - NAIS_SERVICE_ACCOUNT_TOKEN_PATH: file with a workload-bound, auto-rotated token (prod/dev)
-         *   - NAIS_API_KEY: static key for local development outside NAIS (e.g. via `nais api proxy`)
-         * 
-         * Optional env vars (for Valkey cache):
-         * - VALKEY_URI_LUMI_CACHE: Valkey connection URI
-         * - VALKEY_USERNAME_LUMI_CACHE: Valkey username
-         * - VALKEY_PASSWORD_LUMI_CACHE: Valkey password
+         * Create a client from already-resolved configuration, or null when the integration is
+         * not configured.
+         *
+         * Env reading lives in [no.nav.lumi.config.ServerEnv.NaisApiEnv]; this factory stays free
+         * of `System.getenv` so the client can be wired and tested with injected config.
+         *
+         * @param graphqlUrl resolved endpoint (from NAIS_API_GRAPHQL_URL / NAIS_API_ENDPOINT)
+         * @param tokenPath path to the workload-bound, auto-rotated token file (re-read per call)
+         * @param staticKey static API key — only honored outside NAIS for local development
+         * @param isNaisEnvironment true in a NAIS cluster; rejects the static-key fallback there
+         * @param teamCache cache to use; defaults to Valkey-if-configured (created only when the
+         *   integration is actually enabled, never on the not-configured path)
          */
-        fun fromEnvOrNull(): NaisGraphQlClient? {
-            // Support both our naming and the convention used by e.g. appsec-notifiers.
-            val urlFromPrimary = System.getenv("NAIS_API_GRAPHQL_URL")?.trim()?.takeIf { it.isNotBlank() }
-            val urlFromFallback = System.getenv("NAIS_API_ENDPOINT")?.trim()?.takeIf { it.isNotBlank() }
-            val url = urlFromPrimary ?: urlFromFallback
-            val isNaisEnvironment = isNaisEnvironment(
-                System.getenv("NAIS_CLUSTER_NAME")?.trim()?.takeIf { it.isNotBlank() }
-            )
-
-            // Preferred: a workload-bound service account token, mounted as a file that NAIS
-            // rotates in-place. It must be re-read on every call. Falls back to a static API key
-            // (NAIS_API_KEY) only outside NAIS for local development, where there is no workload
-            // binding (e.g. via `nais api proxy`).
-            val tokenPath = System.getenv("NAIS_SERVICE_ACCOUNT_TOKEN_PATH")?.trim()?.takeIf { it.isNotBlank() }
-            val staticKey = System.getenv("NAIS_API_KEY")?.trim()?.takeIf { it.isNotBlank() }
+        fun fromConfig(
+            graphqlUrl: String?,
+            tokenPath: String?,
+            staticKey: String?,
+            isNaisEnvironment: Boolean,
+            teamCache: TeamCache? = null,
+        ): NaisGraphQlClient? {
+            val url = graphqlUrl?.trim()?.takeIf { it.isNotBlank() }
 
             requireSupportedAuthConfiguration(
                 url = url,
@@ -492,6 +485,9 @@ class NaisGraphQlClient private constructor(
                 isNaisEnvironment = isNaisEnvironment
             )
 
+            // Preferred: a workload-bound service account token, mounted as a file that NAIS
+            // rotates in-place — re-read on every call. Falls back to a static API key only
+            // outside NAIS for local development (e.g. via `nais api proxy`).
             val tokenProvider = resolveTokenProvider(
                 tokenPath = tokenPath,
                 staticKey = staticKey,
@@ -505,7 +501,7 @@ class NaisGraphQlClient private constructor(
                 return null
             }
 
-            require(!url.isNullOrBlank()) {
+            requireNotNull(url) {
                 "NAIS_API_GRAPHQL_URL must be set when NAIS API integration is enabled"
             }
             requireNotNull(tokenProvider) {
@@ -518,10 +514,10 @@ class NaisGraphQlClient private constructor(
                 }
             }
 
-            // Create cache (Valkey if configured, otherwise in-memory)
-            val teamCache = ValkeyTeamCache.fromEnvOrFallback()
+            // Create cache only now that we know the integration is enabled (Valkey if configured,
+            // otherwise in-memory).
+            val cache = teamCache ?: ValkeyTeamCache.fromEnvOrFallback()
 
-            val urlSource = if (urlFromPrimary != null) "NAIS_API_GRAPHQL_URL" else "NAIS_API_ENDPOINT"
             val authSource = if (tokenPath != null) "NAIS_SERVICE_ACCOUNT_TOKEN_PATH(file)" else "NAIS_API_KEY"
             // Best-effort: read the token once so we can log its format. A workload-bound token
             // file may not be present yet at startup; that's fine — the per-call provider retries.
@@ -532,12 +528,10 @@ class NaisGraphQlClient private constructor(
                 "token not readable at startup (${e.javaClass.simpleName}); will retry per call"
             }
             log.info(
-                "NAIS API integration enabled (endpoint: ${url.take(50)}..., urlSource=$urlSource, authSource=$authSource, $tokenInfo, cache=${teamCache::class.simpleName})"
+                "NAIS API integration enabled (endpoint: ${url.take(50)}..., authSource=$authSource, $tokenInfo, cache=${cache::class.simpleName})"
             )
-            return NaisGraphQlClient(graphqlUrl = url, tokenProvider = tokenProvider, teamCache = teamCache)
+            return NaisGraphQlClient(graphqlUrl = url, tokenProvider = tokenProvider, teamCache = cache)
         }
-
-        private fun isNaisEnvironment(clusterName: String?): Boolean = !clusterName.isNullOrBlank()
 
         internal fun requireSupportedAuthConfiguration(
             url: String?,

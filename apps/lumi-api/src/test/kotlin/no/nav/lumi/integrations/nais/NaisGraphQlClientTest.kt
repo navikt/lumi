@@ -687,4 +687,58 @@ class NaisGraphQlClientTest {
 
         assertEquals(listOf("Bearer rotated-1", "Bearer rotated-2"), observedAuth)
     }
+
+    @Test
+    fun `fromConfig returns null when nothing is configured`() {
+        val client = NaisGraphQlClient.fromConfig(
+            graphqlUrl = null,
+            tokenPath = null,
+            staticKey = null,
+            isNaisEnvironment = false,
+            teamCache = teamCache
+        )
+
+        assertNull(client)
+    }
+
+    @Test
+    fun `fromConfig builds a client from an injected token path`() {
+        val client = NaisGraphQlClient.fromConfig(
+            graphqlUrl = testUrl,
+            tokenPath = "/var/run/secrets/nais.io/console/token",
+            staticKey = null,
+            isNaisEnvironment = true,
+            teamCache = teamCache
+        )
+
+        assertNotNull(client)
+    }
+
+    @Test
+    fun `fromConfig rejects the static key fallback in NAIS`() {
+        val exception = assertThrows(IllegalStateException::class.java) {
+            NaisGraphQlClient.fromConfig(
+                graphqlUrl = testUrl,
+                tokenPath = null,
+                staticKey = "static-key",
+                isNaisEnvironment = true,
+                teamCache = teamCache
+            )
+        }
+
+        assertTrue(exception.message!!.contains("NAIS_SERVICE_ACCOUNT_TOKEN_PATH"))
+    }
+
+    @Test
+    fun `fromConfig allows the static key outside NAIS`() {
+        val client = NaisGraphQlClient.fromConfig(
+            graphqlUrl = testUrl,
+            tokenPath = null,
+            staticKey = "static-key",
+            isNaisEnvironment = false,
+            teamCache = teamCache
+        )
+
+        assertNotNull(client)
+    }
 }
