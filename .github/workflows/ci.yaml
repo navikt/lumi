@@ -106,7 +106,7 @@ jobs:
         env:
           NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
       - name: Dependency audit (production)
-        run: pnpm audit --prod --audit-level=critical
+        run: pnpm audit --prod --audit-level=high
       - name: Lint
         run: pnpm run lint
       - name: Typecheck
