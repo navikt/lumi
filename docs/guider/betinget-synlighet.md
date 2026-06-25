@@ -125,23 +125,39 @@ ikke nestes (ett nivå), og en tom gruppe avvises ved validering.
 
 ## Condition-struktur
 
-Alle `visibleIf`-betingelser følger samme form:
+En `visibleIf` er enten **én leaf-betingelse**, eller en **`any`/`all`-gruppe** av
+leaf-betingelser (se [Flere betingelser (AND/OR)](#flere-betingelser-andor)). En
+leaf-betingelse har formen:
 
 ```ts
-interface LogicCondition {
-  /** Hva sammenlignes — "ANSWER" eller "METADATA" */
-  field?: "ANSWER" | "METADATA";
+type LogicLeafCondition =
+  | {
+      /** Sammenlign mot et svar (standard) */
+      field?: "ANSWER";
+      /** Hvilket spørsmål svaret hentes fra (kryssreferanse) */
+      questionId?: string;
+      /** Sammenligningsoperator */
+      operator: "EXISTS" | "EQ" | "NEQ" | "GT" | "LT" | "CONTAINS";
+      /** Verdi å sammenligne med (ikke nødvendig for EXISTS) */
+      value?: string | number | boolean;
+    }
+  | {
+      /** Sammenlign mot en metadata-verdi */
+      field: "METADATA";
+      /** Nøkkel i metadata (påkrevd for METADATA) */
+      key: string;
+      operator: "EXISTS" | "EQ" | "NEQ" | "GT" | "LT" | "CONTAINS";
+      value?: string | number | boolean;
+    };
 
-  /** Hvilket spørsmål svaret hentes fra (påkrevd for ANSWER med kryssreferanse) */
-  questionId?: string;
-
-  /** Sammenligningsoperator */
-  operator: "EXISTS" | "EQ" | "NEQ" | "GT" | "LT" | "CONTAINS";
-
-  /** Verdi å sammenligne med (ikke nødvendig for EXISTS) */
-  value?: string | number | boolean;
-}
+// visibleIf aksepterer en leaf ELLER en gruppe (typen heter VisibleIfCondition):
+type VisibleIfCondition =
+  | LogicLeafCondition
+  | { any: LogicLeafCondition[] } // OR
+  | { all: LogicLeafCondition[] }; // AND
 ```
+
+Grupper er **ett nivå** (kan ikke nestes), og en tom `any`/`all` avvises ved validering.
 
 ::: tip Bruk `questionId` for kryss-referanser
 `questionId` refererer til `id`-en til spørsmålet du vil sjekke svaret på. Uten `questionId` evalueres betingelsen mot det *gjeldende* spørsmålets svar.

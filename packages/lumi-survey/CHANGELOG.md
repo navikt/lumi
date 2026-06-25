@@ -8,7 +8,7 @@ This project follows SemVer.
 
 ### Added
 
-- `visibleIf` now supports `any` (OR) and `all` (AND) to combine multiple conditions (#333).
+- `visibleIf` now supports `any` (OR) and `all` (AND) to combine multiple conditions. The wider condition type is exported as `VisibleIfCondition` (with `isConditionGroup`/`getLeafConditions` helpers); `LogicCondition` stays leaf-only so existing type consumers are unaffected. (#333)
 
 ### Fixed
 
