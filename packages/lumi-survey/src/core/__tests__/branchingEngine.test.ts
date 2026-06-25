@@ -489,6 +489,173 @@ describe("evaluateBranching", () => {
       }
     });
   });
+
+  describe("cross-question conditions (questionId)", () => {
+    // Regression for #332: a logic rule on the current question references a
+    // DIFFERENT question's answer via condition.questionId. The engine must
+    // evaluate against that referenced answer, not the current question's.
+    const logic: LogicRule[] = [
+      {
+        condition: {
+          field: "ANSWER",
+          questionId: "identifisering",
+          operator: "EQ",
+          value: "nei",
+        },
+        action: { type: "JUMP_TO", targetId: "innspill" },
+      },
+      {
+        condition: {
+          field: "ANSWER",
+          questionId: "prioritering",
+          operator: "EQ",
+          value: "nei",
+        },
+        action: { type: "JUMP_TO", targetId: "innspill" },
+      },
+      {
+        condition: {
+          field: "ANSWER",
+          questionId: "identifisering",
+          operator: "EQ",
+          value: "ja",
+        },
+        action: { type: "SUBMIT" },
+      },
+    ];
+
+    function buildSurvey(): LumiSurveyQuestion[] {
+      return [
+        createChoiceQuestion("identifisering", ["ja", "nei"]),
+        createChoiceQuestion("prioritering", ["ja", "nei"], logic),
+        createQuestion("innspill"),
+      ];
+    }
+
+    it("matches the first rule against the referenced question's answer, not the current one", () => {
+      const questions = buildSurvey();
+      // identifisering = "nei" (first question), prioritering = "ja" (current)
+      const answers = { identifisering: "nei", prioritering: "ja" };
+
+      const result = evaluateBranching(
+        questions[1],
+        answers.prioritering,
+        undefined,
+        questions,
+        1,
+        answers,
+      );
+
+      // Rule 1 (identifisering === "nei") must win → JUMP_TO innspill (index 2).
+      // Before the fix, questionId was ignored and rule 3 (current answer "ja")
+      // matched → SUBMIT (-1), surfacing as a "Send" button instead of "Neste".
+      expect(result.nextIndex).toBe(2);
+      expect(result.matchedRule?.action).toEqual({
+        type: "JUMP_TO",
+        targetId: "innspill",
+      });
+    });
+
+    it("evaluates a cross-question SUBMIT rule against the referenced answer", () => {
+      const logic: LogicRule[] = [
+        {
+          condition: {
+            field: "ANSWER",
+            questionId: "q1",
+            operator: "EQ",
+            value: "ja",
+          },
+          action: { type: "SUBMIT" },
+        },
+      ];
+      const questions = [
+        createChoiceQuestion("q1", ["ja", "nei"]),
+        createChoiceQuestion("q2", ["ja", "nei"], logic),
+        createQuestion("q3"),
+      ];
+      // q1 (referenced) = "ja" drives SUBMIT, but the CURRENT answer (q2) =
+      // "nei" differs. The pre-fix code compared the current answer, so it
+      // would NOT submit — it would fall through to the next question.
+      // nextIndex === -1 is only reachable if questionId is honoured.
+      const answers = { q1: "ja", q2: "nei" };
+
+      const result = evaluateBranching(
+        questions[1],
+        answers.q2,
+        undefined,
+        questions,
+        1,
+        answers,
+      );
+
+      expect(result.nextIndex).toBe(-1);
+    });
+
+    it("supports cross-question NEQ with a non-adjacent JUMP_TO", () => {
+      const logic: LogicRule[] = [
+        {
+          condition: {
+            field: "ANSWER",
+            questionId: "q1",
+            operator: "NEQ",
+            value: "ja",
+          },
+          action: { type: "JUMP_TO", targetId: "q4" },
+        },
+      ];
+      const questions = [
+        createChoiceQuestion("q1", ["ja", "nei"]),
+        createChoiceQuestion("q2", ["ja", "nei"], logic),
+        createQuestion("q3"),
+        createQuestion("q4"),
+      ];
+      // q1 = "nei" → NEQ "ja" is true → JUMP to q4 (index 3). The current
+      // answer (q2) = "ja" would make the pre-fix code read NEQ "ja" as false
+      // → fall through to the adjacent next (index 2), so the target (3 vs 2)
+      // distinguishes the fix from the bug.
+      const answers = { q1: "nei", q2: "ja" };
+
+      const result = evaluateBranching(
+        questions[1],
+        answers.q2,
+        undefined,
+        questions,
+        1,
+        answers,
+      );
+
+      expect(result.nextIndex).toBe(3);
+    });
+
+    it("still evaluates METADATA conditions after the answers-map change", () => {
+      const logic: LogicRule[] = [
+        {
+          condition: {
+            field: "METADATA",
+            key: "channel",
+            operator: "EQ",
+            value: "app",
+          },
+          action: { type: "SUBMIT" },
+        },
+      ];
+      const questions = [
+        createChoiceQuestion("q1", ["ja", "nei"], logic),
+        createQuestion("q2"),
+      ];
+
+      const result = evaluateBranching(
+        questions[0],
+        "ja",
+        { channel: "app" },
+        questions,
+        0,
+        { q1: "ja" },
+      );
+
+      expect(result.nextIndex).toBe(-1);
+    });
+  });
 });
 
 describe("surveyHasBranchingLogic", () => {

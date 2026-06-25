@@ -104,6 +104,67 @@ const BRANCHING_QUESTIONS: LumiSurveyQuestion[] = [
   },
 ];
 
+// Repro of #332: logic on the 2nd question references the 1st question's
+// answer via condition.questionId ("show innspill if EITHER question is nei").
+const CROSS_QUESTION_BRANCHING_QUESTIONS: LumiSurveyQuestion[] = [
+  {
+    id: "identifisering",
+    type: "singleChoice",
+    prompt: "Identifisering?",
+    required: true,
+    options: [
+      { value: "ja", label: "Ja" },
+      { value: "nei", label: "Nei" },
+    ],
+  },
+  {
+    id: "prioritering",
+    type: "singleChoice",
+    prompt: "Prioritering?",
+    required: true,
+    options: [
+      { value: "ja", label: "Ja" },
+      { value: "nei", label: "Nei" },
+    ],
+    logic: [
+      {
+        condition: {
+          field: "ANSWER",
+          questionId: "identifisering",
+          operator: "EQ",
+          value: "nei",
+        },
+        action: { type: "JUMP_TO", targetId: "innspill" },
+      },
+      {
+        condition: {
+          field: "ANSWER",
+          questionId: "prioritering",
+          operator: "EQ",
+          value: "nei",
+        },
+        action: { type: "JUMP_TO", targetId: "innspill" },
+      },
+      {
+        condition: {
+          field: "ANSWER",
+          questionId: "identifisering",
+          operator: "EQ",
+          value: "ja",
+        },
+        action: { type: "SUBMIT" },
+      },
+    ],
+  },
+  {
+    id: "innspill",
+    type: "text",
+    prompt: "Innspill?",
+    required: false,
+    maxLength: 1000,
+  },
+];
+
 const VISIBLE_IF_QUESTIONS: LumiSurveyQuestion[] = [
   {
     id: "q1",
@@ -376,6 +437,27 @@ describe("useStepNavigation", () => {
       );
 
       expect(result.current.currentStep).toBe(0);
+      expect(result.current.isLastStep).toBe(false);
+    });
+
+    it("returns false when a cross-question rule jumps forward (#332)", () => {
+      // identifisering = "nei", prioritering = "ja". On the prioritering step,
+      // rule 1 (identifisering === "nei") must win → JUMP_TO innspill, so this
+      // is NOT the last step. Before the fix, questionId was ignored and the
+      // SUBMIT rule matched → isLastStep true → "Send" instead of "Neste".
+      const { result } = renderHook(() =>
+        useStepNavigation({
+          questions: CROSS_QUESTION_BRANCHING_QUESTIONS,
+          answers: { identifisering: "nei", prioritering: "ja" },
+        }),
+      );
+
+      // Advance from identifisering (step 0) to prioritering (step 1).
+      act(() => {
+        result.current.goToNext();
+      });
+
+      expect(result.current.currentStep).toBe(1);
       expect(result.current.isLastStep).toBe(false);
     });
   });
