@@ -12,6 +12,7 @@ export { ErrorType as LumiApiErrorType } from "../contracts/lumiApi";
 
 export * from "./branchingEngine";
 export { computeReachableSteps } from "./computeReachableSteps.js";
+export { getLeafConditions, isConditionGroup } from "./conditionUtils.js";
 export * from "./evaluateVisibility";
 export * from "./ratingLabels";
 export * from "./types";

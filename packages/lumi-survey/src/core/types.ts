@@ -53,7 +53,18 @@ export type LogicConditionGroup =
   | { any: LogicLeafCondition[] }
   | { all: LogicLeafCondition[] };
 
-export type LogicCondition = LogicLeafCondition | LogicConditionGroup;
+/**
+ * Leaf-only condition language. Kept as the historical public name so existing
+ * `LogicRule` / `visibleIf` authorings stay source-compatible after `any`/`all`
+ * groups were added — groups live in the wider `VisibleIfCondition`.
+ */
+export type LogicCondition = LogicLeafCondition;
+
+/**
+ * Condition language for `visibleIf`: a single leaf, or a one-level `any`/`all`
+ * group of leaves. Wider than `LogicCondition`; only `visibleIf` accepts groups.
+ */
+export type VisibleIfCondition = LogicLeafCondition | LogicConditionGroup;
 
 /**
  * Action type for logic rules.
@@ -89,7 +100,7 @@ export type LogicAction =
  */
 export interface LogicRule {
   /** Condition to evaluate (leaf only — `logic` does not support any/all groups) */
-  condition: LogicLeafCondition;
+  condition: LogicCondition;
   /** Action to perform if condition is met */
   action: LogicAction;
 }
@@ -129,7 +140,7 @@ export interface LumiSurveyQuestionBase<TType extends LumiSurveyQuestionType> {
    * }
    * ```
    */
-  visibleIf?: LogicCondition;
+  visibleIf?: VisibleIfCondition;
 }
 
 // ============================================

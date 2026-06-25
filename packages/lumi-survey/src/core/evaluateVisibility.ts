@@ -1,8 +1,8 @@
 import type {
-  LogicCondition,
   LogicLeafCondition,
   LumiSurveyAnswerValue,
   LumiSurveyQuestion,
+  VisibleIfCondition,
 } from "./types";
 
 /**
@@ -23,7 +23,7 @@ import type {
  * ```
  */
 export function evaluateVisibility(
-  condition: LogicCondition | undefined,
+  condition: VisibleIfCondition | undefined,
   answers: Record<string, LumiSurveyAnswerValue>,
   metadata?: Record<string, unknown>,
 ): boolean {

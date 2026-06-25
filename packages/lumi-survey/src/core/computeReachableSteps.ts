@@ -1,14 +1,14 @@
 import { isConditionGroup } from "./conditionUtils.js";
 import { evaluateVisibility } from "./evaluateVisibility.js";
 import type {
-  LogicCondition,
   LogicLeafCondition,
   LumiSurveyAnswerValue,
   LumiSurveyQuestion,
+  VisibleIfCondition,
 } from "./types.js";
 
 function isAnswerCondition(
-  condition: LogicCondition | undefined,
+  condition: VisibleIfCondition | undefined,
 ): condition is Extract<LogicLeafCondition, { field?: "ANSWER" }> {
   return (
     condition !== undefined &&
