@@ -105,4 +105,58 @@ describe("buildCanonicalSurvey", () => {
     expect(canonical.type).toBe("rating");
     expect(canonical.questions[0]?.required).toBe(true);
   });
+
+  it("throws if a visibleIf group references an unknown questionId", () => {
+    expect(() =>
+      buildCanonicalSurvey({
+        type: "custom",
+        questions: [
+          { id: "q1", type: "rating", prompt: "Rating", required: true },
+          {
+            id: "q2",
+            type: "text",
+            prompt: "Text",
+            visibleIf: {
+              any: [{ operator: "EQ", questionId: "ghost", value: "nei" }],
+            },
+          },
+        ] as unknown as LumiSurveyConfig["questions"],
+      }),
+    ).toThrowError(/visibleIf\.questionId/i);
+  });
+
+  it("throws if a visibleIf group is empty", () => {
+    expect(() =>
+      buildCanonicalSurvey({
+        type: "custom",
+        questions: [
+          { id: "q1", type: "rating", prompt: "Rating", required: true },
+          { id: "q2", type: "text", prompt: "Text", visibleIf: { any: [] } },
+        ] as unknown as LumiSurveyConfig["questions"],
+      }),
+    ).toThrowError(/empty/i);
+  });
+
+  it("throws if a logic condition is an any/all group", () => {
+    expect(() =>
+      buildCanonicalSurvey({
+        type: "custom",
+        questions: [
+          {
+            id: "q1",
+            type: "singleChoice",
+            prompt: "Choice",
+            required: true,
+            options: [{ value: "yes", label: "Ja" }],
+            logic: [
+              {
+                condition: { any: [{ operator: "EXISTS" }] },
+                action: { type: "SUBMIT" },
+              },
+            ],
+          },
+        ] as unknown as LumiSurveyConfig["questions"],
+      }),
+    ).toThrowError(/logic.*group|group.*logic/i);
+  });
 });

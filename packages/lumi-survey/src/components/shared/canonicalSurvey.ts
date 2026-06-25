@@ -1,5 +1,8 @@
-import { getLeafConditions } from "../../core/conditionUtils.js";
-import type { LumiSurveyQuestion } from "../../core/types.js";
+import {
+  getLeafConditions,
+  isConditionGroup,
+} from "../../core/conditionUtils.js";
+import type { LogicCondition, LumiSurveyQuestion } from "../../core/types.js";
 import type { LumiSurveyConfig, SurveyType } from "../surveyTypes.js";
 
 export const RATING_ANSWER_KEY = "svar";
@@ -54,6 +57,14 @@ export function buildCanonicalSurvey(
   for (const question of questions) {
     const visibleIf = question.visibleIf;
     if (visibleIf) {
+      if (
+        isConditionGroup(visibleIf) &&
+        getLeafConditions(visibleIf).length === 0
+      ) {
+        throw new Error(
+          `Lumi: Question "${question.id}" has an empty visibleIf "any"/"all" group`,
+        );
+      }
       for (const leaf of getLeafConditions(visibleIf)) {
         if (
           leaf.field !== "METADATA" &&
@@ -70,6 +81,11 @@ export function buildCanonicalSurvey(
     if (!question.logic) continue;
     for (const rule of question.logic) {
       const condition = rule.condition;
+      if (isConditionGroup(condition as LogicCondition)) {
+        throw new Error(
+          `Lumi: Question "${question.id}" uses an any/all group in logic.condition, but logic does not support groups (use visibleIf)`,
+        );
+      }
       if (condition.field !== "METADATA") {
         const referencedId = condition.questionId;
         if (referencedId && !ids.has(referencedId)) {
