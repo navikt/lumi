@@ -1,5 +1,5 @@
 import type {
-  LogicCondition,
+  LogicLeafCondition,
   LogicOperator,
   LogicRule,
   LumiSurveyAnswerValue,
@@ -22,7 +22,7 @@ export interface BranchingResult {
  * Evaluates a single condition against an answer or metadata value.
  */
 function evaluateCondition(
-  condition: LogicCondition,
+  condition: LogicLeafCondition,
   currentAnswer: LumiSurveyAnswerValue | undefined,
   metadata: Record<string, unknown> | undefined,
   answers: Record<string, LumiSurveyAnswerValue> | undefined,

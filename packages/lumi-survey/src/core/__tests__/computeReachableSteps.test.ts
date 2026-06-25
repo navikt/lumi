@@ -165,6 +165,24 @@ describe("computeReachableSteps", () => {
     expect(computeReachableSteps([], {})).toBe(0);
   });
 
+  it("counts a group-gated question as reachable (overestimate)", () => {
+    const questions: LumiSurveyQuestion[] = [
+      { id: "q1", type: "rating", prompt: "Rate", required: true },
+      {
+        id: "q2",
+        type: "text",
+        prompt: "Why?",
+        visibleIf: {
+          any: [
+            { field: "ANSWER", questionId: "q1", operator: "EQ", value: 1 },
+          ],
+        },
+      },
+    ];
+    // No answers yet: a group-gated question is treated as reachable.
+    expect(computeReachableSteps(questions, {})).toBe(2);
+  });
+
   it("returns a realistic estimate for a real-world survey", () => {
     const questions: LumiSurveyQuestion[] = [
       {

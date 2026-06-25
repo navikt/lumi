@@ -270,3 +270,113 @@ describe("shouldShowSubmitButton", () => {
     ).toBe(true);
   });
 });
+
+describe("evaluateVisibility with any/all groups", () => {
+  it("any: visible when at least one leaf matches", () => {
+    const condition = {
+      any: [
+        {
+          field: "ANSWER" as const,
+          questionId: "q1",
+          operator: "EQ" as const,
+          value: "nei",
+        },
+        {
+          field: "ANSWER" as const,
+          questionId: "q2",
+          operator: "EQ" as const,
+          value: "nei",
+        },
+      ],
+    };
+    expect(evaluateVisibility(condition, { q1: "ja", q2: "nei" })).toBe(true);
+  });
+
+  it("any: hidden when no leaf matches", () => {
+    const condition = {
+      any: [
+        {
+          field: "ANSWER" as const,
+          questionId: "q1",
+          operator: "EQ" as const,
+          value: "nei",
+        },
+        {
+          field: "ANSWER" as const,
+          questionId: "q2",
+          operator: "EQ" as const,
+          value: "nei",
+        },
+      ],
+    };
+    expect(evaluateVisibility(condition, { q1: "ja", q2: "ja" })).toBe(false);
+  });
+
+  it("all: visible only when every leaf matches", () => {
+    const condition = {
+      all: [
+        {
+          field: "ANSWER" as const,
+          questionId: "q1",
+          operator: "EQ" as const,
+          value: "nei",
+        },
+        {
+          field: "ANSWER" as const,
+          questionId: "q2",
+          operator: "EQ" as const,
+          value: "nei",
+        },
+      ],
+    };
+    expect(evaluateVisibility(condition, { q1: "nei", q2: "nei" })).toBe(true);
+    expect(evaluateVisibility(condition, { q1: "nei", q2: "ja" })).toBe(false);
+  });
+
+  it("mixes EXISTS and EQ leaves in one group", () => {
+    const condition = {
+      all: [
+        {
+          field: "ANSWER" as const,
+          questionId: "rating",
+          operator: "EXISTS" as const,
+        },
+        {
+          field: "ANSWER" as const,
+          questionId: "success",
+          operator: "EQ" as const,
+          value: "no",
+        },
+      ],
+    };
+    expect(evaluateVisibility(condition, { rating: 2, success: "no" })).toBe(
+      true,
+    );
+    expect(evaluateVisibility(condition, { success: "no" })).toBe(false);
+  });
+
+  it("evaluates a METADATA leaf inside a group", () => {
+    const condition = {
+      any: [
+        {
+          field: "METADATA" as const,
+          key: "userType",
+          operator: "EQ" as const,
+          value: "employee",
+        },
+        {
+          field: "ANSWER" as const,
+          questionId: "q1",
+          operator: "EQ" as const,
+          value: "nei",
+        },
+      ],
+    };
+    expect(
+      evaluateVisibility(condition, { q1: "ja" }, { userType: "employee" }),
+    ).toBe(true);
+    expect(
+      evaluateVisibility(condition, { q1: "ja" }, { userType: "employer" }),
+    ).toBe(false);
+  });
+});

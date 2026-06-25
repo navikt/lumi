@@ -1,14 +1,20 @@
+import { isConditionGroup } from "./conditionUtils.js";
 import { evaluateVisibility } from "./evaluateVisibility.js";
 import type {
   LogicCondition,
+  LogicLeafCondition,
   LumiSurveyAnswerValue,
   LumiSurveyQuestion,
 } from "./types.js";
 
 function isAnswerCondition(
   condition: LogicCondition | undefined,
-): condition is Extract<LogicCondition, { field?: "ANSWER" }> {
-  return condition !== undefined && condition.field !== "METADATA";
+): condition is Extract<LogicLeafCondition, { field?: "ANSWER" }> {
+  return (
+    condition !== undefined &&
+    !isConditionGroup(condition) &&
+    condition.field !== "METADATA"
+  );
 }
 
 /**
@@ -76,6 +82,12 @@ export function computeReachableSteps(
       return true;
     }
 
+    if (isConditionGroup(condition)) {
+      // Group-gated: overestimate as reachable (same policy as METADATA).
+      deterministicReachableCache.set(questionId, true);
+      return true;
+    }
+
     if (condition.field === "METADATA") {
       deterministicReachableCache.set(questionId, true);
       return true;
@@ -119,7 +131,12 @@ export function computeReachableSteps(
     }
 
     const condition = question.visibleIf;
-    if (condition && condition.field !== "METADATA" && condition.questionId) {
+    if (
+      condition &&
+      !isConditionGroup(condition) &&
+      condition.field !== "METADATA" &&
+      condition.questionId
+    ) {
       if (condition.operator !== "EXISTS") {
         const parentId = condition.questionId;
         if (answers[parentId] !== undefined) {

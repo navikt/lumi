@@ -1,3 +1,4 @@
+import { getLeafConditions } from "../../core/conditionUtils.js";
 import type { LumiSurveyQuestion } from "../../core/types.js";
 import type { LumiSurveyConfig, SurveyType } from "../surveyTypes.js";
 
@@ -52,12 +53,17 @@ export function buildCanonicalSurvey(
   // Validate cross-references in visibility and branching logic
   for (const question of questions) {
     const visibleIf = question.visibleIf;
-    if (visibleIf && visibleIf.field !== "METADATA") {
-      const referencedId = visibleIf.questionId;
-      if (referencedId && !ids.has(referencedId)) {
-        throw new Error(
-          `Lumi: Question "${question.id}" has visibleIf.questionId "${referencedId}", but no such question exists`,
-        );
+    if (visibleIf) {
+      for (const leaf of getLeafConditions(visibleIf)) {
+        if (
+          leaf.field !== "METADATA" &&
+          leaf.questionId &&
+          !ids.has(leaf.questionId)
+        ) {
+          throw new Error(
+            `Lumi: Question "${question.id}" has visibleIf.questionId "${leaf.questionId}", but no such question exists`,
+          );
+        }
       }
     }
 

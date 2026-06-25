@@ -1,5 +1,6 @@
 import type {
   LogicCondition,
+  LogicLeafCondition,
   LumiSurveyAnswerValue,
   LumiSurveyQuestion,
 } from "./types";
@@ -29,6 +30,24 @@ export function evaluateVisibility(
   // No condition = always visible
   if (!condition) return true;
 
+  if ("all" in condition) {
+    return condition.all.every((leaf) => evaluateLeaf(leaf, answers, metadata));
+  }
+  if ("any" in condition) {
+    return condition.any.some((leaf) => evaluateLeaf(leaf, answers, metadata));
+  }
+
+  return evaluateLeaf(condition, answers, metadata);
+}
+
+/**
+ * Evaluates a single leaf condition (no groups).
+ */
+function evaluateLeaf(
+  condition: LogicLeafCondition,
+  answers: Record<string, LumiSurveyAnswerValue>,
+  metadata?: Record<string, unknown>,
+): boolean {
   if (condition.field === "METADATA") {
     const metaValue = metadata?.[condition.key];
     return evaluateOperator(metaValue, condition.operator, condition.value);
