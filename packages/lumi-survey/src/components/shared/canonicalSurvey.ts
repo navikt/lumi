@@ -57,15 +57,13 @@ export function buildCanonicalSurvey(
   for (const question of questions) {
     const visibleIf = question.visibleIf;
     if (visibleIf) {
-      if (
-        isConditionGroup(visibleIf) &&
-        getLeafConditions(visibleIf).length === 0
-      ) {
+      const leaves = getLeafConditions(visibleIf);
+      if (isConditionGroup(visibleIf) && leaves.length === 0) {
         throw new Error(
           `Lumi: Question "${question.id}" has an empty visibleIf "any"/"all" group`,
         );
       }
-      for (const leaf of getLeafConditions(visibleIf)) {
+      for (const leaf of leaves) {
         if (
           leaf.field !== "METADATA" &&
           leaf.questionId &&

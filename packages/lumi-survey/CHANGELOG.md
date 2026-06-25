@@ -8,7 +8,7 @@ This project follows SemVer.
 
 ### Added
 
-- `visibleIf` støtter nå `any` (OR) og `all` (AND) for å kombinere flere betingelser (#333).
+- `visibleIf` now supports `any` (OR) and `all` (AND) to combine multiple conditions (#333).
 
 ### Fixed
 

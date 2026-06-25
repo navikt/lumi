@@ -396,6 +396,34 @@ describe("hasReachableQuestionsAfter", () => {
     );
     expect(result).toBe(true);
   });
+
+  it("returns true when a later question's any-group references the current question (#333)", () => {
+    const questions: LumiSurveyQuestion[] = [
+      { id: "q1", type: "rating", prompt: "Rate", required: true },
+      {
+        id: "later",
+        type: "text",
+        prompt: "Why?",
+        visibleIf: {
+          any: [
+            {
+              field: "ANSWER",
+              questionId: "other",
+              operator: "EQ",
+              value: "x",
+            },
+            { field: "ANSWER", questionId: "q1", operator: "EQ", value: "nei" },
+          ],
+        },
+      },
+    ] as unknown as LumiSurveyQuestion[];
+    // current question is q1 at index 0; the group references q1 as its 2nd leaf
+    // the group does NOT currently evaluate visible (no answers match), but because
+    // a leaf references the current question the navigation bar must stay visible
+    expect(hasReachableQuestionsAfter(questions, 0, "q1", {}, undefined)).toBe(
+      true,
+    );
+  });
 });
 
 describe("findRedirectTarget", () => {

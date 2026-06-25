@@ -134,7 +134,7 @@ describe("buildCanonicalSurvey", () => {
           { id: "q2", type: "text", prompt: "Text", visibleIf: { any: [] } },
         ] as unknown as LumiSurveyConfig["questions"],
       }),
-    ).toThrowError(/empty/i);
+    ).toThrowError(/empty visibleIf .*group/i);
   });
 
   it("throws if a logic condition is an any/all group", () => {
