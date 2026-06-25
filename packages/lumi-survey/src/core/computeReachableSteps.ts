@@ -1,4 +1,4 @@
-import { isConditionGroup } from "./conditionUtils.js";
+import { getLeafConditions, isConditionGroup } from "./conditionUtils.js";
 import { evaluateVisibility } from "./evaluateVisibility.js";
 import type {
   LogicLeafCondition,
@@ -26,6 +26,9 @@ function isAnswerCondition(
  * the real number of visible questions.
  * METADATA-gated conditions are always treated as reachable to prefer
  * overestimation over underestimation when metadata may arrive or change later.
+ * `any`/`all` group conditions are evaluated once every referenced answer is
+ * present (so an answered-but-falsified group is excluded); while still
+ * unresolved they are overestimated as reachable, like METADATA.
  */
 export function computeReachableSteps(
   questions: LumiSurveyQuestion[],
@@ -83,7 +86,27 @@ export function computeReachableSteps(
     }
 
     if (isConditionGroup(condition)) {
-      // Group-gated: overestimate as reachable (same policy as METADATA).
+      // When every answer the group references is already present (and no
+      // METADATA leaf, whose value may still arrive/change), the group is fully
+      // resolvable — evaluate it so an answered-but-falsified group is excluded.
+      // Otherwise overestimate as reachable (same policy as METADATA leaves).
+      const leaves = getLeafConditions(condition);
+      const hasMetadataLeaf = leaves.some((leaf) => leaf.field === "METADATA");
+      const answerLeaves = leaves.filter((leaf) => leaf.field !== "METADATA");
+      const allReferencedAnswered = answerLeaves.every(
+        (leaf) => !leaf.questionId || answers[leaf.questionId] !== undefined,
+      );
+
+      if (
+        !hasMetadataLeaf &&
+        answerLeaves.length > 0 &&
+        allReferencedAnswered
+      ) {
+        const result = evaluateVisibility(condition, answers, metadata);
+        deterministicReachableCache.set(questionId, result);
+        return result;
+      }
+
       deterministicReachableCache.set(questionId, true);
       return true;
     }

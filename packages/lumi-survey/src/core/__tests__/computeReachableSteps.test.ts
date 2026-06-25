@@ -183,6 +183,38 @@ describe("computeReachableSteps", () => {
     expect(computeReachableSteps(questions, {})).toBe(2);
   });
 
+  it("excludes a group-gated question once answers falsify its group (#333)", () => {
+    const questions: LumiSurveyQuestion[] = [
+      { id: "q1", type: "rating", prompt: "Rate", required: true },
+      {
+        id: "q2",
+        type: "text",
+        prompt: "low",
+        visibleIf: {
+          any: [
+            { field: "ANSWER", questionId: "q1", operator: "EQ", value: 1 },
+          ],
+        },
+      },
+      {
+        id: "q3",
+        type: "text",
+        prompt: "high",
+        visibleIf: {
+          any: [
+            { field: "ANSWER", questionId: "q1", operator: "EQ", value: 5 },
+          ],
+        },
+      },
+    ];
+    // q1=1 → q2's group is true, q3's group is false. The old unconditional
+    // overestimate counted both (3); resolved groups are now evaluated.
+    expect(computeReachableSteps(questions, { q1: 1 })).toBe(2);
+    expect(computeReachableSteps(questions, { q1: 5 })).toBe(2);
+    // Still unresolved (no answer): both overestimated as reachable.
+    expect(computeReachableSteps(questions, {})).toBe(3);
+  });
+
   it("returns a realistic estimate for a real-world survey", () => {
     const questions: LumiSurveyQuestion[] = [
       {
