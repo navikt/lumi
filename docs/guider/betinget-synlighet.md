@@ -49,6 +49,30 @@ Her vises tekstfeltet først etter at brukeren har valgt en emoji. Ingen ekstra 
 | `LT` | Mindre enn | Vis oppfølging for rating < 3 |
 | `CONTAINS` | Inneholder verdi (for multi-choice) | Vis når «Annet» er blant valgene |
 
+## Flere betingelser (AND/OR)
+
+Du kan kombinere flere betingelser med `all` (AND — alle må være sanne) eller
+`any` (OR — minst én må være sann). Hvert element er en vanlig betingelse, og kan
+referere ulike spørsmål.
+
+```tsx
+{
+  id: "oppfolging",
+  type: "text",
+  prompt: "Hva manglet?",
+  // Vises hvis ETT av de to svarene er "nei":
+  visibleIf: {
+    any: [
+      { questionId: "spm1", operator: "EQ", value: "nei" },
+      { questionId: "spm2", operator: "EQ", value: "nei" },
+    ],
+  },
+}
+```
+
+Bytt `any` med `all` for å kreve at *begge* betingelsene er oppfylt. Grupper kan
+ikke nestes (ett nivå), og en tom gruppe avvises ved validering.
+
 ## Eksempler
 
 ### Vis kun for lav score

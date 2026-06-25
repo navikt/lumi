@@ -6,6 +6,10 @@ This project follows SemVer.
 
 ## [Unreleased]
 
+### Added
+
+- `visibleIf` støtter nå `any` (OR) og `all` (AND) for å kombinere flere betingelser (#333).
+
 ### Fixed
 
 - `logic` conditions that reference another question via `condition.questionId` are now evaluated against that question's answer instead of the current question's. Cross-question branching (e.g. routing on an earlier answer) now works the same way `visibleIf` already did. (#332)

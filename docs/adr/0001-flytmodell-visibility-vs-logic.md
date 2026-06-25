@@ -85,7 +85,9 @@ Konklusjon: vi kan ikke rive ut `logic`. Men vi kan slutte å behandle den som e
 
 ## Oppfølging
 
-- [ ] #333: implementer AND/OR på delt `LogicCondition`.
+- [x] #333: implementer AND/OR på delt `LogicCondition` (levert: `any`/`all`-grupper i
+  `visibleIf`; `logic` snevret til leaf. Evaluator-unifisering bevisst utsatt —
+  operator-divergensen lever videre, men kun i den utfasede `logic`-mekanismen.)
 - [ ] Oppdater `docs/guider/branching.md` (avansert-posisjonering + linje 64-klargjøring).
 - [ ] #338: bygg builder rundt synlighetsmodellen; `logic` bak «avansert»-luke.
 - [ ] Etter #333: migrer `createTopTasksSurvey` `SKIP`/`SUBMIT` → `visibleIf`.
