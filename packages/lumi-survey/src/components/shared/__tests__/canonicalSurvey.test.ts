@@ -159,4 +159,43 @@ describe("buildCanonicalSurvey", () => {
       }),
     ).toThrowError(/logic.*group|group.*logic/i);
   });
+
+  it("throws if a visibleIf group is nested", () => {
+    expect(() =>
+      buildCanonicalSurvey({
+        type: "custom",
+        questions: [
+          { id: "q1", type: "rating", prompt: "Rating", required: true },
+          {
+            id: "q2",
+            type: "text",
+            prompt: "Text",
+            visibleIf: {
+              all: [{ any: [{ operator: "EXISTS", questionId: "q1" }] }],
+            },
+          },
+        ] as unknown as LumiSurveyConfig["questions"],
+      }),
+    ).toThrowError(/nested visibleIf group/i);
+  });
+
+  it("throws if a visibleIf group has both any and all", () => {
+    expect(() =>
+      buildCanonicalSurvey({
+        type: "custom",
+        questions: [
+          { id: "q1", type: "rating", prompt: "Rating", required: true },
+          {
+            id: "q2",
+            type: "text",
+            prompt: "Text",
+            visibleIf: {
+              any: [{ operator: "EXISTS", questionId: "q1" }],
+              all: [],
+            },
+          },
+        ] as unknown as LumiSurveyConfig["questions"],
+      }),
+    ).toThrowError(/both "any" and "all"/i);
+  });
 });

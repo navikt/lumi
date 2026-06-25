@@ -2,7 +2,7 @@ import {
   getLeafConditions,
   isConditionGroup,
 } from "../../core/conditionUtils.js";
-import type { LogicCondition, LumiSurveyQuestion } from "../../core/types.js";
+import type { LumiSurveyQuestion } from "../../core/types.js";
 import type { LumiSurveyConfig, SurveyType } from "../surveyTypes.js";
 
 export const RATING_ANSWER_KEY = "svar";
@@ -57,6 +57,15 @@ export function buildCanonicalSurvey(
   for (const question of questions) {
     const visibleIf = question.visibleIf;
     if (visibleIf) {
+      if (
+        isConditionGroup(visibleIf) &&
+        "any" in visibleIf &&
+        "all" in visibleIf
+      ) {
+        throw new Error(
+          `Lumi: Question "${question.id}" has a visibleIf group with both "any" and "all" — use exactly one`,
+        );
+      }
       const leaves = getLeafConditions(visibleIf);
       if (isConditionGroup(visibleIf) && leaves.length === 0) {
         throw new Error(
@@ -64,6 +73,11 @@ export function buildCanonicalSurvey(
         );
       }
       for (const leaf of leaves) {
+        if (isConditionGroup(leaf)) {
+          throw new Error(
+            `Lumi: Question "${question.id}" has a nested visibleIf group — "any"/"all" groups may only contain leaf conditions (one level)`,
+          );
+        }
         if (
           leaf.field !== "METADATA" &&
           leaf.questionId &&
@@ -79,7 +93,7 @@ export function buildCanonicalSurvey(
     if (!question.logic) continue;
     for (const rule of question.logic) {
       const condition = rule.condition;
-      if (isConditionGroup(condition as LogicCondition)) {
+      if (isConditionGroup(condition)) {
         throw new Error(
           `Lumi: Question "${question.id}" uses an any/all group in logic.condition, but logic does not support groups (use visibleIf)`,
         );

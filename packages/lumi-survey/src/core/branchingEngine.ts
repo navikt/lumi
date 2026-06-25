@@ -1,3 +1,4 @@
+import { isConditionGroup } from "./conditionUtils.js";
 import type {
   LogicLeafCondition,
   LogicOperator,
@@ -172,6 +173,15 @@ export function evaluateBranching(
 
   // Evaluate rules in order - first match wins
   for (const rule of rules) {
+    // logic is leaf-only; defensively ignore an any/all group smuggled in via
+    // raw (untyped) input rather than mis-evaluating it as a value-less leaf.
+    if (isConditionGroup(rule.condition)) {
+      console.warn(
+        "Lumi: ignored an any/all group in logic.condition — logic does not support groups (use visibleIf)",
+      );
+      continue;
+    }
+
     const matches = evaluateCondition(
       rule.condition,
       currentAnswer,

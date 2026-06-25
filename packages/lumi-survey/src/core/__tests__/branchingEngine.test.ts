@@ -722,3 +722,29 @@ describe("validateBranchingTargets", () => {
     expect(validateBranchingTargets(questions)).toEqual([]);
   });
 });
+
+describe("logic group guard (#333)", () => {
+  it("ignores (and warns about) an any/all group smuggled into logic.condition", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const logic = [
+      {
+        condition: { any: [{ operator: "EXISTS" }] },
+        action: { type: "SUBMIT" },
+      },
+    ] as unknown as LogicRule[];
+    const q1 = createQuestion("q1", logic);
+    const questions = [q1, createQuestion("q2")];
+
+    const result = evaluateBranching(q1, "yes", undefined, questions, 0, {
+      q1: "yes",
+    });
+
+    // The group rule must NOT trigger SUBMIT — it is ignored, not mis-evaluated.
+    expect(result.triggeredByRule).toBe(false);
+    expect(result.nextIndex).toBe(1);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("group in logic.condition"),
+    );
+    warn.mockRestore();
+  });
+});

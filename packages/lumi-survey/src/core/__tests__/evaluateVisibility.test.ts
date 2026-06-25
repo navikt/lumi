@@ -4,7 +4,7 @@ import {
   getVisibleQuestions,
   shouldShowSubmitButton,
 } from "../evaluateVisibility";
-import type { LumiSurveyQuestion } from "../types";
+import type { LumiSurveyQuestion, VisibleIfCondition } from "../types";
 
 describe("evaluateVisibility", () => {
   describe("with no condition", () => {
@@ -378,5 +378,16 @@ describe("evaluateVisibility with any/all groups", () => {
     expect(
       evaluateVisibility(condition, { q1: "ja" }, { userType: "employer" }),
     ).toBe(false);
+  });
+});
+
+describe("evaluateVisibility fail-closed guards (#333)", () => {
+  it("fails closed when a group member is itself a group (nested, malformed input)", () => {
+    const nested = {
+      all: [{ any: [{ questionId: "a", operator: "EQ", value: "x" }] }],
+    } as unknown as VisibleIfCondition;
+    // Old behavior returned the inner group as a value-less leaf => always visible.
+    expect(evaluateVisibility(nested, { a: "x" })).toBe(false);
+    expect(evaluateVisibility(nested, { a: "WRONG" })).toBe(false);
   });
 });

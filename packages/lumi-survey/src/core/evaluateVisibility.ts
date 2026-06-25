@@ -1,3 +1,4 @@
+import { isConditionGroup } from "./conditionUtils.js";
 import type {
   LogicLeafCondition,
   LumiSurveyAnswerValue,
@@ -48,6 +49,10 @@ function evaluateLeaf(
   answers: Record<string, LumiSurveyAnswerValue>,
   metadata?: Record<string, unknown>,
 ): boolean {
+  // Defensive: group members must be leaves. A nested group reaching here is
+  // malformed (untyped/raw input); fail closed (hide) rather than fail open.
+  if (isConditionGroup(condition)) return false;
+
   if (condition.field === "METADATA") {
     const metaValue = metadata?.[condition.key];
     return evaluateOperator(metaValue, condition.operator, condition.value);
