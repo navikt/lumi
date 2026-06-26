@@ -1,3 +1,7 @@
+import {
+  getLeafConditions,
+  isLeafCondition,
+} from "../../../core/conditionUtils.js";
 import { evaluateVisibility } from "../../../core/evaluateVisibility.js";
 import type {
   LumiSurveyAnswerValue,
@@ -31,14 +35,19 @@ export function hasReachableQuestionsAfter(
 ): boolean {
   return questions.some((question, index) => {
     if (index <= currentIndex) return false;
-    if (!question.visibleIf) return true;
+    const visibleIf = question.visibleIf;
+    if (visibleIf === undefined || visibleIf === null) return true;
     if (
-      question.visibleIf.field !== "METADATA" &&
-      question.visibleIf.questionId === currentQuestionId
+      getLeafConditions(visibleIf).some(
+        (leaf) =>
+          isLeafCondition(leaf) &&
+          leaf.field !== "METADATA" &&
+          leaf.questionId === currentQuestionId,
+      )
     ) {
       return true;
     }
-    return evaluateVisibility(question.visibleIf, answers, metadata);
+    return evaluateVisibility(visibleIf, answers, metadata);
   });
 }
 

@@ -4,7 +4,7 @@ import {
   getVisibleQuestions,
   shouldShowSubmitButton,
 } from "../evaluateVisibility";
-import type { LumiSurveyQuestion } from "../types";
+import type { LumiSurveyQuestion, VisibleIfCondition } from "../types";
 
 describe("evaluateVisibility", () => {
   describe("with no condition", () => {
@@ -268,5 +268,168 @@ describe("shouldShowSubmitButton", () => {
     expect(
       shouldShowSubmitButton(requiredQuestions, { rating: 4, why: "Because" }),
     ).toBe(true);
+  });
+});
+
+describe("evaluateVisibility with any/all groups", () => {
+  it("any: visible when at least one leaf matches", () => {
+    const condition = {
+      any: [
+        {
+          field: "ANSWER" as const,
+          questionId: "q1",
+          operator: "EQ" as const,
+          value: "nei",
+        },
+        {
+          field: "ANSWER" as const,
+          questionId: "q2",
+          operator: "EQ" as const,
+          value: "nei",
+        },
+      ],
+    };
+    expect(evaluateVisibility(condition, { q1: "ja", q2: "nei" })).toBe(true);
+  });
+
+  it("any: hidden when no leaf matches", () => {
+    const condition = {
+      any: [
+        {
+          field: "ANSWER" as const,
+          questionId: "q1",
+          operator: "EQ" as const,
+          value: "nei",
+        },
+        {
+          field: "ANSWER" as const,
+          questionId: "q2",
+          operator: "EQ" as const,
+          value: "nei",
+        },
+      ],
+    };
+    expect(evaluateVisibility(condition, { q1: "ja", q2: "ja" })).toBe(false);
+  });
+
+  it("all: visible only when every leaf matches", () => {
+    const condition = {
+      all: [
+        {
+          field: "ANSWER" as const,
+          questionId: "q1",
+          operator: "EQ" as const,
+          value: "nei",
+        },
+        {
+          field: "ANSWER" as const,
+          questionId: "q2",
+          operator: "EQ" as const,
+          value: "nei",
+        },
+      ],
+    };
+    expect(evaluateVisibility(condition, { q1: "nei", q2: "nei" })).toBe(true);
+    expect(evaluateVisibility(condition, { q1: "nei", q2: "ja" })).toBe(false);
+  });
+
+  it("mixes EXISTS and EQ leaves in one group", () => {
+    const condition = {
+      all: [
+        {
+          field: "ANSWER" as const,
+          questionId: "rating",
+          operator: "EXISTS" as const,
+        },
+        {
+          field: "ANSWER" as const,
+          questionId: "success",
+          operator: "EQ" as const,
+          value: "no",
+        },
+      ],
+    };
+    expect(evaluateVisibility(condition, { rating: 2, success: "no" })).toBe(
+      true,
+    );
+    expect(evaluateVisibility(condition, { success: "no" })).toBe(false);
+  });
+
+  it("evaluates a METADATA leaf inside a group", () => {
+    const condition = {
+      any: [
+        {
+          field: "METADATA" as const,
+          key: "userType",
+          operator: "EQ" as const,
+          value: "employee",
+        },
+        {
+          field: "ANSWER" as const,
+          questionId: "q1",
+          operator: "EQ" as const,
+          value: "nei",
+        },
+      ],
+    };
+    expect(
+      evaluateVisibility(condition, { q1: "ja" }, { userType: "employee" }),
+    ).toBe(true);
+    expect(
+      evaluateVisibility(condition, { q1: "ja" }, { userType: "employer" }),
+    ).toBe(false);
+  });
+});
+
+describe("evaluateVisibility fail-closed guards (#333)", () => {
+  it("fails closed when a group member is itself a group (nested, malformed input)", () => {
+    const nested = {
+      all: [{ any: [{ questionId: "a", operator: "EQ", value: "x" }] }],
+    } as unknown as VisibleIfCondition;
+    // Old behavior returned the inner group as a value-less leaf => always visible.
+    expect(evaluateVisibility(nested, { a: "x" })).toBe(false);
+    expect(evaluateVisibility(nested, { a: "WRONG" })).toBe(false);
+  });
+
+  it("fails closed (no throw) on malformed group bodies", () => {
+    // Non-array body: old code called `.some`/`.every` on a string and threw.
+    expect(
+      evaluateVisibility({ any: "nope" } as unknown as VisibleIfCondition, {}),
+    ).toBe(false);
+    // Both keys at once is ambiguous → hide rather than silently pick one branch.
+    expect(
+      evaluateVisibility(
+        {
+          any: [{ questionId: "a", operator: "EXISTS" }],
+          all: [{ questionId: "a", operator: "EQ", value: 9 }],
+        } as unknown as VisibleIfCondition,
+        { a: 1 },
+      ),
+    ).toBe(false);
+  });
+
+  it("fails closed (no throw) on non-object conditions and malformed leaves", () => {
+    const ev = (c: unknown) =>
+      evaluateVisibility(c as unknown as VisibleIfCondition, {});
+    // Old code did `"any" in condition` on a primitive → TypeError.
+    expect(ev(1)).toBe(false);
+    expect(ev("x")).toBe(false);
+    expect(ev([])).toBe(false);
+    // Malformed leaf members: old code threw on null, returned true for {}.
+    expect(ev({ any: [null] })).toBe(false);
+    expect(ev({ any: [{}] })).toBe(false);
+    // Invalid (non-LogicOperator) string operators must not be accepted.
+    expect(ev({ operator: "" })).toBe(false);
+    expect(ev({ operator: "BOGUS", questionId: "q1" })).toBe(false);
+    // Falsy-but-not-null values are malformed, NOT "no condition" → fail closed.
+    expect(ev(false)).toBe(false);
+    expect(ev(0)).toBe(false);
+    expect(ev("")).toBe(false);
+    expect(ev(Number.NaN)).toBe(false);
+    // Only null/undefined mean "no condition" → visible.
+    expect(evaluateVisibility(null as unknown as VisibleIfCondition, {})).toBe(
+      true,
+    );
+    expect(evaluateVisibility(undefined, {})).toBe(true);
   });
 });

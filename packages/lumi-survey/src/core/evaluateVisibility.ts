@@ -1,7 +1,9 @@
+import { isLeafCondition } from "./conditionUtils.js";
 import type {
-  LogicCondition,
+  LogicLeafCondition,
   LumiSurveyAnswerValue,
   LumiSurveyQuestion,
+  VisibleIfCondition,
 } from "./types";
 
 /**
@@ -22,12 +24,49 @@ import type {
  * ```
  */
 export function evaluateVisibility(
-  condition: LogicCondition | undefined,
+  condition: VisibleIfCondition | undefined,
   answers: Record<string, LumiSurveyAnswerValue>,
   metadata?: Record<string, unknown>,
 ): boolean {
-  // No condition = always visible
-  if (!condition) return true;
+  // No condition = always visible. Only null/undefined mean "no condition";
+  // other falsy values (false, 0, "", NaN, 0n) are malformed → fail closed below.
+  if (condition === null || condition === undefined) return true;
+
+  // Defensive: a condition must be a plain (non-array) object — fail closed
+  // otherwise (e.g. a primitive or array slipping in via untyped/raw input).
+  if (typeof condition !== "object" || Array.isArray(condition)) return false;
+
+  // Malformed group input (raw/untyped): both keys at once is ambiguous, and a
+  // non-array body cannot be iterated — fail closed (hide) rather than open/crash.
+  if ("all" in condition && "any" in condition) return false;
+  if ("all" in condition) {
+    return (
+      Array.isArray(condition.all) &&
+      condition.all.every((leaf) => evaluateLeaf(leaf, answers, metadata))
+    );
+  }
+  if ("any" in condition) {
+    return (
+      Array.isArray(condition.any) &&
+      condition.any.some((leaf) => evaluateLeaf(leaf, answers, metadata))
+    );
+  }
+
+  return evaluateLeaf(condition, answers, metadata);
+}
+
+/**
+ * Evaluates a single leaf condition (no groups).
+ */
+function evaluateLeaf(
+  condition: LogicLeafCondition,
+  answers: Record<string, LumiSurveyAnswerValue>,
+  metadata?: Record<string, unknown>,
+): boolean {
+  // A leaf must be a structurally valid leaf object; anything else (nested
+  // group, null, primitive, array, missing operator) is malformed raw input —
+  // fail closed (hide) rather than crash or fail open.
+  if (!isLeafCondition(condition)) return false;
 
   if (condition.field === "METADATA") {
     const metaValue = metadata?.[condition.key];

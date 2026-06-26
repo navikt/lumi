@@ -21,20 +21,7 @@ export type LogicField = "ANSWER" | "METADATA";
  */
 export type LogicOperator = "EQ" | "NEQ" | "GT" | "LT" | "CONTAINS" | "EXISTS";
 
-/**
- * A condition that determines whether a logic rule should trigger.
- * Uses discriminated unions for type safety.
- *
- * @example Cross-question visibility
- * ```typescript
- * visibleIf: {
- *   field: "ANSWER",
- *   questionId: "rating",
- *   operator: "EXISTS"
- * }
- * ```
- */
-export type LogicCondition =
+export type LogicLeafCondition =
   | {
       /** Compare against a question's answer */
       field?: "ANSWER";
@@ -55,6 +42,29 @@ export type LogicCondition =
       /** Value to compare against */
       value: string | number | boolean;
     };
+
+/**
+ * A group of leaf conditions combined with AND (`all`) or OR (`any`).
+ * One level only — group members are leaves, not nested groups (kept
+ * forward-compatible: widening to `LogicCondition[]` later is non-breaking).
+ * Only `visibleIf` supports groups; `logic` is leaf-only.
+ */
+export type LogicConditionGroup =
+  | { any: LogicLeafCondition[] }
+  | { all: LogicLeafCondition[] };
+
+/**
+ * Leaf-only condition language. Kept as the historical public name so existing
+ * `LogicRule` / `visibleIf` authorings stay source-compatible after `any`/`all`
+ * groups were added — groups live in the wider `VisibleIfCondition`.
+ */
+export type LogicCondition = LogicLeafCondition;
+
+/**
+ * Condition language for `visibleIf`: a single leaf, or a one-level `any`/`all`
+ * group of leaves. Wider than `LogicCondition`; only `visibleIf` accepts groups.
+ */
+export type VisibleIfCondition = LogicLeafCondition | LogicConditionGroup;
 
 /**
  * Action type for logic rules.
@@ -89,7 +99,7 @@ export type LogicAction =
  * Rules are evaluated in order; first matching rule wins.
  */
 export interface LogicRule {
-  /** Condition to evaluate */
+  /** Condition to evaluate (leaf only — `logic` does not support any/all groups) */
   condition: LogicCondition;
   /** Action to perform if condition is met */
   action: LogicAction;
@@ -130,7 +140,7 @@ export interface LumiSurveyQuestionBase<TType extends LumiSurveyQuestionType> {
    * }
    * ```
    */
-  visibleIf?: LogicCondition;
+  visibleIf?: VisibleIfCondition;
 }
 
 // ============================================

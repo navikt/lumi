@@ -722,3 +722,49 @@ describe("validateBranchingTargets", () => {
     expect(validateBranchingTargets(questions)).toEqual([]);
   });
 });
+
+describe("logic group guard (#333)", () => {
+  it("ignores (and warns about) an any/all group smuggled into logic.condition", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const logic = [
+      {
+        condition: { any: [{ operator: "EXISTS" }] },
+        action: { type: "SUBMIT" },
+      },
+    ] as unknown as LogicRule[];
+    const q1 = createQuestion("q1", logic);
+    const questions = [q1, createQuestion("q2")];
+
+    const result = evaluateBranching(q1, "yes", undefined, questions, 0, {
+      q1: "yes",
+    });
+
+    // Outcome (default next) coincides with the old accidental no-match — a group
+    // has no operator so it never matched anyway. The console.warn below is the
+    // real behavioral discriminator the guard adds.
+    expect(result.triggeredByRule).toBe(false);
+    expect(result.nextIndex).toBe(1);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("logic.condition"),
+    );
+    warn.mockRestore();
+  });
+
+  it("ignores (and warns about) a malformed (non-leaf) logic.condition without crashing", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const logic = [
+      { condition: null, action: { type: "SUBMIT" } },
+    ] as unknown as LogicRule[];
+    const q1 = createQuestion("q1", logic);
+    const questions = [q1, createQuestion("q2")];
+
+    const result = evaluateBranching(q1, "yes", undefined, questions, 0, {
+      q1: "yes",
+    });
+
+    expect(result.triggeredByRule).toBe(false);
+    expect(result.nextIndex).toBe(1);
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+});

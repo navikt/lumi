@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computeReachableSteps } from "../computeReachableSteps";
+import { getVisibleQuestions } from "../evaluateVisibility";
 import type { LumiSurveyQuestion } from "../types";
 
 describe("computeReachableSteps", () => {
@@ -163,6 +164,235 @@ describe("computeReachableSteps", () => {
 
   it("returns 0 for empty question array", () => {
     expect(computeReachableSteps([], {})).toBe(0);
+  });
+
+  it("counts a group-gated question as reachable (overestimate)", () => {
+    const questions: LumiSurveyQuestion[] = [
+      { id: "q1", type: "rating", prompt: "Rate", required: true },
+      {
+        id: "q2",
+        type: "text",
+        prompt: "Why?",
+        visibleIf: {
+          any: [
+            { field: "ANSWER", questionId: "q1", operator: "EQ", value: 1 },
+          ],
+        },
+      },
+    ];
+    // No answers yet: a group-gated question is treated as reachable.
+    expect(computeReachableSteps(questions, {})).toBe(2);
+  });
+
+  it("excludes a group-gated question once answers falsify its group (#333)", () => {
+    const questions: LumiSurveyQuestion[] = [
+      { id: "q1", type: "rating", prompt: "Rate", required: true },
+      {
+        id: "q2",
+        type: "text",
+        prompt: "low",
+        visibleIf: {
+          any: [
+            { field: "ANSWER", questionId: "q1", operator: "EQ", value: 1 },
+          ],
+        },
+      },
+      {
+        id: "q3",
+        type: "text",
+        prompt: "high",
+        visibleIf: {
+          any: [
+            { field: "ANSWER", questionId: "q1", operator: "EQ", value: 5 },
+          ],
+        },
+      },
+    ];
+    // q1=1 → q2's group is true, q3's group is false. The old unconditional
+    // overestimate counted both (3); resolved groups are now evaluated.
+    expect(computeReachableSteps(questions, { q1: 1 })).toBe(2);
+    expect(computeReachableSteps(questions, { q1: 5 })).toBe(2);
+    // Still unresolved (no answer): both overestimated as reachable.
+    expect(computeReachableSteps(questions, {})).toBe(3);
+  });
+
+  it("handles METADATA and all-group edge cases (#333)", () => {
+    // A METADATA leaf keeps the group overestimated even when the answer leaf is
+    // falsified, because metadata may arrive/change later.
+    const withMeta: LumiSurveyQuestion[] = [
+      { id: "q1", type: "rating", prompt: "Rate", required: true },
+      {
+        id: "q2",
+        type: "text",
+        prompt: "m",
+        visibleIf: {
+          any: [
+            { field: "METADATA", key: "role", operator: "EQ", value: "admin" },
+            { field: "ANSWER", questionId: "q1", operator: "EQ", value: 1 },
+          ],
+        },
+      },
+    ];
+    expect(computeReachableSteps(withMeta, { q1: 2 }, { role: "user" })).toBe(
+      2,
+    );
+
+    // all-group is evaluated once the referenced answer is present.
+    const allGroup: LumiSurveyQuestion[] = [
+      { id: "q1", type: "rating", prompt: "Rate", required: true },
+      {
+        id: "q2",
+        type: "text",
+        prompt: "a",
+        visibleIf: {
+          all: [
+            { field: "ANSWER", questionId: "q1", operator: "GT", value: 2 },
+            { field: "ANSWER", questionId: "q1", operator: "LT", value: 4 },
+          ],
+        },
+      },
+    ];
+    expect(computeReachableSteps(allGroup, { q1: 3 })).toBe(2); // 2 < 3 < 4
+    expect(computeReachableSteps(allGroup, { q1: 5 })).toBe(1); // 5 not < 4
+  });
+
+  it("does not count a group whose referenced parent is unreachable (#333)", () => {
+    const questions: LumiSurveyQuestion[] = [
+      {
+        id: "gate",
+        type: "singleChoice",
+        prompt: "Gate",
+        options: [{ value: "show", label: "s" }],
+      },
+      {
+        id: "parent",
+        type: "singleChoice",
+        prompt: "Parent",
+        options: [{ value: "yes", label: "y" }],
+        visibleIf: {
+          field: "ANSWER",
+          questionId: "gate",
+          operator: "EQ",
+          value: "show",
+        },
+      },
+      {
+        id: "child",
+        type: "text",
+        prompt: "Child",
+        visibleIf: {
+          any: [
+            {
+              field: "ANSWER",
+              questionId: "parent",
+              operator: "EQ",
+              value: "yes",
+            },
+          ],
+        },
+      },
+    ];
+    // gate=hide → parent unreachable → child's group can never be true. The old
+    // overestimate counted child (2); now only `gate` counts.
+    expect(computeReachableSteps(questions, { gate: "hide" })).toBe(1);
+    // gate=show → parent reachable (still unanswered) → child stays a reachable
+    // overestimate.
+    expect(computeReachableSteps(questions, { gate: "show" })).toBe(3);
+  });
+
+  it("handles null/malformed visibleIf without crashing, consistent with visibility (#333)", () => {
+    // null = no condition: visible AND reachable; must not crash isAnswerCondition.
+    const nullQs = [
+      { id: "q1", type: "text", prompt: "Q1" },
+      { id: "q2", type: "text", prompt: "Q2", visibleIf: null },
+    ] as unknown as LumiSurveyQuestion[];
+    expect(computeReachableSteps(nullQs, {})).toBe(2);
+    expect(getVisibleQuestions(nullQs, {}).length).toBe(2);
+
+    // Malformed truthy condition: hidden by visibility → excluded from reachable.
+    const badQs = [
+      { id: "q1", type: "text", prompt: "Q1" },
+      { id: "q2", type: "text", prompt: "Q2", visibleIf: 1 },
+    ] as unknown as LumiSurveyQuestion[];
+    expect(getVisibleQuestions(badQs, {}).length).toBe(1);
+    expect(computeReachableSteps(badQs, {})).toBe(1);
+
+    // Object that is not a valid leaf (missing operator) is hidden by visibility,
+    // so it must not be counted reachable either.
+    for (const bad of [{}, { questionId: "q1" }]) {
+      const qs = [
+        { id: "q1", type: "text", prompt: "Q1" },
+        { id: "q2", type: "text", prompt: "Q2", visibleIf: bad },
+      ] as unknown as LumiSurveyQuestion[];
+      expect(getVisibleQuestions(qs, {}).length).toBe(1);
+      expect(computeReachableSteps(qs, {})).toBe(1);
+    }
+
+    // Both-keys group (raw input): hidden by visibility → not reachable either.
+    const bothKeys = [
+      { id: "a", type: "text", prompt: "A" },
+      {
+        id: "b",
+        type: "text",
+        prompt: "B",
+        visibleIf: {
+          any: [{ questionId: "a", operator: "EXISTS" }],
+          all: [{ questionId: "a", operator: "EQ", value: 9 }],
+        },
+      },
+    ] as unknown as LumiSurveyQuestion[];
+    expect(getVisibleQuestions(bothKeys, { a: 1 }).length).toBe(1);
+    expect(computeReachableSteps(bothKeys, { a: 1 })).toBe(1);
+
+    // Invalid string operators AND falsy-but-not-null values are hidden by
+    // visibility, so reachability must match (no crash, no overcount).
+    for (const bad of [
+      { operator: "" },
+      { operator: "BOGUS", questionId: "q1" },
+      false,
+      0,
+      "",
+    ]) {
+      const qs = [
+        { id: "q1", type: "text", prompt: "Q1" },
+        { id: "q2", type: "text", prompt: "Q2", visibleIf: bad },
+      ] as unknown as LumiSurveyQuestion[];
+      expect(computeReachableSteps(qs, {})).toBe(
+        getVisibleQuestions(qs, {}).length,
+      );
+    }
+  });
+
+  it("does not undercount a question reachable through a cyclic group dependency (#333)", () => {
+    const questions: LumiSurveyQuestion[] = [
+      { id: "q1", type: "text", prompt: "Q1" },
+      {
+        id: "q2",
+        type: "text",
+        prompt: "Q2",
+        visibleIf: {
+          any: [
+            { field: "ANSWER", questionId: "q3", operator: "EXISTS" },
+            { field: "ANSWER", questionId: "q1", operator: "EXISTS" },
+          ],
+        },
+      },
+      {
+        id: "q3",
+        type: "text",
+        prompt: "Q3",
+        visibleIf: { field: "ANSWER", questionId: "q2", operator: "EXISTS" },
+      },
+    ];
+    const answers = { q1: "x", q2: "y" };
+    // q2 is reachable via the q1 branch; q3 then becomes reachable via q2.
+    // The old cycle guard cached q3=false while proving q2, undercounting to 2.
+    expect(getVisibleQuestions(questions, answers).map((q) => q.id)).toEqual([
+      "q1",
+      "q2",
+      "q3",
+    ]);
+    expect(computeReachableSteps(questions, answers)).toBe(3);
   });
 
   it("returns a realistic estimate for a real-world survey", () => {

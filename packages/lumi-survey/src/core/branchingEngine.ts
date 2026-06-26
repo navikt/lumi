@@ -1,5 +1,6 @@
+import { isLeafCondition } from "./conditionUtils.js";
 import type {
-  LogicCondition,
+  LogicLeafCondition,
   LogicOperator,
   LogicRule,
   LumiSurveyAnswerValue,
@@ -22,7 +23,7 @@ export interface BranchingResult {
  * Evaluates a single condition against an answer or metadata value.
  */
 function evaluateCondition(
-  condition: LogicCondition,
+  condition: LogicLeafCondition,
   currentAnswer: LumiSurveyAnswerValue | undefined,
   metadata: Record<string, unknown> | undefined,
   answers: Record<string, LumiSurveyAnswerValue> | undefined,
@@ -172,6 +173,16 @@ export function evaluateBranching(
 
   // Evaluate rules in order - first match wins
   for (const rule of rules) {
+    // logic is leaf-only; defensively ignore an any/all group or any malformed
+    // condition smuggled in via raw (untyped) input rather than crashing or
+    // mis-evaluating it as a value-less leaf.
+    if (!isLeafCondition(rule.condition)) {
+      console.warn(
+        "Lumi: ignored an invalid or group condition in logic.condition — logic supports only leaf conditions (use visibleIf for any/all)",
+      );
+      continue;
+    }
+
     const matches = evaluateCondition(
       rule.condition,
       currentAnswer,

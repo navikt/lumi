@@ -49,6 +49,30 @@ Her vises tekstfeltet først etter at brukeren har valgt en emoji. Ingen ekstra 
 | `LT` | Mindre enn | Vis oppfølging for rating < 3 |
 | `CONTAINS` | Inneholder verdi (for multi-choice) | Vis når «Annet» er blant valgene |
 
+## Flere betingelser (AND/OR)
+
+Du kan kombinere flere betingelser med `all` (AND — alle må være sanne) eller
+`any` (OR — minst én må være sann). Hvert element er en vanlig betingelse, og kan
+referere ulike spørsmål.
+
+```tsx
+{
+  id: "oppfolging",
+  type: "text",
+  prompt: "Hva manglet?",
+  // Vises hvis ETT av de to svarene er "nei":
+  visibleIf: {
+    any: [
+      { questionId: "spm1", operator: "EQ", value: "nei" },
+      { questionId: "spm2", operator: "EQ", value: "nei" },
+    ],
+  },
+}
+```
+
+Bytt `any` med `all` for å kreve at *begge* betingelsene er oppfylt. Grupper kan
+ikke nestes (ett nivå), og en tom gruppe avvises ved validering.
+
 ## Eksempler
 
 ### Vis kun for lav score
@@ -101,23 +125,40 @@ Her vises tekstfeltet først etter at brukeren har valgt en emoji. Ingen ekstra 
 
 ## Condition-struktur
 
-Alle `visibleIf`-betingelser følger samme form:
+En `visibleIf` er enten **én leaf-betingelse**, eller en **`any`/`all`-gruppe** av
+leaf-betingelser (se [Flere betingelser (AND/OR)](#flere-betingelser-andor)). En
+leaf-betingelse har formen:
 
 ```ts
-interface LogicCondition {
-  /** Hva sammenlignes — "ANSWER" eller "METADATA" */
-  field?: "ANSWER" | "METADATA";
+type LogicLeafCondition =
+  | {
+      /** Sammenlign mot et svar (standard) */
+      field?: "ANSWER";
+      /** Hvilket spørsmål svaret hentes fra (kryssreferanse) */
+      questionId?: string;
+      /** Sammenligningsoperator */
+      operator: "EXISTS" | "EQ" | "NEQ" | "GT" | "LT" | "CONTAINS";
+      /** Verdi å sammenligne med (ikke nødvendig for EXISTS) */
+      value?: string | number | boolean;
+    }
+  | {
+      /** Sammenlign mot en metadata-verdi */
+      field: "METADATA";
+      /** Nøkkel i metadata (påkrevd for METADATA) */
+      key: string;
+      operator: "EXISTS" | "EQ" | "NEQ" | "GT" | "LT" | "CONTAINS";
+      /** Påkrevd for METADATA */
+      value: string | number | boolean;
+    };
 
-  /** Hvilket spørsmål svaret hentes fra (påkrevd for ANSWER med kryssreferanse) */
-  questionId?: string;
-
-  /** Sammenligningsoperator */
-  operator: "EXISTS" | "EQ" | "NEQ" | "GT" | "LT" | "CONTAINS";
-
-  /** Verdi å sammenligne med (ikke nødvendig for EXISTS) */
-  value?: string | number | boolean;
-}
+// visibleIf aksepterer en leaf ELLER en gruppe (typen heter VisibleIfCondition):
+type VisibleIfCondition =
+  | LogicLeafCondition
+  | { any: LogicLeafCondition[] } // OR
+  | { all: LogicLeafCondition[] }; // AND
 ```
+
+Grupper er **ett nivå** (kan ikke nestes), og en tom `any`/`all` avvises ved validering.
 
 ::: tip Bruk `questionId` for kryss-referanser
 `questionId` refererer til `id`-en til spørsmålet du vil sjekke svaret på. Uten `questionId` evalueres betingelsen mot det *gjeldende* spørsmålets svar.

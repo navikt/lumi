@@ -63,6 +63,9 @@ type LogicCondition =
 
 For `logic` evalueres betingelsen vanligvis mot *det gjeldende spørsmålets* svar — `questionId` er valgfri her (i motsetning til `visibleIf` der du alltid refererer til et annet spørsmål).
 
+> **Merk:** `logic`-betingelser støtter ikke `any`/`all`-grupper — kun enkeltbetingelser.
+> Trenger du AND/OR, bruk [`visibleIf`](./betinget-synlighet.md#flere-betingelser-andor).
+
 ## Eksempler
 
 ### Avslutt tidlig for høy score

@@ -1,3 +1,8 @@
+import {
+  getLeafConditions,
+  isConditionGroup,
+  isLeafCondition,
+} from "../../core/conditionUtils.js";
 import type { LumiSurveyQuestion } from "../../core/types.js";
 import type { LumiSurveyConfig, SurveyType } from "../surveyTypes.js";
 
@@ -52,18 +57,66 @@ export function buildCanonicalSurvey(
   // Validate cross-references in visibility and branching logic
   for (const question of questions) {
     const visibleIf = question.visibleIf;
-    if (visibleIf && visibleIf.field !== "METADATA") {
-      const referencedId = visibleIf.questionId;
-      if (referencedId && !ids.has(referencedId)) {
+    if (visibleIf !== undefined && visibleIf !== null) {
+      if (typeof visibleIf !== "object" || Array.isArray(visibleIf)) {
         throw new Error(
-          `Lumi: Question "${question.id}" has visibleIf.questionId "${referencedId}", but no such question exists`,
+          `Lumi: Question "${question.id}" has a visibleIf that is not a condition object`,
         );
+      }
+      if (isConditionGroup(visibleIf)) {
+        if ("any" in visibleIf && "all" in visibleIf) {
+          throw new Error(
+            `Lumi: Question "${question.id}" has a visibleIf group with both "any" and "all" — use exactly one`,
+          );
+        }
+        const body = "any" in visibleIf ? visibleIf.any : visibleIf.all;
+        if (!Array.isArray(body)) {
+          throw new Error(
+            `Lumi: Question "${question.id}" has a visibleIf "any"/"all" that is not a list of conditions`,
+          );
+        }
+        if (body.length === 0) {
+          throw new Error(
+            `Lumi: Question "${question.id}" has an empty visibleIf "any"/"all" group`,
+          );
+        }
+      }
+      for (const leaf of getLeafConditions(visibleIf)) {
+        if (isConditionGroup(leaf)) {
+          throw new Error(
+            `Lumi: Question "${question.id}" has a nested visibleIf group — "any"/"all" groups may only contain leaf conditions (one level)`,
+          );
+        }
+        if (!isLeafCondition(leaf)) {
+          throw new Error(
+            `Lumi: Question "${question.id}" has an invalid visibleIf condition — each leaf needs an operator (EQ/NEQ/GT/LT/CONTAINS/EXISTS)`,
+          );
+        }
+        if (
+          leaf.field !== "METADATA" &&
+          leaf.questionId &&
+          !ids.has(leaf.questionId)
+        ) {
+          throw new Error(
+            `Lumi: Question "${question.id}" has visibleIf.questionId "${leaf.questionId}", but no such question exists`,
+          );
+        }
       }
     }
 
     if (!question.logic) continue;
     for (const rule of question.logic) {
       const condition = rule.condition;
+      if (isConditionGroup(condition)) {
+        throw new Error(
+          `Lumi: Question "${question.id}" uses an any/all group in logic.condition, but logic does not support groups (use visibleIf)`,
+        );
+      }
+      if (!isLeafCondition(condition)) {
+        throw new Error(
+          `Lumi: Question "${question.id}" has an invalid logic.condition — it must be a leaf with an operator (EQ/NEQ/GT/LT/CONTAINS/EXISTS)`,
+        );
+      }
       if (condition.field !== "METADATA") {
         const referencedId = condition.questionId;
         if (referencedId && !ids.has(referencedId)) {
