@@ -316,6 +316,17 @@ describe("computeReachableSteps", () => {
     ] as unknown as LumiSurveyQuestion[];
     expect(getVisibleQuestions(badQs, {}).length).toBe(1);
     expect(computeReachableSteps(badQs, {})).toBe(1);
+
+    // Object that is not a valid leaf (missing operator) is hidden by visibility,
+    // so it must not be counted reachable either.
+    for (const bad of [{}, { questionId: "q1" }]) {
+      const qs = [
+        { id: "q1", type: "text", prompt: "Q1" },
+        { id: "q2", type: "text", prompt: "Q2", visibleIf: bad },
+      ] as unknown as LumiSurveyQuestion[];
+      expect(getVisibleQuestions(qs, {}).length).toBe(1);
+      expect(computeReachableSteps(qs, {})).toBe(1);
+    }
   });
 
   it("returns a realistic estimate for a real-world survey", () => {

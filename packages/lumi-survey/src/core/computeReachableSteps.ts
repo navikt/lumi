@@ -14,12 +14,7 @@ import type {
 function isAnswerCondition(
   condition: VisibleIfCondition | undefined,
 ): condition is Extract<LogicLeafCondition, { field?: "ANSWER" }> {
-  return (
-    typeof condition === "object" &&
-    condition !== null &&
-    !isConditionGroup(condition) &&
-    condition.field !== "METADATA"
-  );
+  return isLeafCondition(condition) && condition.field !== "METADATA";
 }
 
 /**
@@ -124,6 +119,13 @@ export function computeReachableSteps(
 
       deterministicReachableCache.set(questionId, reachable);
       return reachable;
+    }
+
+    // A non-group condition that isn't a valid leaf (e.g. missing operator) is
+    // hidden by evaluateVisibility → not reachable. Keeps the two consistent.
+    if (!isLeafCondition(condition)) {
+      deterministicReachableCache.set(questionId, false);
+      return false;
     }
 
     if (condition.field === "METADATA") {
