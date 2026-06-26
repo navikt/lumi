@@ -238,6 +238,20 @@ describe("buildCanonicalSurvey", () => {
     ).toThrowError(/not a list/i);
   });
 
+  it("throws if visibleIf is a non-object value (false/0/empty string)", () => {
+    for (const bad of [false, 0, ""]) {
+      expect(() =>
+        buildCanonicalSurvey({
+          type: "custom",
+          questions: [
+            { id: "q1", type: "rating", prompt: "Rating", required: true },
+            { id: "q2", type: "text", prompt: "Text", visibleIf: bad },
+          ] as unknown as LumiSurveyConfig["questions"],
+        }),
+      ).toThrowError(/not a condition object/i);
+    }
+  });
+
   it("throws a clean error (no crash) for null/invalid group members", () => {
     const make = (member: unknown) =>
       buildCanonicalSurvey({

@@ -421,5 +421,15 @@ describe("evaluateVisibility fail-closed guards (#333)", () => {
     // Invalid (non-LogicOperator) string operators must not be accepted.
     expect(ev({ operator: "" })).toBe(false);
     expect(ev({ operator: "BOGUS", questionId: "q1" })).toBe(false);
+    // Falsy-but-not-null values are malformed, NOT "no condition" → fail closed.
+    expect(ev(false)).toBe(false);
+    expect(ev(0)).toBe(false);
+    expect(ev("")).toBe(false);
+    expect(ev(Number.NaN)).toBe(false);
+    // Only null/undefined mean "no condition" → visible.
+    expect(evaluateVisibility(null as unknown as VisibleIfCondition, {})).toBe(
+      true,
+    );
+    expect(evaluateVisibility(undefined, {})).toBe(true);
   });
 });

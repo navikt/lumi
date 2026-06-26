@@ -57,7 +57,7 @@ export function buildCanonicalSurvey(
   // Validate cross-references in visibility and branching logic
   for (const question of questions) {
     const visibleIf = question.visibleIf;
-    if (visibleIf) {
+    if (visibleIf !== undefined && visibleIf !== null) {
       if (typeof visibleIf !== "object" || Array.isArray(visibleIf)) {
         throw new Error(
           `Lumi: Question "${question.id}" has a visibleIf that is not a condition object`,

@@ -344,10 +344,14 @@ describe("computeReachableSteps", () => {
     expect(getVisibleQuestions(bothKeys, { a: 1 }).length).toBe(1);
     expect(computeReachableSteps(bothKeys, { a: 1 })).toBe(1);
 
-    // Invalid (non-LogicOperator) string operators are hidden by visibility too.
+    // Invalid string operators AND falsy-but-not-null values are hidden by
+    // visibility, so reachability must match (no crash, no overcount).
     for (const bad of [
       { operator: "" },
       { operator: "BOGUS", questionId: "q1" },
+      false,
+      0,
+      "",
     ]) {
       const qs = [
         { id: "q1", type: "text", prompt: "Q1" },

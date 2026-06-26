@@ -28,8 +28,9 @@ export function evaluateVisibility(
   answers: Record<string, LumiSurveyAnswerValue>,
   metadata?: Record<string, unknown>,
 ): boolean {
-  // No condition = always visible
-  if (!condition) return true;
+  // No condition = always visible. Only null/undefined mean "no condition";
+  // other falsy values (false, 0, "", NaN, 0n) are malformed → fail closed below.
+  if (condition === null || condition === undefined) return true;
 
   // Defensive: a condition must be a plain (non-array) object — fail closed
   // otherwise (e.g. a primitive or array slipping in via untyped/raw input).

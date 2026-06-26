@@ -424,6 +424,21 @@ describe("hasReachableQuestionsAfter", () => {
       true,
     );
   });
+
+  it("does not crash on a malformed group member (#333)", () => {
+    const questions = [
+      { id: "q1", type: "rating", prompt: "Rate", required: true },
+      {
+        id: "q2",
+        type: "text",
+        prompt: "Why?",
+        visibleIf: { any: [null] },
+      },
+    ] as unknown as LumiSurveyQuestion[];
+    expect(() =>
+      hasReachableQuestionsAfter(questions, 0, "q1", {}, undefined),
+    ).not.toThrow();
+  });
 });
 
 describe("findRedirectTarget", () => {

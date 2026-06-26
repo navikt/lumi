@@ -83,7 +83,9 @@ export function computeReachableSteps(
 
     const condition = question.visibleIf;
 
-    if (!condition) {
+    // Only null/undefined mean "no condition"; other falsy values are malformed
+    // and fall through to the fail-closed guard below.
+    if (condition === null || condition === undefined) {
       deterministicReachableCache.set(questionId, true);
       return true;
     }
