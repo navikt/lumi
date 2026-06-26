@@ -215,6 +215,46 @@ describe("computeReachableSteps", () => {
     expect(computeReachableSteps(questions, {})).toBe(3);
   });
 
+  it("handles METADATA and all-group edge cases (#333)", () => {
+    // A METADATA leaf keeps the group overestimated even when the answer leaf is
+    // falsified, because metadata may arrive/change later.
+    const withMeta: LumiSurveyQuestion[] = [
+      { id: "q1", type: "rating", prompt: "Rate", required: true },
+      {
+        id: "q2",
+        type: "text",
+        prompt: "m",
+        visibleIf: {
+          any: [
+            { field: "METADATA", key: "role", operator: "EQ", value: "admin" },
+            { field: "ANSWER", questionId: "q1", operator: "EQ", value: 1 },
+          ],
+        },
+      },
+    ];
+    expect(computeReachableSteps(withMeta, { q1: 2 }, { role: "user" })).toBe(
+      2,
+    );
+
+    // all-group is evaluated once the referenced answer is present.
+    const allGroup: LumiSurveyQuestion[] = [
+      { id: "q1", type: "rating", prompt: "Rate", required: true },
+      {
+        id: "q2",
+        type: "text",
+        prompt: "a",
+        visibleIf: {
+          all: [
+            { field: "ANSWER", questionId: "q1", operator: "GT", value: 2 },
+            { field: "ANSWER", questionId: "q1", operator: "LT", value: 4 },
+          ],
+        },
+      },
+    ];
+    expect(computeReachableSteps(allGroup, { q1: 3 })).toBe(2); // 2 < 3 < 4
+    expect(computeReachableSteps(allGroup, { q1: 5 })).toBe(1); // 5 not < 4
+  });
+
   it("returns a realistic estimate for a real-world survey", () => {
     const questions: LumiSurveyQuestion[] = [
       {

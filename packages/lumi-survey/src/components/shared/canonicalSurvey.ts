@@ -57,22 +57,25 @@ export function buildCanonicalSurvey(
   for (const question of questions) {
     const visibleIf = question.visibleIf;
     if (visibleIf) {
-      if (
-        isConditionGroup(visibleIf) &&
-        "any" in visibleIf &&
-        "all" in visibleIf
-      ) {
-        throw new Error(
-          `Lumi: Question "${question.id}" has a visibleIf group with both "any" and "all" — use exactly one`,
-        );
+      if (isConditionGroup(visibleIf)) {
+        if ("any" in visibleIf && "all" in visibleIf) {
+          throw new Error(
+            `Lumi: Question "${question.id}" has a visibleIf group with both "any" and "all" — use exactly one`,
+          );
+        }
+        const body = "any" in visibleIf ? visibleIf.any : visibleIf.all;
+        if (!Array.isArray(body)) {
+          throw new Error(
+            `Lumi: Question "${question.id}" has a visibleIf "any"/"all" that is not a list of conditions`,
+          );
+        }
+        if (body.length === 0) {
+          throw new Error(
+            `Lumi: Question "${question.id}" has an empty visibleIf "any"/"all" group`,
+          );
+        }
       }
-      const leaves = getLeafConditions(visibleIf);
-      if (isConditionGroup(visibleIf) && leaves.length === 0) {
-        throw new Error(
-          `Lumi: Question "${question.id}" has an empty visibleIf "any"/"all" group`,
-        );
-      }
-      for (const leaf of leaves) {
+      for (const leaf of getLeafConditions(visibleIf)) {
         if (isConditionGroup(leaf)) {
           throw new Error(
             `Lumi: Question "${question.id}" has a nested visibleIf group — "any"/"all" groups may only contain leaf conditions (one level)`,

@@ -31,11 +31,20 @@ export function evaluateVisibility(
   // No condition = always visible
   if (!condition) return true;
 
+  // Malformed group input (raw/untyped): both keys at once is ambiguous, and a
+  // non-array body cannot be iterated — fail closed (hide) rather than open/crash.
+  if ("all" in condition && "any" in condition) return false;
   if ("all" in condition) {
-    return condition.all.every((leaf) => evaluateLeaf(leaf, answers, metadata));
+    return (
+      Array.isArray(condition.all) &&
+      condition.all.every((leaf) => evaluateLeaf(leaf, answers, metadata))
+    );
   }
   if ("any" in condition) {
-    return condition.any.some((leaf) => evaluateLeaf(leaf, answers, metadata));
+    return (
+      Array.isArray(condition.any) &&
+      condition.any.some((leaf) => evaluateLeaf(leaf, answers, metadata))
+    );
   }
 
   return evaluateLeaf(condition, answers, metadata);

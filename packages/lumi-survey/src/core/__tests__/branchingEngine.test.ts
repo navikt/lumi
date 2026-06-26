@@ -739,7 +739,9 @@ describe("logic group guard (#333)", () => {
       q1: "yes",
     });
 
-    // The group rule must NOT trigger SUBMIT — it is ignored, not mis-evaluated.
+    // Outcome (default next) coincides with the old accidental no-match — a group
+    // has no operator so it never matched anyway. The console.warn below is the
+    // real behavioral discriminator the guard adds.
     expect(result.triggeredByRule).toBe(false);
     expect(result.nextIndex).toBe(1);
     expect(warn).toHaveBeenCalledWith(

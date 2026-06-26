@@ -390,4 +390,21 @@ describe("evaluateVisibility fail-closed guards (#333)", () => {
     expect(evaluateVisibility(nested, { a: "x" })).toBe(false);
     expect(evaluateVisibility(nested, { a: "WRONG" })).toBe(false);
   });
+
+  it("fails closed (no throw) on malformed group bodies", () => {
+    // Non-array body: old code called `.some`/`.every` on a string and threw.
+    expect(
+      evaluateVisibility({ any: "nope" } as unknown as VisibleIfCondition, {}),
+    ).toBe(false);
+    // Both keys at once is ambiguous → hide rather than silently pick one branch.
+    expect(
+      evaluateVisibility(
+        {
+          any: [{ questionId: "a", operator: "EXISTS" }],
+          all: [{ questionId: "a", operator: "EQ", value: 9 }],
+        } as unknown as VisibleIfCondition,
+        { a: 1 },
+      ),
+    ).toBe(false);
+  });
 });

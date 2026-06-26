@@ -198,4 +198,21 @@ describe("buildCanonicalSurvey", () => {
       }),
     ).toThrowError(/both "any" and "all"/i);
   });
+
+  it("throws a clean error for a non-array visibleIf group body", () => {
+    expect(() =>
+      buildCanonicalSurvey({
+        type: "custom",
+        questions: [
+          { id: "q1", type: "rating", prompt: "Rating", required: true },
+          {
+            id: "q2",
+            type: "text",
+            prompt: "Text",
+            visibleIf: { any: "nope" },
+          },
+        ] as unknown as LumiSurveyConfig["questions"],
+      }),
+    ).toThrowError(/not a list/i);
+  });
 });
