@@ -67,7 +67,10 @@ export function computeReachableSteps(
     }
 
     if (visited.has(questionId)) {
-      return false;
+      // Cyclic visibleIf dependency — genuinely indeterminate. Overestimate as
+      // reachable (this function's documented policy) so a cycle never
+      // UNDER-counts and hides a step that is actually reachable.
+      return true;
     }
 
     visited.add(questionId);

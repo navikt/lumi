@@ -343,6 +343,52 @@ describe("computeReachableSteps", () => {
     ] as unknown as LumiSurveyQuestion[];
     expect(getVisibleQuestions(bothKeys, { a: 1 }).length).toBe(1);
     expect(computeReachableSteps(bothKeys, { a: 1 })).toBe(1);
+
+    // Invalid (non-LogicOperator) string operators are hidden by visibility too.
+    for (const bad of [
+      { operator: "" },
+      { operator: "BOGUS", questionId: "q1" },
+    ]) {
+      const qs = [
+        { id: "q1", type: "text", prompt: "Q1" },
+        { id: "q2", type: "text", prompt: "Q2", visibleIf: bad },
+      ] as unknown as LumiSurveyQuestion[];
+      expect(computeReachableSteps(qs, {})).toBe(
+        getVisibleQuestions(qs, {}).length,
+      );
+    }
+  });
+
+  it("does not undercount a question reachable through a cyclic group dependency (#333)", () => {
+    const questions: LumiSurveyQuestion[] = [
+      { id: "q1", type: "text", prompt: "Q1" },
+      {
+        id: "q2",
+        type: "text",
+        prompt: "Q2",
+        visibleIf: {
+          any: [
+            { field: "ANSWER", questionId: "q3", operator: "EXISTS" },
+            { field: "ANSWER", questionId: "q1", operator: "EXISTS" },
+          ],
+        },
+      },
+      {
+        id: "q3",
+        type: "text",
+        prompt: "Q3",
+        visibleIf: { field: "ANSWER", questionId: "q2", operator: "EXISTS" },
+      },
+    ];
+    const answers = { q1: "x", q2: "y" };
+    // q2 is reachable via the q1 branch; q3 then becomes reachable via q2.
+    // The old cycle guard cached q3=false while proving q2, undercounting to 2.
+    expect(getVisibleQuestions(questions, answers).map((q) => q.id)).toEqual([
+      "q1",
+      "q2",
+      "q3",
+    ]);
+    expect(computeReachableSteps(questions, answers)).toBe(3);
   });
 
   it("returns a realistic estimate for a real-world survey", () => {

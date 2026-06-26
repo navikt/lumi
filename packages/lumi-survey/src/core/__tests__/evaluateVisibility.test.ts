@@ -418,5 +418,8 @@ describe("evaluateVisibility fail-closed guards (#333)", () => {
     // Malformed leaf members: old code threw on null, returned true for {}.
     expect(ev({ any: [null] })).toBe(false);
     expect(ev({ any: [{}] })).toBe(false);
+    // Invalid (non-LogicOperator) string operators must not be accepted.
+    expect(ev({ operator: "" })).toBe(false);
+    expect(ev({ operator: "BOGUS", questionId: "q1" })).toBe(false);
   });
 });

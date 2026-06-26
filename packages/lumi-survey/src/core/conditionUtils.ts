@@ -4,6 +4,16 @@ import type {
   VisibleIfCondition,
 } from "./types.js";
 
+/** Valid `LogicOperator` values — keep in sync with the type in `types.ts`. */
+const LOGIC_OPERATORS = new Set<string>([
+  "EQ",
+  "NEQ",
+  "GT",
+  "LT",
+  "CONTAINS",
+  "EXISTS",
+]);
+
 /** True when the condition is an `any`/`all` group rather than a leaf. */
 export function isConditionGroup(
   condition: VisibleIfCondition,
@@ -45,6 +55,7 @@ export function isLeafCondition(
     !Array.isArray(condition) &&
     !("any" in condition) &&
     !("all" in condition) &&
-    typeof (condition as { operator?: unknown }).operator === "string"
+    typeof (condition as { operator?: unknown }).operator === "string" &&
+    LOGIC_OPERATORS.has((condition as { operator: string }).operator)
   );
 }
