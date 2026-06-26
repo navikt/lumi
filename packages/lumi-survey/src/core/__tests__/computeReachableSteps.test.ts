@@ -255,6 +255,50 @@ describe("computeReachableSteps", () => {
     expect(computeReachableSteps(allGroup, { q1: 5 })).toBe(1); // 5 not < 4
   });
 
+  it("does not count a group whose referenced parent is unreachable (#333)", () => {
+    const questions: LumiSurveyQuestion[] = [
+      {
+        id: "gate",
+        type: "singleChoice",
+        prompt: "Gate",
+        options: [{ value: "show", label: "s" }],
+      },
+      {
+        id: "parent",
+        type: "singleChoice",
+        prompt: "Parent",
+        options: [{ value: "yes", label: "y" }],
+        visibleIf: {
+          field: "ANSWER",
+          questionId: "gate",
+          operator: "EQ",
+          value: "show",
+        },
+      },
+      {
+        id: "child",
+        type: "text",
+        prompt: "Child",
+        visibleIf: {
+          any: [
+            {
+              field: "ANSWER",
+              questionId: "parent",
+              operator: "EQ",
+              value: "yes",
+            },
+          ],
+        },
+      },
+    ];
+    // gate=hide → parent unreachable → child's group can never be true. The old
+    // overestimate counted child (2); now only `gate` counts.
+    expect(computeReachableSteps(questions, { gate: "hide" })).toBe(1);
+    // gate=show → parent reachable (still unanswered) → child stays a reachable
+    // overestimate.
+    expect(computeReachableSteps(questions, { gate: "show" })).toBe(3);
+  });
+
   it("returns a realistic estimate for a real-world survey", () => {
     const questions: LumiSurveyQuestion[] = [
       {

@@ -200,7 +200,7 @@ Alle spørsmålstyper deler disse:
 | `description` | `string` | Valgfri hjelpetekst under spørsmålet |
 | `required` | `boolean` | Krever svar for å sende inn |
 | `analyticsId` | `string` | Valgfri ID for analytics (bruker `id` om ikke satt) |
-| `visibleIf` | `LogicCondition` | Betinget visning — se [Betinget synlighet](/guider/betinget-synlighet) |
+| `visibleIf` | `VisibleIfCondition` | Betinget visning — se [Betinget synlighet](/guider/betinget-synlighet) |
 | `logic` | `LogicRule[]` | Branching-regler — se [Avansert](/guider/branching) |
 
 ## Komplett eksempel

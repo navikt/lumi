@@ -31,6 +31,10 @@ export function evaluateVisibility(
   // No condition = always visible
   if (!condition) return true;
 
+  // Defensive: a condition must be a plain (non-array) object — fail closed
+  // otherwise (e.g. a primitive or array slipping in via untyped/raw input).
+  if (typeof condition !== "object" || Array.isArray(condition)) return false;
+
   // Malformed group input (raw/untyped): both keys at once is ambiguous, and a
   // non-array body cannot be iterated — fail closed (hide) rather than open/crash.
   if ("all" in condition && "any" in condition) return false;
@@ -58,9 +62,17 @@ function evaluateLeaf(
   answers: Record<string, LumiSurveyAnswerValue>,
   metadata?: Record<string, unknown>,
 ): boolean {
-  // Defensive: group members must be leaves. A nested group reaching here is
-  // malformed (untyped/raw input); fail closed (hide) rather than fail open.
-  if (isConditionGroup(condition)) return false;
+  // Defensive: a leaf must be a plain object with a string operator. Anything
+  // else (nested group, null, primitive, array, missing operator) is malformed
+  // raw input; fail closed (hide) rather than crash or fail open.
+  if (
+    typeof condition !== "object" ||
+    condition === null ||
+    isConditionGroup(condition) ||
+    typeof (condition as { operator?: unknown }).operator !== "string"
+  ) {
+    return false;
+  }
 
   if (condition.field === "METADATA") {
     const metaValue = metadata?.[condition.key];

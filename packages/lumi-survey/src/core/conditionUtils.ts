@@ -8,7 +8,11 @@ import type {
 export function isConditionGroup(
   condition: VisibleIfCondition,
 ): condition is LogicConditionGroup {
-  return "any" in condition || "all" in condition;
+  return (
+    typeof condition === "object" &&
+    condition !== null &&
+    ("any" in condition || "all" in condition)
+  );
 }
 
 /**
@@ -19,6 +23,7 @@ export function isConditionGroup(
 export function getLeafConditions(
   condition: VisibleIfCondition,
 ): LogicLeafCondition[] {
+  if (typeof condition !== "object" || condition === null) return [];
   if ("any" in condition)
     return Array.isArray(condition.any) ? condition.any : [];
   if ("all" in condition)

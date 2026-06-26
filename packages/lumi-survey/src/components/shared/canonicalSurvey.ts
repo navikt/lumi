@@ -57,6 +57,11 @@ export function buildCanonicalSurvey(
   for (const question of questions) {
     const visibleIf = question.visibleIf;
     if (visibleIf) {
+      if (typeof visibleIf !== "object" || Array.isArray(visibleIf)) {
+        throw new Error(
+          `Lumi: Question "${question.id}" has a visibleIf that is not a condition object`,
+        );
+      }
       if (isConditionGroup(visibleIf)) {
         if ("any" in visibleIf && "all" in visibleIf) {
           throw new Error(

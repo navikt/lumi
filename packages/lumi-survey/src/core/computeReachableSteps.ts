@@ -86,29 +86,31 @@ export function computeReachableSteps(
     }
 
     if (isConditionGroup(condition)) {
-      // When every answer the group references is already present (and no
-      // METADATA leaf, whose value may still arrive/change), the group is fully
-      // resolvable — evaluate it so an answered-but-falsified group is excluded.
-      // Otherwise overestimate as reachable (same policy as METADATA leaves).
+      // Reachability of a group, per leaf:
+      //  - METADATA / no-questionId leaves stay open (value may arrive).
+      //  - an answered leaf contributes its actual truth (so an answered-but-
+      //    falsified group is excluded).
+      //  - an unanswered leaf stays open ONLY if its referenced parent is itself
+      //    deterministically reachable — a leaf whose parent can never be shown
+      //    can never become true, so it must not keep the group alive.
+      // Combine with any (some) / all (every).
       const leaves = getLeafConditions(condition);
-      const hasMetadataLeaf = leaves.some((leaf) => leaf.field === "METADATA");
-      const answerLeaves = leaves.filter((leaf) => leaf.field !== "METADATA");
-      const allReferencedAnswered = answerLeaves.every(
-        (leaf) => !leaf.questionId || answers[leaf.questionId] !== undefined,
-      );
+      const leafCanBeTrue = (leaf: LogicLeafCondition): boolean => {
+        if (leaf.field === "METADATA") return true;
+        if (!leaf.questionId) return true;
+        if (answers[leaf.questionId] !== undefined) {
+          return evaluateVisibility(leaf, answers, metadata);
+        }
+        return isDeterministicallyReachable(leaf.questionId, new Set(visited));
+      };
 
-      if (
-        !hasMetadataLeaf &&
-        answerLeaves.length > 0 &&
-        allReferencedAnswered
-      ) {
-        const result = evaluateVisibility(condition, answers, metadata);
-        deterministicReachableCache.set(questionId, result);
-        return result;
-      }
+      const reachable =
+        "any" in condition
+          ? leaves.some(leafCanBeTrue)
+          : leaves.length > 0 && leaves.every(leafCanBeTrue);
 
-      deterministicReachableCache.set(questionId, true);
-      return true;
+      deterministicReachableCache.set(questionId, reachable);
+      return reachable;
     }
 
     if (condition.field === "METADATA") {

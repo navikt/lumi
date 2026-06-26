@@ -407,4 +407,16 @@ describe("evaluateVisibility fail-closed guards (#333)", () => {
       ),
     ).toBe(false);
   });
+
+  it("fails closed (no throw) on non-object conditions and malformed leaves", () => {
+    const ev = (c: unknown) =>
+      evaluateVisibility(c as unknown as VisibleIfCondition, {});
+    // Old code did `"any" in condition` on a primitive → TypeError.
+    expect(ev(1)).toBe(false);
+    expect(ev("x")).toBe(false);
+    expect(ev([])).toBe(false);
+    // Malformed leaf members: old code threw on null, returned true for {}.
+    expect(ev({ any: [null] })).toBe(false);
+    expect(ev({ any: [{}] })).toBe(false);
+  });
 });
