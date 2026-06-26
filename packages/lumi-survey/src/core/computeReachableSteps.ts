@@ -93,6 +93,13 @@ export function computeReachableSteps(
     }
 
     if (isConditionGroup(condition)) {
+      // Both keys at once is ambiguous — mirror evaluateVisibility and fail
+      // closed so reachability matches visibility for raw both-keys input.
+      if ("any" in condition && "all" in condition) {
+        deterministicReachableCache.set(questionId, false);
+        return false;
+      }
+
       // Reachability of a group, per leaf:
       //  - METADATA / no-questionId leaves stay open (value may arrive).
       //  - an answered leaf contributes its actual truth (so an answered-but-

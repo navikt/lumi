@@ -327,6 +327,22 @@ describe("computeReachableSteps", () => {
       expect(getVisibleQuestions(qs, {}).length).toBe(1);
       expect(computeReachableSteps(qs, {})).toBe(1);
     }
+
+    // Both-keys group (raw input): hidden by visibility → not reachable either.
+    const bothKeys = [
+      { id: "a", type: "text", prompt: "A" },
+      {
+        id: "b",
+        type: "text",
+        prompt: "B",
+        visibleIf: {
+          any: [{ questionId: "a", operator: "EXISTS" }],
+          all: [{ questionId: "a", operator: "EQ", value: 9 }],
+        },
+      },
+    ] as unknown as LumiSurveyQuestion[];
+    expect(getVisibleQuestions(bothKeys, { a: 1 }).length).toBe(1);
+    expect(computeReachableSteps(bothKeys, { a: 1 })).toBe(1);
   });
 
   it("returns a realistic estimate for a real-world survey", () => {

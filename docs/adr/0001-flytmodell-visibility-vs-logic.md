@@ -51,7 +51,7 @@ Konklusjon: vi kan ikke rive ut `logic`. Men vi kan slutte å behandle den som e
 
 ## Beslutning
 
-1. **Ett betingelseslag.** `LogicCondition` (med `questionId`, og fremtidig AND/OR fra #333) er det *eneste* betingelsesspråket. Begge evaluatorene resolver svar identisk. #332-fiksen tok første steg: `evaluateBranching` tar nå `answers` og speiler `evaluateVisibility`. #333 implementeres **én gang** på denne delte typen.
+1. **Ett betingelseslag.** Leaf-betingelsen (`questionId`, operatorer, `METADATA`) er det *eneste* betingelsesspråket, og begge evaluatorene resolver leaf-svar identisk via det delte laget (`isLeafCondition` / `getLeafConditions`). #332-fiksen tok første steg: `evaluateBranching` tar nå `answers` og speiler `evaluateVisibility`. **Levert i #333:** any/all-grupper ble lagt på `visibleIf` via en egen vid type (`VisibleIfCondition`), mens `LogicCondition` forble leaf-only og `logic` avviser grupper. Full evaluator-unifisering er bevisst utsatt (se Oppfølging).
 
 2. **`visibleIf` er den kanoniske flytmodellen.** Den mentale modellen vi dokumenterer, anbefaler og bygger Survey Builder (#338) rundt er: *ordnet liste → filtrer på synlighet → gå gjennom de synlige i rekkefølge → send inn når ingen flere er synlige.* Builder-UI-en eksponerer dette som standard.
 
@@ -68,7 +68,7 @@ Konklusjon: vi kan ikke rive ut `logic`. Men vi kan slutte å behandle den som e
 
 **Positivt**
 - Én mental modell for forfattere og for builder-UI-en (#338).
-- AND/OR (#333) implementeres én gang på det delte betingelseslaget.
+- AND/OR (#333) bygger på det delte leaf-laget; gruppene ble lagt på `visibleIf` (via `VisibleIfCondition`), ikke på `logic`.
 - Ingen brudd: `logic` fortsetter å virke for eksisterende konsumenter og `createTopTasksSurvey`.
 - Divergens-bugen (#332-klassen) forhindres ved at de to evaluatorene nå deler resolusjonslogikk.
 

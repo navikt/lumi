@@ -147,7 +147,8 @@ type LogicLeafCondition =
       /** Nøkkel i metadata (påkrevd for METADATA) */
       key: string;
       operator: "EXISTS" | "EQ" | "NEQ" | "GT" | "LT" | "CONTAINS";
-      value?: string | number | boolean;
+      /** Påkrevd for METADATA */
+      value: string | number | boolean;
     };
 
 // visibleIf aksepterer en leaf ELLER en gruppe (typen heter VisibleIfCondition):
