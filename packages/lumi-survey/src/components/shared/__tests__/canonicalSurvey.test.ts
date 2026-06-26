@@ -160,6 +160,28 @@ describe("buildCanonicalSurvey", () => {
     ).toThrowError(/logic.*group|group.*logic/i);
   });
 
+  it("throws a clean error (no crash) for a null/invalid logic.condition", () => {
+    const make = (condition: unknown) =>
+      buildCanonicalSurvey({
+        type: "custom",
+        questions: [
+          {
+            id: "q1",
+            type: "singleChoice",
+            prompt: "Choice",
+            required: true,
+            options: [{ value: "yes", label: "Ja" }],
+            logic: [{ condition, action: { type: "SUBMIT" } }],
+          },
+        ] as unknown as LumiSurveyConfig["questions"],
+      });
+    expect(() => make(null)).toThrowError(/invalid logic\.condition/i);
+    expect(() => make({})).toThrowError(/invalid logic\.condition/i);
+    expect(() => make({ operator: "BOGUS" })).toThrowError(
+      /invalid logic\.condition/i,
+    );
+  });
+
   it("throws if a visibleIf group is nested", () => {
     expect(() =>
       buildCanonicalSurvey({

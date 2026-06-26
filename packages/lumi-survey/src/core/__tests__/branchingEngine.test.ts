@@ -745,8 +745,26 @@ describe("logic group guard (#333)", () => {
     expect(result.triggeredByRule).toBe(false);
     expect(result.nextIndex).toBe(1);
     expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("group in logic.condition"),
+      expect.stringContaining("logic.condition"),
     );
+    warn.mockRestore();
+  });
+
+  it("ignores (and warns about) a malformed (non-leaf) logic.condition without crashing", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const logic = [
+      { condition: null, action: { type: "SUBMIT" } },
+    ] as unknown as LogicRule[];
+    const q1 = createQuestion("q1", logic);
+    const questions = [q1, createQuestion("q2")];
+
+    const result = evaluateBranching(q1, "yes", undefined, questions, 0, {
+      q1: "yes",
+    });
+
+    expect(result.triggeredByRule).toBe(false);
+    expect(result.nextIndex).toBe(1);
+    expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });
 });

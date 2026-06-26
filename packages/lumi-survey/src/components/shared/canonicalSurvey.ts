@@ -112,6 +112,11 @@ export function buildCanonicalSurvey(
           `Lumi: Question "${question.id}" uses an any/all group in logic.condition, but logic does not support groups (use visibleIf)`,
         );
       }
+      if (!isLeafCondition(condition)) {
+        throw new Error(
+          `Lumi: Question "${question.id}" has an invalid logic.condition — it must be a leaf with an operator (EQ/NEQ/GT/LT/CONTAINS/EXISTS)`,
+        );
+      }
       if (condition.field !== "METADATA") {
         const referencedId = condition.questionId;
         if (referencedId && !ids.has(referencedId)) {
