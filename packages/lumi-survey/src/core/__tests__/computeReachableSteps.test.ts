@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computeReachableSteps } from "../computeReachableSteps";
+import { getVisibleQuestions } from "../evaluateVisibility";
 import type { LumiSurveyQuestion } from "../types";
 
 describe("computeReachableSteps", () => {
@@ -297,6 +298,24 @@ describe("computeReachableSteps", () => {
     // gate=show → parent reachable (still unanswered) → child stays a reachable
     // overestimate.
     expect(computeReachableSteps(questions, { gate: "show" })).toBe(3);
+  });
+
+  it("handles null/malformed visibleIf without crashing, consistent with visibility (#333)", () => {
+    // null = no condition: visible AND reachable; must not crash isAnswerCondition.
+    const nullQs = [
+      { id: "q1", type: "text", prompt: "Q1" },
+      { id: "q2", type: "text", prompt: "Q2", visibleIf: null },
+    ] as unknown as LumiSurveyQuestion[];
+    expect(computeReachableSteps(nullQs, {})).toBe(2);
+    expect(getVisibleQuestions(nullQs, {}).length).toBe(2);
+
+    // Malformed truthy condition: hidden by visibility → excluded from reachable.
+    const badQs = [
+      { id: "q1", type: "text", prompt: "Q1" },
+      { id: "q2", type: "text", prompt: "Q2", visibleIf: 1 },
+    ] as unknown as LumiSurveyQuestion[];
+    expect(getVisibleQuestions(badQs, {}).length).toBe(1);
+    expect(computeReachableSteps(badQs, {})).toBe(1);
   });
 
   it("returns a realistic estimate for a real-world survey", () => {

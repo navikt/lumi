@@ -1,4 +1,4 @@
-import { isConditionGroup } from "./conditionUtils.js";
+import { isLeafCondition } from "./conditionUtils.js";
 import type {
   LogicLeafCondition,
   LumiSurveyAnswerValue,
@@ -62,17 +62,10 @@ function evaluateLeaf(
   answers: Record<string, LumiSurveyAnswerValue>,
   metadata?: Record<string, unknown>,
 ): boolean {
-  // Defensive: a leaf must be a plain object with a string operator. Anything
-  // else (nested group, null, primitive, array, missing operator) is malformed
-  // raw input; fail closed (hide) rather than crash or fail open.
-  if (
-    typeof condition !== "object" ||
-    condition === null ||
-    isConditionGroup(condition) ||
-    typeof (condition as { operator?: unknown }).operator !== "string"
-  ) {
-    return false;
-  }
+  // A leaf must be a structurally valid leaf object; anything else (nested
+  // group, null, primitive, array, missing operator) is malformed raw input —
+  // fail closed (hide) rather than crash or fail open.
+  if (!isLeafCondition(condition)) return false;
 
   if (condition.field === "METADATA") {
     const metaValue = metadata?.[condition.key];

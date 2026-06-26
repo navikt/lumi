@@ -30,3 +30,21 @@ export function getLeafConditions(
     return Array.isArray(condition.all) ? condition.all : [];
   return [condition];
 }
+
+/**
+ * True for a structurally valid leaf condition: a plain object with a string
+ * `operator` that is not an `any`/`all` group. Use to fail closed on malformed
+ * raw input rather than crash or treat it as visible.
+ */
+export function isLeafCondition(
+  condition: unknown,
+): condition is LogicLeafCondition {
+  return (
+    typeof condition === "object" &&
+    condition !== null &&
+    !Array.isArray(condition) &&
+    !("any" in condition) &&
+    !("all" in condition) &&
+    typeof (condition as { operator?: unknown }).operator === "string"
+  );
+}

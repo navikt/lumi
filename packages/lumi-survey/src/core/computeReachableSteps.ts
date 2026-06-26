@@ -1,4 +1,8 @@
-import { getLeafConditions, isConditionGroup } from "./conditionUtils.js";
+import {
+  getLeafConditions,
+  isConditionGroup,
+  isLeafCondition,
+} from "./conditionUtils.js";
 import { evaluateVisibility } from "./evaluateVisibility.js";
 import type {
   LogicLeafCondition,
@@ -11,7 +15,8 @@ function isAnswerCondition(
   condition: VisibleIfCondition | undefined,
 ): condition is Extract<LogicLeafCondition, { field?: "ANSWER" }> {
   return (
-    condition !== undefined &&
+    typeof condition === "object" &&
+    condition !== null &&
     !isConditionGroup(condition) &&
     condition.field !== "METADATA"
   );
@@ -85,6 +90,13 @@ export function computeReachableSteps(
       return true;
     }
 
+    // Malformed condition (not a plain object): evaluateVisibility hides it, so
+    // reachability mirrors visibility and excludes it (rather than crashing).
+    if (typeof condition !== "object" || Array.isArray(condition)) {
+      deterministicReachableCache.set(questionId, false);
+      return false;
+    }
+
     if (isConditionGroup(condition)) {
       // Reachability of a group, per leaf:
       //  - METADATA / no-questionId leaves stay open (value may arrive).
@@ -96,6 +108,7 @@ export function computeReachableSteps(
       // Combine with any (some) / all (every).
       const leaves = getLeafConditions(condition);
       const leafCanBeTrue = (leaf: LogicLeafCondition): boolean => {
+        if (!isLeafCondition(leaf)) return false;
         if (leaf.field === "METADATA") return true;
         if (!leaf.questionId) return true;
         if (answers[leaf.questionId] !== undefined) {
