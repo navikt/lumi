@@ -215,4 +215,27 @@ describe("buildCanonicalSurvey", () => {
       }),
     ).toThrowError(/not a list/i);
   });
+
+  it("throws a clean error (no crash) for null/invalid group members", () => {
+    const make = (member: unknown) =>
+      buildCanonicalSurvey({
+        type: "custom",
+        questions: [
+          { id: "q1", type: "rating", prompt: "Rating", required: true },
+          {
+            id: "q2",
+            type: "text",
+            prompt: "Text",
+            visibleIf: { any: [member] },
+          },
+        ] as unknown as LumiSurveyConfig["questions"],
+      });
+    // Old code read `.field` off the member and threw a raw TypeError on null.
+    expect(() => make(null)).toThrowError(/invalid visibleIf condition/i);
+    expect(() => make({})).toThrowError(/invalid visibleIf condition/i);
+    expect(() => make(1)).toThrowError(/invalid visibleIf condition/i);
+    expect(() => make({ operator: "BOGUS", questionId: "q1" })).toThrowError(
+      /invalid visibleIf condition/i,
+    );
+  });
 });

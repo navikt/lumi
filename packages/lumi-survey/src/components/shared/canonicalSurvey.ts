@@ -1,6 +1,7 @@
 import {
   getLeafConditions,
   isConditionGroup,
+  isLeafCondition,
 } from "../../core/conditionUtils.js";
 import type { LumiSurveyQuestion } from "../../core/types.js";
 import type { LumiSurveyConfig, SurveyType } from "../surveyTypes.js";
@@ -84,6 +85,11 @@ export function buildCanonicalSurvey(
         if (isConditionGroup(leaf)) {
           throw new Error(
             `Lumi: Question "${question.id}" has a nested visibleIf group — "any"/"all" groups may only contain leaf conditions (one level)`,
+          );
+        }
+        if (!isLeafCondition(leaf)) {
+          throw new Error(
+            `Lumi: Question "${question.id}" has an invalid visibleIf condition — each leaf needs an operator (EQ/NEQ/GT/LT/CONTAINS/EXISTS)`,
           );
         }
         if (
