@@ -14,6 +14,7 @@ import no.nav.lumi.config.auth.BrukerPrincipal
 import no.nav.lumi.config.auth.CallerIdentity
 import no.nav.lumi.config.auth.CallerIdentityKey
 import no.nav.lumi.config.auth.UserRateLimitHashKey
+import no.nav.lumi.config.exception.ApiErrorException
 
 private val HeaderCallerIdentityPlugin = createRouteScopedPlugin("HeaderCallerIdentityPlugin") {
     onCall { call ->
@@ -34,6 +35,18 @@ private val HeaderCallerIdentityPlugin = createRouteScopedPlugin("HeaderCallerId
         if (userHash != null) {
             call.attributes.put(UserRateLimitHashKey, userHash)
         }
+    }
+}
+
+/**
+ * Mirrors the production submission auth plugins (Token/Azure SubmissionAuthPlugin):
+ * a route-scoped plugin that rejects unauthenticated callers in `onCall`, i.e.
+ * *before* the nested `rateLimit` block. Used to document that this rejection path
+ * is NOT covered by the KTOR-9621 fix (which only affects nested Ktor `authenticate`).
+ */
+private val RejectingSubmissionAuthPlugin = createRouteScopedPlugin("RejectingSubmissionAuthPlugin") {
+    onCall {
+        throw ApiErrorException.UnauthorizedException("Authorization header required")
     }
 }
 
@@ -73,7 +86,10 @@ class RateLimitingKeyingTest : FunSpec({
         }
     }
 
-    test("export rate limit uses validated principal clientId as key") {
+    test("export rate limit falls back to source IP when principal is unavailable in the RateLimit phase") {
+        // Ktor 3.5.1 runs the RateLimit plugin in the Plugins phase, before the
+        // Authentication phase, so getBrukerPrincipal() is null at requestKey time.
+        // Analytics/export therefore bucket on source IP, NOT per validated client.
         testApplication {
             application {
                 configureRateLimiting()
@@ -119,10 +135,89 @@ class RateLimitingKeyingTest : FunSpec({
             }
             blockedResponse.status shouldBe HttpStatusCode.TooManyRequests
 
+            // A different validated client shares the same source-IP bucket, so it is
+            // also blocked. This documents that export is per-IP, not per-client, in 3.5.1.
             val otherClientResponse = client.get("/export-test") {
                 header(HttpHeaders.Authorization, "Bearer client-b")
             }
-            otherClientResponse.status shouldBe HttpStatusCode.OK
+            otherClientResponse.status shouldBe HttpStatusCode.TooManyRequests
+        }
+    }
+
+    test("KTOR-9621: rejected auth in nested authenticate still counts toward export rate limit") {
+        // Regression guard for KTOR-9621: before Ktor 3.5.1, a nested authenticate
+        // block that rejected the request bypassed the RateLimit plugin, so an
+        // attacker could spam invalid tokens without ever hitting 429. In 3.5.1 the
+        // rejected calls are counted, so the limit is enforced.
+        testApplication {
+            application {
+                configureRateLimiting()
+                install(Authentication) {
+                    bearer(AZURE_REALM) {
+                        authenticate {
+                            // Every token is rejected in this test.
+                            null
+                        }
+                    }
+                }
+
+                routing {
+                    authenticate(AZURE_REALM) {
+                        rateLimit(ExportRateLimit) {
+                            get("/export-reject-test") {
+                                call.respond(HttpStatusCode.OK)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // First 30 rejected calls pass the (not-yet-exhausted) rate limit but fail
+            // auth -> 401. Each still consumes a rate-limit token.
+            repeat(30) {
+                val response = client.get("/export-reject-test") {
+                    header(HttpHeaders.Authorization, "Bearer invalid-$it")
+                }
+                response.status shouldBe HttpStatusCode.Unauthorized
+            }
+
+            // 31st rejected call is blocked by the rate limit instead of bypassing it.
+            val blockedResponse = client.get("/export-reject-test") {
+                header(HttpHeaders.Authorization, "Bearer invalid-final")
+            }
+            blockedResponse.status shouldBe HttpStatusCode.TooManyRequests
+        }
+    }
+
+    test("submission auth plugin that rejects before nested rateLimit is not covered by KTOR-9621") {
+        // The submission auth plugins reject in a route-scoped `onCall` that runs
+        // before the nested `rateLimit`. KTOR-9621 only fixes nested Ktor
+        // `authenticate`, so these rejections are NOT rate-limited: the auth error
+        // is returned and no rate-limit token is consumed. This test documents that
+        // actual behavior; the DoS surface for unauthenticated submission spam is
+        // instead bounded by the global rate limit.
+        testApplication {
+            application {
+                configureSerialization()
+                configureStatusPages()
+                configureRateLimiting()
+                routing {
+                    route("/submission-reject-test") {
+                        install(RejectingSubmissionAuthPlugin)
+                        rateLimit(SubmissionRateLimit) {
+                            get {
+                                call.respond(HttpStatusCode.OK)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // The route-scoped auth plugin throws before the nested rateLimit ever runs,
+            // so far more than the submission limit (100/min) can be rejected without a
+            // single 429: these rejections are NOT counted by SubmissionRateLimit.
+            val statuses = (1..150).map { client.get("/submission-reject-test").status }
+            statuses.all { it == HttpStatusCode.Unauthorized } shouldBe true
         }
     }
 
