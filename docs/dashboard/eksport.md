@@ -36,5 +36,5 @@ GET /api/v1/intern/export?format=csv|json|excel
 Alle aktive query-parametre (team, app, datoer, etc.) sendes med, slik at eksporten gjenspeiler det du ser i dashboardet. Se [API-referansen](/referanse/api-endepunkter) for full parameteroversikt.
 
 ::: warning Rate limiting
-Eksport er rate-begrenset til **30 forespørsler per minutt** for å beskytte backend-ytelsen. Grensen deles på kilde-IP for dashboard-trafikken, ikke per innlogget bruker.
+Eksport er rate-begrenset til **30 forespørsler per minutt** for å beskytte backend-ytelsen. Grensen deles på kilde-IP for dashboard-trafikken, ikke per innlogget bruker. På NAIS brukes første IP i `X-Forwarded-For`-headeren.
 :::

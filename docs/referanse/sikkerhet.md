@@ -37,7 +37,7 @@ API-et håndhever rate limiting på flere nivåer for å beskytte mot misbruk:
 | Global | 1000 req/min | Alle kall samlet |
 
 ::: info Nøkling av analyse og eksport
-Analyse- og eksport-endepunktene autentiseres i Ktors auth-fase, som kjører *etter* rate limit-pluginen. Den validerte klient-identiteten er derfor ikke tilgjengelig når rate limit-nøkkelen beregnes, så disse endepunktene nøkles på kilde-IP (`X-Forwarded-For` på NAIS). Innsending nøkles derimot per kaller-app, og per hashet sluttbruker, fordi identiteten settes i en route-scoped plugin før rate limit-pluginen.
+Analyse- og eksport-endepunktene autentiseres i Ktors auth-fase, som kjører *etter* rate limit-pluginen. Den validerte klient-identiteten er derfor ikke tilgjengelig når rate limit-nøkkelen beregnes, så disse endepunktene nøkles på kilde-IP. På NAIS brukes første IP i `X-Forwarded-For`-headeren. Innsending nøkles derimot per kaller-app, og per hashet sluttbruker, fordi identiteten settes i en route-scoped plugin før rate limit-pluginen.
 :::
 
 ## Inndatavalidering
