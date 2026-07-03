@@ -8,9 +8,28 @@ import kotlin.time.Duration.Companion.minutes
 
 /**
  * Rate limiting to prevent abuse.
- * 
- * Uses validated caller identity when available.
- * Falls back to clientId from validated principal, then to IP address.
+ *
+ * Keying semantics differ per route family because of *when* identity becomes
+ * available relative to the RateLimit plugin.
+ *
+ * On Ktor 3.5.1 the RateLimit `requestKey` is evaluated before a Ktor
+ * `BrukerPrincipal` from the standard `authenticate` flow is available. In this
+ * version rejected nested `authenticate` calls also count toward the limit
+ * (KTOR-9621) instead of bypassing it.
+ *
+ * - Submission routes: a route-scoped auth plugin
+ *   (Token/Azure SubmissionAuthPlugin) sets [CallerIdentityKey] and
+ *   [UserRateLimitHashKey] in its `onCall`, which runs before the RateLimit
+ *   `requestKey`. These routes are therefore keyed per caller-app and, when a
+ *   user hash is present, per hashed user.
+ * - Analytics/export routes: authentication happens in the standard Ktor
+ *   `authenticate` flow, so no principal is available when `requestKey` runs.
+ *   These routes fall back to the caller's source IP (X-Forwarded-For on NAIS,
+ *   otherwise the remote address). They are NOT keyed per validated user.
+ *
+ * The `getBrukerPrincipal()` branch in [rateLimitKey] is a defensive fallback
+ * that only fires if a principal is already present when `requestKey` runs; it
+ * does not fire for the normal Ktor `authenticate` flow.
  */
 
 val SubmissionRateLimit = RateLimitName("submission")
@@ -53,12 +72,15 @@ fun Application.configureRateLimiting() {
 }
 
 private fun io.ktor.server.application.ApplicationCall.rateLimitKey(): String {
-    // Submission routes set CallerIdentityKey after successful token introspection.
+    // Submission routes set CallerIdentityKey in their route-scoped auth plugin's
+    // onCall, which runs before this requestKey is evaluated.
     attributes.getOrNull(CallerIdentityKey)?.let { identity ->
         return "${identity.team}:${identity.app}"
     }
 
-    // Analytics routes authenticate with BrukerPrincipal from Texas introspection.
+    // Defensive fallback: only fires if a BrukerPrincipal is already present when
+    // this requestKey runs. For the normal Ktor authenticate flow the principal is
+    // not yet set here, so analytics/export fall through to IP below.
     getBrukerPrincipal()?.let { principal ->
         extractCallerIdentityFromPrincipal(principal)?.let { identity ->
             return "${identity.team}:${identity.app}"
