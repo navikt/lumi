@@ -101,7 +101,7 @@ dependencies {
     testImplementation("io.mockk:mockk:$mockkVersion")
     testImplementation("org.testcontainers:testcontainers:$testcontainersVersion")
     testImplementation("org.testcontainers:postgresql:$testcontainersVersion")
-    testImplementation("no.nav.security:mock-oauth2-server:4.0.1")
+    testImplementation("no.nav.security:mock-oauth2-server:5.0.2")
     // JUnit Jupiter API is pulled in transitively by Kotest, but the Jupiter *engine* is not.
     // Without it, plain @Test classes (e.g. NaisGraphQlClientTest) compile but are never run.
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
