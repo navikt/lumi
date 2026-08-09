@@ -60,6 +60,16 @@ internal val sharedBootstrapCache: StringCache by lazy {
 /** Cache-key prefix covering every user's bootstrap entry for a team. */
 internal fun bootstrapCacheTeamPrefix(team: String) = "team=${team.lowercase()}&"
 
+/**
+ * Per-user bootstrap cache key, or null when the principal has no stable user
+ * identity — the response includes `availableTeams`, so a shared key (e.g.
+ * "user=null") could leak one user's team memberships to another.
+ */
+internal fun bootstrapCacheKey(team: String, principal: no.nav.lumi.config.auth.BrukerPrincipal): String? {
+    val userIdentity = principal.navIdent ?: principal.email ?: return null
+    return "${bootstrapCacheTeamPrefix(team)}user=$userIdentity".lowercase()
+}
+
 private val json = Json {
     ignoreUnknownKeys = true
     encodeDefaults = true
@@ -82,10 +92,11 @@ fun Route.filterRoutes(
         val principal = call.authorizedPrincipal
 
         // Cache is shared across users (Valkey). Include user identity to avoid leaking `availableTeams`.
-        // Team comes first so team-scoped invalidation can clear by prefix.
-        val cacheKey = "${bootstrapCacheTeamPrefix(team)}user=${principal.navIdent}".lowercase()
+        // Team comes first so team-scoped invalidation can clear by prefix. Principals without a
+        // stable user identity are served uncached (a shared key would leak team memberships).
+        val cacheKey = bootstrapCacheKey(team, principal)
 
-        bootstrapCache.get(cacheKey)?.let { cachedJson ->
+        cacheKey?.let { bootstrapCache.get(it) }?.let { cachedJson ->
             call.response.headers.append(HttpHeaders.CacheControl, "private, max-age=300")
             call.respondText(cachedJson, ContentType.Application.Json)
             return@get
@@ -109,7 +120,13 @@ fun Route.filterRoutes(
             surveyMeta = surveyMeta,
         )
 
-        bootstrapCache.set(cacheKey, json.encodeToString(response), ttl = Duration.ofMinutes(5))
+        // Known benign race: a GET that read the DB before a concurrent archive/unarchive
+        // invalidated the prefix can write a stale entry back here. The window is the
+        // milliseconds between the DB reads and this set, and the entry expires with the
+        // TTL — accepted rather than introducing per-team generation tokens.
+        cacheKey?.let {
+            bootstrapCache.set(it, json.encodeToString(response), ttl = Duration.ofMinutes(5))
+        }
         call.response.headers.append(HttpHeaders.CacheControl, "private, max-age=300")
 
         call.respond(response)

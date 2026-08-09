@@ -16,6 +16,7 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import no.nav.lumi.TestDatabase
+import no.nav.lumi.config.auth.BrukerPrincipal
 import no.nav.lumi.createTestClient
 import no.nav.lumi.insertTestFeedback
 import no.nav.lumi.repository.SurveyMetadataRepository
@@ -24,6 +25,36 @@ import no.nav.lumi.testModule
 class FilterRoutesTest : FunSpec({
     beforeSpec {
         TestDatabase.initialize()
+    }
+
+    test("bootstrapCacheKey uses navIdent as user identity") {
+        val principal = BrukerPrincipal(
+            navIdent = "A123456",
+            name = null,
+            email = "test@nav.no",
+            clientId = null,
+        )
+        bootstrapCacheKey("Team-Test", principal) shouldBe "team=team-test&user=a123456"
+    }
+
+    test("bootstrapCacheKey falls back to email when navIdent is missing") {
+        val principal = BrukerPrincipal(
+            navIdent = null,
+            name = null,
+            email = "Test.User@nav.no",
+            clientId = null,
+        )
+        bootstrapCacheKey("team-test", principal) shouldBe "team=team-test&user=test.user@nav.no"
+    }
+
+    test("bootstrapCacheKey returns null when the principal has no stable user identity") {
+        val principal = BrukerPrincipal(
+            navIdent = null,
+            name = "Uten Identitet",
+            email = null,
+            clientId = "dev-gcp:team:app",
+        )
+        bootstrapCacheKey("team-test", principal) shouldBe null
     }
 
     beforeTest {
