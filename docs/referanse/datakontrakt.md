@@ -18,7 +18,7 @@ Widgeten samler inn svar og sender en strukturert JSON-payload til backend. Payl
 | `surveyType` | ✅ | En av: `"rating"`, `"topTasks"`, `"discovery"`, `"taskPriority"`, `"custom"` |
 | `deduplicationKey` | ✅ | Genereres av widgeten og gjør nytt forsøk etter transportfeil trygt |
 | `definition` | ✅ | Alle spørsmålene i surveyen, også de som ikke er besvart |
-| `answers` | ✅ | Strukturert array med svar (se under) |
+| `answers` | ✅ | Strukturert array med svar på spørsmål som er synlige ved innsending (se under) |
 | `context` | Anbefalt | Nettleser-/brukerkontekst for segmentering |
 
 ::: tip Når skal du endre `surveyId`?
@@ -31,7 +31,9 @@ Du trenger ikke sette `deduplicationKey` selv når du bruker widgeten. Den samme
 
 ## Answers-arrayet
 
-Hvert element i `answers` følger dette skjemaet:
+Hvert element i `answers` følger dette skjemaet. Dersom et besvart spørsmål blir
+skjult av `visibleIf` før innsending, utelates svaret. `definition` inneholder
+fortsatt alle spørsmålene, slik at surveydefinisjonen er stabil.
 
 ```typescript
 interface TransportAnswer {

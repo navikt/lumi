@@ -269,6 +269,75 @@ describe("shouldShowSubmitButton", () => {
       shouldShowSubmitButton(requiredQuestions, { rating: 4, why: "Because" }),
     ).toBe(true);
   });
+
+  it("ignores meaningful answers from questions that are currently hidden", () => {
+    const conditionalQuestions: LumiSurveyQuestion[] = [
+      {
+        id: "gate",
+        type: "singleChoice",
+        prompt: "Show follow-up?",
+        options: [
+          { value: "show", label: "Show" },
+          { value: "hide", label: "Hide" },
+        ],
+      },
+      {
+        id: "details",
+        type: "text",
+        prompt: "Details",
+        maxLength: 500,
+        visibleIf: {
+          questionId: "gate",
+          operator: "EQ",
+          value: "show",
+        },
+      },
+    ];
+
+    expect(
+      shouldShowSubmitButton(conditionalQuestions, {
+        details: "stale hidden answer",
+      }),
+    ).toBe(false);
+    expect(
+      shouldShowSubmitButton(conditionalQuestions, {
+        gate: "show",
+        details: "visible answer",
+      }),
+    ).toBe(true);
+  });
+
+  it("uses metadata when deciding whether an answered question is visible", () => {
+    const metadataQuestions: LumiSurveyQuestion[] = [
+      {
+        id: "details",
+        type: "text",
+        prompt: "Internal details",
+        maxLength: 500,
+        visibleIf: {
+          field: "METADATA",
+          key: "audience",
+          operator: "EQ",
+          value: "internal",
+        },
+      },
+    ];
+
+    expect(
+      shouldShowSubmitButton(
+        metadataQuestions,
+        { details: "stale hidden answer" },
+        { audience: "external" },
+      ),
+    ).toBe(false);
+    expect(
+      shouldShowSubmitButton(
+        metadataQuestions,
+        { details: "visible answer" },
+        { audience: "internal" },
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("evaluateVisibility with any/all groups", () => {

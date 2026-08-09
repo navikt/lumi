@@ -145,18 +145,48 @@ export function getVisibleQuestions<T extends LumiSurveyQuestion>(
 }
 
 /**
- * Checks if the submit button should be shown.
- * The button is hidden until the first required question has an answer.
+ * Returns a copy containing only answers for questions visible in the current
+ * answer and metadata state. The source object is left untouched so hidden
+ * answers can be restored if the user reopens a branch.
+ */
+export function getVisibleAnswers(
+  questions: LumiSurveyQuestion[],
+  answers: Record<string, LumiSurveyAnswerValue>,
+  metadata?: Record<string, unknown>,
+): Record<string, LumiSurveyAnswerValue> {
+  const visibleQuestionIds = new Set(
+    getVisibleQuestions(questions, answers, metadata).map(
+      (question) => question.id,
+    ),
+  );
+  const visibleAnswers: Record<string, LumiSurveyAnswerValue> = {};
+
+  for (const [questionId, value] of Object.entries(answers)) {
+    if (visibleQuestionIds.has(questionId)) {
+      visibleAnswers[questionId] = value;
+    }
+  }
+
+  return visibleAnswers;
+}
+
+/**
+ * Checks if the submit button should be shown based on meaningful answers to
+ * questions that are currently visible.
  *
  * @param questions - All questions in the survey
  * @param answers - Current answers map
+ * @param metadata - Optional context metadata used by visibleIf
  * @returns true if the submit button should be visible
  */
 export function shouldShowSubmitButton(
-  _questions: LumiSurveyQuestion[],
+  questions: LumiSurveyQuestion[],
   answers: Record<string, LumiSurveyAnswerValue>,
+  metadata?: Record<string, unknown>,
 ): boolean {
-  const hasAnyMeaningfulAnswer = Object.values(answers).some((value) => {
+  const hasAnyMeaningfulAnswer = Object.values(
+    getVisibleAnswers(questions, answers, metadata),
+  ).some((value) => {
     if (value === undefined || value === null) {
       return false;
     }

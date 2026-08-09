@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { cloneAnswers, useAnswerState } from "./answers.js";
 import { generateDeduplicationKey } from "./deduplicationKey.js";
+import { getVisibleAnswers } from "./evaluateVisibility.js";
 import { buildTransportPayload } from "./transportPayload.js";
 import type {
   LumiSurveyAnswerValue,
@@ -99,17 +100,22 @@ export function useLumiSurvey(
       setError(null);
 
       const answerSnapshot = cloneAnswers(answers);
+      const submittedAnswers = getVisibleAnswers(
+        questions,
+        answerSnapshot,
+        context?.tags,
+      );
       const submittedAtTimestamp = new Date().toISOString();
       const deduplicationKey = getDeduplicationKey();
       const submission: LumiSurveySubmission = {
         surveyId,
-        answers: answerSnapshot,
+        answers: submittedAnswers,
         startedAt: startedAtRef.current,
         submittedAt: submittedAtTimestamp,
         context: context ? { ...context } : undefined,
         transportPayload: buildTransportPayload(
           surveyId,
-          answerSnapshot,
+          submittedAnswers,
           questions,
           deduplicationKey,
           surveyType,
