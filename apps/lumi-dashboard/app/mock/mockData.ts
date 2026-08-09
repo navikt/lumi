@@ -587,6 +587,34 @@ export function getMockSurveysByApp(team?: string): Record<string, string[]> {
  * Get filter bootstrap data for mock mode.
  * Provides all data needed for FilterBar dropdowns.
  */
+// Mutable so mock archive/restore behaves like the real backend in demo mode.
+// survey-thumbs starts archived to showcase the "Vis arkiverte" toggle.
+const mockSurveyMeta: Record<string, { archivedAt: string | null }> = {
+  "survey-thumbs": { archivedAt: "2026-07-01T10:00:00.000Z" },
+};
+
+export function archiveMockSurvey(surveyId: string): {
+  surveyId: string;
+  archivedAt: string | null;
+  archivedBy: string | null;
+} {
+  const existing = mockSurveyMeta[surveyId];
+  if (!existing || existing.archivedAt == null) {
+    mockSurveyMeta[surveyId] = { archivedAt: new Date().toISOString() };
+  }
+  return {
+    surveyId,
+    archivedAt: mockSurveyMeta[surveyId].archivedAt,
+    archivedBy: "Z999999",
+  };
+}
+
+export function unarchiveMockSurvey(surveyId: string): void {
+  if (mockSurveyMeta[surveyId]) {
+    mockSurveyMeta[surveyId] = { archivedAt: null };
+  }
+}
+
 export function getMockFilterBootstrap(team?: string): {
   generatedAt: string;
   selectedTeam: string;
@@ -595,6 +623,7 @@ export function getMockFilterBootstrap(team?: string): {
   apps: string[];
   surveysByApp: Record<string, string[]>;
   tags: string[];
+  surveyMeta: Record<string, { archivedAt: string | null }>;
 } {
   void team;
   const availableTeams = ["team-esyfo"];
@@ -612,6 +641,7 @@ export function getMockFilterBootstrap(team?: string): {
     apps,
     surveysByApp,
     tags,
+    surveyMeta: { ...mockSurveyMeta },
   };
 }
 

@@ -6,11 +6,13 @@ import {
   HStack,
   Select,
   Show,
+  Switch,
   TextField,
   Tooltip,
   VStack,
 } from "@navikt/ds-react";
 import dayjs from "dayjs";
+import { useState } from "react";
 import { PeriodSelector } from "~/components/dashboard/PeriodSelector";
 import { getSurveyFeatures } from "~/config/surveyConfig";
 import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
@@ -18,6 +20,7 @@ import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import { useThemes } from "~/hooks/useThemes";
 import { getFilterLabels } from "~/utils/filterLabels";
+import { partitionSurveyOptions } from "~/utils/surveyArchiveUtils";
 import styles from "./FilterBar.module.css";
 import { FilterMenu } from "./FilterMenu";
 import { Skeleton as FilterBarSkeleton } from "./Skeleton";
@@ -72,8 +75,59 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
     return Array.from(allSurveys);
   };
 
+  const [showArchived, setShowArchived] = useState(false);
   const availableSurveys = getAvailableSurveys();
-  const surveys = ["alle", ...availableSurveys];
+  const {
+    active: activeSurveys,
+    archived: archivedSurveys,
+    hasArchived,
+  } = partitionSurveyOptions({
+    availableSurveys,
+    surveyMeta: bootstrap?.surveyMeta,
+    showArchived,
+    selectedSurveyId: params.surveyId,
+  });
+
+  // Grouped options when archived surveys are visible, flat list otherwise
+  const surveyOptions =
+    archivedSurveys.length > 0 ? (
+      <>
+        <option value="alle">Alle surveys</option>
+        <optgroup label="Aktive">
+          {activeSurveys.map((survey) => (
+            <option key={survey} value={survey}>
+              {survey}
+            </option>
+          ))}
+        </optgroup>
+        <optgroup label="Arkiverte">
+          {archivedSurveys.map((survey) => (
+            <option key={survey} value={survey}>
+              {survey}
+            </option>
+          ))}
+        </optgroup>
+      </>
+    ) : (
+      <>
+        <option value="alle">Alle surveys</option>
+        {activeSurveys.map((survey) => (
+          <option key={survey} value={survey}>
+            {survey}
+          </option>
+        ))}
+      </>
+    );
+
+  const archivedToggle = hasArchived ? (
+    <Switch
+      size="small"
+      checked={showArchived}
+      onChange={(e) => setShowArchived(e.target.checked)}
+    >
+      Vis arkiverte
+    </Switch>
+  ) : null;
 
   const handleAppChange = (newApp: string | undefined) => {
     const shouldClearSurvey =
@@ -232,12 +286,10 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                 }
                 className={styles.desktopSurveySelect}
               >
-                {surveys.map((survey) => (
-                  <option key={survey} value={survey}>
-                    {survey === "alle" ? "Alle surveys" : survey}
-                  </option>
-                ))}
+                {surveyOptions}
               </Select>
+
+              {archivedToggle}
 
               {showDetails && features.showTextFilter && (
                 <TextField
@@ -339,12 +391,10 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                 }
                 className={styles.mobileSurveySelect}
               >
-                {surveys.map((survey) => (
-                  <option key={survey} value={survey}>
-                    {survey === "alle" ? "Alle surveys" : survey}
-                  </option>
-                ))}
+                {surveyOptions}
               </Select>
+
+              {archivedToggle}
             </HStack>
 
             <HStack gap="space-8" justify="space-between" align="center">

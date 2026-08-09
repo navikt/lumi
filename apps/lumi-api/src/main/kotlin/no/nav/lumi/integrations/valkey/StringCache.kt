@@ -21,6 +21,7 @@ interface StringCache {
     fun set(key: String, value: String, ttl: Duration)
     fun isHealthy(): Boolean
     fun clear()
+    fun clearByPrefix(prefix: String)
 }
 
 class InMemoryStringCache : StringCache {
@@ -47,6 +48,10 @@ class InMemoryStringCache : StringCache {
     override fun clear() {
         cache.clear()
         log.info("In-memory string cache cleared")
+    }
+
+    override fun clearByPrefix(prefix: String) {
+        cache.keys.removeAll { it.startsWith(prefix) }
     }
 }
 
@@ -135,6 +140,20 @@ class ValkeyStringCache private constructor(
         } catch (e: Exception) {
             log.warn("Failed to clear Valkey string cache", e)
             fallback.clear()
+        }
+    }
+
+    override fun clearByPrefix(prefix: String) {
+        try {
+            val keys = redisClient.keys("$keyPrefix$prefix*")
+            if (keys.isNotEmpty()) {
+                redisClient.del(*keys.toTypedArray())
+            }
+            fallback.clearByPrefix(prefix)
+        } catch (e: Exception) {
+            cacheErrorCounter.increment()
+            log.warn("Failed to clear Valkey string cache by prefix", e)
+            fallback.clearByPrefix(prefix)
         }
     }
 

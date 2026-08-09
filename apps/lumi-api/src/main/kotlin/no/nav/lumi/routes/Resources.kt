@@ -182,6 +182,10 @@ class ApiV1Intern {
                 class Id(val parent: Markers, val id: String)
             }
 
+            @Resource("archive")
+            @Serializable
+            class Archive(val parent: Id)
+
             @Resource("context-tags")
             @Serializable
             class ContextTags(

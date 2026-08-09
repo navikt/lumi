@@ -148,6 +148,16 @@ export type DeleteSurvey = z.infer<typeof DeleteSurveySchema>;
 // Filter Bootstrap Response Schema
 // ============================================
 
+/**
+ * Per-survey dashboard metadata. Surveys without an entry are active;
+ * `archivedAt === null` means the survey was restored after being archived.
+ */
+export const SurveyMetaEntrySchema = z.object({
+  archivedAt: z.string().nullable(),
+});
+
+export type SurveyMetaEntry = z.infer<typeof SurveyMetaEntrySchema>;
+
 export const FilterBootstrapResponseSchema = z.object({
   generatedAt: z.string(),
   selectedTeam: z.string(),
@@ -156,6 +166,7 @@ export const FilterBootstrapResponseSchema = z.object({
   apps: z.array(z.string()),
   surveysByApp: z.record(z.string(), z.array(z.string())),
   tags: z.array(z.string()),
+  surveyMeta: z.record(z.string(), SurveyMetaEntrySchema).optional(),
 });
 
 export type FilterBootstrapResponse = z.infer<
@@ -167,6 +178,22 @@ export const FilterBootstrapParamsSchema = z.object({
 });
 
 export type FilterBootstrapParams = z.infer<typeof FilterBootstrapParamsSchema>;
+
+export const ArchiveSurveySchema = z.object({
+  surveyId: z.string(),
+  team: z.string().optional(),
+});
+
+export type ArchiveSurvey = z.infer<typeof ArchiveSurveySchema>;
+
+/** Response from PUT /surveys/{surveyId}/archive. */
+export const SurveyArchiveStateSchema = z.object({
+  surveyId: z.string(),
+  archivedAt: z.string().nullable(),
+  archivedBy: z.string().nullable(),
+});
+
+export type SurveyArchiveState = z.infer<typeof SurveyArchiveStateSchema>;
 
 export const DeleteFeedbackSchema = z.object({
   id: z.string(),
