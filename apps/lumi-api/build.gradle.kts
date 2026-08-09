@@ -6,8 +6,8 @@ plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
     id("io.ktor.plugin") version "3.5.1"
-    id("com.gradleup.shadow") version "9.5.1"
-    id("com.github.ben-manes.versions") version "0.54.0"
+    id("com.gradleup.shadow") version "9.6.1"
+    id("com.github.ben-manes.versions") version "0.58.0"
     application
 }
 
@@ -26,19 +26,19 @@ repositories {
 }
 
 val ktorVersion = "3.5.1"
-val logbackVersion = "1.5.37"
+val logbackVersion = "1.6.1"
 val logstashVersion = "9.0"
 val postgresVersion = "42.7.13"
 val hikariVersion = "7.1.0"
-val flywayVersion = "12.10.0"
-val kotestVersion = "6.2.2"
+val flywayVersion = "13.0.0"
+val kotestVersion = "6.2.3"
 val mockkVersion = "1.14.11"
 val testcontainersVersion = "1.21.4"
 val tokenSupportVersion = "5.0.13"
 val exposedVersion = "1.3.1"
 val micrometerVersion = "1.17.0"
 val log4jVersion = "2.26.1"
-val nettyVersion = "4.2.15.Final"
+val nettyVersion = "4.2.16.Final"
 
 dependencies {
     implementation(platform("io.netty:netty-bom:$nettyVersion"))
@@ -101,7 +101,6 @@ dependencies {
     testImplementation("io.mockk:mockk:$mockkVersion")
     testImplementation("org.testcontainers:testcontainers:$testcontainersVersion")
     testImplementation("org.testcontainers:postgresql:$testcontainersVersion")
-    testImplementation("no.nav.security:mock-oauth2-server:4.0.1")
     // JUnit Jupiter API is pulled in transitively by Kotest, but the Jupiter *engine* is not.
     // Without it, plain @Test classes (e.g. NaisGraphQlClientTest) compile but are never run.
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
