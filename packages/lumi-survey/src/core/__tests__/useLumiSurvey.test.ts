@@ -308,6 +308,84 @@ describe("useLumiSurvey", () => {
     expect(result.current.error).toBeNull();
   });
 
+  it("omits answers hidden at submission time while retaining the full definition", async () => {
+    const conditionalQuestions: LumiSurveyQuestion[] = [
+      {
+        id: "gate",
+        type: "singleChoice",
+        prompt: "Show follow-up?",
+        required: true,
+        options: [
+          { value: "yes", label: "Yes" },
+          { value: "no", label: "No" },
+        ],
+      },
+      {
+        id: "details",
+        type: "text",
+        prompt: "Sensitive details",
+        required: false,
+        maxLength: 500,
+        visibleIf: {
+          any: [
+            {
+              questionId: "gate",
+              operator: "EQ",
+              value: "yes",
+            },
+            {
+              field: "METADATA",
+              key: "audience",
+              operator: "EQ",
+              value: "internal",
+            },
+          ],
+        },
+      },
+    ];
+    const submitMock = vi.fn(async (_: LumiSurveySubmission) => {});
+    const transport: LumiSurveyTransport = { submit: submitMock };
+
+    const { result } = renderHook(() =>
+      useLumiSurvey({
+        surveyId: SURVEY_ID,
+        questions: conditionalQuestions,
+        transport,
+        context: { tags: { audience: "external" } },
+      }),
+    );
+
+    await act(() => {
+      result.current.setAnswer("gate", "yes");
+      result.current.setAnswer("details", "should not leave the browser");
+    });
+
+    await act(() => {
+      result.current.setAnswer("gate", "no");
+    });
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    const submission = submitMock.mock.calls[0][0];
+    expect(submission.answers).toEqual({ gate: "no" });
+    expect(
+      submission.transportPayload.answers.map((answer) => answer.fieldId),
+    ).toEqual(["gate"]);
+    expect(
+      submission.transportPayload.definition.fields.map(
+        (field) => field.fieldId,
+      ),
+    ).toEqual(["gate", "details"]);
+
+    // Preserve local state so reopening the branch restores the user's input.
+    expect(result.current.answers).toEqual({
+      gate: "no",
+      details: "should not leave the browser",
+    });
+  });
+
   it("surfaces transport failures and triggers error callbacks", async () => {
     const transportError = new Error("Transport failed");
     const transport: LumiSurveyTransport = {

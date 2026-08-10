@@ -13,6 +13,7 @@ This project follows SemVer.
 ### Fixed
 
 - `logic` conditions that reference another question via `condition.questionId` are now evaluated against that question's answer instead of the current question's. Cross-question branching (e.g. routing on an earlier answer) now works the same way `visibleIf` already did. (#332)
+- Submissions now omit answers from questions hidden by `visibleIf` at submit time while retaining the complete survey definition. Hidden answers remain in local state so they are restored if the user reopens the branch. (#357)
 
 ## [1.0.0] - 2026-06-24
 

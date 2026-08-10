@@ -238,11 +238,11 @@ export const LumiSurveyDock = ({
     [questions, answers, enrichedContext?.tags],
   );
 
-  // Progressive submit: hide the button until there is at least one meaningful answer
-  // and all required questions are currently valid.
+  // Progressive submit: hide the button until a currently visible question has
+  // at least one meaningful answer. Required-answer validation happens on submit.
   const isSubmitBlocked = useMemo(
-    () => !shouldShowSubmitButton(questions, answers),
-    [questions, answers],
+    () => !shouldShowSubmitButton(questions, answers, enrichedContext?.tags),
+    [questions, answers, enrichedContext?.tags],
   );
 
   // In step mode with branching, only validate questions the user actually visited

@@ -17,7 +17,11 @@ export {
   isConditionGroup,
   isLeafCondition,
 } from "./conditionUtils.js";
-export * from "./evaluateVisibility";
+export {
+  evaluateVisibility,
+  getVisibleQuestions,
+  shouldShowSubmitButton,
+} from "./evaluateVisibility";
 export * from "./ratingLabels";
 export * from "./types";
 export * from "./useLumiSurvey";
