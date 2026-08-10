@@ -32,18 +32,18 @@ jobs:
     outputs:
       image: ${{ steps.docker-build-push.outputs.image }}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Setup Java
-        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
           distribution: temurin
           java-version: 21
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           cache-overwrite-existing: true
@@ -53,7 +53,7 @@ jobs:
         run: ./gradlew shadowJar
 
       - name: Push docker image to GAR
-        uses: nais/docker-build-push@31c3a7321909bcb20799fdf46153fec721fd9512
+        uses: nais/docker-build-push@2d2b0a7193e65422b7f0355d4afb445e0a8b2cc3
         id: docker-build-push
         with:
           team: team-esyfo
@@ -74,7 +74,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: nais/deploy/actions/deploy@2d18f050f07b6a007864c6a57070ed915d571beb
         env:
           CLUSTER: dev-gcp
@@ -91,7 +91,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: nais/deploy/actions/deploy@2d18f050f07b6a007864c6a57070ed915d571beb
         env:
           CLUSTER: prod-gcp
