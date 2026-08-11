@@ -191,7 +191,7 @@ class SurveyDefinitionService(
             val definitionDiff = diff(stored.definition, incomingDefinition)
             if (stored.source == SurveyDefinitionSource.AUTO && incomingSource == SurveyDefinitionSource.API) {
                 if (definitionDiff.changedFields.isNotEmpty() || definitionDiff.removedFields.isNotEmpty()) {
-                    throwDefinitionConflict(stored.surveyId, definitionDiff, redactIdentifiers = true)
+                    throwDefinitionConflict(team, stored.surveyId, definitionDiff, redactIdentifiers = true)
                 }
 
                 val incomingHash = incomingDefinition.computeHash()
@@ -206,7 +206,7 @@ class SurveyDefinitionService(
             }
 
             if (definitionDiff.hasChanges()) {
-                throwDefinitionConflict(stored.surveyId, definitionDiff, redactIdentifiers = true)
+                throwDefinitionConflict(team, stored.surveyId, definitionDiff, redactIdentifiers = true)
             }
 
             return ExistingDefinitionResult.Resolved(
@@ -217,7 +217,7 @@ class SurveyDefinitionService(
         if (stored.source == SurveyDefinitionSource.API) {
             val definitionDiff = diff(stored.definition, incomingDefinition)
             if (definitionDiff.changedFields.isNotEmpty() || definitionDiff.addedFields.isNotEmpty()) {
-                throwDefinitionConflict(stored.surveyId, definitionDiff)
+                throwDefinitionConflict(team, stored.surveyId, definitionDiff)
             }
 
             return ExistingDefinitionResult.Resolved(
@@ -228,7 +228,7 @@ class SurveyDefinitionService(
         val mergedDefinition = stored.definition.mergeWith(incomingDefinition)
         val definitionDiff = diff(stored.definition, mergedDefinition)
         if (definitionDiff.changedFields.isNotEmpty()) {
-            throwDefinitionConflict(stored.surveyId, definitionDiff)
+            throwDefinitionConflict(team, stored.surveyId, definitionDiff)
         }
 
         if (definitionDiff.addedFields.isEmpty()) {
@@ -264,12 +264,15 @@ class SurveyDefinitionService(
     }
 
     private fun throwDefinitionConflict(
+        team: String,
         surveyId: String,
         definitionDiff: DefinitionDiff,
         redactIdentifiers: Boolean = false
     ): Nothing {
-        throw ApiErrorException.ConflictException(
-            "Survey definition conflict for surveyId=$surveyId: ${
+        throw ApiErrorException.DefinitionConflictException(
+            team = team,
+            surveyId = surveyId,
+            errorMessage = "Survey definition conflict for surveyId=$surveyId: ${
                 if (redactIdentifiers) definitionDiff.describeRedacted() else definitionDiff.describe()
             }. Use a new surveyId for structural changes."
         )

@@ -127,6 +127,21 @@ sealed class ApiErrorException(
         )
     }
 
+    class DefinitionConflictException(
+        val team: String,
+        val surveyId: String,
+        val errorMessage: String,
+        cause: Throwable? = null
+    ) : ApiErrorException(errorMessage, ErrorType.CONFLICT, cause) {
+        override fun toApiError(path: String?) = ApiError(
+            status = HttpStatusCode.Conflict.value,
+            type = ErrorType.CONFLICT,
+            message = errorMessage,
+            timestamp = java.time.Instant.now().toString(),
+            path = path,
+        )
+    }
+
     class TooManyRequestsException(
         val errorMessage: String = "Too many requests",
         cause: Throwable? = null,

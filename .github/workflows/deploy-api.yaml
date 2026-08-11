@@ -95,5 +95,5 @@ jobs:
       - uses: nais/deploy/actions/deploy@2d18f050f07b6a007864c6a57070ed915d571beb
         env:
           CLUSTER: prod-gcp
-          RESOURCE: apps/lumi-api/nais/app/prod.yaml
+          RESOURCE: apps/lumi-api/nais/app/prod.yaml,apps/lumi-api/nais/alerts/prod.yaml
           VAR: image=${{ needs.build.outputs.image }}
