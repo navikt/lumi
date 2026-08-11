@@ -12,6 +12,8 @@ class ApiV1Intern {
         val parent: ApiV1Intern = ApiV1Intern(),
         /** Optional team scope. If omitted, the backend selects a default authorized team. */
         val team: String? = null,
+        /** Include feedback from archived surveys. Defaults to false. */
+        val includeArchived: Boolean? = null,
         val app: String? = null,
         val page: Int? = null,
         val size: Int? = null,
@@ -81,6 +83,8 @@ class ApiV1Intern {
         val parent: ApiV1Intern = ApiV1Intern(),
         /** Optional team scope. If omitted, the backend selects a default authorized team. */
         val team: String? = null,
+        /** Include feedback from archived surveys. Defaults to false. */
+        val includeArchived: Boolean? = null,
         val app: String? = null,
         /** Start date (YYYY-MM-DD, Europe/Oslo inclusive) */
         val fromDate: String? = null,
@@ -182,6 +186,10 @@ class ApiV1Intern {
                 class Id(val parent: Markers, val id: String)
             }
 
+            @Resource("archive")
+            @Serializable
+            class Archive(val parent: Id)
+
             @Resource("context-tags")
             @Serializable
             class ContextTags(
@@ -238,6 +246,8 @@ class ApiV1Intern {
         val parent: ApiV1Intern = ApiV1Intern(),
         /** Optional team scope. If omitted, the backend selects a default authorized team. */
         val team: String? = null,
+        /** Include feedback from archived surveys. Defaults to false. */
+        val includeArchived: Boolean? = null,
         val format: String = "CSV",
         val app: String? = null,
         val hasText: Boolean? = null,

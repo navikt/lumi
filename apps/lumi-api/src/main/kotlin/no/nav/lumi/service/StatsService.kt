@@ -61,6 +61,7 @@ class StatsService(
 
         val parts = listOf(
             "team" to team,
+            "includeArchived" to includeArchived.toString(),
             "app" to app,
             "fromDate" to fromDate,
             "toDate" to toDate,

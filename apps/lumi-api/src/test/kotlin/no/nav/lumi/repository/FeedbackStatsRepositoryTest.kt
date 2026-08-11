@@ -21,6 +21,20 @@ class FeedbackStatsRepositoryTest : FunSpec({
     }
 
     context("getStats") {
+        test("excludes archived surveys from default statistics") {
+            insertTestFeedback(id = "active", team = "flex", surveyId = "survey-active")
+            insertTestFeedback(id = "archived", team = "flex", surveyId = "survey-archived")
+            SurveyMetadataRepository().archive("flex", "survey-archived", "A123456")
+
+            val stats = repository.getStats(StatsQuery(team = "flex"))
+            val allStats = repository.getStats(StatsQuery(team = "flex", includeArchived = true))
+
+            stats.totalCount shouldBe 1L
+            stats.bySurveyId.keys shouldBe setOf("survey-active")
+            allStats.totalCount shouldBe 2L
+            allStats.bySurveyId.keys shouldBe setOf("survey-active", "survey-archived")
+        }
+
         test("returns correct statistics") {
             insertTestFeedback(team = "flex", rating = 4)
             insertTestFeedback(team = "flex", rating = 5)

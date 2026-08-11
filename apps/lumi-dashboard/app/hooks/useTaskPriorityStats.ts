@@ -13,6 +13,7 @@ export function useTaskPriorityStats() {
     queryKey: [
       "taskPriorityStats",
       params.team,
+      params.showArchived,
       params.app,
       params.fromDate,
       params.toDate,
@@ -26,6 +27,7 @@ export function useTaskPriorityStats() {
       fetchTaskPriorityServerFn({
         data: {
           team: params.team,
+          includeArchived: params.showArchived === "true" ? "true" : undefined,
           app: params.app,
           surveyId: params.surveyId,
           fromDate: params.fromDate,

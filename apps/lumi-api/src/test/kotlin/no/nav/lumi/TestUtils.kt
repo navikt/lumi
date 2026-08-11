@@ -18,12 +18,15 @@ import no.nav.lumi.config.configureRateLimiting
 import no.nav.lumi.config.DatabaseHolder
 import no.nav.lumi.domain.SaveResult
 import no.nav.lumi.integrations.valkey.InMemoryStatsCache
+import no.nav.lumi.integrations.valkey.InMemoryStringCache
 import no.nav.lumi.repository.FeedbackRepository
 import no.nav.lumi.routes.feedbackRoutes
 import no.nav.lumi.routes.internalRoutes
 import no.nav.lumi.routes.statsRoutes
 import no.nav.lumi.routes.exportRoutes
 import no.nav.lumi.routes.markerRoutes
+import no.nav.lumi.routes.filterRoutes
+import no.nav.lumi.routes.surveyArchiveRoutes
 import no.nav.lumi.routes.surveyFacetRoutes
 import no.nav.lumi.routes.submissionRoutes
 import no.nav.lumi.routes.discoveryRoutes
@@ -279,6 +282,8 @@ fun Application.testModule(
     }
     
     // Create services with the injected repositories/services
+    // Fresh per test application so bootstrap cache state cannot leak between tests
+    val bootstrapCache = InMemoryStringCache()
     val statsCache = InMemoryStatsCache()
     val statsService = StatsService(FeedbackRepository(), statsRepository, statsCache = statsCache)
     val exportService = ExportService(FeedbackRepository())
@@ -299,6 +304,11 @@ fun Application.testModule(
             
             feedbackRoutes(feedbackService, statsCacheInvalidator)
             surveyFacetRoutes(feedbackService, statsCacheInvalidator)
+            surveyArchiveRoutes(
+                bootstrapCache = bootstrapCache,
+                statsCacheInvalidator = statsCacheInvalidator,
+            )
+            filterRoutes(bootstrapCache = bootstrapCache)
             markerRoutes()
             statsRoutes(statsService)
             exportRoutes(exportService)

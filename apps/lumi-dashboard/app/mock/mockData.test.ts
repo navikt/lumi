@@ -3,11 +3,26 @@ import {
   generateSurveyData,
   getMockBlockerStats,
   getMockDiscoveryStats,
+  getMockFeedback,
+  getMockStats,
   getMockTaskPriorityStats,
   getMockTopTasksStats,
 } from "~/mock/mockData";
 
 describe("Mock Data Generation", () => {
+  it("excludes archived survey data unless includeArchived is enabled", () => {
+    const activeOnly = new URLSearchParams({ surveyId: "survey-thumbs" });
+    const withArchived = new URLSearchParams({
+      surveyId: "survey-thumbs",
+      includeArchived: "true",
+    });
+
+    expect(getMockFeedback(activeOnly).totalElements).toBe(0);
+    expect(getMockStats(activeOnly).totalCount).toBe(0);
+    expect(getMockFeedback(withArchived).totalElements).toBeGreaterThan(0);
+    expect(getMockStats(withArchived).totalCount).toBeGreaterThan(0);
+  });
+
   it("should generate items from topics", () => {
     const items = generateSurveyData(10, {
       app: "test-app",

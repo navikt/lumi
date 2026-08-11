@@ -13,6 +13,7 @@ export function useDiscoveryStats() {
     queryKey: [
       "discoveryStats",
       params.team,
+      params.showArchived,
       params.app,
       params.fromDate,
       params.toDate,
@@ -25,6 +26,7 @@ export function useDiscoveryStats() {
       fetchDiscoveryServerFn({
         data: {
           team: params.team,
+          includeArchived: params.showArchived === "true" ? "true" : undefined,
           app: params.app,
           surveyId: params.surveyId,
           fromDate: params.fromDate,

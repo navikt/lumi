@@ -19,8 +19,10 @@ private val log = LoggerFactory.getLogger("StringCache")
 interface StringCache {
     fun get(key: String): String?
     fun set(key: String, value: String, ttl: Duration)
+    fun increment(key: String): Long
     fun isHealthy(): Boolean
     fun clear()
+    fun clearByPrefix(prefix: String)
 }
 
 class InMemoryStringCache : StringCache {
@@ -42,11 +44,29 @@ class InMemoryStringCache : StringCache {
         cache[key] = CacheEntry(expiresAt, value)
     }
 
+    override fun increment(key: String): Long {
+        var incrementedValue = 0L
+        cache.compute(key) { _, entry ->
+            val currentValue = entry
+                ?.takeIf { System.currentTimeMillis() <= it.expiresAt }
+                ?.value
+                ?.toLongOrNull()
+                ?: 0L
+            incrementedValue = currentValue + 1
+            CacheEntry(Long.MAX_VALUE, incrementedValue.toString())
+        }
+        return incrementedValue
+    }
+
     override fun isHealthy(): Boolean = true
 
     override fun clear() {
         cache.clear()
         log.info("In-memory string cache cleared")
+    }
+
+    override fun clearByPrefix(prefix: String) {
+        cache.keys.removeAll { it.startsWith(prefix) }
     }
 }
 
@@ -116,6 +136,25 @@ class ValkeyStringCache private constructor(
         }
     }
 
+    override fun increment(key: String): Long {
+        val fullKey = keyPrefix + key
+
+        return try {
+            val startTime = System.nanoTime()
+            val value = redisClient.incr(fullKey)
+            cacheOperationTimer.record(Duration.ofNanos(System.nanoTime() - startTime))
+            value
+        } catch (e: JedisConnectionException) {
+            cacheErrorCounter.increment()
+            log.warn("Failed to increment in Valkey string cache, using fallback", e)
+            fallback.increment(key)
+        } catch (e: Exception) {
+            cacheErrorCounter.increment()
+            log.warn("Unexpected error incrementing in Valkey string cache", e)
+            fallback.increment(key)
+        }
+    }
+
     override fun isHealthy(): Boolean {
         return try {
             redisClient.ping() == "PONG"
@@ -135,6 +174,20 @@ class ValkeyStringCache private constructor(
         } catch (e: Exception) {
             log.warn("Failed to clear Valkey string cache", e)
             fallback.clear()
+        }
+    }
+
+    override fun clearByPrefix(prefix: String) {
+        try {
+            val keys = redisClient.keys("$keyPrefix$prefix*")
+            if (keys.isNotEmpty()) {
+                redisClient.del(*keys.toTypedArray())
+            }
+            fallback.clearByPrefix(prefix)
+        } catch (e: Exception) {
+            cacheErrorCounter.increment()
+            log.warn("Failed to clear Valkey string cache by prefix", e)
+            fallback.clearByPrefix(prefix)
         }
     }
 

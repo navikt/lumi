@@ -63,6 +63,7 @@ describe("export helpers", () => {
   it("transformToBackendParams trims and normalizes filters", () => {
     const params = transformToBackendParams({
       format: "csv",
+      includeArchived: "true",
       tag: "  a, b , ,  ",
       hasText: "true",
       lowRating: "false",
@@ -75,6 +76,7 @@ describe("export helpers", () => {
     });
 
     expect(params.tag).toEqual(["a", "b"]);
+    expect(params.includeArchived).toBe("true");
     expect(params.hasText).toBe("true");
     expect(params.lowRating).toBeUndefined();
     expect(params.segment).toEqual(["k:v", "x:y"]);

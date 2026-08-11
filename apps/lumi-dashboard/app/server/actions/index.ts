@@ -6,6 +6,10 @@
  */
 
 // Delete
+export {
+  archiveSurveyServerFn,
+  unarchiveSurveyServerFn,
+} from "./archiveSurvey";
 export { deleteFeedbackServerFn, deleteSurveyServerFn } from "./delete";
 // Export
 export { exportServerFn } from "./export";

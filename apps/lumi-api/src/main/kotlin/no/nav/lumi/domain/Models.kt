@@ -388,6 +388,8 @@ data class PhraseFilter(
  */
 data class FeedbackQuery(
     val team: String,
+    /** Include feedback belonging to archived surveys. Defaults to active surveys only. */
+    val includeArchived: Boolean = false,
     val app: String? = null,
     val page: Int? = null,
     val size: Int = 10,
@@ -428,6 +430,8 @@ data class FeedbackQuery(
  */
 data class StatsQuery(
     val team: String,
+    /** Include feedback belonging to archived surveys. Defaults to active surveys only. */
+    val includeArchived: Boolean = false,
     val app: String? = null,
     /** Start date (YYYY-MM-DD, Europe/Oslo inclusive) */
     val fromDate: String? = null,

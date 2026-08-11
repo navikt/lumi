@@ -33,12 +33,16 @@ export function DeleteSurveyDialog({
   const deleteMutation = useDeleteSurvey();
 
   // Fetch actual total count for this survey (ignoring other filters)
-  const { data: totalCount, isLoading: isLoadingTotal } = useSurveyTotalCount(
-    surveyId,
-    isOpen,
-  );
+  const {
+    data: totalCount,
+    isLoading: isLoadingTotal,
+    isError: isTotalCountError,
+  } = useSurveyTotalCount(surveyId, isOpen);
+  const totalCountUnavailable = isTotalCountError || totalCount === undefined;
 
   const handleDelete = async () => {
+    if (totalCountUnavailable) return;
+
     try {
       await deleteMutation.mutateAsync(surveyId);
       setConfirmed(false);
@@ -55,8 +59,7 @@ export function DeleteSurveyDialog({
   };
 
   // Check if user is viewing a filtered subset
-  const actualTotal = totalCount ?? filteredCount;
-  const isFiltered = actualTotal !== filteredCount;
+  const isFiltered = totalCount !== undefined && totalCount !== filteredCount;
 
   return (
     <Modal
@@ -70,20 +73,25 @@ export function DeleteSurveyDialog({
     >
       <Modal.Body>
         <VStack gap="space-16">
-          <Alert variant="warning">
+          <Alert variant={isTotalCountError ? "error" : "warning"}>
             {isLoadingTotal ? (
               <Skeleton width="100%" height="24px" />
+            ) : isTotalCountError || totalCount === undefined ? (
+              <>
+                Kunne ikke hente totalt antall svar. Last antallet på nytt før
+                surveyen kan slettes.
+              </>
             ) : (
               <>
                 Du er i ferd med å{" "}
-                <strong>permanent slette alle {actualTotal} svar</strong> for
+                <strong>permanent slette alle {totalCount} svar</strong> for
                 survey <strong>"{surveyId}"</strong>.
                 {isFiltered && (
                   <>
                     {" "}
-                    Du ser nå {filteredCount} av {actualTotal} svar pga.
+                    Du ser nå {filteredCount} av {totalCount} svar pga.
                     filtrering, men{" "}
-                    <strong>alle {actualTotal} svar vil bli slettet</strong>.
+                    <strong>alle {totalCount} svar vil bli slettet</strong>.
                   </>
                 )}
               </>
@@ -98,8 +106,12 @@ export function DeleteSurveyDialog({
           <ConfirmationPanel
             checked={confirmed}
             onChange={() => setConfirmed(!confirmed)}
-            label={`Ja, slett permanent alle ${actualTotal} svar`}
-            disabled={isLoadingTotal}
+            label={
+              totalCount === undefined
+                ? "Antall svar må lastes før sletting"
+                : `Ja, slett permanent alle ${totalCount} svar`
+            }
+            disabled={isLoadingTotal || totalCountUnavailable}
           />
 
           {deleteMutation.isError && (
@@ -118,10 +130,12 @@ export function DeleteSurveyDialog({
             data-color="danger"
             variant="primary"
             onClick={handleDelete}
-            disabled={!confirmed || isLoadingTotal}
+            disabled={!confirmed || isLoadingTotal || totalCountUnavailable}
             loading={deleteMutation.isPending}
           >
-            Slett {actualTotal} svar permanent
+            {totalCount === undefined
+              ? "Slett svar permanent"
+              : `Slett ${totalCount} svar permanent`}
           </Button>
         </HStack>
       </Modal.Footer>

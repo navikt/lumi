@@ -1,9 +1,14 @@
-import { TrashIcon } from "@navikt/aksel-icons";
+import {
+  ArchiveIcon,
+  ArrowCirclepathIcon,
+  TrashIcon,
+} from "@navikt/aksel-icons";
 import {
   Alert,
   BodyShort,
   Box,
   Button,
+  ErrorMessage,
   Hide,
   HStack,
   Pagination,
@@ -14,9 +19,13 @@ import {
 } from "@navikt/ds-react";
 import React, { useState } from "react";
 
+import { useArchiveSurvey } from "~/hooks/useArchiveSurvey";
 import { useDeleteFeedback } from "~/hooks/useDeleteFeedback";
 import { useFeedback } from "~/hooks/useFeedback";
+import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
 import { useSearchParams } from "~/hooks/useSearchParams";
+import { isSurveyArchived } from "~/utils/surveyArchiveUtils";
+import { ArchiveSurveyDialog } from "../../dashboard/ArchiveSurveyDialog";
 import { DeleteSurveyDialog } from "../../dashboard/DeleteSurveyDialog";
 import { DeleteFeedbackDialog } from "../DeleteFeedbackDialog";
 import { FeedbackCard } from "./FeedbackCard";
@@ -36,8 +45,11 @@ export function FeedbackTable() {
   const { data, error, isPending } = useFeedback();
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [feedbackToDelete, setFeedbackToDelete] = useState<string | null>(null);
   const deleteFeedbackMutation = useDeleteFeedback();
+  const { data: bootstrap } = useFilterBootstrap();
+  const { restoreMutation } = useArchiveSurvey(params.surveyId);
 
   const toggleExpanded = (id: string) => {
     setExpandedRows((prev) => {
@@ -67,13 +79,22 @@ export function FeedbackTable() {
   const totalPages = data?.totalPages || 1;
   const totalElements = data?.totalElements || 0;
   const selectedSurvey = params.surveyId;
+  const selectedSurveyIsArchived =
+    !!selectedSurvey && isSurveyArchived(selectedSurvey, bootstrap?.surveyMeta);
   return (
     <div className={styles.table}>
-      {/* Toolbar with bulk actions when survey is selected */}
-      {selectedSurvey && totalElements > 0 && (
+      {/* Toolbar with bulk actions when survey is selected. Not gated on
+          totalElements: old surveys without hits in the current period are
+          exactly the ones users want to archive. */}
+      {selectedSurvey && (
         <SurveyToolbar
           surveyId={selectedSurvey}
           totalCount={totalElements}
+          isArchived={selectedSurveyIsArchived}
+          onArchive={() => setArchiveDialogOpen(true)}
+          onRestore={() => restoreMutation.mutate(selectedSurvey)}
+          isRestoring={restoreMutation.isPending}
+          restoreFailed={restoreMutation.isError}
           onDelete={() => setDeleteDialogOpen(true)}
         />
       )}
@@ -151,6 +172,15 @@ export function FeedbackTable() {
         </>
       )}
 
+      {/* Archive survey confirmation dialog */}
+      {selectedSurvey && (
+        <ArchiveSurveyDialog
+          surveyId={selectedSurvey}
+          isOpen={archiveDialogOpen}
+          onClose={() => setArchiveDialogOpen(false)}
+        />
+      )}
+
       {/* Delete survey confirmation dialog */}
       {selectedSurvey && (
         <DeleteSurveyDialog
@@ -185,32 +215,76 @@ export function FeedbackTable() {
 function SurveyToolbar({
   surveyId,
   totalCount,
+  isArchived,
+  onArchive,
+  onRestore,
+  isRestoring,
+  restoreFailed,
   onDelete,
 }: {
   surveyId: string;
   totalCount: number;
+  isArchived: boolean;
+  onArchive: () => void;
+  onRestore: () => void;
+  isRestoring: boolean;
+  restoreFailed: boolean;
   onDelete: () => void;
 }) {
   return (
     <div className={styles.toolbar}>
       <HStack justify="space-between" align="center" wrap gap="space-8">
-        <BodyShort size="small" textColor="subtle">
-          Viser {totalCount} svar for <strong>{surveyId}</strong>
-        </BodyShort>
-        <Tooltip content="Slett hele surveyen (alle svar, uavhengig av filtrering)">
-          <Button
-            data-color="danger"
-            variant="primary"
-            size="small"
-            icon={<TrashIcon aria-hidden />}
-            onClick={onDelete}
-          >
-            <Hide below="sm" asChild>
-              <span>Slett alle svar</span>
-            </Hide>
-            <Show below="sm">Slett</Show>
-          </Button>
-        </Tooltip>
+        <HStack gap="space-8" align="center">
+          <BodyShort size="small" textColor="subtle">
+            Viser {totalCount} svar for <strong>{surveyId}</strong>
+            {isArchived && <> (arkivert)</>}
+          </BodyShort>
+          {restoreFailed && (
+            <ErrorMessage size="small">
+              Kunne ikke gjenopprette surveyen. Prøv igjen.
+            </ErrorMessage>
+          )}
+        </HStack>
+        <HStack gap="space-8" align="center">
+          {isArchived ? (
+            <Tooltip content="Gjenopprett surveyen fra arkivet">
+              <Button
+                variant="secondary"
+                size="small"
+                icon={<ArrowCirclepathIcon aria-hidden />}
+                onClick={onRestore}
+                loading={isRestoring}
+              >
+                Gjenopprett
+              </Button>
+            </Tooltip>
+          ) : (
+            <Tooltip content="Skjul surveyen i dashboardet — innsendinger stoppes ikke">
+              <Button
+                variant="secondary"
+                size="small"
+                icon={<ArchiveIcon aria-hidden />}
+                onClick={onArchive}
+              >
+                Arkiver
+              </Button>
+            </Tooltip>
+          )}
+          <Tooltip content="Slett hele surveyen (alle svar, uavhengig av filtrering)">
+            <Button
+              data-color="danger"
+              variant="primary"
+              size="small"
+              icon={<TrashIcon aria-hidden />}
+              onClick={onDelete}
+            >
+              <Hide below="sm" asChild>
+                <span>Slett alle svar</span>
+              </Hide>
+              <Show below="sm">Slett</Show>
+            </Button>
+          </Tooltip>
+        </HStack>
       </HStack>
     </div>
   );

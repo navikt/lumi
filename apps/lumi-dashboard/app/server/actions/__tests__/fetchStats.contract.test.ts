@@ -15,6 +15,7 @@ describe("fetchStats contract", () => {
   it("maps dashboard filters to backend query params", () => {
     const params = transformStatsToBackendParams({
       team: "team-1",
+      includeArchived: "true",
       app: "app-1",
       surveyId: "survey-1",
       fromDate: "2026-01-01",
@@ -28,6 +29,7 @@ describe("fetchStats contract", () => {
 
     expect(params).toEqual({
       team: "team-1",
+      includeArchived: "true",
       app: "app-1",
       surveyId: "survey-1",
       fromDate: "2026-01-01",
@@ -43,6 +45,7 @@ describe("fetchStats contract", () => {
   it("builds a URL with repeated segment, rating and choice params", () => {
     const url = buildStatsDashboardUrl("https://backend.example", {
       team: "team-1",
+      includeArchived: "true",
       segment: "a:b,,c:d",
       rating: ["rating-1:5", "thumbs-1:2"],
       choice: ["choice-1:opt-a", "choice-2:opt-b"],
@@ -51,6 +54,7 @@ describe("fetchStats contract", () => {
     const parsed = new URL(url);
     expect(parsed.pathname).toBe(STATS_DASHBOARD_PATH);
     expect(parsed.searchParams.get("team")).toBe("team-1");
+    expect(parsed.searchParams.get("includeArchived")).toBe("true");
     expect(parsed.searchParams.getAll("segment")).toEqual(["a:b", "c:d"]);
     expect(parsed.searchParams.getAll("rating")).toEqual([
       "rating-1:5",

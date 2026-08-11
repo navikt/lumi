@@ -6,12 +6,14 @@ import { z } from "zod";
 
 export const TeamParamsSchema = z.object({
   team: z.string().optional(),
+  includeArchived: z.string().optional(),
 });
 
 export type TeamParams = z.infer<typeof TeamParamsSchema>;
 
 export const StatsParamsSchema = z.object({
   team: z.string().optional(),
+  includeArchived: z.string().optional(),
   app: z.string().optional(),
   fromDate: z.string().optional(),
   toDate: z.string().optional(),
@@ -35,6 +37,7 @@ export type StatsParams = z.infer<typeof StatsParamsSchema>;
  */
 export const FeedbackParamsSchema = z.object({
   team: z.string().optional(),
+  includeArchived: z.string().optional(),
   app: z.string().optional(),
   surveyId: z.string().optional(),
   page: z.string().optional(),
@@ -66,6 +69,7 @@ export type FeedbackParams = z.infer<typeof FeedbackParamsSchema>;
 
 export const TopTasksParamsSchema = z.object({
   team: z.string().optional(),
+  includeArchived: z.string().optional(),
   app: z.string().optional(),
   surveyId: z.string().optional(),
   fromDate: z.string().optional(),
@@ -83,6 +87,7 @@ export type TopTasksParams = z.infer<typeof TopTasksParamsSchema>;
 
 export const DiscoveryParamsSchema = z.object({
   team: z.string().optional(),
+  includeArchived: z.string().optional(),
   app: z.string().optional(),
   surveyId: z.string().optional(),
   fromDate: z.string().optional(),
@@ -98,6 +103,7 @@ export type DiscoveryParams = z.infer<typeof DiscoveryParamsSchema>;
 
 export const BlockerParamsSchema = z.object({
   team: z.string().optional(),
+  includeArchived: z.string().optional(),
   app: z.string().optional(),
   surveyId: z.string().optional(),
   fromDate: z.string().optional(),
@@ -115,6 +121,7 @@ export type BlockerParams = z.infer<typeof BlockerParamsSchema>;
 
 export const TaskPriorityParamsSchema = z.object({
   team: z.string().optional(),
+  includeArchived: z.string().optional(),
   app: z.string().optional(),
   surveyId: z.string().optional(),
   fromDate: z.string().optional(),
@@ -148,6 +155,16 @@ export type DeleteSurvey = z.infer<typeof DeleteSurveySchema>;
 // Filter Bootstrap Response Schema
 // ============================================
 
+/**
+ * Per-survey dashboard metadata. Surveys without an entry are active;
+ * `archivedAt === null` means the survey was restored after being archived.
+ */
+export const SurveyMetaEntrySchema = z.object({
+  archivedAt: z.string().nullable(),
+});
+
+export type SurveyMetaEntry = z.infer<typeof SurveyMetaEntrySchema>;
+
 export const FilterBootstrapResponseSchema = z.object({
   generatedAt: z.string(),
   selectedTeam: z.string(),
@@ -156,6 +173,7 @@ export const FilterBootstrapResponseSchema = z.object({
   apps: z.array(z.string()),
   surveysByApp: z.record(z.string(), z.array(z.string())),
   tags: z.array(z.string()),
+  surveyMeta: z.record(z.string(), SurveyMetaEntrySchema).optional(),
 });
 
 export type FilterBootstrapResponse = z.infer<
@@ -167,6 +185,22 @@ export const FilterBootstrapParamsSchema = z.object({
 });
 
 export type FilterBootstrapParams = z.infer<typeof FilterBootstrapParamsSchema>;
+
+export const ArchiveSurveySchema = z.object({
+  surveyId: z.string(),
+  team: z.string().optional(),
+});
+
+export type ArchiveSurvey = z.infer<typeof ArchiveSurveySchema>;
+
+/** Response from PUT /surveys/{surveyId}/archive. */
+export const SurveyArchiveStateSchema = z.object({
+  surveyId: z.string(),
+  archivedAt: z.string().nullable(),
+  archivedBy: z.string().nullable(),
+});
+
+export type SurveyArchiveState = z.infer<typeof SurveyArchiveStateSchema>;
 
 export const DeleteFeedbackSchema = z.object({
   id: z.string(),
@@ -319,6 +353,7 @@ export type ContextTagsParams = z.infer<typeof ContextTagsParamsSchema>;
 export const ExportParamsSchema = z.object({
   format: z.enum(["csv", "json", "excel"]),
   team: z.string().optional(),
+  includeArchived: z.string().optional(),
   app: z.string().optional(),
   surveyId: z.string().optional(),
   fromDate: z.string().optional(),

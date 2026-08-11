@@ -21,6 +21,9 @@ export function useSurveyTotalCount(surveyId: string, enabled = true) {
         data: {
           team: params.team,
           surveyId,
+          // Destructive confirmation must count the complete survey even when
+          // its responses are hidden from the default archive view.
+          includeArchived: "true",
           // fetchFeedbackServerFn expects 1-indexed pages (it converts to backend 0-indexed)
           page: "1",
           size: "1", // Minimal data transfer, just need totalElements

@@ -249,6 +249,22 @@ class FeedbackRepositoryTest : FunSpec({
     }
 
     context("findPaginated") {
+        test("excludes archived surveys from the default result") {
+            insertTestFeedback(id = "active", team = "flex", surveyId = "survey-active")
+            insertTestFeedback(id = "archived", team = "flex", surveyId = "survey-archived")
+            SurveyMetadataRepository().archive("flex", "survey-archived", "A123456")
+
+            val (content, total, _) = repository.findPaginated(FeedbackQuery(team = "flex"))
+            val (allContent, allTotal, _) = repository.findPaginated(
+                FeedbackQuery(team = "flex", includeArchived = true)
+            )
+
+            total shouldBe 1
+            content.map { it.id } shouldBe listOf("active")
+            allTotal shouldBe 2
+            allContent.map { it.id }.toSet() shouldBe setOf("active", "archived")
+        }
+
         test("returns empty list when no feedback exists") {
             val (content, total, _) = repository.findPaginated(FeedbackQuery(team = "nonexistent"))
             

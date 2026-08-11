@@ -42,6 +42,7 @@ fun Route.feedbackRoutes(
 
         val query = FeedbackQuery(
             team = team,
+            includeArchived = params.includeArchived ?: false,
             app = params.app?.takeIf { it != FILTER_ALL },
             page = paging.page,
             size = paging.size,

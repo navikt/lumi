@@ -11,7 +11,11 @@ vi.mock("~/server/actions", () => ({
 // Mock useSearchParams
 vi.mock("~/hooks/useSearchParams", () => ({
   useSearchParams: vi.fn(() => ({
-    params: { app: "test-app", surveyId: "test-survey" },
+    params: {
+      app: "test-app",
+      surveyId: "test-survey",
+      showArchived: "true",
+    },
     setParam: vi.fn(),
     setParams: vi.fn(),
     resetParams: vi.fn(),
@@ -70,6 +74,9 @@ describe("useStats", () => {
     expect(result.current.data).toEqual(mockData);
     expect(result.current.data?.totalCount).toBe(100);
     expect(result.current.data?.surveyType).toBe("rating");
+    expect(mockFetchStats).toHaveBeenCalledWith({
+      data: expect.objectContaining({ includeArchived: "true" }),
+    });
   });
 
   it("correctly calculates averageRating from data", async () => {

@@ -17,6 +17,7 @@ export const searchSchema = z
     query: optionalStringParam,
     tag: optionalStringParam,
     surveyId: optionalStringParam,
+    showArchived: optionalStringParam,
     lowRating: optionalStringParam,
     deviceType: optionalStringParam,
     theme: optionalStringParam,

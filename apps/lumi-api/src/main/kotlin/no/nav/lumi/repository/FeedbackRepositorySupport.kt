@@ -22,6 +22,10 @@ internal fun String.escapeLikePattern(): String {
 }
 
 internal fun applyCommonFilters(query: Query, criteria: FeedbackQuery, log: Logger) {
+    if (!criteria.includeArchived) {
+        query.andWhere { SurveyIsNotArchived() }
+    }
+
     // Filter for feedback with text responses
     if (criteria.hasText) {
         query.andWhere {
