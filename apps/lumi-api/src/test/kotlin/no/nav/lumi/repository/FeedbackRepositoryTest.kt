@@ -248,6 +248,27 @@ class FeedbackRepositoryTest : FunSpec({
         }
     }
 
+    context("findLastSubmissionBySurvey") {
+        test("returns the newest submission timestamp per survey, team-scoped") {
+            val old = OffsetDateTime.parse("2026-06-01T10:00:00+02:00")
+            val newer = OffsetDateTime.parse("2026-08-01T10:00:00+02:00")
+            insertTestFeedback(id = "a1", team = "flex", surveyId = "survey-a", opprettet = old)
+            insertTestFeedback(id = "a2", team = "flex", surveyId = "survey-a", opprettet = newer)
+            insertTestFeedback(id = "b1", team = "flex", surveyId = "survey-b", opprettet = old)
+            insertTestFeedback(id = "other", team = "team-test", surveyId = "survey-a", opprettet = newer)
+
+            val result = repository.findLastSubmissionBySurvey("flex")
+
+            result.keys shouldBe setOf("survey-a", "survey-b")
+            java.time.Instant.parse(result["survey-a"]) shouldBe newer.toInstant()
+            java.time.Instant.parse(result["survey-b"]) shouldBe old.toInstant()
+        }
+
+        test("returns empty map for a team without feedback") {
+            repository.findLastSubmissionBySurvey("nonexistent") shouldBe emptyMap()
+        }
+    }
+
     context("findPaginated") {
         test("excludes archived surveys from the default result") {
             insertTestFeedback(id = "active", team = "flex", surveyId = "survey-active")

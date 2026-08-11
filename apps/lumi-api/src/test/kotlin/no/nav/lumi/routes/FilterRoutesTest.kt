@@ -129,6 +129,69 @@ class FilterRoutesTest : FunSpec({
         }
     }
 
+    test("bootstrap exposes lastSubmissionAt for every survey with feedback") {
+        testApplication {
+            application { testModule() }
+            insertTestFeedback(surveyId = "survey-1")
+            insertTestFeedback(surveyId = "survey-archived")
+            SurveyMetadataRepository().archive(
+                team = "team-test",
+                surveyId = "survey-archived",
+                archivedBy = "A123456",
+            )
+
+            val response = createTestClient().get("/api/v1/intern/filters/bootstrap?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.OK
+            val surveyMeta = Json.parseToJsonElement(response.bodyAsText())
+                .jsonObject["surveyMeta"]!!.jsonObject
+
+            // Active survey with feedback gets an entry with recency but no archive state
+            val activeEntry = surveyMeta["survey-1"]!!.jsonObject
+            activeEntry["archivedAt"] shouldBe JsonNull
+            activeEntry["lastSubmissionAt"] shouldNotBe JsonNull
+            activeEntry["lastSubmissionAt"] shouldNotBe null
+
+            // Archived survey keeps both fields
+            val archivedEntry = surveyMeta["survey-archived"]!!.jsonObject
+            archivedEntry["archivedAt"] shouldNotBe JsonNull
+            archivedEntry["lastSubmissionAt"] shouldNotBe JsonNull
+        }
+    }
+
+    test("bootstrap gives the badge its data: submission after archiving moves lastSubmissionAt past archivedAt") {
+        testApplication {
+            application { testModule() }
+            insertTestFeedback(
+                surveyId = "survey-zombie",
+                opprettet = java.time.OffsetDateTime.now().minusDays(10),
+            )
+
+            createTestClient().put("/api/v1/intern/surveys/survey-zombie/archive?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }.status shouldBe HttpStatusCode.OK
+
+            // New submission arrives after archiving (widget still deployed)
+            insertTestFeedback(surveyId = "survey-zombie")
+
+            val response = createTestClient().get("/api/v1/intern/filters/bootstrap?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+            val entry = Json.parseToJsonElement(response.bodyAsText())
+                .jsonObject["surveyMeta"]!!.jsonObject["survey-zombie"]!!.jsonObject
+
+            val archivedAt = java.time.OffsetDateTime.parse(
+                entry["archivedAt"]!!.jsonPrimitive.content,
+            ).toInstant()
+            val lastSubmissionAt = java.time.Instant.parse(
+                entry["lastSubmissionAt"]!!.jsonPrimitive.content,
+            )
+            (lastSubmissionAt > archivedAt) shouldBe true
+        }
+    }
+
     test("archiving a survey is visible in bootstrap without waiting for cache TTL") {
         testApplication {
             application { testModule() }
@@ -140,7 +203,8 @@ class FilterRoutesTest : FunSpec({
             }
             first.status shouldBe HttpStatusCode.OK
             Json.parseToJsonElement(first.bodyAsText())
-                .jsonObject["surveyMeta"]?.jsonObject?.get("survey-1") shouldBe null
+                .jsonObject["surveyMeta"]?.jsonObject?.get("survey-1")
+                ?.jsonObject?.get("archivedAt") shouldBe JsonNull
 
             createTestClient().put("/api/v1/intern/surveys/survey-1/archive?team=team-test") {
                 header(HttpHeaders.Authorization, "Bearer test-token")

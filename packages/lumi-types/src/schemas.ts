@@ -161,6 +161,8 @@ export type DeleteSurvey = z.infer<typeof DeleteSurveySchema>;
  */
 export const SurveyMetaEntrySchema = z.object({
   archivedAt: z.string().nullable(),
+  /** Newest submission for the survey (ISO-8601). Absent for surveys without feedback. */
+  lastSubmissionAt: z.string().nullable().optional(),
 });
 
 export type SurveyMetaEntry = z.infer<typeof SurveyMetaEntrySchema>;

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatRelativeSubmissionTime,
+  isReceivingAfterArchive,
   isSurveyArchived,
   partitionSurveyOptions,
 } from "../surveyArchiveUtils";
@@ -83,5 +85,83 @@ describe("partitionSurveyOptions", () => {
     expect(result.active).toEqual(availableSurveys);
     expect(result.archived).toEqual([]);
     expect(result.hasArchived).toBe(false);
+  });
+});
+
+describe("formatRelativeSubmissionTime", () => {
+  const now = new Date("2026-08-11T12:00:00Z");
+
+  it("labels same-day submissions as today", () => {
+    expect(formatRelativeSubmissionTime("2026-08-11T08:00:00Z", now)).toBe(
+      "i dag",
+    );
+  });
+
+  it("labels one day ago as yesterday", () => {
+    expect(formatRelativeSubmissionTime("2026-08-10T08:00:00Z", now)).toBe(
+      "i går",
+    );
+  });
+
+  it("uses days below one month", () => {
+    expect(formatRelativeSubmissionTime("2026-08-01T08:00:00Z", now)).toBe(
+      "for 10 dager siden",
+    );
+  });
+
+  it("uses months below one year", () => {
+    expect(formatRelativeSubmissionTime("2026-05-11T08:00:00Z", now)).toBe(
+      "for 3 md. siden",
+    );
+  });
+
+  it("uses years beyond one year", () => {
+    expect(formatRelativeSubmissionTime("2024-05-11T08:00:00Z", now)).toBe(
+      "for 2 år siden",
+    );
+  });
+});
+
+describe("isReceivingAfterArchive", () => {
+  it("is true only when a submission arrived after archiving", () => {
+    expect(
+      isReceivingAfterArchive({
+        archivedAt: "2026-08-01T10:00:00Z",
+        lastSubmissionAt: "2026-08-05T10:00:00Z",
+      }),
+    ).toBe(true);
+    expect(
+      isReceivingAfterArchive({
+        archivedAt: "2026-08-01T10:00:00Z",
+        lastSubmissionAt: "2026-07-20T10:00:00Z",
+      }),
+    ).toBe(false);
+  });
+
+  it("compares timestamps across offset formats", () => {
+    // Backend emits archivedAt as OffsetDateTime (+02:00) and
+    // lastSubmissionAt as UTC Instant — string comparison would be wrong.
+    expect(
+      isReceivingAfterArchive({
+        archivedAt: "2026-08-01T12:00:00+02:00",
+        lastSubmissionAt: "2026-08-01T10:30:00Z",
+      }),
+    ).toBe(true);
+  });
+
+  it("is false for active surveys and missing data", () => {
+    expect(
+      isReceivingAfterArchive({
+        archivedAt: null,
+        lastSubmissionAt: "2026-08-05T10:00:00Z",
+      }),
+    ).toBe(false);
+    expect(
+      isReceivingAfterArchive({
+        archivedAt: "2026-08-01T10:00:00Z",
+        lastSubmissionAt: null,
+      }),
+    ).toBe(false);
+    expect(isReceivingAfterArchive(undefined)).toBe(false);
   });
 });

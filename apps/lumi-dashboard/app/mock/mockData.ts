@@ -628,7 +628,10 @@ export function getMockFilterBootstrap(team?: string): {
   apps: string[];
   surveysByApp: Record<string, string[]>;
   tags: string[];
-  surveyMeta: Record<string, { archivedAt: string | null }>;
+  surveyMeta: Record<
+    string,
+    { archivedAt: string | null; lastSubmissionAt?: string }
+  >;
 } {
   void team;
   const availableTeams = ["team-esyfo"];
@@ -638,6 +641,32 @@ export function getMockFilterBootstrap(team?: string): {
   const apps = Object.keys(surveysByApp).sort();
   const tags = getMockTags(selectedTeam);
 
+  // Mirrors the backend's MAX(opprettet)-per-survey aggregation
+  const lastSubmissionBySurvey: Record<string, string> = {};
+  for (const item of getMockItemsForTeam(selectedTeam)) {
+    if (!item.surveyId) continue;
+    const current = lastSubmissionBySurvey[item.surveyId];
+    if (!current || item.submittedAt > current) {
+      lastSubmissionBySurvey[item.surveyId] = item.submittedAt;
+    }
+  }
+
+  const surveyMeta: Record<
+    string,
+    { archivedAt: string | null; lastSubmissionAt?: string }
+  > = {};
+  for (const [surveyId, lastSubmissionAt] of Object.entries(
+    lastSubmissionBySurvey,
+  )) {
+    surveyMeta[surveyId] = { archivedAt: null, lastSubmissionAt };
+  }
+  for (const [surveyId, meta] of Object.entries(mockSurveyMeta)) {
+    surveyMeta[surveyId] = {
+      ...(surveyMeta[surveyId] ?? {}),
+      archivedAt: meta.archivedAt,
+    };
+  }
+
   return {
     generatedAt: new Date().toISOString(),
     selectedTeam,
@@ -646,7 +675,7 @@ export function getMockFilterBootstrap(team?: string): {
     apps,
     surveysByApp,
     tags,
-    surveyMeta: { ...mockSurveyMeta },
+    surveyMeta,
   };
 }
 

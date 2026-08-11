@@ -37,6 +37,36 @@ class FeedbackContextTagsRepository {
         }
     }
 
+    /**
+     * Latest submission timestamp (ISO-8601, UTC) per surveyId for a team.
+     * Reads surveyId from feedback_json so pre-V12 rows (NULL survey_id column)
+     * are included — same semantics as the derived survey list above.
+     */
+    suspend fun findLastSubmissionBySurvey(team: String): Map<String, String> {
+        return dbQuery {
+            val sql = """
+                SELECT
+                    feedback_json::jsonb->>'surveyId' as survey_id,
+                    MAX(opprettet) as last_submission_at
+                FROM feedback
+                WHERE team = ?
+                  AND feedback_json::jsonb->>'surveyId' IS NOT NULL
+                GROUP BY feedback_json::jsonb->>'surveyId'
+            """.trimIndent()
+
+            val result = mutableMapOf<String, String>()
+            val transaction = TransactionManager.current()
+            transaction.exec(sql, listOf(VarCharColumnType() to team)) { rs ->
+                while (rs.next()) {
+                    val surveyId = rs.getString("survey_id") ?: continue
+                    val lastSubmissionAt = rs.getTimestamp("last_submission_at") ?: continue
+                    result[surveyId] = lastSubmissionAt.toInstant().toString()
+                }
+            }
+            result
+        }
+    }
+
     suspend fun findMetadataKeysForSurvey(surveyId: String, team: String): Map<String, Set<String>> {
         return dbQuery {
             val sql = """
