@@ -81,6 +81,8 @@ class SurveyDefinitionServiceTest : FunSpec({
 
         exception.message shouldContain "Survey definition conflict for surveyId=survey-choice"
         exception.message shouldContain "optionIds [apply] -> [apply, follow-up]"
+        exception.team shouldBe "team-a"
+        exception.surveyId shouldBe "survey-choice"
     }
 
     test("label changes are accepted without 409") {
@@ -982,11 +984,11 @@ private fun shouldThrowBadRequest(block: suspend () -> Unit): ApiErrorException.
     }
 }
 
-private fun shouldThrowConflict(block: suspend () -> Unit): ApiErrorException.ConflictException {
+private fun shouldThrowConflict(block: suspend () -> Unit): ApiErrorException.DefinitionConflictException {
     return try {
         kotlinx.coroutines.runBlocking { block() }
-        throw AssertionError("Expected ConflictException")
-    } catch (exception: ApiErrorException.ConflictException) {
+        throw AssertionError("Expected DefinitionConflictException")
+    } catch (exception: ApiErrorException.DefinitionConflictException) {
         exception
     }
 }

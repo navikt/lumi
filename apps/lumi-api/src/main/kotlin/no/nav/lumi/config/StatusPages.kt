@@ -9,14 +9,26 @@ import io.ktor.server.response.*
 import no.nav.lumi.config.exception.ApiError
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.config.exception.ErrorType
+import no.nav.lumi.config.auth.CallerIdentityKey
 import org.slf4j.LoggerFactory
 
 private val statusPageLog = LoggerFactory.getLogger("StatusPages")
+private val defaultDefinitionConflictObservability = DefinitionConflictObservability()
 
-fun Application.configureStatusPages() {
+fun Application.configureStatusPages(
+    definitionConflictObservability: DefinitionConflictObservability = defaultDefinitionConflictObservability
+) {
     install(StatusPages) {
         exception<Throwable> { call, cause ->
-            logException(call, cause)
+            if (cause is ApiErrorException.DefinitionConflictException) {
+                definitionConflictObservability.record(
+                    conflict = cause,
+                    path = call.request.path(),
+                    app = call.attributes.getOrNull(CallerIdentityKey)?.app
+                )
+            } else {
+                logException(call, cause)
+            }
             val apiError = determineApiError(cause, call.request.path())
             call.respond(HttpStatusCode.fromValue(apiError.status), apiError)
         }

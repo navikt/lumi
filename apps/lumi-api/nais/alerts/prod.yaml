@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: lumi-api-definition-conflicts
+  namespace: team-esyfo
+  labels:
+    team: team-esyfo
+spec:
+  groups:
+    - name: lumi-api-definition-conflicts
+      rules:
+        - alert: LumiSurveyDefinitionConflict
+          expr: sum(increase(lumi_survey_definition_conflicts_total{app="lumi-api"}[5m])) > 0
+          annotations:
+            summary: "Lumi avviser innsendinger på grunn av definisjonskonflikt"
+            consequence: "Minst én survey-innsending er avvist med 409 og er ikke lagret."
+            action: "Finn team, app og survey_id i de strukturerte loggene og følg runbooken."
+            runbook_url: "https://github.com/navikt/lumi/blob/main/apps/lumi-api/docs/runbooks/survey-definition-conflicts.md"
+          labels:
+            severity: warning
+            namespace: team-esyfo
