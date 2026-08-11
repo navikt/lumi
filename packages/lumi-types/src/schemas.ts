@@ -6,12 +6,14 @@ import { z } from "zod";
 
 export const TeamParamsSchema = z.object({
   team: z.string().optional(),
+  includeArchived: z.string().optional(),
 });
 
 export type TeamParams = z.infer<typeof TeamParamsSchema>;
 
 export const StatsParamsSchema = z.object({
   team: z.string().optional(),
+  includeArchived: z.string().optional(),
   app: z.string().optional(),
   fromDate: z.string().optional(),
   toDate: z.string().optional(),
@@ -35,6 +37,7 @@ export type StatsParams = z.infer<typeof StatsParamsSchema>;
  */
 export const FeedbackParamsSchema = z.object({
   team: z.string().optional(),
+  includeArchived: z.string().optional(),
   app: z.string().optional(),
   surveyId: z.string().optional(),
   page: z.string().optional(),
@@ -66,6 +69,7 @@ export type FeedbackParams = z.infer<typeof FeedbackParamsSchema>;
 
 export const TopTasksParamsSchema = z.object({
   team: z.string().optional(),
+  includeArchived: z.string().optional(),
   app: z.string().optional(),
   surveyId: z.string().optional(),
   fromDate: z.string().optional(),
@@ -83,6 +87,7 @@ export type TopTasksParams = z.infer<typeof TopTasksParamsSchema>;
 
 export const DiscoveryParamsSchema = z.object({
   team: z.string().optional(),
+  includeArchived: z.string().optional(),
   app: z.string().optional(),
   surveyId: z.string().optional(),
   fromDate: z.string().optional(),
@@ -98,6 +103,7 @@ export type DiscoveryParams = z.infer<typeof DiscoveryParamsSchema>;
 
 export const BlockerParamsSchema = z.object({
   team: z.string().optional(),
+  includeArchived: z.string().optional(),
   app: z.string().optional(),
   surveyId: z.string().optional(),
   fromDate: z.string().optional(),
@@ -115,6 +121,7 @@ export type BlockerParams = z.infer<typeof BlockerParamsSchema>;
 
 export const TaskPriorityParamsSchema = z.object({
   team: z.string().optional(),
+  includeArchived: z.string().optional(),
   app: z.string().optional(),
   surveyId: z.string().optional(),
   fromDate: z.string().optional(),
@@ -346,6 +353,7 @@ export type ContextTagsParams = z.infer<typeof ContextTagsParamsSchema>;
 export const ExportParamsSchema = z.object({
   format: z.enum(["csv", "json", "excel"]),
   team: z.string().optional(),
+  includeArchived: z.string().optional(),
   app: z.string().optional(),
   surveyId: z.string().optional(),
   fromDate: z.string().optional(),

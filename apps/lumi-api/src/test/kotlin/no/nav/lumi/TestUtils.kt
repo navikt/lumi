@@ -304,7 +304,10 @@ fun Application.testModule(
             
             feedbackRoutes(feedbackService, statsCacheInvalidator)
             surveyFacetRoutes(feedbackService, statsCacheInvalidator)
-            surveyArchiveRoutes(bootstrapCache = bootstrapCache)
+            surveyArchiveRoutes(
+                bootstrapCache = bootstrapCache,
+                statsCacheInvalidator = statsCacheInvalidator,
+            )
             filterRoutes(bootstrapCache = bootstrapCache)
             markerRoutes()
             statsRoutes(statsService)

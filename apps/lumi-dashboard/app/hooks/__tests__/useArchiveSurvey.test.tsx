@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,11 +8,16 @@ vi.mock("~/server/actions", () => ({
   unarchiveSurveyServerFn: vi.fn(),
 }));
 
+const { mockParams, mockSetParams } = vi.hoisted(() => ({
+  mockParams: { team: "team-test", surveyId: "survey-1" },
+  mockSetParams: vi.fn(),
+}));
+
 vi.mock("~/hooks/useSearchParams", () => ({
   useSearchParams: vi.fn(() => ({
-    params: { team: "team-test" },
+    params: mockParams,
     setParam: vi.fn(),
-    setParams: vi.fn(),
+    setParams: mockSetParams,
     resetParams: vi.fn(),
   })),
 }));
@@ -72,6 +77,7 @@ describe("useArchiveSurvey", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["filterBootstrap"],
     });
+    expect(mockSetParams).toHaveBeenCalledWith({ showArchived: "true" });
   });
 
   it("restores the survey for the selected team and refreshes bootstrap data", async () => {
@@ -93,5 +99,31 @@ describe("useArchiveSurvey", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["filterBootstrap"],
     });
+  });
+
+  it("resets a restore error when the selected survey changes", async () => {
+    const queryClient = createQueryClient();
+    mockUnarchive.mockRejectedValueOnce(new Error("restore failed"));
+
+    const { result, rerender } = renderHook(
+      ({ surveyId }) => useArchiveSurvey(surveyId),
+      {
+        initialProps: { surveyId: "survey-1" },
+        wrapper: createWrapper(queryClient),
+      },
+    );
+
+    act(() => {
+      result.current.restoreMutation.mutate("survey-1");
+    });
+    await waitFor(() =>
+      expect(result.current.restoreMutation.isError).toBe(true),
+    );
+
+    rerender({ surveyId: "survey-2" });
+
+    await waitFor(() =>
+      expect(result.current.restoreMutation.isError).toBe(false),
+    );
   });
 });

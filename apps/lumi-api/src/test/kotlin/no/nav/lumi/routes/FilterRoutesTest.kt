@@ -19,8 +19,10 @@ import no.nav.lumi.TestDatabase
 import no.nav.lumi.config.auth.BrukerPrincipal
 import no.nav.lumi.createTestClient
 import no.nav.lumi.insertTestFeedback
+import no.nav.lumi.integrations.valkey.InMemoryStringCache
 import no.nav.lumi.repository.SurveyMetadataRepository
 import no.nav.lumi.testModule
+import java.time.Duration
 
 class FilterRoutesTest : FunSpec({
     beforeSpec {
@@ -47,6 +49,26 @@ class FilterRoutesTest : FunSpec({
         bootstrapCacheKey("team-test", principal) shouldBe "team=team-test&user=test.user@nav.no"
     }
 
+    test("bootstrapCacheKey falls back to email when navIdent is blank") {
+        val principal = BrukerPrincipal(
+            navIdent = "  ",
+            name = null,
+            email = "Test.User@nav.no",
+            clientId = null,
+        )
+        bootstrapCacheKey("team-test", principal) shouldBe "team=team-test&user=test.user@nav.no"
+    }
+
+    test("bootstrapCacheKey returns null when navIdent and email are blank") {
+        val principal = BrukerPrincipal(
+            navIdent = "",
+            name = "Uten Identitet",
+            email = "  ",
+            clientId = "dev-gcp:team:app",
+        )
+        bootstrapCacheKey("team-test", principal) shouldBe null
+    }
+
     test("bootstrapCacheKey returns null when the principal has no stable user identity") {
         val principal = BrukerPrincipal(
             navIdent = null,
@@ -55,6 +77,22 @@ class FilterRoutesTest : FunSpec({
             clientId = "dev-gcp:team:app",
         )
         bootstrapCacheKey("team-test", principal) shouldBe null
+    }
+
+    test("versioned bootstrap cache ignores a stale write after invalidation") {
+        val cache = VersionedBootstrapCache(InMemoryStringCache())
+        val principal = BrukerPrincipal(
+            navIdent = "A123456",
+            name = null,
+            email = "test@nav.no",
+            clientId = null,
+        )
+        val staleLookup = cache.lookup("team-test", principal)
+
+        cache.invalidate("team-test")
+        cache.set(staleLookup, "stale", Duration.ofMinutes(5))
+
+        cache.lookup("team-test", principal).value shouldBe null
     }
 
     beforeTest {

@@ -9,8 +9,10 @@ import no.nav.lumi.config.auth.authorizedPrincipal
 import no.nav.lumi.config.auth.authorizedTeam
 import no.nav.lumi.integrations.valkey.StringCache
 import no.nav.lumi.repository.SurveyMetadataRepository
+import no.nav.lumi.service.StatsCacheInvalidator
 
 private val defaultSurveyMetadataRepository = SurveyMetadataRepository()
+private val defaultArchiveStatsCacheInvalidator = StatsCacheInvalidator()
 
 /**
  * Archive/restore surveys (team-scoped display metadata).
@@ -21,27 +23,30 @@ private val defaultSurveyMetadataRepository = SurveyMetadataRepository()
 fun Route.surveyArchiveRoutes(
     surveyMetadataRepository: SurveyMetadataRepository = defaultSurveyMetadataRepository,
     bootstrapCache: StringCache = sharedBootstrapCache,
+    statsCacheInvalidator: StatsCacheInvalidator = defaultArchiveStatsCacheInvalidator,
 ) {
+    val versionedBootstrapCache = VersionedBootstrapCache(bootstrapCache)
+
     put<ApiV1Intern.Surveys.Id.Archive> { params ->
         val team = call.authorizedTeam
-        val archivedBy = call.authorizedPrincipal.navIdent ?: call.authorizedPrincipal.email
+        val archivedBy = stablePrincipalIdentity(call.authorizedPrincipal)
 
         val state = surveyMetadataRepository.archive(
             team = team,
             surveyId = params.parent.surveyId,
             archivedBy = archivedBy,
         )
-        bootstrapCache.clearByPrefix(bootstrapCacheTeamPrefix(team))
+        versionedBootstrapCache.invalidate(team)
+        statsCacheInvalidator.invalidateTeam(team)
         call.respond(state)
     }
 
     delete<ApiV1Intern.Surveys.Id.Archive> { params ->
         val team = call.authorizedTeam
 
-        val changed = surveyMetadataRepository.unarchive(team = team, surveyId = params.parent.surveyId)
-        if (changed) {
-            bootstrapCache.clearByPrefix(bootstrapCacheTeamPrefix(team))
-        }
+        surveyMetadataRepository.unarchive(team = team, surveyId = params.parent.surveyId)
+        versionedBootstrapCache.invalidate(team)
+        statsCacheInvalidator.invalidateTeam(team)
         call.respond(HttpStatusCode.NoContent)
     }
 }

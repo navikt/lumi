@@ -49,7 +49,7 @@ export function FeedbackTable() {
   const [feedbackToDelete, setFeedbackToDelete] = useState<string | null>(null);
   const deleteFeedbackMutation = useDeleteFeedback();
   const { data: bootstrap } = useFilterBootstrap();
-  const { restoreMutation } = useArchiveSurvey();
+  const { restoreMutation } = useArchiveSurvey(params.surveyId);
 
   const toggleExpanded = (id: string) => {
     setExpandedRows((prev) => {

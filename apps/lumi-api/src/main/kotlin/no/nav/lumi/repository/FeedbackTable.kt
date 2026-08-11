@@ -73,6 +73,21 @@ class JsonExtract(val col: Column<*>, val path: List<String>) : Function<String>
 }
 
 /**
+ * Excludes feedback whose team + surveyId has an active archive marker.
+ * Uses feedback_json rather than the nullable feedback.survey_id column so
+ * submissions created before V12 follow the same visibility semantics.
+ */
+class SurveyIsNotArchived : Op<Boolean>() {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) {
+        queryBuilder.append("NOT EXISTS (SELECT 1 FROM survey_metadata WHERE survey_metadata.team = ")
+        queryBuilder.append(FeedbackTable.team)
+        queryBuilder.append(" AND survey_metadata.survey_id = ")
+        JsonExtract(FeedbackTable.feedbackJson, listOf("surveyId")).toQueryBuilder(queryBuilder)
+        queryBuilder.append(" AND survey_metadata.archived_at IS NOT NULL)")
+    }
+}
+
+/**
  * PostgreSQL COALESCE(expr1, expr2, ...) helper for String expressions.
  */
 class CoalesceString(vararg val expr: Expression<String>) : Function<String>(VarCharColumnType()) {

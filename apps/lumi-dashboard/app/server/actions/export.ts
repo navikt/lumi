@@ -1,7 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { zodValidator } from "@tanstack/zod-adapter";
 import ExcelJS from "exceljs";
-import { mockFeedbackItems } from "~/mock/mockData";
+import {
+  filterMockArchiveVisibility,
+  mockFeedbackItems,
+} from "~/mock/mockData";
 import { applyFeedbackFilters } from "~/mock/utils/filters";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
@@ -178,6 +181,7 @@ function transformToBackendParams(data: ExportParams) {
   return {
     format: data.format,
     team: data.team,
+    includeArchived: data.includeArchived === "true" ? "true" : undefined,
     app: data.app,
     surveyId: data.surveyId,
     fromDate: data.fromDate,
@@ -208,7 +212,10 @@ export const exportServerFn = createServerFn({ method: "POST" })
       await mockDelay();
 
       const filtered = applyFeedbackFilters(
-        mockFeedbackItems,
+        filterMockArchiveVisibility(
+          mockFeedbackItems,
+          data.includeArchived === "true",
+        ),
         toMockSearchParams(data),
       ).slice(0, 10_000);
 

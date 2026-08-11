@@ -17,6 +17,7 @@ export function useFeedback() {
     queryKey: [
       "feedback",
       params.team,
+      params.showArchived,
       params.app,
       params.surveyId,
       params.page,
@@ -39,6 +40,7 @@ export function useFeedback() {
       fetchFeedbackServerFn({
         data: {
           team: params.team,
+          includeArchived: params.showArchived === "true" ? "true" : undefined,
           app: params.app,
           surveyId: params.surveyId,
           page: params.page,

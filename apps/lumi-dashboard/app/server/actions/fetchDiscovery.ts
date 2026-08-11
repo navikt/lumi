@@ -15,6 +15,7 @@ import { handleApiResponse } from "../fetchUtils";
 
 interface DiscoveryActionParams {
   team?: string;
+  includeArchived?: string;
   app?: string;
   surveyId?: string;
   fromDate?: string;
@@ -54,6 +55,7 @@ export const fetchDiscoveryServerFn = createServerFn({ method: "GET" })
 
     const backendParams = {
       team: data.team,
+      includeArchived: data.includeArchived === "true" ? "true" : undefined,
       app: data.app,
       surveyId: data.surveyId,
       fromDate: data.fromDate,

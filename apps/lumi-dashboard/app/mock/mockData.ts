@@ -450,17 +450,11 @@ export function filterFeedback(
 // ============================================
 
 export function getMockStats(params: URLSearchParams): FeedbackStats {
-  return calculateStats(
-    getMockItemsForTeam(params.get("team") ?? undefined),
-    params,
-  );
+  return calculateStats(getMockAnalyticsItems(params), params);
 }
 
 export function getMockFeedback(params: URLSearchParams): FeedbackPage {
-  return filterFeedback(
-    getMockItemsForTeam(params.get("team") ?? undefined),
-    params,
-  );
+  return filterFeedback(getMockAnalyticsItems(params), params);
 }
 
 export function getMockTeams(): TeamsAndApps {
@@ -487,45 +481,39 @@ export function getMockTags(team?: string): string[] {
 export function getMockTopTasksStats(
   params: URLSearchParams,
 ): TopTasksResponse {
-  return calculateTopTasksStats(
-    getMockItemsForTeam(params.get("team") ?? undefined),
-    params,
-  );
+  return calculateTopTasksStats(getMockAnalyticsItems(params), params);
 }
 
 export function getMockDiscoveryStats(
   params: URLSearchParams,
 ): DiscoveryResponse {
-  return calculateDiscoveryStats(
-    getMockItemsForTeam(params.get("team") ?? undefined),
-    params,
-  );
+  return calculateDiscoveryStats(getMockAnalyticsItems(params), params);
 }
 
 export function getMockTaskPriorityStats(
   params: URLSearchParams,
 ): TaskPriorityResponse {
-  return calculateTaskPriorityStats(
-    getMockItemsForTeam(params.get("team") ?? undefined),
-    params,
-  );
+  return calculateTaskPriorityStats(getMockAnalyticsItems(params), params);
 }
 
 export function getMockBlockerStats(params: URLSearchParams): BlockerResponse {
-  return calculateBlockerStats(
-    getMockItemsForTeam(params.get("team") ?? undefined),
-    params,
-  );
+  return calculateBlockerStats(getMockAnalyticsItems(params), params);
 }
 
-export function getMockSurveyTypeDistribution(team?: string): {
+export function getMockSurveyTypeDistribution(
+  team?: string,
+  includeArchived = false,
+): {
   totalSurveys: number;
   distribution: { type: string; count: number; percentage: number }[];
 } {
   const typeCounts: Record<string, number> = {};
   const seenSurveys = new Set<string>();
 
-  for (const item of getMockItemsForTeam(team)) {
+  for (const item of filterMockArchiveVisibility(
+    getMockItemsForTeam(team),
+    includeArchived,
+  )) {
     const surveyId = item.surveyId;
     if (seenSurveys.has(surveyId)) continue;
     seenSurveys.add(surveyId);
@@ -592,6 +580,23 @@ export function getMockSurveysByApp(team?: string): Record<string, string[]> {
 const mockSurveyMeta: Record<string, { archivedAt: string | null }> = {
   "survey-thumbs": { archivedAt: "2026-07-01T10:00:00.000Z" },
 };
+
+export function filterMockArchiveVisibility(
+  items: FeedbackDto[],
+  includeArchived: boolean,
+): FeedbackDto[] {
+  if (includeArchived) return items;
+  return items.filter(
+    (item) => mockSurveyMeta[item.surveyId]?.archivedAt == null,
+  );
+}
+
+function getMockAnalyticsItems(params: URLSearchParams): FeedbackDto[] {
+  return filterMockArchiveVisibility(
+    getMockItemsForTeam(params.get("team") ?? undefined),
+    params.get("includeArchived") === "true",
+  );
+}
 
 export function archiveMockSurvey(surveyId: string): {
   surveyId: string;

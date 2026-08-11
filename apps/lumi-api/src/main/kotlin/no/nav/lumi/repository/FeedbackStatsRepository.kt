@@ -523,6 +523,9 @@ class FeedbackStatsRepository {
     
     private fun applyStatsFilters(query: Query, criteria: StatsQuery) {
         query.andWhere { FeedbackTable.team eq criteria.team }
+        if (!criteria.includeArchived) {
+            query.andWhere { SurveyIsNotArchived() }
+        }
         criteria.app?.let { query.andWhere { FeedbackTable.app eq it } }
         
         // Survey ID filter

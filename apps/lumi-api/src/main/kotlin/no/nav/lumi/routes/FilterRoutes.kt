@@ -60,14 +60,52 @@ internal val sharedBootstrapCache: StringCache by lazy {
 /** Cache-key prefix covering every user's bootstrap entry for a team. */
 internal fun bootstrapCacheTeamPrefix(team: String) = "team=${team.lowercase()}&"
 
+private fun bootstrapCacheGenerationKey(team: String) = "generation:team=${team.lowercase()}"
+
 /**
  * Per-user bootstrap cache key, or null when the principal has no stable user
  * identity — the response includes `availableTeams`, so a shared key (e.g.
  * "user=null") could leak one user's team memberships to another.
  */
 internal fun bootstrapCacheKey(team: String, principal: no.nav.lumi.config.auth.BrukerPrincipal): String? {
-    val userIdentity = principal.navIdent ?: principal.email ?: return null
+    val userIdentity = stablePrincipalIdentity(principal) ?: return null
     return "${bootstrapCacheTeamPrefix(team)}user=$userIdentity".lowercase()
+}
+
+internal fun stablePrincipalIdentity(principal: no.nav.lumi.config.auth.BrukerPrincipal): String? =
+    principal.navIdent?.trim()?.takeIf { it.isNotEmpty() }
+        ?: principal.email?.trim()?.takeIf { it.isNotEmpty() }
+
+internal data class BootstrapCacheLookup(
+    val key: String?,
+    val value: String?,
+)
+
+/**
+ * Versioned cache access prevents an in-flight GET from refilling a stale
+ * entry after a concurrent archive/restore invalidation. The mutation first
+ * advances the team generation; late writes remain on the old generation.
+ */
+internal class VersionedBootstrapCache(private val cache: StringCache) {
+    fun lookup(
+        team: String,
+        principal: no.nav.lumi.config.auth.BrukerPrincipal,
+    ): BootstrapCacheLookup {
+        val userKey = bootstrapCacheKey(team, principal)
+            ?: return BootstrapCacheLookup(key = null, value = null)
+        val generation = cache.get(bootstrapCacheGenerationKey(team))?.toLongOrNull() ?: 0L
+        val key = "$userKey&generation=$generation"
+        return BootstrapCacheLookup(key = key, value = cache.get(key))
+    }
+
+    fun set(lookup: BootstrapCacheLookup, value: String, ttl: Duration) {
+        lookup.key?.let { cache.set(it, value, ttl) }
+    }
+
+    fun invalidate(team: String) {
+        cache.increment(bootstrapCacheGenerationKey(team))
+        cache.clearByPrefix(bootstrapCacheTeamPrefix(team))
+    }
 }
 
 private val json = Json {
@@ -86,6 +124,8 @@ fun Route.filterRoutes(
     surveyMetadataRepository: SurveyMetadataRepository = defaultSurveyMetadataRepository,
     bootstrapCache: StringCache = sharedBootstrapCache,
 ) {
+    val versionedBootstrapCache = VersionedBootstrapCache(bootstrapCache)
+
     get<ApiV1Intern.Filters.Bootstrap> {
         val team = call.authorizedTeam
         val teams = call.authorizedTeams
@@ -94,9 +134,9 @@ fun Route.filterRoutes(
         // Cache is shared across users (Valkey). Include user identity to avoid leaking `availableTeams`.
         // Team comes first so team-scoped invalidation can clear by prefix. Principals without a
         // stable user identity are served uncached (a shared key would leak team memberships).
-        val cacheKey = bootstrapCacheKey(team, principal)
+        val cacheLookup = versionedBootstrapCache.lookup(team, principal)
 
-        cacheKey?.let { bootstrapCache.get(it) }?.let { cachedJson ->
+        cacheLookup.value?.let { cachedJson ->
             call.response.headers.append(HttpHeaders.CacheControl, "private, max-age=300")
             call.respondText(cachedJson, ContentType.Application.Json)
             return@get
@@ -120,13 +160,11 @@ fun Route.filterRoutes(
             surveyMeta = surveyMeta,
         )
 
-        // Known benign race: a GET that read the DB before a concurrent archive/unarchive
-        // invalidated the prefix can write a stale entry back here. The window is the
-        // milliseconds between the DB reads and this set, and the entry expires with the
-        // TTL — accepted rather than introducing per-team generation tokens.
-        cacheKey?.let {
-            bootstrapCache.set(it, json.encodeToString(response), ttl = Duration.ofMinutes(5))
-        }
+        versionedBootstrapCache.set(
+            cacheLookup,
+            json.encodeToString(response),
+            ttl = Duration.ofMinutes(5),
+        )
         call.response.headers.append(HttpHeaders.CacheControl, "private, max-age=300")
 
         call.respond(response)

@@ -24,6 +24,9 @@ class DiscoveryStatsRepository {
         val records = dbQuery {
             val dbQuery = FeedbackTable.selectAll()
             dbQuery.andWhere { FeedbackTable.team eq query.team }
+            if (!query.includeArchived) {
+                dbQuery.andWhere { SurveyIsNotArchived() }
+            }
             dbQuery.andWhere { 
                 JsonExtract(FeedbackTable.feedbackJson, listOf("surveyType")) eq "discovery" 
             }

@@ -27,20 +27,16 @@ export interface SurveyOptionGroups {
 /**
  * Splits the available surveys into active and archived dropdown groups.
  *
- * Archived surveys are hidden unless `showArchived` is on — except the
- * currently selected survey, which must stay in the list so the select
- * keeps a valid value (e.g. when opened from a bookmarked URL).
+ * Archived surveys are hidden unless `showArchived` is on.
  */
 export function partitionSurveyOptions({
   availableSurveys,
   surveyMeta,
   showArchived,
-  selectedSurveyId,
 }: {
   availableSurveys: string[];
   surveyMeta: SurveyMetaMap | undefined;
   showArchived: boolean;
-  selectedSurveyId?: string;
 }): SurveyOptionGroups {
   const active: string[] = [];
   const allArchived: string[] = [];
@@ -53,9 +49,7 @@ export function partitionSurveyOptions({
     }
   }
 
-  const archived = showArchived
-    ? allArchived
-    : allArchived.filter((surveyId) => surveyId === selectedSurveyId);
+  const archived = showArchived ? allArchived : [];
 
   return { active, archived, hasArchived: allArchived.length > 0 };
 }

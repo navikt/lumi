@@ -13,6 +13,7 @@ export function useStats() {
     queryKey: [
       "stats",
       params.team,
+      params.showArchived,
       params.app,
       params.fromDate,
       params.toDate,
@@ -27,6 +28,7 @@ export function useStats() {
       fetchStatsServerFn({
         data: {
           team: params.team,
+          includeArchived: params.showArchived === "true" ? "true" : undefined,
           app: params.app,
           fromDate: params.fromDate,
           toDate: params.toDate,

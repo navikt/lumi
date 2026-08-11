@@ -23,7 +23,7 @@ Uten intake-kontroll er faren at arkivering *misforstås* som stopp: en PO arkiv
 
 ## Beslutning
 
-1. **Arkivering er per-team visningsmetadata.** Et `archived_at`-felt i en ny `survey_metadata`-tabell (team + surveyId unik), satt fra dashboardet, som kun påvirker hva dashboardet viser. Data, stats, eksport og intake er uberørt. Design og produktvalg er specet i #339.
+1. **Arkivering er per-team visningsmetadata.** Et `archived_at`-felt i en ny `survey_metadata`-tabell (team + surveyId unik), satt fra dashboardet, påvirker alle dashboardets leseflater konsekvent. Tilbakemeldingslister, statistikk og eksport utelater arkiverte surveys som standard; `includeArchived=true` inkluderer dem igjen når brukeren slår på «Arkiverte». Lagrede data og intake er uberørt. Design og produktvalg er specet i #339.
 
 2. **Misforståelsesfaren håndteres med ærlighet, ikke mekanikk.** Arkiver-dialogen sier eksplisitt at arkivering ikke stopper innsendinger, og en arkivert survey som fortsatt mottar data merkes med badge (utledet av `lastSubmissionAt > archived_at` — ingen nye flagg eller jobber).
 
@@ -36,12 +36,14 @@ Uten intake-kontroll er faren at arkivering *misforstås* som stopp: en PO arkiv
 **Positivt**
 
 - Arkivering leveres som to små slices (#394, #395) uten å røre widget, datakontrakt eller konsumentteam.
+- «Arkiverte»-bryteren styrer faktisk datagrunnlaget i liste, statistikk og eksport, ikke bare hvilke valg som vises i filteret.
 - Survey-metadata får endelig et hjem på dashboard-siden — det delte åpne spørsmålet fra #338/#339 om hvor survey-identitet bor, er besvart.
 - Ingen falske løfter: UI-et sier eksplisitt hva arkivering *ikke* gjør.
 
 **Negativt / kostnad**
 
 - Lumi kan fortsatt ikke stoppe en survey sentralt — avvikling krever fortsatt endring i konsumentens frontend. Dette er en reell begrensning vi aksepterer og dokumenterer.
+- Nye innsendinger til en arkivert survey lagres fortsatt, men er skjult fra standardvisningen frem til arkivvisningen slås på eller surveyen gjenopprettes.
 - «Mottar fortsatt innsendinger»-badgen er et symptomvarsel, ikke en løsning; oppfølgingen (be teamet fjerne widgeten) er manuell.
 - To «survey finnes»-begreper består (avledet liste + definisjonstabell), nå med en tredje tabell ved siden av. Konsolidering til ett register er bevisst skjøvet til #338.
 

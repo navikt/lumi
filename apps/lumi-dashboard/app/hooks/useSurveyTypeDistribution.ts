@@ -18,9 +18,17 @@ export function useSurveyTypeDistribution() {
   const { params } = useSearchParams();
 
   return useQuery({
-    queryKey: ["surveyTypeDistribution", { team: params.team }],
+    queryKey: [
+      "surveyTypeDistribution",
+      { team: params.team, showArchived: params.showArchived },
+    ],
     queryFn: () =>
-      fetchSurveyTypeDistributionServerFn({ data: { team: params.team } }),
+      fetchSurveyTypeDistributionServerFn({
+        data: {
+          team: params.team,
+          includeArchived: params.showArchived === "true" ? "true" : undefined,
+        },
+      }),
     placeholderData: keepPreviousData,
   });
 }

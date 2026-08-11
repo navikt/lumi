@@ -12,7 +12,7 @@ import {
   VStack,
 } from "@navikt/ds-react";
 import dayjs from "dayjs";
-import { useState } from "react";
+import { useEffect } from "react";
 import { PeriodSelector } from "~/components/dashboard/PeriodSelector";
 import { getSurveyFeatures } from "~/config/surveyConfig";
 import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
@@ -20,7 +20,10 @@ import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import { useThemes } from "~/hooks/useThemes";
 import { getFilterLabels } from "~/utils/filterLabels";
-import { partitionSurveyOptions } from "~/utils/surveyArchiveUtils";
+import {
+  isSurveyArchived,
+  partitionSurveyOptions,
+} from "~/utils/surveyArchiveUtils";
 import styles from "./FilterBar.module.css";
 import { FilterMenu } from "./FilterMenu";
 import { Skeleton as FilterBarSkeleton } from "./Skeleton";
@@ -51,13 +54,28 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
     : [];
 
   const availableApps = bootstrap?.apps ?? [];
-  const apps = ["alle", ...availableApps];
 
   const availableTeams = bootstrap?.availableTeams ?? [];
   const selectedTeam = params.team ?? bootstrap?.selectedTeam;
 
   const surveysByApp = bootstrap?.surveysByApp ?? {};
   const allTags = bootstrap?.tags ?? [];
+  const showArchived = params.showArchived === "true";
+
+  const allAvailableSurveys = Array.from(
+    new Set(Object.values(surveysByApp).flat()),
+  );
+  const archivedSurveyCount = allAvailableSurveys.filter((surveyId) =>
+    isSurveyArchived(surveyId, bootstrap?.surveyMeta),
+  ).length;
+  const visibleApps = showArchived
+    ? availableApps
+    : availableApps.filter((app) =>
+        (surveysByApp[app] ?? []).some(
+          (surveyId) => !isSurveyArchived(surveyId, bootstrap?.surveyMeta),
+        ),
+      );
+  const apps = ["alle", ...visibleApps];
 
   const getAvailableSurveys = (): string[] => {
     if (!surveysByApp || Object.keys(surveysByApp).length === 0) return [];
@@ -75,31 +93,28 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
     return Array.from(allSurveys);
   };
 
-  const [showArchived, setShowArchived] = useState(false);
   const availableSurveys = getAvailableSurveys();
-  const {
-    active: activeSurveys,
-    archived: archivedSurveys,
-    hasArchived,
-  } = partitionSurveyOptions({
-    availableSurveys,
-    surveyMeta: bootstrap?.surveyMeta,
-    showArchived,
-    selectedSurveyId: params.surveyId,
-  });
+  const { active: activeSurveys, archived: archivedSurveys } =
+    partitionSurveyOptions({
+      availableSurveys,
+      surveyMeta: bootstrap?.surveyMeta,
+      showArchived,
+    });
 
   // Grouped options when archived surveys are visible, flat list otherwise
   const surveyOptions =
     archivedSurveys.length > 0 ? (
       <>
         <option value="alle">Alle surveys</option>
-        <optgroup label="Aktive">
-          {activeSurveys.map((survey) => (
-            <option key={survey} value={survey}>
-              {survey}
-            </option>
-          ))}
-        </optgroup>
+        {activeSurveys.length > 0 && (
+          <optgroup label="Aktive">
+            {activeSurveys.map((survey) => (
+              <option key={survey} value={survey}>
+                {survey}
+              </option>
+            ))}
+          </optgroup>
+        )}
         <optgroup label="Arkiverte">
           {archivedSurveys.map((survey) => (
             <option key={survey} value={survey}>
@@ -119,15 +134,18 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
       </>
     );
 
-  const archivedToggle = hasArchived ? (
-    <Switch
-      size="small"
-      checked={showArchived}
-      onChange={(e) => setShowArchived(e.target.checked)}
-    >
-      Vis arkiverte
-    </Switch>
-  ) : null;
+  const archiveToggle =
+    archivedSurveyCount > 0 ? (
+      <Switch
+        size="small"
+        checked={showArchived}
+        onChange={(event) =>
+          setParams({ showArchived: event.target.checked ? "true" : undefined })
+        }
+      >
+        Arkiverte ({archivedSurveyCount})
+      </Switch>
+    ) : null;
 
   const handleAppChange = (newApp: string | undefined) => {
     const shouldClearSurvey =
@@ -160,6 +178,38 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
       page: "1",
     });
   };
+
+  const selectedSurveyIsArchived =
+    !!params.surveyId &&
+    isSurveyArchived(params.surveyId, bootstrap?.surveyMeta);
+  // Guarded on loaded bootstrap: while data is pending visibleApps is empty,
+  // and an unguarded check would wipe the app filter from bookmarked URLs.
+  const selectedAppIsHidden =
+    !!bootstrap &&
+    !!params.app &&
+    !showArchived &&
+    !visibleApps.includes(params.app);
+
+  useEffect(() => {
+    if (selectedAppIsHidden) {
+      setParams({
+        app: undefined,
+        surveyId: undefined,
+        choice: undefined,
+        rating: undefined,
+        phrase: undefined,
+        page: "1",
+      });
+    } else if (!showArchived && selectedSurveyIsArchived) {
+      setParams({
+        surveyId: undefined,
+        choice: undefined,
+        rating: undefined,
+        phrase: undefined,
+        page: "1",
+      });
+    }
+  }, [showArchived, selectedAppIsHidden, selectedSurveyIsArchived, setParams]);
 
   const handleReset = () => {
     const team = params.team;
@@ -289,8 +339,6 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
                 {surveyOptions}
               </Select>
 
-              {archivedToggle}
-
               {showDetails && features.showTextFilter && (
                 <TextField
                   label="Søk"
@@ -322,6 +370,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
             </HStack>
 
             <HStack gap="space-8" align="end">
+              {archiveToggle}
               <PeriodSelector />
               {hasActiveFilters && (
                 <Tooltip content="Nullstill alle filtre til standard (siste 30 dager)">
@@ -393,12 +442,11 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
               >
                 {surveyOptions}
               </Select>
-
-              {archivedToggle}
             </HStack>
 
             <HStack gap="space-8" justify="space-between" align="center">
               <HStack gap="space-8" align="center">
+                {archiveToggle}
                 <PeriodSelector />
                 {showDetails && (
                   <FilterMenu

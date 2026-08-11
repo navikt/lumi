@@ -1,9 +1,9 @@
 import { ArchiveIcon } from "@navikt/aksel-icons";
 import {
-  Alert,
   BodyLong,
   Button,
   HStack,
+  InlineMessage,
   Modal,
   VStack,
 } from "@navikt/ds-react";
@@ -25,12 +25,17 @@ export function ArchiveSurveyDialog({
   isOpen,
   onClose,
 }: ArchiveSurveyDialogProps) {
-  const { archiveMutation } = useArchiveSurvey();
+  const { archiveMutation } = useArchiveSurvey(surveyId);
+
+  const handleClose = () => {
+    archiveMutation.reset();
+    onClose();
+  };
 
   const handleArchive = async () => {
     try {
       await archiveMutation.mutateAsync(surveyId);
-      onClose();
+      handleClose();
     } catch (_error) {
       // Error is handled by mutation state
     }
@@ -39,7 +44,7 @@ export function ArchiveSurveyDialog({
   return (
     <Modal
       open={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       header={{
         heading: "Arkiver survey",
         icon: <ArchiveIcon aria-hidden />,
@@ -55,20 +60,20 @@ export function ArchiveSurveyDialog({
           </BodyLong>
 
           <BodyLong>
-            Ingen data slettes, og surveyen kan når som helst gjenopprettes via
-            «Vis arkiverte»-filteret.
+            Ingen data slettes. Du finner surveyen igjen ved å slå på
+            «Arkiverte» i filterlinjen.
           </BodyLong>
 
           {archiveMutation.isError && (
-            <Alert variant="error">
+            <InlineMessage status="error">
               Kunne ikke arkivere survey. Prøv igjen senere.
-            </Alert>
+            </InlineMessage>
           )}
         </VStack>
       </Modal.Body>
       <Modal.Footer>
         <HStack gap="space-8" justify="end">
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={handleClose}>
             Avbryt
           </Button>
           <Button

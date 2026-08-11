@@ -4,6 +4,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.ktor.client.request.delete
+import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.put
 import io.ktor.client.statement.bodyAsText
@@ -16,6 +17,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import no.nav.lumi.TestDatabase
 import no.nav.lumi.createTestClient
+import no.nav.lumi.insertTestFeedback
 import no.nav.lumi.repository.SurveyMetadataRepository
 import no.nav.lumi.testModule
 
@@ -71,6 +73,47 @@ class SurveyArchiveRoutesTest : FunSpec({
             val states = SurveyMetadataRepository().findByTeam("team-test")
             states.size shouldBe 1
             states.single().archivedAt shouldBe null
+        }
+    }
+
+    test("archive visibility updates cached statistics and can be explicitly included") {
+        insertTestFeedback(id = "active", team = "team-test", surveyId = "survey-active")
+        insertTestFeedback(id = "archived", team = "team-test", surveyId = "survey-archived")
+
+        testApplication {
+            application { testModule() }
+            val authenticatedClient = createTestClient()
+
+            suspend fun totalCount(includeArchived: Boolean = false): Int {
+                val suffix = if (includeArchived) "&includeArchived=true" else ""
+                val response = authenticatedClient.get(
+                    "/api/v1/intern/stats/dashboard?team=team-test$suffix"
+                ) {
+                    header(HttpHeaders.Authorization, "Bearer test-token")
+                }
+                response.status shouldBe HttpStatusCode.OK
+                return Json.parseToJsonElement(response.bodyAsText())
+                    .jsonObject["totalCount"]?.jsonPrimitive?.content?.toInt() ?: -1
+            }
+
+            totalCount() shouldBe 2
+
+            authenticatedClient.put(
+                "/api/v1/intern/surveys/survey-archived/archive?team=team-test"
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }.status shouldBe HttpStatusCode.OK
+
+            totalCount() shouldBe 1
+            totalCount(includeArchived = true) shouldBe 2
+
+            authenticatedClient.delete(
+                "/api/v1/intern/surveys/survey-archived/archive?team=team-test"
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }.status shouldBe HttpStatusCode.NoContent
+
+            totalCount() shouldBe 2
         }
     }
 

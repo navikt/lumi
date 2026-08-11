@@ -6,6 +6,7 @@ describe("fetchFeedback helpers", () => {
   it("transforms frontend params to backend params including theme/task", () => {
     const params = transformToBackendParams({
       page: "2",
+      includeArchived: "true",
       size: "25",
       tag: " a, b ",
       segment: "k:v,,x:y",
@@ -18,6 +19,7 @@ describe("fetchFeedback helpers", () => {
     });
 
     expect(params.page).toBe("1");
+    expect(params.includeArchived).toBe("true");
     expect(params.size).toBe("25");
     expect(params.tag).toEqual(["a", "b"]);
     expect(params.segment).toEqual(["k:v", "x:y"]);

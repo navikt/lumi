@@ -38,11 +38,15 @@ export const fetchSurveyTypeDistributionServerFn = createServerFn({
 
       if (isMockMode()) {
         await mockDelay();
-        return getMockSurveyTypeDistribution(data.team);
+        return getMockSurveyTypeDistribution(
+          data.team,
+          data.includeArchived === "true",
+        );
       }
 
       const url = buildUrl(backendUrl, "/api/v1/intern/stats/survey-types", {
         team: data.team,
+        includeArchived: data.includeArchived === "true" ? "true" : undefined,
       });
       const response = await fetch(url, {
         headers: getHeaders(oboToken),

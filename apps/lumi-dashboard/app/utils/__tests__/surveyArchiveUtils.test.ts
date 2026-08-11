@@ -46,15 +46,14 @@ describe("partitionSurveyOptions", () => {
     expect(result.archived).toEqual(["survey-archived"]);
   });
 
-  it("keeps the selected archived survey visible even when showArchived is off", () => {
+  it("hides the selected archived survey when showArchived is off", () => {
     const result = partitionSurveyOptions({
       availableSurveys,
       surveyMeta,
       showArchived: false,
-      selectedSurveyId: "survey-archived",
     });
 
-    expect(result.archived).toEqual(["survey-archived"]);
+    expect(result.archived).toEqual([]);
   });
 
   it("reports hasArchived so the toggle only renders when relevant", () => {

@@ -23,6 +23,7 @@ internal fun ApiV1Intern.Stats.toStatsQuery(
     validateDateRange(fromDate, toDate)
     return StatsQuery(
     team = team,
+    includeArchived = includeArchived ?: false,
     app = app?.takeIf { it != FILTER_ALL },
     fromDate = fromDate,
     toDate = toDate,

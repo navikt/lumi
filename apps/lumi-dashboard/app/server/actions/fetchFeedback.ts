@@ -15,6 +15,7 @@ import { handleApiResponse } from "../fetchUtils";
 
 interface FeedbackActionParams {
   team?: string;
+  includeArchived?: string;
   app?: string;
   surveyId?: string;
   page?: string;
@@ -66,6 +67,7 @@ function transformToBackendParams(data: FeedbackActionParams) {
 
   return {
     team: data.team,
+    includeArchived: data.includeArchived === "true" ? "true" : undefined,
     app: data.app,
     surveyId: data.surveyId,
     page,

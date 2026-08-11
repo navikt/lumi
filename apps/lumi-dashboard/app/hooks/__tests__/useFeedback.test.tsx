@@ -11,7 +11,11 @@ vi.mock("~/server/actions", () => ({
 // Mock useSearchParams to control URL params
 vi.mock("~/hooks/useSearchParams", () => ({
   useSearchParams: vi.fn(() => ({
-    params: { app: "test-app", surveyId: "test-survey" },
+    params: {
+      app: "test-app",
+      surveyId: "test-survey",
+      showArchived: "true",
+    },
     setParam: vi.fn(),
     setParams: vi.fn(),
     resetParams: vi.fn(),
@@ -77,6 +81,7 @@ describe("useFeedback", () => {
       data: expect.objectContaining({
         app: "test-app",
         surveyId: "test-survey",
+        includeArchived: "true",
       }),
     });
   });

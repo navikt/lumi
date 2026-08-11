@@ -32,6 +32,7 @@ fun Route.exportRoutes(exportService: ExportService = defaultExportService) {
 
         val query = FeedbackQuery(
             team = team,
+            includeArchived = params.includeArchived ?: false,
             app = params.app?.takeIf { it != FILTER_ALL },
             page = 0,
             size = ExportService.MAX_EXPORT_SIZE,

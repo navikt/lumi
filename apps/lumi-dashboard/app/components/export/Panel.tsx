@@ -42,6 +42,7 @@ export function ExportPanel() {
         data: {
           format,
           team: params.team,
+          includeArchived: params.showArchived === "true" ? "true" : undefined,
           app: params.app,
           surveyId: params.surveyId,
           fromDate: params.fromDate,

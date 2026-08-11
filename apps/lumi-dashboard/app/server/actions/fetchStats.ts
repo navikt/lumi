@@ -17,6 +17,7 @@ export const STATS_DASHBOARD_PATH = "/api/v1/intern/stats/dashboard" as const;
 
 interface StatsActionParams {
   team?: string;
+  includeArchived?: string;
   app?: string;
   surveyId?: string;
   fromDate?: string;
@@ -48,6 +49,7 @@ function toMockSearchParams(data: StatsActionParams): URLSearchParams {
 export function transformStatsToBackendParams(data: StatsActionParams) {
   return {
     team: data.team,
+    includeArchived: data.includeArchived === "true" ? "true" : undefined,
     app: data.app,
     surveyId: data.surveyId,
     fromDate: data.fromDate,
