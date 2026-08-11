@@ -368,15 +368,6 @@ export function createTopTasksSurvey(options: {
       prompt: options.taskPrompt ?? "Hva prøvde du å gjøre i dag?",
       options: taskOptions,
       required: true,
-      // If NOT "other", skip the next question (otherTask) and go to taskSuccess
-      logic: options.includeOtherTask
-        ? [
-            {
-              condition: { field: "ANSWER", operator: "NEQ", value: "other" },
-              action: { type: "SKIP" },
-            },
-          ]
-        : undefined,
     },
   ];
 
@@ -388,6 +379,11 @@ export function createTopTasksSurvey(options: {
       prompt: options.otherTaskPrompt ?? "Beskriv hva du prøvde å gjøre",
       required: false,
       maxLength: 500,
+      visibleIf: {
+        questionId: "task",
+        operator: "EQ",
+        value: "other",
+      },
     });
   }
 
@@ -402,16 +398,6 @@ export function createTopTasksSurvey(options: {
       { value: "no", label: "Nei" },
     ],
     required: true,
-    // If "yes", submit immediately (skip blocker)
-    logic:
-      options.includeBlockerQuestion !== false
-        ? [
-            {
-              condition: { field: "ANSWER", operator: "EQ", value: "yes" },
-              action: { type: "SUBMIT" },
-            },
-          ]
-        : undefined,
   });
 
   // blocker (shown only when taskSuccess !== "yes")
@@ -422,6 +408,12 @@ export function createTopTasksSurvey(options: {
       prompt: options.blockerPrompt ?? "Hva hindret deg?",
       required: false,
       maxLength: 500,
+      visibleIf: {
+        all: [
+          { questionId: "taskSuccess", operator: "EXISTS" },
+          { questionId: "taskSuccess", operator: "NEQ", value: "yes" },
+        ],
+      },
     });
   }
 

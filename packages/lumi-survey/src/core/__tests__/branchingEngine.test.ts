@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   evaluateBranching,
   surveyHasBranchingLogic,
+  surveyHasVisibilityBranching,
   validateBranchingTargets,
 } from "../branchingEngine";
 import type { LogicRule, LumiSurveyQuestion } from "../types";
@@ -678,6 +679,86 @@ describe("surveyHasBranchingLogic", () => {
     ];
     const questions = [createQuestion("q1", logic), createQuestion("q2")];
     expect(surveyHasBranchingLogic(questions)).toBe(true);
+  });
+});
+
+describe("surveyHasVisibilityBranching", () => {
+  it("returns true for an answer-based value condition", () => {
+    const questions: LumiSurveyQuestion[] = [
+      createQuestion("q1"),
+      {
+        ...createQuestion("q2"),
+        visibleIf: { questionId: "q1", operator: "EQ", value: "yes" },
+      },
+    ];
+
+    expect(surveyHasVisibilityBranching(questions)).toBe(true);
+  });
+
+  it("finds a value condition inside an all group", () => {
+    const questions: LumiSurveyQuestion[] = [
+      createQuestion("q1"),
+      {
+        ...createQuestion("q2"),
+        visibleIf: {
+          all: [
+            { questionId: "q1", operator: "EXISTS" },
+            { questionId: "q1", operator: "NEQ", value: "yes" },
+          ],
+        },
+      },
+    ];
+
+    expect(surveyHasVisibilityBranching(questions)).toBe(true);
+  });
+
+  it("finds a value condition inside an any group", () => {
+    const questions: LumiSurveyQuestion[] = [
+      createQuestion("q1"),
+      {
+        ...createQuestion("q2"),
+        visibleIf: {
+          any: [
+            { questionId: "q1", operator: "EXISTS" },
+            { questionId: "q1", operator: "CONTAINS", value: "urgent" },
+          ],
+        },
+      },
+    ];
+
+    expect(surveyHasVisibilityBranching(questions)).toBe(true);
+  });
+
+  it("returns false for EXISTS-only progressive disclosure", () => {
+    const questions: LumiSurveyQuestion[] = [
+      createQuestion("q1"),
+      {
+        ...createQuestion("q2"),
+        visibleIf: { questionId: "q1", operator: "EXISTS" },
+      },
+    ];
+
+    expect(surveyHasVisibilityBranching(questions)).toBe(false);
+  });
+
+  it("returns false for metadata and current-answer value conditions", () => {
+    const questions: LumiSurveyQuestion[] = [
+      {
+        ...createQuestion("q1"),
+        visibleIf: {
+          field: "METADATA",
+          key: "audience",
+          operator: "EQ",
+          value: "internal",
+        },
+      },
+      {
+        ...createQuestion("q2"),
+        visibleIf: { operator: "EQ", value: "yes" },
+      },
+    ];
+
+    expect(surveyHasVisibilityBranching(questions)).toBe(false);
   });
 });
 

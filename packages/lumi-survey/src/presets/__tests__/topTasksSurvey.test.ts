@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { evaluateBranching } from "../../core/branchingEngine";
+import { evaluateVisibility } from "../../core/evaluateVisibility";
 import { createTopTasksSurvey } from "../index";
 
 describe("createTopTasksSurvey", () => {
-  it("uses SKIP to bypass otherTask when task is not 'other'", () => {
+  it("uses visibleIf to show otherTask only when task is 'other'", () => {
     const survey = createTopTasksSurvey({
       tasks: [{ value: "t1", label: "Oppgave 1" }],
       includeOtherTask: true,
@@ -17,40 +17,45 @@ describe("createTopTasksSurvey", () => {
     expect(otherTaskQuestion.id).toBe("otherTask");
     expect(taskSuccessQuestion.id).toBe("taskSuccess");
 
-    expect(taskQuestion.logic?.[0]?.action.type).toBe("SKIP");
-
-    const result = evaluateBranching(
-      taskQuestion,
-      "t1",
-      undefined,
-      survey.questions,
-      0,
-    );
-
-    // SKIP should take us from index 0 -> index 2
-    expect(result.nextIndex).toBe(2);
-    expect(result.triggeredByRule).toBe(true);
+    expect(survey.questions.every((question) => !question.logic)).toBe(true);
+    expect(otherTaskQuestion.visibleIf).toEqual({
+      questionId: "task",
+      operator: "EQ",
+      value: "other",
+    });
+    expect(
+      evaluateVisibility(otherTaskQuestion.visibleIf, { task: "t1" }),
+    ).toBe(false);
+    expect(
+      evaluateVisibility(otherTaskQuestion.visibleIf, { task: "other" }),
+    ).toBe(true);
   });
 
-  it("does not skip otherTask when task is 'other'", () => {
+  it("guards blocker visibility until taskSuccess exists and is not 'yes'", () => {
     const survey = createTopTasksSurvey({
       tasks: [{ value: "t1", label: "Oppgave 1" }],
       includeOtherTask: true,
       includeBlockerQuestion: true,
     });
 
-    const taskQuestion = survey.questions[0];
-
-    const result = evaluateBranching(
-      taskQuestion,
-      "other",
-      undefined,
-      survey.questions,
-      0,
+    const blockerQuestion = survey.questions.find(
+      (question) => question.id === "blocker",
     );
 
-    // No rule match; defaults to next question (otherTask at index 1)
-    expect(result.nextIndex).toBe(1);
-    expect(result.triggeredByRule).toBe(false);
+    expect(blockerQuestion?.visibleIf).toEqual({
+      all: [
+        { questionId: "taskSuccess", operator: "EXISTS" },
+        { questionId: "taskSuccess", operator: "NEQ", value: "yes" },
+      ],
+    });
+    expect(evaluateVisibility(blockerQuestion?.visibleIf, {})).toBe(false);
+    expect(
+      evaluateVisibility(blockerQuestion?.visibleIf, { taskSuccess: "yes" }),
+    ).toBe(false);
+    expect(
+      evaluateVisibility(blockerQuestion?.visibleIf, {
+        taskSuccess: "partial",
+      }),
+    ).toBe(true);
   });
 });

@@ -3,6 +3,7 @@ import {
   type BranchingResult,
   evaluateBranching,
   surveyHasBranchingLogic,
+  surveyHasVisibilityBranching,
 } from "../../../core/branchingEngine.js";
 import { computeReachableSteps } from "../../../core/computeReachableSteps.js";
 import { evaluateVisibility } from "../../../core/evaluateVisibility.js";
@@ -55,7 +56,7 @@ export interface UseStepNavigationReturn {
   goToPrevious: () => void;
   /** Reset navigation to the first question */
   resetNavigation: () => void;
-  /** Whether any question in the survey has branching logic */
+  /** Whether step navigation is driven by branching or explicitly forced */
   hasBranching: boolean;
   /** Array of visited question indices for back navigation */
   visitedSteps: number[];
@@ -66,8 +67,9 @@ export interface UseStepNavigationReturn {
 }
 
 /**
- * Hook that manages step-by-step navigation through a survey with branching logic.
- * Automatically enables step mode when any question has logic defined.
+ * Hook that manages step-by-step navigation through a survey with branching.
+ * Automatically enables step mode for logic or answer-dependent visibleIf
+ * value operators; EXISTS-only progressive disclosure stays single-page.
  */
 export function useStepNavigation(
   options: UseStepNavigationOptions,
@@ -81,11 +83,17 @@ export function useStepNavigation(
   } = options;
 
   // Determine if we need step-based navigation
-  const hasBranching = useMemo(
+  const hasLogicBranching = useMemo(
     () => surveyHasBranchingLogic(questions),
     [questions],
   );
-  const isStepMode = hasBranching || forceStepMode;
+  const hasVisibilityBranching = useMemo(
+    () => surveyHasVisibilityBranching(questions),
+    [questions],
+  );
+  const hasBranching =
+    hasLogicBranching || hasVisibilityBranching || forceStepMode;
+  const isStepMode = hasBranching;
 
   // Navigation state — start on the first visible question (skip any that are
   // hidden by visibleIf on initial render). Uses -1 when no questions are visible.

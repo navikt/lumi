@@ -180,7 +180,7 @@ const survey = {
 
 ### Top Tasks med branching
 
-`createTopTasksSurvey` bruker `logic` under panseret. Her er et forenklet eksempel av mønsteret:
+`createTopTasksSurvey` bruker `visibleIf` under panseret. Her er et forenklet eksempel av mønsteret:
 
 ```tsx
 const survey = {
@@ -195,17 +195,12 @@ const survey = {
         { value: "status", label: "Sjekke status" },
         { value: "other", label: "Noe annet" },
       ],
-      logic: [
-        {
-          condition: { field: "ANSWER", operator: "NEQ", value: "other" },
-          action: { type: "SKIP" }, // Hopp over "otherTask"
-        },
-      ],
     },
     {
       id: "otherTask",
       type: "text",
       prompt: "Beskriv hva du prøvde å gjøre",
+      visibleIf: { questionId: "task", operator: "EQ", value: "other" },
     },
     {
       id: "taskSuccess",
@@ -216,19 +211,18 @@ const survey = {
         { value: "partial", label: "Delvis" },
         { value: "no", label: "Nei" },
       ],
-      logic: [
-        {
-          // "Ja" → ingen blocker, send inn
-          condition: { field: "ANSWER", operator: "EQ", value: "yes" },
-          action: { type: "SUBMIT" },
-        },
-      ],
     },
     {
       id: "blocker",
       type: "text",
       prompt: "Hva hindret deg?",
       maxLength: 500,
+      visibleIf: {
+        all: [
+          { questionId: "taskSuccess", operator: "EXISTS" },
+          { questionId: "taskSuccess", operator: "NEQ", value: "yes" },
+        ],
+      },
     },
   ],
 };

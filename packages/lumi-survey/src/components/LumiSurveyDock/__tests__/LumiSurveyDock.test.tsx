@@ -240,7 +240,7 @@ describe("LumiSurveyDock", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("submits immediately when step-mode branching returns SUBMIT (top tasks)", async () => {
+  it("submits from taskSuccess when the blocker becomes hidden (top tasks)", async () => {
     const transportSubmit = vi.fn().mockResolvedValue(undefined);
     const user = userEvent.setup();
 
@@ -273,6 +273,25 @@ describe("LumiSurveyDock", () => {
     });
 
     await screen.findByRole("heading", { name: /takk for tilbakemeldingen/i });
+  });
+
+  it("skips otherTask through visibleIf while keeping top tasks in auto step mode", async () => {
+    const user = userEvent.setup();
+    const survey = createTopTasksSurvey({
+      tasks: [{ value: "t1", label: "Oppgave 1" }],
+      includeOtherTask: true,
+      includeBlockerQuestion: false,
+    });
+
+    renderDock({ survey });
+
+    await user.click(await screen.findByRole("radio", { name: /oppgave 1/i }));
+    await user.click(screen.getByRole("button", { name: /neste/i }));
+
+    expect(
+      screen.queryByRole("textbox", { name: /beskriv hva du prøvde/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /^ja$/i })).toBeInTheDocument();
   });
 
   it("supports step layout without branching when questionLayout is steps", async () => {

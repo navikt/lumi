@@ -118,7 +118,8 @@ const survey = createTopTasksSurvey({
 ```
 
 ::: info Krever step-modus
-Top Tasks har innebygd branching-logikk. Widgeten bytter automatisk til step-modus (`questionLayout: "steps"`) når `logic` finnes.
+Top Tasks har svaravhengig `visibleIf`. Med `questionLayout: "auto"` bytter
+widgeten automatisk til steg-modus for slike verdibaserte synlighetsgrener.
 :::
 
 ### `createTaskPrioritySurvey`
