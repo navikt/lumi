@@ -9,31 +9,52 @@ import org.jetbrains.exposed.v1.core.VarCharColumnType
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
+import java.time.Instant
+
+data class SurveyOverview(
+    val surveysByApp: Map<String, List<String>>,
+    val lastSubmissionBySurvey: Map<String, String>,
+)
 
 class FeedbackContextTagsRepository {
-    suspend fun findSurveysByApp(team: String): Map<String, List<String>> {
+    /**
+     * Surveys grouped by app and their latest submission timestamps.
+     * Both views are derived from the same result set so bootstrap cannot
+     * cache a survey list and recency metadata from different DB snapshots.
+     */
+    suspend fun findSurveyOverview(team: String): SurveyOverview {
         return dbQuery {
             val sql = """
-                SELECT DISTINCT
+                SELECT
                     app,
-                    feedback_json::jsonb->>'surveyId' as survey_id
+                    feedback_json::jsonb->>'surveyId' as survey_id,
+                    MAX(opprettet) as last_submission_at
                 FROM feedback
                 WHERE team = ?
                   AND app IS NOT NULL
                   AND feedback_json::jsonb->>'surveyId' IS NOT NULL
+                GROUP BY app, feedback_json::jsonb->>'surveyId'
                 ORDER BY app, survey_id
             """.trimIndent()
 
-            val result = mutableMapOf<String, MutableList<String>>()
+            val surveysByApp = mutableMapOf<String, MutableList<String>>()
+            val lastSubmissionInstants = mutableMapOf<String, Instant>()
             val transaction = TransactionManager.current()
             transaction.exec(sql, listOf(VarCharColumnType() to team)) { rs ->
                 while (rs.next()) {
                     val app = rs.getString("app") ?: continue
                     val surveyId = rs.getString("survey_id") ?: continue
-                    result.getOrPut(app) { mutableListOf() }.add(surveyId)
+                    val lastSubmissionAt = rs.getTimestamp("last_submission_at")?.toInstant() ?: continue
+                    surveysByApp.getOrPut(app) { mutableListOf() }.add(surveyId)
+                    lastSubmissionInstants.merge(surveyId, lastSubmissionAt) { current, candidate ->
+                        maxOf(current, candidate)
+                    }
                 }
             }
-            result
+            SurveyOverview(
+                surveysByApp = surveysByApp,
+                lastSubmissionBySurvey = lastSubmissionInstants.mapValues { (_, instant) -> instant.toString() },
+            )
         }
     }
 

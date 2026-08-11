@@ -14,6 +14,7 @@ import {
   Pagination,
   Show,
   Table,
+  Tag,
   Tooltip,
   VStack,
 } from "@navikt/ds-react";
@@ -24,7 +25,11 @@ import { useDeleteFeedback } from "~/hooks/useDeleteFeedback";
 import { useFeedback } from "~/hooks/useFeedback";
 import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
 import { useSearchParams } from "~/hooks/useSearchParams";
-import { isSurveyArchived } from "~/utils/surveyArchiveUtils";
+import {
+  formatRelativeSubmissionTime,
+  isReceivingAfterArchive,
+  isSurveyArchived,
+} from "~/utils/surveyArchiveUtils";
 import { ArchiveSurveyDialog } from "../../dashboard/ArchiveSurveyDialog";
 import { DeleteSurveyDialog } from "../../dashboard/DeleteSurveyDialog";
 import { DeleteFeedbackDialog } from "../DeleteFeedbackDialog";
@@ -79,6 +84,9 @@ export function FeedbackTable() {
   const totalPages = data?.totalPages || 1;
   const totalElements = data?.totalElements || 0;
   const selectedSurvey = params.surveyId;
+  const selectedSurveyMeta = selectedSurvey
+    ? bootstrap?.surveyMeta?.[selectedSurvey]
+    : undefined;
   const selectedSurveyIsArchived =
     !!selectedSurvey && isSurveyArchived(selectedSurvey, bootstrap?.surveyMeta);
   return (
@@ -91,6 +99,8 @@ export function FeedbackTable() {
           surveyId={selectedSurvey}
           totalCount={totalElements}
           isArchived={selectedSurveyIsArchived}
+          lastSubmissionAt={selectedSurveyMeta?.lastSubmissionAt ?? null}
+          receivingAfterArchive={isReceivingAfterArchive(selectedSurveyMeta)}
           onArchive={() => setArchiveDialogOpen(true)}
           onRestore={() => restoreMutation.mutate(selectedSurvey)}
           isRestoring={restoreMutation.isPending}
@@ -216,6 +226,8 @@ function SurveyToolbar({
   surveyId,
   totalCount,
   isArchived,
+  lastSubmissionAt,
+  receivingAfterArchive,
   onArchive,
   onRestore,
   isRestoring,
@@ -225,6 +237,8 @@ function SurveyToolbar({
   surveyId: string;
   totalCount: number;
   isArchived: boolean;
+  lastSubmissionAt: string | null;
+  receivingAfterArchive: boolean;
   onArchive: () => void;
   onRestore: () => void;
   isRestoring: boolean;
@@ -239,6 +253,18 @@ function SurveyToolbar({
             Viser {totalCount} svar for <strong>{surveyId}</strong>
             {isArchived && <> (arkivert)</>}
           </BodyShort>
+          {lastSubmissionAt && (
+            <BodyShort size="small" textColor="subtle">
+              · Sist svar {formatRelativeSubmissionTime(lastSubmissionAt)}
+            </BodyShort>
+          )}
+          {receivingAfterArchive && (
+            <Tooltip content="Surveyen er arkivert, men frontenden sender fortsatt inn svar. Fjern widgeten fra frontend-koden for å stoppe datainnsamling.">
+              <Tag size="small" variant="warning">
+                Mottar fortsatt innsendinger
+              </Tag>
+            </Tooltip>
+          )}
           {restoreFailed && (
             <ErrorMessage size="small">
               Kunne ikke gjenopprette surveyen. Prøv igjen.

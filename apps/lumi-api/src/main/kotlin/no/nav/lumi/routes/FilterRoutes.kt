@@ -38,11 +38,14 @@ data class FilterBootstrapResponse(
 
 /**
  * Per-survey dashboard metadata. Surveys without an entry are active.
- * `archivedAt == null` means the survey was restored after being archived.
+ * `archivedAt == null` means active (or restored after being archived).
+ * `lastSubmissionAt` drives the recency signal and, for archived surveys,
+ * the "still receiving submissions" badge (lastSubmissionAt > archivedAt).
  */
 @Serializable
 data class SurveyMetaEntry(
     val archivedAt: String?,
+    val lastSubmissionAt: String? = null,
 )
 
 private val defaultRepository = FeedbackRepository()
@@ -142,20 +145,26 @@ fun Route.filterRoutes(
             return@get
         }
 
-        // Each repository call manages its own transaction.
-        // This endpoint is designed for long caching, so multiple DB round-trips are acceptable.
+        // Each repository call manages its own transaction. Survey options and
+        // recency metadata deliberately share one aggregation/snapshot.
         val apps = feedbackRepository.findDistinctApps(team)
-        val surveysByApp = feedbackRepository.findSurveysByApp(team)
+        val surveyOverview = feedbackRepository.findSurveyOverview(team)
         val tags = feedbackRepository.findAllTags(team)
-        val surveyMeta = surveyMetadataRepository.findByTeam(team)
-            .associate { it.surveyId to SurveyMetaEntry(archivedAt = it.archivedAt) }
+        val archiveStates = surveyMetadataRepository.findByTeam(team).associateBy { it.surveyId }
+        val lastSubmissionBySurvey = surveyOverview.lastSubmissionBySurvey
+        val surveyMeta = (archiveStates.keys + lastSubmissionBySurvey.keys).associateWith { surveyId ->
+            SurveyMetaEntry(
+                archivedAt = archiveStates[surveyId]?.archivedAt,
+                lastSubmissionAt = lastSubmissionBySurvey[surveyId],
+            )
+        }
 
         val response = FilterBootstrapResponse(
             generatedAt = Instant.now().toString(),
             selectedTeam = team,
             availableTeams = teams.sorted(),
             apps = apps.sorted(),
-            surveysByApp = surveysByApp.mapValues { it.value.sorted() }.toSortedMap(),
+            surveysByApp = surveyOverview.surveysByApp.mapValues { it.value.sorted() }.toSortedMap(),
             tags = tags.sorted(),
             surveyMeta = surveyMeta,
         )
