@@ -425,12 +425,12 @@ class FeedbackRepository(
      * Find all surveys (surveyIds) grouped by app for a specific team.
      * Used by filter bootstrap endpoint and survey list.
      */
-    suspend fun findLastSubmissionBySurvey(team: String): Map<String, String> {
-        return contextTagsRepository.findLastSubmissionBySurvey(team)
+    suspend fun findSurveyOverview(team: String): SurveyOverview {
+        return contextTagsRepository.findSurveyOverview(team)
     }
 
     suspend fun findSurveysByApp(team: String): Map<String, List<String>> {
-        return contextTagsRepository.findSurveysByApp(team)
+        return contextTagsRepository.findSurveyOverview(team).surveysByApp
     }
     
     suspend fun findMetadataKeysForSurvey(surveyId: String, team: String): Map<String, Set<String>> {

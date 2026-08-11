@@ -103,6 +103,17 @@ describe("formatRelativeSubmissionTime", () => {
     );
   });
 
+  it("uses the Europe/Oslo calendar date across midnight", () => {
+    const justAfterMidnightInOslo = new Date("2026-08-10T22:15:00Z");
+
+    expect(
+      formatRelativeSubmissionTime(
+        "2026-08-10T21:45:00Z",
+        justAfterMidnightInOslo,
+      ),
+    ).toBe("i går");
+  });
+
   it("uses days below one month", () => {
     expect(formatRelativeSubmissionTime("2026-08-01T08:00:00Z", now)).toBe(
       "for 10 dager siden",

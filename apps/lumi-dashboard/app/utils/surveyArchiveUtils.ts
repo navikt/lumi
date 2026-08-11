@@ -56,6 +56,20 @@ export function partitionSurveyOptions({
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const OSLO_DATE_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Oslo",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+function osloCalendarDay(date: Date): number {
+  const parts = OSLO_DATE_FORMATTER.formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((candidate) => candidate.type === type)?.value);
+
+  return Date.UTC(part("year"), part("month") - 1, part("day")) / DAY_MS;
+}
 
 /**
  * Relative wording for a survey's newest submission ("i dag", "i går",
@@ -66,8 +80,9 @@ export function formatRelativeSubmissionTime(
   lastSubmissionAt: string,
   now: Date = new Date(),
 ): string {
-  const days = Math.floor(
-    (now.getTime() - new Date(lastSubmissionAt).getTime()) / DAY_MS,
+  const days = Math.max(
+    0,
+    osloCalendarDay(now) - osloCalendarDay(new Date(lastSubmissionAt)),
   );
   if (days < 1) return "i dag";
   if (days === 1) return "i går";
