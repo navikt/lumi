@@ -25,7 +25,7 @@ repositories {
     }
 }
 
-val ktorVersion = "3.5.1"
+val ktorVersion = "3.5.2"
 val logbackVersion = "1.6.1"
 val logstashVersion = "9.0"
 val postgresVersion = "42.7.13"
