@@ -93,7 +93,7 @@ jobs:
 # Node/pnpm
 - uses: actions/setup-node@v4 # erstatt med SHA i produksjon
   with:
-    node-version-file: package.json
+    node-version: 22
     cache: pnpm
 ```
 
