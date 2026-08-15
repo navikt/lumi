@@ -1,6 +1,7 @@
 packages:
   - "docs"
   - "apps/lumi-dashboard"
+  - "apps/lumi-local-demo"
   - "packages/*"
 
 minimumReleaseAge: 4320

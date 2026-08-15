@@ -1,5 +1,78 @@
 # Local development scripts
 
+## Full-chain-demo med ekte widget
+
+`docker-compose.yml` starter hele den lokale kjeden:
+
+```text
+localhost:3001 (testbenk + lumi-survey)
+  -> submission-proxy
+  -> lumi-api
+  -> Postgres
+  -> localhost:3000 (dashboard uten mock-data)
+```
+
+### Oppstart
+
+Forutsetninger er Docker og en GitHub Packages-token i `NPM_AUTH_TOKEN`.
+Tokenet sendes som en BuildKit-secret og lagres ikke i image-lagene. De lokale
+image-filene bruker offentlige Chainguard-basebilder, så NAV-registertilgang er
+ikke nødvendig:
+
+```bash
+export NPM_AUTH_TOKEN="$(gh auth token)"
+```
+
+Start alt fra repo-roten:
+
+```bash
+npm run local:up
+```
+
+Første bygg laster ned Node-/JVM-avhengigheter og tar noen minutter. Når
+containerne er klare:
+
+1. Åpne <http://localhost:3001>.
+2. Velg et scenario og send inn widgeten nederst til høyre.
+3. Bruk «Åpne resultat i dashboard» eller gå til <http://localhost:3000>.
+4. Velg teamet `local-dev` og surveyen med prefiks `local-demo-`.
+
+Data ligger i Docker-volumet `lumi-postgres-data` og overlever vanlig restart.
+Ingen seed-data er nødvendig; hver ekte innsending blir demoens datagrunnlag.
+
+### Dekningsmatrise
+
+Hvert scenario bruker en egen, stabil `surveyId` slik at API-ens immutable
+definisjonskontroll også testes. Testbenken dekker:
+
+| Scenario | Surveytype | Felt/variant |
+| --- | --- | --- |
+| Rating · emoji | `rating` | `rating/emoji`, `text`, `visibleIf` |
+| Rating · tommel | `rating` | `rating/thumbs`, `text` |
+| Rating · stjerner | `rating` | `rating/stars`, `text` |
+| Rating · NPS | `rating` | `rating/nps`, `text` |
+| Discovery | `discovery` | `text`, `singleChoice` |
+| Top Tasks | `topTasks` | `singleChoice`, `text`, branching/early submit |
+| Task Priority · avkryssing | `taskPriority` | `multiChoice/checkbox` |
+| Task Priority · komboboks | `taskPriority` | `multiChoice/combobox` |
+| Custom · feltmatrise | `custom` | `text`, `singleChoice`, `multiChoice` |
+
+### Lokal auth
+
+API, proxy og dashboard krever eksplisitt `LUMI_LOCAL_AUTH_BYPASS=true` i
+Compose. Bypassen aktiveres bare uten `NAIS_CLUSTER_NAME`; proxyen og API-et
+nekter å starte lokalt uten opt-in. Dashboardet sender en ikke-hemmelig
+`Bearer local-dev` til API-ets lokale auth-realm. Dette oppsettet må aldri
+eksponeres utenfor lokal maskin. Compose binder derfor alle publiserte porter
+til `127.0.0.1`.
+
+### Teardown
+
+```bash
+npm run local:down   # behold data
+npm run local:reset  # slett også Postgres-volumet
+```
+
 ## Local end-to-end submission flow
 
 Test the **whole** Lumi submission chain locally — widget-shaped payload → API
@@ -19,15 +92,13 @@ the bypass never activates there. See
 
 ### Steps
 
-**Option A — whole stack in containers (one command):**
+**Option A — API-stack in containers:**
 
-> **Prerequisite:** the api image runs on the same Chainguard JRE as production,
-> pulled from NAV's registry. Authenticate once with
-> `gcloud auth configure-docker europe-north1-docker.pkg.dev` (needs cgr-nav
-> access). Option B builds no image and skips this.
+The local-only image uses Chainguard's public non-root JRE. The deployed image
+continues to use NAV's private, versioned JRE.
 
 ```bash
-docker compose up -d --build          # postgres + api (first build takes a few min)
+docker compose up -d --build postgres api
 ./scripts/lumi-local-smoke.sh         # waits for the API, then runs the flow
 ```
 

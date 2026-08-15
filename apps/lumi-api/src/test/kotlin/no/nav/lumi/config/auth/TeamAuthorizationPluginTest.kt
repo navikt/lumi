@@ -54,6 +54,58 @@ private data class TeamResponse(
 class TeamAuthorizationPluginTest {
 
     @Test
+    fun `uses synthetic local-dev team when local auth bypass has no NAIS lookup`() = testApplication {
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureStatusPages()
+            install(Authentication) {
+                bearer(AZURE_REALM) {
+                    authenticate { _ ->
+                        BrukerPrincipal(
+                            navIdent = "Z999999",
+                            name = "Lokal Utvikler",
+                            email = "lokal.utvikler@nav.no",
+                            clientId = "dev-gcp:team-esyfo:lumi-dashboard",
+                            groups = emptyList(),
+                        )
+                    }
+                }
+            }
+
+            routing {
+                authenticate(AZURE_REALM) {
+                    install(TeamAuthorizationPlugin) {
+                        naisTeamLookupProvider = { null }
+                    }
+
+                    get("/team") {
+                        call.respond(
+                            TeamResponse(
+                                team = call.authorizedTeam,
+                                teams = call.authorizedTeams.sorted(),
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
+        val response = client.get("/team") {
+            header(HttpHeaders.Authorization, "Bearer local-dev")
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val json = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+        assertEquals("local-dev", json["team"]?.jsonPrimitive?.content)
+        assertEquals(
+            listOf("local-dev"),
+            json["teams"]?.jsonArray?.map { it.jsonPrimitive.content },
+        )
+    }
+
+    @Test
     fun `defaults to a resolved team when NAIS lookup is used and team param is missing`() = testApplication {
         application {
             install(ContentNegotiation) {
@@ -315,6 +367,7 @@ class TeamAuthorizationPluginTest {
                 authenticate(AZURE_REALM) {
                     install(TeamAuthorizationPlugin) {
                         naisTeamLookupProvider = { null }
+                        localTeamFallbackEnabled = false
                     }
 
                     get("/team") {
@@ -362,6 +415,7 @@ class TeamAuthorizationPluginTest {
                 authenticate(AZURE_REALM) {
                     install(TeamAuthorizationPlugin) {
                         naisTeamLookupProvider = { null }
+                        localTeamFallbackEnabled = false
                     }
 
                     get("/team") {

@@ -35,14 +35,20 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'biome.json'
+              - '.dockerignore'
+              - 'docker-compose.yml'
               - 'tsconfig*.json'
               - '.github/skills/**'
               - '.github/workflows/**'
               - 'apps/lumi-dashboard/**'
+              - 'apps/lumi-local-demo/**'
               - 'packages/**'
             api:
               - '.github/workflows/**'
+              - '.dockerignore'
+              - 'docker-compose.yml'
               - 'apps/lumi-api/**'
+              - 'apps/lumi-submission-proxy/**'
             docs:
               - 'docs/**'
               - 'packages/lumi-survey/CHANGELOG.md'
@@ -111,6 +117,12 @@ jobs:
         run: pnpm run lint
       - name: Typecheck
         run: pnpm run typecheck
+      - name: Build local survey demo
+        run: pnpm --filter lumi-local-demo run build
+      - name: Validate local Compose config
+        run: docker compose config --quiet
+        env:
+          NPM_AUTH_TOKEN: config-only
       - name: Verify lumi-survey packaging boundaries
         run: pnpm run verify:lumi-survey
       - name: Unit tests
@@ -152,8 +164,11 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           cache-overwrite-existing: true
-      - name: Run tests
+      - name: Run API tests
         working-directory: apps/lumi-api
+        run: ./gradlew test
+      - name: Run submission proxy tests
+        working-directory: apps/lumi-submission-proxy
         run: ./gradlew test
 
   docs:

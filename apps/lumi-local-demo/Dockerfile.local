@@ -1,0 +1,21 @@
+# syntax=docker/dockerfile:1.7
+FROM cgr.dev/chainguard/node:latest-dev AS build
+USER root
+WORKDIR /src
+RUN corepack enable
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY apps/lumi-local-demo/package.json apps/lumi-local-demo/package.json
+COPY packages/lumi-survey/package.json packages/lumi-survey/package.json
+RUN --mount=type=secret,id=npm_token,target=/run/secrets/npm_token \
+    NPM_AUTH_TOKEN="$(cat /run/secrets/npm_token)" \
+    pnpm install --frozen-lockfile --filter lumi-local-demo...
+
+COPY apps/lumi-local-demo apps/lumi-local-demo
+COPY packages/lumi-survey packages/lumi-survey
+RUN pnpm --filter @navikt/lumi-survey run build && pnpm --filter lumi-local-demo run build
+
+FROM cgr.dev/chainguard/nginx:latest
+COPY apps/lumi-local-demo/nginx.conf /etc/nginx/nginx.conf
+COPY --from=build /src/apps/lumi-local-demo/dist /usr/share/nginx/html
+EXPOSE 8080

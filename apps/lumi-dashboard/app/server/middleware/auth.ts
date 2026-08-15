@@ -2,6 +2,7 @@ import { createMiddleware } from "@tanstack/react-start";
 import { setResponseStatus } from "@tanstack/react-start/server";
 
 import { logger } from "~/server/logger";
+import { resolveLocalAuthPolicy } from "~/server/middleware/localAuthPolicy";
 import { isMockMode } from "~/server/utils";
 import { serverEnv } from "~/serverEnv";
 
@@ -162,7 +163,8 @@ export async function getCachedAzureOboToken(
  * Reusable authentication middleware for server functions.
  *
  * - In NAIS environment: Validates Azure token and exchanges for OBO token
- * - In local dev: Returns null token (mock data mode)
+ * - In local mock mode: Returns no token
+ * - In explicit local real-data mode: Returns the API's non-secret local token
  *
  * Provides AuthContext to downstream handlers with backendUrl and oboToken.
  */
@@ -214,15 +216,19 @@ export function validateCsrfHeaders(
 
 export const authMiddleware = createMiddleware().server(
   async ({ next, request }) => {
-    const isLocalDev =
-      serverEnv.NODE_ENV === "development" && !serverEnv.NAIS_CLUSTER_NAME;
+    const localAuthPolicy = resolveLocalAuthPolicy({
+      isMockMode: isMockMode(),
+      naisClusterName: serverEnv.NAIS_CLUSTER_NAME,
+      localAuthBypass: serverEnv.LUMI_LOCAL_AUTH_BYPASS,
+    });
 
-    // Mock data mode (default in local dev) or local dev without NAIS context: no auth.
-    if (isMockMode() || isLocalDev) {
+    // Mock mode needs no backend token. Local real-data mode is a separate,
+    // explicit opt-in and uses the API's local bearer realm.
+    if (localAuthPolicy.bypassEnabled) {
       return next({
         context: {
           backendUrl: BACKEND_URL,
-          oboToken: null,
+          oboToken: localAuthPolicy.oboToken,
         } as AuthContext,
       });
     }

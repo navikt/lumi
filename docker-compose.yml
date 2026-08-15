@@ -1,22 +1,9 @@
-# Local development stack for Lumi.
+# Local full-chain stack for Lumi:
+# browser -> lumi-survey -> submission-proxy -> lumi-api -> Postgres -> dashboard.
 #
-# Two ways to run, both give lumi-api "local mode" (NAIS_CLUSTER_NAME absent ->
-# auth disabled, any bearer token accepted as a mock identity):
-#
-#   A) Whole stack in containers (one command):
-#        docker compose up -d --build          # postgres + api
-#        ./scripts/lumi-local-smoke.sh
-#      The api image runs on the same Chainguard JRE as prod, pulled from NAV's
-#      registry -> run `gcloud auth configure-docker europe-north1-docker.pkg.dev`
-#      once first (needs cgr-nav access). Option B builds nothing and skips this.
-#
-#   B) Just the database, API on the host (faster iteration):
-#        docker compose up -d postgres
-#        cd apps/lumi-api && ./gradlew run
-#        ./scripts/lumi-local-smoke.sh
-#
-# Flyway migrates on API boot, so a fresh volume gets the full schema. Valkey is
-# omitted: without VALKEY_URI_* the cache factories return Noop implementations.
+# Start everything with `docker compose up --build` (or `npm run local:up`).
+# The explicit LUMI_LOCAL_AUTH_BYPASS flags are fail-closed and must never be
+# copied to a deployed environment. See scripts/README.md for the workflow.
 
 services:
   postgres:
@@ -27,7 +14,7 @@ services:
       POSTGRES_USER: lumi
       POSTGRES_PASSWORD: lumi
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - lumi-postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -52,8 +39,55 @@ services:
       DB_PASSWORD: lumi
       # Local mode disables submission auth — it is fail-closed, so opt in explicitly.
       LUMI_LOCAL_AUTH_BYPASS: "true"
+      LUMI_INTERNAL_SUBMISSION_KEY: "local-full-chain-only"
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
+
+  submission-proxy:
+    build:
+      context: ./apps/lumi-submission-proxy
+      dockerfile: Dockerfile.local
+    container_name: lumi-submission-proxy
+    depends_on:
+      - api
+    environment:
+      LUMI_API_BASE_URL: http://api:8080
+      LUMI_INTERNAL_SUBMISSION_KEY: "local-full-chain-only"
+      LUMI_LOCAL_AUTH_BYPASS: "true"
+    ports:
+      - "127.0.0.1:8081:8080"
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: apps/lumi-dashboard/Dockerfile.local
+      secrets:
+        - npm_token
+    container_name: lumi-dashboard
+    depends_on:
+      - api
+    environment:
+      LUMI_API_URL: http://api:8080
+      USE_MOCK_DATA: "false"
+      LUMI_LOCAL_AUTH_BYPASS: "true"
+    ports:
+      - "127.0.0.1:3000:3000"
+
+  demo:
+    build:
+      context: .
+      dockerfile: apps/lumi-local-demo/Dockerfile.local
+      secrets:
+        - npm_token
+    container_name: lumi-local-demo
+    depends_on:
+      - submission-proxy
+    ports:
+      - "127.0.0.1:3001:8080"
 
 volumes:
   lumi-postgres-data:
+
+secrets:
+  npm_token:
+    environment: NPM_AUTH_TOKEN

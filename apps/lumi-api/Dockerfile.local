@@ -16,12 +16,9 @@ RUN ./gradlew --no-daemon dependencies --configuration runtimeClasspath -q
 COPY . .
 RUN ./gradlew --no-daemon clean shadowJar
 
-# Runtime stage: the SAME Chainguard JRE as production (apps/lumi-api/Dockerfile),
-# so the local image matches prod and follows NAV's Chainguard standard
-# (.github/instructions/docker.instructions.md). Runs as non-root automatically.
-# NOTE: pulling cgr-nav needs `gcloud auth configure-docker
-# europe-north1-docker.pkg.dev` + cgr-nav access first (see scripts/README.md).
-FROM europe-north1-docker.pkg.dev/cgr-nav/pull-through/nav.no/jre:openjdk-21
+# Runtime stage uses Chainguard's public non-root JRE so the one-command local
+# demo does not depend on access to NAV's private pull-through registry.
+FROM cgr.dev/chainguard/jre:latest
 WORKDIR /app
 COPY --from=build /src/build/libs/app.jar app.jar
 ENV TZ="Europe/Oslo"

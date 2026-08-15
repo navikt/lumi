@@ -57,6 +57,13 @@ class TeamAuthorizationConfig {
             isNaisEnvironment = env.nais.isNais,
         )?.let { NaisGraphQlTeamLookup(it) }
     }
+
+    /**
+     * Allows the explicit local-auth mode to expose only the synthetic
+     * `local-dev` team when no NAIS lookup is configured. Tests that exercise
+     * the production fail-closed path can disable this explicitly.
+     */
+    var localTeamFallbackEnabled: Boolean = true
 }
 
 /**
@@ -77,6 +84,10 @@ class TeamAuthorizationConfig {
 val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::TeamAuthorizationConfig) {
 
     val naisLookup = pluginConfig.naisTeamLookupProvider()
+    val useLocalTeamFallback =
+        pluginConfig.localTeamFallbackEnabled &&
+            ServerEnv.current.nais.isLocal &&
+            naisLookup == null
     
     on(AuthenticationChecked) { call ->
         val principal = call.principal<BrukerPrincipal>()
@@ -89,29 +100,33 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
         // Get requested team from query parameter
         val requestedTeam = call.request.queryParameters["team"]
 
-        val configuredNaisLookup = naisLookup ?: run {
-            log.error("TeamAuthorization: NAIS team lookup is not configured (missing NAIS_SERVICE_ACCOUNT_TOKEN_PATH/NAIS_API_KEY and/or NAIS_API_GRAPHQL_URL/NAIS_API_ENDPOINT)")
-            throw ApiErrorException.ServiceUnavailableException(
-                errorMessage = "Team lookup via NAIS is not configured",
-                details = "Missing NAIS configuration for team lookup.",
-            )
-        }
-
-        val authorizedTeams = when (val authorizedTeamsResult = resolveAuthorizedTeams(principal, configuredNaisLookup)) {
-            is NaisApiResult.Success -> authorizedTeamsResult.value
-            is NaisApiResult.Error -> {
-                // NAIS lookup failed (e.g. outage/timeout/401). Treat as temporary service problem.
-                val msg = "TeamAuthorization: NAIS team lookup failed (${authorizedTeamsResult.message}) for ${pseudonymizeIdentifier(principal.navIdent)}"
-                if (authorizedTeamsResult.message.contains("cached", ignoreCase = true)) {
-                    log.debug(msg)
-                } else {
-                    log.warn(msg)
-                }
-
+        val authorizedTeams = if (useLocalTeamFallback) {
+            setOf("local-dev")
+        } else {
+            val configuredNaisLookup = naisLookup ?: run {
+                log.error("TeamAuthorization: NAIS team lookup is not configured (missing NAIS_SERVICE_ACCOUNT_TOKEN_PATH/NAIS_API_KEY and/or NAIS_API_GRAPHQL_URL/NAIS_API_ENDPOINT)")
                 throw ApiErrorException.ServiceUnavailableException(
-                    errorMessage = "Kunne ikke hente teamtilgang akkurat nå",
-                    details = "Dette er ofte midlertidig (f.eks. NAIS API-nedetid). Prøv igjen om litt.",
+                    errorMessage = "Team lookup via NAIS is not configured",
+                    details = "Missing NAIS configuration for team lookup.",
                 )
+            }
+
+            when (val authorizedTeamsResult = resolveAuthorizedTeams(principal, configuredNaisLookup)) {
+                is NaisApiResult.Success -> authorizedTeamsResult.value
+                is NaisApiResult.Error -> {
+                    // NAIS lookup failed (e.g. outage/timeout/401). Treat as temporary service problem.
+                    val msg = "TeamAuthorization: NAIS team lookup failed (${authorizedTeamsResult.message}) for ${pseudonymizeIdentifier(principal.navIdent)}"
+                    if (authorizedTeamsResult.message.contains("cached", ignoreCase = true)) {
+                        log.debug(msg)
+                    } else {
+                        log.warn(msg)
+                    }
+
+                    throw ApiErrorException.ServiceUnavailableException(
+                        errorMessage = "Kunne ikke hente teamtilgang akkurat nå",
+                        details = "Dette er ofte midlertidig (f.eks. NAIS API-nedetid). Prøv igjen om litt.",
+                    )
+                }
             }
         }
 
