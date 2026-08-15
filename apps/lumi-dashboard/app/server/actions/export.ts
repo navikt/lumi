@@ -87,6 +87,8 @@ export function toMockCsv(items: typeof mockFeedbackItems): string {
     "url",
     "pathname",
     "metadata",
+    "screenWidth",
+    "screenHeight",
   ].join(",");
 
   const rows = items.map((item) => {
@@ -109,6 +111,8 @@ export function toMockCsv(items: typeof mockFeedbackItems): string {
       csvEscape(url),
       csvEscape(pathname),
       csvEscape(metadata),
+      csvEscape(item.context?.screenWidth ?? ""),
+      csvEscape(item.context?.screenHeight ?? ""),
     ].join(",");
   });
 
@@ -133,6 +137,8 @@ export async function toMockExcelBase64(
     { header: "url", key: "url", width: 40 },
     { header: "pathname", key: "pathname", width: 28 },
     { header: "metadata", key: "metadata", width: 40 },
+    { header: "screenWidth", key: "screenWidth", width: 14 },
+    { header: "screenHeight", key: "screenHeight", width: 14 },
   ];
 
   const sanitize = (v: string) => (isPotentialCsvFormula(v) ? `'${v}` : v);
@@ -143,6 +149,8 @@ export async function toMockExcelBase64(
     const app = item.app ?? "";
     const surveyId = item.surveyId;
     const deviceType = item.context?.deviceType ?? "";
+    const screenWidth = String(item.context?.screenWidth ?? "");
+    const screenHeight = String(item.context?.screenHeight ?? "");
     const rating = String(getFirstRating(item) ?? "");
     const text = getFirstText(item);
     const tags = item.tags?.join("|") ?? "";
@@ -156,6 +164,8 @@ export async function toMockExcelBase64(
       app: sanitize(app),
       surveyId: sanitize(surveyId),
       deviceType: sanitize(deviceType),
+      screenWidth: sanitize(screenWidth),
+      screenHeight: sanitize(screenHeight),
       rating: sanitize(rating),
       text: sanitize(text),
       tags: sanitize(tags),

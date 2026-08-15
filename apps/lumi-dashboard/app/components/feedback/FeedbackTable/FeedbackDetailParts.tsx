@@ -86,6 +86,13 @@ export function ContextGrid({
           value={`${context.viewportWidth || "?"}×${context.viewportHeight || "?"}`}
         />
       )}
+      {(context.screenWidth || context.screenHeight) && (
+        <ContextItem
+          icon="🖥️"
+          label="Skjermoppløsning"
+          value={`${context.screenWidth || "?"}×${context.screenHeight || "?"}`}
+        />
+      )}
     </HGrid>
   );
 }

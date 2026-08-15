@@ -872,7 +872,7 @@ class FeedbackRoutesTest : FunSpec({
         }
     }
 
-    test("GET /api/v1/intern/feedback/{id} parses nested context.viewport") {
+    test("GET /api/v1/intern/feedback/{id} parses viewport and screen resolution") {
         testApplication {
             application { testModule() }
 
@@ -886,7 +886,10 @@ class FeedbackRoutesTest : FunSpec({
                 feedbackJson = """
                     {
                                             "surveyId": "$surveyId",
-                      "context": {"viewport": {"width": 777, "height": 555}},
+                      "context": {
+                        "viewport": {"width": 777, "height": 555},
+                        "screenResolution": {"width": 1920, "height": 1080}
+                      },
                       "answers": [
                                                 {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": 4}}
                       ]
@@ -906,6 +909,30 @@ class FeedbackRoutesTest : FunSpec({
 
             context["viewportWidth"].shouldNotBeNull().jsonPrimitive.int shouldBe 777
             context["viewportHeight"].shouldNotBeNull().jsonPrimitive.int shouldBe 555
+            context["screenWidth"].shouldNotBeNull().jsonPrimitive.int shouldBe 1920
+            context["screenHeight"].shouldNotBeNull().jsonPrimitive.int shouldBe 1080
+
+            val nullResolutionRowId = UUID.randomUUID().toString()
+            insertTestFeedbackWithJson(
+                id = nullResolutionRowId,
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                      "surveyId": "survey-null-resolution",
+                      "context": {"screenResolution": null},
+                      "answers": []
+                    }
+                """.trimIndent(),
+            )
+
+            val nullResolutionResponse = createTestClient().get(
+                "/api/v1/intern/feedback/$nullResolutionRowId?team=team-test"
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            nullResolutionResponse.status shouldBe HttpStatusCode.OK
         }
     }
 

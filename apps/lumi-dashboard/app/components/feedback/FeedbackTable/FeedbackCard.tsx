@@ -186,6 +186,14 @@ export function FeedbackCard({
                     }
                   />
                 )}
+                {(feedback.context?.screenWidth ||
+                  feedback.context?.screenHeight) && (
+                  <ContextItem
+                    icon="🖥️"
+                    label="Skjermoppløsning"
+                    value={`${feedback.context.screenWidth || "?"}×${feedback.context.screenHeight || "?"}`}
+                  />
+                )}
               </HGrid>
             </ExpandedSection>
 

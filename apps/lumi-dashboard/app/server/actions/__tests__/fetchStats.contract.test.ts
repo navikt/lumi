@@ -80,6 +80,7 @@ describe("fetchStats contract", () => {
         "2026-01-21": { average: 3.2, count: 10 },
       },
       byDevice: { mobile: { count: 10, averageRating: 3.2 } },
+      byScreenResolution: { "1920-2559": 10 },
       byPathname: { "/": { count: 10, averageRating: 3.2 } },
       lowestRatingPaths: {},
       fieldStats: [],
@@ -105,6 +106,7 @@ describe("fetchStats contract", () => {
         "2026-01-21": { average: 3.2, count: 10 },
       },
       byDevice: { mobile: { count: 10, averageRating: 3.2 } },
+      byScreenResolution: { "1920-2559": 10 },
       byPathname: { "/": { count: 10, averageRating: 3.2 } },
       lowestRatingPaths: {},
       fieldStats: [
@@ -151,6 +153,7 @@ describe("fetchStats contract", () => {
       averageRating: null,
       ratingByDate: {},
       byDevice: {},
+      byScreenResolution: {},
       byPathname: {},
       lowestRatingPaths: {},
       fieldStats: [

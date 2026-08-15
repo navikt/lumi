@@ -46,6 +46,8 @@ class StatsDashboardRoutesTest : FunSpec({
         text: String,
         startedAt: OffsetDateTime,
         submittedAt: OffsetDateTime,
+        screenWidth: Int? = null,
+        screenHeight: Int? = null,
     ): String {
         val payload = buildJsonObject {
             put("schemaVersion", 1)
@@ -54,6 +56,12 @@ class StatsDashboardRoutesTest : FunSpec({
             putJsonObject("context") {
                 put("pathname", pathname)
                 put("deviceType", deviceType)
+                if (screenWidth != null && screenHeight != null) {
+                    putJsonObject("screenResolution") {
+                        put("width", screenWidth)
+                        put("height", screenHeight)
+                    }
+                }
             }
             putJsonArray("answers") {
                 add(
@@ -118,6 +126,8 @@ class StatsDashboardRoutesTest : FunSpec({
                     text = "bra",
                     startedAt = day1.minusMinutes(1),
                     submittedAt = day1,
+                    screenWidth = 390,
+                    screenHeight = 844,
                 ),
                 opprettet = day1,
             )
@@ -132,6 +142,8 @@ class StatsDashboardRoutesTest : FunSpec({
                     text = "ok",
                     startedAt = day1.minusMinutes(2),
                     submittedAt = day1,
+                    screenWidth = 1366,
+                    screenHeight = 768,
                 ),
                 opprettet = day1,
             )
@@ -146,6 +158,8 @@ class StatsDashboardRoutesTest : FunSpec({
                     text = "drlig",
                     startedAt = day1.minusMinutes(3),
                     submittedAt = day1,
+                    screenWidth = 1920,
+                    screenHeight = 1080,
                 ),
                 opprettet = day1,
             )
@@ -160,6 +174,8 @@ class StatsDashboardRoutesTest : FunSpec({
                     text = "ikke bra",
                     startedAt = day2.minusMinutes(1),
                     submittedAt = day2,
+                    screenWidth = 2560,
+                    screenHeight = 1440,
                 ),
                 opprettet = day2,
             )
@@ -174,6 +190,8 @@ class StatsDashboardRoutesTest : FunSpec({
                     text = "fin",
                     startedAt = day2.minusMinutes(2),
                     submittedAt = day2,
+                    screenWidth = 3440,
+                    screenHeight = 1440,
                 ),
                 opprettet = day2,
             )
@@ -199,6 +217,13 @@ class StatsDashboardRoutesTest : FunSpec({
             stats.byDevice["desktop"]?.averageRating shouldBe (4.0 plusOrMinus 0.0001)
             // avg(mobile) = (1 + 2) / 2 = 1.5
             stats.byDevice["mobile"]?.averageRating shouldBe (1.5 plusOrMinus 0.0001)
+
+            stats.byScreenResolution shouldBe mapOf(
+                "under-1280" to 1,
+                "1280-1919" to 1,
+                "1920-2559" to 1,
+                "2560-plus" to 2,
+            )
 
             stats.byPathname.size shouldBe 2
             stats.byPathname shouldContainKey "/a"

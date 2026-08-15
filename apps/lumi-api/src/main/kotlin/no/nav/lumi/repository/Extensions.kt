@@ -67,6 +67,7 @@ fun FeedbackDbRecord.toDto(tags: List<String> = emptyList()): FeedbackDto {
     
     val context = jsonObj["context"]?.jsonObject?.let { ctxObj ->
         val viewportObj = ctxObj["viewport"]?.jsonObject
+        val screenResolutionObj = ctxObj["screenResolution"] as? JsonObject
 
         val viewportWidth =
             ctxObj["viewportWidth"]?.jsonPrimitive?.intOrNull
@@ -75,6 +76,14 @@ fun FeedbackDbRecord.toDto(tags: List<String> = emptyList()): FeedbackDto {
         val viewportHeight =
             ctxObj["viewportHeight"]?.jsonPrimitive?.intOrNull
                 ?: viewportObj?.get("height")?.jsonPrimitive?.intOrNull
+
+        val screenWidth =
+            ctxObj["screenWidth"]?.jsonPrimitive?.intOrNull
+                ?: screenResolutionObj?.get("width")?.jsonPrimitive?.intOrNull
+
+        val screenHeight =
+            ctxObj["screenHeight"]?.jsonPrimitive?.intOrNull
+                ?: screenResolutionObj?.get("height")?.jsonPrimitive?.intOrNull
 
         val tags = ctxObj["tags"]?.jsonObject?.entries?.associate { (key, value) ->
             key to (value.jsonPrimitive.contentOrNull ?: value.toString())
@@ -88,6 +97,8 @@ fun FeedbackDbRecord.toDto(tags: List<String> = emptyList()): FeedbackDto {
             },
             viewportWidth = viewportWidth,
             viewportHeight = viewportHeight,
+            screenWidth = screenWidth,
+            screenHeight = screenHeight,
             tags = tags
         )
     }

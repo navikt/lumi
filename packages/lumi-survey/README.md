@@ -260,6 +260,7 @@ Backend-oppsett (token exchange, NAIS-tilgang) er beskrevet i [Koble til backend
 Auto-collectes i browser:
 
 - `viewport` (bredde/høyde)
+- `screenResolution` (skjermens bredde/høyde)
 - `deviceType` (mobile/tablet/desktop)
 - `userAgent`
 

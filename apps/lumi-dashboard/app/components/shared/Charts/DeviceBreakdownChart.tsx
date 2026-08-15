@@ -1,4 +1,12 @@
-import { BodyShort, Hide, HStack, Label, Show, VStack } from "@navikt/ds-react";
+import {
+  BodyShort,
+  Heading,
+  Hide,
+  HStack,
+  Label,
+  Show,
+  VStack,
+} from "@navikt/ds-react";
 import { ChartEmptyState } from "~/components/shared/Charts/ChartEmptyState";
 import { ChartLoadingState } from "~/components/shared/Charts/ChartLoadingState";
 import { useSearchParams } from "~/hooks/useSearchParams";
@@ -7,6 +15,11 @@ import {
   getNpsCategory,
   inferRatingVariantFromDistribution,
 } from "~/utils/ratingDisplay";
+import {
+  SCREEN_RESOLUTION_BUCKET_ORDER,
+  SCREEN_RESOLUTION_LABELS,
+  type ScreenResolutionBucket,
+} from "~/utils/screenResolution";
 import styles from "./Charts.module.css";
 
 const DEVICE_ICONS: Record<string, string> = {
@@ -33,6 +46,8 @@ const DEVICE_COLOR_CLASS_BY_KEY: Record<string, string> = {
 interface DeviceBreakdownChartProps {
   /** Override rating visibility. If not provided, auto-detects based on survey type. */
   showRating?: boolean;
+  /** Show coarse screen resolution groups below the device breakdown. */
+  showScreenResolution?: boolean;
 }
 
 function clamp01(value: number) {
@@ -108,6 +123,7 @@ function ratingToneClass(
 
 export function DeviceBreakdownChart({
   showRating,
+  showScreenResolution = true,
 }: DeviceBreakdownChartProps = {}) {
   const { data: stats, isPending } = useStats();
   const { setParams } = useSearchParams();
@@ -149,8 +165,21 @@ export function DeviceBreakdownChart({
     }))
     .sort((a, b) => b.count - a.count);
 
-  if (data.length === 0) {
+  const byScreenResolution = stats?.byScreenResolution || {};
+  const screenResolutionData = showScreenResolution
+    ? SCREEN_RESOLUTION_BUCKET_ORDER.map((bucket) => ({
+        bucket,
+        label: SCREEN_RESOLUTION_LABELS[bucket],
+        count: byScreenResolution[bucket] ?? 0,
+      })).filter(({ count }) => count > 0)
+    : [];
+
+  if (data.length === 0 && screenResolutionData.length === 0) {
     return <ChartEmptyState message="Ingen enhetsdata tilgjengelig" />;
+  }
+
+  if (data.length === 0) {
+    return <ScreenResolutionBreakdown data={screenResolutionData} />;
   }
 
   const totalCount = data.reduce((sum, d) => sum + d.count, 0);
@@ -254,6 +283,70 @@ export function DeviceBreakdownChart({
           ))}
         </HStack>
       </Show>
+
+      <ScreenResolutionBreakdown data={screenResolutionData} />
     </VStack>
+  );
+}
+
+function ScreenResolutionBreakdown({
+  data,
+}: {
+  data: Array<{
+    bucket: ScreenResolutionBucket;
+    label: string;
+    count: number;
+  }>;
+}) {
+  if (data.length === 0) return null;
+
+  const totalCount = data.reduce((sum, entry) => sum + entry.count, 0);
+
+  return (
+    <VStack gap="space-8" className={styles.fullWidth}>
+      <Heading size="xsmall" level="3">
+        Skjermstørrelse
+      </Heading>
+      {data.map(({ bucket, label, count }) => (
+        <ScreenResolutionRow
+          key={bucket}
+          bucket={bucket}
+          label={label}
+          count={count}
+          totalCount={totalCount}
+        />
+      ))}
+    </VStack>
+  );
+}
+
+function ScreenResolutionRow({
+  bucket,
+  label,
+  count,
+  totalCount,
+}: {
+  bucket: ScreenResolutionBucket;
+  label: string;
+  count: number;
+  totalCount: number;
+}) {
+  const percentage = Math.round((count / totalCount) * 100);
+
+  return (
+    <div className={styles.fullWidth} data-resolution-bucket={bucket}>
+      <HStack justify="space-between" align="center" gap="space-8">
+        <BodyShort size="small">{label}</BodyShort>
+        <BodyShort size="small" className={styles.deviceMutedText}>
+          {count} ({percentage}%)
+        </BodyShort>
+      </HStack>
+      <progress
+        className={styles.deviceProgress}
+        value={percentage}
+        max={100}
+        aria-label={`Andel med skjermstørrelse ${label}`}
+      />
+    </div>
   );
 }

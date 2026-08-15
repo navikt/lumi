@@ -160,6 +160,7 @@ class StatsService(
             },
             ratingByDate = if (stats.masked) emptyMap() else analytics?.ratingByDate.orEmpty(),
             byDevice = if (stats.masked) emptyMap() else analytics?.byDevice.orEmpty(),
+            byScreenResolution = if (stats.masked) emptyMap() else analytics?.byScreenResolution.orEmpty(),
             byPathname = if (stats.masked) emptyMap() else analytics?.byPathname.orEmpty(),
             lowestRatingPaths = if (stats.masked) emptyMap() else analytics?.lowestRatingPaths.orEmpty(),
             fieldStats = if (stats.masked) emptyList() else analytics?.fieldStats.orEmpty(),

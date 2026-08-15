@@ -35,7 +35,9 @@ class ExportService(
     fun exportToCsv(feedbacks: List<FeedbackDto>): String {
         return buildString {
             // Header
-            appendLine("id,submittedAt,app,surveyId,rating,feedback,sensitiveDataRedacted")
+            appendLine(
+                "id,submittedAt,app,surveyId,rating,feedback,sensitiveDataRedacted,screenWidth,screenHeight"
+            )
             
             // Data rows
             feedbacks.forEach { feedback ->
@@ -53,7 +55,9 @@ class ExportService(
                     feedback.surveyId,
                     rating,
                     feedbackText,
-                    feedback.sensitiveDataRedacted.toString()
+                    feedback.sensitiveDataRedacted.toString(),
+                    feedback.context?.screenWidth?.toString() ?: "",
+                    feedback.context?.screenHeight?.toString() ?: "",
                 ).joinToString(",") { it.escapeCsv() }
 
                 appendLine(row)
@@ -78,7 +82,17 @@ class ExportService(
         
         // Header row
         val headerRow = sheet.createRow(0)
-        val headers = listOf("ID", "Tidspunkt", "App", "Survey", "Vurdering", "Tilbakemelding", "Sensitiv data fjernet")
+        val headers = listOf(
+            "ID",
+            "Tidspunkt",
+            "App",
+            "Survey",
+            "Vurdering",
+            "Tilbakemelding",
+            "Sensitiv data fjernet",
+            "Skjermbredde",
+            "Skjermhøyde",
+        )
         val maxColumnChars = headers.map { it.length }.toMutableList()
         headers.forEachIndexed { index, header ->
             headerRow.createCell(index).setCellValue(header)
@@ -109,6 +123,8 @@ class ExportService(
                 rating,
                 feedbackText,
                 sensitiveDataRedacted,
+                feedback.context?.screenWidth?.toString() ?: "",
+                feedback.context?.screenHeight?.toString() ?: "",
             )
 
             values.forEachIndexed { columnIndex, value ->

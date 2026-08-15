@@ -78,6 +78,7 @@ interface LumiContext {
   // Auto-samlet av widgeten
   deviceType?: DeviceType;   // "mobile" | "tablet" | "desktop"
   viewport?: { width: number; height: number };
+  screenResolution?: { width: number; height: number };
   userAgent?: string;
 
   // Opt-in (krever collectLocation: true)
@@ -143,6 +144,8 @@ Backend mapper `surveyType`-strenger til enums:
     "url": "https://nav.no/sykepenger",
     "pathname": "/sykepenger",
     "deviceType": "mobile",
+    "viewport": { "width": 390, "height": 844 },
+    "screenResolution": { "width": 390, "height": 844 },
     "tags": {
       "abTest": "A",
       "rolle": "bruker"
