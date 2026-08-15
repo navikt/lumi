@@ -119,8 +119,10 @@ export interface LumiSurveyBehavior {
   storageStrategy?: StorageStrategy;
 
   /**
-   * Show a progress bar in step mode.
-   * Only visible when questionLayout is "steps" or branching is active.
+   * Show progress from the first question in step mode when there are at least
+   * two reachable steps. Intro and success screens are not counted as steps.
+   * Branching reports the current step without claiming an estimated total to
+   * assistive technology.
    * @default false
    */
   showProgress?: boolean;

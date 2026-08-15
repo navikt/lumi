@@ -1,4 +1,11 @@
-import { Alert, Button, HStack, ProgressBar, VStack } from "@navikt/ds-react";
+import {
+  Alert,
+  BodyShort,
+  Button,
+  HStack,
+  ProgressBar,
+  VStack,
+} from "@navikt/ds-react";
 import React, { useCallback, useRef } from "react";
 import type { LumiSurveyAnswerValue, LumiSurveyQuestion } from "../../../core";
 import { CLASS_NAMES } from "../classNames.js";
@@ -79,7 +86,6 @@ export const SurveyFormContent = React.memo(
       showProgress = false,
       totalSteps = 0,
       hasBranching = false,
-      hasIntro = false,
     } = progress;
 
     const {
@@ -115,19 +121,29 @@ export const SurveyFormContent = React.memo(
       <>
         {showProgress &&
           isStepMode &&
-          totalSteps > 0 &&
-          (hasIntro || currentStep > 0) && (
+          currentStep >= 0 &&
+          totalSteps > 1 &&
+          (hasBranching ? (
+            <>
+              <ProgressBar
+                value={currentStep + 1}
+                valueMax={totalSteps}
+                size="small"
+                aria-hidden
+              />
+              <BodyShort as="span" visuallyHidden>
+                {`Fremdrift i undersøkelsen: Steg ${currentStep + 1}`}
+              </BodyShort>
+            </>
+          ) : (
             <ProgressBar
               value={currentStep + 1}
               valueMax={totalSteps}
               size="small"
-              aria-label={
-                hasBranching
-                  ? `Steg ${currentStep + 1}`
-                  : `Steg ${currentStep + 1} av ${totalSteps}`
-              }
+              aria-valuetext={`Steg ${currentStep + 1} av ${totalSteps}`}
+              aria-label="Fremdrift i undersøkelsen"
             />
-          )}
+          ))}
 
         <form onSubmit={onSubmit} noValidate>
           <VStack gap="space-16">

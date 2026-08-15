@@ -425,7 +425,6 @@ export const LumiSurveyDock = ({
             showProgress: config.showProgress,
             totalSteps: totalVisibleSteps,
             hasBranching,
-            hasIntro: !!config.introTitle,
           }}
           questionContext={{
             promptQuestionId: promptQuestion.id,

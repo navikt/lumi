@@ -193,7 +193,7 @@ export const Custom: Story = {
     docs: {
       description: {
         story:
-          "Step-by-step survey uten intro – hopper direkte til første spørsmål. Viser singleChoice, multiChoice, text og visibleIf (velg «Annet» på spørsmål 4 for å se oppfølgingsspørsmål).",
+          "Step-by-step survey uten intro. Fremdrift vises fra første spørsmål. Viser singleChoice, multiChoice, text og visibleIf (velg «Annet» på spørsmål 4 for å se oppfølgingsspørsmål).",
       },
     },
   },
@@ -225,7 +225,7 @@ export const MedIntro: Story = {
     docs: {
       description: {
         story:
-          "Samme survey med intro-skjerm, progress bar og visibleIf. Klikk «Start» for å se spørsmålene.",
+          "Samme survey med intro-skjerm, fremdrift og visibleIf. Introen regnes ikke som et steg; klikk «Start» for å se første spørsmål som steg 1.",
       },
     },
   },
