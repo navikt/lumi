@@ -45,7 +45,9 @@ For en **mikro-feedback-widget** med korte skjemaer er ekte vilkårlige hopp sje
 ### Bindinger vi ikke kan ignorere
 
 - `logic` er **dokumentert offentlig** og brukes av konsumenter (bl.a. teamet i #332, live i NAV nå).
-- `createTopTasksSurvey` (førsteparts-preset, `topTasks`-surveytypen) **bruker `logic` under panseret** (`SKIP` + `SUBMIT`). Å fjerne `logic` krever migrering av denne.
+- `createTopTasksSurvey` (førsteparts-preset, `topTasks`-surveytypen) var den
+  siste førstepartsbruken av `logic`. Den er migrert til `visibleIf` i #359;
+  verdi-operatorene aktiverer fortsatt implisitt steg-modus under `"auto"`.
 
 Konklusjon: vi kan ikke rive ut `logic`. Men vi kan slutte å behandle den som en likestilt modell.
 
@@ -60,7 +62,9 @@ Konklusjon: vi kan ikke rive ut `logic`. Men vi kan slutte å behandle den som e
    - utvides ikke med ny funksjonalitet utover det delte betingelseslaget,
    - eksponeres i builder-UI-en (#338) kun bak en «avansert»-luke, ikke i hovedflyten.
 
-4. **Migrer førstepartsbruk vekk fra `logic` der det er triviell-ekvivalent.** Når #333 (OR) lander, skriv om `createTopTasksSurvey` sine `SKIP`/`SUBMIT`-regler til `visibleIf` der oppførselen er identisk. Mål: redusere førsteparts-avhengigheten av `logic` mot null.
+4. **Migrer førstepartsbruk vekk fra `logic` der det er triviell-ekvivalent.**
+   Levert i #359: `createTopTasksSurvey` uttrykker nå `otherTask` og `blocker`
+   med `visibleIf`. Førsteparts-avhengigheten av `logic` er dermed null.
 
 5. **Revurder full deprecation av `logic` etter #333 + #338**, basert på faktisk konsumentbruk. Hvis ekte `JUMP_TO`-bruk forblir nær null, kan `logic` deprecates med en migreringsguide. Denne ADR-en *forplikter ikke* til full fjerning — den setter retningen.
 
@@ -69,18 +73,20 @@ Konklusjon: vi kan ikke rive ut `logic`. Men vi kan slutte å behandle den som e
 **Positivt**
 - Én mental modell for forfattere og for builder-UI-en (#338).
 - AND/OR (#333) bygger på det delte leaf-laget; gruppene ble lagt på `visibleIf` (via `VisibleIfCondition`), ikke på `logic`.
-- Ingen brudd: `logic` fortsetter å virke for eksisterende konsumenter og `createTopTasksSurvey`.
+- Ingen brudd: `logic` fortsetter å virke for eksisterende konsumenter;
+  `createTopTasksSurvey` beholder samme standardflyt via `visibleIf`.
 - Divergens-bugen (#332-klassen) forhindres ved at de to evaluatorene nå deler resolusjonslogikk.
 
 **Negativt / kostnad**
 - Krever å holde to evaluatorer i synk inntil (eventuell) deprecation — vi aksepterer dette mot å holde `logic` fungerende.
-- Omskriving av `createTopTasksSurvey` (punkt 4) er reelt arbeid, gated på #333.
+- Automatisk layout må skille verdi-baserte synlighetsgrener fra `EXISTS`-basert
+  progressiv avdekking; bare førstnevnte aktiverer steg-modus.
 - `branching.md` må oppdateres: posisjoner `logic` som avansert, og klargjør linje 64 (kryss-spørsmål via `questionId` fungerer nå også i `logic` etter #332).
 
 ## Vurderte alternativer
 
 - **A. Status quo (behold begge likestilt).** Forkastet: viderefører den overlappende modellen rett inn i Survey Builder (#338) og dobler #333-arbeidet.
-- **B. Full deprecation av `logic` nå.** Forkastet (for tidlig): bryter live konsumenter og `createTopTasksSurvey`, og vi har ikke bekreftet at ingen trenger ekte `JUMP_TO`. Holdes åpen som mulig endestasjon (punkt 5).
+- **B. Full deprecation av `logic` nå.** Forkastet (for tidlig): bryter live konsumenter, og vi har ikke bekreftet at ingen trenger ekte `JUMP_TO`. Holdes åpen som mulig endestasjon (punkt 5).
 - **C. (valgt) Kanonisk `visibleIf` + `logic` som escape hatch + delt betingelseslag.** Pragmatisk: ingen brudd, én modell utad, #333 én gang, klar retning for #338.
 
 ## Oppfølging
@@ -88,7 +94,8 @@ Konklusjon: vi kan ikke rive ut `logic`. Men vi kan slutte å behandle den som e
 - [x] #333: implementer AND/OR i `visibleIf` (levert: `any`/`all`-grupper i
   `visibleIf`; `logic` snevret til leaf. Evaluator-unifisering bevisst utsatt —
   operator-divergensen lever videre, men kun i den utfasede `logic`-mekanismen.)
-- [ ] Oppdater `docs/guider/branching.md` (avansert-posisjonering + linje 64-klargjøring).
+- [x] Oppdater `docs/guider/branching.md` (avansert-posisjonering + linje 64-klargjøring).
 - [ ] #338: bygg builder rundt synlighetsmodellen; `logic` bak «avansert»-luke.
-- [ ] Etter #333: migrer `createTopTasksSurvey` `SKIP`/`SUBMIT` → `visibleIf`.
+- [x] #359: migrer `createTopTasksSurvey` `SKIP`/`SUBMIT` → `visibleIf`, og la
+  verdi-baserte `visibleIf`-grener aktivere steg-modus under `"auto"`.
 - [ ] Etter #333+#338: revurder full deprecation av `logic`.

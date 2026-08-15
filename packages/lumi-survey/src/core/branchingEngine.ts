@@ -1,4 +1,4 @@
-import { isLeafCondition } from "./conditionUtils.js";
+import { getLeafConditions, isLeafCondition } from "./conditionUtils.js";
 import type {
   LogicLeafCondition,
   LogicOperator,
@@ -243,6 +243,36 @@ export function surveyHasBranchingLogic(
   questions: LumiSurveyQuestion[],
 ): boolean {
   return questions.some((q) => q.logic && q.logic.length > 0);
+}
+
+const VISIBILITY_BRANCHING_OPERATORS = new Set<LogicOperator>([
+  "EQ",
+  "NEQ",
+  "GT",
+  "LT",
+  "CONTAINS",
+]);
+
+/**
+ * Checks whether answer-dependent visibility represents mutually exclusive
+ * branches that should use step navigation under the automatic layout.
+ * EXISTS-only progressive disclosure and metadata conditions stay single-page.
+ */
+export function surveyHasVisibilityBranching(
+  questions: LumiSurveyQuestion[],
+): boolean {
+  return questions.some((question) => {
+    if (!question.visibleIf) return false;
+
+    return getLeafConditions(question.visibleIf).some(
+      (condition) =>
+        isLeafCondition(condition) &&
+        condition.field !== "METADATA" &&
+        typeof condition.questionId === "string" &&
+        condition.questionId.length > 0 &&
+        VISIBILITY_BRANCHING_OPERATORS.has(condition.operator),
+    );
+  });
 }
 
 /**

@@ -544,6 +544,44 @@ describe("useStepNavigation", () => {
       expect(result.current.hasBranching).toBe(true);
       expect(result.current.isStepMode).toBe(true);
     });
+
+    it("activates automatically for answer-based visibleIf value operators", () => {
+      const questions: LumiSurveyQuestion[] = [
+        LINEAR_QUESTIONS[0],
+        {
+          ...LINEAR_QUESTIONS[1],
+          visibleIf: {
+            questionId: "q1",
+            operator: "EQ",
+            value: "a",
+          },
+        },
+      ];
+
+      const { result } = renderHook(() =>
+        useStepNavigation({ questions, answers: {} }),
+      );
+
+      expect(result.current.hasBranching).toBe(true);
+      expect(result.current.isStepMode).toBe(true);
+    });
+
+    it("keeps EXISTS-only progressive disclosure in single-page mode", () => {
+      const questions: LumiSurveyQuestion[] = [
+        LINEAR_QUESTIONS[0],
+        {
+          ...LINEAR_QUESTIONS[1],
+          visibleIf: { questionId: "q1", operator: "EXISTS" },
+        },
+      ];
+
+      const { result } = renderHook(() =>
+        useStepNavigation({ questions, answers: {} }),
+      );
+
+      expect(result.current.hasBranching).toBe(false);
+      expect(result.current.isStepMode).toBe(false);
+    });
   });
 
   // ------------------------------------------

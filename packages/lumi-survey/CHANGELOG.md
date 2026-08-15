@@ -10,6 +10,10 @@ This project follows SemVer.
 
 - `visibleIf` now supports `any` (OR) and `all` (AND) to combine multiple conditions. The wider condition type is exported as `VisibleIfCondition` (with `isConditionGroup`/`getLeafConditions`/`isLeafCondition` helpers); `LogicCondition` stays leaf-only so `LogicRule` consumers are unaffected. Note: `question.visibleIf` is now typed `VisibleIfCondition` (leaf | group), so code reading `visibleIf.operator` directly must first narrow with `isConditionGroup`/`isLeafCondition`. (#333)
 
+### Changed
+
+- `createTopTasksSurvey` now expresses its flow with `visibleIf` instead of `logic`. Answer-based value conditions (`EQ`/`NEQ`/`GT`/`LT`/`CONTAINS`) automatically enable step mode under `questionLayout: "auto"`, while `EXISTS`-only progressive disclosure remains single-page. (#359)
+
 ### Fixed
 
 - `logic` conditions that reference another question via `condition.questionId` are now evaluated against that question's answer instead of the current question's. Cross-question branching (e.g. routing on an earlier answer) now works the same way `visibleIf` already did. (#332)
