@@ -18,12 +18,72 @@ function isAnswerCondition(
 }
 
 /**
+ * Builds representative answer values for every truth-region expressible by
+ * the value operators. The estimator deliberately considers every supported
+ * answer shape because overestimation is safer than hiding a reachable step.
+ */
+function buildAnswerWitnesses(
+  conditions: LogicLeafCondition[],
+): Array<LumiSurveyAnswerValue | undefined> {
+  const scalarWitnesses = new Set<string | number>([0]);
+  const numericBoundaries = new Set<number>();
+  const stringValues = new Set<string>();
+
+  for (const condition of conditions) {
+    if (typeof condition.value === "number") {
+      scalarWitnesses.add(condition.value);
+      numericBoundaries.add(condition.value);
+    } else if (typeof condition.value === "string") {
+      scalarWitnesses.add(condition.value);
+      stringValues.add(condition.value);
+    }
+
+    if (condition.operator === "CONTAINS") {
+      stringValues.add(String(condition.value));
+    }
+  }
+
+  const sortedBoundaries = [...numericBoundaries]
+    .filter(Number.isFinite)
+    .sort((left, right) => left - right);
+
+  if (sortedBoundaries.length > 0) {
+    const first = sortedBoundaries[0];
+    const last = sortedBoundaries[sortedBoundaries.length - 1];
+    const below = first - Math.max(1, Math.abs(first) * 0.01);
+    const above = last + Math.max(1, Math.abs(last) * 0.01);
+
+    if (Number.isFinite(below) && below < first) scalarWitnesses.add(below);
+    if (Number.isFinite(above) && above > last) scalarWitnesses.add(above);
+
+    for (let index = 1; index < sortedBoundaries.length; index++) {
+      const left = sortedBoundaries[index - 1];
+      const right = sortedBoundaries[index];
+      const midpoint = left + (right - left) / 2;
+      if (Number.isFinite(midpoint) && midpoint > left && midpoint < right) {
+        scalarWitnesses.add(midpoint);
+      }
+    }
+  }
+
+  const expectedStrings = new Set(
+    conditions
+      .map((condition) => condition.value)
+      .filter((value): value is string => typeof value === "string"),
+  );
+  let combinedString = `__lumi_reachability__${[...stringValues].join("__")}__`;
+  while (expectedStrings.has(combinedString)) combinedString += "_";
+  scalarWitnesses.add(combinedString);
+
+  return [undefined, ...scalarWitnesses, [...stringValues]];
+}
+
+/**
  * Estimates reachable questions from the current answer state via the visibleIf graph.
- * For unanswered parents with value operators (EQ/LT/GT/NEQ/CONTAINS),
- * only one unresolved child branch is counted per parent (the longest branch).
- * This avoids counting mutually exclusive paths at once, but overlapping
- * conditions (for example LT 4 and GT 3) can make the estimate lower than
- * the real number of visible questions.
+ * For unanswered parents with value operators (EQ/LT/GT/NEQ/CONTAINS), the
+ * longest compatible combination of child branches is counted. This avoids
+ * counting mutually exclusive paths at once without undercounting overlapping
+ * conditions such as multiple NEQ/CONTAINS branches or LT 4 plus GT 3.
  * METADATA-gated conditions are always treated as reachable to prefer
  * overestimation over underestimation when metadata may arrive or change later.
  * `any`/`all` group conditions are evaluated once every referenced answer is
@@ -169,10 +229,10 @@ export function computeReachableSteps(
     return false;
   };
 
-  const branchLengthFrom = (
+  function branchLengthFrom(
     questionId: string,
     visited: Set<string> = new Set(),
-  ): number => {
+  ): number {
     if (visited.has(questionId)) {
       return 0;
     }
@@ -206,7 +266,7 @@ export function computeReachableSteps(
     let total = 1;
     const children = dependentsByParent.get(questionId) ?? [];
 
-    let bestUnansweredValueBranch = 0;
+    const unansweredValueChildren: LumiSurveyQuestion[] = [];
 
     for (const child of children) {
       const childCondition = child.visibleIf;
@@ -226,15 +286,64 @@ export function computeReachableSteps(
         continue;
       }
 
-      const branchLength = branchLengthFrom(child.id, new Set(visited));
-      if (branchLength > bestUnansweredValueBranch) {
-        bestUnansweredValueBranch = branchLength;
-      }
+      unansweredValueChildren.push(child);
     }
 
-    total += bestUnansweredValueBranch;
+    total += maxCompatibleBranchLength(
+      questionId,
+      unansweredValueChildren,
+      visited,
+    );
     return total;
-  };
+  }
+
+  function maxCompatibleBranchLength(
+    parentId: string,
+    candidates: LumiSurveyQuestion[],
+    visited: Set<string>,
+  ): number {
+    const branches = candidates.flatMap((candidate) => {
+      const condition = candidate.visibleIf;
+      if (!isAnswerCondition(condition) || condition.operator === "EXISTS") {
+        return [];
+      }
+
+      return [
+        {
+          condition,
+          length: branchLengthFrom(candidate.id, new Set(visited)),
+        },
+      ];
+    });
+
+    if (branches.length === 0) return 0;
+
+    const hypotheticalAnswers = { ...answers };
+    let best = 0;
+
+    for (const witness of buildAnswerWitnesses(
+      branches.map((branch) => branch.condition),
+    )) {
+      if (witness === undefined) {
+        delete hypotheticalAnswers[parentId];
+      } else {
+        hypotheticalAnswers[parentId] = witness;
+      }
+
+      let total = 0;
+      for (const branch of branches) {
+        if (
+          evaluateVisibility(branch.condition, hypotheticalAnswers, metadata)
+        ) {
+          total += branch.length;
+        }
+      }
+
+      if (total > best) best = total;
+    }
+
+    return best;
+  }
 
   let reachableCount = 0;
   const unresolvedByParent = new Map<string, LumiSurveyQuestion[]>();
@@ -267,17 +376,12 @@ export function computeReachableSteps(
     unresolvedByParent.set(condition.questionId, unresolved);
   }
 
-  for (const candidates of unresolvedByParent.values()) {
-    let bestBranch = 0;
-
-    for (const candidate of candidates) {
-      const branch = branchLengthFrom(candidate.id);
-      if (branch > bestBranch) {
-        bestBranch = branch;
-      }
-    }
-
-    reachableCount += bestBranch;
+  for (const [parentId, candidates] of unresolvedByParent) {
+    reachableCount += maxCompatibleBranchLength(
+      parentId,
+      candidates,
+      new Set(),
+    );
   }
 
   return reachableCount;
