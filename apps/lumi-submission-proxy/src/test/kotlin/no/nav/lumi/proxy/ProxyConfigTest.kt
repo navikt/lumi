@@ -32,11 +32,29 @@ class ProxyConfigTest {
     @Test
     fun `uses Texas without enabling local bypass`() {
         val values = requiredValues +
-            ("NAIS_TOKEN_INTROSPECTION_ENDPOINT" to "http://texas/introspect")
+            mapOf(
+                "NAIS_CLUSTER_NAME" to "dev-gcp",
+                "NAIS_TOKEN_INTROSPECTION_ENDPOINT" to "http://texas/introspect",
+            )
 
         val config = ProxyConfig.fromEnvironment(values::get)
 
         assertFalse(config.localAuthBypassEnabled)
         assertEquals("http://texas/introspect", config.tokenIntrospectionEndpoint)
+    }
+
+    @Test
+    fun `rejects local bypass inside a NAIS cluster`() {
+        val values = requiredValues +
+            mapOf(
+                "NAIS_CLUSTER_NAME" to "dev-gcp",
+                "LUMI_LOCAL_AUTH_BYPASS" to "true",
+            )
+
+        val error = assertFailsWith<IllegalArgumentException> {
+            ProxyConfig.fromEnvironment(values::get)
+        }
+
+        assertTrue(error.message.orEmpty().contains("must never be enabled inside a NAIS cluster"))
     }
 }

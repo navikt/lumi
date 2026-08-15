@@ -63,7 +63,8 @@ API, proxy og dashboard krever eksplisitt `LUMI_LOCAL_AUTH_BYPASS=true` i
 Compose. Bypassen aktiveres bare uten `NAIS_CLUSTER_NAME`; proxyen og API-et
 nekter å starte lokalt uten opt-in. Dashboardet sender en ikke-hemmelig
 `Bearer local-dev` til API-ets lokale auth-realm. Dette oppsettet må aldri
-eksponeres utenfor lokal maskin.
+eksponeres utenfor lokal maskin. Compose binder derfor alle publiserte porter
+til `127.0.0.1`.
 
 ### Teardown
 

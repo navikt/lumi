@@ -35,6 +35,8 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'biome.json'
+              - '.dockerignore'
+              - 'docker-compose.yml'
               - 'tsconfig*.json'
               - '.github/skills/**'
               - '.github/workflows/**'
@@ -43,6 +45,8 @@ jobs:
               - 'packages/**'
             api:
               - '.github/workflows/**'
+              - '.dockerignore'
+              - 'docker-compose.yml'
               - 'apps/lumi-api/**'
               - 'apps/lumi-submission-proxy/**'
             docs:
@@ -113,6 +117,12 @@ jobs:
         run: pnpm run lint
       - name: Typecheck
         run: pnpm run typecheck
+      - name: Build local survey demo
+        run: pnpm --filter lumi-local-demo run build
+      - name: Validate local Compose config
+        run: docker compose config --quiet
+        env:
+          NPM_AUTH_TOKEN: config-only
       - name: Verify lumi-survey packaging boundaries
         run: pnpm run verify:lumi-survey
       - name: Unit tests

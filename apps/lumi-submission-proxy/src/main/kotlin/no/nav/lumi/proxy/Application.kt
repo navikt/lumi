@@ -209,7 +209,16 @@ data class ProxyConfig(
             val tokenIntrospectionEndpoint = getenv("NAIS_TOKEN_INTROSPECTION_ENDPOINT")
                 ?.trim()
                 ?.takeIf { it.isNotEmpty() }
-            val localAuthBypassEnabled = getenv("LUMI_LOCAL_AUTH_BYPASS").toBoolean()
+            val naisClusterName = getenv("NAIS_CLUSTER_NAME")
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+            val localAuthBypassRequested = getenv("LUMI_LOCAL_AUTH_BYPASS").toBoolean()
+
+            require(!localAuthBypassRequested || naisClusterName == null) {
+                "LUMI_LOCAL_AUTH_BYPASS must never be enabled inside a NAIS cluster"
+            }
+
+            val localAuthBypassEnabled = localAuthBypassRequested && naisClusterName == null
 
             require(tokenIntrospectionEndpoint != null || localAuthBypassEnabled) {
                 "Refusing to start without Texas: set LUMI_LOCAL_AUTH_BYPASS=true " +

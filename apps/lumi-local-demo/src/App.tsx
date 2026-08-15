@@ -58,6 +58,13 @@ export function App() {
   );
 
   const dashboardHref = `${DASHBOARD_URL}?team=local-dev&surveyId=${encodeURIComponent(surveyId)}`;
+  const isSending = submission.status === "sending";
+
+  const selectScenario = (nextScenarioId: string) => {
+    if (isSending) return;
+    setScenarioId(nextScenarioId);
+    setSubmission({ status: "idle" });
+  };
 
   return (
     <main className="testBench">
@@ -86,10 +93,8 @@ export function App() {
           <Select
             label="Survey- og feltvariant"
             value={scenario.id}
-            onChange={(event) => {
-              setScenarioId(event.target.value);
-              setSubmission({ status: "idle" });
-            }}
+            disabled={isSending}
+            onChange={(event) => selectScenario(event.target.value)}
           >
             {demoScenarios.map((candidate) => (
               <option key={candidate.id} value={candidate.id}>
@@ -158,7 +163,11 @@ export function App() {
           {demoScenarios.map((candidate, index) => (
             <li key={candidate.id} data-active={candidate.id === scenario.id}>
               <span>{String(index + 1).padStart(2, "0")}</span>
-              <button type="button" onClick={() => setScenarioId(candidate.id)}>
+              <button
+                type="button"
+                disabled={isSending}
+                onClick={() => selectScenario(candidate.id)}
+              >
                 {candidate.title}
               </button>
             </li>

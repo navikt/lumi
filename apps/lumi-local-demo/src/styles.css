@@ -260,6 +260,12 @@ select {
   text-underline-offset: 4px;
 }
 
+.matrix button:disabled {
+  color: #718096;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
 @keyframes signalPulse {
   50% {
     opacity: 0.45;
