@@ -39,16 +39,7 @@ fun Application.configureRouting() {
         createChild(CorsScopeSelector).apply {
             installCors()
 
-            // Protected analytics API - requires Azure AD from frontend
-            authenticate(AZURE_REALM) {
-                // Validate that caller is the allowed lumi-dashboard frontend
-                install(ClientAuthorizationPlugin) {
-                    allowedClientId = getDashboardClientId()
-                }
-
-                // Enforce team authorization based on user's NAIS team membership.
-                install(TeamAuthorizationPlugin)
-
+            protectedAnalyticsRoutes {
                 rateLimit(AnalyticsRateLimit) {
                     filterRoutes()
                     feedbackRoutes()
@@ -59,14 +50,27 @@ fun Application.configureRouting() {
                     discoveryRoutes()
                     teamsRoutes()
                 }
+            }
 
-                rateLimit(ExportRateLimit) {
-                    exportRoutes()
+            rateLimitRejectedExportAuthentication {
+                protectedAnalyticsRoutes {
+                    rateLimit(ExportRateLimit) {
+                        exportRoutes()
+                    }
                 }
             }
         }
     }
 }
+
+private fun Route.protectedAnalyticsRoutes(build: Route.() -> Unit): Route =
+    authenticate(AZURE_REALM) {
+        install(ClientAuthorizationPlugin) {
+            allowedClientId = getDashboardClientId()
+        }
+        install(TeamAuthorizationPlugin)
+        build()
+    }
 
 /**
  * Transparent route selector used to scope CORS to analytics routes only.

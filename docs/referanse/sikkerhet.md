@@ -32,12 +32,13 @@ API-et håndhever rate limiting på flere nivåer for å beskytte mot misbruk:
 | :--- | :--- | :--- |
 | Innsending | 100 req/min | Per kaller-app |
 | Innsending (per bruker) | 15 req/min | Per hashet sluttbruker innenfor samme kaller-app |
-| Analyse | 300 req/min | Per kilde-IP for dashboard-trafikken |
-| Eksport | 30 req/min | Per kilde-IP for dashboard-trafikken |
+| Analyse | 300 req/min | Per validert team og app |
+| Eksport | 30 req/min | Per validert team og app |
+| Avvist eksportautentisering | 30 forsøk/min | Per kilde-IP |
 | Global | 1000 req/min | Alle kall samlet |
 
 ::: info Nøkling av analyse og eksport
-Analyse- og eksport-endepunktene autentiseres i Ktors auth-fase, som kjører *etter* rate limit-pluginen. Den validerte klient-identiteten er derfor ikke tilgjengelig når rate limit-nøkkelen beregnes, så disse endepunktene nøkles på kilde-IP. På NAIS brukes første IP i `X-Forwarded-For`-headeren. Innsending nøkles derimot per kaller-app, og per hashet sluttbruker, fordi identiteten settes i en route-scoped plugin før rate limit-pluginen.
+Ktor autentiserer analyse- og eksportkall før den beregner rate limit-nøkkelen. Gyldige kall nøkles derfor med validert klientidentitet. Eksportkall reserverer i tillegg en tillatelse per kilde-IP før autentisering. Tillatelsen gis tilbake når autentiseringen lykkes, mens avviste kall beholder den. Dermed kan ikke en angriper omgå eksportgrensen ved å bytte ugyldig token for hvert kall. På NAIS hentes kilde-IP fra første verdi i `X-Forwarded-For`.
 :::
 
 ## Inndatavalidering

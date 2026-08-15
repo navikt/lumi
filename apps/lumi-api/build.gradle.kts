@@ -5,7 +5,7 @@ plugins {
     // Keep this at 2.3.0 for now; current CodeQL (linked tools v2.24.1) does not support 2.3.10 yet.
     kotlin("jvm")
     kotlin("plugin.serialization")
-    id("io.ktor.plugin") version "3.5.1"
+    id("io.ktor.plugin") version "3.5.2"
     id("com.gradleup.shadow") version "9.6.1"
     id("com.github.ben-manes.versions") version "0.60.0"
     application
@@ -25,7 +25,7 @@ repositories {
     }
 }
 
-val ktorVersion = "3.5.1"
+val ktorVersion = "3.5.2"
 val logbackVersion = "1.6.1"
 val logstashVersion = "9.0"
 val postgresVersion = "42.7.13"
