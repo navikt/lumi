@@ -36,12 +36,7 @@
 }
 
 .ratingHeading {
-  font-size: var(--ax-font-size-xlarge);
   font-weight: var(--ax-font-weight-bold);
-}
-
-.ratingDescription {
-  font-size: var(--ax-font-size-small);
 }
 
 .ratingFieldset {

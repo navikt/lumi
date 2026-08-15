@@ -46,6 +46,20 @@ async function scanFileForForbiddenStrings(filePath) {
   }
 }
 
+function assertCssRuleOmitsProperty(css, selector, property) {
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const rulePattern = new RegExp(`${escapedSelector}\\s*\\{[^}]*\\}`, "g");
+  const propertyPattern = new RegExp(`\\b${property}\\s*:`);
+
+  for (const match of css.matchAll(rulePattern)) {
+    if (propertyPattern.test(match[0])) {
+      fail(
+        `packages/lumi-survey/dist/index.css must not set ${property} in ${selector}; use Aksel typography props instead`,
+      );
+    }
+  }
+}
+
 async function scanDirRecursive(dirPath, predicate) {
   const entries = await readdir(dirPath, { withFileTypes: true });
   for (const entry of entries) {
@@ -71,6 +85,7 @@ async function main() {
   const distDir = path.join(packageDir, "dist");
   const distIndexJs = path.join(distDir, "index.js");
   const distIndexDts = path.join(distDir, "index.d.ts");
+  const distIndexCss = path.join(distDir, "index.css");
 
   // 1) package.json must not depend on internal workspace-only packages.
   const pkg = JSON.parse(await readText(packageJsonPath));
@@ -109,7 +124,11 @@ async function main() {
   );
 
   // 4) dist must be present and must not reference forbidden packages.
-  if (!(await fileExists(distIndexJs)) || !(await fileExists(distIndexDts))) {
+  if (
+    !(await fileExists(distIndexJs)) ||
+    !(await fileExists(distIndexDts)) ||
+    !(await fileExists(distIndexCss))
+  ) {
     fail(
       "packages/lumi-survey/dist is missing build artifacts. Run: pnpm --filter @navikt/lumi-survey run build",
     );
@@ -117,6 +136,16 @@ async function main() {
 
   await scanFileForForbiddenStrings(distIndexJs);
   await scanFileForForbiddenStrings(distIndexDts);
+
+  const distCss = await readText(distIndexCss);
+  for (const selector of [
+    ".ratingHeading",
+    ".ratingDescription",
+    ".lumi-survey-dock__rating-heading",
+    ".lumi-survey-dock__rating-description",
+  ]) {
+    assertCssRuleOmitsProperty(distCss, selector, "font-size");
+  }
 
   console.log("[verify:lumi-survey] OK");
 }

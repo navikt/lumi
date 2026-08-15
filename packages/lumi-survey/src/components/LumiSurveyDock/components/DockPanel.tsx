@@ -115,6 +115,7 @@ export const DockPanel = ({
 
   const activeQuestion =
     isStepMode && currentStepQuestion ? currentStepQuestion : promptQuestion;
+  const usesFieldTypography = !isStepMode && orderedQuestions.length > 1;
 
   return (
     <div style={{ position: "relative" }}>
@@ -150,7 +151,7 @@ export const DockPanel = ({
               <div className={CLASS_NAMES.headerText} style={{ flex: 1 }}>
                 <Heading
                   level="2"
-                  size="medium"
+                  size="small"
                   className={CLASS_NAMES.ratingHeading}
                   id={introHeadingId}
                 >
@@ -187,7 +188,7 @@ export const DockPanel = ({
                 {isSuccess ? (
                   <Heading
                     level="2"
-                    size="medium"
+                    size="small"
                     className={CLASS_NAMES.ratingHeading}
                     id={successHeadingId}
                   >
@@ -197,7 +198,7 @@ export const DockPanel = ({
                   <>
                     <Heading
                       level="2"
-                      size="medium"
+                      size={usesFieldTypography ? "xsmall" : "small"}
                       className={CLASS_NAMES.ratingHeading}
                       id={promptHeadingId}
                       tabIndex={-1}
@@ -206,7 +207,7 @@ export const DockPanel = ({
                     </Heading>
                     {activeQuestion.description && (
                       <BodyShort
-                        size="small"
+                        size={usesFieldTypography ? "medium" : "small"}
                         className={CLASS_NAMES.ratingDescription}
                         id={promptDescriptionId}
                       >
