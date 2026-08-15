@@ -20,6 +20,7 @@ import no.nav.lumi.repository.FeedbackRepository
 import no.nav.lumi.service.FeedbackService
 import no.nav.lumi.service.StatsCacheInvalidator
 import no.nav.lumi.integrations.valkey.ValkeyStatsCache
+import no.nav.lumi.integrations.valkey.StringCache
 import org.slf4j.LoggerFactory
 
 private val log = LoggerFactory.getLogger("FeedbackRoutes")
@@ -175,7 +176,10 @@ fun Route.feedbackRoutes(
 fun Route.surveyFacetRoutes(
     service: FeedbackService = defaultFeedbackService,
     statsCacheInvalidator: StatsCacheInvalidator = defaultStatsCacheInvalidator,
+    bootstrapCache: StringCache = sharedBootstrapCache,
 ) {
+    val versionedBootstrapCache = VersionedBootstrapCache(bootstrapCache)
+
     // Delete all feedback for a survey (team-scoped)
     delete<ApiV1Intern.Surveys.Id> { params ->
         val team = call.authorizedTeam
@@ -183,6 +187,7 @@ fun Route.surveyFacetRoutes(
         if (deletedCount > 0) {
             statsCacheInvalidator.invalidateTeam(team)
         }
+        versionedBootstrapCache.invalidate(team)
         call.respond(DeleteSurveyResult(surveyId = params.surveyId, deletedCount = deletedCount))
     }
 

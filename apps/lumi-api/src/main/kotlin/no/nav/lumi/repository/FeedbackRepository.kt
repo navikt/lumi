@@ -180,7 +180,7 @@ class FeedbackRepository(
     }
 
     /**
-     * Atomically deletes markers and feedback for a survey within one transaction.
+     * Atomically deletes markers, feedback, and dashboard metadata for a survey within one transaction.
      * Returns number of deleted feedback rows.
      */
     suspend fun deleteSurveyWithMarkers(surveyId: String, team: String): Int {
@@ -190,10 +190,17 @@ class FeedbackRepository(
                     (RatingMarkerTable.surveyId eq surveyId)
             }
 
-            FeedbackTable.deleteWhere {
+            val deletedCount = FeedbackTable.deleteWhere {
                 (JsonExtract(FeedbackTable.feedbackJson, listOf("surveyId")) eq surveyId) and
                     (FeedbackTable.team eq team)
             }
+
+            SurveyMetadataTable.deleteWhere {
+                (SurveyMetadataTable.team eq team) and
+                    (SurveyMetadataTable.surveyId eq surveyId)
+            }
+
+            deletedCount
         }
     }
 

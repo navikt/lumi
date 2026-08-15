@@ -92,7 +92,7 @@ class FeedbackService(
     }
 
     /**
-     * Permanently delete all markers and feedback for a surveyId in the given team.
+     * Permanently delete all markers, feedback, and dashboard metadata for a surveyId in the given team.
      * Returns number of deleted feedback rows.
      */
     suspend fun deleteSurveyWithMarkers(surveyId: String, team: String): Int {

@@ -19,6 +19,7 @@ import no.nav.lumi.config.DatabaseHolder
 import no.nav.lumi.domain.SaveResult
 import no.nav.lumi.integrations.valkey.InMemoryStatsCache
 import no.nav.lumi.integrations.valkey.InMemoryStringCache
+import no.nav.lumi.integrations.valkey.StringCache
 import no.nav.lumi.repository.FeedbackRepository
 import no.nav.lumi.routes.feedbackRoutes
 import no.nav.lumi.routes.internalRoutes
@@ -237,7 +238,8 @@ fun insertTestRatingMarker(
  */
 fun Application.testModule(
     feedbackService: FeedbackService = FeedbackService(),
-    statsRepository: FeedbackStatsRepository = FeedbackStatsRepository()
+    statsRepository: FeedbackStatsRepository = FeedbackStatsRepository(),
+    bootstrapCache: StringCache = InMemoryStringCache(),
 ) {
     // Initialize test database
     DatabaseHolder.initializeForTesting(TestDatabase.dataSource)
@@ -283,7 +285,6 @@ fun Application.testModule(
     
     // Create services with the injected repositories/services
     // Fresh per test application so bootstrap cache state cannot leak between tests
-    val bootstrapCache = InMemoryStringCache()
     val statsCache = InMemoryStatsCache()
     val statsService = StatsService(FeedbackRepository(), statsRepository, statsCache = statsCache)
     val exportService = ExportService(FeedbackRepository())
@@ -303,7 +304,7 @@ fun Application.testModule(
             }
             
             feedbackRoutes(feedbackService, statsCacheInvalidator)
-            surveyFacetRoutes(feedbackService, statsCacheInvalidator)
+            surveyFacetRoutes(feedbackService, statsCacheInvalidator, bootstrapCache)
             surveyArchiveRoutes(
                 bootstrapCache = bootstrapCache,
                 statsCacheInvalidator = statsCacheInvalidator,

@@ -9,7 +9,7 @@ import {
   Skeleton,
   VStack,
 } from "@navikt/ds-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDeleteSurvey } from "~/hooks/useDeleteSurvey";
 import { useSurveyTotalCount } from "~/hooks/useSurveyTotalCount";
 
@@ -36,9 +36,17 @@ export function DeleteSurveyDialog({
   const {
     data: totalCount,
     isLoading: isLoadingTotal,
+    isFetching: isFetchingTotal,
     isError: isTotalCountError,
   } = useSurveyTotalCount(surveyId, isOpen);
-  const totalCountUnavailable = isTotalCountError || totalCount === undefined;
+  const isRefreshingTotal = isLoadingTotal || isFetchingTotal;
+  const totalCountUnavailable =
+    isRefreshingTotal || isTotalCountError || totalCount === undefined;
+  const hasNoAnswers = totalCount === 0;
+
+  useEffect(() => {
+    if (isFetchingTotal) setConfirmed(false);
+  }, [isFetchingTotal]);
 
   const handleDelete = async () => {
     if (totalCountUnavailable) return;
@@ -74,12 +82,17 @@ export function DeleteSurveyDialog({
       <Modal.Body>
         <VStack gap="space-16">
           <Alert variant={isTotalCountError ? "error" : "warning"}>
-            {isLoadingTotal ? (
+            {isRefreshingTotal ? (
               <Skeleton width="100%" height="24px" />
             ) : isTotalCountError || totalCount === undefined ? (
               <>
                 Kunne ikke hente totalt antall svar. Last antallet på nytt før
                 surveyen kan slettes.
+              </>
+            ) : hasNoAnswers ? (
+              <>
+                Surveyen <strong>"{surveyId}"</strong> har ingen lagrede svar.
+                Du kan fortsatt slette surveyen permanent fra dashboardet.
               </>
             ) : (
               <>
@@ -99,19 +112,22 @@ export function DeleteSurveyDialog({
           </Alert>
 
           <BodyLong>
-            Denne handlingen kan ikke angres. All data for denne surveyen vil
-            bli permanent fjernet fra databasen.
+            {hasNoAnswers
+              ? "Denne handlingen kan ikke angres. Surveyen og eventuelle markører vil bli permanent fjernet fra dashboardet."
+              : "Denne handlingen kan ikke angres. All data for denne surveyen vil bli permanent fjernet fra databasen."}
           </BodyLong>
 
           <ConfirmationPanel
             checked={confirmed}
             onChange={() => setConfirmed(!confirmed)}
             label={
-              totalCount === undefined
+              totalCountUnavailable
                 ? "Antall svar må lastes før sletting"
-                : `Ja, slett permanent alle ${totalCount} svar`
+                : hasNoAnswers
+                  ? "Ja, slett surveyen permanent"
+                  : `Ja, slett permanent alle ${totalCount} svar`
             }
-            disabled={isLoadingTotal || totalCountUnavailable}
+            disabled={totalCountUnavailable}
           />
 
           {deleteMutation.isError && (
@@ -130,12 +146,14 @@ export function DeleteSurveyDialog({
             data-color="danger"
             variant="primary"
             onClick={handleDelete}
-            disabled={!confirmed || isLoadingTotal || totalCountUnavailable}
+            disabled={!confirmed || totalCountUnavailable}
             loading={deleteMutation.isPending}
           >
-            {totalCount === undefined
+            {totalCountUnavailable
               ? "Slett svar permanent"
-              : `Slett ${totalCount} svar permanent`}
+              : hasNoAnswers
+                ? "Slett survey permanent"
+                : `Slett ${totalCount} svar permanent`}
           </Button>
         </HStack>
       </Modal.Footer>
