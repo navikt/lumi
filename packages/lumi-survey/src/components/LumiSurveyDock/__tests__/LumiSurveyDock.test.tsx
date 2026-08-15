@@ -109,6 +109,42 @@ describe("LumiSurveyDock", () => {
     expect(secondDescription).toHaveClass("aksel-body-short--medium");
   });
 
+  it("keeps compact header typography when questions are shown one at a time", async () => {
+    const survey: LumiSurveyConfig = {
+      type: "custom",
+      questions: [
+        {
+          id: "first-step",
+          type: "text",
+          prompt: "Første steg",
+          description: "Kompakt beskrivelse",
+          required: true,
+        },
+        {
+          id: "second-step",
+          type: "text",
+          prompt: "Andre steg",
+          required: true,
+        },
+      ],
+    };
+
+    renderDock({
+      survey,
+      behavior: { questionLayout: "steps" },
+    });
+
+    const prompt = await screen.findByRole("heading", {
+      name: "Første steg",
+    });
+    const description = screen.getByText("Kompakt beskrivelse", {
+      selector: "p",
+    });
+
+    expect(prompt).toHaveClass("aksel-heading--small");
+    expect(description).toHaveClass("aksel-body-short--small");
+  });
+
   it("does not show personal data notice when branching submits before any text question", async () => {
     const user = userEvent.setup();
     const transport: LumiSurveyTransport = {

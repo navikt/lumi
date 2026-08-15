@@ -115,6 +115,7 @@ export const DockPanel = ({
 
   const activeQuestion =
     isStepMode && currentStepQuestion ? currentStepQuestion : promptQuestion;
+  const usesFieldTypography = !isStepMode && orderedQuestions.length > 1;
 
   return (
     <div style={{ position: "relative" }}>
@@ -197,7 +198,7 @@ export const DockPanel = ({
                   <>
                     <Heading
                       level="2"
-                      size="xsmall"
+                      size={usesFieldTypography ? "xsmall" : "small"}
                       className={CLASS_NAMES.ratingHeading}
                       id={promptHeadingId}
                       tabIndex={-1}
@@ -206,7 +207,7 @@ export const DockPanel = ({
                     </Heading>
                     {activeQuestion.description && (
                       <BodyShort
-                        size="medium"
+                        size={usesFieldTypography ? "medium" : "small"}
                         className={CLASS_NAMES.ratingDescription}
                         id={promptDescriptionId}
                       >
