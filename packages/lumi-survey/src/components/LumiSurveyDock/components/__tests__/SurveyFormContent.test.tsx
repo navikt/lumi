@@ -411,15 +411,18 @@ describe("SurveyFormContent", () => {
       />,
     );
 
-    const progressBar = screen.getByRole("progressbar");
-    expect(progressBar).toHaveAttribute(
-      "aria-label",
-      "Fremdrift i undersøkelsen",
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(screen.getByText("Fremdrift i undersøkelsen: Steg 1")).toHaveClass(
+      "aksel-typo--visually-hidden",
     );
-    expect(progressBar).toHaveAttribute("aria-valuetext", "Steg 1");
+
+    const visualProgressBar = screen.getByRole("progressbar", {
+      hidden: true,
+    });
+    expect(visualProgressBar).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("shows ProgressBar value based on currentStep + 1", () => {
+  it("shows visual branching progress based on currentStep + 1", () => {
     render(
       <SurveyFormContent
         {...defaultProps({
@@ -438,7 +441,7 @@ describe("SurveyFormContent", () => {
       />,
     );
 
-    const progressBar = screen.getByRole("progressbar");
+    const progressBar = screen.getByRole("progressbar", { hidden: true });
     // Value is always currentStep + 1, no isLastStep override
     expect(progressBar).toHaveAttribute("aria-valuenow", "5");
     expect(progressBar).toHaveAttribute("aria-valuemax", "5");
@@ -477,5 +480,45 @@ describe("SurveyFormContent", () => {
     );
 
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+  });
+
+  it("waits to show ProgressBar until a question becomes visible", () => {
+    const { rerender } = render(
+      <SurveyFormContent
+        {...defaultProps({
+          stepNavigation: {
+            isStepMode: true,
+            currentStep: -1,
+          },
+          progress: {
+            showProgress: true,
+            totalSteps: 2,
+          },
+        })}
+      />,
+    );
+
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+
+    rerender(
+      <SurveyFormContent
+        {...defaultProps({
+          stepNavigation: {
+            isStepMode: true,
+            currentStep: 0,
+            currentStepQuestion: ratingQuestion,
+          },
+          progress: {
+            showProgress: true,
+            totalSteps: 2,
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuetext",
+      "Steg 1 av 2",
+    );
   });
 });
