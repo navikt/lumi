@@ -142,6 +142,7 @@ export const LumiSurveyDock = ({
 
   // Track previous showIntro value to detect intro → question transition
   const prevShowIntroRef = useRef(showIntro);
+  const pendingStepFocusQuestionIdRef = useRef<string | null>(null);
 
   /*
    * Use the new flexible survey builder.
@@ -219,6 +220,20 @@ export const LumiSurveyDock = ({
     ? `${surveyId}-${activeDescriptionQuestion.id}-dock-description`
     : undefined;
 
+  // Move focus only after an explicit step-navigation action has rendered its
+  // target question. Answer-driven visibility updates must not steal focus.
+  useEffect(() => {
+    if (
+      !currentStepQuestion ||
+      pendingStepFocusQuestionIdRef.current !== currentStepQuestion.id
+    ) {
+      return;
+    }
+
+    pendingStepFocusQuestionIdRef.current = null;
+    document.getElementById(promptHeadingId)?.focus();
+  }, [currentStepQuestion, promptHeadingId]);
+
   // Combined reset: clears survey answers, resets step navigation, and restores intro screen
   const handleFullReset = useCallback(() => {
     reset();
@@ -290,7 +305,15 @@ export const LumiSurveyDock = ({
 
   const handleNext = useCallback(async () => {
     const result = goToNext();
-    if (!result || result.nextIndex !== -1) {
+    if (result?.nextIndex !== undefined && result.nextIndex !== -1) {
+      const targetQuestionId = questions[result.nextIndex]?.id;
+      if (targetQuestionId !== currentStepQuestion?.id) {
+        pendingStepFocusQuestionIdRef.current = targetQuestionId ?? null;
+      }
+      return;
+    }
+
+    if (!result) {
       return;
     }
 
@@ -299,7 +322,17 @@ export const LumiSurveyDock = ({
     } catch {
       // useLumiSurvey sets error state; avoid unhandled rejections
     }
-  }, [goToNext, submit, visitedQuestions]);
+  }, [currentStepQuestion?.id, goToNext, questions, submit, visitedQuestions]);
+
+  const handleBack = useCallback(() => {
+    const previousIndex = goToPrevious();
+    if (previousIndex === null) return;
+
+    const targetQuestionId = questions[previousIndex]?.id;
+    if (targetQuestionId !== currentStepQuestion?.id) {
+      pendingStepFocusQuestionIdRef.current = targetQuestionId ?? null;
+    }
+  }, [currentStepQuestion?.id, goToPrevious, questions]);
 
   const handleSubmit = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
@@ -419,7 +452,7 @@ export const LumiSurveyDock = ({
             canGoNext,
             isLastStep,
             onNext: handleNext,
-            onBack: goToPrevious,
+            onBack: handleBack,
           }}
           progress={{
             showProgress: config.showProgress,

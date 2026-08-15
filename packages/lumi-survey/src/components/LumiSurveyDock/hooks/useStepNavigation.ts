@@ -52,8 +52,8 @@ export interface UseStepNavigationReturn {
   isLastStep: boolean;
   /** Navigate to the next question based on branching logic */
   goToNext: () => BranchingResult | null;
-  /** Navigate to the previous question in history */
-  goToPrevious: () => void;
+  /** Navigate to the previous question in history and return its question index */
+  goToPrevious: () => number | null;
   /** Reset navigation to the first question */
   resetNavigation: () => void;
   /** Whether the survey contains logic or answer-dependent visibility branching */
@@ -291,7 +291,7 @@ export function useStepNavigation(
   // become hidden since they were visited (e.g. because the user changed an
   // earlier answer that affected visibleIf conditions).
   const goToPrevious = useCallback(() => {
-    if (visitedSteps.length <= 1) return;
+    if (visitedSteps.length <= 1) return null;
 
     // Remove current step and search backward for a still-visible step
     const previousHistory = visitedSteps.slice(0, -1);
@@ -306,15 +306,16 @@ export function useStepNavigation(
       setVisitedSteps(result.history);
       setCurrentStep(result.step);
       setDisplayedTotal(reachableStepsRef.current);
-      return;
+      return result.step;
     }
 
     // No visited steps are visible — fall back to first visible question
     const firstVisible = findNextVisibleIndex(questions, answers, metadata, 0);
-    if (firstVisible === -1) return;
+    if (firstVisible === -1) return null;
     setVisitedSteps([firstVisible]);
     setCurrentStep(firstVisible);
     setDisplayedTotal(reachableStepsRef.current);
+    return firstVisible;
   }, [visitedSteps, questions, answers, metadata]);
 
   // Reset to the beginning — used when the survey definition changes or
