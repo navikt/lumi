@@ -56,7 +56,7 @@ export interface UseStepNavigationReturn {
   goToPrevious: () => void;
   /** Reset navigation to the first question */
   resetNavigation: () => void;
-  /** Whether step navigation is driven by branching or explicitly forced */
+  /** Whether the survey contains logic or answer-dependent visibility branching */
   hasBranching: boolean;
   /** Array of visited question indices for back navigation */
   visitedSteps: number[];
@@ -91,9 +91,8 @@ export function useStepNavigation(
     () => surveyHasVisibilityBranching(questions),
     [questions],
   );
-  const hasBranching =
-    hasLogicBranching || hasVisibilityBranching || forceStepMode;
-  const isStepMode = hasBranching;
+  const hasBranching = hasLogicBranching || hasVisibilityBranching;
+  const isStepMode = hasBranching || forceStepMode;
 
   // Navigation state — start on the first visible question (skip any that are
   // hidden by visibleIf on initial render). Uses -1 when no questions are visible.

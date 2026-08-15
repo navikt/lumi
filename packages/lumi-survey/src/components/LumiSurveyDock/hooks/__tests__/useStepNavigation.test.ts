@@ -517,7 +517,7 @@ describe("useStepNavigation", () => {
         }),
       );
 
-      expect(result.current.hasBranching).toBe(true);
+      expect(result.current.hasBranching).toBe(false);
       expect(result.current.isStepMode).toBe(true);
     });
 

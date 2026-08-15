@@ -86,7 +86,7 @@ Konklusjon: vi kan ikke rive ut `logic`. Men vi kan slutte å behandle den som e
 ## Vurderte alternativer
 
 - **A. Status quo (behold begge likestilt).** Forkastet: viderefører den overlappende modellen rett inn i Survey Builder (#338) og dobler #333-arbeidet.
-- **B. Full deprecation av `logic` nå.** Forkastet (for tidlig): bryter live konsumenter og `createTopTasksSurvey`, og vi har ikke bekreftet at ingen trenger ekte `JUMP_TO`. Holdes åpen som mulig endestasjon (punkt 5).
+- **B. Full deprecation av `logic` nå.** Forkastet (for tidlig): bryter live konsumenter, og vi har ikke bekreftet at ingen trenger ekte `JUMP_TO`. Holdes åpen som mulig endestasjon (punkt 5).
 - **C. (valgt) Kanonisk `visibleIf` + `logic` som escape hatch + delt betingelseslag.** Pragmatisk: ingen brudd, én modell utad, #333 én gang, klar retning for #338.
 
 ## Oppfølging
@@ -94,7 +94,7 @@ Konklusjon: vi kan ikke rive ut `logic`. Men vi kan slutte å behandle den som e
 - [x] #333: implementer AND/OR i `visibleIf` (levert: `any`/`all`-grupper i
   `visibleIf`; `logic` snevret til leaf. Evaluator-unifisering bevisst utsatt —
   operator-divergensen lever videre, men kun i den utfasede `logic`-mekanismen.)
-- [ ] Oppdater `docs/guider/branching.md` (avansert-posisjonering + linje 64-klargjøring).
+- [x] Oppdater `docs/guider/branching.md` (avansert-posisjonering + linje 64-klargjøring).
 - [ ] #338: bygg builder rundt synlighetsmodellen; `logic` bak «avansert»-luke.
 - [x] #359: migrer `createTopTasksSurvey` `SKIP`/`SUBMIT` → `visibleIf`, og la
   verdi-baserte `visibleIf`-grener aktivere steg-modus under `"auto"`.
