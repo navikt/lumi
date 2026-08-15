@@ -288,6 +288,8 @@ export interface FeedbackStats {
 
   // Device & context stats
   byDevice: Record<string, { count: number; averageRating: number }>;
+  /** Coarse groups by the screen's longest edge. */
+  byScreenResolution: Record<string, number>;
   byPathname: Record<string, { count: number; averageRating: number }>;
   lowestRatingPaths: Record<string, { count: number; averageRating: number }>;
 

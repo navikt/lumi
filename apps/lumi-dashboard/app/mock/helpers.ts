@@ -100,6 +100,8 @@ export function createContext(
 ): SubmissionContext {
   const defaultWidths = { mobile: 375, tablet: 768, desktop: 1440 };
   const defaultHeights = { mobile: 812, tablet: 1024, desktop: 900 };
+  const defaultScreenWidths = { mobile: 390, tablet: 1024, desktop: 1920 };
+  const defaultScreenHeights = { mobile: 844, tablet: 1366, desktop: 1080 };
   const width = viewportWidth || defaultWidths[deviceType];
   const height = viewportHeight || defaultHeights[deviceType];
   return {
@@ -108,6 +110,8 @@ export function createContext(
     deviceType,
     viewportWidth: width,
     viewportHeight: height,
+    screenWidth: defaultScreenWidths[deviceType],
+    screenHeight: defaultScreenHeights[deviceType],
   };
 }
 

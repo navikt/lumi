@@ -9,11 +9,25 @@ import java.time.OffsetDateTime
 internal data class AnalyticsSnapshot(
     val ratingByDateRows: List<AvgCountRow>,
     val deviceRows: List<AvgCountRow>,
+    val screenResolutionRows: List<ScreenResolutionCountRow>,
     val pathnameRows: List<AvgCountRow>,
     val fieldRecords: List<FeedbackDbRecord>
 )
 
 internal data class AvgCountRow(val key: String, val count: Int, val average: Double)
+
+internal data class ScreenResolutionCountRow(val width: Int, val height: Int, val count: Int)
+
+internal fun screenResolutionBucket(width: Int, height: Int): String? {
+    if (width <= 0 || height <= 0) return null
+
+    return when (maxOf(width, height)) {
+        in 1 until 1280 -> "under-1280"
+        in 1280 until 1920 -> "1280-1919"
+        in 1920 until 2560 -> "1920-2559"
+        else -> "2560-plus"
+    }
+}
 
 internal data class SurveyTypeRow(
     val surveyId: String,

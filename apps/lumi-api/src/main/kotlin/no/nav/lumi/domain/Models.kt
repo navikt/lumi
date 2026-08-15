@@ -150,6 +150,8 @@ data class SubmissionContext(
     val deviceType: DeviceType? = null,
     val viewportWidth: Int? = null,
     val viewportHeight: Int? = null,
+    val screenWidth: Int? = null,
+    val screenHeight: Int? = null,
     /** Context tags from widget (low-cardinality segmentation) */
     val tags: Map<String, String>? = null
 )
@@ -258,6 +260,10 @@ data class FeedbackStats(
     @OptIn(ExperimentalSerializationApi::class)
     @EncodeDefault(EncodeDefault.Mode.ALWAYS)
     val byDevice: Map<String, DeviceStats> = emptyMap(),
+    /** Coarse groups by the screen's longest edge, avoiding high-cardinality exact resolutions. */
+    @OptIn(ExperimentalSerializationApi::class)
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+    val byScreenResolution: Map<String, Int> = emptyMap(),
     @OptIn(ExperimentalSerializationApi::class)
     @EncodeDefault(EncodeDefault.Mode.ALWAYS)
     val byPathname: Map<String, PathnameStats> = emptyMap(),

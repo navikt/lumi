@@ -13,6 +13,7 @@ import type {
 } from "~/types/api";
 import { parseChoiceParam } from "~/utils/choiceFilterUtils";
 import { parseRatingParam } from "~/utils/ratingFilterUtils";
+import { getScreenResolutionBucket } from "~/utils/screenResolution";
 import { getTopKeywords, IGNORED_WORDS } from "~/utils/wordAnalysis";
 import { getRating, hasTextResponse } from "./helpers";
 import { extractPhrases } from "./stats/phrases";
@@ -447,6 +448,7 @@ export function calculateStats(
   const ratingByDateAccum: Record<string, { total: number; count: number }> =
     {};
   const byDeviceAccum: Record<string, { total: number; count: number }> = {};
+  const byScreenResolution: Record<string, number> = {};
   const byPathnameAccum: Record<string, { total: number; count: number }> = {};
 
   let totalRating = 0;
@@ -460,6 +462,15 @@ export function calculateStats(
       byDeviceAccum[device] = { total: 0, count: 0 };
     }
     byDeviceAccum[device].count++;
+
+    const screenResolutionBucket = getScreenResolutionBucket(
+      item.context?.screenWidth,
+      item.context?.screenHeight,
+    );
+    if (screenResolutionBucket) {
+      byScreenResolution[screenResolutionBucket] =
+        (byScreenResolution[screenResolutionBucket] ?? 0) + 1;
+    }
 
     // Pathname stats - always track regardless of rating
     const pathname = item.context?.pathname || "unknown";
@@ -597,6 +608,7 @@ export function calculateStats(
         : null,
     ratingByDate: shouldMask ? {} : ratingByDate,
     byDevice: shouldMask ? {} : byDevice,
+    byScreenResolution: shouldMask ? {} : byScreenResolution,
     byPathname: shouldMask ? {} : byPathname,
     lowestRatingPaths: shouldMask ? {} : lowestRatingPaths,
     fieldStats: shouldMask ? [] : fieldStats,

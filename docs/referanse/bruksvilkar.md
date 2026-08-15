@@ -44,7 +44,8 @@ Widgeten samler kontekstdata for segmentering i dashboardet. Ingen av feltene id
 | Felt | Beskrivelse | Alltid sendt? |
 | :--- | :--- | :--- |
 | `deviceType` | Enhetstype (mobil, nettbrett, desktop) | Ja |
-| `viewport` | Skjermstørrelse i piksler | Ja |
+| `viewport` | Nettleservinduets størrelse i piksler | Ja |
+| `screenResolution` | Skjermens størrelse rapportert av nettleseren | Ja |
 | `userAgent` | Nettleser og OS | Ja |
 | `url` | Siden brukeren er på (full URL) | Nei, kun hvis du setter den manuelt i context |
 | `pathname` | URL-pathname | Nei, opt-in via `collectLocation` |

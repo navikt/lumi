@@ -80,6 +80,7 @@ describe("fetchStats contract", () => {
         "2026-01-21": { average: 3.2, count: 10 },
       },
       byDevice: { mobile: { count: 10, averageRating: 3.2 } },
+      byScreenResolution: { "1920-2559": 10 },
       byPathname: { "/": { count: 10, averageRating: 3.2 } },
       lowestRatingPaths: {},
       fieldStats: [],
@@ -89,6 +90,27 @@ describe("fetchStats contract", () => {
     };
 
     expect(() => FeedbackStatsSchema.parse(payload)).not.toThrow();
+  });
+
+  it("defaults screen resolution stats during a rolling API deployment", () => {
+    const payload = {
+      totalCount: 0,
+      countWithText: 0,
+      countWithoutText: 0,
+      byRating: {},
+      byApp: {},
+      byDate: {},
+      bySurveyId: {},
+      averageRating: null,
+      ratingByDate: {},
+      byDevice: {},
+      byPathname: {},
+      lowestRatingPaths: {},
+      fieldStats: [],
+      period: { fromDate: null, toDate: null, days: 0 },
+    };
+
+    expect(FeedbackStatsSchema.parse(payload).byScreenResolution).toEqual({});
   });
 
   it("accepts TextStats field with topPhrases", () => {
@@ -105,6 +127,7 @@ describe("fetchStats contract", () => {
         "2026-01-21": { average: 3.2, count: 10 },
       },
       byDevice: { mobile: { count: 10, averageRating: 3.2 } },
+      byScreenResolution: { "1920-2559": 10 },
       byPathname: { "/": { count: 10, averageRating: 3.2 } },
       lowestRatingPaths: {},
       fieldStats: [
@@ -151,6 +174,7 @@ describe("fetchStats contract", () => {
       averageRating: null,
       ratingByDate: {},
       byDevice: {},
+      byScreenResolution: {},
       byPathname: {},
       lowestRatingPaths: {},
       fieldStats: [

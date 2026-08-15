@@ -1058,6 +1058,7 @@ export const FeedbackStatsSchema = z.object({
     z.string(),
     z.object({ count: z.number(), averageRating: z.number() }),
   ),
+  byScreenResolution: z.record(z.string(), z.number()).default({}),
   byPathname: z.record(
     z.string(),
     z.object({ count: z.number(), averageRating: z.number() }),

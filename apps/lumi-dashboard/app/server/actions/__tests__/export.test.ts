@@ -17,6 +17,10 @@ function makeFeedback(partial: Partial<FeedbackDto> = {}): FeedbackDto {
     surveyType: partial.surveyType ?? "rating",
     context: partial.context ?? {
       deviceType: "mobile",
+      viewportWidth: 390,
+      viewportHeight: 844,
+      screenWidth: 1170,
+      screenHeight: 2532,
       url: "https://example.test/foo",
       pathname: "/foo",
     },
@@ -109,9 +113,11 @@ describe("export helpers", () => {
     const lines = csv.split("\n");
 
     expect(lines[0]).toContain("submittedAt,id,app,surveyId");
+    expect(lines[0]).toContain("metadata,screenWidth,screenHeight");
     expect(lines).toHaveLength(2);
     expect(lines[1]).toContain("2026-01-01T12:00:00Z");
     expect(lines[1]).toContain('"Hei, verden"');
+    expect(lines[1]).toContain("1170,2532");
   });
 
   it("toMockExcelBase64 returns an .xlsx payload (ZIP magic bytes)", async () => {

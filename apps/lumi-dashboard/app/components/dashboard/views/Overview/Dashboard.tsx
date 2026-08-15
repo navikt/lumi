@@ -34,7 +34,7 @@ export function OverviewDashboard() {
           <VStack gap="space-16">
             <Heading size="small">Enheter</Heading>
             <div className={styles.chartContainer}>
-              <DeviceBreakdownChart />
+              <DeviceBreakdownChart showScreenResolution={false} />
             </div>
           </VStack>
         </DashboardCard>

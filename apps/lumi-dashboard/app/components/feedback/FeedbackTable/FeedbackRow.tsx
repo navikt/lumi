@@ -97,7 +97,7 @@ export function FeedbackRow({
           <HStack gap="space-8" align="center">
             {feedback.context?.deviceType && (
               <Tooltip
-                content={`${feedback.context.deviceType}${feedback.context.viewportWidth ? ` (${feedback.context.viewportWidth}px)` : ""}`}
+                content={`${feedback.context.deviceType}${feedback.context.viewportWidth ? ` (viewport ${feedback.context.viewportWidth}px)` : ""}${feedback.context.screenWidth ? `, skjerm ${feedback.context.screenWidth}×${feedback.context.screenHeight ?? "?"}` : ""}`}
               >
                 <span className={styles.deviceIcon}>
                   {deviceToIcon(feedback.context.deviceType)}

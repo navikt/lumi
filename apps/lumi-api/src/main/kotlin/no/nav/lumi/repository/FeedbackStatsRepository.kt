@@ -30,6 +30,7 @@ class FeedbackStatsRepository {
     data class FeedbackAnalyticsStats(
         val ratingByDate: Map<String, RatingByDateEntry> = emptyMap(),
         val byDevice: Map<String, DeviceStats> = emptyMap(),
+        val byScreenResolution: Map<String, Int> = emptyMap(),
         val byPathname: Map<String, PathnameStats> = emptyMap(),
         val lowestRatingPaths: Map<String, PathnameStats> = emptyMap(),
         val fieldStats: List<FieldStat> = emptyList(),
@@ -163,6 +164,30 @@ class FeedbackStatsRepository {
                     )
                 }
 
+            val screenWidthExpr = JsonExtract(
+                FeedbackTable.feedbackJson,
+                listOf("context", "screenResolution", "width")
+            )
+            val screenHeightExpr = JsonExtract(
+                FeedbackTable.feedbackJson,
+                listOf("context", "screenResolution", "height")
+            )
+            val screenCountExpr = FeedbackTable.id.count()
+            val screenResolutionQuery = FeedbackTable.select(screenWidthExpr, screenHeightExpr, screenCountExpr)
+            applyStatsFilters(screenResolutionQuery, query)
+            screenResolutionQuery.andWhere { screenWidthExpr.isNotNull() and screenHeightExpr.isNotNull() }
+            val screenResolutionRows = screenResolutionQuery
+                .groupBy(screenWidthExpr, screenHeightExpr)
+                .mapNotNull { row ->
+                    val width = row[screenWidthExpr].toIntOrNull() ?: return@mapNotNull null
+                    val height = row[screenHeightExpr].toIntOrNull() ?: return@mapNotNull null
+                    ScreenResolutionCountRow(
+                        width = width,
+                        height = height,
+                        count = row[screenCountExpr].toInt(),
+                    )
+                }
+
             val pathnameExpr = JsonExtract(FeedbackTable.feedbackJson, listOf("context", "pathname"))
             val pathnameQuery = FeedbackTable.select(pathnameExpr, ratingCountExpr, ratingAvgExpr)
             applyStatsFilters(pathnameQuery, query)
@@ -188,6 +213,7 @@ class FeedbackStatsRepository {
             AnalyticsSnapshot(
                 ratingByDateRows = ratingByDateRows,
                 deviceRows = deviceRows,
+                screenResolutionRows = screenResolutionRows,
                 pathnameRows = pathnameRows,
                 fieldRecords = fieldRecords
             )
@@ -202,6 +228,13 @@ class FeedbackStatsRepository {
             .associate { row ->
                 row.key.lowercase() to DeviceStats(count = row.count, averageRating = row.average)
             }
+
+        val byScreenResolution = snapshot.screenResolutionRows
+            .mapNotNull { row ->
+                screenResolutionBucket(row.width, row.height)?.let { bucket -> bucket to row.count }
+            }
+            .groupingBy { it.first }
+            .fold(0) { total, (_, count) -> total + count }
 
         val byPathname = snapshot.pathnameRows
             .filter { it.key.isNotBlank() }
@@ -228,6 +261,7 @@ class FeedbackStatsRepository {
         return FeedbackAnalyticsStats(
             ratingByDate = ratingByDate,
             byDevice = byDevice,
+            byScreenResolution = byScreenResolution,
             byPathname = byPathname,
             lowestRatingPaths = lowestRatingPaths,
             fieldStats = fieldStats,

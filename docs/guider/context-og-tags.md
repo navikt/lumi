@@ -13,6 +13,7 @@ Widgeten samler automatisk disse verdiene fra browseren:
 | Felt | Type | Beskrivelse |
 | :--- | :--- | :--- |
 | `viewport` | `{ width, height }` | Nettleservinduets dimensjoner |
+| `screenResolution` | `{ width, height }` | Skjermens dimensjoner rapportert av nettleseren |
 | `deviceType` | `"mobile" \| "tablet" \| "desktop"` | Basert på viewport-bredde (ikke fysisk enhet) |
 | `userAgent` | `string` | Nettleserens user agent-streng |
 

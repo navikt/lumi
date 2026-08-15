@@ -13,7 +13,9 @@ class ExportServiceTest : FunSpec({
 
     test("exportToCsv generates correct header") {
         val csv = service.exportToCsv(emptyList())
-        csv.shouldStartWith("id,submittedAt,app,surveyId,rating,feedback,sensitiveDataRedacted")
+        csv.shouldStartWith(
+            "id,submittedAt,app,surveyId,rating,feedback,sensitiveDataRedacted,screenWidth,screenHeight"
+        )
     }
 
     test("exportToCsv includes feedback data") {
@@ -23,6 +25,13 @@ class ExportServiceTest : FunSpec({
                 submittedAt = "2024-01-15T10:00:00Z",
                 app = "test-app",
                 surveyId = "survey-1",
+                context = SubmissionContext(
+                    deviceType = DeviceType.DESKTOP,
+                    viewportWidth = 1440,
+                    viewportHeight = 900,
+                    screenWidth = 1920,
+                    screenHeight = 1080,
+                ),
                 answers = listOf(
                     Answer(
                         fieldId = "rating",
@@ -47,6 +56,7 @@ class ExportServiceTest : FunSpec({
         csv.shouldContain("test-app")
         csv.shouldContain(",4,")
         csv.shouldContain("Great service!")
+        csv.shouldContain("false,1920,1080")
     }
 
     test("exportToCsv escapes commas in text") {
@@ -179,6 +189,35 @@ class ExportServiceTest : FunSpec({
         val sheet = workbook.getSheetAt(0)
         val feedbackCell = sheet.getRow(1).getCell(5).stringCellValue
         feedbackCell shouldBe "'=cmd|' /C calc'!A0"
+        workbook.close()
+    }
+
+    test("exportToExcel includes viewport and screen resolution columns") {
+        val feedbacks = listOf(
+            FeedbackDto(
+                id = "test-id",
+                submittedAt = "2024-01-15T10:00:00Z",
+                app = "app",
+                surveyId = "survey",
+                context = SubmissionContext(
+                    deviceType = DeviceType.MOBILE,
+                    viewportWidth = 390,
+                    viewportHeight = 844,
+                    screenWidth = 1170,
+                    screenHeight = 2532,
+                ),
+                answers = emptyList(),
+                sensitiveDataRedacted = false
+            )
+        )
+
+        val workbook = org.apache.poi.xssf.usermodel.XSSFWorkbook(
+            java.io.ByteArrayInputStream(service.exportToExcel(feedbacks))
+        )
+        val row = workbook.getSheetAt(0).getRow(1)
+
+        row.getCell(7).stringCellValue shouldBe "1170"
+        row.getCell(8).stringCellValue shouldBe "2532"
         workbook.close()
     }
 })

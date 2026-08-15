@@ -23,6 +23,7 @@ function makeStats(
     averageRating: null,
     ratingByDate: {},
     byDevice: {},
+    byScreenResolution: {},
     byPathname: {},
     lowestRatingPaths: {},
     fieldStats,
