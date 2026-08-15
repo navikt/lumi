@@ -9,7 +9,7 @@ import {
   Skeleton,
   VStack,
 } from "@navikt/ds-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDeleteSurvey } from "~/hooks/useDeleteSurvey";
 import { useSurveyTotalCount } from "~/hooks/useSurveyTotalCount";
 
@@ -43,6 +43,10 @@ export function DeleteSurveyDialog({
   const totalCountUnavailable =
     isRefreshingTotal || isTotalCountError || totalCount === undefined;
   const hasNoAnswers = totalCount === 0;
+
+  useEffect(() => {
+    if (isFetchingTotal) setConfirmed(false);
+  }, [isFetchingTotal]);
 
   const handleDelete = async () => {
     if (totalCountUnavailable) return;
