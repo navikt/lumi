@@ -230,4 +230,56 @@ describe("LumiSurveyDock Accessibility", () => {
       expect(questionHeading).toHaveFocus();
     });
   });
+
+  it("moves focus to the new question heading after Next and Back", async () => {
+    const user = userEvent.setup();
+    render(
+      <LumiSurveyDock
+        surveyId="focus-step-test"
+        survey={survey}
+        transport={mockTransport}
+        behavior={{ questionLayout: "steps" }}
+      />,
+    );
+
+    const rating = await screen.findByRole("radio", { name: /5\./i });
+    await user.click(rating);
+    expect(rating).toHaveFocus();
+
+    await user.click(screen.getByRole("button", { name: /neste/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /hva kan vi forbedre/i }),
+      ).toHaveFocus();
+    });
+
+    await user.click(screen.getByRole("button", { name: /tilbake/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /hvor fornøyd er du/i }),
+      ).toHaveFocus();
+    });
+  });
+
+  it("does not move focus to the heading for an ordinary answer change", async () => {
+    const user = userEvent.setup();
+    render(
+      <LumiSurveyDock
+        surveyId="focus-answer-test"
+        survey={survey}
+        transport={mockTransport}
+        behavior={{ questionLayout: "steps" }}
+      />,
+    );
+
+    const rating = await screen.findByRole("radio", { name: /5\./i });
+    await user.click(rating);
+
+    expect(rating).toHaveFocus();
+    expect(
+      screen.getByRole("heading", { name: /hvor fornøyd er du/i }),
+    ).not.toHaveFocus();
+  });
 });

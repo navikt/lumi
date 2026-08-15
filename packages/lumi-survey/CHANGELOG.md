@@ -17,6 +17,7 @@ This project follows SemVer.
 
 ### Fixed
 
+- Step navigation now moves focus to the newly rendered question heading after both Next and Back, without stealing focus when an answer changes. (#417)
 - `logic` conditions that reference another question via `condition.questionId` are now evaluated against that question's answer instead of the current question's. Cross-question branching (e.g. routing on an earlier answer) now works the same way `visibleIf` already did. (#332)
 - Submissions now omit answers from questions hidden by `visibleIf` at submit time while retaining the complete survey definition. Hidden answers remain in local state so they are restored if the user reopens the branch. (#357)
 - Reachable-step estimates now count overlapping unresolved `visibleIf` branches (such as multiple `NEQ`/`CONTAINS` conditions or overlapping numeric ranges) together while still counting mutually exclusive branches only once. (#358)
