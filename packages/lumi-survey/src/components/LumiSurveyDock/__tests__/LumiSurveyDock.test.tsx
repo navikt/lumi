@@ -431,6 +431,52 @@ describe("LumiSurveyDock", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows progress from the first question when explicitly enabled", async () => {
+    const user = userEvent.setup();
+    renderDock({
+      behavior: { questionLayout: "steps", showProgress: true },
+    });
+
+    const progressBar = await screen.findByRole("progressbar", {
+      name: "Fremdrift i undersøkelsen",
+    });
+
+    expect(progressBar).toHaveAttribute("aria-valuenow", "1");
+    expect(progressBar).toHaveAttribute("aria-valuemax", "3");
+    expect(progressBar).toHaveAttribute("aria-valuetext", "Steg 1 av 3");
+
+    await user.click(screen.getByRole("radio", { name: /5\./i }));
+    await user.click(screen.getByRole("button", { name: /neste/i }));
+    expect(progressBar).toHaveAttribute("aria-valuetext", "Steg 2 av 3");
+
+    await user.click(screen.getByRole("button", { name: /tilbake/i }));
+    expect(progressBar).toHaveAttribute("aria-valuetext", "Steg 1 av 3");
+  });
+
+  it("shows first-question progress after intro without counting intro as a step", async () => {
+    const user = userEvent.setup();
+    render(
+      <LumiSurveyDock
+        surveyId="dock-progress-with-intro"
+        survey={createSurvey()}
+        transport={{ submit: vi.fn().mockResolvedValue(undefined) }}
+        behavior={{ questionLayout: "steps", showProgress: true }}
+        intro={{ title: "Velkommen", body: "Kort intro" }}
+      />,
+    );
+
+    await screen.findByRole("heading", { name: "Velkommen" });
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: /start/i }));
+
+    expect(
+      await screen.findByRole("progressbar", {
+        name: "Fremdrift i undersøkelsen",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("displays validation errors when required questions are missing", async () => {
     const user = userEvent.setup();
     const events: LumiSurveyEvents = {

@@ -315,7 +315,7 @@ describe("SurveyFormContent", () => {
 
   // ---- ProgressBar ----
 
-  it("shows ProgressBar when showProgress is true in step mode (after step 1)", () => {
+  it("shows ProgressBar when showProgress is true in step mode", () => {
     render(
       <SurveyFormContent
         {...defaultProps({
@@ -333,15 +333,18 @@ describe("SurveyFormContent", () => {
       />,
     );
 
-    // ProgressBar should be present with aria-label "Steg 2 av 3" (currentStep + 1)
     const progressBar = screen.getByRole("progressbar");
     expect(progressBar).toBeInTheDocument();
-    expect(progressBar).toHaveAttribute("aria-label", "Steg 2 av 3");
+    expect(progressBar).toHaveAttribute(
+      "aria-label",
+      "Fremdrift i undersøkelsen",
+    );
+    expect(progressBar).toHaveAttribute("aria-valuetext", "Steg 2 av 3");
     expect(progressBar).toHaveAttribute("aria-valuenow", "2");
     expect(progressBar).toHaveAttribute("aria-valuemax", "3");
   });
 
-  it("does NOT show ProgressBar on the first step (step 0)", () => {
+  it("shows ProgressBar on the first step", () => {
     render(
       <SurveyFormContent
         {...defaultProps({
@@ -353,6 +356,34 @@ describe("SurveyFormContent", () => {
           progress: {
             showProgress: true,
             totalSteps: 3,
+            hasBranching: false,
+          },
+        })}
+      />,
+    );
+
+    const progressBar = screen.getByRole("progressbar");
+    expect(progressBar).toHaveAttribute(
+      "aria-label",
+      "Fremdrift i undersøkelsen",
+    );
+    expect(progressBar).toHaveAttribute("aria-valuenow", "1");
+    expect(progressBar).toHaveAttribute("aria-valuemax", "3");
+    expect(progressBar).toHaveAttribute("aria-valuetext", "Steg 1 av 3");
+  });
+
+  it("does not show ProgressBar when the survey has only one step", () => {
+    render(
+      <SurveyFormContent
+        {...defaultProps({
+          stepNavigation: {
+            isStepMode: true,
+            currentStep: 0,
+            currentStepQuestion: ratingQuestion,
+          },
+          progress: {
+            showProgress: true,
+            totalSteps: 1,
             hasBranching: false,
           },
         })}
@@ -362,37 +393,13 @@ describe("SurveyFormContent", () => {
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
 
-  it("shows ProgressBar on step 0 when survey has intro (hasIntro)", () => {
+  it("does not expose an estimated total as accessible text for branching", () => {
     render(
       <SurveyFormContent
         {...defaultProps({
           stepNavigation: {
             isStepMode: true,
             currentStep: 0,
-            currentStepQuestion: ratingQuestion,
-          },
-          progress: {
-            showProgress: true,
-            totalSteps: 3,
-            hasBranching: false,
-            hasIntro: true,
-          },
-        })}
-      />,
-    );
-
-    const progressBar = screen.getByRole("progressbar");
-    expect(progressBar).toBeInTheDocument();
-    expect(progressBar).toHaveAttribute("aria-label", "Steg 1 av 3");
-  });
-
-  it("shows ProgressBar with branching-aware label when hasBranching is true (after step 1)", () => {
-    render(
-      <SurveyFormContent
-        {...defaultProps({
-          stepNavigation: {
-            isStepMode: true,
-            currentStep: 1,
             currentStepQuestion: ratingQuestion,
           },
           progress: {
@@ -405,8 +412,11 @@ describe("SurveyFormContent", () => {
     );
 
     const progressBar = screen.getByRole("progressbar");
-    // When branching, label omits " av X" since total is unpredictable
-    expect(progressBar).toHaveAttribute("aria-label", "Steg 2");
+    expect(progressBar).toHaveAttribute(
+      "aria-label",
+      "Fremdrift i undersøkelsen",
+    );
+    expect(progressBar).toHaveAttribute("aria-valuetext", "Steg 1");
   });
 
   it("shows ProgressBar value based on currentStep + 1", () => {
@@ -445,6 +455,21 @@ describe("SurveyFormContent", () => {
           },
           progress: {
             showProgress: false,
+            totalSteps: 3,
+          },
+        })}
+      />,
+    );
+
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+  });
+
+  it("does not show ProgressBar outside step mode", () => {
+    render(
+      <SurveyFormContent
+        {...defaultProps({
+          progress: {
+            showProgress: true,
             totalSteps: 3,
           },
         })}

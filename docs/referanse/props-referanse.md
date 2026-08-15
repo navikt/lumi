@@ -60,7 +60,9 @@ Styrer åpning, lukking, lagring og layout.
 | `personalDataNotice` | `ReactNode` | ❌ | Tilpasset personverninfo |
 | `collectLocation` | `boolean` | `false` | Auto-collect `pathname` fra URL |
 | `storageStrategy` | `"consent" \| "localStorage" \| "none"` | `"consent"` | Lagringsstrategi for dismissed-tilstand |
-| `showProgress` | `boolean` | `false` | Vis fremdriftslinje i step-modus |
+| `showProgress` | `boolean` | `false` | Vis fremdrift fra første spørsmål i stegmodus når surveyen har minst to steg |
+
+Intro og kvittering regnes ikke som steg. Ved branching viser den visuelle linjen det stabile estimatet, mens tilgjengelig stegtekst bare oppgir sikker informasjon som «Steg 2» uten estimert total.
 
 ::: details questionLayout-verdier
 - **`"auto"`** (default): Step-modus brukes automatisk når branching-logikk (`logic`) finnes. Ellers vises alle synlige spørsmål på én side.
