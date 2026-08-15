@@ -6,7 +6,7 @@ import {
   DEFAULT_SURVEY_RATING,
   DEFAULT_SURVEY_STARS,
   DEFAULT_SURVEY_THUMBS,
-  type LumiSurveyConfig,
+  type LumiSurveyDefinition,
 } from "@navikt/lumi-survey";
 
 export interface DemoScenario {
@@ -14,7 +14,7 @@ export interface DemoScenario {
   title: string;
   summary: string;
   coverage: string[];
-  survey: LumiSurveyConfig;
+  survey: LumiSurveyDefinition;
 }
 
 const tasks = [
@@ -135,6 +135,70 @@ export const demoScenarios: DemoScenario[] = [
             { value: "safe", label: "Trygg" },
           ],
           required: true,
+        },
+      ],
+    },
+  },
+  {
+    id: "pages-multi-question",
+    title: "Pages · flere spørsmål",
+    summary:
+      "To eksplisitte sider med samlet validering og betinget felt på siste side.",
+    coverage: ["SurveyDocumentV1", "pages", "multi-question", "visibleIf"],
+    survey: {
+      authoringSchemaVersion: 1,
+      type: "custom",
+      pages: [
+        {
+          id: "experience",
+          title: "Om opplevelsen",
+          description: "Begge spørsmålene valideres før du går videre.",
+          questions: [
+            {
+              id: "pageRating",
+              type: "rating",
+              variant: "stars",
+              prompt: "Hvor fornøyd er du med testflyten?",
+              required: true,
+            },
+            {
+              id: "pageReason",
+              type: "text",
+              prompt: "Hva la du særlig merke til?",
+              placeholder: "Skriv en kort testmerknad",
+              maxLength: 300,
+              required: true,
+            },
+          ],
+        },
+        {
+          id: "follow-up",
+          title: "Oppfølging",
+          description: "Det siste feltet vises bare når du velger ja.",
+          questions: [
+            {
+              id: "pageFollowUp",
+              type: "singleChoice",
+              prompt: "Vil du beskrive noe vi bør forbedre?",
+              options: [
+                { value: "yes", label: "Ja" },
+                { value: "no", label: "Nei" },
+              ],
+              required: true,
+            },
+            {
+              id: "pageImprovement",
+              type: "text",
+              prompt: "Hva bør vi forbedre?",
+              maxLength: 500,
+              required: true,
+              visibleIf: {
+                questionId: "pageFollowUp",
+                operator: "EQ",
+                value: "yes",
+              },
+            },
+          ],
         },
       ],
     },
