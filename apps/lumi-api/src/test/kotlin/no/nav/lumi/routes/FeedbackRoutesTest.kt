@@ -19,6 +19,7 @@ import no.nav.lumi.createTestClient
 import no.nav.lumi.insertTestFeedback
 import no.nav.lumi.insertTestFeedbackWithJson
 import no.nav.lumi.insertTestRatingMarker
+import no.nav.lumi.repository.SurveyMetadataRepository
 import no.nav.lumi.testModule
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -699,6 +700,47 @@ class FeedbackRoutesTest : FunSpec({
         }
     }
 
+    test("DELETE /api/v1/intern/surveys/{surveyId} invalidates cached bootstrap even when survey is already empty") {
+        testApplication {
+            application { testModule() }
+
+            val surveyId = "survey-empty-cached"
+            val feedbackId = UUID.randomUUID().toString()
+            val client = createTestClient()
+            insertTestFeedback(
+                id = feedbackId,
+                team = "team-test",
+                app = "app-test",
+                surveyId = surveyId,
+            )
+
+            val before = client.get("/api/v1/intern/filters/bootstrap?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+            val beforeSurveys = Json.parseToJsonElement(before.bodyAsText())
+                .jsonObject["surveysByApp"]!!.jsonObject["app-test"]!!.jsonArray
+            beforeSurveys.any { it.jsonPrimitive.content == surveyId } shouldBe true
+
+            client.delete("/api/v1/intern/feedback/$feedbackId?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }.status shouldBe HttpStatusCode.NoContent
+
+            val deleteSurvey = client.delete("/api/v1/intern/surveys/$surveyId?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+            Json.parseToJsonElement(deleteSurvey.bodyAsText())
+                .jsonObject["deletedCount"]!!.jsonPrimitive.int shouldBe 0
+
+            val after = client.get("/api/v1/intern/filters/bootstrap?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+            val afterApps = Json.parseToJsonElement(after.bodyAsText())
+                .jsonObject["surveysByApp"]!!.jsonObject
+            val afterSurveys = afterApps["app-test"]?.jsonArray.orEmpty()
+            afterSurveys.any { it.jsonPrimitive.content == surveyId } shouldBe false
+        }
+    }
+
     test("DELETE /api/v1/intern/surveys/{surveyId} does not delete another team's survey") {
         testApplication {
             application { testModule() }
@@ -783,6 +825,7 @@ class FeedbackRoutesTest : FunSpec({
                 markerDate = LocalDate.parse("2026-02-02"),
                 label = "Skal bli igjen",
             )
+            SurveyMetadataRepository().archive(team, surveyId, "A123456")
 
             val response = createTestClient().delete("/api/v1/intern/surveys/$surveyId?team=$team") {
                 header(HttpHeaders.Authorization, "Bearer test-token")
@@ -825,6 +868,7 @@ class FeedbackRoutesTest : FunSpec({
                 }
             }
             rowsForOtherSurvey shouldBe 1
+            SurveyMetadataRepository().findByTeam(team).none { it.surveyId == surveyId } shouldBe true
         }
     }
 

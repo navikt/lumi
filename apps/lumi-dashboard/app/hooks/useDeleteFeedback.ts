@@ -13,6 +13,8 @@ export function useDeleteFeedback() {
       // Invalidate feedback queries to refresh the list
       queryClient.invalidateQueries({ queryKey: ["feedback"] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
+      queryClient.invalidateQueries({ queryKey: ["filterBootstrap"] });
+      queryClient.invalidateQueries({ queryKey: ["survey-total-count"] });
     },
   });
 }
