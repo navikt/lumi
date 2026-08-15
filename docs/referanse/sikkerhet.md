@@ -32,9 +32,9 @@ API-et håndhever rate limiting på flere nivåer for å beskytte mot misbruk:
 | :--- | :--- | :--- |
 | Innsending | 100 req/min | Per kaller-app |
 | Innsending (per bruker) | 15 req/min | Per hashet sluttbruker innenfor samme kaller-app |
-| Analyse | 300 req/min | Per validert team og app |
-| Eksport | 30 req/min | Per validert team og app |
-| Avvist eksportautentisering | 30 forsøk/min | Per kilde-IP |
+| Analyse | 300 req/min | Per validert team, app og bruker |
+| Eksport | 30 req/min | Per validert team, app og bruker |
+| Avvist eksportautentisering/-autorisasjon | 30 forsøk/min | Per kilde-IP |
 | Global | 1000 req/min | Alle kall samlet |
 
 ::: info Nøkling av analyse og eksport
