@@ -92,6 +92,27 @@ describe("fetchStats contract", () => {
     expect(() => FeedbackStatsSchema.parse(payload)).not.toThrow();
   });
 
+  it("defaults screen resolution stats during a rolling API deployment", () => {
+    const payload = {
+      totalCount: 0,
+      countWithText: 0,
+      countWithoutText: 0,
+      byRating: {},
+      byApp: {},
+      byDate: {},
+      bySurveyId: {},
+      averageRating: null,
+      ratingByDate: {},
+      byDevice: {},
+      byPathname: {},
+      lowestRatingPaths: {},
+      fieldStats: [],
+      period: { fromDate: null, toDate: null, days: 0 },
+    };
+
+    expect(FeedbackStatsSchema.parse(payload).byScreenResolution).toEqual({});
+  });
+
   it("accepts TextStats field with topPhrases", () => {
     const payload = {
       totalCount: 10,
