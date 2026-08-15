@@ -36,9 +36,12 @@ export function DeleteSurveyDialog({
   const {
     data: totalCount,
     isLoading: isLoadingTotal,
+    isFetching: isFetchingTotal,
     isError: isTotalCountError,
   } = useSurveyTotalCount(surveyId, isOpen);
-  const totalCountUnavailable = isTotalCountError || totalCount === undefined;
+  const isRefreshingTotal = isLoadingTotal || isFetchingTotal;
+  const totalCountUnavailable =
+    isRefreshingTotal || isTotalCountError || totalCount === undefined;
   const hasNoAnswers = totalCount === 0;
 
   const handleDelete = async () => {
@@ -75,7 +78,7 @@ export function DeleteSurveyDialog({
       <Modal.Body>
         <VStack gap="space-16">
           <Alert variant={isTotalCountError ? "error" : "warning"}>
-            {isLoadingTotal ? (
+            {isRefreshingTotal ? (
               <Skeleton width="100%" height="24px" />
             ) : isTotalCountError || totalCount === undefined ? (
               <>
@@ -114,13 +117,13 @@ export function DeleteSurveyDialog({
             checked={confirmed}
             onChange={() => setConfirmed(!confirmed)}
             label={
-              totalCount === undefined
+              totalCountUnavailable
                 ? "Antall svar må lastes før sletting"
                 : hasNoAnswers
                   ? "Ja, slett surveyen permanent"
                   : `Ja, slett permanent alle ${totalCount} svar`
             }
-            disabled={isLoadingTotal || totalCountUnavailable}
+            disabled={totalCountUnavailable}
           />
 
           {deleteMutation.isError && (
@@ -139,10 +142,10 @@ export function DeleteSurveyDialog({
             data-color="danger"
             variant="primary"
             onClick={handleDelete}
-            disabled={!confirmed || isLoadingTotal || totalCountUnavailable}
+            disabled={!confirmed || totalCountUnavailable}
             loading={deleteMutation.isPending}
           >
-            {totalCount === undefined
+            {totalCountUnavailable
               ? "Slett svar permanent"
               : hasNoAnswers
                 ? "Slett survey permanent"

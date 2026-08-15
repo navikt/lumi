@@ -69,6 +69,9 @@ describe("useDeleteSurvey", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["filterBootstrap"],
     });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["survey-total-count"],
+    });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["markers"] });
   });
 });

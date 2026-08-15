@@ -25,6 +25,7 @@ describe("DeleteSurveyDialog", () => {
     mockUseSurveyTotalCount.mockReturnValue({
       data: undefined,
       isLoading: false,
+      isFetching: false,
       isError: true,
     });
   });
@@ -53,6 +54,7 @@ describe("DeleteSurveyDialog", () => {
     mockUseSurveyTotalCount.mockReturnValue({
       data: 0,
       isLoading: false,
+      isFetching: false,
       isError: false,
     });
 
@@ -75,5 +77,29 @@ describe("DeleteSurveyDialog", () => {
       screen.getByRole("button", { name: /slett survey permanent/i }),
     ).toBeDisabled();
     expect(screen.queryByText(/slette alle 0 svar/i)).not.toBeInTheDocument();
+  });
+
+  it("blocks deletion while a cached total count is being refreshed", () => {
+    mockUseSurveyTotalCount.mockReturnValue({
+      data: 5,
+      isLoading: false,
+      isFetching: true,
+      isError: false,
+    });
+
+    render(
+      <DeleteSurveyDialog
+        surveyId="survey-stale"
+        filteredCount={5}
+        isOpen
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("checkbox")).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /Slett svar permanent/i }),
+    ).toBeDisabled();
+    expect(screen.queryByText(/alle 5 svar/i)).not.toBeInTheDocument();
   });
 });
