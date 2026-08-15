@@ -65,6 +65,137 @@ describe("computeReachableSteps", () => {
     expect(computeReachableSteps(questions, {})).toBe(3);
   });
 
+  it("counts overlapping NEQ branches from an unanswered parent (#358)", () => {
+    const questions: LumiSurveyQuestion[] = [
+      { id: "q1", type: "text", prompt: "Q1" },
+      {
+        id: "q2",
+        type: "text",
+        prompt: "Q2",
+        visibleIf: { questionId: "q1", operator: "NEQ", value: "a" },
+      },
+      {
+        id: "q3",
+        type: "text",
+        prompt: "Q3",
+        visibleIf: { questionId: "q1", operator: "NEQ", value: "b" },
+      },
+    ];
+
+    expect(
+      getVisibleQuestions(questions, {}).map((question) => question.id),
+    ).toEqual(["q1", "q2", "q3"]);
+    expect(computeReachableSteps(questions, {})).toBe(3);
+  });
+
+  it("distinguishes overlapping and disjoint numeric branches (#358)", () => {
+    const questions = (
+      ltValue: number,
+      gtValue: number,
+    ): LumiSurveyQuestion[] => [
+      { id: "q1", type: "rating", prompt: "Q1" },
+      {
+        id: "q2",
+        type: "text",
+        prompt: "Q2",
+        visibleIf: { questionId: "q1", operator: "LT", value: ltValue },
+      },
+      {
+        id: "q3",
+        type: "text",
+        prompt: "Q3",
+        visibleIf: { questionId: "q1", operator: "GT", value: gtValue },
+      },
+    ];
+
+    expect(computeReachableSteps(questions(4, 3), {})).toBe(3);
+    expect(computeReachableSteps(questions(3, 4), {})).toBe(2);
+  });
+
+  it("distinguishes compatible and exclusive EQ/NEQ branches (#358)", () => {
+    const questions = (
+      eqValue: string,
+      neqValue: string,
+    ): LumiSurveyQuestion[] => [
+      { id: "q1", type: "singleChoice", prompt: "Q1", options: [] },
+      {
+        id: "q2",
+        type: "text",
+        prompt: "Q2",
+        visibleIf: { questionId: "q1", operator: "EQ", value: eqValue },
+      },
+      {
+        id: "q3",
+        type: "text",
+        prompt: "Q3",
+        visibleIf: { questionId: "q1", operator: "NEQ", value: neqValue },
+      },
+    ];
+
+    expect(computeReachableSteps(questions("b", "a"), {})).toBe(3);
+    expect(computeReachableSteps(questions("a", "a"), {})).toBe(2);
+  });
+
+  it("counts compatible CONTAINS branches together (#358)", () => {
+    const questions: LumiSurveyQuestion[] = [
+      {
+        id: "q1",
+        type: "multiChoice",
+        prompt: "Q1",
+        options: [
+          { value: "a", label: "A" },
+          { value: "b", label: "B" },
+        ],
+      },
+      {
+        id: "q2",
+        type: "text",
+        prompt: "Q2",
+        visibleIf: { questionId: "q1", operator: "CONTAINS", value: "a" },
+      },
+      {
+        id: "q3",
+        type: "text",
+        prompt: "Q3",
+        visibleIf: { questionId: "q1", operator: "CONTAINS", value: "b" },
+      },
+    ];
+
+    expect(computeReachableSteps(questions, {})).toBe(3);
+  });
+
+  it("counts descendants of overlapping unresolved branches (#358)", () => {
+    const questions: LumiSurveyQuestion[] = [
+      { id: "q1", type: "text", prompt: "Q1" },
+      {
+        id: "q2",
+        type: "text",
+        prompt: "Q2",
+        visibleIf: { questionId: "q1", operator: "NEQ", value: "a" },
+      },
+      {
+        id: "q3",
+        type: "text",
+        prompt: "Q3",
+        visibleIf: { questionId: "q1", operator: "NEQ", value: "b" },
+      },
+      {
+        id: "q4",
+        type: "text",
+        prompt: "Q4",
+        visibleIf: { questionId: "q2", operator: "EXISTS" },
+      },
+      {
+        id: "q5",
+        type: "text",
+        prompt: "Q5",
+        visibleIf: { questionId: "q3", operator: "EXISTS" },
+      },
+    ];
+
+    expect(computeReachableSteps(questions, {})).toBe(5);
+  });
+
   it("treats METADATA conditions as reachable", () => {
     const questions: LumiSurveyQuestion[] = [
       {
@@ -529,8 +660,8 @@ describe("computeReachableSteps", () => {
 
     const estimate = computeReachableSteps(questions, {});
 
-    expect(estimate).toBeGreaterThan(1);
-    expect(estimate).toBeGreaterThanOrEqual(7);
-    expect(estimate).toBeLessThanOrEqual(9);
+    // `hva-savner-du` (LT 4) and `hva-fungerer` (GT 3) overlap, so both
+    // branches and their shared linear continuation are reachable together.
+    expect(estimate).toBe(questions.length);
   });
 });

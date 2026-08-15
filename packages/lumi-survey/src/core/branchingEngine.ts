@@ -254,8 +254,8 @@ const VISIBILITY_BRANCHING_OPERATORS = new Set<LogicOperator>([
 ]);
 
 /**
- * Checks whether answer-dependent visibility represents mutually exclusive
- * branches that should use step navigation under the automatic layout.
+ * Checks whether answer-dependent visibility represents value-based branches
+ * that should use step navigation under the automatic layout.
  * EXISTS-only progressive disclosure and metadata conditions stay single-page.
  */
 export function surveyHasVisibilityBranching(
