@@ -36,44 +36,26 @@
       "axes": [
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small",
-            "XSmall"
-          ],
+          "verdier": ["Medium", "Small", "XSmall"],
           "default": "Medium"
         },
         {
           "navn": "Variant",
-          "verdier": [
-            "Primary",
-            "Secondary",
-            "Tertiary"
-          ],
+          "verdier": ["Primary", "Secondary", "Tertiary"],
           "default": "Primary"
         },
         {
           "navn": "State",
-          "verdier": [
-            "Default",
-            "Hover",
-            "Active",
-            "Disabled"
-          ],
+          "verdier": ["Default", "Hover", "Active", "Disabled"],
           "default": "Default"
         },
         {
           "navn": "Icon only",
-          "verdier": [
-            "False",
-            "True"
-          ],
+          "verdier": ["False", "True"],
           "default": "False"
         }
       ],
-      "textNodes": [
-        "label"
-      ],
+      "textNodes": ["label"],
       "merknad": "3 separate sett per farge (ikke fargeakse). Accent=blå primær."
     },
     {
@@ -85,10 +67,7 @@
       "axes": [
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         },
         {
@@ -104,11 +83,7 @@
           "default": "Default"
         }
       ],
-      "textNodes": [
-        "Label",
-        "Description",
-        "intput text"
-      ],
+      "textNodes": ["Label", "Description", "intput text"],
       "merknad": "Input-node heter 'intput text' (skrivefeil). Skjul Description hvis ubrukt."
     },
     {
@@ -120,18 +95,12 @@
       "axes": [
         {
           "navn": "Fixed height",
-          "verdier": [
-            "True",
-            "False"
-          ],
+          "verdier": ["True", "False"],
           "default": "False"
         },
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         },
         {
@@ -147,13 +116,7 @@
           "default": "Default"
         }
       ],
-      "textNodes": [
-        "Label",
-        "Description",
-        "Text",
-        "Value",
-        "Value-text"
-      ]
+      "textNodes": ["Label", "Description", "Text", "Value", "Value-text"]
     },
     {
       "navn": "Select",
@@ -164,10 +127,7 @@
       "axes": [
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         },
         {
@@ -183,11 +143,7 @@
           "default": "Default"
         }
       ],
-      "textNodes": [
-        "Label",
-        "Description",
-        "intput text"
-      ],
+      "textNodes": ["Label", "Description", "intput text"],
       "merknad": "Input bruker Source Sans Pro."
     },
     {
@@ -199,40 +155,22 @@
       "axes": [
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         },
         {
           "navn": "Options",
-          "verdier": [
-            "2",
-            "3",
-            "4",
-            "5",
-            "6",
-            "7"
-          ],
+          "verdier": ["2", "3", "4", "5", "6", "7"],
           "default": "2"
         },
         {
           "navn": "State",
-          "verdier": [
-            "Default",
-            "Read-only",
-            "Error",
-            "Disabled"
-          ],
+          "verdier": ["Default", "Read-only", "Error", "Disabled"],
           "default": "Default"
         }
       ],
       "countAxis": "Options",
-      "textNodes": [
-        "Label",
-        "Description"
-      ],
+      "textNodes": ["Label", "Description"],
       "defaultPitfall": "ukrysset",
       "merknad": "Sub-checkbox-key: a9ba5731c00a4df08daa5100ff9651bb4392c9b1. Label+Description gjentas per element."
     },
@@ -246,40 +184,22 @@
       "axes": [
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         },
         {
           "navn": "Options",
-          "verdier": [
-            "2",
-            "3",
-            "4",
-            "5",
-            "6",
-            "7"
-          ],
+          "verdier": ["2", "3", "4", "5", "6", "7"],
           "default": "2"
         },
         {
           "navn": "State",
-          "verdier": [
-            "Default",
-            "Error",
-            "Read-only",
-            "Disabled"
-          ],
+          "verdier": ["Default", "Error", "Read-only", "Disabled"],
           "default": "Default"
         }
       ],
       "countAxis": "Options",
-      "textNodes": [
-        "Label",
-        "Description"
-      ],
+      "textNodes": ["Label", "Description"],
       "merknad": "Label+Description gjentas per element (fyll per indeks)."
     },
     {
@@ -291,43 +211,26 @@
       "axes": [
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         },
         {
           "navn": "Position",
-          "verdier": [
-            "Right",
-            "Left"
-          ],
+          "verdier": ["Right", "Left"],
           "default": "Left"
         },
         {
           "navn": "State",
-          "verdier": [
-            "Default",
-            "Hover",
-            "Read-only",
-            "Disabled"
-          ],
+          "verdier": ["Default", "Hover", "Read-only", "Disabled"],
           "default": "Default"
         },
         {
           "navn": "Checked",
-          "verdier": [
-            "False",
-            "True"
-          ],
+          "verdier": ["False", "True"],
           "default": "False"
         }
       ],
-      "textNodes": [
-        "Label",
-        "Description"
-      ],
+      "textNodes": ["Label", "Description"],
       "merknad": "Checked=True for på."
     },
     {
@@ -339,27 +242,16 @@
       "axes": [
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         },
         {
           "navn": "Variant",
-          "verdier": [
-            "NewValue",
-            "Default",
-            "MaxSelected"
-          ],
+          "verdier": ["NewValue", "Default", "MaxSelected"],
           "default": "Default"
         }
       ],
-      "textNodes": [
-        "text",
-        "value",
-        "label"
-      ],
+      "textNodes": ["text", "value", "label"],
       "merknad": "Til >7 alternativer / flervalg."
     },
     {
@@ -371,48 +263,31 @@
       "axes": [
         {
           "navn": "Variant",
-          "verdier": [
-            "Neutral",
-            "Accent"
-          ],
+          "verdier": ["Neutral", "Accent"],
           "default": "Neutral"
         },
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         },
         {
           "navn": "State",
-          "verdier": [
-            "Default",
-            "Hover"
-          ],
+          "verdier": ["Default", "Hover"],
           "default": "Default"
         },
         {
           "navn": "Selected",
-          "verdier": [
-            "False",
-            "True"
-          ],
+          "verdier": ["False", "True"],
           "default": "False"
         },
         {
           "navn": "hasCheck",
-          "verdier": [
-            "True",
-            "False"
-          ],
+          "verdier": ["True", "False"],
           "default": "True"
         }
       ],
-      "textNodes": [
-        "Label"
-      ],
+      "textNodes": ["Label"],
       "merknad": "Filtrering. Selected=True=aktivt."
     },
     {
@@ -424,36 +299,22 @@
       "axes": [
         {
           "navn": "Amount",
-          "verdier": [
-            "2",
-            "3",
-            "4",
-            "5"
-          ],
+          "verdier": ["2", "3", "4", "5"],
           "default": "2"
         },
         {
           "navn": "Size",
-          "verdier": [
-            "Small",
-            "Medium",
-            "XSmall"
-          ],
+          "verdier": ["Small", "Medium", "XSmall"],
           "default": "Medium"
         },
         {
           "navn": "Variant",
-          "verdier": [
-            "Neutral",
-            "Accent"
-          ],
+          "verdier": ["Neutral", "Accent"],
           "default": "Neutral"
         }
       ],
       "countAxis": "Amount",
-      "textNodes": [
-        "Label"
-      ]
+      "textNodes": ["Label"]
     },
     {
       "navn": "CopyButton",
@@ -464,11 +325,7 @@
       "axes": [
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small",
-            "XSmall"
-          ],
+          "verdier": ["Medium", "Small", "XSmall"],
           "default": "Medium"
         },
         {
@@ -483,17 +340,11 @@
         },
         {
           "navn": "Icon",
-          "verdier": [
-            "Icon left",
-            "Icon right",
-            "Icon only"
-          ],
+          "verdier": ["Icon left", "Icon right", "Icon only"],
           "default": "Icon left"
         }
       ],
-      "textNodes": [
-        "label"
-      ]
+      "textNodes": ["label"]
     },
     {
       "navn": "Search",
@@ -504,36 +355,21 @@
       "axes": [
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         },
         {
           "navn": "Variant",
-          "verdier": [
-            "Primary",
-            "Secondary",
-            "Simple"
-          ],
+          "verdier": ["Primary", "Secondary", "Simple"],
           "default": "Primary"
         },
         {
           "navn": "State",
-          "verdier": [
-            "Default",
-            "Hover",
-            "Error"
-          ],
+          "verdier": ["Default", "Hover", "Error"],
           "default": "Default"
         }
       ],
-      "textNodes": [
-        "Label",
-        "Description",
-        "Text"
-      ],
+      "textNodes": ["Label", "Description", "Text"],
       "merknad": "Fritekstsøk (ikke verdivalg → Combobox)."
     },
     {
@@ -545,29 +381,16 @@
       "axes": [
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         },
         {
           "navn": "State",
-          "verdier": [
-            "Default",
-            "Hover",
-            "Error",
-            "Disabled",
-            "Read-only"
-          ],
+          "verdier": ["Default", "Hover", "Error", "Disabled", "Read-only"],
           "default": "Default"
         }
       ],
-      "textNodes": [
-        "Label",
-        "Description",
-        "Date"
-      ]
+      "textNodes": ["Label", "Description", "Date"]
     },
     {
       "navn": "MonthPicker",
@@ -578,29 +401,16 @@
       "axes": [
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         },
         {
           "navn": "State",
-          "verdier": [
-            "Default",
-            "Hover",
-            "Error",
-            "Disabled",
-            "Read-only"
-          ],
+          "verdier": ["Default", "Hover", "Error", "Disabled", "Read-only"],
           "default": "Default"
         }
       ],
-      "textNodes": [
-        "Label",
-        "Description",
-        "Date"
-      ]
+      "textNodes": ["Label", "Description", "Date"]
     },
     {
       "navn": "FormProgress",
@@ -611,28 +421,16 @@
       "axes": [
         {
           "navn": "State",
-          "verdier": [
-            "Default",
-            "Hover"
-          ],
+          "verdier": ["Default", "Hover"],
           "default": "Default"
         },
         {
           "navn": "Open",
-          "verdier": [
-            "False",
-            "True"
-          ],
+          "verdier": ["False", "True"],
           "default": "False"
         }
       ],
-      "textNodes": [
-        "Steg",
-        "333",
-        "av",
-        "999",
-        "label"
-      ],
+      "textNodes": ["Steg", "333", "av", "999", "label"],
       "merknad": "Søknadssteg — bruk denne, ikke Stepper. 333=gjeldende steg, 999=totalt (tekstnoder, ikke akse)."
     },
     {
@@ -642,11 +440,7 @@
       "kind": "component",
       "key": "da7dfbe17329c3262d786c69f1e5a7a8f4721822",
       "axes": [],
-      "textNodes": [
-        "Label",
-        "Text",
-        "Details"
-      ],
+      "textNodes": ["Label", "Text", "Details"],
       "merknad": "Liste over opplastede filer. Text+Details per fil."
     },
     {
@@ -658,34 +452,17 @@
       "axes": [
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         },
         {
           "navn": "Amount",
-          "verdier": [
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "6",
-            "7",
-            "8",
-            "9",
-            "10"
-          ],
+          "verdier": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
           "default": "1"
         }
       ],
       "countAxis": "Amount",
-      "textNodes": [
-        "Heading",
-        "Text"
-      ],
+      "textNodes": ["Heading", "Text"],
       "merknad": "Valideringsoversikt med lenker til felt. Text per feil."
     },
     {
@@ -697,10 +474,7 @@
       "axes": [
         {
           "navn": "Breakpoint",
-          "verdier": [
-            "xl",
-            "sm"
-          ],
+          "verdier": ["xl", "sm"],
           "default": "xl"
         },
         {
@@ -723,12 +497,7 @@
         }
       ],
       "countAxis": "Answers",
-      "textNodes": [
-        "Heading",
-        "Item Label",
-        "Text",
-        "Comma"
-      ],
+      "textNodes": ["Heading", "Item Label", "Text", "Comma"],
       "merknad": "Oppsummering før innsending. Har skjulte sm-breakpoint-kopier: fyll gjentatte 'Text'/'Item Label'-noder KUN for synlige noder, ellers lander verdiene på skjulte sm-kopier og synlige svar blir stående som 'Tekst'."
     },
     {
@@ -740,29 +509,17 @@
       "axes": [
         {
           "navn": "State",
-          "verdier": [
-            "Default",
-            "Hover",
-            "Active"
-          ],
+          "verdier": ["Default", "Hover", "Active"],
           "default": "Default"
         },
         {
           "navn": "Placement",
-          "verdier": [
-            "Top",
-            "Right",
-            "Bottom",
-            "Left"
-          ],
+          "verdier": ["Top", "Right", "Bottom", "Left"],
           "default": "Top"
         },
         {
           "navn": "Breakpoint",
-          "verdier": [
-            "xl",
-            "sm"
-          ],
+          "verdier": ["xl", "sm"],
           "default": "xl"
         }
       ],
@@ -778,27 +535,16 @@
       "axes": [
         {
           "navn": "Variant",
-          "verdier": [
-            "Error",
-            "Announcement",
-            "Warning",
-            "Success"
-          ],
+          "verdier": ["Error", "Announcement", "Warning", "Success"],
           "default": "Error"
         },
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         }
       ],
-      "textNodes": [
-        "Heading",
-        "paragraph"
-      ],
+      "textNodes": ["Heading", "paragraph"],
       "defaultPitfall": "Error (rød)",
       "merknad": "Announcement=nøytral info (ingen Info-variant)."
     },
@@ -811,35 +557,21 @@
       "axes": [
         {
           "navn": "Variant",
-          "verdier": [
-            "Error",
-            "Announcement",
-            "Warning",
-            "Success"
-          ],
+          "verdier": ["Error", "Announcement", "Warning", "Success"],
           "default": "Error"
         },
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         },
         {
           "navn": "Centered content",
-          "verdier": [
-            "True",
-            "False"
-          ],
+          "verdier": ["True", "False"],
           "default": "True"
         }
       ],
-      "textNodes": [
-        "Heading",
-        "paragraph"
-      ],
+      "textNodes": ["Heading", "paragraph"],
       "defaultPitfall": "Error (rød)",
       "merknad": "Hele bredden, øverst i løsningen."
     },
@@ -852,34 +584,21 @@
       "axes": [
         {
           "navn": "Variant",
-          "verdier": [
-            "Error",
-            "Warning",
-            "Success",
-            "Info"
-          ],
+          "verdier": ["Error", "Warning", "Success", "Info"],
           "default": "Error"
         },
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         },
         {
           "navn": "Is link",
-          "verdier": [
-            "False",
-            "True"
-          ],
+          "verdier": ["False", "True"],
           "default": "False"
         }
       ],
-      "textNodes": [
-        "paragraph"
-      ],
+      "textNodes": ["paragraph"],
       "merknad": "Har Info-variant (i motsetning til Local/GlobalAlert). Korte statusmeldinger i kontekst."
     },
     {
@@ -891,11 +610,7 @@
       "axes": [
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small",
-            "Xsmall"
-          ],
+          "verdier": ["Medium", "Small", "Xsmall"],
           "default": "Medium"
         },
         {
@@ -915,17 +630,11 @@
         },
         {
           "navn": "Variant",
-          "verdier": [
-            "Outline",
-            "Moderate",
-            "Strong"
-          ],
+          "verdier": ["Outline", "Moderate", "Strong"],
           "default": "Outline"
         }
       ],
-      "textNodes": [
-        "tag label"
-      ],
+      "textNodes": ["tag label"],
       "defaultPitfall": "Neutral",
       "merknad": "Status-merkelapp."
     },
@@ -953,17 +662,11 @@
         },
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         }
       ],
-      "textNodes": [
-        "Heading",
-        "paragraph"
-      ],
+      "textNodes": ["Heading", "paragraph"],
       "merknad": "Fremhever innhold (ikke varsel)."
     },
     {
@@ -975,11 +678,7 @@
       "axes": [
         {
           "navn": "Size",
-          "verdier": [
-            "Small",
-            "Medium",
-            "Large"
-          ],
+          "verdier": ["Small", "Medium", "Large"],
           "default": "Medium"
         }
       ],
@@ -995,10 +694,7 @@
       "axes": [
         {
           "navn": "Variant",
-          "verdier": [
-            "Default",
-            "Accent"
-          ],
+          "verdier": ["Default", "Accent"],
           "default": "Default"
         },
         {
@@ -1027,20 +723,12 @@
       "axes": [
         {
           "navn": "Pulse",
-          "verdier": [
-            "False",
-            "True"
-          ],
+          "verdier": ["False", "True"],
           "default": "False"
         },
         {
           "navn": "Variant",
-          "verdier": [
-            "Rectangle",
-            "Text",
-            "Rounded",
-            "Circle"
-          ],
+          "verdier": ["Rectangle", "Text", "Rounded", "Circle"],
           "default": "Rectangle"
         }
       ],
@@ -1056,12 +744,7 @@
       "axes": [
         {
           "navn": "Placement",
-          "verdier": [
-            "Top",
-            "Right",
-            "Bottom",
-            "Left"
-          ],
+          "verdier": ["Top", "Right", "Bottom", "Left"],
           "default": "Top"
         }
       ],
@@ -1083,25 +766,16 @@
       "axes": [
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small",
-            "XSmall"
-          ],
+          "verdier": ["Medium", "Small", "XSmall"],
           "default": "Medium"
         },
         {
           "navn": "Button text",
-          "verdier": [
-            "Off",
-            "On"
-          ],
+          "verdier": ["Off", "On"],
           "default": "On"
         }
       ],
-      "textNodes": [
-        "label"
-      ]
+      "textNodes": ["label"]
     },
     {
       "navn": "Accordion",
@@ -1132,9 +806,7 @@
       ],
       "countAxis": "Items",
       "slot": true,
-      "textNodes": [
-        "Title"
-      ],
+      "textNodes": ["Title"],
       "merknad": "Slot+placeholder synlige — skjul/erstatt. Title=Source Sans Pro Bold. Title+Slot per element."
     },
     {
@@ -1146,34 +818,22 @@
       "axes": [
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         },
         {
           "navn": "State",
-          "verdier": [
-            "Default",
-            "Hover"
-          ],
+          "verdier": ["Default", "Hover"],
           "default": "Default"
         },
         {
           "navn": "Open",
-          "verdier": [
-            "True",
-            "False"
-          ],
+          "verdier": ["True", "False"],
           "default": "False"
         }
       ],
       "slot": true,
-      "textNodes": [
-        "Title",
-        "Description"
-      ],
+      "textNodes": ["Title", "Description"],
       "merknad": "Slot synlig — skjul/erstatt. Få ganger etter hverandre → Accordion."
     },
     {
@@ -1185,34 +845,21 @@
       "axes": [
         {
           "navn": "Appearance",
-          "verdier": [
-            "Inline",
-            "Panel"
-          ],
+          "verdier": ["Inline", "Panel"],
           "default": "Inline"
         },
         {
           "navn": "Expanded",
-          "verdier": [
-            "False",
-            "True"
-          ],
+          "verdier": ["False", "True"],
           "default": "False"
         },
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Large",
-            "Small"
-          ],
+          "verdier": ["Medium", "Large", "Small"],
           "default": "Large"
         }
       ],
-      "textNodes": [
-        "Label",
-        "Content"
-      ],
+      "textNodes": ["Label", "Content"],
       "merknad": "Forklare begreper."
     },
     {
@@ -1224,25 +871,16 @@
       "axes": [
         {
           "navn": "Direction",
-          "verdier": [
-            "Horizontal",
-            "Vertical"
-          ],
+          "verdier": ["Horizontal", "Vertical"],
           "default": "Horizontal"
         },
         {
           "navn": "Breakpoint",
-          "verdier": [
-            "xl",
-            "sm"
-          ],
+          "verdier": ["xl", "sm"],
           "default": "xl"
         }
       ],
-      "textNodes": [
-        "heading",
-        "text"
-      ],
+      "textNodes": ["heading", "text"],
       "merknad": "Vennlig intro/veiledning øverst på side."
     },
     {
@@ -1254,42 +892,26 @@
       "axes": [
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         },
         {
           "navn": "data-color",
-          "verdier": [
-            "Neutral",
-            "Accent"
-          ],
+          "verdier": ["Neutral", "Accent"],
           "default": "Neutral"
         },
         {
           "navn": "State",
-          "verdier": [
-            "Default",
-            "Hover"
-          ],
+          "verdier": ["Default", "Hover"],
           "default": "Default"
         },
         {
           "navn": "arrowPosition",
-          "verdier": [
-            "baseline",
-            "center"
-          ],
+          "verdier": ["baseline", "center"],
           "default": "baseline"
         }
       ],
-      "textNodes": [
-        "heading",
-        "paragraph",
-        "tag label"
-      ],
+      "textNodes": ["heading", "paragraph", "tag label"],
       "merknad": "Ny versjon (ikke 🚨 OLD LinkCard)."
     },
     {
@@ -1301,28 +923,17 @@
       "axes": [
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         },
         {
           "navn": "Fixed height",
-          "verdier": [
-            "True",
-            "False"
-          ],
+          "verdier": ["True", "False"],
           "default": "False"
         }
       ],
       "slot": true,
-      "textNodes": [
-        "Eyebrow heading",
-        "Title",
-        "Text",
-        "label"
-      ],
+      "textNodes": ["Eyebrow heading", "Title", "Text", "label"],
       "merknad": "Slot synlig — skjul/erstatt. Eyebrow ofte skjult. label×3=footer-knapper."
     },
     {
@@ -1334,10 +945,7 @@
       "axes": [
         {
           "navn": "Breakpoint",
-          "verdier": [
-            "xl",
-            "sm"
-          ],
+          "verdier": ["xl", "sm"],
           "default": "xl"
         }
       ],
@@ -1354,27 +962,17 @@
       "axes": [
         {
           "navn": "Number of",
-          "verdier": [
-            "2",
-            "3",
-            "4",
-            "5"
-          ],
+          "verdier": ["2", "3", "4", "5"],
           "default": "2"
         },
         {
           "navn": "Size",
-          "verdier": [
-            "Medium",
-            "Small"
-          ],
+          "verdier": ["Medium", "Small"],
           "default": "Medium"
         }
       ],
       "countAxis": "Number of",
-      "textNodes": [
-        "label"
-      ]
+      "textNodes": ["label"]
     },
     {
       "navn": "Link",
@@ -1385,25 +983,16 @@
       "axes": [
         {
           "navn": "State",
-          "verdier": [
-            "Default",
-            "Hover"
-          ],
+          "verdier": ["Default", "Hover"],
           "default": "Default"
         },
         {
           "navn": "Show icon",
-          "verdier": [
-            "Left",
-            "Right",
-            "No icon"
-          ],
+          "verdier": ["Left", "Right", "No icon"],
           "default": "No icon"
         }
       ],
-      "textNodes": [
-        "Text"
-      ],
+      "textNodes": ["Text"],
       "merknad": "Navigasjon (ikke handling → Button)."
     },
     {
@@ -1415,17 +1004,11 @@
       "axes": [
         {
           "navn": "Interactive",
-          "verdier": [
-            "True",
-            "False"
-          ],
+          "verdier": ["True", "False"],
           "default": "True"
         }
       ],
-      "textNodes": [
-        "1",
-        "Seksjonstittel"
-      ],
+      "textNodes": ["1", "Seksjonstittel"],
       "merknad": "Søknad → FormProgress. 1=stegnummer (tekstnode). 1+Seksjonstittel gjentas per steg."
     },
     {
@@ -1435,13 +1018,7 @@
       "kind": "component",
       "key": "60a1ba54917616c6b5160b56e54b4849b87adef7",
       "axes": [],
-      "textNodes": [
-        "Title",
-        "Label",
-        "Description",
-        "Text",
-        "Name"
-      ],
+      "textNodes": ["Title", "Label", "Description", "Text", "Name"],
       "merknad": "Dekoratør for interne flater. Delkomp.: Menu/Link, Menu/User, NavButton."
     },
     {
@@ -1454,32 +1031,17 @@
       "axes": [
         {
           "navn": "Variant",
-          "verdier": [
-            "Warning",
-            "Success",
-            "Error",
-            "Information",
-            "Neutral"
-          ],
+          "verdier": ["Warning", "Success", "Error", "Information", "Neutral"],
           "default": "Neutral"
         },
         {
           "navn": "State",
-          "verdier": [
-            "Default",
-            "Hover",
-            "Selected"
-          ],
+          "verdier": ["Default", "Hover", "Selected"],
           "default": "Default"
         },
         {
           "navn": "Rounded",
-          "verdier": [
-            "Left",
-            "None",
-            "Right",
-            "Both"
-          ],
+          "verdier": ["Left", "None", "Right", "Both"],
           "default": "Left"
         }
       ],
@@ -1495,35 +1057,21 @@
       "axes": [
         {
           "navn": "Size",
-          "verdier": [
-            "XLarge",
-            "Large",
-            "Medium",
-            "Small",
-            "XSmall"
-          ],
+          "verdier": ["XLarge", "Large", "Medium", "Small", "XSmall"],
           "default": "XLarge"
         },
         {
           "navn": "Device",
-          "verdier": [
-            "Mobile",
-            "Desktop"
-          ],
+          "verdier": ["Mobile", "Desktop"],
           "default": "Desktop"
         },
         {
           "navn": "Margin bottom",
-          "verdier": [
-            "True",
-            "False"
-          ],
+          "verdier": ["True", "False"],
           "default": "True"
         }
       ],
-      "textNodes": [
-        "heading"
-      ],
+      "textNodes": ["heading"],
       "merknad": "BodyShort/BodyLong/Label finnes tilsvarende."
     },
     {
@@ -1535,17 +1083,11 @@
       "axes": [
         {
           "navn": "Type",
-          "verdier": [
-            "Regular",
-            "Strong",
-            "Caps"
-          ],
+          "verdier": ["Regular", "Strong", "Caps"],
           "default": "Strong"
         }
       ],
-      "textNodes": [
-        "Small text"
-      ],
+      "textNodes": ["Small text"],
       "defaultPitfall": "Strong",
       "merknad": "Liten metadata-tekst. NB: tekstnoden heter 'Small text' i Regular/Strong, men i Type=Caps heter den etter innholdet sitt — fyll den eneste tekstnoden direkte i stedet for navnematch."
     },
@@ -1561,33 +1103,21 @@
       "axes": [
         {
           "navn": "row.Variant",
-          "verdier": [
-            "Body",
-            "Header"
-          ],
+          "verdier": ["Body", "Header"],
           "default": "Body"
         },
         {
           "navn": "cell.Variant",
-          "verdier": [
-            "Body",
-            "Header"
-          ],
+          "verdier": ["Body", "Header"],
           "default": "Body"
         },
         {
           "navn": "cell.Size",
-          "verdier": [
-            "Small",
-            "Medium",
-            "Large"
-          ],
+          "verdier": ["Small", "Medium", "Large"],
           "default": "Large"
         }
       ],
-      "textNodes": [
-        "Content"
-      ],
+      "textNodes": ["Content"],
       "merknad": "Ingen samlet Table. Table row INNEHOLDER allerede ~7 Content-celler i horisontal layout. Riktig bruk: instansier raden, fyll de første N Content-nodene og skjul resten — IKKE appendChild egne Table cell (de stables vertikalt). Variant=Header for overskriftsrad. Table cell finnes separat for spesialtilfeller."
     },
     {
@@ -1599,27 +1129,16 @@
       "axes": [
         {
           "navn": "Filter variant",
-          "verdier": [
-            "Simple",
-            "Advanced"
-          ],
+          "verdier": ["Simple", "Advanced"],
           "default": "Simple"
         },
         {
           "navn": "Batch actions",
-          "verdier": [
-            "False",
-            "True"
-          ],
+          "verdier": ["False", "True"],
           "default": "False"
         }
       ],
-      "textNodes": [
-        "heading",
-        "Label",
-        "Description",
-        "intput text"
-      ],
+      "textNodes": ["heading", "Label", "Description", "intput text"],
       "merknad": "PREVIEW-status — kan endres. Delrad: DataGrid/TableRow."
     }
   ],
