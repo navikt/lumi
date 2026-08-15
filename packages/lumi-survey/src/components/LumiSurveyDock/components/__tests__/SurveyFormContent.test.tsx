@@ -342,6 +342,12 @@ describe("SurveyFormContent", () => {
     expect(progressBar).toHaveAttribute("aria-valuetext", "Steg 2 av 3");
     expect(progressBar).toHaveAttribute("aria-valuenow", "2");
     expect(progressBar).toHaveAttribute("aria-valuemax", "3");
+
+    const visibleStatus = screen.getByText("Steg 2 av 3");
+    expect(visibleStatus).toHaveClass("aksel-body-short--small");
+    expect(visibleStatus).toHaveAttribute("aria-hidden", "true");
+    expect(visibleStatus).not.toHaveClass("aksel-typo--visually-hidden");
+    expect(visibleStatus.parentElement).toBe(progressBar.parentElement);
   });
 
   it("shows ProgressBar on the first step", () => {
@@ -416,10 +422,16 @@ describe("SurveyFormContent", () => {
       "aksel-typo--visually-hidden",
     );
 
+    const visibleStatus = screen.getByText("Steg 1");
+    expect(visibleStatus).toHaveClass("aksel-body-short--small");
+    expect(visibleStatus).toHaveAttribute("aria-hidden", "true");
+    expect(visibleStatus).not.toHaveClass("aksel-typo--visually-hidden");
+
     const visualProgressBar = screen.getByRole("progressbar", {
       hidden: true,
     });
     expect(visualProgressBar).toHaveAttribute("aria-hidden", "true");
+    expect(visibleStatus.parentElement).toBe(visualProgressBar.parentElement);
   });
 
   it("shows visual branching progress based on currentStep + 1", () => {
