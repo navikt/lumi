@@ -39,10 +39,12 @@ jobs:
               - '.github/skills/**'
               - '.github/workflows/**'
               - 'apps/lumi-dashboard/**'
+              - 'apps/lumi-local-demo/**'
               - 'packages/**'
             api:
               - '.github/workflows/**'
               - 'apps/lumi-api/**'
+              - 'apps/lumi-submission-proxy/**'
             docs:
               - 'docs/**'
               - 'packages/lumi-survey/CHANGELOG.md'
@@ -152,8 +154,11 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           cache-overwrite-existing: true
-      - name: Run tests
+      - name: Run API tests
         working-directory: apps/lumi-api
+        run: ./gradlew test
+      - name: Run submission proxy tests
+        working-directory: apps/lumi-submission-proxy
         run: ./gradlew test
 
   docs:

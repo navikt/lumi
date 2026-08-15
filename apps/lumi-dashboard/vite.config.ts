@@ -18,7 +18,9 @@ export default defineConfig(({ command, mode }) => {
   const cdnBasePath = process.env.CDN_BASE_PATH || "/lumi-dashboard";
   const cdnBaseUrl =
     process.env.CDN_BASE_URL || `https://cdn.nav.no/team-esyfo${cdnBasePath}`;
-  const base = isProductionBuild ? `${cdnBaseUrl}/client/` : undefined;
+  const base = isProductionBuild
+    ? process.env.LUMI_DASHBOARD_ASSET_BASE_URL || `${cdnBaseUrl}/client/`
+    : undefined;
 
   return {
     base,

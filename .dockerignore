@@ -1,0 +1,16 @@
+.git
+.github
+.idea
+.vscode
+node_modules
+**/node_modules
+**/.gradle
+**/build
+**/dist
+**/.output
+coverage
+playwright-report
+test-results
+storybook-static
+.env*
+*.log

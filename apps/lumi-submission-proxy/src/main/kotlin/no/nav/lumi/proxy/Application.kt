@@ -92,7 +92,10 @@ private suspend fun authenticateRequest(
     config: ProxyConfig
 ): String {
     if (texasClient == null) {
-        logger.warn("Running without Texas (local mode), using mock identity")
+        check(config.localAuthBypassEnabled) {
+            "Local auth bypass must be enabled when Texas is unavailable"
+        }
+        logger.warn("Running with explicit local auth bypass, using mock identity")
         return "local:local-dev:local-app"
     }
 
@@ -196,14 +199,30 @@ data class IntrospectionResult(
 data class ProxyConfig(
     val lumiApiBaseUrl: String,
     val internalSubmissionKey: String,
-    val tokenIntrospectionEndpoint: String?
+    val tokenIntrospectionEndpoint: String?,
+    val localAuthBypassEnabled: Boolean,
 ) {
     companion object {
-        fun fromEnvironment() = ProxyConfig(
-            lumiApiBaseUrl = System.getenv("LUMI_API_BASE_URL") ?: "http://lumi-api",
-            internalSubmissionKey = System.getenv("LUMI_INTERNAL_SUBMISSION_KEY")
-                ?: error("LUMI_INTERNAL_SUBMISSION_KEY must be set"),
-            tokenIntrospectionEndpoint = System.getenv("NAIS_TOKEN_INTROSPECTION_ENDPOINT")
-        )
+        fun fromEnvironment(
+            getenv: (String) -> String? = System::getenv,
+        ): ProxyConfig {
+            val tokenIntrospectionEndpoint = getenv("NAIS_TOKEN_INTROSPECTION_ENDPOINT")
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+            val localAuthBypassEnabled = getenv("LUMI_LOCAL_AUTH_BYPASS").toBoolean()
+
+            require(tokenIntrospectionEndpoint != null || localAuthBypassEnabled) {
+                "Refusing to start without Texas: set LUMI_LOCAL_AUTH_BYPASS=true " +
+                    "only for local development"
+            }
+
+            return ProxyConfig(
+                lumiApiBaseUrl = getenv("LUMI_API_BASE_URL") ?: "http://lumi-api",
+                internalSubmissionKey = getenv("LUMI_INTERNAL_SUBMISSION_KEY")
+                    ?: error("LUMI_INTERNAL_SUBMISSION_KEY must be set"),
+                tokenIntrospectionEndpoint = tokenIntrospectionEndpoint,
+                localAuthBypassEnabled = localAuthBypassEnabled,
+            )
+        }
     }
 }

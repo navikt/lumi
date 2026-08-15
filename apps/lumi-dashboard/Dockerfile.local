@@ -1,0 +1,24 @@
+# syntax=docker/dockerfile:1.7
+FROM cgr.dev/chainguard/node:latest-dev AS build
+USER root
+WORKDIR /src
+RUN corepack enable
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY apps/lumi-dashboard/package.json apps/lumi-dashboard/package.json
+COPY packages/lumi-types/package.json packages/lumi-types/package.json
+RUN --mount=type=secret,id=npm_token,target=/run/secrets/npm_token \
+    NPM_AUTH_TOKEN="$(cat /run/secrets/npm_token)" \
+    pnpm install --frozen-lockfile --filter lumi-dashboard...
+
+COPY apps/lumi-dashboard apps/lumi-dashboard
+COPY packages/lumi-types packages/lumi-types
+ENV LUMI_DASHBOARD_ASSET_BASE_URL=/
+RUN pnpm --filter @navikt/lumi-types run build && pnpm --filter lumi-dashboard run build
+
+FROM cgr.dev/chainguard/node:latest
+WORKDIR /app
+COPY --from=build --chown=node:node /src/apps/lumi-dashboard/.output /app/.output
+ENV NODE_ENV=production
+EXPOSE 3000
+CMD [".output/server/index.mjs"]

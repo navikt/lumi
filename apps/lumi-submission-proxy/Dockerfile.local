@@ -1,0 +1,17 @@
+# Local-only image: build the proxy jar inside Docker, then run it on a public
+# Chainguard JRE. The deployed image keeps NAV's private versioned JRE.
+FROM eclipse-temurin:21-jdk AS build
+WORKDIR /src
+COPY gradlew gradlew.bat settings.gradle.kts build.gradle.kts gradle.properties ./
+COPY gradle ./gradle
+RUN ./gradlew --no-daemon dependencies --configuration runtimeClasspath -q
+COPY . .
+RUN ./gradlew --no-daemon clean shadowJar
+
+# Public Chainguard keeps the local demo independent of NAV registry access.
+FROM cgr.dev/chainguard/jre:latest
+WORKDIR /app
+COPY --from=build /src/build/libs/app.jar app.jar
+ENV TZ="Europe/Oslo"
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]

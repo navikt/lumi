@@ -44,6 +44,8 @@ dependencies {
     // Logging
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
     implementation("net.logstash.logback:logstash-logback-encoder:$logstashVersion")
+
+    testImplementation(kotlin("test"))
 }
 
 java {
@@ -59,6 +61,10 @@ kotlin {
 }
 
 tasks {
+    test {
+        useJUnitPlatform()
+    }
+
     shadowJar {
         mergeServiceFiles()
         archiveFileName.set("app.jar")

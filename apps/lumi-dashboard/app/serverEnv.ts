@@ -11,6 +11,7 @@ const serverSchema = z.object({
 
   NAIS_CLUSTER_NAME: z.string().optional(),
   USE_MOCK_DATA: z.string().optional(),
+  LUMI_LOCAL_AUTH_BYPASS: z.enum(["true", "false"]).optional(),
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),

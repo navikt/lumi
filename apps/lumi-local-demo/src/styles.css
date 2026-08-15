@@ -1,0 +1,312 @@
+:root {
+  color: #f5f1e8;
+  background: #101b2a;
+  font-family: "Source Sans 3", "Source Sans Pro", sans-serif;
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background:
+    linear-gradient(rgba(130, 201, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(130, 201, 255, 0.055) 1px, transparent 1px),
+    radial-gradient(
+      circle at 82% 12%,
+      rgba(0, 204, 153, 0.16),
+      transparent 28rem
+    ),
+    #101b2a;
+  background-size:
+    32px 32px,
+    32px 32px,
+    auto,
+    auto;
+}
+
+button,
+select {
+  font: inherit;
+}
+
+.testBench {
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 64px 0 160px;
+}
+
+.masthead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid rgba(184, 225, 255, 0.28);
+}
+
+.masthead h1 {
+  max-width: 760px;
+  color: #fff;
+  font-size: clamp(3rem, 7vw, 6.8rem);
+  font-weight: 700;
+  letter-spacing: -0.055em;
+  line-height: 0.88;
+}
+
+.eyebrow,
+.panelIndex {
+  margin: 0 0 14px;
+  color: #82c9ff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.lede {
+  max-width: 640px;
+  margin: 28px 0 0;
+  color: #c2cedc;
+  font-size: 1.25rem;
+  line-height: 1.55;
+}
+
+.liveBadge {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid rgba(109, 255, 205, 0.55);
+  color: #b7ffe6;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.liveBadge span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #00d692;
+  box-shadow: 0 0 18px #00d692;
+  animation: signalPulse 1.8s ease-in-out infinite;
+}
+
+.controlGrid {
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: 1px;
+  margin-top: 48px;
+  background: rgba(184, 225, 255, 0.28);
+  border: 1px solid rgba(184, 225, 255, 0.28);
+}
+
+.controlPanel,
+.signalPanel,
+.matrix {
+  background: rgba(16, 27, 42, 0.93);
+}
+
+.controlPanel,
+.signalPanel {
+  padding: 32px;
+}
+
+.controlPanel h2,
+.signalPanel h2,
+.matrix h2 {
+  color: #fff;
+}
+
+.controlPanel .navds-form-field {
+  margin-top: 24px;
+}
+
+.scenarioReadout {
+  min-height: 132px;
+  margin-top: 28px;
+  padding: 20px;
+  border-left: 4px solid #82c9ff;
+  background: #17283c;
+  color: #dbe6f2;
+}
+
+.scenarioReadout > p {
+  margin: 0 0 16px;
+  font-size: 1.08rem;
+}
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tagRow .navds-tag {
+  color: #dcecff;
+  border-color: #6384a5;
+}
+
+.routeMap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  margin: 28px 0 0;
+  background: rgba(184, 225, 255, 0.18);
+}
+
+.routeMap div {
+  min-width: 0;
+  padding: 16px;
+  background: #101b2a;
+}
+
+.routeMap dt {
+  color: #82c9ff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.routeMap dd {
+  overflow-wrap: anywhere;
+  margin: 6px 0 0;
+  color: #fff;
+}
+
+.signalPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.statusCopy {
+  flex: 1;
+  min-height: 116px;
+  margin: 24px 0;
+  color: #c2cedc;
+  line-height: 1.55;
+}
+
+.status-success {
+  color: #b7ffe6;
+}
+
+.status-error {
+  color: #ffb4b4;
+}
+
+.matrix {
+  display: grid;
+  grid-template-columns: 0.75fr 1.25fr;
+  gap: 40px;
+  margin-top: 32px;
+  padding: 32px;
+  border: 1px solid rgba(184, 225, 255, 0.28);
+}
+
+.matrix ol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid rgba(184, 225, 255, 0.2);
+}
+
+.matrix li {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  align-items: center;
+  border-bottom: 1px solid rgba(184, 225, 255, 0.2);
+}
+
+.matrix li:nth-child(odd) {
+  border-right: 1px solid rgba(184, 225, 255, 0.2);
+}
+
+.matrix li[data-active="true"] {
+  background: rgba(130, 201, 255, 0.13);
+  box-shadow: inset 3px 0 #82c9ff;
+}
+
+.matrix li > span {
+  color: #82c9ff;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.matrix button {
+  padding: 13px 10px;
+  border: 0;
+  color: #e6eef7;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.matrix button:hover,
+.matrix button:focus-visible {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+@keyframes signalPulse {
+  50% {
+    opacity: 0.45;
+    transform: scale(0.72);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liveBadge span {
+    animation: none;
+  }
+}
+
+@media (max-width: 800px) {
+  .testBench {
+    width: min(100% - 24px, 680px);
+    padding-top: 32px;
+  }
+
+  .masthead,
+  .controlGrid,
+  .matrix {
+    display: block;
+  }
+
+  .liveBadge {
+    width: fit-content;
+    margin-top: 24px;
+  }
+
+  .signalPanel {
+    border-top: 1px solid rgba(184, 225, 255, 0.28);
+  }
+
+  .matrix > div {
+    margin-bottom: 24px;
+  }
+
+  .matrix ol {
+    grid-template-columns: 1fr;
+  }
+
+  .matrix li:nth-child(odd) {
+    border-right: 0;
+  }
+
+  .routeMap {
+    grid-template-columns: 1fr;
+  }
+}
