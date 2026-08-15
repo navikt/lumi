@@ -29,12 +29,7 @@
 }
 
 .lumi-survey-dock__rating-heading {
-  font-size: var(--ax-font-size-xlarge);
   font-weight: var(--ax-font-weight-bold);
-}
-
-.lumi-survey-dock__rating-description {
-  font-size: var(--ax-font-size-small);
 }
 
 .lumi-survey-dock__rating-fieldset {

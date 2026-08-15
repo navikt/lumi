@@ -67,6 +67,48 @@ describe("LumiSurveyDock", () => {
     localStorage.clear();
   });
 
+  it("uses the same typography scale for every question on a single page", async () => {
+    const survey: LumiSurveyConfig = {
+      type: "custom",
+      questions: [
+        {
+          id: "first",
+          type: "text",
+          prompt: "Første spørsmål",
+          description: "Første beskrivelse",
+          required: true,
+        },
+        {
+          id: "second",
+          type: "text",
+          prompt: "Andre spørsmål",
+          description: "Andre beskrivelse",
+          required: true,
+        },
+      ],
+    };
+
+    renderDock({
+      survey,
+      behavior: { questionLayout: "singlePage" },
+    });
+
+    const firstPrompt = await screen.findByRole("heading", {
+      name: "Første spørsmål",
+    });
+    const secondPrompt = screen.getByText("Andre spørsmål");
+    const firstDescription = screen.getByText("Første beskrivelse", {
+      selector: "p",
+    });
+    const secondDescription = screen.getByText("Andre beskrivelse");
+
+    // Aksel Heading xsmall and Label medium both use the 18/24 scale.
+    expect(firstPrompt).toHaveClass("aksel-heading--xsmall");
+    expect(secondPrompt).toHaveClass("aksel-label");
+    expect(firstDescription).toHaveClass("aksel-body-short--medium");
+    expect(secondDescription).toHaveClass("aksel-body-short--medium");
+  });
+
   it("does not show personal data notice when branching submits before any text question", async () => {
     const user = userEvent.setup();
     const transport: LumiSurveyTransport = {
