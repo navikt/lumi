@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { LumiSurveyConfig } from "../../surveyTypes.js";
+import type { LumiSurveyConfig, SurveyDocumentV1 } from "../../surveyTypes.js";
 import { buildCanonicalSurvey } from "../canonicalSurvey.js";
 
 const validQuestions = [
@@ -16,6 +16,252 @@ describe("buildCanonicalSurvey", () => {
     const canonical = buildCanonicalSurvey(survey);
     expect(canonical.questions).toEqual(validQuestions);
     expect(canonical.type).toBe("custom");
+    expect(canonical.source).toBe("legacy");
+    expect(canonical.pages.map((page) => page.questions)).toEqual([
+      [validQuestions[0]],
+      [validQuestions[1]],
+    ]);
+  });
+
+  it("normalizes an explicit page document without changing flat question order", () => {
+    const survey: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      type: "custom",
+      pages: [
+        {
+          id: "first-page",
+          title: "Første side",
+          description: "Svar på begge spørsmålene.",
+          questions: [
+            { id: "q1", type: "rating", prompt: "Rating" },
+            { id: "q2", type: "text", prompt: "Text" },
+          ],
+        },
+        {
+          id: "second-page",
+          questions: [{ id: "q3", type: "text", prompt: "More text" }],
+        },
+      ],
+    };
+
+    const canonical = buildCanonicalSurvey(survey);
+
+    expect(canonical.source).toBe("document-v1");
+    expect(canonical.questions.map((question) => question.id)).toEqual([
+      "q1",
+      "q2",
+      "q3",
+    ]);
+    expect(canonical.pages).toMatchObject([
+      {
+        id: "first-page",
+        title: "Første side",
+        description: "Svar på begge spørsmålene.",
+        questions: [{ id: "q1" }, { id: "q2" }],
+      },
+      { id: "second-page", questions: [{ id: "q3" }] },
+    ]);
+  });
+
+  it("rejects duplicate and empty pages in document input", () => {
+    expect(() =>
+      buildCanonicalSurvey({
+        authoringSchemaVersion: 1,
+        pages: [
+          {
+            id: "same",
+            questions: [{ id: "q1", type: "text", prompt: "Q1" }],
+          },
+          {
+            id: "same",
+            questions: [{ id: "q2", type: "text", prompt: "Q2" }],
+          },
+        ],
+      }),
+    ).toThrowError(/duplicate page id/i);
+
+    expect(() =>
+      buildCanonicalSurvey({
+        authoringSchemaVersion: 1,
+        pages: [{ id: "empty", questions: [] }],
+      } as unknown as SurveyDocumentV1),
+    ).toThrowError(/at least one question/i);
+  });
+
+  it("rejects logic and forward visibleIf references in document input", () => {
+    expect(() =>
+      buildCanonicalSurvey({
+        authoringSchemaVersion: 1,
+        pages: [
+          {
+            id: "page",
+            questions: [
+              {
+                id: "q1",
+                type: "text",
+                prompt: "Q1",
+                logic: [
+                  {
+                    condition: { operator: "EXISTS" },
+                    action: { type: "SUBMIT" },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      } as unknown as SurveyDocumentV1),
+    ).toThrowError(/version 1.*visibleIf/i);
+
+    expect(() =>
+      buildCanonicalSurvey({
+        authoringSchemaVersion: 1,
+        pages: [
+          {
+            id: "page",
+            questions: [
+              {
+                id: "q1",
+                type: "text",
+                prompt: "Q1",
+                visibleIf: { operator: "EXISTS", questionId: "q2" },
+              },
+              { id: "q2", type: "text", prompt: "Q2" },
+            ],
+          },
+        ],
+      }),
+    ).toThrowError(/only reference earlier questions/i);
+  });
+
+  it("rejects unknown authoring schema versions", () => {
+    expect(() =>
+      buildCanonicalSurvey({
+        authoringSchemaVersion: 2,
+        pages: [],
+      } as unknown as SurveyDocumentV1),
+    ).toThrowError(/unsupported authoringSchemaVersion/i);
+  });
+
+  it("requires answer conditions in documents to reference a question", () => {
+    expect(() =>
+      buildCanonicalSurvey({
+        authoringSchemaVersion: 1,
+        pages: [
+          {
+            id: "page",
+            questions: [
+              {
+                id: "q1",
+                type: "text",
+                prompt: "Q1",
+                visibleIf: { operator: "EXISTS" },
+              },
+            ],
+          },
+        ],
+      } as unknown as SurveyDocumentV1),
+    ).toThrowError(/without a questionId/i);
+
+    expect(() =>
+      buildCanonicalSurvey({
+        questions: [
+          {
+            id: "legacy",
+            type: "text",
+            prompt: "Legacy",
+            visibleIf: { operator: "EXISTS" },
+          },
+        ],
+      }),
+    ).not.toThrow();
+  });
+
+  it("requires comparison values in document visibility conditions", () => {
+    expect(() =>
+      buildCanonicalSurvey({
+        authoringSchemaVersion: 1,
+        pages: [
+          {
+            id: "page",
+            questions: [
+              { id: "q1", type: "text", prompt: "Q1" },
+              {
+                id: "q2",
+                type: "text",
+                prompt: "Q2",
+                visibleIf: { questionId: "q1", operator: "EQ" },
+              },
+            ],
+          },
+        ],
+      } as unknown as SurveyDocumentV1),
+    ).toThrowError(/without a value/i);
+  });
+
+  it("rejects malformed document pages and question payloads cleanly", () => {
+    const buildRaw = (page: unknown) =>
+      buildCanonicalSurvey({
+        authoringSchemaVersion: 1,
+        pages: [page],
+      } as unknown as SurveyDocumentV1);
+
+    expect(() =>
+      buildRaw({ id: "page", title: {}, questions: [validQuestions[1]] }),
+    ).toThrowError(/non-string title/i);
+    expect(() => buildRaw({ id: "page", questions: [null] })).toThrowError(
+      /not a question object/i,
+    );
+    expect(() =>
+      buildRaw({
+        id: "page",
+        questions: [{ id: "choice", type: "singleChoice", prompt: "Choice" }],
+      }),
+    ).toThrowError(/valid options/i);
+    expect(() =>
+      buildRaw({
+        id: "page",
+        questions: [
+          { id: "rating", type: "rating", prompt: "Rating", variant: "ten" },
+        ],
+      }),
+    ).toThrowError(/unsupported variant/i);
+    expect(() =>
+      buildRaw({
+        id: "page",
+        questions: [
+          {
+            id: "nps",
+            type: "rating",
+            variant: "nps",
+            prompt: "NPS",
+            lowLabel: {},
+          },
+        ],
+      }),
+    ).toThrowError(/non-string lowLabel/i);
+    expect(() =>
+      buildRaw({
+        id: "page",
+        questions: [
+          { id: "text", type: "text", prompt: "Text", maxLength: "100" },
+        ],
+      }),
+    ).toThrowError(/invalid maxLength/i);
+    expect(() =>
+      buildRaw({
+        id: "page",
+        questions: [
+          {
+            id: "choice",
+            type: "multiChoice",
+            prompt: "Choice",
+            options: [{ value: "yes", label: "Yes" }],
+            maxSelections: 0,
+          },
+        ],
+      }),
+    ).toThrowError(/invalid maxSelections/i);
   });
 
   it("sets survey type if provided", () => {

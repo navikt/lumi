@@ -66,6 +66,16 @@ export function NpsRating({
   const fallbackHeadingId = `${question.id}-heading`;
   const fallbackDescriptionId = `${question.id}-description`;
   const errorId = `${question.id}-error`;
+  const describedBy =
+    [
+      ariaDescribedBy,
+      !hideDescription && question.description
+        ? fallbackDescriptionId
+        : undefined,
+      isMissing ? errorId : undefined,
+    ]
+      .filter(Boolean)
+      .join(" ") || undefined;
 
   const lowLabel = question.lowLabel ?? "Lite sannsynlig";
   const highLabel = question.highLabel ?? "Svært sannsynlig";
@@ -114,9 +124,7 @@ export function NpsRating({
         </Heading>
       )}
       {question.description && !hideDescription && (
-        <BodyShort id={ariaDescribedBy ? undefined : fallbackDescriptionId}>
-          {question.description}
-        </BodyShort>
+        <BodyShort id={fallbackDescriptionId}>{question.description}</BodyShort>
       )}
       <Box
         as="fieldset"
@@ -124,12 +132,7 @@ export function NpsRating({
         aria-labelledby={
           ariaLabelledBy ?? (!hidePrompt ? fallbackHeadingId : undefined)
         }
-        aria-describedby={
-          ariaDescribedBy ??
-          (!hideDescription && question.description
-            ? fallbackDescriptionId
-            : undefined)
-        }
+        aria-describedby={describedBy}
         paddingBlock={fieldsetPaddingBlock ?? "space-8"}
         paddingInline={fieldsetPaddingInline ?? "space-12"}
       >

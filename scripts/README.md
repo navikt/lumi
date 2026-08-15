@@ -56,6 +56,7 @@ definisjonskontroll også testes. Testbenken dekker:
 | Task Priority · avkryssing | `taskPriority` | `multiChoice/checkbox` |
 | Task Priority · komboboks | `taskPriority` | `multiChoice/combobox` |
 | Custom · feltmatrise | `custom` | `text`, `singleChoice`, `multiChoice` |
+| Pages · flere spørsmål | `custom` | `SurveyDocumentV1`, `pages`, samlet validering, `visibleIf` |
 
 ### Lokal auth
 

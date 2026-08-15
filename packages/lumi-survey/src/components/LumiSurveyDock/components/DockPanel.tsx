@@ -10,6 +10,7 @@ import type React from "react";
 import type { ComponentProps } from "react";
 import type { LumiSurveyAnswerValue, LumiSurveyQuestion } from "../../../core";
 import { formatQuestionPrompt } from "../../questions/utils/formatQuestionPrompt.js";
+import type { CanonicalSurveyPage } from "../../shared/canonicalSurvey.js";
 import { CLASS_NAMES, joinClassNames } from "../classNames.js";
 import type {
   IntroProps,
@@ -35,13 +36,17 @@ interface DockPanelProps {
   panelBackground: BoxProps["background"];
   panelBorderColor?: BoxProps["borderColor"];
   promptQuestion: LumiSurveyQuestion;
+  headerTitle?: string;
+  headerDescription?: string;
   successHeadingId: string;
   introHeadingId: string;
   onClose: () => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
   orderedQuestions: LumiSurveyQuestion[];
+  orderedPages?: CanonicalSurveyPage[];
   answers: Record<string, LumiSurveyAnswerValue>;
   validationMissing: string[];
+  validationAttempt: number;
   isSubmitting: boolean;
   submitLabel: string;
   submitPendingLabel: string;
@@ -71,13 +76,17 @@ export const DockPanel = ({
   panelBackground,
   panelBorderColor,
   promptQuestion,
+  headerTitle,
+  headerDescription,
   successHeadingId,
   introHeadingId,
   onClose,
   onSubmit,
   orderedQuestions,
+  orderedPages,
   answers,
   validationMissing,
+  validationAttempt,
   isSubmitting,
   submitLabel,
   submitPendingLabel,
@@ -116,6 +125,10 @@ export const DockPanel = ({
   const activeQuestion =
     isStepMode && currentStepQuestion ? currentStepQuestion : promptQuestion;
   const usesFieldTypography = !isStepMode && orderedQuestions.length > 1;
+  const activeHeading = headerTitle ?? formatQuestionPrompt(activeQuestion);
+  const activeDescription = headerTitle
+    ? headerDescription
+    : (headerDescription ?? activeQuestion.description);
 
   return (
     <div style={{ position: "relative" }}>
@@ -203,15 +216,15 @@ export const DockPanel = ({
                       id={promptHeadingId}
                       tabIndex={-1}
                     >
-                      {formatQuestionPrompt(activeQuestion)}
+                      {activeHeading}
                     </Heading>
-                    {activeQuestion.description && (
+                    {activeDescription && (
                       <BodyShort
                         size={usesFieldTypography ? "medium" : "small"}
                         className={CLASS_NAMES.ratingDescription}
                         id={promptDescriptionId}
                       >
-                        {activeQuestion.description}
+                        {activeDescription}
                       </BodyShort>
                     )}
                   </>
@@ -239,9 +252,11 @@ export const DockPanel = ({
                 submitLabel={submitLabel}
                 submitPendingLabel={submitPendingLabel}
                 orderedQuestions={orderedQuestions}
+                orderedPages={orderedPages}
                 answers={answers}
                 onQuestionChange={onQuestionChange}
                 validationMissing={validationMissing}
+                validationAttempt={validationAttempt}
                 stepNavigation={stepNavigation}
                 progress={progress}
                 questionContext={questionContext}

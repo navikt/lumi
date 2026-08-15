@@ -32,7 +32,7 @@ interface RatingQuestionFieldProps {
   buttonClassName?: string;
   /** Provide external aria-labelledby id; skip internal heading when set */
   ariaLabelledBy?: string;
-  /** Provide external aria-describedby id; skip internal description when set */
+  /** Provide an additional external aria-describedby id. */
   ariaDescribedBy?: string;
   /** Hide the prompt heading inside the component */
   hidePrompt?: boolean;
@@ -194,13 +194,12 @@ export const RatingQuestionField = ({
   const headingId =
     ariaLabelledBy ?? (!hidePrompt ? fallbackHeadingId : undefined);
   const descriptionId =
-    ariaDescribedBy ??
-    (!hideDescription && question.description
+    !hideDescription && question.description
       ? fallbackDescriptionId
-      : undefined);
+      : undefined;
   const errorId = `${question.id}-error`;
   const describedBy =
-    [descriptionId, isMissing ? errorId : undefined]
+    [ariaDescribedBy, descriptionId, isMissing ? errorId : undefined]
       .filter(Boolean)
       .join(" ") || undefined;
 
@@ -242,9 +241,7 @@ export const RatingQuestionField = ({
         </Heading>
       )}
       {question.description && !hideDescription && (
-        <BodyShort id={ariaDescribedBy ? undefined : fallbackDescriptionId}>
-          {question.description}
-        </BodyShort>
+        <BodyShort id={fallbackDescriptionId}>{question.description}</BodyShort>
       )}
       <Box
         as="fieldset"

@@ -13,15 +13,17 @@ import {
   shouldShowSubmitButton,
   useLumiSurvey,
 } from "../../core";
+import { validateAnswers } from "../../core/validation.js";
 import { getVisibilityMetadata } from "../../core/visibilityMetadata.js";
 
 import { buildCanonicalSurvey } from "../shared/canonicalSurvey.js";
-import type { LumiSurveyConfig } from "../surveyTypes.js";
+import type { LumiSurveyDefinition } from "../surveyTypes.js";
 import { CLASS_NAMES, joinClassNames } from "./classNames.js";
 import { DockPanel } from "./components/DockPanel.js";
 import { MinimizedDock } from "./components/MinimizedDock.js";
 import { useAutoCloseOnSuccess } from "./hooks/useAutoCloseOnSuccess.js";
 import { useEnrichedContext } from "./hooks/useEnrichedContext.js";
+import { usePageNavigation } from "./hooks/usePageNavigation.js";
 import { usePersistedDismissal } from "./hooks/usePersistedDismissal.js";
 import { useStepNavigation } from "./hooks/useStepNavigation.js";
 import { resolveConfig } from "./resolveConfig.js";
@@ -58,10 +60,11 @@ export interface LumiSurveyDockProps {
   surveyId: string;
 
   /**
-   * Survey configuration defining the questions to display.
-   * Use presets like NAV_STANDARD_RATING or create custom with createRatingSurvey().
+   * Survey definition. Use a version 1 document with `pages` to group multiple
+   * questions into navigation units, or a legacy flat configuration for
+   * backwards compatibility.
    */
-  survey: LumiSurveyConfig;
+  survey: LumiSurveyDefinition;
 
   /**
    * Transport implementation for submitting feedback data.
@@ -142,30 +145,25 @@ export const LumiSurveyDock = ({
 
   // Track previous showIntro value to detect intro → question transition
   const prevShowIntroRef = useRef(showIntro);
-  const pendingStepFocusQuestionIdRef = useRef<string | null>(null);
+  const pendingStepFocusRef = useRef(false);
+  const [stepValidationMissing, setStepValidationMissing] = useState<string[]>(
+    [],
+  );
+  const [validationAttempt, setValidationAttempt] = useState(0);
 
   /*
    * Use the new flexible survey builder.
    * "questions" is the full list of questions in display order.
    */
   const canonicalSurvey = useMemo(() => buildCanonicalSurvey(survey), [survey]);
-  const { type: surveyType, questions } = canonicalSurvey;
+  const { type: surveyType, questions, pages, source } = canonicalSurvey;
 
   // The first question is used as the "prompt" question in the header
   const promptQuestion = questions[0];
 
-  const promptHeadingId = `${surveyId}-${promptQuestion.id}-dock-heading`;
   const successHeadingId = `${surveyId}-dock-success-heading`;
   const introHeadingId = `${surveyId}-dock-intro-heading`;
   const panelId = `${surveyId}-dock-panel`;
-
-  // Focus the question heading when transitioning from intro → questions
-  useEffect(() => {
-    if (prevShowIntroRef.current && !showIntro) {
-      document.getElementById(promptHeadingId)?.focus();
-    }
-    prevShowIntroRef.current = showIntro;
-  }, [showIntro, promptHeadingId]);
 
   // Auto-collect system context and merge with user-provided context
   const enrichedContext = useEnrichedContext(context, {
@@ -188,6 +186,34 @@ export const LumiSurveyDock = ({
   const forceStepMode = config.questionLayout === "steps";
   const forceSinglePage = config.questionLayout === "singlePage";
 
+  const legacyNavigation = useStepNavigation({
+    questions,
+    answers,
+    metadata: visibilityMetadata,
+    forceStepMode,
+    onStepChange:
+      source === "legacy" && !forceSinglePage
+        ? events?.onStepChange
+        : undefined,
+  });
+
+  const pageNavigation = usePageNavigation({
+    pages,
+    answers,
+    metadata: visibilityMetadata,
+    forceStepMode,
+    autoStepMode:
+      source === "document-v1" &&
+      config.questionLayout === "auto" &&
+      pages.length > 1,
+    onStepChange:
+      source === "document-v1" && !forceSinglePage
+        ? events?.onStepChange
+        : undefined,
+  });
+
+  const navigation =
+    source === "document-v1" ? pageNavigation : legacyNavigation;
   const {
     isStepMode: stepModeFromSurvey,
     currentQuestion: currentStepQuestion,
@@ -201,43 +227,97 @@ export const LumiSurveyDock = ({
     hasBranching,
     visibleStepIndex,
     totalVisibleSteps,
-  } = useStepNavigation({
-    questions,
-    answers,
-    metadata: visibilityMetadata,
-    forceStepMode,
-    onStepChange: forceSinglePage ? undefined : events?.onStepChange,
-  });
+  } = navigation;
+
+  const currentPage =
+    source === "document-v1"
+      ? pageNavigation.currentPage
+      : pages[navigation.currentStep];
+  const currentPageQuestions =
+    source === "document-v1"
+      ? pageNavigation.currentPageQuestions
+      : currentStepQuestion
+        ? [currentStepQuestion]
+        : [];
 
   // When the consumer explicitly requests "singlePage", always disable step
   // mode so that every question renders on one page — even for surveys that
   // contain branching logic.
   const isStepMode = forceSinglePage ? false : stepModeFromSurvey;
 
-  const activeDescriptionQuestion =
-    isStepMode && currentStepQuestion ? currentStepQuestion : promptQuestion;
-  const promptDescriptionId = activeDescriptionQuestion.description
-    ? `${surveyId}-${activeDescriptionQuestion.id}-dock-description`
+  const visiblePages = useMemo(
+    () =>
+      pages
+        .map((page) => ({
+          ...page,
+          questions: getVisibleQuestions(
+            page.questions,
+            answers,
+            visibilityMetadata,
+          ),
+        }))
+        .filter((page) => page.questions.length > 0),
+    [answers, pages, visibilityMetadata],
+  );
+
+  const headerPage =
+    source === "document-v1"
+      ? isStepMode
+        ? currentPage
+        : visiblePages[0]
+      : undefined;
+  const headerQuestion =
+    source === "document-v1"
+      ? ((isStepMode ? currentStepQuestion : visiblePages[0]?.questions[0]) ??
+        promptQuestion)
+      : isStepMode && currentStepQuestion
+        ? currentStepQuestion
+        : promptQuestion;
+  const headerUsesPageTitle = Boolean(headerPage?.title);
+  const promptHeadingId = headerUsesPageTitle
+    ? `${surveyId}-${headerPage?.id}-page-heading`
+    : `${surveyId}-${headerQuestion.id}-dock-heading`;
+  const promptDescription = headerUsesPageTitle
+    ? headerPage?.description
+    : (headerPage?.description ?? headerQuestion.description);
+  const promptDescriptionIsQuestionDescription = Boolean(
+    !headerUsesPageTitle &&
+      !headerPage?.description &&
+      headerQuestion.description,
+  );
+  const promptDescriptionId = promptDescription
+    ? `${promptHeadingId}-description`
     : undefined;
+  const promptQuestionId = headerUsesPageTitle ? undefined : headerQuestion.id;
+
+  // Focus the active page/question heading when leaving the intro.
+  useEffect(() => {
+    if (prevShowIntroRef.current && !showIntro) {
+      document.getElementById(promptHeadingId)?.focus();
+    }
+    prevShowIntroRef.current = showIntro;
+  }, [showIntro, promptHeadingId]);
 
   // Move focus only after an explicit step-navigation action has rendered its
   // target question. Answer-driven visibility updates must not steal focus.
   useEffect(() => {
-    if (
-      !currentStepQuestion ||
-      pendingStepFocusQuestionIdRef.current !== currentStepQuestion.id
-    ) {
-      return;
-    }
-
-    pendingStepFocusQuestionIdRef.current = null;
+    if (!pendingStepFocusRef.current) return;
+    pendingStepFocusRef.current = false;
     document.getElementById(promptHeadingId)?.focus();
-  }, [currentStepQuestion, promptHeadingId]);
+  }, [promptHeadingId]);
+
+  // Filter questions based on visibleIf conditions (progressive disclosure)
+  const visibleQuestions = useMemo(
+    () => getVisibleQuestions(questions, answers, visibilityMetadata),
+    [questions, answers, visibilityMetadata],
+  );
 
   // Combined reset: clears survey answers, resets step navigation, and restores intro screen
   const handleFullReset = useCallback(() => {
     reset();
     resetNavigation();
+    setStepValidationMissing([]);
+    setValidationAttempt(0);
     setShowIntro(config.hasIntro);
   }, [reset, resetNavigation, config.hasIntro]);
 
@@ -250,13 +330,9 @@ export const LumiSurveyDock = ({
       resetOnClose: config.resetOnClose,
       onReset: handleFullReset,
       storageStrategy: config.storageStrategy,
+      viewEnabled:
+        source === "legacy" || visibleQuestions.length > 0 || showIntro,
     });
-
-  // Filter questions based on visibleIf conditions (progressive disclosure)
-  const visibleQuestions = useMemo(
-    () => getVisibleQuestions(questions, answers, visibilityMetadata),
-    [questions, answers, visibilityMetadata],
-  );
 
   // Progressive submit: hide the button until a currently visible question has
   // at least one meaningful answer. Required-answer validation happens on submit.
@@ -271,9 +347,10 @@ export const LumiSurveyDock = ({
   const visitedQuestions = useMemo(() => {
     if (isStepMode) {
       const uniqueIndices = [...new Set(visitedSteps)];
-      const visited = uniqueIndices
-        .map((index) => questions[index])
-        .filter(Boolean);
+      const visited =
+        source === "document-v1"
+          ? uniqueIndices.flatMap((index) => pages[index]?.questions ?? [])
+          : uniqueIndices.map((index) => questions[index]).filter(Boolean);
       return getVisibleQuestions(visited, answers, visibilityMetadata);
     }
     // Non-step mode: only validate visible questions (hidden questions are
@@ -286,30 +363,40 @@ export const LumiSurveyDock = ({
     visibleQuestions,
     answers,
     visibilityMetadata,
+    source,
+    pages,
   ]);
 
   const showPersonalDataNotice = useMemo(() => {
     if (!config.showPersonalDataNotice) return false;
 
     if (isStepMode) {
-      return currentStepQuestion?.type === "text";
+      return currentPageQuestions.some((question) => question.type === "text");
     }
 
     return visibleQuestions.some((q) => q.type === "text");
   }, [
     config.showPersonalDataNotice,
-    currentStepQuestion?.type,
+    currentPageQuestions,
     isStepMode,
     visibleQuestions,
   ]);
 
   const handleNext = useCallback(async () => {
+    if (source === "document-v1") {
+      const missing = validateAnswers(currentPageQuestions, answers);
+      if (missing.length > 0) {
+        setStepValidationMissing(missing);
+        setValidationAttempt((attempt) => attempt + 1);
+        events?.onValidationFailed?.(missing);
+        return;
+      }
+      setStepValidationMissing([]);
+    }
+
     const result = goToNext();
     if (result?.nextIndex !== undefined && result.nextIndex !== -1) {
-      const targetQuestionId = questions[result.nextIndex]?.id;
-      if (targetQuestionId !== currentStepQuestion?.id) {
-        pendingStepFocusQuestionIdRef.current = targetQuestionId ?? null;
-      }
+      pendingStepFocusRef.current = true;
       return;
     }
 
@@ -322,24 +409,49 @@ export const LumiSurveyDock = ({
     } catch {
       // useLumiSurvey sets error state; avoid unhandled rejections
     }
-  }, [currentStepQuestion?.id, goToNext, questions, submit, visitedQuestions]);
+  }, [
+    answers,
+    currentPageQuestions,
+    events,
+    goToNext,
+    source,
+    submit,
+    visitedQuestions,
+  ]);
 
   const handleBack = useCallback(() => {
     const previousIndex = goToPrevious();
     if (previousIndex === null) return;
+    setStepValidationMissing([]);
+    pendingStepFocusRef.current = true;
+  }, [goToPrevious]);
 
-    const targetQuestionId = questions[previousIndex]?.id;
-    if (targetQuestionId !== currentStepQuestion?.id) {
-      pendingStepFocusQuestionIdRef.current = targetQuestionId ?? null;
-    }
-  }, [currentStepQuestion?.id, goToPrevious, questions]);
+  const handleQuestionChange = useCallback(
+    (questionId: string, value: Parameters<typeof setAnswer>[1]) => {
+      setAnswer(questionId, value);
+      setStepValidationMissing((missing) =>
+        missing.includes(questionId)
+          ? missing.filter((id) => id !== questionId)
+          : missing,
+      );
+    },
+    [setAnswer],
+  );
 
   const handleSubmit = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
+      const missing = validateAnswers(visitedQuestions, answers);
+      if (missing.length > 0) {
+        setStepValidationMissing(missing);
+        setValidationAttempt((attempt) => attempt + 1);
+        events?.onValidationFailed?.(missing);
+        return;
+      }
+      setStepValidationMissing([]);
       await submit(visitedQuestions);
     },
-    [submit, visitedQuestions],
+    [answers, events, submit, visitedQuestions],
   );
 
   const isSubmitting = status === "submitting";
@@ -359,7 +471,26 @@ export const LumiSurveyDock = ({
     delayMs: config.successCloseDelayMs,
     onClose: handleCloseDock,
   });
-  const validationMissing = error?.type === "validation" ? error.missing : [];
+  const validationMissing = useMemo(() => {
+    const storedMissing = new Set([
+      ...stepValidationMissing,
+      ...(error?.type === "validation" ? error.missing : []),
+    ]);
+    if (storedMissing.size === 0) return [];
+
+    const renderedQuestions = isStepMode
+      ? currentPageQuestions
+      : visibleQuestions;
+    const stillMissing = new Set(validateAnswers(renderedQuestions, answers));
+    return [...storedMissing].filter((id) => stillMissing.has(id));
+  }, [
+    answers,
+    currentPageQuestions,
+    error,
+    isStepMode,
+    stepValidationMissing,
+    visibleQuestions,
+  ]);
   const hasTransportError = error?.type === "transport";
 
   const baseContainerStyle: React.CSSProperties = {
@@ -371,8 +502,8 @@ export const LumiSurveyDock = ({
   };
 
   const isNpsDock =
-    promptQuestion.type === "rating" &&
-    (promptQuestion as RatingQuestion).variant === "nps";
+    headerQuestion.type === "rating" &&
+    (headerQuestion as RatingQuestion).variant === "nps";
 
   const openWidthRem = isNpsDock ? 32 : 24;
 
@@ -397,6 +528,15 @@ export const LumiSurveyDock = ({
 
   // Don't render anything when dismissed with hideCompletely flag
   if (dismissed && shouldHideCompletely) {
+    return null;
+  }
+
+  if (
+    source === "document-v1" &&
+    visibleQuestions.length === 0 &&
+    !showIntro &&
+    !isSuccess
+  ) {
     return null;
   }
 
@@ -426,14 +566,18 @@ export const LumiSurveyDock = ({
           panelStyle={panelStyle}
           panelBackground={config.panelBackground}
           panelBorderColor={config.panelBorderColor}
-          promptQuestion={promptQuestion}
+          promptQuestion={headerQuestion}
+          headerTitle={headerPage?.title}
+          headerDescription={promptDescription}
           successHeadingId={successHeadingId}
           introHeadingId={introHeadingId}
           onClose={handleCloseDock}
           onSubmit={handleSubmit}
           orderedQuestions={visibleQuestions}
+          orderedPages={source === "document-v1" ? visiblePages : undefined}
           answers={answers}
           validationMissing={validationMissing}
+          validationAttempt={validationAttempt}
           isSubmitting={isSubmitting}
           submitLabel={config.submitLabel}
           submitPendingLabel={config.submitPendingLabel}
@@ -443,14 +587,16 @@ export const LumiSurveyDock = ({
           isSubmitBlocked={isSubmitBlocked}
           hasTransportError={Boolean(hasTransportError)}
           transportErrorMessage={config.transportErrorMessage}
-          onQuestionChange={setAnswer}
+          onQuestionChange={handleQuestionChange}
           stepNavigation={{
             isStepMode,
             currentStep: visibleStepIndex,
             currentStepQuestion,
+            currentStepQuestions: currentPageQuestions,
             canGoBack,
             canGoNext,
             isLastStep,
+            disableWhenIncomplete: source === "legacy",
             onNext: handleNext,
             onBack: handleBack,
           }}
@@ -460,9 +606,11 @@ export const LumiSurveyDock = ({
             hasBranching,
           }}
           questionContext={{
-            promptQuestionId: promptQuestion.id,
+            promptQuestionId,
             promptHeadingId,
             promptDescriptionId,
+            promptDescriptionIsQuestionDescription,
+            questionAnchorPrefix: `${surveyId}-question`,
             validationErrorMessage: config.validationErrorMessage,
           }}
           intro={{

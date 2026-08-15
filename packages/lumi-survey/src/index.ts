@@ -13,6 +13,10 @@ export type {
 export * from "./components/questions/index.js";
 export type {
   LumiSurveyConfig,
+  LumiSurveyDefinition,
+  SurveyDocumentV1,
+  SurveyPageV1,
+  SurveyQuestionV1,
   SurveyType,
 } from "./components/surveyTypes.js";
 export * from "./core/index.js";

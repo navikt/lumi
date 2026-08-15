@@ -8,7 +8,7 @@ Definer surveyen din som et TypeScript-objekt og send det til `LumiSurveyDock`. 
 
 ## Definer surveyen
 
-En survey er et objekt som tilfredsstiller `LumiSurveyConfig`. Her er et typisk oppsett med emoji-rating etterfulgt av et valgfritt fritekstfelt:
+En enkel, flat survey er et objekt som tilfredsstiller `LumiSurveyConfig`. Her er et typisk oppsett med emoji-rating etterfulgt av et valgfritt fritekstfelt:
 
 ```typescript
 import type { LumiSurveyConfig } from "@navikt/lumi-survey";
@@ -47,6 +47,10 @@ Tre ting å merke seg:
 ::: tip `satisfies` fremfor typeannotasjon
 `satisfies LumiSurveyConfig` gir deg typevalidering **og** bevarer den smale literal-typen, slik at `mySurvey.type` er `"rating"` — ikke `string`. Dette er idiomatisk TypeScript og gir bedre inferens nedover i appen.
 :::
+
+## Flere spørsmål på samme side
+
+Når flere spørsmål skal valideres og navigeres som én side, bruker du den versjonerte `SurveyDocumentV1`-modellen med `pages`. Den flate `LumiSurveyConfig`-varianten støttes fortsatt for enkle og eksisterende surveys. Se [props-referansen](/referanse/props-referanse) for kontrakt og eksempel.
 
 ## Tips for gode surveys
 

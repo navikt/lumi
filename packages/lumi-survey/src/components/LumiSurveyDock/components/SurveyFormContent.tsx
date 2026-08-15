@@ -2,12 +2,16 @@ import {
   Alert,
   BodyShort,
   Button,
+  ErrorSummary,
+  Heading,
   HStack,
   ProgressBar,
   VStack,
 } from "@navikt/ds-react";
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import type { LumiSurveyAnswerValue, LumiSurveyQuestion } from "../../../core";
+import { formatQuestionPrompt } from "../../questions/utils/formatQuestionPrompt.js";
+import type { CanonicalSurveyPage } from "../../shared/canonicalSurvey.js";
 import { CLASS_NAMES } from "../classNames.js";
 import type {
   ProgressProps,
@@ -26,12 +30,14 @@ interface SurveyFormContentProps {
 
   // Questions
   orderedQuestions: LumiSurveyQuestion[];
+  orderedPages?: CanonicalSurveyPage[];
   answers: Record<string, LumiSurveyAnswerValue>;
   onQuestionChange: (
     questionId: string,
     value: LumiSurveyAnswerValue | null | undefined,
   ) => void;
   validationMissing: string[];
+  validationAttempt?: number;
 
   // Grouped props
   stepNavigation: StepNavigationProps;
@@ -48,6 +54,14 @@ interface SurveyFormContentProps {
   disabled: boolean;
 }
 
+function focusQuestionField(anchorPrefix: string, questionId: string) {
+  const question = document.getElementById(`${anchorPrefix}-${questionId}`);
+  const field = question?.querySelector<HTMLElement>(
+    "input, textarea, select, button",
+  );
+  (field ?? question)?.focus();
+}
+
 export const SurveyFormContent = React.memo(
   ({
     onSubmit,
@@ -56,9 +70,11 @@ export const SurveyFormContent = React.memo(
     submitLabel,
     submitPendingLabel,
     orderedQuestions,
+    orderedPages,
     answers,
     onQuestionChange,
     validationMissing,
+    validationAttempt = 0,
     stepNavigation,
     progress,
     questionContext,
@@ -73,9 +89,11 @@ export const SurveyFormContent = React.memo(
       isStepMode = false,
       currentStep = 0,
       currentStepQuestion,
+      currentStepQuestions,
       canGoBack = false,
       canGoNext = true,
       isLastStep = false,
+      disableWhenIncomplete = true,
       onNext,
       onBack,
       nextLabel = "Neste",
@@ -92,6 +110,8 @@ export const SurveyFormContent = React.memo(
       promptQuestionId,
       promptHeadingId,
       promptDescriptionId,
+      promptDescriptionIsQuestionDescription,
+      questionAnchorPrefix,
       validationErrorMessage,
     } = questionContext;
     const currentStepNumber = currentStep + 1;
@@ -120,6 +140,88 @@ export const SurveyFormContent = React.memo(
       }
       return handler;
     }, []);
+
+    const errorSummaryRef = useRef<HTMLDivElement>(null);
+    const validationMissingRef = useRef(validationMissing);
+    validationMissingRef.current = validationMissing;
+    const questionAnchorPrefixRef = useRef(questionAnchorPrefix);
+    questionAnchorPrefixRef.current = questionAnchorPrefix;
+    const previousValidationAttemptRef = useRef(validationAttempt);
+    useEffect(() => {
+      if (
+        validationAttempt === 0 ||
+        previousValidationAttemptRef.current === validationAttempt
+      ) {
+        return;
+      }
+      previousValidationAttemptRef.current = validationAttempt;
+      const missing = validationMissingRef.current;
+      if (missing.length > 1) {
+        errorSummaryRef.current?.focus();
+        return;
+      }
+      if (missing.length === 0) return;
+      focusQuestionField(questionAnchorPrefixRef.current, missing[0]);
+    }, [validationAttempt]);
+
+    const renderQuestion = (
+      question: LumiSurveyQuestion,
+      hideLabel: boolean,
+    ) => {
+      const isMissing = validationMissing.includes(question.id);
+      return (
+        <div
+          key={question.id}
+          id={`${questionAnchorPrefix}-${question.id}`}
+          className={CLASS_NAMES.question}
+          tabIndex={-1}
+        >
+          <DockQuestionRenderer
+            question={question}
+            value={answers[question.id]}
+            onChange={getChangeHandler(question.id)}
+            isMissing={isMissing}
+            disabled={disabled}
+            hideLabel={hideLabel}
+            promptQuestionId={promptQuestionId}
+            promptHeadingId={promptHeadingId}
+            promptDescriptionId={promptDescriptionId}
+            promptDescriptionIsQuestionDescription={
+              promptDescriptionIsQuestionDescription
+            }
+            validationErrorMessage={validationErrorMessage}
+          />
+        </div>
+      );
+    };
+
+    const errorSummary = validationMissing.length > 1 && (
+      <ErrorSummary
+        ref={errorSummaryRef}
+        size="small"
+        heading="Du må svare på disse spørsmålene før du kan fortsette:"
+      >
+        {validationMissing.map((questionId) => {
+          const question = orderedQuestions.find(
+            (candidate) => candidate.id === questionId,
+          );
+          return (
+            <ErrorSummary.Item
+              key={questionId}
+              href={`#${questionAnchorPrefix}-${questionId}`}
+              onClick={(event) => {
+                event.preventDefault();
+                focusQuestionField(questionAnchorPrefix, questionId);
+              }}
+            >
+              {question
+                ? formatQuestionPrompt(question)
+                : validationErrorMessage}
+            </ErrorSummary.Item>
+          );
+        })}
+      </ErrorSummary>
+    );
 
     return (
       <>
@@ -155,24 +257,13 @@ export const SurveyFormContent = React.memo(
         <form onSubmit={onSubmit} noValidate>
           <VStack gap="space-16">
             {isStepMode && currentStepQuestion ? (
-              // Step mode: Show only the current question
+              // Step mode: Show all visible questions on the current page.
               <>
-                <div className={CLASS_NAMES.question}>
-                  <DockQuestionRenderer
-                    question={currentStepQuestion}
-                    value={answers[currentStepQuestion.id]}
-                    onChange={getChangeHandler(currentStepQuestion.id)}
-                    isMissing={validationMissing.includes(
-                      currentStepQuestion.id,
-                    )}
-                    disabled={disabled}
-                    hideLabel
-                    promptQuestionId={promptQuestionId}
-                    promptHeadingId={promptHeadingId}
-                    promptDescriptionId={promptDescriptionId}
-                    validationErrorMessage={validationErrorMessage}
-                  />
-                </div>
+                {errorSummary}
+                {(currentStepQuestions ?? [currentStepQuestion]).map(
+                  (question) =>
+                    renderQuestion(question, question.id === promptQuestionId),
+                )}
 
                 {/* Show privacy notice when a text field is visible */}
                 {showPersonalDataNotice && (
@@ -203,7 +294,9 @@ export const SurveyFormContent = React.memo(
                       key="submit-btn"
                       type="submit"
                       loading={isSubmitting}
-                      disabled={isSubmitting || !canGoNext}
+                      disabled={
+                        isSubmitting || (disableWhenIncomplete && !canGoNext)
+                      }
                     >
                       {isSubmitting ? submitPendingLabel : submitLabel}
                     </Button>
@@ -212,7 +305,9 @@ export const SurveyFormContent = React.memo(
                       key="next-btn"
                       type="button"
                       onClick={onNext}
-                      disabled={isSubmitting || !canGoNext}
+                      disabled={
+                        isSubmitting || (disableWhenIncomplete && !canGoNext)
+                      }
                     >
                       {nextLabel}
                     </Button>
@@ -222,27 +317,36 @@ export const SurveyFormContent = React.memo(
             ) : (
               // All visible questions mode
               <>
-                {orderedQuestions.map((question) => {
-                  const value = answers[question.id];
-                  const isMissing = validationMissing.includes(question.id);
-
-                  return (
-                    <div key={question.id} className={CLASS_NAMES.question}>
-                      <DockQuestionRenderer
-                        question={question}
-                        value={value}
-                        onChange={getChangeHandler(question.id)}
-                        isMissing={isMissing}
-                        disabled={disabled}
-                        hideLabel={question.id === promptQuestionId}
-                        promptQuestionId={promptQuestionId}
-                        promptHeadingId={promptHeadingId}
-                        promptDescriptionId={promptDescriptionId}
-                        validationErrorMessage={validationErrorMessage}
-                      />
-                    </div>
-                  );
-                })}
+                {errorSummary}
+                {orderedPages
+                  ? orderedPages.map((page, pageIndex) => (
+                      <VStack key={page.id} gap="space-12">
+                        {pageIndex > 0 && (page.title || page.description) && (
+                          <div>
+                            {page.title && (
+                              <Heading level="2" size="xsmall">
+                                {page.title}
+                              </Heading>
+                            )}
+                            {page.description && (
+                              <BodyShort>{page.description}</BodyShort>
+                            )}
+                          </div>
+                        )}
+                        {page.questions.map((question) =>
+                          renderQuestion(
+                            question,
+                            question.id === promptQuestionId,
+                          ),
+                        )}
+                      </VStack>
+                    ))
+                  : orderedQuestions.map((question) =>
+                      renderQuestion(
+                        question,
+                        question.id === promptQuestionId,
+                      ),
+                    )}
 
                 {showPersonalDataNotice && (
                   <Alert variant="warning" role="status">

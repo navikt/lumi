@@ -44,6 +44,8 @@ export interface UsePersistedDismissalOptions {
   resetOnClose: boolean;
   onReset: () => void;
   storageStrategy: StorageStrategy;
+  /** Whether the open dock currently has renderable content. */
+  viewEnabled?: boolean;
 }
 
 export interface UsePersistedDismissalReturn {
@@ -65,6 +67,7 @@ export const usePersistedDismissal = (
     resetOnClose,
     onReset,
     storageStrategy,
+    viewEnabled = true,
   } = options;
 
   const storageKey = useMemo(() => `lumi-dismissed-${surveyId}`, [surveyId]);
@@ -137,10 +140,10 @@ export const usePersistedDismissal = (
   }, [initialOpen, storageKey, storageAdapter]);
 
   useEffect(() => {
-    if (!dismissed) {
+    if (!dismissed && viewEnabled) {
       events?.onViewDock?.(surveyId);
     }
-  }, [dismissed, events, surveyId]);
+  }, [dismissed, events, surveyId, viewEnabled]);
 
   const persistDismissedState = useCallback(
     async (nextDismissed: boolean, hideCompletely?: boolean) => {

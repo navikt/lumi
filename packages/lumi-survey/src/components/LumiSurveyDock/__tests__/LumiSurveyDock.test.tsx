@@ -9,7 +9,11 @@ import {
   createRatingSurvey,
   createTopTasksSurvey,
 } from "../../../presets/index.js";
-import type { LumiSurveyConfig } from "../../surveyTypes.js";
+import type {
+  LumiSurveyConfig,
+  LumiSurveyDefinition,
+  SurveyDocumentV1,
+} from "../../surveyTypes.js";
 import { LumiSurveyDock } from "../LumiSurveyDock.js";
 
 function createSurvey(): LumiSurveyConfig {
@@ -38,7 +42,7 @@ function createSurvey(): LumiSurveyConfig {
 function renderDock(options?: {
   transport?: LumiSurveyTransport;
   events?: LumiSurveyEvents;
-  survey?: LumiSurveyConfig;
+  survey?: LumiSurveyDefinition;
   context?: Record<string, unknown>;
   initialOpen?: boolean;
   behavior?: Record<string, unknown>;
@@ -65,6 +69,504 @@ function renderDock(options?: {
 describe("LumiSurveyDock", () => {
   beforeEach(() => {
     localStorage.clear();
+  });
+
+  it("renders and validates multiple questions on an authored page", async () => {
+    const user = userEvent.setup();
+    const onStepChange = vi.fn();
+    const survey: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      type: "custom",
+      pages: [
+        {
+          id: "context",
+          title: "Om besøket",
+          description: "Svar på begge spørsmålene.",
+          questions: [
+            {
+              id: "task",
+              type: "text",
+              prompt: "Hva prøvde du å gjøre?",
+              required: true,
+            },
+            {
+              id: "outcome",
+              type: "text",
+              prompt: "Hvordan gikk det?",
+              required: true,
+            },
+          ],
+        },
+        {
+          id: "details",
+          title: "Fortell mer",
+          questions: [
+            {
+              id: "comment",
+              type: "text",
+              prompt: "Hva kan vi forbedre?",
+            },
+          ],
+        },
+      ],
+    };
+
+    renderDock({
+      survey,
+      events: { onStepChange },
+      behavior: { questionLayout: "auto", showProgress: true },
+    });
+
+    expect(
+      await screen.findByRole("heading", { name: "Om besøket" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Svar på begge spørsmålene.")).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Hva prøvde du å gjøre?" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Hvordan gikk det?" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("textbox", { name: "Hva kan vi forbedre?" }),
+    ).not.toBeInTheDocument();
+    expect(onStepChange).toHaveBeenLastCalledWith(0, 2);
+
+    await user.click(screen.getByRole("button", { name: "Neste" }));
+
+    const errorSummary = await screen.findByText(
+      "Du må svare på disse spørsmålene før du kan fortsette:",
+    );
+    expect(errorSummary).toHaveFocus();
+    expect(
+      screen.getByRole("link", { name: "Hva prøvde du å gjøre?" }),
+    ).toHaveAttribute("href", "#dock-feedback-question-task");
+    await user.click(screen.getByRole("button", { name: "Neste" }));
+    expect(errorSummary).toHaveFocus();
+    await user.click(
+      screen.getByRole("link", { name: "Hva prøvde du å gjøre?" }),
+    );
+    expect(
+      screen.getByRole("textbox", { name: "Hva prøvde du å gjøre?" }),
+    ).toHaveFocus();
+
+    await user.type(
+      screen.getByRole("textbox", { name: "Hva prøvde du å gjøre?" }),
+      "Finne informasjon",
+    );
+    expect(
+      screen.getByRole("textbox", { name: "Hva prøvde du å gjøre?" }),
+    ).toHaveFocus();
+    await user.type(
+      screen.getByRole("textbox", { name: "Hvordan gikk det?" }),
+      "Bra",
+    );
+    await user.click(screen.getByRole("button", { name: "Neste" }));
+
+    const secondHeading = await screen.findByRole("heading", {
+      name: "Fortell mer",
+    });
+    expect(secondHeading).toHaveFocus();
+    expect(onStepChange).toHaveBeenLastCalledWith(1, 2);
+  });
+
+  it("skips authored pages that have no visible questions", async () => {
+    const user = userEvent.setup();
+    const survey: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      pages: [
+        {
+          id: "decision",
+          questions: [
+            {
+              id: "decision-question",
+              type: "singleChoice",
+              prompt: "Vil du utdype?",
+              required: true,
+              options: [
+                { value: "yes", label: "Ja" },
+                { value: "no", label: "Nei" },
+              ],
+            },
+          ],
+        },
+        {
+          id: "conditional",
+          title: "Utdyping",
+          questions: [
+            {
+              id: "conditional-comment",
+              type: "text",
+              prompt: "Fortell mer",
+              visibleIf: {
+                questionId: "decision-question",
+                operator: "EQ",
+                value: "yes",
+              },
+            },
+          ],
+        },
+        {
+          id: "final",
+          title: "Til slutt",
+          questions: [
+            {
+              id: "final-comment",
+              type: "text",
+              prompt: "Andre kommentarer?",
+            },
+          ],
+        },
+      ],
+    };
+
+    renderDock({ survey });
+    await user.click(await screen.findByRole("radio", { name: "Nei" }));
+    await user.click(screen.getByRole("button", { name: "Neste" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Til slutt" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Utdyping" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("flattens authored pages in single-page layout and keeps page headings", async () => {
+    const survey: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      pages: [
+        {
+          id: "first",
+          title: "Første del",
+          questions: [{ id: "q1", type: "text", prompt: "Spørsmål én" }],
+        },
+        {
+          id: "second",
+          title: "Andre del",
+          description: "Felles kontekst.",
+          questions: [{ id: "q2", type: "text", prompt: "Spørsmål to" }],
+        },
+      ],
+    };
+
+    renderDock({ survey, behavior: { questionLayout: "singlePage" } });
+
+    expect(
+      await screen.findByRole("heading", { name: "Første del" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Andre del" }).tagName).toBe(
+      "H2",
+    );
+    expect(screen.getByText("Felles kontekst.")).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: /Spørsmål én/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: /Spørsmål to/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Neste" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("uses the first visible question as the header when a document page has no title", async () => {
+    const survey: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      pages: [
+        {
+          id: "untitled",
+          questions: [
+            {
+              id: "hidden",
+              type: "text",
+              prompt: "Skjult spørsmål",
+              visibleIf: {
+                field: "METADATA",
+                key: "showHidden",
+                operator: "EQ",
+                value: true,
+              },
+            },
+            {
+              id: "visible",
+              type: "text",
+              prompt: "Synlig spørsmål",
+            },
+          ],
+        },
+      ],
+    };
+
+    renderDock({ survey, behavior: { questionLayout: "singlePage" } });
+
+    expect(
+      await screen.findByRole("heading", { name: /Synlig spørsmål/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Skjult spørsmål" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("clears page validation errors when the dock resets on close", async () => {
+    const user = userEvent.setup();
+    const survey: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      pages: [
+        {
+          id: "required",
+          questions: [
+            { id: "first", type: "text", prompt: "Første", required: true },
+            { id: "second", type: "text", prompt: "Andre", required: true },
+          ],
+        },
+        {
+          id: "last",
+          questions: [{ id: "last", type: "text", prompt: "Siste" }],
+        },
+      ],
+    };
+
+    renderDock({ survey, behavior: { storageStrategy: "none" } });
+    await user.click(await screen.findByRole("button", { name: "Neste" }));
+    expect(
+      screen.getByText(
+        "Du må svare på disse spørsmålene før du kan fortsette:",
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Lukk" }));
+    await user.click(screen.getByRole("button", { name: "Gi tilbakemelding" }));
+
+    expect(
+      screen.queryByText(
+        "Du må svare på disse spørsmålene før du kan fortsette:",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not render a document while every page is hidden", async () => {
+    const onViewDock = vi.fn();
+    const survey: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      pages: [
+        {
+          id: "hidden",
+          questions: [
+            {
+              id: "hidden-question",
+              type: "text",
+              prompt: "Skjult spørsmål",
+              visibleIf: {
+                field: "METADATA",
+                key: "ready",
+                operator: "EQ",
+                value: true,
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    renderDock({ survey, events: { onViewDock } });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("complementary", {
+          name: "Tilbakemeldingspanel",
+        }),
+      ).not.toBeInTheDocument();
+    });
+    expect(onViewDock).not.toHaveBeenCalled();
+  });
+
+  it("keeps page and rating descriptions visible and associated", async () => {
+    const survey: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      pages: [
+        {
+          id: "rating-page",
+          description: "Dette gjelder besøket ditt.",
+          questions: [
+            {
+              id: "rating",
+              type: "rating",
+              prompt: "Hvordan gikk det?",
+              description: "Velg det alternativet som passer best.",
+            },
+          ],
+        },
+      ],
+    };
+
+    const { container } = renderDock({ survey });
+
+    expect(
+      await screen.findByText("Dette gjelder besøket ditt."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Velg det alternativet som passer best."),
+    ).toBeInTheDocument();
+    expect(container.querySelector("fieldset")).toHaveAttribute(
+      "aria-describedby",
+      expect.stringContaining("rating-description"),
+    );
+    expect(container.querySelector("fieldset")).toHaveAttribute(
+      "aria-describedby",
+      expect.stringContaining("dock-feedback-rating-dock-heading-description"),
+    );
+  });
+
+  it("does not repeat a question description in a titled page header", async () => {
+    const survey: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      pages: [
+        {
+          id: "titled",
+          title: "Om opplevelsen",
+          questions: [
+            {
+              id: "comment",
+              type: "text",
+              prompt: "Fortell mer",
+              description: "Du kan skrive kort.",
+            },
+          ],
+        },
+      ],
+    };
+
+    renderDock({ survey });
+
+    expect(
+      await screen.findByRole("heading", { name: "Om opplevelsen" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Du kan skrive kort.")).toHaveLength(1);
+  });
+
+  it("removes errors for questions hidden by a new answer without stealing focus", async () => {
+    const user = userEvent.setup();
+    const visibleWhenYes = {
+      questionId: "controller",
+      operator: "EQ" as const,
+      value: "yes",
+    };
+    const survey: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      pages: [
+        {
+          id: "conditional-fields",
+          questions: [
+            {
+              id: "controller",
+              type: "singleChoice",
+              prompt: "Vil du utdype?",
+              required: true,
+              options: [
+                { value: "yes", label: "Ja" },
+                { value: "no", label: "Nei" },
+              ],
+            },
+            {
+              id: "detail-one",
+              type: "text",
+              prompt: "Detalj én",
+              required: true,
+              visibleIf: visibleWhenYes,
+            },
+            {
+              id: "detail-two",
+              type: "text",
+              prompt: "Detalj to",
+              required: true,
+              visibleIf: visibleWhenYes,
+            },
+          ],
+        },
+        {
+          id: "last",
+          questions: [{ id: "last", type: "text", prompt: "Siste" }],
+        },
+      ],
+    };
+
+    renderDock({ survey });
+    await user.click(await screen.findByRole("radio", { name: "Ja" }));
+    await user.click(screen.getByRole("button", { name: "Neste" }));
+    expect(
+      screen.getByText(
+        "Du må svare på disse spørsmålene før du kan fortsette:",
+      ),
+    ).toBeInTheDocument();
+
+    const noOption = screen.getByRole("radio", { name: "Nei" });
+    await user.click(noOption);
+
+    expect(
+      screen.queryByText(
+        "Du må svare på disse spørsmålene før du kan fortsette:",
+      ),
+    ).not.toBeInTheDocument();
+    expect(noOption).toHaveFocus();
+  });
+
+  it("keeps authored page metadata out of the flat submission contract", async () => {
+    const user = userEvent.setup();
+    const transport: LumiSurveyTransport = {
+      submit: vi.fn().mockResolvedValue(undefined),
+    };
+    const survey: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      type: "custom",
+      pages: [
+        {
+          id: "page-identity-must-not-leak",
+          title: "Tilbakemelding",
+          description: "Denne teksten er bare presentasjon.",
+          questions: [
+            {
+              id: "answer",
+              type: "text",
+              prompt: "Hva synes du?",
+              required: true,
+            },
+            {
+              id: "hidden-detail",
+              type: "text",
+              prompt: "Skjult detalj",
+              visibleIf: {
+                questionId: "answer",
+                operator: "EQ",
+                value: "vis",
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    renderDock({ survey, transport });
+    await user.type(
+      await screen.findByRole("textbox", { name: "Hva synes du?" }),
+      "bra",
+    );
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => expect(transport.submit).toHaveBeenCalledOnce());
+    const submission = vi.mocked(transport.submit).mock.calls[0]?.[0];
+    expect(submission?.answers).toEqual({ answer: "bra" });
+    expect(
+      submission?.transportPayload.definition.fields.map(
+        (field) => field.fieldId,
+      ),
+    ).toEqual(["answer", "hidden-detail"]);
+    expect(JSON.stringify(submission)).not.toContain(
+      "page-identity-must-not-leak",
+    );
+    expect(JSON.stringify(submission)).not.toContain(
+      "Denne teksten er bare presentasjon.",
+    );
   });
 
   it("uses the same typography scale for every question on a single page", async () => {
@@ -502,6 +1004,7 @@ describe("LumiSurveyDock", () => {
     expect(events.onValidationFailed).toHaveBeenCalledWith(
       expect.arrayContaining(["feedback"]),
     );
+    expect(screen.getByLabelText(/hva kan vi forbedre/i)).toHaveFocus();
   });
 
   it("calls onViewDock when the dock mounts", () => {
