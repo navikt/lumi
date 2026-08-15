@@ -65,6 +65,16 @@ export function StarRating({
   const fallbackHeadingId = `${question.id}-heading`;
   const fallbackDescriptionId = `${question.id}-description`;
   const errorId = `${question.id}-error`;
+  const describedBy =
+    [
+      ariaDescribedBy,
+      !hideDescription && question.description
+        ? fallbackDescriptionId
+        : undefined,
+      isMissing ? errorId : undefined,
+    ]
+      .filter(Boolean)
+      .join(" ") || undefined;
 
   const labels = question.labels
     ? question.labels.reduce<Record<number, string>>((acc, label) => {
@@ -120,9 +130,7 @@ export function StarRating({
         </Heading>
       )}
       {question.description && !hideDescription && (
-        <BodyShort id={ariaDescribedBy ? undefined : fallbackDescriptionId}>
-          {question.description}
-        </BodyShort>
+        <BodyShort id={fallbackDescriptionId}>{question.description}</BodyShort>
       )}
       <Box
         as="fieldset"
@@ -130,12 +138,7 @@ export function StarRating({
         aria-labelledby={
           ariaLabelledBy ?? (!hidePrompt ? fallbackHeadingId : undefined)
         }
-        aria-describedby={
-          ariaDescribedBy ??
-          (!hideDescription && question.description
-            ? fallbackDescriptionId
-            : undefined)
-        }
+        aria-describedby={describedBy}
         paddingBlock={fieldsetPaddingBlock ?? "space-12"}
         paddingInline={fieldsetPaddingInline ?? "space-16"}
       >

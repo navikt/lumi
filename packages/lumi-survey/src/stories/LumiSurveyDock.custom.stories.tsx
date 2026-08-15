@@ -1,6 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { LumiSurveyDock } from "../components/LumiSurveyDock";
-import type { LumiSurveyConfig } from "../components/surveyTypes.js";
+import type {
+  LumiSurveyConfig,
+  SurveyDocumentV1,
+} from "../components/surveyTypes.js";
 import { ExamplePage, SUCCESS_TRANSPORT } from "./LumiSurveyDockExamplePage";
 
 const CUSTOM_SURVEY: LumiSurveyConfig = {
@@ -155,6 +158,48 @@ const LINEAR_PROGRESS_SURVEY: LumiSurveyConfig = {
   questions: CUSTOM_SURVEY.questions.slice(0, 3),
 };
 
+const PAGED_SURVEY: SurveyDocumentV1 = {
+  authoringSchemaVersion: 1,
+  type: "custom",
+  pages: [
+    {
+      id: "opplevelse",
+      title: "Din opplevelse",
+      description: "Svarene gjelder denne siden i tjenesten.",
+      questions: [
+        {
+          id: "vurdering",
+          type: "rating",
+          prompt: "Hvor fornøyd er du?",
+          variant: "emoji",
+          required: true,
+        },
+        {
+          id: "begrunnelse",
+          type: "text",
+          prompt: "Hva er den viktigste grunnen til vurderingen din?",
+          required: true,
+          maxLength: 500,
+          minRows: 3,
+        },
+      ],
+    },
+    {
+      id: "forbedring",
+      title: "Hva kan bli bedre?",
+      questions: [
+        {
+          id: "forslag",
+          type: "text",
+          prompt: "Har du et konkret forslag?",
+          maxLength: 500,
+          minRows: 3,
+        },
+      ],
+    },
+  ],
+};
+
 const meta: Meta<typeof LumiSurveyDock> = {
   title: "Components/LumiSurveyDock/Custom",
   component: LumiSurveyDock,
@@ -183,6 +228,28 @@ const meta: Meta<typeof LumiSurveyDock> = {
 export default meta;
 
 type Story = StoryObj<typeof LumiSurveyDock>;
+
+export const FlereSporsmalPerSide: Story = {
+  name: "Flere spørsmål per side",
+  render: (args) => <ExamplePage {...args} />,
+  args: {
+    surveyId: "storybook-dock-pages",
+    survey: PAGED_SURVEY,
+    behavior: {
+      questionLayout: "auto",
+      storageStrategy: "consent",
+      showProgress: true,
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Et versjonert survey-dokument der to relaterte spørsmål valideres og vises sammen på første side.",
+      },
+    },
+  },
+};
 
 export const LinearProgress: Story = {
   name: "Lineær fremdrift",

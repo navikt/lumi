@@ -427,7 +427,9 @@ export interface LumiSurveyEvents {
   /**
    * Fired when the current step changes in step mode.
    * Also fires on initial render when step mode is active.
-   * Receives 0-based visible step index and estimated total reachable steps.
+   * A step is an authored page for version 1 documents and a question for
+   * legacy flat surveys. Receives the 0-based visible step index and estimated
+   * total reachable steps.
    */
   onStepChange?: (visibleStepIndex: number, totalVisibleSteps: number) => void;
 }

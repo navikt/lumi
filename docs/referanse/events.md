@@ -97,7 +97,11 @@ onDismissalPersistFailed?: (cause: unknown) => void;
 
 ### `onStepChange`
 
-Fyres når brukeren navigerer mellom steg i step-modus. Indeksene reflekterer kun synlige spørsmål — skjulte spørsmål (via `visibleIf`) telles ikke med.
+Fyres når brukeren navigerer mellom steg i step-modus. For flat legacy-config
+er stegene spørsmål. For `SurveyDocumentV1` er stegene pages. Første argument er
+indeksen blant pages som er synlige i nåværende tilstand; totalen er et estimat
+over reachable pages og kan derfor inkludere en betinget page før svaret som
+avgjør synligheten finnes.
 
 ```ts
 onStepChange?: (visibleStepIndex: number, totalVisibleSteps: number) => void;

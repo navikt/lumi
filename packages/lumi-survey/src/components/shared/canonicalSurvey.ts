@@ -4,24 +4,60 @@ import {
   isLeafCondition,
 } from "../../core/conditionUtils.js";
 import type { LumiSurveyQuestion } from "../../core/types.js";
-import type { LumiSurveyConfig, SurveyType } from "../surveyTypes.js";
+import type {
+  LumiSurveyDefinition,
+  SurveyPageV1,
+  SurveyType,
+} from "../surveyTypes.js";
 
 export const RATING_ANSWER_KEY = "svar";
 export const MAIN_ANSWER_KEY = "feedback";
 
 export interface CanonicalSurvey {
+  source: "legacy" | "document-v1";
   type: SurveyType;
+  questions: LumiSurveyQuestion[];
+  pages: CanonicalSurveyPage[];
+}
+
+export interface CanonicalSurveyPage {
+  id: string;
+  title?: string;
+  description?: string;
   questions: LumiSurveyQuestion[];
 }
 
 export function buildCanonicalSurvey(
-  survey: LumiSurveyConfig,
+  survey: LumiSurveyDefinition,
 ): CanonicalSurvey {
-  if (!survey.questions || survey.questions.length === 0) {
-    throw new Error("Lumi survey must have at least one question");
+  const isDocument = "authoringSchemaVersion" in survey;
+
+  if (isDocument && survey.authoringSchemaVersion !== 1) {
+    throw new Error(
+      `Lumi: Unsupported authoringSchemaVersion "${String(survey.authoringSchemaVersion)}"`,
+    );
   }
 
+  const inputPages: Array<{
+    id: string;
+    title?: string;
+    description?: string;
+    questions: readonly LumiSurveyQuestion[];
+  }> = isDocument
+    ? validateDocumentPages(survey.pages)
+    : validateLegacyQuestions(survey.questions);
+
+  const inputQuestions = inputPages.flatMap((page) => page.questions);
+
   const surveyType = survey.type ?? "custom";
+  if (
+    isDocument &&
+    !["rating", "topTasks", "discovery", "taskPriority", "custom"].includes(
+      surveyType,
+    )
+  ) {
+    throw new Error(`Lumi: Unsupported survey type "${String(surveyType)}"`);
+  }
 
   // Apply small UX-safe defaults at build time (without changing the external API shape).
   // For rating surveys, the first rating question is the main interaction and should be
@@ -29,19 +65,35 @@ export function buildCanonicalSurvey(
   const questions: LumiSurveyQuestion[] = (() => {
     if (
       surveyType === "rating" &&
-      survey.questions[0]?.type === "rating" &&
-      survey.questions[0]?.required === undefined
+      inputQuestions[0]?.type === "rating" &&
+      inputQuestions[0]?.required === undefined
     ) {
-      const next = [...survey.questions];
+      const next = [...inputQuestions];
       next[0] = { ...next[0], required: true } as LumiSurveyQuestion;
       return next as LumiSurveyQuestion[];
     }
 
-    return survey.questions;
+    return [...inputQuestions];
   })();
+
+  let questionOffset = 0;
+  const pages: CanonicalSurveyPage[] = inputPages.map((page) => {
+    const pageQuestions = questions.slice(
+      questionOffset,
+      questionOffset + page.questions.length,
+    );
+    questionOffset += page.questions.length;
+    return {
+      id: page.id,
+      title: page.title,
+      description: page.description,
+      questions: pageQuestions,
+    };
+  });
 
   // Validate all questions have IDs
   const ids = new Set<string>();
+  const previousIds = new Set<string>();
   for (const question of questions) {
     if (!question.id) {
       throw new Error("Lumi: All questions must have an id");
@@ -93,6 +145,52 @@ export function buildCanonicalSurvey(
           );
         }
         if (
+          isDocument &&
+          leaf.field !== undefined &&
+          leaf.field !== "ANSWER" &&
+          leaf.field !== "METADATA"
+        ) {
+          throw new Error(
+            `Lumi: Question "${question.id}" has an unsupported visibleIf field`,
+          );
+        }
+        if (
+          isDocument &&
+          leaf.field === "METADATA" &&
+          (typeof leaf.key !== "string" || leaf.key.trim().length === 0)
+        ) {
+          throw new Error(
+            `Lumi: Question "${question.id}" has a METADATA visibleIf without a key`,
+          );
+        }
+        if (
+          isDocument &&
+          leaf.operator !== "EXISTS" &&
+          !["string", "number", "boolean"].includes(typeof leaf.value)
+        ) {
+          throw new Error(
+            `Lumi: Question "${question.id}" has a ${leaf.operator} visibleIf without a value`,
+          );
+        }
+        if (
+          isDocument &&
+          leaf.operator === "EXISTS" &&
+          leaf.value !== undefined
+        ) {
+          throw new Error(
+            `Lumi: Question "${question.id}" has an EXISTS visibleIf with an unused value`,
+          );
+        }
+        if (
+          isDocument &&
+          leaf.field !== "METADATA" &&
+          (!leaf.questionId || leaf.questionId.trim().length === 0)
+        ) {
+          throw new Error(
+            `Lumi: Question "${question.id}" has an ANSWER visibleIf without a questionId`,
+          );
+        }
+        if (
           leaf.field !== "METADATA" &&
           leaf.questionId &&
           !ids.has(leaf.questionId)
@@ -101,10 +199,29 @@ export function buildCanonicalSurvey(
             `Lumi: Question "${question.id}" has visibleIf.questionId "${leaf.questionId}", but no such question exists`,
           );
         }
+        if (
+          isDocument &&
+          leaf.field !== "METADATA" &&
+          leaf.questionId &&
+          !previousIds.has(leaf.questionId)
+        ) {
+          throw new Error(
+            `Lumi: Question "${question.id}" has visibleIf.questionId "${leaf.questionId}", but version 1 survey documents may only reference earlier questions`,
+          );
+        }
       }
     }
 
-    if (!question.logic) continue;
+    if (isDocument && question.logic !== undefined) {
+      throw new Error(
+        `Lumi: Question "${question.id}" uses logic, but version 1 survey documents only support visibleIf`,
+      );
+    }
+
+    if (!question.logic) {
+      previousIds.add(question.id);
+      continue;
+    }
     for (const rule of question.logic) {
       const condition = rule.condition;
       if (isConditionGroup(condition)) {
@@ -132,10 +249,247 @@ export function buildCanonicalSurvey(
         );
       }
     }
+    previousIds.add(question.id);
   }
 
   return {
+    source: isDocument ? "document-v1" : "legacy",
     type: surveyType,
     questions,
+    pages,
   };
+}
+
+function validateLegacyQuestions(
+  questions: LumiSurveyQuestion[] | undefined,
+): CanonicalSurveyPage[] {
+  if (!questions || questions.length === 0) {
+    throw new Error("Lumi survey must have at least one question");
+  }
+
+  return questions.map((question) => ({
+    id: `legacy-page:${question.id}`,
+    questions: [question],
+  }));
+}
+
+function validateDocumentPages(
+  pages: readonly SurveyPageV1[] | undefined,
+): CanonicalSurveyPage[] {
+  if (!pages || pages.length === 0) {
+    throw new Error("Lumi: Survey document must have at least one page");
+  }
+
+  const pageIds = new Set<string>();
+  return pages.map((page, index) => {
+    if (!page || typeof page !== "object" || Array.isArray(page)) {
+      throw new Error(`Lumi: Page at index ${index} is not a page object`);
+    }
+    if (typeof page.id !== "string" || page.id.trim().length === 0) {
+      throw new Error("Lumi: All pages must have an id");
+    }
+    if (page.title !== undefined && typeof page.title !== "string") {
+      throw new Error(`Lumi: Page "${page.id}" has a non-string title`);
+    }
+    if (
+      page.description !== undefined &&
+      typeof page.description !== "string"
+    ) {
+      throw new Error(`Lumi: Page "${page.id}" has a non-string description`);
+    }
+    if (pageIds.has(page.id)) {
+      throw new Error(`Lumi: Duplicate page id "${page.id}"`);
+    }
+    if (!Array.isArray(page.questions) || page.questions.length === 0) {
+      throw new Error(
+        `Lumi: Page "${page.id}" must have at least one question`,
+      );
+    }
+    const questions = (page.questions as readonly unknown[]).map(
+      (question, questionIndex) =>
+        validateDocumentQuestion(question, page.id, questionIndex),
+    );
+    pageIds.add(page.id);
+    return {
+      id: page.id,
+      title: page.title,
+      description: page.description,
+      questions,
+    };
+  });
+}
+
+function validateDocumentQuestion(
+  question: unknown,
+  pageId: string,
+  questionIndex: number,
+): LumiSurveyQuestion {
+  if (!question || typeof question !== "object" || Array.isArray(question)) {
+    throw new Error(
+      `Lumi: Question at index ${questionIndex} on page "${pageId}" is not a question object`,
+    );
+  }
+
+  const candidate = question as Record<string, unknown>;
+  if (typeof candidate.id !== "string" || candidate.id.trim().length === 0) {
+    throw new Error(`Lumi: All questions on page "${pageId}" need an id`);
+  }
+  if (typeof candidate.prompt !== "string") {
+    throw new Error(
+      `Lumi: Question "${candidate.id}" on page "${pageId}" has a non-string prompt`,
+    );
+  }
+  if (
+    candidate.description !== undefined &&
+    typeof candidate.description !== "string"
+  ) {
+    throw new Error(
+      `Lumi: Question "${candidate.id}" on page "${pageId}" has a non-string description`,
+    );
+  }
+  if (
+    candidate.required !== undefined &&
+    typeof candidate.required !== "boolean"
+  ) {
+    throw new Error(
+      `Lumi: Question "${candidate.id}" on page "${pageId}" has a non-boolean required value`,
+    );
+  }
+  if (
+    candidate.analyticsId !== undefined &&
+    typeof candidate.analyticsId !== "string"
+  ) {
+    throw new Error(
+      `Lumi: Question "${candidate.id}" on page "${pageId}" has a non-string analyticsId`,
+    );
+  }
+  if (
+    !["rating", "text", "singleChoice", "multiChoice"].includes(
+      String(candidate.type),
+    )
+  ) {
+    throw new Error(
+      `Lumi: Question "${candidate.id}" on page "${pageId}" has an unsupported type`,
+    );
+  }
+
+  if (candidate.type === "rating") {
+    const variant = candidate.variant ?? "emoji";
+    if (!["emoji", "thumbs", "stars", "nps"].includes(String(variant))) {
+      throw new Error(
+        `Lumi: Rating question "${candidate.id}" has an unsupported variant`,
+      );
+    }
+    if (
+      candidate.labels !== undefined &&
+      (!Array.isArray(candidate.labels) ||
+        candidate.labels.some(
+          (label) =>
+            !label ||
+            typeof label !== "object" ||
+            typeof (label as Record<string, unknown>).value !== "number" ||
+            !Number.isFinite(
+              (label as Record<string, unknown>).value as number,
+            ) ||
+            typeof (label as Record<string, unknown>).label !== "string",
+        ))
+    ) {
+      throw new Error(
+        `Lumi: Rating question "${candidate.id}" has invalid labels`,
+      );
+    }
+    for (const labelKey of ["lowLabel", "highLabel"] as const) {
+      if (
+        candidate[labelKey] !== undefined &&
+        typeof candidate[labelKey] !== "string"
+      ) {
+        throw new Error(
+          `Lumi: Rating question "${candidate.id}" has a non-string ${labelKey}`,
+        );
+      }
+    }
+  }
+
+  if (candidate.type === "text") {
+    for (const numberKey of ["maxLength", "minRows"] as const) {
+      const value = candidate[numberKey];
+      if (
+        value !== undefined &&
+        (typeof value !== "number" || !Number.isFinite(value) || value <= 0)
+      ) {
+        throw new Error(
+          `Lumi: Text question "${candidate.id}" has an invalid ${numberKey}`,
+        );
+      }
+    }
+    for (const stringKey of ["placeholder", "autoComplete"] as const) {
+      if (
+        candidate[stringKey] !== undefined &&
+        typeof candidate[stringKey] !== "string"
+      ) {
+        throw new Error(
+          `Lumi: Text question "${candidate.id}" has a non-string ${stringKey}`,
+        );
+      }
+    }
+  }
+
+  if (candidate.type === "singleChoice" || candidate.type === "multiChoice") {
+    if (
+      !Array.isArray(candidate.options) ||
+      candidate.options.length === 0 ||
+      candidate.options.some(
+        (option) =>
+          !option ||
+          typeof option !== "object" ||
+          typeof (option as Record<string, unknown>).value !== "string" ||
+          typeof (option as Record<string, unknown>).label !== "string" ||
+          ((option as Record<string, unknown>).description !== undefined &&
+            typeof (option as Record<string, unknown>).description !==
+              "string"),
+      )
+    ) {
+      throw new Error(
+        `Lumi: Choice question "${candidate.id}" must have valid options`,
+      );
+    }
+    const optionIds = new Set(
+      candidate.options.map(
+        (option) => (option as Record<string, unknown>).value,
+      ),
+    );
+    if (optionIds.size !== candidate.options.length) {
+      throw new Error(
+        `Lumi: Choice question "${candidate.id}" has duplicate option values`,
+      );
+    }
+    if (
+      candidate.randomize !== undefined &&
+      typeof candidate.randomize !== "boolean"
+    ) {
+      throw new Error(
+        `Lumi: Choice question "${candidate.id}" has a non-boolean randomize value`,
+      );
+    }
+    if (
+      candidate.variant !== undefined &&
+      !["checkbox", "combobox"].includes(String(candidate.variant))
+    ) {
+      throw new Error(
+        `Lumi: Choice question "${candidate.id}" has an unsupported variant`,
+      );
+    }
+    if (
+      candidate.maxSelections !== undefined &&
+      (typeof candidate.maxSelections !== "number" ||
+        !Number.isInteger(candidate.maxSelections) ||
+        candidate.maxSelections <= 0)
+    ) {
+      throw new Error(
+        `Lumi: Choice question "${candidate.id}" has an invalid maxSelections`,
+      );
+    }
+  }
+
+  return question as LumiSurveyQuestion;
 }

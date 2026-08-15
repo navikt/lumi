@@ -5,9 +5,10 @@ import { DefaultQuestionRenderer, RatingQuestionField } from "../../questions";
 import { CLASS_NAMES } from "../classNames.js";
 
 interface DockQuestionRendererProps extends LumiSurveyRenderQuestionProps {
-  promptQuestionId: string;
+  promptQuestionId?: string;
   promptHeadingId: string;
   promptDescriptionId?: string;
+  promptDescriptionIsQuestionDescription?: boolean;
   validationErrorMessage: string;
 }
 
@@ -22,6 +23,7 @@ export const DockQuestionRenderer = React.memo(
     promptQuestionId,
     promptHeadingId,
     promptDescriptionId,
+    promptDescriptionIsQuestionDescription = true,
     validationErrorMessage,
   }: DockQuestionRendererProps) => {
     if (question.type === "rating") {
@@ -41,7 +43,10 @@ export const DockQuestionRenderer = React.memo(
               disabled={disabled}
               fieldsetClassName={CLASS_NAMES.ratingFieldset}
               hidePrompt={shouldHideInternalHeading}
-              hideDescription={shouldHideInternalHeading}
+              hideDescription={
+                shouldHideInternalHeading &&
+                promptDescriptionIsQuestionDescription
+              }
               hideValueLabels
               wrap={false}
               ariaLabelledBy={

@@ -64,9 +64,11 @@ export type StorageStrategy = "consent" | "localStorage" | "none";
 
 /**
  * Controls how questions are presented.
- * - "auto": step mode only when branching logic exists (default)
- * - "singlePage": always show all visible questions on one page
- * - "steps": always show one question at a time with Next/Back
+ * - "auto": authored pages become steps; legacy surveys use step mode only
+ *   when branching logic exists (default)
+ * - "singlePage": show all visible authored pages/questions on one surface
+ * - "steps": authored pages become steps; legacy surveys show one question
+ *   per step
  */
 export type QuestionLayout = "auto" | "singlePage" | "steps";
 

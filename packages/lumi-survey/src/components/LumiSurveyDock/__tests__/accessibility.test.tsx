@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createRatingSurvey } from "../../../presets";
+import type { SurveyDocumentV1 } from "../../surveyTypes.js";
 import { LumiSurveyDock } from "../LumiSurveyDock.js";
 
 const survey = createRatingSurvey({
@@ -281,5 +282,54 @@ describe("LumiSurveyDock Accessibility", () => {
     expect(
       screen.getByRole("heading", { name: /hvor fornøyd er du/i }),
     ).not.toHaveFocus();
+  });
+
+  it("has no axe violations with multiple questions and an error summary", async () => {
+    const user = userEvent.setup();
+    const pageSurvey: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      pages: [
+        {
+          id: "page-one",
+          title: "Om opplevelsen",
+          questions: [
+            {
+              id: "first",
+              type: "text",
+              prompt: "Første spørsmål",
+              required: true,
+            },
+            {
+              id: "second",
+              type: "text",
+              prompt: "Andre spørsmål",
+              required: true,
+            },
+          ],
+        },
+        {
+          id: "page-two",
+          title: "Til slutt",
+          questions: [{ id: "last", type: "text", prompt: "Siste spørsmål" }],
+        },
+      ],
+    };
+    const { container } = render(
+      <LumiSurveyDock
+        surveyId="page-a11y-test"
+        survey={pageSurvey}
+        transport={mockTransport}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Neste" }));
+    expect(
+      await screen.findByText(
+        "Du må svare på disse spørsmålene før du kan fortsette:",
+      ),
+    ).toHaveFocus();
+
+    const results = await axe.run(container);
+    expect(results.violations).toEqual([]);
   });
 });

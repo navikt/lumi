@@ -11,7 +11,7 @@ Komplett oversikt over alle props for `LumiSurveyDock`-komponenten.
 | Prop | Type | Påkrevd | Beskrivelse |
 | :--- | :--- | :---: | :--- |
 | `surveyId` | `string` | ✅ | Unik identifikator for surveyen (f.eks. `"soknad-kvittering"`) |
-| `survey` | `LumiSurveyConfig` | ✅ | Konfigurasjonsobjekt med spørsmålene |
+| `survey` | `LumiSurveyDefinition` | ✅ | Flat legacy-config eller et versjonert dokument med pages |
 | `transport` | `LumiSurveyTransport` | ✅ | Objekt med `submit`-funksjon for innsending |
 | `context` | `LumiSurveyContext` | ❌ | Metadata/tags/debug for segmentering |
 | `behavior` | `LumiSurveyBehavior` | ❌ | Styrer åpning, lukking, cooldown og storage |
@@ -21,7 +21,10 @@ Komplett oversikt over alle props for `LumiSurveyDock`-komponenten.
 | `style` | `LumiSurveyStyle` | ❌ | Visuell styling (posisjon, farger, classNames) |
 | `intro` | `LumiSurveyIntroConfig` | ❌ | Intro-skjerm før første spørsmål |
 
-## `survey` — `LumiSurveyConfig`
+## `survey` — `LumiSurveyDefinition`
+
+`LumiSurveyDefinition` er en union av legacy-formatet under og
+`SurveyDocumentV1`.
 
 ```ts
 interface LumiSurveyConfig {
@@ -34,6 +37,65 @@ interface LumiSurveyConfig {
 ```
 
 Se [Spørsmålstyper](/guider/sporsmalstyper) for detaljer om spørsmål-objektene.
+
+### Flere spørsmål på samme page — `SurveyDocumentV1`
+
+Bruk det versjonerte dokumentformatet når flere spørsmål skal vises og
+valideres sammen på ett steg:
+
+```ts
+import type { SurveyDocumentV1 } from "@navikt/lumi-survey";
+
+const survey = {
+  authoringSchemaVersion: 1,
+  type: "custom",
+  pages: [
+    {
+      id: "opplevelse",
+      title: "Om opplevelsen",
+      description: "Svar på begge spørsmålene.",
+      questions: [
+        {
+          id: "oppgave",
+          type: "text",
+          prompt: "Hva prøvde du å gjøre?",
+          required: true,
+        },
+        {
+          id: "resultat",
+          type: "singleChoice",
+          prompt: "Fikk du gjort det?",
+          required: true,
+          options: [
+            { value: "ja", label: "Ja" },
+            { value: "nei", label: "Nei" },
+          ],
+        },
+      ],
+    },
+    {
+      id: "utdyping",
+      title: "Fortell mer",
+      questions: [
+        {
+          id: "kommentar",
+          type: "text",
+          prompt: "Hva kan vi forbedre?",
+          visibleIf: {
+            questionId: "resultat",
+            operator: "EQ",
+            value: "nei",
+          },
+        },
+      ],
+    },
+  ],
+} satisfies SurveyDocumentV1;
+```
+
+V1 bruker lineær page-navigasjon med `visibleIf` på spørsmål. `logic` støttes
+ikke i dokumentformatet. Svar og submission-definition forblir flate og basert
+på question-ID; page-metadata sendes ikke til API-et.
 
 ## `transport` — `LumiSurveyTransport`
 
@@ -65,9 +127,9 @@ Styrer åpning, lukking, lagring og layout.
 Intro og kvittering regnes ikke som steg. Ved branching viser den visuelle linjen det stabile estimatet, mens tilgjengelig stegtekst bare oppgir sikker informasjon som «Steg 2» uten estimert total.
 
 ::: details questionLayout-verdier
-- **`"auto"`** (default): Step-modus brukes automatisk når branching-logikk (`logic`) finnes. Ellers vises alle synlige spørsmål på én side.
-- **`"singlePage"`**: Alle synlige spørsmål vises alltid på én side.
-- **`"steps"`**: Alltid ett spørsmål om gangen med Neste/Tilbake-knapper.
+- **`"auto"`** (default): Legacy-config bruker dagens branching-regler. Et `SurveyDocumentV1` med flere authored pages bruker page-basert stegmodus.
+- **`"singlePage"`**: Alle synlige spørsmål vises på én side. Page-titler og beskrivelser beholdes som struktur.
+- **`"steps"`**: Navigerer mellom spørsmål for legacy-config og mellom pages for `SurveyDocumentV1`.
 :::
 
 ## `labels` — `LumiSurveyLabels`

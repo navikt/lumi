@@ -52,9 +52,52 @@ const survey = {
 
 `visibleIf` gjør at tekstfeltet først vises etter at brukeren har valgt en emoji. Se [Progresjon](#progresjon-visibleif) for flere eksempler.
 
+### Flere spørsmål på samme page
+
+Bruk `SurveyDocumentV1` når flere spørsmål skal vises og valideres sammen:
+
+```tsx
+import type { SurveyDocumentV1 } from "@navikt/lumi-survey";
+
+const pagedSurvey = {
+  authoringSchemaVersion: 1,
+  type: "custom",
+  pages: [
+    {
+      id: "opplevelse",
+      title: "Om opplevelsen",
+      description: "Svar på begge spørsmålene.",
+      questions: [
+        {
+          id: "oppgave",
+          type: "text",
+          prompt: "Hva prøvde du å gjøre?",
+          required: true,
+        },
+        {
+          id: "resultat",
+          type: "singleChoice",
+          prompt: "Fikk du gjort det?",
+          required: true,
+          options: [
+            { value: "ja", label: "Ja" },
+            { value: "nei", label: "Nei" },
+          ],
+        },
+      ],
+    },
+  ],
+} satisfies SurveyDocumentV1;
+```
+
+Dokumentformatet bruker lineære pages og question-level `visibleIf`. Det
+støtter ikke legacy-`logic`. Flat `questions[]` støttes fortsatt uten
+migrering. Page-metadata inngår ikke i submission-payloaden.
+
 ## Spørsmålstyper
 
-En survey er et `LumiSurveyConfig`-objekt med spørsmål i rekkefølge.
+Spørsmålene under kan brukes både i flat `LumiSurveyConfig` og i pages i et
+`SurveyDocumentV1`.
 
 ### Rating
 
@@ -229,7 +272,7 @@ Anbefaling: Start med `rating` eller `discovery`, og gå videre til `topTasks`/`
 | Prop | Type | Påkrevd | Beskrivelse |
 | :--- | :--- | :---: | :--- |
 | `surveyId` | `string` | ✅ | Unik identifikator for surveyen (f.eks. `soknad-kvittering`) |
-| `survey` | `LumiSurveyConfig` | ✅ | Konfigurasjonsobjektet for spørsmålene |
+| `survey` | `LumiSurveyDefinition` | ✅ | Flat legacy-config eller versjonert page-dokument |
 | `transport` | `LumiSurveyTransport` | ✅ | Objekt med `submit`-funksjon for innsending |
 | `context` | `object` | ❌ | Metadata/tags/debug for segmentering |
 | `behavior` | `object` | ❌ | Styrer åpning, lukking, cooldown og storage-strategi |

@@ -57,10 +57,10 @@ Konklusjon: vi kan ikke rive ut `logic`. Men vi kan slutte å behandle den som e
 
 2. **`visibleIf` er den kanoniske flytmodellen.** Den mentale modellen vi dokumenterer, anbefaler og bygger Survey Builder (#338) rundt er: *ordnet liste → filtrer på synlighet → gå gjennom de synlige i rekkefølge → send inn når ingen flere er synlige.* Builder-UI-en eksponerer dette som standard.
 
-3. **`logic` degraderes til en escape hatch for ekte ikke-lineær kontroll** (primært `JUMP_TO`). Den forblir støttet og fungerende (den har live konsumenter), men:
+3. **`logic` degraderes til en legacy escape hatch for ekte ikke-lineær kontroll** (primært `JUMP_TO`). Den forblir støttet og fungerende for eksisterende flat config (den har live konsumenter), men:
    - dokumenteres som «avansert», ikke som en sidestilt førstevalgs-modell,
    - utvides ikke med ny funksjonalitet utover det delte betingelseslaget,
-   - eksponeres i builder-UI-en (#338) kun bak en «avansert»-luke, ikke i hovedflyten.
+   - eksponeres ikke i den nye page-baserte authoringmodellen eller builder-UI-en (#338), se ADR 0003.
 
 4. **Migrer førstepartsbruk vekk fra `logic` der det er triviell-ekvivalent.**
    Levert i #359: `createTopTasksSurvey` uttrykker nå `otherTask` og `blocker`
@@ -95,7 +95,7 @@ Konklusjon: vi kan ikke rive ut `logic`. Men vi kan slutte å behandle den som e
   `visibleIf`; `logic` snevret til leaf. Evaluator-unifisering bevisst utsatt —
   operator-divergensen lever videre, men kun i den utfasede `logic`-mekanismen.)
 - [x] Oppdater `docs/guider/branching.md` (avansert-posisjonering + linje 64-klargjøring).
-- [ ] #338: bygg builder rundt synlighetsmodellen; `logic` bak «avansert»-luke.
+- [ ] #338: bygg builder rundt den page-baserte synlighetsmodellen i ADR 0003; ikke generer `logic`.
 - [x] #359: migrer `createTopTasksSurvey` `SKIP`/`SUBMIT` → `visibleIf`, og la
   verdi-baserte `visibleIf`-grener aktivere steg-modus under `"auto"`.
 - [ ] Etter #333+#338: revurder full deprecation av `logic`.

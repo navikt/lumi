@@ -80,6 +80,7 @@ function defaultProps(
     questionContext: {
       promptQuestionId: "rating",
       promptHeadingId: "heading-id",
+      questionAnchorPrefix: "survey-question",
       validationErrorMessage: "Feltet er påkrevd",
     },
 

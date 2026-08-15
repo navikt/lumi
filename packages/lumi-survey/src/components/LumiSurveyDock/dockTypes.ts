@@ -5,9 +5,12 @@ export interface StepNavigationProps {
   isStepMode?: boolean;
   currentStep?: number;
   currentStepQuestion?: LumiSurveyQuestion;
+  currentStepQuestions?: LumiSurveyQuestion[];
   canGoBack?: boolean;
   canGoNext?: boolean;
   isLastStep?: boolean;
+  /** Legacy steps keep the historical disabled-button behavior. */
+  disableWhenIncomplete?: boolean;
   onNext?: () => void;
   onBack?: () => void;
   nextLabel?: string;
@@ -21,9 +24,11 @@ export interface ProgressProps {
 }
 
 export interface QuestionContextProps {
-  promptQuestionId: string;
+  promptQuestionId?: string;
   promptHeadingId: string;
   promptDescriptionId?: string;
+  promptDescriptionIsQuestionDescription?: boolean;
+  questionAnchorPrefix: string;
   validationErrorMessage: string;
 }
 
