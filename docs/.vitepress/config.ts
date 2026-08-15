@@ -45,6 +45,10 @@ export default withMermaid({
           text: "Guider",
           items: [
             { text: "Surveytyper", link: "/guider/surveytyper" },
+            {
+              text: "Survey-identitet",
+              link: "/guider/survey-identitet",
+            },
             { text: "Presets & builders", link: "/guider/presets-og-builders" },
             { text: "Spørsmålstyper", link: "/guider/sporsmalstyper" },
             {
