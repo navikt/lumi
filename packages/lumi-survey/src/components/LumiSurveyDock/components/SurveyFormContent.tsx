@@ -94,6 +94,10 @@ export const SurveyFormContent = React.memo(
       promptDescriptionId,
       validationErrorMessage,
     } = questionContext;
+    const currentStepNumber = currentStep + 1;
+    const stepStatus = hasBranching
+      ? `Steg ${currentStepNumber}`
+      : `Steg ${currentStepNumber} av ${totalSteps}`;
     // Stable onChange handlers per question-id so React.memo on
     // DockQuestionRenderer can skip re-renders when props haven't changed.
     const onQuestionChangeRef = useRef(onQuestionChange);
@@ -119,31 +123,34 @@ export const SurveyFormContent = React.memo(
 
     return (
       <>
-        {showProgress &&
-          isStepMode &&
-          currentStep >= 0 &&
-          totalSteps > 1 &&
-          (hasBranching ? (
-            <>
+        {showProgress && isStepMode && currentStep >= 0 && totalSteps > 1 && (
+          <VStack gap="space-4">
+            <BodyShort size="small" aria-hidden>
+              {stepStatus}
+            </BodyShort>
+            {hasBranching ? (
               <ProgressBar
-                value={currentStep + 1}
+                value={currentStepNumber}
                 valueMax={totalSteps}
                 size="small"
                 aria-hidden
               />
+            ) : (
+              <ProgressBar
+                value={currentStepNumber}
+                valueMax={totalSteps}
+                size="small"
+                aria-valuetext={stepStatus}
+                aria-label="Fremdrift i undersøkelsen"
+              />
+            )}
+            {hasBranching && (
               <BodyShort as="span" visuallyHidden>
-                {`Fremdrift i undersøkelsen: Steg ${currentStep + 1}`}
+                {`Fremdrift i undersøkelsen: ${stepStatus}`}
               </BodyShort>
-            </>
-          ) : (
-            <ProgressBar
-              value={currentStep + 1}
-              valueMax={totalSteps}
-              size="small"
-              aria-valuetext={`Steg ${currentStep + 1} av ${totalSteps}`}
-              aria-label="Fremdrift i undersøkelsen"
-            />
-          ))}
+            )}
+          </VStack>
+        )}
 
         <form onSubmit={onSubmit} noValidate>
           <VStack gap="space-16">

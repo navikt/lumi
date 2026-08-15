@@ -120,9 +120,9 @@ export interface LumiSurveyBehavior {
 
   /**
    * Show progress from the first question in step mode when there are at least
-   * two reachable steps. Intro and success screens are not counted as steps.
-   * Branching reports the current step without claiming an estimated total to
-   * assistive technology.
+   * two reachable steps, including visible step text above the indicator. Intro
+   * and success screens are not counted as steps. Branching shows only the known
+   * current step because its estimated total may change.
    * @default false
    */
   showProgress?: boolean;

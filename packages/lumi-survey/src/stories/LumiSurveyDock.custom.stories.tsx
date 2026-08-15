@@ -150,6 +150,11 @@ const CUSTOM_SURVEY: LumiSurveyConfig = {
   ],
 };
 
+const LINEAR_PROGRESS_SURVEY: LumiSurveyConfig = {
+  type: "custom",
+  questions: CUSTOM_SURVEY.questions.slice(0, 3),
+};
+
 const meta: Meta<typeof LumiSurveyDock> = {
   title: "Components/LumiSurveyDock/Custom",
   component: LumiSurveyDock,
@@ -178,6 +183,28 @@ const meta: Meta<typeof LumiSurveyDock> = {
 export default meta;
 
 type Story = StoryObj<typeof LumiSurveyDock>;
+
+export const LinearProgress: Story = {
+  name: "Lineær fremdrift",
+  render: (args) => <ExamplePage {...args} />,
+  args: {
+    surveyId: "storybook-dock-linear-progress",
+    survey: LINEAR_PROGRESS_SURVEY,
+    behavior: {
+      questionLayout: "steps",
+      storageStrategy: "consent",
+      showProgress: true,
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Lineær stegflyt med synlig «Steg X av N»-tekst over fremdriftsindikatoren.",
+      },
+    },
+  },
+};
 
 export const Custom: Story = {
   name: "Custom",

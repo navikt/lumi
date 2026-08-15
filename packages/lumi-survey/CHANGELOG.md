@@ -14,6 +14,7 @@ This project follows SemVer.
 
 - `createTopTasksSurvey` now expresses its flow with `visibleIf` instead of `logic`. Answer-based value conditions (`EQ`/`NEQ`/`GT`/`LT`/`CONTAINS`) automatically enable step mode under `questionLayout: "auto"`, while `EXISTS`-only progressive disclosure remains single-page. (#359)
 - `behavior.showProgress: true` now shows progress from the first question in step mode. Intro and success screens are not counted, and single-step surveys omit the indicator. Branching exposes only the known step number to assistive technology. (#334)
+- Progress indicators now include visible step text: `Steg X av N` for linear surveys and `Steg X` when branching makes the total uncertain. (#418)
 
 ### Fixed
 
