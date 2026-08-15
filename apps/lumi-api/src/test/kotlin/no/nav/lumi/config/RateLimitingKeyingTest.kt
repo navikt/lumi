@@ -13,6 +13,8 @@ import io.ktor.server.testing.*
 import no.nav.lumi.config.auth.BrukerPrincipal
 import no.nav.lumi.config.auth.CallerIdentity
 import no.nav.lumi.config.auth.CallerIdentityKey
+import no.nav.lumi.config.auth.ClientAuthorizationPlugin
+import no.nav.lumi.config.auth.TeamAuthorizationPlugin
 import no.nav.lumi.config.auth.UserRateLimitHashKey
 import no.nav.lumi.config.exception.ApiErrorException
 
@@ -86,37 +88,45 @@ class RateLimitingKeyingTest : FunSpec({
         }
     }
 
-    test("export rate limit falls back to source IP when principal is unavailable in the RateLimit phase") {
-        // Ktor 3.5.1 runs the RateLimit plugin in the Plugins phase, before the
-        // Authentication phase, so getBrukerPrincipal() is null at requestKey time.
-        // Analytics/export therefore bucket on source IP, NOT per validated client.
+    test("export rate limit uses separate buckets per authorized user in the same client") {
         testApplication {
             application {
+                configureSerialization()
+                configureStatusPages()
                 configureRateLimiting()
                 install(Authentication) {
                     bearer(AZURE_REALM) {
                         authenticate { credential ->
-                            val clientId = when (credential.token) {
-                                "client-a" -> "dev-gcp:team-esyfo:app-a"
-                                "client-b" -> "dev-gcp:team-esyfo:app-b"
+                            val navIdent = when (credential.token) {
+                                "user-a" -> "Z111111"
+                                "user-b" -> "Z222222"
                                 else -> null
                             } ?: return@authenticate null
 
                             BrukerPrincipal(
-                                navIdent = "Z123456",
+                                navIdent = navIdent,
                                 name = "Rate Limit Test",
                                 email = "rate.limit.test@nav.no",
-                                clientId = clientId,
+                                clientId = "dev-gcp:team-esyfo:lumi-dashboard",
                             )
                         }
                     }
                 }
 
                 routing {
-                    authenticate(AZURE_REALM) {
-                        rateLimit(ExportRateLimit) {
-                            get("/export-test") {
-                                call.respond(HttpStatusCode.OK)
+                    rateLimitRejectedExportAuthentication {
+                        authenticate(AZURE_REALM) {
+                            install(ClientAuthorizationPlugin) {
+                                allowedClientId = "dev-gcp:team-esyfo:lumi-dashboard"
+                            }
+                            install(TeamAuthorizationPlugin) {
+                                naisTeamLookupProvider = { null }
+                            }
+                            refundRejectedExportAuthenticationAfterAuthorization()
+                            rateLimit(ExportRateLimit) {
+                                get("/export-test") {
+                                    call.respond(HttpStatusCode.OK)
+                                }
                             }
                         }
                     }
@@ -125,32 +135,91 @@ class RateLimitingKeyingTest : FunSpec({
 
             repeat(30) {
                 val response = client.get("/export-test") {
-                    header(HttpHeaders.Authorization, "Bearer client-a")
+                    header(HttpHeaders.Authorization, "Bearer user-a")
                 }
                 response.status shouldBe HttpStatusCode.OK
             }
 
             val blockedResponse = client.get("/export-test") {
-                header(HttpHeaders.Authorization, "Bearer client-a")
+                header(HttpHeaders.Authorization, "Bearer user-a")
             }
             blockedResponse.status shouldBe HttpStatusCode.TooManyRequests
 
-            // A different validated client shares the same source-IP bucket, so it is
-            // also blocked. This documents that export is per-IP, not per-client, in 3.5.1.
-            val otherClientResponse = client.get("/export-test") {
-                header(HttpHeaders.Authorization, "Bearer client-b")
+            // A different validated user of the same dashboard client has a separate bucket.
+            val otherUserResponse = client.get("/export-test") {
+                header(HttpHeaders.Authorization, "Bearer user-b")
             }
-            otherClientResponse.status shouldBe HttpStatusCode.TooManyRequests
+            otherUserResponse.status shouldBe HttpStatusCode.OK
         }
     }
 
-    test("KTOR-9621: rejected auth in nested authenticate still counts toward export rate limit") {
-        // Regression guard for KTOR-9621: before Ktor 3.5.1, a nested authenticate
-        // block that rejected the request bypassed the RateLimit plugin, so an
-        // attacker could spam invalid tokens without ever hitting 429. In 3.5.1 the
-        // rejected calls are counted, so the limit is enforced.
+    test("analytics rate limit uses separate buckets per validated user in the same client") {
         testApplication {
             application {
+                configureRateLimiting()
+                install(Authentication) {
+                    bearer(AZURE_REALM) {
+                        authenticate { credential ->
+                            val navIdent = when (credential.token) {
+                                "user-a" -> "Z111111"
+                                "user-b" -> "Z222222"
+                                else -> null
+                            } ?: return@authenticate null
+
+                            BrukerPrincipal(
+                                navIdent = navIdent,
+                                name = "Rate Limit Test",
+                                email = "rate.limit.test@nav.no",
+                                clientId = "dev-gcp:team-esyfo:lumi-dashboard",
+                            )
+                        }
+                    }
+                }
+
+                routing {
+                    authenticate(AZURE_REALM) {
+                        install(ClientAuthorizationPlugin) {
+                            allowedClientId = "dev-gcp:team-esyfo:lumi-dashboard"
+                        }
+                        install(TeamAuthorizationPlugin) {
+                            naisTeamLookupProvider = { null }
+                        }
+                        rateLimit(AnalyticsRateLimit) {
+                            get("/analytics-test") {
+                                call.respond(HttpStatusCode.OK)
+                            }
+                        }
+                    }
+                }
+            }
+
+            repeat(300) {
+                val response = client.get("/analytics-test") {
+                    header(HttpHeaders.Authorization, "Bearer user-a")
+                }
+                response.status shouldBe HttpStatusCode.OK
+            }
+
+            val blockedResponse = client.get("/analytics-test") {
+                header(HttpHeaders.Authorization, "Bearer user-a")
+            }
+            blockedResponse.status shouldBe HttpStatusCode.TooManyRequests
+
+            val otherUserResponse = client.get("/analytics-test") {
+                header(HttpHeaders.Authorization, "Bearer user-b")
+            }
+            otherUserResponse.status shouldBe HttpStatusCode.OK
+        }
+    }
+
+    test("rejected export authentication remains source-IP limited under Ktor 3.5.2") {
+        // Ktor 3.5.2 deliberately skips a rateLimit nested inside rejected
+        // authentication. The outer failed-auth guard keeps invalid, rotating
+        // tokens in one source-IP bucket without charging validated callers.
+        testApplication {
+            application {
+                configureSerialization()
+                configureStatusPages()
                 configureRateLimiting()
                 install(Authentication) {
                     bearer(AZURE_REALM) {
@@ -162,10 +231,12 @@ class RateLimitingKeyingTest : FunSpec({
                 }
 
                 routing {
-                    authenticate(AZURE_REALM) {
-                        rateLimit(ExportRateLimit) {
-                            get("/export-reject-test") {
-                                call.respond(HttpStatusCode.OK)
+                    rateLimitRejectedExportAuthentication {
+                        authenticate(AZURE_REALM) {
+                            rateLimit(ExportRateLimit) {
+                                get("/export-reject-test") {
+                                    call.respond(HttpStatusCode.OK)
+                                }
                             }
                         }
                     }
@@ -184,6 +255,112 @@ class RateLimitingKeyingTest : FunSpec({
             // 31st rejected call is blocked by the rate limit instead of bypassing it.
             val blockedResponse = client.get("/export-reject-test") {
                 header(HttpHeaders.Authorization, "Bearer invalid-final")
+            }
+            blockedResponse.status shouldBe HttpStatusCode.TooManyRequests
+        }
+    }
+
+    test("client-unauthorized export calls remain source-IP limited") {
+        testApplication {
+            application {
+                configureSerialization()
+                configureStatusPages()
+                configureRateLimiting()
+                install(Authentication) {
+                    bearer(AZURE_REALM) {
+                        authenticate { credential ->
+                            BrukerPrincipal(
+                                navIdent = "Z${credential.token.hashCode()}",
+                                name = "Unauthorized Rate Limit Test",
+                                email = "unauthorized.rate.limit.test@nav.no",
+                                clientId = "dev-gcp:unauthorized:rotating-client-${credential.token}",
+                            )
+                        }
+                    }
+                }
+
+                routing {
+                    rateLimitRejectedExportAuthentication {
+                        authenticate(AZURE_REALM) {
+                            install(ClientAuthorizationPlugin) {
+                                allowedClientId = "dev-gcp:team-esyfo:lumi-dashboard"
+                            }
+                            install(TeamAuthorizationPlugin) {
+                                naisTeamLookupProvider = { null }
+                            }
+                            refundRejectedExportAuthenticationAfterAuthorization()
+                            rateLimit(ExportRateLimit) {
+                                get("/export-unauthorized-test") {
+                                    call.respond(HttpStatusCode.OK)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            repeat(30) {
+                val response = client.get("/export-unauthorized-test") {
+                    header(HttpHeaders.Authorization, "Bearer valid-but-unauthorized-$it")
+                }
+                response.status shouldBe HttpStatusCode.Forbidden
+            }
+
+            val blockedResponse = client.get("/export-unauthorized-test") {
+                header(HttpHeaders.Authorization, "Bearer valid-but-unauthorized-final")
+            }
+            blockedResponse.status shouldBe HttpStatusCode.TooManyRequests
+        }
+    }
+
+    test("team-unauthorized export calls remain source-IP limited") {
+        testApplication {
+            application {
+                configureSerialization()
+                configureStatusPages()
+                configureRateLimiting()
+                install(Authentication) {
+                    bearer(AZURE_REALM) {
+                        authenticate { credential ->
+                            BrukerPrincipal(
+                                navIdent = "Z${credential.token.hashCode()}",
+                                name = "Team Unauthorized Rate Limit Test",
+                                email = "team.unauthorized.rate.limit.test@nav.no",
+                                clientId = "dev-gcp:team-esyfo:lumi-dashboard",
+                            )
+                        }
+                    }
+                }
+
+                routing {
+                    rateLimitRejectedExportAuthentication {
+                        authenticate(AZURE_REALM) {
+                            install(ClientAuthorizationPlugin) {
+                                allowedClientId = "dev-gcp:team-esyfo:lumi-dashboard"
+                            }
+                            install(TeamAuthorizationPlugin) {
+                                naisTeamLookupProvider = { null }
+                            }
+                            refundRejectedExportAuthenticationAfterAuthorization()
+                            rateLimit(ExportRateLimit) {
+                                get("/export-team-unauthorized-test") {
+                                    call.respond(HttpStatusCode.OK)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            repeat(30) {
+                val response = client.get("/export-team-unauthorized-test?team=not-authorized") {
+                    header(HttpHeaders.Authorization, "Bearer valid-but-team-unauthorized-$it")
+                }
+                response.status shouldBe HttpStatusCode.Forbidden
+            }
+
+            val blockedResponse = client.get("/export-team-unauthorized-test?team=not-authorized") {
+                header(HttpHeaders.Authorization, "Bearer valid-but-team-unauthorized-final")
             }
             blockedResponse.status shouldBe HttpStatusCode.TooManyRequests
         }
