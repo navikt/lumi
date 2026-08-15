@@ -22,7 +22,10 @@ Widgeten samler inn svar og sender en strukturert JSON-payload til backend. Payl
 | `context` | Anbefalt | Nettleser-/brukerkontekst for segmentering |
 
 ::: tip Når skal du endre `surveyId`?
-Bruk ny `surveyId` når du legger til, fjerner, endrer navn på eller endrer type/options for spørsmål. Da unngår du å blande ulike datastrukturer i samme analyse og 409-feil fra backend.
+Behold samme ID når surveyen fortsatt måler det samme med samme struktur. Bruk
+en ny ID ved strukturelle eller semantiske endringer. Se
+[Survey-identitet og endringer](/guider/survey-identitet) for en konkret
+beslutningstabell og forklaring av 409-feil.
 :::
 
 ::: info Deduplication
@@ -169,5 +172,6 @@ Backend mapper `surveyType`-strenger til enums:
 
 ## Se også
 
+- [Survey-identitet og endringer](/guider/survey-identitet) — når du kan beholde samme `surveyId`
 - [API-endepunkter](/referanse/api-endepunkter) — endepunktene som mottar denne payloaden
 - [Context & tags](/guider/context-og-tags) — hvordan du konfigurerer context i widgeten

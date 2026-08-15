@@ -54,7 +54,7 @@ Tre ting å merke seg:
 - **Vær konkret** — still spørsmål om en spesifikk opplevelse, ikke generell tilfredshet.
 - **Bruk progresjon** — vis oppfølgingsspørsmål med `visibleIf` i stedet for å vise alt på én gang.
 - **Segmentér med tags** — bruk `context.tags` for å skille mellom brukergrupper eller flater. Se [Context og tags](/guider/context-og-tags).
-- **Velg en stabil `surveyId`** — denne identifiserer surveyen på tvers av deploy og brukes til analyse i dashboardet. Bruk ny `surveyId` når du legger til, fjerner, endrer navn på eller endrer type/options for spørsmål, for eksempel `min-flate-feedback-v2`.
+- **Velg en stabil `surveyId`** — denne identifiserer én analyseserie på tvers av utrullinger. Strukturelle eller semantiske endringer krever en ny ID, for eksempel `min-flate-feedback-v2`. Se [Survey-identitet og endringer](/guider/survey-identitet) for beslutningstabellen.
 
 ## Snarvei: Bruk en preset
 
