@@ -4,14 +4,16 @@ import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.plugins.ratelimit.*
-import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.util.*
 import io.ktor.util.collections.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import no.nav.lumi.config.auth.AuthorizationAttributes
 import no.nav.lumi.config.auth.CallerIdentityKey
 import no.nav.lumi.config.auth.UserRateLimitHashKey
+import no.nav.lumi.config.auth.pseudonymizeIdentifier
+import no.nav.lumi.config.exception.ApiErrorException
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -26,12 +28,14 @@ import kotlin.time.Duration.Companion.minutes
  *   `requestKey`. These routes are therefore keyed per caller-app and, when a
  *   user hash is present, per hashed user.
  * - Analytics/export routes: `rateLimit` is nested inside `authenticate`, so
- *   [rateLimitKey] uses the validated `BrukerPrincipal` and separates callers.
+ *   [rateLimitKey] uses the validated `BrukerPrincipal` and a pseudonymized
+ *   user identifier to separate dashboard users of the shared client.
  * - Rejected export authentication: Ktor does not execute an inner rate limiter
  *   when authentication rejects the call. [rateLimitRejectedExportAuthentication]
- *   therefore reserves a source-IP permit before auth and refunds it when a
- *   principal is established. Invalid credentials keep the permit and receive
- *   429 after 30 attempts per minute, even when every token value is different.
+ *   therefore reserves a source-IP permit before auth. The permit is refunded
+ *   only after client and team authorization have completed. Rejected requests
+ *   keep the permit and receive 429 after 30 attempts per minute, even when
+ *   every token value is different.
  */
 
 val SubmissionRateLimit = RateLimitName("submission")
@@ -60,15 +64,20 @@ private val RejectedExportAuthenticationRateLimit = createRouteScopedPlugin(
         }
 
         if (!bucket.reserve()) {
-            call.respond(HttpStatusCode.TooManyRequests)
-            return@onCall
+            throw ApiErrorException.TooManyRequestsException(
+                "For mange avviste eksportkall. Prøv igjen senere."
+            )
         }
 
         call.attributes.put(RejectedAuthenticationReservationKey, bucket)
     }
+}
 
+private val AuthorizedExportAuthenticationRefund = createRouteScopedPlugin(
+    "AuthorizedExportAuthenticationRefund"
+) {
     on(AuthenticationChecked) { call ->
-        if (call.principal<Any>() != null) {
+        if (call.attributes.getOrNull(AuthorizationAttributes.AuthorizedPrincipalKey) != null) {
             call.attributes.getOrNull(RejectedAuthenticationReservationKey)?.release()
         }
     }
@@ -103,6 +112,10 @@ internal fun Route.rateLimitRejectedExportAuthentication(build: Route.() -> Unit
         install(RejectedExportAuthenticationRateLimit)
         build()
     }
+
+internal fun Route.refundRejectedExportAuthenticationAfterAuthorization() {
+    install(AuthorizedExportAuthenticationRefund)
+}
 
 fun Application.configureRateLimiting() {
     install(RateLimit) {
@@ -147,10 +160,20 @@ private fun io.ktor.server.application.ApplicationCall.rateLimitKey(): String {
 
     // Ktor 3.5.2 makes the principal available when authenticate wraps rateLimit.
     getBrukerPrincipal()?.let { principal ->
-        extractCallerIdentityFromPrincipal(principal)?.let { identity ->
-            return "${identity.team}:${identity.app}"
+        val clientKey = extractCallerIdentityFromPrincipal(principal)?.let { identity ->
+            "${identity.team}:${identity.app}"
+        } ?: principal.clientId?.takeIf { it.isNotBlank() }
+
+        if (clientKey != null) {
+            val userIdentifier = principal.navIdent?.takeIf { it.isNotBlank() }
+                ?: principal.email?.takeIf { it.isNotBlank() }
+
+            return if (userIdentifier != null) {
+                "$clientKey:user:${pseudonymizeIdentifier(userIdentifier)}"
+            } else {
+                clientKey
+            }
         }
-        principal.clientId?.takeIf { it.isNotBlank() }?.let { return it }
     }
 
     return sourceAddress()

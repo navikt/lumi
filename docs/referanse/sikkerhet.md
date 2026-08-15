@@ -38,7 +38,7 @@ API-et håndhever rate limiting på flere nivåer for å beskytte mot misbruk:
 | Global | 1000 req/min | Alle kall samlet |
 
 ::: info Nøkling av analyse og eksport
-Ktor autentiserer analyse- og eksportkall før den beregner rate limit-nøkkelen. Gyldige kall nøkles derfor med validert klientidentitet. Eksportkall reserverer i tillegg en tillatelse per kilde-IP før autentisering. Tillatelsen gis tilbake når autentiseringen lykkes, mens avviste kall beholder den. Dermed kan ikke en angriper omgå eksportgrensen ved å bytte ugyldig token for hvert kall. På NAIS hentes kilde-IP fra første verdi i `X-Forwarded-For`.
+Ktor autentiserer analyse- og eksportkall før den beregner rate limit-nøkkelen. Gyldige kall nøkles derfor med validert klientidentitet og pseudonymisert brukeridentitet. Eksportkall reserverer i tillegg en tillatelse per kilde-IP før autentisering. Tillatelsen gis først tilbake når både klient- og teamautorisasjon lykkes, mens avviste kall beholder den. Dermed kan ikke en angriper omgå eksportgrensen ved å bytte ugyldig eller uautorisert token for hvert kall. På NAIS hentes kilde-IP fra første verdi i `X-Forwarded-For`.
 :::
 
 ## Inndatavalidering

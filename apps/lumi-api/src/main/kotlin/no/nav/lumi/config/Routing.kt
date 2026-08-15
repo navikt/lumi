@@ -53,7 +53,7 @@ fun Application.configureRouting() {
             }
 
             rateLimitRejectedExportAuthentication {
-                protectedAnalyticsRoutes {
+                protectedAnalyticsRoutes(refundRejectedExportReservation = true) {
                     rateLimit(ExportRateLimit) {
                         exportRoutes()
                     }
@@ -63,12 +63,18 @@ fun Application.configureRouting() {
     }
 }
 
-private fun Route.protectedAnalyticsRoutes(build: Route.() -> Unit): Route =
+private fun Route.protectedAnalyticsRoutes(
+    refundRejectedExportReservation: Boolean = false,
+    build: Route.() -> Unit,
+): Route =
     authenticate(AZURE_REALM) {
         install(ClientAuthorizationPlugin) {
             allowedClientId = getDashboardClientId()
         }
         install(TeamAuthorizationPlugin)
+        if (refundRejectedExportReservation) {
+            refundRejectedExportAuthenticationAfterAuthorization()
+        }
         build()
     }
 
