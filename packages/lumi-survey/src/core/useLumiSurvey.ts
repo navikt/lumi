@@ -17,6 +17,7 @@ import type {
   SurveyType,
 } from "./types";
 import { validateAnswers } from "./validation.js";
+import { getVisibilityMetadata } from "./visibilityMetadata.js";
 
 export interface UseLumiSurveyOptions {
   surveyId: string;
@@ -103,7 +104,7 @@ export function useLumiSurvey(
       const submittedAnswers = getVisibleAnswers(
         questions,
         answerSnapshot,
-        context?.tags,
+        getVisibilityMetadata(context),
       );
       const submittedAtTimestamp = new Date().toISOString();
       const deduplicationKey = getDeduplicationKey();

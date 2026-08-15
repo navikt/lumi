@@ -386,6 +386,44 @@ describe("useLumiSurvey", () => {
     });
   });
 
+  it("retains answers visible through context metadata at submission time", async () => {
+    const questions: LumiSurveyQuestion[] = [
+      {
+        id: "details",
+        type: "text",
+        prompt: "Mobile details",
+        required: false,
+        maxLength: 500,
+        visibleIf: {
+          field: "METADATA",
+          key: "deviceType",
+          operator: "EQ",
+          value: "mobile",
+        },
+      },
+    ];
+    const submitMock = vi.fn(async (_: LumiSurveySubmission) => {});
+    const { result } = renderHook(() =>
+      useLumiSurvey({
+        surveyId: SURVEY_ID,
+        questions,
+        transport: { submit: submitMock },
+        context: { deviceType: "mobile" },
+      }),
+    );
+
+    await act(() => {
+      result.current.setAnswer("details", "Visible mobile answer");
+    });
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(submitMock.mock.calls[0][0].answers).toEqual({
+      details: "Visible mobile answer",
+    });
+  });
+
   it("surfaces transport failures and triggers error callbacks", async () => {
     const transportError = new Error("Transport failed");
     const transport: LumiSurveyTransport = {

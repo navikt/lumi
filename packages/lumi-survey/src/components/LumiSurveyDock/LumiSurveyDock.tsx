@@ -13,6 +13,7 @@ import {
   shouldShowSubmitButton,
   useLumiSurvey,
 } from "../../core";
+import { getVisibilityMetadata } from "../../core/visibilityMetadata.js";
 
 import { buildCanonicalSurvey } from "../shared/canonicalSurvey.js";
 import type { LumiSurveyConfig } from "../surveyTypes.js";
@@ -169,6 +170,10 @@ export const LumiSurveyDock = ({
   const enrichedContext = useEnrichedContext(context, {
     collectLocation: config.collectLocation,
   });
+  const visibilityMetadata = useMemo(
+    () => getVisibilityMetadata(enrichedContext),
+    [enrichedContext],
+  );
 
   const { answers, status, error, setAnswer, submit, reset } = useLumiSurvey({
     surveyId,
@@ -198,7 +203,7 @@ export const LumiSurveyDock = ({
   } = useStepNavigation({
     questions,
     answers,
-    metadata: enrichedContext?.tags,
+    metadata: visibilityMetadata,
     forceStepMode,
     onStepChange: forceSinglePage ? undefined : events?.onStepChange,
   });
@@ -234,15 +239,15 @@ export const LumiSurveyDock = ({
 
   // Filter questions based on visibleIf conditions (progressive disclosure)
   const visibleQuestions = useMemo(
-    () => getVisibleQuestions(questions, answers, enrichedContext?.tags),
-    [questions, answers, enrichedContext?.tags],
+    () => getVisibleQuestions(questions, answers, visibilityMetadata),
+    [questions, answers, visibilityMetadata],
   );
 
   // Progressive submit: hide the button until a currently visible question has
   // at least one meaningful answer. Required-answer validation happens on submit.
   const isSubmitBlocked = useMemo(
-    () => !shouldShowSubmitButton(questions, answers, enrichedContext?.tags),
-    [questions, answers, enrichedContext?.tags],
+    () => !shouldShowSubmitButton(questions, answers, visibilityMetadata),
+    [questions, answers, visibilityMetadata],
   );
 
   // In step mode with branching, only validate questions the user actually visited
@@ -254,7 +259,7 @@ export const LumiSurveyDock = ({
       const visited = uniqueIndices
         .map((index) => questions[index])
         .filter(Boolean);
-      return getVisibleQuestions(visited, answers, enrichedContext?.tags);
+      return getVisibleQuestions(visited, answers, visibilityMetadata);
     }
     // Non-step mode: only validate visible questions (hidden questions are
     // excluded regardless of whether they were previously visible).
@@ -265,7 +270,7 @@ export const LumiSurveyDock = ({
     questions,
     visibleQuestions,
     answers,
-    enrichedContext?.tags,
+    visibilityMetadata,
   ]);
 
   const showPersonalDataNotice = useMemo(() => {
