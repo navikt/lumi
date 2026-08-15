@@ -294,6 +294,40 @@ describe("LumiSurveyDock", () => {
     expect(screen.getByRole("radio", { name: /^ja$/i })).toBeInTheDocument();
   });
 
+  it("uses auto-collected context in METADATA visibility conditions", async () => {
+    const survey: LumiSurveyConfig = {
+      type: "custom",
+      questions: [
+        {
+          id: "rating",
+          type: "rating",
+          prompt: "Hvor fornøyd er du?",
+          required: true,
+        },
+        {
+          id: "desktop-feedback",
+          type: "text",
+          prompt: "Tilbakemelding fra desktop",
+          required: false,
+          visibleIf: {
+            field: "METADATA",
+            key: "deviceType",
+            operator: "EQ",
+            value: "desktop",
+          },
+        },
+      ],
+    };
+
+    renderDock({ survey });
+
+    expect(
+      await screen.findByRole("textbox", {
+        name: /tilbakemelding fra desktop/i,
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("supports step layout without branching when questionLayout is steps", async () => {
     const user = userEvent.setup();
     renderDock({ behavior: { questionLayout: "steps" } });

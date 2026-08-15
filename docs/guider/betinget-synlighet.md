@@ -182,6 +182,23 @@ Du kan også vise spørsmål basert på metadata (kontekst-verdier) i stedet for
 }
 ```
 
+`key` slås opp i et flatt metadata-kart med disse verdiene:
+
+| Nøkkel | Kilde | Merknad |
+| :--- | :--- | :--- |
+| `deviceType` | Automatisk | `mobile`, `tablet` eller `desktop` |
+| `viewport` | Automatisk | Objekt med `width` og `height`; bruk `EXISTS` for å sjekke at det finnes |
+| `screenResolution` | Automatisk | Objekt med `width` og `height`; bruk `EXISTS` for å sjekke at det finnes |
+| `userAgent` | Automatisk | Nettleserens user agent-streng |
+| `pathname` | Context / opt-in | Manuelt sanitert verdi, eller automatisk når `collectLocation` er aktivert |
+| `url` | Context | Samles aldri inn automatisk |
+| Egendefinerte tag-nøkler | `context.tags` | Eksempel: `rolle`, `tjeneste` eller `abTest` |
+
+Tag-nøklene ligger på toppnivå, så `context.tags.rolle` brukes som
+`key: "rolle"`. Når et systemfelt har en definert verdi, har det prioritet over
+en tag med samme navn. `context.debug` er bevisst ikke tilgjengelig for
+synlighetsregler; debug-data er kun ment for diagnostikk av innsendinger.
+
 ## Når trenger du noe mer?
 
 `visibleIf` er perfekt for progressiv disclosure — vis/skjul oppfølgingsspørsmål basert på tidligere svar. Men noen ganger trenger du å faktisk *endre flyten*: hoppe til et annet spørsmål, skippe neste steg, eller avslutte surveyen tidlig.

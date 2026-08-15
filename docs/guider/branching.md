@@ -61,6 +61,11 @@ type LogicCondition =
     };
 ```
 
+`METADATA` bruker det samme flate kontekstkartet som `visibleIf`: automatiske
+systemfelt og nøklene fra `context.tags`, men ikke `context.debug`. Se
+[Metadata-betingelser](/guider/betinget-synlighet#metadata-betingelser) for hele
+nøkkellisten og kollisjonsreglene.
+
 For `logic` evalueres betingelsen vanligvis mot *det gjeldende spørsmålets* svar — `questionId` er valgfri her (i motsetning til `visibleIf` der du alltid refererer til et annet spørsmål).
 
 > **Merk:** `logic`-betingelser støtter ikke `any`/`all`-grupper — kun enkeltbetingelser.
