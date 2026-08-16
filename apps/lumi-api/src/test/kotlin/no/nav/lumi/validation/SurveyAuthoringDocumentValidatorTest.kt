@@ -105,6 +105,70 @@ class SurveyAuthoringDocumentValidatorTest : FunSpec({
             SurveyAuthoringDocumentValidator.validate(invalid, "survey-v1")
         }.errorMessage shouldBe "Rating question 'rating' has a non-string lowLabel"
     }
+
+    test("release gate rejects blank prompts that drafts may keep") {
+        val blankPrompt = Json.parseToJsonElement(
+            """
+            {
+              "authoringSchemaVersion": 1,
+              "pages": [{
+                "id": "page",
+                "questions": [{
+                  "id": "rating",
+                  "type": "rating",
+                  "prompt": "   "
+                }]
+              }]
+            }
+            """.trimIndent(),
+        ).jsonObject
+
+        SurveyAuthoringDocumentValidator.validate(blankPrompt, "survey-v1")
+
+        shouldThrow<ApiErrorException.BadRequestException> {
+            SurveyAuthoringDocumentValidator.validate(blankPrompt, "survey-v1", releaseGate = true)
+        }.errorMessage shouldBe "Question 'rating' needs a prompt before it can be shared"
+    }
+
+    test("release gate rejects blank option labels and values") {
+        fun choiceDocument(label: String, value: String): JsonObject = Json.parseToJsonElement(
+            """
+            {
+              "authoringSchemaVersion": 1,
+              "pages": [{
+                "id": "page",
+                "questions": [{
+                  "id": "choice",
+                  "type": "singleChoice",
+                  "prompt": "Velg",
+                  "options": [
+                    { "value": "$value", "label": "$label" },
+                    { "value": "annet", "label": "Annet" }
+                  ]
+                }]
+              }]
+            }
+            """.trimIndent(),
+        ).jsonObject
+
+        SurveyAuthoringDocumentValidator.validate(choiceDocument(" ", "ok"), "survey-v1")
+
+        shouldThrow<ApiErrorException.BadRequestException> {
+            SurveyAuthoringDocumentValidator.validate(
+                choiceDocument(" ", "ok"),
+                "survey-v1",
+                releaseGate = true,
+            )
+        }.errorMessage shouldBe "Option 0 on question 'choice' needs a label before it can be shared"
+
+        shouldThrow<ApiErrorException.BadRequestException> {
+            SurveyAuthoringDocumentValidator.validate(
+                choiceDocument("Ok", " "),
+                "survey-v1",
+                releaseGate = true,
+            )
+        }.errorMessage shouldBe "Option 0 on question 'choice' needs a value before it can be shared"
+    }
 })
 
 private fun validDocument(): JsonObject = Json.parseToJsonElement(

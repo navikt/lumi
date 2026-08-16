@@ -38,7 +38,16 @@ object SurveyAuthoringDocumentValidator {
     )
     private val conditionOperators = setOf("EQ", "NEQ", "GT", "LT", "CONTAINS", "EXISTS")
 
-    fun validate(document: JsonObject, surveyId: String): ValidatedSurveyAuthoringDocument {
+    /**
+     * Validates the authoring document structure. With [releaseGate] the
+     * semantic bar for immutable revisions applies too: prompts, option
+     * labels and option values must be non-blank. Drafts stay lenient.
+     */
+    fun validate(
+        document: JsonObject,
+        surveyId: String,
+        releaseGate: Boolean = false,
+    ): ValidatedSurveyAuthoringDocument {
         requireInt(document, "authoringSchemaVersion", "Document")
             .takeIf { it == 1 }
             ?: invalid("Only authoringSchemaVersion 1 is supported")
@@ -74,7 +83,10 @@ object SurveyAuthoringDocumentValidator {
                     ?: invalid("Question at index $questionIndex on page '$pageId' is not an object")
                 val questionId = requireNonBlankString(question, "id", "Question on page '$pageId'")
                 if (!questionIds.add(questionId)) invalid("Duplicate question id '$questionId'")
-                requireString(question, "prompt", "Question '$questionId'")
+                val prompt = requireString(question, "prompt", "Question '$questionId'")
+                if (releaseGate && prompt.isBlank()) {
+                    invalid("Question '$questionId' needs a prompt before it can be shared")
+                }
                 optionalString(question, "description", "Question '$questionId'")
                 optionalString(question, "analyticsId", "Question '$questionId'")
                 optionalBoolean(question, "required", "Question '$questionId'")
@@ -89,8 +101,10 @@ object SurveyAuthoringDocumentValidator {
                 fields += when (type) {
                     "rating" -> validateRating(question, questionId)
                     "text" -> validateText(question, questionId)
-                    "singleChoice" -> validateChoice(question, questionId, FieldType.SINGLE_CHOICE)
-                    "multiChoice" -> validateChoice(question, questionId, FieldType.MULTI_CHOICE)
+                    "singleChoice" ->
+                        validateChoice(question, questionId, FieldType.SINGLE_CHOICE, releaseGate)
+                    "multiChoice" ->
+                        validateChoice(question, questionId, FieldType.MULTI_CHOICE, releaseGate)
                     else -> invalid("Question '$questionId' has unsupported type '$type'")
                 }
                 previousQuestionIds += questionId
@@ -150,6 +164,7 @@ object SurveyAuthoringDocumentValidator {
         question: JsonObject,
         questionId: String,
         fieldType: FieldType,
+        releaseGate: Boolean = false,
     ): FieldDefinition {
         val options = question["options"] as? JsonArray
             ?: invalid("Choice question '$questionId' must have options")
@@ -158,7 +173,15 @@ object SurveyAuthoringDocumentValidator {
             val option = optionElement as? JsonObject
                 ?: invalid("Option $index on question '$questionId' is not an object")
             val value = requireString(option, "value", "Option $index on question '$questionId'")
-            requireString(option, "label", "Option '$value' on question '$questionId'")
+            val label = requireString(option, "label", "Option '$value' on question '$questionId'")
+            if (releaseGate) {
+                if (label.isBlank()) {
+                    invalid("Option $index on question '$questionId' needs a label before it can be shared")
+                }
+                if (value.isBlank()) {
+                    invalid("Option $index on question '$questionId' needs a value before it can be shared")
+                }
+            }
             optionalString(option, "description", "Option '$value' on question '$questionId'")
             value
         }
