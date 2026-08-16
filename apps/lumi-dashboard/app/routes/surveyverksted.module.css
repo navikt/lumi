@@ -1,0 +1,78 @@
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--ax-space-24);
+  padding-block-end: var(--ax-space-24);
+  border-bottom: 1px solid var(--ax-border-neutral-subtle);
+}
+
+.mastheadText {
+  max-width: 46rem;
+}
+
+.mastheadMark {
+  color: var(--ax-text-neutral-subtle);
+  font-size: clamp(3rem, 9vw, 7rem);
+  font-weight: 700;
+  line-height: 0.8;
+  letter-spacing: -0.08em;
+  opacity: 0.25;
+}
+
+.workshopGrid {
+  display: grid;
+  grid-template-columns: minmax(17rem, 0.8fr) minmax(20rem, 1.2fr);
+  gap: var(--ax-space-32);
+  align-items: start;
+}
+
+.projectList {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.projectLink {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ax-space-16);
+  padding: var(--ax-space-16);
+  color: inherit;
+  text-decoration: none;
+  background: var(--ax-bg-raised);
+  border: 1px solid var(--ax-border-neutral-subtle);
+  border-radius: var(--ax-radius-8);
+  transition:
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.projectLink:hover {
+  border-color: var(--ax-border-accent);
+  transform: translateX(2px);
+}
+
+.projectLink:focus-visible {
+  outline: 3px solid var(--ax-border-focus);
+  outline-offset: 2px;
+}
+
+.emptyState {
+  min-height: 10rem;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  border: 1px dashed var(--ax-border-neutral-subtle);
+  border-radius: var(--ax-radius-8);
+}
+
+@media (max-width: 48rem) {
+  .workshopGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .mastheadMark {
+    display: none;
+  }
+}

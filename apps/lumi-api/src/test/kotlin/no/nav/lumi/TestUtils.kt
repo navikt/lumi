@@ -28,6 +28,7 @@ import no.nav.lumi.routes.exportRoutes
 import no.nav.lumi.routes.markerRoutes
 import no.nav.lumi.routes.filterRoutes
 import no.nav.lumi.routes.surveyArchiveRoutes
+import no.nav.lumi.routes.surveyAuthoringRoutes
 import no.nav.lumi.routes.surveyFacetRoutes
 import no.nav.lumi.routes.submissionRoutes
 import no.nav.lumi.routes.discoveryRoutes
@@ -309,6 +310,7 @@ fun Application.testModule(
                 bootstrapCache = bootstrapCache,
                 statsCacheInvalidator = statsCacheInvalidator,
             )
+            surveyAuthoringRoutes()
             filterRoutes(bootstrapCache = bootstrapCache)
             markerRoutes()
             statsRoutes(statsService)

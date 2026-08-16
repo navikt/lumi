@@ -16,7 +16,12 @@
     "isolatedModules": true,
     "noEmit": true,
     "paths": {
-      "~/*": ["./app/*"]
+      "~/*": ["./app/*"],
+      "@navikt/lumi-survey": ["../../packages/lumi-survey/src/index.ts"],
+      "@navikt/lumi-survey/styles.css": [
+        "../../packages/lumi-survey/dist/index.css"
+      ],
+      "@navikt/lumi-survey/*": ["../../packages/lumi-survey/dist/*"]
     }
   },
   "include": ["app/**/*", "*.config.ts"]

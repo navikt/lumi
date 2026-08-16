@@ -275,4 +275,27 @@ class ApiV1Intern {
         val choiceFieldId: String? = null,
         val choiceValue: String? = null,
     )
+
+    @Resource("authoring")
+    @Serializable
+    class Authoring(val parent: ApiV1Intern = ApiV1Intern()) {
+        @Resource("projects")
+        @Serializable
+        class Projects(
+            val parent: Authoring = Authoring(),
+            /** Optional team scope. If omitted, the backend selects a default authorized team. */
+            val team: String? = null,
+        ) {
+            @Resource("{projectId}")
+            @Serializable
+            class Id(
+                val parent: Projects = Projects(),
+                val projectId: String,
+            ) {
+                @Resource("draft")
+                @Serializable
+                class Draft(val parent: Id)
+            }
+        }
+    }
 }

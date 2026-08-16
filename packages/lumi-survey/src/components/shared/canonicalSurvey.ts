@@ -6,6 +6,7 @@ import {
 import type { LumiSurveyQuestion } from "../../core/types.js";
 import type {
   LumiSurveyDefinition,
+  SurveyDocumentV1,
   SurveyPageV1,
   SurveyType,
 } from "../surveyTypes.js";
@@ -258,6 +259,27 @@ export function buildCanonicalSurvey(
     questions,
     pages,
   };
+}
+
+/**
+ * Validate an unknown authoring payload against the public V1 document
+ * contract. Returns the original JSON-compatible document when valid.
+ *
+ * Authoring tools can use this before preview/export without duplicating the
+ * widget's runtime validation rules.
+ */
+export function validateSurveyDocumentV1(input: unknown): SurveyDocumentV1 {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new Error("Lumi: Survey document must be an object");
+  }
+
+  const document = input as Record<string, unknown>;
+  if (document.authoringSchemaVersion !== 1) {
+    throw new Error("Lumi: Survey document must use authoringSchemaVersion 1");
+  }
+
+  buildCanonicalSurvey(input as SurveyDocumentV1);
+  return input as SurveyDocumentV1;
 }
 
 function validateLegacyQuestions(

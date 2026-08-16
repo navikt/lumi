@@ -8,6 +8,7 @@ This project follows SemVer.
 
 ### Added
 
+- `validateSurveyDocumentV1` exposes the widget's runtime document validation as a pure public seam for authoring tools before preview or export. (#338)
 - `SurveyDocumentV1`, `SurveyPageV1` and `SurveyQuestionV1` add a serializable page-based authoring format. A page can contain multiple questions that render and validate together; `singlePage` preserves page headings while step layout navigates pages. The new format uses question-level `visibleIf` and deliberately rejects legacy `logic`. Existing flat `LumiSurveyConfig` inputs remain supported unchanged. (#336)
 - `visibleIf` now supports `any` (OR) and `all` (AND) to combine multiple conditions. The wider condition type is exported as `VisibleIfCondition` (with `isConditionGroup`/`getLeafConditions`/`isLeafCondition` helpers); `LogicCondition` stays leaf-only so `LogicRule` consumers are unaffected. Note: `question.visibleIf` is now typed `VisibleIfCondition` (leaf | group), so code reading `visibleIf.operator` directly must first narrow with `isConditionGroup`/`isLeafCondition`. (#333)
 

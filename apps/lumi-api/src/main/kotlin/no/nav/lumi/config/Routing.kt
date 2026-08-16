@@ -12,6 +12,7 @@ import no.nav.lumi.routes.exportRoutes
 import no.nav.lumi.routes.filterRoutes
 import no.nav.lumi.routes.markerRoutes
 import no.nav.lumi.routes.surveyArchiveRoutes
+import no.nav.lumi.routes.surveyAuthoringRoutes
 import no.nav.lumi.routes.surveyFacetRoutes
 import no.nav.lumi.routes.statsRoutes
 import no.nav.lumi.routes.internalRoutes
@@ -45,6 +46,7 @@ fun Application.configureRouting() {
                     feedbackRoutes()
                     surveyFacetRoutes()
                     surveyArchiveRoutes()
+                    surveyAuthoringRoutes()
                     markerRoutes()
                     statsRoutes()
                     discoveryRoutes()
