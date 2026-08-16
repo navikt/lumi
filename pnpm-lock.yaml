@@ -38,6 +38,9 @@ importers:
       '@navikt/lumi-types':
         specifier: workspace:*
         version: link:../../packages/lumi-types
+      '@navikt/lumi-survey':
+        specifier: workspace:*
+        version: link:../../packages/lumi-survey
       '@navikt/oasis':
         specifier: ^4.1.4
         version: 4.1.4

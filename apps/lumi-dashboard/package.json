@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "pnpm --filter @navikt/lumi-survey run build",
     "dev": "vite dev",
     "build": "vite build && tsc -p tsconfig.typecheck.json --noEmit",
     "start": "node .output/server/index.mjs",
@@ -21,6 +22,7 @@
     "@navikt/ds-css": "^8.7.0",
     "@navikt/ds-react": "^8.7.0",
     "@navikt/lumi-types": "workspace:*",
+    "@navikt/lumi-survey": "workspace:*",
     "@navikt/oasis": "^4.1.4",
     "@navikt/pino-logger": "^4.5.1",
     "@tanstack/react-query": "^5.96.1",

@@ -1,5 +1,6 @@
 // Import Aksel and global styles as regular CSS so they are emitted as manifest assets.
 import "@navikt/ds-css";
+import "@navikt/lumi-survey/styles.css";
 import { Alert, BodyShort, Heading } from "@navikt/ds-react";
 import { Theme } from "@navikt/ds-react/Theme";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

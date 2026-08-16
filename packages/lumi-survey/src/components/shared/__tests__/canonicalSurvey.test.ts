@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { LumiSurveyConfig, SurveyDocumentV1 } from "../../surveyTypes.js";
-import { buildCanonicalSurvey } from "../canonicalSurvey.js";
+import {
+  buildCanonicalSurvey,
+  validateSurveyDocumentV1,
+} from "../canonicalSurvey.js";
 
 const validQuestions = [
   { id: "q1", type: "rating", prompt: "Rating" },
@@ -519,5 +522,33 @@ describe("buildCanonicalSurvey", () => {
     expect(() => make({ operator: "BOGUS", questionId: "q1" })).toThrowError(
       /invalid visibleIf condition/i,
     );
+  });
+});
+
+describe("validateSurveyDocumentV1", () => {
+  it("returns a valid V1 document unchanged", () => {
+    const document = {
+      authoringSchemaVersion: 1 as const,
+      pages: [
+        {
+          id: "page-1",
+          questions: [
+            {
+              id: "rating",
+              type: "rating" as const,
+              prompt: "Hvordan gikk det?",
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(validateSurveyDocumentV1(document)).toBe(document);
+  });
+
+  it("rejects unknown authoring payloads before preview", () => {
+    expect(() =>
+      validateSurveyDocumentV1({ authoringSchemaVersion: 1, pages: [] }),
+    ).toThrow("at least one page");
   });
 });

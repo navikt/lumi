@@ -11,6 +11,7 @@ export type {
   StorageStrategy,
 } from "./components/LumiSurveyDock/propTypes.js";
 export * from "./components/questions/index.js";
+export { validateSurveyDocumentV1 } from "./components/shared/canonicalSurvey.js";
 export type {
   LumiSurveyConfig,
   LumiSurveyDefinition,

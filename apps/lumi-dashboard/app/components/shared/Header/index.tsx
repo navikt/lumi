@@ -1,4 +1,9 @@
-import { BarChartIcon, DownloadIcon, TableIcon } from "@navikt/aksel-icons";
+import {
+  BarChartIcon,
+  DownloadIcon,
+  PencilWritingIcon,
+  TableIcon,
+} from "@navikt/aksel-icons";
 import { Box, Button, Hide, HStack } from "@navikt/ds-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import lumiLogo from "~/assets/lumi.png";
@@ -92,6 +97,17 @@ export function Header() {
             >
               <Hide below="md" asChild>
                 <span>Eksporter</span>
+              </Hide>
+            </Button>
+          </Link>
+          <Link to="/surveyverksted" search={{}}>
+            <Button
+              variant={getVariant("/surveyverksted")}
+              size="small"
+              icon={<PencilWritingIcon aria-hidden />}
+            >
+              <Hide below="md" asChild>
+                <span>Surveyverksted</span>
               </Hide>
             </Button>
           </Link>

@@ -16,7 +16,18 @@
     "isolatedModules": true,
     "noEmit": true,
     "paths": {
-      "~/*": ["./app/*"]
+      "~/*": ["./app/*"],
+      "@navikt/lumi-types": ["../../packages/lumi-types/src/index.ts"],
+      "@navikt/lumi-types/api": ["../../packages/lumi-types/src/api.ts"],
+      "@navikt/lumi-types/errors": ["../../packages/lumi-types/src/errors.ts"],
+      "@navikt/lumi-types/schemas": [
+        "../../packages/lumi-types/src/schemas.ts"
+      ],
+      "@navikt/lumi-survey": ["../../packages/lumi-survey/src/index.ts"],
+      "@navikt/lumi-survey/styles.css": [
+        "../../packages/lumi-survey/dist/index.css"
+      ],
+      "@navikt/lumi-survey/*": ["../../packages/lumi-survey/dist/*"]
     }
   },
   "include": ["app/**/*", "*.config.ts"]

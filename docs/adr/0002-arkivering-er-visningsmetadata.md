@@ -29,7 +29,7 @@ Uten intake-kontroll er faren at arkivering *misforstås* som stopp: en PO arkiv
 
 3. **Dashboard-styrt intake-kontroll utsettes bevisst.** Vi bygger den ikke nå, og vi lover den ikke. Kostnaden (punkt 1 i kontekst: widget-kapabilitet + publikt endepunkt + endring i hver konsuments backend) står ikke i forhold til gevinsten så lenge det reelle behovet er *oversikt*, ikke *fjernstyring*. Beslutningen revurderes hvis konsumentteam faktisk etterspør fjernstopp — ikke før.
 
-4. **Døra holdes åpen strukturelt.** `survey_definitions.source` har allerede enum-verdiene `'dashboard'` og `'import'` reservert, og `survey_metadata`-tabellen er frøet til survey-registeret som Survey Builder (#338) uansett trenger. Skulle intake-kontroll bli aktuelt, bygges det på dette registeret — det krever ingen riving av arkiveringsløsningen.
+4. **Døra holdes åpen strukturelt.** `survey_definitions.source` har allerede enum-verdiene `'dashboard'` og `'import'` reservert. Skulle intake-kontroll bli aktuelt, må den bygges som et eksplisitt produksjonsregister — ikke ved å gi authoring-drafts runtime-semantikk. Surveyverkstedets separate modell er besluttet i ADR 0004.
 
 ## Konsekvenser
 
@@ -37,7 +37,7 @@ Uten intake-kontroll er faren at arkivering *misforstås* som stopp: en PO arkiv
 
 - Arkivering leveres som to små slices (#394, #395) uten å røre widget, datakontrakt eller konsumentteam.
 - «Arkiverte»-bryteren styrer faktisk datagrunnlaget i liste, statistikk og eksport, ikke bare hvilke valg som vises i filteret.
-- Survey-metadata får endelig et hjem på dashboard-siden — det delte åpne spørsmålet fra #338/#339 om hvor survey-identitet bor, er besvart.
+- Survey-metadata får et hjem på dashboard-siden uten å blande visning, authoring og produksjonskontroll.
 - Ingen falske løfter: UI-et sier eksplisitt hva arkivering *ikke* gjør.
 
 **Negativt / kostnad**
@@ -45,7 +45,7 @@ Uten intake-kontroll er faren at arkivering *misforstås* som stopp: en PO arkiv
 - Lumi kan fortsatt ikke stoppe en survey sentralt — avvikling krever fortsatt endring i konsumentens frontend. Dette er en reell begrensning vi aksepterer og dokumenterer.
 - Nye innsendinger til en arkivert survey lagres fortsatt, men er skjult fra standardvisningen frem til arkivvisningen slås på eller surveyen gjenopprettes.
 - «Mottar fortsatt innsendinger»-badgen er et symptomvarsel, ikke en løsning; oppfølgingen (be teamet fjerne widgeten) er manuell.
-- To «survey finnes»-begreper består (avledet liste + definisjonstabell), nå med en tredje tabell ved siden av. Konsolidering til ett register er bevisst skjøvet til #338.
+- To «survey finnes»-begreper består (avledet liste + definisjonstabell). Surveyverkstedet tilfører et separat authoring-begrep, ikke et tredje produksjonsregister; se ADR 0004.
 
 ## Vurderte alternativer
 

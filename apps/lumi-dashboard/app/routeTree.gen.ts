@@ -9,13 +9,27 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SurveyverkstedRouteImport } from './routes/surveyverksted'
+import { Route as SurveyPreviewRouteImport } from './routes/survey-preview'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as ExportRouteImport } from './routes/export'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SurveyverkstedIndexRouteImport } from './routes/surveyverksted.index'
+import { Route as SurveyverkstedProjectIdRouteImport } from './routes/surveyverksted.$projectId'
 import { Route as ApiInternalMetricsRouteImport } from './routes/api/internal/metrics'
 import { Route as ApiInternalIsReadyRouteImport } from './routes/api/internal/isReady'
 import { Route as ApiInternalIsAliveRouteImport } from './routes/api/internal/isAlive'
 
+const SurveyverkstedRoute = SurveyverkstedRouteImport.update({
+  id: '/surveyverksted',
+  path: '/surveyverksted',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SurveyPreviewRoute = SurveyPreviewRouteImport.update({
+  id: '/survey-preview',
+  path: '/survey-preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FeedbackRoute = FeedbackRouteImport.update({
   id: '/feedback',
   path: '/feedback',
@@ -30,6 +44,16 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const SurveyverkstedIndexRoute = SurveyverkstedIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SurveyverkstedRoute,
+} as any)
+const SurveyverkstedProjectIdRoute = SurveyverkstedProjectIdRouteImport.update({
+  id: '/$projectId',
+  path: '/$projectId',
+  getParentRoute: () => SurveyverkstedRoute,
 } as any)
 const ApiInternalMetricsRoute = ApiInternalMetricsRouteImport.update({
   id: '/api/internal/metrics',
@@ -51,6 +75,10 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/export': typeof ExportRoute
   '/feedback': typeof FeedbackRoute
+  '/survey-preview': typeof SurveyPreviewRoute
+  '/surveyverksted': typeof SurveyverkstedRouteWithChildren
+  '/surveyverksted/$projectId': typeof SurveyverkstedProjectIdRoute
+  '/surveyverksted/': typeof SurveyverkstedIndexRoute
   '/api/internal/isAlive': typeof ApiInternalIsAliveRoute
   '/api/internal/isReady': typeof ApiInternalIsReadyRoute
   '/api/internal/metrics': typeof ApiInternalMetricsRoute
@@ -59,6 +87,9 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/export': typeof ExportRoute
   '/feedback': typeof FeedbackRoute
+  '/survey-preview': typeof SurveyPreviewRoute
+  '/surveyverksted/$projectId': typeof SurveyverkstedProjectIdRoute
+  '/surveyverksted': typeof SurveyverkstedIndexRoute
   '/api/internal/isAlive': typeof ApiInternalIsAliveRoute
   '/api/internal/isReady': typeof ApiInternalIsReadyRoute
   '/api/internal/metrics': typeof ApiInternalMetricsRoute
@@ -68,6 +99,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/export': typeof ExportRoute
   '/feedback': typeof FeedbackRoute
+  '/survey-preview': typeof SurveyPreviewRoute
+  '/surveyverksted': typeof SurveyverkstedRouteWithChildren
+  '/surveyverksted/$projectId': typeof SurveyverkstedProjectIdRoute
+  '/surveyverksted/': typeof SurveyverkstedIndexRoute
   '/api/internal/isAlive': typeof ApiInternalIsAliveRoute
   '/api/internal/isReady': typeof ApiInternalIsReadyRoute
   '/api/internal/metrics': typeof ApiInternalMetricsRoute
@@ -78,6 +113,10 @@ export interface FileRouteTypes {
     | '/'
     | '/export'
     | '/feedback'
+    | '/survey-preview'
+    | '/surveyverksted'
+    | '/surveyverksted/$projectId'
+    | '/surveyverksted/'
     | '/api/internal/isAlive'
     | '/api/internal/isReady'
     | '/api/internal/metrics'
@@ -86,6 +125,9 @@ export interface FileRouteTypes {
     | '/'
     | '/export'
     | '/feedback'
+    | '/survey-preview'
+    | '/surveyverksted/$projectId'
+    | '/surveyverksted'
     | '/api/internal/isAlive'
     | '/api/internal/isReady'
     | '/api/internal/metrics'
@@ -94,6 +136,10 @@ export interface FileRouteTypes {
     | '/'
     | '/export'
     | '/feedback'
+    | '/survey-preview'
+    | '/surveyverksted'
+    | '/surveyverksted/$projectId'
+    | '/surveyverksted/'
     | '/api/internal/isAlive'
     | '/api/internal/isReady'
     | '/api/internal/metrics'
@@ -103,6 +149,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ExportRoute: typeof ExportRoute
   FeedbackRoute: typeof FeedbackRoute
+  SurveyPreviewRoute: typeof SurveyPreviewRoute
+  SurveyverkstedRoute: typeof SurveyverkstedRouteWithChildren
   ApiInternalIsAliveRoute: typeof ApiInternalIsAliveRoute
   ApiInternalIsReadyRoute: typeof ApiInternalIsReadyRoute
   ApiInternalMetricsRoute: typeof ApiInternalMetricsRoute
@@ -110,6 +158,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/surveyverksted': {
+      id: '/surveyverksted'
+      path: '/surveyverksted'
+      fullPath: '/surveyverksted'
+      preLoaderRoute: typeof SurveyverkstedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/survey-preview': {
+      id: '/survey-preview'
+      path: '/survey-preview'
+      fullPath: '/survey-preview'
+      preLoaderRoute: typeof SurveyPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/feedback': {
       id: '/feedback'
       path: '/feedback'
@@ -130,6 +192,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/surveyverksted/': {
+      id: '/surveyverksted/'
+      path: '/'
+      fullPath: '/surveyverksted/'
+      preLoaderRoute: typeof SurveyverkstedIndexRouteImport
+      parentRoute: typeof SurveyverkstedRoute
+    }
+    '/surveyverksted/$projectId': {
+      id: '/surveyverksted/$projectId'
+      path: '/$projectId'
+      fullPath: '/surveyverksted/$projectId'
+      preLoaderRoute: typeof SurveyverkstedProjectIdRouteImport
+      parentRoute: typeof SurveyverkstedRoute
     }
     '/api/internal/metrics': {
       id: '/api/internal/metrics'
@@ -155,10 +231,26 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface SurveyverkstedRouteChildren {
+  SurveyverkstedProjectIdRoute: typeof SurveyverkstedProjectIdRoute
+  SurveyverkstedIndexRoute: typeof SurveyverkstedIndexRoute
+}
+
+const SurveyverkstedRouteChildren: SurveyverkstedRouteChildren = {
+  SurveyverkstedProjectIdRoute: SurveyverkstedProjectIdRoute,
+  SurveyverkstedIndexRoute: SurveyverkstedIndexRoute,
+}
+
+const SurveyverkstedRouteWithChildren = SurveyverkstedRoute._addFileChildren(
+  SurveyverkstedRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ExportRoute: ExportRoute,
   FeedbackRoute: FeedbackRoute,
+  SurveyPreviewRoute: SurveyPreviewRoute,
+  SurveyverkstedRoute: SurveyverkstedRouteWithChildren,
   ApiInternalIsAliveRoute: ApiInternalIsAliveRoute,
   ApiInternalIsReadyRoute: ApiInternalIsReadyRoute,
   ApiInternalMetricsRoute: ApiInternalMetricsRoute,
