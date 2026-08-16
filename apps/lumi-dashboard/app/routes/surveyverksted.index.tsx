@@ -23,9 +23,18 @@ import {
   fetchSurveyAuthoringProjectsServerFn,
   fetchTeamsServerFn,
 } from "~/server/actions";
+import { suggestSurveyId } from "~/utils/surveyDocument";
 import styles from "./surveyverksted.module.css";
 
 const searchSchema = z.object({ team: z.string().optional() });
+
+function formatProjectDate(value: string): string {
+  return new Intl.DateTimeFormat("nb-NO", {
+    day: "numeric",
+    month: "short",
+    timeZone: "Europe/Oslo",
+  }).format(new Date(value));
+}
 
 const initialDocument: SurveyDocumentV1 = {
   authoringSchemaVersion: 1,
@@ -65,6 +74,7 @@ function SurveyWorkshopIndex() {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [surveyId, setSurveyId] = useState("");
+  const [surveyIdTouched, setSurveyIdTouched] = useState(false);
 
   const teamsQuery = useQuery({
     queryKey: ["teams"],
@@ -193,17 +203,33 @@ function SurveyWorkshopIndex() {
                   label="Navn på utkastet"
                   value={name}
                   maxLength={120}
-                  onChange={(event) => setName(event.target.value)}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    if (!surveyIdTouched) {
+                      setSurveyId(suggestSurveyId(event.target.value));
+                    }
+                  }}
                   placeholder="For eksempel: Kvitteringsside høst 2026"
                 />
                 <TextField
                   label="Foreslått survey-ID"
-                  description="Dette er identiteten utvikleren senere tar stilling til i kode."
+                  description="Identiteten utvikleren senere tar stilling til i kode. Foreslås fra navnet."
                   value={surveyId}
                   maxLength={200}
-                  onChange={(event) => setSurveyId(event.target.value)}
+                  onChange={(event) => {
+                    setSurveyIdTouched(true);
+                    setSurveyId(event.target.value);
+                  }}
                   placeholder="min-app-kvittering-v1"
                 />
+                {surveyId.trim() &&
+                projectsQuery.data?.some(
+                  (project) => project.surveyId === surveyId.trim(),
+                ) ? (
+                  <Alert variant="warning" size="small">
+                    Et annet utkast i teamet bruker allerede denne survey-ID-en.
+                  </Alert>
+                ) : null}
                 {createMutation.isError ? (
                   <Alert variant="error">
                     Utkastet kunne ikke opprettes. Prøv igjen.
@@ -253,16 +279,21 @@ function SurveyWorkshopIndex() {
                           <Heading size="small" level="3">
                             {project.name}
                           </Heading>
-                          <BodyShort size="small" textColor="subtle">
+                          <BodyShort
+                            size="small"
+                            textColor="subtle"
+                            className={styles.projectId}
+                          >
                             {project.surveyId}
                           </BodyShort>
                         </div>
-                        <VStack gap="space-2" align="end">
-                          <BodyShort size="small">Åpne</BodyShort>
-                          <BodyShort size="small" textColor="subtle">
-                            v{project.draftVersion}
-                          </BodyShort>
-                        </VStack>
+                        <BodyShort
+                          size="small"
+                          textColor="subtle"
+                          className={styles.projectMeta}
+                        >
+                          Sist endret {formatProjectDate(project.updatedAt)}
+                        </BodyShort>
                       </Link>
                     </li>
                   ))}

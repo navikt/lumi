@@ -9,6 +9,7 @@ import type {
   SurveyAuthoringRevisionDetail,
   SurveyAuthoringRevisionSummary,
 } from "~/types/surveyAuthoring";
+import { findHandoffIssues } from "~/utils/surveyDocument";
 import {
   analyticalStructure,
   serializeSurveyDocumentJson,
@@ -108,6 +109,11 @@ export async function createMockSurveyRevision(input: {
     throw new Error("Draft changed since it was validated");
   }
   const document = validateSurveyDocumentV1(structuredClone(project.document));
+  // Mirror the API's release gate: drafts may be incomplete, revisions not.
+  const handoffIssue = findHandoffIssues(document)[0];
+  if (handoffIssue) {
+    throw new Error(handoffIssue.message);
+  }
   const projectRevisions = [...revisions.values()]
     .filter((revision) => revision.projectId === project.id)
     .sort((a, b) => b.revisionNumber - a.revisionNumber);
