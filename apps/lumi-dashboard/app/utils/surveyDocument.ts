@@ -330,13 +330,42 @@ export function duplicatePage(
   const index = document.pages.findIndex((page) => page.id === pageId);
   if (index === -1) return document;
   const original = document.pages[index];
+  // New ids for the copies, and a map so INTERNAL condition references
+  // follow their copied questions. External references and METADATA
+  // conditions are kept as-is.
+  const idByOriginal = new Map<string, string>();
+  for (const question of original.questions) {
+    idByOriginal.set(question.id, `${question.type}-${idFactory()}`);
+  }
+  type ConditionLeaf = Exclude<
+    VisibleIfConditionV1,
+    { any: unknown } | { all: unknown }
+  >;
+  const remapLeaf = (leaf: ConditionLeaf): ConditionLeaf => {
+    if (isMetadataCondition(leaf)) return leaf;
+    const mapped = idByOriginal.get(leaf.questionId);
+    return mapped ? { ...leaf, questionId: mapped } : leaf;
+  };
   const copy: SurveyPageV1 = {
     ...structuredClone(original),
     id: `side-${idFactory()}`,
-    questions: original.questions.map((question) => ({
-      ...structuredClone(question),
-      id: `${question.type}-${idFactory()}`,
-    })) as QuestionList,
+    questions: original.questions.map((question) => {
+      const cloned: SurveyQuestionV1 = {
+        ...structuredClone(question),
+        id: idByOriginal.get(question.id) ?? question.id,
+      };
+      const condition = cloned.visibleIf;
+      if (condition) {
+        if ("any" in condition) {
+          cloned.visibleIf = { any: condition.any.map(remapLeaf) };
+        } else if ("all" in condition) {
+          cloned.visibleIf = { all: condition.all.map(remapLeaf) };
+        } else {
+          cloned.visibleIf = remapLeaf(condition);
+        }
+      }
+      return cloned;
+    }) as QuestionList,
   };
   const pages = [...document.pages];
   pages.splice(index + 1, 0, copy);
@@ -413,12 +442,49 @@ export function updateOptionValue(
   optionIndex: number,
   value: string,
 ): SurveyDocumentV1 {
-  return updateChoiceOptions(document, pageId, questionId, (options) => {
-    if (optionIndex < 0 || optionIndex >= options.length) return null;
-    const next = [...options];
-    next[optionIndex] = { ...next[optionIndex], value };
-    return next;
-  });
+  let previousValue: string | undefined;
+  const updated = updateChoiceOptions(
+    document,
+    pageId,
+    questionId,
+    (options) => {
+      if (optionIndex < 0 || optionIndex >= options.length) return null;
+      previousValue = options[optionIndex].value;
+      const next = [...options];
+      next[optionIndex] = { ...next[optionIndex], value };
+      return next;
+    },
+  );
+  if (updated === document || previousValue === undefined) return updated;
+
+  // Follow the rename into DIRECT leaf conditions that reference it, so an
+  // explicit value edit does not silently break later visibility. Groups
+  // and METADATA conditions are never rewritten implicitly.
+  const migrated = previousValue;
+  return {
+    ...updated,
+    pages: updated.pages.map((page) => ({
+      ...page,
+      questions: page.questions.map((question) => {
+        const condition = question.visibleIf;
+        if (!condition || "any" in condition || "all" in condition) {
+          return question;
+        }
+        if (isMetadataCondition(condition)) return question;
+        if (
+          condition.questionId === questionId &&
+          condition.operator !== "EXISTS" &&
+          condition.value === migrated
+        ) {
+          return {
+            ...question,
+            visibleIf: { ...condition, value },
+          };
+        }
+        return question;
+      }) as SurveyPageV1["questions"],
+    })) as SurveyDocumentV1["pages"],
+  };
 }
 
 export function removeOption(
@@ -476,6 +542,26 @@ export function insertPageAt(
   return { ...document, pages: pages as PageList };
 }
 
+/**
+ * Operators that behave correctly against the referenced question type at
+ * runtime. multiChoice answers are arrays: strict EQ/NEQ never match, so
+ * only EXISTS and CONTAINS are offered.
+ */
+export function allowedConditionOperators(
+  type: SurveyQuestionV1["type"],
+): string[] {
+  switch (type) {
+    case "rating":
+      return ["EXISTS", "EQ", "NEQ", "GT", "LT"];
+    case "singleChoice":
+      return ["EXISTS", "EQ", "NEQ"];
+    case "multiChoice":
+      return ["EXISTS", "CONTAINS"];
+    default:
+      return ["EXISTS", "EQ", "NEQ", "CONTAINS"];
+  }
+}
+
 export interface HandoffIssue {
   questionId: string;
   message: string;
@@ -487,10 +573,107 @@ export interface HandoffIssue {
  * adds the semantic bar a handoff deserves. Deliberately NOT part of the
  * widget package — production consumers stay untouched.
  */
+function leafConditionIssues(
+  question: SurveyQuestionV1,
+  questionById: Map<string, SurveyQuestionV1>,
+): HandoffIssue[] {
+  const condition = question.visibleIf;
+  if (!condition) return [];
+  const leaves =
+    "any" in condition
+      ? condition.any
+      : "all" in condition
+        ? condition.all
+        : [condition];
+  const issues: HandoffIssue[] = [];
+  for (const leaf of leaves) {
+    if (isMetadataCondition(leaf)) {
+      if ("questionId" in leaf) {
+        issues.push({
+          questionId: question.id,
+          message:
+            "Betingelsen peker på metadata, men har også en spørsmålsreferanse — fjern «questionId» eller sett field til ANSWER.",
+        });
+      }
+      continue; // METADATA: no schema to validate against
+    }
+    if ("key" in leaf) {
+      // The stray key is ignored by runtime, but it reads as METADATA to a
+      // human — refuse to freeze the ambiguity. ANSWER semantics are still
+      // validated below.
+      issues.push({
+        questionId: question.id,
+        message:
+          "Betingelsen peker på et spørsmål, men har også en metadata-nøkkel — fjern «key» eller sett field til METADATA.",
+      });
+    }
+    if (!leaf.questionId) continue;
+    const referenced = questionById.get(leaf.questionId);
+    if (!referenced) continue; // Missing/forward refs are runtime-validated
+    if (!allowedConditionOperators(referenced.type).includes(leaf.operator)) {
+      issues.push({
+        questionId: question.id,
+        message:
+          "Betingelsen bruker et vilkår som ikke passer spørsmålet det peker på.",
+      });
+      continue;
+    }
+    if (leaf.operator === "EXISTS") continue;
+    if (
+      referenced.type === "singleChoice" ||
+      referenced.type === "multiChoice"
+    ) {
+      const known = referenced.options.some(
+        (option) => option.value === leaf.value,
+      );
+      if (!known) {
+        issues.push({
+          questionId: question.id,
+          message:
+            "Betingelsens verdi finnes ikke blant alternativene til spørsmålet det peker på.",
+        });
+      }
+    } else if (referenced.type === "rating") {
+      const scale = RATING_SCALES[referenced.variant ?? "emoji"] ?? [];
+      if (typeof leaf.value !== "number" || !scale.includes(leaf.value)) {
+        issues.push({
+          questionId: question.id,
+          message:
+            "Betingelsens verdi er utenfor skalaen til spørsmålet det peker på.",
+        });
+      }
+    } else if (typeof leaf.value !== "string") {
+      // Text answers compare strictly at runtime: 3 never matches "3".
+      issues.push({
+        questionId: question.id,
+        message:
+          "Betingelsens verdi må være tekst når den peker på et tekstspørsmål.",
+      });
+    } else if (leaf.value.trim().length === 0) {
+      // Blank text answers are stripped from runtime answer state, so a
+      // blank value gives EQ that never matches, NEQ that is true before
+      // any answer, and CONTAINS that matches everything.
+      issues.push({
+        questionId: question.id,
+        message:
+          "Betingelsens verdi kan ikke være tom når den peker på et tekstspørsmål.",
+      });
+    }
+  }
+  return issues;
+}
+
 export function findHandoffIssues(document: SurveyDocumentV1): HandoffIssue[] {
   const issues: HandoffIssue[] = [];
+  const questionById = new Map<string, SurveyQuestionV1>();
   for (const page of document.pages) {
     for (const question of page.questions) {
+      questionById.set(question.id, question);
+    }
+  }
+  for (const page of document.pages) {
+    for (const question of page.questions) {
+      issues.push(...leafConditionIssues(question, questionById));
       if (!question.prompt.trim()) {
         issues.push({
           questionId: question.id,
@@ -529,6 +712,104 @@ export function documentNeedsWideDock(document: SurveyDocumentV1): boolean {
       (question) => question.type === "rating" && question.variant === "nps",
     ),
   );
+}
+
+export type VisibleIfConditionV1 = NonNullable<SurveyQuestionV1["visibleIf"]>;
+
+/**
+ * Runtime (`evaluateVisibility`) and the API validator both discriminate
+ * the condition target on `field` ALONE — a stray `key` on an ANSWER leaf
+ * must never make the builder treat it as METADATA. Keep in sync with
+ * the widget package.
+ */
+export function isMetadataCondition<
+  T extends { field?: "ANSWER" | "METADATA" },
+>(leaf: T): leaf is Extract<T, { field: "METADATA" }> {
+  return leaf.field === "METADATA";
+}
+
+/** Sets or clears a question's visibility condition. */
+export function setQuestionVisibleIf(
+  document: SurveyDocumentV1,
+  pageId: string,
+  questionId: string,
+  condition: VisibleIfConditionV1 | undefined,
+): SurveyDocumentV1 {
+  return updateQuestion(document, pageId, questionId, (question) => {
+    if (condition === undefined) {
+      const { visibleIf: _removed, ...rest } = question;
+      return rest as SurveyQuestionV1;
+    }
+    return { ...question, visibleIf: condition };
+  });
+}
+
+export interface ReferenceableQuestion {
+  id: string;
+  prompt: string;
+  type: SurveyQuestionV1["type"];
+  pageNumber: number;
+  questionNumber: number;
+}
+
+/**
+ * Questions a visibleIf condition on `questionId` may reference: strictly
+ * earlier in flattened page order, mirroring the runtime validator's rule.
+ */
+export function listReferenceableQuestions(
+  document: SurveyDocumentV1,
+  questionId: string,
+): ReferenceableQuestion[] {
+  const earlier: ReferenceableQuestion[] = [];
+  for (const [pageIndex, page] of document.pages.entries()) {
+    for (const [questionIndex, question] of page.questions.entries()) {
+      if (question.id === questionId) return earlier;
+      earlier.push({
+        id: question.id,
+        prompt: question.prompt,
+        type: question.type,
+        pageNumber: pageIndex + 1,
+        questionNumber: questionIndex + 1,
+      });
+    }
+  }
+  return [];
+}
+
+export interface ConditionValueSuggestion {
+  value: string | number;
+  label: string;
+}
+
+const RATING_SCALES: Record<string, number[]> = {
+  emoji: [1, 2, 3, 4, 5],
+  stars: [1, 2, 3, 4, 5],
+  thumbs: [1, 2],
+  nps: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+};
+
+/** Value suggestions for a condition referencing the given question. */
+export function conditionValueSuggestions(
+  document: SurveyDocumentV1,
+  referencedQuestionId: string,
+): ConditionValueSuggestion[] {
+  for (const page of document.pages) {
+    for (const question of page.questions) {
+      if (question.id !== referencedQuestionId) continue;
+      if (question.type === "singleChoice" || question.type === "multiChoice") {
+        return question.options.map((option) => ({
+          value: option.value,
+          label: option.label,
+        }));
+      }
+      if (question.type === "rating") {
+        const scale = RATING_SCALES[question.variant ?? "emoji"] ?? [];
+        return scale.map((value) => ({ value, label: String(value) }));
+      }
+      return [];
+    }
+  }
+  return [];
 }
 
 export interface QuestionLocation {

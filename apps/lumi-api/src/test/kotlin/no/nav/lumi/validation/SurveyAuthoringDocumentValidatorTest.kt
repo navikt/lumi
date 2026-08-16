@@ -169,7 +169,150 @@ class SurveyAuthoringDocumentValidatorTest : FunSpec({
             )
         }.errorMessage shouldBe "Option 0 on question 'choice' needs a value before it can be shared"
     }
+
+    test("release gate rejects condition operators that cannot match the referenced type") {
+        val document = conditionDocument(
+            referencedType = "multiChoice",
+            condition = """{ "questionId": "ref", "operator": "EQ", "value": "en" }""",
+        )
+
+        SurveyAuthoringDocumentValidator.validate(document, "survey-v1")
+
+        shouldThrow<ApiErrorException.BadRequestException> {
+            SurveyAuthoringDocumentValidator.validate(document, "survey-v1", releaseGate = true)
+        }.errorMessage shouldBe
+            "Question 'gated' visibleIf uses operator 'EQ' that does not fit question 'ref'"
+    }
+
+    test("release gate rejects condition values outside the referenced domain") {
+        val ratingOutOfScale = conditionDocument(
+            referencedType = "rating",
+            condition = """{ "questionId": "ref", "operator": "EQ", "value": 99 }""",
+        )
+        shouldThrow<ApiErrorException.BadRequestException> {
+            SurveyAuthoringDocumentValidator.validate(ratingOutOfScale, "survey-v1", releaseGate = true)
+        }.errorMessage shouldBe
+            "Question 'gated' visibleIf has a value outside question 'ref' scale"
+
+        val unknownOption = conditionDocument(
+            referencedType = "singleChoice",
+            condition = """{ "questionId": "ref", "operator": "EQ", "value": "finnes-ikke" }""",
+        )
+        shouldThrow<ApiErrorException.BadRequestException> {
+            SurveyAuthoringDocumentValidator.validate(unknownOption, "survey-v1", releaseGate = true)
+        }.errorMessage shouldBe
+            "Question 'gated' visibleIf has a value outside question 'ref' options"
+    }
+
+    test("release gate requires string values against text references") {
+        val numericAgainstText = conditionDocument(
+            referencedType = "text",
+            condition = """{ "questionId": "ref", "operator": "EQ", "value": 3 }""",
+        )
+        SurveyAuthoringDocumentValidator.validate(numericAgainstText, "survey-v1")
+        shouldThrow<ApiErrorException.BadRequestException> {
+            SurveyAuthoringDocumentValidator.validate(numericAgainstText, "survey-v1", releaseGate = true)
+        }.errorMessage shouldBe
+            "Question 'gated' visibleIf needs a string value for text question 'ref'"
+
+        val stringAgainstText = conditionDocument(
+            referencedType = "text",
+            condition = """{ "questionId": "ref", "operator": "EQ", "value": "3" }""",
+        )
+        SurveyAuthoringDocumentValidator.validate(stringAgainstText, "survey-v1", releaseGate = true)
+    }
+
+    test("release gate rejects contradictory condition targets") {
+        // Runtime discriminates on `field` alone, so a stray key/questionId
+        // is ignored there — but it reads as the other target to a human.
+        // Drafts stay lenient; freezing the ambiguity is refused.
+        val answerWithKey = conditionDocument(
+            referencedType = "rating",
+            condition = """{ "field": "ANSWER", "questionId": "ref", "key": "ekstra", "operator": "EXISTS" }""",
+        )
+        SurveyAuthoringDocumentValidator.validate(answerWithKey, "survey-v1")
+        shouldThrow<ApiErrorException.BadRequestException> {
+            SurveyAuthoringDocumentValidator.validate(answerWithKey, "survey-v1", releaseGate = true)
+        }.errorMessage shouldBe
+            "Question 'gated' ANSWER visibleIf must not carry a metadata key"
+
+        val metadataWithQuestionId = conditionDocument(
+            referencedType = "rating",
+            condition = """{ "field": "METADATA", "key": "flow", "questionId": "ref", "operator": "EXISTS" }""",
+        )
+        SurveyAuthoringDocumentValidator.validate(metadataWithQuestionId, "survey-v1")
+        shouldThrow<ApiErrorException.BadRequestException> {
+            SurveyAuthoringDocumentValidator.validate(metadataWithQuestionId, "survey-v1", releaseGate = true)
+        }.errorMessage shouldBe
+            "Question 'gated' METADATA visibleIf must not reference a question"
+    }
+
+    test("release gate rejects blank string values against text references") {
+        // Blank text answers are stripped from runtime answer state, so a
+        // blank value makes EQ unmatchable, NEQ true before any answer and
+        // CONTAINS a match-everything condition.
+        listOf("", "   ").forEach { blank ->
+            val document = conditionDocument(
+                referencedType = "text",
+                condition = """{ "questionId": "ref", "operator": "CONTAINS", "value": "$blank" }""",
+            )
+            SurveyAuthoringDocumentValidator.validate(document, "survey-v1")
+            shouldThrow<ApiErrorException.BadRequestException> {
+                SurveyAuthoringDocumentValidator.validate(document, "survey-v1", releaseGate = true)
+            }.errorMessage shouldBe
+                "Question 'gated' visibleIf needs a non-blank string value for text question 'ref'"
+        }
+    }
+
+    test("release gate accepts semantically valid conditions") {
+        val contains = conditionDocument(
+            referencedType = "multiChoice",
+            condition = """{ "questionId": "ref", "operator": "CONTAINS", "value": "en" }""",
+        )
+        SurveyAuthoringDocumentValidator.validate(contains, "survey-v1", releaseGate = true)
+
+        val ratingEq = conditionDocument(
+            referencedType = "rating",
+            condition = """{ "questionId": "ref", "operator": "EQ", "value": 3 }""",
+        )
+        SurveyAuthoringDocumentValidator.validate(ratingEq, "survey-v1", releaseGate = true)
+    }
 })
+
+private fun conditionDocument(referencedType: String, condition: String): JsonObject {
+    val referenced = when (referencedType) {
+        "rating" -> """{ "id": "ref", "type": "rating", "prompt": "Vurder" }"""
+        "singleChoice", "multiChoice" -> """{
+            "id": "ref",
+            "type": "$referencedType",
+            "prompt": "Velg",
+            "options": [
+                { "value": "en", "label": "En" },
+                { "value": "to", "label": "To" }
+            ]
+        }"""
+        else -> """{ "id": "ref", "type": "text", "prompt": "Skriv" }"""
+    }
+    return Json.parseToJsonElement(
+        """
+        {
+          "authoringSchemaVersion": 1,
+          "pages": [{
+            "id": "page",
+            "questions": [
+              $referenced,
+              {
+                "id": "gated",
+                "type": "text",
+                "prompt": "Utdyp",
+                "visibleIf": $condition
+              }
+            ]
+          }]
+        }
+        """.trimIndent(),
+    ).jsonObject
+}
 
 private fun validDocument(): JsonObject = Json.parseToJsonElement(
     """
