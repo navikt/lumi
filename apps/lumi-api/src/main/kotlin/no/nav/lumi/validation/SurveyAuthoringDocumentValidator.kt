@@ -39,6 +39,24 @@ object SurveyAuthoringDocumentValidator {
     private val conditionOperators = setOf("EQ", "NEQ", "GT", "LT", "CONTAINS", "EXISTS")
 
     /**
+     * Operators that can actually match the referenced answer type at
+     * runtime. multiChoice answers are arrays: strict EQ/NEQ never match,
+     * so only EXISTS and CONTAINS are meaningful.
+     */
+    private val conditionOperatorsByType = mapOf(
+        "rating" to setOf("EXISTS", "EQ", "NEQ", "GT", "LT"),
+        "singleChoice" to setOf("EXISTS", "EQ", "NEQ"),
+        "multiChoice" to setOf("EXISTS", "CONTAINS"),
+        "text" to setOf("EXISTS", "EQ", "NEQ", "CONTAINS"),
+    )
+
+    private data class ConditionTargetInfo(
+        val type: String,
+        val optionIds: List<String> = emptyList(),
+        val scale: IntRange? = null,
+    )
+
+    /**
      * Validates the authoring document structure. With [releaseGate] the
      * semantic bar for immutable revisions applies too: prompts, option
      * labels and option values must be non-blank. Drafts stay lenient.
@@ -65,6 +83,7 @@ object SurveyAuthoringDocumentValidator {
         val pageIds = mutableSetOf<String>()
         val questionIds = mutableSetOf<String>()
         val previousQuestionIds = mutableSetOf<String>()
+        val conditionTargets = mutableMapOf<String, ConditionTargetInfo>()
         val fields = mutableListOf<FieldDefinition>()
 
         pages.forEachIndexed { pageIndex, pageElement ->
@@ -94,11 +113,11 @@ object SurveyAuthoringDocumentValidator {
                     invalid("Question '$questionId' uses legacy logic")
                 }
                 question["visibleIf"]?.let {
-                    validateVisibleIf(it, questionId, previousQuestionIds)
+                    validateVisibleIf(it, questionId, previousQuestionIds, conditionTargets, releaseGate)
                 }
 
                 val type = requireString(question, "type", "Question '$questionId'")
-                fields += when (type) {
+                val definition = when (type) {
                     "rating" -> validateRating(question, questionId)
                     "text" -> validateText(question, questionId)
                     "singleChoice" ->
@@ -106,6 +125,22 @@ object SurveyAuthoringDocumentValidator {
                     "multiChoice" ->
                         validateChoice(question, questionId, FieldType.MULTI_CHOICE, releaseGate)
                     else -> invalid("Question '$questionId' has unsupported type '$type'")
+                }
+                fields += definition
+                conditionTargets[questionId] = when (type) {
+                    "rating" -> {
+                        val variantName =
+                            optionalString(question, "variant", "Rating question '$questionId'") ?: "emoji"
+                        val scale = when (variantName) {
+                            "thumbs" -> 1..2
+                            "nps" -> 0..10
+                            else -> 1..5
+                        }
+                        ConditionTargetInfo(type, scale = scale)
+                    }
+                    "singleChoice", "multiChoice" ->
+                        ConditionTargetInfo(type, optionIds = definition.optionIds.orEmpty())
+                    else -> ConditionTargetInfo(type)
                 }
                 previousQuestionIds += questionId
             }
@@ -208,13 +243,15 @@ object SurveyAuthoringDocumentValidator {
         element: JsonElement,
         questionId: String,
         previousQuestionIds: Set<String>,
+        conditionTargets: Map<String, ConditionTargetInfo>,
+        releaseGate: Boolean,
     ) {
         val condition = element as? JsonObject
             ?: invalid("Question '$questionId' has an invalid visibleIf")
         val groupKeys = listOf("any", "all").filter(condition::containsKey)
         if (groupKeys.size > 1) invalid("Question '$questionId' visibleIf must use exactly one group")
         if (groupKeys.isEmpty()) {
-            validateConditionLeaf(condition, questionId, previousQuestionIds)
+            validateConditionLeaf(condition, questionId, previousQuestionIds, conditionTargets, releaseGate)
             return
         }
         val conditions = condition[groupKeys.single()] as? JsonArray
@@ -226,7 +263,7 @@ object SurveyAuthoringDocumentValidator {
             if (leaf.containsKey("any") || leaf.containsKey("all")) {
                 invalid("Question '$questionId' has a nested visibleIf group")
             }
-            validateConditionLeaf(leaf, questionId, previousQuestionIds)
+            validateConditionLeaf(leaf, questionId, previousQuestionIds, conditionTargets, releaseGate)
         }
     }
 
@@ -234,6 +271,8 @@ object SurveyAuthoringDocumentValidator {
         leaf: JsonObject,
         questionId: String,
         previousQuestionIds: Set<String>,
+        conditionTargets: Map<String, ConditionTargetInfo>,
+        releaseGate: Boolean,
     ) {
         val field = optionalString(leaf, "field", "Question '$questionId' visibleIf") ?: "ANSWER"
         if (field !in setOf("ANSWER", "METADATA")) {
@@ -253,10 +292,77 @@ object SurveyAuthoringDocumentValidator {
         }
         if (field == "METADATA") {
             requireNonBlankString(leaf, "key", "Question '$questionId' METADATA visibleIf")
+            // Runtime ignores a stray questionId here, but it reads as an
+            // answer reference to a human — refuse to freeze the ambiguity.
+            if (releaseGate && leaf.containsKey("questionId")) {
+                invalid("Question '$questionId' METADATA visibleIf must not reference a question")
+            }
         } else {
+            if (releaseGate && leaf.containsKey("key")) {
+                invalid("Question '$questionId' ANSWER visibleIf must not carry a metadata key")
+            }
             val referencedId = requireNonBlankString(leaf, "questionId", "Question '$questionId' ANSWER visibleIf")
             if (referencedId !in previousQuestionIds) {
                 invalid("Question '$questionId' visibleIf may only reference an earlier question")
+            }
+            if (releaseGate) {
+                validateConditionSemantics(leaf, questionId, referencedId, operator, conditionTargets)
+            }
+        }
+    }
+
+    /**
+     * Release-gate semantics: the operator must be able to match the
+     * referenced answer type, and values must lie within the referenced
+     * question's domain. Mirrors the dashboard's handoff validation.
+     */
+    private fun validateConditionSemantics(
+        leaf: JsonObject,
+        questionId: String,
+        referencedId: String,
+        operator: String,
+        conditionTargets: Map<String, ConditionTargetInfo>,
+    ) {
+        val target = conditionTargets[referencedId] ?: return
+        val allowed = conditionOperatorsByType[target.type] ?: conditionOperators
+        if (operator !in allowed) {
+            invalid(
+                "Question '$questionId' visibleIf uses operator '$operator' that does not fit question '$referencedId'",
+            )
+        }
+        if (operator == "EXISTS") return
+        val primitive = leaf["value"] as? JsonPrimitive ?: return
+        when (target.type) {
+            "singleChoice", "multiChoice" -> {
+                val stringValue = primitive.takeIf { it.isString }?.content
+                if (stringValue == null || stringValue !in target.optionIds) {
+                    invalid(
+                        "Question '$questionId' visibleIf has a value outside question '$referencedId' options",
+                    )
+                }
+            }
+            "rating" -> {
+                val number = primitive.intOrNull
+                if (number == null || target.scale?.contains(number) != true) {
+                    invalid(
+                        "Question '$questionId' visibleIf has a value outside question '$referencedId' scale",
+                    )
+                }
+            }
+            "text" -> {
+                // Text answers compare strictly at runtime: 3 never matches "3".
+                if (!primitive.isString) {
+                    invalid(
+                        "Question '$questionId' visibleIf needs a string value for text question '$referencedId'",
+                    )
+                }
+                // Blank text answers never reach runtime answer state, so a
+                // blank value makes the condition functionally misleading.
+                if (primitive.isString && primitive.content.isBlank()) {
+                    invalid(
+                        "Question '$questionId' visibleIf needs a non-blank string value for text question '$referencedId'",
+                    )
+                }
             }
         }
     }
