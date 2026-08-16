@@ -58,6 +58,14 @@ export function detectDeviceType(viewportWidth: number): DeviceType {
   return classifyByViewport(viewportWidth);
 }
 
+/**
+ * Viewport-only classification, for simulated viewports in embedded
+ * previews where the real UA must not leak through.
+ */
+export function classifyDeviceTypeByViewport(width: number): DeviceType {
+  return classifyByViewport(width);
+}
+
 function classifyByViewport(width: number): DeviceType {
   if (width < 768) return "mobile";
   if (width < 1024) return "tablet";

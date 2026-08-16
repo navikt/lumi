@@ -168,6 +168,7 @@ export const LumiSurveyDock = ({
   // Auto-collect system context and merge with user-provided context
   const enrichedContext = useEnrichedContext(context, {
     collectLocation: config.collectLocation,
+    simulatedViewport: config.simulatedViewport,
   });
   const visibilityMetadata = useMemo(
     () => getVisibilityMetadata(enrichedContext),
@@ -202,6 +203,7 @@ export const LumiSurveyDock = ({
     answers,
     metadata: visibilityMetadata,
     forceStepMode,
+    initialPageId: config.initialPageId,
     autoStepMode:
       source === "document-v1" &&
       config.questionLayout === "auto" &&
@@ -507,15 +509,21 @@ export const LumiSurveyDock = ({
 
   const openWidthRem = isNpsDock ? 32 : 24;
 
+  const openWidth = config.simulatedViewport
+    ? `${Math.min(
+        openWidthRem * 16,
+        config.simulatedViewport.width - config.offset * 2,
+      )}px`
+    : `min(${openWidthRem}rem, calc(100vw - ${config.offset * 2}px))`;
   const containerStyle: React.CSSProperties = dismissed
     ? baseContainerStyle
     : {
         ...baseContainerStyle,
-        width: `min(${openWidthRem}rem, calc(100vw - ${config.offset * 2}px))`,
+        width: openWidth,
       };
 
   const panelStyle: React.CSSProperties = {
-    maxHeight: "calc(100vh - 2rem)",
+    maxHeight: config.panelMaxHeight,
     overflowY: "auto",
   };
 

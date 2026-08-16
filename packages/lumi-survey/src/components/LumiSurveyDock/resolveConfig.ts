@@ -37,6 +37,7 @@ export interface ResolvedConfig {
   panelClassName?: string;
   panelBackground?: LumiSurveyStyle["panelBackground"];
   panelBorderColor?: LumiSurveyStyle["panelBorderColor"];
+  panelMaxHeight: string;
 
   // Behavior
   initialOpen: boolean;
@@ -49,6 +50,8 @@ export interface ResolvedConfig {
   collectLocation: boolean;
   storageStrategy: "consent" | "localStorage" | "none";
   showProgress: boolean;
+  initialPageId?: string;
+  simulatedViewport?: { width: number; height: number };
 
   // Intro
   introTitle?: string;
@@ -94,6 +97,7 @@ export function resolveConfig(
     panelClassName: style?.panelClassName,
     panelBackground: style?.panelBackground ?? "default",
     panelBorderColor: style?.panelBorderColor ?? "neutral-subtle",
+    panelMaxHeight: style?.panelMaxHeight ?? "calc(100vh - 2rem)",
 
     // Behavior
     initialOpen: behavior?.initialOpen ?? true,
@@ -107,6 +111,8 @@ export function resolveConfig(
     collectLocation: behavior?.collectLocation ?? false,
     storageStrategy: behavior?.storageStrategy ?? "consent",
     showProgress: behavior?.showProgress ?? false,
+    initialPageId: behavior?.initialPageId,
+    simulatedViewport: behavior?.simulatedViewport,
 
     // Intro
     introTitle: intro?.title,

@@ -21,6 +21,12 @@ interface UsePageNavigationOptions {
   metadata?: Record<string, unknown>;
   forceStepMode?: boolean;
   autoStepMode?: boolean;
+  /**
+   * Start on the page with this id when it exists and is visible.
+   * Falls back to the first visible page. Intended for embedded previews
+   * that mirror a specific authored page.
+   */
+  initialPageId?: string;
   onStepChange?: (visibleStepIndex: number, totalVisibleSteps: number) => void;
 }
 
@@ -48,18 +54,27 @@ export function usePageNavigation({
   metadata,
   forceStepMode = false,
   autoStepMode = false,
+  initialPageId,
   onStepChange,
 }: UsePageNavigationOptions): UsePageNavigationReturn {
   const hasBranching = useMemo(() => surveyHasConditionalPages(pages), [pages]);
   const isStepMode = forceStepMode || autoStepMode;
-  const firstVisiblePage = useCallback(
-    () => findNextVisiblePageIndex(pages, answers, metadata, 0),
-    [answers, metadata, pages],
-  );
+  const resolveInitialStep = useCallback(() => {
+    if (initialPageId !== undefined) {
+      const requested = pages.findIndex((page) => page.id === initialPageId);
+      if (
+        requested !== -1 &&
+        isPageVisible(pages[requested], answers, metadata)
+      ) {
+        return requested;
+      }
+    }
+    return findNextVisiblePageIndex(pages, answers, metadata, 0);
+  }, [answers, initialPageId, metadata, pages]);
 
-  const [currentStep, setCurrentStep] = useState(firstVisiblePage);
+  const [currentStep, setCurrentStep] = useState(resolveInitialStep);
   const [visitedSteps, setVisitedSteps] = useState<number[]>(() => {
-    const first = firstVisiblePage();
+    const first = resolveInitialStep();
     return first === -1 ? [] : [first];
   });
 
@@ -101,11 +116,11 @@ export function usePageNavigation({
     if (previousPageDefinitionKeyRef.current === pageDefinitionKey) return;
     previousPageDefinitionKeyRef.current = pageDefinitionKey;
     previousStepRef.current = null;
-    const first = firstVisiblePage();
+    const first = resolveInitialStep();
     setCurrentStep(first);
     setVisitedSteps(first === -1 ? [] : [first]);
     setDisplayedTotal(reachablePages);
-  }, [firstVisiblePage, pageDefinitionKey, reachablePages]);
+  }, [pageDefinitionKey, reachablePages, resolveInitialStep]);
 
   const onStepChangeRef = useRef(onStepChange);
   onStepChangeRef.current = onStepChange;
@@ -148,11 +163,11 @@ export function usePageNavigation({
   }, [answers, metadata, pages, visitedSteps]);
 
   const resetNavigation = useCallback(() => {
-    const first = findNextVisiblePageIndex(pages, answers, metadata, 0);
+    const first = resolveInitialStep();
     setCurrentStep(first);
     setVisitedSteps(first === -1 ? [] : [first]);
     setDisplayedTotal(reachablePagesRef.current);
-  }, [answers, metadata, pages]);
+  }, [resolveInitialStep]);
 
   useEffect(() => {
     if (!isStepMode) return;

@@ -1107,4 +1107,159 @@ describe("LumiSurveyDock", () => {
       /kunne ikke sende tilbakemeldingen/i,
     );
   });
+
+  describe("embedded preview options", () => {
+    const pagedDocument: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      pages: [
+        {
+          id: "forste",
+          title: "Første side",
+          questions: [
+            { id: "start-rating", type: "rating", prompt: "Hvordan gikk det?" },
+          ],
+        },
+        {
+          id: "andre",
+          title: "Andre side",
+          questions: [
+            { id: "kommentar", type: "text", prompt: "Fortell oss mer" },
+          ],
+        },
+      ],
+    };
+
+    it("starts on the page given by behavior.initialPageId", async () => {
+      renderDock({
+        survey: pagedDocument,
+        behavior: { storageStrategy: "none", initialPageId: "andre" },
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: /andre side/i }),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.queryByRole("heading", { name: /første side/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("sizes the dock from behavior.simulatedViewport instead of the real window", async () => {
+      const { container } = render(
+        <LumiSurveyDock
+          surveyId="dock-feedback"
+          survey={pagedDocument}
+          transport={{ submit: vi.fn().mockResolvedValue(undefined) }}
+          behavior={{
+            initialOpen: true,
+            storageStrategy: "none",
+            simulatedViewport: { width: 360, height: 640 },
+          }}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: /første side/i }),
+        ).toBeInTheDocument();
+      });
+      const aside = container.querySelector(
+        'aside[aria-label="Tilbakemeldingspanel"]',
+      ) as HTMLElement;
+      expect(aside.style.width).toBe("312px");
+    });
+
+    it("evaluates METADATA deviceType from the simulated viewport", async () => {
+      const gatedDocument: SurveyDocumentV1 = {
+        authoringSchemaVersion: 1,
+        pages: [
+          {
+            id: "gated",
+            questions: [
+              {
+                id: "mobil-rating",
+                type: "rating",
+                prompt: "Mobilspørsmål",
+                visibleIf: {
+                  field: "METADATA",
+                  key: "deviceType",
+                  operator: "EQ",
+                  value: "mobile",
+                },
+              },
+              { id: "alltid", type: "text", prompt: "Alltid synlig" },
+            ],
+          },
+        ],
+      };
+
+      const transport = { submit: vi.fn().mockResolvedValue(undefined) };
+      const { rerender } = render(
+        <LumiSurveyDock
+          surveyId="dock-feedback"
+          survey={gatedDocument}
+          transport={transport}
+          behavior={{
+            initialOpen: true,
+            storageStrategy: "none",
+            simulatedViewport: { width: 360, height: 640 },
+          }}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: /Mobilspørsmål/ }),
+        ).toBeInTheDocument();
+      });
+
+      // Crossing the breakpoint on rerender must re-evaluate the gate.
+      rerender(
+        <LumiSurveyDock
+          surveyId="dock-feedback"
+          survey={gatedDocument}
+          transport={transport}
+          behavior={{
+            initialOpen: true,
+            storageStrategy: "none",
+            simulatedViewport: { width: 1280, height: 800 },
+          }}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.queryByRole("heading", { name: /Mobilspørsmål/ }),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it("applies style.panelMaxHeight to the open panel", async () => {
+      const { container } = render(
+        <LumiSurveyDock
+          surveyId="dock-feedback"
+          survey={pagedDocument}
+          transport={{ submit: vi.fn().mockResolvedValue(undefined) }}
+          behavior={{ initialOpen: true, storageStrategy: "none" }}
+          style={{ panelMaxHeight: "420px" }}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: /første side/i }),
+        ).toBeInTheDocument();
+      });
+      const aside = container.querySelector(
+        'aside[aria-label="Tilbakemeldingspanel"]',
+      );
+      expect(aside).not.toBeNull();
+      const panel = (aside as HTMLElement).querySelector(
+        '[style*="max-height"]',
+      );
+      expect(panel).not.toBeNull();
+      expect((panel as HTMLElement).style.maxHeight).toBe("420px");
+    });
+  });
 });
