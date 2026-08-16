@@ -39,16 +39,22 @@ import {
   isDraftConflictError,
   isRetryableSaveError,
 } from "~/utils/surveyAuthoringErrors";
+import type {
+  ReferenceableQuestion,
+  VisibleIfConditionV1,
+} from "~/utils/surveyDocument";
 import {
   addOption,
   addPage,
   addQuestion,
   changeQuestionType,
+  conditionValueSuggestions,
   duplicatePage,
   duplicateQuestion,
   findHandoffIssues,
   insertPageAt,
   insertQuestionAt,
+  listReferenceableQuestions,
   locateQuestion,
   type MoveDirection,
   moveOption,
@@ -60,6 +66,7 @@ import {
   removeOption,
   removePage,
   removeQuestion,
+  setQuestionVisibleIf,
   updateOptionLabel,
   updateOptionValue,
 } from "~/utils/surveyDocument";
@@ -674,6 +681,37 @@ function SurveyWorkshopEditor({
     setSettingsOpen(true);
   }, []);
 
+  // Computed per document/expansion change so an open condition editor
+  // always sees the CURRENT types and prompts of earlier questions — a
+  // stable callback here would let the CanvasQuestion memo freeze stale
+  // reference data. Collapsed cards are absent and stay undefined.
+  const expandedReferenceable = useMemo(() => {
+    const map = new Map<string, ReferenceableQuestion[]>();
+    for (const id of expandedIds) {
+      map.set(id, listReferenceableQuestions(draft.document, id));
+    }
+    return map;
+  }, [draft.document, expandedIds]);
+
+  const suggestionsFor = useCallback(
+    (referencedId: string) =>
+      conditionValueSuggestions(draftRef.current.document, referencedId),
+    [],
+  );
+
+  const handleChangeVisibleIf = useCallback(
+    (questionId: string, condition: VisibleIfConditionV1 | undefined) =>
+      updateDocument(
+        setQuestionVisibleIf(
+          draftRef.current.document,
+          selectedPageRef.current,
+          questionId,
+          condition,
+        ),
+      ),
+    [updateDocument],
+  );
+
   const optionHandlersFor = useCallback(
     (questionId: string) => ({
       onAdd: () =>
@@ -883,6 +921,9 @@ function SurveyWorkshopEditor({
             onMoveQuestion={handleMoveQuestion}
             onReorderQuestion={handleReorderQuestion}
             optionHandlersFor={optionHandlersFor}
+            referenceableByQuestion={expandedReferenceable}
+            suggestionsFor={suggestionsFor}
+            onChangeVisibleIf={handleChangeVisibleIf}
             onAddQuestion={handleAddQuestion}
           />
         </section>

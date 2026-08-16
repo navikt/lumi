@@ -1,6 +1,7 @@
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  BranchingIcon,
   FilesIcon,
   MenuElipsisVerticalIcon,
   PlusIcon,
@@ -96,6 +97,9 @@ const RailItem = memo(function RailItem({
   onDelete: (pageId: string) => void;
 }) {
   const sortable = useSortableItem(page.id);
+  const conditionalCount = page.questions.filter(
+    (question) => question.visibleIf,
+  ).length;
 
   return (
     <li
@@ -119,10 +123,22 @@ const RailItem = memo(function RailItem({
           <BodyShort as="span" size="small" weight="semibold">
             {page.title?.trim() || "Side uten tittel"}
           </BodyShort>
+          {conditionalCount > 0 ? (
+            <span className={styles.srOnly}>
+              {conditionalCount === 1
+                ? "1 betinget spørsmål"
+                : `${conditionalCount} betingede spørsmål`}
+            </span>
+          ) : null}
           <span className={styles.railIcons} aria-hidden>
             {page.questions.map((question) => {
               const meta = questionTypeMeta(question.type);
-              return <meta.Icon key={question.id} aria-hidden />;
+              return (
+                <span key={question.id} className={styles.railIconPair}>
+                  <meta.Icon aria-hidden />
+                  {question.visibleIf ? <BranchingIcon aria-hidden /> : null}
+                </span>
+              );
             })}
           </span>
         </span>

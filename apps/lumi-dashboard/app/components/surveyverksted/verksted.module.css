@@ -274,6 +274,62 @@
   gap: var(--ax-space-2);
 }
 
+/* ---------- Condition editor ---------- */
+
+.conditionSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-8);
+  padding: var(--ax-space-12);
+  background: var(--ax-bg-neutral-soft);
+  border: 1px solid var(--ax-border-neutral-subtle);
+  border-radius: var(--ax-radius-8);
+}
+
+.conditionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--ax-space-8);
+}
+
+.conditionRow {
+  display: grid;
+  grid-template-columns: minmax(12rem, 2fr) minmax(8rem, 1fr) minmax(8rem, 1fr);
+  gap: var(--ax-space-8);
+  /* Top-aligned: a field error must grow its own column downward without
+     dragging the neighbouring fields with it. */
+  align-items: start;
+}
+
+.conditionAddWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ax-space-8);
+}
+
+.conditionHint {
+  color: var(--ax-text-neutral-subtle);
+}
+
+.cardConditional {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ax-space-4);
+  color: var(--ax-text-neutral-subtle);
+  white-space: nowrap;
+}
+
+.cardConditional svg {
+  font-size: 1rem;
+}
+
+@media (max-width: 60rem) {
+  .conditionRow {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---------- Shared utilities ---------- */
 
 .eyebrow {
@@ -535,6 +591,24 @@
   gap: var(--ax-space-4);
   color: var(--ax-text-neutral-subtle);
   font-size: 0.95rem;
+}
+
+.railIconPair {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.railIconPair svg + svg {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.cardTriggerMeta {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--ax-space-2);
+  align-items: flex-end;
 }
 
 .railMenu {

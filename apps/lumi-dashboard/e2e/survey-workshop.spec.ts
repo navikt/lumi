@@ -247,7 +247,7 @@ test("undo restores the deletion without losing later edits, and sharing surface
   await page.goBack();
   await expect(page).toHaveURL(/\/surveyverksted\?team=/);
   await expect(
-    page.getByRole("link", { name: /Nytt navn uten blur/ }),
+    page.getByRole("link", { name: /Nytt navn uten blur/ }).first(),
   ).toBeVisible();
 });
 
@@ -363,4 +363,74 @@ test("a flush inherits a failed save instead of repeating it", async ({
   await expect(page).toHaveURL(/\/surveyverksted\/[0-9a-f-]+/);
   await expect(page.getByText(/endret i en annen fane/)).toBeVisible();
   await page.unroute("**/*");
+});
+
+test("a visibility condition set in the editor gates the question live in the stage", async ({
+  page,
+}) => {
+  await page.goto("/surveyverksted");
+  await page.getByLabel("Navn på utkastet").fill("Betinget-utkast");
+  await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
+
+  const stage = page.getByLabel("Forhåndsvisning");
+  await expect(
+    stage.getByRole("textbox", { name: /Hva kan vi gjøre bedre/ }),
+  ).toBeVisible();
+
+  // Both seeded questions are expanded; add a condition on the follow-up.
+  await page
+    .getByRole("button", { name: /Vis bare hvis/ })
+    .last()
+    .click();
+  await expect(page.getByLabel("Spørsmål", { exact: true })).toHaveValue(
+    "rating",
+  );
+  await expect(page.getByLabel("Vilkår")).toHaveValue("EXISTS");
+
+  // The stage now hides the follow-up until the rating is answered.
+  await expect(
+    stage.getByRole("textbox", { name: /Hva kan vi gjøre bedre/ }),
+  ).not.toBeVisible({ timeout: 10000 });
+  await stage.getByRole("radio").nth(2).click();
+  await expect(
+    stage.getByRole("textbox", { name: /Hva kan vi gjøre bedre/ }),
+  ).toBeVisible();
+
+  await expect(page.locator('[data-state="saved"]')).toBeVisible();
+  await expectNoAxeViolations(page);
+
+  // Removing the condition brings the question back unconditionally.
+  await page.getByRole("button", { name: "Fjern betingelsen" }).click();
+  await expect(
+    stage.getByRole("textbox", { name: /Hva kan vi gjøre bedre/ }),
+  ).toBeVisible({ timeout: 10000 });
+
+  // multiChoice references only offer operators that can match arrays,
+  // and CONTAINS gates live in the stage.
+  await page.getByRole("button", { name: "Vurdering" }).click();
+  await page.getByRole("menuitem", { name: /Flervalg/ }).click();
+  await page
+    .getByRole("button", { name: /Vis bare hvis/ })
+    .last()
+    .click();
+  await expect(page.getByRole("option", { name: "inneholder" })).toBeAttached();
+  await expect(page.getByRole("option", { name: "er lik" })).toHaveCount(0);
+  await page.getByLabel("Vilkår").selectOption("CONTAINS");
+  await expect(
+    page.getByLabel("Verdi", { exact: true }).locator("option:checked"),
+  ).toHaveText("Alternativ 1");
+  await expect(
+    stage.getByRole("textbox", { name: /Hva kan vi gjøre bedre/ }),
+  ).not.toBeVisible({ timeout: 10000 });
+  await stage.getByRole("checkbox", { name: "Alternativ 1" }).click();
+  await expect(
+    stage.getByRole("textbox", { name: /Hva kan vi gjøre bedre/ }),
+  ).toBeVisible();
+  await expect(page.locator('[data-state="saved"]')).toBeVisible();
+
+  // The full condition UI (question/operator/value + warnings-free state)
+  // must also pass axe in dark mode.
+  await page.getByRole("button", { name: "Bytt til mørk modus" }).click();
+  await expectNoAxeViolations(page);
 });

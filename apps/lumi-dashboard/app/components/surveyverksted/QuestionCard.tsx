@@ -1,6 +1,7 @@
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  BranchingIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   FilesIcon,
@@ -19,7 +20,14 @@ import {
 } from "@navikt/ds-react";
 import type { SurveyQuestionV1 } from "@navikt/lumi-survey";
 import { memo, useEffect, useRef } from "react";
-import type { MoveDirection, QuestionTypeId } from "~/utils/surveyDocument";
+import type {
+  ConditionValueSuggestion,
+  MoveDirection,
+  QuestionTypeId,
+  ReferenceableQuestion,
+  VisibleIfConditionV1,
+} from "~/utils/surveyDocument";
+import { ConditionEditor } from "./ConditionEditor";
 import { OptionsEditor, type OptionsEditorProps } from "./OptionsEditor";
 import { QuestionMiniPreview } from "./QuestionMiniPreview";
 import {
@@ -47,6 +55,9 @@ export interface QuestionCardProps {
   onDelete: () => void;
   onMove: (direction: MoveDirection) => void;
   optionHandlers?: Omit<OptionsEditorProps, "questionId" | "options">;
+  referenceable?: ReferenceableQuestion[];
+  suggestionsFor?: (referencedId: string) => ConditionValueSuggestion[];
+  onChangeVisibleIf?: (condition: VisibleIfConditionV1 | undefined) => void;
 }
 
 export const QuestionCard = memo(function QuestionCard({
@@ -65,6 +76,9 @@ export const QuestionCard = memo(function QuestionCard({
   onDelete,
   onMove,
   optionHandlers,
+  referenceable,
+  suggestionsFor,
+  onChangeVisibleIf,
 }: QuestionCardProps) {
   const collapsedButtonRef = useRef<HTMLButtonElement>(null);
   const promptRef = useRef<HTMLInputElement>(null);
@@ -113,11 +127,19 @@ export const QuestionCard = memo(function QuestionCard({
               {question.prompt.trim() || "Spørsmål uten tekst"}
             </BodyShort>
           </span>
-          {question.required ? (
-            <Detail as="span" className={styles.cardRequired}>
-              Må besvares
-            </Detail>
-          ) : null}
+          <span className={styles.cardTriggerMeta}>
+            {question.visibleIf ? (
+              <Detail as="span" className={styles.cardConditional}>
+                <BranchingIcon aria-hidden />
+                Vises betinget
+              </Detail>
+            ) : null}
+            {question.required ? (
+              <Detail as="span" className={styles.cardRequired}>
+                Må besvares
+              </Detail>
+            ) : null}
+          </span>
         </button>
         <QuestionMiniPreview question={question} />
       </article>
@@ -208,6 +230,15 @@ export const QuestionCard = memo(function QuestionCard({
             questionId={question.id}
             options={question.options}
             {...optionHandlers}
+          />
+        ) : null}
+
+        {referenceable && suggestionsFor && onChangeVisibleIf ? (
+          <ConditionEditor
+            condition={question.visibleIf}
+            referenceable={referenceable}
+            suggestionsFor={suggestionsFor}
+            onChange={onChangeVisibleIf}
           />
         ) : null}
       </VStack>

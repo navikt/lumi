@@ -2,7 +2,13 @@ import { PlusIcon } from "@navikt/aksel-icons";
 import { Detail, TextField, VStack } from "@navikt/ds-react";
 import type { SurveyPageV1, SurveyQuestionV1 } from "@navikt/lumi-survey";
 import { Fragment, memo, useCallback, useMemo } from "react";
-import type { MoveDirection, QuestionTypeId } from "~/utils/surveyDocument";
+import type {
+  ConditionValueSuggestion,
+  MoveDirection,
+  QuestionTypeId,
+  ReferenceableQuestion,
+  VisibleIfConditionV1,
+} from "~/utils/surveyDocument";
 import type { OptionsEditorProps } from "./OptionsEditor";
 import { QuestionCard } from "./QuestionCard";
 import { SortableList, useSortableItem } from "./sortable";
@@ -40,6 +46,12 @@ export interface QuestionCanvasProps {
   onMoveQuestion: (questionId: string, direction: MoveDirection) => void;
   onReorderQuestion: (questionId: string, toIndex: number) => void;
   optionHandlersFor: (questionId: string) => OptionHandlers;
+  referenceableByQuestion: ReadonlyMap<string, ReferenceableQuestion[]>;
+  suggestionsFor: (referencedId: string) => ConditionValueSuggestion[];
+  onChangeVisibleIf: (
+    questionId: string,
+    condition: VisibleIfConditionV1 | undefined,
+  ) => void;
   onAddQuestion: (type: QuestionTypeId) => void;
 }
 
@@ -62,6 +74,9 @@ export const QuestionCanvas = memo(function QuestionCanvas({
   onMoveQuestion,
   onReorderQuestion,
   optionHandlersFor,
+  referenceableByQuestion,
+  suggestionsFor,
+  onChangeVisibleIf,
   onAddQuestion,
 }: QuestionCanvasProps) {
   const pad = (value: number) => String(value).padStart(2, "0");
@@ -140,6 +155,13 @@ export const QuestionCanvas = memo(function QuestionCanvas({
                 onDelete={onDelete}
                 onMoveQuestion={onMoveQuestion}
                 optionHandlersFor={optionHandlersFor}
+                referenceable={
+                  expandedIds.has(question.id)
+                    ? referenceableByQuestion.get(question.id)
+                    : undefined
+                }
+                suggestionsFor={suggestionsFor}
+                onChangeVisibleIf={onChangeVisibleIf}
               />
             </Fragment>
           ))}
@@ -187,6 +209,9 @@ const CanvasQuestion = memo(function CanvasQuestion({
   onDelete,
   onMoveQuestion,
   optionHandlersFor,
+  referenceable,
+  suggestionsFor,
+  onChangeVisibleIf,
 }: {
   question: SurveyQuestionV1;
   index: number;
@@ -203,6 +228,9 @@ const CanvasQuestion = memo(function CanvasQuestion({
   onDelete: (questionId: string) => void;
   onMoveQuestion: (questionId: string, direction: MoveDirection) => void;
   optionHandlersFor: (questionId: string) => OptionHandlers;
+  referenceable: ReferenceableQuestion[] | undefined;
+  suggestionsFor: (referencedId: string) => ConditionValueSuggestion[];
+  onChangeVisibleIf: QuestionCanvasProps["onChangeVisibleIf"];
 }) {
   const questionId = question.id;
   const sortable = useSortableItem(questionId, expanded);
@@ -244,6 +272,11 @@ const CanvasQuestion = memo(function CanvasQuestion({
     (direction: MoveDirection) => onMoveQuestion(questionId, direction),
     [onMoveQuestion, questionId],
   );
+  const handleVisibleIf = useCallback(
+    (condition: VisibleIfConditionV1 | undefined) =>
+      onChangeVisibleIf(questionId, condition),
+    [onChangeVisibleIf, questionId],
+  );
 
   return (
     <div
@@ -270,6 +303,9 @@ const CanvasQuestion = memo(function CanvasQuestion({
         onDelete={handleDelete}
         onMove={handleMove}
         optionHandlers={optionHandlers}
+        referenceable={referenceable}
+        suggestionsFor={expanded ? suggestionsFor : undefined}
+        onChangeVisibleIf={expanded ? handleVisibleIf : undefined}
       />
     </div>
   );

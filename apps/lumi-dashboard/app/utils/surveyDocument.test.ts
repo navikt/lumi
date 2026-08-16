@@ -4,7 +4,9 @@ import {
   addOption,
   addPage,
   addQuestion,
+  allowedConditionOperators,
   changeQuestionType,
+  conditionValueSuggestions,
   createQuestion,
   documentNeedsWideDock,
   duplicatePage,
@@ -12,6 +14,7 @@ import {
   findHandoffIssues,
   insertPageAt,
   insertQuestionAt,
+  listReferenceableQuestions,
   locateQuestion,
   moveOption,
   movePage,
@@ -22,6 +25,7 @@ import {
   removeOption,
   removePage,
   removeQuestion,
+  setQuestionVisibleIf,
   slugifyOptionValue,
   suggestSurveyId,
   updateOptionLabel,
@@ -352,14 +356,14 @@ describe("duplicatePage", () => {
     const next = duplicatePage(document, "side-a", sequentialIds());
     expect(next.pages.map((page) => page.id)).toEqual([
       "side-a",
-      "side-id-1",
+      "side-id-3",
       "side-b",
     ]);
     const copy = next.pages[1];
     expect(copy.title).toBe("Første side");
     expect(copy.questions.map((question) => question.id)).toEqual([
-      "rating-id-2",
-      "text-id-3",
+      "rating-id-1",
+      "text-id-2",
     ]);
     expect(copy.questions[0]).toMatchObject({ type: "rating" });
   });
@@ -403,6 +407,74 @@ describe("moveQuestionToIndex", () => {
     expect(moveQuestionToIndex(document, "side-a", "finnes-ikke", 1)).toBe(
       document,
     );
+  });
+});
+
+describe("duplicatePage condition remapping", () => {
+  it("rewrites internal references to the copied questions", () => {
+    const document = makeDocument();
+    document.pages[0].questions[1] = {
+      ...document.pages[0].questions[1],
+      visibleIf: { questionId: "rating-1", operator: "EXISTS" },
+    };
+    const next = duplicatePage(document, "side-a", sequentialIds());
+    const copy = next.pages[1];
+    const [copiedRating, copiedText] = copy.questions;
+    expect(copiedText.visibleIf).toEqual({
+      questionId: copiedRating.id,
+      operator: "EXISTS",
+    });
+  });
+
+  it("rewrites references inside groups but keeps external references", () => {
+    const document = makeDocument();
+    document.pages[1].questions[0] = {
+      ...document.pages[1].questions[0],
+      visibleIf: {
+        all: [
+          { questionId: "rating-1", operator: "EXISTS" },
+          { questionId: "choice-1", operator: "EXISTS" },
+        ],
+      },
+    };
+    const next = duplicatePage(document, "side-b", sequentialIds());
+    const copy = next.pages[2];
+    const condition = copy.questions[0].visibleIf;
+    if (!condition || !("all" in condition)) throw new Error("missing group");
+    // choice-1 lives on the copied page → remapped; rating-1 is external → kept.
+    expect(condition.all[0]).toEqual({
+      questionId: "rating-1",
+      operator: "EXISTS",
+    });
+    const internal = condition.all[1];
+    if (!("questionId" in internal)) throw new Error("expected answer leaf");
+    expect(internal.questionId).toBe(copy.questions[0].id);
+  });
+});
+
+describe("duplicatePage target discrimination", () => {
+  it("remaps an explicit ANSWER leaf even when it carries a stray metadata key", () => {
+    // Runtime and API discriminate on `field`, so this leaf is ANSWER
+    // semantics — a stray `key` must not make the builder treat it as
+    // METADATA and skip the remap.
+    const document = makeDocument();
+    const stray = {
+      field: "ANSWER" as const,
+      questionId: "rating-1",
+      key: "ekstra-felt",
+      operator: "EXISTS" as const,
+    };
+    document.pages[0].questions[1] = {
+      ...document.pages[0].questions[1],
+      visibleIf: stray,
+    };
+    const next = duplicatePage(document, "side-a", sequentialIds());
+    const copy = next.pages[1];
+    const condition = copy.questions[1].visibleIf;
+    if (!condition || !("questionId" in condition)) {
+      throw new Error("expected answer leaf");
+    }
+    expect(condition.questionId).toBe(copy.questions[0].id);
   });
 });
 
@@ -577,6 +649,349 @@ describe("documentNeedsWideDock", () => {
       prompt: "Hvor sannsynlig er det at du anbefaler oss?",
     };
     expect(documentNeedsWideDock(document)).toBe(true);
+  });
+});
+
+describe("setQuestionVisibleIf", () => {
+  it("sets a leaf condition on the question", () => {
+    const document = makeDocument();
+    const next = setQuestionVisibleIf(document, "side-a", "text-1", {
+      questionId: "rating-1",
+      operator: "EXISTS",
+    });
+    expect(next.pages[0].questions[1].visibleIf).toEqual({
+      questionId: "rating-1",
+      operator: "EXISTS",
+    });
+  });
+
+  it("clears the condition when given undefined", () => {
+    const document = makeDocument();
+    const withCondition = setQuestionVisibleIf(document, "side-a", "text-1", {
+      questionId: "rating-1",
+      operator: "EXISTS",
+    });
+    const cleared = setQuestionVisibleIf(
+      withCondition,
+      "side-a",
+      "text-1",
+      undefined,
+    );
+    expect("visibleIf" in cleared.pages[0].questions[1]).toBe(false);
+  });
+});
+
+describe("listReferenceableQuestions", () => {
+  it("returns only strictly earlier questions in page order", () => {
+    const document = makeDocument();
+    expect(
+      listReferenceableQuestions(document, "choice-1").map(
+        (candidate) => candidate.id,
+      ),
+    ).toEqual(["rating-1", "text-1"]);
+    expect(
+      listReferenceableQuestions(document, "text-1").map(
+        (candidate) => candidate.id,
+      ),
+    ).toEqual(["rating-1"]);
+  });
+
+  it("is empty for the first question and unknown ids", () => {
+    const document = makeDocument();
+    expect(listReferenceableQuestions(document, "rating-1")).toEqual([]);
+    expect(listReferenceableQuestions(document, "finnes-ikke")).toEqual([]);
+  });
+
+  it("labels each candidate with page and question number", () => {
+    const document = makeDocument();
+    const [first] = listReferenceableQuestions(document, "choice-1");
+    expect(first).toMatchObject({
+      id: "rating-1",
+      pageNumber: 1,
+      questionNumber: 1,
+      prompt: "Hvordan opplevde du tjenesten?",
+    });
+  });
+});
+
+describe("conditionValueSuggestions", () => {
+  it("suggests option values for choice questions", () => {
+    const document = makeDocument();
+    expect(conditionValueSuggestions(document, "choice-1")).toEqual([
+      { value: "soke", label: "Søke" },
+      { value: "sjekke-status", label: "Sjekke status" },
+    ]);
+  });
+
+  it("suggests the fixed scale for rating variants", () => {
+    const document = makeDocument();
+    expect(
+      conditionValueSuggestions(document, "rating-1").map(
+        (suggestion) => suggestion.value,
+      ),
+    ).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("suggests nothing for text questions and unknown ids", () => {
+    const document = makeDocument();
+    expect(conditionValueSuggestions(document, "text-1")).toEqual([]);
+    expect(conditionValueSuggestions(document, "finnes-ikke")).toEqual([]);
+  });
+});
+
+describe("allowedConditionOperators", () => {
+  it("gives multiChoice only EXISTS and CONTAINS", () => {
+    expect(allowedConditionOperators("multiChoice")).toEqual([
+      "EXISTS",
+      "CONTAINS",
+    ]);
+    expect(allowedConditionOperators("singleChoice")).toEqual([
+      "EXISTS",
+      "EQ",
+      "NEQ",
+    ]);
+  });
+});
+
+describe("findHandoffIssues for conditions", () => {
+  function withCondition(
+    condition: NonNullable<
+      SurveyDocumentV1["pages"][number]["questions"][number]["visibleIf"]
+    >,
+  ): SurveyDocumentV1 {
+    const document = makeDocument();
+    document.pages[1].questions[0] = {
+      ...document.pages[1].questions[0],
+      visibleIf: condition,
+    };
+    return document;
+  }
+
+  it("flags EQ against a multiChoice reference", () => {
+    const document = makeDocument();
+    document.pages[0].questions[1] = {
+      id: "multi-1",
+      type: "multiChoice",
+      prompt: "Velg flere",
+      options: [
+        { value: "en", label: "En" },
+        { value: "to", label: "To" },
+      ],
+    };
+    document.pages[1].questions[0] = {
+      ...document.pages[1].questions[0],
+      visibleIf: { questionId: "multi-1", operator: "EQ", value: "en" },
+    };
+    const issues = findHandoffIssues(document);
+    expect(
+      issues.some((issue) => /vilkår som ikke passer/i.test(issue.message)),
+    ).toBe(true);
+    expect(issues[0].questionId).toBe("choice-1");
+  });
+
+  it("flags a value outside the referenced choice options", () => {
+    const issues = findHandoffIssues(
+      withCondition({
+        questionId: "rating-1",
+        operator: "EQ",
+        value: 99,
+      }),
+    );
+    expect(issues.some((issue) => /utenfor skalaen/i.test(issue.message))).toBe(
+      true,
+    );
+  });
+
+  it("accepts a valid CONTAINS condition and EXISTS", () => {
+    expect(
+      findHandoffIssues(
+        withCondition({ questionId: "rating-1", operator: "EXISTS" }),
+      ),
+    ).toEqual([]);
+    expect(
+      findHandoffIssues(
+        withCondition({ questionId: "rating-1", operator: "EQ", value: 3 }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("requires string values against text references", () => {
+    const issues = findHandoffIssues(
+      withCondition({ questionId: "text-1", operator: "EQ", value: 3 }),
+    );
+    expect(issues.some((issue) => /må være tekst/i.test(issue.message))).toBe(
+      true,
+    );
+    expect(
+      findHandoffIssues(
+        withCondition({ questionId: "text-1", operator: "EQ", value: "3" }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("rejects empty and whitespace-only values against text references", () => {
+    // Blank text answers are stripped from runtime answer state, so EQ ""
+    // can never match, NEQ "" is true before any answer, and CONTAINS ""
+    // matches every non-empty answer.
+    for (const value of ["", "   "]) {
+      const issues = findHandoffIssues(
+        withCondition({ questionId: "text-1", operator: "CONTAINS", value }),
+      );
+      expect(
+        issues.some((issue) => /kan ikke være tom/i.test(issue.message)),
+      ).toBe(true);
+    }
+  });
+
+  it("validates ANSWER semantics when the leaf carries a stray metadata key", () => {
+    const stray = {
+      field: "ANSWER" as const,
+      questionId: "text-1",
+      key: "ekstra-felt",
+      operator: "GT" as const,
+      value: 2,
+    };
+    const issues = findHandoffIssues(withCondition(stray));
+    expect(
+      issues.some((issue) => /vilkår som ikke passer/i.test(issue.message)),
+    ).toBe(true);
+  });
+
+  it("flags contradictory targets in both directions", () => {
+    const answerWithKey = {
+      field: "ANSWER" as const,
+      questionId: "rating-1",
+      key: "ekstra-felt",
+      operator: "EXISTS" as const,
+    };
+    expect(
+      findHandoffIssues(withCondition(answerWithKey)).some((issue) =>
+        /metadata-nøkkel/i.test(issue.message),
+      ),
+    ).toBe(true);
+
+    const metadataWithQuestionId = {
+      field: "METADATA" as const,
+      key: "flow",
+      questionId: "rating-1",
+      operator: "EXISTS" as const,
+    };
+    expect(
+      findHandoffIssues(withCondition(metadataWithQuestionId)).some((issue) =>
+        /spørsmålsreferanse/i.test(issue.message),
+      ),
+    ).toBe(true);
+  });
+
+  it("validates leaves inside groups too", () => {
+    const issues = findHandoffIssues(
+      withCondition({
+        any: [
+          { questionId: "rating-1", operator: "EQ", value: 3 },
+          { questionId: "rating-1", operator: "EQ", value: 42 },
+        ],
+      }),
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0].message).toMatch(/utenfor skalaen/i);
+  });
+});
+
+describe("updateOptionValue condition migration", () => {
+  it("migrates later leaf conditions referencing the renamed value", () => {
+    const document = makeDocument();
+    document.pages[1].questions[0] = {
+      ...document.pages[1].questions[0],
+      visibleIf: undefined,
+    };
+    const withFollowUp: SurveyDocumentV1 = {
+      ...document,
+      pages: [
+        document.pages[0],
+        {
+          ...document.pages[1],
+          questions: [
+            document.pages[1].questions[0],
+            {
+              id: "text-2",
+              type: "text",
+              prompt: "Utdyp",
+              visibleIf: {
+                questionId: "choice-1",
+                operator: "EQ",
+                value: "soke",
+              },
+            },
+          ],
+        },
+      ] as SurveyDocumentV1["pages"],
+    };
+    const next = updateOptionValue(
+      withFollowUp,
+      "side-b",
+      "choice-1",
+      0,
+      "sok-om-stotte",
+    );
+    expect(next.pages[1].questions[1].visibleIf).toEqual({
+      questionId: "choice-1",
+      operator: "EQ",
+      value: "sok-om-stotte",
+    });
+  });
+
+  it("migrates a leaf that carries a stray metadata key", () => {
+    const document = makeDocument();
+    const stray = {
+      field: "ANSWER" as const,
+      questionId: "choice-1",
+      key: "ekstra-felt",
+      operator: "EQ" as const,
+      value: "soke",
+    };
+    document.pages[1].questions[0] = {
+      ...document.pages[1].questions[0],
+      visibleIf: stray,
+    };
+    const next = updateOptionValue(document, "side-b", "choice-1", 0, "ny-id");
+    const condition = next.pages[1].questions[0].visibleIf;
+    if (!condition || !("questionId" in condition)) {
+      throw new Error("expected answer leaf");
+    }
+    expect(condition.value).toBe("ny-id");
+  });
+
+  it("never rewrites group conditions implicitly", () => {
+    const document = makeDocument();
+    const group = {
+      any: [{ questionId: "choice-1", operator: "EQ" as const, value: "soke" }],
+    };
+    const withGroup: SurveyDocumentV1 = {
+      ...document,
+      pages: [
+        document.pages[0],
+        {
+          ...document.pages[1],
+          questions: [
+            document.pages[1].questions[0],
+            {
+              id: "text-2",
+              type: "text",
+              prompt: "Utdyp",
+              visibleIf: group,
+            },
+          ],
+        },
+      ] as SurveyDocumentV1["pages"],
+    };
+    const next = updateOptionValue(
+      withGroup,
+      "side-b",
+      "choice-1",
+      0,
+      "ny-verdi",
+    );
+    expect(next.pages[1].questions[1].visibleIf).toEqual(group);
   });
 });
 
