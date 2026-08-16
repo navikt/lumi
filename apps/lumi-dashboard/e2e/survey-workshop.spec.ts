@@ -22,6 +22,12 @@ test("creates, saves, reopens and previews a survey draft", async ({
   await expect(pageTitle).toHaveValue("Detaljer om opplevelsen");
 
   await page.getByRole("button", { name: "Ny side" }).click();
+  await expect(
+    page.getByRole("button", { name: /02 Ny side 1 spørsmål/ }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("button", { name: "Åpne forhåndsvisning" }),
+  ).toBeDisabled();
   await expect(page.getByText("2", { exact: true }).last()).toBeVisible();
   await expect(page.getByText("Lagret · v3")).toBeVisible();
 

@@ -174,6 +174,22 @@ class SurveyAuthoringRoutesTest : FunSpec({
             response.status shouldBe HttpStatusCode.BadRequest
         }
     }
+
+    test("draft requests reject oversized bodies before deserialization") {
+        testApplication {
+            application { testModule() }
+
+            val response = createTestClient().post(
+                "/api/v1/intern/authoring/projects?team=team-test",
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody("x".repeat(300_000))
+            }
+
+            response.status shouldBe HttpStatusCode.PayloadTooLarge
+        }
+    }
 })
 
 private fun createBody() = """

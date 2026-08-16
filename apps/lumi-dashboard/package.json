@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "pnpm --filter @navikt/lumi-survey run build",
     "dev": "vite dev",
     "build": "vite build && tsc -p tsconfig.typecheck.json --noEmit",
     "start": "node .output/server/index.mjs",

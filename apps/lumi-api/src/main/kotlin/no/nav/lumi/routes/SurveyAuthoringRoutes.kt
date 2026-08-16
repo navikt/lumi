@@ -2,12 +2,17 @@ package no.nav.lumi.routes
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.HttpHeaders
-import io.ktor.server.request.receive
+import io.ktor.server.application.ApplicationCall
+import io.ktor.server.request.receiveChannel
 import io.ktor.server.resources.get
 import io.ktor.server.resources.post
 import io.ktor.server.resources.put
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
+import io.ktor.utils.io.core.readText
+import io.ktor.utils.io.readRemaining
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
@@ -34,8 +39,7 @@ fun Route.surveyAuthoringRoutes(
     }
 
     post<ApiV1Intern.Authoring.Projects> {
-        validateRequestSize(call.request.headers[HttpHeaders.ContentLength]?.toLongOrNull())
-        val request = call.receive<CreateSurveyAuthoringProjectRequest>()
+        val request = receiveAuthoringRequest<CreateSurveyAuthoringProjectRequest>(call)
         val validated = validateProjectInput(request.name, request.surveyId, request.document)
         val principalIdentity = stablePrincipalIdentity(call.authorizedPrincipal)
             ?: throw ApiErrorException.BadRequestException("Authenticated user needs a stable identity")
@@ -63,8 +67,7 @@ fun Route.surveyAuthoringRoutes(
     }
 
     put<ApiV1Intern.Authoring.Projects.Id.Draft> { params ->
-        validateRequestSize(call.request.headers[HttpHeaders.ContentLength]?.toLongOrNull())
-        val request = call.receive<UpdateSurveyAuthoringDraftRequest>()
+        val request = receiveAuthoringRequest<UpdateSurveyAuthoringDraftRequest>(call)
         if (request.expectedVersion < 1) {
             throw ApiErrorException.BadRequestException("expectedVersion must be positive")
         }
@@ -96,11 +99,32 @@ fun Route.surveyAuthoringRoutes(
 
 private data class ValidatedProjectInput(val name: String, val surveyId: String)
 
-private fun validateRequestSize(contentLength: Long?) {
+private val authoringJson = Json {
+    ignoreUnknownKeys = true
+    isLenient = false
+    encodeDefaults = true
+}
+
+private suspend inline fun <reified T> receiveAuthoringRequest(call: ApplicationCall): T {
+    val contentLength = call.request.headers[HttpHeaders.ContentLength]?.toLongOrNull()
     if (contentLength != null && contentLength > MAX_REQUEST_BYTES) {
         throw ApiErrorException.PayloadTooLargeException(
             "Survey draft request must be at most $MAX_REQUEST_BYTES bytes",
         )
+    }
+
+    val packet = call.receiveChannel().readRemaining(MAX_REQUEST_BYTES.toLong() + 1)
+    val text = packet.readText()
+    if (text.toByteArray(Charsets.UTF_8).size > MAX_REQUEST_BYTES) {
+        throw ApiErrorException.PayloadTooLargeException(
+            "Survey draft request must be at most $MAX_REQUEST_BYTES bytes",
+        )
+    }
+
+    return try {
+        authoringJson.decodeFromString<T>(text)
+    } catch (_: SerializationException) {
+        throw ApiErrorException.BadRequestException("Invalid survey draft request")
     }
 }
 

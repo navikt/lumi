@@ -18,7 +18,7 @@ import type {
   SurveyQuestionV1,
 } from "@navikt/lumi-survey";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
@@ -80,6 +80,7 @@ function SurveyWorkshopEditor({
 }: {
   project: SurveyAuthoringProject;
 }) {
+  const navigate = Route.useNavigate();
   const [draft, setDraft] = useState<EditableDraft>(() => ({
     name: project.name,
     surveyId: project.surveyId,
@@ -227,11 +228,19 @@ function SurveyWorkshopEditor({
     <main className={styles.editorShell}>
       <div className={styles.editorTopbar}>
         <HStack gap="space-12" align="center" wrap>
-          <Link to="/surveyverksted" search={{ team: project.team }}>
-            <Button data-color="neutral" variant="tertiary" size="small">
-              Til utkast
-            </Button>
-          </Link>
+          <Button
+            data-color="neutral"
+            variant="tertiary"
+            size="small"
+            onClick={() =>
+              navigate({
+                to: "/surveyverksted",
+                search: { team: project.team },
+              })
+            }
+          >
+            Til utkast
+          </Button>
           <div>
             <Heading size="medium" level="1">
               {draft.name || "Uten navn"}
@@ -310,6 +319,7 @@ function SurveyWorkshopEditor({
                       type="button"
                       className={styles.pageButton}
                       data-selected={page.id === selectedPage.id}
+                      aria-pressed={page.id === selectedPage.id}
                       onClick={() => setSelectedPageId(page.id)}
                     >
                       <span>{String(index + 1).padStart(2, "0")}</span>
@@ -441,16 +451,27 @@ function SurveyWorkshopEditor({
                   <span>lagret</span>
                 </div>
               </div>
-              <Button
-                as="a"
-                href={previewHref}
-                target="_blank"
-                rel="noreferrer"
-                variant="primary"
-                className={styles.previewButton}
-              >
-                Åpne forhåndsvisning
-              </Button>
+              {isDirty || saveMutation.isPending ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  className={styles.previewButton}
+                  disabled
+                >
+                  Åpne forhåndsvisning
+                </Button>
+              ) : (
+                <Button
+                  as="a"
+                  href={previewHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  variant="primary"
+                  className={styles.previewButton}
+                >
+                  Åpne forhåndsvisning
+                </Button>
+              )}
               {isDirty ? (
                 <BodyShort size="small" textColor="subtle">
                   Vent til utkastet er lagret for å se de siste endringene.
