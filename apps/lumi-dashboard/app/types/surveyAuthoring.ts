@@ -17,6 +17,30 @@ export type SurveyAuthoringProjectSummary = Omit<
   "document"
 >;
 
+export interface SurveyAuthoringRevision {
+  id: string;
+  projectId: string;
+  revisionNumber: number;
+  draftVersion: number;
+  name: string;
+  surveyId: string;
+  document: SurveyDocumentV1;
+  documentHash: string;
+  definitionHash: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export type SurveyAuthoringRevisionSummary = Omit<
+  SurveyAuthoringRevision,
+  "document"
+>;
+
+export interface SurveyAuthoringRevisionDetail {
+  revision: SurveyAuthoringRevision;
+  previousRevision: SurveyAuthoringRevision | null;
+}
+
 const documentSchema = z.custom<SurveyDocumentV1>(
   (value) =>
     Boolean(
@@ -48,3 +72,14 @@ export const SaveSurveyAuthoringDraftSchema =
     projectId: z.string().uuid(),
     expectedVersion: z.number().int().positive(),
   });
+
+export const CreateSurveyAuthoringRevisionSchema =
+  SurveyAuthoringProjectIdSchema.extend({
+    expectedDraftVersion: z.number().int().positive(),
+  });
+
+export const SurveyAuthoringRevisionIdSchema = SurveyAuthoringTeamSchema.extend(
+  {
+    revisionId: z.string().uuid(),
+  },
+);

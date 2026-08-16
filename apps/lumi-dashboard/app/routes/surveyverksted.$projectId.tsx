@@ -17,13 +17,16 @@ import type {
   SurveyPageV1,
   SurveyQuestionV1,
 } from "@navikt/lumi-survey";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { validateSurveyDocumentV1 } from "@navikt/lumi-survey";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import {
+  createSurveyAuthoringRevisionServerFn,
   fetchSurveyAuthoringProjectServerFn,
+  fetchSurveyAuthoringRevisionsServerFn,
   saveSurveyAuthoringDraftServerFn,
 } from "~/server/actions";
 import type { SurveyAuthoringProject } from "~/types/surveyAuthoring";
@@ -81,6 +84,7 @@ function SurveyWorkshopEditor({
   project: SurveyAuthoringProject;
 }) {
   const navigate = Route.useNavigate();
+  const queryClient = useQueryClient();
   const [draft, setDraft] = useState<EditableDraft>(() => ({
     name: project.name,
     surveyId: project.surveyId,
@@ -97,6 +101,14 @@ function SurveyWorkshopEditor({
   const [selectedPageId, setSelectedPageId] = useState(
     project.document.pages[0].id,
   );
+
+  const revisionsQuery = useQuery({
+    queryKey: ["survey-authoring-revisions", project.team, project.id],
+    queryFn: () =>
+      fetchSurveyAuthoringRevisionsServerFn({
+        data: { team: project.team, projectId: project.id },
+      }),
+  });
 
   const fingerprint = useMemo(() => JSON.stringify(draft), [draft]);
   const hasRequiredMetadata = Boolean(
@@ -154,6 +166,37 @@ function SurveyWorkshopEditor({
     draft.document.pages.find((page) => page.id === selectedPageId) ??
     draft.document.pages[0];
   const isDirty = fingerprint !== savedFingerprint;
+  const validationError = useMemo(() => {
+    try {
+      validateSurveyDocumentV1(draft.document);
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : "Dokumentet er ugyldig";
+    }
+  }, [draft.document]);
+
+  const revisionMutation = useMutation({
+    mutationFn: () => {
+      validateSurveyDocumentV1(draft.document);
+      return createSurveyAuthoringRevisionServerFn({
+        data: {
+          team: project.team,
+          projectId: project.id,
+          expectedDraftVersion: draftVersion,
+        },
+      });
+    },
+    onSuccess: async (revision) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["survey-authoring-revisions", project.team, project.id],
+      });
+      await navigate({
+        to: "/surveyverksted/revisions/$revisionId",
+        params: { revisionId: revision.id },
+        search: { team: project.team },
+      });
+    },
+  });
 
   const updateDocument = (document: SurveyDocumentV1) =>
     setDraft((current) => ({ ...current, document }));
@@ -476,6 +519,69 @@ function SurveyWorkshopEditor({
                 <BodyShort size="small" textColor="subtle">
                   Vent til utkastet er lagret for å se de siste endringene.
                 </BodyShort>
+              ) : null}
+
+              <div className={styles.revisionDivider} />
+              <div>
+                <Heading size="small" level="3" spacing>
+                  Delbar revisjon
+                </Heading>
+                <BodyShort size="small" textColor="subtle">
+                  Fryser den lagrede versjonen til en teamautorisert lenke.
+                  Dette publiserer ikke surveyen.
+                </BodyShort>
+              </div>
+              {validationError ? (
+                <Alert variant="warning" size="small">
+                  Kan ikke opprette revisjon: {validationError}
+                </Alert>
+              ) : (
+                <Alert variant="success" size="small">
+                  Dokumentet er gyldig og klart for handoff.
+                </Alert>
+              )}
+              {revisionMutation.isError ? (
+                <Alert variant="error" size="small">
+                  {revisionMutation.error instanceof Error
+                    ? revisionMutation.error.message
+                    : "Revisjonen kunne ikke opprettes."}
+                </Alert>
+              ) : null}
+              <Button
+                type="button"
+                variant="secondary"
+                className={styles.previewButton}
+                disabled={Boolean(
+                  isDirty ||
+                    saveMutation.isPending ||
+                    validationError ||
+                    !hasRequiredMetadata,
+                )}
+                loading={revisionMutation.isPending}
+                onClick={() => revisionMutation.mutate()}
+              >
+                Opprett delbar revisjon
+              </Button>
+              {revisionsQuery.data?.length ? (
+                <div>
+                  <BodyShort size="small" weight="semibold" spacing>
+                    Tidligere revisjoner
+                  </BodyShort>
+                  <ul className={styles.revisionList}>
+                    {revisionsQuery.data.slice(0, 3).map((revision) => (
+                      <li key={revision.id}>
+                        <Link
+                          to="/surveyverksted/revisions/$revisionId"
+                          params={{ revisionId: revision.id }}
+                          search={{ team: project.team }}
+                        >
+                          Revisjon {revision.revisionNumber}
+                        </Link>
+                        <span>{revision.surveyId}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ) : null}
             </VStack>
           </div>

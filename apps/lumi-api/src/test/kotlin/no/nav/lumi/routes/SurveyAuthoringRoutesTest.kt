@@ -190,6 +190,199 @@ class SurveyAuthoringRoutesTest : FunSpec({
             response.status shouldBe HttpStatusCode.PayloadTooLarge
         }
     }
+
+    test("creates immutable revisions and exposes the previous snapshot") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+            val created = client.post("/api/v1/intern/authoring/projects?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(createBody())
+            }
+            val projectId = Json.parseToJsonElement(created.bodyAsText()).jsonObject
+                .getValue("id").jsonPrimitive.content
+
+            val firstRevision = client.post(
+                "/api/v1/intern/authoring/projects/$projectId/revisions?team=team-test",
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody("""{"expectedDraftVersion":1}""")
+            }
+            firstRevision.status shouldBe HttpStatusCode.Created
+            val firstJson = Json.parseToJsonElement(firstRevision.bodyAsText()).jsonObject
+            val firstRevisionId = firstJson.getValue("id").jsonPrimitive.content
+            val firstDefinitionHash = firstJson.getValue("definitionHash").jsonPrimitive.content
+            firstJson.getValue("revisionNumber").jsonPrimitive.content shouldBe "1"
+            firstJson.getValue("documentHash").jsonPrimitive.content.length shouldBe 64
+
+            val updated = client.put(
+                "/api/v1/intern/authoring/projects/$projectId/draft?team=team-test",
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(updateBody(expectedVersion = 1, name = "Ny tekst"))
+            }
+            updated.status shouldBe HttpStatusCode.OK
+
+            val secondRevision = client.post(
+                "/api/v1/intern/authoring/projects/$projectId/revisions?team=team-test",
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody("""{"expectedDraftVersion":2}""")
+            }
+            secondRevision.status shouldBe HttpStatusCode.Created
+            val secondJson = Json.parseToJsonElement(secondRevision.bodyAsText()).jsonObject
+            val secondRevisionId = secondJson.getValue("id").jsonPrimitive.content
+            secondJson.getValue("revisionNumber").jsonPrimitive.content shouldBe "2"
+            secondJson.getValue("definitionHash").jsonPrimitive.content shouldBe firstDefinitionHash
+
+            val listed = client.get(
+                "/api/v1/intern/authoring/projects/$projectId/revisions?team=team-test",
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+            listed.status shouldBe HttpStatusCode.OK
+            val listedJson = Json.parseToJsonElement(listed.bodyAsText()).jsonArray
+            listedJson.size shouldBe 2
+            listedJson.first().jsonObject
+                .getValue("id").jsonPrimitive.content shouldBe secondRevisionId
+
+            val detail = client.get(
+                "/api/v1/intern/authoring/revisions/$secondRevisionId?team=team-test",
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+            detail.status shouldBe HttpStatusCode.OK
+            val detailJson = Json.parseToJsonElement(detail.bodyAsText()).jsonObject
+            detailJson.getValue("previousRevision").jsonObject
+                .getValue("id").jsonPrimitive.content shouldBe firstRevisionId
+            detailJson.getValue("revision").jsonObject
+                .getValue("name").jsonPrimitive.content shouldBe "Ny tekst"
+
+            val firstAfterDraftChange = client.get(
+                "/api/v1/intern/authoring/revisions/$firstRevisionId?team=team-test",
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+            firstAfterDraftChange.status shouldBe HttpStatusCode.OK
+            Json.parseToJsonElement(firstAfterDraftChange.bodyAsText()).jsonObject
+                .getValue("revision").jsonObject
+                .getValue("name").jsonPrimitive.content shouldBe "Første utkast"
+        }
+    }
+
+    test("revision creation rejects invalid drafts and stale versions") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+            val created = client.post("/api/v1/intern/authoring/projects?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """
+                    {
+                      "name": "Påbegynt",
+                      "surveyId": "invalid-draft",
+                      "document": {"authoringSchemaVersion": 1, "pages": []}
+                    }
+                    """.trimIndent(),
+                )
+            }
+            val projectId = Json.parseToJsonElement(created.bodyAsText()).jsonObject
+                .getValue("id").jsonPrimitive.content
+
+            val invalid = client.post(
+                "/api/v1/intern/authoring/projects/$projectId/revisions?team=team-test",
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody("""{"expectedDraftVersion":1}""")
+            }
+            invalid.status shouldBe HttpStatusCode.BadRequest
+
+            val stale = client.post(
+                "/api/v1/intern/authoring/projects/$projectId/revisions?team=team-test",
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody("""{"expectedDraftVersion":2}""")
+            }
+            stale.status shouldBe HttpStatusCode.Conflict
+        }
+    }
+
+    test("structural changes require a new survey id before a new revision") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+            val created = client.post("/api/v1/intern/authoring/projects?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(createBody())
+            }
+            val projectId = Json.parseToJsonElement(created.bodyAsText()).jsonObject
+                .getValue("id").jsonPrimitive.content
+            client.post("/api/v1/intern/authoring/projects/$projectId/revisions?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody("""{"expectedDraftVersion":1}""")
+            }.status shouldBe HttpStatusCode.Created
+
+            client.put("/api/v1/intern/authoring/projects/$projectId/draft?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(structuralUpdateBody(expectedVersion = 1, surveyId = "verksted-test"))
+            }.status shouldBe HttpStatusCode.OK
+
+            client.post("/api/v1/intern/authoring/projects/$projectId/revisions?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody("""{"expectedDraftVersion":2}""")
+            }.status shouldBe HttpStatusCode.Conflict
+
+            client.put("/api/v1/intern/authoring/projects/$projectId/draft?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(structuralUpdateBody(expectedVersion = 2, surveyId = "verksted-test-v2"))
+            }.status shouldBe HttpStatusCode.OK
+
+            client.post("/api/v1/intern/authoring/projects/$projectId/revisions?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody("""{"expectedDraftVersion":3}""")
+            }.status shouldBe HttpStatusCode.Created
+        }
+    }
+
+    test("revision links are team scoped") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+            val created = client.post("/api/v1/intern/authoring/projects?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(createBody())
+            }
+            val projectId = Json.parseToJsonElement(created.bodyAsText()).jsonObject
+                .getValue("id").jsonPrimitive.content
+            val revision = client.post(
+                "/api/v1/intern/authoring/projects/$projectId/revisions?team=team-test",
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody("""{"expectedDraftVersion":1}""")
+            }
+            val revisionId = Json.parseToJsonElement(revision.bodyAsText()).jsonObject
+                .getValue("id").jsonPrimitive.content
+
+            client.get("/api/v1/intern/authoring/revisions/$revisionId?team=flex") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }.status shouldBe HttpStatusCode.NotFound
+        }
+    }
 })
 
 private fun createBody() = """
@@ -227,6 +420,26 @@ private fun updateBody(expectedVersion: Long, name: String) = """
             "id": "rating",
             "type": "rating",
             "prompt": "Hvordan gikk det?"
+          }]
+        }]
+      }
+    }
+""".trimIndent()
+
+private fun structuralUpdateBody(expectedVersion: Long, surveyId: String) = """
+    {
+      "expectedVersion": $expectedVersion,
+      "name": "Endret struktur",
+      "surveyId": "$surveyId",
+      "document": {
+        "authoringSchemaVersion": 1,
+        "type": "rating",
+        "pages": [{
+          "id": "opplevelse",
+          "questions": [{
+            "id": "rating",
+            "type": "text",
+            "prompt": "Beskriv opplevelsen"
           }]
         }]
       }

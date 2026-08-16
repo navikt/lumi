@@ -101,6 +101,34 @@
   width: 100%;
 }
 
+.revisionDivider {
+  height: 1px;
+  background: var(--ax-border-neutral-subtle);
+}
+
+.revisionList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-8);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.revisionList li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ax-space-8);
+  font-size: var(--ax-font-size-small);
+}
+
+.revisionList span {
+  overflow: hidden;
+  color: var(--ax-text-neutral-subtle);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .pageList {
   display: flex;
   flex-direction: column;

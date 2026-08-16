@@ -11,11 +11,16 @@ import {
 import type {
   SurveyAuthoringProject,
   SurveyAuthoringProjectSummary,
+  SurveyAuthoringRevision,
+  SurveyAuthoringRevisionDetail,
+  SurveyAuthoringRevisionSummary,
 } from "~/types/surveyAuthoring";
 import {
   CreateSurveyAuthoringProjectSchema,
+  CreateSurveyAuthoringRevisionSchema,
   SaveSurveyAuthoringDraftSchema,
   SurveyAuthoringProjectIdSchema,
+  SurveyAuthoringRevisionIdSchema,
   SurveyAuthoringTeamSchema,
 } from "~/types/surveyAuthoring";
 import { handleApiResponse } from "../fetchUtils";
@@ -144,3 +149,96 @@ export const saveSurveyAuthoringDraftServerFn = createServerFn({
     await handleApiResponse(response);
     return response.json() as Promise<SurveyAuthoringProject>;
   });
+
+export const fetchSurveyAuthoringRevisionsServerFn = createServerFn({
+  method: "GET",
+})
+  .middleware([authMiddleware])
+  .inputValidator(zodValidator(SurveyAuthoringProjectIdSchema))
+  .handler(
+    async ({ data, context }): Promise<SurveyAuthoringRevisionSummary[]> => {
+      if (isMockMode()) {
+        const { listMockSurveyRevisions } = await import(
+          "~/mock/surveyAuthoring"
+        );
+        await mockDelay();
+        return listMockSurveyRevisions(data.team, data.projectId);
+      }
+
+      const { backendUrl, oboToken } = context as AuthContext;
+      const response = await fetch(
+        buildUrl(
+          backendUrl,
+          `/api/v1/intern/authoring/projects/${encodeURIComponent(data.projectId)}/revisions`,
+          { team: data.team },
+        ),
+        { headers: getHeaders(oboToken) },
+      );
+      await handleApiResponse(response);
+      return response.json() as Promise<SurveyAuthoringRevisionSummary[]>;
+    },
+  );
+
+export const createSurveyAuthoringRevisionServerFn = createServerFn({
+  method: "POST",
+})
+  .middleware([authMiddleware])
+  .inputValidator(zodValidator(CreateSurveyAuthoringRevisionSchema))
+  .handler(async ({ data, context }): Promise<SurveyAuthoringRevision> => {
+    if (isMockMode()) {
+      const { createMockSurveyRevision } = await import(
+        "~/mock/surveyAuthoring"
+      );
+      await mockDelay();
+      return createMockSurveyRevision(data);
+    }
+
+    const { backendUrl, oboToken } = context as AuthContext;
+    const response = await fetch(
+      buildUrl(
+        backendUrl,
+        `/api/v1/intern/authoring/projects/${encodeURIComponent(data.projectId)}/revisions`,
+        { team: data.team },
+      ),
+      {
+        method: "POST",
+        headers: getHeaders(oboToken),
+        body: JSON.stringify({
+          expectedDraftVersion: data.expectedDraftVersion,
+        }),
+      },
+    );
+    await handleApiResponse(response);
+    return response.json() as Promise<SurveyAuthoringRevision>;
+  });
+
+export const fetchSurveyAuthoringRevisionServerFn = createServerFn({
+  method: "GET",
+})
+  .middleware([authMiddleware])
+  .inputValidator(zodValidator(SurveyAuthoringRevisionIdSchema))
+  .handler(
+    async ({ data, context }): Promise<SurveyAuthoringRevisionDetail> => {
+      if (isMockMode()) {
+        const { getMockSurveyRevisionDetail } = await import(
+          "~/mock/surveyAuthoring"
+        );
+        await mockDelay();
+        const detail = getMockSurveyRevisionDetail(data.team, data.revisionId);
+        if (!detail) throw new Error("Survey revision not found");
+        return detail;
+      }
+
+      const { backendUrl, oboToken } = context as AuthContext;
+      const response = await fetch(
+        buildUrl(
+          backendUrl,
+          `/api/v1/intern/authoring/revisions/${encodeURIComponent(data.revisionId)}`,
+          { team: data.team },
+        ),
+        { headers: getHeaders(oboToken) },
+      );
+      await handleApiResponse(response);
+      return response.json() as Promise<SurveyAuthoringRevisionDetail>;
+    },
+  );
