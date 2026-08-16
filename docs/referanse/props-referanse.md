@@ -123,6 +123,8 @@ Styrer åpning, lukking, lagring og layout.
 | `collectLocation` | `boolean` | `false` | Auto-collect `pathname` fra URL |
 | `storageStrategy` | `"consent" \| "localStorage" \| "none"` | `"consent"` | Lagringsstrategi for dismissed-tilstand |
 | `showProgress` | `boolean` | `false` | Vis fremdrift med synlig stegtekst fra første spørsmål i stegmodus når surveyen har minst to steg. Lineære løp viser `Steg X av N`; branching viser `Steg X` |
+| `initialPageId` | `string` | ❌ | Start på siden med denne id-en når den finnes og er synlig; ellers første synlige side. For embedded previews som speiler en bestemt side |
+| `simulatedViewport` | `{ width: number; height: number }` | ❌ | Simuler et viewport for embedded previews: docken dimensjoneres fra dette i stedet for vinduet, og auto-innsamlet `viewport`/`deviceType` følger simuleringen |
 
 Intro og kvittering regnes ikke som steg. Ved branching viser den visuelle linjen det stabile estimatet, mens tilgjengelig stegtekst bare oppgir sikker informasjon som «Steg 2» uten estimert total.
 
@@ -190,6 +192,7 @@ Visuell tilpasning av dock-panelet.
 | `panelClassName` | `string` | — | Ekstra CSS-klasse for panelet |
 | `panelBackground` | Aksel `Box` background-token | `"default"` | Bakgrunnsfarge |
 | `panelBorderColor` | Aksel `Box` borderColor-token | `"neutral-subtle"` | Kantfarge |
+| `panelMaxHeight` | `string` | `"calc(100vh - 2rem)"` | Maks høyde for det åpne panelet, for embedded previews i en begrenset scene |
 
 ```tsx
 <LumiSurveyDock

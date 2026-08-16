@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import type { LumiSurveyContext } from "../../../core/types.js";
-import { detectDeviceType } from "./deviceDetection.js";
+import {
+  classifyDeviceTypeByViewport,
+  detectDeviceType,
+} from "./deviceDetection.js";
 
 const LUMI_SURVEY_NAVIGATION_EVENT = "lumi-survey:navigation";
 
@@ -45,6 +48,11 @@ function ensureHistoryPatched(): void {
 export interface EnrichedContextOptions {
   /** Opt-in: auto-collect current pathname from the browser. */
   collectLocation?: boolean;
+  /**
+   * Report this viewport (and the deviceType derived from it) instead of
+   * the real window. For embedded previews that simulate a page.
+   */
+  simulatedViewport?: { width: number; height: number };
 }
 
 /**
@@ -69,10 +77,12 @@ export function useEnrichedContext(
     };
   });
 
-  const [viewport, setViewport] = useState(() => ({
+  const simulatedViewport = options?.simulatedViewport;
+  const [measuredViewport, setMeasuredViewport] = useState(() => ({
     width: isBrowser ? window.innerWidth : 0,
     height: isBrowser ? window.innerHeight : 0,
   }));
+  const viewport = simulatedViewport ?? measuredViewport;
 
   useEffect(() => {
     if (!isBrowser) return;
@@ -99,8 +109,9 @@ export function useEnrichedContext(
 
   useEffect(() => {
     if (!isBrowser) return;
+    if (simulatedViewport) return;
     const updateViewport = () => {
-      setViewport({
+      setMeasuredViewport({
         width: window.innerWidth,
         height: window.innerHeight,
       });
@@ -110,13 +121,17 @@ export function useEnrichedContext(
     return () => {
       window.removeEventListener("resize", updateViewport);
     };
-  }, [isBrowser]);
+  }, [isBrowser, simulatedViewport]);
+
+  const deviceType = simulatedViewport
+    ? classifyDeviceTypeByViewport(simulatedViewport.width)
+    : detectDeviceType(viewport.width);
 
   return useMemo((): LumiSurveyContext => {
     return {
       // System-collected
       viewport,
-      deviceType: detectDeviceType(viewport.width),
+      deviceType,
       userAgent: isBrowser ? navigator.userAgent : undefined,
       screenResolution: isBrowser
         ? { width: window.screen.width, height: window.screen.height }
@@ -141,5 +156,6 @@ export function useEnrichedContext(
     userContext?.debug,
     userContext?.tags,
     viewport,
+    deviceType,
   ]);
 }

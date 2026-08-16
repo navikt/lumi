@@ -58,7 +58,7 @@ class SurveyAuthoringRevisionRepository {
 
         val document = json.parseToJsonElement(projectRow[SurveyAuthoringProjectTable.draft]) as JsonObject
         val surveyId = projectRow[SurveyAuthoringProjectTable.surveyId]
-        val validated = SurveyAuthoringDocumentValidator.validate(document, surveyId)
+        val validated = SurveyAuthoringDocumentValidator.validate(document, surveyId, releaseGate = true)
         val definitionHash = validated.definition.computeHash()
 
         val previousRevisionNumber = SurveyAuthoringRevisionTable.selectAll()

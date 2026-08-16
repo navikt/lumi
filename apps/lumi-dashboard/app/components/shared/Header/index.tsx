@@ -66,10 +66,11 @@ export function Header() {
 
         {/* Navigation */}
         <HStack gap={{ xs: "space-4", sm: "space-8", md: "space-16" }}>
-          <Link to="/" search={(prev) => prev}>
+          <Link to="/" search={(prev) => prev} aria-label="Dashboard">
             <Button
               variant={getVariant("/")}
               size="small"
+              aria-label="Dashboard"
               icon={<BarChartIcon aria-hidden />}
             >
               {/* Hide button text on mobile, show on tablet+ */}
@@ -78,10 +79,15 @@ export function Header() {
               </Hide>
             </Button>
           </Link>
-          <Link to="/feedback" search={(prev) => prev}>
+          <Link
+            to="/feedback"
+            search={(prev) => prev}
+            aria-label="Tilbakemeldinger"
+          >
             <Button
               variant={getVariant("/feedback")}
               size="small"
+              aria-label="Tilbakemeldinger"
               icon={<TableIcon aria-hidden />}
             >
               <Hide below="md" asChild>
@@ -89,10 +95,11 @@ export function Header() {
               </Hide>
             </Button>
           </Link>
-          <Link to="/export" search={(prev) => prev}>
+          <Link to="/export" search={(prev) => prev} aria-label="Eksporter">
             <Button
               variant={getVariant("/export")}
               size="small"
+              aria-label="Eksporter"
               icon={<DownloadIcon aria-hidden />}
             >
               <Hide below="md" asChild>
@@ -100,10 +107,11 @@ export function Header() {
               </Hide>
             </Button>
           </Link>
-          <Link to="/surveyverksted" search={{}}>
+          <Link to="/surveyverksted" search={{}} aria-label="Surveyverksted">
             <Button
               variant={getVariant("/surveyverksted")}
               size="small"
+              aria-label="Surveyverksted"
               icon={<PencilWritingIcon aria-hidden />}
             >
               <Hide below="md" asChild>

@@ -197,4 +197,84 @@ describe("usePageNavigation", () => {
     expect(result.current.currentPage?.id).toBe("last");
     expect(result.current.visitedSteps).toEqual([0, 2]);
   });
+
+  describe("initialPageId", () => {
+    it("starts on the page with the given id", () => {
+      const { result } = renderHook(() =>
+        usePageNavigation({
+          pages: PAGES,
+          answers: {},
+          autoStepMode: true,
+          initialPageId: "last",
+        }),
+      );
+
+      expect(result.current.currentPage?.id).toBe("last");
+      expect(result.current.visitedSteps).toEqual([2]);
+    });
+
+    it("falls back to the first visible page for unknown ids", () => {
+      const { result } = renderHook(() =>
+        usePageNavigation({
+          pages: PAGES,
+          answers: {},
+          autoStepMode: true,
+          initialPageId: "finnes-ikke",
+        }),
+      );
+
+      expect(result.current.currentPage?.id).toBe("first");
+    });
+
+    it("falls back when the requested page is hidden", () => {
+      const { result } = renderHook(() =>
+        usePageNavigation({
+          pages: PAGES,
+          answers: { choice: "no" },
+          autoStepMode: true,
+          initialPageId: "conditional",
+        }),
+      );
+
+      expect(result.current.currentPage?.id).toBe("first");
+    });
+
+    it("returns to the requested page after resetNavigation", () => {
+      const { result } = renderHook(() =>
+        usePageNavigation({
+          pages: PAGES,
+          answers: {},
+          autoStepMode: true,
+          initialPageId: "last",
+        }),
+      );
+
+      act(() => {
+        result.current.resetNavigation();
+      });
+
+      expect(result.current.currentPage?.id).toBe("last");
+      expect(result.current.visitedSteps).toEqual([2]);
+    });
+
+    it("returns to the requested page when the pages definition changes", () => {
+      const { result, rerender } = renderHook(
+        ({ pages }) =>
+          usePageNavigation({
+            pages,
+            answers: {},
+            autoStepMode: true,
+            initialPageId: "last",
+          }),
+        { initialProps: { pages: PAGES } },
+      );
+
+      const editedPages = JSON.parse(JSON.stringify(PAGES));
+      editedPages[2].questions[0].prompt = "Endret kommentar";
+      rerender({ pages: editedPages });
+
+      expect(result.current.currentPage?.id).toBe("last");
+      expect(result.current.visitedSteps).toEqual([2]);
+    });
+  });
 });

@@ -53,6 +53,19 @@
   transform: translateX(2px);
 }
 
+.projectLink {
+  align-items: center;
+}
+
+.projectId {
+  font-family: var(--ax-font-family-mono, ui-monospace, monospace);
+  font-size: var(--ax-font-size-small);
+}
+
+.projectMeta {
+  white-space: nowrap;
+}
+
 .projectLink:focus-visible {
   outline: 3px solid var(--ax-border-focus);
   outline-offset: 2px;

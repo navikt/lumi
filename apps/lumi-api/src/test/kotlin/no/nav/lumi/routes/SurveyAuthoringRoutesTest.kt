@@ -2,6 +2,7 @@ package no.nav.lumi.routes
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -357,6 +358,36 @@ class SurveyAuthoringRoutesTest : FunSpec({
         }
     }
 
+    test("blank prompts may be drafted but never frozen into a revision") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+            val created = client.post("/api/v1/intern/authoring/projects?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(createBody())
+            }
+            val projectId = Json.parseToJsonElement(created.bodyAsText()).jsonObject
+                .getValue("id").jsonPrimitive.content
+
+            client.put("/api/v1/intern/authoring/projects/$projectId/draft?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(blankPromptUpdateBody(expectedVersion = 1))
+            }.status shouldBe HttpStatusCode.OK
+
+            val response = client.post(
+                "/api/v1/intern/authoring/projects/$projectId/revisions?team=team-test",
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody("""{"expectedDraftVersion":2}""")
+            }
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.bodyAsText() shouldContain "needs a prompt before it can be shared"
+        }
+    }
+
     test("revision links are team scoped") {
         testApplication {
             application { testModule() }
@@ -420,6 +451,27 @@ private fun updateBody(expectedVersion: Long, name: String) = """
             "id": "rating",
             "type": "rating",
             "prompt": "Hvordan gikk det?"
+          }]
+        }]
+      }
+    }
+""".trimIndent()
+
+private fun blankPromptUpdateBody(expectedVersion: Long) = """
+    {
+      "expectedVersion": $expectedVersion,
+      "name": "Uferdig utkast",
+      "surveyId": "verksted-test",
+      "document": {
+        "authoringSchemaVersion": 1,
+        "type": "rating",
+        "pages": [{
+          "id": "opplevelse",
+          "questions": [{
+            "id": "rating",
+            "type": "rating",
+            "prompt": "   ",
+            "required": true
           }]
         }]
       }

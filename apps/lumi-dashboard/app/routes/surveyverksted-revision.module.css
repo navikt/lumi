@@ -7,8 +7,15 @@
 .revisionSurface {
   --revision-rule: 3px solid var(--ax-border-neutral-strong);
   min-height: calc(100vh - 64px);
-  padding: var(--ax-space-24) max(var(--ax-space-16), calc((100vw - 76rem) / 2));
-  background: var(--ax-bg-neutral-soft);
+  overflow-x: clip;
+  padding: var(--ax-space-24) max(var(--ax-space-16), calc((100vw - 78rem) / 2));
+  background:
+    radial-gradient(
+      circle at 82% 10%,
+      color-mix(in srgb, var(--ax-bg-success-soft) 58%, transparent),
+      transparent 24rem
+    ),
+    var(--ax-bg-neutral-soft);
 }
 
 .topline {
@@ -30,10 +37,14 @@
   outline-offset: 3px;
 }
 
+.eyebrow {
+  letter-spacing: 0.08em;
+}
+
 .hero {
   display: grid;
-  grid-template-columns: minmax(7rem, 0.35fr) minmax(20rem, 1.65fr);
-  gap: var(--ax-space-24);
+  grid-template-columns: minmax(7rem, 0.32fr) minmax(20rem, 1.68fr);
+  gap: var(--ax-space-32);
   align-items: end;
   padding-block: var(--ax-space-48);
   border-bottom: var(--revision-rule);
@@ -46,93 +57,184 @@
   line-height: 0.72;
   letter-spacing: -0.1em;
   font-variant-numeric: tabular-nums;
+  opacity: 0.68;
 }
 
 .heroCopy {
-  max-width: 48rem;
+  max-width: 52rem;
+}
+
+.heroStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ax-space-24);
+  padding: var(--ax-space-20) 0 0;
+  margin: var(--ax-space-24) 0 0;
+  border-top: 1px solid var(--ax-border-neutral-subtle);
+}
+
+.heroStats div {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--ax-space-2);
+}
+
+.heroStats dt {
+  color: var(--ax-text-neutral-subtle);
+  font-size: var(--ax-font-size-small);
+}
+
+.heroStats dd {
+  margin: 0;
+  font-size: var(--ax-font-size-heading-small);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .contentGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem);
+  grid-template-columns: minmax(0, 1fr) minmax(19rem, 22rem);
   gap: var(--ax-space-48);
   align-items: start;
   padding-block: var(--ax-space-40) var(--ax-space-64);
 }
 
-.mainColumn > section {
-  padding-block-end: var(--ax-space-32);
+.mainColumn > section:not(.validationSection) {
+  padding-block-end: var(--ax-space-36);
   border-bottom: 1px solid var(--ax-border-neutral-subtle);
 }
 
-.previewStage {
-  position: relative;
-  min-height: 14rem;
-  display: grid;
-  place-content: center;
-  margin-block-start: var(--ax-space-16);
-  padding: var(--ax-space-32);
-  text-align: center;
-  background:
-    linear-gradient(var(--ax-border-neutral-subtle) 1px, transparent 1px),
-    linear-gradient(90deg, var(--ax-border-neutral-subtle) 1px, transparent 1px),
-    var(--ax-bg-default);
-  background-size: 24px 24px;
-  border: 1px solid var(--ax-border-neutral-subtle);
+.validationSection {
+  padding-block-end: var(--ax-space-4);
+}
+
+.validationStatus {
+  display: flex;
+  align-items: center;
+  gap: var(--ax-space-12);
+  padding: var(--ax-space-16);
+  color: var(--ax-text-success);
+  background: var(--ax-bg-success-soft);
+  border: 1px solid var(--ax-border-success-subtle);
   border-radius: var(--ax-radius-8);
 }
 
-.previewEyebrow {
-  position: absolute;
-  top: var(--ax-space-12);
-  left: var(--ax-space-12);
-  padding: var(--ax-space-4) var(--ax-space-8);
-  color: var(--ax-text-neutral);
-  font-family: monospace;
-  font-size: var(--ax-font-size-small);
-  font-weight: 700;
-  background: var(--ax-bg-warning-soft);
+.validationStatus > svg {
+  flex: 0 0 auto;
+  font-size: 1.75rem;
+}
+
+.stageWrap {
+  height: clamp(32rem, 72vh, 44rem);
+  display: flex;
+  flex-direction: column;
+  margin-block-start: var(--ax-space-20);
 }
 
 .changeList {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--ax-space-12);
   padding: 0;
   margin: 0;
+  counter-reset: changes;
   list-style: none;
 }
 
 .changeList li {
   position: relative;
-  padding-inline-start: var(--ax-space-24);
+  min-height: 5.5rem;
+  padding: var(--ax-space-16) var(--ax-space-16) var(--ax-space-16)
+    var(--ax-space-48);
+  background: var(--ax-bg-default);
+  border: 1px solid var(--ax-border-neutral-subtle);
+  border-radius: var(--ax-radius-8);
+  counter-increment: changes;
 }
 
 .changeList li::before {
   position: absolute;
-  left: 0;
-  content: "→";
+  top: var(--ax-space-16);
+  left: var(--ax-space-16);
   color: var(--ax-text-accent);
+  font-size: var(--ax-font-size-small);
   font-weight: 700;
+  content: counter(changes, decimal-leading-zero);
 }
 
-.exportActions {
+.exportGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ax-space-12);
+  margin-block-start: var(--ax-space-20);
+}
+
+.exportCard {
+  min-height: 15rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ax-space-16);
+  padding: var(--ax-space-20);
+  background: var(--ax-bg-default);
+  border: 1px solid var(--ax-border-neutral-subtle);
+  border-radius: var(--ax-radius-12);
+}
+
+.exportCard[data-featured="true"] {
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--ax-bg-accent-soft) 72%, transparent),
+      transparent 70%
+    ),
+    var(--ax-bg-default);
+  border-color: var(--ax-border-accent-subtle);
+}
+
+.exportCard > :last-child {
+  margin-block-start: auto;
+}
+
+.exportIcon {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-content: center;
+  color: var(--ax-text-accent);
+  font-size: 1.5rem;
+  background: var(--ax-bg-accent-soft);
+  border-radius: var(--ax-radius-8);
+}
+
+.shareRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--ax-space-16);
   margin-block: var(--ax-space-16);
+  padding: var(--ax-space-16);
+  background: var(--ax-bg-neutral-soft);
+  border-radius: var(--ax-radius-8);
 }
 
-.codeDisclosure {
+.codeDisclosure,
+.technicalDetails {
   overflow: hidden;
   background: var(--ax-bg-default);
   border: 1px solid var(--ax-border-neutral-subtle);
   border-radius: var(--ax-radius-8);
 }
 
-.codeDisclosure summary {
+.codeDisclosure summary,
+.technicalDetails summary {
   padding: var(--ax-space-12) var(--ax-space-16);
   font-weight: 600;
   cursor: pointer;
 }
 
-.codeDisclosure summary:focus-visible {
+.codeDisclosure summary:focus-visible,
+.technicalDetails summary:focus-visible {
   outline: 3px solid var(--ax-border-focus);
   outline-offset: -3px;
 }
@@ -144,24 +246,42 @@
 .codeScroller pre {
   padding: var(--ax-space-16);
   margin: 0;
-  font-size: var(--ax-font-size-small);
   overflow-wrap: anywhere;
+  font-size: var(--ax-font-size-small);
   white-space: pre-wrap;
 }
 
 .metadata {
   position: sticky;
   top: var(--ax-space-16);
-  padding: var(--ax-space-20);
+  padding: var(--ax-space-24);
+  overflow: hidden;
   background: var(--ax-bg-raised);
   border-top: var(--revision-rule);
   box-shadow: var(--ax-shadow-dialog);
 }
 
+.metadata::after {
+  position: absolute;
+  top: -5rem;
+  right: -5rem;
+  width: 10rem;
+  height: 10rem;
+  background: var(--ax-bg-success-soft);
+  border-radius: 50%;
+  content: "";
+  opacity: 0.7;
+}
+
+.metadata > * {
+  position: relative;
+  z-index: 1;
+}
+
 .metadata dl {
   display: grid;
   gap: var(--ax-space-12);
-  margin-block: 0 var(--ax-space-20);
+  margin-block: var(--ax-space-8) var(--ax-space-20);
 }
 
 .metadata dl div {
@@ -183,8 +303,12 @@
   font-weight: 600;
 }
 
+.technicalDetails {
+  margin-block-end: var(--ax-space-16);
+}
+
 .hashBlock {
-  margin-block: var(--ax-space-16);
+  margin: 0 var(--ax-space-16) var(--ax-space-16);
 }
 
 .hashBlock code {
@@ -193,6 +317,16 @@
   overflow-wrap: anywhere;
   color: var(--ax-text-neutral-subtle);
   font-size: var(--ax-font-size-small);
+}
+
+@media (max-width: 64rem) {
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .metadata {
+    position: static;
+  }
 }
 
 @media (max-width: 48rem) {
@@ -209,10 +343,20 @@
   }
 
   .contentGrid {
+    gap: var(--ax-space-32);
+  }
+
+  .changeList,
+  .exportGrid {
     grid-template-columns: 1fr;
   }
 
-  .metadata {
-    position: static;
+  .shareRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .stageWrap {
+    height: 28rem;
   }
 }

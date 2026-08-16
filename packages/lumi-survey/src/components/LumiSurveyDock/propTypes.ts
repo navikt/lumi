@@ -48,6 +48,12 @@ export interface LumiSurveyStyle {
   containerClassName?: string;
   /** Additional CSS class for panel. */
   panelClassName?: string;
+  /**
+   * Max height for the open panel as a CSS value.
+   * Intended for embedded previews inside a constrained stage.
+   * @default "calc(100vh - 2rem)"
+   */
+  panelMaxHeight?: string;
   /** Panel background color (Aksel token). @default "default" */
   panelBackground?: BoxNewProps["background"];
   /** Panel border color (Aksel token). @default "neutral-subtle" */
@@ -128,4 +134,19 @@ export interface LumiSurveyBehavior {
    * @default false
    */
   showProgress?: boolean;
+
+  /**
+   * Start navigation on the authored page with this id when it exists and is
+   * visible; otherwise the survey starts on the first visible page. Intended
+   * for embedded previews that mirror a specific page while authoring.
+   */
+  initialPageId?: string;
+
+  /**
+   * Simulate a viewport for embedded previews: the dock sizes itself from
+   * this instead of the real window, and auto-collected `viewport`/
+   * `deviceType` context reflects the simulation. Production behavior is
+   * unchanged when unset.
+   */
+  simulatedViewport?: { width: number; height: number };
 }
