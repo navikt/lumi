@@ -31,8 +31,8 @@ konsumenter.
 2. **Draften er ikke en statusmaskin.** Den kan være under arbeid og autosaves.
    UI-et bruker ikke «publisert», «live» eller «overlevert», fordi ingen av
    disse tilstandene kan håndheves av Lumi.
-3. **En eksplisitt authoring-revisjon blir immutable.** Senere slices oppretter
-   revisjoner fra en gyldig draft. En revisjonslenke kan deles i GitHub,
+3. **En eksplisitt authoring-revisjon er immutable.** Revisjoner opprettes fra
+   en gyldig, lagret draft. En revisjonslenke kan deles i GitHub,
    Trello eller Jira og viser preview, diff og deterministisk kodeeksport.
 4. **Produksjon forblir survey-as-code.** Utvikleren tar den eksporterte
    `SurveyDocumentV1` inn i konsumentappen og deployer på vanlig måte. Widgeten
@@ -43,8 +43,8 @@ konsumenter.
 6. **Miljøene synkroniseres ikke.** Produksjon er kanonisk authoring-store;
    utviklingsmiljøets drafts er disposable. Delbare produksjonsrevisjoner er
    teamautoriserte.
-7. **Authoring og analytics har ulike hasher.** En framtidig
-   `authoringDocumentHash` identifiserer hele authoring-revisjonen. Dagens
+7. **Authoring og analytics har ulike hasher.** `documentHash` identifiserer
+   hele authoring-revisjonen. Dagens
    `definitionHash` beskriver bare svarenes analytiske struktur og endres ikke
    av page-titler eller layout.
 
@@ -56,9 +56,16 @@ konsumenter.
 - validere gjennom widgetens offentlige `validateSurveyDocumentV1`
 - åpne en separat, inert forhåndsvisning i den ekte `LumiSurveyDock`
 
-Immutable revisjoner, delbar revisjonslenke, diff og kodeeksport følger som
-egne vertikale slices. Begrensningen er bevisst; første snitt etablerer
-lagrings- og sikkerhetsgrensen de bygger på.
+## Andre vertikale snitt
+
+- opprette en revisjon som et atomisk snapshot av lagret draft-versjon
+- validere `SurveyDocumentV1` og beregne dokument- og definisjonshash i API-et
+- blokkere endret analytisk struktur under samme `surveyId`
+- åpne teamautorisert revisjonslenke med auditdata, diff og inert preview
+- eksportere deterministisk JSON, TypeScript og Markdown-lenke
+
+Revisjoner lagres fortsatt utenfor `survey_definitions`; første reelle
+innsending registrerer fremdeles produksjonens analytiske definisjon.
 
 ## Konsekvenser
 

@@ -16,6 +16,7 @@ import { Route as ExportRouteImport } from './routes/export'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SurveyverkstedIndexRouteImport } from './routes/surveyverksted.index'
 import { Route as SurveyverkstedProjectIdRouteImport } from './routes/surveyverksted.$projectId'
+import { Route as SurveyverkstedRevisionsRevisionIdRouteImport } from './routes/surveyverksted.revisions.$revisionId'
 import { Route as ApiInternalMetricsRouteImport } from './routes/api/internal/metrics'
 import { Route as ApiInternalIsReadyRouteImport } from './routes/api/internal/isReady'
 import { Route as ApiInternalIsAliveRouteImport } from './routes/api/internal/isAlive'
@@ -55,6 +56,12 @@ const SurveyverkstedProjectIdRoute = SurveyverkstedProjectIdRouteImport.update({
   path: '/$projectId',
   getParentRoute: () => SurveyverkstedRoute,
 } as any)
+const SurveyverkstedRevisionsRevisionIdRoute =
+  SurveyverkstedRevisionsRevisionIdRouteImport.update({
+    id: '/revisions/$revisionId',
+    path: '/revisions/$revisionId',
+    getParentRoute: () => SurveyverkstedRoute,
+  } as any)
 const ApiInternalMetricsRoute = ApiInternalMetricsRouteImport.update({
   id: '/api/internal/metrics',
   path: '/api/internal/metrics',
@@ -82,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/api/internal/isAlive': typeof ApiInternalIsAliveRoute
   '/api/internal/isReady': typeof ApiInternalIsReadyRoute
   '/api/internal/metrics': typeof ApiInternalMetricsRoute
+  '/surveyverksted/revisions/$revisionId': typeof SurveyverkstedRevisionsRevisionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -93,6 +101,7 @@ export interface FileRoutesByTo {
   '/api/internal/isAlive': typeof ApiInternalIsAliveRoute
   '/api/internal/isReady': typeof ApiInternalIsReadyRoute
   '/api/internal/metrics': typeof ApiInternalMetricsRoute
+  '/surveyverksted/revisions/$revisionId': typeof SurveyverkstedRevisionsRevisionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -106,6 +115,7 @@ export interface FileRoutesById {
   '/api/internal/isAlive': typeof ApiInternalIsAliveRoute
   '/api/internal/isReady': typeof ApiInternalIsReadyRoute
   '/api/internal/metrics': typeof ApiInternalMetricsRoute
+  '/surveyverksted/revisions/$revisionId': typeof SurveyverkstedRevisionsRevisionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/api/internal/isAlive'
     | '/api/internal/isReady'
     | '/api/internal/metrics'
+    | '/surveyverksted/revisions/$revisionId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/api/internal/isAlive'
     | '/api/internal/isReady'
     | '/api/internal/metrics'
+    | '/surveyverksted/revisions/$revisionId'
   id:
     | '__root__'
     | '/'
@@ -143,6 +155,7 @@ export interface FileRouteTypes {
     | '/api/internal/isAlive'
     | '/api/internal/isReady'
     | '/api/internal/metrics'
+    | '/surveyverksted/revisions/$revisionId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -207,6 +220,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SurveyverkstedProjectIdRouteImport
       parentRoute: typeof SurveyverkstedRoute
     }
+    '/surveyverksted/revisions/$revisionId': {
+      id: '/surveyverksted/revisions/$revisionId'
+      path: '/revisions/$revisionId'
+      fullPath: '/surveyverksted/revisions/$revisionId'
+      preLoaderRoute: typeof SurveyverkstedRevisionsRevisionIdRouteImport
+      parentRoute: typeof SurveyverkstedRoute
+    }
     '/api/internal/metrics': {
       id: '/api/internal/metrics'
       path: '/api/internal/metrics'
@@ -234,11 +254,14 @@ declare module '@tanstack/react-router' {
 interface SurveyverkstedRouteChildren {
   SurveyverkstedProjectIdRoute: typeof SurveyverkstedProjectIdRoute
   SurveyverkstedIndexRoute: typeof SurveyverkstedIndexRoute
+  SurveyverkstedRevisionsRevisionIdRoute: typeof SurveyverkstedRevisionsRevisionIdRoute
 }
 
 const SurveyverkstedRouteChildren: SurveyverkstedRouteChildren = {
   SurveyverkstedProjectIdRoute: SurveyverkstedProjectIdRoute,
   SurveyverkstedIndexRoute: SurveyverkstedIndexRoute,
+  SurveyverkstedRevisionsRevisionIdRoute:
+    SurveyverkstedRevisionsRevisionIdRoute,
 }
 
 const SurveyverkstedRouteWithChildren = SurveyverkstedRoute._addFileChildren(

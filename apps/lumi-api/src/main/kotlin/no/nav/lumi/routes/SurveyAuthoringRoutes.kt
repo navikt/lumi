@@ -20,19 +20,25 @@ import no.nav.lumi.config.auth.authorizedPrincipal
 import no.nav.lumi.config.auth.authorizedTeam
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.CreateSurveyAuthoringProjectRequest
+import no.nav.lumi.domain.CreateSurveyAuthoringRevisionRequest
 import no.nav.lumi.domain.UpdateSurveyAuthoringDraftRequest
+import no.nav.lumi.repository.CreateSurveyAuthoringRevisionResult
 import no.nav.lumi.repository.SurveyAuthoringProjectRepository
+import no.nav.lumi.repository.SurveyAuthoringRevisionRepository
 import java.util.UUID
 
 private val defaultSurveyAuthoringProjectRepository = SurveyAuthoringProjectRepository()
+private val defaultSurveyAuthoringRevisionRepository = SurveyAuthoringRevisionRepository()
 private const val MAX_PROJECT_NAME_LENGTH = 120
 private const val MAX_SURVEY_ID_LENGTH = 200
 private const val MAX_DRAFT_BYTES = 256 * 1024
 private const val MAX_REQUEST_BYTES = MAX_DRAFT_BYTES + 16 * 1024
 private const val MAX_PROJECTS_PER_TEAM = 100
+private const val MAX_REVISIONS_PER_PROJECT = 500L
 
 fun Route.surveyAuthoringRoutes(
     repository: SurveyAuthoringProjectRepository = defaultSurveyAuthoringProjectRepository,
+    revisionRepository: SurveyAuthoringRevisionRepository = defaultSurveyAuthoringRevisionRepository,
 ) {
     get<ApiV1Intern.Authoring.Projects> {
         call.respond(repository.findByTeam(call.authorizedTeam))
@@ -94,6 +100,59 @@ fun Route.surveyAuthoringRoutes(
         )
 
         call.respond(project)
+    }
+
+    get<ApiV1Intern.Authoring.Projects.Id.ProjectRevisions> { params ->
+        val revisions = revisionRepository.findByProject(
+            team = call.authorizedTeam,
+            projectId = parseProjectId(params.parent.projectId),
+        ) ?: throw ApiErrorException.NotFoundException("Survey project not found")
+        call.respond(revisions)
+    }
+
+    post<ApiV1Intern.Authoring.Projects.Id.ProjectRevisions> { params ->
+        val request = receiveAuthoringRequest<CreateSurveyAuthoringRevisionRequest>(call)
+        if (request.expectedDraftVersion < 1) {
+            throw ApiErrorException.BadRequestException("expectedDraftVersion must be positive")
+        }
+        val principalIdentity = stablePrincipalIdentity(call.authorizedPrincipal)
+            ?: throw ApiErrorException.BadRequestException("Authenticated user needs a stable identity")
+
+        when (
+            val result = revisionRepository.createFromDraft(
+                team = call.authorizedTeam,
+                projectId = parseProjectId(params.parent.projectId),
+                expectedDraftVersion = request.expectedDraftVersion,
+                principalIdentity = principalIdentity,
+                maxRevisions = MAX_REVISIONS_PER_PROJECT,
+            )
+        ) {
+            is CreateSurveyAuthoringRevisionResult.Created ->
+                call.respond(HttpStatusCode.Created, result.revision)
+            CreateSurveyAuthoringRevisionResult.NotFound ->
+                throw ApiErrorException.NotFoundException("Survey project not found")
+            CreateSurveyAuthoringRevisionResult.DraftChanged ->
+                throw ApiErrorException.ConflictException(
+                    "Draft changed since it was validated. Wait for save and try again.",
+                )
+            CreateSurveyAuthoringRevisionResult.LimitReached ->
+                throw ApiErrorException.TooManyRequestsException(
+                    "Survey project has reached the limit of $MAX_REVISIONS_PER_PROJECT revisions",
+                )
+            is CreateSurveyAuthoringRevisionResult.DefinitionConflict ->
+                throw ApiErrorException.ConflictException(
+                    "Survey structure differs from revision ${result.previousRevisionNumber}. " +
+                        "Use a new surveyId before creating a shared revision.",
+                )
+        }
+    }
+
+    get<ApiV1Intern.Authoring.Revisions.Id> { params ->
+        val detail = revisionRepository.findDetailById(
+            team = call.authorizedTeam,
+            revisionId = parseRevisionId(params.revisionId),
+        ) ?: throw ApiErrorException.NotFoundException("Survey revision not found")
+        call.respond(detail)
     }
 }
 
@@ -164,4 +223,10 @@ private fun parseProjectId(value: String): UUID = try {
     UUID.fromString(value)
 } catch (_: IllegalArgumentException) {
     throw ApiErrorException.BadRequestException("Invalid survey project ID")
+}
+
+private fun parseRevisionId(value: String): UUID = try {
+    UUID.fromString(value)
+} catch (_: IllegalArgumentException) {
+    throw ApiErrorException.BadRequestException("Invalid survey revision ID")
 }

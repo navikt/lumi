@@ -295,7 +295,22 @@ class ApiV1Intern {
                 @Resource("draft")
                 @Serializable
                 class Draft(val parent: Id)
+
+                @Resource("revisions")
+                @Serializable
+                class ProjectRevisions(val parent: Id)
             }
+        }
+
+        @Resource("revisions")
+        @Serializable
+        class Revisions(val parent: Authoring = Authoring()) {
+            @Resource("{revisionId}")
+            @Serializable
+            class Id(
+                val parent: Revisions = Revisions(),
+                val revisionId: String,
+            )
         }
     }
 }

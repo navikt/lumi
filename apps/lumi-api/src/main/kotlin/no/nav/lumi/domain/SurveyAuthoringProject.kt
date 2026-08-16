@@ -19,6 +19,11 @@ data class UpdateSurveyAuthoringDraftRequest(
 )
 
 @Serializable
+data class CreateSurveyAuthoringRevisionRequest(
+    val expectedDraftVersion: Long,
+)
+
+@Serializable
 data class SurveyAuthoringProject(
     val id: String,
     val team: String,
@@ -39,4 +44,39 @@ data class SurveyAuthoringProjectSummary(
     val draftVersion: Long,
     val createdAt: String,
     val updatedAt: String,
+)
+
+@Serializable
+data class SurveyAuthoringRevision(
+    val id: String,
+    val projectId: String,
+    val revisionNumber: Long,
+    val draftVersion: Long,
+    val name: String,
+    val surveyId: String,
+    val document: JsonObject,
+    val documentHash: String,
+    val definitionHash: String,
+    val createdBy: String,
+    val createdAt: String,
+)
+
+@Serializable
+data class SurveyAuthoringRevisionSummary(
+    val id: String,
+    val projectId: String,
+    val revisionNumber: Long,
+    val draftVersion: Long,
+    val name: String,
+    val surveyId: String,
+    val documentHash: String,
+    val definitionHash: String,
+    val createdBy: String,
+    val createdAt: String,
+)
+
+@Serializable
+data class SurveyAuthoringRevisionDetail(
+    val revision: SurveyAuthoringRevision,
+    val previousRevision: SurveyAuthoringRevision? = null,
 )

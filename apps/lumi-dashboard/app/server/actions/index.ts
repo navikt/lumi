@@ -43,8 +43,11 @@ export {
 // Survey authoring
 export {
   createSurveyAuthoringProjectServerFn,
+  createSurveyAuthoringRevisionServerFn,
   fetchSurveyAuthoringProjectServerFn,
   fetchSurveyAuthoringProjectsServerFn,
+  fetchSurveyAuthoringRevisionServerFn,
+  fetchSurveyAuthoringRevisionsServerFn,
   saveSurveyAuthoringDraftServerFn,
 } from "./surveyAuthoring";
 // Tags
