@@ -20,12 +20,13 @@ import {
 } from "@navikt/ds-react";
 import type { SurveyQuestionV1 } from "@navikt/lumi-survey";
 import { memo, useEffect, useRef } from "react";
-import type {
-  ConditionValueSuggestion,
-  MoveDirection,
-  QuestionTypeId,
-  ReferenceableQuestion,
-  VisibleIfConditionV1,
+import {
+  type ConditionValueSuggestion,
+  type MoveDirection,
+  type QuestionTypeId,
+  type ReferenceableQuestion,
+  type VisibleIfConditionV1,
+  visibleIfLeaves,
 } from "~/utils/surveyDocument";
 import { ConditionEditor } from "./ConditionEditor";
 import { OptionsEditor, type OptionsEditorProps } from "./OptionsEditor";
@@ -80,6 +81,7 @@ export const QuestionCard = memo(function QuestionCard({
   suggestionsFor,
   onChangeVisibleIf,
 }: QuestionCardProps) {
+  const conditionCount = visibleIfLeaves(question.visibleIf).length;
   const collapsedButtonRef = useRef<HTMLButtonElement>(null);
   const promptRef = useRef<HTMLInputElement>(null);
   const restoreFocusRef = useRef(false);
@@ -131,7 +133,9 @@ export const QuestionCard = memo(function QuestionCard({
             {question.visibleIf ? (
               <Detail as="span" className={styles.cardConditional}>
                 <BranchingIcon aria-hidden />
-                Vises betinget
+                {conditionCount > 1
+                  ? `Vises betinget · ${conditionCount}`
+                  : "Vises betinget"}
               </Detail>
             ) : null}
             {question.required ? (

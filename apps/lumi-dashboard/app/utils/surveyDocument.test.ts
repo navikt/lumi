@@ -5,7 +5,9 @@ import {
   addPage,
   addQuestion,
   allowedConditionOperators,
+  buildVisibleIf,
   changeQuestionType,
+  conditionCombinator,
   conditionValueSuggestions,
   createQuestion,
   documentNeedsWideDock,
@@ -30,6 +32,7 @@ import {
   suggestSurveyId,
   updateOptionLabel,
   updateOptionValue,
+  visibleIfLeaves,
 } from "~/utils/surveyDocument";
 
 function sequentialIds(prefix = "id") {
@@ -750,6 +753,41 @@ describe("allowedConditionOperators", () => {
       "EQ",
       "NEQ",
     ]);
+  });
+});
+
+describe("condition group helpers", () => {
+  const leafA = { questionId: "rating-1", operator: "EXISTS" } as const;
+  const leafB = {
+    questionId: "choice-1",
+    operator: "EQ",
+    value: "soke",
+  } as const;
+
+  it("flattens unset, leaf and group conditions to a leaf list", () => {
+    expect(visibleIfLeaves(undefined)).toEqual([]);
+    expect(visibleIfLeaves(leafA)).toEqual([leafA]);
+    expect(visibleIfLeaves({ any: [leafA, leafB] })).toEqual([leafA, leafB]);
+    expect(visibleIfLeaves({ all: [leafA, leafB] })).toEqual([leafA, leafB]);
+  });
+
+  it("reads the combinator with all as the default", () => {
+    expect(conditionCombinator(undefined)).toBe("all");
+    expect(conditionCombinator(leafA)).toBe("all");
+    expect(conditionCombinator({ all: [leafA, leafB] })).toBe("all");
+    expect(conditionCombinator({ any: [leafA, leafB] })).toBe("any");
+  });
+
+  it("serializes to the exact runtime shape", () => {
+    expect(buildVisibleIf([], "all")).toBeUndefined();
+    // A single condition is a leaf — never a one-member group.
+    expect(buildVisibleIf([leafA], "any")).toEqual(leafA);
+    expect(buildVisibleIf([leafA, leafB], "all")).toEqual({
+      all: [leafA, leafB],
+    });
+    expect(buildVisibleIf([leafA, leafB], "any")).toEqual({
+      any: [leafA, leafB],
+    });
   });
 });
 

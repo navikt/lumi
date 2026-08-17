@@ -434,3 +434,83 @@ test("a visibility condition set in the editor gates the question live in the st
   await page.getByRole("button", { name: "Bytt til mørk modus" }).click();
   await expectNoAxeViolations(page);
 });
+
+test("an any/all group over two conditions gates the question live in the stage", async ({
+  page,
+}) => {
+  await page.goto("/surveyverksted");
+  await page.getByLabel("Navn på utkastet").fill("Gruppe-utkast");
+  await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
+
+  // A third question that can reference both seeded questions.
+  await page.getByRole("button", { name: "Legg til spørsmål" }).click();
+  await page.getByRole("menuitem", { name: /Vurdering/ }).click();
+  await page
+    .getByRole("textbox", { name: "Spørsmålstekst" })
+    .last()
+    .fill("Vil du utdype?");
+
+  const stage = page.getByLabel("Forhåndsvisning");
+  await expect(
+    stage.getByRole("group", { name: "Vil du utdype?" }),
+  ).toBeVisible();
+
+  // First condition: rating answered. Second: the text question answered.
+  await page
+    .getByRole("button", { name: /Vis bare hvis/ })
+    .last()
+    .click();
+  await page.getByRole("button", { name: "Legg til betingelse" }).click();
+  await expect(page.getByText("Alle må stemme")).toBeVisible();
+  await page
+    .getByLabel("Spørsmål", { exact: true })
+    .last()
+    .selectOption({ index: 1 });
+
+  // Let the autosave settle first — its completion remounts the stage and
+  // would otherwise wipe answers given in between.
+  await expect(page.locator('[data-state="saved"]')).toBeVisible();
+
+  // ALL: nothing answered yet → hidden; rating alone is not enough.
+  await expect(
+    stage.getByRole("group", { name: "Vil du utdype?" }),
+  ).not.toBeVisible({
+    timeout: 10000,
+  });
+  await stage.getByRole("radio").nth(3).click();
+  await expect(
+    stage.getByRole("group", { name: "Vil du utdype?" }),
+  ).not.toBeVisible();
+
+  // ANY: the document edit remounts the stage (answers reset), and one
+  // answered condition is then enough.
+  await page.getByText("Minst én må stemme").click();
+  await expect(page.locator('[data-state="saved"]')).toBeVisible();
+  await expect(
+    stage.getByRole("group", { name: "Vil du utdype?" }),
+  ).not.toBeVisible({ timeout: 10000 });
+  await stage.getByRole("radio").nth(3).click();
+  await expect(
+    stage.getByRole("group", { name: "Vil du utdype?" }),
+  ).toBeVisible();
+
+  await expect(page.locator('[data-state="saved"]')).toBeVisible();
+  await expectNoAxeViolations(page);
+  await page.getByRole("button", { name: "Bytt til mørk modus" }).click();
+  await expectNoAxeViolations(page);
+
+  // Removing the second row collapses back to a single leaf: the
+  // combinator toggle disappears and the remaining condition still gates.
+  await page.getByRole("button", { name: "Fjern betingelse 2" }).click();
+  await expect(page.getByText("Minst én må stemme")).toHaveCount(0);
+  await expect(page.locator('[data-state="saved"]')).toBeVisible();
+  await expect(
+    stage.getByRole("group", { name: "Vil du utdype?" }),
+  ).not.toBeVisible({ timeout: 10000 });
+  await stage.getByRole("radio").nth(3).click();
+  await expect(
+    stage.getByRole("group", { name: "Vil du utdype?" }),
+  ).toBeVisible();
+  await expect(page.locator('[data-state="saved"]')).toBeVisible();
+});

@@ -64,6 +64,35 @@ describe("QuestionCard collapsed", () => {
   });
 });
 
+describe("QuestionCard collapsed condition indicator", () => {
+  it("shows the condition count when several conditions gate the question", () => {
+    renderCard({
+      question: {
+        ...ratingQuestion,
+        id: "gated",
+        visibleIf: {
+          any: [
+            { questionId: "a", operator: "EXISTS" },
+            { questionId: "b", operator: "EXISTS" },
+          ],
+        },
+      },
+    });
+    expect(screen.getByText("Vises betinget · 2")).toBeInTheDocument();
+  });
+
+  it("shows no count for a single condition", () => {
+    renderCard({
+      question: {
+        ...ratingQuestion,
+        id: "gated",
+        visibleIf: { questionId: "a", operator: "EXISTS" },
+      },
+    });
+    expect(screen.getByText("Vises betinget")).toBeInTheDocument();
+  });
+});
+
 describe("QuestionCard expanded", () => {
   it("focuses the prompt field when the card transitions to expanded", () => {
     const noop = () => {};
