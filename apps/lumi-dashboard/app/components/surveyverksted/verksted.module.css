@@ -557,7 +557,7 @@
   grid-template-columns: 1.5rem 1fr;
   column-gap: var(--ax-space-8);
   align-items: start;
-  padding: var(--ax-space-10) var(--ax-space-12);
+  padding: var(--ax-space-16) var(--ax-space-16);
   padding-inline-end: var(--ax-space-32);
   color: var(--ax-text-neutral);
   text-align: left;
@@ -659,17 +659,8 @@
   gap: var(--ax-space-12);
 }
 
-.ghostTitle :global(input.aksel-text-field__input),
-.ghostDescription :global(input.aksel-text-field__input) {
-  padding-inline: var(--ax-space-6);
-  margin-inline-start: calc(var(--ax-space-6) * -1);
-  background: transparent;
-  border-color: transparent;
-  transition:
-    border-color 120ms ease,
-    background 120ms ease;
-}
-
+/* Title and description keep their editorial typography but read as
+   ordinary Aksel inputs — invisible borders failed as an affordance. */
 .ghostTitle :global(input.aksel-text-field__input) {
   font-size: var(--ax-font-size-heading-medium);
   font-weight: 700;
@@ -677,18 +668,6 @@
 
 .ghostDescription :global(input.aksel-text-field__input) {
   color: var(--ax-text-neutral-subtle);
-}
-
-.ghostTitle :global(input.aksel-text-field__input:hover),
-.ghostDescription :global(input.aksel-text-field__input:hover) {
-  border-color: var(--ax-border-neutral-subtle);
-  background: var(--ax-bg-default);
-}
-
-.ghostTitle :global(input.aksel-text-field__input:focus),
-.ghostDescription :global(input.aksel-text-field__input:focus) {
-  border-color: var(--ax-border-focus);
-  background: var(--ax-bg-default);
 }
 
 .addQuestion {

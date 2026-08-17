@@ -79,6 +79,35 @@ export const fetchSurveyAuthoringProjectServerFn = createServerFn({
     return response.json() as Promise<SurveyAuthoringProject>;
   });
 
+export const deleteSurveyAuthoringProjectServerFn = createServerFn({
+  method: "POST",
+})
+  .middleware([authMiddleware])
+  .inputValidator(zodValidator(SurveyAuthoringProjectIdSchema))
+  .handler(async ({ data, context }): Promise<void> => {
+    if (isMockMode()) {
+      const { deleteMockSurveyProject } = await import(
+        "~/mock/surveyAuthoring"
+      );
+      await mockDelay();
+      if (!deleteMockSurveyProject(data.team, data.projectId)) {
+        throw new Error("Survey project not found");
+      }
+      return;
+    }
+
+    const { backendUrl, oboToken } = context as AuthContext;
+    const response = await fetch(
+      buildUrl(
+        backendUrl,
+        `/api/v1/intern/authoring/projects/${encodeURIComponent(data.projectId)}`,
+        { team: data.team },
+      ),
+      { method: "DELETE", headers: getHeaders(oboToken) },
+    );
+    await handleApiResponse(response);
+  });
+
 export const createSurveyAuthoringProjectServerFn = createServerFn({
   method: "POST",
 })

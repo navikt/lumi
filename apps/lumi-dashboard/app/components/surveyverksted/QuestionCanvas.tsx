@@ -94,7 +94,7 @@ export const QuestionCanvas = memo(function QuestionCanvas({
             onExpire={onUndoExpire}
           />
         ) : null}
-        <VStack gap="space-2">
+        <VStack gap="space-12">
           <TextField
             label="Sidetittel"
             hideLabel

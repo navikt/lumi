@@ -56,6 +56,19 @@ export function createMockSurveyProject(input: {
   return structuredClone(project);
 }
 
+export function deleteMockSurveyProject(
+  team: string,
+  projectId: string,
+): boolean {
+  const project = projects.get(projectId);
+  if (project?.team !== team) return false;
+  projects.delete(projectId);
+  for (const [id, revision] of revisions) {
+    if (revision.projectId === projectId) revisions.delete(id);
+  }
+  return true;
+}
+
 export function saveMockSurveyProject(input: {
   team: string;
   projectId: string;

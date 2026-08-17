@@ -63,4 +63,45 @@ describe("mock survey authoring store", () => {
       }),
     ).toThrow("Draft changed since it was loaded");
   });
+
+  it("deletion returns false for unknown ids and other teams, leaving the project", async () => {
+    const store = await import("../surveyAuthoring");
+    const created = store.createMockSurveyProject({
+      team: "team-a",
+      name: "Mock-slett",
+      surveyId: "mock-slett",
+      document,
+    });
+
+    expect(store.deleteMockSurveyProject("team-a", "finnes-ikke")).toBe(false);
+    expect(store.deleteMockSurveyProject("team-b", created.id)).toBe(false);
+    expect(store.getMockSurveyProject("team-a", created.id)).toBeDefined();
+  });
+
+  it("deletes the project together with its revisions", async () => {
+    const store = await import("../surveyAuthoring");
+    const created = store.createMockSurveyProject({
+      team: "team-a",
+      name: "Mock-slett",
+      surveyId: "mock-slett",
+      document,
+    });
+    const revision = await store.createMockSurveyRevision({
+      team: "team-a",
+      projectId: created.id,
+      expectedDraftVersion: 1,
+    });
+
+    expect(store.deleteMockSurveyProject("team-a", created.id)).toBe(true);
+    expect(store.getMockSurveyProject("team-a", created.id)).toBeUndefined();
+    // API parity: listing revisions for a deleted project is a not-found.
+    expect(() => store.listMockSurveyRevisions("team-a", created.id)).toThrow(
+      /not found/i,
+    );
+    expect(
+      store.getMockSurveyRevisionDetail("team-a", revision.id),
+    ).toBeUndefined();
+    // Idempotent from the caller's view: the second delete reports missing.
+    expect(store.deleteMockSurveyProject("team-a", created.id)).toBe(false);
+  });
 });

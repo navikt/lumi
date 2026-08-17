@@ -44,6 +44,7 @@ export {
 export {
   createSurveyAuthoringProjectServerFn,
   createSurveyAuthoringRevisionServerFn,
+  deleteSurveyAuthoringProjectServerFn,
   fetchSurveyAuthoringProjectServerFn,
   fetchSurveyAuthoringProjectsServerFn,
   fetchSurveyAuthoringRevisionServerFn,

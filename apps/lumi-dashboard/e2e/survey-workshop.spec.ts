@@ -67,7 +67,7 @@ test("creates, edits, previews and shares a survey draft", async ({ page }) => {
   await expectNoAxeViolations(page);
 
   const previewPromise = page.waitForEvent("popup");
-  await page.getByRole("button", { name: "Prøv surveyen" }).click();
+  await page.getByRole("button", { name: "Prøv i egen fane" }).click();
   const preview = await previewPromise;
 
   await expect(
@@ -150,6 +150,110 @@ test("creates, edits, previews and shares a survey draft", async ({ page }) => {
     expect(boxes.dock.bottom).toBeLessThanOrEqual(boxes.stage.bottom + 1);
   }
   await expectNoAxeViolations(page);
+});
+
+test("deletes a draft from the index after confirmation", async ({ page }) => {
+  // Mock state outlives CI retries — a unique name keeps reruns isolated.
+  const draftName = `Slette-utkast-${Date.now()}`;
+  await page.goto("/surveyverksted");
+  await page.getByLabel("Navn på utkastet").fill(draftName);
+  await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
+
+  // Freeze a revision so the deletion provably takes revisions with it.
+  await page.getByRole("button", { name: "Del med utvikler" }).click();
+  await page
+    .getByRole("button", { name: /Frys revisjon 1 og få delbar lenke/ })
+    .click();
+  await page.waitForURL(/\/surveyverksted\/revisions\//);
+  const revisionUrl = page.url();
+
+  // SPA-navigate back to the index (same QueryClient!) so the revision
+  // detail stays cached — the deletion must evict it, not a full reload.
+  await page.getByRole("link", { name: "Surveyverksted" }).first().click();
+  await page.waitForURL(/\/surveyverksted$/);
+  await page
+    .getByRole("button", { name: `Handlinger for ${draftName}`, exact: false })
+    .click();
+  await page.getByRole("menuitem", { name: "Slett utkast" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "Slett utkastet?" });
+  await expect(dialog.getByText(/fryste revisjoner/)).toBeVisible();
+  await expectNoAxeViolations(page);
+  await dialog.getByRole("button", { name: "Slett utkastet" }).click();
+
+  await expect(dialog).not.toBeVisible();
+  await expect(page.getByText(draftName)).toHaveCount(0);
+  // The native dialog lost its trigger — focus lands on the list heading.
+  await expect(
+    page.getByRole("heading", { name: "Teamets utkast" }),
+  ).toBeFocused();
+
+  // History back is an SPA navigation: with the detail cache evicted the
+  // route must refetch and land in the not-found state — a stale cache
+  // would render the deleted revision from memory.
+  await page.goBack();
+  await expect(page).toHaveURL(revisionUrl);
+  await expect(page.getByText(/Revisjonen finnes ikke/)).toBeVisible({
+    timeout: 10000,
+  });
+});
+
+test("the delete dialog refuses to close while deletion is pending", async ({
+  page,
+}) => {
+  const draftName = `Slette-lås-${Date.now()}`;
+  await page.goto("/surveyverksted");
+  await page.getByLabel("Navn på utkastet").fill(draftName);
+  await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
+  await page.goto("/surveyverksted");
+
+  // First delete attempt: slow, then a server failure. The resolver lets
+  // the test wait until the request is provably on the wire.
+  let intercepted = false;
+  let deleteOnTheWire!: () => void;
+  const deleteRequestSent = new Promise<void>((resolve) => {
+    deleteOnTheWire = resolve;
+  });
+  await page.route("**/*", async (route) => {
+    const request = route.request();
+    const body = request.postData() ?? "";
+    if (
+      !intercepted &&
+      request.method() === "POST" &&
+      body.includes('"projectId"') &&
+      !body.includes('"document"') &&
+      !body.includes('"expectedDraftVersion"')
+    ) {
+      intercepted = true;
+      deleteOnTheWire();
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await route.fulfill({ status: 500, body: "boom" });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page
+    .getByRole("button", { name: `Handlinger for ${draftName}`, exact: false })
+    .click();
+  await page.getByRole("menuitem", { name: "Slett utkast" }).click();
+  const dialog = page.getByRole("dialog", { name: "Slett utkastet?" });
+  const confirm = dialog.getByRole("button", { name: "Slett utkastet" });
+  await confirm.click();
+  await deleteRequestSent;
+
+  // Escape while the mutation is in flight must not strand the dialog.
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+
+  // The failure keeps the dialog with the error and a working retry.
+  await expect(dialog.getByText(/kunne ikke slettes/i)).toBeVisible();
+  await page.unroute("**/*");
+  await dialog.getByRole("button", { name: "Slett utkastet" }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.getByText(draftName)).toHaveCount(0);
 });
 
 test("undo restores the deletion without losing later edits, and sharing surfaces missing metadata", async ({
