@@ -302,6 +302,31 @@
   align-items: start;
 }
 
+.conditionRowWrap {
+  display: flex;
+  gap: var(--ax-space-4);
+  align-items: start;
+}
+
+.conditionRowWrap > .conditionRow {
+  flex: 1;
+}
+
+/* Clears the field label so the remove button lines up with the inputs. */
+.conditionRowWrap > .conditionRowRemove {
+  margin-top: 1.65rem;
+}
+
+.conditionMetadataRow {
+  align-self: center;
+  flex: 1;
+}
+
+.conditionMetadataRow code {
+  font-family: var(--ax-font-family-mono, ui-monospace, monospace);
+  font-size: 0.85em;
+}
+
 .conditionAddWrap {
   display: inline-flex;
   align-items: center;

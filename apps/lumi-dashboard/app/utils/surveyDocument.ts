@@ -337,11 +337,7 @@ export function duplicatePage(
   for (const question of original.questions) {
     idByOriginal.set(question.id, `${question.type}-${idFactory()}`);
   }
-  type ConditionLeaf = Exclude<
-    VisibleIfConditionV1,
-    { any: unknown } | { all: unknown }
-  >;
-  const remapLeaf = (leaf: ConditionLeaf): ConditionLeaf => {
+  const remapLeaf = (leaf: ConditionLeafV1): ConditionLeafV1 => {
     if (isMetadataCondition(leaf)) return leaf;
     const mapped = idByOriginal.get(leaf.questionId);
     return mapped ? { ...leaf, questionId: mapped } : leaf;
@@ -715,6 +711,44 @@ export function documentNeedsWideDock(document: SurveyDocumentV1): boolean {
 }
 
 export type VisibleIfConditionV1 = NonNullable<SurveyQuestionV1["visibleIf"]>;
+
+/** A single condition — the non-group member of the visibleIf union. */
+export type ConditionLeafV1 = Exclude<
+  VisibleIfConditionV1,
+  { any: unknown } | { all: unknown }
+>;
+
+export type ConditionCombinator = "all" | "any";
+
+/** Flattens a visibleIf into its editable list of leaves. */
+export function visibleIfLeaves(
+  condition: VisibleIfConditionV1 | undefined,
+): ConditionLeafV1[] {
+  if (!condition) return [];
+  if ("any" in condition) return [...condition.any];
+  if ("all" in condition) return [...condition.all];
+  return [condition];
+}
+
+/** The group combinator; leaves and unset conditions read as "all". */
+export function conditionCombinator(
+  condition: VisibleIfConditionV1 | undefined,
+): ConditionCombinator {
+  return condition && "any" in condition ? "any" : "all";
+}
+
+/**
+ * Runtime-exact serialization: no leaves clears the condition, one leaf
+ * stays a plain leaf (never a one-member group), several form a group.
+ */
+export function buildVisibleIf(
+  leaves: readonly ConditionLeafV1[],
+  combinator: ConditionCombinator,
+): VisibleIfConditionV1 | undefined {
+  if (leaves.length === 0) return undefined;
+  if (leaves.length === 1) return leaves[0];
+  return combinator === "any" ? { any: [...leaves] } : { all: [...leaves] };
+}
 
 /**
  * Runtime (`evaluateVisibility`) and the API validator both discriminate

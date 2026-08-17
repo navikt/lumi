@@ -1,43 +1,55 @@
-import { BranchingIcon, XMarkIcon } from "@navikt/aksel-icons";
+import { BranchingIcon, PlusIcon, XMarkIcon } from "@navikt/aksel-icons";
 import {
   BodyShort,
   Button,
   Detail,
   Select,
   TextField,
+  ToggleGroup,
   Tooltip,
 } from "@navikt/ds-react";
+import { useEffect, useRef } from "react";
 import {
   allowedConditionOperators,
+  buildVisibleIf,
+  type ConditionCombinator,
+  type ConditionLeafV1,
   type ConditionValueSuggestion,
+  conditionCombinator,
   isMetadataCondition,
   type ReferenceableQuestion,
   type VisibleIfConditionV1,
+  visibleIfLeaves,
 } from "~/utils/surveyDocument";
 import styles from "./verksted.module.css";
 
-type LeafCondition = Exclude<
-  VisibleIfConditionV1,
-  { any: unknown } | { all: unknown }
->;
+/**
+ * Stable editor-local row identities. Never serialized into visibleIf —
+ * they only keep React keys and focus tied to the RIGHT row when rows
+ * are removed from the middle of the list.
+ */
+function useStableRowIds(count: number) {
+  const nextRef = useRef(0);
+  const idsRef = useRef<number[]>([]);
+  if (idsRef.current.length !== count) {
+    // External shape change (add, undo, question switch): keep existing
+    // positions, mint ids for new rows.
+    idsRef.current = Array.from({ length: count }, (_, index) => {
+      const existing = idsRef.current[index];
+      return existing === undefined ? nextRef.current++ : existing;
+    });
+  }
+  return {
+    ids: idsRef.current,
+    removeAt(index: number) {
+      idsRef.current = idsRef.current.filter((_, i) => i !== index);
+    },
+  };
+}
 
-type AnswerLeaf = Exclude<LeafCondition, { field: "METADATA" }>;
+type AnswerLeaf = Exclude<ConditionLeafV1, { field: "METADATA" }>;
 
 type ValuedOperator = "EQ" | "NEQ" | "GT" | "LT" | "CONTAINS";
-
-function isGroup(
-  condition: VisibleIfConditionV1,
-): condition is Exclude<VisibleIfConditionV1, LeafCondition> {
-  return "any" in condition || "all" in condition;
-}
-
-function isAnswerLeaf(
-  condition: VisibleIfConditionV1,
-): condition is AnswerLeaf {
-  // Field-based like runtime and API: a stray `key` on an ANSWER leaf
-  // must not demote it to a read-only code condition.
-  return !isGroup(condition) && !isMetadataCondition(condition);
-}
 
 /**
  * DOM option values are type-prefixed so the string "3" can never
@@ -64,9 +76,11 @@ export interface ConditionEditorProps {
 }
 
 /**
- * Single-condition builder for question visibility ("Vis bare hvis …").
- * Mirrors the runtime rule that only earlier questions can be referenced.
- * Groups and METADATA conditions authored in code are shown read-only.
+ * Condition builder for question visibility ("Vis bare hvis …").
+ * Several conditions combine with all/any in the same one-level model as
+ * the runtime; a single condition stays a plain leaf. Mirrors the runtime
+ * rule that only earlier questions can be referenced. METADATA conditions
+ * authored in code are shown read-only but can be removed.
  */
 export function ConditionEditor({
   condition,
@@ -74,6 +88,38 @@ export function ConditionEditor({
   suggestionsFor,
   onChange,
 }: ConditionEditorProps) {
+  const leaves = visibleIfLeaves(condition);
+  const rowIds = useStableRowIds(leaves.length);
+  const sectionRef = useRef<HTMLDivElement | null>(null);
+  // `row:<id>` / "add" — resolved to a focus() after the removal renders,
+  // so focus moves with an announcement instead of silently via DOM reuse.
+  const pendingFocusRef = useRef<string | null>(null);
+  useEffect(() => {
+    const pending = pendingFocusRef.current;
+    if (!pending) return;
+    pendingFocusRef.current = null;
+    const root = sectionRef.current;
+    if (!root) return;
+    // Resolve against what actually remains: the requested row, then the
+    // add button, then the header remove button — a collapsed metadata
+    // branch has no add button, and a disabled control cannot take focus.
+    const selectors =
+      pending === "add"
+        ? ["[data-condition-add]", "[data-condition-remove-all]"]
+        : [
+            `[data-condition-remove="${pending}"]`,
+            "[data-condition-add]",
+            "[data-condition-remove-all]",
+          ];
+    for (const selector of selectors) {
+      const target = root.querySelector<HTMLButtonElement>(selector);
+      if (target && !target.disabled) {
+        target.focus();
+        return;
+      }
+    }
+  });
+
   if (condition === undefined) {
     const disabled = referenceable.length === 0;
     const addButton = (
@@ -102,9 +148,11 @@ export function ConditionEditor({
     );
   }
 
-  if (!isAnswerLeaf(condition)) {
+  const combinator = conditionCombinator(condition);
+
+  if (leaves.length === 1 && isMetadataCondition(leaves[0])) {
     return (
-      <div className={styles.conditionSection}>
+      <div ref={sectionRef} className={styles.conditionSection}>
         <div className={styles.conditionHeader}>
           <Detail as="span" className={styles.eyebrow}>
             BETINGELSE
@@ -116,53 +164,221 @@ export function ConditionEditor({
               size="xsmall"
               icon={<XMarkIcon aria-hidden />}
               aria-label="Fjern betingelsen"
+              data-condition-remove-all=""
               onClick={() => onChange(undefined)}
             />
           </Tooltip>
         </div>
         <BodyShort size="small" textColor="subtle">
-          Sammensatt betingelse satt i kode. Den beholdes som den er, eller kan
+          Metadatabetingelse satt i kode. Den beholdes som den er, eller kan
           fjernes her.
         </BodyShort>
       </div>
     );
   }
 
-  const referenced = referenceable.find(
-    (candidate) => candidate.id === condition.questionId,
+  const emit = (
+    nextLeaves: readonly ConditionLeafV1[],
+    nextCombinator: ConditionCombinator = combinator,
+  ) => onChange(buildVisibleIf(nextLeaves, nextCombinator));
+
+  const updateLeaf = (index: number, leaf: ConditionLeafV1) =>
+    emit(leaves.map((current, i) => (i === index ? leaf : current)));
+  const removeLeaf = (index: number) => {
+    pendingFocusRef.current =
+      leaves.length <= 2
+        ? "add"
+        : String(rowIds.ids[index + 1] ?? rowIds.ids[index - 1]);
+    rowIds.removeAt(index);
+    emit(leaves.filter((_, i) => i !== index));
+  };
+  const addLeaf = () =>
+    emit([...leaves, { questionId: referenceable[0].id, operator: "EXISTS" }]);
+
+  return (
+    <div ref={sectionRef} className={styles.conditionSection}>
+      <div className={styles.conditionHeader}>
+        <Detail as="span" className={styles.eyebrow}>
+          VISES BARE HVIS
+        </Detail>
+        <Tooltip content="Fjern betingelsen">
+          <Button
+            type="button"
+            variant="tertiary-neutral"
+            size="xsmall"
+            icon={<XMarkIcon aria-hidden />}
+            aria-label="Fjern betingelsen"
+            data-condition-remove-all=""
+            onClick={() => onChange(undefined)}
+          />
+        </Tooltip>
+      </div>
+      {leaves.length >= 2 ? (
+        <ToggleGroup
+          label="Kombiner betingelsene"
+          size="small"
+          value={combinator}
+          onChange={(next) => emit(leaves, next as ConditionCombinator)}
+        >
+          <ToggleGroup.Item value="all" label="Alle må stemme" />
+          <ToggleGroup.Item value="any" label="Minst én må stemme" />
+        </ToggleGroup>
+      ) : null}
+      {leaves.map((leaf, index) => {
+        const rowId = rowIds.ids[index];
+        const onRemove =
+          leaves.length > 1 ? () => removeLeaf(index) : undefined;
+        const groupLabel =
+          leaves.length > 1 ? `Betingelse ${index + 1}` : undefined;
+        return isMetadataCondition(leaf) ? (
+          <MetadataConditionRow
+            key={rowId}
+            leaf={leaf}
+            rowId={rowId}
+            index={index}
+            groupLabel={groupLabel}
+            onRemove={onRemove}
+          />
+        ) : (
+          <AnswerConditionRow
+            key={rowId}
+            leaf={leaf}
+            rowId={rowId}
+            index={index}
+            groupLabel={groupLabel}
+            referenceable={referenceable}
+            suggestionsFor={suggestionsFor}
+            onLeafChange={(next) => updateLeaf(index, next)}
+            onRemove={onRemove}
+          />
+        );
+      })}
+      <div>
+        <Button
+          type="button"
+          variant="tertiary"
+          size="small"
+          icon={<PlusIcon aria-hidden />}
+          disabled={referenceable.length === 0}
+          data-condition-add=""
+          onClick={addLeaf}
+        >
+          Legg til betingelse
+        </Button>
+      </div>
+    </div>
   );
-  const suggestions = condition.questionId
-    ? suggestionsFor(condition.questionId)
-    : [];
+}
+
+function RemoveRowButton({
+  index,
+  rowId,
+  onRemove,
+}: {
+  index: number;
+  rowId: number;
+  onRemove: () => void;
+}) {
+  const label = `Fjern betingelse ${index + 1}`;
+  return (
+    <Tooltip content={label}>
+      <Button
+        type="button"
+        variant="tertiary-neutral"
+        size="xsmall"
+        className={styles.conditionRowRemove}
+        icon={<XMarkIcon aria-hidden />}
+        aria-label={label}
+        data-condition-remove={rowId}
+        onClick={onRemove}
+      />
+    </Tooltip>
+  );
+}
+
+function MetadataConditionRow({
+  leaf,
+  rowId,
+  index,
+  groupLabel,
+  onRemove,
+}: {
+  leaf: Extract<ConditionLeafV1, { field: "METADATA" }>;
+  rowId: number;
+  index: number;
+  groupLabel: string | undefined;
+  onRemove: (() => void) | undefined;
+}) {
+  return (
+    <div
+      className={styles.conditionRowWrap}
+      {...(groupLabel ? { role: "group", "aria-label": groupLabel } : {})}
+    >
+      <BodyShort
+        size="small"
+        textColor="subtle"
+        className={styles.conditionMetadataRow}
+      >
+        Metadatabetingelse satt i kode (<code>{leaf.key}</code>)
+      </BodyShort>
+      {onRemove ? (
+        <RemoveRowButton index={index} rowId={rowId} onRemove={onRemove} />
+      ) : null}
+    </div>
+  );
+}
+
+function AnswerConditionRow({
+  leaf,
+  rowId,
+  index,
+  groupLabel,
+  referenceable,
+  suggestionsFor,
+  onLeafChange,
+  onRemove,
+}: {
+  leaf: AnswerLeaf;
+  rowId: number;
+  index: number;
+  groupLabel: string | undefined;
+  referenceable: ReferenceableQuestion[];
+  suggestionsFor: (referencedId: string) => ConditionValueSuggestion[];
+  onLeafChange: (leaf: ConditionLeafV1) => void;
+  onRemove: (() => void) | undefined;
+}) {
+  const referenced = referenceable.find(
+    (candidate) => candidate.id === leaf.questionId,
+  );
+  const suggestions = leaf.questionId ? suggestionsFor(leaf.questionId) : [];
   const operators = referenced
     ? allowedConditionOperators(referenced.type)
     : ["EXISTS"];
-  const needsValue = condition.operator !== "EXISTS";
+  const needsValue = leaf.operator !== "EXISTS";
 
   // Stale states render EXPLICITLY as dead, disabled options with a warning
   // — a native select must never pretend the condition was repaired.
-  const referenceMissing = condition.questionId !== undefined && !referenced;
-  const operatorStale =
-    !referenceMissing && !operators.includes(condition.operator);
+  const referenceMissing = leaf.questionId !== undefined && !referenced;
+  const operatorStale = !referenceMissing && !operators.includes(leaf.operator);
   const valueStale =
     needsValue &&
     !referenceMissing &&
     suggestions.length > 0 &&
-    !suggestions.some((candidate) => candidate.value === condition.value);
+    !suggestions.some((candidate) => candidate.value === leaf.value);
   const valueTypeInvalid =
     needsValue &&
     !referenceMissing &&
     suggestions.length === 0 &&
-    condition.value !== undefined &&
-    typeof condition.value !== "string";
+    leaf.value !== undefined &&
+    typeof leaf.value !== "string";
   // Blank text answers never reach runtime answer state, so a blank value
   // makes the condition misleading; the release gates reject it.
   const valueBlank =
     needsValue &&
     !referenceMissing &&
     suggestions.length === 0 &&
-    typeof condition.value === "string" &&
-    condition.value.trim().length === 0;
+    typeof leaf.value === "string" &&
+    leaf.value.trim().length === 0;
   // Repair guidance renders as Aksel field errors: linked to the control
   // via aria-describedby and announced via the built-in polite live region.
   const questionError = referenceMissing
@@ -189,13 +405,11 @@ export function ConditionEditor({
       (candidate) => candidate.id === referencedId,
     )?.type;
     const allowed = nextType ? allowedConditionOperators(nextType) : ["EXISTS"];
-    const operator = allowed.includes(condition.operator)
-      ? condition.operator
-      : "EXISTS";
+    const operator = allowed.includes(leaf.operator) ? leaf.operator : "EXISTS";
     if (operator === "EXISTS") {
-      onChange({ questionId: referencedId, operator: "EXISTS" });
+      onLeafChange({ questionId: referencedId, operator: "EXISTS" });
     } else {
-      onChange({
+      onLeafChange({
         questionId: referencedId,
         operator: operator as ValuedOperator,
         value: firstValueFor(referencedId),
@@ -205,13 +419,13 @@ export function ConditionEditor({
 
   const changeOperator = (operator: string) => {
     if (operator === "EXISTS") {
-      onChange({ questionId: condition.questionId, operator: "EXISTS" });
+      onLeafChange({ questionId: leaf.questionId, operator: "EXISTS" });
       return;
     }
-    onChange({
-      questionId: condition.questionId,
+    onLeafChange({
+      questionId: leaf.questionId,
       operator: operator as ValuedOperator,
-      value: condition.value ?? firstValueFor(condition.questionId ?? ""),
+      value: leaf.value ?? firstValueFor(leaf.questionId ?? ""),
     });
   };
 
@@ -219,41 +433,29 @@ export function ConditionEditor({
     const suggestion = suggestions.find(
       (candidate) => encodeValue(candidate.value) === raw,
     );
-    onChange({
-      questionId: condition.questionId,
-      operator: condition.operator as ValuedOperator,
+    onLeafChange({
+      questionId: leaf.questionId,
+      operator: leaf.operator as ValuedOperator,
       value: suggestion ? suggestion.value : raw,
     });
   };
 
   return (
-    <div className={styles.conditionSection}>
-      <div className={styles.conditionHeader}>
-        <Detail as="span" className={styles.eyebrow}>
-          VISES BARE HVIS
-        </Detail>
-        <Tooltip content="Fjern betingelsen">
-          <Button
-            type="button"
-            variant="tertiary-neutral"
-            size="xsmall"
-            icon={<XMarkIcon aria-hidden />}
-            aria-label="Fjern betingelsen"
-            onClick={() => onChange(undefined)}
-          />
-        </Tooltip>
-      </div>
+    <div
+      className={styles.conditionRowWrap}
+      {...(groupLabel ? { role: "group", "aria-label": groupLabel } : {})}
+    >
       <div className={styles.conditionRow}>
         <Select
           label="Spørsmål"
           size="small"
-          value={condition.questionId ?? ""}
+          value={leaf.questionId ?? ""}
           error={questionError}
           onChange={(event) => changeReferenced(event.target.value)}
         >
           {referenceMissing ? (
-            <option value={condition.questionId} disabled>
-              Finnes ikke lenger ({condition.questionId})
+            <option value={leaf.questionId} disabled>
+              Finnes ikke lenger ({leaf.questionId})
             </option>
           ) : null}
           {referenceable.map((candidate) => (
@@ -266,14 +468,14 @@ export function ConditionEditor({
         <Select
           label="Vilkår"
           size="small"
-          value={condition.operator}
+          value={leaf.operator}
           error={operatorError}
           onChange={(event) => changeOperator(event.target.value)}
         >
           {operatorStale ? (
-            <option value={condition.operator} disabled>
-              {OPERATOR_LABELS[condition.operator] ?? condition.operator}{" "}
-              (passer ikke lenger)
+            <option value={leaf.operator} disabled>
+              {OPERATOR_LABELS[leaf.operator] ?? leaf.operator} (passer ikke
+              lenger)
             </option>
           ) : null}
           {operators.map((operator) => (
@@ -287,13 +489,13 @@ export function ConditionEditor({
             <Select
               label="Verdi"
               size="small"
-              value={encodeValue(condition.value)}
+              value={encodeValue(leaf.value)}
               error={valueError}
               onChange={(event) => changeValue(event.target.value)}
             >
               {valueStale ? (
-                <option value={encodeValue(condition.value)} disabled>
-                  «{String(condition.value ?? "")}» (finnes ikke)
+                <option value={encodeValue(leaf.value)} disabled>
+                  «{String(leaf.value ?? "")}» (finnes ikke)
                 </option>
               ) : null}
               {suggestions.map((suggestion) => (
@@ -309,13 +511,16 @@ export function ConditionEditor({
             <TextField
               label="Verdi"
               size="small"
-              value={String(condition.value ?? "")}
+              value={String(leaf.value ?? "")}
               error={valueError}
               onChange={(event) => changeValue(event.target.value)}
             />
           )
         ) : null}
       </div>
+      {onRemove ? (
+        <RemoveRowButton index={index} rowId={rowId} onRemove={onRemove} />
+      ) : null}
     </div>
   );
 }

@@ -1,8 +1,12 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ConditionEditor } from "~/components/surveyverksted/ConditionEditor";
-import type { ReferenceableQuestion } from "~/utils/surveyDocument";
+import type {
+  ReferenceableQuestion,
+  VisibleIfConditionV1,
+} from "~/utils/surveyDocument";
 
 const referenceable: ReferenceableQuestion[] = [
   {
@@ -46,6 +50,26 @@ function suggestionsFor(id: string) {
     return [1, 2, 3, 4, 5].map((value) => ({ value, label: String(value) }));
   }
   return [];
+}
+
+function ControlledEditor({
+  initial,
+  referenceable: referenceableOverride,
+}: {
+  initial: VisibleIfConditionV1;
+  referenceable?: ReferenceableQuestion[];
+}) {
+  const [condition, setCondition] = useState<VisibleIfConditionV1 | undefined>(
+    initial,
+  );
+  return (
+    <ConditionEditor
+      condition={condition}
+      referenceable={referenceableOverride ?? referenceable}
+      suggestionsFor={suggestionsFor}
+      onChange={setCondition}
+    />
+  );
 }
 
 describe("ConditionEditor", () => {
@@ -344,11 +368,43 @@ describe("ConditionEditor", () => {
     expect(screen.queryByLabelText("Vilkår")).not.toBeInTheDocument();
   });
 
-  it("shows a read-only note for group conditions authored in code", () => {
+  it("adds a second condition and emits an all-group", async () => {
+    const onChange = vi.fn();
+    render(
+      <ConditionEditor
+        condition={{ questionId: "choice-1", operator: "EQ", value: "soke" }}
+        referenceable={referenceable}
+        suggestionsFor={suggestionsFor}
+        onChange={onChange}
+      />,
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Legg til betingelse" }),
+    );
+    expect(onChange).toHaveBeenCalledWith({
+      all: [
+        { questionId: "choice-1", operator: "EQ", value: "soke" },
+        { questionId: "rating-1", operator: "EXISTS" },
+      ],
+    });
+  });
+
+  it("shows the combinator toggle only with two or more conditions", () => {
+    const { unmount } = render(
+      <ConditionEditor
+        condition={{ questionId: "rating-1", operator: "EXISTS" }}
+        referenceable={referenceable}
+        suggestionsFor={suggestionsFor}
+        onChange={() => {}}
+      />,
+    );
+    expect(screen.queryByText("Alle må stemme")).not.toBeInTheDocument();
+    unmount();
+
     render(
       <ConditionEditor
         condition={{
-          any: [
+          all: [
             { questionId: "rating-1", operator: "EXISTS" },
             { questionId: "choice-1", operator: "EXISTS" },
           ],
@@ -358,7 +414,232 @@ describe("ConditionEditor", () => {
         onChange={() => {}}
       />,
     );
-    expect(screen.getByText(/sammensatt betingelse/i)).toBeInTheDocument();
-    expect(screen.queryByLabelText("Vilkår")).not.toBeInTheDocument();
+    expect(screen.getByText("Alle må stemme")).toBeInTheDocument();
+    expect(screen.getByText("Minst én må stemme")).toBeInTheDocument();
+  });
+
+  it("switches the combinator and emits the other group shape", async () => {
+    const onChange = vi.fn();
+    render(
+      <ConditionEditor
+        condition={{
+          all: [
+            { questionId: "rating-1", operator: "EXISTS" },
+            { questionId: "choice-1", operator: "EXISTS" },
+          ],
+        }}
+        referenceable={referenceable}
+        suggestionsFor={suggestionsFor}
+        onChange={onChange}
+      />,
+    );
+    await userEvent.click(screen.getByText("Minst én må stemme"));
+    expect(onChange).toHaveBeenCalledWith({
+      any: [
+        { questionId: "rating-1", operator: "EXISTS" },
+        { questionId: "choice-1", operator: "EXISTS" },
+      ],
+    });
+  });
+
+  it("removes a row and collapses back to a single leaf", async () => {
+    const onChange = vi.fn();
+    render(
+      <ConditionEditor
+        condition={{
+          any: [
+            { questionId: "rating-1", operator: "EXISTS" },
+            { questionId: "choice-1", operator: "EQ", value: "soke" },
+          ],
+        }}
+        referenceable={referenceable}
+        suggestionsFor={suggestionsFor}
+        onChange={onChange}
+      />,
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Fjern betingelse 2" }),
+    );
+    expect(onChange).toHaveBeenCalledWith({
+      questionId: "rating-1",
+      operator: "EXISTS",
+    });
+  });
+
+  it("edits one row without touching the others", async () => {
+    const onChange = vi.fn();
+    render(
+      <ConditionEditor
+        condition={{
+          all: [
+            { questionId: "rating-1", operator: "EXISTS" },
+            { questionId: "choice-1", operator: "EQ", value: "soke" },
+          ],
+        }}
+        referenceable={referenceable}
+        suggestionsFor={suggestionsFor}
+        onChange={onChange}
+      />,
+    );
+    await userEvent.selectOptions(screen.getAllByLabelText("Vilkår")[1], "NEQ");
+    expect(onChange).toHaveBeenCalledWith({
+      all: [
+        { questionId: "rating-1", operator: "EXISTS" },
+        { questionId: "choice-1", operator: "NEQ", value: "soke" },
+      ],
+    });
+  });
+
+  it("unmounts the removed row instead of reusing its DOM for the next row", async () => {
+    // With index keys React would keep the clicked button's DOM node and
+    // silently let it represent the NEXT row — a second Enter would then
+    // delete the wrong condition.
+    render(
+      <ControlledEditor
+        initial={{
+          any: [
+            { questionId: "rating-1", operator: "EXISTS" },
+            { questionId: "choice-1", operator: "EQ", value: "soke" },
+            { questionId: "multi-1", operator: "EXISTS" },
+          ],
+        }}
+      />,
+    );
+    const removeSecond = screen.getByRole("button", {
+      name: "Fjern betingelse 2",
+    });
+    await userEvent.click(removeSecond);
+    expect(removeSecond).not.toBeInTheDocument();
+    const remaining = screen.getAllByRole("button", {
+      name: /Fjern betingelse \d/,
+    });
+    expect(remaining).toHaveLength(2);
+    // Focus moves EXPLICITLY (with announcement) to the row that took the
+    // deleted row's place — never silently via DOM reuse.
+    expect(
+      screen.getByRole("button", { name: "Fjern betingelse 2" }),
+    ).toHaveFocus();
+  });
+
+  it("moves focus to the add button when the group collapses to one row", async () => {
+    render(
+      <ControlledEditor
+        initial={{
+          any: [
+            { questionId: "rating-1", operator: "EXISTS" },
+            { questionId: "choice-1", operator: "EXISTS" },
+          ],
+        }}
+      />,
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Fjern betingelse 2" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Legg til betingelse" }),
+    ).toHaveFocus();
+  });
+
+  it("falls back to the header remove button when a mixed group collapses to metadata", async () => {
+    // The remaining METADATA leaf renders through the read-only branch,
+    // which has no add button — focus must still land somewhere real.
+    render(
+      <ControlledEditor
+        initial={{
+          all: [
+            { field: "METADATA", key: "flow", operator: "EXISTS" },
+            { questionId: "rating-1", operator: "EXISTS" },
+          ],
+        }}
+      />,
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Fjern betingelse 2" }),
+    );
+    expect(screen.getByText(/metadatabetingelse satt i kode/i)).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Fjern betingelsen" }),
+    ).toHaveFocus();
+  });
+
+  it("falls back past a disabled add button after removing a row", async () => {
+    // Hand-authored refs with no referenceable questions leave the add
+    // button disabled — a disabled control can never take focus.
+    render(
+      <ControlledEditor
+        initial={{
+          all: [
+            { questionId: "borte-1", operator: "EXISTS" },
+            { questionId: "borte-2", operator: "EXISTS" },
+          ],
+        }}
+        referenceable={[]}
+      />,
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Fjern betingelse 2" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Fjern betingelsen" }),
+    ).toHaveFocus();
+  });
+
+  it("names each row group so screen readers can tell rows apart", () => {
+    const { unmount } = render(
+      <ConditionEditor
+        condition={{
+          all: [
+            { questionId: "rating-1", operator: "EXISTS" },
+            { questionId: "choice-1", operator: "EQ", value: "soke" },
+          ],
+        }}
+        referenceable={referenceable}
+        suggestionsFor={suggestionsFor}
+        onChange={() => {}}
+      />,
+    );
+    const secondRow = screen.getByRole("group", { name: "Betingelse 2" });
+    expect(within(secondRow).getByLabelText("Vilkår")).toBeInTheDocument();
+    unmount();
+
+    // A single condition needs no differentiation.
+    render(
+      <ConditionEditor
+        condition={{ questionId: "rating-1", operator: "EXISTS" }}
+        referenceable={referenceable}
+        suggestionsFor={suggestionsFor}
+        onChange={() => {}}
+      />,
+    );
+    expect(
+      screen.queryByRole("group", { name: /Betingelse/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps metadata rows read-only inside a mixed group but removable", async () => {
+    const onChange = vi.fn();
+    render(
+      <ConditionEditor
+        condition={{
+          all: [
+            { field: "METADATA", key: "flow", operator: "EXISTS" },
+            { questionId: "rating-1", operator: "EXISTS" },
+          ],
+        }}
+        referenceable={referenceable}
+        suggestionsFor={suggestionsFor}
+        onChange={onChange}
+      />,
+    );
+    // Only the ANSWER row is editable; the metadata row shows its key.
+    expect(screen.getAllByLabelText("Vilkår")).toHaveLength(1);
+    expect(screen.getByText(/flow/)).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Fjern betingelse 1" }),
+    );
+    expect(onChange).toHaveBeenCalledWith({
+      questionId: "rating-1",
+      operator: "EXISTS",
+    });
   });
 });
