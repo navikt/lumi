@@ -43,10 +43,6 @@
   inset-inline-end: var(--ax-space-8);
 }
 
-.deleteError {
-  margin-block-start: var(--ax-space-12);
-}
-
 .projectLink {
   display: flex;
   justify-content: space-between;

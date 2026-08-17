@@ -78,6 +78,25 @@ describe("mock survey authoring store", () => {
     expect(store.getMockSurveyProject("team-a", created.id)).toBeDefined();
   });
 
+  it("refuses to freeze a revision when the project is deleted mid-flight", async () => {
+    // Hashing yields to the event loop — a delete landing in that window
+    // must fail the freeze instead of leaving an orphaned revision.
+    const store = await import("../surveyAuthoring");
+    const created = store.createMockSurveyProject({
+      team: "team-a",
+      name: "Race-slett",
+      surveyId: "race-slett",
+      document,
+    });
+    const pendingFreeze = store.createMockSurveyRevision({
+      team: "team-a",
+      projectId: created.id,
+      expectedDraftVersion: 1,
+    });
+    expect(store.deleteMockSurveyProject("team-a", created.id)).toBe(true);
+    await expect(pendingFreeze).rejects.toThrow(/not found/i);
+  });
+
   it("deletes the project together with its revisions", async () => {
     const store = await import("../surveyAuthoring");
     const created = store.createMockSurveyProject({

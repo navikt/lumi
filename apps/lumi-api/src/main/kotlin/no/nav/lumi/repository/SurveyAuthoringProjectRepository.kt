@@ -70,6 +70,15 @@ class SurveyAuthoringProjectRepository {
 
     /** Deletes the project; revisions follow via the DB cascade. */
     suspend fun deleteById(team: String, id: UUID): Boolean = dbQuery {
+        // Same per-project advisory lock as revision creation: a delete must
+        // never commit between the revision flow's project read and its
+        // insert — that would surface as an FK violation (500) instead of a
+        // clean 404/cascade.
+        val connection = TransactionManager.current().connection.connection as Connection
+        connection.prepareStatement("SELECT pg_advisory_xact_lock(hashtext(?))").use { lock ->
+            lock.setString(1, "survey-authoring-revision:$id")
+            lock.execute()
+        }
         SurveyAuthoringProjectTable.deleteWhere {
             (SurveyAuthoringProjectTable.team eq team) and
                 (SurveyAuthoringProjectTable.id eq id)

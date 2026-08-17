@@ -1,6 +1,7 @@
 package no.nav.lumi.routes
 
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.ktor.client.request.delete
@@ -15,6 +16,8 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -119,6 +122,53 @@ class SurveyAuthoringRoutesTest : FunSpec({
             client.delete("/api/v1/intern/authoring/projects/$projectId?team=team-test") {
                 header(HttpHeaders.Authorization, "Bearer test-token")
             }.status shouldBe HttpStatusCode.NotFound
+        }
+    }
+
+    test("a delete racing revision creation never produces a server error") {
+        // The per-project advisory lock must serialize the two flows: the
+        // freeze either commits before the cascade or reports not found -
+        // an FK violation (500) means the lock is gone.
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+            repeat(10) {
+                val created = client.post("/api/v1/intern/authoring/projects?team=team-test") {
+                    header(HttpHeaders.Authorization, "Bearer test-token")
+                    contentType(ContentType.Application.Json)
+                    setBody(createBody())
+                }
+                val projectId = Json.parseToJsonElement(created.bodyAsText()).jsonObject
+                    .getValue("id").jsonPrimitive.content
+
+                coroutineScope {
+                    val freeze = async {
+                        client.post(
+                            "/api/v1/intern/authoring/projects/$projectId/revisions?team=team-test",
+                        ) {
+                            header(HttpHeaders.Authorization, "Bearer test-token")
+                            contentType(ContentType.Application.Json)
+                            setBody("""{ "expectedDraftVersion": 1 }""")
+                        }
+                    }
+                    val deletion = async {
+                        client.delete(
+                            "/api/v1/intern/authoring/projects/$projectId?team=team-test",
+                        ) {
+                            header(HttpHeaders.Authorization, "Bearer test-token")
+                        }
+                    }
+                    val freezeStatus = freeze.await().status
+                    val deleteStatus = deletion.await().status
+                    freezeStatus shouldBeIn listOf(HttpStatusCode.Created, HttpStatusCode.NotFound)
+                    deleteStatus shouldBeIn listOf(HttpStatusCode.NoContent, HttpStatusCode.NotFound)
+                }
+
+                // Whoever won, the end state is fully converged.
+                client.get("/api/v1/intern/authoring/projects/$projectId?team=team-test") {
+                    header(HttpHeaders.Authorization, "Bearer test-token")
+                }.status shouldBe HttpStatusCode.NotFound
+            }
         }
     }
 
