@@ -551,4 +551,58 @@ describe("validateSurveyDocumentV1", () => {
       validateSurveyDocumentV1({ authoringSchemaVersion: 1, pages: [] }),
     ).toThrow("at least one page");
   });
+
+  it("accepts optional intro and success content", () => {
+    const document = {
+      authoringSchemaVersion: 1 as const,
+      intro: {
+        title: "Velkommen",
+        body: "To korte spørsmål.",
+        startLabel: "Kom i gang",
+      },
+      success: { title: "Takk!", body: "Svaret er sendt." },
+      pages: [
+        {
+          id: "page-1",
+          questions: [
+            {
+              id: "rating",
+              type: "rating" as const,
+              prompt: "Hvordan gikk det?",
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(validateSurveyDocumentV1(document)).toBe(document);
+  });
+
+  it("rejects malformed intro and success shapes", () => {
+    const base = {
+      authoringSchemaVersion: 1 as const,
+      pages: [
+        {
+          id: "page-1",
+          questions: [
+            {
+              id: "rating",
+              type: "rating" as const,
+              prompt: "Hvordan gikk det?",
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(() =>
+      validateSurveyDocumentV1({ ...base, intro: { title: 42 } }),
+    ).toThrow(/intro/i);
+    expect(() =>
+      validateSurveyDocumentV1({ ...base, intro: "Velkommen" }),
+    ).toThrow(/intro/i);
+    expect(() =>
+      validateSurveyDocumentV1({ ...base, success: { title: null } }),
+    ).toThrow(/success/i);
+  });
 });

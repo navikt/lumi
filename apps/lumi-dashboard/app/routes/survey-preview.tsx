@@ -85,10 +85,14 @@ function SurveyPreview() {
             showProgress: true,
             storageStrategy: "none",
           }}
-          success={{
-            title: "Slik ser kvitteringen ut",
-            body: "Dette var bare en forhåndsvisning. Ingenting ble sendt inn.",
-          }}
+          success={
+            validation.document.success?.title.trim()
+              ? undefined
+              : {
+                  title: "Slik ser kvitteringen ut",
+                  body: "Dette var bare en forhåndsvisning. Ingenting ble sendt inn.",
+                }
+          }
         />
       ) : null}
     </Box>

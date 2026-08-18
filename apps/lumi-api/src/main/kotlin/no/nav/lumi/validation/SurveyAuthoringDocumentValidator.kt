@@ -80,6 +80,9 @@ object SurveyAuthoringDocumentValidator {
             ?: invalid("Survey document must contain pages")
         if (pages.isEmpty()) invalid("Survey document must have at least one page")
 
+        validateOptionalScreen(document, "intro", listOf("body", "startLabel"), releaseGate)
+        validateOptionalScreen(document, "success", listOf("body"), releaseGate)
+
         val pageIds = mutableSetOf<String>()
         val questionIds = mutableSetOf<String>()
         val previousQuestionIds = mutableSetOf<String>()
@@ -264,6 +267,36 @@ object SurveyAuthoringDocumentValidator {
                 invalid("Question '$questionId' has a nested visibleIf group")
             }
             validateConditionLeaf(leaf, questionId, previousQuestionIds, conditionTargets, releaseGate)
+        }
+    }
+
+    /**
+     * Intro/success screens: plain string content. Drafts may keep a blank
+     * title; the release gate requires one. Mirrors the widget's canonical
+     * document validation.
+     */
+    private fun validateOptionalScreen(
+        document: JsonObject,
+        name: String,
+        optionalStringFields: List<String>,
+        releaseGate: Boolean,
+    ) {
+        val element = document[name] ?: return
+        val section = element as? JsonObject
+            ?: invalid("Document $name must be an object")
+        val title = section["title"] as? JsonPrimitive
+        if (title == null || !title.isString) {
+            invalid("Document $name needs a string title")
+        }
+        optionalStringFields.forEach { field ->
+            val value = section[field] ?: return@forEach
+            val primitive = value as? JsonPrimitive
+            if (primitive == null || !primitive.isString) {
+                invalid("Document $name field '$field' must be a string")
+            }
+        }
+        if (releaseGate && title.content.isBlank()) {
+            invalid("Document $name needs a non-blank title before a revision can be created")
         }
     }
 

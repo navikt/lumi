@@ -16,8 +16,10 @@ export type {
   LumiSurveyConfig,
   LumiSurveyDefinition,
   SurveyDocumentV1,
+  SurveyIntroV1,
   SurveyPageV1,
   SurveyQuestionV1,
+  SurveySuccessV1,
   SurveyType,
 } from "./components/surveyTypes.js";
 export * from "./core/index.js";

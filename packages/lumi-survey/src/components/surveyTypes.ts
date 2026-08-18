@@ -81,6 +81,24 @@ export interface SurveyPageV1 {
   questions: [SurveyQuestionV1, ...SurveyQuestionV1[]];
 }
 
+/** Survey-level intro screen, shown before the first question. */
+export interface SurveyIntroV1 {
+  /** Intro heading. Drafts may leave it blank; the release gate requires it. */
+  title: string;
+  /** Optional body text. Plain text — rich content is an embed-time concern. */
+  body?: string;
+  /** Label for the start button. Runtime defaults to "Start". */
+  startLabel?: string;
+}
+
+/** Survey-level thank-you screen, shown after submission. */
+export interface SurveySuccessV1 {
+  /** Thank-you heading. Drafts may leave it blank; the release gate requires it. */
+  title: string;
+  /** Optional body text. */
+  body?: string;
+}
+
 /**
  * Serializable authoring format for surveys with explicit pages.
  * This version is separate from the submission payload schema version.
@@ -88,6 +106,10 @@ export interface SurveyPageV1 {
 export interface SurveyDocumentV1 {
   authoringSchemaVersion: 1;
   type?: SurveyType;
+  /** Optional intro screen content owned by the survey author. */
+  intro?: SurveyIntroV1;
+  /** Optional thank-you screen content owned by the survey author. */
+  success?: SurveySuccessV1;
   pages: [SurveyPageV1, ...SurveyPageV1[]];
   /** Legacy flat configurations use `questions` instead. */
   questions?: never;

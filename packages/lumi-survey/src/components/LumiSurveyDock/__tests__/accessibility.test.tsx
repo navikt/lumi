@@ -43,6 +43,44 @@ describe("LumiSurveyDock Accessibility", () => {
     expect(results.violations).toEqual([]);
   });
 
+  it("should have no axe violations on the intro screen, blank start label included", async () => {
+    const { container } = render(
+      <LumiSurveyDock
+        surveyId="a11y-test-intro"
+        survey={
+          {
+            authoringSchemaVersion: 1,
+            intro: {
+              title: "Velkommen",
+              body: "To korte spørsmål.",
+              startLabel: "   ",
+            },
+            pages: [
+              {
+                id: "side-1",
+                questions: [
+                  {
+                    id: "rating",
+                    type: "rating",
+                    prompt: "Hvordan gikk det?",
+                  },
+                ],
+              },
+            ],
+          } satisfies SurveyDocumentV1
+        }
+        transport={mockTransport}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Start" })).toBeInTheDocument();
+    });
+
+    const results = await axe.run(container);
+    expect(results.violations).toEqual([]);
+  });
+
   it("should have no axe violations in minimized state", async () => {
     const { container } = render(
       <LumiSurveyDock

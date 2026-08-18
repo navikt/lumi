@@ -277,6 +277,41 @@ class SurveyAuthoringDocumentValidatorTest : FunSpec({
         )
         SurveyAuthoringDocumentValidator.validate(ratingEq, "survey-v1", releaseGate = true)
     }
+    test("intro and success screens are draft-lenient but release-gated on title") {
+        fun withScreens(introTitle: String, successTitle: String): JsonObject {
+            val base = validDocument().toMutableMap()
+            base["intro"] = Json.parseToJsonElement(
+                """{ "title": "$introTitle", "body": "To korte sporsmal.", "startLabel": "Kom i gang" }""",
+            )
+            base["success"] = Json.parseToJsonElement(
+                """{ "title": "$successTitle", "body": "Svaret er sendt." }""",
+            )
+            return JsonObject(base)
+        }
+
+        // Drafts accept blank titles; the release gate does not.
+        SurveyAuthoringDocumentValidator.validate(withScreens("", ""), "survey-v1")
+        SurveyAuthoringDocumentValidator.validate(withScreens("Velkommen", "Takk!"), "survey-v1", releaseGate = true)
+
+        shouldThrow<ApiErrorException.BadRequestException> {
+            SurveyAuthoringDocumentValidator.validate(withScreens("  ", "Takk!"), "survey-v1", releaseGate = true)
+        }.errorMessage shouldBe
+            "Document intro needs a non-blank title before a revision can be created"
+        shouldThrow<ApiErrorException.BadRequestException> {
+            SurveyAuthoringDocumentValidator.validate(withScreens("Velkommen", ""), "survey-v1", releaseGate = true)
+        }.errorMessage shouldBe
+            "Document success needs a non-blank title before a revision can be created"
+
+        // Malformed shapes are rejected already in drafts.
+        val nonStringTitle = JsonObject(
+            validDocument().toMutableMap().also {
+                it["intro"] = Json.parseToJsonElement("""{ "title": 42 }""")
+            },
+        )
+        shouldThrow<ApiErrorException.BadRequestException> {
+            SurveyAuthoringDocumentValidator.validate(nonStringTitle, "survey-v1")
+        }.errorMessage shouldBe "Document intro needs a string title"
+    }
 })
 
 private fun conditionDocument(referencedType: String, condition: String): JsonObject {

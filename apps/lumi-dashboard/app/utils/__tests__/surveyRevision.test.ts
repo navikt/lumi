@@ -27,6 +27,39 @@ const document: SurveyDocumentV1 = {
   ],
 };
 
+describe("describeRevisionChanges for screens", () => {
+  it("describes intro and success screen changes", () => {
+    const withIntro: SurveyDocumentV1 = {
+      ...document,
+      intro: { title: "Velkommen" },
+    };
+    const withChangedIntro: SurveyDocumentV1 = {
+      ...document,
+      intro: { title: "Hei!" },
+    };
+    const withSuccess: SurveyDocumentV1 = {
+      ...document,
+      success: { title: "Takk!" },
+    };
+
+    expect(describeRevisionChanges(withIntro, document)).toContain(
+      "Introskjerm er lagt til.",
+    );
+    expect(describeRevisionChanges(document, withIntro)).toContain(
+      "Introskjerm er fjernet.",
+    );
+    expect(describeRevisionChanges(withChangedIntro, withIntro)).toContain(
+      "Introskjermen er endret.",
+    );
+    expect(describeRevisionChanges(withSuccess, document)).toContain(
+      "Takkskjerm er lagt til.",
+    );
+    expect(describeRevisionChanges(document, withSuccess)).toContain(
+      "Takkskjerm er fjernet.",
+    );
+  });
+});
+
 describe("survey revision exports", () => {
   it("serializes deterministic JSON and TypeScript", () => {
     const json = serializeSurveyDocumentJson(document);

@@ -117,7 +117,11 @@ export const StageSurface = memo(function StageSurface({
             simulatedViewport: { width: innerWidth, height: innerHeight },
           }}
           style={{ offset: DOCK_OFFSET, panelMaxHeight }}
-          success={{ title: successTitle, body: successBody }}
+          success={
+            document.success?.title.trim()
+              ? undefined
+              : { title: successTitle, body: successBody }
+          }
         />
       </div>
     </div>
