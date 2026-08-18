@@ -162,9 +162,24 @@ test("authors intro and thank-you screens that render in the real widget", async
 
   await page.getByRole("button", { name: "Legg til introskjerm" }).click();
   const introCard = page.getByRole("region", { name: "Introskjerm" });
+  await expect(introCard).toBeVisible();
+  await page.clock.install();
+  await page.clock.pauseAt(Date.now());
   await introCard.getByLabel("Tittel").fill("Velkommen");
   await introCard.getByLabel(/Brødtekst/).fill("To korte spørsmål.");
   await introCard.getByLabel(/Knappetekst/).fill("Kom i gang");
+
+  // An explicit restart flushes the latest valid editor state instead of
+  // waiting for the stage's normal debounce.
+  const stage = page.getByLabel("Forhåndsvisning");
+  await page
+    .getByRole("button", { name: "Start forhåndsvisningen på nytt" })
+    .click();
+  await expect(stage.getByRole("heading", { name: "Velkommen" })).toBeVisible();
+  await expect(stage.getByText("To korte spørsmål.")).toBeVisible();
+  await stage.getByRole("button", { name: "Kom i gang" }).click();
+  await expect(stage.getByRole("radio", { name: /5\./ })).toBeVisible();
+  await page.clock.resume();
 
   await page.getByRole("button", { name: "Legg til takkskjerm" }).click();
   await page
@@ -175,7 +190,6 @@ test("authors intro and thank-you screens that render in the real widget", async
   await expectNoAxeViolations(page);
 
   // The stage keeps editing flowing: no Start-gate in front of questions.
-  const stage = page.getByLabel("Forhåndsvisning");
   await expect(stage.getByRole("radio", { name: /5\./ })).toBeVisible();
   await expect(
     stage.getByRole("button", { name: "Kom i gang" }),
@@ -208,6 +222,24 @@ test("authors intro and thank-you screens that render in the real widget", async
   await preview.getByRole("button", { name: "Kom i gang" }).click();
   await expect(preview.getByRole("radio", { name: /5\./ })).toBeVisible();
   await preview.close();
+
+  // Selecting another editor page exits the from-start walkthrough and makes
+  // the stage follow the selected page again.
+  await page.getByRole("button", { name: "Ny side" }).click();
+  await expect(stage.getByRole("heading", { name: "Ny side" })).toBeVisible();
+  await page
+    .getByRole("button", { name: "Start forhåndsvisningen på nytt" })
+    .click();
+  await expect(stage.getByRole("heading", { name: "Velkommen" })).toBeVisible();
+  await page
+    .getByRole("button", { name: /01.*Fortell om opplevelsen/ })
+    .click();
+  await expect(
+    stage.getByRole("heading", { name: "Fortell om opplevelsen" }),
+  ).toBeVisible();
+  await expect(
+    stage.getByRole("heading", { name: "Velkommen" }),
+  ).not.toBeVisible();
 
   // Removing the intro is reversible: focus lands on the undo (house
   // pattern for deletions), and undoing restores the content with focus
