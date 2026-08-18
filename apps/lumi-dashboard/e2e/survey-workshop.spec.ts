@@ -85,21 +85,19 @@ test("creates, edits, previews and shares a survey draft", async ({ page }) => {
 
   // Share via the release dialog
   await page.getByRole("button", { name: "Del med utvikler" }).click();
-  await expect(page.getByText("Klar til å fryse revisjon 1")).toBeVisible();
+  await expect(page.getByText("Klar til å dele versjon 1")).toBeVisible();
   await expectNoAxeViolations(page);
-  await page
-    .getByRole("button", { name: /Frys revisjon 1 og få delbar lenke/ })
-    .click();
+  await page.getByRole("button", { name: "Del versjon 1" }).click();
 
   await expect(page).toHaveURL(
     /\/surveyverksted\/revisions\/[0-9a-f-]+\?team=team-esyfo/,
   );
-  await expect(page.getByText("Låst revisjon")).toBeVisible();
+  await expect(page.getByText("Delt versjon", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Klar til bruk" }),
   ).toBeVisible();
   await expect(
-    page.getByText("Første delbare revisjon i prosjektet."),
+    page.getByText("Første delte versjon i prosjektet."),
   ).toBeVisible();
 
   // The frozen revision is interactive right on the page
@@ -152,7 +150,7 @@ test("creates, edits, previews and shares a survey draft", async ({ page }) => {
   await expectNoAxeViolations(page);
 });
 
-test("authors intro and thank-you screens that render in the real widget", async ({
+test("authors intro and confirmation screens that render in the real widget", async ({
   page,
 }) => {
   await page.goto("/surveyverksted");
@@ -160,18 +158,18 @@ test("authors intro and thank-you screens that render in the real widget", async
   await page.getByRole("button", { name: "Opprett utkast" }).click();
   await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
 
-  await page.getByRole("button", { name: "Legg til introskjerm" }).click();
-  const introCard = page.getByRole("region", { name: "Introskjerm" });
+  await page.getByRole("button", { name: "Legg til velkomstside" }).click();
+  const introCard = page.getByRole("region", { name: "Velkomstside" });
   await expect(introCard).toBeVisible();
   await page.clock.install();
   await page.clock.pauseAt(Date.now());
   await introCard.getByLabel("Tittel").fill("Velkommen");
-  await introCard.getByLabel(/Brødtekst/).fill("To korte spørsmål.");
-  await introCard.getByLabel(/Knappetekst/).fill("Kom i gang");
+  await introCard.getByLabel("Tekst (valgfri)").fill("To korte spørsmål.");
+  await introCard.getByLabel(/Tekst på startknappen/).fill("Kom i gang");
 
   // An explicit restart flushes the latest valid editor state instead of
   // waiting for the stage's normal debounce.
-  const stage = page.getByLabel("Forhåndsvisning");
+  const stage = page.getByRole("region", { name: "Forhåndsvisning" });
   await page
     .getByRole("button", { name: "Start forhåndsvisningen på nytt" })
     .click();
@@ -181,13 +179,41 @@ test("authors intro and thank-you screens that render in the real widget", async
   await expect(stage.getByRole("radio", { name: /5\./ })).toBeVisible();
   await page.clock.resume();
 
-  await page.getByRole("button", { name: "Legg til takkskjerm" }).click();
+  await expect(
+    page.getByText(
+      "Vises etter at brukeren har sendt inn svarene. Uten tilpasning brukes standardteksten.",
+    ),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Tilpass bekreftelsen" }).click();
   await page
-    .getByRole("region", { name: "Takkskjerm" })
+    .getByRole("region", { name: "Bekreftelse etter innsending" })
     .getByLabel("Tittel")
     .fill("Takk for svaret!");
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
   await expectNoAxeViolations(page);
+
+  // The live stage stays alongside the editor on ordinary laptop widths.
+  await page.setViewportSize({ width: 1100, height: 800 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const stickyStageTop = await stage.evaluate((element) => {
+    const preview = element.parentElement;
+    if (!preview) throw new Error("Preview stage is missing its aside");
+    const styles = getComputedStyle(preview);
+    return Math.round(
+      Number.parseFloat(styles.top) + Number.parseFloat(styles.paddingTop),
+    );
+  });
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect
+    .poll(() =>
+      stage.evaluate((element) =>
+        Math.round(element.getBoundingClientRect().top),
+      ),
+    )
+    .toBe(stickyStageTop);
+  await expect(stage).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.evaluate(() => window.scrollTo(0, 0));
 
   // The stage keeps editing flowing: no Start-gate in front of questions.
   await expect(stage.getByRole("radio", { name: /5\./ })).toBeVisible();
@@ -195,7 +221,7 @@ test("authors intro and thank-you screens that render in the real widget", async
     stage.getByRole("button", { name: "Kom i gang" }),
   ).not.toBeVisible();
 
-  // The authored thank-you shows after submitting in the stage.
+  // The authored confirmation shows after submitting in the stage.
   await stage.getByRole("radio", { name: /5\./ }).click();
   await stage.getByRole("button", { name: "Send" }).click();
   await expect(
@@ -244,14 +270,14 @@ test("authors intro and thank-you screens that render in the real widget", async
   // Removing the intro is reversible: focus lands on the undo (house
   // pattern for deletions), and undoing restores the content with focus
   // in the title field.
-  await page.getByRole("button", { name: "Fjern introskjermen" }).click();
-  await expect(page.getByText("Introskjermen ble fjernet.")).toBeVisible();
+  await page.getByRole("button", { name: "Fjern velkomstsiden" }).click();
+  await expect(page.getByText("Velkomstsiden ble fjernet.")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Angre", exact: true }),
   ).toBeFocused();
   await page.getByRole("button", { name: "Angre", exact: true }).click();
   const restoredTitle = page
-    .getByRole("region", { name: "Introskjerm" })
+    .getByRole("region", { name: "Velkomstside" })
     .getByLabel("Tittel");
   await expect(restoredTitle).toHaveValue("Velkommen");
   await expect(restoredTitle).toBeFocused();
@@ -268,9 +294,7 @@ test("deletes a draft from the index after confirmation", async ({ page }) => {
 
   // Freeze a revision so the deletion provably takes revisions with it.
   await page.getByRole("button", { name: "Del med utvikler" }).click();
-  await page
-    .getByRole("button", { name: /Frys revisjon 1 og få delbar lenke/ })
-    .click();
+  await page.getByRole("button", { name: "Del versjon 1" }).click();
   await page.waitForURL(/\/surveyverksted\/revisions\//);
   const revisionUrl = page.url();
 
@@ -284,7 +308,7 @@ test("deletes a draft from the index after confirmation", async ({ page }) => {
   await page.getByRole("menuitem", { name: "Slett utkast" }).click();
 
   const dialog = page.getByRole("dialog", { name: "Slett utkastet?" });
-  await expect(dialog.getByText(/fryste revisjoner/)).toBeVisible();
+  await expect(dialog.getByText(/delte versjoner/)).toBeVisible();
   await expectNoAxeViolations(page);
   await dialog.getByRole("button", { name: "Slett utkastet" }).click();
 
@@ -300,7 +324,7 @@ test("deletes a draft from the index after confirmation", async ({ page }) => {
   // would render the deleted revision from memory.
   await page.goBack();
   await expect(page).toHaveURL(revisionUrl);
-  await expect(page.getByText(/Revisjonen finnes ikke/)).toBeVisible({
+  await expect(page.getByText(/Den delte versjonen finnes ikke/)).toBeVisible({
     timeout: 10000,
   });
 });

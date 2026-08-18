@@ -791,12 +791,12 @@ describe("survey screen content", () => {
       { title: "" },
     );
     const issues = findHandoffIssues(document);
-    expect(issues.some((issue) => /intro.*tittel/i.test(issue.message))).toBe(
-      true,
-    );
-    expect(issues.some((issue) => /takk.*tittel/i.test(issue.message))).toBe(
-      true,
-    );
+    expect(
+      issues.some((issue) => /velkomst.*tittel/i.test(issue.message)),
+    ).toBe(true);
+    expect(
+      issues.some((issue) => /bekreftelse.*tittel/i.test(issue.message)),
+    ).toBe(true);
 
     const valid = setSurveySuccess(
       setSurveyIntro(makeDocument(), { title: "Velkommen" }),

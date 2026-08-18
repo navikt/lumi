@@ -22,13 +22,13 @@ export const QUESTION_TYPES: QuestionTypeMeta[] = [
   {
     id: "rating",
     label: "Vurdering",
-    description: "Fast skala: emoji, tommel, stjerner eller NPS",
+    description: "Svar på en skala med emoji, tommel, stjerner eller NPS",
     Icon: FaceSmileIcon,
   },
   {
     id: "text",
     label: "Fritekst",
-    description: "Åpne svar med respondentens egne ord",
+    description: "Åpne svar med brukerens egne ord",
     Icon: PencilWritingIcon,
   },
   {

@@ -102,12 +102,13 @@ export const QuestionCanvas = memo(function QuestionCanvas({
     <VStack gap="space-24">
       {pageNumber === 1 ? (
         <SurveyScreenCard
-          regionLabel="Introskjerm"
-          eyebrow="INTROSKJERM"
-          addLabel="Legg til introskjerm"
-          removeLabel="Fjern introskjermen"
+          regionLabel="Velkomstside"
+          eyebrow="VELKOMSTSIDE"
+          description="Vises før det første spørsmålet. Uten en velkomstside starter surveyen rett på spørsmålene."
+          addLabel="Legg til velkomstside"
+          removeLabel="Fjern velkomstsiden"
           startLabelField={{
-            label: "Knappetekst (valgfri)",
+            label: "Tekst på startknappen (valgfri)",
             placeholder: "Start",
           }}
           value={intro}
@@ -218,10 +219,11 @@ export const QuestionCanvas = memo(function QuestionCanvas({
       </SortableList>
       {pageNumber === totalPages ? (
         <SurveyScreenCard
-          regionLabel="Takkskjerm"
-          eyebrow="TAKKSKJERM"
-          addLabel="Legg til takkskjerm"
-          removeLabel="Fjern takkskjermen"
+          regionLabel="Bekreftelse etter innsending"
+          eyebrow="ETTER INNSENDING"
+          description="Vises etter at brukeren har sendt inn svarene. Uten tilpasning brukes standardteksten."
+          addLabel="Tilpass bekreftelsen"
+          removeLabel="Bruk standardbekreftelsen"
           value={success}
           undo={successUndo}
           onChange={onChangeSuccess}

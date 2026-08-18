@@ -49,8 +49,8 @@ export function DeleteDraftDialog({
       <Modal.Body>
         <VStack gap="space-12">
           <BodyLong>
-            «{name}» slettes for hele teamet, sammen med alle fryste revisjoner
-            i prosjektet. Surveys som allerede er tatt inn i kode påvirkes ikke.
+            «{name}» slettes for hele teamet, sammen med alle delte versjoner i
+            prosjektet. Surveys som allerede er tatt inn i kode påvirkes ikke.
           </BodyLong>
           {showError ? (
             <Alert variant="error">

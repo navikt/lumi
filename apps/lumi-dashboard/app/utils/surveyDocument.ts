@@ -667,13 +667,13 @@ export function findHandoffIssues(document: SurveyDocumentV1): HandoffIssue[] {
   if (document.intro && document.intro.title.trim().length === 0) {
     issues.push({
       questionId: null,
-      message: "Introskjermen mangler tittel.",
+      message: "Velkomstsiden mangler tittel.",
     });
   }
   if (document.success && document.success.title.trim().length === 0) {
     issues.push({
       questionId: null,
-      message: "Takkskjermen mangler tittel.",
+      message: "Bekreftelsen etter innsending mangler tittel.",
     });
   }
   const questionById = new Map<string, SurveyQuestionV1>();
@@ -739,7 +739,7 @@ export function setSurveyIntro(
   return { ...document, intro };
 }
 
-/** Sets or clears the survey-level thank-you screen. */
+/** Sets or clears the survey-level confirmation shown after submission. */
 export function setSurveySuccess(
   document: SurveyDocumentV1,
   success: SurveySuccessV1 | undefined,
