@@ -3,8 +3,14 @@ name: Deploy dashboard
 on:
   push:
     branches:
-      - main
       - demo-*
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       target:
@@ -28,6 +34,9 @@ permissions:
 jobs:
   checks:
     name: Run checks
+    # CI already runs this full gate for every commit pushed to main. Keep the
+    # standalone gate for demo branches and manual deployments only.
+    if: github.event_name != 'workflow_run'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -69,15 +78,19 @@ jobs:
     needs: checks
     runs-on: ubuntu-latest
     if: |
-      (github.event_name == 'push' && github.ref_name == 'main') ||
-      startsWith(github.ref_name, 'demo-') ||
-      (github.event_name == 'workflow_dispatch' && inputs.target == 'demo')
+      always() && (
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+        (needs.checks.result == 'success' && (
+          startsWith(github.ref_name, 'demo-') ||
+          (github.event_name == 'workflow_dispatch' && inputs.target == 'demo')
+        ))
+      )
     outputs:
       image: ${{ steps.docker-build-push.outputs.image }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.ref }}
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
@@ -126,14 +139,18 @@ jobs:
     needs: checks
     runs-on: ubuntu-latest
     if: |
-      (github.event_name == 'push' && github.ref_name == 'main') ||
-      (github.event_name == 'workflow_dispatch' && (inputs.target == 'dev' || inputs.target == 'prod'))
+      always() && (
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+        (needs.checks.result == 'success' &&
+          github.event_name == 'workflow_dispatch' &&
+          (inputs.target == 'dev' || inputs.target == 'prod'))
+      )
     outputs:
       image: ${{ steps.docker-build-push.outputs.image }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.ref }}
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
@@ -181,7 +198,7 @@ jobs:
     needs: build-demo
     runs-on: ubuntu-latest
     if: |
-      (github.event_name == 'push' && github.ref_name == 'main') ||
+      github.event_name == 'workflow_run' ||
       startsWith(github.ref_name, 'demo-') ||
       (github.event_name == 'workflow_dispatch' && inputs.target == 'demo')
     environment:
@@ -189,6 +206,8 @@ jobs:
       url: https://lumi-dashboard-demo.ekstern.dev.nav.no
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.ref }}
       - uses: nais/deploy/actions/deploy@849e900e3cfa7faf7ad1532bb3a3e6499c932199
         env:
           CLUSTER: dev-gcp
@@ -200,13 +219,15 @@ jobs:
     needs: build-production
     runs-on: ubuntu-latest
     if: |
-      (github.event_name == 'push' && github.ref_name == 'main') ||
+      github.event_name == 'workflow_run' ||
       (github.event_name == 'workflow_dispatch' && inputs.target == 'dev')
     environment:
       name: dev
       url: https://lumi-dashboard.ansatt.dev.nav.no
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.ref }}
       - uses: nais/deploy/actions/deploy@849e900e3cfa7faf7ad1532bb3a3e6499c932199
         env:
           CLUSTER: dev-gcp
@@ -218,13 +239,15 @@ jobs:
     needs: [build-production, deploy-dev]
     runs-on: ubuntu-latest
     if: |
-      (github.event_name == 'push' && github.ref_name == 'main') ||
+      github.event_name == 'workflow_run' ||
       (github.event_name == 'workflow_dispatch' && inputs.target == 'prod')
     environment:
       name: prod
       url: https://lumi-dashboard.ansatt.nav.no
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.ref }}
       - uses: nais/deploy/actions/deploy@849e900e3cfa7faf7ad1532bb3a3e6499c932199
         env:
           CLUSTER: prod-gcp
