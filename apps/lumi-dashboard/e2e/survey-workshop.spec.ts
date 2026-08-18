@@ -188,6 +188,15 @@ test("authors intro and thank-you screens that render in the real widget", async
     stage.getByRole("heading", { name: "Takk for svaret!" }),
   ).toBeVisible();
 
+  // «Start på nytt» previews the intro live in the stage; the walk-through
+  // continues into the questions.
+  await page
+    .getByRole("button", { name: "Start forhåndsvisningen på nytt" })
+    .click();
+  await expect(stage.getByRole("heading", { name: "Velkommen" })).toBeVisible();
+  await stage.getByRole("button", { name: "Kom i gang" }).click();
+  await expect(stage.getByRole("radio", { name: /5\./ })).toBeVisible();
+
   // The full-tab preview runs the real intro flow.
   const previewPromise = page.waitForEvent("popup");
   await page.getByRole("button", { name: "Prøv i egen fane" }).click();

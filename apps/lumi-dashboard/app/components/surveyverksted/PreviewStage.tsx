@@ -49,6 +49,15 @@ export const PreviewStage = memo(function PreviewStage({
   const stableDocument = stable.document;
 
   const [restartNonce, setRestartNonce] = useState(0);
+  // "Start på nytt" runs the survey from the very beginning — intro screen
+  // included when one is authored. The flag is keyed to the revision it was
+  // requested for, so the next edit automatically returns the stage to the
+  // selected page without a Start-gate.
+  const [fromStartRevision, setFromStartRevision] = useState<number | null>(
+    null,
+  );
+  const hasIntro = Boolean(stableDocument?.intro?.title.trim());
+  const previewFromStart = hasIntro && fromStartRevision === stable.revision;
 
   return (
     <section aria-label="Forhåndsvisning" className={styles.stagePanel}>
@@ -68,7 +77,10 @@ export const PreviewStage = memo(function PreviewStage({
             size="small"
             icon={<ArrowCirclepathIcon aria-hidden />}
             aria-label="Start forhåndsvisningen på nytt"
-            onClick={() => setRestartNonce((nonce) => nonce + 1)}
+            onClick={() => {
+              setFromStartRevision(stable.revision);
+              setRestartNonce((nonce) => nonce + 1);
+            }}
           />
         </Tooltip>
       </div>
@@ -85,7 +97,7 @@ export const PreviewStage = memo(function PreviewStage({
           instanceKey={stable.revision}
           surveyId={`verksted-preview-${surveyId || "utkast"}`}
           environmentTag="survey-workshop-editor"
-          initialPageId={initialPageId}
+          initialPageId={previewFromStart ? undefined : initialPageId}
           nonce={restartNonce}
           successTitle="Slik ser kvitteringen ut"
           successBody="Bare en forhåndsvisning — ingenting ble sendt."
