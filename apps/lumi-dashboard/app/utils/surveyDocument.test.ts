@@ -28,6 +28,8 @@ import {
   removePage,
   removeQuestion,
   setQuestionVisibleIf,
+  setSurveyIntro,
+  setSurveySuccess,
   slugifyOptionValue,
   suggestSurveyId,
   updateOptionLabel,
@@ -753,6 +755,54 @@ describe("allowedConditionOperators", () => {
       "EQ",
       "NEQ",
     ]);
+  });
+});
+
+describe("survey screen content", () => {
+  it("sets, updates and clears the intro", () => {
+    const document = makeDocument();
+    const withIntro = setSurveyIntro(document, {
+      title: "Velkommen",
+      body: "To korte spørsmål.",
+      startLabel: "Kom i gang",
+    });
+    expect(withIntro.intro).toEqual({
+      title: "Velkommen",
+      body: "To korte spørsmål.",
+      startLabel: "Kom i gang",
+    });
+    expect(document.intro).toBeUndefined();
+
+    const cleared = setSurveyIntro(withIntro, undefined);
+    expect("intro" in cleared).toBe(false);
+  });
+
+  it("sets and clears the success screen", () => {
+    const document = makeDocument();
+    const withSuccess = setSurveySuccess(document, { title: "Takk!" });
+    expect(withSuccess.success).toEqual({ title: "Takk!" });
+    const cleared = setSurveySuccess(withSuccess, undefined);
+    expect("success" in cleared).toBe(false);
+  });
+
+  it("release-gates blank screen titles but leaves drafts alone", () => {
+    const document = setSurveySuccess(
+      setSurveyIntro(makeDocument(), { title: "   " }),
+      { title: "" },
+    );
+    const issues = findHandoffIssues(document);
+    expect(issues.some((issue) => /intro.*tittel/i.test(issue.message))).toBe(
+      true,
+    );
+    expect(issues.some((issue) => /takk.*tittel/i.test(issue.message))).toBe(
+      true,
+    );
+
+    const valid = setSurveySuccess(
+      setSurveyIntro(makeDocument(), { title: "Velkommen" }),
+      { title: "Takk!" },
+    );
+    expect(findHandoffIssues(valid)).toEqual([]);
   });
 });
 

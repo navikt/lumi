@@ -67,6 +67,8 @@ import {
   removePage,
   removeQuestion,
   setQuestionVisibleIf,
+  setSurveyIntro,
+  setSurveySuccess,
   updateOptionLabel,
   updateOptionValue,
 } from "~/utils/surveyDocument";
@@ -87,7 +89,9 @@ type UndoState =
       question: SurveyQuestionV1;
       index: number;
     }
-  | { kind: "page"; page: SurveyPageV1; index: number };
+  | { kind: "page"; page: SurveyPageV1; index: number }
+  | { kind: "intro"; value: NonNullable<SurveyDocumentV1["intro"]> }
+  | { kind: "success"; value: NonNullable<SurveyDocumentV1["success"]> };
 
 function initialExpandedIds(page: SurveyPageV1): ReadonlySet<string> {
   return page.questions.length <= 2
@@ -447,13 +451,17 @@ function SurveyWorkshopEditor({
         setExpandedIds((current) => new Set([...current, undo.question.id]));
         setFocusQuestionId(undo.question.id);
       }
-    } else {
+    } else if (undo.kind === "page") {
       const next = insertPageAt(document, undo.page, undo.index);
       updateDocument(next);
       previousPageIdRef.current = undo.page.id;
       setSelectedPageId(undo.page.id);
       setExpandedIds(initialExpandedIds(undo.page));
       setFocusQuestionId(undo.page.questions[0]?.id ?? null);
+    } else if (undo.kind === "intro") {
+      updateDocument(setSurveyIntro(document, undo.value));
+    } else {
+      updateDocument(setSurveySuccess(document, undo.value));
     }
     setUndo(null);
   }, [undo, updateDocument]);
@@ -685,6 +693,28 @@ function SurveyWorkshopEditor({
   // always sees the CURRENT types and prompts of earlier questions — a
   // stable callback here would let the CanvasQuestion memo freeze stale
   // reference data. Collapsed cards are absent and stay undefined.
+  const handleChangeIntro = useCallback(
+    (intro: SurveyDocumentV1["intro"]) => {
+      const removed = draftRef.current.document.intro;
+      if (intro === undefined && removed !== undefined) {
+        setUndo({ kind: "intro", value: removed });
+      }
+      updateDocument(setSurveyIntro(draftRef.current.document, intro));
+    },
+    [updateDocument],
+  );
+
+  const handleChangeSuccess = useCallback(
+    (success: SurveyDocumentV1["success"]) => {
+      const removed = draftRef.current.document.success;
+      if (success === undefined && removed !== undefined) {
+        setUndo({ kind: "success", value: removed });
+      }
+      updateDocument(setSurveySuccess(draftRef.current.document, success));
+    },
+    [updateDocument],
+  );
+
   const expandedReferenceable = useMemo(() => {
     const map = new Map<string, ReferenceableQuestion[]>();
     for (const id of expandedIds) {
@@ -816,7 +846,9 @@ function SurveyWorkshopEditor({
     if (!first) return null;
     return {
       message: first.message,
-      location: locateQuestion(draft.document, first.questionId),
+      location: first.questionId
+        ? locateQuestion(draft.document, first.questionId)
+        : null,
     };
   }, [validationError, handoffIssues, draft.document]);
 
@@ -832,10 +864,22 @@ function SurveyWorkshopEditor({
   const canvasUndo: CanvasUndo | null = undo
     ? undo.kind === "page"
       ? { label: "Siden ble slettet.", index: null }
-      : undo.pageId === selectedPage.id
+      : undo.kind === "question" && undo.pageId === selectedPage.id
         ? { label: "Spørsmålet ble slettet.", index: undo.index }
         : null
     : null;
+
+  const screenUndoFor = (kind: "intro" | "success") =>
+    undo?.kind === kind
+      ? {
+          label:
+            kind === "intro"
+              ? "Introskjermen ble fjernet."
+              : "Takkskjermen ble fjernet.",
+          onUndo: handleUndo,
+          onExpire: () => setUndo(null),
+        }
+      : null;
 
   const stats = useMemo(
     () => ({ pages: pages.length, questions: totalQuestions }),
@@ -907,6 +951,12 @@ function SurveyWorkshopEditor({
             pageNumber={selectedPageNumber}
             totalPages={pages.length}
             expandedIds={expandedIds}
+            intro={draft.document.intro}
+            success={draft.document.success}
+            introUndo={screenUndoFor("intro")}
+            successUndo={screenUndoFor("success")}
+            onChangeIntro={handleChangeIntro}
+            onChangeSuccess={handleChangeSuccess}
             focusQuestionId={focusQuestionId}
             undo={canvasUndo}
             onUndo={handleUndo}

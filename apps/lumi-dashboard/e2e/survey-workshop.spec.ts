@@ -152,6 +152,71 @@ test("creates, edits, previews and shares a survey draft", async ({ page }) => {
   await expectNoAxeViolations(page);
 });
 
+test("authors intro and thank-you screens that render in the real widget", async ({
+  page,
+}) => {
+  await page.goto("/surveyverksted");
+  await page.getByLabel("Navn på utkastet").fill("Skjerm-utkast");
+  await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
+
+  await page.getByRole("button", { name: "Legg til introskjerm" }).click();
+  const introCard = page.getByRole("region", { name: "Introskjerm" });
+  await introCard.getByLabel("Tittel").fill("Velkommen");
+  await introCard.getByLabel(/Brødtekst/).fill("To korte spørsmål.");
+  await introCard.getByLabel(/Knappetekst/).fill("Kom i gang");
+
+  await page.getByRole("button", { name: "Legg til takkskjerm" }).click();
+  await page
+    .getByRole("region", { name: "Takkskjerm" })
+    .getByLabel("Tittel")
+    .fill("Takk for svaret!");
+  await expect(page.locator('[data-state="saved"]')).toBeVisible();
+  await expectNoAxeViolations(page);
+
+  // The stage keeps editing flowing: no Start-gate in front of questions.
+  const stage = page.getByLabel("Forhåndsvisning");
+  await expect(stage.getByRole("radio", { name: /5\./ })).toBeVisible();
+  await expect(
+    stage.getByRole("button", { name: "Kom i gang" }),
+  ).not.toBeVisible();
+
+  // The authored thank-you shows after submitting in the stage.
+  await stage.getByRole("radio", { name: /5\./ }).click();
+  await stage.getByRole("button", { name: "Send" }).click();
+  await expect(
+    stage.getByRole("heading", { name: "Takk for svaret!" }),
+  ).toBeVisible();
+
+  // The full-tab preview runs the real intro flow.
+  const previewPromise = page.waitForEvent("popup");
+  await page.getByRole("button", { name: "Prøv i egen fane" }).click();
+  const preview = await previewPromise;
+  await expect(
+    preview.getByRole("heading", { name: "Velkommen" }),
+  ).toBeVisible();
+  await expect(preview.getByText("To korte spørsmål.")).toBeVisible();
+  await preview.getByRole("button", { name: "Kom i gang" }).click();
+  await expect(preview.getByRole("radio", { name: /5\./ })).toBeVisible();
+  await preview.close();
+
+  // Removing the intro is reversible: focus lands on the undo (house
+  // pattern for deletions), and undoing restores the content with focus
+  // in the title field.
+  await page.getByRole("button", { name: "Fjern introskjermen" }).click();
+  await expect(page.getByText("Introskjermen ble fjernet.")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Angre", exact: true }),
+  ).toBeFocused();
+  await page.getByRole("button", { name: "Angre", exact: true }).click();
+  const restoredTitle = page
+    .getByRole("region", { name: "Introskjerm" })
+    .getByLabel("Tittel");
+  await expect(restoredTitle).toHaveValue("Velkommen");
+  await expect(restoredTitle).toBeFocused();
+  await expect(page.locator('[data-state="saved"]')).toBeVisible();
+});
+
 test("deletes a draft from the index after confirmation", async ({ page }) => {
   // Mock state outlives CI retries — a unique name keeps reruns isolated.
   const draftName = `Slette-utkast-${Date.now()}`;

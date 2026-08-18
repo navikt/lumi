@@ -72,6 +72,26 @@ function pageText(page: SurveyPageV1) {
   return { title: page.title, description: page.description };
 }
 
+function describeScreenChange(
+  changes: string[],
+  current: { title: string; body?: string; startLabel?: string } | undefined,
+  previous: { title: string; body?: string; startLabel?: string } | undefined,
+  noun: string,
+  definiteNoun: string,
+): void {
+  if (current && !previous) {
+    changes.push(`${noun} er lagt til.`);
+  } else if (!current && previous) {
+    changes.push(`${noun} er fjernet.`);
+  } else if (
+    current &&
+    previous &&
+    JSON.stringify(current) !== JSON.stringify(previous)
+  ) {
+    changes.push(`${definiteNoun} er endret.`);
+  }
+}
+
 export function describeRevisionChanges(
   current: SurveyDocumentV1,
   previous?: SurveyDocumentV1 | null,
@@ -79,6 +99,20 @@ export function describeRevisionChanges(
   if (!previous) return ["Første delbare revisjon i prosjektet."];
 
   const changes: string[] = [];
+  describeScreenChange(
+    changes,
+    current.intro,
+    previous.intro,
+    "Introskjerm",
+    "Introskjermen",
+  );
+  describeScreenChange(
+    changes,
+    current.success,
+    previous.success,
+    "Takkskjerm",
+    "Takkskjermen",
+  );
   if ((current.type ?? "custom") !== (previous.type ?? "custom")) {
     changes.push(
       `Surveytype er endret fra ${previous.type ?? "custom"} til ${current.type ?? "custom"}.`,

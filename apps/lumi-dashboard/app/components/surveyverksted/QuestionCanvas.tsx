@@ -1,6 +1,10 @@
 import { PlusIcon } from "@navikt/aksel-icons";
 import { Detail, TextField, VStack } from "@navikt/ds-react";
-import type { SurveyPageV1, SurveyQuestionV1 } from "@navikt/lumi-survey";
+import type {
+  SurveyDocumentV1,
+  SurveyPageV1,
+  SurveyQuestionV1,
+} from "@navikt/lumi-survey";
 import { Fragment, memo, useCallback, useMemo } from "react";
 import type {
   ConditionValueSuggestion,
@@ -11,6 +15,7 @@ import type {
 } from "~/utils/surveyDocument";
 import type { OptionsEditorProps } from "./OptionsEditor";
 import { QuestionCard } from "./QuestionCard";
+import { type ScreenUndo, SurveyScreenCard } from "./SurveyScreenCard";
 import { SortableList, useSortableItem } from "./sortable";
 import { TypeGallery } from "./TypeGallery";
 import { UndoNotice } from "./UndoNotice";
@@ -45,6 +50,12 @@ export interface QuestionCanvasProps {
   onDelete: (questionId: string) => void;
   onMoveQuestion: (questionId: string, direction: MoveDirection) => void;
   onReorderQuestion: (questionId: string, toIndex: number) => void;
+  intro: SurveyDocumentV1["intro"];
+  success: SurveyDocumentV1["success"];
+  introUndo: ScreenUndo | null;
+  successUndo: ScreenUndo | null;
+  onChangeIntro: (intro: SurveyDocumentV1["intro"]) => void;
+  onChangeSuccess: (success: SurveyDocumentV1["success"]) => void;
   optionHandlersFor: (questionId: string) => OptionHandlers;
   referenceableByQuestion: ReadonlyMap<string, ReferenceableQuestion[]>;
   suggestionsFor: (referencedId: string) => ConditionValueSuggestion[];
@@ -73,6 +84,12 @@ export const QuestionCanvas = memo(function QuestionCanvas({
   onDelete,
   onMoveQuestion,
   onReorderQuestion,
+  intro,
+  success,
+  introUndo,
+  successUndo,
+  onChangeIntro,
+  onChangeSuccess,
   optionHandlersFor,
   referenceableByQuestion,
   suggestionsFor,
@@ -83,6 +100,21 @@ export const QuestionCanvas = memo(function QuestionCanvas({
 
   return (
     <VStack gap="space-24">
+      {pageNumber === 1 ? (
+        <SurveyScreenCard
+          regionLabel="Introskjerm"
+          eyebrow="INTROSKJERM"
+          addLabel="Legg til introskjerm"
+          removeLabel="Fjern introskjermen"
+          startLabelField={{
+            label: "Knappetekst (valgfri)",
+            placeholder: "Start",
+          }}
+          value={intro}
+          undo={introUndo}
+          onChange={onChangeIntro}
+        />
+      ) : null}
       <div>
         <Detail as="p" className={styles.eyebrow}>
           SIDE {pad(pageNumber)} AV {pad(totalPages)}
@@ -184,6 +216,17 @@ export const QuestionCanvas = memo(function QuestionCanvas({
           />
         </VStack>
       </SortableList>
+      {pageNumber === totalPages ? (
+        <SurveyScreenCard
+          regionLabel="Takkskjerm"
+          eyebrow="TAKKSKJERM"
+          addLabel="Legg til takkskjerm"
+          removeLabel="Fjern takkskjermen"
+          value={success}
+          undo={successUndo}
+          onChange={onChangeSuccess}
+        />
+      ) : null}
     </VStack>
   );
 });

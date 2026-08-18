@@ -1,7 +1,9 @@
 import type {
   SurveyDocumentV1,
+  SurveyIntroV1,
   SurveyPageV1,
   SurveyQuestionV1,
+  SurveySuccessV1,
 } from "@navikt/lumi-survey";
 
 export type QuestionTypeId = "rating" | "text" | "singleChoice" | "multiChoice";
@@ -559,7 +561,8 @@ export function allowedConditionOperators(
 }
 
 export interface HandoffIssue {
-  questionId: string;
+  /** Owning question, or null for survey-level issues (intro/success). */
+  questionId: string | null;
   message: string;
 }
 
@@ -661,6 +664,18 @@ function leafConditionIssues(
 
 export function findHandoffIssues(document: SurveyDocumentV1): HandoffIssue[] {
   const issues: HandoffIssue[] = [];
+  if (document.intro && document.intro.title.trim().length === 0) {
+    issues.push({
+      questionId: null,
+      message: "Introskjermen mangler tittel.",
+    });
+  }
+  if (document.success && document.success.title.trim().length === 0) {
+    issues.push({
+      questionId: null,
+      message: "Takkskjermen mangler tittel.",
+    });
+  }
   const questionById = new Map<string, SurveyQuestionV1>();
   for (const page of document.pages) {
     for (const question of page.questions) {
@@ -711,6 +726,30 @@ export function documentNeedsWideDock(document: SurveyDocumentV1): boolean {
 }
 
 export type VisibleIfConditionV1 = NonNullable<SurveyQuestionV1["visibleIf"]>;
+
+/** Sets or clears the survey-level intro screen. */
+export function setSurveyIntro(
+  document: SurveyDocumentV1,
+  intro: SurveyIntroV1 | undefined,
+): SurveyDocumentV1 {
+  if (intro === undefined) {
+    const { intro: _removed, ...rest } = document;
+    return rest as SurveyDocumentV1;
+  }
+  return { ...document, intro };
+}
+
+/** Sets or clears the survey-level thank-you screen. */
+export function setSurveySuccess(
+  document: SurveyDocumentV1,
+  success: SurveySuccessV1 | undefined,
+): SurveyDocumentV1 {
+  if (success === undefined) {
+    const { success: _removed, ...rest } = document;
+    return rest as SurveyDocumentV1;
+  }
+  return { ...document, success };
+}
 
 /** A single condition — the non-group member of the visibleIf union. */
 export type ConditionLeafV1 = Exclude<
