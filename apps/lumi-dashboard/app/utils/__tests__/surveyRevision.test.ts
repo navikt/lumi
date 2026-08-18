@@ -52,10 +52,10 @@ describe("describeRevisionChanges for screens", () => {
       "Introskjermen er endret.",
     );
     expect(describeRevisionChanges(withSuccess, document)).toContain(
-      "Takkskjerm er lagt til.",
+      "Bekreftelse etter innsending er lagt til.",
     );
     expect(describeRevisionChanges(document, withSuccess)).toContain(
-      "Takkskjerm er fjernet.",
+      "Bekreftelse etter innsending er fjernet.",
     );
   });
 });

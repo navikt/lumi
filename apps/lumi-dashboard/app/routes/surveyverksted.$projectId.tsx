@@ -875,7 +875,7 @@ function SurveyWorkshopEditor({
           label:
             kind === "intro"
               ? "Introskjermen ble fjernet."
-              : "Takkskjermen ble fjernet.",
+              : "Tilpasningen av bekreftelsen ble fjernet.",
           onUndo: handleUndo,
           onExpire: () => setUndo(null),
         }

@@ -343,6 +343,11 @@
   border-radius: var(--ax-radius-12);
 }
 
+.screenCardDescription {
+  max-width: 42rem;
+  color: var(--ax-text-neutral-subtle);
+}
+
 .conditionAddWrap {
   display: inline-flex;
   align-items: center;

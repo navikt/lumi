@@ -218,10 +218,11 @@ export const QuestionCanvas = memo(function QuestionCanvas({
       </SortableList>
       {pageNumber === totalPages ? (
         <SurveyScreenCard
-          regionLabel="Takkskjerm"
-          eyebrow="TAKKSKJERM"
-          addLabel="Legg til takkskjerm"
-          removeLabel="Fjern takkskjermen"
+          regionLabel="Bekreftelse etter innsending"
+          eyebrow="ETTER INNSENDING"
+          description="Vises etter at brukeren har sendt inn svarene. Uten tilpasning brukes standardteksten."
+          addLabel="Tilpass bekreftelsen"
+          removeLabel="Bruk standardbekreftelsen"
           value={success}
           undo={successUndo}
           onChange={onChangeSuccess}

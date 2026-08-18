@@ -1,5 +1,12 @@
 import { PlusIcon, XMarkIcon } from "@navikt/aksel-icons";
-import { Button, Detail, Textarea, TextField, Tooltip } from "@navikt/ds-react";
+import {
+  BodyShort,
+  Button,
+  Detail,
+  Textarea,
+  TextField,
+  Tooltip,
+} from "@navikt/ds-react";
 import { useEffect, useRef } from "react";
 import { UndoNotice } from "./UndoNotice";
 import styles from "./verksted.module.css";
@@ -21,6 +28,7 @@ export interface SurveyScreenCardProps {
   regionLabel: string;
   /** Section heading, e.g. "INTROSKJERM". */
   eyebrow: string;
+  description?: string;
   addLabel: string;
   removeLabel: string;
   /** Shown when the screen has a start button (intro only). */
@@ -32,7 +40,7 @@ export interface SurveyScreenCardProps {
 }
 
 /**
- * Survey-level screen content (intro before the first question, thank-you
+ * Survey-level screen content (intro before the first question, confirmation
  * after submission). Fields commit per keystroke like every other draft
  * field, so the navigation blocker always sees the latest content.
  * Removal is reversible through the same undo pattern as questions and
@@ -42,6 +50,7 @@ export interface SurveyScreenCardProps {
 export function SurveyScreenCard({
   regionLabel,
   eyebrow,
+  description,
   addLabel,
   removeLabel,
   startLabelField,
@@ -66,6 +75,11 @@ export function SurveyScreenCard({
   if (value === undefined) {
     return (
       <div className={styles.screenCardAbsent}>
+        {description ? (
+          <BodyShort size="small" className={styles.screenCardDescription}>
+            {description}
+          </BodyShort>
+        ) : null}
         {undo ? (
           <UndoNotice
             label={undo.label}
@@ -106,6 +120,11 @@ export function SurveyScreenCard({
           />
         </Tooltip>
       </div>
+      {description ? (
+        <BodyShort size="small" className={styles.screenCardDescription}>
+          {description}
+        </BodyShort>
+      ) : null}
       <TextField
         ref={titleRef}
         label="Tittel"

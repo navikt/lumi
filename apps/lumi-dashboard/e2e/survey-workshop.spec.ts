@@ -152,7 +152,7 @@ test("creates, edits, previews and shares a survey draft", async ({ page }) => {
   await expectNoAxeViolations(page);
 });
 
-test("authors intro and thank-you screens that render in the real widget", async ({
+test("authors intro and confirmation screens that render in the real widget", async ({
   page,
 }) => {
   await page.goto("/surveyverksted");
@@ -171,7 +171,7 @@ test("authors intro and thank-you screens that render in the real widget", async
 
   // An explicit restart flushes the latest valid editor state instead of
   // waiting for the stage's normal debounce.
-  const stage = page.getByLabel("Forhåndsvisning");
+  const stage = page.getByRole("region", { name: "Forhåndsvisning" });
   await page
     .getByRole("button", { name: "Start forhåndsvisningen på nytt" })
     .click();
@@ -181,13 +181,41 @@ test("authors intro and thank-you screens that render in the real widget", async
   await expect(stage.getByRole("radio", { name: /5\./ })).toBeVisible();
   await page.clock.resume();
 
-  await page.getByRole("button", { name: "Legg til takkskjerm" }).click();
+  await expect(
+    page.getByText(
+      "Vises etter at brukeren har sendt inn svarene. Uten tilpasning brukes standardteksten.",
+    ),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Tilpass bekreftelsen" }).click();
   await page
-    .getByRole("region", { name: "Takkskjerm" })
+    .getByRole("region", { name: "Bekreftelse etter innsending" })
     .getByLabel("Tittel")
     .fill("Takk for svaret!");
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
   await expectNoAxeViolations(page);
+
+  // The live stage stays alongside the editor on ordinary laptop widths.
+  await page.setViewportSize({ width: 1100, height: 800 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const stickyStageTop = await stage.evaluate((element) => {
+    const preview = element.parentElement;
+    if (!preview) throw new Error("Preview stage is missing its aside");
+    const styles = getComputedStyle(preview);
+    return Math.round(
+      Number.parseFloat(styles.top) + Number.parseFloat(styles.paddingTop),
+    );
+  });
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect
+    .poll(() =>
+      stage.evaluate((element) =>
+        Math.round(element.getBoundingClientRect().top),
+      ),
+    )
+    .toBe(stickyStageTop);
+  await expect(stage).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.evaluate(() => window.scrollTo(0, 0));
 
   // The stage keeps editing flowing: no Start-gate in front of questions.
   await expect(stage.getByRole("radio", { name: /5\./ })).toBeVisible();
@@ -195,7 +223,7 @@ test("authors intro and thank-you screens that render in the real widget", async
     stage.getByRole("button", { name: "Kom i gang" }),
   ).not.toBeVisible();
 
-  // The authored thank-you shows after submitting in the stage.
+  // The authored confirmation shows after submitting in the stage.
   await stage.getByRole("radio", { name: /5\./ }).click();
   await stage.getByRole("button", { name: "Send" }).click();
   await expect(

@@ -110,8 +110,8 @@ export function describeRevisionChanges(
     changes,
     current.success,
     previous.success,
-    "Takkskjerm",
-    "Takkskjermen",
+    "Bekreftelse etter innsending",
+    "Bekreftelsen etter innsending",
   );
   if ((current.type ?? "custom") !== (previous.type ?? "custom")) {
     changes.push(

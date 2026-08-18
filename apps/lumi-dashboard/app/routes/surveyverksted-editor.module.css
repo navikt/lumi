@@ -56,12 +56,21 @@
 .preview {
   position: sticky;
   top: 64px;
+  box-sizing: border-box;
   height: calc(100vh - 64px);
   min-height: 0;
   padding: var(--ax-space-20) var(--ax-space-16);
 }
 
 @media (max-width: 78rem) {
+  .editorGrid {
+    grid-template-columns:
+      minmax(11rem, 0.45fr) minmax(22rem, 1.25fr)
+      minmax(20rem, 0.85fr);
+  }
+}
+
+@media (max-width: 64rem) {
   .editorGrid {
     grid-template-columns: minmax(13rem, 0.6fr) minmax(24rem, 1.4fr);
   }
