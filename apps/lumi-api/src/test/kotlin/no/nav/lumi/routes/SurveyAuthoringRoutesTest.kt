@@ -1,8 +1,10 @@
 package no.nav.lumi.routes
 
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -14,6 +16,8 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -69,6 +73,132 @@ class SurveyAuthoringRoutesTest : FunSpec({
             Json.parseToJsonElement(reopened.bodyAsText()).jsonObject
                 .getValue("document").jsonObject
                 .getValue("authoringSchemaVersion").jsonPrimitive.content shouldBe "1"
+        }
+    }
+
+    test("deletes a project with its revisions, scoped to the team") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+
+            val created = client.post("/api/v1/intern/authoring/projects?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(createBody())
+            }
+            val projectId = Json.parseToJsonElement(created.bodyAsText())
+                .jsonObject.getValue("id").jsonPrimitive.content
+
+            val revision = client.post(
+                "/api/v1/intern/authoring/projects/$projectId/revisions?team=team-test",
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody("""{ "expectedDraftVersion": 1 }""")
+            }
+            revision.status shouldBe HttpStatusCode.Created
+            val revisionId = Json.parseToJsonElement(revision.bodyAsText())
+                .jsonObject.getValue("id").jsonPrimitive.content
+
+            // Another authorized team's scope must not be able to delete it.
+            client.delete("/api/v1/intern/authoring/projects/$projectId?team=flex") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }.status shouldBe HttpStatusCode.NotFound
+
+            client.delete("/api/v1/intern/authoring/projects/$projectId?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }.status shouldBe HttpStatusCode.NoContent
+
+            client.get("/api/v1/intern/authoring/projects/$projectId?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }.status shouldBe HttpStatusCode.NotFound
+
+            // The frozen revision follows the project (DB cascade).
+            client.get("/api/v1/intern/authoring/revisions/$revisionId?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }.status shouldBe HttpStatusCode.NotFound
+
+            // Deleting again is a plain 404, not an error.
+            client.delete("/api/v1/intern/authoring/projects/$projectId?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }.status shouldBe HttpStatusCode.NotFound
+        }
+    }
+
+    test("a delete racing revision creation never produces a server error") {
+        // The per-project advisory lock must serialize the two flows: the
+        // freeze either commits before the cascade or reports not found -
+        // an FK violation (500) means the lock is gone.
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+            repeat(10) {
+                val created = client.post("/api/v1/intern/authoring/projects?team=team-test") {
+                    header(HttpHeaders.Authorization, "Bearer test-token")
+                    contentType(ContentType.Application.Json)
+                    setBody(createBody())
+                }
+                val projectId = Json.parseToJsonElement(created.bodyAsText()).jsonObject
+                    .getValue("id").jsonPrimitive.content
+
+                coroutineScope {
+                    val freeze = async {
+                        client.post(
+                            "/api/v1/intern/authoring/projects/$projectId/revisions?team=team-test",
+                        ) {
+                            header(HttpHeaders.Authorization, "Bearer test-token")
+                            contentType(ContentType.Application.Json)
+                            setBody("""{ "expectedDraftVersion": 1 }""")
+                        }
+                    }
+                    val deletion = async {
+                        client.delete(
+                            "/api/v1/intern/authoring/projects/$projectId?team=team-test",
+                        ) {
+                            header(HttpHeaders.Authorization, "Bearer test-token")
+                        }
+                    }
+                    val freezeStatus = freeze.await().status
+                    val deleteStatus = deletion.await().status
+                    freezeStatus shouldBeIn listOf(HttpStatusCode.Created, HttpStatusCode.NotFound)
+                    deleteStatus shouldBeIn listOf(HttpStatusCode.NoContent, HttpStatusCode.NotFound)
+                }
+
+                // Whoever won, the end state is fully converged.
+                client.get("/api/v1/intern/authoring/projects/$projectId?team=team-test") {
+                    header(HttpHeaders.Authorization, "Bearer test-token")
+                }.status shouldBe HttpStatusCode.NotFound
+            }
+        }
+    }
+
+    test("saving into a deleted project reports not found, never conflict") {
+        // The delete can land between any existence check and the update —
+        // the classification must be decided atomically with the update.
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+            val created = client.post("/api/v1/intern/authoring/projects?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(createBody())
+            }
+            val projectId = Json.parseToJsonElement(created.bodyAsText()).jsonObject
+                .getValue("id").jsonPrimitive.content
+
+            client.delete("/api/v1/intern/authoring/projects/$projectId?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }.status shouldBe HttpStatusCode.NoContent
+
+            val save = client.put(
+                "/api/v1/intern/authoring/projects/$projectId/draft?team=team-test",
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(updateBody(expectedVersion = 1, name = "Etter sletting"))
+            }
+            save.status shouldBe HttpStatusCode.NotFound
+            save.bodyAsText() shouldContain "Survey project not found"
         }
     }
 

@@ -7,6 +7,7 @@ import no.nav.lumi.domain.SurveyAuthoringProjectSummary
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
@@ -67,6 +68,29 @@ class SurveyAuthoringProjectRepository {
         findByIdInCurrentTransaction(team, id)
     }
 
+    /** Deletes the project; revisions follow via the DB cascade. */
+    suspend fun deleteById(team: String, id: UUID): Boolean = dbQuery {
+        // Same per-project advisory lock as revision creation: a delete must
+        // never commit between the revision flow's project read and its
+        // insert — that would surface as an FK violation (500) instead of a
+        // clean 404/cascade.
+        val connection = TransactionManager.current().connection.connection as Connection
+        connection.prepareStatement("SELECT pg_advisory_xact_lock(hashtext(?))").use { lock ->
+            lock.setString(1, "survey-authoring-revision:$id")
+            lock.execute()
+        }
+        SurveyAuthoringProjectTable.deleteWhere {
+            (SurveyAuthoringProjectTable.team eq team) and
+                (SurveyAuthoringProjectTable.id eq id)
+        } > 0
+    }
+
+    sealed interface DraftUpdateResult {
+        data class Updated(val project: SurveyAuthoringProject) : DraftUpdateResult
+        data object NotFound : DraftUpdateResult
+        data object VersionConflict : DraftUpdateResult
+    }
+
     suspend fun updateDraft(
         team: String,
         id: UUID,
@@ -75,7 +99,7 @@ class SurveyAuthoringProjectRepository {
         surveyId: String,
         document: JsonObject,
         principalIdentity: String,
-    ): SurveyAuthoringProject? = dbQuery {
+    ): DraftUpdateResult = dbQuery {
         val updated = SurveyAuthoringProjectTable.update({
             (SurveyAuthoringProjectTable.id eq id) and
                 (SurveyAuthoringProjectTable.team eq team) and
@@ -89,7 +113,14 @@ class SurveyAuthoringProjectRepository {
             it[updatedAt] = OffsetDateTime.now()
         }
 
-        if (updated == 0) null else findByIdInCurrentTransaction(team, id)
+        when {
+            updated > 0 ->
+                DraftUpdateResult.Updated(checkNotNull(findByIdInCurrentTransaction(team, id)))
+            // Decided in the SAME transaction as the update: a concurrent
+            // delete must classify as NotFound, never as a version conflict.
+            findByIdInCurrentTransaction(team, id) == null -> DraftUpdateResult.NotFound
+            else -> DraftUpdateResult.VersionConflict
+        }
     }
 
     private fun findByIdInCurrentTransaction(team: String, id: UUID): SurveyAuthoringProject? =

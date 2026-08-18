@@ -4,6 +4,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.HttpHeaders
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receiveChannel
+import io.ktor.server.resources.delete
 import io.ktor.server.resources.get
 import io.ktor.server.resources.post
 import io.ktor.server.resources.put
@@ -72,6 +73,15 @@ fun Route.surveyAuthoringRoutes(
         call.respond(project)
     }
 
+    delete<ApiV1Intern.Authoring.Projects.Id> { params ->
+        val removed = repository.deleteById(
+            team = call.authorizedTeam,
+            id = parseProjectId(params.projectId),
+        )
+        if (!removed) throw ApiErrorException.NotFoundException("Survey project not found")
+        call.respond(HttpStatusCode.NoContent)
+    }
+
     put<ApiV1Intern.Authoring.Projects.Id.Draft> { params ->
         val request = receiveAuthoringRequest<UpdateSurveyAuthoringDraftRequest>(call)
         if (request.expectedVersion < 1) {
@@ -83,21 +93,25 @@ fun Route.surveyAuthoringRoutes(
         val principalIdentity = stablePrincipalIdentity(call.authorizedPrincipal)
             ?: throw ApiErrorException.BadRequestException("Authenticated user needs a stable identity")
 
-        if (repository.findById(team, projectId) == null) {
-            throw ApiErrorException.NotFoundException("Survey project not found")
+        val project = when (
+            val result = repository.updateDraft(
+                team = team,
+                id = projectId,
+                expectedVersion = request.expectedVersion,
+                name = validated.name,
+                surveyId = validated.surveyId,
+                document = request.document,
+                principalIdentity = principalIdentity,
+            )
+        ) {
+            is SurveyAuthoringProjectRepository.DraftUpdateResult.Updated -> result.project
+            SurveyAuthoringProjectRepository.DraftUpdateResult.NotFound ->
+                throw ApiErrorException.NotFoundException("Survey project not found")
+            SurveyAuthoringProjectRepository.DraftUpdateResult.VersionConflict ->
+                throw ApiErrorException.ConflictException(
+                    "Draft changed since it was loaded. Reload before saving again.",
+                )
         }
-
-        val project = repository.updateDraft(
-            team = team,
-            id = projectId,
-            expectedVersion = request.expectedVersion,
-            name = validated.name,
-            surveyId = validated.surveyId,
-            document = request.document,
-            principalIdentity = principalIdentity,
-        ) ?: throw ApiErrorException.ConflictException(
-            "Draft changed since it was loaded. Reload before saving again.",
-        )
 
         call.respond(project)
     }

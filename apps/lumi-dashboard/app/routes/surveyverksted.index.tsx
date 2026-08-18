@@ -1,4 +1,6 @@
+import { MenuElipsisVerticalIcon, TrashIcon } from "@navikt/aksel-icons";
 import {
+  ActionMenu,
   Alert,
   BodyLong,
   BodyShort,
@@ -16,13 +18,16 @@ import type { SurveyDocumentV1 } from "@navikt/lumi-survey";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { z } from "zod";
+import { DeleteDraftDialog } from "~/components/surveyverksted/DeleteDraftDialog";
 import {
   createSurveyAuthoringProjectServerFn,
+  deleteSurveyAuthoringProjectServerFn,
   fetchSurveyAuthoringProjectsServerFn,
   fetchTeamsServerFn,
 } from "~/server/actions";
+import type { SurveyAuthoringRevisionDetail } from "~/types/surveyAuthoring";
 import { suggestSurveyId } from "~/utils/surveyDocument";
 import styles from "./surveyverksted.module.css";
 
@@ -125,6 +130,54 @@ function SurveyWorkshopIndex() {
   });
 
   const canCreate = Boolean(selectedTeam && name.trim() && surveyId.trim());
+
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const projectsHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  // Set on successful deletion: the dialog's close event runs AFTER the
+  // native focus restore (whose target is gone with the card), so the
+  // replacement focus must be applied there, not in onSuccess.
+  const focusListAfterCloseRef = useRef(false);
+  const deleteMutation = useMutation({
+    mutationFn: async (projectId: string) => {
+      if (!selectedTeam) throw new Error("No authorized team selected");
+      try {
+        await deleteSurveyAuthoringProjectServerFn({
+          data: { team: selectedTeam, projectId },
+        });
+      } catch (error) {
+        // A concurrent delete already reached the desired end state —
+        // converge instead of offering an impossible retry.
+        const alreadyGone =
+          error instanceof Error &&
+          error.message.includes("Survey project not found");
+        if (!alreadyGone) throw error;
+      }
+    },
+    onSuccess: async (_result, projectId) => {
+      // Evict everything scoped to the project so stale caches can never
+      // reopen a deleted draft or revision in this tab.
+      queryClient.removeQueries({
+        queryKey: ["survey-authoring-project", selectedTeam, projectId],
+      });
+      queryClient.removeQueries({
+        queryKey: ["survey-authoring-revisions", selectedTeam, projectId],
+      });
+      queryClient.removeQueries({
+        predicate: (query) =>
+          query.queryKey[0] === "survey-authoring-revision" &&
+          (query.state.data as SurveyAuthoringRevisionDetail | undefined)
+            ?.revision.projectId === projectId,
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["survey-authoring-projects", selectedTeam],
+      });
+      focusListAfterCloseRef.current = true;
+      setDeleteTarget(null);
+    },
+  });
 
   return (
     <Box
@@ -249,7 +302,12 @@ function SurveyWorkshopIndex() {
             <VStack gap="space-16">
               <HStack justify="space-between" align="end" gap="space-8">
                 <div>
-                  <Heading size="medium" level="2">
+                  <Heading
+                    size="medium"
+                    level="2"
+                    ref={projectsHeadingRef}
+                    tabIndex={-1}
+                  >
                     Teamets utkast
                   </Heading>
                   <BodyShort textColor="subtle">{selectedTeam}</BodyShort>
@@ -268,7 +326,7 @@ function SurveyWorkshopIndex() {
               ) : projectsQuery.data?.length ? (
                 <VStack gap="space-8" as="ul" className={styles.projectList}>
                   {projectsQuery.data.map((project) => (
-                    <li key={project.id}>
+                    <li key={project.id} className={styles.projectItem}>
                       <Link
                         to="/surveyverksted/$projectId"
                         params={{ projectId: project.id }}
@@ -295,6 +353,33 @@ function SurveyWorkshopIndex() {
                           Sist endret {formatProjectDate(project.updatedAt)}
                         </BodyShort>
                       </Link>
+                      <ActionMenu>
+                        <ActionMenu.Trigger>
+                          <Button
+                            type="button"
+                            variant="tertiary-neutral"
+                            size="small"
+                            className={styles.projectMenu}
+                            icon={<MenuElipsisVerticalIcon aria-hidden />}
+                            aria-label={`Handlinger for ${project.name} (${project.surveyId})`}
+                          />
+                        </ActionMenu.Trigger>
+                        <ActionMenu.Content align="end">
+                          <ActionMenu.Item
+                            variant="danger"
+                            icon={<TrashIcon aria-hidden />}
+                            onSelect={() => {
+                              deleteMutation.reset();
+                              setDeleteTarget({
+                                id: project.id,
+                                name: project.name,
+                              });
+                            }}
+                          >
+                            Slett utkast
+                          </ActionMenu.Item>
+                        </ActionMenu.Content>
+                      </ActionMenu>
                     </li>
                   ))}
                 </VStack>
@@ -316,6 +401,22 @@ function SurveyWorkshopIndex() {
           </div>
         )}
       </VStack>
+      <DeleteDraftDialog
+        name={deleteTarget?.name ?? null}
+        isPending={deleteMutation.isPending}
+        showError={deleteMutation.isError}
+        onConfirm={() => {
+          if (deleteTarget) deleteMutation.mutate(deleteTarget.id);
+        }}
+        onClose={() => {
+          if (deleteMutation.isPending) return;
+          setDeleteTarget(null);
+          if (focusListAfterCloseRef.current) {
+            focusListAfterCloseRef.current = false;
+            projectsHeadingRef.current?.focus();
+          }
+        }}
+      />
     </Box>
   );
 }

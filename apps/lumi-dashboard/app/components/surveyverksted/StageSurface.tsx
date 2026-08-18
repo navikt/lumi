@@ -92,7 +92,7 @@ export const StageSurface = memo(function StageSurface({
             <span />
             <span />
             <span />
-            <span className={styles.stageUrl}>din-tjeneste.no</span>
+            <span className={styles.stageUrl}>nav.no</span>
           </div>
           <div className={styles.stagePage}>
             <span className={styles.stageLine} data-width="55" />

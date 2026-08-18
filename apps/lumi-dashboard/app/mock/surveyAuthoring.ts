@@ -56,6 +56,19 @@ export function createMockSurveyProject(input: {
   return structuredClone(project);
 }
 
+export function deleteMockSurveyProject(
+  team: string,
+  projectId: string,
+): boolean {
+  const project = projects.get(projectId);
+  if (project?.team !== team) return false;
+  projects.delete(projectId);
+  for (const [id, revision] of revisions) {
+    if (revision.projectId === projectId) revisions.delete(id);
+  }
+  return true;
+}
+
 export function saveMockSurveyProject(input: {
   team: string;
   projectId: string;
@@ -130,6 +143,16 @@ export async function createMockSurveyRevision(input: {
 
   const documentHash = await sha256(serializeSurveyDocumentJson(document));
   const definitionHash = await sha256(analyticalStructure(document));
+  // Hashing yielded to the event loop — mirror the API's advisory lock by
+  // revalidating that the project still exists (and is unchanged) before
+  // committing the revision.
+  const current = projects.get(input.projectId);
+  if (!current || current.team !== input.team) {
+    throw new Error("Survey project not found");
+  }
+  if (current.draftVersion !== input.expectedDraftVersion) {
+    throw new Error("Draft changed since it was validated");
+  }
   const revision: SurveyAuthoringRevision = {
     id: crypto.randomUUID(),
     projectId: project.id,

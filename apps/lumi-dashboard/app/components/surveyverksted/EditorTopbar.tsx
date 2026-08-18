@@ -181,7 +181,7 @@ export const EditorTopbar = memo(function EditorTopbar({
             size="small"
             icon={<ExternalLinkIcon aria-hidden />}
           >
-            Prøv surveyen
+            Prøv i egen fane
           </Button>
         ) : (
           <Tooltip content="Tilgjengelig når utkastet er lagret">
@@ -192,7 +192,7 @@ export const EditorTopbar = memo(function EditorTopbar({
               icon={<ExternalLinkIcon aria-hidden />}
               disabled
             >
-              Prøv surveyen
+              Prøv i egen fane
             </Button>
           </Tooltip>
         )}
