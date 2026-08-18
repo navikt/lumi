@@ -49,6 +49,24 @@ export const PreviewStage = memo(function PreviewStage({
   const stableDocument = stable.document;
 
   const [restartNonce, setRestartNonce] = useState(0);
+  // "Start på nytt" runs the survey from the very beginning — intro screen
+  // included when one is authored. The request is anchored to the document
+  // revision and editor page it was made from. The next edit or page selection
+  // returns the stage to the selected page without a Start-gate.
+  const [fromStart, setFromStart] = useState<{
+    revision: number;
+    pageId: string;
+  } | null>(null);
+  useEffect(() => {
+    setFromStart((current) =>
+      current?.pageId === initialPageId ? current : null,
+    );
+  }, [initialPageId]);
+  const hasIntro = Boolean(stableDocument?.intro?.title.trim());
+  const previewFromStart =
+    hasIntro &&
+    fromStart?.revision === stable.revision &&
+    fromStart.pageId === initialPageId;
 
   return (
     <section aria-label="Forhåndsvisning" className={styles.stagePanel}>
@@ -68,7 +86,20 @@ export const PreviewStage = memo(function PreviewStage({
             size="small"
             icon={<ArrowCirclepathIcon aria-hidden />}
             aria-label="Start forhåndsvisningen på nytt"
-            onClick={() => setRestartNonce((nonce) => nonce + 1)}
+            onClick={() => {
+              const restartRevision =
+                isValid && stableDocument !== document
+                  ? stable.revision + 1
+                  : stable.revision;
+              if (restartRevision !== stable.revision) {
+                setStable({ document, revision: restartRevision });
+              }
+              setFromStart({
+                revision: restartRevision,
+                pageId: initialPageId,
+              });
+              setRestartNonce((nonce) => nonce + 1);
+            }}
           />
         </Tooltip>
       </div>
@@ -85,7 +116,7 @@ export const PreviewStage = memo(function PreviewStage({
           instanceKey={stable.revision}
           surveyId={`verksted-preview-${surveyId || "utkast"}`}
           environmentTag="survey-workshop-editor"
-          initialPageId={initialPageId}
+          initialPageId={previewFromStart ? undefined : initialPageId}
           nonce={restartNonce}
           successTitle="Slik ser kvitteringen ut"
           successBody="Bare en forhåndsvisning — ingenting ble sendt."
