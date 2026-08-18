@@ -278,8 +278,43 @@ export function validateSurveyDocumentV1(input: unknown): SurveyDocumentV1 {
     throw new Error("Lumi: Survey document must use authoringSchemaVersion 1");
   }
 
+  validateOptionalScreen(document.intro, "intro", [
+    "title",
+    "body",
+    "startLabel",
+  ]);
+  validateOptionalScreen(document.success, "success", ["title", "body"]);
+
   buildCanonicalSurvey(input as SurveyDocumentV1);
   return input as SurveyDocumentV1;
+}
+
+/**
+ * Intro/success screens are plain string content; the title may be blank in
+ * drafts (release gates enforce non-blank), but every present field must be
+ * a string and the section itself an object.
+ */
+function validateOptionalScreen(
+  value: unknown,
+  name: string,
+  stringFields: readonly string[],
+): void {
+  if (value === undefined) return;
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`Lumi: Survey document ${name} must be an object`);
+  }
+  const section = value as Record<string, unknown>;
+  if (typeof section.title !== "string") {
+    throw new Error(`Lumi: Survey document ${name} needs a string title`);
+  }
+  for (const field of stringFields) {
+    const fieldValue = section[field];
+    if (fieldValue !== undefined && typeof fieldValue !== "string") {
+      throw new Error(
+        `Lumi: Survey document ${name} field '${field}' must be a string`,
+      );
+    }
+  }
 }
 
 function validateLegacyQuestions(

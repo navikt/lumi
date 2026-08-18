@@ -17,7 +17,7 @@ import { validateAnswers } from "../../core/validation.js";
 import { getVisibilityMetadata } from "../../core/visibilityMetadata.js";
 
 import { buildCanonicalSurvey } from "../shared/canonicalSurvey.js";
-import type { LumiSurveyDefinition } from "../surveyTypes.js";
+import type { LumiSurveyDefinition, SurveyDocumentV1 } from "../surveyTypes.js";
 import { CLASS_NAMES, joinClassNames } from "./classNames.js";
 import { DockPanel } from "./components/DockPanel.js";
 import { MinimizedDock } from "./components/MinimizedDock.js";
@@ -129,15 +129,68 @@ export const LumiSurveyDock = ({
   intro,
 }: LumiSurveyDockProps) => {
   // Resolve all config with defaults
+
+  // Intro/success authored in a V1 survey document act as defaults; explicit
+  // embed props override them. Blank titles (lenient drafts) read as absent.
+  const documentScreens = useMemo(() => {
+    if (!survey || typeof survey !== "object" || !("pages" in survey)) {
+      return { intro: undefined, success: undefined };
+    }
+    const document = survey as SurveyDocumentV1;
+    const documentIntro =
+      document.intro && document.intro.title.trim().length > 0
+        ? {
+            title: document.intro.title,
+            body: document.intro.body,
+            // Blank labels never reach the button; runtime falls back to
+            // "Start" so it always has an accessible name.
+            startLabel: document.intro.startLabel?.trim()
+              ? document.intro.startLabel
+              : undefined,
+          }
+        : undefined;
+    const documentSuccess =
+      document.success && document.success.title.trim().length > 0
+        ? { title: document.success.title, body: document.success.body }
+        : undefined;
+    return { intro: documentIntro, success: documentSuccess };
+  }, [survey]);
+  // Field-level merge: the document authors the content, embed props adjust
+  // individual fields — a partial `success={{ primaryLabel }}` must never
+  // throw away the authored title/body.
+  const { effectiveIntro, effectiveSuccess } = useMemo(() => {
+    const mergedIntro =
+      intro || documentScreens.intro
+        ? ({
+            ...documentScreens.intro,
+            ...intro,
+          } as LumiSurveyIntroConfig)
+        : undefined;
+    const mergedSuccess =
+      success || documentScreens.success
+        ? { ...documentScreens.success, ...success }
+        : undefined;
+    return { effectiveIntro: mergedIntro, effectiveSuccess: mergedSuccess };
+  }, [intro, success, documentScreens]);
   const config = useMemo(
-    () => resolveConfig(labels, success, style, behavior, intro),
-    [labels, success, style, behavior, intro],
+    () =>
+      resolveConfig(labels, effectiveSuccess, style, behavior, effectiveIntro),
+    [labels, effectiveSuccess, style, behavior, effectiveIntro],
   );
 
   // IMPORTANT: Call all hooks before any conditional returns to comply with Rules of Hooks
 
-  // Intro state — starts true when intro is configured
-  const [showIntro, setShowIntro] = useState(config.hasIntro);
+  const canonicalSurvey = useMemo(() => buildCanonicalSurvey(survey), [survey]);
+
+  // Intro state — starts true when intro is configured. An explicit start
+  // page (workshop stage, deep links) overrides the intro screen so edits
+  // never demand a Start-click per remount. A typo'd page id falls back to
+  // normal navigation and must NOT cost the intro.
+  const requestedPageExists =
+    config.initialPageId != null &&
+    canonicalSurvey.pages.some((page) => page.id === config.initialPageId);
+  const skipIntro = requestedPageExists;
+  const [showIntro, setShowIntro] = useState(config.hasIntro && !skipIntro);
 
   const handleIntroStart = useCallback(() => {
     setShowIntro(false);
@@ -155,7 +208,6 @@ export const LumiSurveyDock = ({
    * Use the new flexible survey builder.
    * "questions" is the full list of questions in display order.
    */
-  const canonicalSurvey = useMemo(() => buildCanonicalSurvey(survey), [survey]);
   const { type: surveyType, questions, pages, source } = canonicalSurvey;
 
   // The first question is used as the "prompt" question in the header
@@ -320,8 +372,8 @@ export const LumiSurveyDock = ({
     resetNavigation();
     setStepValidationMissing([]);
     setValidationAttempt(0);
-    setShowIntro(config.hasIntro);
-  }, [reset, resetNavigation, config.hasIntro]);
+    setShowIntro(config.hasIntro && !skipIntro);
+  }, [reset, resetNavigation, config.hasIntro, skipIntro]);
 
   const { dismissed, shouldHideCompletely, isLoading, closeDock, reopenDock } =
     usePersistedDismissal({

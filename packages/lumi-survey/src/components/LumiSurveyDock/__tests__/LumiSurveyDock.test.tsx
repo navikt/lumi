@@ -979,6 +979,192 @@ describe("LumiSurveyDock", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows the intro authored in the survey document without an intro prop", async () => {
+    render(
+      <LumiSurveyDock
+        surveyId="dock-document-intro"
+        survey={{
+          authoringSchemaVersion: 1,
+          intro: {
+            title: "Velkommen fra dokumentet",
+            body: "To korte spørsmål.",
+            startLabel: "Kom i gang",
+          },
+          pages: [
+            {
+              id: "side-1",
+              questions: [
+                { id: "rating", type: "rating", prompt: "Hvordan gikk det?" },
+              ],
+            },
+          ],
+        }}
+        transport={{ submit: vi.fn().mockResolvedValue(undefined) }}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Velkommen fra dokumentet" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Kom i gang" }),
+    ).toBeInTheDocument();
+  });
+
+  it("lets an explicit intro prop override the document's intro", async () => {
+    render(
+      <LumiSurveyDock
+        surveyId="dock-intro-precedence"
+        survey={{
+          authoringSchemaVersion: 1,
+          intro: { title: "Fra dokumentet" },
+          pages: [
+            {
+              id: "side-1",
+              questions: [
+                { id: "rating", type: "rating", prompt: "Hvordan gikk det?" },
+              ],
+            },
+          ],
+        }}
+        transport={{ submit: vi.fn().mockResolvedValue(undefined) }}
+        intro={{ title: "Fra embedet" }}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Fra embedet" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Fra dokumentet" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("merges partial embed props over the document's screens field by field", async () => {
+    const user = userEvent.setup();
+    render(
+      <LumiSurveyDock
+        surveyId="dock-screen-merge"
+        survey={{
+          authoringSchemaVersion: 1,
+          intro: { title: "Fra dokumentet", body: "Dok-brødtekst" },
+          success: { title: "Authored takk", body: "Dok-takk" },
+          pages: [
+            {
+              id: "side-1",
+              questions: [
+                { id: "rating", type: "rating", prompt: "Hvordan gikk det?" },
+              ],
+            },
+          ],
+        }}
+        transport={{ submit: vi.fn().mockResolvedValue(undefined) }}
+        intro={{ title: "Fra embedet" }}
+        success={{ primaryLabel: "Den er grei" }}
+      />,
+    );
+
+    // Intro: embed title wins, document body survives the merge.
+    expect(
+      await screen.findByRole("heading", { name: "Fra embedet" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Dok-brødtekst")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /start/i }));
+
+    // Success: document title survives a props object that only adjusts
+    // the button label.
+    await user.click(await screen.findByRole("radio", { name: /5\./i }));
+    await user.click(screen.getByRole("button", { name: /send/i }));
+    expect(
+      await screen.findByRole("heading", { name: "Authored takk" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Den er grei" }),
+    ).toBeInTheDocument();
+  });
+
+  it("falls back to Start when the authored start label is blank", async () => {
+    render(
+      <LumiSurveyDock
+        surveyId="dock-blank-start"
+        survey={{
+          authoringSchemaVersion: 1,
+          intro: { title: "Velkommen", startLabel: "   " },
+          pages: [
+            {
+              id: "side-1",
+              questions: [
+                { id: "rating", type: "rating", prompt: "Hvordan gikk det?" },
+              ],
+            },
+          ],
+        }}
+        transport={{ submit: vi.fn().mockResolvedValue(undefined) }}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "Start" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the intro when the requested start page does not exist", async () => {
+    render(
+      <LumiSurveyDock
+        surveyId="dock-intro-typo"
+        survey={{
+          authoringSchemaVersion: 1,
+          intro: { title: "Velkommen" },
+          pages: [
+            {
+              id: "side-1",
+              questions: [
+                { id: "rating", type: "rating", prompt: "Hvordan gikk det?" },
+              ],
+            },
+          ],
+        }}
+        transport={{ submit: vi.fn().mockResolvedValue(undefined) }}
+        behavior={{ initialPageId: "finnes-ikke" }}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Velkommen" }),
+    ).toBeInTheDocument();
+  });
+
+  it("skips the intro screen when an explicit start page is set", async () => {
+    // The workshop stage always passes the selected page — the intro must
+    // not demand a Start-click on every remount while editing.
+    render(
+      <LumiSurveyDock
+        surveyId="dock-intro-skipped"
+        survey={{
+          authoringSchemaVersion: 1,
+          pages: [
+            {
+              id: "side-1",
+              questions: [
+                { id: "rating", type: "rating", prompt: "Hvordan gikk det?" },
+              ],
+            },
+          ],
+        }}
+        transport={{ submit: vi.fn().mockResolvedValue(undefined) }}
+        behavior={{ initialPageId: "side-1" }}
+        intro={{ title: "Velkommen", body: "Kort intro" }}
+      />,
+    );
+
+    expect(
+      (await screen.findAllByText(/Hvordan gikk det\?/)).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole("heading", { name: "Velkommen" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("displays validation errors when required questions are missing", async () => {
     const user = userEvent.setup();
     const events: LumiSurveyEvents = {

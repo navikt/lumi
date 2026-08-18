@@ -117,7 +117,7 @@ export function resolveConfig(
     // Intro
     introTitle: intro?.title,
     introBody: intro?.body,
-    introStartLabel: intro?.startLabel ?? "Start",
+    introStartLabel: intro?.startLabel?.trim() ? intro.startLabel : "Start",
     hasIntro: intro != null,
   };
 }

@@ -8,12 +8,16 @@ This project follows SemVer.
 
 ### Added
 
+- `SurveyDocumentV1` gains optional survey-level screens: `intro` (`title`, `body?`, `startLabel?`) and `success` (`title`, `body?`) as plain strings. `LumiSurveyDock` derives its intro/success screens from the document, with explicit embed props as field-level overrides — a partial `success={{ primaryLabel }}` keeps the authored title and body. Blank titles read as absent (lenient drafts never render an empty screen), and blank `startLabel` falls back to `"Start"` so the intro button always has an accessible name. `validateSurveyDocumentV1` shape-checks the new fields. (#441)
+
 - `behavior.initialPageId`, `behavior.simulatedViewport` and `style.panelMaxHeight` add an embedding seam for authoring previews: start the flow on a specific authored page, size and classify (`viewport`/`deviceType`) from a simulated viewport, and constrain the open panel's height. Production behavior is unchanged when the props are absent. (#338)
 - `validateSurveyDocumentV1` exposes the widget's runtime document validation as a pure public seam for authoring tools before preview or export. (#338)
 - `SurveyDocumentV1`, `SurveyPageV1` and `SurveyQuestionV1` add a serializable page-based authoring format. A page can contain multiple questions that render and validate together; `singlePage` preserves page headings while step layout navigates pages. The new format uses question-level `visibleIf` and deliberately rejects legacy `logic`. Existing flat `LumiSurveyConfig` inputs remain supported unchanged. (#336)
 - `visibleIf` now supports `any` (OR) and `all` (AND) to combine multiple conditions. The wider condition type is exported as `VisibleIfCondition` (with `isConditionGroup`/`getLeafConditions`/`isLeafCondition` helpers); `LogicCondition` stays leaf-only so `LogicRule` consumers are unaffected. Note: `question.visibleIf` is now typed `VisibleIfCondition` (leaf | group), so code reading `visibleIf.operator` directly must first narrow with `isConditionGroup`/`isLeafCondition`. (#333)
 
 ### Changed
+
+- `behavior.initialPageId` now also suppresses the intro screen when the requested page exists in the document — an explicit start page (authoring previews, deep links) outranks the intro. A typo'd or unknown id keeps the intro and falls back to normal navigation. (#441)
 
 - `createTopTasksSurvey` now expresses its flow with `visibleIf` instead of `logic`. Answer-based value conditions (`EQ`/`NEQ`/`GT`/`LT`/`CONTAINS`) automatically enable step mode under `questionLayout: "auto"`, while `EXISTS`-only progressive disclosure remains single-page. (#359)
 - `behavior.showProgress: true` now shows progress from the first question in step mode. Intro and success screens are not counted, and single-step surveys omit the indicator. Branching exposes only the known step number to assistive technology. (#334)
