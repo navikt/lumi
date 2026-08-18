@@ -38,11 +38,10 @@ export function createRevisionMarkdown(
   revision: SurveyAuthoringRevision,
   revisionUrl: string,
 ): string {
-  const label =
-    `${revision.name} – revisjon ${revision.revisionNumber}`.replace(
-      /([\\[\]])/g,
-      "\\$1",
-    );
+  const label = `${revision.name} – versjon ${revision.revisionNumber}`.replace(
+    /([\\[\]])/g,
+    "\\$1",
+  );
   return `[${label}](${revisionUrl})`;
 }
 
@@ -96,15 +95,15 @@ export function describeRevisionChanges(
   current: SurveyDocumentV1,
   previous?: SurveyDocumentV1 | null,
 ): string[] {
-  if (!previous) return ["Første delbare revisjon i prosjektet."];
+  if (!previous) return ["Første delte versjon i prosjektet."];
 
   const changes: string[] = [];
   describeScreenChange(
     changes,
     current.intro,
     previous.intro,
-    "Introskjerm",
-    "Introskjermen",
+    "Velkomstside",
+    "Velkomstsiden",
   );
   describeScreenChange(
     changes,

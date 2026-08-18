@@ -102,12 +102,13 @@ export const QuestionCanvas = memo(function QuestionCanvas({
     <VStack gap="space-24">
       {pageNumber === 1 ? (
         <SurveyScreenCard
-          regionLabel="Introskjerm"
-          eyebrow="INTROSKJERM"
-          addLabel="Legg til introskjerm"
-          removeLabel="Fjern introskjermen"
+          regionLabel="Velkomstside"
+          eyebrow="VELKOMSTSIDE"
+          description="Vises før det første spørsmålet. Uten en velkomstside starter surveyen rett på spørsmålene."
+          addLabel="Legg til velkomstside"
+          removeLabel="Fjern velkomstsiden"
           startLabelField={{
-            label: "Knappetekst (valgfri)",
+            label: "Tekst på startknappen (valgfri)",
             placeholder: "Start",
           }}
           value={intro}

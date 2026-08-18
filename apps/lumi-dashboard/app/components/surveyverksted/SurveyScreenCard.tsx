@@ -26,7 +26,7 @@ export interface ScreenUndo {
 export interface SurveyScreenCardProps {
   /** Accessible name for the section while the screen exists. */
   regionLabel: string;
-  /** Section heading, e.g. "INTROSKJERM". */
+  /** Section heading, e.g. "VELKOMSTSIDE". */
   eyebrow: string;
   description?: string;
   addLabel: string;
@@ -133,7 +133,7 @@ export function SurveyScreenCard({
         onChange={(event) => onChange({ ...value, title: event.target.value })}
       />
       <Textarea
-        label="Brødtekst (valgfri)"
+        label="Tekst (valgfri)"
         size="small"
         minRows={2}
         value={value.body ?? ""}

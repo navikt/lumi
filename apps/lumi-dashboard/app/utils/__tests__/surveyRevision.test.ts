@@ -43,13 +43,13 @@ describe("describeRevisionChanges for screens", () => {
     };
 
     expect(describeRevisionChanges(withIntro, document)).toContain(
-      "Introskjerm er lagt til.",
+      "Velkomstside er lagt til.",
     );
     expect(describeRevisionChanges(document, withIntro)).toContain(
-      "Introskjerm er fjernet.",
+      "Velkomstside er fjernet.",
     );
     expect(describeRevisionChanges(withChangedIntro, withIntro)).toContain(
-      "Introskjermen er endret.",
+      "Velkomstsiden er endret.",
     );
     expect(describeRevisionChanges(withSuccess, document)).toContain(
       "Bekreftelse etter innsending er lagt til.",
@@ -125,7 +125,7 @@ describe("survey revision exports", () => {
       "Teksten er endret i 1 spørsmål.",
     ]);
     expect(describeRevisionChanges(document)).toEqual([
-      "Første delbare revisjon i prosjektet.",
+      "Første delte versjon i prosjektet.",
     ]);
   });
 
@@ -149,7 +149,7 @@ describe("survey revision exports", () => {
     );
 
     expect(markdown).toBe(
-      "[Kvittering – revisjon 3](https://lumi.example/revision/1)",
+      "[Kvittering – versjon 3](https://lumi.example/revision/1)",
     );
     expect(
       createRevisionMarkdown(
@@ -157,7 +157,7 @@ describe("survey revision exports", () => {
         "https://lumi.example/revision/1",
       ),
     ).toBe(
-      "[Kvittering \\[beta\\] – revisjon 3](https://lumi.example/revision/1)",
+      "[Kvittering \\[beta\\] – versjon 3](https://lumi.example/revision/1)",
     );
   });
 });

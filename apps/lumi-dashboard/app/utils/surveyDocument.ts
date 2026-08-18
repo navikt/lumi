@@ -667,7 +667,7 @@ export function findHandoffIssues(document: SurveyDocumentV1): HandoffIssue[] {
   if (document.intro && document.intro.title.trim().length === 0) {
     issues.push({
       questionId: null,
-      message: "Introskjermen mangler tittel.",
+      message: "Velkomstsiden mangler tittel.",
     });
   }
   if (document.success && document.success.title.trim().length === 0) {

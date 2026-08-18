@@ -874,7 +874,7 @@ function SurveyWorkshopEditor({
       ? {
           label:
             kind === "intro"
-              ? "Introskjermen ble fjernet."
+              ? "Velkomstsiden ble fjernet."
               : "Tilpasningen av bekreftelsen ble fjernet.",
           onUndo: handleUndo,
           onExpire: () => setUndo(null),
@@ -1015,7 +1015,7 @@ function SurveyWorkshopEditor({
           revisionMutation.isError
             ? revisionMutation.error instanceof Error
               ? revisionMutation.error.message
-              : "Revisjonen kunne ikke opprettes."
+              : "Versjonen kunne ikke deles."
             : null
         }
         onFreeze={() => revisionMutation.mutate()}

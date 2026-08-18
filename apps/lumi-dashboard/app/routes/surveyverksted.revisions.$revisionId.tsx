@@ -54,7 +54,7 @@ function SurveyRevisionRoute() {
   if (revisionQuery.isPending) {
     return (
       <Box as="main" padding="space-32" className={styles.centered}>
-        <Loader size="large" title="Åpner revisjon" />
+        <Loader size="large" title="Åpner delt versjon" />
       </Box>
     );
   }
@@ -63,7 +63,7 @@ function SurveyRevisionRoute() {
     return (
       <Box as="main" padding="space-32" className="main-container">
         <Alert variant="error">
-          Revisjonen finnes ikke, eller du har ikke tilgang til teamet.
+          Den delte versjonen finnes ikke, eller du har ikke tilgang til teamet.
         </Alert>
       </Box>
     );
@@ -141,7 +141,7 @@ function SurveyRevision({
           Tilbake til redigerbart utkast
         </Link>
         <Tag variant="success" size="small">
-          Låst revisjon
+          Delt versjon
         </Tag>
       </div>
 
@@ -156,16 +156,16 @@ function SurveyRevision({
             textColor="subtle"
             className={styles.eyebrow}
           >
-            REVISJON {revision.revisionNumber} · KLAR FOR UTVIKLER
+            VERSJON {revision.revisionNumber} · KLAR FOR UTVIKLER
           </BodyShort>
           <Heading size="xlarge" level="1" spacing>
             {revision.name}
           </Heading>
           <BodyLong size="large">
-            En fast versjon av surveyen som kan prøves, gjennomgås og tas inn i
-            kode. Endringer i utkastet påvirker ikke denne lenken.
+            Dette er en lagret versjon som kan prøves, gjennomgås og deles med
+            utvikleren. Endringer i utkastet påvirker den ikke.
           </BodyLong>
-          <dl className={styles.heroStats} aria-label="Revisjonsomfang">
+          <dl className={styles.heroStats} aria-label="Innhold i versjonen">
             <div>
               <dt>Sider</dt>
               <dd>{revision.document.pages.length}</dd>
@@ -190,7 +190,7 @@ function SurveyRevision({
           >
             {validation.error ? (
               <Alert variant="error">
-                Revisjonen kan ikke brukes av widgeten: {validation.error}
+                Denne versjonen kan ikke forhåndsvises: {validation.error}
               </Alert>
             ) : (
               <div className={styles.validationStatus}>
@@ -200,8 +200,8 @@ function SurveyRevision({
                     Klar til bruk
                   </Heading>
                   <BodyShort size="small">
-                    Dokumentet er validert. Forhåndsvisning og kode bruker
-                    nøyaktig den låste revisjonen.
+                    Denne versjonen kan forhåndsvises og tas i bruk av
+                    utvikleren.
                   </BodyShort>
                 </div>
               </div>
@@ -212,11 +212,10 @@ function SurveyRevision({
             <HStack justify="space-between" align="end" gap="space-16" wrap>
               <div>
                 <Heading id="preview-heading" size="medium" level="2" spacing>
-                  Opplev surveyen som respondent
+                  Prøv surveyen slik brukeren møter den
                 </Heading>
                 <BodyShort textColor="subtle">
-                  Gå gjennom hele flyten i den ekte Lumi-widgeten, rett her.
-                  Svar sendes ikke.
+                  Gå gjennom hele surveyen her. Svarene lagres ikke.
                 </BodyShort>
               </div>
               <Tooltip content="Start forhåndsvisningen på nytt">
@@ -239,8 +238,8 @@ function SurveyRevision({
                   surveyId={`revision-preview-${revision.surveyId}`}
                   environmentTag="survey-workshop-revision"
                   nonce={restartNonce}
-                  successTitle="Forhåndsvisning fullført"
-                  successBody="Dette var en inert forhåndsvisning. Ingenting ble sendt inn."
+                  successTitle="Du har fullført forhåndsvisningen"
+                  successBody="Dette var bare en forhåndsvisning. Ingen svar ble sendt inn."
                 />
               </div>
             ) : null}
@@ -251,7 +250,7 @@ function SurveyRevision({
               Hva er endret?
             </Heading>
             <BodyShort textColor="subtle" spacing>
-              En kort oppsummering mot forrige delte revisjon.
+              Sammenlignet med forrige delte versjon.
             </BodyShort>
             <ul className={styles.changeList}>
               {diff.map((change) => (
@@ -265,8 +264,8 @@ function SurveyRevision({
               Ta surveyen inn i appen
             </Heading>
             <BodyShort textColor="subtle" spacing>
-              TypeScript er den raskeste veien inn i kodebasen. JSON er det
-              komplette, maskinlesbare dokumentet.
+              Utvikleren kan kopiere TypeScript eller laste ned hele oppsettet
+              som JSON.
             </BodyShort>
             <div className={styles.exportGrid}>
               <div className={styles.exportCard} data-featured="true">
@@ -283,7 +282,7 @@ function SurveyRevision({
                     </Tag>
                   </HStack>
                   <BodyShort size="small" textColor="subtle">
-                    Klar til å limes inn som et typesikkert SurveyDocumentV1.
+                    Kan kopieres rett inn i kodebasen.
                   </BodyShort>
                 </div>
                 <CopyButton
@@ -301,7 +300,7 @@ function SurveyRevision({
                     JSON-dokument
                   </Heading>
                   <BodyShort size="small" textColor="subtle">
-                    Bevarer hele dokumentet for arkiv, verktøy og round-trip.
+                    Inneholder hele oppsettet for surveyen.
                   </BodyShort>
                 </div>
                 <Button
@@ -319,7 +318,7 @@ function SurveyRevision({
               <div>
                 <BodyShort weight="semibold">Del i oppgaven</BodyShort>
                 <BodyShort size="small" textColor="subtle">
-                  Kopierer navn, revisjon og teamautorisert lenke som Markdown.
+                  Kopierer et ferdig sammendrag med lenke til denne versjonen.
                 </BodyShort>
               </div>
               <CopyButton
@@ -347,18 +346,18 @@ function SurveyRevision({
             textColor="subtle"
             className={styles.eyebrow}
           >
-            FAST OG DELBAR
+            DELT VERSJON
           </BodyShort>
           <Heading id="metadata-heading" size="medium" level="2" spacing>
-            Om revisjonen
+            Om versjonen
           </Heading>
           <BodyShort size="small" textColor="subtle" spacing>
-            Revisjon {revision.revisionNumber} er et øyeblikksbilde. Den kan
-            alltid brukes til å kontrollere nøyaktig hva som ble delt.
+            Innholdet i versjon {revision.revisionNumber} endres ikke. Dere kan
+            derfor alltid se nøyaktig hva som ble delt.
           </BodyShort>
           <dl>
             <div>
-              <dt>Revisjon</dt>
+              <dt>Versjon</dt>
               <dd>{revision.revisionNumber}</dd>
             </div>
             <div>
@@ -370,7 +369,7 @@ function SurveyRevision({
               <dd>{revision.createdBy}</dd>
             </div>
             <div>
-              <dt>Utkastversjon</dt>
+              <dt>Fra utkast nr.</dt>
               <dd>{revision.draftVersion}</dd>
             </div>
           </dl>
@@ -390,8 +389,8 @@ function SurveyRevision({
             </div>
           </details>
           <Alert variant="info" size="small">
-            Dette er ikke publisering. Git og appens deployløp avgjør hva som
-            kjører i produksjon.
+            Surveyen publiseres ikke fra denne siden. Utvikleren må fortsatt
+            legge den inn i appen.
           </Alert>
         </aside>
       </div>

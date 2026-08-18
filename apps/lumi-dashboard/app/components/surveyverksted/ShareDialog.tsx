@@ -144,21 +144,21 @@ export function ShareDialog({
               <div>
                 <BodyShort weight="semibold">
                   {nextRevisionNumber === null
-                    ? "Klar til å fryse en ny revisjon"
-                    : `Klar til å fryse revisjon ${nextRevisionNumber}`}
+                    ? "Klar til å dele en ny versjon"
+                    : `Klar til å dele versjon ${nextRevisionNumber}`}
                 </BodyShort>
                 <BodyShort size="small" textColor="subtle">
                   {stats.pages} {stats.pages === 1 ? "side" : "sider"} ·{" "}
-                  {stats.questions} spørsmål · validert mot runtime
+                  {stats.questions} spørsmål · klar til bruk
                 </BodyShort>
               </div>
             </div>
           )}
 
           <BodyShort size="small" textColor="subtle">
-            Revisjonen blir en fast, teamautorisert lenke som aldri endrer seg —
-            lim den inn i GitHub-issuen eller oppgaven. Ingenting publiseres:
-            utvikleren tar koden inn i appen gjennom vanlig deploy.
+            Du får en lenke som viser akkurat denne versjonen. Bare teamet har
+            tilgang. Lim lenken inn i GitHub-saken eller oppgaven. Surveyen
+            publiseres ikke — utvikleren legger den inn i appen.
           </BodyShort>
 
           {freezeError ? <Alert variant="error">{freezeError}</Alert> : null}
@@ -166,7 +166,7 @@ export function ShareDialog({
           {revisions.length > 0 ? (
             <div>
               <Detail as="p" className={styles.eyebrow}>
-                DELTE REVISJONER
+                DELTE VERSJONER
               </Detail>
               <ol className={styles.revisionList}>
                 {revisions.map((revision) => (
@@ -182,7 +182,7 @@ export function ShareDialog({
                       </span>
                       <span>
                         <BodyShort as="span" size="small" weight="semibold">
-                          Revisjon {revision.revisionNumber}
+                          Versjon {revision.revisionNumber}
                         </BodyShort>
                         <Detail as="span" className={styles.revisionMeta}>
                           {formatTimestamp(revision.createdAt)}
@@ -192,7 +192,7 @@ export function ShareDialog({
                     <CopyButton
                       size="xsmall"
                       copyText={revisionUrl(revision.id, team)}
-                      title={`Kopier lenken til revisjon ${revision.revisionNumber}`}
+                      title={`Kopier lenken til versjon ${revision.revisionNumber}`}
                       icon={<LinkIcon aria-hidden />}
                     />
                   </li>
@@ -210,8 +210,8 @@ export function ShareDialog({
           onClick={onFreeze}
         >
           {nextRevisionNumber === null
-            ? "Frys ny revisjon og få delbar lenke"
-            : `Frys revisjon ${nextRevisionNumber} og få delbar lenke`}
+            ? "Del en ny versjon"
+            : `Del versjon ${nextRevisionNumber}`}
         </Button>
         <Button type="button" variant="tertiary" onClick={onClose}>
           Avbryt
