@@ -6,6 +6,24 @@ This project follows SemVer.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-08-19
+
+This release adds the **page-based authoring format** (`SurveyDocumentV1`) — the
+serializable document Surveyverksted produces. A consumer on 1.0.0 cannot
+type-check or render an authored export at all, because the format did not
+exist there.
+
+### BREAKING
+
+- `question.visibleIf` is now typed `VisibleIfCondition` (leaf | group) so it
+  can carry `any`/`all` groups. Code that reads `visibleIf.operator` directly
+  must narrow with `isConditionGroup`/`isLeafCondition` first. Authoring a
+  condition is unchanged — only reading one back is affected. `LogicCondition`
+  stays leaf-only, so `LogicRule` consumers are untouched. (#333)
+
+The dock header renders at the same size as in 1.0.0; only its line height
+tightens. See Changed.
+
 ### Added
 
 - `SurveyDocumentV1` gains optional survey-level screens: `intro` (`title`, `body?`, `startLabel?`) and `success` (`title`, `body?`) as plain strings. `LumiSurveyDock` derives its intro/success screens from the document, with explicit embed props as field-level overrides — a partial `success={{ primaryLabel }}` keeps the authored title and body. Blank titles read as absent (lenient drafts never render an empty screen), and blank `startLabel` falls back to `"Start"` so the intro button always has an accessible name. `validateSurveyDocumentV1` shape-checks the new fields. (#441)
