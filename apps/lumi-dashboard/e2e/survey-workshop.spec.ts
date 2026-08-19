@@ -43,9 +43,10 @@ test("creates, edits, previews and shares a survey draft", async ({ page }) => {
       .getByRole("heading", { name: "Detaljer om opplevelsen" }),
   ).toBeVisible();
 
+  // A new page ships without a title, so the rail names it by its question.
   await page.getByRole("button", { name: "Ny side" }).click();
   await expect(
-    page.getByRole("button", { name: /02 Ny side/ }),
+    page.getByRole("button", { name: /02 Hvordan opplevde du tjenesten/ }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
 
@@ -252,16 +253,20 @@ test("authors intro and confirmation screens that render in the real widget", as
   // Selecting another editor page exits the from-start walkthrough and makes
   // the stage follow the selected page again.
   await page.getByRole("button", { name: "Ny side" }).click();
-  await expect(stage.getByRole("heading", { name: "Ny side" })).toBeVisible();
+  // A titled page heads its own questions, so the stage shows the title.
+  await page.getByLabel("Sidetittel").fill("Om deg");
+  await expect(stage.getByRole("heading", { name: "Om deg" })).toBeVisible({
+    timeout: 10000,
+  });
   await page
     .getByRole("button", { name: "Start forhåndsvisningen på nytt" })
     .click();
   await expect(stage.getByRole("heading", { name: "Velkommen" })).toBeVisible();
   await page
-    .getByRole("button", { name: /01.*Fortell om opplevelsen/ })
+    .getByRole("button", { name: /01.*Hvordan opplevde du tjenesten/ })
     .click();
   await expect(
-    stage.getByRole("heading", { name: "Fortell om opplevelsen" }),
+    stage.getByRole("heading", { name: "Hvordan opplevde du tjenesten?" }),
   ).toBeVisible();
   await expect(
     stage.getByRole("heading", { name: "Velkommen" }),
@@ -608,21 +613,13 @@ test("a visibility condition set in the editor gates the question live in the st
   await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
 
   const stage = page.getByLabel("Forhåndsvisning");
-  await expect(
-    stage.getByRole("textbox", { name: /Hva kan vi gjøre bedre/ }),
-  ).toBeVisible();
 
-  // Both seeded questions are expanded; add a condition on the follow-up.
-  await page
-    .getByRole("button", { name: /Vis bare hvis/ })
-    .last()
-    .click();
+  // The seeded draft already gates the follow-up on the rating, so the stage
+  // starts with one question — the shape the widget ships in production.
   await expect(page.getByLabel("Spørsmål", { exact: true })).toHaveValue(
     "rating",
   );
   await expect(page.getByLabel("Vilkår")).toHaveValue("EXISTS");
-
-  // The stage now hides the follow-up until the rating is answered.
   await expect(
     stage.getByRole("textbox", { name: /Hva kan vi gjøre bedre/ }),
   ).not.toBeVisible({ timeout: 10000 });
@@ -695,7 +692,12 @@ test("an any/all group over two conditions gates the question live in the stage"
     .getByRole("button", { name: /Vis bare hvis/ })
     .last()
     .click();
-  await page.getByRole("button", { name: "Legg til betingelse" }).click();
+  // The seeded follow-up carries a condition of its own, so scope the group
+  // controls to the question under test.
+  await page
+    .getByRole("button", { name: "Legg til betingelse" })
+    .last()
+    .click();
   await expect(page.getByText("Alle må stemme")).toBeVisible();
   await page
     .getByLabel("Spørsmål", { exact: true })

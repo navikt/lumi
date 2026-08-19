@@ -124,7 +124,15 @@ export const DockPanel = ({
 
   const activeQuestion =
     isStepMode && currentStepQuestion ? currentStepQuestion : promptQuestion;
-  const usesFieldTypography = !isStepMode && orderedQuestions.length > 1;
+  /*
+   * The header is the panel's title block and always uses title typography,
+   * no matter what fills it: an authored page title, or the first question
+   * standing in when the page has none. Questions in the form below stay on
+   * the field scale. Sizing the header from the number of visible questions
+   * made it resize mid-interaction as answers revealed follow-ups, and made
+   * a page title indistinguishable from the question right beneath it.
+   */
+  const headerIsPageTitle = Boolean(headerTitle);
   const activeHeading = headerTitle ?? formatQuestionPrompt(activeQuestion);
   const activeDescription = headerTitle
     ? headerDescription
@@ -186,7 +194,13 @@ export const DockPanel = ({
         ) : (
           <VStack gap="space-12">
             <HStack
-              className={CLASS_NAMES.header}
+              className={joinClassNames(
+                CLASS_NAMES.header,
+                // A page title heads a group of questions that each carry
+                // their own label, so it needs a visible group boundary —
+                // two bold lines two pixels apart are not a hierarchy.
+                !isSuccess && headerIsPageTitle && CLASS_NAMES.groupHeader,
+              )}
               justify="space-between"
               align="start"
               gap="space-8"
@@ -211,7 +225,7 @@ export const DockPanel = ({
                   <>
                     <Heading
                       level="2"
-                      size={usesFieldTypography ? "xsmall" : "small"}
+                      size="small"
                       className={CLASS_NAMES.ratingHeading}
                       id={promptHeadingId}
                       tabIndex={-1}
@@ -220,7 +234,7 @@ export const DockPanel = ({
                     </Heading>
                     {activeDescription && (
                       <BodyShort
-                        size={usesFieldTypography ? "medium" : "small"}
+                        size="small"
                         className={CLASS_NAMES.ratingDescription}
                         id={promptDescriptionId}
                       >

@@ -301,9 +301,11 @@ export function addPage(
   idFactory: IdFactory = randomId,
 ): { document: SurveyDocumentV1; pageId: string } {
   const pageId = `side-${idFactory()}`;
+  // No default title: a page title is a group heading for several questions,
+  // and seeding one makes every page ship with a heading that competes with
+  // the question below it in the widget.
   const page: SurveyPageV1 = {
     id: pageId,
-    title: "Ny side",
     questions: [createQuestion("rating", idFactory)] as QuestionList,
   };
   return {

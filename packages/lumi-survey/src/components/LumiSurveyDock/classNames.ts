@@ -5,6 +5,7 @@ export const CLASS_NAMES = {
   panel: styles.panel ?? "lumi-survey-dock__panel",
   header: styles.header ?? "lumi-survey-dock__header",
   headerText: styles.headerText ?? "lumi-survey-dock__header-text",
+  groupHeader: styles.groupHeader ?? "lumi-survey-dock__group-header",
   ratingSection: styles.ratingSection ?? "lumi-survey-dock__rating",
   ratingHeading: styles.ratingHeading ?? "lumi-survey-dock__rating-heading",
   ratingDescription:

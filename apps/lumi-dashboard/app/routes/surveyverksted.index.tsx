@@ -41,13 +41,18 @@ function formatProjectDate(value: string): string {
   }).format(new Date(value));
 }
 
+/*
+ * The seeded draft is the pattern most authors ship, so it teaches the shape
+ * we want: one question carries the panel, the follow-up waits until the
+ * rating is answered, and no page title competes with the question beneath
+ * it. A title is for pages that genuinely group several questions.
+ */
 const initialDocument: SurveyDocumentV1 = {
   authoringSchemaVersion: 1,
   type: "rating",
   pages: [
     {
       id: "opplevelse",
-      title: "Fortell om opplevelsen",
       questions: [
         {
           id: "rating",
@@ -62,6 +67,9 @@ const initialDocument: SurveyDocumentV1 = {
           required: false,
           maxLength: 1000,
           minRows: 4,
+          // Same shape the condition builder emits, so a seeded draft and a
+          // hand-built one stay byte-identical.
+          visibleIf: { questionId: "rating", operator: "EXISTS" },
         },
       ],
     },

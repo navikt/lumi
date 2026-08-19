@@ -22,6 +22,11 @@
   min-width: 0;
 }
 
+.lumi-survey-dock__group-header {
+  padding-bottom: var(--ax-space-8);
+  border-bottom: 1px solid var(--ax-border-neutral-subtle);
+}
+
 .lumi-survey-dock__rating {
   display: flex;
   flex-direction: column;

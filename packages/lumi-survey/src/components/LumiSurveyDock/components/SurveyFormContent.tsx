@@ -322,16 +322,24 @@ export const SurveyFormContent = React.memo(
                   ? orderedPages.map((page, pageIndex) => (
                       <VStack key={page.id} gap="space-12">
                         {pageIndex > 0 && (page.title || page.description) && (
-                          <div>
+                          // Same authored construct as the panel header, so
+                          // it gets the same title typography and the same
+                          // group boundary wherever it lands.
+                          <VStack
+                            gap="space-4"
+                            className={CLASS_NAMES.groupHeader}
+                          >
                             {page.title && (
-                              <Heading level="2" size="xsmall">
+                              <Heading level="2" size="small">
                                 {page.title}
                               </Heading>
                             )}
                             {page.description && (
-                              <BodyShort>{page.description}</BodyShort>
+                              <BodyShort size="small">
+                                {page.description}
+                              </BodyShort>
                             )}
-                          </div>
+                          </VStack>
                         )}
                         {page.questions.map((question) =>
                           renderQuestion(

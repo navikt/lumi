@@ -131,7 +131,7 @@ export const QuestionCanvas = memo(function QuestionCanvas({
           <TextField
             label="Sidetittel"
             hideLabel
-            placeholder="Gi siden en tittel"
+            placeholder="Felles overskrift for sidens spørsmål (valgfritt)"
             className={styles.ghostTitle}
             value={page.title ?? ""}
             onChange={(event) =>

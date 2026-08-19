@@ -29,6 +29,16 @@
   min-width: 0;
 }
 
+/*
+ * A page title introduces questions that carry their own labels. Size alone
+ * cannot separate them — Aksel heading small and the field label scale sit
+ * two pixels apart at the same weight — so the group boundary is drawn.
+ */
+.groupHeader {
+  padding-bottom: var(--ax-space-8);
+  border-bottom: 1px solid var(--ax-border-neutral-subtle);
+}
+
 .ratingSection {
   display: flex;
   flex-direction: column;

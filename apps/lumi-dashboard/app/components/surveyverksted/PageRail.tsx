@@ -121,7 +121,9 @@ const RailItem = memo(function RailItem({
         </span>
         <span className={styles.railBody}>
           <BodyShort as="span" size="small" weight="semibold">
-            {page.title?.trim() || "Side uten tittel"}
+            {page.title?.trim() ||
+              page.questions[0]?.prompt.trim() ||
+              `Side ${index + 1}`}
           </BodyShort>
           {conditionalCount > 0 ? (
             <span className={styles.srOnly}>
