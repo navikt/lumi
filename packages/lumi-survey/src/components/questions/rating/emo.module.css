@@ -81,7 +81,3 @@
   position: absolute;
   width: 1px;
 }
-
-.errorMessage {
-  color: var(--ax-text-danger-subtle);
-}

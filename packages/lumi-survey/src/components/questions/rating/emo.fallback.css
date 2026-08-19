@@ -81,7 +81,3 @@
   position: absolute;
   width: 1px;
 }
-
-.lumi-survey-rating__error-message {
-  color: var(--ax-text-danger-subtle);
-}

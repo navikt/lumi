@@ -1,5 +1,12 @@
 import { StarFillIcon, StarIcon } from "@navikt/aksel-icons";
-import { BodyShort, Box, Heading, HStack, VStack } from "@navikt/ds-react";
+import {
+  BodyShort,
+  Box,
+  ErrorMessage,
+  Heading,
+  HStack,
+  VStack,
+} from "@navikt/ds-react";
 import type React from "react";
 import type { ComponentProps } from "react";
 import { useCallback, useState } from "react";
@@ -247,13 +254,14 @@ export function StarRating({
         </VStack>
       </Box>
       {isMissing && (
-        <BodyShort
+        <ErrorMessage
           id={errorId}
           className={styles.errorMessage ?? "lumi-survey-rating__error-message"}
           role="alert"
+          showIcon
         >
           {validationErrorMessage}
-        </BodyShort>
+        </ErrorMessage>
       )}
     </VStack>
   );
