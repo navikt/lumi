@@ -7,7 +7,7 @@ plugins {
     kotlin("plugin.serialization")
     id("io.ktor.plugin") version "3.5.2"
     id("com.gradleup.shadow") version "9.6.1"
-    id("com.github.ben-manes.versions") version "0.60.0"
+    id("com.github.ben-manes.versions") version "0.61.0"
     application
 }
 
