@@ -1,0 +1,31 @@
+name: Install Playwright
+description: >-
+  Install the Chromium headless shell and its system dependencies, retrying
+  past an unresponsive apt mirror instead of hanging until the step times out.
+
+runs:
+  using: composite
+  steps:
+    # `playwright install --with-deps` shells out to apt. When the Ubuntu
+    # mirror stops responding there is no output and no progress, so the step
+    # sat there until its 10-minute timeout and failed the whole run — three
+    # times in 24 hours, against a healthy install that takes ~16 seconds.
+    # Bound each attempt well above the healthy time but far below the step
+    # budget, and retry: a stuck mirror is almost always over by the next try.
+    - shell: bash
+      env:
+        DEBUG: pw:install
+      run: |
+        for attempt in 1 2 3; do
+          if timeout 180 pnpm --filter lumi-dashboard exec \
+            playwright install chromium --with-deps --only-shell; then
+            exit 0
+          fi
+          echo "::warning::Playwright install attempt ${attempt} failed or hung; retrying"
+          # A killed apt can leave dpkg half-configured, which would fail the
+          # next attempt for a different reason than the one we are retrying.
+          sudo dpkg --configure -a || true
+          sleep $((attempt * 15))
+        done
+        echo "::error::Playwright install failed after 3 attempts"
+        exit 1

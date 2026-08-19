@@ -133,9 +133,7 @@ jobs:
           node-version: 22
       - name: Install Playwright
         timeout-minutes: 10
-        run: pnpm --filter lumi-dashboard exec playwright install chromium --with-deps --only-shell
-        env:
-          DEBUG: pw:install
+        uses: ./.github/actions/install-playwright
       - name: Restore Node from package.json
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
