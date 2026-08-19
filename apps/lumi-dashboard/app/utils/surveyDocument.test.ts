@@ -338,6 +338,9 @@ describe("addPage", () => {
     expect(next.pages[2].id).toBe(pageId);
     expect(next.pages[2].questions).toHaveLength(1);
     expect(next.pages[2].questions[0].type).toBe("rating");
+    // A page title is a group heading, not a default: seeding one puts a
+    // heading in the widget that competes with the question below it.
+    expect(next.pages[2].title).toBeUndefined();
   });
 });
 

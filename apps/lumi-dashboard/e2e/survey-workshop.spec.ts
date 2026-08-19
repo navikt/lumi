@@ -1,6 +1,15 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
+/**
+ * Any field whose edits persist to the draft. The seeded question prompt is
+ * always present, unlike the now opt-in group heading, and it is the field
+ * authors actually type in.
+ */
+function draftField(target: import("@playwright/test").Page) {
+  return target.getByRole("textbox", { name: "Spørsmålstekst" }).first();
+}
+
 async function expectNoAxeViolations(page: import("@playwright/test").Page) {
   // Let open/close transitions settle so axe measures final colors.
   await page.evaluate(() =>
@@ -29,7 +38,11 @@ test("creates, edits, previews and shares a survey draft", async ({ page }) => {
     page.getByRole("heading", { name: /E2E surveyutkast/ }),
   ).toBeVisible();
 
-  const pageTitle = page.getByLabel("Sidetittel");
+  // The group heading is opt-in — a page only gets one when the author asks.
+  await page
+    .getByRole("button", { name: "Legg til felles overskrift" })
+    .click();
+  const pageTitle = page.getByLabel("Felles overskrift");
   await pageTitle.fill("Detaljer om opplevelsen");
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
 
@@ -43,9 +56,10 @@ test("creates, edits, previews and shares a survey draft", async ({ page }) => {
       .getByRole("heading", { name: "Detaljer om opplevelsen" }),
   ).toBeVisible();
 
+  // A new page ships without a title, so the rail names it by its question.
   await page.getByRole("button", { name: "Ny side" }).click();
   await expect(
-    page.getByRole("button", { name: /02 Ny side/ }),
+    page.getByRole("button", { name: /02 Hvordan opplevde du tjenesten/ }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
 
@@ -252,16 +266,23 @@ test("authors intro and confirmation screens that render in the real widget", as
   // Selecting another editor page exits the from-start walkthrough and makes
   // the stage follow the selected page again.
   await page.getByRole("button", { name: "Ny side" }).click();
-  await expect(stage.getByRole("heading", { name: "Ny side" })).toBeVisible();
+  // A titled page heads its own questions, so the stage shows the title.
+  await page
+    .getByRole("button", { name: "Legg til felles overskrift" })
+    .click();
+  await page.getByLabel("Felles overskrift").fill("Om deg");
+  await expect(stage.getByRole("heading", { name: "Om deg" })).toBeVisible({
+    timeout: 10000,
+  });
   await page
     .getByRole("button", { name: "Start forhåndsvisningen på nytt" })
     .click();
   await expect(stage.getByRole("heading", { name: "Velkommen" })).toBeVisible();
   await page
-    .getByRole("button", { name: /01.*Fortell om opplevelsen/ })
+    .getByRole("button", { name: /01.*Hvordan opplevde du tjenesten/ })
     .click();
   await expect(
-    stage.getByRole("heading", { name: "Fortell om opplevelsen" }),
+    stage.getByRole("heading", { name: "Hvordan opplevde du tjenesten?" }),
   ).toBeVisible();
   await expect(
     stage.getByRole("heading", { name: "Velkommen" }),
@@ -400,14 +421,12 @@ test("undo restores the deletion without losing later edits, and sharing surface
   await expect(page.getByLabel("Spørsmålstekst")).toHaveCount(1);
 
   // Make an unrelated edit AFTER the deletion, then undo.
-  await page.getByLabel("Sidetittel").fill("Redigert etter sletting");
+  await draftField(page).fill("Redigert etter sletting");
   await page.getByRole("button", { name: "Angre", exact: true }).click();
 
   // The question is back AND the later edit survives.
   await expect(page.getByLabel("Spørsmålstekst")).toHaveCount(2);
-  await expect(page.getByLabel("Sidetittel")).toHaveValue(
-    "Redigert etter sletting",
-  );
+  await expect(draftField(page)).toHaveValue("Redigert etter sletting");
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
 
   // Sharing with a missing survey-ID names the problem instead of waiting forever.
@@ -429,7 +448,7 @@ test("undo restores the deletion without losing later edits, and sharing surface
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
 
   // Leaving right inside the autosave debounce must flush, not discard.
-  await page.getByLabel("Sidetittel").fill("Skrevet rett før tilbake");
+  await draftField(page).fill("Skrevet rett før tilbake");
   await page.getByRole("button", { name: "Til Surveyverksted" }).click();
   await expect(page).toHaveURL(/\/surveyverksted\?team=/);
 
@@ -439,10 +458,8 @@ test("undo restores the deletion without losing later edits, and sharing surface
     .getByRole("link", { name: /Angre-utkast/ })
     .first()
     .click();
-  await expect(page.getByLabel("Sidetittel")).toHaveValue(
-    "Skrevet rett før tilbake",
-  );
-  await page.getByLabel("Sidetittel").fill("Redigert etter gjenåpning");
+  await expect(draftField(page)).toHaveValue("Skrevet rett før tilbake");
+  await draftField(page).fill("Redigert etter gjenåpning");
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
   await expect(page.getByText(/endret i en annen fane/)).not.toBeVisible();
 
@@ -461,18 +478,16 @@ test("undo restores the deletion without losing later edits, and sharing surface
     }
     await route.continue();
   });
-  await page.getByLabel("Sidetittel").fill("Racer A");
+  await draftField(page).fill("Racer A");
   await page.getByRole("button", { name: "Til Surveyverksted" }).click();
-  await page.getByLabel("Sidetittel").fill("Racer B under flush");
+  await draftField(page).fill("Racer B under flush");
   await expect(page).toHaveURL(/\/surveyverksted\?team=/);
   await page.unroute("**/*");
   await page
     .getByRole("link", { name: /Angre-utkast/ })
     .first()
     .click();
-  await expect(page.getByLabel("Sidetittel")).toHaveValue(
-    "Racer B under flush",
-  );
+  await expect(draftField(page)).toHaveValue("Racer B under flush");
 
   // Inline name editing commits per keystroke, so browser Back mid-edit
   // (no blur) still flushes the new name.
@@ -520,7 +535,7 @@ test("the navigation flush is single-flight and never races the autosave", async
   });
 
   // Let the autosave itself start the slow request…
-  await page.getByLabel("Sidetittel").fill("Treg autosave A");
+  await draftField(page).fill("Treg autosave A");
   await page.waitForTimeout(1000);
   // …then navigate away twice in quick succession while it is in flight.
   await page.getByRole("button", { name: "Til Surveyverksted" }).click();
@@ -540,8 +555,8 @@ test("the navigation flush is single-flight and never races the autosave", async
     .getByRole("link", { name: /Flush-koordinator/ })
     .first()
     .click();
-  await expect(page.getByLabel("Sidetittel")).toHaveValue("Treg autosave A");
-  await page.getByLabel("Sidetittel").fill("Etterpå");
+  await expect(draftField(page)).toHaveValue("Treg autosave A");
+  await draftField(page).fill("Etterpå");
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
   await expect(page.getByText(/endret i en annen fane/)).not.toBeVisible();
 });
@@ -566,7 +581,7 @@ test("a flush inherits a failed save instead of repeating it", async ({
   // Another tab saves version 2 behind this editor's back.
   const other = await context.newPage();
   await other.goto(editorUrl);
-  await other.getByLabel("Sidetittel").fill("Endret i fane B");
+  await draftField(other).fill("Endret i fane B");
   await expect(other.locator('[data-state="saved"]')).toBeVisible();
   await other.close();
 
@@ -584,7 +599,7 @@ test("a flush inherits a failed save instead of repeating it", async ({
     await route.continue();
   });
 
-  await page.getByLabel("Sidetittel").fill("Fra fane A");
+  await draftField(page).fill("Fra fane A");
   await page.waitForTimeout(900);
   await page.getByRole("button", { name: "Til Surveyverksted" }).click();
 
@@ -608,21 +623,13 @@ test("a visibility condition set in the editor gates the question live in the st
   await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
 
   const stage = page.getByLabel("Forhåndsvisning");
-  await expect(
-    stage.getByRole("textbox", { name: /Hva kan vi gjøre bedre/ }),
-  ).toBeVisible();
 
-  // Both seeded questions are expanded; add a condition on the follow-up.
-  await page
-    .getByRole("button", { name: /Vis bare hvis/ })
-    .last()
-    .click();
+  // The seeded draft already gates the follow-up on the rating, so the stage
+  // starts with one question — the shape the widget ships in production.
   await expect(page.getByLabel("Spørsmål", { exact: true })).toHaveValue(
     "rating",
   );
   await expect(page.getByLabel("Vilkår")).toHaveValue("EXISTS");
-
-  // The stage now hides the follow-up until the rating is answered.
   await expect(
     stage.getByRole("textbox", { name: /Hva kan vi gjøre bedre/ }),
   ).not.toBeVisible({ timeout: 10000 });
@@ -695,7 +702,12 @@ test("an any/all group over two conditions gates the question live in the stage"
     .getByRole("button", { name: /Vis bare hvis/ })
     .last()
     .click();
-  await page.getByRole("button", { name: "Legg til betingelse" }).click();
+  // The seeded follow-up carries a condition of its own, so scope the group
+  // controls to the question under test.
+  await page
+    .getByRole("button", { name: "Legg til betingelse" })
+    .last()
+    .click();
   await expect(page.getByText("Alle må stemme")).toBeVisible();
   await page
     .getByLabel("Spørsmål", { exact: true })

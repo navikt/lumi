@@ -14,6 +14,7 @@ import type {
   LumiSurveyDefinition,
   SurveyDocumentV1,
 } from "../../surveyTypes.js";
+import { CLASS_NAMES } from "../classNames.js";
 import { LumiSurveyDock } from "../LumiSurveyDock.js";
 
 function createSurvey(): LumiSurveyConfig {
@@ -255,10 +256,19 @@ describe("LumiSurveyDock", () => {
     expect(
       await screen.findByRole("heading", { name: "Første del" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Andre del" }).tagName).toBe(
-      "H2",
-    );
-    expect(screen.getByText("Felles kontekst.")).toBeInTheDocument();
+    // A page title flattened into the form is the same authored construct as
+    // one in the panel header, so it must look the same: title scale, group
+    // subtitle scale, and the same group boundary.
+    const inlineTitle = screen.getByRole("heading", { name: "Andre del" });
+    expect(inlineTitle.tagName).toBe("H2");
+    expect(inlineTitle).toHaveClass("aksel-heading--small");
+    expect(inlineTitle.closest(`.${CLASS_NAMES.groupHeader}`)).not.toBeNull();
+
+    const inlineDescription = screen.getByText("Felles kontekst.");
+    expect(inlineDescription).toHaveClass("aksel-body-short--small");
+    expect(
+      inlineDescription.closest(`.${CLASS_NAMES.groupHeader}`),
+    ).not.toBeNull();
     expect(
       screen.getByRole("textbox", { name: /Spørsmål én/ }),
     ).toBeInTheDocument();
@@ -569,7 +579,7 @@ describe("LumiSurveyDock", () => {
     );
   });
 
-  it("uses the same typography scale for every question on a single page", async () => {
+  it("keeps the promoted question on the title scale and the rest on the field scale", async () => {
     const survey: LumiSurveyConfig = {
       type: "custom",
       questions: [
@@ -602,13 +612,125 @@ describe("LumiSurveyDock", () => {
     const firstDescription = screen.getByText("Første beskrivelse", {
       selector: "p",
     });
-    const secondDescription = screen.getByText("Andre beskrivelse");
 
-    // Aksel Heading xsmall and Label medium both use the 18/24 scale.
-    expect(firstPrompt).toHaveClass("aksel-heading--xsmall");
+    // With no page title the first question stands in as the panel title, so
+    // it sits one step above the fields below it — but never at the heading
+    // sizes that made it tower over them.
+    expect(firstPrompt).toHaveClass("aksel-heading--small");
+    expect(firstPrompt).not.toHaveClass("aksel-heading--medium");
     expect(secondPrompt).toHaveClass("aksel-label");
-    expect(firstDescription).toHaveClass("aksel-body-short--medium");
-    expect(secondDescription).toHaveClass("aksel-body-short--medium");
+
+    // The header description is the panel's subtitle, not field help text,
+    // and keeps that scale whether one question is visible or five.
+    expect(firstDescription).toHaveClass("aksel-body-short--small");
+    expect(screen.getByText("Andre beskrivelse")).toHaveClass(
+      "aksel-body-short--medium",
+    );
+  });
+
+  it("gives a page title the title scale and a visible group boundary", async () => {
+    const survey: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      pages: [
+        {
+          id: "titled",
+          title: "Fortell om opplevelsen",
+          questions: [
+            {
+              id: "rating",
+              type: "rating",
+              prompt: "Hvor fornøyd er du?",
+              required: true,
+            },
+            { id: "kommentar", type: "text", prompt: "Hva kan vi forbedre?" },
+          ],
+        },
+      ],
+    };
+
+    const { container } = renderDock({ survey });
+
+    const pageTitle = await screen.findByRole("heading", {
+      name: "Fortell om opplevelsen",
+    });
+    const questionPrompt = screen.getByRole("heading", {
+      name: "Hvor fornøyd er du?",
+    });
+
+    // The title must not collapse onto the same scale as the question it
+    // heads — Aksel heading xsmall and the field label scale are identical.
+    expect(pageTitle).toHaveClass("aksel-heading--small");
+    expect(questionPrompt).toHaveClass("aksel-heading--xsmall");
+    expect(
+      container.querySelector(`.${CLASS_NAMES.groupHeader}`),
+    ).not.toBeNull();
+  });
+
+  it("does not draw a group boundary when the header is a question", async () => {
+    const survey: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      pages: [
+        {
+          id: "untitled",
+          questions: [
+            {
+              id: "rating",
+              type: "rating",
+              prompt: "Hvor fornøyd er du?",
+              required: true,
+            },
+          ],
+        },
+      ],
+    };
+
+    const { container } = renderDock({ survey });
+
+    await screen.findByRole("heading", { name: "Hvor fornøyd er du?" });
+    expect(container.querySelector(`.${CLASS_NAMES.groupHeader}`)).toBeNull();
+  });
+
+  it("keeps header typography stable when an answer reveals a follow-up", async () => {
+    const user = userEvent.setup();
+    const survey: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      pages: [
+        {
+          id: "progressive",
+          questions: [
+            {
+              id: "rating",
+              type: "rating",
+              prompt: "Hvor fornøyd er du?",
+              required: true,
+            },
+            {
+              id: "kommentar",
+              type: "text",
+              prompt: "Hva kan vi forbedre?",
+              visibleIf: {
+                field: "ANSWER",
+                questionId: "rating",
+                operator: "EXISTS",
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    renderDock({ survey });
+
+    const heading = await screen.findByRole("heading", {
+      name: "Hvor fornøyd er du?",
+    });
+    const before = heading.className;
+
+    await user.click(screen.getAllByRole("radio")[3]);
+    await screen.findByRole("textbox", { name: /Hva kan vi forbedre/ });
+
+    // Progressive disclosure must not resize the text already on screen.
+    expect(heading.className).toBe(before);
   });
 
   it("keeps compact header typography when questions are shown one at a time", async () => {

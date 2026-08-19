@@ -54,6 +54,13 @@ export function slugifyOptionValue(
   return `${base}-${suffix}`;
 }
 
+/**
+ * Lowest `@navikt/lumi-survey` release that understands `authoringSchemaVersion: 1`.
+ * The page-based document format landed after 1.0.0, so an export handed to a
+ * consumer on an older widget will not type-check or render.
+ */
+export const MIN_WIDGET_VERSION_FOR_DOCUMENTS = "2.0.0";
+
 export function createQuestion(
   type: QuestionTypeId,
   idFactory: IdFactory = randomId,
@@ -301,9 +308,11 @@ export function addPage(
   idFactory: IdFactory = randomId,
 ): { document: SurveyDocumentV1; pageId: string } {
   const pageId = `side-${idFactory()}`;
+  // No default title: a page title is a group heading for several questions,
+  // and seeding one makes every page ship with a heading that competes with
+  // the question below it in the widget.
   const page: SurveyPageV1 = {
     id: pageId,
-    title: "Ny side",
     questions: [createQuestion("rating", idFactory)] as QuestionList,
   };
   return {

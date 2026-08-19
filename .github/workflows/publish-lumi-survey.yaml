@@ -70,8 +70,12 @@ jobs:
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_REF_TYPE: ${{ github.ref_type }}
 
+      # Read-only release gates. These run in dry runs too — a dry run that
+      # skipped them tested the build but not the things that actually fail a
+      # release: an unbumped version, a missing changelog heading, a tag that
+      # already exists, or a diff with nothing in it. Only the branch policy
+      # above and the publish/tag steps stay gated on a real run.
       - name: Guard against 0.0.0 publish
-        if: ${{ inputs.dry_run == 'false' }}
         run: |
           node - <<'NODE'
           const pkg = require('./packages/lumi-survey/package.json');
@@ -82,7 +86,6 @@ jobs:
           NODE
 
       - name: Guard against private publish
-        if: ${{ inputs.dry_run == 'false' }}
         run: |
           node - <<'NODE'
           const pkg = require('./packages/lumi-survey/package.json');
@@ -93,7 +96,6 @@ jobs:
           NODE
 
       - name: Guard against missing changelog entry
-        if: ${{ inputs.dry_run == 'false' }}
         run: |
           node - <<'NODE'
           const fs = require('fs');
@@ -109,7 +111,6 @@ jobs:
           NODE
 
       - name: Guard against empty release (no meaningful changes)
-        if: ${{ inputs.dry_run == 'false' }}
         run: |
           set -euo pipefail
           VERSION=$(node -p "require('./packages/lumi-survey/package.json').version")
