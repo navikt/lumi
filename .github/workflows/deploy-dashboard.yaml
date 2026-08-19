@@ -195,10 +195,16 @@ jobs:
     name: Deploy to dev-gcp (Demo)
     needs: build-demo
     runs-on: ubuntu-latest
+    # `checks` is skipped for workflow_run, so the build jobs only survive via
+    # always(). Without the same treatment here the skip propagates down the
+    # needs chain and every deploy is skipped — state the build result instead
+    # of relying on the implicit success().
     if: |
-      github.event_name == 'workflow_run' ||
-      startsWith(github.ref_name, 'demo-') ||
-      (github.event_name == 'workflow_dispatch' && inputs.target == 'demo')
+      always() && needs.build-demo.result == 'success' && (
+        github.event_name == 'workflow_run' ||
+        startsWith(github.ref_name, 'demo-') ||
+        (github.event_name == 'workflow_dispatch' && inputs.target == 'demo')
+      )
     environment:
       name: demo
       url: https://lumi-dashboard-demo.ekstern.dev.nav.no
@@ -217,8 +223,10 @@ jobs:
     needs: build-production
     runs-on: ubuntu-latest
     if: |
-      github.event_name == 'workflow_run' ||
-      (github.event_name == 'workflow_dispatch' && inputs.target == 'dev')
+      always() && needs.build-production.result == 'success' && (
+        github.event_name == 'workflow_run' ||
+        (github.event_name == 'workflow_dispatch' && inputs.target == 'dev')
+      )
     environment:
       name: dev
       url: https://lumi-dashboard.ansatt.dev.nav.no
@@ -236,9 +244,15 @@ jobs:
     name: Deploy to prod-gcp
     needs: [build-production, deploy-dev]
     runs-on: ubuntu-latest
+    # Prod still waits for dev to land first; that ordering is the point of
+    # the dependency, so assert it rather than inheriting it.
     if: |
-      github.event_name == 'workflow_run' ||
-      (github.event_name == 'workflow_dispatch' && inputs.target == 'prod')
+      always() &&
+      needs.build-production.result == 'success' &&
+      needs.deploy-dev.result == 'success' && (
+        github.event_name == 'workflow_run' ||
+        (github.event_name == 'workflow_dispatch' && inputs.target == 'prod')
+      )
     environment:
       name: prod
       url: https://lumi-dashboard.ansatt.nav.no
