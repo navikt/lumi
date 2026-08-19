@@ -1,31 +1,47 @@
 name: Install Playwright
 description: >-
-  Install the Chromium headless shell and its system dependencies, retrying
-  past an unresponsive apt mirror instead of hanging until the step times out.
+  Install the Chromium headless shell for the dashboard E2E run, keeping the
+  reliable browser download separate from the apt call that keeps hanging.
 
 runs:
   using: composite
   steps:
-    # `playwright install --with-deps` shells out to apt. When the Ubuntu
-    # mirror stops responding there is no output and no progress, so the step
-    # sat there until its 10-minute timeout and failed the whole run — three
-    # times in 24 hours, against a healthy install that takes ~16 seconds.
-    # Bound each attempt well above the healthy time but far below the step
-    # budget, and retry: a stuck mirror is almost always over by the next try.
-    - shell: bash
+    # The browser binary comes from Playwright's own CDN and has never been
+    # the problem — a healthy install takes about 15 seconds. Required, with a
+    # retry for ordinary network flakiness.
+    - name: Download Chromium headless shell
+      shell: bash
       env:
         DEBUG: pw:install
       run: |
         for attempt in 1 2 3; do
-          if timeout 180 pnpm --filter lumi-dashboard exec \
-            playwright install chromium --with-deps --only-shell; then
+          if timeout --kill-after=10s 120 pnpm --filter lumi-dashboard exec \
+            playwright install chromium --only-shell; then
             exit 0
           fi
-          echo "::warning::Playwright install attempt ${attempt} failed or hung; retrying"
-          # A killed apt can leave dpkg half-configured, which would fail the
-          # next attempt for a different reason than the one we are retrying.
-          sudo dpkg --configure -a || true
-          sleep $((attempt * 15))
+          echo "::warning::Chromium download attempt ${attempt} failed; retrying"
+          sleep $((attempt * 10))
         done
-        echo "::error::Playwright install failed after 3 attempts"
+        echo "::error::Chromium download failed after 3 attempts"
         exit 1
+
+    # System libraries come from apt, and every CI failure we have seen was an
+    # unresponsive Ubuntu mirror hanging right here — three in 24 hours. The
+    # GitHub runner image already ships these libraries, so treat this as a
+    # safety net rather than a requirement: bound it, clean up after it, and
+    # carry on. If a library really were missing, the E2E run immediately
+    # after fails on a browser that will not launch, which is a far better
+    # signal than a ten-minute hang in a step that normally takes seconds.
+    - name: Ensure system libraries for Chromium
+      shell: bash
+      run: |
+        if timeout --kill-after=10s 120 pnpm --filter lumi-dashboard exec \
+          playwright install-deps chromium; then
+          exit 0
+        fi
+        echo "::warning::Could not verify Chromium system libraries; apt did not respond. Continuing, since the runner image normally ships them."
+        # timeout kills the wrapper, not the apt-get child it spawned. A
+        # surviving apt-get keeps the dpkg lock and makes every later attempt
+        # fail on the lock instead of the thing that actually went wrong.
+        sudo pkill -9 -f apt-get || true
+        exit 0
