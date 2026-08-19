@@ -25,6 +25,8 @@ This project follows SemVer.
 
 ### Fixed
 
+- The dock header no longer resizes mid-interaction. It took its scale from the number of *visible* questions, so revealing a `visibleIf` follow-up shrank the heading (20px → 18px) and enlarged its description (14px → 16px) while the user was answering. The header is the panel's title block and now keeps one scale whatever fills it: an authored page title, the promoted first question, intro or success. Surveys whose first question acts as the panel title keep the larger heading throughout instead of shrinking once a follow-up appears. (#447)
+- An authored page title is no longer rendered at the same scale as the question it heads — Aksel `Heading` `xsmall` and the field label scale are both 1.125rem/bold, so a title, the question below it and the next field label were three identical lines. A page title now keeps the title scale and gains a visible group boundary, both in the panel header and inline in `singlePage` layout. (#447)
 - Step navigation now moves focus to the newly rendered question heading after both Next and Back, without stealing focus when an answer changes. (#417)
 - `logic` conditions that reference another question via `condition.questionId` are now evaluated against that question's answer instead of the current question's. Cross-question branching (e.g. routing on an earlier answer) now works the same way `visibleIf` already did. (#332)
 - Submissions now omit answers from questions hidden by `visibleIf` at submit time while retaining the complete survey definition. Hidden answers remain in local state so they are restored if the user reopens the branch. (#357)
