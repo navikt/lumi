@@ -1,4 +1,11 @@
-import { BodyShort, Box, Heading, HStack, VStack } from "@navikt/ds-react";
+import {
+  BodyShort,
+  Box,
+  ErrorMessage,
+  Heading,
+  HStack,
+  VStack,
+} from "@navikt/ds-react";
 import type React from "react";
 import type { ComponentProps, ReactElement } from "react";
 import type {
@@ -303,9 +310,14 @@ export const RatingQuestionField = ({
         </HStack>
       </Box>
       {isMissing && (
-        <BodyShort id={errorId} className={CLASS_NAMES.error} role="alert">
+        <ErrorMessage
+          id={errorId}
+          className={CLASS_NAMES.error}
+          role="alert"
+          showIcon
+        >
           {validationErrorMessage}
-        </BodyShort>
+        </ErrorMessage>
       )}
     </VStack>
   );

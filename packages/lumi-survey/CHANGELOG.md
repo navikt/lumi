@@ -6,6 +6,10 @@ This project follows SemVer.
 
 ## [Unreleased]
 
+### Fixed
+
+- Rating questions now render their validation message with Aksel's `ErrorMessage`, like every other field type. They used a plain `BodyShort` with a stylesheet colour override, so the same "you must answer this" text appeared in two weights — regular without an icon under a rating, semibold with a warning icon under a text or choice field — inside one panel. The package no longer overrides the error colour either; the design system owns it. (#458)
+
 ## [2.0.0] - 2026-08-19
 
 This release adds the **page-based authoring format** (`SurveyDocumentV1`) — the
@@ -40,7 +44,7 @@ tightens. See Changed.
 - `createTopTasksSurvey` now expresses its flow with `visibleIf` instead of `logic`. Answer-based value conditions (`EQ`/`NEQ`/`GT`/`LT`/`CONTAINS`) automatically enable step mode under `questionLayout: "auto"`, while `EXISTS`-only progressive disclosure remains single-page. (#359)
 - `behavior.showProgress: true` now shows progress from the first question in step mode. Intro and success screens are not counted, and single-step surveys omit the indicator. Branching exposes only the known step number to assistive technology. (#334)
 - Progress indicators now include visible step text: `Steg X av N` for linear surveys and `Steg X` when branching makes the total uncertain. (#418)
-- Dock header typography now comes from Aksel `Heading`/`BodyShort` props instead of `font-size` overrides in the package stylesheet. **Upgrading from 1.0.0 does not change the rendered header size:** 1.0.0 asked for `Heading medium` but the package's own unlayered rule overrode it to 1.25rem, so the header rendered at 20px/600 then and renders at 20px/600 now. Only the line height tightens, from 32px to 28px, and the description is 14px in both. The header is the panel's title block and keeps one scale whatever fills it — an authored page title, the first question standing in for one, intro or success. (#416, #447)
+- Dock header typography now comes from Aksel `Heading`/`BodyShort` props instead of `font-size` overrides in the package stylesheet. **Upgrading from 1.0.0 does not change the rendered header size:** 1.0.0 asked for `Heading medium` but the package's own unlayered rule overrode it to 1.25rem, so the header rendered at 20px/600 then and renders at 20px/600 now. Two smaller things do change: the heading's line height tightens from 32px to 28px, and the panel description grows from 14px to 16px, because it too came from a stylesheet override (`--ax-font-size-small`) and now uses `BodyShort size="small"` — which is 16px in Aksel's scale, not 14px. The header is the panel's title block and keeps one scale whatever fills it — an authored page title, the first question standing in for one, intro or success. (#416, #447)
 - An authored page title now renders at the title scale with a visible group boundary above its questions. It previously shared the field scale with the question headings and labels below it (Aksel `Heading xsmall` and `.aksel-label` are both 1.125rem/bold), so a title, the question under it and the next field label were three identical lines. Applies both in the panel header and inline in `singlePage` layout. New in this release — the page format itself did not exist in 1.0.0. (#447)
 
 ### Fixed

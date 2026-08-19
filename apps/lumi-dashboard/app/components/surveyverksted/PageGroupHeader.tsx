@@ -1,5 +1,5 @@
 import { PlusIcon } from "@navikt/aksel-icons";
-import { BodyShort, Button, Detail, TextField, VStack } from "@navikt/ds-react";
+import { BodyShort, Button, TextField, VStack } from "@navikt/ds-react";
 import { useEffect, useRef, useState } from "react";
 import styles from "./verksted.module.css";
 
@@ -65,12 +65,10 @@ export function PageGroupHeader({
   }
 
   return (
-    // No landmark here: the eyebrow names the block, and a region sharing
-    // its name with the field inside it just gives everything two names.
+    // No eyebrow and no landmark: the page eyebrow sits directly above, and a
+    // second uppercase micro-label stacked under it is noise for two fields
+    // the author just asked for.
     <div className={styles.screenCardAbsent}>
-      <Detail as="p" className={styles.eyebrow}>
-        FELLES OVERSKRIFT
-      </Detail>
       <VStack gap="space-12">
         <TextField
           ref={titleRef}

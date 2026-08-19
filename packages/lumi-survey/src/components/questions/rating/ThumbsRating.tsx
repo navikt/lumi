@@ -3,6 +3,7 @@ import {
   BodyShort,
   Box,
   Button,
+  ErrorMessage,
   Heading,
   HStack,
   VStack,
@@ -148,13 +149,14 @@ export function ThumbsRating({
         </HStack>
       </Box>
       {isMissing && (
-        <BodyShort
+        <ErrorMessage
           id={errorId}
           className={styles.errorMessage ?? "lumi-survey-rating__error-message"}
           role="alert"
+          showIcon
         >
           {validationErrorMessage}
-        </BodyShort>
+        </ErrorMessage>
       )}
     </VStack>
   );
