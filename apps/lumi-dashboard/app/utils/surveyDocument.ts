@@ -54,6 +54,13 @@ export function slugifyOptionValue(
   return `${base}-${suffix}`;
 }
 
+/**
+ * Lowest `@navikt/lumi-survey` release that understands `authoringSchemaVersion: 1`.
+ * The page-based document format landed after 1.0.0, so an export handed to a
+ * consumer on an older widget will not type-check or render.
+ */
+export const MIN_WIDGET_VERSION_FOR_DOCUMENTS = "2.0.0";
+
 export function createQuestion(
   type: QuestionTypeId,
   idFactory: IdFactory = randomId,

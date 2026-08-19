@@ -27,6 +27,7 @@ import { z } from "zod";
 import { StageSurface } from "~/components/surveyverksted/StageSurface";
 import { fetchSurveyAuthoringRevisionServerFn } from "~/server/actions";
 import type { SurveyAuthoringRevisionDetail } from "~/types/surveyAuthoring";
+import { MIN_WIDGET_VERSION_FOR_DOCUMENTS } from "~/utils/surveyDocument";
 import {
   createRevisionMarkdown,
   describeRevisionChanges,
@@ -267,6 +268,17 @@ function SurveyRevision({
               Utvikleren kan kopiere TypeScript eller laste ned hele oppsettet
               som JSON.
             </BodyShort>
+            <Alert variant="info" size="small" className={styles.exportNotice}>
+              <BodyShort size="small" spacing>
+                Krever <code>@navikt/lumi-survey</code>{" "}
+                {MIN_WIDGET_VERSION_FOR_DOCUMENTS} eller nyere. Det sidebaserte
+                formatet finnes ikke i eldre versjoner, så eksporten verken
+                type-sjekker eller vises der.
+              </BodyShort>
+              <code className={styles.exportInstall}>
+                pnpm add @navikt/lumi-survey@^{MIN_WIDGET_VERSION_FOR_DOCUMENTS}
+              </code>
+            </Alert>
             <div className={styles.exportGrid}>
               <div className={styles.exportCard} data-featured="true">
                 <div className={styles.exportIcon} aria-hidden>
@@ -282,7 +294,7 @@ function SurveyRevision({
                     </Tag>
                   </HStack>
                   <BodyShort size="small" textColor="subtle">
-                    Kan kopieres rett inn i kodebasen.
+                    Limes inn som en modul i appen.
                   </BodyShort>
                 </div>
                 <CopyButton

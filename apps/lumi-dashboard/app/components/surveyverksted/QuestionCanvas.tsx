@@ -1,5 +1,5 @@
 import { PlusIcon } from "@navikt/aksel-icons";
-import { Detail, TextField, VStack } from "@navikt/ds-react";
+import { Detail, VStack } from "@navikt/ds-react";
 import type {
   SurveyDocumentV1,
   SurveyPageV1,
@@ -14,6 +14,7 @@ import type {
   VisibleIfConditionV1,
 } from "~/utils/surveyDocument";
 import type { OptionsEditorProps } from "./OptionsEditor";
+import { PageGroupHeader } from "./PageGroupHeader";
 import { QuestionCard } from "./QuestionCard";
 import { type ScreenUndo, SurveyScreenCard } from "./SurveyScreenCard";
 import { SortableList, useSortableItem } from "./sortable";
@@ -127,34 +128,17 @@ export const QuestionCanvas = memo(function QuestionCanvas({
             onExpire={onUndoExpire}
           />
         ) : null}
-        <VStack gap="space-12">
-          <TextField
-            label="Sidetittel"
-            hideLabel
-            placeholder="Felles overskrift for sidens spørsmål (valgfritt)"
-            className={styles.ghostTitle}
-            value={page.title ?? ""}
-            onChange={(event) =>
-              onUpdatePage((current) => ({
-                ...current,
-                title: event.target.value || undefined,
-              }))
-            }
-          />
-          <TextField
-            label="Beskrivelse"
-            hideLabel
-            placeholder="Legg til en kort felles innledning (valgfritt)"
-            className={styles.ghostDescription}
-            value={page.description ?? ""}
-            onChange={(event) =>
-              onUpdatePage((current) => ({
-                ...current,
-                description: event.target.value || undefined,
-              }))
-            }
-          />
-        </VStack>
+        <PageGroupHeader
+          key={page.id}
+          title={page.title}
+          description={page.description}
+          onChangeTitle={(title) =>
+            onUpdatePage((current) => ({ ...current, title }))
+          }
+          onChangeDescription={(description) =>
+            onUpdatePage((current) => ({ ...current, description }))
+          }
+        />
       </div>
 
       <SortableList

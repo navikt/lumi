@@ -360,3 +360,18 @@
     height: 28rem;
   }
 }
+
+/* The export is only usable on a widget that knows the page format, so the
+   version requirement travels with the handoff instead of the docs. */
+.exportNotice {
+  margin-bottom: var(--ax-space-16);
+}
+
+.exportInstall {
+  display: inline-block;
+  font-family: var(--ax-font-family-mono, ui-monospace, monospace);
+  font-size: 0.85em;
+  padding: var(--ax-space-4) var(--ax-space-8);
+  border-radius: var(--ax-radius-4);
+  background: var(--ax-bg-neutral-moderate);
+}

@@ -256,10 +256,19 @@ describe("LumiSurveyDock", () => {
     expect(
       await screen.findByRole("heading", { name: "Første del" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Andre del" }).tagName).toBe(
-      "H2",
-    );
-    expect(screen.getByText("Felles kontekst.")).toBeInTheDocument();
+    // A page title flattened into the form is the same authored construct as
+    // one in the panel header, so it must look the same: title scale, group
+    // subtitle scale, and the same group boundary.
+    const inlineTitle = screen.getByRole("heading", { name: "Andre del" });
+    expect(inlineTitle.tagName).toBe("H2");
+    expect(inlineTitle).toHaveClass("aksel-heading--small");
+    expect(inlineTitle.closest(`.${CLASS_NAMES.groupHeader}`)).not.toBeNull();
+
+    const inlineDescription = screen.getByText("Felles kontekst.");
+    expect(inlineDescription).toHaveClass("aksel-body-short--small");
+    expect(
+      inlineDescription.closest(`.${CLASS_NAMES.groupHeader}`),
+    ).not.toBeNull();
     expect(
       screen.getByRole("textbox", { name: /Spørsmål én/ }),
     ).toBeInTheDocument();
