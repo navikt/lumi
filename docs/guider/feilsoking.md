@@ -180,6 +180,6 @@ Spør i **[#lumi](https://nav-it.slack.com/archives/C0AG2FKSSMD)** på Slack —
 Du kan også sjekke disse sidene:
 - [Styling](/guider/styling) — styling-problemer
 - [Props-referanse](/referanse/props-referanse) — alle props
-- [Branching](/guider/branching) — avansert flyt
+- [Vis bare relevante spørsmål](/guider/betinget-synlighet) — betinget flyt
 - [Lagring](/guider/lagring) — lagring og cooldown
 - [Opprett en issue](https://github.com/navikt/lumi/issues) — rapporter feil

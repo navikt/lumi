@@ -1,81 +1,132 @@
 ---
-title: Konfigurer survey
+title: Legg surveyen i appen
 ---
 
-# Konfigurer survey
+# Legg surveyen i appen
 
-Definer surveyen din som et TypeScript-objekt og send det til `LumiSurveyDock`. Du har full kontroll over spørsmål, rekkefølge og betinget synlighet.
+En survey består av én eller flere sider med spørsmål. Den kan også ha en velkomstside og eget innhold i bekreftelsen etter innsending. Definer alt som et `SurveyDocumentV1`.
 
-## Definer surveyen
-
-En enkel, flat survey er et objekt som tilfredsstiller `LumiSurveyConfig`. Her er et typisk oppsett med emoji-rating etterfulgt av et valgfritt fritekstfelt:
-
-```typescript
-import type { LumiSurveyConfig } from "@navikt/lumi-survey";
-
-export const mySurvey = {
-  type: "rating",
-  questions: [
-    {
-      id: "inntrykk",
-      type: "rating",
-      variant: "emoji",
-      prompt: "Hva er ditt inntrykk av tjenesten?",
-      required: true,
-    },
-    {
-      id: "innspill",
-      type: "text",
-      prompt: "Har du noen kommentarer eller innspill?",
-      maxLength: 1000,
-      visibleIf: {
-        field: "ANSWER",
-        questionId: "inntrykk",
-        operator: "EXISTS",
-      },
-    },
-  ],
-} satisfies LumiSurveyConfig;
+```text
+SurveyDocumentV1
+├── intro?    Valgfri velkomstside
+├── pages     Én eller flere sider med spørsmål
+└── success?  Valgfritt eget innhold i bekreftelsen
 ```
 
-Tre ting å merke seg:
+Dette er formatet vi anbefaler for alle nye surveyer. Widgeten støtter fortsatt eldre konfigurasjoner, men du trenger ikke lære den gamle modellen for å lage en ny survey.
 
-- **`type`** scoper surveyen — se [Surveytyper](/guider/surveytyper) for alle alternativer.
-- **`questions`** er den ordnede listen med spørsmål — se [Spørsmålstyper](/guider/sporsmalstyper) for tilgjengelige typer.
-- **`visibleIf`** gjør at fritekstfeltet først vises etter at brukeren har gitt en rating — se [Betinget synlighet](/guider/betinget-synlighet).
+## Bruk versjonen fra Surveyverksted
 
-::: tip `satisfies` fremfor typeannotasjon
-`satisfies LumiSurveyConfig` gir deg typevalidering **og** bevarer den smale literal-typen, slik at `mySurvey.type` er `"rating"` — ikke `string`. Dette er idiomatisk TypeScript og gir bedre inferens nedover i appen.
-:::
-
-## Flere spørsmål på samme side
-
-Når flere spørsmål skal valideres og navigeres som én side, bruker du den versjonerte `SurveyDocumentV1`-modellen med `pages`. Den flate `LumiSurveyConfig`-varianten støttes fortsatt for enkle og eksisterende surveys. Se [props-referansen](/referanse/props-referanse) for kontrakt og eksempel.
-
-## Tips for gode surveys
-
-- **Hold det kort** — 1–2 spørsmål gir høyest svarprosent.
-- **Vær konkret** — still spørsmål om en spesifikk opplevelse, ikke generell tilfredshet.
-- **Bruk progresjon** — vis oppfølgingsspørsmål med `visibleIf` i stedet for å vise alt på én gang.
-- **Segmentér med tags** — bruk `context.tags` for å skille mellom brukergrupper eller flater. Se [Context og tags](/guider/context-og-tags).
-- **Velg en stabil `surveyId`** — denne identifiserer én analyseserie på tvers av utrullinger. Strukturelle eller semantiske endringer krever en ny ID, for eksempel `min-flate-feedback-v2`. Se [Survey-identitet og endringer](/guider/survey-identitet) for beslutningstabellen.
-
-## Snarvei: Bruk en preset
-
-Trenger du raskt en standard survey uten å definere spørsmålene selv? Bruk en ferdiglagd preset:
+Har dere laget surveyen i Surveyverksted, åpner du versjonen dere vil ta i bruk og velger **Kopier TypeScript**. Lim dokumentet inn i for eksempel `survey.ts`, og importer det der `LumiSurveyDock` rendres:
 
 ```tsx
-import { LumiSurveyDock, DEFAULT_SURVEY_RATING } from "@navikt/lumi-survey";
+import { survey } from "./survey";
 
 <LumiSurveyDock
-  surveyId="min-flate"
-  survey={DEFAULT_SURVEY_RATING}
+  surveyId="min-flate-tilbakemelding"
+  survey={survey}
   transport={transport}
 />
 ```
 
-Se [Presets og builders](/guider/presets-og-builders) for alle tilgjengelige presets og builders.
+Eksporten inneholder `satisfies SurveyDocumentV1`, slik at appens TypeScript-oppsett sjekker dokumentet. Appen eier filen og ruller den ut på vanlig måte.
+
+Kontroller også `type` før utrulling. Nye utkast fra Surveyverksted starter som `rating`. Bytt til `custom` hvis surveyen ikke lenger er en vurderingssurvey. De andre analysetypene krever bestemte spørsmåls-ID-er og svarformer; se [Velg hva dere vil måle](/guider/surveytyper).
+
+Skriver du surveyen direkte i kode, kan du starte med eksempelet under.
+
+## Lag et dokument
+
+Eksempelet under viser ett spørsmål om gangen. Hvert spørsmål ligger på sin egen side. Hver side blir et steg, og brukeren går videre med **Neste**.
+
+```typescript
+import type { SurveyDocumentV1 } from "@navikt/lumi-survey";
+
+export const mySurvey = {
+  authoringSchemaVersion: 1,
+  type: "rating",
+  intro: {
+    title: "Hjelp oss å gjøre tjenesten bedre",
+    body: "Du får to korte spørsmål om opplevelsen.",
+    startLabel: "Start",
+  },
+  pages: [
+    {
+      id: "vurdering",
+      questions: [
+        {
+          id: "inntrykk",
+          type: "rating",
+          variant: "emoji",
+          prompt: "Hvordan var opplevelsen din?",
+          required: true,
+        },
+      ],
+    },
+    {
+      id: "utdyping",
+      questions: [
+        {
+          id: "innspill",
+          type: "text",
+          prompt: "Hva kan vi gjøre bedre?",
+          maxLength: 1000,
+          visibleIf: {
+            questionId: "inntrykk",
+            operator: "LT",
+            value: 4,
+          },
+        },
+      ],
+    },
+  ],
+  success: {
+    title: "Takk for tilbakemeldingen",
+    body: "Vi bruker svaret til å gjøre tjenesten bedre.",
+  },
+} satisfies SurveyDocumentV1;
+```
+
+De viktigste delene er:
+
+- `authoringSchemaVersion` forteller hvilken versjon av dokumentformatet du bruker.
+- `type` forteller dashboardet hva surveyen måler.
+- `pages` bestemmer hva som vises sammen, og hva som blir neste steg.
+- `visibleIf` viser et spørsmål bare når det er relevant.
+- `intro` og `success` er valgfrie. De gir brukeren en tydelig start og avslutning.
+
+::: tip Bruk `satisfies`
+`satisfies SurveyDocumentV1` sjekker dokumentet uten å gjøre typene mer generelle enn nødvendig. Da får du gode TypeScript-feil på feil feltnavn, tomme sider og ugyldige spørsmål.
+:::
+
+## Velg hva som skal stå på samme side
+
+Bruk som hovedregel én side per spørsmål. Da får brukeren ett spørsmål om gangen uten ekstra konfigurasjon.
+
+Legg flere spørsmål på samme side når de hører tett sammen og bør besvares som en gruppe. En sidetittel er valgfri. Bruk den bare når den tilfører kontekst som spørsmålsteksten ikke allerede gir.
+
+Se [Sider og flyt](/guider/sider-og-flyt) for eksempler og anbefalinger.
+
+## Vis bare relevante spørsmål
+
+I eksempelet vises `innspill` bare når vurderingen er lavere enn 4. En side uten synlige spørsmål hoppes over automatisk.
+
+Se [Vis bare relevante spørsmål](/guider/betinget-synlighet) for operatorer og kombinasjoner med `any` og `all`.
+
+## Gi surveyen en stabil identitet
+
+`surveyId` settes på `LumiSurveyDock`, ikke i dokumentet. Behold samme ID så lenge surveyen måler det samme med samme betydning. Bytt ID når du endrer spørsmål eller svaralternativer slik at resultatene ikke lenger kan sammenlignes.
+
+Se [Survey-identitet og endringer](/guider/survey-identitet) for beslutningstabellen.
+
+## Sjekk før du går live
+
+- Prøv hele flyten med tastatur og på liten skjerm.
+- Sjekk at bare relevante spørsmål dukker opp.
+- Hold surveyen kort. Spør bare om det dere skal bruke svarene til.
+- Bruk konkrete spørsmål om opplevelsen brukeren nettopp hadde.
+- Unngå personopplysninger i spørsmål, `context` og fritekst der det er mulig.
 
 ## Neste steg
 
-Surveyen din er klar! Gå videre til [Koble til backend](/kom-i-gang/koble-til-backend) for å sette opp token exchange og NAIS-tilgang slik at svarene lagres.
+Gå videre til [Koble til backend](/kom-i-gang/koble-til-backend) for å lagre svarene i Lumi.

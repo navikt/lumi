@@ -58,4 +58,4 @@ For å se widgeten i ulike konfigurasjoner, bruk Storybook:
 
 🔗 **[Lumi Storybook](https://navikt.github.io/lumi/storybook/)**
 
-Storybook inneholder eksempler med ulike presets, rating-varianter, styling-alternativer og branching-logikk.
+Storybook inneholder eksempler med spørsmålstyper, visuell tilpasning og betinget visning.

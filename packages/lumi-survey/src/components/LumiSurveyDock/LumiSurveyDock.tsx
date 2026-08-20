@@ -44,7 +44,7 @@ import type {
  * ```tsx
  * <LumiSurveyDock
  *   surveyId="my-app"
- *   survey={NAV_STANDARD_RATING}
+ *   survey={survey}
  *   transport={transport}
  *   labels={{ submit: "Send", cancel: "Avbryt" }}
  *   success={{ title: "Takk!", autoClose: true }}
@@ -60,9 +60,8 @@ export interface LumiSurveyDockProps {
   surveyId: string;
 
   /**
-   * Survey definition. Use a version 1 document with `pages` to group multiple
-   * questions into navigation units, or a legacy flat configuration for
-   * backwards compatibility.
+   * Survey definition. Use a version 1 document with `pages` for new surveys.
+   * Flat configurations remain supported for backwards compatibility.
    */
   survey: LumiSurveyDefinition;
 

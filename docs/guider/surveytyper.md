@@ -1,47 +1,67 @@
 ---
-title: Surveytyper
+title: Velg hva dere vil måle
 ---
 
-# Surveytyper
+# Velg hva dere vil måle
 
-Feltet `type` i `LumiSurveyConfig` bestemmer hva surveyen måler og hvordan dataen presenteres i dashboardet. Velg riktig type fra starten — det scoper spørsmålsflyten, validering og visualisering.
+Feltet `type` forteller Lumi hvilken analyse surveyen tilhører. For nye surveyer i Surveyverksted eller `SurveyDocumentV1` bruker du vanligvis `rating` eller `custom`.
 
-## Oversikt
+`type` bestemmer ikke hvilke sider eller spørsmål dokumentet kan ha. Spørsmålene og ID-ene avgjør hvilke data dashboardet faktisk kan vise.
 
-| Surveytype | Når bruke | Hva du får ut | Typiske fallgruver |
-| :--- | :--- | :--- | :--- |
-| `rating` | «Pulse» etter en konkret oppgave | Trend over tid + årsak i fritekst | For generelt spørsmål, for mange spørsmål |
-| `discovery` | Utforske hva brukeren kom for å gjøre | Frie tekstsvar + suksess-rate | For mye tekst, dårlig segmentering |
-| `topTasks` | Måle suksess for kjerneoppgaver (McGovern) | Suksess/feil per oppgave + blocker | For mange/få oppgaver, uklare oppgavenavn |
-| `taskPriority` | Strategisk: hva er viktigst å prioritere? | Rangering av viktigste oppgaver (top N) | For få tasks, ikke randomisert |
-| `custom` | Når du kombinerer eller bruker branching | Skreddersydd spørreflyt | Blir fort «for mye» |
+## Anbefalt for nye surveyer
 
-::: tip Start enkelt
-Start med `rating` eller `discovery`, og gå videre til `topTasks`/`taskPriority` når dere har en tydelig hypoteseliste.
-:::
+| Type | Bruk når | Hva dashboardet viser |
+| :--- | :--- | :--- |
+| `rating` | Dere vil måle opplevelsen etter en konkret oppgave | Utvikling i vurderinger over tid og fritekstsvar |
+| `custom` | Dere trenger spørsmål eller analyse som ikke passer i rating | Generell oversikt over svarene |
 
-## Rating
+### `rating`
 
-Enkleste typen. Brukeren gir en vurdering (emoji, stjerner, tommel, NPS) og kan utdype i fritekst. Best egnet for løpende puls-målinger på en konkret flate eller oppgave. Dashboardet viser trend over tid og fritekst-oppsummering. Se [`DEFAULT_SURVEY_RATING`](/guider/presets-og-builders#ferdiglagde-presets) og [`createRatingSurvey`](/guider/presets-og-builders#createratingssurvey) for ferdiglagde utgangspunkt.
+Bruk `rating` til en kort måling etter at brukeren har gjort noe konkret. Start med ett vurderingsspørsmål. Legg til et oppfølgingsspørsmål bare når dere vet hvordan svaret skal brukes.
 
-## Discovery
+```typescript
+import type { SurveyDocumentV1 } from "@navikt/lumi-survey";
 
-Kartlegger _hva brukeren kom for å gjøre_ — ikke bare om de likte det. Gir frie tekstsvar og en suksess-rate. Bruk denne når dere trenger å forstå brukerens intensjon før dere optimaliserer flyten. Se [`DEFAULT_SURVEY_DISCOVERY`](/guider/presets-og-builders#ferdiglagde-presets) og [`createDiscoverySurvey`](/guider/presets-og-builders#creatediscoverysurvey) for ferdiglagde utgangspunkt.
+const survey = {
+  authoringSchemaVersion: 1,
+  type: "rating",
+  pages: [
+    {
+      id: "vurdering",
+      questions: [
+        {
+          id: "opplevelse",
+          type: "rating",
+          variant: "emoji",
+          prompt: "Hvordan var det å sende inn søknaden?",
+          required: true,
+        },
+      ],
+    },
+  ],
+} satisfies SurveyDocumentV1;
+```
 
-## Top tasks
+### `custom`
 
-Basert på Gerry McGoverns top-task-metodikk. Brukeren velger hvilken oppgave de forsøkte, og rapporterer om den lyktes eller ikke. Dashboardet viser suksess/feil per oppgave og blocker-tekst. Krever en forhåndsdefinert oppgaveliste. Se [`createTopTasksSurvey`](/guider/presets-og-builders#createtoptaskssurvey) for ferdiglagd builder.
+Bruk `custom` når ingen av de spesialiserte analysetypene passer. Du kan bruke alle spørsmålstyper, sider og `visibleIf`.
 
-## Task priority
+Velg `custom` hvis dere ikke bruker et ferdig og verifisert oppsett for en spesialisert analyse. Typeverdien alene gjør ikke et vilkårlig dokument om til en discovery-, top tasks- eller prioriteringsanalyse.
 
-Strategisk prioriteringsundersøkelse. Brukeren rangerer de viktigste oppgavene fra en liste. Resultatet er en rangering av hva brukerne mener er viktigst. Randomiser rekkefølgen for å unngå posisjons-bias. Se [`createTaskPrioritySurvey`](/guider/presets-og-builders#createtaskprioritysurvey) for ferdiglagd builder.
+## Spesialiserte typer for eksisterende oppsett
 
-## Custom
+Pakken støtter også `discovery`, `topTasks` og `taskPriority`. Disse analysene forventer bestemte spørsmåls-ID-er og svarformer. Dagens ferdige oppsett bruker den eldre, flate konfigurasjonsmodellen, og kontraktene er ennå ikke tilgjengelige som verifiserte `SurveyDocumentV1`-maler.
 
-Fullt fleksibel — du definerer spørsmålsflyten selv med branching, betinget synlighet og valgfrie spørsmålstyper. Bruk `custom` når ingen av de andre typene passer. Vær bevisst på kompleksitet — jo flere spørsmål, jo lavere svarprosent.
+Ikke velg disse typene manuelt i en ny survey. Ta kontakt i [#lumi på Slack](https://nav-it.slack.com/archives/C0AG2FKSSMD) hvis dere vil sette opp en slik analyse. Eksisterende surveyer fortsetter å virke.
+
+| Type | Formål |
+| :--- | :--- |
+| `discovery` | Forstå hva brukeren kom for å gjøre, om hen fikk gjort det og hva som hindret hen |
+| `topTasks` | Måle resultatet for en kjent liste med kjerneoppgaver |
+| `taskPriority` | La brukerne velge hvilke oppgaver som er viktigst |
 
 ## Videre lesing
 
-- [Presets & builders](/guider/presets-og-builders) — ferdiglagde snarveier for de vanligste surveytypene
-- [Spørsmålstyper](/guider/sporsmalstyper) — detaljer om rating, text, singleChoice og multiChoice
-- [Konfigurer survey](/kom-i-gang/konfigurer-survey) — steg-for-steg oppsett av en survey
+- [Sider og flyt](/guider/sider-og-flyt) for å velge hva som skal vises sammen
+- [Spørsmålstyper](/guider/sporsmalstyper) for alle feltene brukeren kan svare på
+- [Vis bare relevante spørsmål](/guider/betinget-synlighet) for oppfølginger med `visibleIf`

@@ -152,7 +152,7 @@ Widgeten kan huske at brukeren har lukket surveyen, slik at den ikke dukker opp 
 
 | Flate | Strategi | Merknad |
 | :--- | :--- | :--- |
-| Sluttbruker (nav.no) | `consent` (default) | Bruker Nav consent API — ingen ekstra oppsett |
+| Sluttbruker (nav.no) | `consent` (standard) | Bruker Nav consent API — ingen ekstra oppsett |
 | Intern (Modia, fagsystemer) | `localStorage` | Ingen ekstra avhengigheter |
 | Ingen persistering | `none` | Surveyen vises hver gang |
 
@@ -195,5 +195,5 @@ Du er i gang! 🎉 Her er noen nyttige guider for å tilpasse Lumi videre:
 
 - [Surveytyper](/guider/surveytyper) — velg riktig type for ditt bruksområde
 - [Spørsmålstyper](/guider/sporsmalstyper) — rating, tekst, radio og flervalg
-- [Betinget synlighet](/guider/betinget-synlighet) — vis spørsmål basert på tidligere svar
+- [Vis bare relevante spørsmål](/guider/betinget-synlighet) — vis spørsmål basert på tidligere svar
 - [Context og tags](/guider/context-og-tags) — legg til metadata for filtrering i dashboardet

@@ -17,7 +17,7 @@ hero:
 features:
   - icon: 🧩
     title: Survey as code
-    details: Definer spørsmålene i TypeScript, i din egen kodebase. Ingen ekstern tjeneste — surveyen lever i koden din.
+    details: Bygg surveyen i Surveyverksted eller TypeScript. Appen eier versjonen som møter brukerne.
   - icon: 🔒
     title: Data forblir i Nav
     details: Zero trust hele veien. All data lagres internt, og personopplysninger maskeres automatisk.

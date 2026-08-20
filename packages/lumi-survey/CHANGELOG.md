@@ -6,6 +6,13 @@ This project follows SemVer.
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-08-20
+
+### Documentation
+
+- The package README now teaches `SurveyDocumentV1` as the only model for new surveys and links to the page, visibility and migration guides. Legacy flat configs, presets, builders and `logic` remain supported in 2.x but are documented only as compatibility APIs.
+- The `LumiSurveyDock` example now uses a consumer-defined `survey` variable instead of the nonexistent `NAV_STANDARD_RATING` symbol.
+
 ## [2.0.1] - 2026-08-20
 
 ### Fixed
