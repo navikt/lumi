@@ -11,6 +11,8 @@
     "lint:fix": "biome check --write .",
     "typecheck": "pnpm --filter @navikt/lumi-types run typecheck && pnpm --filter @navikt/lumi-survey run typecheck && pnpm --filter @navikt/lumi-survey run build && pnpm --filter lumi-dashboard run typecheck && pnpm --filter lumi-local-demo run typecheck",
     "verify:lumi-survey": "pnpm --filter @navikt/lumi-survey run build && node scripts/verify-lumi-survey-package.mjs",
+    "check:lumi-survey-release-drift": "node scripts/check-lumi-survey-release-drift.mjs",
+    "test:release-guards": "node --test scripts/check-lumi-survey-release-drift.test.mjs",
     "test": "pnpm --filter lumi-dashboard run test",
     "e2e": "pnpm --filter lumi-dashboard run e2e",
     "docs:dev": "pnpm --filter lumi-docs run dev",
@@ -30,6 +32,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.10",
     "husky": "^9.1.7",
-    "lint-staged": "^16.4.0"
+    "lint-staged": "^16.4.0",
+    "semver": "7.7.4"
   }
 }

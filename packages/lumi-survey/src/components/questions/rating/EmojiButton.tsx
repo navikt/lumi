@@ -12,6 +12,7 @@ export interface EmojiButtonProps {
   disabled?: boolean;
   ariaLabel?: string;
   renderText?: boolean;
+  tabIndex: 0 | -1;
 }
 
 export const EmojiButton = React.forwardRef<
@@ -30,6 +31,7 @@ export const EmojiButton = React.forwardRef<
       disabled,
       ariaLabel,
       renderText = true,
+      tabIndex,
     },
     ref,
   ) => {
@@ -46,7 +48,7 @@ export const EmojiButton = React.forwardRef<
         aria-label={ariaLabel ?? text}
         disabled={disabled}
         style={style}
-        tabIndex={isActive || activeState === null ? 0 : -1}
+        tabIndex={tabIndex}
       >
         {children}
         {renderText && <BodyShort>{text}</BodyShort>}

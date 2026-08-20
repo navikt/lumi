@@ -55,10 +55,6 @@
   background: none;
 }
 
-.ratingFieldset legend {
-  display: none;
-}
-
 .ratingRow.ratingRow {
   /* Double class specificity to override base styles and HStack props */
   display: flex;

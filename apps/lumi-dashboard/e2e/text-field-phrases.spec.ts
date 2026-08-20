@@ -3,8 +3,10 @@ import { expect, test } from "@playwright/test";
 test.describe("TextFieldCard phrases", () => {
   test("displays clickable phrases in text field card", async ({ page }) => {
     // Rating survey has a TEXT field ("Legg gjerne til en begrunnelse")
-    // with 120 items cycling through a fixed topic pool — bigrams are guaranteed
-    await page.goto("/?surveyId=survey-vurdering");
+    // with 120 items cycling through a fixed topic pool. Include the full mock
+    // history so the randomly distributed dates cannot remove every repeated
+    // bigram from the dashboard's default 30-day window.
+    await page.goto("/?surveyId=survey-vurdering&fromDate=2000-01-01");
     await page.waitForLoadState("networkidle");
     await expect(page.locator("main")).toBeVisible({ timeout: 15000 });
 
@@ -31,7 +33,7 @@ test.describe("TextFieldCard phrases", () => {
   test("clicking phrase navigates to feedback with phrase param", async ({
     page,
   }) => {
-    await page.goto("/?surveyId=survey-vurdering");
+    await page.goto("/?surveyId=survey-vurdering&fromDate=2000-01-01");
     await page.waitForLoadState("networkidle");
     await expect(page.locator("main")).toBeVisible({ timeout: 15000 });
 

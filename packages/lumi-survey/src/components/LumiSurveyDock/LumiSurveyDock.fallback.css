@@ -43,10 +43,6 @@
   background: none;
 }
 
-.lumi-survey-dock__rating-fieldset legend {
-  display: none;
-}
-
 .lumi-survey-dock__rating-row {
   display: flex;
   gap: var(--ax-space-12);
