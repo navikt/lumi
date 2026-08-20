@@ -4,10 +4,7 @@ import type {
   SurveyPageV1,
   SurveyQuestionV1,
 } from "@navikt/lumi-survey";
-import {
-  getSpecializedSurveyContractIssues,
-  validateSurveyDocumentV1,
-} from "@navikt/lumi-survey";
+import { validateSurveyDocumentV1 } from "@navikt/lumi-survey";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useBlocker } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
@@ -56,6 +53,7 @@ import {
   duplicatePage,
   duplicateQuestion,
   findHandoffIssues,
+  getSpecializedAuthoringContractIssues,
   insertPageAt,
   insertQuestionAt,
   isRequiredSpecializedQuestion,
@@ -428,11 +426,7 @@ function SurveyWorkshopEditor({
     }
   }, [draft.document]);
   const specializedContractIssues = useMemo(
-    () =>
-      getSpecializedSurveyContractIssues(
-        draft.document.type ?? "custom",
-        draft.document.pages.flatMap((page) => page.questions),
-      ),
+    () => getSpecializedAuthoringContractIssues(draft.document),
     [draft.document],
   );
 

@@ -222,6 +222,10 @@ export function analyticalStructure(document: SurveyDocumentV1): string {
             "options" in question
               ? question.options.map((option) => option.value)
               : undefined,
+          maxSelections:
+            question.type === "multiChoice"
+              ? question.maxSelections
+              : undefined,
         })),
       )
       .sort((left, right) =>

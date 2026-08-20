@@ -123,4 +123,95 @@ describe("mock survey authoring store", () => {
     // Idempotent from the caller's view: the second delete reports missing.
     expect(store.deleteMockSurveyProject("team-a", created.id)).toBe(false);
   });
+
+  it("rejects a changed multi-choice limit after the first revision", async () => {
+    const store = await import("../surveyAuthoring");
+    const choiceDocument = (maxSelections: number): SurveyDocumentV1 => ({
+      authoringSchemaVersion: 1,
+      type: "custom",
+      pages: [
+        {
+          id: "page-1",
+          questions: [
+            {
+              id: "priorities",
+              type: "multiChoice",
+              prompt: "Hva er viktigst?",
+              options: [
+                { value: "a", label: "A" },
+                { value: "b", label: "B" },
+              ],
+              maxSelections,
+            },
+          ],
+        },
+      ],
+    });
+    const created = store.createMockSurveyProject({
+      team: "team-a",
+      name: "Valggrense",
+      surveyId: "valggrense",
+      document: choiceDocument(1),
+    });
+    await store.createMockSurveyRevision({
+      team: "team-a",
+      projectId: created.id,
+      expectedDraftVersion: 1,
+    });
+    const saved = store.saveMockSurveyProject({
+      team: "team-a",
+      projectId: created.id,
+      expectedVersion: 1,
+      name: created.name,
+      surveyId: created.surveyId,
+      document: choiceDocument(2),
+    });
+
+    await expect(
+      store.createMockSurveyRevision({
+        team: "team-a",
+        projectId: created.id,
+        expectedDraftVersion: saved.draftVersion,
+      }),
+    ).rejects.toThrow(/structure differs/i);
+  });
+
+  it("rejects a selection limit on a single-choice field", async () => {
+    const store = await import("../surveyAuthoring");
+    const invalidDocument: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      type: "custom",
+      pages: [
+        {
+          id: "page-1",
+          questions: [
+            {
+              id: "choice",
+              type: "singleChoice",
+              prompt: "Velg én",
+              options: [
+                { value: "a", label: "A" },
+                { value: "b", label: "B" },
+              ],
+              maxSelections: 1,
+            },
+          ],
+        },
+      ],
+    };
+    const created = store.createMockSurveyProject({
+      team: "team-a",
+      name: "Ugyldig valggrense",
+      surveyId: "ugyldig-valggrense",
+      document: invalidDocument,
+    });
+
+    await expect(
+      store.createMockSurveyRevision({
+        team: "team-a",
+        projectId: created.id,
+        expectedDraftVersion: 1,
+      }),
+    ).rejects.toThrow(/bare brukes på flervalg/i);
+  });
 });

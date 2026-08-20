@@ -22,6 +22,7 @@ object SpecializedSurveyContractValidator {
         val required: Boolean = false,
         val conditionallyVisible: Boolean = false,
         val maxSelections: Int? = null,
+        val randomize: Boolean = false,
     )
 
     private data class RequiredField(
@@ -155,6 +156,7 @@ object SpecializedSurveyContractValidator {
                     required = field.required,
                     conditionallyVisible = field.conditionallyVisible,
                     maxSelections = field.maxSelections,
+                    randomize = field.randomize,
                 )
             },
             source = "document",
@@ -172,6 +174,7 @@ object SpecializedSurveyContractValidator {
         val required: Boolean = false,
         val conditionallyVisible: Boolean = false,
         val maxSelections: Int? = null,
+        val randomize: Boolean = false,
     )
 
     private fun validateFields(
@@ -229,6 +232,9 @@ object SpecializedSurveyContractValidator {
             }
             if (enforceAuthoringSemantics && !required.optional && actual.conditionallyVisible) {
                 invalid(surveyType, "$source field '${required.id}' must always be visible")
+            }
+            if (enforceAuthoringSemantics && required.optionIds.isNotEmpty() && actual.randomize) {
+                invalid(surveyType, "$source field '${required.id}' must keep its option order")
             }
         }
         val usesLegacyContract = contract === legacyContracts[surveyType]

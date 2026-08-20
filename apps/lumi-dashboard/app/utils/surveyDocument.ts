@@ -49,6 +49,32 @@ export function isRequiredSpecializedQuestion(
   );
 }
 
+export function getSpecializedAuthoringContractIssues(
+  document: SurveyDocumentV1,
+) {
+  const questions = document.pages.flatMap((page) => page.questions);
+  const issues = [
+    ...getSpecializedSurveyContractIssues(document.type ?? "custom", questions),
+  ];
+  if (document.type === "discovery" || document.type === "topTasks") {
+    const success = questions.find(
+      (question) => question.id === SPECIALIZED_SURVEY_FIELD_IDS.success,
+    );
+    if (
+      success?.type === "singleChoice" &&
+      success.randomize === true &&
+      !issues.some((issue) => issue.fieldId === success.id)
+    ) {
+      issues.push({
+        fieldId: success.id,
+        message:
+          "Svarene Ja, Delvis og Nei må vises i fast rekkefølge for dette analyseoppsettet.",
+      });
+    }
+  }
+  return issues;
+}
+
 export function isSpecializedQuestionContractValid(
   surveyType: SurveyDocumentV1["type"],
   question: SurveyQuestionV1,
@@ -65,6 +91,7 @@ export function isSpecializedQuestionContractValid(
   if (question.id === "success") {
     return (
       question.type === "singleChoice" &&
+      question.randomize !== true &&
       question.options.length === 3 &&
       new Set(question.options.map((option) => option.value)).size === 3 &&
       question.options.every((option) =>
@@ -186,8 +213,6 @@ export function repairSpecializedSurveyDocument(
         prompt: current.prompt.trim() ? current.prompt : fallback.prompt,
         description: current.description,
         analyticsId: current.analyticsId,
-        randomize:
-          current.type === "singleChoice" ? current.randomize : undefined,
         options: fallback.options.map((option) => ({
           ...option,
           ...currentOptions.get(option.value),
@@ -986,10 +1011,7 @@ export function findHandoffIssues(document: SurveyDocumentV1): HandoffIssue[] {
       questionById.set(question.id, question);
     }
   }
-  for (const contractIssue of getSpecializedSurveyContractIssues(
-    document.type ?? "custom",
-    [...questionById.values()],
-  )) {
+  for (const contractIssue of getSpecializedAuthoringContractIssues(document)) {
     issues.push({
       questionId: questionById.has(contractIssue.fieldId)
         ? contractIssue.fieldId
@@ -1007,6 +1029,15 @@ export function findHandoffIssues(document: SurveyDocumentV1): HandoffIssue[] {
         });
       }
       if (question.type === "singleChoice" || question.type === "multiChoice") {
+        if (
+          question.type === "singleChoice" &&
+          question.maxSelections !== undefined
+        ) {
+          issues.push({
+            questionId: question.id,
+            message: "Maks antall valg kan bare brukes på flervalgsspørsmål.",
+          });
+        }
         if (question.options.length === 0) {
           issues.push({
             questionId: question.id,
