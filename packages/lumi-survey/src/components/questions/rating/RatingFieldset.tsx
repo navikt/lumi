@@ -1,5 +1,6 @@
 import { BodyShort, Box, Fieldset, Heading, VStack } from "@navikt/ds-react";
 import type { AriaAttributes, ComponentProps, ReactNode } from "react";
+import { useId } from "react";
 import type { RatingQuestion } from "../../../core/types.js";
 import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
 
@@ -48,10 +49,11 @@ export function RatingFieldset({
   fieldsetPaddingInline,
   children,
 }: RatingFieldsetProps) {
-  const fallbackHeadingId = `${question.id}-heading`;
-  const fallbackDescriptionId = `${question.id}-description`;
-  const legendContentId = `${question.id}-legend`;
-  const errorId = `${question.id}-error`;
+  const instanceId = useId();
+  const fallbackHeadingId = `${instanceId}-heading`;
+  const fallbackDescriptionId = `${instanceId}-description`;
+  const legendContentId = `${instanceId}-legend`;
+  const errorId = `${instanceId}-error`;
   const headingId =
     ariaLabelledBy ?? (!hidePrompt ? fallbackHeadingId : legendContentId);
   const descriptionId =

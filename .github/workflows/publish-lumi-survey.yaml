@@ -111,34 +111,7 @@ jobs:
           NODE
 
       - name: Guard against empty release (no meaningful changes)
-        run: |
-          set -euo pipefail
-          VERSION=$(node -p "require('./packages/lumi-survey/package.json').version")
-          TAG="lumi-survey-v${VERSION}"
-
-          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
-            echo "Tag already exists: ${TAG}. Refusing to publish the same version twice."
-            exit 1
-          fi
-
-          LAST_TAG=$(git tag -l 'lumi-survey-v*' --sort=-v:refname | head -n 1 || true)
-          if [ -z "${LAST_TAG}" ]; then
-            echo "No previous lumi-survey release tags found; skipping empty-release guard."
-            exit 0
-          fi
-
-          echo "Checking for meaningful changes since ${LAST_TAG}…"
-          CHANGED=$(git diff --name-only "${LAST_TAG}..HEAD" -- packages/lumi-survey | cat)
-          MEANINGFUL=$(echo "${CHANGED}" | grep -vE '^packages/lumi-survey/(package\.json|CHANGELOG\.md)$' || true)
-
-          if [ -z "${MEANINGFUL}" ]; then
-            echo "No meaningful changes in packages/lumi-survey since ${LAST_TAG}."
-            echo "Only version/changelog changed (or nothing changed). Refusing to publish a new version."
-            exit 1
-          fi
-
-          echo "Meaningful changes detected:"
-          echo "${MEANINGFUL}"
+        run: node scripts/check-lumi-survey-release-drift.mjs --require-meaningful-change
 
       - name: Publish
         if: ${{ inputs.dry_run == 'false' }}

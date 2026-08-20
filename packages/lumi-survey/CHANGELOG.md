@@ -11,6 +11,7 @@ This project follows SemVer.
 ### Fixed
 
 - Rating questions now render validation messages with Aksel's `ErrorMessage` in a permanently mounted, polite live region. This gives rating, text and choice fields the same visual treatment and announcement priority. Rating errors previously used a plain `BodyShort` with an assertive alert and a package-owned colour override.
+- Rating choices now form one keyboard tab stop. Arrow keys move and select within emoji, thumbs, stars and NPS controls, including wrapping from the first choice to the last and back.
 
 ## [2.0.0] - 2026-08-19
 

@@ -96,9 +96,10 @@ describe("DefaultQuestionRenderer", () => {
     expect(liveRegion).toHaveTextContent("This field is required");
     expect(liveRegion).toHaveAttribute("aria-relevant", "additions removals");
     expect(liveRegion).not.toHaveAttribute("role", "alert");
+    expect(liveRegion?.id).toBeTruthy();
     expect(screen.getByRole("radiogroup")).toHaveAttribute(
       "aria-describedby",
-      "rating-error",
+      expect.stringContaining(liveRegion?.id as string),
     );
   });
 
@@ -201,16 +202,87 @@ describe("DefaultQuestionRenderer", () => {
     const radios = screen.getAllByRole("radio");
     expect(radios.filter((radio) => radio.tabIndex === 0)).toEqual([radios[0]]);
 
-    radios[0].focus();
+    await user.tab();
+    expect(radios[0]).toHaveFocus();
+    await user.keyboard("{Control>}{Alt>}{ArrowRight}{/Alt}{/Control}");
+
+    expect(radios[0]).toHaveFocus();
+    expect(
+      radios.every((radio) => radio.getAttribute("aria-checked") === "false"),
+    ).toBe(true);
+
     await user.keyboard("{ArrowLeft}");
 
     expect(radios.at(-1)).toHaveFocus();
     expect(radios.at(-1)).toHaveAttribute("aria-checked", "true");
+    expect(radios.filter((radio) => radio.tabIndex === 0)).toEqual([
+      radios.at(-1),
+    ]);
 
     await user.keyboard("{ArrowRight}");
 
     expect(radios[0]).toHaveFocus();
     expect(radios[0]).toHaveAttribute("aria-checked", "true");
+    expect(radios.filter((radio) => radio.tabIndex === 0)).toEqual([radios[0]]);
+  });
+
+  it.each([
+    {
+      question: {
+        id: "emoji-invalid",
+        type: "rating" as const,
+        variant: "emoji" as const,
+        prompt: "How was your experience?",
+      },
+      invalidValue: 6,
+    },
+    {
+      question: {
+        id: "thumbs-invalid",
+        type: "rating" as const,
+        variant: "thumbs" as const,
+        prompt: "Was this useful?",
+      },
+      invalidValue: 3,
+    },
+    {
+      question: {
+        id: "stars-invalid",
+        type: "rating" as const,
+        variant: "stars" as const,
+        prompt: "How many stars?",
+      },
+      invalidValue: 1.5,
+    },
+    {
+      question: {
+        id: "nps-invalid",
+        type: "rating" as const,
+        variant: "nps" as const,
+        prompt: "Would you recommend us?",
+      },
+      invalidValue: 11,
+    },
+  ])("keeps the $question.variant radiogroup reachable for an invalid controlled value", ({
+    question,
+    invalidValue,
+  }) => {
+    render(
+      <DefaultQuestionRenderer
+        question={question}
+        value={invalidValue}
+        onChange={() => undefined}
+        validationErrorMessage="This field is required"
+        isMissing={false}
+        disabled={false}
+      />,
+    );
+
+    const radios = screen.getAllByRole("radio");
+    expect(radios.filter((radio) => radio.tabIndex === 0)).toEqual([radios[0]]);
+    expect(
+      radios.every((radio) => radio.getAttribute("aria-checked") === "false"),
+    ).toBe(true);
   });
 
   it.each<RatingQuestion>([
@@ -253,7 +325,7 @@ describe("DefaultQuestionRenderer", () => {
     const fieldset = container.querySelector("fieldset");
     const legend = container.querySelector("legend");
     const radiogroup = screen.getByRole("radiogroup");
-    const errorRegion = document.getElementById(`${question.id}-error`);
+    const errorRegion = container.querySelector(".aksel-fieldset__error");
 
     expect(fieldset).toHaveClass("aksel-fieldset");
     expect(legend).toHaveClass("aksel-sr-only");
@@ -261,9 +333,10 @@ describe("DefaultQuestionRenderer", () => {
     expect(errorRegion).toHaveAttribute("aria-live", "polite");
     expect(errorRegion).toHaveTextContent("This field is required");
     expect(radiogroup).toHaveAttribute("aria-invalid", "true");
+    expect(errorRegion?.id).toBeTruthy();
     expect(radiogroup).toHaveAttribute(
       "aria-describedby",
-      expect.stringContaining(`${question.id}-error`),
+      expect.stringContaining(errorRegion?.id as string),
     );
     expect((await axe.run(container)).violations).toEqual([]);
   });
@@ -291,6 +364,93 @@ describe("DefaultQuestionRenderer", () => {
     expect(
       screen.getByRole("radio", { name: /Ja.*tommel opp/i }),
     ).toBeVisible();
+  });
+
+  it("uses unique valid DOM ids for repeated questions", () => {
+    const question = {
+      id: "overall rating",
+      type: "rating" as const,
+      prompt: "How was your experience?",
+      description: "Choose the answer that fits best.",
+      required: true,
+    };
+
+    const { container } = render(
+      <>
+        <DefaultQuestionRenderer
+          question={question}
+          value={undefined}
+          onChange={() => undefined}
+          validationErrorMessage="This field is required"
+          isMissing
+          disabled={false}
+        />
+        <DefaultQuestionRenderer
+          question={question}
+          value={undefined}
+          onChange={() => undefined}
+          validationErrorMessage="This field is required"
+          isMissing
+          disabled={false}
+        />
+      </>,
+    );
+
+    const groups = screen.getAllByRole("radiogroup", {
+      name: /How was your experience/i,
+    });
+    expect(groups).toHaveLength(2);
+
+    const allIds = Array.from(container.querySelectorAll<HTMLElement>("[id]"));
+    const referencedIds = groups.flatMap((group) =>
+      [
+        group.getAttribute("aria-labelledby"),
+        group.getAttribute("aria-describedby"),
+      ]
+        .filter(Boolean)
+        .flatMap((ids) => ids?.split(/\s+/) ?? []),
+    );
+
+    for (const id of referencedIds) {
+      expect(allIds.filter((element) => element.id === id)).toHaveLength(1);
+    }
+    expect(groups[0].getAttribute("aria-labelledby")).not.toBe(
+      groups[1].getAttribute("aria-labelledby"),
+    );
+  });
+
+  it("associates the NPS endpoint labels with the radiogroup", () => {
+    const { container } = render(
+      <DefaultQuestionRenderer
+        question={{
+          id: "nps-endpoints",
+          type: "rating",
+          variant: "nps",
+          prompt: "Would you recommend us?",
+          lowLabel: "Not likely",
+          highLabel: "Very likely",
+        }}
+        value={undefined}
+        onChange={() => undefined}
+        validationErrorMessage="This field is required"
+        isMissing={false}
+        disabled={false}
+      />,
+    );
+
+    const describedBy = screen
+      .getByRole("radiogroup")
+      .getAttribute("aria-describedby");
+    const description = (describedBy ?? "")
+      .split(/\s+/)
+      .map(
+        (id) =>
+          container.querySelector<HTMLElement>(`[id="${id}"]`)?.textContent,
+      )
+      .join(" ");
+
+    expect(description).toContain("Not likely");
+    expect(description).toContain("Very likely");
   });
 
   it("renders a text question with textarea label", () => {

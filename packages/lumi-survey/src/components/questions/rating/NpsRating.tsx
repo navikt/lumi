@@ -1,5 +1,6 @@
 import { BodyShort, Box, HStack, VStack } from "@navikt/ds-react";
 import type { ComponentProps } from "react";
+import { useId } from "react";
 import type {
   LumiSurveyAnswerValue,
   NpsRatingQuestion,
@@ -63,6 +64,12 @@ export function NpsRating({
   fieldsetPaddingBlock,
   fieldsetPaddingInline,
 }: NpsRatingProps) {
+  const endpointId = useId();
+  const lowLabelId = `${endpointId}-low`;
+  const highLabelId = `${endpointId}-high`;
+  const groupDescriptionIds = [ariaDescribedBy, lowLabelId, highLabelId]
+    .filter(Boolean)
+    .join(" ");
   const activeState = typeof value === "number" ? value : null;
   const lowLabel = question.lowLabel ?? "Lite sannsynlig";
   const highLabel = question.highLabel ?? "Svært sannsynlig";
@@ -88,7 +95,7 @@ export function NpsRating({
       className={className}
       fieldsetClassName={styles.fieldset ?? "lumi-survey-rating__fieldset"}
       ariaLabelledBy={ariaLabelledBy}
-      ariaDescribedBy={ariaDescribedBy}
+      ariaDescribedBy={groupDescriptionIds}
       hidePrompt={hidePrompt}
       hideDescription={hideDescription}
       fieldsetPaddingBlock={fieldsetPaddingBlock ?? "space-8"}
@@ -145,12 +152,14 @@ export function NpsRating({
           </Box>
           <HStack justify="space-between" style={{ width: "100%" }}>
             <BodyShort
+              id={lowLabelId}
               size="small"
               style={{ color: "var(--ax-text-neutral-subtle)" }}
             >
               {lowLabel}
             </BodyShort>
             <BodyShort
+              id={highLabelId}
               size="small"
               style={{ color: "var(--ax-text-neutral-subtle)" }}
             >

@@ -23,7 +23,14 @@ export function useRatingRadioGroup({
 }: UseRatingRadioGroupOptions) {
   const onKeyDown = useCallback(
     (event: KeyboardEvent<HTMLElement>) => {
-      if (disabled || (!isPreviousKey(event.key) && !isNextKey(event.key))) {
+      if (
+        disabled ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        (!isPreviousKey(event.key) && !isNextKey(event.key))
+      ) {
         return;
       }
 
@@ -52,10 +59,10 @@ export function useRatingRadioGroup({
     [disabled, onChange, value, values],
   );
 
+  const tabbableValue =
+    value !== null && values.includes(value) ? value : values[0];
   const getTabIndex = (optionValue: number): 0 | -1 =>
-    optionValue === value || (value === null && optionValue === values[0])
-      ? 0
-      : -1;
+    optionValue === tabbableValue ? 0 : -1;
 
   return { getTabIndex, onKeyDown };
 }

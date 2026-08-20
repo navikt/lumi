@@ -89,11 +89,10 @@ function isValidRatingAnswer(
       maxValue = 5;
   }
 
-  const numeric = typeof rawAnswer === "number" ? rawAnswer : Number(rawAnswer);
-  if (Number.isNaN(numeric)) {
+  if (typeof rawAnswer !== "number" || !Number.isInteger(rawAnswer)) {
     return false;
   }
-  return numeric >= minValue && numeric <= maxValue;
+  return rawAnswer >= minValue && rawAnswer <= maxValue;
 }
 
 function isValidSingleChoiceAnswer(

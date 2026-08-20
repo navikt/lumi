@@ -415,12 +415,13 @@ describe("LumiSurveyDock", () => {
     expect(
       await screen.findByText("Dette gjelder besøket ditt."),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("Velg det alternativet som passer best."),
-    ).toBeInTheDocument();
+    const questionDescription = screen.getByText(
+      "Velg det alternativet som passer best.",
+    );
+    expect(questionDescription).toBeInTheDocument();
     expect(screen.getByRole("radiogroup")).toHaveAttribute(
       "aria-describedby",
-      expect.stringContaining("rating-description"),
+      expect.stringContaining(questionDescription.id),
     );
     expect(screen.getByRole("radiogroup")).toHaveAttribute(
       "aria-describedby",
