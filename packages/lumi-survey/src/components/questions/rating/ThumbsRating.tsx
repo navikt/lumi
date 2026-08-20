@@ -3,7 +3,6 @@ import {
   BodyShort,
   Box,
   Button,
-  ErrorMessage,
   Heading,
   HStack,
   VStack,
@@ -16,6 +15,7 @@ import type {
 } from "../../../core/types.js";
 import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
 import styles from "./emo.module.css";
+import { RatingErrorMessage } from "./RatingErrorMessage.js";
 import "./emo.fallback.css";
 
 interface ThumbsRatingProps {
@@ -148,16 +148,12 @@ export function ThumbsRating({
           </Box>
         </HStack>
       </Box>
-      {isMissing && (
-        <ErrorMessage
-          id={errorId}
-          className={styles.errorMessage ?? "lumi-survey-rating__error-message"}
-          role="alert"
-          showIcon
-        >
-          {validationErrorMessage}
-        </ErrorMessage>
-      )}
+      <RatingErrorMessage
+        id={errorId}
+        isMissing={isMissing}
+        message={validationErrorMessage}
+        className={styles.errorMessage ?? "lumi-survey-rating__error-message"}
+      />
     </VStack>
   );
 }

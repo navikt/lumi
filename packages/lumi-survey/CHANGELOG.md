@@ -6,9 +6,11 @@ This project follows SemVer.
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-08-20
+
 ### Fixed
 
-- Rating questions now render their validation message with Aksel's `ErrorMessage`, like every other field type. They used a plain `BodyShort` with a stylesheet colour override, so the same "you must answer this" text appeared in two weights — regular without an icon under a rating, semibold with a warning icon under a text or choice field — inside one panel. The package no longer overrides the error colour either; the design system owns it. (#458)
+- Rating questions now render validation messages with Aksel's `ErrorMessage` in a permanently mounted, polite live region. This gives rating, text and choice fields the same visual treatment and announcement priority. Rating errors previously used a plain `BodyShort` with an assertive alert and a package-owned colour override.
 
 ## [2.0.0] - 2026-08-19
 
@@ -25,8 +27,8 @@ exist there.
   condition is unchanged — only reading one back is affected. `LogicCondition`
   stays leaf-only, so `LogicRule` consumers are untouched. (#333)
 
-The dock header renders at the same size as in 1.0.0; only its line height
-tightens. See Changed.
+The dock title renders at the same size as in 1.0.0. Its line height tightens,
+and the description below it grows from 14px to 16px. See Changed.
 
 ### Added
 

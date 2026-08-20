@@ -1,11 +1,4 @@
-import {
-  BodyShort,
-  Box,
-  ErrorMessage,
-  Heading,
-  HStack,
-  VStack,
-} from "@navikt/ds-react";
+import { BodyShort, Box, Heading, HStack, VStack } from "@navikt/ds-react";
 import type React from "react";
 import type { ComponentProps, ReactElement } from "react";
 import type {
@@ -18,6 +11,7 @@ import { EmojiButton } from "./EmojiButton.js";
 import styles from "./emo.module.css";
 import { Glad, Lei, Noytral, Sinna, VeldigGlad } from "./emojies.js";
 import { NpsRating } from "./NpsRating.js";
+import { RatingErrorMessage } from "./RatingErrorMessage.js";
 import { StarRating } from "./StarRating.js";
 import { ThumbsRating } from "./ThumbsRating.js";
 import "./emo.fallback.css";
@@ -309,16 +303,12 @@ export const RatingQuestionField = ({
           })}
         </HStack>
       </Box>
-      {isMissing && (
-        <ErrorMessage
-          id={errorId}
-          className={CLASS_NAMES.error}
-          role="alert"
-          showIcon
-        >
-          {validationErrorMessage}
-        </ErrorMessage>
-      )}
+      <RatingErrorMessage
+        id={errorId}
+        isMissing={isMissing}
+        message={validationErrorMessage}
+        className={CLASS_NAMES.error}
+      />
     </VStack>
   );
 };

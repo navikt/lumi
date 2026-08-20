@@ -1,6 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import type { LumiSurveyQuestion } from "../../../../core/types.js";
+import type {
+  LumiSurveyQuestion,
+  RatingQuestion,
+} from "../../../../core/types.js";
 import { DefaultQuestionRenderer } from "../DefaultQuestionRenderer.js";
 
 beforeAll(() => {
@@ -49,6 +52,100 @@ describe("DefaultQuestionRenderer", () => {
     fireEvent.click(screen.getByRole("radio", { name: "2. Neutral" }));
 
     expect(handleChange).toHaveBeenCalledWith(2);
+  });
+
+  it("announces a missing rating through a persistent polite live region", () => {
+    const question = {
+      id: "rating",
+      type: "rating" as const,
+      prompt: "How satisfied are you?",
+      scale: 3,
+    };
+
+    const { container, rerender } = render(
+      <DefaultQuestionRenderer
+        question={question}
+        value={undefined}
+        onChange={() => undefined}
+        validationErrorMessage="This field is required"
+        isMissing={false}
+        disabled={false}
+      />,
+    );
+
+    const liveRegion = container.querySelector('[aria-live="polite"]');
+    expect(liveRegion).toBeInTheDocument();
+    expect(liveRegion).toBeEmptyDOMElement();
+    expect(liveRegion).toHaveClass("aksel-form-field__error");
+
+    rerender(
+      <DefaultQuestionRenderer
+        question={question}
+        value={undefined}
+        onChange={() => undefined}
+        validationErrorMessage="This field is required"
+        isMissing
+        disabled={false}
+      />,
+    );
+
+    expect(container.querySelector('[aria-live="polite"]')).toBe(liveRegion);
+    expect(liveRegion).toHaveTextContent("This field is required");
+    expect(liveRegion).toHaveAttribute("aria-relevant", "additions removals");
+    expect(liveRegion).not.toHaveAttribute("role", "alert");
+    expect(container.querySelector("fieldset")).toHaveAttribute(
+      "aria-describedby",
+      "rating-error",
+    );
+  });
+
+  it.each<RatingQuestion>([
+    {
+      id: "thumbs",
+      type: "rating",
+      variant: "thumbs",
+      prompt: "Was this useful?",
+    },
+    {
+      id: "stars",
+      type: "rating",
+      variant: "stars",
+      prompt: "How many stars?",
+    },
+    {
+      id: "nps",
+      type: "rating",
+      variant: "nps",
+      prompt: "Would you recommend us?",
+    },
+  ])("keeps the polite error region mounted for $variant ratings", (question) => {
+    const { container, rerender } = render(
+      <DefaultQuestionRenderer
+        question={question}
+        value={undefined}
+        onChange={() => undefined}
+        validationErrorMessage="This field is required"
+        isMissing={false}
+        disabled={false}
+      />,
+    );
+
+    const liveRegion = container.querySelector('[aria-live="polite"]');
+    expect(liveRegion).toBeEmptyDOMElement();
+
+    rerender(
+      <DefaultQuestionRenderer
+        question={question}
+        value={undefined}
+        onChange={() => undefined}
+        validationErrorMessage="This field is required"
+        isMissing
+        disabled={false}
+      />,
+    );
+
+    expect(container.querySelector('[aria-live="polite"]')).toBe(liveRegion);
+    expect(liveRegion).toHaveTextContent("This field is required");
   });
 
   it("renders a text question with textarea label", () => {

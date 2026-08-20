@@ -1,11 +1,4 @@
-import {
-  BodyShort,
-  Box,
-  ErrorMessage,
-  Heading,
-  HStack,
-  VStack,
-} from "@navikt/ds-react";
+import { BodyShort, Box, Heading, HStack, VStack } from "@navikt/ds-react";
 import type React from "react";
 import type { ComponentProps } from "react";
 import { useCallback } from "react";
@@ -16,6 +9,7 @@ import type {
 import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
 import styles from "./emo.module.css";
 import npsStyles from "./nps.module.css";
+import { RatingErrorMessage } from "./RatingErrorMessage.js";
 import "./emo.fallback.css";
 import "./nps.fallback.css";
 
@@ -210,16 +204,12 @@ export function NpsRating({
           </HStack>
         </VStack>
       </Box>
-      {isMissing && (
-        <ErrorMessage
-          id={errorId}
-          className={styles.errorMessage ?? "lumi-survey-rating__error-message"}
-          role="alert"
-          showIcon
-        >
-          {validationErrorMessage}
-        </ErrorMessage>
-      )}
+      <RatingErrorMessage
+        id={errorId}
+        isMissing={isMissing}
+        message={validationErrorMessage}
+        className={styles.errorMessage ?? "lumi-survey-rating__error-message"}
+      />
     </VStack>
   );
 }
