@@ -138,11 +138,10 @@ internal fun normalizeTag(tag: String): String? {
 internal fun matchesTaskFilter(feedback: FeedbackDto, task: String?): Boolean {
     if (task.isNullOrBlank()) return true
 
-    val taskAnswer = feedback.answers.find { a -> a.fieldId in TopTasksFieldIds.task }
+    val taskAnswer = SpecializedSurveyFieldIds.findTask(feedback.surveyType, feedback.answers)
     if (taskAnswer != null && taskAnswer.fieldType == FieldType.SINGLE_CHOICE) {
         val selectedId = (taskAnswer.value as? AnswerValue.SingleChoice)?.selectedOptionId
-        val option = taskAnswer.question.options?.find { it.id == selectedId }
-        return option?.label == task
+        return selectedId == task
     }
     return false
 }
@@ -154,7 +153,7 @@ internal fun matchesThemeFilter(
 ): Boolean {
     if (themeId.isNullOrBlank()) return true
 
-    val taskAnswer = feedback.answers.find { it.fieldId == "task" }
+    val taskAnswer = SpecializedSurveyFieldIds.findTask(feedback.surveyType, feedback.answers)
     val taskText = (taskAnswer?.value as? AnswerValue.Text)?.text ?: return false
     val matchedTheme = matchThemeName(taskText, themes)
 

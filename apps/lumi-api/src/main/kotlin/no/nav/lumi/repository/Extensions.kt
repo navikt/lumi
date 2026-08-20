@@ -55,15 +55,8 @@ fun FeedbackDbRecord.toDto(tags: List<String> = emptyList()): FeedbackDto {
     val durationMs = jsonObj["timeToCompleteMs"]?.jsonPrimitive?.longOrNull
     
     val surveyTypeStr = jsonObj["surveyType"]?.jsonPrimitive?.contentOrNull
-    val surveyType = when (surveyTypeStr) {
-        "rating", "RATING" -> SurveyType.RATING
-        "topTasks", "TOP_TASKS" -> SurveyType.TOP_TASKS
-        "discovery", "DISCOVERY" -> SurveyType.DISCOVERY
-        "taskPriority", "TASK_PRIORITY" -> SurveyType.TASK_PRIORITY
-        "custom", "CUSTOM" -> SurveyType.CUSTOM
-        null -> null
-        else -> SurveyType.CUSTOM
-    }
+    val surveyType = SurveyType.fromWireName(surveyTypeStr)
+        ?: surveyTypeStr?.let { SurveyType.CUSTOM }
     
     val context = jsonObj["context"]?.jsonObject?.let { ctxObj ->
         val viewportObj = ctxObj["viewport"]?.jsonObject

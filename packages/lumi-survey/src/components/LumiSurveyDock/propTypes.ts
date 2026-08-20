@@ -73,8 +73,9 @@ export type StorageStrategy = "consent" | "localStorage" | "none";
  * - "auto": authored pages become steps; legacy surveys use step mode only
  *   when branching logic exists (default)
  * - "singlePage": show all visible authored pages/questions on one surface
- * - "steps": authored pages become steps; legacy surveys show one question
- *   per step
+ * - "steps": compatibility override for flat legacy surveys. New surveys
+ *   should express grouping and steps with `SurveyDocumentV1.pages` and leave
+ *   this setting as "auto"
  */
 export type QuestionLayout = "auto" | "singlePage" | "steps";
 

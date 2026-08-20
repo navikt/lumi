@@ -87,6 +87,58 @@ private fun submissionPayloadV2Raw(
     }
 """.trimIndent()
 
+private fun topTasksPayloadV2(successFieldId: String = "success") = """
+    {
+      "schemaVersion": 2,
+      "surveyId": "top-tasks-contract",
+      "surveyType": "topTasks",
+      "submittedAt": "2026-01-10T12:00:12Z",
+      "deduplicationKey": "top-tasks-contract-key",
+      "definition": {
+        "surveyType": "topTasks",
+        "fields": [
+          {
+            "fieldId": "task",
+            "fieldType": "SINGLE_CHOICE",
+            "optionIds": ["apply", "status"]
+          },
+          {
+            "fieldId": "$successFieldId",
+            "fieldType": "SINGLE_CHOICE",
+            "optionIds": ["yes", "partial", "no"]
+          }
+        ]
+      },
+      "answers": [
+        {
+          "fieldId": "task",
+          "fieldType": "SINGLE_CHOICE",
+          "question": {
+            "label": "Hva prøvde du å gjøre?",
+            "options": [
+              {"id": "apply", "label": "Søke"},
+              {"id": "status", "label": "Sjekke status"}
+            ]
+          },
+          "value": {"type": "singleChoice", "selectedOptionId": "apply"}
+        },
+        {
+          "fieldId": "$successFieldId",
+          "fieldType": "SINGLE_CHOICE",
+          "question": {
+            "label": "Klarte du det?",
+            "options": [
+              {"id": "yes", "label": "Ja"},
+              {"id": "partial", "label": "Delvis"},
+              {"id": "no", "label": "Nei"}
+            ]
+          },
+          "value": {"type": "singleChoice", "selectedOptionId": "yes"}
+        }
+      ]
+    }
+""".trimIndent()
+
 private fun repeatedTextFieldsJson(count: Int): String =
     (1..count).joinToString(prefix = "[", postfix = "]") { index ->
         """
@@ -165,6 +217,46 @@ class SubmissionV2RoutesTest : FunSpec({
                             it.fields.map { field -> field.fieldId } == listOf("feedback")
                     }
                 )
+            }
+        }
+    }
+
+    test("v2 accepts the canonical specialized survey contract") {
+        val submissionService = mockk<SubmissionService>()
+        coEvery {
+            submissionService.submit(any(), any(), any(), any(), any())
+        } returns SubmissionOutcome(SaveResult.Created("created-specialized"), "hash-specialized")
+
+        testApplication {
+            application { submissionRoutesTestModule(submissionService) }
+            val response = createTestClient().post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(topTasksPayloadV2())
+            }
+
+            response.status shouldBe HttpStatusCode.Created
+            coVerify(exactly = 1) {
+                submissionService.submit(any(), any(), any(), any(), any())
+            }
+        }
+    }
+
+    test("v2 accepts the success field emitted by deprecated Top Tasks builders") {
+        val submissionService = mockk<SubmissionService>()
+        coEvery {
+            submissionService.submit(any(), any(), any(), any(), any())
+        } returns SubmissionOutcome(SaveResult.Created("created-legacy"), "hash-legacy")
+
+        testApplication {
+            application { submissionRoutesTestModule(submissionService) }
+            val response = createTestClient().post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(topTasksPayloadV2(successFieldId = "taskSuccess"))
+            }
+
+            response.status shouldBe HttpStatusCode.Created
+            coVerify(exactly = 1) {
+                submissionService.submit(any(), any(), any(), any(), any())
             }
         }
     }
@@ -674,6 +766,53 @@ class SubmissionV2RoutesTest : FunSpec({
             coVerify(exactly = 1) {
                 submissionService.submit(any(), any(), any(), any(), any())
             }
+        }
+    }
+
+    test("v2 rejects more multi choice answers than maxSelections") {
+        val submissionService = mockk<SubmissionService>()
+
+        testApplication {
+            application { submissionRoutesTestModule(submissionService) }
+            val client = createTestClient()
+
+            val response = client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    submissionPayloadV2Raw(
+                        definitionFieldsJson = """
+                        [
+                          {
+                            "fieldId": "category",
+                            "fieldType": "MULTI_CHOICE",
+                            "optionIds": ["bug", "feature"],
+                            "maxSelections": 1
+                          }
+                        ]
+                        """.trimIndent(),
+                        answersJson = """
+                        [
+                          {
+                            "fieldId": "category",
+                            "fieldType": "MULTI_CHOICE",
+                            "question": {
+                              "label": "Kategori?",
+                              "options": [
+                                { "id": "bug", "label": "Bug" },
+                                { "id": "feature", "label": "Feature" }
+                              ]
+                            },
+                            "value": { "type": "multiChoice", "selectedOptionIds": ["bug", "feature"] }
+                          }
+                        ]
+                        """.trimIndent()
+                    )
+                )
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.bodyAsText() shouldContain "exceeds maxSelections=1"
+            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any()) }
         }
     }
 

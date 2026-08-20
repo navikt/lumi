@@ -1,4 +1,10 @@
-import type { SurveyDocumentV1 } from "@navikt/lumi-survey";
+import {
+  createDiscoverySurveyDocument,
+  createTaskPrioritySurveyDocument,
+  createTopTasksSurveyDocument,
+  type SurveyDocumentV1,
+  validateSurveyDocumentV1,
+} from "@navikt/lumi-survey";
 import { describe, expect, it } from "vitest";
 import {
   addOption,
@@ -7,6 +13,7 @@ import {
   allowedConditionOperators,
   buildVisibleIf,
   changeQuestionType,
+  commitOptionLabel,
   conditionCombinator,
   conditionValueSuggestions,
   createQuestion,
@@ -16,6 +23,8 @@ import {
   findHandoffIssues,
   insertPageAt,
   insertQuestionAt,
+  isRequiredSpecializedQuestion,
+  isSpecializedQuestionContractValid,
   listReferenceableQuestions,
   locateQuestion,
   moveOption,
@@ -27,6 +36,8 @@ import {
   removeOption,
   removePage,
   removeQuestion,
+  repairSpecializedSurveyDocument,
+  SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE,
   setQuestionVisibleIf,
   setSurveyIntro,
   setSurveySuccess,
@@ -529,6 +540,80 @@ describe("option mutations", () => {
     expect(question.options[0]).toEqual({ value: "soke", label: "Søknad" });
   });
 
+  it("replaces a template placeholder once and then keeps the value stable", () => {
+    const document = createTopTasksSurveyDocument({
+      tasks: [
+        {
+          value: SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE,
+          label: "Bytt ut",
+        },
+      ],
+    });
+    const committed = commitOptionLabel(
+      updateOptionLabel(document, "task", "task", 0, "Sende søknad"),
+      "task",
+      "task",
+      0,
+      "Sende søknad",
+    );
+    const renamed = commitOptionLabel(
+      updateOptionLabel(committed, "task", "task", 0, "Søke digitalt"),
+      "task",
+      "task",
+      0,
+      "Søke digitalt",
+    );
+    const first = committed.pages[0].questions[0];
+    const second = renamed.pages[0].questions[0];
+    if (first.type !== "singleChoice" || second.type !== "singleChoice") {
+      throw new Error("wrong type");
+    }
+    expect(first.options[0].value).toBe("sende-soknad");
+    expect(second.options[0].value).toBe("sende-soknad");
+  });
+
+  it("does not accept the template instruction itself as a real task", () => {
+    const document = createTopTasksSurveyDocument({
+      tasks: [
+        {
+          value: SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE,
+          label: "Bytt ut med en oppgave dere vil måle",
+        },
+      ],
+    });
+
+    expect(
+      commitOptionLabel(
+        document,
+        "task",
+        "task",
+        0,
+        "Bytt ut med en oppgave dere vil måle",
+      ),
+    ).toBe(document);
+  });
+
+  it("accepts a real task whose wording starts with 'Bytt ut'", () => {
+    const document = createTopTasksSurveyDocument({
+      tasks: [
+        {
+          value: SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE,
+          label: "Bytt ut med en oppgave dere vil måle",
+        },
+      ],
+    });
+    const committed = commitOptionLabel(
+      updateOptionLabel(document, "task", "task", 0, "Bytt ut passord"),
+      "task",
+      "task",
+      0,
+      "Bytt ut passord",
+    );
+    const task = committed.pages[0].questions[0];
+    if (task.type !== "singleChoice") throw new Error("wrong type");
+    expect(task.options[0].value).toBe("bytt-ut-passord");
+  });
+
   it("updateOptionValue sets the value", () => {
     const document = makeDocument();
     const next = updateOptionValue(
@@ -640,6 +725,279 @@ describe("findHandoffIssues", () => {
     expect(
       issues.some((issue) => /alternativ 1 mangler verdi/i.test(issue.message)),
     ).toBe(true);
+  });
+
+  it.each([
+    createDiscoverySurveyDocument(),
+    createTopTasksSurveyDocument({
+      tasks: [{ value: "apply", label: "Søke" }],
+    }),
+    createTaskPrioritySurveyDocument({
+      tasks: [
+        { value: "apply", label: "Søke" },
+        { value: "status", label: "Sjekke status" },
+      ],
+    }),
+  ])("accepts a complete specialized survey contract", (document) => {
+    expect(findHandoffIssues(document)).toEqual([]);
+  });
+
+  it("flags a specialized survey when a contract field is removed", () => {
+    const document = createDiscoverySurveyDocument();
+    document.pages = document.pages.filter(
+      (page) => page.id !== "success",
+    ) as SurveyDocumentV1["pages"];
+
+    expect(findHandoffIssues(document)).toContainEqual({
+      questionId: null,
+      message:
+        "Oppsettet «Hva kom brukeren for å gjøre?» trenger spørsmålet «success».",
+    });
+  });
+
+  it("flags a specialized outcome field with incompatible choices", () => {
+    const document = createTopTasksSurveyDocument({
+      tasks: [{ value: "apply", label: "Søke" }],
+    });
+    const success = document.pages
+      .flatMap((page) => page.questions)
+      .find((question) => question.id === "success");
+    if (!success || success.type !== "singleChoice") {
+      throw new Error("missing success question");
+    }
+    success.options = [{ value: "done", label: "Ferdig" }];
+
+    expect(findHandoffIssues(document)).toContainEqual({
+      questionId: "success",
+      message:
+        "Spørsmålet «success» må ha nøyaktig svarene Ja, Delvis og Nei for oppsettet «Lyktes brukeren med en kjent oppgave?».",
+    });
+  });
+
+  it("flags extra outcome choices and a repurposed blocker field", () => {
+    const document = createTopTasksSurveyDocument({
+      tasks: [{ value: "apply", label: "Søke" }],
+    });
+    const questions = document.pages.flatMap((page) => page.questions);
+    const success = questions.find((question) => question.id === "success");
+    const blocker = questions.find((question) => question.id === "blocker");
+    if (!success || success.type !== "singleChoice" || !blocker) {
+      throw new Error("missing contract questions");
+    }
+    success.options.push({ value: "unknown", label: "Vet ikke" });
+    Object.assign(blocker, {
+      type: "singleChoice",
+      options: [{ value: "other", label: "Annet" }],
+    });
+
+    expect(findHandoffIssues(document)).toEqual(
+      expect.arrayContaining([
+        {
+          questionId: "success",
+          message:
+            "Spørsmålet «success» må ha nøyaktig svarene Ja, Delvis og Nei for oppsettet «Lyktes brukeren med en kjent oppgave?».",
+        },
+        {
+          questionId: "blocker",
+          message:
+            "Spørsmålet «blocker» har feil type for oppsettet «Lyktes brukeren med en kjent oppgave?».",
+        },
+      ]),
+    );
+  });
+
+  it("keeps example tasks accessible while blocking handoff", () => {
+    const document = createTopTasksSurveyDocument({
+      tasks: [
+        {
+          value: SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE,
+          label: "Bytt ut med en oppgave dere vil måle",
+        },
+      ],
+    });
+
+    expect(findHandoffIssues(document)).toContainEqual({
+      questionId: "task",
+      message:
+        "Bytt ut eksempeloppgaven i alternativ 1 med en oppgave dere vil måle.",
+    });
+  });
+
+  it("still blocks the template instruction if its technical value changed", () => {
+    const document = createTopTasksSurveyDocument({
+      tasks: [
+        {
+          value: "manually-changed",
+          label: "Bytt ut med en oppgave dere vil måle",
+        },
+      ],
+    });
+    expect(findHandoffIssues(document)).toContainEqual({
+      questionId: "task",
+      message:
+        "Bytt ut eksempeloppgaven i alternativ 1 med en oppgave dere vil måle.",
+    });
+  });
+
+  it("identifies only the fixed fields used by specialized analytics", () => {
+    expect(isRequiredSpecializedQuestion("discovery", "task")).toBe(true);
+    expect(isRequiredSpecializedQuestion("topTasks", "success")).toBe(true);
+    expect(isRequiredSpecializedQuestion("taskPriority", "priority")).toBe(
+      true,
+    );
+    expect(isRequiredSpecializedQuestion("topTasks", "blocker")).toBe(false);
+    expect(isRequiredSpecializedQuestion("rating", "rating")).toBe(false);
+  });
+
+  it("unlocks an invalid analysis field and repairs it without removing other questions", () => {
+    const document = createDiscoverySurveyDocument();
+    const task = document.pages[0].questions[0];
+    Object.assign(task, {
+      type: "singleChoice",
+      options: [{ value: "wrong", label: "Feil" }],
+      required: false,
+      visibleIf: { questionId: "success", operator: "EXISTS" },
+    });
+    document.pages[0].questions.push({
+      id: "extra",
+      type: "text",
+      prompt: "Eget spørsmål",
+    });
+
+    expect(isSpecializedQuestionContractValid("discovery", task)).toBe(false);
+    const repaired = repairSpecializedSurveyDocument(document);
+    expect(findHandoffIssues(repaired)).toEqual([]);
+    expect(locateQuestion(repaired, "extra")).not.toBeNull();
+    const repairedTask = repaired.pages
+      .flatMap((page) => page.questions)
+      .find((question) => question.id === "task");
+    expect(repairedTask?.type).toBe("text");
+    expect(repairedTask?.required).toBe(true);
+    expect(repairedTask?.visibleIf).toBeUndefined();
+  });
+
+  it("restores a missing fixed field for a specialized analysis", () => {
+    const document = createDiscoverySurveyDocument();
+    document.pages = document.pages.filter(
+      (page) => !page.questions.some((question) => question.id === "success"),
+    ) as SurveyDocumentV1["pages"];
+    const repaired = repairSpecializedSurveyDocument(document);
+    expect(
+      repaired.pages
+        .flatMap((page) => page.questions)
+        .find((question) => question.id === "success"),
+    ).toMatchObject({ type: "singleChoice", required: true });
+    expect(
+      repaired.pages.flatMap((page) => page.questions).map(({ id }) => id),
+    ).toEqual(["task", "success", "blocker"]);
+    expect(findHandoffIssues(repaired)).toEqual([]);
+  });
+
+  it("preserves authored success option text while repairing its contract", () => {
+    const document = createDiscoverySurveyDocument();
+    const success = document.pages
+      .flatMap((page) => page.questions)
+      .find((question) => question.id === "success");
+    if (!success || success.type !== "singleChoice") {
+      throw new Error("missing success question");
+    }
+    success.required = false;
+    success.options[0] = {
+      ...success.options[0],
+      label: "Ja, helt",
+      description: "Jeg fikk gjort alt",
+    };
+
+    const repaired = repairSpecializedSurveyDocument(document);
+    const repairedSuccess = repaired.pages
+      .flatMap((page) => page.questions)
+      .find((question) => question.id === "success");
+    if (!repairedSuccess || repairedSuccess.type !== "singleChoice") {
+      throw new Error("missing repaired success question");
+    }
+    expect(repairedSuccess.required).toBe(true);
+    expect(
+      repairedSuccess.options.find((option) => option.value === "yes"),
+    ).toEqual({
+      value: "yes",
+      label: "Ja, helt",
+      description: "Jeg fikk gjort alt",
+    });
+  });
+
+  it("uses a unique page id and keeps existing page order while repairing", () => {
+    const document = createDiscoverySurveyDocument();
+    const taskPage = document.pages.find((page) => page.id === "task");
+    const blockerPage = document.pages.find((page) => page.id === "blocker");
+    if (!taskPage || !blockerPage) throw new Error("missing template pages");
+    document.pages = [
+      taskPage,
+      {
+        id: "success",
+        questions: [
+          {
+            id: "extra-before-blocker",
+            type: "text",
+            prompt: "Eget spørsmål",
+            visibleIf: { questionId: "task", operator: "EXISTS" },
+          },
+        ],
+      },
+      blockerPage,
+    ];
+
+    const repaired = repairSpecializedSurveyDocument(document);
+    expect(repaired.pages.map((page) => page.id)).toEqual([
+      "task",
+      "success",
+      "success-2",
+      "blocker",
+    ]);
+    expect(repaired.pages[1].questions[0].id).toBe("extra-before-blocker");
+    expect(() => validateSurveyDocumentV1(repaired)).not.toThrow();
+  });
+
+  it("preserves a real priority task and only fills the missing minimum", () => {
+    const document = createTaskPrioritySurveyDocument({
+      tasks: [
+        { value: "apply", label: "Søke" },
+        { value: "status", label: "Sjekke status" },
+      ],
+      maxSelections: 2,
+    });
+    const priority = document.pages[0].questions[0];
+    if (priority.type !== "multiChoice") throw new Error("missing priority");
+    priority.options = [priority.options[0]];
+
+    const repaired = repairSpecializedSurveyDocument(document);
+    const repairedPriority = repaired.pages[0].questions[0];
+    expect(repairedPriority.type).toBe("multiChoice");
+    if (repairedPriority.type !== "multiChoice") return;
+    expect(repairedPriority.options[0]).toEqual({
+      value: "apply",
+      label: "Søke",
+    });
+    expect(repairedPriority.options).toHaveLength(2);
+    expect(() => validateSurveyDocumentV1(repaired)).not.toThrow();
+  });
+
+  it("requires a real known task when Top Tasks only has the other choice", () => {
+    const document = createTopTasksSurveyDocument({
+      tasks: [{ value: "known", label: "Kjent oppgave" }],
+      includeOtherTask: true,
+    });
+    const task = document.pages
+      .flatMap((page) => page.questions)
+      .find((question) => question.id === "task");
+    if (!task || task.type !== "singleChoice") {
+      throw new Error("missing task question");
+    }
+    task.options = [{ value: "other", label: "Noe annet" }];
+
+    expect(findHandoffIssues(document)).toContainEqual({
+      questionId: "task",
+      message: "Legg til minst én kjent oppgave som brukeren kan velge mellom.",
+    });
   });
 });
 

@@ -161,19 +161,20 @@ For mange alternativer (f.eks. Task Priority-surveyer) er combobox-varianten bed
 
 ```tsx
 {
-  id: "priorities",
+  id: "priority",
   type: "multiChoice",
   variant: "combobox",
-  prompt: "Velg de 5 viktigste oppgavene for deg",
-  maxSelections: 5,
+  prompt: "Hvilke oppgaver er viktigst for deg?",
+  maxSelections: 2,
   randomize: true,
   options: [
     { value: "apply", label: "Søke om sykepenger" },
     { value: "status", label: "Sjekke status" },
-    // ... flere alternativer
   ],
 }
 ```
+
+`maxSelections` må være minst 1 og kan ikke være høyere enn antallet alternativer.
 
 ### Felt for valgspørsmål
 

@@ -11,15 +11,15 @@ Du kan også skrive `SurveyDocumentV1` direkte i kode. Begge veier gir det samme
 ## Lag et utkast i Surveyverksted
 
 1. Åpne [Surveyverksted i produksjon](https://lumi-dashboard.ansatt.nav.no/surveyverksted).
-2. Velg team og gi utkastet et navn.
-3. Legg til sider og spørsmål.
+2. Velg team, gi utkastet et navn og velg hva dere vil finne ut.
+3. Tilpass spørsmålene og oppgavelisten i oppsettet dere valgte.
 4. Bruk forhåndsvisningen mens du jobber. Velg **Prøv i egen fane** for å gå gjennom surveyen slik brukeren gjør.
 5. Legg til en velkomstside eller tilpass bekreftelsen etter innsending når det gir brukeren nødvendig informasjon.
 
 Utkast lagres automatisk for teamet. Det er fortsatt et arbeidsdokument og påvirker ingen survey som allerede er i produksjon.
 
-::: info Sjekk analysetypen før utrulling
-Nye utkast starter som `type: "rating"`. Surveyverksted har foreløpig ikke et eget valg for analysetype. Hvis dere erstatter vurderingsspørsmålet med andre spørsmål, skal utvikleren kontrollere det eksporterte dokumentet og vanligvis endre `type` til `"custom"` før utrulling. Se [Velg hva dere vil måle](/guider/surveytyper).
+::: info Oppsettet følger det dere vil finne ut
+Valget ved opprettelse setter riktig analysetype og feltene analysen trenger. Surveyverksted beskytter disse feltene mot endringer som ville gjort svarene ubrukelige. Er ingen av de ferdige oppsettene riktig, velger dere **Noe annet**.
 :::
 
 ## Del en versjon

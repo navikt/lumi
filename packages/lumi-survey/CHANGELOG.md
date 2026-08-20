@@ -6,10 +6,24 @@ This project follows SemVer.
 
 ## [Unreleased]
 
-## [2.0.2] - 2026-08-20
+## [2.1.0] - 2026-08-20
+
+### Added
+
+- `createRatingSurveyDocument` and `DEFAULT_RATING_SURVEY_DOCUMENT` make the page-based model the recommended starting point for rating surveys too.
+- `createDiscoverySurveyDocument`, `createTopTasksSurveyDocument` and `createTaskPrioritySurveyDocument` provide verified, page-based `SurveyDocumentV1` templates for Lumi's specialized analytics.
+- Specialized survey contracts are checked by the widget before transport so invalid field IDs or answer shapes cannot silently produce empty analytics.
+
+### Fixed
+
+- Specialized fields must now be required and always visible, Task Priority enforces a usable selection limit, optional answers are validated when supplied, and checkbox choices enforce `maxSelections` in the UI as well as at submission.
+- Submission setup errors now settle the widget in its error state and call `onSubmitError` instead of leaving the UI in a permanent submitting state.
+- The new Discovery, Top Tasks and Task Priority document builders use one canonical field vocabulary: `task`, `success`, `blocker` and `priority`. The widget and API continue to accept the field IDs emitted by the deprecated 2.0.1 builders. Specialized analytics require an explicit `type`, so ordinary surveys with similarly named fields are never misclassified.
+- Multi-choice `maxSelections` is now part of the V2 definition contract and is enforced by the API. Existing definitions without the field are enriched once on their first compatible submission; later limit changes are rejected as structural changes.
 
 ### Documentation
 
+- The legacy flat `LumiSurveyConfig`, rating presets and builders are marked deprecated in TypeScript while remaining runtime-compatible in 2.x.
 - The package README now teaches `SurveyDocumentV1` as the only model for new surveys and links to the page, visibility and migration guides. Legacy flat configs, presets, builders and `logic` remain supported in 2.x but are documented only as compatibility APIs.
 - The `LumiSurveyDock` example now uses a consumer-defined `survey` variable instead of the nonexistent `NAV_STANDARD_RATING` symbol.
 

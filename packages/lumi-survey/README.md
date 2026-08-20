@@ -102,6 +102,8 @@ export function FeedbackWidget() {
 
 Hver side blir et steg når dokumentet har flere sider. Legg flere spørsmål på samme side når de skal vises og valideres sammen. Bruk `visibleIf` for å vise bare relevante oppfølgingsspørsmål.
 
+Bruk de sidebaserte malene når dere vil starte fra et kontrollert oppsett: `createRatingSurveyDocument`, `createDiscoverySurveyDocument`, `createTopTasksSurveyDocument` og `createTaskPrioritySurveyDocument`. Se [Velg hva dere vil måle](https://navikt.github.io/lumi/guider/surveytyper) for eksempler og valg av metode.
+
 ## Koble til Lumi
 
 `transport.submit` skal sende `submission.transportPayload` til appens eget endepunkt. Endepunktet gjør token exchange og videresender til Lumi API.
@@ -123,4 +125,4 @@ Se [Koble til backend](https://navikt.github.io/lumi/kom-i-gang/koble-til-backen
 
 ## Eldre surveyer
 
-Flat `LumiSurveyConfig`, presets, builder-funksjoner og `logic` fortsetter å virke i 2.x. Ikke bruk dem i nye surveyer. Se [migreringsguiden](https://navikt.github.io/lumi/referanse/migrer-eldre-survey) når du skal endre en eksisterende survey.
+Flat `LumiSurveyConfig`, eldre presets, eldre builder-funksjoner og `logic` fortsetter å virke i 2.x. Ikke bruk dem i nye surveyer. Funksjonene som ender på `SurveyDocument` er de anbefalte, sidebaserte malene. Se [migreringsguiden](https://navikt.github.io/lumi/referanse/migrer-eldre-survey) når du skal endre en eksisterende survey.

@@ -4,7 +4,10 @@ import type {
   SurveyPageV1,
   SurveyQuestionV1,
 } from "@navikt/lumi-survey";
-import { validateSurveyDocumentV1 } from "@navikt/lumi-survey";
+import {
+  getSpecializedSurveyContractIssues,
+  validateSurveyDocumentV1,
+} from "@navikt/lumi-survey";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useBlocker } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
@@ -48,12 +51,14 @@ import {
   addPage,
   addQuestion,
   changeQuestionType,
+  commitOptionLabel,
   conditionValueSuggestions,
   duplicatePage,
   duplicateQuestion,
   findHandoffIssues,
   insertPageAt,
   insertQuestionAt,
+  isRequiredSpecializedQuestion,
   listReferenceableQuestions,
   locateQuestion,
   type MoveDirection,
@@ -66,6 +71,7 @@ import {
   removeOption,
   removePage,
   removeQuestion,
+  repairSpecializedSurveyDocument,
   setQuestionVisibleIf,
   setSurveyIntro,
   setSurveySuccess,
@@ -174,6 +180,8 @@ function SurveyWorkshopEditor({
   const [undo, setUndo] = useState<UndoState | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [repairNoticeVisible, setRepairNoticeVisible] = useState(false);
+  const repairNoticeRef = useRef<HTMLDivElement>(null);
 
   const revisionsQuery = useQuery({
     queryKey: ["survey-authoring-revisions", project.team, project.id],
@@ -393,6 +401,19 @@ function SurveyWorkshopEditor({
   const selectedPage =
     pages.find((page) => page.id === selectedPageId) ?? pages[0];
   const selectedPageNumber = pages.indexOf(selectedPage) + 1;
+  const protectedPageIds = useMemo(
+    () =>
+      new Set(
+        draft.document.pages
+          .filter((page) =>
+            page.questions.some((question) =>
+              isRequiredSpecializedQuestion(draft.document.type, question.id),
+            ),
+          )
+          .map((page) => page.id),
+      ),
+    [draft.document],
+  );
   const isDirty = fingerprint !== savedFingerprint;
   const totalQuestions = pages.reduce(
     (sum, page) => sum + page.questions.length,
@@ -406,6 +427,14 @@ function SurveyWorkshopEditor({
       return error instanceof Error ? error.message : "Dokumentet er ugyldig";
     }
   }, [draft.document]);
+  const specializedContractIssues = useMemo(
+    () =>
+      getSpecializedSurveyContractIssues(
+        draft.document.type ?? "custom",
+        draft.document.pages.flatMap((page) => page.questions),
+      ),
+    [draft.document],
+  );
 
   // Refs keep option handlers stable without stale closures.
   const draftRef = useRef(draft);
@@ -427,8 +456,18 @@ function SurveyWorkshopEditor({
   }, [selectedPageId]);
 
   const updateDocument = useCallback((document: SurveyDocumentV1) => {
+    setRepairNoticeVisible(false);
     setDraft((current) => ({ ...current, document }));
   }, []);
+
+  useEffect(() => {
+    if (repairNoticeVisible) repairNoticeRef.current?.focus();
+  }, [repairNoticeVisible]);
+
+  const handleRepairSpecializedSurvey = useCallback(() => {
+    updateDocument(repairSpecializedSurveyDocument(draftRef.current.document));
+    setRepairNoticeVisible(true);
+  }, [updateDocument]);
 
   const clearUndo = useCallback(() => setUndo(null), []);
 
@@ -763,6 +802,16 @@ function SurveyWorkshopEditor({
             label,
           ),
         ),
+      onCommitLabel: (index: number, label: string) =>
+        updateDocument(
+          commitOptionLabel(
+            draftRef.current.document,
+            selectedPageRef.current,
+            questionId,
+            index,
+            label,
+          ),
+        ),
       onUpdateValue: (index: number, value: string) =>
         updateDocument(
           updateOptionValue(
@@ -928,11 +977,40 @@ function SurveyWorkshopEditor({
         </Alert>
       ) : null}
 
+      {specializedContractIssues.length > 0 ? (
+        <Alert variant="warning" className={styles.saveAlert}>
+          <HStack gap="space-12" align="center" justify="space-between" wrap>
+            <span>
+              Analyseoppsettet mangler noe som trengs for å kunne dele surveyen.
+              Du kan gjenopprette feltene uten å miste andre spørsmål.
+            </span>
+            <Button
+              type="button"
+              variant="secondary-neutral"
+              size="small"
+              onClick={handleRepairSpecializedSurvey}
+            >
+              Gjenopprett analyseoppsettet
+            </Button>
+          </HStack>
+        </Alert>
+      ) : null}
+
+      {repairNoticeVisible && specializedContractIssues.length === 0 ? (
+        <div ref={repairNoticeRef} tabIndex={-1}>
+          <Alert variant="success" className={styles.saveAlert}>
+            Analyseoppsettet er gjenopprettet. Se gjennom feltene før du deler
+            surveyen.
+          </Alert>
+        </div>
+      ) : null}
+
       <div className={styles.editorGrid}>
         <aside className={styles.outline}>
           <PageRail
             pages={pages}
             selectedPageId={selectedPage.id}
+            protectedPageIds={protectedPageIds}
             onSelect={handleSelectPage}
             onAdd={handleAddPage}
             onMove={handleMovePage}
@@ -950,6 +1028,7 @@ function SurveyWorkshopEditor({
             page={selectedPage}
             pageNumber={selectedPageNumber}
             totalPages={pages.length}
+            surveyType={draft.document.type}
             expandedIds={expandedIds}
             intro={draft.document.intro}
             success={draft.document.success}

@@ -8,6 +8,7 @@ describe("fetchTopTasks contract", () => {
       totalSubmissions: 150,
       tasks: [
         {
+          taskId: "apply",
           task: "Søke om sykepenger",
           totalCount: 45,
           successCount: 32,
@@ -21,6 +22,7 @@ describe("fetchTopTasks contract", () => {
           },
         },
         {
+          taskId: "parental-benefit",
           task: "Finne informasjon om foreldrepenger",
           totalCount: 30,
           successCount: 25,
@@ -76,6 +78,7 @@ describe("fetchTopTasks contract", () => {
       totalSubmissions: 100,
       tasks: [
         {
+          taskId: "main-task",
           task: "Hovedoppgave",
           totalCount: 100,
           successCount: 80,

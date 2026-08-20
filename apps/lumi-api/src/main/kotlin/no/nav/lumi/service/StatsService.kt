@@ -155,8 +155,8 @@ class StatsService(
                 toDate = query.toDate,
                 days = days
             ),
-            surveyType = stats.surveyType?.let { 
-                try { SurveyType.valueOf(it.uppercase()) } catch(e: Exception) { SurveyType.CUSTOM }
+            surveyType = stats.surveyType?.let {
+                SurveyType.fromWireName(it) ?: SurveyType.CUSTOM
             },
             ratingByDate = if (stats.masked) emptyMap() else analytics?.ratingByDate.orEmpty(),
             byDevice = if (stats.masked) emptyMap() else analytics?.byDevice.orEmpty(),

@@ -24,6 +24,15 @@ object SubmissionV2Validator {
 
         val definition = submission.definition.toSurveyDefinition(submission.surveyId)
         SurveyDefinitionValidator.validateDefinition(definition)
+        SpecializedSurveyContractValidator.validateDefinition(
+            surveyType = submission.surveyType,
+            fields = submission.definition.fields
+        )
+        SpecializedSurveyContractValidator.validateAnswers(
+            surveyType = submission.surveyType,
+            answers = submission.answers,
+            definitionValidated = true,
+        )
 
         val fieldIds = definition.fields.map { it.fieldId }.toSet()
         val invalidFieldIds = submission.answers.map { it.fieldId }.filterNot(fieldIds::contains)

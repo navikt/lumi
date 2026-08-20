@@ -24,6 +24,7 @@ describe("buildDefinitionBlock", () => {
           { value: "ui", label: "UI" },
           { value: "perf", label: "Performance" },
         ],
+        maxSelections: 1,
       },
     ];
 
@@ -54,6 +55,7 @@ describe("buildDefinitionBlock", () => {
       fieldId: "tags",
       fieldType: "MULTI_CHOICE",
       optionIds: ["ui", "perf"],
+      maxSelections: 1,
     });
   });
 

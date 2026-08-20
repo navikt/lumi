@@ -11,6 +11,7 @@ import org.jetbrains.exposed.v1.jdbc.*
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.Instant
+import java.time.OffsetDateTime
 
 class FeedbackStatsRepository {
     private val json = Json { ignoreUnknownKeys = true }
@@ -279,13 +280,10 @@ class FeedbackStatsRepository {
         val dtos = records.map { it.toDto() }
         val filteredRecords = query.task?.let { taskFilter ->
             dtos.filter { feedback ->
-                val taskAnswer = feedback.answers.find { a ->
-                    a.fieldId in TopTasksFieldIds.task
-                }
+                val taskAnswer = SpecializedSurveyFieldIds.findTask(feedback.surveyType, feedback.answers)
                 if (taskAnswer != null && taskAnswer.fieldType == FieldType.SINGLE_CHOICE) {
                     val selectedId = (taskAnswer.value as? AnswerValue.SingleChoice)?.selectedOptionId
-                    val option = taskAnswer.question.options?.find { it.id == selectedId }
-                    option?.label == taskFilter
+                    selectedId == taskFilter
                 } else {
                     false
                 }
@@ -317,9 +315,7 @@ class FeedbackStatsRepository {
         for (row in distinctRows) {
             if (row.surveyId.isBlank()) continue
             if (seenSurveys.containsKey(row.surveyId)) continue
-            val parsedType = row.surveyType?.let {
-                try { SurveyType.valueOf(it.uppercase()) } catch (_: Exception) { SurveyType.CUSTOM }
-            } ?: SurveyType.CUSTOM
+            val parsedType = SurveyType.fromWireName(row.surveyType) ?: SurveyType.CUSTOM
             seenSurveys[row.surveyId] = parsedType
             surveyTypeCounts[parsedType] = (surveyTypeCounts[parsedType] ?: 0) + 1
         }
@@ -347,16 +343,16 @@ class FeedbackStatsRepository {
         val voteCounts = mutableMapOf<String, Int>()
         val taskLabels = mutableMapOf<String, String>()
 
-        for (feedback in dtos) {
-            val priorityAnswer = feedback.answers.find { a ->
-                a.fieldId == "priority" && a.fieldType == FieldType.MULTI_CHOICE
-            } ?: continue
+        for (feedback in dtos.sortedBy { OffsetDateTime.parse(it.submittedAt) }) {
+            val priorityAnswer = SpecializedSurveyFieldIds.findPriority(feedback.answers)
+                ?.takeIf { it.fieldType == FieldType.MULTI_CHOICE }
+                ?: continue
 
             val selectedIds = (priorityAnswer.value as? AnswerValue.MultiChoice)?.selectedOptionIds.orEmpty()
             if (selectedIds.isEmpty()) continue
 
             priorityAnswer.question.options?.forEach { opt ->
-                taskLabels.putIfAbsent(opt.id, opt.label)
+                taskLabels[opt.id] = opt.label
             }
 
             for (taskId in selectedIds) {
@@ -368,6 +364,7 @@ class FeedbackStatsRepository {
             .sortedByDescending { it.value }
             .map { (taskId, votes) ->
                 TaskVote(
+                    taskId = taskId,
                     task = taskLabels[taskId] ?: taskId,
                     votes = votes,
                     percentage = 0
@@ -420,14 +417,12 @@ class FeedbackStatsRepository {
 
         for (feedback in dtos) {
             val blockerAnswer = feedback.answers.find { a ->
-                a.fieldId in TopTasksFieldIds.blocker
+                a.fieldId == SpecializedSurveyFieldIds.BLOCKER
             }
             val blockerText = (blockerAnswer?.value as? AnswerValue.Text)?.text?.trim().orEmpty()
             if (blockerText.isBlank()) continue
 
-            val taskAnswer = feedback.answers.find { a ->
-                a.fieldId in TopTasksFieldIds.task
-            }
+            val taskAnswer = SpecializedSurveyFieldIds.findTask(feedback.surveyType, feedback.answers)
 
             val taskLabel = when {
                 taskAnswer != null && taskAnswer.fieldType == FieldType.SINGLE_CHOICE -> {
@@ -438,7 +433,8 @@ class FeedbackStatsRepository {
                 else -> "Ukjent oppgave"
             }
 
-            if (query.task != null && taskLabel != query.task) continue
+            val taskId = (taskAnswer?.value as? AnswerValue.SingleChoice)?.selectedOptionId
+            if (query.task != null && taskId != query.task) continue
 
             blockerResponses.add(
                 RecentBlockerResponse(

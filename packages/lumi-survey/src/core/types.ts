@@ -71,12 +71,18 @@ export type VisibleIfCondition = LogicLeafCondition | LogicConditionGroup;
  * - "JUMP_TO": Jump to a specific question by ID
  * - "SKIP": Skip the next question (go to currentIndex + 2)
  * - "SUBMIT": Submit the survey immediately
+ *
+ * @deprecated Compatibility type for legacy flat surveys. New surveys should
+ * use `SurveyDocumentV1` pages and `visibleIf` instead of imperative logic.
  */
 export type LogicActionType = "JUMP_TO" | "SKIP" | "SUBMIT";
 
 /**
  * Action to perform when a logic condition is met.
  * Uses discriminated unions to ensure targetId is provided for JUMP_TO.
+ *
+ * @deprecated Compatibility type for legacy flat surveys. New surveys should
+ * use `SurveyDocumentV1` pages and `visibleIf`.
  */
 export type LogicAction =
   | {
@@ -97,6 +103,9 @@ export type LogicAction =
 /**
  * A branching rule that controls survey navigation.
  * Rules are evaluated in order; first matching rule wins.
+ *
+ * @deprecated Compatibility type for legacy flat surveys. New surveys should
+ * model the flow with `SurveyDocumentV1` pages and `visibleIf`.
  */
 export interface LogicRule {
   /** Condition to evaluate (leaf only — `logic` does not support any/all groups) */
@@ -120,6 +129,9 @@ export interface LumiSurveyQuestionBase<TType extends LumiSurveyQuestionType> {
    * Optional branching rules evaluated after this question is answered.
    * Rules are evaluated in order; first matching rule determines navigation.
    * If no rules match (or logic is undefined), proceeds to next question.
+   *
+   * @deprecated Supported for existing flat surveys only. New surveys should
+   * use `SurveyDocumentV1` pages and `visibleIf`.
    */
   logic?: LogicRule[];
   /**
@@ -266,7 +278,7 @@ export type LumiSurveyAnswerValue = string | number | string[];
  * - "rating": Classic 1-5 scale with optional text (current default behavior)
  * - "topTasks": Task selection + success measurement for conversion tracking
  * - "discovery": Free-text task discovery to identify what users are trying to do
- * - "taskPriority": Users select their top 5 most important tasks from a list
+ * - "taskPriority": Users select a configured number of important tasks from a list
  * - "custom": Any other question combination
  */
 export type SurveyType =
@@ -310,7 +322,12 @@ export type TransportFieldDefinition =
     }
   | { fieldId: string; fieldType: "TEXT" }
   | { fieldId: string; fieldType: "SINGLE_CHOICE"; optionIds: string[] }
-  | { fieldId: string; fieldType: "MULTI_CHOICE"; optionIds: string[] };
+  | {
+      fieldId: string;
+      fieldType: "MULTI_CHOICE";
+      optionIds: string[];
+      maxSelections?: number;
+    };
 
 /**
  * V2 submission definition block containing survey structure.

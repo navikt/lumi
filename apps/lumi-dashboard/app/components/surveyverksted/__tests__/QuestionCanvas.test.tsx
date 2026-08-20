@@ -2,7 +2,10 @@ import type { SurveyPageV1 } from "@navikt/lumi-survey";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { QuestionCanvas } from "~/components/surveyverksted/QuestionCanvas";
-import type { ReferenceableQuestion } from "~/utils/surveyDocument";
+import {
+  type ReferenceableQuestion,
+  SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE,
+} from "~/utils/surveyDocument";
 
 const page: SurveyPageV1 = {
   id: "page-1",
@@ -34,6 +37,7 @@ function canvasProps(
     page,
     pageNumber: 1,
     totalPages: 1,
+    surveyType: "custom" as const,
     expandedIds: new Set(["q2"]),
     focusQuestionId: null,
     undo: null,
@@ -57,6 +61,7 @@ function canvasProps(
     optionHandlersFor: () => ({
       onAdd: noop,
       onUpdateLabel: noop,
+      onCommitLabel: noop,
       onUpdateValue: noop,
       onRemove: noop,
       onMove: noop,
@@ -112,5 +117,75 @@ describe("QuestionCanvas condition freshness", () => {
       <QuestionCanvas {...stableProps} referenceableByQuestion={asText} />,
     );
     expect(screen.getByText(/passer ikke spørsmålet/i)).toBeVisible();
+  });
+});
+
+describe("QuestionCanvas specialized contracts", () => {
+  it("locks the fixed analysis field but leaves its wording editable", () => {
+    const taskPage: SurveyPageV1 = {
+      id: "task",
+      questions: [
+        {
+          id: "task",
+          type: "text",
+          prompt: "Hva kom du for å gjøre?",
+          required: true,
+        },
+      ],
+    };
+    render(
+      <QuestionCanvas
+        {...canvasProps(new Map())}
+        page={taskPage}
+        surveyType="discovery"
+        expandedIds={new Set(["task"])}
+      />,
+    );
+
+    expect(screen.getByLabelText("Spørsmålstekst")).toBeEnabled();
+    expect(
+      screen.getByRole("checkbox", { name: "Må besvares" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Slett spørsmålet" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText(/må være med for at analysen skal virke/i),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps a template option value hidden until its instruction is replaced", () => {
+    const taskPage: SurveyPageV1 = {
+      id: "task",
+      questions: [
+        {
+          id: "task",
+          type: "singleChoice",
+          prompt: "Hva skulle du gjøre?",
+          required: true,
+          options: [
+            {
+              value: SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE,
+              label: "Bytt ut med en oppgave dere vil måle",
+            },
+          ],
+        },
+      ],
+    };
+    render(
+      <QuestionCanvas
+        {...canvasProps(new Map())}
+        page={taskPage}
+        surveyType="topTasks"
+        expandedIds={new Set(["task"])}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /endre verdi for alternativ 1/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue("Bytt ut med en oppgave dere vil måle"),
+    ).toBeEnabled();
   });
 });

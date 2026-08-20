@@ -27,6 +27,7 @@ class TaskPriorityRoutesTest : FunSpec({
     fun taskPriorityJson(
         surveyId: String,
         selectedTaskIds: List<String>,
+        primaryTaskLabel: String = "Sjekke utbetalinger",
     ): String {
         val selectedIdsArray = selectedTaskIds.joinToString { "\"$it\"" }
 
@@ -43,7 +44,7 @@ class TaskPriorityRoutesTest : FunSpec({
                   "question": {
                     "label": "Hva er de viktigste tingene du trenger å gjøre på nav.no?",
                     "options": [
-                      {"id": "sjekke-utbetaling", "label": "Sjekke utbetalinger"},
+                      {"id": "sjekke-utbetaling", "label": "$primaryTaskLabel"},
                       {"id": "sok-dagpenger", "label": "Søke dagpenger"},
                       {"id": "melde-sykefravaer", "label": "Melde sykefravær"},
                       {"id": "sjekke-status", "label": "Sjekke søknadsstatus"},
@@ -147,6 +148,54 @@ class TaskPriorityRoutesTest : FunSpec({
             // sjekke-status should have 1 vote
             val thirdTask = stats.tasks.first { it.task == "Sjekke søknadsstatus" }
             thirdTask.votes shouldBe 1
+        }
+    }
+
+    test("GET /api/v1/intern/stats/task-priority returns the stable id and newest label") {
+        testApplication {
+            application { testModule() }
+            val team = "flex"
+            val app = "spinnsyn"
+            val surveyId = "survey-priority-label"
+            val oldTime = OffsetDateTime.parse("2025-10-26T02:30:00+02:00")
+            val newTime = OffsetDateTime.parse("2025-10-26T02:15:00+01:00")
+
+            repeat(4) { index ->
+                insertTestFeedbackWithJson(
+                    team = team,
+                    app = app,
+                    feedbackJson = taskPriorityJson(
+                        surveyId,
+                        listOf("sjekke-utbetaling"),
+                        primaryTaskLabel = "Gammel tekst",
+                    ),
+                    opprettet = oldTime.plusMinutes(index.toLong())
+                )
+            }
+            insertTestFeedbackWithJson(
+                team = team,
+                app = app,
+                feedbackJson = taskPriorityJson(
+                    surveyId,
+                    listOf("sjekke-utbetaling"),
+                    primaryTaskLabel = "Ny tekst",
+                ),
+                opprettet = newTime
+            )
+
+            val response = createTestClient().get(
+                "/api/v1/intern/stats/task-priority?team=$team&app=$app&surveyId=$surveyId"
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+            response.status shouldBe HttpStatusCode.OK
+            val stats = json.decodeFromString<TaskPriorityResponse>(response.bodyAsText())
+            stats.tasks.single() shouldBe no.nav.lumi.domain.TaskVote(
+                taskId = "sjekke-utbetaling",
+                task = "Ny tekst",
+                votes = 5,
+                percentage = 100,
+            )
         }
     }
 

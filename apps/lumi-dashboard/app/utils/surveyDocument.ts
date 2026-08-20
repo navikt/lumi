@@ -1,14 +1,275 @@
-import type {
-  SurveyDocumentV1,
-  SurveyIntroV1,
-  SurveyPageV1,
-  SurveyQuestionV1,
-  SurveySuccessV1,
+import {
+  createDiscoverySurveyDocument,
+  createTaskPrioritySurveyDocument,
+  createTopTasksSurveyDocument,
+  getSpecializedSurveyContractIssues,
+  SPECIALIZED_SURVEY_FIELD_IDS,
+  type SurveyDocumentV1,
+  type SurveyIntroV1,
+  type SurveyPageV1,
+  type SurveyQuestionV1,
+  type SurveySuccessV1,
 } from "@navikt/lumi-survey";
 
 export type QuestionTypeId = "rating" | "text" | "singleChoice" | "multiChoice";
 export type MoveDirection = "up" | "down";
 export type IdFactory = () => string;
+
+export const SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE = "__lumi_example_task__";
+export const SURVEY_TEMPLATE_PLACEHOLDER_LABELS = [
+  "Bytt ut med en oppgave dere vil måle",
+  "Bytt ut med den første oppgaven",
+  "Bytt ut med den andre oppgaven",
+] as const;
+
+export function isSurveyTemplatePlaceholderValue(value: string): boolean {
+  return value.startsWith(SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE);
+}
+
+export function isSurveyTemplatePlaceholderLabel(label: string): boolean {
+  const normalized = label.trim();
+  return SURVEY_TEMPLATE_PLACEHOLDER_LABELS.some(
+    (placeholder) => placeholder === normalized,
+  );
+}
+
+export function isRequiredSpecializedQuestion(
+  surveyType: SurveyDocumentV1["type"],
+  questionId: string,
+): boolean {
+  if (surveyType === "discovery" || surveyType === "topTasks") {
+    return (
+      questionId === SPECIALIZED_SURVEY_FIELD_IDS.task ||
+      questionId === SPECIALIZED_SURVEY_FIELD_IDS.success
+    );
+  }
+  return (
+    surveyType === "taskPriority" &&
+    questionId === SPECIALIZED_SURVEY_FIELD_IDS.priority
+  );
+}
+
+export function isSpecializedQuestionContractValid(
+  surveyType: SurveyDocumentV1["type"],
+  question: SurveyQuestionV1,
+): boolean {
+  if (!isRequiredSpecializedQuestion(surveyType, question.id)) return false;
+  if (question.required !== true || question.visibleIf !== undefined)
+    return false;
+  if (surveyType === "discovery" && question.id === "task") {
+    return question.type === "text";
+  }
+  if (surveyType === "topTasks" && question.id === "task") {
+    return question.type === "singleChoice";
+  }
+  if (question.id === "success") {
+    return (
+      question.type === "singleChoice" &&
+      question.options.length === 3 &&
+      new Set(question.options.map((option) => option.value)).size === 3 &&
+      question.options.every((option) =>
+        ["yes", "partial", "no"].includes(option.value),
+      )
+    );
+  }
+  return surveyType === "taskPriority" && question.type === "multiChoice";
+}
+
+/** Restores only the technical fields a specialized analysis needs. */
+export function repairSpecializedSurveyDocument(
+  document: SurveyDocumentV1,
+): SurveyDocumentV1 {
+  const template = (() => {
+    if (document.type === "discovery") return createDiscoverySurveyDocument();
+    if (document.type === "topTasks") {
+      return createTopTasksSurveyDocument({
+        tasks: [
+          {
+            value: SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE,
+            label: SURVEY_TEMPLATE_PLACEHOLDER_LABELS[0],
+          },
+        ],
+        includeOtherTask: true,
+      });
+    }
+    if (document.type === "taskPriority") {
+      return createTaskPrioritySurveyDocument({
+        tasks: [
+          {
+            value: `${SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE}-1`,
+            label: SURVEY_TEMPLATE_PLACEHOLDER_LABELS[1],
+          },
+          {
+            value: `${SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE}-2`,
+            label: SURVEY_TEMPLATE_PLACEHOLDER_LABELS[2],
+          },
+        ],
+      });
+    }
+    return null;
+  })();
+  if (!template) return document;
+
+  const templateQuestions = new Map(
+    template.pages.flatMap((page) =>
+      page.questions.map((question) => [question.id, question] as const),
+    ),
+  );
+  const requiredIds = new Set(
+    [...templateQuestions.keys()].filter((id) =>
+      isRequiredSpecializedQuestion(document.type, id),
+    ),
+  );
+  const seen = new Set<string>();
+  const repairQuestion = (current: SurveyQuestionV1): SurveyQuestionV1 => {
+    const fallback = templateQuestions.get(current.id);
+    if (!fallback) return current;
+    const common = {
+      ...fallback,
+      prompt: current.prompt.trim() ? current.prompt : fallback.prompt,
+      description: current.description,
+      analyticsId: current.analyticsId,
+    };
+    if (
+      current.id === SPECIALIZED_SURVEY_FIELD_IDS.task &&
+      document.type === "topTasks" &&
+      current.type === "singleChoice"
+    ) {
+      const options = current.options.some((option) => option.value !== "other")
+        ? current.options
+        : [
+            ...current.options,
+            {
+              value: SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE,
+              label: SURVEY_TEMPLATE_PLACEHOLDER_LABELS[0],
+            },
+          ];
+      return {
+        ...current,
+        options,
+        required: true,
+        visibleIf: undefined,
+      };
+    }
+    if (
+      current.id === SPECIALIZED_SURVEY_FIELD_IDS.priority &&
+      current.type === "multiChoice"
+    ) {
+      const fallbackOptions =
+        fallback.type === "multiChoice" ? fallback.options : [];
+      const options = [...current.options];
+      for (const option of fallbackOptions) {
+        if (options.length >= 2) break;
+        if (!options.some((candidate) => candidate.value === option.value)) {
+          options.push(option);
+        }
+      }
+      return {
+        ...current,
+        options,
+        required: true,
+        visibleIf: undefined,
+        maxSelections:
+          current.maxSelections && current.maxSelections <= options.length
+            ? current.maxSelections
+            : Math.min(5, options.length),
+      };
+    }
+    if (current.id === SPECIALIZED_SURVEY_FIELD_IDS.success) {
+      const currentOptions =
+        current.type === "singleChoice"
+          ? new Map(current.options.map((option) => [option.value, option]))
+          : new Map<string, never>();
+      if (fallback.type !== "singleChoice") return common;
+      return {
+        ...fallback,
+        prompt: current.prompt.trim() ? current.prompt : fallback.prompt,
+        description: current.description,
+        analyticsId: current.analyticsId,
+        randomize:
+          current.type === "singleChoice" ? current.randomize : undefined,
+        options: fallback.options.map((option) => ({
+          ...option,
+          ...currentOptions.get(option.value),
+          value: option.value,
+          label: currentOptions.get(option.value)?.label.trim() || option.label,
+        })),
+        required: true,
+        visibleIf: undefined,
+      };
+    }
+    return { ...common, required: true, visibleIf: undefined };
+  };
+
+  const pages = document.pages
+    .map((page) => ({
+      ...page,
+      questions: page.questions.flatMap((question) => {
+        if (!templateQuestions.has(question.id)) return [question];
+        if (seen.has(question.id)) return [];
+        seen.add(question.id);
+        return [repairQuestion(question)];
+      }) as SurveyPageV1["questions"],
+    }))
+    .filter((page) => page.questions.length > 0);
+
+  const uniquePageId = (preferred: string) => {
+    const existing = new Set(pages.map((page) => page.id));
+    if (!existing.has(preferred)) return preferred;
+    let suffix = 2;
+    while (existing.has(`${preferred}-${suffix}`)) suffix += 1;
+    return `${preferred}-${suffix}`;
+  };
+  const referencesQuestion = (
+    question: SurveyQuestionV1,
+    referencedId: string,
+  ) => {
+    const condition = question.visibleIf;
+    if (!condition) return false;
+    if ("questionId" in condition) return condition.questionId === referencedId;
+    if (!("all" in condition) && !("any" in condition)) return false;
+    const leaves = "all" in condition ? condition.all : condition.any;
+    return leaves.some(
+      (leaf) => "questionId" in leaf && leaf.questionId === referencedId,
+    );
+  };
+  const insertionIndexFor = (questionId: string) => {
+    if (
+      questionId === SPECIALIZED_SURVEY_FIELD_IDS.task ||
+      questionId === SPECIALIZED_SURVEY_FIELD_IDS.priority
+    ) {
+      return 0;
+    }
+    if (questionId === SPECIALIZED_SURVEY_FIELD_IDS.success) {
+      const dependentPageIndex = pages.findIndex((page) =>
+        page.questions.some(
+          (question) =>
+            question.id === SPECIALIZED_SURVEY_FIELD_IDS.blocker ||
+            referencesQuestion(question, questionId),
+        ),
+      );
+      if (dependentPageIndex >= 0) return dependentPageIndex;
+    }
+    return pages.length;
+  };
+
+  for (const templatePage of template.pages) {
+    for (const question of templatePage.questions) {
+      if (!requiredIds.has(question.id) || seen.has(question.id)) continue;
+      const pageId = uniquePageId(templatePage.id);
+      pages.splice(insertionIndexFor(question.id), 0, {
+        ...templatePage,
+        id: pageId,
+        questions: [question],
+      });
+      seen.add(question.id);
+    }
+  }
+  return {
+    ...document,
+    pages: pages as SurveyDocumentV1["pages"],
+  };
+}
 
 type PageList = SurveyDocumentV1["pages"];
 type QuestionList = SurveyPageV1["questions"];
@@ -442,6 +703,40 @@ export function updateOptionLabel(
   });
 }
 
+/**
+ * Replaces a template-only option identity after the designer has supplied a
+ * real label. Later label edits keep the generated identity stable.
+ */
+export function commitOptionLabel(
+  document: SurveyDocumentV1,
+  pageId: string,
+  questionId: string,
+  optionIndex: number,
+  label: string,
+): SurveyDocumentV1 {
+  return updateChoiceOptions(document, pageId, questionId, (options) => {
+    const option = options[optionIndex];
+    if (
+      !option ||
+      !label.trim() ||
+      isSurveyTemplatePlaceholderLabel(label) ||
+      !isSurveyTemplatePlaceholderValue(option.value)
+    ) {
+      return null;
+    }
+    const existingValues = options
+      .filter((_, index) => index !== optionIndex)
+      .map((candidate) => candidate.value);
+    const next = [...options];
+    next[optionIndex] = {
+      ...option,
+      label,
+      value: slugifyOptionValue(label, existingValues),
+    };
+    return next;
+  });
+}
+
 export function updateOptionValue(
   document: SurveyDocumentV1,
   pageId: string,
@@ -579,7 +874,7 @@ export interface HandoffIssue {
  * Release-gate validation for freezing a revision. The runtime validator
  * only checks types (an empty prompt is a valid string), so the workshop
  * adds the semantic bar a handoff deserves. Deliberately NOT part of the
- * widget package — production consumers stay untouched.
+ * widget's structural validator, so drafts remain editable until handoff.
  */
 function leafConditionIssues(
   question: SurveyQuestionV1,
@@ -691,6 +986,17 @@ export function findHandoffIssues(document: SurveyDocumentV1): HandoffIssue[] {
       questionById.set(question.id, question);
     }
   }
+  for (const contractIssue of getSpecializedSurveyContractIssues(
+    document.type ?? "custom",
+    [...questionById.values()],
+  )) {
+    issues.push({
+      questionId: questionById.has(contractIssue.fieldId)
+        ? contractIssue.fieldId
+        : null,
+      message: contractIssue.message,
+    });
+  }
   for (const page of document.pages) {
     for (const question of page.questions) {
       issues.push(...leafConditionIssues(question, questionById));
@@ -701,7 +1007,35 @@ export function findHandoffIssues(document: SurveyDocumentV1): HandoffIssue[] {
         });
       }
       if (question.type === "singleChoice" || question.type === "multiChoice") {
+        if (question.options.length === 0) {
+          issues.push({
+            questionId: question.id,
+            message: "Spørsmålet må ha minst ett svaralternativ.",
+          });
+        }
+        if (
+          document.type === "topTasks" &&
+          question.id === "task" &&
+          question.options.every((option) => option.value === "other")
+        ) {
+          issues.push({
+            questionId: question.id,
+            message:
+              "Legg til minst én kjent oppgave som brukeren kan velge mellom.",
+          });
+        }
         question.options.forEach((option, index) => {
+          if (
+            isSurveyTemplatePlaceholderValue(option.value) ||
+            isSurveyTemplatePlaceholderLabel(option.label)
+          ) {
+            issues.push({
+              questionId: question.id,
+              message: `Bytt ut eksempeloppgaven i alternativ ${index + 1} med en oppgave dere vil ${
+                document.type === "taskPriority" ? "prioritere" : "måle"
+              }.`,
+            });
+          }
           if (!option.label.trim()) {
             issues.push({
               questionId: question.id,

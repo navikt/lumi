@@ -18,6 +18,7 @@ import styles from "./verksted.module.css";
 export interface PageRailProps {
   pages: readonly SurveyPageV1[];
   selectedPageId: string;
+  protectedPageIds?: ReadonlySet<string>;
   onSelect: (pageId: string) => void;
   onAdd: () => void;
   onMove: (pageId: string, direction: MoveDirection) => void;
@@ -29,6 +30,7 @@ export interface PageRailProps {
 export const PageRail = memo(function PageRail({
   pages,
   selectedPageId,
+  protectedPageIds = new Set(),
   onSelect,
   onAdd,
   onMove,
@@ -65,6 +67,7 @@ export const PageRail = memo(function PageRail({
               index={index}
               totalPages={pages.length}
               selected={page.id === selectedPageId}
+              protectedFromDeletion={protectedPageIds.has(page.id)}
               onSelect={onSelect}
               onMove={onMove}
               onDuplicate={onDuplicate}
@@ -82,6 +85,7 @@ const RailItem = memo(function RailItem({
   index,
   totalPages,
   selected,
+  protectedFromDeletion,
   onSelect,
   onMove,
   onDuplicate,
@@ -91,6 +95,7 @@ const RailItem = memo(function RailItem({
   index: number;
   totalPages: number;
   selected: boolean;
+  protectedFromDeletion: boolean;
   onSelect: (pageId: string) => void;
   onMove: (pageId: string, direction: MoveDirection) => void;
   onDuplicate: (pageId: string) => void;
@@ -181,11 +186,13 @@ const RailItem = memo(function RailItem({
           <ActionMenu.Divider />
           <ActionMenu.Item
             variant="danger"
-            disabled={totalPages === 1}
+            disabled={totalPages === 1 || protectedFromDeletion}
             onSelect={() => onDelete(page.id)}
             icon={<TrashIcon aria-hidden />}
           >
-            Slett side
+            {protectedFromDeletion
+              ? "Kan ikke slettes – brukes i analysen"
+              : "Slett side"}
           </ActionMenu.Item>
         </ActionMenu.Content>
       </ActionMenu>

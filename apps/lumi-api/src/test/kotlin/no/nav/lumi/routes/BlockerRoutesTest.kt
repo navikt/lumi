@@ -60,7 +60,7 @@ class BlockerRoutesTest : FunSpec({
                   "value": {"type": "singleChoice", "selectedOptionId": "$selectedTaskId"}
                 },
                 {
-                  "fieldId": "taskSuccess",
+                  "fieldId": "success",
                   "fieldType": "SINGLE_CHOICE",
                   "question": {
                     "label": "Klarte du det?",

@@ -107,7 +107,7 @@ Debug-verdier vises kun i detaljvisningen for enkeltinnsendinger. De brukes *ikk
 ```tsx
 <LumiSurveyDock
   surveyId="dine-sykmeldte-tilbakemelding"
-  survey={DEFAULT_SURVEY_RATING}
+  survey={survey}
   transport={transport}
   behavior={{ collectLocation: false }}
   context={{

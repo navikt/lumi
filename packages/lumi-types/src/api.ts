@@ -67,6 +67,7 @@ export interface MultiChoiceSubmissionFieldDefinition
   extends SubmissionFieldDefinitionBase {
   fieldType: "MULTI_CHOICE";
   optionIds: string[];
+  maxSelections?: number;
 }
 
 export interface DateSubmissionFieldDefinition
@@ -327,6 +328,9 @@ export interface TeamsAndApps {
 // ============================================
 
 export interface TopTaskStats {
+  /** Stable option value used for filtering and aggregation. */
+  taskId: string;
+  /** Display label captured from the newest matching response. */
   task: string;
   totalCount: number;
   successCount: number;
@@ -510,6 +514,7 @@ export interface UpdateThemeInput {
 // ============================================
 
 export interface TaskVote {
+  taskId: string;
   task: string;
   votes: number;
   percentage: number;

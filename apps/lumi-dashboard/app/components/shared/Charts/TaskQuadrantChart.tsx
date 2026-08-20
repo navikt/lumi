@@ -52,6 +52,7 @@ const VOLUME_THRESHOLD = 50; // Tasks with >= 50 responses are "high volume"
 const SUCCESS_THRESHOLD = 70; // Tasks with < 70% success need attention
 
 interface TaskDataPoint {
+  id: string;
   name: string;
   volume: number;
   successRate: number;
@@ -106,8 +107,8 @@ function getZoneTextClass(zone: TaskDataPoint["zone"]): string {
 
 interface TaskQuadrantChartProps {
   /** Callback when a task point is clicked */
-  onTaskSelect?: (taskName: string | null) => void;
-  /** Currently selected task name */
+  onTaskSelect?: (taskId: string | null) => void;
+  /** Currently selected stable task id */
   selectedTask?: string | null;
 }
 
@@ -132,6 +133,7 @@ export function TaskQuadrantChart({
 
   // Transform tasks to scatter data
   const data: TaskDataPoint[] = stats.tasks.map((task) => ({
+    id: task.taskId,
     name: task.task,
     volume: task.totalCount,
     successRate: Math.round(task.successRate * 100),
@@ -147,7 +149,7 @@ export function TaskQuadrantChart({
   const handleClick = (data: TaskDataPoint) => {
     if (onTaskSelect) {
       // Toggle selection: if clicking the same task, deselect
-      onTaskSelect(data.name === selectedTask ? null : data.name);
+      onTaskSelect(data.id === selectedTask ? null : data.id);
     }
   };
 
@@ -156,7 +158,7 @@ export function TaskQuadrantChart({
       return null;
     }
 
-    const isSelected = payload.name === selectedTask;
+    const isSelected = payload.id === selectedTask;
     const fill = getZoneColor(payload.zone, colors);
     const pointSize = typeof size === "number" ? size : 100;
     const radius = Math.max(4, Math.sqrt(pointSize / Math.PI));

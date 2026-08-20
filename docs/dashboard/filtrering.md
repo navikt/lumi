@@ -60,7 +60,7 @@ Filtrer ned til en spesifikk survey ved å velge survey-ID.
 
 ### Top Tasks drill-down
 
-For Top Tasks-surveys kan du filtrere på en spesifikk oppgave (task) for å se detaljstatistikk.
+For Top Tasks-surveys kan du filtrere på en spesifikk oppgave for å se detaljstatistikk. URL-en lagrer den stabile svarverdien (`taskId`), mens dashboardet viser teksten designeren har gitt oppgaven. Dermed fortsetter filteret å virke hvis teksten forbedres senere.
 
 ## Sortering og paginering
 

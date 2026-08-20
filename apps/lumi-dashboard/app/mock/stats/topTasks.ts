@@ -6,6 +6,7 @@
 
 import type { FeedbackDto, TopTaskStats, TopTasksResponse } from "~/types/api";
 import { mockThemes } from "../themes";
+import { TopTasksFieldIds } from "../utils/extractors";
 import { applyFeedbackFilters, stemNorwegian } from "./common";
 
 // Internal type for aggregation with additional fields
@@ -17,6 +18,7 @@ interface InternalTaskStats
   totalDurationMs: number;
   durationCount: number;
   blockerTexts: string[];
+  latestSubmittedAt: string;
 }
 
 /**
@@ -35,39 +37,45 @@ export function getMockTopTasksStats(
   for (const item of filtered) {
     if (item.surveyType !== "topTasks") continue;
 
-    const taskAnswer = item.answers.find(
-      (a) => a.fieldId === "task" || a.fieldId === "category",
+    const taskAnswer = item.answers.find((answer) =>
+      TopTasksFieldIds.task.includes(
+        answer.fieldId as (typeof TopTasksFieldIds.task)[number],
+      ),
     );
     if (!taskAnswer || taskAnswer.fieldType !== "SINGLE_CHOICE") continue;
 
     const taskOption = taskAnswer.question.options?.find(
       (o) => o.id === taskAnswer.value.selectedOptionId,
     );
-    const task = taskOption
-      ? taskOption.label
-      : taskAnswer.value.selectedOptionId;
+    const taskId = taskAnswer.value.selectedOptionId;
+    const task = taskOption ? taskOption.label : taskId;
 
     // Task filter: skip if task doesn't match the filter
-    if (taskFilter && task !== taskFilter) continue;
+    if (taskFilter && taskId !== taskFilter) continue;
 
-    const successAnswer = item.answers.find(
-      (a) => a.fieldId === "taskSuccess" || a.fieldId === "success",
+    const successAnswer = item.answers.find((answer) =>
+      TopTasksFieldIds.success.includes(
+        answer.fieldId as (typeof TopTasksFieldIds.success)[number],
+      ),
     );
     const successValue =
       successAnswer?.fieldType === "SINGLE_CHOICE"
         ? successAnswer.value.selectedOptionId
         : "unknown";
 
-    const blockerAnswer = item.answers.find(
-      (a) => a.fieldId === "blocker" || a.fieldId === "hindring",
+    const blockerAnswer = item.answers.find((answer) =>
+      TopTasksFieldIds.blocker.includes(
+        answer.fieldId as (typeof TopTasksFieldIds.blocker)[number],
+      ),
     );
     const blocker =
       blockerAnswer?.fieldType === "TEXT" && blockerAnswer.value.text
         ? blockerAnswer.value.text
         : null;
 
-    if (!taskMap.has(task)) {
-      taskMap.set(task, {
+    if (!taskMap.has(taskId)) {
+      taskMap.set(taskId, {
+        taskId,
         task,
         totalCount: 0,
         successCount: 0,
@@ -79,16 +87,24 @@ export function getMockTopTasksStats(
         totalDurationMs: 0,
         durationCount: 0,
         blockerTexts: [],
+        latestSubmittedAt: item.submittedAt,
       });
     }
 
-    const stats = taskMap.get(task);
+    const stats = taskMap.get(taskId);
     if (stats) {
+      if (
+        new Date(item.submittedAt).getTime() >=
+        new Date(stats.latestSubmittedAt).getTime()
+      ) {
+        stats.task = task;
+        stats.latestSubmittedAt = item.submittedAt;
+      }
       stats.totalCount++;
 
-      if (successValue === "Ja") stats.successCount++;
-      else if (successValue === "Delvis") stats.partialCount++;
-      else if (successValue === "Nei") stats.failureCount++;
+      if (successValue === "yes") stats.successCount++;
+      else if (successValue === "partial") stats.partialCount++;
+      else if (successValue === "no") stats.failureCount++;
 
       if (blocker) {
         stats.blockerCounts[blocker] = (stats.blockerCounts[blocker] || 0) + 1;
@@ -108,7 +124,7 @@ export function getMockTopTasksStats(
       dailyStats[date] = { total: 0, success: 0 };
     }
     dailyStats[date].total++;
-    if (successValue === "Ja") {
+    if (successValue === "yes") {
       dailyStats[date].success++;
     }
   }
@@ -211,6 +227,7 @@ export function getMockTopTasksStats(
       totalDurationMs: _,
       durationCount: __,
       blockerTexts: ___,
+      latestSubmittedAt: ____,
       ...rest
     } = stats;
 
@@ -263,7 +280,11 @@ export function getMockTopTasksStats(
     dailyStats,
     questionText: filtered
       .find((i) => i.surveyType === "topTasks")
-      ?.answers.find((a) => a.fieldId === "task")?.question.label,
+      ?.answers.find((answer) =>
+        TopTasksFieldIds.task.includes(
+          answer.fieldId as (typeof TopTasksFieldIds.task)[number],
+        ),
+      )?.question.label,
     overallTpi,
     avgCompletionTimeMs,
     otherTasksPercentage,

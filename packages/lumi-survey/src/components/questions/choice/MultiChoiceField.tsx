@@ -28,14 +28,26 @@ export const MultiChoiceField = ({
 }: MultiChoiceFieldProps) => {
   const options = useChoiceOptions(question);
   const selected = Array.isArray(value) ? value : [];
+  const maxSelections = question.maxSelections;
+  const selectionLimitReached =
+    maxSelections !== undefined && selected.length >= maxSelections;
+  const description = [
+    question.description,
+    maxSelections ? `Velg opptil ${maxSelections}` : undefined,
+  ]
+    .filter(Boolean)
+    .join(" • ");
 
   return (
     <CheckboxGroup
       legend={formatQuestionPrompt(question)}
       hideLegend={hideLabel}
-      description={question.description}
+      description={description || undefined}
       value={selected}
-      onChange={(nextValues: string[]) => onChange(nextValues)}
+      onChange={(nextValues: string[]) => {
+        if (maxSelections && nextValues.length > maxSelections) return;
+        onChange(nextValues);
+      }}
       disabled={disabled}
       error={isMissing ? validationErrorMessage : undefined}
     >
@@ -44,6 +56,10 @@ export const MultiChoiceField = ({
           key={option.value}
           value={option.value}
           description={option.description}
+          disabled={
+            disabled ||
+            (selectionLimitReached && !selected.includes(option.value))
+          }
         >
           {option.label}
         </Checkbox>

@@ -61,4 +61,43 @@ describe("validateAnswers", () => {
       "rating",
     ]);
   });
+
+  it("validates optional answers when a value is present", () => {
+    const question: LumiSurveyQuestion = {
+      id: "choice",
+      type: "singleChoice",
+      prompt: "Velg",
+      required: false,
+      options: [{ value: "known", label: "Kjent" }],
+    };
+
+    expect(validateAnswers([question], {})).toEqual([]);
+    expect(validateAnswers([question], { choice: "unknown" })).toEqual([
+      "choice",
+    ]);
+  });
+
+  it("enforces unique multi-choice values and maxSelections", () => {
+    const question: LumiSurveyQuestion = {
+      id: "priority",
+      type: "multiChoice",
+      prompt: "Velg",
+      maxSelections: 2,
+      options: [
+        { value: "one", label: "Én" },
+        { value: "two", label: "To" },
+        { value: "three", label: "Tre" },
+      ],
+    };
+
+    expect(validateAnswers([question], { priority: ["one", "two"] })).toEqual(
+      [],
+    );
+    expect(validateAnswers([question], { priority: ["one", "one"] })).toEqual([
+      "priority",
+    ]);
+    expect(
+      validateAnswers([question], { priority: ["one", "two", "three"] }),
+    ).toEqual(["priority"]);
+  });
 });

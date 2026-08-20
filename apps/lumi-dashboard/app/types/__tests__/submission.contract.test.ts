@@ -228,6 +228,66 @@ describe("submission contract", () => {
     ).toThrow(/optionIds must be unique/);
   });
 
+  it("enforces multi-choice maxSelections in the shared v2 contract", () => {
+    const payload = {
+      schemaVersion: 2,
+      surveyId: "survey-priority",
+      surveyType: "custom",
+      submittedAt: "2026-01-21T12:00:00.000Z",
+      deduplicationKey: "retryable-submit:survey-priority",
+      definition: {
+        surveyType: "custom",
+        fields: [
+          {
+            fieldId: "priority",
+            fieldType: "MULTI_CHOICE",
+            optionIds: ["apply", "status"],
+            maxSelections: 1,
+          },
+        ],
+      },
+      answers: [
+        {
+          fieldId: "priority",
+          fieldType: "MULTI_CHOICE",
+          question: {
+            label: "Velg viktigste oppgave",
+            options: [
+              { id: "apply", label: "Søke" },
+              { id: "status", label: "Sjekke status" },
+            ],
+          },
+          value: { type: "multiChoice", selectedOptionIds: ["apply"] },
+        },
+      ],
+    };
+
+    expect(() => FeedbackSubmissionV2Schema.parse(payload)).not.toThrow();
+    expect(() =>
+      FeedbackSubmissionV2Schema.parse({
+        ...payload,
+        definition: {
+          ...payload.definition,
+          fields: [{ ...payload.definition.fields[0], maxSelections: 3 }],
+        },
+      }),
+    ).toThrow(/must not exceed/i);
+    expect(() =>
+      FeedbackSubmissionV2Schema.parse({
+        ...payload,
+        answers: [
+          {
+            ...payload.answers[0],
+            value: {
+              type: "multiChoice",
+              selectedOptionIds: ["apply", "status"],
+            },
+          },
+        ],
+      }),
+    ).toThrow(/exceeds maxSelections=1/i);
+  });
+
   it("rejects invalid v2 deduplication keys", () => {
     const invalidPayload = {
       schemaVersion: 2,

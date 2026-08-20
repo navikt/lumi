@@ -943,7 +943,7 @@ describe("LumiSurveyDock", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("submits from taskSuccess when the blocker becomes hidden (top tasks)", async () => {
+  it("submits from success when the blocker becomes hidden (top tasks)", async () => {
     const transportSubmit = vi.fn().mockResolvedValue(undefined);
     const user = userEvent.setup();
 
@@ -963,7 +963,7 @@ describe("LumiSurveyDock", () => {
     await user.click(screen.getByRole("radio", { name: /oppgave 1/i }));
     await user.click(screen.getByRole("button", { name: /neste/i }));
 
-    // Step 2: taskSuccess
+    // Step 2: success
     await waitFor(() => {
       expect(screen.getByRole("radio", { name: /^ja$/i })).toBeInTheDocument();
     });

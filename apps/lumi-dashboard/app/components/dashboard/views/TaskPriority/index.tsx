@@ -82,7 +82,7 @@ export function TaskPriorityAnalysis({ data }: TaskPriorityAnalysisProps) {
               const isTopTask = index < longNeckCutoff;
 
               return (
-                <div key={task.task}>
+                <div key={task.taskId}>
                   <HStack justify="space-between" align="baseline" wrap={false}>
                     <BodyShort
                       size="small"

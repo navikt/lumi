@@ -6,6 +6,7 @@
 
 import type { DiscoveryResponse, FeedbackDto } from "~/types/api";
 import { mockThemes } from "../themes";
+import { DiscoveryFieldIds } from "../utils/extractors";
 import { applyFeedbackFilters, STOP_WORDS, stemNorwegian } from "./common";
 
 /**
@@ -21,8 +22,16 @@ export function getMockDiscoveryStats(
   );
 
   const responses = filtered.map((item) => {
-    const taskAnswer = item.answers.find((a) => a.fieldId === "task");
-    const successAnswer = item.answers.find((a) => a.fieldId === "success");
+    const taskAnswer = item.answers.find((answer) =>
+      DiscoveryFieldIds.task.includes(
+        answer.fieldId as (typeof DiscoveryFieldIds.task)[number],
+      ),
+    );
+    const successAnswer = item.answers.find((answer) =>
+      DiscoveryFieldIds.success.includes(
+        answer.fieldId as (typeof DiscoveryFieldIds.success)[number],
+      ),
+    );
 
     let task = "Ukjent oppgave";
     if (taskAnswer) {

@@ -7,6 +7,7 @@ import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
 import { useStats } from "~/hooks/useStats";
 import { useThemes } from "~/hooks/useThemes";
+import type { ChoiceStats } from "~/types/api";
 import { getFilterLabels } from "~/utils/filterLabels";
 import { formatMetadataLabel } from "~/utils/segmentUtils";
 import styles from "./ActiveFiltersChips.module.css";
@@ -39,6 +40,11 @@ export function ActiveFiltersChips() {
   });
 
   const chips: FilterChip[] = [];
+  const taskField = statsQuery.data?.fieldStats?.find(
+    (field) => field.fieldId === "task",
+  );
+  const taskLabel = (taskField?.stats as ChoiceStats | undefined)
+    ?.distribution?.[params.task ?? ""]?.label;
 
   if (params.deviceType && params.deviceType !== "alle") {
     chips.push({
@@ -57,7 +63,7 @@ export function ActiveFiltersChips() {
     chips.push({
       key: "task",
       label: "Oppgave",
-      value: params.task,
+      value: taskLabel ?? (statsQuery.data ? params.task : "…"),
       onRemove: () =>
         setParams({
           task: undefined,

@@ -21,6 +21,7 @@ export {
   getBlockerTextFromFeedback,
   getDurationFromFeedback,
   getSuccessStatusFromFeedback,
+  getTaskIdFromFeedback,
   getTaskNameFromFeedback,
   STOP_WORDS,
   stemNorwegian,

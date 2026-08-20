@@ -54,6 +54,33 @@ class DefinitionHashTest : FunSpec({
         definition.computeHash() shouldBe "38202779b74caab0a97c5d0bcc1556660322ce19a700d665b02712a90af3fc9c"
     }
 
+    test("computeHash preserves the old bytes when maxSelections is absent and locks a supplied limit") {
+        val withoutLimit = SurveyDefinition(
+            surveyId = "survey-priority",
+            surveyType = SurveyType.TASK_PRIORITY,
+            fields = listOf(
+                FieldDefinition("priority", FieldType.MULTI_CHOICE, null, null, listOf("a", "b"))
+            )
+        )
+        val withLimit = withoutLimit.copy(
+            fields = listOf(
+                FieldDefinition("priority", FieldType.MULTI_CHOICE, null, null, listOf("a", "b"), 1)
+            )
+        )
+
+        withoutLimit.computeHash() shouldBe
+            SurveyDefinition(
+                surveyId = "another-id",
+                surveyType = SurveyType.TASK_PRIORITY,
+                fields = listOf(
+                    FieldDefinition("priority", FieldType.MULTI_CHOICE, null, null, listOf("a", "b"))
+                )
+            ).computeHash()
+        (withoutLimit.computeHash() == withLimit.computeHash()) shouldBe false
+        diff(withoutLimit, withLimit).changedFields.single().change shouldContain
+            "maxSelections null -> 1"
+    }
+
     test("computeHash treats structural option order as significant") {
         val first = submission(
             surveyId = "survey-choice",

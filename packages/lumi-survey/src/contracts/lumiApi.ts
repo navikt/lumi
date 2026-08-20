@@ -162,6 +162,7 @@ export interface MultiChoiceSubmissionFieldDefinition
   extends SubmissionFieldDefinitionBase {
   fieldType: "MULTI_CHOICE";
   optionIds: string[];
+  maxSelections?: number;
 }
 
 export interface DateSubmissionFieldDefinition

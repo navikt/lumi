@@ -1,3 +1,4 @@
+import { SPECIALIZED_SURVEY_FIELD_IDS } from "@navikt/lumi-survey";
 import type {
   BlockerResponse,
   DiscoveryResponse,
@@ -772,22 +773,17 @@ export function getMockContextTags(
     });
   }
 
-  // Task filter: filter by specific task name (for Top Tasks drill-down)
+  // Task filter: use the stable option id so label edits keep one history.
   if (task) {
     surveyItems = surveyItems.filter((item) => {
       if (item.surveyType !== "topTasks") return false;
 
-      const taskAnswer = item.answers.find((a) => a.fieldId === "task");
+      const taskAnswer = item.answers.find(
+        (a) => a.fieldId === SPECIALIZED_SURVEY_FIELD_IDS.task,
+      );
       if (!taskAnswer || taskAnswer.fieldType !== "SINGLE_CHOICE") return false;
 
-      const taskOption = taskAnswer.question.options?.find(
-        (o) => o.id === taskAnswer.value.selectedOptionId,
-      );
-      const taskName = taskOption
-        ? taskOption.label
-        : taskAnswer.value.selectedOptionId;
-
-      return taskName === task;
+      return taskAnswer.value.selectedOptionId === task;
     });
   }
 

@@ -100,35 +100,34 @@ export function useLumiSurvey(
       setStatus("submitting");
       setError(null);
 
-      const answerSnapshot = cloneAnswers(answers);
-      const submittedAnswers = getVisibleAnswers(
-        questions,
-        answerSnapshot,
-        getVisibilityMetadata(context),
-      );
-      const submittedAtTimestamp = new Date().toISOString();
-      const deduplicationKey = getDeduplicationKey();
-      const submission: LumiSurveySubmission = {
-        surveyId,
-        answers: submittedAnswers,
-        startedAt: startedAtRef.current,
-        submittedAt: submittedAtTimestamp,
-        context: context ? { ...context } : undefined,
-        transportPayload: buildTransportPayload(
-          surveyId,
-          submittedAnswers,
-          questions,
-          deduplicationKey,
-          surveyType,
-          context,
-          startedAtRef.current,
-          submittedAtTimestamp,
-        ),
-      };
-
-      events?.onSubmitStart?.(submission);
-
       try {
+        const answerSnapshot = cloneAnswers(answers);
+        const submittedAnswers = getVisibleAnswers(
+          questions,
+          answerSnapshot,
+          getVisibilityMetadata(context),
+        );
+        const submittedAtTimestamp = new Date().toISOString();
+        const deduplicationKey = getDeduplicationKey();
+        const submission: LumiSurveySubmission = {
+          surveyId,
+          answers: submittedAnswers,
+          startedAt: startedAtRef.current,
+          submittedAt: submittedAtTimestamp,
+          context: context ? { ...context } : undefined,
+          transportPayload: buildTransportPayload(
+            surveyId,
+            submittedAnswers,
+            questions,
+            deduplicationKey,
+            surveyType,
+            context,
+            startedAtRef.current,
+            submittedAtTimestamp,
+          ),
+        };
+
+        events?.onSubmitStart?.(submission);
         await transport.submit(submission);
         setStatus("success");
         setError(null);

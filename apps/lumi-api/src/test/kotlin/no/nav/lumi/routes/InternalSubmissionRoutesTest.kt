@@ -210,7 +210,7 @@ class InternalSubmissionRoutesTest : FunSpec({
                     {
                       "schemaVersion": 1,
                       "surveyId": "internal-immutable",
-                      "surveyType": "topTasks",
+                      "surveyType": "custom",
                       "submittedAt": "2026-01-10T12:00:12Z",
                       "answers": [
                         {
@@ -239,7 +239,7 @@ class InternalSubmissionRoutesTest : FunSpec({
                     {
                       "schemaVersion": 1,
                       "surveyId": "internal-immutable",
-                      "surveyType": "topTasks",
+                      "surveyType": "custom",
                       "submittedAt": "2026-01-10T12:01:12Z",
                       "answers": [
                         {
@@ -664,7 +664,7 @@ class InternalSubmissionRoutesTest : FunSpec({
                             {
                               "schemaVersion": 1,
                               "surveyId": "modia-dedup-race-conflict-survey",
-                              "surveyType": "topTasks",
+                              "surveyType": "custom",
                               "submittedAt": "2026-01-10T12:00:12Z",
                               "deduplicationKey": "client-key-123456",
                               "answers": [
@@ -694,7 +694,7 @@ class InternalSubmissionRoutesTest : FunSpec({
                             {
                               "schemaVersion": 1,
                               "surveyId": "modia-dedup-race-conflict-survey",
-                              "surveyType": "topTasks",
+                              "surveyType": "custom",
                               "submittedAt": "2026-01-10T12:01:12Z",
                               "deduplicationKey": "client-key-123456",
                               "answers": [

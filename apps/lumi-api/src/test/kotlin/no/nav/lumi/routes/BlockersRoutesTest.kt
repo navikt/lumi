@@ -129,7 +129,7 @@ class BlockersRoutesTest : FunSpec({
             stats.recentBlockers.first().task shouldBe "Endre"
 
             // Task filter
-            val filteredResponse = createTestClient().get("/api/v1/intern/stats/blockers?team=$team&app=$app&surveyId=$surveyId&task=Søk") {
+            val filteredResponse = createTestClient().get("/api/v1/intern/stats/blockers?team=$team&app=$app&surveyId=$surveyId&task=a") {
                 header(HttpHeaders.Authorization, "Bearer test-token")
             }
 

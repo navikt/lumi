@@ -25,10 +25,16 @@ export type {
 export * from "./core/index.js";
 export {
   createDiscoverySurvey,
+  createDiscoverySurveyDocument,
   // Builder functions
   createRatingSurvey,
+  createRatingSurveyDocument,
   createTaskPrioritySurvey,
+  createTaskPrioritySurveyDocument,
   createTopTasksSurvey,
+  createTopTasksSurveyDocument,
+  DEFAULT_DISCOVERY_SURVEY_DOCUMENT,
+  DEFAULT_RATING_SURVEY_DOCUMENT,
   DEFAULT_SURVEY_DISCOVERY,
   DEFAULT_SURVEY_NPS,
   // Default presets
@@ -36,4 +42,9 @@ export {
   DEFAULT_SURVEY_SERVICE_FEEDBACK,
   DEFAULT_SURVEY_STARS,
   DEFAULT_SURVEY_THUMBS,
+  type DiscoverySurveyOptions,
+  type RatingSurveyDocumentOptions,
+  type RatingSurveyOptions,
+  type TaskPrioritySurveyOptions,
+  type TopTasksSurveyOptions,
 } from "./presets/index.js";

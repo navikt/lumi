@@ -59,7 +59,8 @@ object SurveyAuthoringDocumentValidator {
     /**
      * Validates the authoring document structure. With [releaseGate] the
      * semantic bar for immutable revisions applies too: prompts, option
-     * labels and option values must be non-blank. Drafts stay lenient.
+     * labels and values must be non-blank, and specialized analytics fields
+     * must keep their required contract. Drafts stay lenient.
      */
     fun validate(
         document: JsonObject,
@@ -88,6 +89,7 @@ object SurveyAuthoringDocumentValidator {
         val previousQuestionIds = mutableSetOf<String>()
         val conditionTargets = mutableMapOf<String, ConditionTargetInfo>()
         val fields = mutableListOf<FieldDefinition>()
+        val authoringFields = mutableListOf<SpecializedSurveyContractValidator.AuthoringField>()
 
         pages.forEachIndexed { pageIndex, pageElement ->
             val page = pageElement as? JsonObject
@@ -111,7 +113,7 @@ object SurveyAuthoringDocumentValidator {
                 }
                 optionalString(question, "description", "Question '$questionId'")
                 optionalString(question, "analyticsId", "Question '$questionId'")
-                optionalBoolean(question, "required", "Question '$questionId'")
+                val required = optionalBoolean(question, "required", "Question '$questionId'") ?: false
                 if (question.containsKey("logic")) {
                     invalid("Question '$questionId' uses legacy logic")
                 }
@@ -130,6 +132,19 @@ object SurveyAuthoringDocumentValidator {
                     else -> invalid("Question '$questionId' has unsupported type '$type'")
                 }
                 fields += definition
+                authoringFields += SpecializedSurveyContractValidator.AuthoringField(
+                    id = questionId,
+                    type = definition.fieldType,
+                    optionIds = definition.optionIds.orEmpty(),
+                    optionLabels = (question["options"] as? JsonArray)
+                        ?.map { option ->
+                            ((option as JsonObject)["label"] as JsonPrimitive).content
+                        }
+                        .orEmpty(),
+                    required = required,
+                    conditionallyVisible = question.containsKey("visibleIf"),
+                    maxSelections = (question["maxSelections"] as? JsonPrimitive)?.intOrNull,
+                )
                 conditionTargets[questionId] = when (type) {
                     "rating" -> {
                         val variantName =
@@ -150,6 +165,9 @@ object SurveyAuthoringDocumentValidator {
         }
 
         val definition = SurveyDefinition(surveyId = surveyId, surveyType = surveyType, fields = fields)
+        if (releaseGate) {
+            SpecializedSurveyContractValidator.validateAuthoringFields(surveyType, authoringFields)
+        }
         SurveyDefinitionValidator.validateDefinition(definition)
         return ValidatedSurveyAuthoringDocument(
             documentHash = sha256(canonicalJson(document)),
@@ -233,13 +251,21 @@ object SurveyAuthoringDocumentValidator {
                 invalid("Choice question '$questionId' has unsupported variant '$variant'")
             }
         }
-        question["maxSelections"]?.let {
-            val maxSelections = (it as? JsonPrimitive)?.intOrNull
-            if (maxSelections == null || maxSelections <= 0) {
+        val maxSelections = question["maxSelections"]?.let {
+            val parsed = (it as? JsonPrimitive)?.intOrNull
+            if (parsed == null || parsed <= 0) {
                 invalid("Choice question '$questionId' has invalid maxSelections")
             }
+            parsed
         }
-        return FieldDefinition(questionId, fieldType, null, null, optionIds)
+        return FieldDefinition(
+            questionId,
+            fieldType,
+            null,
+            null,
+            optionIds,
+            maxSelections.takeIf { releaseGate },
+        )
     }
 
     private fun validateVisibleIf(

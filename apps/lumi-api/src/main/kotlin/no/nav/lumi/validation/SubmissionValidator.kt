@@ -43,6 +43,10 @@ object SubmissionValidator {
             context = submission.context,
             answers = submission.answers
         )
+        SpecializedSurveyContractValidator.validateAnswers(
+            surveyType = submission.surveyType,
+            answers = submission.answers
+        )
     }
 
     internal fun validateCommonSubmission(

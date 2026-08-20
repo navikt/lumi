@@ -18,10 +18,14 @@ import {
   Tooltip,
   VStack,
 } from "@navikt/ds-react";
-import type { SurveyQuestionV1 } from "@navikt/lumi-survey";
+import {
+  SPECIALIZED_SURVEY_FIELD_IDS,
+  type SurveyQuestionV1,
+} from "@navikt/lumi-survey";
 import { memo, useEffect, useRef } from "react";
 import {
   type ConditionValueSuggestion,
+  isSurveyTemplatePlaceholderValue,
   type MoveDirection,
   type QuestionTypeId,
   type ReferenceableQuestion,
@@ -48,6 +52,8 @@ export interface QuestionCardProps {
   canDelete: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  contractLocked?: boolean;
+  minOptions?: number;
   onExpand: () => void;
   onCollapse: () => void;
   onChange: (updater: (question: SurveyQuestionV1) => SurveyQuestionV1) => void;
@@ -69,6 +75,8 @@ export const QuestionCard = memo(function QuestionCard({
   canDelete,
   canMoveUp,
   canMoveDown,
+  contractLocked = false,
+  minOptions = 1,
   onExpand,
   onCollapse,
   onChange,
@@ -164,24 +172,38 @@ export const QuestionCard = memo(function QuestionCard({
     >
       <div className={styles.cardHeader}>
         <span className={styles.cardNumber}>{index + 1}</span>
-        <TypeGallery
-          label="Bytt spørsmålstype"
-          currentType={question.type}
-          onSelect={onChangeType}
-          trigger={
-            <Button
-              type="button"
-              variant="tertiary-neutral"
-              size="small"
-              icon={<meta.Icon aria-hidden />}
-              iconPosition="left"
-              className={styles.cardTypeButton}
-            >
+        {contractLocked ? (
+          <HStack
+            as="span"
+            gap="space-4"
+            align="center"
+            className={styles.cardTypeButton}
+          >
+            <meta.Icon aria-hidden />
+            <BodyShort as="span" size="small">
               {meta.label}
-              <ChevronDownIcon aria-hidden className={styles.cardTypeCaret} />
-            </Button>
-          }
-        />
+            </BodyShort>
+          </HStack>
+        ) : (
+          <TypeGallery
+            label="Bytt spørsmålstype"
+            currentType={question.type}
+            onSelect={onChangeType}
+            trigger={
+              <Button
+                type="button"
+                variant="tertiary-neutral"
+                size="small"
+                icon={<meta.Icon aria-hidden />}
+                iconPosition="left"
+                className={styles.cardTypeButton}
+              >
+                {meta.label}
+                <ChevronDownIcon aria-hidden className={styles.cardTypeCaret} />
+              </Button>
+            }
+          />
+        )}
         <Tooltip content="Lukk redigering">
           <Button
             type="button"
@@ -199,6 +221,13 @@ export const QuestionCard = memo(function QuestionCard({
       </div>
 
       <VStack gap="space-16" className={styles.cardFields}>
+        {contractLocked ? (
+          <Detail>
+            Dette spørsmålet må være med for at analysen skal virke. Du kan
+            endre teksten, men ikke typen, kravet om svar eller når spørsmålet
+            vises.
+          </Detail>
+        ) : null}
         <TextField
           ref={promptRef}
           label="Spørsmålstekst"
@@ -234,10 +263,66 @@ export const QuestionCard = memo(function QuestionCard({
             questionId={question.id}
             options={question.options}
             {...optionHandlers}
+            lockValues={
+              (contractLocked &&
+                question.id === SPECIALIZED_SURVEY_FIELD_IDS.success) ||
+              question.options.some((option) =>
+                isSurveyTemplatePlaceholderValue(option.value),
+              )
+            }
+            lockStructure={
+              contractLocked &&
+              question.id === SPECIALIZED_SURVEY_FIELD_IDS.success
+            }
+            minOptions={minOptions}
           />
         ) : null}
 
-        {referenceable && suggestionsFor && onChangeVisibleIf ? (
+        {question.type === "multiChoice" ? (
+          <TextField
+            type="number"
+            label="Maks antall alternativer brukeren kan velge"
+            description={
+              contractLocked
+                ? `Velg et tall mellom 1 og ${question.options.length}.`
+                : `Velg et tall mellom 1 og ${question.options.length}, eller la feltet stå tomt uten en grense.`
+            }
+            min={1}
+            max={question.options.length}
+            value={
+              question.maxSelections === undefined
+                ? ""
+                : String(question.maxSelections)
+            }
+            error={
+              question.maxSelections === undefined && contractLocked
+                ? "Velg hvor mange oppgaver brukeren kan krysse av."
+                : question.maxSelections !== undefined &&
+                    question.maxSelections > question.options.length
+                  ? `Tallet kan ikke være høyere enn ${question.options.length}.`
+                  : undefined
+            }
+            onChange={(event) => {
+              const value = Number(event.target.value);
+              onChange((current) =>
+                current.type === "multiChoice"
+                  ? {
+                      ...current,
+                      maxSelections:
+                        Number.isInteger(value) && value > 0
+                          ? value
+                          : undefined,
+                    }
+                  : current,
+              );
+            }}
+          />
+        ) : null}
+
+        {!contractLocked &&
+        referenceable &&
+        suggestionsFor &&
+        onChangeVisibleIf ? (
           <ConditionEditor
             condition={question.visibleIf}
             referenceable={referenceable}
@@ -251,6 +336,7 @@ export const QuestionCard = memo(function QuestionCard({
         <Switch
           size="small"
           checked={question.required ?? false}
+          disabled={contractLocked}
           onChange={(event) =>
             onChange((current) => ({
               ...current,
@@ -293,7 +379,13 @@ export const QuestionCard = memo(function QuestionCard({
               onClick={onDuplicate}
             />
           </Tooltip>
-          <Tooltip content="Slett spørsmålet">
+          <Tooltip
+            content={
+              contractLocked
+                ? "Spørsmålet brukes i analysen og kan ikke slettes"
+                : "Slett spørsmålet"
+            }
+          >
             <Button
               type="button"
               variant="tertiary-neutral"

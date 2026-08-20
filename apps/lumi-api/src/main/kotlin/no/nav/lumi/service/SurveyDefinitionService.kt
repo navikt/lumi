@@ -7,6 +7,7 @@ import no.nav.lumi.domain.SurveyDefinition
 import no.nav.lumi.domain.computeHash
 import no.nav.lumi.domain.diff
 import no.nav.lumi.domain.mergeWith
+import no.nav.lumi.domain.withMissingMaxSelectionsFrom
 import no.nav.lumi.repository.StoredSurveyDefinition
 import no.nav.lumi.repository.SurveyDefinitionRepository
 import no.nav.lumi.repository.SurveyDefinitionSource
@@ -188,7 +189,9 @@ class SurveyDefinitionService(
         updateDefinition: suspend (String, String, String, SurveyDefinition, String) -> Boolean
     ): ExistingDefinitionResult {
         if (!allowDefinitionExpansion) {
-            val definitionDiff = diff(stored.definition, incomingDefinition)
+            val enrichedStoredDefinition =
+                stored.definition.withMissingMaxSelectionsFrom(incomingDefinition)
+            val definitionDiff = diff(enrichedStoredDefinition, incomingDefinition)
             if (stored.source == SurveyDefinitionSource.AUTO && incomingSource == SurveyDefinitionSource.API) {
                 if (definitionDiff.changedFields.isNotEmpty() || definitionDiff.removedFields.isNotEmpty()) {
                     throwDefinitionConflict(team, stored.surveyId, definitionDiff, redactIdentifiers = true)
@@ -207,6 +210,24 @@ class SurveyDefinitionService(
 
             if (definitionDiff.hasChanges()) {
                 throwDefinitionConflict(team, stored.surveyId, definitionDiff, redactIdentifiers = true)
+            }
+
+            if (enrichedStoredDefinition !== stored.definition) {
+                val enrichedHash = enrichedStoredDefinition.computeHash()
+                val updated = updateDefinition(
+                    team,
+                    stored.surveyId,
+                    stored.definitionHash,
+                    enrichedStoredDefinition,
+                    enrichedHash,
+                )
+                return if (updated) {
+                    ExistingDefinitionResult.Resolved(
+                        RegistrationResult(stored.surveyId, enrichedHash)
+                    )
+                } else {
+                    ExistingDefinitionResult.Retry
+                }
             }
 
             return ExistingDefinitionResult.Resolved(
