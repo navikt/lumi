@@ -5,7 +5,9 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.FieldType
@@ -128,6 +130,31 @@ class SurveyAuthoringDocumentValidatorTest : FunSpec({
         shouldThrow<ApiErrorException.BadRequestException> {
             SurveyAuthoringDocumentValidator.validate(blankPrompt, "survey-v1", releaseGate = true)
         }.errorMessage shouldBe "Question 'rating' needs a prompt before it can be shared"
+    }
+
+    test("unrelated randomize metadata stays lenient on non-choice questions") {
+        val document = JsonObject(
+            validDocument().toMutableMap().also { root ->
+                val pages = root.getValue("pages").jsonArray
+                val page = pages.first().jsonObject
+                val questions = page.getValue("questions").jsonArray
+                val rating = JsonObject(
+                    questions.first().jsonObject.toMutableMap().also { question ->
+                        question["randomize"] = Json.parseToJsonElement("\"legacy-value\"")
+                    },
+                )
+                root["pages"] = JsonArray(
+                    listOf(
+                        JsonObject(
+                            page.toMutableMap().also { it["questions"] = JsonArray(listOf(rating)) },
+                        ),
+                    ),
+                )
+            },
+        )
+
+        SurveyAuthoringDocumentValidator.validate(document, "survey-v1")
+        SurveyAuthoringDocumentValidator.validate(document, "survey-v1", releaseGate = true)
     }
 
     test("release gate rejects blank option labels and values") {
@@ -331,6 +358,10 @@ class SurveyAuthoringDocumentValidatorTest : FunSpec({
                 "\"required\":true,\"visibleIf\":{\"questionId\":\"task\",\"operator\":\"EXISTS\"}," +
                     "\"options\":[{\"value\":\"yes\"",
             ) to "Invalid topTasks survey contract: document field 'success' must always be visible",
+            valid.toString().replace(
+                "\"required\":true,\"options\":[{\"value\":\"yes\"",
+                "\"required\":true,\"randomize\":true,\"options\":[{\"value\":\"yes\"",
+            ) to "Invalid topTasks survey contract: document field 'success' must keep its option order",
         )
 
         cases.forEach { (json, expectedMessage) ->

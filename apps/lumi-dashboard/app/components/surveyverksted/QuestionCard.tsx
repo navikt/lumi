@@ -12,9 +12,10 @@ import {
   Button,
   Detail,
   HStack,
+  Radio,
+  RadioGroup,
   Switch,
   TextField,
-  ToggleGroup,
   Tooltip,
   VStack,
 } from "@navikt/ds-react";
@@ -278,44 +279,11 @@ export const QuestionCard = memo(function QuestionCard({
           />
         ) : null}
 
-        {question.type === "multiChoice" ? (
-          <TextField
-            type="number"
-            label="Maks antall alternativer brukeren kan velge"
-            description={
-              contractLocked
-                ? `Velg et tall mellom 1 og ${question.options.length}.`
-                : `Velg et tall mellom 1 og ${question.options.length}, eller la feltet stå tomt uten en grense.`
-            }
-            min={1}
-            max={question.options.length}
-            value={
-              question.maxSelections === undefined
-                ? ""
-                : String(question.maxSelections)
-            }
-            error={
-              question.maxSelections === undefined && contractLocked
-                ? "Velg hvor mange oppgaver brukeren kan krysse av."
-                : question.maxSelections !== undefined &&
-                    question.maxSelections > question.options.length
-                  ? `Tallet kan ikke være høyere enn ${question.options.length}.`
-                  : undefined
-            }
-            onChange={(event) => {
-              const value = Number(event.target.value);
-              onChange((current) =>
-                current.type === "multiChoice"
-                  ? {
-                      ...current,
-                      maxSelections:
-                        Number.isInteger(value) && value > 0
-                          ? value
-                          : undefined,
-                    }
-                  : current,
-              );
-            }}
+        {question.type === "singleChoice" || question.type === "multiChoice" ? (
+          <ChoiceSettings
+            question={question}
+            contractLocked={contractLocked}
+            onChange={onChange}
           />
         ) : null}
 
@@ -413,8 +381,8 @@ function RatingSettings({
   const variant = question.variant ?? "emoji";
   return (
     <VStack gap="space-16">
-      <ToggleGroup
-        label="Skala"
+      <RadioGroup
+        legend="Skala"
         size="small"
         value={variant}
         onChange={(next) =>
@@ -426,14 +394,14 @@ function RatingSettings({
         }
       >
         {RATING_VARIANTS.map((candidate) => (
-          <ToggleGroup.Item
-            key={candidate.id}
-            value={candidate.id}
-            icon={<candidate.Icon aria-hidden />}
-            label={candidate.label}
-          />
+          <Radio key={candidate.id} value={candidate.id}>
+            <HStack as="span" gap="space-4" align="center">
+              <candidate.Icon aria-hidden />
+              {candidate.label}
+            </HStack>
+          </Radio>
         ))}
-      </ToggleGroup>
+      </RadioGroup>
       {question.variant === "nps" ? (
         <HStack gap="space-16" wrap>
           <TextField
@@ -508,5 +476,111 @@ function TextSettings({
         }}
       />
     </HStack>
+  );
+}
+
+function ChoiceSettings({
+  question,
+  contractLocked,
+  onChange,
+}: {
+  question:
+    | Extract<SurveyQuestionV1, { type: "singleChoice" }>
+    | Extract<SurveyQuestionV1, { type: "multiChoice" }>;
+  contractLocked: boolean;
+  onChange: QuestionCardProps["onChange"];
+}) {
+  const orderLocked =
+    contractLocked && question.id === SPECIALIZED_SURVEY_FIELD_IDS.success;
+
+  return (
+    <VStack gap="space-16">
+      {!orderLocked ? (
+        <Switch
+          size="small"
+          checked={question.randomize ?? false}
+          description="Reduserer sjansen for at alternativene øverst får flere svar."
+          onChange={(event) => {
+            const randomize = event.target.checked;
+            onChange((current) => {
+              if (
+                current.type !== "singleChoice" &&
+                current.type !== "multiChoice"
+              ) {
+                return current;
+              }
+              if (randomize) return { ...current, randomize: true };
+              const { randomize: _randomize, ...withoutRandomize } = current;
+              return withoutRandomize;
+            });
+          }}
+        >
+          Bland rekkefølgen
+        </Switch>
+      ) : null}
+
+      {question.type === "multiChoice" ? (
+        <>
+          <RadioGroup
+            legend="Slik vises svaralternativene"
+            description="Avkryssing passer best med opptil 6 alternativer. Velg søkbart felt når listen er lengre."
+            size="small"
+            value={question.variant ?? "checkbox"}
+            onChange={(next) =>
+              onChange((current) => {
+                if (current.type !== "multiChoice") return current;
+                if (next === "combobox") {
+                  return { ...current, variant: "combobox" };
+                }
+                const { variant: _variant, ...withoutVariant } = current;
+                return withoutVariant;
+              })
+            }
+          >
+            <Radio value="checkbox">Avkryssing</Radio>
+            <Radio value="combobox">Søkbart felt</Radio>
+          </RadioGroup>
+
+          <TextField
+            type="number"
+            label="Maks antall alternativer brukeren kan velge"
+            description={
+              contractLocked
+                ? `Velg et tall mellom 1 og ${question.options.length}.`
+                : `Velg et tall mellom 1 og ${question.options.length}, eller la feltet stå tomt uten en grense.`
+            }
+            min={1}
+            max={question.options.length}
+            value={
+              question.maxSelections === undefined
+                ? ""
+                : String(question.maxSelections)
+            }
+            error={
+              question.maxSelections === undefined && contractLocked
+                ? "Velg hvor mange oppgaver brukeren kan krysse av."
+                : question.maxSelections !== undefined &&
+                    question.maxSelections > question.options.length
+                  ? `Tallet kan ikke være høyere enn ${question.options.length}.`
+                  : undefined
+            }
+            onChange={(event) => {
+              const value = Number(event.target.value);
+              onChange((current) =>
+                current.type === "multiChoice"
+                  ? {
+                      ...current,
+                      maxSelections:
+                        Number.isInteger(value) && value > 0
+                          ? value
+                          : undefined,
+                    }
+                  : current,
+              );
+            }}
+          />
+        </>
+      ) : null}
+    </VStack>
   );
 }

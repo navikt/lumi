@@ -72,7 +72,17 @@ export function describeQuestion(question: SurveyQuestionV1): string {
     return `${questionTypeMeta("rating").label} · ${variant?.label ?? "Emoji"}`;
   }
   if (question.type === "singleChoice" || question.type === "multiChoice") {
-    return `${questionTypeMeta(question.type).label} · ${question.options.length} alternativer`;
+    const presentation =
+      question.type === "multiChoice" && question.variant === "combobox"
+        ? "Søkbart felt"
+        : undefined;
+    return [
+      questionTypeMeta(question.type).label,
+      presentation,
+      `${question.options.length} alternativer`,
+    ]
+      .filter(Boolean)
+      .join(" · ");
   }
   return questionTypeMeta(question.type).label;
 }

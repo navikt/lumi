@@ -144,6 +144,15 @@ object SurveyAuthoringDocumentValidator {
                     required = required,
                     conditionallyVisible = question.containsKey("visibleIf"),
                     maxSelections = (question["maxSelections"] as? JsonPrimitive)?.intOrNull,
+                    randomize = if (type == "singleChoice" || type == "multiChoice") {
+                        optionalBoolean(
+                            question,
+                            "randomize",
+                            "Choice question '$questionId'",
+                        ) ?: false
+                    } else {
+                        false
+                    },
                 )
                 conditionTargets[questionId] = when (type) {
                     "rating" -> {

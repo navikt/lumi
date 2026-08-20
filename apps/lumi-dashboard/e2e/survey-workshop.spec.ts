@@ -749,6 +749,72 @@ test("a flush inherits a failed save instead of repeating it", async ({
   await page.unroute("**/*");
 });
 
+test("configures and previews a searchable multi-choice question", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/surveyverksted");
+  await page
+    .getByLabel("Navn på utkastet")
+    .fill(`Søkbart flervalg ${testInfo.workerIndex}-${Date.now()}`);
+  await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
+
+  await page.getByRole("button", { name: "Legg til spørsmål" }).click();
+  await page.getByRole("menuitem", { name: /Flervalg/ }).click();
+  const prompt = "Hvilke temaer er viktigst?";
+  await page
+    .getByRole("textbox", { name: "Spørsmålstekst" })
+    .last()
+    .fill(prompt);
+  for (let option = 3; option <= 7; option += 1) {
+    await page.getByRole("button", { name: "Legg til alternativ" }).click();
+  }
+  await page.getByRole("checkbox", { name: /^Bland rekkefølgen/ }).click();
+  await page.getByRole("radio", { name: "Søkbart felt" }).click();
+  await page
+    .getByLabel("Maks antall alternativer brukeren kan velge")
+    .fill("1");
+
+  const stage = page.getByRole("region", { name: "Forhåndsvisning" });
+  const combobox = stage.getByRole("combobox", { name: prompt });
+  await expect(combobox).toBeVisible();
+  await expect(page.locator('[data-state="saved"]')).toBeVisible();
+  await expectNoAxeViolations(page);
+
+  await combobox.click();
+  await page.getByRole("option", { name: "Alternativ 1" }).click();
+  await expect(stage.getByText("Maks 1 valgt")).toBeVisible();
+  await combobox.click();
+  await expect(
+    page.getByRole("option", { name: "Alternativ 2", exact: true }),
+  ).toBeDisabled();
+
+  // The choices are stored in the draft, not only held in the open editor.
+  await page.reload();
+  await expect(stage.getByRole("combobox", { name: prompt })).toBeVisible();
+  await page.getByRole("button", { name: new RegExp(prompt) }).click();
+  await expect(
+    page.getByRole("checkbox", { name: /^Bland rekkefølgen/ }),
+  ).toBeChecked();
+  await expect(page.getByRole("radio", { name: "Søkbart felt" })).toBeChecked();
+  await expect(
+    page.getByLabel("Maks antall alternativer brukeren kan velge"),
+  ).toHaveValue("1");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(
+    page.getByText("Slik vises svaralternativene", { exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    )
+    .toBe(true);
+  await expectNoAxeViolations(page);
+});
+
 test("a visibility condition set in the editor gates the question live in the stage", async ({
   page,
 }) => {

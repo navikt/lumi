@@ -103,6 +103,57 @@ describe("survey revision exports", () => {
     expect(analyticalStructure(reordered)).toBe(analyticalStructure(document));
   });
 
+  it("treats the multi-choice limit as analysis structure", () => {
+    const withLimit = (maxSelections: number): SurveyDocumentV1 => ({
+      authoringSchemaVersion: 1,
+      type: "custom",
+      pages: [
+        {
+          id: "valg",
+          questions: [
+            {
+              id: "prioriteringer",
+              type: "multiChoice",
+              prompt: "Hva er viktigst?",
+              options: [
+                { value: "a", label: "A" },
+                { value: "b", label: "B" },
+              ],
+              maxSelections,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(analyticalStructure(withLimit(1))).not.toBe(
+      analyticalStructure(withLimit(2)),
+    );
+    const base = withLimit(1);
+    const baseQuestion = base.pages[0].questions[0];
+    if (baseQuestion.type !== "multiChoice") {
+      throw new Error("Testoppsettet må inneholde et flervalgsspørsmål");
+    }
+    const presentationChanged: SurveyDocumentV1 = {
+      ...base,
+      pages: [
+        {
+          ...base.pages[0],
+          questions: [
+            {
+              ...baseQuestion,
+              randomize: true,
+              variant: "combobox",
+            },
+          ],
+        },
+      ],
+    };
+    expect(analyticalStructure(presentationChanged)).toBe(
+      analyticalStructure(base),
+    );
+  });
+
   it("describes content changes without treating them as publication state", () => {
     const changed: SurveyDocumentV1 = {
       ...document,

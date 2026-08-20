@@ -774,6 +774,44 @@ describe("findHandoffIssues", () => {
     });
   });
 
+  it("keeps the specialized outcome choices in their meaningful order", () => {
+    const document = createDiscoverySurveyDocument();
+    const success = document.pages
+      .flatMap((page) => page.questions)
+      .find((question) => question.id === "success");
+    if (!success || success.type !== "singleChoice") {
+      throw new Error("missing success question");
+    }
+    success.randomize = true;
+
+    expect(findHandoffIssues(document)).toContainEqual({
+      questionId: "success",
+      message:
+        "Svarene Ja, Delvis og Nei må vises i fast rekkefølge for dette analyseoppsettet.",
+    });
+    expect(isSpecializedQuestionContractValid("discovery", success)).toBe(
+      false,
+    );
+    const repaired = repairSpecializedSurveyDocument(document);
+    const repairedSuccess = repaired.pages
+      .flatMap((page) => page.questions)
+      .find((question) => question.id === "success");
+    expect(repairedSuccess).not.toHaveProperty("randomize");
+    expect(findHandoffIssues(repaired)).toEqual([]);
+  });
+
+  it("rejects a selection limit on single-choice questions before handoff", () => {
+    const document = makeDocument();
+    const question = document.pages[1].questions[0];
+    if (question.type !== "singleChoice") throw new Error("wrong type");
+    question.maxSelections = 1;
+
+    expect(findHandoffIssues(document)).toContainEqual({
+      questionId: question.id,
+      message: "Maks antall valg kan bare brukes på flervalgsspørsmål.",
+    });
+  });
+
   it("flags extra outcome choices and a repurposed blocker field", () => {
     const document = createTopTasksSurveyDocument({
       tasks: [{ value: "apply", label: "Søke" }],

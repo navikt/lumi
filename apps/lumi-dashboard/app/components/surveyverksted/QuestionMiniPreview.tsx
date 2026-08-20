@@ -1,6 +1,11 @@
 import { BodyShort } from "@navikt/ds-react";
-import type { LumiSurveyQuestion, SurveyQuestionV1 } from "@navikt/lumi-survey";
+import type {
+  ChoiceQuestion,
+  LumiSurveyQuestion,
+  SurveyQuestionV1,
+} from "@navikt/lumi-survey";
 import {
+  DefaultQuestionRenderer,
   MultiChoiceField,
   RatingQuestionField,
   SingleChoiceField,
@@ -11,6 +16,29 @@ import styles from "./verksted.module.css";
 const noop = () => {};
 
 const MAX_VISIBLE_OPTIONS = 4;
+
+function stablePreviewOptions(question: ChoiceQuestion) {
+  const options = [...question.options];
+  if (!question.randomize) return options.slice(0, MAX_VISIBLE_OPTIONS);
+
+  // A compact preview should not jump on every editor render, but it must
+  // sample the complete option list when the real widget will randomize it.
+  const hash = (value: string) => {
+    let result = 2166136261;
+    for (const character of value) {
+      result ^= character.charCodeAt(0);
+      result = Math.imul(result, 16777619);
+    }
+    return result >>> 0;
+  };
+  return options
+    .sort(
+      (left, right) =>
+        hash(`${question.id}:${left.value}`) -
+        hash(`${question.id}:${right.value}`),
+    )
+    .slice(0, MAX_VISIBLE_OPTIONS);
+}
 
 /**
  * The V1 authoring question narrows `visibleIf`/`logic`; the field
@@ -77,13 +105,23 @@ function MiniField({ question }: { question: SurveyQuestionV1 }) {
       );
     case "singleChoice":
     case "multiChoice": {
-      const visible = core.options.slice(0, MAX_VISIBLE_OPTIONS);
+      const visible = stablePreviewOptions(core);
       const hidden = core.options.length - visible.length;
       return (
         <>
           {core.type === "singleChoice" ? (
             <SingleChoiceField
-              question={{ ...core, options: visible }}
+              question={{ ...core, options: visible, randomize: false }}
+              value={undefined}
+              onChange={noop}
+              validationErrorMessage=""
+              isMissing={false}
+              disabled={false}
+              hideLabel
+            />
+          ) : core.variant === "combobox" ? (
+            <DefaultQuestionRenderer
+              question={{ ...core, options: visible, randomize: false }}
               value={undefined}
               onChange={noop}
               validationErrorMessage=""
@@ -93,7 +131,7 @@ function MiniField({ question }: { question: SurveyQuestionV1 }) {
             />
           ) : (
             <MultiChoiceField
-              question={{ ...core, options: visible }}
+              question={{ ...core, options: visible, randomize: false }}
               value={undefined}
               onChange={noop}
               validationErrorMessage=""
