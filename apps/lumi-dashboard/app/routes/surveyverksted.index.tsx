@@ -14,7 +14,12 @@ import {
   TextField,
   VStack,
 } from "@navikt/ds-react";
-import type { SurveyDocumentV1 } from "@navikt/lumi-survey";
+import {
+  createDiscoverySurveyDocument,
+  createTaskPrioritySurveyDocument,
+  createTopTasksSurveyDocument,
+  type SurveyDocumentV1,
+} from "@navikt/lumi-survey";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
@@ -28,7 +33,11 @@ import {
   fetchTeamsServerFn,
 } from "~/server/actions";
 import type { SurveyAuthoringRevisionDetail } from "~/types/surveyAuthoring";
-import { suggestSurveyId } from "~/utils/surveyDocument";
+import {
+  SURVEY_TEMPLATE_PLACEHOLDER_LABELS,
+  SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE,
+  suggestSurveyId,
+} from "~/utils/surveyDocument";
 import styles from "./surveyverksted.module.css";
 
 const searchSchema = z.object({ team: z.string().optional() });
@@ -42,38 +51,113 @@ function formatProjectDate(value: string): string {
 }
 
 /*
- * The seeded draft is the pattern most authors ship, so it teaches the shape
- * we want: one question carries the panel, the follow-up waits until the
- * rating is answered, and no page title competes with the question beneath
- * it. A title is for pages that genuinely group several questions.
+ * Templates teach the supported analysis shapes without exposing field IDs
+ * or transport details in the creation flow.
  */
-const initialDocument: SurveyDocumentV1 = {
-  authoringSchemaVersion: 1,
-  type: "rating",
-  pages: [
-    {
-      id: "opplevelse",
-      questions: [
+type SurveyTemplateId =
+  | "rating"
+  | "discovery"
+  | "topTasks"
+  | "taskPriority"
+  | "custom";
+
+const surveyTemplates: Record<
+  SurveyTemplateId,
+  { label: string; description: string; create: () => SurveyDocumentV1 }
+> = {
+  rating: {
+    label: "Hvordan opplevde brukeren tjenesten?",
+    description:
+      "Starter med en vurdering og et valgfritt oppfølgingsspørsmål.",
+    create: () => ({
+      authoringSchemaVersion: 1,
+      type: "rating",
+      pages: [
         {
-          id: "rating",
-          type: "rating",
-          prompt: "Hvordan opplevde du tjenesten?",
-          required: true,
-        },
-        {
-          id: "kommentar",
-          type: "text",
-          prompt: "Hva kan vi gjøre bedre?",
-          required: false,
-          maxLength: 1000,
-          minRows: 4,
-          // Same shape the condition builder emits, so a seeded draft and a
-          // hand-built one stay byte-identical.
-          visibleIf: { questionId: "rating", operator: "EXISTS" },
+          id: "opplevelse",
+          questions: [
+            {
+              id: "rating",
+              type: "rating",
+              prompt: "Hvordan opplevde du tjenesten?",
+              required: true,
+            },
+            {
+              id: "kommentar",
+              type: "text",
+              prompt: "Hva kan vi gjøre bedre?",
+              required: false,
+              maxLength: 1000,
+              minRows: 4,
+              visibleIf: { questionId: "rating", operator: "EXISTS" },
+            },
+          ],
         },
       ],
-    },
-  ],
+    }),
+  },
+  discovery: {
+    label: "Hva kom brukeren for å gjøre?",
+    description:
+      "Finner oppgaven, om brukeren lyktes og hva som eventuelt hindret hen.",
+    create: () => createDiscoverySurveyDocument(),
+  },
+  topTasks: {
+    label: "Lyktes brukeren med en kjent oppgave?",
+    description:
+      "Måler resultatet for en liste med oppgaver dere kjenner på forhånd.",
+    create: () =>
+      createTopTasksSurveyDocument({
+        tasks: [
+          {
+            value: SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE,
+            label: SURVEY_TEMPLATE_PLACEHOLDER_LABELS[0],
+          },
+        ],
+        includeOtherTask: true,
+      }),
+  },
+  taskPriority: {
+    label: "Hvilke oppgaver er viktigst?",
+    description:
+      "Lar brukerne velge de viktigste oppgavene fra en liste dere lager.",
+    create: () =>
+      createTaskPrioritySurveyDocument({
+        tasks: [
+          {
+            value: `${SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE}-1`,
+            label: SURVEY_TEMPLATE_PLACEHOLDER_LABELS[1],
+          },
+          {
+            value: `${SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE}-2`,
+            label: SURVEY_TEMPLATE_PLACEHOLDER_LABELS[2],
+          },
+        ],
+      }),
+  },
+  custom: {
+    label: "Noe annet",
+    description: "Starter med ett åpent spørsmål uten en fast analyse.",
+    create: () => ({
+      authoringSchemaVersion: 1,
+      type: "custom",
+      pages: [
+        {
+          id: "sporsmal",
+          questions: [
+            {
+              id: "sporsmal",
+              type: "text",
+              prompt: "Hva vil dere spørre om?",
+              required: true,
+              maxLength: 1000,
+              minRows: 4,
+            },
+          ],
+        },
+      ],
+    }),
+  },
 };
 
 export const Route = createFileRoute("/surveyverksted/")({
@@ -88,6 +172,7 @@ function SurveyWorkshopIndex() {
   const [name, setName] = useState("");
   const [surveyId, setSurveyId] = useState("");
   const [surveyIdTouched, setSurveyIdTouched] = useState(false);
+  const [templateId, setTemplateId] = useState<SurveyTemplateId>("rating");
 
   const teamsQuery = useQuery({
     queryKey: ["teams"],
@@ -121,7 +206,7 @@ function SurveyWorkshopIndex() {
           team: selectedTeam,
           name,
           surveyId,
-          document: initialDocument,
+          document: surveyTemplates[templateId].create(),
         },
       });
     },
@@ -240,8 +325,8 @@ function SurveyWorkshopIndex() {
                     Start et utkast
                   </Heading>
                   <BodyShort textColor="subtle">
-                    Du starter med én side, et vurderingsspørsmål og et åpent
-                    oppfølgingsspørsmål.
+                    Velg det dere vil finne ut. Dere kan tilpasse sider,
+                    spørsmål og tekst etterpå.
                   </BodyShort>
                 </div>
                 <Select
@@ -257,6 +342,20 @@ function SurveyWorkshopIndex() {
                   {availableTeams.map((team) => (
                     <option key={team} value={team}>
                       {team}
+                    </option>
+                  ))}
+                </Select>
+                <Select
+                  label="Hva vil dere finne ut?"
+                  description={surveyTemplates[templateId].description}
+                  value={templateId}
+                  onChange={(event) =>
+                    setTemplateId(event.target.value as SurveyTemplateId)
+                  }
+                >
+                  {Object.entries(surveyTemplates).map(([value, template]) => (
+                    <option key={value} value={value}>
+                      {template.label}
                     </option>
                   ))}
                 </Select>

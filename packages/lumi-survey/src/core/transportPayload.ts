@@ -1,4 +1,5 @@
 import { buildDefinitionBlock } from "./definitionBlock.js";
+import { assertSpecializedSurveyContract } from "./specializedSurveyContract.js";
 import type {
   ChoiceOption,
   LumiSurveyAnswerValue,
@@ -17,28 +18,8 @@ import { RATING_SCALES } from "./types";
  * This ensures analytics always gets a valid surveyType even if not explicitly set.
  */
 export function inferSurveyType(questions: LumiSurveyQuestion[]): SurveyType {
-  // Check for Discovery pattern: has "discoveredTask" text field
-  const hasDiscoveredTask = questions.some(
-    (q) => q.id === "discoveredTask" && q.type === "text",
-  );
-  if (hasDiscoveredTask) return "discovery";
-
-  // Check for TopTasks pattern: has "task" single choice + "taskSuccess"
-  const hasTask = questions.some(
-    (q) => q.id === "task" && q.type === "singleChoice",
-  );
-  const hasTaskSuccess = questions.some(
-    (q) => q.id === "taskSuccess" && q.type === "singleChoice",
-  );
-  if (hasTask && hasTaskSuccess) return "topTasks";
-
-  // Check for TaskPriority pattern: has "priorities" multi choice
-  const hasPriorities = questions.some(
-    (q) => q.id === "priorities" && q.type === "multiChoice",
-  );
-  if (hasPriorities) return "taskPriority";
-
-  // Check for Rating pattern: has a rating question
+  // Specialized analytics require an explicit type. Their field IDs are
+  // ordinary words that custom surveys may legitimately use.
   const hasRating = questions.some((q) => q.type === "rating");
   if (hasRating) return "rating";
 
@@ -62,6 +43,9 @@ export function buildTransportPayload(
 
   // Add survey type - use provided or infer from questions
   const resolvedSurveyType = surveyType ?? inferSurveyType(questions);
+  assertSpecializedSurveyContract(resolvedSurveyType, questions, {
+    allowLegacyFieldIds: true,
+  });
 
   const definition = buildDefinitionBlock(questions, resolvedSurveyType);
 
@@ -157,6 +141,13 @@ export function buildTransportPayload(
       value: answerValue,
     });
   }
+
+  const answeredFieldIds = new Set(answersList.map((answer) => answer.fieldId));
+  assertSpecializedSurveyContract(
+    resolvedSurveyType,
+    questions.filter((question) => answeredFieldIds.has(question.id)),
+    { allowLegacyFieldIds: true },
+  );
 
   payload.answers = answersList;
 

@@ -5,21 +5,47 @@
  * extract structured data from FeedbackDto items.
  */
 
+import {
+  LEGACY_SPECIALIZED_SURVEY_FIELD_IDS,
+  SPECIALIZED_SURVEY_FIELD_IDS,
+} from "@navikt/lumi-survey";
 import type { FeedbackDto } from "~/types/api";
 
 // ============================================
-// Field ID Constants (mirrors backend TopTasksFieldIds)
+// Top Tasks answer fields used by the mock analytics.
 // ============================================
 
 /**
  * Known field IDs for Top Tasks survey answers.
- * Matches the backend TopTasksFieldIds object in Models.kt.
+ * The analysis fields come from the package contract. Duration is an older,
+ * optional answer field still understood by the mock extractor.
  */
 export const TopTasksFieldIds = {
-  task: ["task", "category"] as const,
-  success: ["taskSuccess", "success"] as const,
-  blocker: ["blocker", "hindring"] as const,
+  task: [SPECIALIZED_SURVEY_FIELD_IDS.task] as const,
+  success: [
+    SPECIALIZED_SURVEY_FIELD_IDS.success,
+    LEGACY_SPECIALIZED_SURVEY_FIELD_IDS.success,
+  ] as const,
+  blocker: [SPECIALIZED_SURVEY_FIELD_IDS.blocker] as const,
   duration: ["duration", "tid"] as const,
+} as const;
+
+export const DiscoveryFieldIds = {
+  task: [
+    SPECIALIZED_SURVEY_FIELD_IDS.task,
+    LEGACY_SPECIALIZED_SURVEY_FIELD_IDS.discoveryTask,
+  ] as const,
+  success: [
+    SPECIALIZED_SURVEY_FIELD_IDS.success,
+    LEGACY_SPECIALIZED_SURVEY_FIELD_IDS.success,
+  ] as const,
+} as const;
+
+export const TaskPriorityFieldIds = {
+  priority: [
+    SPECIALIZED_SURVEY_FIELD_IDS.priority,
+    LEGACY_SPECIALIZED_SURVEY_FIELD_IDS.priority,
+  ] as const,
 } as const;
 
 /**
@@ -53,6 +79,19 @@ export function getTaskNameFromFeedback(item: FeedbackDto): string | null {
   const option = taskAnswer.question.options?.find((o) => o.id === selectedId);
 
   return option?.label ?? selectedId ?? null;
+}
+
+/** Stable option identity used by filters and aggregation. */
+export function getTaskIdFromFeedback(item: FeedbackDto): string | null {
+  if (item.surveyType !== "topTasks") return null;
+  const taskAnswer = item.answers.find((answer) =>
+    TopTasksFieldIds.task.includes(
+      answer.fieldId as (typeof TopTasksFieldIds.task)[number],
+    ),
+  );
+  return taskAnswer?.fieldType === "SINGLE_CHOICE"
+    ? taskAnswer.value.selectedOptionId
+    : null;
 }
 
 /**

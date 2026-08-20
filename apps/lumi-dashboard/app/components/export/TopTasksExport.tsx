@@ -29,6 +29,7 @@ export function escapeCsvCell(value: string): string {
 export function TopTasksExport({ data, surveyId }: TopTasksExportProps) {
   const exportCsv = () => {
     const headers = [
+      "Oppgave-ID",
       "Oppgave",
       "Antall svar",
       "Suksessrate",
@@ -40,6 +41,7 @@ export function TopTasksExport({ data, surveyId }: TopTasksExportProps) {
     ];
 
     const rows = data.tasks.map((task) => [
+      task.taskId,
       task.task,
       task.totalCount.toString(),
       task.formattedSuccessRate,
@@ -72,6 +74,7 @@ export function TopTasksExport({ data, surveyId }: TopTasksExportProps) {
         avgCompletionTimeMs: data.avgCompletionTimeMs,
       },
       tasks: data.tasks.map((task) => ({
+        taskId: task.taskId,
         task: task.task,
         totalCount: task.totalCount,
         successRate: task.successRate,

@@ -550,6 +550,50 @@ describe("DefaultQuestionRenderer", () => {
     expect(handleChange.mock.calls[0][0]).toHaveLength(2);
   });
 
+  it("enforces maxSelections for checkbox multi-choice questions", () => {
+    const handleChange = vi.fn();
+    const question = {
+      id: "multi-limited",
+      type: "multiChoice" as const,
+      prompt: "Velg opptil to",
+      maxSelections: 2,
+      options: [
+        { value: "a", label: "A" },
+        { value: "b", label: "B" },
+        { value: "c", label: "C" },
+      ],
+    };
+
+    const { rerender } = render(
+      <DefaultQuestionRenderer
+        question={question}
+        value={["a", "b"]}
+        onChange={handleChange}
+        validationErrorMessage="Velg opptil to"
+        isMissing={false}
+        disabled={false}
+      />,
+    );
+    expect(screen.getByRole("checkbox", { name: "C" })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "A" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: "C" }));
+    expect(handleChange).not.toHaveBeenCalled();
+
+    rerender(
+      <DefaultQuestionRenderer
+        question={question}
+        value={["a"]}
+        onChange={handleChange}
+        validationErrorMessage="Velg opptil to"
+        isMissing={false}
+        disabled={false}
+      />,
+    );
+    expect(screen.getByRole("checkbox", { name: "C" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: "C" }));
+    expect(handleChange).toHaveBeenCalledWith(["a", "c"]);
+  });
+
   it("returns null for unsupported question types", () => {
     const question: LumiSurveyQuestion = {
       id: "unknown",

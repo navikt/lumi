@@ -48,6 +48,11 @@ object SurveyDefinitionValidator {
                             "Invalid payload: fieldId=${field.fieldId} (RATING) must not include optionIds"
                         )
                     }
+                    if (field.maxSelections != null) {
+                        throw ApiErrorException.BadRequestException(
+                            "Invalid payload: fieldId=${field.fieldId} (RATING) must not include maxSelections"
+                        )
+                    }
                 }
 
                 FieldType.SINGLE_CHOICE, FieldType.MULTI_CHOICE -> {
@@ -68,6 +73,20 @@ object SurveyDefinitionValidator {
                             "Invalid payload: fieldId=${field.fieldId} (${field.fieldType}) must not include ratingVariant or ratingScale"
                         )
                     }
+                    if (
+                        field.fieldType == FieldType.MULTI_CHOICE &&
+                        field.maxSelections != null &&
+                        field.maxSelections !in 1..field.optionIds.size
+                    ) {
+                        throw ApiErrorException.BadRequestException(
+                            "Invalid payload: fieldId=${field.fieldId} maxSelections must be between 1 and the number of options"
+                        )
+                    }
+                    if (field.fieldType != FieldType.MULTI_CHOICE && field.maxSelections != null) {
+                        throw ApiErrorException.BadRequestException(
+                            "Invalid payload: fieldId=${field.fieldId} (${field.fieldType}) must not include maxSelections"
+                        )
+                    }
                 }
 
                 else -> {
@@ -79,6 +98,11 @@ object SurveyDefinitionValidator {
                     if (field.optionIds != null) {
                         throw ApiErrorException.BadRequestException(
                             "Invalid payload: fieldId=${field.fieldId} (${field.fieldType}) must not include optionIds"
+                        )
+                    }
+                    if (field.maxSelections != null) {
+                        throw ApiErrorException.BadRequestException(
+                            "Invalid payload: fieldId=${field.fieldId} (${field.fieldType}) must not include maxSelections"
                         )
                     }
                 }
@@ -144,6 +168,14 @@ object SurveyDefinitionValidator {
                     if (invalidIds.isNotEmpty()) {
                         throw ApiErrorException.BadRequestException(
                             "Invalid payload: selectedOptionIds=$invalidIds are not valid for fieldId=${answer.fieldId}"
+                        )
+                    }
+                    if (
+                        field.maxSelections != null &&
+                        value.selectedOptionIds.size > field.maxSelections
+                    ) {
+                        throw ApiErrorException.BadRequestException(
+                            "Invalid payload: selectedOptionIds exceeds maxSelections=${field.maxSelections} for fieldId=${answer.fieldId}"
                         )
                     }
                 }

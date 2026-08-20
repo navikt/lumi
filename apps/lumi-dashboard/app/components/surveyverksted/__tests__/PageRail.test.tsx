@@ -1,5 +1,6 @@
 import type { SurveyPageV1 } from "@navikt/lumi-survey";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { PageRail } from "~/components/surveyverksted/PageRail";
 
@@ -21,11 +22,15 @@ function makePage(over: Partial<SurveyPageV1> = {}): SurveyPageV1 {
   };
 }
 
-function renderRail(pages: SurveyPageV1[]) {
+function renderRail(
+  pages: SurveyPageV1[],
+  protectedPageIds?: ReadonlySet<string>,
+) {
   return render(
     <PageRail
       pages={pages}
       selectedPageId={pages[0].id}
+      protectedPageIds={protectedPageIds}
       onSelect={noop}
       onAdd={noop}
       onMove={noop}
@@ -63,5 +68,19 @@ describe("PageRail", () => {
     ]);
 
     expect(screen.getByRole("button", { name: /Side 1/ })).toBeInTheDocument();
+  });
+
+  it("explains why a page with a fixed analytics field cannot be deleted", async () => {
+    const pages = [makePage(), makePage({ id: "side-b" })];
+    renderRail(pages, new Set(["side-a"]));
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Handlinger for side 1" }),
+    );
+    expect(
+      screen.getByRole("menuitem", {
+        name: /kan ikke slettes.*brukes i analysen/i,
+      }),
+    ).toHaveAttribute("aria-disabled", "true");
   });
 });

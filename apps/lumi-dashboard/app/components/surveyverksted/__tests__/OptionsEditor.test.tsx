@@ -15,6 +15,7 @@ function renderEditor(
   const handlers = {
     onAdd: vi.fn(),
     onUpdateLabel: vi.fn(),
+    onCommitLabel: vi.fn(),
     onUpdateValue: vi.fn(),
     onRemove: vi.fn(),
     onMove: vi.fn(),
@@ -25,6 +26,7 @@ function renderEditor(
       options={options}
       onAdd={handlers.onAdd}
       onUpdateLabel={handlers.onUpdateLabel}
+      onCommitLabel={handlers.onCommitLabel}
       onUpdateValue={handlers.onUpdateValue}
       onRemove={handlers.onRemove}
       onMove={handlers.onMove}
@@ -61,12 +63,48 @@ describe("OptionsEditor", () => {
     expect(handlers.onRemove).toHaveBeenCalledWith(2);
   });
 
+  it("keeps the required minimum for a task-priority list", async () => {
+    const handlers = renderEditor({ minOptions: 2 });
+    expect(
+      screen.getByRole("button", { name: /fjern alternativ 1/i }),
+    ).toBeDisabled();
+    const second = screen.getByDisplayValue("Sjekke status");
+    await userEvent.clear(second);
+    await userEvent.keyboard("{Backspace}");
+    expect(handlers.onRemove).not.toHaveBeenCalled();
+  });
+
   it("reports label edits without touching the value", async () => {
     const handlers = renderEditor();
     const first = screen.getByDisplayValue("Søke");
     await userEvent.type(first, "r");
     expect(handlers.onUpdateLabel).toHaveBeenCalledWith(0, "Søker");
     expect(handlers.onUpdateValue).not.toHaveBeenCalled();
+  });
+
+  it("commits a label on blur so templates can replace their placeholder id", async () => {
+    const handlers = renderEditor();
+    const first = screen.getByDisplayValue("Søke");
+    await userEvent.click(first);
+    await userEvent.tab();
+    expect(handlers.onCommitLabel).toHaveBeenCalledWith(0, "Søke");
+  });
+
+  it("keeps analytics answer identities and structure fixed", async () => {
+    const handlers = renderEditor({ lockValues: true, lockStructure: true });
+    expect(
+      screen.queryByRole("button", { name: /endre verdi/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /legg til alternativ/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/svarene brukes i analysen/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /fjern alternativ 1/i }),
+    ).toBeDisabled();
+    await userEvent.click(screen.getByDisplayValue("Sjekke status"));
+    await userEvent.keyboard("{Enter}");
+    expect(handlers.onAdd).not.toHaveBeenCalled();
   });
 
   it("commits value edits to the draft on every keystroke", async () => {
@@ -80,6 +118,7 @@ describe("OptionsEditor", () => {
           options={current}
           onAdd={() => {}}
           onUpdateLabel={() => {}}
+          onCommitLabel={() => {}}
           onUpdateValue={(index, value) =>
             setCurrent((previous) =>
               previous.map((option, candidate) =>

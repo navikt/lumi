@@ -274,19 +274,20 @@ describe("Mock Data Generation", () => {
   });
 
   describe("Task Filter", () => {
-    it("should filter Top Tasks stats by task name", () => {
+    it("should filter Top Tasks stats by stable task id", () => {
       // First get all tasks without filter
       const unfiltered = getMockTopTasksStats(new URLSearchParams());
       expect(unfiltered.tasks.length).toBeGreaterThan(1);
 
       // Pick a task to filter by
-      const targetTask = unfiltered.tasks[0].task;
-      const params = new URLSearchParams({ task: targetTask });
+      const targetTask = unfiltered.tasks[0];
+      const params = new URLSearchParams({ task: targetTask.taskId });
       const filtered = getMockTopTasksStats(params);
 
       // Should only have the filtered task
       expect(filtered.tasks.length).toBe(1);
-      expect(filtered.tasks[0].task).toBe(targetTask);
+      expect(filtered.tasks[0].taskId).toBe(targetTask.taskId);
+      expect(filtered.tasks[0].task).toBe(targetTask.task);
 
       // Total submissions should be reduced
       expect(filtered.totalSubmissions).toBeLessThanOrEqual(
@@ -294,7 +295,7 @@ describe("Mock Data Generation", () => {
       );
     });
 
-    it("should filter Blocker stats by task name", () => {
+    it("should filter Blocker stats by stable task id", () => {
       // First get all blockers without filter
       const unfiltered = getMockBlockerStats(new URLSearchParams());
 
@@ -309,8 +310,12 @@ describe("Mock Data Generation", () => {
       // Get the first task from recent blockers
       const targetTask = unfiltered.recentBlockers[0]?.task;
       if (!targetTask) return;
+      const targetTaskId = getMockTopTasksStats(
+        new URLSearchParams(),
+      ).tasks.find((task) => task.task === targetTask)?.taskId;
+      if (!targetTaskId) return;
 
-      const params = new URLSearchParams({ task: targetTask });
+      const params = new URLSearchParams({ task: targetTaskId });
       const filtered = getMockBlockerStats(params);
 
       // All recent blockers should be for the filtered task

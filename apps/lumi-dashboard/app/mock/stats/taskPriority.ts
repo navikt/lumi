@@ -5,6 +5,7 @@
  */
 
 import type { FeedbackDto, TaskPriorityResponse } from "~/types/api";
+import { TaskPriorityFieldIds } from "../utils/extractors";
 import { applyFeedbackFilters } from "./common";
 
 /**
@@ -22,18 +23,23 @@ export function getMockTaskPriorityStats(
   const voteCounts = new Map<string, number>();
   const taskLabels = new Map<string, string>();
 
-  for (const item of filtered) {
+  for (const item of [...filtered].sort(
+    (left, right) =>
+      new Date(left.submittedAt).getTime() -
+      new Date(right.submittedAt).getTime(),
+  )) {
     const priorityAnswer = item.answers.find(
-      (a) => a.fieldId === "priority" && a.fieldType === "MULTI_CHOICE",
+      (answer) =>
+        TaskPriorityFieldIds.priority.includes(
+          answer.fieldId as (typeof TaskPriorityFieldIds.priority)[number],
+        ) && answer.fieldType === "MULTI_CHOICE",
     );
 
     if (priorityAnswer && priorityAnswer.fieldType === "MULTI_CHOICE") {
       // Cache labels
       if (priorityAnswer.question.options) {
         for (const opt of priorityAnswer.question.options) {
-          if (!taskLabels.has(opt.id)) {
-            taskLabels.set(opt.id, opt.label);
-          }
+          taskLabels.set(opt.id, opt.label);
         }
       }
 
@@ -46,6 +52,7 @@ export function getMockTaskPriorityStats(
   const tasks = Array.from(voteCounts.entries())
     .map(([taskId, count]) => {
       return {
+        taskId,
         task: taskLabels.get(taskId) || taskId,
         votes: count,
         percentage: 0,

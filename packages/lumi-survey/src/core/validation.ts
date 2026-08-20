@@ -13,14 +13,10 @@ export function validateAnswers(
   const missingIds: string[] = [];
 
   for (const question of questions) {
-    if (!question.required) {
-      continue;
-    }
-
     const answer = answers[question.id];
 
     if (!isAnswerPresent(answer)) {
-      missingIds.push(question.id);
+      if (question.required) missingIds.push(question.id);
       continue;
     }
 
@@ -123,6 +119,13 @@ function isValidMultiChoiceAnswer(
   const optionValues = new Set(
     question.options.map(({ value }: ChoiceOption) => value),
   );
+  if (new Set(rawAnswer).size !== rawAnswer.length) return false;
+  if (
+    question.maxSelections !== undefined &&
+    rawAnswer.length > question.maxSelections
+  ) {
+    return false;
+  }
   return rawAnswer.every(
     (value) => typeof value === "string" && optionValues.has(value),
   );

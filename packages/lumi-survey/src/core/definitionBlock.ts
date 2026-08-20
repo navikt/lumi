@@ -38,6 +38,18 @@ export function buildDefinitionBlock(
           fieldId: question.id,
           fieldType: "MULTI_CHOICE" as const,
           optionIds: question.options.map((o) => o.value),
+          ...(question.maxSelections === undefined
+            ? {}
+            : {
+                // Flat 2.0.x configs could declare a limit above their option
+                // count. Its effective limit was still the option count; keep
+                // that runtime behavior when serializing the stricter V2
+                // definition. V1 documents reject this shape during validation.
+                maxSelections: Math.min(
+                  question.maxSelections,
+                  question.options.length,
+                ),
+              }),
         };
       default:
         return {

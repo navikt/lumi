@@ -4,6 +4,7 @@
  * Analyzes blocker text from failed/partial tasks using theme clustering.
  */
 
+import { SPECIALIZED_SURVEY_FIELD_IDS } from "@navikt/lumi-survey";
 import type { BlockerResponse, FeedbackDto } from "~/types/api";
 import { mockThemes } from "../themes";
 import { applyFeedbackFilters, STOP_WORDS, stemNorwegian } from "./common";
@@ -29,8 +30,12 @@ export function getMockBlockerStats(
   }> = [];
 
   for (const item of filtered) {
-    const blockerAnswer = item.answers.find((a) => a.fieldId === "blocker");
-    const taskAnswer = item.answers.find((a) => a.fieldId === "task");
+    const blockerAnswer = item.answers.find(
+      (a) => a.fieldId === SPECIALIZED_SURVEY_FIELD_IDS.blocker,
+    );
+    const taskAnswer = item.answers.find(
+      (a) => a.fieldId === SPECIALIZED_SURVEY_FIELD_IDS.task,
+    );
 
     if (blockerAnswer?.fieldType === "TEXT" && blockerAnswer.value.text) {
       const taskOption = taskAnswer?.question.options?.find(
@@ -39,9 +44,13 @@ export function getMockBlockerStats(
           o.id === taskAnswer.value.selectedOptionId,
       );
       const task = taskOption?.label ?? "Ukjent oppgave";
+      const taskId =
+        taskAnswer?.fieldType === "SINGLE_CHOICE"
+          ? taskAnswer.value.selectedOptionId
+          : undefined;
 
       // Task filter: skip if task doesn't match the filter
-      if (taskFilter && task !== taskFilter) continue;
+      if (taskFilter && taskId !== taskFilter) continue;
 
       blockerResponses.push({
         blocker: blockerAnswer.value.text,

@@ -30,7 +30,18 @@ enum class SurveyType {
     @SerialName("topTasks") TOP_TASKS,
     @SerialName("discovery") DISCOVERY,
     @SerialName("taskPriority") TASK_PRIORITY,
-    @SerialName("custom") CUSTOM
+    @SerialName("custom") CUSTOM;
+
+    companion object {
+        fun fromWireName(value: String?): SurveyType? = when (value) {
+            "rating", "RATING" -> RATING
+            "topTasks", "TOP_TASKS" -> TOP_TASKS
+            "discovery", "DISCOVERY" -> DISCOVERY
+            "taskPriority", "TASK_PRIORITY" -> TASK_PRIORITY
+            "custom", "CUSTOM" -> CUSTOM
+            else -> null
+        }
+    }
 }
 
 // ============================================
@@ -463,6 +474,7 @@ data class StatsQuery(
 
 @Serializable
 data class TaskVote(
+    val taskId: String,
     val task: String,
     val votes: Int,
     val percentage: Int
@@ -550,6 +562,7 @@ data class TimelineResponse(
 
 @Serializable
 data class TopTaskStats(
+    val taskId: String,
     val task: String,
     val totalCount: Int,
     val successCount: Int,

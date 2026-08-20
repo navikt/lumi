@@ -518,6 +518,31 @@ class SurveyAuthoringRoutesTest : FunSpec({
         }
     }
 
+    test("specialized analytics contracts may be drafted but never frozen invalid") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+            val created = client.post("/api/v1/intern/authoring/projects?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(invalidTopTasksBody())
+            }
+            created.status shouldBe HttpStatusCode.Created
+            val projectId = Json.parseToJsonElement(created.bodyAsText()).jsonObject
+                .getValue("id").jsonPrimitive.content
+
+            val response = client.post(
+                "/api/v1/intern/authoring/projects/$projectId/revisions?team=team-test",
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody("""{"expectedDraftVersion":1}""")
+            }
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.bodyAsText() shouldContain "document field 'task' must be required"
+        }
+    }
+
     test("revision links are team scoped") {
         testApplication {
             application { testModule() }
@@ -562,6 +587,40 @@ private fun createBody() = """
             "prompt": "Hvordan gikk det?",
             "required": true
           }]
+        }]
+      }
+    }
+""".trimIndent()
+
+private fun invalidTopTasksBody() = """
+    {
+      "name": "Oppgaver",
+      "surveyId": "top-tasks-test",
+      "document": {
+        "authoringSchemaVersion": 1,
+        "type": "topTasks",
+        "pages": [{
+          "id": "oppgaver",
+          "questions": [
+            {
+              "id": "task",
+              "type": "singleChoice",
+              "prompt": "Hva skulle du gjøre?",
+              "required": false,
+              "options": [{"value": "apply", "label": "Søke"}]
+            },
+            {
+              "id": "success",
+              "type": "singleChoice",
+              "prompt": "Fikk du gjort det?",
+              "required": true,
+              "options": [
+                {"value": "yes", "label": "Ja"},
+                {"value": "partial", "label": "Delvis"},
+                {"value": "no", "label": "Nei"}
+              ]
+            }
+          ]
         }]
       }
     }

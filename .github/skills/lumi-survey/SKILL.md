@@ -66,15 +66,15 @@ Presenter alternativer med anbefalinger:
 | **Discovery** | Forstå brukermål — "hva prøvde du å gjøre?" | Best for nye tjenester eller store redesign |
 | **Top Tasks** | Måle oppgavesuksess/-feilrate (McGovern-metoden) | Best for etablerte tjenester med kjente brukeroppgaver |
 | **Task Priority** | Rangere hva som betyr mest for brukerne (Long Neck-metoden) | Best for veikartprioritering |
-| **Tilpasset** | Skreddersydde spørsmålsflyter med forgreningslogikk | Kun når forhåndsdefinerte typer ikke passer |
+| **Tilpasset** | Egne spørsmål og relevante oppfølginger | Kun når forhåndsdefinerte typer ikke passer |
 
 Hvis utvikleren er usikker, anbefal **Rating med emoji-variant** — det er det mest utprøvde mønsteret i Nav.
 
 ### Spørsmål 2: Oppfølgingsspørsmål (kun for Rating)
 
-Hvis utvikleren valgte en rating-survey, spør: *"Vil du ha et oppfølgingsspørsmål ved lav score? (anbefalt: ja — fritekstfelt ved score ≤ 2)"*
+Hvis utvikleren valgte en rating-survey, spør: *"Når skal et eventuelt oppfølgingsspørsmål vises?"* Tilby **etter alle svar** som enkel standard, eller **bare ved lav score** når teamet har et konkret behov for det.
 
-Anbefaling: Ja — fritekst ved lav rating gir handlingsbar innsikt med minimal brukerbelastning. `DEFAULT_SURVEY_RATING` har dette innebygd.
+Ikke påstå at standarddokumentet viser kommentarfeltet bare ved lav score. `DEFAULT_RATING_SURVEY_DOCUMENT` viser det etter at ratingen er besvart. En lavscorevariant må konfigureres eksplisitt med `visibleIf`.
 
 For andre survey-typer (Discovery, Top Tasks, etc.) har de innebygde oppfølgingsspørsmål allerede — ikke spør.
 
@@ -112,167 +112,105 @@ import "@navikt/lumi-survey/styles.css";  // Deretter lumi-survey
 **Viktig**: `@navikt/ds-css` MÅ importeres før `@navikt/lumi-survey/styles.css`.
 ## Fase 4: Survey-komponent
 
-### 4a. Opprett survey-konfigurasjon
+### 4a. Opprett et `SurveyDocumentV1`
 
-Lag en egen fil for survey-konfigurasjonen (f.eks. `survey.ts` eller `lumiSurvey.ts`). Bruk `satisfies LumiSurveyConfig` for typesikkerhet.
+For nye surveyer er `SurveyDocumentV1` den eneste anbefalte modellen. Den gjør sider, rekkefølge, velkomst og bekreftelse eksplisitt. Bruk helst **Surveyverksted** og kopier TypeScript fra en frosset versjon. Hvis surveyen skal ligge i kode fra starten, bruk dokumentbyggerne under.
 
-Guiding: Basert på survey-typen valgt i Fase 2, hjelp utvikleren med å bygge opp konfigurasjonen steg for steg. Tilpass spørsmålstekster til tjenesten — bruk norsk og vær konkret.
+Ikke generer `LumiSurveyConfig`, `questions` på rotnivå, `logic`, `questionLayout="steps"` eller `DEFAULT_SURVEY_*` for en ny integrasjon. Disse finnes bare for bakoverkompatibilitet.
 
-#### Rating-survey
+#### Rating
 
 ```tsx
-import type { LumiSurveyConfig } from "@navikt/lumi-survey";
+import { createRatingSurveyDocument } from "@navikt/lumi-survey";
 
-export const survey = {
-  type: "rating",
-  questions: [
-    {
-      id: "inntrykk",
-      type: "rating",
-      variant: "emoji",       // "emoji" | "thumbs" | "stars" | "nps"
-      prompt: "Hva er ditt inntrykk av tjenesten?",
-      required: true,
-    },
+export const survey = createRatingSurveyDocument({
+  ratingPrompt: "Hvordan var det å sende inn søknaden?",
+  variant: "emoji", // "emoji" | "thumbs" | "stars" | "nps"
+  followUpQuestions: [
     {
       id: "innspill",
       type: "text",
-      prompt: "Har du noen kommentarer eller innspill?",
+      prompt: "Hva kan vi gjøre bedre?",
       maxLength: 1000,
       visibleIf: {
-        field: "ANSWER",
-        questionId: "inntrykk",
-        operator: "EXISTS",
+        questionId: "rating",
+        operator: "LT",
+        value: 3,
       },
     },
   ],
-} satisfies LumiSurveyConfig;
+});
 ```
 
-Tilpass til tjenesten:
-- Endre `prompt`-tekster til noe som passer appen (f.eks. *"Hvordan var det å søke om sykepenger?"*)
-- Juster `visibleIf` — vis oppfølging kun ved lav score (`operator: "LT", value: 3`) eller alltid (`operator: "EXISTS"`)
-- Legg til flere spørsmål ved behov (se spørsmålstyper under)
+Fjern `visibleIf` fra oppfølgingsspørsmålet hvis det skal vises etter alle besvarte ratinger; byggeren legger da automatisk til `EXISTS`.
 
-#### Discovery-survey
+#### Discovery
 
 ```tsx
-import type { LumiSurveyConfig } from "@navikt/lumi-survey";
+import { createDiscoverySurveyDocument } from "@navikt/lumi-survey";
 
-export const survey = {
-  type: "discovery",
-  questions: [
-    {
-      id: "oppgave",
-      type: "text",
-      prompt: "Hva prøvde du å gjøre i dag?",
-      maxLength: 500,
-      required: true,
-    },
-    {
-      id: "fullfort",
-      type: "singleChoice",
-      prompt: "Fikk du gjort det du kom for?",
-      options: [
-        { value: "ja", label: "Ja" },
-        { value: "delvis", label: "Delvis" },
-        { value: "nei", label: "Nei" },
-      ],
-      required: true,
-    },
-    {
-      id: "blokkering",
-      type: "text",
-      prompt: "Hva hindret deg?",
-      maxLength: 1000,
-      visibleIf: {
-        field: "ANSWER",
-        questionId: "fullfort",
-        operator: "EQ",
-        value: "nei",
-      },
-    },
-  ],
-} satisfies LumiSurveyConfig;
+export const survey = createDiscoverySurveyDocument({
+  taskPrompt: "Hva kom du hit for å gjøre?",
+});
 ```
 
-#### Top Tasks-survey
+#### Top Tasks
 
 ```tsx
-import type { LumiSurveyConfig } from "@navikt/lumi-survey";
+import { createTopTasksSurveyDocument } from "@navikt/lumi-survey";
 
-export const survey = {
-  type: "topTasks",
-  questions: [
-    {
-      id: "oppgave",
-      type: "singleChoice",
-      prompt: "Hva kom du hit for å gjøre?",
-      options: [
-        { value: "soke", label: "Søke om ytelse" },
-        { value: "status", label: "Sjekke status på søknad" },
-        { value: "dokument", label: "Sende inn dokumentasjon" },
-        { value: "annet", label: "Annet" },
-      ],
-      randomize: true,
-      required: true,
-    },
-    {
-      id: "fullfort",
-      type: "singleChoice",
-      prompt: "Fikk du gjort det?",
-      options: [
-        { value: "ja", label: "Ja" },
-        { value: "delvis", label: "Delvis" },
-        { value: "nei", label: "Nei" },
-      ],
-      required: true,
-    },
-    {
-      id: "blokkering",
-      type: "text",
-      prompt: "Hva hindret deg?",
-      maxLength: 1000,
-      visibleIf: {
-        field: "ANSWER",
-        questionId: "fullfort",
-        operator: "NEQ",
-        value: "ja",
-      },
-    },
+export const survey = createTopTasksSurveyDocument({
+  tasks: [
+    { value: "soke", label: "Søke om ytelse" },
+    { value: "status", label: "Sjekke status på søknad" },
+    { value: "dokument", label: "Sende inn dokumentasjon" },
   ],
-} satisfies LumiSurveyConfig;
+  includeOtherTask: true,
+});
 ```
 
-#### Task Priority-survey
+#### Oppgaveprioritering
 
 ```tsx
-import type { LumiSurveyConfig } from "@navikt/lumi-survey";
+import { createTaskPrioritySurveyDocument } from "@navikt/lumi-survey";
 
-export const survey = {
-  type: "taskPriority",
-  questions: [
-    {
-      id: "viktigst",
-      type: "multiChoice",
-      variant: "checkbox",
-      prompt: "Hvilke oppgaver er viktigst for deg? (velg inntil 5)",
-      maxSelections: 5,
-      randomize: true,
-      options: [
-        { value: "soke", label: "Søke om ytelse" },
-        { value: "status", label: "Sjekke status" },
-        { value: "dokument", label: "Sende dokumentasjon" },
-        { value: "endring", label: "Melde endring" },
-        { value: "utbetaling", label: "Se utbetalinger" },
-        // Legg til 15-40 oppgaver for robust Long Neck-analyse
-      ],
-      required: true,
-    },
+export const survey = createTaskPrioritySurveyDocument({
+  tasks: [
+    { value: "soke", label: "Søke om ytelse" },
+    { value: "status", label: "Sjekke status" },
+    { value: "dokument", label: "Sende dokumentasjon" },
   ],
-} satisfies LumiSurveyConfig;
+  maxSelections: 2,
+});
 ```
 
-Anbefaling: Inkluder 20-50 oppgaver for god Long Neck-analyse. Bruk `randomize: true` for å unngå rekkefølgebias.
+For Top Tasks og oppgaveprioritering er `value` en stabil analyse-ID. Behold den når bare ordlyden i `label` endres. Ikke håndskriv de tekniske analysefeltene eller ID-ene; bruk byggeren eller Surveyverksted.
+
+#### Tilpasset dokument
+
+Når ingen spesialisert analyse passer, lag et `SurveyDocumentV1` med `type: "custom"`. Legg spørsmål som skal vises sammen på samme side, og bruk én side per spørsmål når brukeren skal få ett spørsmål om gangen.
+
+```tsx
+import type { SurveyDocumentV1 } from "@navikt/lumi-survey";
+
+export const survey = {
+  authoringSchemaVersion: 1,
+  type: "custom",
+  pages: [
+    {
+      id: "tilbakemelding",
+      questions: [
+        {
+          id: "innspill",
+          type: "text",
+          prompt: "Hva kan vi gjøre bedre?",
+          maxLength: 1000,
+        },
+      ],
+    },
+  ],
+} satisfies SurveyDocumentV1;
+```
 
 #### Tilgjengelige spørsmålstyper
 
@@ -293,7 +231,7 @@ Vis spørsmål basert på tidligere svar:
 | `LT` | Mindre enn (tall) | Vis ved lav rating (`value: 3`) |
 | `GT` | Større enn (tall) | Vis ved høy rating |
 | `EQ` | Lik (tekst/tall) | Vis ved spesifikt svar (`value: "nei"`) |
-| `NEQ` | Ulik | Vis når svaret IKKE er en bestemt verdi |
+| `NEQ` | Ulik | Vis når svaret er ulikt en bestemt verdi; kombiner med `EXISTS` hvis ubesvart ikke skal telle |
 | `CONTAINS` | Inneholder (multi-choice) | Vis når et bestemt valg er valgt |
 
 ### 4b. Implementer transporten
@@ -386,7 +324,7 @@ Etter implementasjon, verifiser hele flyten:
 - [ ] `@navikt/lumi-survey` installert og stiler importert (ds-css FØR lumi-survey)
 - [ ] Aksel v8+ bekreftet (`@navikt/ds-react` ≥ 8.0.0)
 - [ ] `LumiSurveyDock` rendres i appen med en unik `surveyId`
-- [ ] Survey-konfigurasjon bruker `satisfies LumiSurveyConfig`
+- [ ] Surveyen er et `SurveyDocumentV1` fra Surveyverksted, en dokumentbygger eller `satisfies SurveyDocumentV1`
 - [ ] Transport sin `submit`-funksjon kaller ditt backend-endepunkt
 - [ ] Backend-endepunkt utveksler token og videresender til Lumi API via `LUMI_FEEDBACK_PATH`
 - [ ] NAIS-manifest har `LUMI_API_HOST`, `LUMI_AUDIENCE`, `LUMI_FEEDBACK_PATH` og `accessPolicy`
@@ -396,27 +334,29 @@ Etter implementasjon, verifiser hele flyten:
 - [ ] Lagringsstrategi matcher app-type (consent for offentlige, localStorage for interne)
 - [ ] Surveyen dukker opp i riktig Lumi-dashboard etter testinnsending (dev: https://lumi-dashboard.ansatt.dev.nav.no, prod: https://lumi-dashboard.ansatt.nav.no/)
 
-## Hurtigstart: Forhåndsdefinerte surveys
+## Hurtigstart: anbefalt standarddokument
 
 Hvis du bare vil komme raskt i gang uten skreddersøm, finnes det ferdige presets:
 
 ```tsx
-import { LumiSurveyDock, DEFAULT_SURVEY_RATING } from "@navikt/lumi-survey";
+import {
+  DEFAULT_RATING_SURVEY_DOCUMENT,
+  LumiSurveyDock,
+} from "@navikt/lumi-survey";
 
-<LumiSurveyDock surveyId="<app-navn>-feedback" survey={DEFAULT_SURVEY_RATING} transport={transport} />
+<LumiSurveyDock
+  surveyId="<app-navn>-feedback"
+  survey={DEFAULT_RATING_SURVEY_DOCUMENT}
+  transport={transport}
+/>
 ```
 
-| Import | Type | Beskrivelse |
-|--------|------|-------------|
-| `DEFAULT_SURVEY_RATING` | Rating (emoji) | 5-punkts emoji + tekstoppfølging ved lav score |
-| `DEFAULT_SURVEY_THUMBS` | Rating (tommel) | Binær tommel opp/ned + tekstoppfølging |
-| `DEFAULT_SURVEY_STARS` | Rating (stjerner) | 5-stjerners rating + tekstoppfølging |
-| `DEFAULT_SURVEY_NPS` | Rating (NPS) | 0-10 Net Promoter Score |
-| `DEFAULT_SURVEY_DISCOVERY` | Discovery | Mål + fullføring + blokkeringsanalyse |
-| `DEFAULT_SURVEY_SERVICE_FEEDBACK` | Service feedback | Rating + forhåndsdefinerte årsaker + tekst |
+Standarddokumentet er nyttig for en rask rating-prototype. Tilpass alltid spørsmålsteksten til situasjonen før produksjon. Bruk `createRatingSurveyDocument` når dere trenger andre tekster eller oppfølgingsspørsmål.
 
-Anbefaling: Bruk presets kun for rask prototyping. For produksjon, lag en skreddersydd konfigurasjon (Fase 4a) med spørsmålstekster tilpasset tjenesten.
+## Eksisterende flat konfigurasjon
+
+Pakken kjører fortsatt eldre `LumiSurveyConfig`, `DEFAULT_SURVEY_*`, `logic` og `questionLayout="steps"` i 2.x. Ikke bygg nye surveyer med disse API-ene. Når du møter dem i en eksisterende app, behold oppførselen til surveyen er migrert kontrollert til `SurveyDocumentV1`; se den offentlige migreringsguiden i Lumi-dokumentasjonen.
 
 ## Avansert konfigurasjon
 
-Se [references/avansert-konfigurasjon.md](references/avansert-konfigurasjon.md) for forgreningslogikk, events og øvrige avanserte tilpasninger.
+Se [references/avansert-konfigurasjon.md](references/avansert-konfigurasjon.md) for betinget synlighet, events og øvrige avanserte tilpasninger.

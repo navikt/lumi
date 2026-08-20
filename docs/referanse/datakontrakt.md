@@ -116,6 +116,21 @@ Backend mapper `surveyType`-strenger til enums:
 | `"taskPriority"` | `SurveyType.TASK_PRIORITY` |
 | Alt annet | `SurveyType.CUSTOM` |
 
+### Faste felt i spesialiserte analyser
+
+Bruk de ferdige oppsettene i Surveyverkstedet eller funksjonene som er beskrevet under [Velg hva dere vil måle](/guider/surveytyper). API-et avviser en spesialisert survey som mangler feltene analysen trenger.
+
+| Type | Felt | Spørsmålstype | Svar som har fast betydning |
+| :--- | :--- | :--- | :--- |
+| `discovery` | `task` | Fritekst | — |
+| `discovery` | `success` | Enkeltvalg | `yes`, `partial`, `no` |
+| `topTasks` | `task` | Enkeltvalg | ID-ene til oppgavene dere oppgir |
+| `topTasks` | `success` | Enkeltvalg | `yes`, `partial`, `no` |
+| `taskPriority` | `priority` | Flervalg | ID-ene til oppgavene dere oppgir |
+
+`blocker` er et valgfritt fritekstfelt i discovery og top tasks. Dere kan legge til egne spørsmål utenom feltene i tabellen.
+`success` skal ha nøyaktig de tre svarverdiene i tabellen; ekstra utfall kan ikke klassifiseres av analysen og blir avvist.
+
 ## Komplett eksempel
 
 ```json

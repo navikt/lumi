@@ -3,7 +3,7 @@ package no.nav.lumi.repository
 import no.nav.lumi.domain.AnswerValue
 import no.nav.lumi.domain.FieldType
 import no.nav.lumi.domain.MetadataValueWithCount
-import no.nav.lumi.domain.TopTasksFieldIds
+import no.nav.lumi.domain.SpecializedSurveyFieldIds
 import org.jetbrains.exposed.v1.core.IColumnType
 import org.jetbrains.exposed.v1.core.VarCharColumnType
 import org.jetbrains.exposed.v1.core.eq
@@ -215,13 +215,10 @@ class FeedbackContextTagsRepository {
                 if (!matchesSegments) return@filter false
             }
 
-            val taskAnswer = feedback.answers.find { a ->
-                a.fieldId in TopTasksFieldIds.task
-            }
+            val taskAnswer = SpecializedSurveyFieldIds.findTask(feedback.surveyType, feedback.answers)
             if (taskAnswer != null && taskAnswer.fieldType == FieldType.SINGLE_CHOICE) {
                 val selectedId = (taskAnswer.value as? AnswerValue.SingleChoice)?.selectedOptionId
-                val option = taskAnswer.question.options?.find { it.id == selectedId }
-                option?.label == task
+                selectedId == task
             } else {
                 false
             }

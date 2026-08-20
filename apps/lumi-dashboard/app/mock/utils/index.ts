@@ -12,6 +12,7 @@ export {
   getDurationFromFeedback,
   getRatingFromFeedback,
   getSuccessStatusFromFeedback,
+  getTaskIdFromFeedback,
   getTaskNameFromFeedback,
   RatingFieldIds,
   TopTasksFieldIds,

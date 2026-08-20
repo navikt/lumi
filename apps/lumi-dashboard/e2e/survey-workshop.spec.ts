@@ -164,6 +164,141 @@ test("creates, edits, previews and shares a survey draft", async ({ page }) => {
   await expectNoAxeViolations(page);
 });
 
+test("starts a verified specialized survey from plain-language choices", async ({
+  page,
+}) => {
+  await page.goto("/surveyverksted");
+
+  const template = page.getByLabel("Hva vil dere finne ut?");
+  await template.selectOption("discovery");
+  await expect(
+    page.getByText(
+      "Finner oppgaven, om brukeren lyktes og hva som eventuelt hindret hen.",
+    ),
+  ).toBeVisible();
+
+  await page.getByLabel("Navn på utkastet").fill("E2E discoverymal");
+  await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
+
+  await expect(draftField(page)).toHaveValue(
+    "Hva kom du hit for å gjøre i dag?",
+  );
+  await page.getByRole("button", { name: "Del med utvikler" }).click();
+  await expect(page.getByText("Klar til å dele versjon 1")).toBeVisible();
+  await expectNoAxeViolations(page);
+  await page.getByRole("button", { name: "Del versjon 1" }).click();
+  await expect(page).toHaveURL(/\/surveyverksted\/revisions\/[0-9a-f-]+/);
+  await expect(
+    page.getByRole("heading", { name: "Klar til bruk" }),
+  ).toBeVisible();
+});
+
+test("turns a Top Tasks example into a protected, shareable analysis", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/surveyverksted");
+  await page.getByLabel("Hva vil dere finne ut?").selectOption("topTasks");
+  await page
+    .getByLabel("Navn på utkastet")
+    .fill(`E2E top tasks ${testInfo.workerIndex}-${Date.now()}`);
+  await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
+
+  const firstTask = page.getByRole("textbox", {
+    name: "Alternativ 1",
+    exact: true,
+  });
+  await firstTask.fill("Sende søknad");
+  await firstTask.press("Tab");
+  await expect(
+    page.getByRole("button", { name: /endre verdi for alternativ 1/i }),
+  ).toHaveText("sende-soknad");
+  await expect(
+    page.getByRole("checkbox", { name: "Må besvares" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Slett spørsmålet" }),
+  ).toBeDisabled();
+
+  await page.getByRole("button", { name: "Handlinger for side 1" }).click();
+  await expect(
+    page.getByRole("menuitem", {
+      name: /kan ikke slettes.*brukes i analysen/i,
+    }),
+  ).toHaveAttribute("aria-disabled", "true");
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Del med utvikler" }).click();
+  await expect(page.getByText("Klar til å dele versjon 1")).toBeVisible();
+  await expectNoAxeViolations(page);
+  await page.getByRole("button", { name: "Del versjon 1" }).click();
+  await expect(page).toHaveURL(/\/surveyverksted\/revisions\/[0-9a-f-]+/);
+  await expect(
+    page.getByRole("heading", { name: "Klar til bruk" }),
+  ).toBeVisible();
+});
+
+test("replaces both Task Priority examples before sharing", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/surveyverksted");
+  await page.getByLabel("Hva vil dere finne ut?").selectOption("taskPriority");
+  await page
+    .getByLabel("Navn på utkastet")
+    .fill(`E2E priority ${testInfo.workerIndex}-${Date.now()}`);
+  await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
+
+  await page.getByRole("button", { name: "Del med utvikler" }).click();
+  await expect(page.getByText(/bytt ut eksempeloppgaven/i)).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  const first = page.getByRole("textbox", {
+    name: "Alternativ 1",
+    exact: true,
+  });
+  const second = page.getByRole("textbox", {
+    name: "Alternativ 2",
+    exact: true,
+  });
+  await first.fill("Søke om støtte");
+  await second.fill("Sjekke status");
+  await second.press("Tab");
+  await expect(
+    page.getByRole("button", { name: /endre verdi for alternativ 1/i }),
+  ).toHaveText("soke-om-stotte");
+  await expect(
+    page.getByRole("button", { name: /endre verdi for alternativ 2/i }),
+  ).toHaveText("sjekke-status");
+  const maxSelections = page.getByLabel(
+    "Maks antall alternativer brukeren kan velge",
+  );
+  await expect(maxSelections).toHaveValue("2");
+
+  // Repair remains announced and focused on repeated use, not only the first.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await maxSelections.fill("");
+    await page
+      .getByRole("button", { name: "Gjenopprett analyseoppsettet" })
+      .click();
+    const repairNotice = page
+      .locator('div[tabindex="-1"]')
+      .filter({ hasText: "Analyseoppsettet er gjenopprettet" });
+    await expect(repairNotice).toBeFocused();
+    await expect(maxSelections).toHaveValue("2");
+  }
+
+  await page.getByRole("button", { name: "Del med utvikler" }).click();
+  await expect(page.getByText("Klar til å dele versjon 1")).toBeVisible();
+  await expectNoAxeViolations(page);
+  await page.getByRole("button", { name: "Del versjon 1" }).click();
+  await expect(page).toHaveURL(/\/surveyverksted\/revisions\/[0-9a-f-]+/);
+  await expect(
+    page.getByRole("heading", { name: "Klar til bruk" }),
+  ).toBeVisible();
+});
+
 test("authors intro and confirmation screens that render in the real widget", async ({
   page,
 }) => {

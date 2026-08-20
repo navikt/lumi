@@ -17,6 +17,7 @@ export {
   getBlockerTextFromFeedback,
   getDurationFromFeedback,
   getSuccessStatusFromFeedback,
+  getTaskIdFromFeedback,
   getTaskNameFromFeedback,
   TopTasksFieldIds,
 } from "../utils/extractors";

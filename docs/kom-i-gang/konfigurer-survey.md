@@ -31,7 +31,7 @@ import { survey } from "./survey";
 
 Eksporten inneholder `satisfies SurveyDocumentV1`, slik at appens TypeScript-oppsett sjekker dokumentet. Appen eier filen og ruller den ut på vanlig måte.
 
-Kontroller også `type` før utrulling. Nye utkast fra Surveyverksted starter som `rating`. Bytt til `custom` hvis surveyen ikke lenger er en vurderingssurvey. De andre analysetypene krever bestemte spørsmåls-ID-er og svarformer; se [Velg hva dere vil måle](/guider/surveytyper).
+Surveyverksted setter `type` og analysefeltene fra oppsettet dere valgte da utkastet ble opprettet. Ikke endre disse for hånd i den eksporterte koden. Skal surveyen måle noe annet, lag et nytt utkast med riktig oppsett. Se [Velg hva dere vil måle](/guider/surveytyper).
 
 Skriver du surveyen direkte i kode, kan du starte med eksempelet under.
 

@@ -23,5 +23,6 @@ export {
   shouldShowSubmitButton,
 } from "./evaluateVisibility";
 export * from "./ratingLabels";
+export * from "./specializedSurveyContract.js";
 export * from "./types";
 export * from "./useLumiSurvey";

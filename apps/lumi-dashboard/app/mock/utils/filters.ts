@@ -7,7 +7,7 @@ import { parseChoiceParam } from "~/utils/choiceFilterUtils";
 import { parsePhraseParam } from "~/utils/phraseFilterUtils";
 import { parseRatingParam } from "~/utils/ratingFilterUtils";
 import { mockThemes } from "../themes";
-import { getTaskNameFromFeedback } from "./extractors";
+import { getTaskIdFromFeedback } from "./extractors";
 import { matchesThemeKeywords } from "./textAnalysis";
 
 export interface FilterParams {
@@ -75,7 +75,7 @@ export function applyFeedbackFilters(
 
   if (filters.task) {
     filtered = filtered.filter(
-      (item) => getTaskNameFromFeedback(item) === filters.task,
+      (item) => getTaskIdFromFeedback(item) === filters.task,
     );
   }
 

@@ -540,7 +540,8 @@ function validateDocumentQuestion(
       candidate.maxSelections !== undefined &&
       (typeof candidate.maxSelections !== "number" ||
         !Number.isInteger(candidate.maxSelections) ||
-        candidate.maxSelections <= 0)
+        candidate.maxSelections <= 0 ||
+        candidate.maxSelections > candidate.options.length)
     ) {
       throw new Error(
         `Lumi: Choice question "${candidate.id}" has an invalid maxSelections`,

@@ -408,7 +408,7 @@ class FeedbackRepositoryTest : FunSpec({
             )
 
             val (content, _, _) = repository.findPaginated(
-                FeedbackQuery(team = "team-test", task = "Soknad")
+                FeedbackQuery(team = "team-test", task = "opt-1")
             )
 
             content shouldHaveSize 1
@@ -1384,7 +1384,7 @@ class FeedbackRepositoryTest : FunSpec({
                         val result = repository.findContextTagsForSurvey(
                                 surveyId = surveyId,
                                 team = "team-test",
-                                task = "Soknad",
+                                task = "opt-2",
                                 segments = listOf("k" to "v"),
                                 deviceType = "mobile",
                                 hasText = true,

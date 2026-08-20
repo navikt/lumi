@@ -68,7 +68,7 @@ class TopTasksRoutesTest : FunSpec({
                   "value": {"type": "singleChoice", "selectedOptionId": "$selectedTaskId"}
                 },
                 {
-                  "fieldId": "taskSuccess",
+                  "fieldId": "success",
                   "fieldType": "SINGLE_CHOICE",
                   "question": {
                     "label": "Klarte du det?",
@@ -186,7 +186,7 @@ class TopTasksRoutesTest : FunSpec({
             allStats.tasks.size shouldBe 2
 
             // Filter by specific task
-            val filteredResponse = createTestClient().get("/api/v1/intern/stats/top-tasks?team=$team&app=$app&surveyId=$surveyId&task=Lage%20oppf%C3%B8lgingsplan") {
+            val filteredResponse = createTestClient().get("/api/v1/intern/stats/top-tasks?team=$team&app=$app&surveyId=$surveyId&task=task-a") {
                 header(HttpHeaders.Authorization, "Bearer test-token")
             }
 
@@ -195,6 +195,7 @@ class TopTasksRoutesTest : FunSpec({
 
             filteredStats.tasks.size shouldBe 1
             filteredStats.tasks[0].task shouldBe "Lage oppfølgingsplan"
+            filteredStats.tasks[0].taskId shouldBe "task-a"
             filteredStats.tasks[0].totalCount shouldBe 2
         }
     }
@@ -332,7 +333,7 @@ class TopTasksRoutesTest : FunSpec({
                       },
                       "answers": [
                         {"fieldId": "task", "fieldType": "SINGLE_CHOICE", "question": {"label": "Hva?"}, "value": {"type": "singleChoice", "selectedOptionId": "a"}},
-                        {"fieldId": "taskSuccess", "fieldType": "SINGLE_CHOICE", "question": {"label": "Klarte du det?"}, "value": {"type": "singleChoice", "selectedOptionId": "yes"}}
+                        {"fieldId": "success", "fieldType": "SINGLE_CHOICE", "question": {"label": "Klarte du det?"}, "value": {"type": "singleChoice", "selectedOptionId": "yes"}}
                       ]
                     }
                 """.trimIndent(),
@@ -354,7 +355,7 @@ class TopTasksRoutesTest : FunSpec({
                       },
                       "answers": [
                         {"fieldId": "task", "fieldType": "SINGLE_CHOICE", "question": {"label": "Hva?"}, "value": {"type": "singleChoice", "selectedOptionId": "b"}},
-                        {"fieldId": "taskSuccess", "fieldType": "SINGLE_CHOICE", "question": {"label": "Klarte du det?"}, "value": {"type": "singleChoice", "selectedOptionId": "yes"}}
+                        {"fieldId": "success", "fieldType": "SINGLE_CHOICE", "question": {"label": "Klarte du det?"}, "value": {"type": "singleChoice", "selectedOptionId": "yes"}}
                       ]
                     }
                 """.trimIndent(),

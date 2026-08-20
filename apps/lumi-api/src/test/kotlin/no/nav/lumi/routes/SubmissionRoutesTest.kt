@@ -151,7 +151,7 @@ class SubmissionRoutesTest : FunSpec({
                     {
                       "schemaVersion": 1,
                       "surveyId": "immutable-survey",
-                      "surveyType": "topTasks",
+                      "surveyType": "custom",
                       "submittedAt": "2026-01-10T12:00:12Z",
                       "answers": [
                         {
@@ -178,7 +178,7 @@ class SubmissionRoutesTest : FunSpec({
                     {
                       "schemaVersion": 1,
                       "surveyId": "immutable-survey",
-                      "surveyType": "topTasks",
+                      "surveyType": "custom",
                       "submittedAt": "2026-01-10T12:01:12Z",
                       "answers": [
                         {
@@ -218,7 +218,7 @@ class SubmissionRoutesTest : FunSpec({
                     {
                       "schemaVersion": 1,
                       "surveyId": "label-survey",
-                      "surveyType": "topTasks",
+                      "surveyType": "custom",
                       "submittedAt": "2026-01-10T12:00:12Z",
                       "answers": [
                         {
@@ -245,7 +245,7 @@ class SubmissionRoutesTest : FunSpec({
                     {
                       "schemaVersion": 1,
                       "surveyId": "label-survey",
-                      "surveyType": "topTasks",
+                      "surveyType": "custom",
                       "submittedAt": "2026-01-10T12:01:12Z",
                       "answers": [
                         {
@@ -1028,7 +1028,7 @@ class SubmissionRoutesTest : FunSpec({
                 {
                   "schemaVersion": 1,
                   "surveyId": "dp-feedback",
-                  "surveyType": "topTasks",
+                  "surveyType": "custom",
                   "submittedAt": "2026-01-10T12:00:12Z",
                   "answers": [
                     {
@@ -1101,7 +1101,7 @@ class SubmissionRoutesTest : FunSpec({
                 {
                   "schemaVersion": 1,
                   "surveyId": "dp-feedback",
-                  "surveyType": "topTasks",
+                  "surveyType": "custom",
                   "submittedAt": "2026-01-10T12:00:12Z",
                   "answers": [
                     {
@@ -1140,7 +1140,7 @@ class SubmissionRoutesTest : FunSpec({
                 {
                   "schemaVersion": 1,
                   "surveyId": "dp-feedback",
-                  "surveyType": "topTasks",
+                  "surveyType": "custom",
                   "submittedAt": "2026-01-10T12:00:12Z",
                   "answers": [
                     {
@@ -1173,11 +1173,11 @@ class SubmissionRoutesTest : FunSpec({
                 {
                   "schemaVersion": 1,
                   "surveyId": "dp-feedback",
-                  "surveyType": "taskPriority",
+                  "surveyType": "custom",
                   "submittedAt": "2026-01-10T12:00:12Z",
                   "answers": [
                     {
-                      "fieldId": "priorities",
+                      "fieldId": "choices",
                       "fieldType": "MULTI_CHOICE",
                       "question": { "label": "Hva er viktigst?" },
                       "value": { "type": "multiChoice", "selectedOptionIds": ["ok", " "] }
@@ -1207,11 +1207,11 @@ class SubmissionRoutesTest : FunSpec({
                 {
                   "schemaVersion": 1,
                   "surveyId": "dp-feedback",
-                  "surveyType": "taskPriority",
+                  "surveyType": "custom",
                   "submittedAt": "2026-01-10T12:00:12Z",
                   "answers": [
                     {
-                      "fieldId": "priorities",
+                      "fieldId": "choices",
                       "fieldType": "MULTI_CHOICE",
                       "question": { "label": "Hva er viktigst?" },
                       "value": { "type": "multiChoice", "selectedOptionIds": ["ok", "$tooLongSelectedId"] }
@@ -1288,7 +1288,7 @@ class SubmissionRoutesTest : FunSpec({
                     {
                       "schemaVersion": 1,
                       "surveyId": "dedup-conflict-survey",
-                      "surveyType": "topTasks",
+                      "surveyType": "custom",
                       "submittedAt": "2026-01-10T12:00:12Z",
                       "deduplicationKey": "client-key-123456",
                       "answers": [
@@ -1319,7 +1319,7 @@ class SubmissionRoutesTest : FunSpec({
                     {
                       "schemaVersion": 1,
                       "surveyId": "dedup-conflict-survey",
-                      "surveyType": "topTasks",
+                      "surveyType": "custom",
                       "submittedAt": "2026-01-10T12:01:12Z",
                       "deduplicationKey": "client-key-123456",
                       "answers": [
@@ -1367,7 +1367,7 @@ class SubmissionRoutesTest : FunSpec({
                     {
                       "schemaVersion": 1,
                       "surveyId": "dedup-new-key-conflict-survey",
-                      "surveyType": "topTasks",
+                      "surveyType": "custom",
                       "submittedAt": "2026-01-10T12:00:12Z",
                       "deduplicationKey": "client-key-123456",
                       "answers": [
@@ -1393,7 +1393,7 @@ class SubmissionRoutesTest : FunSpec({
                     {
                       "schemaVersion": 1,
                       "surveyId": "dedup-new-key-conflict-survey",
-                      "surveyType": "topTasks",
+                      "surveyType": "custom",
                       "submittedAt": "2026-01-10T12:01:12Z",
                       "deduplicationKey": "client-key-654321",
                       "answers": [
@@ -1740,7 +1740,7 @@ class SubmissionRoutesTest : FunSpec({
                             {
                               "schemaVersion": 1,
                               "surveyId": "dedup-race-conflict-survey",
-                              "surveyType": "topTasks",
+                              "surveyType": "custom",
                               "submittedAt": "2026-01-10T12:00:12Z",
                               "deduplicationKey": "client-key-123456",
                               "answers": [
@@ -1768,7 +1768,7 @@ class SubmissionRoutesTest : FunSpec({
                             {
                               "schemaVersion": 1,
                               "surveyId": "dedup-race-conflict-survey",
-                              "surveyType": "topTasks",
+                              "surveyType": "custom",
                               "submittedAt": "2026-01-10T12:01:12Z",
                               "deduplicationKey": "client-key-123456",
                               "answers": [

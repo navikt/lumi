@@ -265,6 +265,27 @@ describe("buildCanonicalSurvey", () => {
         ],
       }),
     ).toThrowError(/invalid maxSelections/i);
+
+    expect(() =>
+      validateSurveyDocumentV1({
+        authoringSchemaVersion: 1,
+        type: "custom",
+        pages: [
+          {
+            id: "choices",
+            questions: [
+              {
+                id: "topics",
+                type: "multiChoice",
+                prompt: "Velg tema",
+                options: [{ value: "one", label: "Ett" }],
+                maxSelections: 2,
+              },
+            ],
+          },
+        ],
+      }),
+    ).toThrowError(/invalid maxSelections/i);
   });
 
   it("sets survey type if provided", () => {

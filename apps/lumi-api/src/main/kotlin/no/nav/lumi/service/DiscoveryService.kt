@@ -61,21 +61,21 @@ class DiscoveryService(
         
         for (dto in feedbacks) {
             // Extract task text (first TEXT answer typically)
-            val taskAnswer = dto.answers.find { it.fieldId == "task" }
+            val taskAnswer = SpecializedSurveyFieldIds.findTask(dto.surveyType, dto.answers)
             val taskText = when (val v = taskAnswer?.value) {
                 is AnswerValue.Text -> v.text
                 else -> continue
             }
             
             // Extract success status
-            val successAnswer = dto.answers.find { it.fieldId == "success" }
+            val successAnswer = SpecializedSurveyFieldIds.findSuccess(dto.answers)
             val successValue = when (val v = successAnswer?.value) {
                 is AnswerValue.SingleChoice -> v.selectedOptionId
                 else -> "unknown"
             }
             
             // Extract blocker if present
-            val blockerAnswer = dto.answers.find { it.fieldId == "blocker" }
+            val blockerAnswer = dto.answers.find { it.fieldId == SpecializedSurveyFieldIds.BLOCKER }
             val blockerText = when (val v = blockerAnswer?.value) {
                 is AnswerValue.Text -> v.text
                 else -> null

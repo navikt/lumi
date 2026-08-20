@@ -201,7 +201,7 @@ describe("useLumiSurvey", () => {
         surveyId: SURVEY_ID,
         questions: requiredQuestions,
         transport,
-        surveyType: "topTasks",
+        surveyType: "custom",
       }),
     );
 
@@ -215,7 +215,7 @@ describe("useLumiSurvey", () => {
     });
 
     const payload = submitMock.mock.calls[0][0];
-    expect(payload.transportPayload.definition.surveyType).toBe("topTasks");
+    expect(payload.transportPayload.definition.surveyType).toBe("custom");
   });
 
   it("submits answers when validation passes", async () => {
@@ -475,6 +475,55 @@ describe("useLumiSurvey", () => {
     expect(events.onValidationFailed).not.toHaveBeenCalled();
     expect(events.onAnswer).toHaveBeenCalledWith("rating", 3);
     expect(events.onAnswer).toHaveBeenCalledWith("feedback", "Hei");
+  });
+
+  it("turns payload contract errors into a settled transport error", async () => {
+    const transport: LumiSurveyTransport = { submit: vi.fn() };
+    const events = createEventSpies();
+    const questions: LumiSurveyQuestion[] = [
+      {
+        id: "task",
+        type: "text",
+        prompt: "Oppgave",
+        required: true,
+      },
+      {
+        id: "success",
+        type: "singleChoice",
+        prompt: "Resultat",
+        required: false,
+        options: [
+          { value: "yes", label: "Ja" },
+          { value: "partial", label: "Delvis" },
+          { value: "no", label: "Nei" },
+        ],
+      },
+    ];
+    const { result } = renderHook(() =>
+      useLumiSurvey({
+        surveyId: SURVEY_ID,
+        questions,
+        surveyType: "discovery",
+        transport,
+        events,
+      }),
+    );
+    await act(() => {
+      result.current.setAnswer("task", "Søke");
+      result.current.setAnswer("success", "yes");
+    });
+
+    let submission: LumiSurveySubmitResult | undefined;
+    await act(async () => {
+      submission = await result.current.submit();
+    });
+
+    expect(submission?.ok).toBe(false);
+    expect(result.current.status).toBe("error");
+    expect(result.current.error?.type).toBe("transport");
+    expect(transport.submit).not.toHaveBeenCalled();
+    expect(events.onSubmitStart).not.toHaveBeenCalled();
+    expect(events.onSubmitError).toHaveBeenCalledWith(expect.any(Error));
   });
 
   it("resets answers to the initial snapshot and refreshes startedAt", async () => {

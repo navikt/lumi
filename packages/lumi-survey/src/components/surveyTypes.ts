@@ -10,6 +10,9 @@ export type { SurveyType };
  * Configuration for a Lumi survey.
  * Questions are displayed in array order.
  * Use `visibleIf` on individual questions for progressive disclosure.
+ *
+ * @deprecated Use `SurveyDocumentV1`. The flat shape remains supported for
+ * existing integrations, but new surveys should describe explicit pages.
  */
 export interface LumiSurveyConfig {
   /** Versioned documents use `SurveyDocumentV1` instead. */

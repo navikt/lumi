@@ -1,3 +1,7 @@
+import {
+  LEGACY_SPECIALIZED_SURVEY_FIELD_IDS,
+  SPECIALIZED_SURVEY_FIELD_IDS,
+} from "@navikt/lumi-survey";
 import dayjs from "dayjs";
 import { mockThemes } from "~/mock/themes";
 import type {
@@ -17,6 +21,16 @@ import { getScreenResolutionBucket } from "~/utils/screenResolution";
 import { getTopKeywords, IGNORED_WORDS } from "~/utils/wordAnalysis";
 import { getRating, hasTextResponse } from "./helpers";
 import { extractPhrases } from "./stats/phrases";
+
+const isDiscoveryTaskField = (fieldId: string) =>
+  fieldId === SPECIALIZED_SURVEY_FIELD_IDS.task ||
+  fieldId === LEGACY_SPECIALIZED_SURVEY_FIELD_IDS.discoveryTask;
+const isSuccessField = (fieldId: string) =>
+  fieldId === SPECIALIZED_SURVEY_FIELD_IDS.success ||
+  fieldId === LEGACY_SPECIALIZED_SURVEY_FIELD_IDS.success;
+const isPriorityField = (fieldId: string) =>
+  fieldId === SPECIALIZED_SURVEY_FIELD_IDS.priority ||
+  fieldId === LEGACY_SPECIALIZED_SURVEY_FIELD_IDS.priority;
 
 // Note: circular dependency if we import mockFeedbackItems here directly while mockData imports stats.
 // To avoid this, we will accept items as arguments in the functions.
@@ -411,7 +425,7 @@ export function calculateStats(
     });
   }
 
-  // Task filter: filter by specific task name (for Top Tasks drill-down)
+  // Task filter: use the stable option id so label edits keep one history.
   const taskFilter = params.get("task");
   if (taskFilter) {
     filtered = filtered.filter((item) => {
@@ -419,18 +433,11 @@ export function calculateStats(
       if (item.surveyType !== "topTasks") return false;
 
       const taskAnswer = item.answers.find(
-        (a) => a.fieldId === "task" || a.fieldId === "category",
+        (a) => a.fieldId === SPECIALIZED_SURVEY_FIELD_IDS.task,
       );
       if (!taskAnswer || taskAnswer.fieldType !== "SINGLE_CHOICE") return false;
 
-      const taskOption = taskAnswer.question.options?.find(
-        (o) => o.id === taskAnswer.value.selectedOptionId,
-      );
-      const taskName = taskOption
-        ? taskOption.label
-        : taskAnswer.value.selectedOptionId;
-
-      return taskName === taskFilter;
+      return taskAnswer.value.selectedOptionId === taskFilter;
     });
   }
 
@@ -713,8 +720,12 @@ export function getMockDiscoveryStats(
   );
 
   const responses = filtered.map((item) => {
-    const taskAnswer = item.answers.find((a) => a.fieldId === "task");
-    const successAnswer = item.answers.find((a) => a.fieldId === "success");
+    const taskAnswer = item.answers.find((answer) =>
+      isDiscoveryTaskField(answer.fieldId),
+    );
+    const successAnswer = item.answers.find((answer) =>
+      isSuccessField(answer.fieldId),
+    );
 
     let task = "Ukjent oppgave";
     if (taskAnswer) {
@@ -915,18 +926,20 @@ export function getMockTaskPriorityStats(
   const voteCounts = new Map<string, number>();
   const taskLabels = new Map<string, string>();
 
-  for (const item of filtered) {
+  for (const item of [...filtered].sort(
+    (left, right) =>
+      new Date(left.submittedAt).getTime() -
+      new Date(right.submittedAt).getTime(),
+  )) {
     const priorityAnswer = item.answers.find(
-      (a) => a.fieldId === "priority" && a.fieldType === "MULTI_CHOICE",
+      (a) => isPriorityField(a.fieldId) && a.fieldType === "MULTI_CHOICE",
     );
 
     if (priorityAnswer && priorityAnswer.fieldType === "MULTI_CHOICE") {
       // Cache labels
       if (priorityAnswer.question.options) {
         for (const opt of priorityAnswer.question.options) {
-          if (!taskLabels.has(opt.id)) {
-            taskLabels.set(opt.id, opt.label);
-          }
+          taskLabels.set(opt.id, opt.label);
         }
       }
 
@@ -939,6 +952,7 @@ export function getMockTaskPriorityStats(
   const tasks = Array.from(voteCounts.entries())
     .map(([taskId, count]) => {
       return {
+        taskId,
         task: taskLabels.get(taskId) || taskId,
         votes: count,
         percentage: 0,
@@ -987,6 +1001,7 @@ interface InternalTaskStats
   totalDurationMs: number;
   durationCount: number;
   blockerTexts: string[]; // Raw blocker texts for theme matching
+  latestSubmittedAt: string;
 }
 
 export function getMockTopTasksStats(
@@ -1002,22 +1017,21 @@ export function getMockTopTasksStats(
     if (item.surveyType !== "topTasks") continue;
 
     const taskAnswer = item.answers.find(
-      (a) => a.fieldId === "task" || a.fieldId === "category",
+      (a) => a.fieldId === SPECIALIZED_SURVEY_FIELD_IDS.task,
     );
     if (!taskAnswer || taskAnswer.fieldType !== "SINGLE_CHOICE") continue;
 
     const taskOption = taskAnswer.question.options?.find(
       (o) => o.id === taskAnswer.value.selectedOptionId,
     );
-    const task = taskOption
-      ? taskOption.label
-      : taskAnswer.value.selectedOptionId;
+    const taskId = taskAnswer.value.selectedOptionId;
+    const task = taskOption ? taskOption.label : taskId;
 
     // Task filter: skip if task doesn't match the filter
-    if (taskFilter && task !== taskFilter) continue;
+    if (taskFilter && taskId !== taskFilter) continue;
 
-    const successAnswer = item.answers.find(
-      (a) => a.fieldId === "taskSuccess" || a.fieldId === "success",
+    const successAnswer = item.answers.find((answer) =>
+      isSuccessField(answer.fieldId),
     );
     const successValue =
       successAnswer?.fieldType === "SINGLE_CHOICE"
@@ -1025,15 +1039,16 @@ export function getMockTopTasksStats(
         : "unknown";
 
     const blockerAnswer = item.answers.find(
-      (a) => a.fieldId === "blocker" || a.fieldId === "hindring",
+      (a) => a.fieldId === SPECIALIZED_SURVEY_FIELD_IDS.blocker,
     );
     const blocker =
       blockerAnswer?.fieldType === "TEXT" && blockerAnswer.value.text
         ? blockerAnswer.value.text
         : null;
 
-    if (!taskMap.has(task)) {
-      taskMap.set(task, {
+    if (!taskMap.has(taskId)) {
+      taskMap.set(taskId, {
+        taskId,
         task,
         totalCount: 0,
         successCount: 0,
@@ -1045,16 +1060,24 @@ export function getMockTopTasksStats(
         totalDurationMs: 0,
         durationCount: 0,
         blockerTexts: [],
+        latestSubmittedAt: item.submittedAt,
       });
     }
 
-    const stats = taskMap.get(task);
+    const stats = taskMap.get(taskId);
     if (stats) {
+      if (
+        new Date(item.submittedAt).getTime() >=
+        new Date(stats.latestSubmittedAt).getTime()
+      ) {
+        stats.task = task;
+        stats.latestSubmittedAt = item.submittedAt;
+      }
       stats.totalCount++;
 
-      if (successValue === "Ja") stats.successCount++;
-      else if (successValue === "Delvis") stats.partialCount++;
-      else if (successValue === "Nei") stats.failureCount++;
+      if (successValue === "yes") stats.successCount++;
+      else if (successValue === "partial") stats.partialCount++;
+      else if (successValue === "no") stats.failureCount++;
 
       if (blocker) {
         stats.blockerCounts[blocker] = (stats.blockerCounts[blocker] || 0) + 1;
@@ -1074,7 +1097,7 @@ export function getMockTopTasksStats(
       dailyStats[date] = { total: 0, success: 0 };
     }
     dailyStats[date].total++;
-    if (successValue === "Ja") {
+    if (successValue === "yes") {
       dailyStats[date].success++;
     }
   }
@@ -1187,7 +1210,13 @@ export function getMockTopTasksStats(
     }
 
     // Remove internal aggregation fields before returning
-    const { totalDurationMs, durationCount: dc, blockerTexts, ...rest } = stats;
+    const {
+      totalDurationMs,
+      durationCount: dc,
+      blockerTexts,
+      latestSubmittedAt,
+      ...rest
+    } = stats;
 
     return {
       ...rest,
@@ -1240,7 +1269,8 @@ export function getMockTopTasksStats(
     dailyStats,
     questionText: filtered
       .find((i) => i.surveyType === "topTasks")
-      ?.answers.find((a) => a.fieldId === "task")?.question.label,
+      ?.answers.find((a) => a.fieldId === SPECIALIZED_SURVEY_FIELD_IDS.task)
+      ?.question.label,
     overallTpi,
     avgCompletionTimeMs,
     otherTasksPercentage,
@@ -1270,8 +1300,12 @@ export function getMockBlockerStats(
   }> = [];
 
   for (const item of filtered) {
-    const blockerAnswer = item.answers.find((a) => a.fieldId === "blocker");
-    const taskAnswer = item.answers.find((a) => a.fieldId === "task");
+    const blockerAnswer = item.answers.find(
+      (a) => a.fieldId === SPECIALIZED_SURVEY_FIELD_IDS.blocker,
+    );
+    const taskAnswer = item.answers.find(
+      (a) => a.fieldId === SPECIALIZED_SURVEY_FIELD_IDS.task,
+    );
 
     if (blockerAnswer?.fieldType === "TEXT" && blockerAnswer.value.text) {
       const taskOption = taskAnswer?.question.options?.find(
@@ -1280,9 +1314,13 @@ export function getMockBlockerStats(
           o.id === taskAnswer.value.selectedOptionId,
       );
       const task = taskOption?.label ?? "Ukjent oppgave";
+      const taskId =
+        taskAnswer?.fieldType === "SINGLE_CHOICE"
+          ? taskAnswer.value.selectedOptionId
+          : undefined;
 
       // Task filter: skip if task doesn't match the filter
-      if (taskFilter && task !== taskFilter) continue;
+      if (taskFilter && taskId !== taskFilter) continue;
 
       blockerResponses.push({
         blocker: blockerAnswer.value.text,

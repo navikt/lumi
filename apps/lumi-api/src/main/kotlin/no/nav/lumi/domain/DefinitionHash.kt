@@ -9,7 +9,8 @@ data class FieldDefinition(
     val fieldType: FieldType,
     val ratingVariant: RatingVariant?,
     val ratingScale: Int?,
-    val optionIds: List<String>?
+    val optionIds: List<String>?,
+    val maxSelections: Int? = null,
 )
 
 @Serializable
@@ -27,7 +28,8 @@ data class SurveyDefinition(
                     fieldType = answer.fieldType,
                     ratingVariant = (answer.value as? AnswerValue.Rating)?.ratingVariant,
                     ratingScale = (answer.value as? AnswerValue.Rating)?.ratingScale,
-                    optionIds = if (isChoiceType) answer.question.options?.map { it.id } else null
+                    optionIds = if (isChoiceType) answer.question.options?.map { it.id } else null,
+                    maxSelections = null,
                 )
             }
 
@@ -44,7 +46,8 @@ fun FieldDefinition.isStructurallyEqualTo(other: FieldDefinition): Boolean {
     return fieldType == other.fieldType &&
         ratingVariant == other.ratingVariant &&
         ratingScale == other.ratingScale &&
-        optionIds == other.optionIds
+        optionIds == other.optionIds &&
+        maxSelections == other.maxSelections
 }
 
 fun SurveyDefinition.mergeWith(incoming: SurveyDefinition): SurveyDefinition {
@@ -61,6 +64,33 @@ fun SurveyDefinition.mergeWith(incoming: SurveyDefinition): SurveyDefinition {
         surveyType = incoming.surveyType,
         fields = mergedFields
     )
+}
+
+/**
+ * One-time enrichment for definitions stored before maxSelections was part of
+ * the V2 contract. It only fills a missing limit when every previously known
+ * structural property is unchanged; subsequent limit changes remain conflicts.
+ */
+fun SurveyDefinition.withMissingMaxSelectionsFrom(incoming: SurveyDefinition): SurveyDefinition {
+    val incomingById = incoming.fields.associateBy { it.fieldId }
+    var changed = false
+    val enriched = fields.map { storedField ->
+        val incomingField = incomingById[storedField.fieldId]
+        if (
+            storedField.maxSelections == null &&
+            incomingField?.maxSelections != null &&
+            storedField.fieldType == incomingField.fieldType &&
+            storedField.ratingVariant == incomingField.ratingVariant &&
+            storedField.ratingScale == incomingField.ratingScale &&
+            storedField.optionIds == incomingField.optionIds
+        ) {
+            changed = true
+            storedField.copy(maxSelections = incomingField.maxSelections)
+        } else {
+            storedField
+        }
+    }
+    return if (changed) copy(fields = enriched) else this
 }
 
 data class FieldChange(
@@ -181,6 +211,9 @@ fun diff(stored: SurveyDefinition, incoming: SurveyDefinition): DefinitionDiff {
                 if (storedField.optionIds != incomingField.optionIds) {
                     add("optionIds ${storedField.optionIds} -> ${incomingField.optionIds}")
                 }
+                if (storedField.maxSelections != incomingField.maxSelections) {
+                    add("maxSelections ${storedField.maxSelections} -> ${incomingField.maxSelections}")
+                }
             }
 
             if (changes.isNotEmpty()) {
@@ -222,6 +255,10 @@ private fun SurveyDefinition.toCanonicalJson(): String {
                     append(jsonString(optionId))
                 }
                 append("]")
+            }
+            if (field.maxSelections != null) {
+                append(",\"maxSelections\":")
+                append(field.maxSelections)
             }
             append("}")
         }

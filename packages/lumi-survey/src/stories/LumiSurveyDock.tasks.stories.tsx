@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { LumiSurveyDock } from "../components/LumiSurveyDock";
 import {
-  createTaskPrioritySurvey,
-  createTopTasksSurvey,
-  DEFAULT_SURVEY_DISCOVERY,
+  createTaskPrioritySurveyDocument,
+  createTopTasksSurveyDocument,
+  DEFAULT_DISCOVERY_SURVEY_DOCUMENT,
   DEFAULT_SURVEY_RATING,
 } from "../presets/index.js";
 import { ExamplePage, SUCCESS_TRANSPORT } from "./LumiSurveyDockExamplePage";
@@ -44,13 +44,13 @@ const TASK_PRIORITY_TASKS = [
   { value: "cv-registrering", label: "Registrere CV" },
 ];
 
-const TOP_TASKS_SURVEY = createTopTasksSurvey({
+const TOP_TASKS_SURVEY = createTopTasksSurveyDocument({
   tasks: TOP_TASKS,
   includeBlockerQuestion: true,
   includeOtherTask: true,
 });
 
-const TASK_PRIORITY_SURVEY = createTaskPrioritySurvey({
+const TASK_PRIORITY_SURVEY = createTaskPrioritySurveyDocument({
   tasks: TASK_PRIORITY_TASKS,
   maxSelections: 5,
 });
@@ -88,16 +88,13 @@ export const Discovery: Story = {
   render: (args) => <ExamplePage {...args} />,
   args: {
     surveyId: "nav-no-forside-discovery",
-    survey: DEFAULT_SURVEY_DISCOVERY,
-    behavior: {
-      questionLayout: "steps",
-    },
+    survey: DEFAULT_DISCOVERY_SURVEY_DOCUMENT,
   },
   parameters: {
     docs: {
       description: {
         story:
-          "Discovery-undersøkelse med `DEFAULT_SURVEY_DISCOVERY` preset og `questionLayout: 'steps'`. Viser ett spørsmål om gangen med Neste/Tilbake-knapper.",
+          "Sidebasert discovery-undersøkelse med `DEFAULT_DISCOVERY_SURVEY_DOCUMENT`. Viser ett spørsmål om gangen med Neste/Tilbake-knapper.",
       },
     },
   },
@@ -113,7 +110,7 @@ export const TaskPriority: Story = {
     docs: {
       description: {
         story:
-          "McGovern Task Priority-undersøkelse. Brukere velger sine viktigste oppgaver. Bruker `createTaskPrioritySurvey`.",
+          "McGovern Task Priority-undersøkelse. Brukere velger sine viktigste oppgaver. Bruker `createTaskPrioritySurveyDocument`.",
       },
     },
   },
@@ -129,7 +126,7 @@ export const TopTasks: Story = {
     docs: {
       description: {
         story:
-          "Top Tasks-undersøkelse for å måle suksessrate på oppgaver. Bruker `createTopTasksSurvey` med oppgaveliste.",
+          "Top Tasks-undersøkelse for å måle suksessrate på oppgaver. Bruker `createTopTasksSurveyDocument` med oppgaveliste.",
       },
     },
   },

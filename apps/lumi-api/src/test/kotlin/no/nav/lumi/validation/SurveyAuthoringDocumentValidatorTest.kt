@@ -312,7 +312,126 @@ class SurveyAuthoringDocumentValidatorTest : FunSpec({
             SurveyAuthoringDocumentValidator.validate(nonStringTitle, "survey-v1")
         }.errorMessage shouldBe "Document intro needs a string title"
     }
+
+    test("release gate enforces the specialized analytics contract") {
+        val valid = specializedTopTasksDocument()
+        SurveyAuthoringDocumentValidator.validate(valid, "top-tasks", releaseGate = true)
+
+        val cases = listOf(
+            valid.toString().replace("\"required\":true", "\"required\":false") to
+                "Invalid topTasks survey contract: document field 'task' must be required",
+            valid.toString().replace("\"id\":\"task\"", "\"id\":\"old-task\"") to
+                "Invalid topTasks survey contract: document must include 'task'",
+            valid.toString().replace(
+                "\"id\":\"success\",\"type\":\"singleChoice\"",
+                "\"id\":\"success\",\"type\":\"multiChoice\"",
+            ) to "Invalid topTasks survey contract: document field 'success' must be SINGLE_CHOICE",
+            valid.toString().replace(
+                "\"required\":true,\"options\":[{\"value\":\"yes\"",
+                "\"required\":true,\"visibleIf\":{\"questionId\":\"task\",\"operator\":\"EXISTS\"}," +
+                    "\"options\":[{\"value\":\"yes\"",
+            ) to "Invalid topTasks survey contract: document field 'success' must always be visible",
+        )
+
+        cases.forEach { (json, expectedMessage) ->
+            val document = Json.parseToJsonElement(json).jsonObject
+            SurveyAuthoringDocumentValidator.validate(document, "top-tasks")
+            shouldThrow<ApiErrorException.BadRequestException> {
+                SurveyAuthoringDocumentValidator.validate(document, "top-tasks", releaseGate = true)
+            }.errorMessage shouldBe expectedMessage
+        }
+    }
+
+    test("release gate requires a usable Task Priority selection limit") {
+        val document = Json.parseToJsonElement(
+            """
+            {
+              "authoringSchemaVersion": 1,
+              "type": "taskPriority",
+              "pages": [{
+                "id": "priority",
+                "questions": [{
+                  "id": "priority",
+                  "type": "multiChoice",
+                  "prompt": "Hva er viktigst?",
+                  "required": true,
+                  "maxSelections": 3,
+                  "options": [
+                    {"value": "first", "label": "Første"},
+                    {"value": "second", "label": "Andre"}
+                  ]
+                }]
+              }]
+            }
+            """.trimIndent(),
+        ).jsonObject
+
+        SurveyAuthoringDocumentValidator.validate(document, "priority")
+        shouldThrow<ApiErrorException.BadRequestException> {
+            SurveyAuthoringDocumentValidator.validate(document, "priority", releaseGate = true)
+        }.errorMessage shouldBe
+            "Invalid taskPriority survey contract: document field 'priority' maxSelections must be between 1 and the number of task options"
+    }
+
+    test("release gate rejects unfinished task template options even if their value was edited") {
+        val document = Json.parseToJsonElement(
+            specializedTopTasksDocument().toString()
+                .replace("\"value\":\"apply\"", "\"value\":\"manually-changed\"")
+                .replace("\"label\":\"Søke\"", "\"label\":\"Bytt ut med en oppgave dere vil måle\"")
+        ).jsonObject
+
+        SurveyAuthoringDocumentValidator.validate(document, "top-tasks")
+        shouldThrow<ApiErrorException.BadRequestException> {
+            SurveyAuthoringDocumentValidator.validate(document, "top-tasks", releaseGate = true)
+        }.errorMessage shouldBe
+            "Invalid topTasks survey contract: document field 'task' contains an unfinished example task"
+    }
+
+    test("release gate requires a known Top Tasks option in addition to other") {
+        val document = Json.parseToJsonElement(
+            specializedTopTasksDocument().toString()
+                .replace("\"value\":\"apply\"", "\"value\":\"other\"")
+                .replace("\"label\":\"Søke\"", "\"label\":\"Noe annet\"")
+        ).jsonObject
+
+        shouldThrow<ApiErrorException.BadRequestException> {
+            SurveyAuthoringDocumentValidator.validate(document, "top-tasks", releaseGate = true)
+        }.errorMessage shouldBe
+            "Invalid topTasks survey contract: document field 'task' must include at least one known task"
+    }
 })
+
+private fun specializedTopTasksDocument(): JsonObject = Json.parseToJsonElement(
+    """
+    {
+      "authoringSchemaVersion": 1,
+      "type": "topTasks",
+      "pages": [{
+        "id": "page",
+        "questions": [
+          {
+            "id": "task",
+            "type": "singleChoice",
+            "prompt": "Hva skulle du gjøre?",
+            "required": true,
+            "options": [{"value": "apply", "label": "Søke"}]
+          },
+          {
+            "id": "success",
+            "type": "singleChoice",
+            "prompt": "Fikk du gjort det?",
+            "required": true,
+            "options": [
+              {"value": "yes", "label": "Ja"},
+              {"value": "partial", "label": "Delvis"},
+              {"value": "no", "label": "Nei"}
+            ]
+          }
+        ]
+      }]
+    }
+    """.trimIndent(),
+).jsonObject
 
 private fun conditionDocument(referencedType: String, condition: String): JsonObject {
     val referenced = when (referencedType) {

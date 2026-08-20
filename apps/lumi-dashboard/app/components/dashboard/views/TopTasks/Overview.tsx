@@ -54,9 +54,9 @@ export function TopTasksOverview() {
   // Task filter from URL (global filter, shown in ActiveFiltersChips)
   const selectedTask = params.task ?? null;
 
-  const handleTaskSelect = (taskName: string | null) => {
+  const handleTaskSelect = (taskId: string | null) => {
     setParams({
-      task: taskName ?? undefined,
+      task: taskId ?? undefined,
       page: "1",
     });
   };
@@ -73,7 +73,7 @@ export function TopTasksOverview() {
 
   // Filter tasks if a quadrant point is selected
   const displayTasks = selectedTask
-    ? sortedTasks.filter((t) => t.task === selectedTask)
+    ? sortedTasks.filter((t) => t.taskId === selectedTask)
     : sortedTasks;
 
   return (
@@ -152,7 +152,7 @@ export function TopTasksOverview() {
 
                 return (
                   <Table.ExpandableRow
-                    key={task.task}
+                    key={task.taskId}
                     togglePlacement="right"
                     expansionDisabled={!hasBlockers}
                     content={

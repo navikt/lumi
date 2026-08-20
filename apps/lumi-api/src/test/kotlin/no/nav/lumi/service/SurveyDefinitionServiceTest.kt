@@ -223,6 +223,132 @@ class SurveyDefinitionServiceTest : FunSpec({
         result shouldBe RegistrationResult("survey-1", fullHash)
     }
 
+    test("schemaVersion=2 enriches a pre-maxSelections definition once") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val storedDefinition = SurveyDefinition(
+            surveyId = "survey-priority",
+            surveyType = SurveyType.CUSTOM,
+            fields = listOf(
+                FieldDefinition("topics", FieldType.MULTI_CHOICE, null, null, listOf("a", "b"))
+            )
+        )
+        val incomingDefinition = storedDefinition.copy(
+            fields = listOf(
+                FieldDefinition("topics", FieldType.MULTI_CHOICE, null, null, listOf("a", "b"), 1)
+            )
+        )
+        val storedHash = storedDefinition.computeHash()
+        val incomingHash = incomingDefinition.computeHash()
+        val submission = FeedbackSubmissionV1(
+            schemaVersion = 2,
+            surveyId = "survey-priority",
+            surveyType = SurveyType.CUSTOM,
+            submittedAt = "2026-01-10T12:00:12Z",
+            deduplicationKey = "client-key-123456",
+            answers = listOf(
+                Answer(
+                    fieldId = "topics",
+                    fieldType = FieldType.MULTI_CHOICE,
+                    question = Question(
+                        label = "Tema",
+                        options = listOf(ChoiceOption("a", "A"), ChoiceOption("b", "B"))
+                    ),
+                    value = AnswerValue.MultiChoice(listOf("a"))
+                )
+            )
+        )
+
+        coEvery { repository.findByTeamAndSurveyId("team-a", "survey-priority") } returns
+            StoredSurveyDefinition(
+                team = "team-a",
+                surveyId = "survey-priority",
+                definitionHash = storedHash,
+                definition = storedDefinition,
+                source = SurveyDefinitionSource.API,
+            )
+        coEvery {
+            repository.updateApiDefinitionIfHashMatches(
+                "team-a",
+                "survey-priority",
+                storedHash,
+                incomingDefinition,
+                incomingHash,
+            )
+        } returns true
+
+        service.registerOrValidateV2("team-a", submission, incomingDefinition) shouldBe
+            RegistrationResult("survey-priority", incomingHash)
+        coVerify(exactly = 1) {
+            repository.updateApiDefinitionIfHashMatches(
+                "team-a",
+                "survey-priority",
+                storedHash,
+                incomingDefinition,
+                incomingHash,
+            )
+        }
+    }
+
+    test("api takeover can enrich maxSelections and add a field atomically") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val storedDefinition = SurveyDefinition(
+            surveyId = "survey-priority-takeover",
+            surveyType = SurveyType.CUSTOM,
+            fields = listOf(
+                FieldDefinition("topics", FieldType.MULTI_CHOICE, null, null, listOf("a", "b"))
+            )
+        )
+        val incomingDefinition = storedDefinition.copy(
+            fields = listOf(
+                FieldDefinition("topics", FieldType.MULTI_CHOICE, null, null, listOf("a", "b"), 1),
+                FieldDefinition("comment", FieldType.TEXT, null, null, null),
+            )
+        )
+        val storedHash = storedDefinition.computeHash()
+        val incomingHash = incomingDefinition.computeHash()
+        val submission = FeedbackSubmissionV1(
+            schemaVersion = 2,
+            surveyId = "survey-priority-takeover",
+            surveyType = SurveyType.CUSTOM,
+            submittedAt = "2026-01-10T12:00:12Z",
+            deduplicationKey = "client-key-123456",
+            answers = listOf(
+                Answer(
+                    fieldId = "topics",
+                    fieldType = FieldType.MULTI_CHOICE,
+                    question = Question(
+                        label = "Tema",
+                        options = listOf(ChoiceOption("a", "A"), ChoiceOption("b", "B"))
+                    ),
+                    value = AnswerValue.MultiChoice(listOf("a"))
+                )
+            )
+        )
+
+        coEvery { repository.findByTeamAndSurveyId("team-a", "survey-priority-takeover") } returns
+            StoredSurveyDefinition(
+                team = "team-a",
+                surveyId = "survey-priority-takeover",
+                definitionHash = storedHash,
+                definition = storedDefinition,
+                source = SurveyDefinitionSource.AUTO,
+            )
+        coEvery {
+            repository.updateApiDefinitionIfHashMatches(
+                "team-a",
+                "survey-priority-takeover",
+                storedHash,
+                incomingDefinition,
+                incomingHash,
+            )
+        } returns true
+
+        service.registerOrValidateV2("team-a", submission, incomingDefinition) shouldBe
+            RegistrationResult("survey-priority-takeover", incomingHash)
+    }
+
     test("v1 answered subset after schemaVersion=2 definition keeps api definition hash") {
         val repository = mockk<SurveyDefinitionRepository>()
         val service = SurveyDefinitionService(repository)

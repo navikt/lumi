@@ -5,6 +5,7 @@ import type {
   SurveyPageV1,
   SurveyQuestionV1,
 } from "@navikt/lumi-survey";
+import { SPECIALIZED_SURVEY_FIELD_IDS } from "@navikt/lumi-survey";
 import { Fragment, memo, useCallback, useMemo } from "react";
 import type {
   ConditionValueSuggestion,
@@ -12,6 +13,10 @@ import type {
   QuestionTypeId,
   ReferenceableQuestion,
   VisibleIfConditionV1,
+} from "~/utils/surveyDocument";
+import {
+  isRequiredSpecializedQuestion,
+  isSpecializedQuestionContractValid,
 } from "~/utils/surveyDocument";
 import type { OptionsEditorProps } from "./OptionsEditor";
 import { PageGroupHeader } from "./PageGroupHeader";
@@ -34,6 +39,7 @@ export interface QuestionCanvasProps {
   page: SurveyPageV1;
   pageNumber: number;
   totalPages: number;
+  surveyType: SurveyDocumentV1["type"];
   expandedIds: ReadonlySet<string>;
   focusQuestionId: string | null;
   undo: CanvasUndo | null;
@@ -71,6 +77,7 @@ export const QuestionCanvas = memo(function QuestionCanvas({
   page,
   pageNumber,
   totalPages,
+  surveyType,
   expandedIds,
   focusQuestionId,
   undo,
@@ -161,7 +168,20 @@ export const QuestionCanvas = memo(function QuestionCanvas({
                 index={index}
                 expanded={expandedIds.has(question.id)}
                 focusOnMount={focusQuestionId === question.id}
-                canDelete={page.questions.length > 1}
+                canDelete={
+                  page.questions.length > 1 &&
+                  !isRequiredSpecializedQuestion(surveyType, question.id)
+                }
+                contractLocked={isSpecializedQuestionContractValid(
+                  surveyType,
+                  question,
+                )}
+                minOptions={
+                  surveyType === "taskPriority" &&
+                  question.id === SPECIALIZED_SURVEY_FIELD_IDS.priority
+                    ? 2
+                    : 1
+                }
                 canMoveUp={index > 0}
                 canMoveDown={index < page.questions.length - 1}
                 onExpand={onExpand}
@@ -228,6 +248,8 @@ const CanvasQuestion = memo(function CanvasQuestion({
   expanded,
   focusOnMount,
   canDelete,
+  contractLocked,
+  minOptions,
   canMoveUp,
   canMoveDown,
   onExpand,
@@ -247,6 +269,8 @@ const CanvasQuestion = memo(function CanvasQuestion({
   expanded: boolean;
   focusOnMount: boolean;
   canDelete: boolean;
+  contractLocked: boolean;
+  minOptions: number;
   canMoveUp: boolean;
   canMoveDown: boolean;
   onExpand: (questionId: string) => void;
@@ -322,6 +346,8 @@ const CanvasQuestion = memo(function CanvasQuestion({
         expanded={expanded}
         focusOnMount={focusOnMount}
         canDelete={canDelete}
+        contractLocked={contractLocked}
+        minOptions={minOptions}
         canMoveUp={canMoveUp}
         canMoveDown={canMoveDown}
         onExpand={handleExpand}

@@ -17,7 +17,8 @@ data class SurveyDefinitionPayload(
                     fieldType = field.fieldType,
                     ratingVariant = field.ratingVariant,
                     ratingScale = field.ratingScale,
-                    optionIds = field.optionIds
+                    optionIds = field.optionIds,
+                    maxSelections = field.maxSelections,
                 )
             }
         )
@@ -30,7 +31,8 @@ data class SubmissionFieldDefinitionPayload(
     val fieldType: FieldType,
     val ratingVariant: RatingVariant? = null,
     val ratingScale: Int? = null,
-    val optionIds: List<String>? = null
+    val optionIds: List<String>? = null,
+    val maxSelections: Int? = null,
 )
 
 @Serializable

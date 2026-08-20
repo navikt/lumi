@@ -20,9 +20,13 @@ export interface OptionsEditorProps {
   options: readonly { value: string; label: string }[];
   onAdd: () => void;
   onUpdateLabel: (index: number, label: string) => void;
+  onCommitLabel: (index: number, label: string) => void;
   onUpdateValue: (index: number, value: string) => void;
   onRemove: (index: number) => void;
   onMove: (index: number, direction: MoveDirection) => void;
+  lockValues?: boolean;
+  lockStructure?: boolean;
+  minOptions?: number;
 }
 
 /**
@@ -35,9 +39,13 @@ export function OptionsEditor({
   options,
   onAdd,
   onUpdateLabel,
+  onCommitLabel,
   onUpdateValue,
   onRemove,
   onMove,
+  lockValues = false,
+  lockStructure = false,
+  minOptions = 1,
 }: OptionsEditorProps) {
   const rowRefs = useRef<(HTMLInputElement | null)[]>([]);
   const previousCount = useRef(options.length);
@@ -76,16 +84,18 @@ export function OptionsEditor({
               value={option.label}
               className={styles.optionField}
               onChange={(event) => onUpdateLabel(index, event.target.value)}
+              onBlur={() => onCommitLabel(index, option.label)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
-                  if (index === options.length - 1) onAdd();
+                  if (index === options.length - 1 && !lockStructure) onAdd();
                   else rowRefs.current[index + 1]?.focus();
                 }
                 if (
                   event.key === "Backspace" &&
                   option.label === "" &&
-                  options.length > 1
+                  options.length > minOptions &&
+                  !lockStructure
                 ) {
                   event.preventDefault();
                   onRemove(index);
@@ -93,15 +103,17 @@ export function OptionsEditor({
                 }
               }}
             />
-            <OptionValue
-              index={index}
-              value={option.value}
-              duplicate={
-                options.filter((other) => other.value === option.value).length >
-                1
-              }
-              onCommit={(value) => onUpdateValue(index, value)}
-            />
+            {lockValues ? null : (
+              <OptionValue
+                index={index}
+                value={option.value}
+                duplicate={
+                  options.filter((other) => other.value === option.value)
+                    .length > 1
+                }
+                onCommit={(value) => onUpdateValue(index, value)}
+              />
+            )}
             <div className={styles.optionRowActions}>
               <Tooltip content="Flytt opp">
                 <Button
@@ -132,7 +144,7 @@ export function OptionsEditor({
                   size="xsmall"
                   icon={<XMarkIcon aria-hidden />}
                   aria-label={`Fjern alternativ ${index + 1}`}
-                  disabled={options.length <= 1}
+                  disabled={options.length <= minOptions || lockStructure}
                   onClick={() => onRemove(index)}
                 />
               </Tooltip>
@@ -140,15 +152,22 @@ export function OptionsEditor({
           </li>
         ))}
       </ol>
-      <Button
-        type="button"
-        variant="tertiary"
-        size="small"
-        icon={<PlusIcon aria-hidden />}
-        onClick={onAdd}
-      >
-        Legg til alternativ
-      </Button>
+      {lockStructure ? (
+        <Detail>
+          Svarene brukes i analysen. Du kan endre teksten, men ikke legge til
+          eller fjerne svar.
+        </Detail>
+      ) : (
+        <Button
+          type="button"
+          variant="tertiary"
+          size="small"
+          icon={<PlusIcon aria-hidden />}
+          onClick={onAdd}
+        >
+          Legg til alternativ
+        </Button>
+      )}
     </div>
   );
 }

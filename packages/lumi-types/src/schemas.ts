@@ -679,6 +679,7 @@ const SubmissionMultiChoiceFieldDefinitionSchema =
   SubmissionFieldDefinitionBaseSchema.extend({
     fieldType: z.literal("MULTI_CHOICE"),
     optionIds: SubmissionOptionIdsSchema,
+    maxSelections: z.number().int().positive().optional(),
   }).strict();
 
 const SubmissionDateFieldDefinitionSchema =
@@ -739,6 +740,18 @@ export const SubmissionDefinitionSchema = z
             path: ["fields", i, "ratingScale"],
           });
         }
+      }
+      if (
+        field.fieldType === "MULTI_CHOICE" &&
+        field.maxSelections !== undefined &&
+        field.maxSelections > field.optionIds.length
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "maxSelections must not exceed the number of multi-choice options",
+          path: ["fields", i, "maxSelections"],
+        });
       }
     }
   });
@@ -867,6 +880,16 @@ function validateAnswerValueAgainstDefinition(
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `selectedOptionIds=${invalidIds.join(",")} are not valid for fieldId=${answer.fieldId}`,
+        path: ["answers", answerIndex, "value", "selectedOptionIds"],
+      });
+    }
+    if (
+      field.maxSelections !== undefined &&
+      answer.value.selectedOptionIds.length > field.maxSelections
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `selectedOptionIds exceeds maxSelections=${field.maxSelections} for fieldId=${answer.fieldId}`,
         path: ["answers", answerIndex, "value", "selectedOptionIds"],
       });
     }
@@ -1083,6 +1106,7 @@ export const TeamsAndAppsSchema = z.object({
 
 // Top Tasks schemas
 const TopTaskStatsSchema = z.object({
+  taskId: z.string(),
   task: z.string(),
   totalCount: z.number(),
   successCount: z.number(),
@@ -1197,6 +1221,7 @@ export const BlockerResponseSchema = z.object({
 
 // Task Priority schemas
 const TaskVoteSchema = z.object({
+  taskId: z.string(),
   task: z.string(),
   votes: z.number(),
   percentage: z.number(),

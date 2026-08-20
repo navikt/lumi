@@ -1,3 +1,4 @@
+import { SPECIALIZED_SURVEY_FIELD_IDS } from "@navikt/lumi-survey";
 import type { Answer, FeedbackDto } from "~/types/api";
 import {
   createContext,
@@ -413,19 +414,25 @@ export function generateTopTasksMockData(): FeedbackDto[] {
         ),
         answers: [
           createSingleChoiceAnswer(
-            "task",
+            SPECIALIZED_SURVEY_FIELD_IDS.task,
             "Hva prøvde du å gjøre?",
             selectedTask.id,
             undefined,
             tasks.map((t) => ({ id: t.id, label: t.label })),
           ),
           createSingleChoiceAnswer(
-            "taskSuccess",
+            SPECIALIZED_SURVEY_FIELD_IDS.success,
             "Klarte du det?",
             successValue,
           ),
           ...(blocker
-            ? [createTextAnswer("blocker", "Hva hindret deg?", blocker)]
+            ? [
+                createTextAnswer(
+                  SPECIALIZED_SURVEY_FIELD_IDS.blocker,
+                  "Hva hindret deg?",
+                  blocker,
+                ),
+              ]
             : []),
         ],
         // Add metadata to match segment data
@@ -668,9 +675,13 @@ export function generateDiscoveryMockData(): FeedbackDto[] {
     ];
 
     const answers = [
-      createTextAnswer("task", "Hva kom du for å gjøre i dag?", response.text),
+      createTextAnswer(
+        SPECIALIZED_SURVEY_FIELD_IDS.task,
+        "Hva kom du for å gjøre i dag?",
+        response.text,
+      ),
       createSingleChoiceAnswer(
-        "success",
+        SPECIALIZED_SURVEY_FIELD_IDS.success,
         "Fikk du gjort det?",
         successValue,
         undefined,
@@ -685,7 +696,7 @@ export function generateDiscoveryMockData(): FeedbackDto[] {
     if (successValue !== "yes" && randomFloat() > 0.3) {
       answers.push(
         createTextAnswer(
-          "blocker",
+          SPECIALIZED_SURVEY_FIELD_IDS.blocker,
           "Hva hindret deg?",
           blockerTexts[Math.floor(randomFloat() * blockerTexts.length)],
         ),
@@ -786,7 +797,7 @@ export function generateTaskPriorityMockData(): FeedbackDto[] {
       ),
       answers: [
         createMultiChoiceAnswer(
-          "priority",
+          SPECIALIZED_SURVEY_FIELD_IDS.priority,
           "Hva er de viktigste tingene du trenger å gjøre på nav.no? (Velg inntil 5)",
           selectedIds,
           undefined,
