@@ -60,21 +60,19 @@ Se [Kom i gang](https://navikt.github.io/lumi/kom-i-gang/hva-er-lumi) for komple
 
 ## Utvikling
 
-Internt i repoet brukes `pnpm` for workspace-installasjon og scripts. Se [utviklerguiden](https://navikt.github.io/lumi/utvikling/bidra) for lokal utvikling og bidrag.
+Repoet bruker [mise](https://mise.jdx.dev/) til å holde Node og Java på samme versjon for alle. Pnpm-versjonen kommer fra `packageManager` i `package.json` via Corepack. Kjør `mise trust`, `mise install` og deretter `mise run setup` første gang du kloner repoet. Bruk `mise tasks` for å se oppdaterte utviklings-, test- og byggoppgaver.
 
 ### Lokal full-chain-demo
 
-Start Postgres, API, submission-proxy, dashboard og en ekte
-`@navikt/lumi-survey`-testside med én kommando:
-
-```bash
-npm run local:up
-```
+Oppgaven `local-up` starter Postgres, API, submission-proxy, dashboard og en ekte `@navikt/lumi-survey`-testside.
 
 Åpne deretter:
 
 - testbenk: <http://localhost:3001>
 - dashboard med ekte lokale data: <http://localhost:3000>
 
-Se [den lokale testguiden](scripts/README.md#full-chain-demo-med-ekte-widget)
-for variantmatrise, feilsøking og teardown.
+Se [den lokale testguiden](scripts/README.md#full-chain-demo-med-ekte-widget) for variantmatrise, feilsøking og teardown.
+
+## For Nav-ansatte
+
+Spørsmål om utvikling og drift kan tas i [#esyfo på Slack](https://nav-it.slack.com/archives/C012X796B4L).
