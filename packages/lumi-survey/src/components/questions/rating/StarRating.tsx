@@ -1,15 +1,14 @@
 import { StarFillIcon, StarIcon } from "@navikt/aksel-icons";
-import { BodyShort, Box, Heading, HStack, VStack } from "@navikt/ds-react";
-import type React from "react";
+import { BodyShort, type Box, HStack, VStack } from "@navikt/ds-react";
 import type { ComponentProps } from "react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import type {
   LumiSurveyAnswerValue,
   StarRatingQuestion,
 } from "../../../core/types.js";
-import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
 import styles from "./emo.module.css";
-import { RatingErrorMessage } from "./RatingErrorMessage.js";
+import { RatingFieldset } from "./RatingFieldset.js";
+import { useRatingRadioGroup } from "./useRatingRadioGroup.js";
 import "./emo.fallback.css";
 
 interface StarRatingProps {
@@ -37,6 +36,7 @@ interface StarRatingProps {
 
 /** Labels for 5-star rating (fixed scale) */
 const STAR_LABELS = ["Veldig dårlig", "Dårlig", "Ok", "Bra", "Veldig bra"];
+const STAR_VALUES = [1, 2, 3, 4, 5] as const;
 
 /**
  * 5-star rating: ⭐⭐⭐⭐⭐
@@ -63,20 +63,6 @@ export function StarRating({
   const activeState = typeof value === "number" ? value : null;
   const displayValue = hoverValue ?? activeState;
 
-  const fallbackHeadingId = `${question.id}-heading`;
-  const fallbackDescriptionId = `${question.id}-description`;
-  const errorId = `${question.id}-error`;
-  const describedBy =
-    [
-      ariaDescribedBy,
-      !hideDescription && question.description
-        ? fallbackDescriptionId
-        : undefined,
-      isMissing ? errorId : undefined,
-    ]
-      .filter(Boolean)
-      .join(" ") || undefined;
-
   const labels = question.labels
     ? question.labels.reduce<Record<number, string>>((acc, label) => {
         acc[label.value] = label.label;
@@ -87,73 +73,42 @@ export function StarRating({
         return acc;
       }, {});
 
-  const handleSelect = useCallback(
-    (nextValue: number) => {
-      if (!disabled) {
-        onChange(nextValue);
-      }
-    },
-    [disabled, onChange],
-  );
-
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent) => {
-      const currentIndex = activeState ? activeState - 1 : 0;
-      let nextIndex: number;
-
-      switch (event.key) {
-        case "ArrowRight":
-        case "ArrowDown":
-          nextIndex = Math.min(currentIndex + 1, scale - 1);
-          handleSelect(nextIndex + 1);
-          event.preventDefault();
-          break;
-        case "ArrowLeft":
-        case "ArrowUp":
-          nextIndex = Math.max(currentIndex - 1, 0);
-          handleSelect(nextIndex + 1);
-          event.preventDefault();
-          break;
-      }
-    },
-    [activeState, handleSelect],
-  );
+  const handleSelect = (nextValue: number) => {
+    if (!disabled) {
+      onChange(nextValue);
+    }
+  };
+  const radioGroup = useRatingRadioGroup({
+    values: STAR_VALUES,
+    value: activeState,
+    onChange: handleSelect,
+    disabled,
+  });
 
   return (
-    <VStack gap="space-8" className={className}>
-      {!hidePrompt && (
-        <Heading
-          id={ariaLabelledBy ? undefined : fallbackHeadingId}
-          level="3"
-          size="xsmall"
-        >
-          {question.prompt}
-        </Heading>
-      )}
-      {question.description && !hideDescription && (
-        <BodyShort id={fallbackDescriptionId}>{question.description}</BodyShort>
-      )}
-      <Box
-        as="fieldset"
-        className={styles.fieldset ?? "lumi-survey-rating__fieldset"}
-        aria-labelledby={
-          ariaLabelledBy ?? (!hidePrompt ? fallbackHeadingId : undefined)
-        }
-        aria-describedby={describedBy}
-        paddingBlock={fieldsetPaddingBlock ?? "space-12"}
-        paddingInline={fieldsetPaddingInline ?? "space-16"}
-      >
-        <legend className={styles.legend ?? "lumi-survey-rating__legend"}>
-          {formatQuestionPrompt(question)}
-        </legend>
+    <RatingFieldset
+      question={question}
+      validationErrorMessage={validationErrorMessage}
+      isMissing={isMissing}
+      disabled={disabled}
+      className={className}
+      fieldsetClassName={styles.fieldset ?? "lumi-survey-rating__fieldset"}
+      ariaLabelledBy={ariaLabelledBy}
+      ariaDescribedBy={ariaDescribedBy}
+      hidePrompt={hidePrompt}
+      hideDescription={hideDescription}
+      fieldsetPaddingBlock={fieldsetPaddingBlock}
+      fieldsetPaddingInline={fieldsetPaddingInline}
+    >
+      {(groupProps) => (
         <VStack gap="space-4" align="center">
           <HStack
+            {...groupProps}
             gap="space-2"
             justify="space-between"
             align="center"
             wrap={false}
-            role="radiogroup"
-            onKeyDown={handleKeyDown}
+            onKeyDown={radioGroup.onKeyDown}
             style={{ width: "100%", flexWrap: "nowrap" }}
           >
             {Array.from({ length: scale }, (_, index) => {
@@ -176,9 +131,7 @@ export function StarRating({
                   onFocus={() => !disabled && setHoverValue(starValue)}
                   onBlur={() => setHoverValue(null)}
                   disabled={disabled}
-                  tabIndex={
-                    isActive || (!activeState && starValue === 1) ? 0 : -1
-                  }
+                  tabIndex={radioGroup.getTabIndex(starValue)}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -199,6 +152,7 @@ export function StarRating({
                 >
                   {isFilled ? (
                     <StarFillIcon
+                      aria-hidden
                       style={{
                         width: "2.5rem",
                         height: "2.5rem",
@@ -207,6 +161,7 @@ export function StarRating({
                     />
                   ) : (
                     <StarIcon
+                      aria-hidden
                       style={{
                         width: "2.5rem",
                         height: "2.5rem",
@@ -246,13 +201,7 @@ export function StarRating({
             </BodyShort>
           )}
         </VStack>
-      </Box>
-      <RatingErrorMessage
-        id={errorId}
-        isMissing={isMissing}
-        message={validationErrorMessage}
-        className={styles.errorMessage ?? "lumi-survey-rating__error-message"}
-      />
-    </VStack>
+      )}
+    </RatingFieldset>
   );
 }

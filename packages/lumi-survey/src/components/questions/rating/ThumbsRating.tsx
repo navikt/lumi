@@ -1,22 +1,16 @@
 import { ThumbDownIcon, ThumbUpIcon } from "@navikt/aksel-icons";
-import {
-  BodyShort,
-  Box,
-  Button,
-  Heading,
-  HStack,
-  VStack,
-} from "@navikt/ds-react";
+import { Box, Button, HStack } from "@navikt/ds-react";
 import type { ComponentProps } from "react";
-import { useCallback } from "react";
 import type {
   LumiSurveyAnswerValue,
   ThumbsRatingQuestion,
 } from "../../../core/types.js";
-import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
 import styles from "./emo.module.css";
-import { RatingErrorMessage } from "./RatingErrorMessage.js";
+import { RatingFieldset } from "./RatingFieldset.js";
+import { useRatingRadioGroup } from "./useRatingRadioGroup.js";
 import "./emo.fallback.css";
+
+const THUMBS_VALUES = [1, 2] as const;
 
 interface ThumbsRatingProps {
   question: ThumbsRatingQuestion;
@@ -55,61 +49,40 @@ export function ThumbsRating({
   fieldsetPaddingInline,
 }: ThumbsRatingProps) {
   const activeState = typeof value === "number" ? value : null;
-  const fallbackHeadingId = `${question.id}-heading`;
-  const fallbackDescriptionId = `${question.id}-description`;
-  const errorId = `${question.id}-error`;
-  const describedBy =
-    [
-      ariaDescribedBy,
-      !hideDescription && question.description
-        ? fallbackDescriptionId
-        : undefined,
-      isMissing ? errorId : undefined,
-    ]
-      .filter(Boolean)
-      .join(" ") || undefined;
-
-  const handleSelect = useCallback(
-    (nextValue: number) => {
-      if (!disabled) {
-        onChange(nextValue);
-      }
-    },
-    [disabled, onChange],
-  );
+  const handleSelect = (nextValue: number) => {
+    if (!disabled) {
+      onChange(nextValue);
+    }
+  };
+  const radioGroup = useRatingRadioGroup({
+    values: THUMBS_VALUES,
+    value: activeState,
+    onChange: handleSelect,
+    disabled,
+  });
 
   return (
-    <VStack gap="space-8" className={className}>
-      {!hidePrompt && (
-        <Heading
-          id={ariaLabelledBy ? undefined : fallbackHeadingId}
-          level="3"
-          size="xsmall"
-        >
-          {formatQuestionPrompt(question)}
-        </Heading>
-      )}
-      {question.description && !hideDescription && (
-        <BodyShort id={fallbackDescriptionId}>{question.description}</BodyShort>
-      )}
-      <Box
-        as="fieldset"
-        className={styles.fieldset ?? "lumi-survey-rating__fieldset"}
-        aria-labelledby={
-          ariaLabelledBy ?? (!hidePrompt ? fallbackHeadingId : undefined)
-        }
-        aria-describedby={describedBy}
-        paddingBlock={fieldsetPaddingBlock ?? "space-12"}
-        paddingInline={fieldsetPaddingInline ?? "space-16"}
-      >
-        <legend className={styles.legend ?? "lumi-survey-rating__legend"}>
-          {formatQuestionPrompt(question)}
-        </legend>
+    <RatingFieldset
+      question={question}
+      validationErrorMessage={validationErrorMessage}
+      isMissing={isMissing}
+      disabled={disabled}
+      className={className}
+      fieldsetClassName={styles.fieldset ?? "lumi-survey-rating__fieldset"}
+      ariaLabelledBy={ariaLabelledBy}
+      ariaDescribedBy={ariaDescribedBy}
+      hidePrompt={hidePrompt}
+      hideDescription={hideDescription}
+      fieldsetPaddingBlock={fieldsetPaddingBlock}
+      fieldsetPaddingInline={fieldsetPaddingInline}
+    >
+      {(groupProps) => (
         <HStack
+          {...groupProps}
           gap="space-8"
           justify="center"
           align="center"
-          role="radiogroup"
+          onKeyDown={radioGroup.onKeyDown}
           wrap
         >
           <Box style={{ flex: "1 1 0" }}>
@@ -117,10 +90,10 @@ export function ThumbsRating({
               type="button"
               role="radio"
               aria-checked={activeState === 1}
-              aria-label="Tommel ned"
+              aria-label="Nei, tommel ned"
               onClick={() => handleSelect(1)}
               disabled={disabled}
-              tabIndex={activeState === 1 || !activeState ? 0 : -1}
+              tabIndex={radioGroup.getTabIndex(1)}
               data-color={activeState === 1 ? "danger" : undefined}
               variant={activeState === 1 ? "primary" : "secondary"}
               icon={<ThumbDownIcon fontSize="1.75rem" aria-hidden />}
@@ -135,10 +108,10 @@ export function ThumbsRating({
               type="button"
               role="radio"
               aria-checked={activeState === 2}
-              aria-label="Tommel opp"
+              aria-label="Ja, tommel opp"
               onClick={() => handleSelect(2)}
               disabled={disabled}
-              tabIndex={activeState === 2 ? 0 : -1}
+              tabIndex={radioGroup.getTabIndex(2)}
               variant={activeState === 2 ? "primary" : "secondary"}
               icon={<ThumbUpIcon fontSize="1.75rem" aria-hidden />}
               style={{ width: "100%", justifyContent: "center" }}
@@ -147,13 +120,7 @@ export function ThumbsRating({
             </Button>
           </Box>
         </HStack>
-      </Box>
-      <RatingErrorMessage
-        id={errorId}
-        isMissing={isMissing}
-        message={validationErrorMessage}
-        className={styles.errorMessage ?? "lumi-survey-rating__error-message"}
-      />
-    </VStack>
+      )}
+    </RatingFieldset>
   );
 }

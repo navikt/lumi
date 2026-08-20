@@ -1,15 +1,13 @@
-import { BodyShort, Box, Heading, HStack, VStack } from "@navikt/ds-react";
-import type React from "react";
+import { BodyShort, Box, HStack, VStack } from "@navikt/ds-react";
 import type { ComponentProps } from "react";
-import { useCallback } from "react";
 import type {
   LumiSurveyAnswerValue,
   NpsRatingQuestion,
 } from "../../../core/types.js";
-import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
 import styles from "./emo.module.css";
 import npsStyles from "./nps.module.css";
-import { RatingErrorMessage } from "./RatingErrorMessage.js";
+import { RatingFieldset } from "./RatingFieldset.js";
+import { useRatingRadioGroup } from "./useRatingRadioGroup.js";
 import "./emo.fallback.css";
 import "./nps.fallback.css";
 
@@ -44,6 +42,8 @@ const getNpsBorderColor = (value: number, isActive: boolean): string => {
   return "var(--ax-border-success)";
 };
 
+const NPS_VALUES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+
 /**
  * NPS (Net Promoter Score) rating: 0-10 number buttons
  * Standard NPS scale with color-coded zones.
@@ -64,87 +64,42 @@ export function NpsRating({
   fieldsetPaddingInline,
 }: NpsRatingProps) {
   const activeState = typeof value === "number" ? value : null;
-  const fallbackHeadingId = `${question.id}-heading`;
-  const fallbackDescriptionId = `${question.id}-description`;
-  const errorId = `${question.id}-error`;
-  const describedBy =
-    [
-      ariaDescribedBy,
-      !hideDescription && question.description
-        ? fallbackDescriptionId
-        : undefined,
-      isMissing ? errorId : undefined,
-    ]
-      .filter(Boolean)
-      .join(" ") || undefined;
-
   const lowLabel = question.lowLabel ?? "Lite sannsynlig";
   const highLabel = question.highLabel ?? "Svært sannsynlig";
 
-  const handleSelect = useCallback(
-    (nextValue: number) => {
-      if (!disabled) {
-        onChange(nextValue);
-      }
-    },
-    [disabled, onChange],
-  );
-
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent) => {
-      const currentValue = activeState ?? 0;
-      let nextValue: number;
-
-      switch (event.key) {
-        case "ArrowRight":
-        case "ArrowDown":
-          nextValue = Math.min(currentValue + 1, 10);
-          handleSelect(nextValue);
-          event.preventDefault();
-          break;
-        case "ArrowLeft":
-        case "ArrowUp":
-          nextValue = Math.max(currentValue - 1, 0);
-          handleSelect(nextValue);
-          event.preventDefault();
-          break;
-      }
-    },
-    [activeState, handleSelect],
-  );
+  const handleSelect = (nextValue: number) => {
+    if (!disabled) {
+      onChange(nextValue);
+    }
+  };
+  const radioGroup = useRatingRadioGroup({
+    values: NPS_VALUES,
+    value: activeState,
+    onChange: handleSelect,
+    disabled,
+  });
 
   return (
-    <VStack gap="space-8" className={className}>
-      {!hidePrompt && (
-        <Heading
-          id={ariaLabelledBy ? undefined : fallbackHeadingId}
-          level="3"
-          size="xsmall"
-        >
-          {formatQuestionPrompt(question)}
-        </Heading>
-      )}
-      {question.description && !hideDescription && (
-        <BodyShort id={fallbackDescriptionId}>{question.description}</BodyShort>
-      )}
-      <Box
-        as="fieldset"
-        className={styles.fieldset ?? "lumi-survey-rating__fieldset"}
-        aria-labelledby={
-          ariaLabelledBy ?? (!hidePrompt ? fallbackHeadingId : undefined)
-        }
-        aria-describedby={describedBy}
-        paddingBlock={fieldsetPaddingBlock ?? "space-8"}
-        paddingInline={fieldsetPaddingInline ?? "space-12"}
-      >
-        <legend className={styles.legend ?? "lumi-survey-rating__legend"}>
-          {formatQuestionPrompt(question)}
-        </legend>
+    <RatingFieldset
+      question={question}
+      validationErrorMessage={validationErrorMessage}
+      isMissing={isMissing}
+      disabled={disabled}
+      className={className}
+      fieldsetClassName={styles.fieldset ?? "lumi-survey-rating__fieldset"}
+      ariaLabelledBy={ariaLabelledBy}
+      ariaDescribedBy={ariaDescribedBy}
+      hidePrompt={hidePrompt}
+      hideDescription={hideDescription}
+      fieldsetPaddingBlock={fieldsetPaddingBlock ?? "space-8"}
+      fieldsetPaddingInline={fieldsetPaddingInline ?? "space-12"}
+    >
+      {(groupProps) => (
         <VStack gap="space-8">
           <Box
+            {...groupProps}
             as="div"
-            role="radiogroup"
-            onKeyDown={handleKeyDown}
+            onKeyDown={radioGroup.onKeyDown}
             style={{
               width: "100%",
               display: "grid",
@@ -153,7 +108,7 @@ export function NpsRating({
               overflow: "hidden",
             }}
           >
-            {Array.from({ length: 11 }, (_, value) => value).map((value) => {
+            {NPS_VALUES.map((value) => {
               const isActive = activeState === value;
               return (
                 <button
@@ -164,7 +119,7 @@ export function NpsRating({
                   aria-label={`${value} av 10`}
                   onClick={() => handleSelect(value)}
                   disabled={disabled}
-                  tabIndex={isActive || (!activeState && value === 0) ? 0 : -1}
+                  tabIndex={radioGroup.getTabIndex(value)}
                   className={
                     npsStyles.npsButton ?? "lumi-survey-rating__nps-button"
                   }
@@ -203,13 +158,7 @@ export function NpsRating({
             </BodyShort>
           </HStack>
         </VStack>
-      </Box>
-      <RatingErrorMessage
-        id={errorId}
-        isMissing={isMissing}
-        message={validationErrorMessage}
-        className={styles.errorMessage ?? "lumi-survey-rating__error-message"}
-      />
-    </VStack>
+      )}
+    </RatingFieldset>
   );
 }

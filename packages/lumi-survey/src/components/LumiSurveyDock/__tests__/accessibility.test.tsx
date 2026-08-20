@@ -137,10 +137,9 @@ describe("LumiSurveyDock Accessibility", () => {
 
     // Arrow right should select next option
     await user.keyboard("{ArrowRight}");
-    expect(screen.getByRole("radio", { name: /2\./i })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
+    const secondRadio = screen.getByRole("radio", { name: /2\./i });
+    expect(secondRadio).toHaveAttribute("aria-checked", "true");
+    expect(secondRadio).toHaveFocus();
   });
 
   it("has proper heading hierarchy", async () => {

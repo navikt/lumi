@@ -1,19 +1,18 @@
-import { BodyShort, Box, Heading, HStack, VStack } from "@navikt/ds-react";
-import type React from "react";
+import { type Box, HStack } from "@navikt/ds-react";
 import type { ComponentProps, ReactElement } from "react";
 import type {
   EmojiRatingQuestion,
   LumiSurveyAnswerValue,
   RatingQuestion,
 } from "../../../core/types.js";
-import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
 import { EmojiButton } from "./EmojiButton.js";
 import styles from "./emo.module.css";
 import { Glad, Lei, Noytral, Sinna, VeldigGlad } from "./emojies.js";
 import { NpsRating } from "./NpsRating.js";
-import { RatingErrorMessage } from "./RatingErrorMessage.js";
+import { RatingFieldset } from "./RatingFieldset.js";
 import { StarRating } from "./StarRating.js";
 import { ThumbsRating } from "./ThumbsRating.js";
+import { useRatingRadioGroup } from "./useRatingRadioGroup.js";
 import "./emo.fallback.css";
 
 interface RatingQuestionFieldProps {
@@ -60,10 +59,8 @@ interface EmojiVariant {
 const CLASS_NAMES = {
   row: styles.emojiRow ?? "lumi-survey-rating__row",
   fieldset: styles.fieldset ?? "lumi-survey-rating__fieldset",
-  legend: styles.legend ?? "lumi-survey-rating__legend",
   button: styles.emobutton ?? "lumi-survey-rating__emoji-button",
   active: styles.active ?? "lumi-survey-rating__emoji-button--active",
-  error: styles.errorMessage ?? "lumi-survey-rating__error-message",
   variants: {
     sinna: styles.sinnaButton ?? "lumi-survey-rating__emoji-button--sinna",
     lei: styles.leiButton ?? "lumi-survey-rating__emoji-button--lei",
@@ -114,6 +111,8 @@ const VARIANTS: EmojiVariant[] = [
   },
 ];
 
+const EMOJI_VALUES = [1, 2, 3, 4, 5] as const;
+
 const joinClassNames = (
   ...classNames: Array<string | false | undefined>
 ): string => classNames.filter(Boolean).join(" ");
@@ -131,7 +130,7 @@ const resolveLabel = (question: RatingQuestion, value: number): string => {
   return variant.fallbackLabel ?? String(value);
 };
 
-export const RatingQuestionField = ({
+const EmojiRating = ({
   question,
   value,
   onChange,
@@ -151,119 +150,48 @@ export const RatingQuestionField = ({
   fieldsetPaddingBlock,
   fieldsetPaddingInline,
 }: RatingQuestionFieldProps) => {
-  // Props common to all rating types
-  const commonProps = {
-    value,
-    onChange,
-    validationErrorMessage,
-    isMissing,
-    disabled,
-    className,
-    ariaLabelledBy,
-    ariaDescribedBy,
-    hidePrompt,
-    hideDescription,
-    fieldsetPaddingBlock,
-    fieldsetPaddingInline,
-  };
-
-  // Dispatch to specialized components based on variant
-  switch (question.variant) {
-    case "thumbs":
-      return <ThumbsRating {...commonProps} question={question} />;
-
-    case "stars":
-      return <StarRating {...commonProps} question={question} />;
-
-    case "nps":
-      return <NpsRating {...commonProps} question={question} />;
-
-    default:
-      // Continue with emoji implementation below
-      break;
-  }
-
-  // ============================================
-  // Emoji rating implementation (5-point: 😡 🙁 😐 😀 😍)
-  // ============================================
-  const scale = 5; // Emoji is always 5-point
-  const options = Array.from({ length: scale }, (_, index) => index + 1);
+  const options = EMOJI_VALUES;
   const activeState = typeof value === "number" ? value : null;
-
-  const fallbackHeadingId = `${question.id}-heading`;
-  const fallbackDescriptionId = `${question.id}-description`;
-  const headingId =
-    ariaLabelledBy ?? (!hidePrompt ? fallbackHeadingId : undefined);
-  const descriptionId =
-    !hideDescription && question.description
-      ? fallbackDescriptionId
-      : undefined;
-  const errorId = `${question.id}-error`;
-  const describedBy =
-    [ariaDescribedBy, descriptionId, isMissing ? errorId : undefined]
-      .filter(Boolean)
-      .join(" ") || undefined;
 
   const handleSelect = (nextValue: number) => {
     if (!disabled) {
       onChange(nextValue);
     }
   };
-
-  const handleKeyDown = (event: React.KeyboardEvent) => {
-    const currentIndex = activeState ? activeState - 1 : 0;
-    let nextIndex: number;
-
-    switch (event.key) {
-      case "ArrowRight":
-      case "ArrowDown":
-        nextIndex = (currentIndex + 1) % options.length;
-        handleSelect(options[nextIndex]);
-        event.preventDefault();
-        break;
-      case "ArrowLeft":
-      case "ArrowUp":
-        nextIndex = (currentIndex - 1 + options.length) % options.length;
-        handleSelect(options[nextIndex]);
-        event.preventDefault();
-        break;
-    }
-  };
+  const radioGroup = useRatingRadioGroup({
+    values: options,
+    value: activeState,
+    onChange: handleSelect,
+    disabled,
+  });
 
   return (
-    <VStack gap="space-8" className={className}>
-      {!hidePrompt && (
-        <Heading
-          id={ariaLabelledBy ? undefined : fallbackHeadingId}
-          level="3"
-          size="xsmall"
-        >
-          {formatQuestionPrompt(question)}
-        </Heading>
+    <RatingFieldset
+      question={question}
+      validationErrorMessage={validationErrorMessage}
+      isMissing={isMissing}
+      disabled={disabled}
+      className={className}
+      fieldsetClassName={joinClassNames(
+        CLASS_NAMES.fieldset,
+        fieldsetClassName,
       )}
-      {question.description && !hideDescription && (
-        <BodyShort id={fallbackDescriptionId}>{question.description}</BodyShort>
-      )}
-      <Box
-        as="fieldset"
-        className={joinClassNames(CLASS_NAMES.fieldset, fieldsetClassName)}
-        aria-labelledby={headingId}
-        aria-describedby={describedBy}
-        paddingBlock={fieldsetPaddingBlock ?? "space-12"}
-        paddingInline={fieldsetPaddingInline ?? "space-16"}
-      >
-        <legend className={CLASS_NAMES.legend}>
-          {formatQuestionPrompt(question)}
-        </legend>
+      ariaLabelledBy={ariaLabelledBy}
+      ariaDescribedBy={ariaDescribedBy}
+      hidePrompt={hidePrompt}
+      hideDescription={hideDescription}
+      fieldsetPaddingBlock={fieldsetPaddingBlock}
+      fieldsetPaddingInline={fieldsetPaddingInline}
+    >
+      {(groupProps) => (
         <HStack
+          {...groupProps}
           gap="space-16"
           justify="start"
           align="center"
           wrap={wrap}
           className={joinClassNames(CLASS_NAMES.row, rowClassName)}
-          role="radiogroup"
-          aria-labelledby={headingId}
-          onKeyDown={handleKeyDown}
+          onKeyDown={radioGroup.onKeyDown}
         >
           {options.map((option, index) => {
             const variant = resolveVariant(index);
@@ -296,19 +224,43 @@ export const RatingQuestionField = ({
                 renderText={!hideValueLabels}
                 ariaLabel={ariaLabel}
                 disabled={disabled}
+                tabIndex={radioGroup.getTabIndex(option)}
               >
                 <Icon fill={isActive ? variant.activeFill : undefined} />
               </EmojiButton>
             );
           })}
         </HStack>
-      </Box>
-      <RatingErrorMessage
-        id={errorId}
-        isMissing={isMissing}
-        message={validationErrorMessage}
-        className={CLASS_NAMES.error}
-      />
-    </VStack>
+      )}
+    </RatingFieldset>
   );
+};
+
+export const RatingQuestionField = (props: RatingQuestionFieldProps) => {
+  const { question } = props;
+  const commonProps = {
+    value: props.value,
+    onChange: props.onChange,
+    validationErrorMessage: props.validationErrorMessage,
+    isMissing: props.isMissing,
+    disabled: props.disabled,
+    className: props.className,
+    ariaLabelledBy: props.ariaLabelledBy,
+    ariaDescribedBy: props.ariaDescribedBy,
+    hidePrompt: props.hidePrompt,
+    hideDescription: props.hideDescription,
+    fieldsetPaddingBlock: props.fieldsetPaddingBlock,
+    fieldsetPaddingInline: props.fieldsetPaddingInline,
+  };
+
+  switch (question.variant) {
+    case "thumbs":
+      return <ThumbsRating {...commonProps} question={question} />;
+    case "stars":
+      return <StarRating {...commonProps} question={question} />;
+    case "nps":
+      return <NpsRating {...commonProps} question={question} />;
+    default:
+      return <EmojiRating {...props} />;
+  }
 };

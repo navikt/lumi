@@ -410,7 +410,7 @@ describe("LumiSurveyDock", () => {
       ],
     };
 
-    const { container } = renderDock({ survey });
+    renderDock({ survey });
 
     expect(
       await screen.findByText("Dette gjelder besøket ditt."),
@@ -418,11 +418,11 @@ describe("LumiSurveyDock", () => {
     expect(
       screen.getByText("Velg det alternativet som passer best."),
     ).toBeInTheDocument();
-    expect(container.querySelector("fieldset")).toHaveAttribute(
+    expect(screen.getByRole("radiogroup")).toHaveAttribute(
       "aria-describedby",
       expect.stringContaining("rating-description"),
     );
-    expect(container.querySelector("fieldset")).toHaveAttribute(
+    expect(screen.getByRole("radiogroup")).toHaveAttribute(
       "aria-describedby",
       expect.stringContaining("dock-feedback-rating-dock-heading-description"),
     );
