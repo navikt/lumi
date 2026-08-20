@@ -23,7 +23,7 @@ Demo-miljøet er åpent for alle og viser testdata. Dev og prod krever Nav-innlo
 | Storybook | https://navikt.github.io/lumi/storybook/ |
 | `@navikt/lumi-survey` | [GitHub Packages](https://github.com/navikt/lumi/packages) |
 
-Storybook viser survey-widgeten med interaktive eksempler — nyttig for å utforske spørsmålstyper, presets og konfigurasjon.
+Storybook viser survey-widgeten med interaktive eksempler. Bruk den til å utforske spørsmålstyper og visuell tilpasning.
 
 ## Kildekode
 

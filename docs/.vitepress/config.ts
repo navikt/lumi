@@ -26,11 +26,15 @@ export default withMermaid({
           items: [
             { text: "Hva er Lumi?", link: "/kom-i-gang/hva-er-lumi" },
             {
+              text: "Lag surveyen",
+              link: "/kom-i-gang/lag-survey",
+            },
+            {
               text: "Installer widget",
               link: "/kom-i-gang/installer-widget",
             },
             {
-              text: "Konfigurer survey",
+              text: "Legg surveyen i appen",
               link: "/kom-i-gang/konfigurer-survey",
             },
             {
@@ -44,18 +48,20 @@ export default withMermaid({
         {
           text: "Guider",
           items: [
-            { text: "Surveytyper", link: "/guider/surveytyper" },
+            {
+              text: "Velg hva dere vil måle",
+              link: "/guider/surveytyper",
+            },
+            { text: "Sider og flyt", link: "/guider/sider-og-flyt" },
+            { text: "Spørsmålstyper", link: "/guider/sporsmalstyper" },
+            {
+              text: "Vis relevante spørsmål",
+              link: "/guider/betinget-synlighet",
+            },
             {
               text: "Survey-identitet",
               link: "/guider/survey-identitet",
             },
-            { text: "Presets & builders", link: "/guider/presets-og-builders" },
-            { text: "Spørsmålstyper", link: "/guider/sporsmalstyper" },
-            {
-              text: "Betinget synlighet",
-              link: "/guider/betinget-synlighet",
-            },
-            { text: "Branching (logic)", link: "/guider/branching" },
             { text: "Context & tags", link: "/guider/context-og-tags" },
             { text: "Lagring", link: "/guider/lagring" },
             { text: "Styling", link: "/guider/styling" },

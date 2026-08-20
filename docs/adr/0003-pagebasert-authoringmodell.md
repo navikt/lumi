@@ -44,7 +44,16 @@ export interface SurveyPageV1 {
 export interface SurveyDocumentV1 {
   authoringSchemaVersion: 1;
   type?: SurveyType;
+  intro?: {
+    title: string;
+    body?: string;
+    startLabel?: string;
+  };
   pages: [SurveyPageV1, ...SurveyPageV1[]];
+  success?: {
+    title: string;
+    body?: string;
+  };
 }
 ```
 
@@ -99,8 +108,8 @@ konsumenter.
   definition-hashen.
 - `authoringSchemaVersion` er versjonen av dokumentformatet, ikke
   submission-`schemaVersion`.
-- En framtidig dashboard-store må lagre egne immutable authoring-revisjoner.
-  Dagens `survey_definitions` skal ikke gjenbrukes som configlager.
+- Surveyverksted lagrer egne uforanderlige authoring-revisjoner, adskilt fra
+  `survey_definitions`. Se ADR 0004.
 
 ## Konsekvenser
 
@@ -118,8 +127,8 @@ konsumenter.
   den interne canonical-modellen.
 - Fremdriftsestimatet ved betingede pages er fortsatt et estimat, som ved annen
   branching.
-- En senere serverstyrt builder trenger eksplisitt versjons- og
-  minimumsklienthåndtering.
+- Eksport fra Surveyverksted krever eksplisitt versjons- og
+  minimumsklienthåndtering. `SurveyDocumentV1` krever widget 2.0.0 eller nyere.
 
 ## Vurderte alternativer
 

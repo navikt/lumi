@@ -4,67 +4,83 @@ title: Props-referanse
 
 # Props-referanse
 
-Komplett oversikt over alle props for `LumiSurveyDock`-komponenten.
+Dette er den komplette referansen for `LumiSurveyDock`. For en praktisk innføring, start med [Legg surveyen i appen](/kom-i-gang/konfigurer-survey).
 
-## Top-level props
+## Props på `LumiSurveyDock`
 
 | Prop | Type | Påkrevd | Beskrivelse |
 | :--- | :--- | :---: | :--- |
-| `surveyId` | `string` | ✅ | Unik identifikator for surveyen (f.eks. `"soknad-kvittering"`) |
-| `survey` | `LumiSurveyDefinition` | ✅ | Flat legacy-config eller et versjonert dokument med pages |
-| `transport` | `LumiSurveyTransport` | ✅ | Objekt med `submit`-funksjon for innsending |
-| `context` | `LumiSurveyContext` | ❌ | Metadata/tags/debug for segmentering |
-| `behavior` | `LumiSurveyBehavior` | ❌ | Styrer åpning, lukking, cooldown og storage |
-| `events` | `LumiSurveyEvents` | ❌ | Event-callbacks for sporing og livssyklus |
-| `labels` | `LumiSurveyLabels` | ❌ | Tekster for UI-elementer |
-| `success` | `LumiSurveySuccessConfig` | ❌ | Konfigurer suksess-visning |
-| `style` | `LumiSurveyStyle` | ❌ | Visuell styling (posisjon, farger, classNames) |
-| `intro` | `LumiSurveyIntroConfig` | ❌ | Intro-skjerm før første spørsmål |
+| `surveyId` | `string` | Ja | Stabil identifikator for analyseserien |
+| `survey` | `LumiSurveyDefinition` | Ja | Survey-dokumentet. Bruk `SurveyDocumentV1` for nye surveyer |
+| `transport` | `LumiSurveyTransport` | Ja | Sender inn svarene |
+| `context` | `LumiSurveyContext` | Nei | Metadata for segmentering og feilsøking |
+| `behavior` | `LumiSurveyBehavior` | Nei | Styrer åpning, lukking, fremdrift og lagring |
+| `events` | `LumiSurveyEvents` | Nei | Funksjoner som kalles ved hendelser i widgeten |
+| `labels` | `LumiSurveyLabels` | Nei | Tekster for knapper og feilmeldinger |
+| `intro` | `LumiSurveyIntroConfig` | Nei | Overstyrer innhold på velkomstsiden per felt |
+| `success` | `LumiSurveySuccessConfig` | Nei | Overstyrer bekreftelsen etter innsending per felt |
+| `style` | `LumiSurveyStyle` | Nei | Visuell tilpasning av widgeten |
 
-## `survey` — `LumiSurveyDefinition`
+## `survey`: `SurveyDocumentV1`
 
-`LumiSurveyDefinition` er en union av legacy-formatet under og
-`SurveyDocumentV1`.
+Bruk `SurveyDocumentV1` som format for nye surveyer.
 
-```ts
-interface LumiSurveyConfig {
-  /** Survey-type for analytics. Default: "custom" */
+```typescript
+interface SurveyDocumentV1 {
+  authoringSchemaVersion: 1;
   type?: "rating" | "topTasks" | "discovery" | "taskPriority" | "custom";
+  intro?: {
+    title: string;
+    body?: string;
+    startLabel?: string;
+  };
+  pages: [SurveyPageV1, ...SurveyPageV1[]];
+  success?: {
+    title: string;
+    body?: string;
+  };
+}
 
-  /** Alle spørsmål, i rekkefølge */
-  questions: LumiSurveyQuestion[];
+interface SurveyPageV1 {
+  id: string;
+  title?: string;
+  description?: string;
+  questions: [SurveyQuestionV1, ...SurveyQuestionV1[]];
 }
 ```
 
-Se [Spørsmålstyper](/guider/sporsmalstyper) for detaljer om spørsmål-objektene.
+Dokumentet må ha minst én side, og hver side må ha minst ett spørsmål. Side- og spørsmåls-ID-er skal være stabile og unike i dokumentet.
 
-### Flere spørsmål på samme page — `SurveyDocumentV1`
-
-Bruk det versjonerte dokumentformatet når flere spørsmål skal vises og
-valideres sammen på ett steg:
-
-```ts
+```typescript
 import type { SurveyDocumentV1 } from "@navikt/lumi-survey";
 
 const survey = {
   authoringSchemaVersion: 1,
   type: "custom",
+  intro: {
+    title: "Fortell oss om opplevelsen din",
+    startLabel: "Start",
+  },
   pages: [
     {
       id: "opplevelse",
-      title: "Om opplevelsen",
-      description: "Svar på begge spørsmålene.",
+      title: "Om kontakten med Nav",
+      description: "Tenk på den siste gangen du tok kontakt.",
       questions: [
         {
-          id: "oppgave",
-          type: "text",
-          prompt: "Hva prøvde du å gjøre?",
+          id: "kanal",
+          type: "singleChoice",
+          prompt: "Hvordan tok du kontakt?",
           required: true,
+          options: [
+            { value: "telefon", label: "Telefon" },
+            { value: "chat", label: "Chat" },
+          ],
         },
         {
           id: "resultat",
           type: "singleChoice",
-          prompt: "Fikk du gjort det?",
+          prompt: "Fikk du hjelpen du trengte?",
           required: true,
           options: [
             { value: "ja", label: "Ja" },
@@ -74,13 +90,12 @@ const survey = {
       ],
     },
     {
-      id: "utdyping",
-      title: "Fortell mer",
+      id: "oppfolging",
       questions: [
         {
-          id: "kommentar",
+          id: "forbedring",
           type: "text",
-          prompt: "Hva kan vi forbedre?",
+          prompt: "Hva kunne vært bedre?",
           visibleIf: {
             questionId: "resultat",
             operator: "EQ",
@@ -90,62 +105,63 @@ const survey = {
       ],
     },
   ],
+  success: {
+    title: "Svaret er sendt inn",
+  },
 } satisfies SurveyDocumentV1;
 ```
 
-V1 bruker lineær page-navigasjon med `visibleIf` på spørsmål. `logic` støttes
-ikke i dokumentformatet. Svar og submission-definition forblir flate og basert
-på question-ID; page-metadata sendes ikke til API-et.
+Spørsmålene på en side vises og valideres sammen. En side uten synlige spørsmål hoppes over. `visibleIf` kan vise til tidligere spørsmål i dokumentet, men dokumentformatet støtter ikke ikke-lineære hopp.
 
-## `transport` — `LumiSurveyTransport`
+Svarene og `definition` i innsendingsdataene er fortsatt flate og bruker spørsmåls-ID. Sidetittel, sidebeskrivelse og side-ID sendes ikke til API-et.
 
-```ts
+Se [Sider og flyt](/guider/sider-og-flyt) og [Spørsmålstyper](/guider/sporsmalstyper).
+
+## `transport`: `LumiSurveyTransport`
+
+```typescript
 interface LumiSurveyTransport {
   submit: (submission: LumiSurveySubmission) => Promise<void>;
 }
 ```
 
-`submission.transportPayload` er den ferdig-formaterte payloaden du sender til din backend. Se [Koble til backend → Sjekkliste](/kom-i-gang/koble-til-backend#komplett-sjekkliste) for oppsett.
+Send `submission.transportPayload` til endepunktet i appen din. Se [Koble til backend](/kom-i-gang/koble-til-backend#komplett-sjekkliste).
 
-## `behavior` — `LumiSurveyBehavior`
+## `behavior`: `LumiSurveyBehavior`
 
-Styrer åpning, lukking, lagring og layout.
-
-| Property | Type | Default | Beskrivelse |
+| Felt | Type | Standard | Beskrivelse |
 | :--- | :--- | :--- | :--- |
-| `initialOpen` | `boolean` | `true` | Om docken starter åpen |
-| `resetOnClose` | `boolean` | `true` | Nullstill skjema ved lukking |
-| `dismissCooldownDays` | `number` | `30` | Dager før dismissed dock vises igjen |
-| `hideAfterSubmit` | `boolean` | `true` | Skjul helt etter vellykket innsending |
-| `questionLayout` | `"auto" \| "singlePage" \| "steps"` | `"auto"` | Hvordan spørsmål presenteres |
-| `showPersonalDataNotice` | `boolean` | `true` | Vis personverninfo |
-| `personalDataNotice` | `ReactNode` | ❌ | Tilpasset personverninfo |
-| `collectLocation` | `boolean` | `false` | Auto-collect `pathname` fra URL |
-| `storageStrategy` | `"consent" \| "localStorage" \| "none"` | `"consent"` | Lagringsstrategi for dismissed-tilstand |
-| `showProgress` | `boolean` | `false` | Vis fremdrift med synlig stegtekst fra første spørsmål i stegmodus når surveyen har minst to steg. Lineære løp viser `Steg X av N`; branching viser `Steg X` |
-| `initialPageId` | `string` | ❌ | Start på siden med denne id-en når den finnes og er synlig; ellers første synlige side. For embedded previews som speiler en bestemt side |
-| `simulatedViewport` | `{ width: number; height: number }` | ❌ | Simuler et viewport for embedded previews: docken dimensjoneres fra dette i stedet for vinduet, og auto-innsamlet `viewport`/`deviceType` følger simuleringen |
+| `initialOpen` | `boolean` | `true` | Om widgeten starter åpen |
+| `resetOnClose` | `boolean` | `true` | Nullstill svar når brukeren lukker |
+| `dismissCooldownDays` | `number` | `30` | Dager før en lukket widget vises igjen |
+| `hideAfterSubmit` | `boolean` | `true` | Skjul widgeten etter vellykket innsending |
+| `questionLayout` | `"auto" \| "singlePage" \| "steps"` | `"auto"` | Hvordan sidene vises |
+| `showPersonalDataNotice` | `boolean` | `true` | Vis informasjon om personopplysninger |
+| `personalDataNotice` | `ReactNode` | – | Egen informasjon om personopplysninger |
+| `collectLocation` | `boolean` | `false` | Samle inn `pathname` automatisk |
+| `storageStrategy` | `"consent" \| "localStorage" \| "none"` | `"consent"` | Hvordan widgeten husker at brukeren har lukket |
+| `showProgress` | `boolean` | `false` | Vis fremdrift når minst to steg kan nås |
+| `initialPageId` | `string` | – | Start på denne synlige siden. Laget for innebygd forhåndsvisning |
+| `simulatedViewport` | `{ width: number; height: number }` | – | Simuler størrelse og enhetstype i innebygd forhåndsvisning |
 
-Intro og kvittering regnes ikke som steg. Ved branching viser den visuelle linjen det stabile estimatet, mens tilgjengelig stegtekst bare oppgir sikker informasjon som «Steg 2» uten estimert total.
+### `questionLayout`
 
-::: details questionLayout-verdier
-- **`"auto"`** (default): Legacy-config bruker dagens branching-regler. Et `SurveyDocumentV1` med flere authored pages bruker page-basert stegmodus.
-- **`"singlePage"`**: Alle synlige spørsmål vises på én side. Page-titler og beskrivelser beholdes som struktur.
-- **`"steps"`**: Navigerer mellom spørsmål for legacy-config og mellom pages for `SurveyDocumentV1`.
-:::
+- `auto` er standard og anbefalt. Et dokument med flere sider vises stegvis. Ett dokument med én side vises på én flate.
+- `singlePage` viser alle synlige sider samtidig. Sidetitler og beskrivelser beholdes.
+- `steps` har samme sidebaserte resultat som `auto` for et dokument med flere sider. Verdien finnes først og fremst for bakoverkompatibilitet med eldre konfigurasjoner.
 
-## `labels` — `LumiSurveyLabels`
+Velkomstsiden og bekreftelsen etter innsending er ikke med i fremdriften.
 
-Tekster for UI-elementer. Alle har fornuftige norske defaults.
+## `labels`: `LumiSurveyLabels`
 
-| Property | Type | Default | Beskrivelse |
+| Felt | Type | Standard | Beskrivelse |
 | :--- | :--- | :--- | :--- |
-| `submit` | `string` | `"Send inn"` | Send-knapp |
-| `submitPending` | `string` | `"Sender inn..."` | Send-knapp under innsending |
-| `cancel` | `string` | `"Lukk"` | Lukk-knapp |
-| `validationError` | `string` | `"Vennligst fyll ut alle påkrevde felt"` | Valideringsfeilmelding |
-| `transportError` | `string` | `"Noe gikk galt ved innsending. Prøv igjen senere."` | Innsendingsfeil |
-| `minimizedButton` | `string` | `"Gi tilbakemelding"` | Tekst på minimert knapp |
+| `submit` | `string` | `"Send inn"` | Knapp for innsending |
+| `submitPending` | `string` | `"Sender inn..."` | Knapp mens innsending pågår |
+| `cancel` | `string` | `"Lukk"` | Knapp for å lukke |
+| `validationError` | `string` | `"Vennligst fyll ut alle påkrevde felt"` | Feil ved manglende svar |
+| `transportError` | `string` | `"Noe gikk galt ved innsending. Prøv igjen senere."` | Feil ved innsending |
+| `minimizedButton` | `string` | `"Gi tilbakemelding"` | Knapp når widgeten er minimert |
 
 ```tsx
 <LumiSurveyDock
@@ -157,96 +173,88 @@ Tekster for UI-elementer. Alle har fornuftige norske defaults.
 />
 ```
 
-## `success` — `LumiSurveySuccessConfig`
+## Innhold før og etter spørsmålene
 
-Konfigurer suksess-skjermen etter innsending.
+Legg vanlig tekst til velkomstsiden og bekreftelsen i `SurveyDocumentV1`. Da følger innholdet surveyen fra Surveyverksted til kode.
 
-| Property | Type | Default | Beskrivelse |
-| :--- | :--- | :--- | :--- |
-| `title` | `string` | `"Takk for tilbakemeldingen!"` | Overskrift |
-| `body` | `ReactNode` | — | Valgfri tekst under overskriften |
-| `primaryLabel` | `string` | `"Lukk"` | Knappetekst |
-| `autoClose` | `boolean` | `false` | Lukk automatisk etter suksess |
-| `autoCloseDelayMs` | `number` | `1600` | Forsinkelse før auto-lukk (ms) |
+Propsene `intro` og `success` er overstyringer for appen som viser widgeten. De slås sammen med dokumentet per felt. En prop du ikke setter, beholder verdien fra dokumentet.
 
 ```tsx
 <LumiSurveyDock
+  {...otherProps}
+  survey={survey}
+  intro={{
+    title: "Fortell oss om opplevelsen din",
+    body: <AppSpecificPrivacyText />,
+  }}
   success={{
-    title: "Tusen takk!",
-    body: "Tilbakemeldingen din hjelper oss å forbedre tjenesten.",
+    primaryLabel: "Til forsiden",
     autoClose: true,
     autoCloseDelayMs: 2000,
   }}
 />
 ```
 
-## `style` — `LumiSurveyStyle`
+I eksempelet beholder widgeten `intro.startLabel`, `success.title` og `success.body` fra dokumentet. `intro.title` må være med når du sender `intro` som prop, fordi prop-typen krever en tittel.
 
-Visuell tilpasning av dock-panelet.
+### `intro`: `LumiSurveyIntroConfig`
 
-| Property | Type | Default | Beskrivelse |
+| Felt | Type | Standard | Beskrivelse |
 | :--- | :--- | :--- | :--- |
-| `position` | `"bottom-right" \| "bottom-left"` | `"bottom-right"` | Posisjon på skjermen |
-| `offset` | `number` | `24` | Avstand fra viewport-kant i px |
-| `containerClassName` | `string` | — | Ekstra CSS-klasse for container |
-| `panelClassName` | `string` | — | Ekstra CSS-klasse for panelet |
-| `panelBackground` | Aksel `Box` background-token | `"default"` | Bakgrunnsfarge |
-| `panelBorderColor` | Aksel `Box` borderColor-token | `"neutral-subtle"` | Kantfarge |
-| `panelMaxHeight` | `string` | `"calc(100vh - 2rem)"` | Maks høyde for det åpne panelet, for embedded previews i en begrenset scene |
+| `title` | `string` | Påkrevd når `intro`-prop-en settes | Overskrift på velkomstsiden |
+| `body` | `ReactNode` | – | Innhold under overskriften |
+| `startLabel` | `string` | `"Start"` | Knapp som starter surveyen |
 
-```tsx
-<LumiSurveyDock
-  style={{
-    position: "bottom-left",
-    offset: 16,
-    panelBackground: "surface-subtle",
-  }}
-/>
-```
+En tom `startLabel` faller tilbake til `"Start"`. En velkomstside med tom dokumenttittel vises ikke. Utkast kan være ufullstendige, men en versjon fra Surveyverksted må ha en tittel.
 
-Se [Styling](/guider/styling) for mer om visuell tilpasning.
+### `success`: `LumiSurveySuccessConfig`
 
-## `events` — `LumiSurveyEvents`
-
-Event-callbacks for livssyklus og sporing. Se [Events](/referanse/events) for fullstendig dokumentasjon med brukseksempler.
-
-## `intro` — `LumiSurveyIntroConfig`
-
-Viser en intro-skjerm før første spørsmål.
-
-| Property | Type | Default | Beskrivelse |
+| Felt | Type | Standard | Beskrivelse |
 | :--- | :--- | :--- | :--- |
-| `title` | `string` | ✅ (påkrevd) | Overskrift på intro-skjermen |
-| `body` | `ReactNode` | — | Valgfri brødtekst |
-| `startLabel` | `string` | `"Start"` | Knappetekst for å starte surveyen |
+| `title` | `string` | `"Takk for tilbakemeldingen!"` | Overskrift etter innsending |
+| `body` | `ReactNode` | – | Innhold under overskriften |
+| `primaryLabel` | `string` | `"Lukk"` | Tekst på hovedknappen |
+| `autoClose` | `boolean` | `false` | Lukk automatisk etter innsending |
+| `autoCloseDelayMs` | `number` | `1600` | Tid før automatisk lukking, i millisekunder |
 
-```tsx
-<LumiSurveyDock
-  intro={{
-    title: "Hjelp oss å forbedre tjenesten",
-    body: "Det tar bare 30 sekunder. Alle svar er anonyme.",
-    startLabel: "Gi tilbakemelding",
-  }}
-/>
-```
+Hvis `success.title` i dokumentet er tom, bruker widgeten standardbekreftelsen.
 
-## `context` — `LumiSurveyContext`
+## `style`: `LumiSurveyStyle`
 
-Metadata for segmentering og feilsøking. Se [Context & tags](/guider/context-og-tags) for fullstendig dokumentasjon.
+| Felt | Type | Standard | Beskrivelse |
+| :--- | :--- | :--- | :--- |
+| `position` | `"bottom-right" \| "bottom-left"` | `"bottom-right"` | Plassering på skjermen |
+| `offset` | `number` | `24` | Avstand fra kanten, i piksler |
+| `containerClassName` | `string` | – | Ekstra CSS-klasse for beholderen |
+| `panelClassName` | `string` | – | Ekstra CSS-klasse for panelet |
+| `panelBackground` | Aksel `Box`-token | `"default"` | Bakgrunnsfarge |
+| `panelBorderColor` | Aksel `Box`-token | `"neutral-subtle"` | Kantfarge |
+| `panelMaxHeight` | `string` | `"calc(100vh - 2rem)"` | Største høyde for panelet |
 
-```ts
+Se [Styling](/guider/styling).
+
+## `events`: `LumiSurveyEvents`
+
+Se [Events](/referanse/events) for alle funksjonene og eksempler.
+
+## `context`: `LumiSurveyContext`
+
+```typescript
 interface LumiSurveyContext {
-  // Auto-collected
   viewport?: { width: number; height: number };
   deviceType?: "mobile" | "tablet" | "desktop";
   userAgent?: string;
-
-  // Opt-in (krever collectLocation: true)
   url?: string;
   pathname?: string;
-
-  // Manuelt satt
   tags?: Record<string, string | number | boolean>;
   debug?: Record<string, unknown>;
 }
 ```
+
+Se [Context og tags](/guider/context-og-tags) for personvernråd og eksempler.
+
+## Eldre konfigurasjoner
+
+`LumiSurveyDefinition` aksepterer fortsatt den eldre, flate `LumiSurveyConfig`. Presets, builders, `logic` og spørsmålsbasert `questionLayout: "steps"` fortsetter også å virke i 2.x. Ikke bruk disse mekanismene i nye surveyer.
+
+Se [Migrer en eldre survey](/referanse/migrer-eldre-survey) hvis du vedlikeholder en eksisterende konfigurasjon.

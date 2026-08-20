@@ -33,7 +33,7 @@ Tabellen gjelder den nåværende widgeten, som sender hele surveydefinisjonen me
 | Endre visuell styling eller layout | Ja | Endringen påvirker ikke den analytiske strukturen. |
 | Endre spørsmålstekst eller teksten til et svaralternativ uten å endre betydningen | Ja, med varsomhet | Backend godtar endringen, men eldre svar beholder de gamle tekstene. Hold endringen liten. |
 | Endre hva et spørsmål eller svaralternativ betyr | Nei | Backend kan godta en ren tekstendring, men analysen vil blande svar på to ulike spørsmål. |
-| Endre `required`, `visibleIf` eller `logic` | Vurder ny ID | Backend godtar endringen, men den kan endre hvem som får eller besvarer spørsmålet. Bruk ny ID hvis trendene ikke lenger er sammenlignbare. |
+| Endre `required` eller `visibleIf` | Vurder ny ID | Backend godtar endringen, men den kan endre hvem som får eller besvarer spørsmålet. Bruk ny ID hvis trendene ikke lenger er sammenlignbare. |
 | Endre rekkefølgen på spørsmål | Vanligvis | Backend godtar ren omorganisering. Dashboardet utleder rekkefølgen fra innsendinger, så bruk ny ID hvis rekkefølgen er viktig for tolkningen. |
 | Legge til eller fjerne et spørsmål | Nei | Hele definisjonen sendes med hver innsending. Endringen gir 409. |
 | Endre spørsmål-ID | Nei | Backend ser dette som ett fjernet og ett nytt felt og svarer med 409. |

@@ -97,11 +97,11 @@ onDismissalPersistFailed?: (cause: unknown) => void;
 
 ### `onStepChange`
 
-Fyres når brukeren navigerer mellom steg i step-modus. For flat legacy-config
-er stegene spørsmål. For `SurveyDocumentV1` er stegene pages. Første argument er
-indeksen blant pages som er synlige i nåværende tilstand; totalen er et estimat
-over reachable pages og kan derfor inkludere en betinget page før svaret som
-avgjør synligheten finnes.
+Kalles når stegvis visning initialiseres, også dersom velkomstsiden fortsatt
+vises, og når brukeren går til en annen side. For `SurveyDocumentV1` er hvert
+steg en synlig side. `totalVisibleSteps` er et estimat. Før brukeren har svart
+på spørsmål som styrer `visibleIf`, kan tallet ta med sider som senere hoppes
+over.
 
 ```ts
 onStepChange?: (visibleStepIndex: number, totalVisibleSteps: number) => void;
@@ -152,14 +152,14 @@ import * as amplitude from "@amplitude/analytics-browser";
 />
 ```
 
-### Fremdriftssporing
+### Følg fremdriften
 
 ```tsx
 <LumiSurveyDock
   surveyId="lang-survey"
   survey={survey}
   transport={transport}
-  behavior={{ questionLayout: "steps", showProgress: true }}
+  behavior={{ showProgress: true }}
   events={{
     onStepChange: (step, total) => {
       console.log(`Steg ${step + 1} av ${total}`);
@@ -170,6 +170,9 @@ import * as amplitude from "@amplitude/analytics-browser";
   }}
 />
 ```
+
+Eldre, flate konfigurasjoner sender én hendelse per spørsmål i stegvis visning.
+Etter migrering kan en side med flere spørsmål derfor gi færre hendelser.
 
 ## TypeScript-interface
 

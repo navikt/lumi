@@ -1,178 +1,108 @@
 ---
-title: Betinget synlighet
+title: Vis bare relevante spørsmål
 ---
 
-# Betinget synlighet
+# Vis bare relevante spørsmål
 
-Med `visibleIf` kan du vise oppfølgingsspørsmål kun når det er relevant — såkalt progressiv disclosure. Det gir kortere surveyer og bedre svarprosent.
+Bruk `visibleIf` til å vise et oppfølgingsspørsmål bare når det er relevant. Når ingen spørsmål på en side er synlige, hopper Lumi over hele siden.
 
-## Grunnleggende bruk
+## Vis et spørsmål etter et tidligere svar
 
-Legg `visibleIf` på spørsmålet som skal skjules til en betingelse er oppfylt:
+Legg `visibleIf` på spørsmålet som skal være skjult. Vis alltid til ID-en til et tidligere spørsmål i dokumentet.
 
-```tsx
+```typescript
+import type { SurveyDocumentV1 } from "@navikt/lumi-survey";
+
 const survey = {
+  authoringSchemaVersion: 1,
   type: "rating",
-  questions: [
+  pages: [
     {
-      id: "rating",
-      type: "rating",
-      variant: "emoji",
-      prompt: "Hvordan var opplevelsen din?",
-      required: true,
+      id: "vurdering",
+      questions: [
+        {
+          id: "opplevelse",
+          type: "rating",
+          variant: "emoji",
+          prompt: "Hvordan var opplevelsen din?",
+          required: true,
+        },
+      ],
     },
     {
-      id: "feedback",
-      type: "text",
-      prompt: "Har du andre tilbakemeldinger?",
-      maxLength: 1000,
-      visibleIf: {
-        field: "ANSWER",
-        questionId: "rating",
-        operator: "EXISTS",
-      },
+      id: "oppfolging",
+      questions: [
+        {
+          id: "forbedring",
+          type: "text",
+          prompt: "Hva kan vi gjøre bedre?",
+          visibleIf: {
+            questionId: "opplevelse",
+            operator: "LT",
+            value: 4,
+          },
+        },
+      ],
     },
   ],
-};
+} satisfies SurveyDocumentV1;
 ```
 
-Her vises tekstfeltet først etter at brukeren har valgt en emoji. Ingen ekstra kode — widgeten håndterer alt.
+Her vises oppfølgingssiden bare når brukeren gir en vurdering lavere enn 4.
 
 ## Operatorer
 
-| Operator | Beskrivelse | Eksempel |
+| Operator | Når betingelsen er sann | Eksempel |
 | :--- | :--- | :--- |
-| `EXISTS` | Svaret eksisterer (ikke `undefined`) | Vis fritekst etter rating er valgt |
-| `EQ` | Lik en verdi | Vis kun når bruker valgte «Nei» |
-| `NEQ` | Ulik en verdi | Vis når bruker *ikke* valgte «Ja» |
-| `GT` | Større enn | Vis kun for rating > 3 |
-| `LT` | Mindre enn | Vis oppfølging for rating < 3 |
-| `CONTAINS` | Inneholder verdi (for multi-choice) | Vis når «Annet» er blant valgene |
+| `EXISTS` | Spørsmålet har et svar | Vis oppfølging etter at brukeren har svart |
+| `EQ` | Svaret er lik verdien | Vis når brukeren valgte «Nei» |
+| `NEQ` | Svaret er ulikt verdien, også før et svar finnes | Kombiner med `EXISTS` for «har svart, men ikke Ja» |
+| `GT` | Svaret er større enn verdien | Vis for vurdering over 3 |
+| `LT` | Svaret er mindre enn verdien | Vis for vurdering under 3 |
+| `CONTAINS` | En liste med svar inneholder verdien | Vis når «Annet» er valgt |
 
-## Flere betingelser (AND/OR)
+## Vent til brukeren har svart
 
-Du kan kombinere flere betingelser med `all` (AND — alle må være sanne) eller
-`any` (OR — minst én må være sann). Hvert element er en vanlig betingelse, og kan
-referere ulike spørsmål.
+`NEQ` er også sann før et spørsmål har fått svar, fordi et manglende svar er ulikt verdien du sammenligner med. Kombiner derfor `EXISTS` og `NEQ` når oppfølgingen skal vente på et svar:
 
-```tsx
+```typescript
+visibleIf: {
+  all: [
+    { questionId: "resultat", operator: "EXISTS" },
+    { questionId: "resultat", operator: "NEQ", value: "ja" },
+  ],
+}
+```
+
+## Kombiner betingelser
+
+Bruk `all` når alle betingelsene må være sanne, og `any` når minst én må være sann.
+
+```typescript
 {
-  id: "oppfolging",
+  id: "hva-manglet",
   type: "text",
   prompt: "Hva manglet?",
-  // Vises hvis ETT av de to svarene er "nei":
   visibleIf: {
     any: [
-      { questionId: "spm1", operator: "EQ", value: "nei" },
-      { questionId: "spm2", operator: "EQ", value: "nei" },
+      { questionId: "del-en", operator: "EQ", value: "nei" },
+      { questionId: "del-to", operator: "EQ", value: "nei" },
     ],
   },
 }
 ```
 
-Bytt `any` med `all` for å kreve at *begge* betingelsene er oppfylt. Grupper kan
-ikke nestes (ett nivå), og en tom gruppe avvises ved validering.
+Gruppene kan ha ett nivå. Du kan ikke legge en ny `any`- eller `all`-gruppe inni en gruppe, og en tom gruppe blir avvist.
 
-## Eksempler
+## Vis et spørsmål for en bestemt kontekst
 
-### Vis kun for lav score
+Bruk `field: "METADATA"` når visningen skal styres av kontekst i stedet for et tidligere svar.
 
-```tsx
+```typescript
 {
-  id: "complaint",
+  id: "intern-oppfolging",
   type: "text",
-  prompt: "Hva gikk galt?",
-  visibleIf: {
-    field: "ANSWER",
-    questionId: "rating",
-    operator: "LT",
-    value: 3,
-  },
-}
-```
-
-### Vis basert på et spesifikt valg
-
-```tsx
-{
-  id: "other-reason",
-  type: "text",
-  prompt: "Beskriv hva du prøvde å gjøre",
-  visibleIf: {
-    field: "ANSWER",
-    questionId: "reason",
-    operator: "EQ",
-    value: "other",
-  },
-}
-```
-
-### Vis når svaret *ikke* er «Ja»
-
-```tsx
-{
-  id: "blocker",
-  type: "text",
-  prompt: "Hva hindret deg?",
-  visibleIf: {
-    field: "ANSWER",
-    questionId: "taskSuccess",
-    operator: "NEQ",
-    value: "yes",
-  },
-}
-```
-
-## Condition-struktur
-
-En `visibleIf` er enten **én leaf-betingelse**, eller en **`any`/`all`-gruppe** av
-leaf-betingelser (se [Flere betingelser (AND/OR)](#flere-betingelser-andor)). En
-leaf-betingelse har formen:
-
-```ts
-type LogicLeafCondition =
-  | {
-      /** Sammenlign mot et svar (standard) */
-      field?: "ANSWER";
-      /** Hvilket spørsmål svaret hentes fra (kryssreferanse) */
-      questionId?: string;
-      /** Sammenligningsoperator */
-      operator: "EXISTS" | "EQ" | "NEQ" | "GT" | "LT" | "CONTAINS";
-      /** Verdi å sammenligne med (ikke nødvendig for EXISTS) */
-      value?: string | number | boolean;
-    }
-  | {
-      /** Sammenlign mot en metadata-verdi */
-      field: "METADATA";
-      /** Nøkkel i metadata (påkrevd for METADATA) */
-      key: string;
-      operator: "EXISTS" | "EQ" | "NEQ" | "GT" | "LT" | "CONTAINS";
-      /** Påkrevd for METADATA */
-      value: string | number | boolean;
-    };
-
-// visibleIf aksepterer en leaf ELLER en gruppe (typen heter VisibleIfCondition):
-type VisibleIfCondition =
-  | LogicLeafCondition
-  | { any: LogicLeafCondition[] } // OR
-  | { all: LogicLeafCondition[] }; // AND
-```
-
-Grupper er **ett nivå** (kan ikke nestes), og en tom `any`/`all` avvises ved validering.
-
-::: tip Bruk `questionId` for kryss-referanser
-`questionId` refererer til `id`-en til spørsmålet du vil sjekke svaret på. Uten `questionId` evalueres betingelsen mot det *gjeldende* spørsmålets svar.
-:::
-
-## Metadata-betingelser
-
-Du kan også vise spørsmål basert på metadata (kontekst-verdier) i stedet for svar:
-
-```tsx
-{
-  id: "internal-feedback",
-  type: "text",
-  prompt: "Tilbakemelding for internt bruk",
+  prompt: "Hva trenger du for å løse oppgaven?",
   visibleIf: {
     field: "METADATA",
     key: "rolle",
@@ -182,30 +112,30 @@ Du kan også vise spørsmål basert på metadata (kontekst-verdier) i stedet for
 }
 ```
 
-`key` slås opp i et flatt metadata-kart med disse verdiene:
+`key` slås opp i et flatt kart med disse verdiene:
 
 | Nøkkel | Kilde | Merknad |
 | :--- | :--- | :--- |
 | `deviceType` | Automatisk | `mobile`, `tablet` eller `desktop` |
-| `viewport` | Automatisk | Objekt med `width` og `height`; bruk `EXISTS` for å sjekke at det finnes |
-| `screenResolution` | Automatisk | Objekt med `width` og `height`; bruk `EXISTS` for å sjekke at det finnes |
+| `viewport` | Automatisk | Objekt med `width` og `height`; bruk `EXISTS` |
+| `screenResolution` | Automatisk | Objekt med `width` og `height`; bruk `EXISTS` |
 | `userAgent` | Automatisk | Nettleserens user agent-streng |
-| `pathname` | Context / opt-in | Manuelt sanitert verdi, eller automatisk når `collectLocation` er aktivert |
+| `pathname` | Context / valgt innsamling | Manuelt renset verdi, eller automatisk når `collectLocation` er på |
 | `url` | Context | Samles aldri inn automatisk |
-| Egendefinerte tag-nøkler | `context.tags` | Eksempel: `rolle`, `tjeneste` eller `abTest` |
+| Egendefinerte nøkler | `context.tags` | For eksempel `rolle`, `tjeneste` eller `abTest` |
 
-Tag-nøklene ligger på toppnivå, så `context.tags.rolle` brukes som
-`key: "rolle"`. Når et systemfelt har en definert verdi, har det prioritet over
-en tag med samme navn. `context.debug` er bevisst ikke tilgjengelig for
-synlighetsregler; debug-data er kun ment for diagnostikk av innsendinger.
+Nøklene i `context.tags` ligger på toppnivå. `context.tags.rolle` brukes derfor som `key: "rolle"`. Et systemfelt med en definert verdi vinner over en tag med samme navn. `context.debug` er ikke tilgjengelig i synlighetsregler.
 
-## Når trenger du noe mer?
+## Reglene TypeScript sjekker
 
-`visibleIf` er perfekt for progressiv disclosure — vis/skjul oppfølgingsspørsmål basert på tidligere svar. Men noen ganger trenger du å faktisk *endre flyten*: hoppe til et annet spørsmål, skippe neste steg, eller avslutte surveyen tidlig.
+En betingelse er enten ett vilkår eller en `any`-/`all`-gruppe. Et vilkår må ha:
 
-Da bruker du `logic` i stedet. Se [Avansert branching](/guider/branching) for full dokumentasjon.
+- `questionId` for et tidligere svar, eller `field: "METADATA"` og `key` for kontekst
+- en av operatorene i tabellen over
+- `value` for alle operatorer unntatt `EXISTS`
 
-::: info Tommelfingerregel
-- **Vis/skjul spørsmål** → `visibleIf`
-- **Endre rekkefølge / hoppe / avslutte** → `logic`
-:::
+Gruppene inneholder en liste med slike vilkår. Reglene valideres både av TypeScript og widgeten.
+
+## Hold flyten enkel
+
+Bruk `visibleIf` til all ny betinget flyt. Legg de betingede spørsmålene i dokumentrekkefølgen der de naturlig hører hjemme. Da blir surveyen enkel å forstå, forhåndsvise og vedlikeholde.

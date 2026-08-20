@@ -1,12 +1,12 @@
 ---
 title: "ADR 0001: Flytmodell — `visibleIf` som kanonisk, `logic` som escape hatch"
-status: Foreslått
+status: Akseptert
 date: 2026-06-24
 ---
 
 # ADR 0001: Flytmodell for surveys — `visibleIf` som kanonisk modell, `logic` som escape hatch
 
-- **Status:** Foreslått
+- **Status:** Akseptert
 - **Dato:** 2026-06-24
 - **Berører:** #332 (fikset), #333 (AND/OR), #336 (flere spørsmål per steg), #338 (Survey Builder UI)
 
@@ -55,7 +55,7 @@ Konklusjon: vi kan ikke rive ut `logic`. Men vi kan slutte å behandle den som e
 
 1. **Ett betingelseslag.** Leaf-betingelsen (`questionId`, operatorer, `METADATA`) er det *eneste* betingelsesspråket, og begge evaluatorene resolver leaf-svar identisk via det delte laget (`isLeafCondition` / `getLeafConditions`). #332-fiksen tok første steg: `evaluateBranching` tar nå `answers` og speiler `evaluateVisibility`. **Levert i #333:** any/all-grupper ble lagt på `visibleIf` via en egen vid type (`VisibleIfCondition`), mens `LogicCondition` forble leaf-only og `logic` avviser grupper. Full evaluator-unifisering er bevisst utsatt (se Oppfølging).
 
-2. **`visibleIf` er den kanoniske flytmodellen.** Den mentale modellen vi dokumenterer, anbefaler og bygger Survey Builder (#338) rundt er: *ordnet liste → filtrer på synlighet → gå gjennom de synlige i rekkefølge → send inn når ingen flere er synlige.* Builder-UI-en eksponerer dette som standard.
+2. **`visibleIf` er den kanoniske flytmodellen.** Den mentale modellen vi dokumenterer, anbefaler og har bygget Surveyverksted (#338) rundt er: *ordnet liste → filtrer på synlighet → gå gjennom de synlige i rekkefølge → send inn når ingen flere er synlige.* Surveyverksted eksponerer dette som standard.
 
 3. **`logic` degraderes til en legacy escape hatch for ekte ikke-lineær kontroll** (primært `JUMP_TO`). Den forblir støttet og fungerende for eksisterende flat config (den har live konsumenter), men:
    - dokumenteres som «avansert», ikke som en sidestilt førstevalgs-modell,
@@ -66,7 +66,7 @@ Konklusjon: vi kan ikke rive ut `logic`. Men vi kan slutte å behandle den som e
    Levert i #359: `createTopTasksSurvey` uttrykker nå `otherTask` og `blocker`
    med `visibleIf`. Førsteparts-avhengigheten av `logic` er dermed null.
 
-5. **Revurder full deprecation av `logic` etter #333 + #338**, basert på faktisk konsumentbruk. Hvis ekte `JUMP_TO`-bruk forblir nær null, kan `logic` deprecates med en migreringsguide. Denne ADR-en *forplikter ikke* til full fjerning — den setter retningen.
+5. **Dokumenter `logic` som eldre kompatibilitetsstøtte etter #333 + #338.** Mekanismen fjernes fra hoveddokumentasjonen, men beholdes i runtime for eksisterende konsumenter. Full API-deprecation vurderes først i en senere, versjonert beslutning.
 
 ## Konsekvenser
 
@@ -81,7 +81,7 @@ Konklusjon: vi kan ikke rive ut `logic`. Men vi kan slutte å behandle den som e
 - Krever å holde to evaluatorer i synk inntil (eventuell) deprecation — vi aksepterer dette mot å holde `logic` fungerende.
 - Automatisk layout må skille verdi-baserte synlighetsgrener fra `EXISTS`-basert
   progressiv avdekking; bare førstnevnte aktiverer steg-modus.
-- `branching.md` må oppdateres: posisjoner `logic` som avansert, og klargjør linje 64 (kryss-spørsmål via `questionId` fungerer nå også i `logic` etter #332).
+- `branching.md` beholdes som en kort, ikke-søkbar kompatibilitetsside. Nye guider bruker bare `visibleIf`.
 
 ## Vurderte alternativer
 
@@ -94,8 +94,8 @@ Konklusjon: vi kan ikke rive ut `logic`. Men vi kan slutte å behandle den som e
 - [x] #333: implementer AND/OR i `visibleIf` (levert: `any`/`all`-grupper i
   `visibleIf`; `logic` snevret til leaf. Evaluator-unifisering bevisst utsatt —
   operator-divergensen lever videre, men kun i den utfasede `logic`-mekanismen.)
-- [x] Oppdater `docs/guider/branching.md` (avansert-posisjonering + linje 64-klargjøring).
-- [ ] #338: bygg builder rundt den page-baserte synlighetsmodellen i ADR 0003; ikke generer `logic`.
+- [x] Erstatt `docs/guider/branching.md` med en ikke-søkbar kompatibilitetsside og samle migreringsråd på én side.
+- [x] #338: bygg Surveyverksted rundt den sidebaserte synlighetsmodellen i ADR 0003; ikke generer `logic`.
 - [x] #359: migrer `createTopTasksSurvey` `SKIP`/`SUBMIT` → `visibleIf`, og la
   verdi-baserte `visibleIf`-grener aktivere steg-modus under `"auto"`.
-- [ ] Etter #333+#338: revurder full deprecation av `logic`.
+- [x] Etter #333+#338: fjern `logic` fra anbefalt dokumentasjon, men behold runtime-støtten i 2.x. Full API-deprecation krever en egen beslutning.

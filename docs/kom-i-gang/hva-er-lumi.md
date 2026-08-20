@@ -8,7 +8,7 @@ Lumi er et verktøy for å kjøre personvernvennlige surveys i Nav-apper. Du def
 
 ## Hvorfor Lumi?
 
-- **Survey as code** — definer spørsmål i TypeScript, rett i kodebasen din. Ingen ekstern tjeneste.
+- **Survey som dokument** — bygg sider og spørsmål i Surveyverksted eller TypeScript. Appen eier produksjonsversjonen.
 - **Privacy by design** — all data blir i Nav-clusteret, og personopplysninger maskeres automatisk.
 - **Aksel-basert** — widgeten bruker Navs designsystem og følger WCAG.
 - **Rask integrasjon** — installer en React-widget, koble til backend, ferdig.
@@ -53,7 +53,7 @@ flowchart LR
 | [`lumi-api`](https://github.com/navikt/lumi/tree/main/apps/lumi-api) | Backend & Analyse API | Kotlin, Ktor, Postgres |
 | [`lumi-dashboard`](https://github.com/navikt/lumi/tree/main/apps/lumi-dashboard) | Admin-dashboard | TanStack Start, React |
 
-Du trenger kun å forholde deg til **`@navikt/lumi-survey`** — de to andre pakkene driftes av Team eSyfo.
+Designere og produktledere jobber i Surveyverksted. Utvikleren bruker `@navikt/lumi-survey` i appen. Team eSyfo drifter Surveyverksted, API-et og analysedashboardet.
 
 ## Hvem er Lumi for?
 
@@ -70,4 +70,4 @@ Før du setter opp din første survey, les [bruksvilkårene](/referanse/bruksvil
 
 ## Neste steg
 
-Klar til å komme i gang? Gå videre til [Installer widget](/kom-i-gang/installer-widget) for å sette opp pakken i prosjektet ditt.
+Klar til å komme i gang? [Lag surveyen i Surveyverksted eller direkte i kode](/kom-i-gang/lag-survey), og sett deretter opp pakken i appen.

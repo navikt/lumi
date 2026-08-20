@@ -12,27 +12,27 @@ Rating lar brukeren gi en vurdering på en visuell skala. Du velger variant — 
 
 | Variant | Skala | Visuelt |
 | :--- | :--- | :--- |
-| `emoji` (default) | 1–5 | 😡 🙁 😐 😀 😍 |
+| `emoji` (standard) | 1–5 | 😡 🙁 😐 😀 😍 |
 | `thumbs` | 1–2 | 👎 👍 |
 | `stars` | 1–5 | ⭐⭐⭐⭐⭐ |
 | `nps` | 0–10 | Nummerte knapper med lav/høy-label |
 
-### Emoji (default)
+### Emoji (standard)
 
 ```tsx
 {
   id: "rating",
   type: "rating",
-  variant: "emoji", // kan utelates — emoji er default
+  variant: "emoji", // kan utelates — emoji er standard
   prompt: "Hvordan var opplevelsen din?",
-  description: "Svarene er anonyme og brukes til videreutvikling",
+  description: "Tenk på oppgaven du nettopp gjorde.",
   required: true,
 }
 ```
 
 ### Thumbs
 
-Perfekt for enkle «Var dette nyttig?»-spørsmål.
+Passer for enkle spørsmål som «Var dette nyttig?».
 
 ```tsx
 {
@@ -60,7 +60,7 @@ Klassisk femstjerners vurdering.
 
 ### NPS (Net Promoter Score)
 
-0–10-skala med valgfrie labels i endene. Standardmetodikk for å måle lojalitet.
+NPS bruker en skala fra 0 til 10 med valgfrie tekster i hver ende.
 
 ```tsx
 {
@@ -74,13 +74,13 @@ Klassisk femstjerners vurdering.
 }
 ```
 
-### Rating-properties
+### Felt for rating
 
 | Property | Type | Påkrevd | Beskrivelse |
 | :--- | :--- | :---: | :--- |
 | `id` | `string` | ✅ | Unik ID for spørsmålet |
 | `type` | `"rating"` | ✅ | Spørsmålstype |
-| `variant` | `"emoji" \| "thumbs" \| "stars" \| "nps"` | ❌ | Visuell variant (default: `"emoji"`) |
+| `variant` | `"emoji" \| "thumbs" \| "stars" \| "nps"` | ❌ | Visuell variant (standard: `"emoji"`) |
 | `prompt` | `string` | ✅ | Spørsmålsteksten |
 | `description` | `string` | ❌ | Hjelpetekst under prompt |
 | `required` | `boolean` | ❌ | Om svaret er påkrevd |
@@ -102,7 +102,7 @@ Fritekstfelt med valgfri maks-lengde. Bra for oppfølgingsspørsmål.
 }
 ```
 
-### Text-properties
+### Felt for text
 
 | Property | Type | Påkrevd | Beskrivelse |
 | :--- | :--- | :---: | :--- |
@@ -138,7 +138,7 @@ Brukeren velger ett alternativ fra en liste.
 
 Brukeren velger ett eller flere alternativer. Støtter to varianter:
 
-- `"checkbox"` (default) — tradisjonell avkrysningsliste, best for få valg
+- `"checkbox"` (standard) — tradisjonell avkrysningsliste, best for få valg
 - `"combobox"` — søkbar dropdown med chips, anbefalt for 10+ alternativer
 
 ```tsx
@@ -175,7 +175,7 @@ For mange alternativer (f.eks. Task Priority-surveyer) er combobox-varianten bed
 }
 ```
 
-### Choice-properties (gjelder både single og multi)
+### Felt for valgspørsmål
 
 | Property | Type | Påkrevd | Beskrivelse |
 | :--- | :--- | :---: | :--- |
@@ -186,10 +186,10 @@ For mange alternativer (f.eks. Task Priority-surveyer) er combobox-varianten bed
 | `options` | `Array<{ value, label, description? }>` | ✅ | Valgalternativer |
 | `required` | `boolean` | ❌ | Om svaret er påkrevd |
 | `randomize` | `boolean` | ❌ | Randomiser rekkefølgen på alternativer |
-| `variant` | `"checkbox" \| "combobox"` | ❌ | Visuell variant (kun multiChoice, default: `"checkbox"`) |
+| `variant` | `"checkbox" \| "combobox"` | ❌ | Visuell variant (kun multiChoice, standard: `"checkbox"`) |
 | `maxSelections` | `number` | ❌ | Maks antall valg (kun multiChoice) |
 
-## Felles properties
+## Felles felt
 
 Alle spørsmålstyper deler disse:
 
@@ -199,61 +199,87 @@ Alle spørsmålstyper deler disse:
 | `prompt` | `string` | Spørsmålsteksten som vises til brukeren |
 | `description` | `string` | Valgfri hjelpetekst under spørsmålet |
 | `required` | `boolean` | Krever svar for å sende inn |
-| `analyticsId` | `string` | Valgfri ID for analytics (bruker `id` om ikke satt) |
-| `visibleIf` | `VisibleIfCondition` | Betinget visning — se [Betinget synlighet](/guider/betinget-synlighet) |
-| `logic` | `LogicRule[]` | Branching-regler — se [Avansert](/guider/branching) |
+| `visibleIf` | `VisibleIfCondition` | Se [Vis bare relevante spørsmål](/guider/betinget-synlighet) |
 
 ## Komplett eksempel
 
-Her er en survey med flere spørsmålstyper og progressiv disclosure:
+Her er en survey med flere spørsmålstyper og relevante oppfølgingsspørsmål:
 
 ```tsx
 import "@navikt/ds-css";
 import "@navikt/lumi-survey/styles.css";
 
 import { LumiSurveyDock } from "@navikt/lumi-survey";
-import type { LumiSurveyConfig, LumiSurveyTransport } from "@navikt/lumi-survey";
+import type {
+  SurveyDocumentV1,
+  LumiSurveyTransport,
+} from "@navikt/lumi-survey";
 
 const transport: LumiSurveyTransport = {
   submit: async (submission) => {
-    await fetch("/api/lumi/feedback", {
+    const response = await fetch("/api/lumi/feedback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(submission.transportPayload),
     });
+    if (!response.ok) {
+      throw new Error(`Innsending feilet med status ${response.status}`);
+    }
   },
 };
 
 const survey = {
+  authoringSchemaVersion: 1,
   type: "custom",
-  questions: [
+  pages: [
     {
-      id: "rating",
-      type: "rating",
-      variant: "emoji",
-      prompt: "Hvordan var opplevelsen din?",
-      required: true,
-    },
-    {
-      id: "reason",
-      type: "singleChoice",
-      prompt: "Hva var du her for å gjøre?",
-      options: [
-        { value: "apply", label: "Søke om noe" },
-        { value: "status", label: "Sjekke status" },
-        { value: "other", label: "Annet" },
+      id: "vurdering",
+      questions: [
+        {
+          id: "rating",
+          type: "rating",
+          variant: "emoji",
+          prompt: "Hvordan var opplevelsen din?",
+          required: true,
+        },
       ],
-      visibleIf: { field: "ANSWER", questionId: "rating", operator: "EXISTS" },
     },
     {
-      id: "comment",
-      type: "text",
-      prompt: "Har du andre tilbakemeldinger?",
-      maxLength: 1000,
-      visibleIf: { field: "ANSWER", questionId: "rating", operator: "EXISTS" },
+      id: "oppgave",
+      questions: [
+        {
+          id: "reason",
+          type: "singleChoice",
+          prompt: "Hva var du her for å gjøre?",
+          options: [
+            { value: "apply", label: "Søke om noe" },
+            { value: "status", label: "Sjekke status" },
+            { value: "other", label: "Annet" },
+          ],
+          visibleIf: {
+            questionId: "rating",
+            operator: "EXISTS",
+          },
+        },
+      ],
+    },
+    {
+      id: "kommentar",
+      questions: [
+        {
+          id: "comment",
+          type: "text",
+          prompt: "Har du andre tilbakemeldinger?",
+          maxLength: 1000,
+          visibleIf: {
+            questionId: "reason",
+            operator: "EXISTS",
+          },
+        },
+      ],
     },
   ],
-} satisfies LumiSurveyConfig;
+} satisfies SurveyDocumentV1;
 
 export function MyPage() {
   return (
@@ -266,6 +292,6 @@ export function MyPage() {
 }
 ```
 
-::: tip Bruk presets for vanlige mønstre
-For de fleste tilfeller trenger du ikke bygge surveyen fra scratch. Se [Presets og builders](/guider/presets-og-builders) for ferdige konfigurasjoner.
+::: tip Velg sider først
+Legg hvert spørsmål på sin egen side når brukeren skal svare på én ting om gangen. Samle flere spørsmål på samme side bare når de hører tett sammen. Se [Sider og flyt](/guider/sider-og-flyt).
 :::
