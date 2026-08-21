@@ -7,11 +7,11 @@ Monorepo for Lumi survey analytics:
 - `packages/lumi-survey`: Aksel-based React survey widget
 - `packages/lumi-types`: Shared TypeScript types
 
-## Quality Standards & Workflow
+## Quality standards and workflow
 
 - Always run `pnpm run lint` (Biome) and `pnpm run typecheck` before finishing a task.
-- Run `pnpm run test` when making logic changes.
-- For backend changes: run `pnpm run api:test` (or `cd apps/lumi-api && ./gradlew test`).
+- Run `pnpm run test` when making frontend or shared TypeScript logic changes.
+- For backend changes, run `pnpm run api:test` (or `cd apps/lumi-api && ./gradlew test`).
 - Use `pnpm` for workspace installs and scripts. Do not use `npm` or `yarn`.
 - Keep changes scoped and consistent with existing patterns.
 
@@ -30,19 +30,16 @@ pnpm run api:test
 pnpm run api:build
 ```
 
-## Copilot config location
+## Repository guidance
 
-The repo root `.github/` is the primary source of truth for Copilot guidance:
+The repository stores only durable, Lumi-specific coding guidance:
 
 - `.github/copilot-instructions.md` (this file)
-- `.github/instructions/` (scoped rules via `applyTo`)
-- `.github/agents/`, `.github/prompts/`, `.github/skills/`
+- `.github/instructions/` (scoped rules selected through `applyTo`)
 
-Some app-local `.github/` files still exist in `apps/*/.github/` as
-supplementary or deprecated guidance during the transition. Keep root guidance
-authoritative, and avoid adding new duplicated app-local instructions unless
-there is a clear app-specific need.
-Always check `.github/instructions/`, `.github/agents/`, `.github/prompts/`, and `.github/skills/` for relevant guidance before acting.
+General-purpose agent workflows and skills are provided outside this repository.
+Do not copy them into the codebase. Add a scoped instruction only when a rule is
+specific to Lumi and is expected to remain true over time.
 
 ## Conventions
 
@@ -67,7 +64,6 @@ Always check `.github/instructions/`, `.github/agents/`, `.github/prompts/`, and
 - Backend calls from server actions in `apps/lumi-dashboard/app/server/actions/*`.
 - Security headers/CSP are managed via TanStack Start request middleware in `apps/lumi-dashboard/app/start.ts`.
 - SRI for CDN-served SSR assets is managed in `apps/lumi-dashboard/app/server.ts` + `apps/lumi-dashboard/app/server/assetIntegrity.ts`.
-- For security-focused work/review, use `.github/prompts/security-pentest-hardening.prompt.md`.
 
 ### API (`apps/lumi-api`)
 - Flyway migrations in `apps/lumi-api/src/main/resources/db/migration/*`.
@@ -78,6 +74,8 @@ Always check `.github/instructions/`, `.github/agents/`, `.github/prompts/`, and
 ### Survey widget (`packages/lumi-survey`)
 - Keep accessibility and Aksel semantics intact.
 - Widget styling must remain exportable via `@navikt/lumi-survey/styles.css`.
+- Keep the package independent of internal workspace-only packages; run
+  `pnpm run verify:lumi-survey` after changing its public contract or build.
 
 ## Boundaries
 
