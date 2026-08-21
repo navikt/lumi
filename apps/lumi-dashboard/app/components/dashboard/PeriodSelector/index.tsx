@@ -15,7 +15,7 @@ import {
   VStack,
 } from "@navikt/ds-react";
 import dayjs from "dayjs";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useBreakpoint } from "~/hooks/useBreakpoint";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import styles from "./PeriodSelector.module.css";
@@ -70,19 +70,26 @@ export function PeriodSelector() {
   const { params, setParams } = useSearchParams();
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const popoverId = useId();
   const { isMobile } = useBreakpoint();
 
   // Parse current params
   const currentFrom = params.fromDate ? dayjs(params.fromDate) : undefined;
   const currentTo = params.toDate ? dayjs(params.toDate) : undefined;
 
+  const closeAndRestoreFocus = () => {
+    setOpen(false);
+    window.requestAnimationFrame(() => buttonRef.current?.focus());
+  };
+
   const handleApply = (from: Date, to: Date) => {
     setParams({
+      dateMode: "fixed",
       fromDate: dayjs(from).format("YYYY-MM-DD"),
       toDate: dayjs(to).format("YYYY-MM-DD"),
       page: "1",
     });
-    setOpen(false);
+    closeAndRestoreFocus();
   };
 
   const handlePreset = (days: number | "year" | "today") => {
@@ -98,15 +105,27 @@ export function PeriodSelector() {
     }
 
     setParams({
+      dateMode: "fixed",
       fromDate: start.format("YYYY-MM-DD"),
       toDate: end.format("YYYY-MM-DD"),
       page: "1",
     });
-    setOpen(false);
+    closeAndRestoreFocus();
+  };
+
+  const handleAutomaticPeriod = () => {
+    setParams({ dateMode: "auto", page: "1" });
+    closeAndRestoreFocus();
   };
 
   // Determine label text
   const getLabel = () => {
+    if (currentFrom && !currentTo) {
+      return `Fra ${currentFrom.format(isMobile ? "DD.MM" : "DD.MM.YYYY")}`;
+    }
+    if (!currentFrom && currentTo) {
+      return `Til ${currentTo.format(isMobile ? "DD.MM" : "DD.MM.YYYY")}`;
+    }
     if (!currentFrom || !currentTo) return "Velg periode";
 
     const end = currentTo;
@@ -133,6 +152,8 @@ export function PeriodSelector() {
     return `${start.format("DD.MM.YYYY")} - ${end.format("DD.MM.YYYY")}`;
   };
 
+  const periodLabel = getLabel();
+
   return (
     <>
       <Button
@@ -143,20 +164,51 @@ export function PeriodSelector() {
         icon={<CalendarIcon aria-hidden />}
         iconPosition="left"
         className={styles.triggerButton}
+        aria-label={`Periode: ${periodLabel}`}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-controls={popoverId}
       >
-        {getLabel()}
+        {periodLabel}
         {open ? <ChevronUpIcon aria-hidden /> : <ChevronDownIcon aria-hidden />}
       </Button>
 
       <Popover
+        id={popoverId}
+        role="dialog"
+        aria-label="Velg periode"
         open={open}
         onClose={() => setOpen(false)}
         anchorEl={buttonRef.current}
         placement={isMobile ? "bottom" : "bottom-start"}
+        onKeyDown={(event) => {
+          if (event.key !== "Escape") return;
+
+          const sourceDialog =
+            event.target instanceof Element
+              ? event.target.closest('[role="dialog"]')
+              : null;
+          if (sourceDialog !== event.currentTarget) return;
+
+          event.preventDefault();
+          event.stopPropagation();
+          closeAndRestoreFocus();
+        }}
       >
         <Popover.Content className={styles.popoverContent}>
           {open && (
-            <>
+            <VStack gap="space-16">
+              {params.dateMode === "fixed" && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="small"
+                  onClick={handleAutomaticPeriod}
+                >
+                  Automatisk periode
+                </Button>
+              )}
+
               {/* Desktop: Side by side */}
               <Show above="md">
                 <HStack gap="space-16" align="start">
@@ -187,7 +239,7 @@ export function PeriodSelector() {
                   <CustomPeriodInputs onApply={handleApply} />
                 </VStack>
               </Hide>
-            </>
+            </VStack>
           )}
         </Popover.Content>
       </Popover>

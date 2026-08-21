@@ -109,8 +109,10 @@ export function TimelineChart() {
             to: "/feedback",
             search: {
               ...params,
+              dateMode: "fixed",
               fromDate: date,
               toDate: date,
+              page: "1",
             },
           });
         }}

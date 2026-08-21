@@ -109,6 +109,92 @@ function generateFieldStatsOrderingSurveyData(count: number): FeedbackDto[] {
   return items;
 }
 
+/**
+ * A deterministic survey whose complete response period is well outside the
+ * dashboard's rolling 30-day default. This keeps the historical-period E2E
+ * coverage stable regardless of when the test suite runs.
+ */
+function generateHistoricalSurveyData(): FeedbackDto[] {
+  const submissions = [
+    ["2024-02-10T09:00:00.000Z", 2],
+    ["2024-02-11T09:00:00.000Z", 3],
+    ["2024-02-13T09:00:00.000Z", 4],
+    ["2024-02-15T09:00:00.000Z", 5],
+    ["2024-02-17T09:00:00.000Z", 4],
+    ["2024-02-18T09:00:00.000Z", 5],
+  ] as const;
+
+  return submissions.map(([submittedAt, rating], index) => ({
+    id: `historical-${index + 1}`,
+    submittedAt,
+    app: "syfo-oppfolgingsplan-frontend",
+    surveyId: "survey-historical",
+    surveyType: "rating",
+    context: createContext("/syk/historisk", "desktop"),
+    answers: [
+      createRatingAnswer(
+        "historical-rating",
+        "Hvor nyttig var den historiske tjenesten?",
+        rating,
+      ),
+    ],
+    sensitiveDataRedacted: false,
+  }));
+}
+
+/**
+ * The same survey ID used by two apps at different times. The older app is
+ * deliberately far away from the global latest response so an app-scoped
+ * period lookup cannot accidentally pass by using global survey metadata.
+ */
+function generateSharedSurveyData(): FeedbackDto[] {
+  const appPeriods = [
+    {
+      app: "dialogmote-frontend",
+      pathname: "/dialogmote/historisk",
+      dates: [
+        "2021-04-01T09:00:00.000Z",
+        "2021-04-02T09:00:00.000Z",
+        "2021-04-03T09:00:00.000Z",
+        "2021-04-04T09:00:00.000Z",
+        "2021-04-05T09:00:00.000Z",
+        "2021-04-06T09:00:00.000Z",
+      ],
+    },
+    {
+      app: "syfo-oppfolgingsplan-frontend",
+      pathname: "/syk/delt-survey",
+      dates: [
+        "2025-11-10T09:00:00.000Z",
+        "2025-11-11T09:00:00.000Z",
+        "2025-11-12T09:00:00.000Z",
+        "2025-11-13T09:00:00.000Z",
+        "2025-11-14T09:00:00.000Z",
+        "2025-11-15T09:00:00.000Z",
+      ],
+    },
+  ] as const;
+
+  return appPeriods.flatMap(({ app, pathname, dates }) =>
+    dates.map((submittedAt, index) => ({
+      id: `shared-${app}-${index + 1}`,
+      submittedAt,
+      app,
+      surveyId: "survey-shared-apps",
+      surveyType: "rating",
+      context: createContext(pathname, "desktop"),
+      answers: [
+        createRatingAnswer(
+          "shared-rating",
+          "Hvor nyttig var den delte surveyen?",
+          1 + (index % 5),
+        ),
+      ],
+      sensitiveDataRedacted: false,
+    })),
+  );
+}
+
 export const mockFeedbackItems: FeedbackDto[] = [
   // ===========================================
   // 1. RATING SURVEY (type: "rating")
@@ -176,6 +262,18 @@ export const mockFeedbackItems: FeedbackDto[] = [
   // 0-10 Net Promoter Score
   // ===========================================
   ...generateNpsSurveyData(60),
+
+  // ===========================================
+  // 10. HISTORICAL RATING SURVEY
+  // Stable old responses used to verify automatic response-period selection
+  // ===========================================
+  ...generateHistoricalSurveyData(),
+
+  // ===========================================
+  // 11. SHARED SURVEY ID ACROSS TWO APPS
+  // Stable periods used to verify app-scoped survey metadata
+  // ===========================================
+  ...generateSharedSurveyData(),
 ];
 
 export * from "./helpers"; // export helpers if needed by tests
@@ -552,6 +650,12 @@ export function unarchiveMockSurvey(surveyId: string): void {
   }
 }
 
+interface MockSurveyMetaEntry {
+  archivedAt: string | null;
+  firstSubmissionAt?: string;
+  lastSubmissionAt?: string;
+}
+
 export function getMockFilterBootstrap(team?: string): {
   generatedAt: string;
   selectedTeam: string;
@@ -560,10 +664,8 @@ export function getMockFilterBootstrap(team?: string): {
   apps: string[];
   surveysByApp: Record<string, string[]>;
   tags: string[];
-  surveyMeta: Record<
-    string,
-    { archivedAt: string | null; lastSubmissionAt?: string }
-  >;
+  surveyMeta: Record<string, MockSurveyMetaEntry>;
+  surveyMetaByApp?: Record<string, Record<string, MockSurveyMetaEntry>>;
 } {
   void team;
   const availableTeams = ["team-esyfo"];
@@ -573,30 +675,75 @@ export function getMockFilterBootstrap(team?: string): {
   const apps = Object.keys(surveysByApp).sort();
   const tags = getMockTags(selectedTeam);
 
-  // Mirrors the backend's MAX(opprettet)-per-survey aggregation
+  // Mirrors the backend's MIN/MAX(opprettet)-per-survey aggregation.
+  const firstSubmissionBySurvey: Record<string, string> = {};
   const lastSubmissionBySurvey: Record<string, string> = {};
+  const submissionBoundsByApp: Record<
+    string,
+    Record<string, { firstSubmissionAt: string; lastSubmissionAt: string }>
+  > = {};
   for (const item of getMockItemsForTeam(selectedTeam)) {
     if (!item.surveyId) continue;
-    const current = lastSubmissionBySurvey[item.surveyId];
-    if (!current || item.submittedAt > current) {
+    const currentFirst = firstSubmissionBySurvey[item.surveyId];
+    const currentLast = lastSubmissionBySurvey[item.surveyId];
+    if (!currentFirst || item.submittedAt < currentFirst) {
+      firstSubmissionBySurvey[item.surveyId] = item.submittedAt;
+    }
+    if (!currentLast || item.submittedAt > currentLast) {
       lastSubmissionBySurvey[item.surveyId] = item.submittedAt;
+    }
+
+    const app = item.app || "unknown";
+    if (!submissionBoundsByApp[app]) {
+      submissionBoundsByApp[app] = {};
+    }
+    const boundsBySurvey = submissionBoundsByApp[app];
+    const currentBounds = boundsBySurvey[item.surveyId];
+    if (!currentBounds) {
+      boundsBySurvey[item.surveyId] = {
+        firstSubmissionAt: item.submittedAt,
+        lastSubmissionAt: item.submittedAt,
+      };
+    } else {
+      if (item.submittedAt < currentBounds.firstSubmissionAt) {
+        currentBounds.firstSubmissionAt = item.submittedAt;
+      }
+      if (item.submittedAt > currentBounds.lastSubmissionAt) {
+        currentBounds.lastSubmissionAt = item.submittedAt;
+      }
     }
   }
 
-  const surveyMeta: Record<
-    string,
-    { archivedAt: string | null; lastSubmissionAt?: string }
-  > = {};
+  const surveyMeta: Record<string, MockSurveyMetaEntry> = {};
   for (const [surveyId, lastSubmissionAt] of Object.entries(
     lastSubmissionBySurvey,
   )) {
-    surveyMeta[surveyId] = { archivedAt: null, lastSubmissionAt };
+    surveyMeta[surveyId] = {
+      archivedAt: null,
+      firstSubmissionAt: firstSubmissionBySurvey[surveyId],
+      lastSubmissionAt,
+    };
   }
   for (const [surveyId, meta] of Object.entries(mockSurveyMeta)) {
     surveyMeta[surveyId] = {
       ...(surveyMeta[surveyId] ?? {}),
       archivedAt: meta.archivedAt,
     };
+  }
+
+  const surveyMetaByApp: Record<
+    string,
+    Record<string, MockSurveyMetaEntry>
+  > = {};
+  for (const [app, boundsBySurvey] of Object.entries(submissionBoundsByApp)) {
+    surveyMetaByApp[app] = {};
+    for (const [surveyId, bounds] of Object.entries(boundsBySurvey)) {
+      surveyMetaByApp[app][surveyId] = {
+        archivedAt: mockSurveyMeta[surveyId]?.archivedAt ?? null,
+        firstSubmissionAt: bounds.firstSubmissionAt,
+        lastSubmissionAt: bounds.lastSubmissionAt,
+      };
+    }
   }
 
   return {
@@ -608,6 +755,7 @@ export function getMockFilterBootstrap(team?: string): {
     surveysByApp,
     tags,
     surveyMeta,
+    surveyMetaByApp,
   };
 }
 
