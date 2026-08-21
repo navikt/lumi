@@ -34,17 +34,20 @@ data class FilterBootstrapResponse(
     val surveysByApp: Map<String, List<String>>,
     val tags: List<String>,
     val surveyMeta: Map<String, SurveyMetaEntry> = emptyMap(),
+    val surveyMetaByApp: Map<String, Map<String, SurveyMetaEntry>> = emptyMap(),
 )
 
 /**
  * Per-survey dashboard metadata. Surveys without an entry are active.
  * `archivedAt == null` means active (or restored after being archived).
+ * `firstSubmissionAt` identifies the beginning of the survey's response history.
  * `lastSubmissionAt` drives the recency signal and, for archived surveys,
  * the "still receiving submissions" badge (lastSubmissionAt > archivedAt).
  */
 @Serializable
 data class SurveyMetaEntry(
     val archivedAt: String?,
+    val firstSubmissionAt: String? = null,
     val lastSubmissionAt: String? = null,
 )
 
@@ -72,7 +75,9 @@ private fun bootstrapCacheGenerationKey(team: String) = "generation:team=${team.
  */
 internal fun bootstrapCacheKey(team: String, principal: no.nav.lumi.config.auth.BrukerPrincipal): String? {
     val userIdentity = stablePrincipalIdentity(principal) ?: return null
-    return "${bootstrapCacheTeamPrefix(team)}user=$userIdentity".lowercase()
+    // Version the response contract so rolling deploys cannot reuse bootstrap
+    // payloads that predate newly added metadata fields.
+    return "${bootstrapCacheTeamPrefix(team)}user=${userIdentity.lowercase()}&responseVersion=2"
 }
 
 internal fun stablePrincipalIdentity(principal: no.nav.lumi.config.auth.BrukerPrincipal): String? =
@@ -151,13 +156,26 @@ fun Route.filterRoutes(
         val surveyOverview = feedbackRepository.findSurveyOverview(team)
         val tags = feedbackRepository.findAllTags(team)
         val archiveStates = surveyMetadataRepository.findByTeam(team).associateBy { it.surveyId }
+        val firstSubmissionBySurvey = surveyOverview.firstSubmissionBySurvey
         val lastSubmissionBySurvey = surveyOverview.lastSubmissionBySurvey
-        val surveyMeta = (archiveStates.keys + lastSubmissionBySurvey.keys).associateWith { surveyId ->
+        val surveyMeta = (
+            archiveStates.keys + firstSubmissionBySurvey.keys + lastSubmissionBySurvey.keys
+        ).associateWith { surveyId ->
             SurveyMetaEntry(
                 archivedAt = archiveStates[surveyId]?.archivedAt,
+                firstSubmissionAt = firstSubmissionBySurvey[surveyId],
                 lastSubmissionAt = lastSubmissionBySurvey[surveyId],
             )
         }
+        val surveyMetaByApp = surveyOverview.submissionBoundsByApp.mapValues { (_, boundsBySurvey) ->
+            boundsBySurvey.mapValues { (surveyId, bounds) ->
+                SurveyMetaEntry(
+                    archivedAt = archiveStates[surveyId]?.archivedAt,
+                    firstSubmissionAt = bounds.firstSubmissionAt,
+                    lastSubmissionAt = bounds.lastSubmissionAt,
+                )
+            }.toSortedMap()
+        }.toSortedMap()
 
         val response = FilterBootstrapResponse(
             generatedAt = Instant.now().toString(),
@@ -167,6 +185,7 @@ fun Route.filterRoutes(
             surveysByApp = surveyOverview.surveysByApp.mapValues { it.value.sorted() }.toSortedMap(),
             tags = tags.sorted(),
             surveyMeta = surveyMeta,
+            surveyMetaByApp = surveyMetaByApp,
         )
 
         versionedBootstrapCache.set(

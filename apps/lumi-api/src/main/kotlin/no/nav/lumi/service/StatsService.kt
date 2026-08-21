@@ -41,6 +41,9 @@ class StatsService(
     private val blockersCacheTtl: Duration = Duration.ofMinutes(3)
     private val taskPriorityCacheTtl: Duration = Duration.ofMinutes(3)
 
+    internal fun statsCacheKey(prefix: String, query: StatsQuery): String =
+        "$prefix:${query.toCacheKey()}"
+
     private fun StatsQuery.toCacheKey(): String {
         fun enc(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)
 
@@ -71,6 +74,9 @@ class StatsService(
             "task" to task,
             "choice" to choiceValue,
             "rating" to ratingValue,
+            // Bump when the cached response semantics change. This prevents a
+            // rolling deploy from serving values written by an older version.
+            "resultVersion" to "2",
         )
             .filter { (_, value) -> value != null }
             .map { (key, value) -> "${enc(key)}=${enc(value!!)}" }
@@ -84,7 +90,7 @@ class StatsService(
         ttl: Duration,
         crossinline compute: suspend () -> T
     ): T {
-        val cacheKey = "$prefix:${query.toCacheKey()}"
+        val cacheKey = statsCacheKey(prefix, query)
 
         statsCache.get(cacheKey)?.let { cached ->
             return try {
@@ -103,7 +109,7 @@ class StatsService(
      * Results are cached for 5 minutes.
      */
     suspend fun getDashboardStats(query: StatsQuery): FeedbackStats {
-        val cacheKey = "dashboard:${query.toCacheKey()}"
+        val cacheKey = statsCacheKey("dashboard", query)
         
         // Try cache first
         statsCache.get(cacheKey)?.let { cached ->

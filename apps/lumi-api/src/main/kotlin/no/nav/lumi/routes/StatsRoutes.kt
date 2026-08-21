@@ -20,13 +20,15 @@ internal fun ApiV1Intern.Stats.toStatsQuery(
     team: String,
     surveyIdOverride: String? = surveyId,
 ): StatsQuery {
-    validateDateRange(fromDate, toDate)
+    val normalizedFromDate = fromDate?.takeIf { it.isNotBlank() }
+    val normalizedToDate = toDate?.takeIf { it.isNotBlank() }
+    validateDateRange(normalizedFromDate, normalizedToDate)
     return StatsQuery(
     team = team,
     includeArchived = includeArchived ?: false,
     app = app?.takeIf { it != FILTER_ALL },
-    fromDate = fromDate,
-    toDate = toDate,
+    fromDate = normalizedFromDate,
+    toDate = normalizedToDate,
     surveyId = surveyIdOverride,
     deviceType = deviceType?.takeIf { it != FILTER_ALL },
     segments = parseSegments(segment),

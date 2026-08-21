@@ -273,4 +273,16 @@ class QueryValidationTest : FunSpec({
             ex.message shouldContain "YYYY-MM-DD"
         }
     }
+
+    context("toStatsQuery") {
+        test("normalizes blank date parameters to a missing period") {
+            val query = ApiV1Intern.Stats(
+                fromDate = "",
+                toDate = "   ",
+            ).toStatsQuery(team = "flex")
+
+            query.fromDate shouldBe null
+            query.toDate shouldBe null
+        }
+    }
 })

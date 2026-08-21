@@ -23,6 +23,7 @@ import no.nav.lumi.integrations.valkey.InMemoryStringCache
 import no.nav.lumi.repository.SurveyMetadataRepository
 import no.nav.lumi.testModule
 import java.time.Duration
+import java.time.OffsetDateTime
 
 class FilterRoutesTest : FunSpec({
     beforeSpec {
@@ -36,7 +37,7 @@ class FilterRoutesTest : FunSpec({
             email = "test@nav.no",
             clientId = null,
         )
-        bootstrapCacheKey("Team-Test", principal) shouldBe "team=team-test&user=a123456"
+        bootstrapCacheKey("Team-Test", principal) shouldBe "team=team-test&user=a123456&responseVersion=2"
     }
 
     test("bootstrapCacheKey falls back to email when navIdent is missing") {
@@ -46,7 +47,7 @@ class FilterRoutesTest : FunSpec({
             email = "Test.User@nav.no",
             clientId = null,
         )
-        bootstrapCacheKey("team-test", principal) shouldBe "team=team-test&user=test.user@nav.no"
+        bootstrapCacheKey("team-test", principal) shouldBe "team=team-test&user=test.user@nav.no&responseVersion=2"
     }
 
     test("bootstrapCacheKey falls back to email when navIdent is blank") {
@@ -56,7 +57,7 @@ class FilterRoutesTest : FunSpec({
             email = "Test.User@nav.no",
             clientId = null,
         )
-        bootstrapCacheKey("team-test", principal) shouldBe "team=team-test&user=test.user@nav.no"
+        bootstrapCacheKey("team-test", principal) shouldBe "team=team-test&user=test.user@nav.no&responseVersion=2"
     }
 
     test("bootstrapCacheKey returns null when navIdent and email are blank") {
@@ -158,6 +159,62 @@ class FilterRoutesTest : FunSpec({
             val archivedEntry = surveyMeta["survey-archived"]!!.jsonObject
             archivedEntry["archivedAt"] shouldNotBe JsonNull
             archivedEntry["lastSubmissionAt"] shouldNotBe JsonNull
+        }
+    }
+
+    test("bootstrap exposes app-specific submission bounds and consistent archive state") {
+        testApplication {
+            application { testModule() }
+            val surveyId = "survey-across-apps"
+            val first = OffsetDateTime.parse("2020-01-15T10:00:00+01:00")
+            val middle = OffsetDateTime.parse("2021-06-10T12:00:00+02:00")
+            val last = OffsetDateTime.parse("2022-09-20T14:00:00+02:00")
+
+            insertTestFeedback(
+                id = "first-app-a",
+                app = "app-a",
+                surveyId = surveyId,
+                opprettet = first,
+            )
+            insertTestFeedback(
+                id = "middle-app-b",
+                app = "app-b",
+                surveyId = surveyId,
+                opprettet = middle,
+            )
+            insertTestFeedback(
+                id = "last-app-b",
+                app = "app-b",
+                surveyId = surveyId,
+                opprettet = last,
+            )
+            val archiveState = SurveyMetadataRepository().archive(
+                team = "team-test",
+                surveyId = surveyId,
+                archivedBy = "A123456",
+            )
+
+            val response = createTestClient().get("/api/v1/intern/filters/bootstrap?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.OK
+            val body = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+            val surveyMeta = body["surveyMeta"]!!.jsonObject[surveyId]!!.jsonObject
+            val surveyMetaByApp = body["surveyMetaByApp"]!!.jsonObject
+            val appAMeta = surveyMetaByApp["app-a"]!!.jsonObject[surveyId]!!.jsonObject
+            val appBMeta = surveyMetaByApp["app-b"]!!.jsonObject[surveyId]!!.jsonObject
+
+            surveyMeta["firstSubmissionAt"]?.jsonPrimitive?.content shouldBe first.toInstant().toString()
+            surveyMeta["lastSubmissionAt"]?.jsonPrimitive?.content shouldBe last.toInstant().toString()
+            surveyMeta["archivedAt"]?.jsonPrimitive?.content shouldBe archiveState.archivedAt
+            appAMeta["firstSubmissionAt"]?.jsonPrimitive?.content shouldBe first.toInstant().toString()
+            appAMeta["lastSubmissionAt"]?.jsonPrimitive?.content shouldBe first.toInstant().toString()
+            appAMeta["archivedAt"]?.jsonPrimitive?.content shouldBe archiveState.archivedAt
+            appBMeta["firstSubmissionAt"]?.jsonPrimitive?.content shouldBe middle.toInstant().toString()
+            appBMeta["lastSubmissionAt"]?.jsonPrimitive?.content shouldBe last.toInstant().toString()
+            appBMeta["archivedAt"]?.jsonPrimitive?.content shouldBe archiveState.archivedAt
+            body["surveysByApp"]!!.jsonObject.keys shouldBe setOf("app-a", "app-b")
         }
     }
 

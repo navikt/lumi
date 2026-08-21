@@ -105,6 +105,9 @@ class DateDate(val expr: Expression<Instant>) : Function<LocalDate>(JavaLocalDat
     override fun toQueryBuilder(queryBuilder: QueryBuilder) {
         queryBuilder.append("DATE(")
         expr.toQueryBuilder(queryBuilder)
+        // feedback.opprettet is timestamptz. Convert it explicitly so timeline
+        // buckets match the Europe/Oslo boundaries used by date filters.
+        queryBuilder.append(" AT TIME ZONE 'Europe/Oslo'")
         queryBuilder.append(")")
     }
 }
