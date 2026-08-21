@@ -161,6 +161,8 @@ export type DeleteSurvey = z.infer<typeof DeleteSurveySchema>;
  */
 export const SurveyMetaEntrySchema = z.object({
   archivedAt: z.string().nullable(),
+  /** Oldest submission for the survey (ISO-8601). Absent for surveys without feedback. */
+  firstSubmissionAt: z.string().nullable().optional(),
   /** Newest submission for the survey (ISO-8601). Absent for surveys without feedback. */
   lastSubmissionAt: z.string().nullable().optional(),
 });
@@ -176,6 +178,10 @@ export const FilterBootstrapResponseSchema = z.object({
   surveysByApp: z.record(z.string(), z.array(z.string())),
   tags: z.array(z.string()),
   surveyMeta: z.record(z.string(), SurveyMetaEntrySchema).optional(),
+  /** Per-app survey periods; optional for backwards compatibility with older API responses. */
+  surveyMetaByApp: z
+    .record(z.string(), z.record(z.string(), SurveyMetaEntrySchema))
+    .optional(),
 });
 
 export type FilterBootstrapResponse = z.infer<

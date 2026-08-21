@@ -251,30 +251,53 @@ class FeedbackRepositoryTest : FunSpec({
     }
 
     context("findSurveyOverview") {
-        test("returns surveys by app and newest submission timestamps from one team-scoped aggregation") {
+        test("returns surveys by app and submission bounds from one team-scoped aggregation") {
+            val earliest = OffsetDateTime.parse("2025-05-01T10:00:00+02:00")
             val old = OffsetDateTime.parse("2026-06-01T10:00:00+02:00")
             val newer = OffsetDateTime.parse("2026-08-01T10:00:00+02:00")
+            val latest = OffsetDateTime.parse("2026-09-01T10:00:00+02:00")
             insertTestFeedback(id = "a1", team = "flex", app = "app-a", surveyId = "survey-a", opprettet = old)
             insertTestFeedback(id = "a2", team = "flex", app = "app-a", surveyId = "survey-a", opprettet = newer)
             insertTestFeedback(id = "b1", team = "flex", app = "app-b", surveyId = "survey-b", opprettet = old)
+            insertTestFeedback(id = "b2", team = "flex", app = "app-b", surveyId = "survey-a", opprettet = earliest)
+            insertTestFeedback(id = "b3", team = "flex", app = "app-b", surveyId = "survey-a", opprettet = old)
+            insertTestFeedback(id = "c1", team = "flex", app = "app-c", surveyId = "survey-a", opprettet = latest)
             insertTestFeedback(id = "other", team = "team-test", surveyId = "survey-a", opprettet = newer)
 
             val result = repository.findSurveyOverview("flex")
 
             result.surveysByApp shouldBe mapOf(
                 "app-a" to listOf("survey-a"),
-                "app-b" to listOf("survey-b"),
+                "app-b" to listOf("survey-a", "survey-b"),
+                "app-c" to listOf("survey-a"),
             )
+            result.firstSubmissionBySurvey.keys shouldBe setOf("survey-a", "survey-b")
+            java.time.Instant.parse(result.firstSubmissionBySurvey["survey-a"]) shouldBe earliest.toInstant()
+            java.time.Instant.parse(result.firstSubmissionBySurvey["survey-b"]) shouldBe old.toInstant()
             result.lastSubmissionBySurvey.keys shouldBe setOf("survey-a", "survey-b")
-            java.time.Instant.parse(result.lastSubmissionBySurvey["survey-a"]) shouldBe newer.toInstant()
+            java.time.Instant.parse(result.lastSubmissionBySurvey["survey-a"]) shouldBe latest.toInstant()
             java.time.Instant.parse(result.lastSubmissionBySurvey["survey-b"]) shouldBe old.toInstant()
+            result.submissionBoundsByApp shouldBe mapOf(
+                "app-a" to mapOf(
+                    "survey-a" to SurveySubmissionBounds(old.toInstant().toString(), newer.toInstant().toString()),
+                ),
+                "app-b" to mapOf(
+                    "survey-a" to SurveySubmissionBounds(earliest.toInstant().toString(), old.toInstant().toString()),
+                    "survey-b" to SurveySubmissionBounds(old.toInstant().toString(), old.toInstant().toString()),
+                ),
+                "app-c" to mapOf(
+                    "survey-a" to SurveySubmissionBounds(latest.toInstant().toString(), latest.toInstant().toString()),
+                ),
+            )
         }
 
         test("returns empty maps for a team without feedback") {
             val result = repository.findSurveyOverview("nonexistent")
 
             result.surveysByApp shouldBe emptyMap()
+            result.firstSubmissionBySurvey shouldBe emptyMap()
             result.lastSubmissionBySurvey shouldBe emptyMap()
+            result.submissionBoundsByApp shouldBe emptyMap()
         }
     }
 

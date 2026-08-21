@@ -13,12 +13,19 @@ import java.time.Instant
 
 data class SurveyOverview(
     val surveysByApp: Map<String, List<String>>,
+    val firstSubmissionBySurvey: Map<String, String>,
     val lastSubmissionBySurvey: Map<String, String>,
+    val submissionBoundsByApp: Map<String, Map<String, SurveySubmissionBounds>>,
+)
+
+data class SurveySubmissionBounds(
+    val firstSubmissionAt: String,
+    val lastSubmissionAt: String,
 )
 
 class FeedbackContextTagsRepository {
     /**
-     * Surveys grouped by app and their latest submission timestamps.
+     * Surveys grouped by app and their first/latest submission timestamps.
      * Both views are derived from the same result set so bootstrap cannot
      * cache a survey list and recency metadata from different DB snapshots.
      */
@@ -28,6 +35,7 @@ class FeedbackContextTagsRepository {
                 SELECT
                     app,
                     feedback_json::jsonb->>'surveyId' as survey_id,
+                    MIN(opprettet) as first_submission_at,
                     MAX(opprettet) as last_submission_at
                 FROM feedback
                 WHERE team = ?
@@ -38,14 +46,24 @@ class FeedbackContextTagsRepository {
             """.trimIndent()
 
             val surveysByApp = mutableMapOf<String, MutableList<String>>()
+            val firstSubmissionInstants = mutableMapOf<String, Instant>()
             val lastSubmissionInstants = mutableMapOf<String, Instant>()
+            val submissionBoundsByApp = mutableMapOf<String, MutableMap<String, SurveySubmissionBounds>>()
             val transaction = TransactionManager.current()
             transaction.exec(sql, listOf(VarCharColumnType() to team)) { rs ->
                 while (rs.next()) {
                     val app = rs.getString("app") ?: continue
                     val surveyId = rs.getString("survey_id") ?: continue
+                    val firstSubmissionAt = rs.getTimestamp("first_submission_at")?.toInstant() ?: continue
                     val lastSubmissionAt = rs.getTimestamp("last_submission_at")?.toInstant() ?: continue
                     surveysByApp.getOrPut(app) { mutableListOf() }.add(surveyId)
+                    submissionBoundsByApp.getOrPut(app) { mutableMapOf() }[surveyId] = SurveySubmissionBounds(
+                        firstSubmissionAt = firstSubmissionAt.toString(),
+                        lastSubmissionAt = lastSubmissionAt.toString(),
+                    )
+                    firstSubmissionInstants.merge(surveyId, firstSubmissionAt) { current, candidate ->
+                        minOf(current, candidate)
+                    }
                     lastSubmissionInstants.merge(surveyId, lastSubmissionAt) { current, candidate ->
                         maxOf(current, candidate)
                     }
@@ -53,7 +71,9 @@ class FeedbackContextTagsRepository {
             }
             SurveyOverview(
                 surveysByApp = surveysByApp,
+                firstSubmissionBySurvey = firstSubmissionInstants.mapValues { (_, instant) -> instant.toString() },
                 lastSubmissionBySurvey = lastSubmissionInstants.mapValues { (_, instant) -> instant.toString() },
+                submissionBoundsByApp = submissionBoundsByApp,
             )
         }
     }

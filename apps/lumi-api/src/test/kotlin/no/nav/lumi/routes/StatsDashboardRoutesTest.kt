@@ -238,6 +238,138 @@ class StatsDashboardRoutesTest : FunSpec({
         }
     }
 
+    test("GET /api/v1/intern/stats/dashboard honors explicit historical date ranges in byDate") {
+        testApplication {
+            application { testModule() }
+
+            val team = "flex"
+            val app = "historical-period-app"
+            val surveyId = "historical-period-survey"
+            val historicalDay = OffsetDateTime.parse("2020-01-15T10:00:00+01:00")
+
+            repeat(5) { index ->
+                val submittedAt = historicalDay.plusMinutes(index.toLong())
+                insertTestFeedbackWithJson(
+                    team = team,
+                    app = app,
+                    feedbackJson = feedbackJson(
+                        surveyId = surveyId,
+                        pathname = "/historical-period",
+                        deviceType = "desktop",
+                        rating = 5,
+                        text = "historical-$index",
+                        startedAt = submittedAt.minusSeconds(30),
+                        submittedAt = submittedAt,
+                    ),
+                    opprettet = submittedAt,
+                )
+            }
+
+            val response = createTestClient().get(
+                "/api/v1/intern/stats/dashboard" +
+                    "?team=$team&app=$app&surveyId=$surveyId&fromDate=2020-01-15&toDate=2020-01-15"
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.OK
+            val stats = json.decodeFromString<FeedbackStats>(response.bodyAsText())
+
+            stats.totalCount shouldBe 5
+            stats.byDate shouldBe mapOf("2020-01-15" to 5)
+
+            val oneSidedResponse = createTestClient().get(
+                "/api/v1/intern/stats/dashboard" +
+                    "?team=$team&app=$app&surveyId=$surveyId&toDate=2020-01-15"
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            oneSidedResponse.status shouldBe HttpStatusCode.OK
+            val oneSidedStats = json.decodeFromString<FeedbackStats>(oneSidedResponse.bodyAsText())
+            oneSidedStats.byDate shouldBe mapOf("2020-01-15" to 5)
+        }
+    }
+
+    test("GET /api/v1/intern/stats/dashboard groups timeline dates in Europe Oslo") {
+        testApplication {
+            application { testModule() }
+
+            val team = "flex"
+            val app = "oslo-date-bucket-app"
+            val surveyId = "oslo-date-bucket-survey"
+            val lateUtc = OffsetDateTime.parse("2024-02-10T23:30:00Z")
+
+            repeat(5) { index ->
+                val submittedAt = lateUtc.plusMinutes(index.toLong())
+                insertTestFeedbackWithJson(
+                    team = team,
+                    app = app,
+                    feedbackJson = feedbackJson(
+                        surveyId = surveyId,
+                        pathname = "/oslo-date-bucket",
+                        deviceType = "desktop",
+                        rating = 5,
+                        text = "oslo-date-$index",
+                        startedAt = submittedAt.minusSeconds(30),
+                        submittedAt = submittedAt,
+                    ),
+                    opprettet = submittedAt,
+                )
+            }
+
+            val response = createTestClient().get(
+                "/api/v1/intern/stats/dashboard" +
+                    "?team=$team&app=$app&surveyId=$surveyId&fromDate=2024-02-11&toDate=2024-02-11"
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.OK
+            val stats = json.decodeFromString<FeedbackStats>(response.bodyAsText())
+
+            stats.totalCount shouldBe 5
+            stats.byDate shouldBe mapOf("2024-02-11" to 5)
+            stats.ratingByDate.keys shouldBe setOf("2024-02-11")
+            stats.ratingByDate["2024-02-11"]?.count shouldBe 5
+        }
+    }
+
+    test("GET /api/v1/intern/stats/dashboard treats blank dates as a missing period") {
+        testApplication {
+            application { testModule() }
+
+            val submittedAt = OffsetDateTime.parse("2020-01-15T10:00:00+01:00")
+            insertTestFeedbackWithJson(
+                team = "flex",
+                app = "blank-period-app",
+                feedbackJson = feedbackJson(
+                    surveyId = "blank-period-survey",
+                    pathname = "/blank-period",
+                    deviceType = "desktop",
+                    rating = 5,
+                    text = "historical",
+                    startedAt = submittedAt.minusSeconds(30),
+                    submittedAt = submittedAt,
+                ),
+                opprettet = submittedAt,
+            )
+
+            val response = createTestClient().get(
+                "/api/v1/intern/stats/dashboard" +
+                    "?team=flex&app=blank-period-app&fromDate=&toDate="
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.OK
+            val stats = json.decodeFromString<FeedbackStats>(response.bodyAsText())
+
+            stats.totalCount shouldBe 1
+            stats.byDate shouldBe emptyMap()
+        }
+    }
+
     test("DELETE /api/v1/intern/feedback invalidates cached stats immediately") {
         testApplication {
             application { testModule() }

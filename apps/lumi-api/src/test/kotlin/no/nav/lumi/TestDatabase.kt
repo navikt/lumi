@@ -48,6 +48,8 @@ object TestDatabase {
             isAutoCommit = false
             transactionIsolation = "TRANSACTION_READ_COMMITTED"
             poolName = "lumi-test-pool"
+            // Keep date bucketing tests independent of the developer machine's timezone.
+            connectionInitSql = "SET TIME ZONE 'UTC'"
         })
     }
     

@@ -29,6 +29,7 @@
   },
   "scripts": {
     "build": "tsup src/index.ts src/api.ts src/errors.ts src/schemas.ts --format esm --dts --clean --outDir dist",
+    "test": "node --test src/*.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

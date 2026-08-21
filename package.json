@@ -13,7 +13,7 @@
     "verify:lumi-survey": "pnpm --filter @navikt/lumi-survey run build && node scripts/verify-lumi-survey-package.mjs",
     "check:lumi-survey-release-drift": "node scripts/check-lumi-survey-release-drift.mjs",
     "test:release-guards": "node --test scripts/check-lumi-survey-release-drift.test.mjs",
-    "test": "pnpm --filter lumi-dashboard run test",
+    "test": "pnpm --filter @navikt/lumi-types run test && pnpm --filter lumi-dashboard run test",
     "e2e": "pnpm --filter lumi-dashboard run e2e",
     "docs:dev": "pnpm --filter lumi-docs run dev",
     "docs:build": "pnpm --filter lumi-docs run build",

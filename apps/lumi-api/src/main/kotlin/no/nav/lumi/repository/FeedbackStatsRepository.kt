@@ -90,7 +90,9 @@ class FeedbackStatsRepository {
             val dateExpr = DateDate(FeedbackTable.opprettet)
             val dateQuery = FeedbackTable.select(dateExpr, FeedbackTable.id.count())
             applyStatsFilters(dateQuery, query)
-            dateQuery.andWhere { FeedbackTable.opprettet greaterEq Instant.now().minus(Duration.ofDays(30)) }
+            if (query.fromDate == null && query.toDate == null) {
+                dateQuery.andWhere { FeedbackTable.opprettet greaterEq Instant.now().minus(Duration.ofDays(30)) }
+            }
             val byDate = dateQuery
                  .groupBy(dateExpr)
                  .orderBy(dateExpr to SortOrder.ASC)

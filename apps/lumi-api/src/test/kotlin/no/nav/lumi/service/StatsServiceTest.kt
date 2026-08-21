@@ -1,11 +1,20 @@
 package no.nav.lumi.service
 
+import no.nav.lumi.domain.StatsQuery
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 
 class StatsServiceTest {
     
     private val service = StatsService()
+
+    @Test
+    fun `stats cache key includes the result contract version`() {
+        assertEquals(
+            "dashboard:team=flex&includeArchived=false&resultVersion=2",
+            service.statsCacheKey("dashboard", StatsQuery(team = "flex")),
+        )
+    }
     
     @Test
     fun `calculateAverageRating returns correct average`() {
