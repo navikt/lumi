@@ -39,7 +39,7 @@ jobs:
               - 'docker-compose.yml'
               - 'LICENSE'
               - 'tsconfig*.json'
-              - '.github/skills/**'
+              - '.github/instructions/**'
               - '.github/workflows/**'
               - 'apps/lumi-dashboard/**'
               - 'apps/lumi-local-demo/**'
