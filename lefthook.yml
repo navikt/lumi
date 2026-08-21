@@ -1,0 +1,11 @@
+min_version: 2.1.10
+
+pre-commit:
+  jobs:
+    - name: Formater staged filer
+      glob: "*.{js,jsx,ts,tsx,cjs,mjs,cts,mts,json,jsonc,css,scss}"
+      run: mise exec -- pnpm exec biome check --write --files-ignore-unknown=true {staged_files}
+      stage_fixed: true
+    - name: Typecheck TypeScript-endringer
+      glob: "*.{ts,tsx}"
+      run: mise exec -- pnpm run typecheck

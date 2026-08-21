@@ -1,0 +1,48 @@
+[tools]
+java = "temurin-21.0.12+101.0.LTS"
+lefthook = "2.1.10"
+node = "24.19.0"
+
+[tasks.setup]
+description = "Aktiver pnpm, installer avhengigheter og Git-hooks"
+run = [
+  "corepack enable",
+  "pnpm install --frozen-lockfile",
+  "if [ \"$(git config --local --get core.hooksPath 2>/dev/null)\" = \".husky/_\" ]; then git config --local --unset core.hooksPath; fi",
+  "lefthook install",
+]
+
+[tasks.dev]
+description = "Start dashboardet lokalt"
+run = "pnpm run dev"
+
+[tasks.check]
+description = "Kjør lint, typecheck og enhetstester"
+run = ["pnpm run lint", "pnpm run typecheck", "pnpm run test"]
+
+[tasks.api-test]
+description = "Kjør API- og submission-proxy-testene"
+run = [
+  "cd apps/lumi-api && ./gradlew test",
+  "cd apps/lumi-submission-proxy && ./gradlew test",
+]
+
+[tasks.e2e]
+description = "Kjør nettlesertestene"
+run = "pnpm run e2e"
+
+[tasks.build]
+description = "Bygg alle Node-arbeidsområdene"
+run = "pnpm run build"
+
+[tasks.local-up]
+description = "Start hele den lokale verdikjeden"
+run = "pnpm run local:up"
+
+[tasks.local-down]
+description = "Stopp den lokale verdikjeden"
+run = "pnpm run local:down"
+
+[tasks.local-reset]
+description = "Stopp verdikjeden og slett lokale volumer"
+run = "pnpm run local:reset"
