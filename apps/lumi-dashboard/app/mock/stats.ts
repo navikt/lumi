@@ -749,6 +749,7 @@ export function getMockDiscoveryStats(
     }
 
     return {
+      id: item.id,
       task,
       success,
       submittedAt: item.submittedAt,
@@ -801,6 +802,15 @@ export function getMockDiscoveryStats(
     }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 30);
+
+  const textInsights = extractPhrases(
+    responses.map((response) => ({
+      id: response.id,
+      text: response.task,
+      submittedAt: response.submittedAt,
+    })),
+    { maxSourceIds: 3 },
+  );
 
   // Dynamic theme clustering based on mockThemes from themes.ts
   // Only use GENERAL_FEEDBACK themes - BLOCKER themes are for Top Tasks analysis
@@ -911,7 +921,13 @@ export function getMockDiscoveryStats(
         (a, b) =>
           new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime(),
       )
-      .slice(0, 10),
+      .slice(0, 10)
+      .map(({ task, success, submittedAt }) => ({
+        task,
+        success,
+        submittedAt,
+      })),
+    ...textInsights,
   };
 }
 
@@ -1294,6 +1310,7 @@ export function getMockBlockerStats(
 
   // Extract blocker responses
   const blockerResponses: Array<{
+    id: string;
     blocker: string;
     task: string;
     submittedAt: string;
@@ -1323,6 +1340,7 @@ export function getMockBlockerStats(
       if (taskFilter && taskId !== taskFilter) continue;
 
       blockerResponses.push({
+        id: item.id,
         blocker: blockerAnswer.value.text,
         task,
         submittedAt: item.submittedAt,
@@ -1375,6 +1393,14 @@ export function getMockBlockerStats(
     }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 30);
+
+  const textInsights = extractPhrases(
+    blockerResponses.map((response) => ({
+      id: response.id,
+      text: response.blocker,
+      submittedAt: response.submittedAt,
+    })),
+  );
 
   // Get blocker themes only (analysisContext = "BLOCKER")
   const blockerThemes = mockThemes.filter(
@@ -1462,6 +1488,12 @@ export function getMockBlockerStats(
         (a, b) =>
           new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime(),
       )
-      .slice(0, 10),
+      .slice(0, 10)
+      .map(({ blocker, task, submittedAt }) => ({
+        blocker,
+        task,
+        submittedAt,
+      })),
+    ...textInsights,
   };
 }

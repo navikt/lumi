@@ -171,10 +171,29 @@ internal fun buildPhraseStemKey(surface: String): String {
     return "${TextProcessor.stemNorwegian(words[0])}|${TextProcessor.stemNorwegian(words[1])}"
 }
 
+internal fun matchesPhraseFieldId(
+    actualFieldId: String,
+    requestedFieldId: String,
+    surveyType: SurveyType?,
+): Boolean {
+    if (actualFieldId == requestedFieldId) return true
+
+    val discoveryTaskIds = setOf(
+        SpecializedSurveyFieldIds.TASK,
+        SpecializedSurveyFieldIds.LEGACY_DISCOVERY_TASK,
+    )
+    return surveyType == SurveyType.DISCOVERY &&
+        actualFieldId in discoveryTaskIds &&
+        requestedFieldId in discoveryTaskIds
+}
+
 internal fun matchesPhraseFilter(feedback: FeedbackDto, fieldId: String, expectedStemKey: String): Boolean {
     return feedback.answers
         .asSequence()
-        .filter { it.fieldId == fieldId && it.fieldType == FieldType.TEXT }
+        .filter {
+            matchesPhraseFieldId(it.fieldId, fieldId, feedback.surveyType) &&
+                it.fieldType == FieldType.TEXT
+        }
         .mapNotNull { (it.value as? AnswerValue.Text)?.text }
         .any { text ->
             TextProcessor.extractBigrams(text).any { it.stemKey == expectedStemKey }

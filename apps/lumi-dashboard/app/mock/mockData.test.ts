@@ -48,6 +48,9 @@ describe("Mock Data Generation", () => {
     expect(stats.themes.length).toBeGreaterThan(0);
     expect(stats.wordFrequency.length).toBeGreaterThan(0);
     expect(stats.recentResponses.length).toBeGreaterThan(0);
+    expect(stats.phrases?.length).toBeGreaterThan(0);
+    expect(stats.quotes?.length).toBeGreaterThan(0);
+    expect(["low", "medium", "high"]).toContain(stats.confidenceLevel);
 
     // Check structure of a response
     const firstResponse = stats.recentResponses[0];
@@ -120,6 +123,15 @@ describe("Mock Data Generation", () => {
         }
       }
     }
+  });
+
+  it("should expose phrase insights for blocker responses", () => {
+    const stats = getMockBlockerStats(new URLSearchParams());
+
+    expect(stats.totalBlockers).toBeGreaterThan(0);
+    expect(stats.phrases?.length).toBeGreaterThan(0);
+    expect(stats.quotes?.length).toBeGreaterThan(0);
+    expect(["low", "medium", "high"]).toContain(stats.confidenceLevel);
   });
 
   it("should limit sourceResponses to 5 per word to keep response size reasonable", () => {

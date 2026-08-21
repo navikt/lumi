@@ -21,8 +21,10 @@ import no.nav.lumi.domain.FeedbackQuery
 import no.nav.lumi.domain.PhraseFilter
 import no.nav.lumi.domain.Question
 import no.nav.lumi.domain.SaveResult
+import no.nav.lumi.domain.SpecializedSurveyFieldIds
 import no.nav.lumi.domain.SubmissionContext
 import no.nav.lumi.domain.StatsQuery
+import no.nav.lumi.domain.SurveyType
 import no.nav.lumi.insertTestFeedback
 import no.nav.lumi.insertTestFeedbackWithJson
 import no.nav.lumi.insertTestTheme
@@ -821,6 +823,38 @@ class FeedbackRepositoryTest : FunSpec({
             content.map { it.id }.toSet() shouldBe setOf("phrase-match-1", "phrase-match-2")
         }
 
+        test("canonical discovery phrase filter includes legacy task field") {
+            insertTestFeedbackWithJson(
+                id = "legacy-discovery-phrase",
+                team = "team-test",
+                app = "app-test",
+                feedbackJson = """
+                    {
+                        "surveyId": "legacy-discovery",
+                        "surveyType": "discovery",
+                        "answers": [
+                            {
+                                "fieldId": "discoveredTask",
+                                "fieldType": "TEXT",
+                                "question": {"label": "Hva kom du for å gjøre?"},
+                                "value": {"type": "text", "text": "Det er vanskelig å svare raskt"}
+                            }
+                        ]
+                    }
+                """.trimIndent()
+            )
+
+            val (content, total, _) = repository.findPaginated(
+                FeedbackQuery(
+                    team = "team-test",
+                    phraseFilter = PhraseFilter(fieldId = "task", surface = "vanskelig svare")
+                )
+            )
+
+            total shouldBe 1
+            content.single().id shouldBe "legacy-discovery-phrase"
+        }
+
         test("filters by phrase before pagination and keeps tags on paged content") {
             insertTestFeedbackWithJson(
                 id = "phrase-newest",
@@ -982,6 +1016,25 @@ class FeedbackRepositoryTest : FunSpec({
                 feedbackWithText("other" to "Det er vanskelig å svare raskt"),
                 filter.fieldId,
                 expectedStemKey
+            ) shouldBe false
+        }
+
+        test("matches canonical and legacy discovery task field aliases") {
+            val expectedStemKey = buildPhraseStemKey("vanskelig svare")
+            val feedback = feedbackWithText(
+                "discoveredTask" to "Det er vanskelig å svare raskt"
+            ).copy(surveyType = SurveyType.DISCOVERY)
+
+            matchesPhraseFilter(
+                feedback,
+                SpecializedSurveyFieldIds.TASK,
+                expectedStemKey,
+            ) shouldBe true
+
+            matchesPhraseFilter(
+                feedback.copy(surveyType = SurveyType.CUSTOM),
+                SpecializedSurveyFieldIds.TASK,
+                expectedStemKey,
             ) shouldBe false
         }
 

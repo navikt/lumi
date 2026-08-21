@@ -1,3 +1,4 @@
+import { SPECIALIZED_SURVEY_FIELD_IDS } from "@navikt/lumi-survey";
 import { TextAnalysis } from "~/components/shared/TextAnalysis";
 import { useBlockerStats } from "~/hooks/useBlockerStats";
 import type { BlockerResponse } from "~/types/api";
@@ -8,10 +9,7 @@ interface BlockerAnalysisProps {
 }
 
 /**
- * Analyzes blocker patterns using keyword-based themes.
- * Supports creating and editing blocker themes from word cloud.
- *
- * This is now a thin wrapper around the shared TextAnalysis component.
+ * Shows recurring blockers with concrete examples and owner-defined themes.
  */
 export function BlockerAnalysis({ data: providedData }: BlockerAnalysisProps) {
   const blockerQuery = useBlockerStats();
@@ -44,17 +42,24 @@ export function BlockerAnalysis({ data: providedData }: BlockerAnalysisProps) {
   return (
     <TextAnalysis
       analysisContext="BLOCKER"
-      wordFrequency={data?.wordFrequency ?? []}
+      phrases={data?.phrases ?? []}
+      quotes={data?.quotes ?? []}
+      confidenceLevel={data?.confidenceLevel}
+      phraseFieldId={SPECIALIZED_SURVEY_FIELD_IDS.blocker}
       themes={transformedThemes}
       recentResponses={transformedResponses}
       totalCount={data?.totalBlockers ?? 0}
       isLoading={isLoading && !data}
       labels={{
-        wordCloudTitle: "Ordfrekvens",
-        themesTitle: "Blocker-mønstre",
-        recentTitle: "Siste blocker-svar",
-        recentSubtitle: "Nylige hindringer brukere har rapportert",
-        emptyMessage: "Ingen blocker-data tilgjengelig ennå.",
+        insightsTitle: "Det som hindrer brukerne",
+        insightsSubtitle:
+          "Se hva som går igjen, og åpne svarene bak hvert uttrykk.",
+        phrasesTitle: "Hindringer som går igjen",
+        examplesTitle: "Eksempler fra brukerne",
+        themesTitle: "Egne hindringstemaer",
+        themesSubtitle:
+          "Bruk egne temaer når dere vil følge de samme hindringene over tid.",
+        emptyMessage: "Her vises mønstre når brukerne rapporterer hindringer.",
       }}
     />
   );

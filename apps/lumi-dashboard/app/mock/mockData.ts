@@ -49,6 +49,7 @@ import {
 import { getMockTaskPriorityStats as calculateTaskPriorityStats } from "./stats/taskPriority";
 
 import { sykmeldtTopics } from "./topics";
+import { applyFeedbackFilters } from "./utils/filters";
 
 export {
   DISCOVERY_RESPONSES,
@@ -412,6 +413,11 @@ function applyFilters(
         (filter) => item.metadata?.[filter.key] === filter.value,
       );
     });
+  }
+
+  const phrase = params.get("phrase");
+  if (phrase) {
+    filtered = applyFeedbackFilters(filtered, { phrase });
   }
 
   // Sort by date descending

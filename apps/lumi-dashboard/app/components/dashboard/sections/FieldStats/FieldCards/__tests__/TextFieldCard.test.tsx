@@ -79,7 +79,7 @@ describe("TextFieldCard", () => {
       />,
     );
 
-    expect(screen.getByText("Hyppigste fraser")).toBeInTheDocument();
+    expect(screen.getByText("Uttrykk som går igjen")).toBeInTheDocument();
 
     // First 5 phrases should be visible
     expect(screen.getByText("vanskelig forstå")).toBeInTheDocument();
@@ -136,7 +136,7 @@ describe("TextFieldCard", () => {
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
 
     // Should NOT show phrase heading
-    expect(screen.queryByText("Hyppigste fraser")).not.toBeInTheDocument();
+    expect(screen.queryByText("Uttrykk som går igjen")).not.toBeInTheDocument();
   });
 
   it("viser tom tilstand uten data", async () => {
@@ -173,7 +173,7 @@ describe("TextFieldCard", () => {
     for (const phraseLink of allLinks) {
       expect(phraseLink).toHaveAttribute(
         "aria-label",
-        expect.stringMatching(/Vis \d+ tilbakemeldinger med frasen/),
+        expect.stringMatching(/Vis \d+ tilbakemeldinger med uttrykket/),
       );
     }
   });

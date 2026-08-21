@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 /**
@@ -7,15 +8,21 @@ import { expect, test } from "@playwright/test";
 
 test.describe("Survey Views", () => {
   test.describe("TopTasks View", () => {
-    test("displays TPI quadrant and task table", async ({ page }) => {
-      await page.goto("/?surveyId=survey-top-tasks");
+    test("displays TPI quadrant, task table and recurring blockers", async ({
+      page,
+    }) => {
+      await page.goto("/?surveyId=survey-top-tasks&fromDate=2000-01-01");
       await page.waitForLoadState("networkidle");
 
-      // Should display main content
       await expect(page.locator("main")).toBeVisible({ timeout: 15000 });
-
-      // Should show Top Tasks specific elements when a topTasks survey is selected
-      // Note: The exact elements depend on what survey is selected in mock mode
+      await expect(
+        page.getByRole("heading", { name: "Det som hindrer brukerne" }),
+      ).toBeVisible();
+      const blockerPhrase = page
+        .getByRole("link", { name: /tilbakemeldinger med uttrykket/i })
+        .first();
+      await expect(blockerPhrase).toBeVisible();
+      await expect(blockerPhrase).toHaveAttribute("href", /phrase=blocker/);
     });
 
     test("allows drilling down from task to feedback", async ({ page }) => {
@@ -29,22 +36,69 @@ test.describe("Survey Views", () => {
   });
 
   test.describe("Discovery View", () => {
-    test("displays word cloud and theme cards", async ({ page }) => {
-      await page.goto("/?surveyId=survey-discovery");
+    test("shows phrases and examples without accessibility violations", async ({
+      page,
+    }) => {
+      await page.goto("/?surveyId=survey-discovery&fromDate=2000-01-01");
       await page.waitForLoadState("networkidle");
 
-      // Should display main content
       await expect(page.locator("main")).toBeVisible({ timeout: 15000 });
+      await expect(
+        page.getByRole("heading", {
+          name: "Det brukerne prøver å gjøre",
+        }),
+      ).toBeVisible();
+      await expect(page.getByText(/^(Noen|Mange) svar$/)).toBeVisible();
+      await expect(
+        page
+          .getByRole("link", { name: /tilbakemeldinger med uttrykket/i })
+          .first(),
+      ).toBeVisible();
+      await expect(page.getByText("Ordfrekvens")).toHaveCount(0);
 
-      // Discovery view shows word frequency visualization and themes
+      const accessibility = await new AxeBuilder({ page })
+        .include("[data-testid='text-insights']")
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+        .analyze();
+      expect(accessibility.violations).toEqual([]);
     });
 
-    test("theme cards are interactive", async ({ page }) => {
-      await page.goto("/?surveyId=survey-discovery");
+    test("opens the responses behind a phrase and fits a narrow viewport", async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto("/?surveyId=survey-discovery&fromDate=2000-01-01");
       await page.waitForLoadState("networkidle");
 
-      // Theme cards should be focusable and clickable
-      // When clicked, they should filter feedback to that theme
+      const phraseLink = page
+        .getByRole("link", { name: /tilbakemeldinger med uttrykket/i })
+        .first();
+      await expect(phraseLink).toBeVisible();
+      const phraseLabel = await phraseLink.getAttribute("aria-label");
+      const expectedCount = phraseLabel?.match(/Vis (\d+)/)?.[1];
+      const phraseText = phraseLabel?.match(/uttrykket «(.+?)»/)?.[1];
+      expect(expectedCount).toBeTruthy();
+      expect(phraseText).toBeTruthy();
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      ).toBe(true);
+
+      await phraseLink.click();
+      await expect(page).toHaveURL(/\/feedback/);
+      await expect
+        .poll(() => new URL(page.url()).searchParams.get("phrase"))
+        .toMatch(/^task:/);
+      await expect(
+        page.getByText(`«${phraseText}»`, { exact: false }).first(),
+      ).toBeVisible();
+      await expect(
+        page.getByText(new RegExp(`Viser ${expectedCount} svar`)),
+      ).toBeVisible();
+      await expect(page.getByText("Ingen tilbakemeldinger funnet")).toHaveCount(
+        0,
+      );
     });
   });
 

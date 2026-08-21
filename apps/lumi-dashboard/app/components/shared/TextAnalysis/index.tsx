@@ -1,34 +1,39 @@
 import {
+  ArrowRightIcon,
+  ChatIcon,
   InformationSquareIcon,
-  MagnifyingGlassIcon,
+  LightBulbIcon,
+  PencilIcon,
   PlusIcon,
 } from "@navikt/aksel-icons";
 import {
+  Alert,
   BodyShort,
   Box,
   Button,
+  Detail,
   Heading,
+  HGrid,
   HStack,
   Skeleton,
   Tag,
   Tooltip,
   VStack,
 } from "@navikt/ds-react";
+import { Link } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 import { DashboardCard } from "~/components/dashboard";
-import {
-  type ContextExample,
-  ThemeModal,
-} from "~/components/shared/ThemeModal";
-import { WordCloud } from "~/components/shared/WordCloud";
-import { WordPopover } from "~/components/shared/WordPopover";
+import { PhraseList } from "~/components/shared/PhraseList";
+import { ThemeModal } from "~/components/shared/ThemeModal";
 import { useThemes } from "~/hooks/useThemes";
 import type {
   AnalysisContext,
+  ConfidenceLevel,
   CreateThemeInput,
+  PhraseEntry,
+  QuoteEntry,
   TextTheme,
   UpdateThemeInput,
-  WordFrequency,
 } from "~/types/api";
 import {
   THEME_COLOR_AMBER,
@@ -42,6 +47,7 @@ import {
   THEME_COLOR_RED,
   THEME_COLOR_VIOLET,
 } from "~/utils/colors";
+import { formatRelativeTime } from "~/utils/wordAnalysis";
 import styles from "./TextAnalysis.module.css";
 
 /**
@@ -71,8 +77,14 @@ interface RecentResponseItem {
 export interface TextAnalysisProps {
   /** Analysis context determines which theme set to use */
   analysisContext: AnalysisContext;
-  /** Word frequency data for the word cloud */
-  wordFrequency: WordFrequency[];
+  /** Automatically extracted bigram phrases */
+  phrases: PhraseEntry[];
+  /** Examples sampled from the underlying responses */
+  quotes: QuoteEntry[];
+  /** Response-volume signal from the backend */
+  confidenceLevel?: ConfidenceLevel;
+  /** Field whose text should be filtered when a phrase is selected */
+  phraseFieldId: string;
   /** Themed statistics from the backend */
   themes: ThemeWithStats[];
   /** Recent responses for context */
@@ -83,10 +95,12 @@ export interface TextAnalysisProps {
   isLoading?: boolean;
   /** Labels for UI customization */
   labels?: {
-    wordCloudTitle?: string;
+    insightsTitle?: string;
+    insightsSubtitle?: string;
+    phrasesTitle?: string;
+    examplesTitle?: string;
     themesTitle?: string;
-    recentTitle?: string;
-    recentSubtitle?: string;
+    themesSubtitle?: string;
     emptyMessage?: string;
   };
   /** Show success/status tags on recent responses */
@@ -94,12 +108,138 @@ export interface TextAnalysisProps {
 }
 
 const DEFAULT_LABELS = {
-  wordCloudTitle: "Ordfrekvens",
-  themesTitle: "Identifiserte temaer",
-  recentTitle: "Siste svar",
-  recentSubtitle: "Nylige svar fra brukere",
+  insightsTitle: "Dette går igjen i svarene",
+  insightsSubtitle:
+    "Uttrykk viser hva som går igjen. Eksemplene viser ordene i sammenheng.",
+  phrasesTitle: "Uttrykk som går igjen",
+  examplesTitle: "Eksempler fra svarene",
+  themesTitle: "Egne temaer",
+  themesSubtitle:
+    "Lag egne temaer når dere vil følge de samme tingene over tid.",
   emptyMessage: "Ingen data tilgjengelig ennå.",
 };
+
+const CONFIDENCE_CONTENT: Record<
+  ConfidenceLevel,
+  { label: string; description: string; color: "warning" | "info" | "success" }
+> = {
+  low: {
+    label: "Få svar",
+    description: "Mønstrene kan endre seg når det kommer flere svar.",
+    color: "warning",
+  },
+  medium: {
+    label: "Noen svar",
+    description: "Det er nok svar til å se tidlige mønstre.",
+    color: "info",
+  },
+  high: {
+    label: "Mange svar",
+    description: "Mønstrene bygger på mange svar.",
+    color: "success",
+  },
+};
+
+function confidenceFromCount(totalCount: number): ConfidenceLevel {
+  if (totalCount < 30) return "low";
+  if (totalCount <= 100) return "medium";
+  return "high";
+}
+
+interface ResponseExamplesProps {
+  title: string;
+  description: string;
+  responses: RecentResponseItem[];
+  showResponseStatus: boolean;
+  maxItems: number;
+}
+
+function ResponseExamples({
+  title,
+  description,
+  responses,
+  showResponseStatus,
+  maxItems,
+}: ResponseExamplesProps) {
+  const occurrences = new Map<string, number>();
+  const keyedResponses = responses.slice(0, maxItems).map((response) => {
+    const baseKey = `${response.text}-${response.submittedAt}`;
+    const occurrence = occurrences.get(baseKey) ?? 0;
+    occurrences.set(baseKey, occurrence + 1);
+    return { response, key: `${baseKey}-${occurrence}` };
+  });
+
+  return (
+    <VStack gap="space-8">
+      <HStack gap="space-8" align="center">
+        <ChatIcon aria-hidden />
+        <Heading size="small" level="3">
+          {title}
+        </Heading>
+      </HStack>
+      <BodyShort size="small" textColor="subtle">
+        {description}
+      </BodyShort>
+      <HGrid columns={{ xs: 1, md: 2, lg: 3 }} gap="space-8">
+        {keyedResponses.map(({ response, key }) => (
+          <blockquote key={key} className={styles.responseExample}>
+            <HStack justify="space-between" align="start" wrap={false}>
+              <BodyShort size="small" className={styles.recentResponseText}>
+                «{response.text}»
+              </BodyShort>
+              {showResponseStatus && response.success && (
+                <Tag
+                  size="xsmall"
+                  variant="outline"
+                  data-color={
+                    response.success === "yes"
+                      ? "success"
+                      : response.success === "partial"
+                        ? "warning"
+                        : "danger"
+                  }
+                  className={styles.recentStatusTag}
+                >
+                  {response.success === "yes"
+                    ? "Fullført"
+                    : response.success === "partial"
+                      ? "Delvis"
+                      : "Ikke fullført"}
+                </Tag>
+              )}
+            </HStack>
+            <HStack
+              justify="space-between"
+              align="baseline"
+              gap="space-8"
+              className={styles.responseMeta}
+            >
+              {response.additionalInfo ? (
+                <BodyShort
+                  size="small"
+                  textColor="subtle"
+                  className={styles.responseAdditionalInfo}
+                >
+                  {response.additionalInfo}
+                </BodyShort>
+              ) : (
+                <span />
+              )}
+              <BodyShort
+                as="time"
+                dateTime={response.submittedAt}
+                size="small"
+                textColor="subtle"
+              >
+                {formatRelativeTime(response.submittedAt)}
+              </BodyShort>
+            </HStack>
+          </blockquote>
+        ))}
+      </HGrid>
+    </VStack>
+  );
+}
 
 const THEME_COLOR_CLASS_BY_HEX: Record<string, string> = {
   [THEME_COLOR_BLUE]: styles.themeAccentBlue,
@@ -122,14 +262,15 @@ function getThemeAccentClass(color?: string): string {
 }
 
 /**
- * Unified text analysis component for Discovery and Blocker patterns.
- * Displays word cloud, theme clustering, and recent responses.
- *
- * Supports creating/editing themes via modal, and removing words from themes via popover.
+ * Shared Discovery and blocker view for recurring expressions, concrete
+ * examples, and the themes a team chooses to follow over time.
  */
 export function TextAnalysis({
   analysisContext,
-  wordFrequency,
+  phrases,
+  quotes,
+  confidenceLevel,
+  phraseFieldId,
   themes: statsThemes,
   recentResponses,
   totalCount,
@@ -141,6 +282,8 @@ export function TextAnalysis({
 
   const {
     themes: definedThemes,
+    isLoading: isThemesLoading,
+    error: themesError,
     createTheme,
     updateTheme,
     deleteTheme,
@@ -151,95 +294,17 @@ export function TextAnalysis({
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTheme, setEditingTheme] = useState<TextTheme | undefined>();
-  const [initialKeywords, setInitialKeywords] = useState<string[]>([]);
-
-  // Popover state for categorized words
-  const [popoverAnchor, setPopoverAnchor] = useState<HTMLElement | null>(null);
-  const [popoverWord, setPopoverWord] = useState<string>("");
-  const [popoverTheme, setPopoverTheme] = useState<TextTheme | null>(null);
-
-  // Build O(1) lookup map for word frequency data
-  const wordLookup = useMemo(() => {
-    const map = new Map<string, WordFrequency>();
-    for (const w of wordFrequency) {
-      map.set(w.word.toLowerCase(), w);
-      map.set(w.stem.toLowerCase(), w);
-      for (const variant of w.variants ?? []) {
-        map.set(variant.word.toLowerCase(), w);
-      }
-    }
-    return map;
-  }, [wordFrequency]);
-
-  // Get context examples for the selected word
-  const getContextExamples = useCallback(
-    (word: string): ContextExample[] => {
-      if (!word) return [];
-      const wordData = wordLookup.get(word.toLowerCase());
-      if (wordData?.sourceResponses && wordData.sourceResponses.length > 0) {
-        return wordData.sourceResponses;
-      }
-      // Fallback to substring search in recentResponses
-      const wordLower = word.toLowerCase();
-      return recentResponses
-        .filter((r) => r.text.toLowerCase().includes(wordLower))
-        .map((r) => ({ text: r.text, submittedAt: r.submittedAt }));
-    },
-    [wordLookup, recentResponses],
-  );
-
-  // Get theme for a word (for coloring)
-  const getThemeForWord = useCallback(
-    (word: string): TextTheme | undefined => {
-      const wordLower = word.toLowerCase();
-
-      const wordData = wordLookup.get(wordLower);
-      const surfaceCandidates = new Set<string>([
-        wordLower,
-        ...(wordData?.variants?.map((v) => v.word.toLowerCase()) ?? []),
-      ]);
-      const stemCandidate = wordData?.stem.toLowerCase();
-
-      const matchesSurfaceCandidate = (kwLower: string) => {
-        for (const candidate of surfaceCandidates) {
-          if (
-            kwLower === candidate ||
-            candidate.includes(kwLower) ||
-            kwLower.includes(candidate)
-          ) {
-            return true;
-          }
-        }
-        return false;
-      };
-
-      return definedThemes.find((t) =>
-        t.keywords.some((kw) => {
-          const kwLower = kw.toLowerCase();
-
-          if (matchesSurfaceCandidate(kwLower)) return true;
-
-          // Stem is a stable grouping key; only do exact match to avoid over-matching.
-          return stemCandidate ? kwLower === stemCandidate : false;
-        }),
-      );
-    },
-    [definedThemes, wordLookup],
-  );
 
   // Open modal for creating new theme
-  const handleOpenCreate = useCallback((keyword?: string) => {
+  const handleOpenCreate = useCallback(() => {
     setEditingTheme(undefined);
-    setInitialKeywords(keyword ? [keyword] : []);
     setIsModalOpen(true);
   }, []);
 
   // Open modal for editing existing theme
   const handleOpenEdit = useCallback((theme: TextTheme) => {
     setEditingTheme(theme);
-    setInitialKeywords([]);
     setIsModalOpen(true);
-    setPopoverAnchor(null);
   }, []);
 
   // Handle modal submit
@@ -271,46 +336,9 @@ export function TextAnalysis({
     [deleteTheme],
   );
 
-  // Handle word click from word cloud
-  const handleWordClick = useCallback(
-    (word: string, event: React.MouseEvent<HTMLButtonElement>) => {
-      const existingTheme = getThemeForWord(word);
-      if (existingTheme) {
-        setPopoverWord(word);
-        setPopoverTheme(existingTheme);
-        setPopoverAnchor(event.currentTarget);
-      } else {
-        handleOpenCreate(word);
-      }
-    },
-    [getThemeForWord, handleOpenCreate],
-  );
-
-  // Handle removing word from theme (via popover)
-  const handleRemoveWord = useCallback(
-    (themeId: string, word: string) => {
-      const theme = definedThemes.find((t) => t.id === themeId);
-      if (!theme) return;
-
-      const wordLower = word.toLowerCase();
-      const wordData = wordLookup.get(wordLower);
-      const removeSet = new Set<string>([
-        wordLower,
-        wordData?.stem.toLowerCase() ?? "",
-        ...(wordData?.variants?.map((v) => v.word.toLowerCase()) ?? []),
-      ]);
-      removeSet.delete("");
-
-      const updatedKeywords = theme.keywords.filter(
-        (k) => !removeSet.has(k.toLowerCase()),
-      );
-      updateTheme({ themeId, keywords: updatedKeywords });
-    },
-    [definedThemes, updateTheme, wordLookup],
-  );
-
-  // Combine defined themes with stats
-  const allThemesDisplay = useMemo(() => {
+  // Keep every configured theme visible, including themes with no matches, so
+  // they remain possible to edit or delete from this view.
+  const configuredThemesDisplay = useMemo(() => {
     const result: ThemeWithStats[] = definedThemes.map((definedTheme) => {
       const stats = statsThemes.find((t) => t.theme === definedTheme.name);
       return {
@@ -318,35 +346,62 @@ export function TextAnalysis({
         themeId: definedTheme.id,
         count: stats?.count ?? 0,
         examples: stats?.examples ?? [],
+        successRate: stats?.successRate,
         color: definedTheme.color,
         definedTheme,
       };
     });
 
-    // Add themes from stats that aren't in definedThemes (e.g., "Annet")
-    for (const statTheme of statsThemes) {
-      if (!definedThemes.some((dt) => dt.name === statTheme.theme)) {
-        result.push({
-          theme: statTheme.theme,
-          themeId: statTheme.themeId,
-          count: statTheme.count,
-          examples: statTheme.examples,
-          color: statTheme.color,
-          definedTheme: undefined,
-        });
-      }
-    }
-
-    // Filter out zero-count themes and sort
-    return result
-      .filter((t) => t.count > 0)
-      .sort((a, b) => {
-        if (a.theme === "Annet") return 1;
-        if (b.theme === "Annet") return -1;
-        if (b.count !== a.count) return b.count - a.count;
-        return (a.theme || "").localeCompare(b.theme || "");
-      });
+    return result.sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return (a.theme || "").localeCompare(b.theme || "", "nb");
+    });
   }, [definedThemes, statsThemes]);
+
+  const uncategorizedTheme = statsThemes.find(
+    (theme) => theme.theme === "Annet" && theme.count > 0,
+  );
+
+  const themeKeywordSuggestions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          phrases.flatMap((phrase) =>
+            phrase.text.split(/\s+/).filter((word) => word.length > 0),
+          ),
+        ),
+      ).sort((left, right) => left.localeCompare(right, "nb")),
+    [phrases],
+  );
+
+  const effectiveConfidence =
+    confidenceLevel ?? confidenceFromCount(totalCount);
+  const confidenceContent = CONFIDENCE_CONTENT[effectiveConfidence];
+  const useRecentExamples =
+    effectiveConfidence === "low" || quotes.length === 0;
+  const examples: RecentResponseItem[] = useRecentExamples
+    ? recentResponses
+    : quotes.map((quote) => ({
+        text: quote.text,
+        submittedAt: quote.answeredAt,
+      }));
+  const hasInsightContent = phrases.length > 0 || examples.length > 0;
+  const uncategorizedSummary = uncategorizedTheme ? (
+    <HStack justify="space-between" align="center" gap="space-16" wrap={false}>
+      <div className={styles.uncategorizedText}>
+        <BodyShort weight="semibold">Uten tema</BodyShort>
+        <BodyShort size="small" textColor="subtle">
+          Svar som ikke treffer noen av nøkkelordene i temaene deres.
+        </BodyShort>
+      </div>
+      <HStack gap="space-8" align="center" wrap={false}>
+        <Detail>{uncategorizedTheme.count} svar</Detail>
+        {analysisContext === "GENERAL_FEEDBACK" && (
+          <ArrowRightIcon aria-hidden />
+        )}
+      </HStack>
+    </HStack>
+  ) : null;
 
   // Loading state
   if (isLoading) {
@@ -371,65 +426,125 @@ export function TextAnalysis({
     );
   }
 
-  // Empty state
-  if (totalCount === 0 && definedThemes.length === 0) {
-    return (
-      <DashboardCard>
-        <BodyShort textColor="subtle">{labels.emptyMessage}</BodyShort>
-        <Button
-          variant="secondary"
-          size="small"
-          icon={<PlusIcon aria-hidden />}
-          onClick={() => handleOpenCreate()}
-          className={styles.createFirstThemeButton}
-        >
-          Opprett første tema
-        </Button>
-      </DashboardCard>
-    );
-  }
-
-  const maxThemeCount = allThemesDisplay[0]?.count ?? 1;
+  const maxThemeCount = configuredThemesDisplay[0]?.count || 1;
+  const hasCachedThemes = definedThemes.length > 0;
 
   return (
     <>
-      {/* Word Cloud Section */}
-      {wordFrequency.length > 0 && (
-        <DashboardCard padding="0" className={styles.cardOverflowHidden}>
+      {!hasInsightContent && (
+        <DashboardCard>
+          <BodyShort textColor="subtle">
+            {totalCount === 0
+              ? labels.emptyMessage
+              : "Fant ingen uttrykk eller eksempler i svarene ennå."}
+          </BodyShort>
+        </DashboardCard>
+      )}
+      {hasInsightContent && (
+        <DashboardCard
+          padding="0"
+          className={styles.cardOverflowHidden}
+          data-testid="text-insights"
+        >
           <Box
             padding={{ xs: "space-16", md: "space-24" }}
             borderWidth="0 0 1 0"
             borderColor="neutral-subtle"
           >
-            <HStack gap="space-8" align="center">
-              <span className={styles.sectionIcon}>
-                <MagnifyingGlassIcon fontSize="1.25rem" aria-hidden />
-              </span>
-              <Heading size="small">{labels.wordCloudTitle}</Heading>
-              <Tooltip content="Klikk på et ord for å opprette et tema med det som nøkkelord">
-                <InformationSquareIcon
-                  fontSize="1rem"
-                  className={styles.helpIcon}
-                  aria-hidden
-                />
-              </Tooltip>
+            <HStack justify="space-between" align="start" gap="space-16">
+              <div className={styles.insightHeading}>
+                <Heading size="medium" level="2">
+                  {labels.insightsTitle}
+                </Heading>
+                <BodyShort
+                  size="small"
+                  textColor="subtle"
+                  className={styles.sectionSubtitle}
+                >
+                  {labels.insightsSubtitle}
+                </BodyShort>
+              </div>
+              <Tag
+                data-color={confidenceContent.color}
+                variant="outline"
+                size="small"
+                className={styles.confidenceTag}
+              >
+                {confidenceContent.label}
+              </Tag>
             </HStack>
             <BodyShort
               size="small"
               textColor="subtle"
-              className={styles.sectionSubtitle}
+              className={styles.confidenceDescription}
             >
-              Klikk på et ord for å lage tema eller redigere eksisterende
+              {confidenceContent.description}
             </BodyShort>
           </Box>
 
           <Box padding={{ xs: "space-16", md: "space-24" }}>
-            <WordCloud
-              words={wordFrequency}
-              maxWords={30}
-              getThemeForWord={getThemeForWord}
-              onWordClick={handleWordClick}
-            />
+            <VStack gap="space-24">
+              {effectiveConfidence === "low" && examples.length > 0 && (
+                <ResponseExamples
+                  title="Svarene så langt"
+                  description="Når det er få svar, er det bedre å lese dem konkret enn å trekke bastante konklusjoner."
+                  responses={examples}
+                  showResponseStatus={showResponseStatus}
+                  maxItems={5}
+                />
+              )}
+
+              {phrases.length > 0 && (
+                <VStack gap="space-8">
+                  <HStack gap="space-8" align="center">
+                    <LightBulbIcon aria-hidden />
+                    <Heading size="small" level="3">
+                      {effectiveConfidence === "low"
+                        ? "Tidlige mønstre"
+                        : labels.phrasesTitle}
+                    </Heading>
+                  </HStack>
+                  <BodyShort size="small" textColor="subtle">
+                    Klikk på et uttrykk for å se svarene det kommer fra.
+                  </BodyShort>
+                  <PhraseList
+                    phrases={phrases}
+                    fieldId={phraseFieldId}
+                    maxItems={8}
+                    ariaLabel={
+                      effectiveConfidence === "low"
+                        ? "Tidlige mønstre"
+                        : labels.phrasesTitle
+                    }
+                  />
+                </VStack>
+              )}
+
+              {effectiveConfidence !== "low" && examples.length > 0 && (
+                <ResponseExamples
+                  title={labels.examplesTitle}
+                  description="Her er noen svar som viser hvordan brukerne beskriver opplevelsen."
+                  responses={examples}
+                  showResponseStatus={useRecentExamples && showResponseStatus}
+                  maxItems={3}
+                />
+              )}
+
+              <Link
+                to="/feedback"
+                search={(prev) => ({
+                  ...prev,
+                  page: "1",
+                  hasText: "true",
+                  phrase: undefined,
+                  query: undefined,
+                })}
+                className={styles.allFeedbackLink}
+              >
+                Se alle tilbakemeldinger
+                <ArrowRightIcon aria-hidden />
+              </Link>
+            </VStack>
           </Box>
         </DashboardCard>
       )}
@@ -440,50 +555,88 @@ export function TextAnalysis({
           borderWidth="0 0 1 0"
           borderColor="neutral-subtle"
         >
-          <HStack justify="space-between" align="center">
-            <HStack gap="space-8" align="center">
-              <Heading size="small">{labels.themesTitle}</Heading>
-              <Tooltip content="Gruppert basert på nøkkelord du definerer. Klikk på et tema for å redigere.">
-                <InformationSquareIcon
-                  fontSize="1rem"
-                  className={styles.helpIcon}
-                  aria-hidden
-                />
-              </Tooltip>
-            </HStack>
+          <HStack justify="space-between" align="start" gap="space-16">
+            <div className={styles.themeHeading}>
+              <HStack gap="space-8" align="center">
+                <Heading size="small" level="2">
+                  {labels.themesTitle}
+                </Heading>
+                <Tooltip content="Temaer følger nøkkelord dere velger selv, og kan brukes til å følge de samme problemstillingene over tid.">
+                  <InformationSquareIcon
+                    fontSize="1rem"
+                    className={styles.helpIcon}
+                    aria-hidden
+                  />
+                </Tooltip>
+              </HStack>
+              <BodyShort
+                size="small"
+                textColor="subtle"
+                className={styles.sectionSubtitle}
+              >
+                {labels.themesSubtitle}
+              </BodyShort>
+              <BodyShort
+                size="small"
+                textColor="subtle"
+                className={styles.themeCount}
+              >
+                {isThemesLoading && !hasCachedThemes
+                  ? "Laster temaer …"
+                  : themesError && !hasCachedThemes
+                    ? "Kunne ikke laste temaene."
+                    : definedThemes.length === 0
+                      ? "Ingen egne temaer ennå."
+                      : definedThemes.length === 1
+                        ? "1 eget tema"
+                        : `${definedThemes.length} egne temaer`}
+              </BodyShort>
+            </div>
             <Button
+              data-color="neutral"
               variant="tertiary"
               size="small"
               icon={<PlusIcon aria-hidden />}
               onClick={() => handleOpenCreate()}
             >
-              Opprett nytt tema
+              Nytt tema
             </Button>
           </HStack>
-          <BodyShort
-            size="small"
-            textColor="subtle"
-            className={styles.sectionSubtitle}
-          >
-            {allThemesDisplay.length > 0
-              ? `${allThemesDisplay.length} temaer vist`
-              : "Ingen temaer med data ennå."}
-          </BodyShort>
         </Box>
 
         <Box padding={{ xs: "space-16", md: "space-24" }}>
-          {allThemesDisplay.length > 0 ? (
+          {isThemesLoading && !hasCachedThemes ? (
             <VStack gap="space-12">
-              {allThemesDisplay.map((theme) => {
-                const percentage = Math.round((theme.count / totalCount) * 100);
+              <Skeleton height="52px" />
+              <Skeleton height="52px" />
+            </VStack>
+          ) : themesError && !hasCachedThemes ? (
+            <Alert variant="error" size="small">
+              Kunne ikke laste temaene. Prøv å laste siden på nytt.
+            </Alert>
+          ) : configuredThemesDisplay.length > 0 ? (
+            <VStack gap="space-12">
+              {themesError && (
+                <Alert variant="warning" size="small">
+                  Viser temaene som allerede var lastet inn. Kunne ikke
+                  oppdatere dem akkurat nå.
+                </Alert>
+              )}
+              {configuredThemesDisplay.map((theme) => {
+                const percentage =
+                  totalCount > 0
+                    ? Math.round((theme.count / totalCount) * 100)
+                    : 0;
                 const isEditable =
                   theme.definedTheme && theme.theme !== "Annet";
                 const themeId =
                   theme.themeId ??
                   (theme.theme === "Annet" ? "uncategorized" : null);
+                const canNavigateToTheme =
+                  analysisContext === "GENERAL_FEEDBACK" && themeId !== null;
                 const themeAccentClass = getThemeAccentClass(theme.color);
                 const handleNavigateToTheme = () => {
-                  if (!themeId) return;
+                  if (!canNavigateToTheme) return;
                   const url = new URL(window.location.href);
                   url.pathname = "/feedback";
                   url.searchParams.set("theme", themeId);
@@ -497,10 +650,12 @@ export function TextAnalysis({
                     className={[
                       styles.themeListRow,
                       themeAccentClass,
-                      themeId ? styles.themeListRowClickable : "",
+                      canNavigateToTheme ? styles.themeListRowClickable : "",
                     ].join(" ")}
                     title={
-                      themeId ? "Klikk for å se feedback med dette temaet" : ""
+                      canNavigateToTheme
+                        ? "Klikk for å se tilbakemeldinger med dette temaet"
+                        : ""
                     }
                   >
                     <HStack
@@ -514,20 +669,23 @@ export function TextAnalysis({
                         className={styles.themeRowMain}
                       >
                         {theme.color && <div className={styles.themeDot} />}
-                        <button
-                          type="button"
-                          onClick={handleNavigateToTheme}
-                          disabled={!themeId}
-                          className={[
-                            styles.themeLinkButton,
-                            themeId ? styles.themeLinkButtonEnabled : "",
-                          ].join(" ")}
-                          title={
-                            themeId
-                              ? "Klikk for å se feedback med dette temaet"
-                              : ""
-                          }
-                        >
+                        {canNavigateToTheme ? (
+                          <button
+                            type="button"
+                            onClick={handleNavigateToTheme}
+                            className={`${styles.themeLinkButton} ${styles.themeLinkButtonEnabled}`}
+                            title="Klikk for å se tilbakemeldinger med dette temaet"
+                          >
+                            <BodyShort
+                              as="span"
+                              size="small"
+                              weight="semibold"
+                              truncate
+                            >
+                              {theme.theme}
+                            </BodyShort>
+                          </button>
+                        ) : (
                           <BodyShort
                             as="span"
                             size="small"
@@ -536,20 +694,20 @@ export function TextAnalysis({
                           >
                             {theme.theme}
                           </BodyShort>
-                        </button>
+                        )}
                         {isEditable && (
-                          <button
-                            type="button"
+                          <Button
+                            data-color="neutral"
+                            variant="tertiary"
+                            size="small"
+                            icon={<PencilIcon aria-hidden />}
+                            aria-label={`Rediger temaet ${theme.theme}`}
                             onClick={() => {
                               if (theme.definedTheme) {
                                 handleOpenEdit(theme.definedTheme);
                               }
                             }}
-                            className={styles.themeEditButton}
-                            title="Rediger tema"
-                          >
-                            ✎
-                          </button>
+                          />
                         )}
                       </HStack>
                       <HStack
@@ -611,86 +769,35 @@ export function TextAnalysis({
             </HStack>
           )}
         </Box>
-      </DashboardCard>
-      {/* Recent Responses */}
-      {recentResponses.length > 0 && (
-        <DashboardCard padding="0" className={styles.cardOverflowHidden}>
+
+        {uncategorizedTheme && uncategorizedSummary && (
           <Box
             padding={{ xs: "space-16", md: "space-24" }}
-            borderWidth="0 0 1 0"
+            borderWidth="1 0 0 0"
             borderColor="neutral-subtle"
           >
-            <Heading size="small">{labels.recentTitle}</Heading>
-            <BodyShort
-              size="small"
-              textColor="subtle"
-              className={styles.sectionSubtitle}
-            >
-              {labels.recentSubtitle}
-            </BodyShort>
+            {analysisContext === "GENERAL_FEEDBACK" ? (
+              <Link
+                to="/feedback"
+                search={(prev) => ({
+                  ...prev,
+                  theme: "uncategorized",
+                  phrase: undefined,
+                  query: undefined,
+                  page: "1",
+                })}
+                className={`${styles.uncategorizedSummary} ${styles.uncategorizedLink}`}
+              >
+                {uncategorizedSummary}
+              </Link>
+            ) : (
+              <div className={styles.uncategorizedSummary}>
+                {uncategorizedSummary}
+              </div>
+            )}
           </Box>
-
-          <Box padding={{ xs: "space-16", md: "space-24" }}>
-            <VStack gap="space-12">
-              {recentResponses.slice(0, 10).map((response) => (
-                <div
-                  key={`${response.text}-${response.submittedAt}`}
-                  className={styles.recentResponseCard}
-                >
-                  <HStack justify="space-between" align="start" wrap={false}>
-                    <BodyShort
-                      size="small"
-                      className={styles.recentResponseText}
-                    >
-                      "{response.text}"
-                    </BodyShort>
-                    {showResponseStatus && response.success && (
-                      <Tag
-                        size="xsmall"
-                        variant={
-                          response.success === "yes"
-                            ? "success"
-                            : response.success === "partial"
-                              ? "warning"
-                              : "error"
-                        }
-                        className={styles.recentStatusTag}
-                      >
-                        {response.success === "yes"
-                          ? "Fullført"
-                          : response.success === "partial"
-                            ? "Delvis"
-                            : "Ikke fullført"}
-                      </Tag>
-                    )}
-                  </HStack>
-                  {response.additionalInfo && (
-                    <BodyShort
-                      size="small"
-                      textColor="subtle"
-                      className={styles.recentResponseAdditional}
-                    >
-                      {response.additionalInfo}
-                    </BodyShort>
-                  )}
-                </div>
-              ))}
-            </VStack>
-          </Box>
-        </DashboardCard>
-      )}
-      {/* Word Popover for categorized words */}
-      {popoverTheme && (
-        <WordPopover
-          word={popoverWord}
-          theme={popoverTheme}
-          anchorEl={popoverAnchor}
-          isOpen={!!popoverAnchor}
-          onClose={() => setPopoverAnchor(null)}
-          onRemoveWord={handleRemoveWord}
-          onEditTheme={handleOpenEdit}
-        />
-      )}
+        )}
+      </DashboardCard>
       {/* Theme Modal */}
       <ThemeModal
         isOpen={isModalOpen}
@@ -699,19 +806,8 @@ export function TextAnalysis({
         onDelete={handleDelete}
         isSubmitting={isCreating || isUpdating || isDeleting}
         theme={editingTheme}
-        initialKeywords={initialKeywords}
-        availableWords={wordFrequency.map((w) => w.word)}
+        availableWords={themeKeywordSuggestions}
         allThemes={definedThemes}
-        contextExamples={
-          initialKeywords.length > 0
-            ? getContextExamples(initialKeywords[0])
-            : []
-        }
-        wordVariants={
-          initialKeywords.length > 0
-            ? (wordLookup.get(initialKeywords[0].toLowerCase())?.variants ?? [])
-            : []
-        }
       />
     </>
   );

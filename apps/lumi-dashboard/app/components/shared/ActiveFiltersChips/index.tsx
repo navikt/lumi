@@ -116,7 +116,7 @@ export function ActiveFiltersChips() {
     const fieldLabel =
       statsQuery.data?.fieldStats?.find(
         (f) => f.fieldId === phraseFilter.fieldId,
-      )?.label ?? "Frase";
+      )?.label ?? "Uttrykk";
     chips.push({
       key: `phrase-${phraseFilter.fieldId}`,
       label: fieldLabel,

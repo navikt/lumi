@@ -345,7 +345,7 @@ describe("ActiveFiltersChips", () => {
     ).toBeInTheDocument();
   });
 
-  it("phrase chip falls back to 'Frase' when field not found in stats", () => {
+  it("phrase chip falls back to 'Uttrykk' when field not found in stats", () => {
     mockUsePhraseFilter.mockReturnValue({
       activeFilter: { fieldId: "unknown-field", surface: "test phrase" },
       setPhrase: vi.fn(),
@@ -356,7 +356,7 @@ describe("ActiveFiltersChips", () => {
       phrase: "unknown-field:test phrase",
     });
 
-    expect(screen.getByText("Frase: «test phrase»")).toBeInTheDocument();
+    expect(screen.getByText("Uttrykk: «test phrase»")).toBeInTheDocument();
   });
 
   it("clicking the remove button on phrase chip calls removePhrase", async () => {

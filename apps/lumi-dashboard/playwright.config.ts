@@ -17,7 +17,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // TanStack Start's development server is not isolated per worker. Parallel
+  // server-function requests can crash the shared Vite process and leave an
+  // error overlay that makes otherwise unrelated tests fail or pass falsely.
+  workers: 1,
   reporter: "html",
   use: {
     baseURL: `http://localhost:${E2E_PORT}`,
