@@ -7,6 +7,7 @@ import no.nav.lumi.config.appMicrometerRegistry
 import org.slf4j.LoggerFactory
 import redis.clients.jedis.RedisClient
 import redis.clients.jedis.exceptions.JedisConnectionException
+import redis.clients.jedis.params.SetParams
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 
@@ -123,7 +124,7 @@ class ValkeyStringCache private constructor(
 
         try {
             val startTime = System.nanoTime()
-            redisClient.setex(fullKey, ttl.seconds, value)
+            redisClient.set(fullKey, value, SetParams.setParams().ex(ttl.seconds))
             cacheOperationTimer.record(Duration.ofNanos(System.nanoTime() - startTime))
         } catch (e: JedisConnectionException) {
             cacheErrorCounter.increment()

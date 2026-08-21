@@ -4,8 +4,14 @@ import redis.clients.jedis.ConnectionPoolConfig
 import redis.clients.jedis.DefaultJedisClientConfig
 import redis.clients.jedis.HostAndPort
 import redis.clients.jedis.RedisClient
+import redis.clients.jedis.SslOptions
 import java.net.URI
 import java.time.Duration
+
+internal data class JedisConnectionConfig(
+    val hostAndPort: HostAndPort,
+    val clientConfig: DefaultJedisClientConfig,
+)
 
 internal object JedisFactory {
     private val defaultConnectionTimeout: Duration = Duration.ofSeconds(2)
@@ -16,6 +22,28 @@ internal object JedisFactory {
         username: String?,
         password: String?,
     ): RedisClient {
+        val connectionConfig = createConnectionConfig(uri, username, password)
+
+        val poolConfig = ConnectionPoolConfig().apply {
+            // Validate connections to avoid stale sockets ("Broken pipe") after idle.
+            testOnBorrow = true
+            testWhileIdle = true
+            timeBetweenEvictionRuns = Duration.ofMinutes(1)
+            minEvictableIdleDuration = Duration.ofMinutes(5)
+        }
+
+        return RedisClient.builder()
+            .hostAndPort(connectionConfig.hostAndPort)
+            .clientConfig(connectionConfig.clientConfig)
+            .poolConfig(poolConfig)
+            .build()
+    }
+
+    internal fun createConnectionConfig(
+        uri: String,
+        username: String?,
+        password: String?,
+    ): JedisConnectionConfig {
         val normalizedUri = uri
             .replace("valkey://", "redis://")
             .replace("valkeys://", "rediss://")
@@ -33,28 +61,16 @@ internal object JedisFactory {
             ?.toIntOrNull()
 
         val clientConfig = DefaultJedisClientConfig.builder()
-            .ssl(ssl)
             .connectionTimeoutMillis(defaultConnectionTimeout.toMillis().toInt())
             .socketTimeoutMillis(defaultSocketTimeout.toMillis().toInt())
             .apply {
+                if (ssl) sslOptions(SslOptions.defaults())
                 if (!username.isNullOrBlank()) user(username)
                 if (!password.isNullOrBlank()) password(password)
                 if (dbIndex != null) database(dbIndex)
             }
             .build()
 
-        val poolConfig = ConnectionPoolConfig().apply {
-            // Validate connections to avoid stale sockets ("Broken pipe") after idle.
-            testOnBorrow = true
-            testWhileIdle = true
-            timeBetweenEvictionRuns = Duration.ofMinutes(1)
-            minEvictableIdleDuration = Duration.ofMinutes(5)
-        }
-
-        return RedisClient.builder()
-            .hostAndPort(HostAndPort(host, port))
-            .clientConfig(clientConfig)
-            .poolConfig(poolConfig)
-            .build()
+        return JedisConnectionConfig(HostAndPort(host, port), clientConfig)
     }
 }
