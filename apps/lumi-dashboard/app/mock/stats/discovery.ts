@@ -8,6 +8,7 @@ import type { DiscoveryResponse, FeedbackDto } from "~/types/api";
 import { mockThemes } from "../themes";
 import { DiscoveryFieldIds } from "../utils/extractors";
 import { applyFeedbackFilters, STOP_WORDS, stemNorwegian } from "./common";
+import { extractPhrases } from "./phrases";
 
 /**
  * Calculate Discovery stats from feedback items.
@@ -54,6 +55,7 @@ export function getMockDiscoveryStats(
     }
 
     return {
+      id: item.id,
       task,
       success,
       submittedAt: item.submittedAt,
@@ -113,6 +115,15 @@ export function getMockDiscoveryStats(
       }
     }
   }
+
+  const textInsights = extractPhrases(
+    responses.map((response) => ({
+      id: response.id,
+      text: response.task,
+      submittedAt: response.submittedAt,
+    })),
+    { maxSourceIds: 3 },
+  );
 
   // Build word frequency list with canonical form and variants
   const wordFrequency = Array.from(stemAccumulators.values())
@@ -241,6 +252,12 @@ export function getMockDiscoveryStats(
         (a, b) =>
           new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime(),
       )
-      .slice(0, 10),
+      .slice(0, 10)
+      .map(({ task, success, submittedAt }) => ({
+        task,
+        success,
+        submittedAt,
+      })),
+    ...textInsights,
   };
 }

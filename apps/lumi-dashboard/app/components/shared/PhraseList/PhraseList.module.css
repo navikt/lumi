@@ -1,0 +1,98 @@
+.phraseList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.phraseItem {
+  border-bottom: 1px solid var(--ax-border-neutral-subtleA);
+}
+
+.phraseItem:last-child {
+  border-bottom: none;
+}
+
+.phraseLink {
+  display: block;
+  padding: var(--ax-space-6) var(--ax-space-8);
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 0.15s ease;
+}
+
+.phraseLink:hover {
+  background-color: var(--ax-bg-neutral-moderate-hover);
+}
+
+.phraseLink:focus-visible {
+  outline: 2px solid var(--ax-border-focus);
+  outline-offset: 2px;
+}
+
+.phraseArrow {
+  color: var(--ax-text-neutral-subtle);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  flex-shrink: 0;
+}
+
+.phraseLink:hover .phraseArrow,
+.phraseLink:focus-visible .phraseArrow {
+  opacity: 1;
+}
+
+.phraseRank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--ax-space-20);
+  height: var(--ax-space-20);
+  border-radius: var(--ax-border-radius-full);
+  background: var(--ax-bg-neutral-moderate);
+  font-size: var(--ax-font-size-small);
+  font-weight: 600;
+  color: var(--ax-text-neutral-subtle);
+  flex-shrink: 0;
+}
+
+.phraseBar {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  border-radius: var(--ax-border-radius-medium);
+  overflow: hidden;
+}
+
+.phraseBarFill {
+  position: absolute;
+  inset: 0;
+  width: 0;
+  background: var(--ax-bg-accent-softA);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.phraseContent {
+  position: relative;
+  padding: var(--ax-space-2) var(--ax-space-8);
+}
+
+.phraseText {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.phraseMeta {
+  flex-shrink: 0;
+}
+
+.phraseCount {
+  color: var(--ax-text-neutral-subtle);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phraseLink,
+  .phraseArrow {
+    transition: none;
+  }
+}

@@ -30,7 +30,7 @@ export function ActiveFilters({ params }: ActiveFiltersProps) {
   const phraseFilter = parsePhraseParam(params.phrase);
   const phraseLabel = phraseFilter
     ? (stats?.fieldStats?.find((f) => f.fieldId === phraseFilter.fieldId)
-        ?.label ?? "Frase")
+        ?.label ?? "Uttrykk")
     : undefined;
 
   return (

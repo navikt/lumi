@@ -265,4 +265,55 @@ describe("applyFeedbackFilters", () => {
 
     expect(filtered.map((i) => i.id)).toEqual(["match"]);
   });
+
+  it("matches phrase stems after stopword removal", () => {
+    const phraseItems = [
+      makeItem({
+        id: "phrase-match",
+        answers: [
+          {
+            fieldId: "feedback",
+            fieldType: "TEXT",
+            question: { label: "Hvorfor?" },
+            value: {
+              type: "text",
+              text: "Dette var vanskelige svaret å gi",
+            },
+          },
+        ],
+      }),
+    ];
+
+    const filtered = applyFeedbackFilters(phraseItems, {
+      phrase: "feedback:vanskelig svare",
+    });
+
+    expect(filtered.map((item) => item.id)).toEqual(["phrase-match"]);
+  });
+
+  it("matches canonical discovery phrase filters against the legacy task field", () => {
+    const phraseItems = [
+      makeItem({
+        id: "legacy-discovery",
+        surveyType: "discovery",
+        answers: [
+          {
+            fieldId: "discoveredTask",
+            fieldType: "TEXT",
+            question: { label: "Hva kom du for å gjøre?" },
+            value: {
+              type: "text",
+              text: "Det er vanskelig å svare raskt",
+            },
+          },
+        ],
+      }),
+    ];
+
+    const filtered = applyFeedbackFilters(phraseItems, {
+      phrase: "task:vanskelig svare",
+    });
+
+    expect(filtered.map((item) => item.id)).toEqual(["legacy-discovery"]);
+  });
 });

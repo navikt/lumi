@@ -373,17 +373,20 @@ class FeedbackRepository(
     }
 
     private fun recordMatchesPhraseFilter(record: FeedbackDbRecord, fieldId: String, expectedStemKey: String): Boolean {
-        val answers = try {
-            val jsonObj = json.parseToJsonElement(record.feedbackJson).jsonObject
-            jsonObj["answers"] as? JsonArray
+        val jsonObj = try {
+            json.parseToJsonElement(record.feedbackJson).jsonObject
         } catch (e: Exception) {
             log.debug("Failed to parse feedback JSON for phrase filter id=${record.id}", e)
             null
         } ?: return false
+        val answers = jsonObj["answers"] as? JsonArray ?: return false
+
+        val surveyType = SurveyType.fromWireName(jsonObj.stringValue("surveyType"))
 
         return answers.any { answerElement ->
             val answerObj = answerElement.asJsonObjectOrNull() ?: return@any false
-            if (answerObj.stringValue("fieldId") != fieldId) return@any false
+            val actualFieldId = answerObj.stringValue("fieldId") ?: return@any false
+            if (!matchesPhraseFieldId(actualFieldId, fieldId, surveyType)) return@any false
             if (answerObj.stringValue("fieldType") != FieldType.TEXT.name) return@any false
 
             val valueObj = answerObj["value"].asJsonObjectOrNull() ?: return@any false

@@ -1,3 +1,4 @@
+import { SPECIALIZED_SURVEY_FIELD_IDS } from "@navikt/lumi-survey";
 import { TextAnalysis } from "~/components/shared/TextAnalysis";
 import type { DiscoveryResponse } from "~/types/api";
 
@@ -6,13 +7,17 @@ interface DiscoveryAnalysisProps {
 }
 
 /**
- * Analyzes Discovery survey responses to identify common tasks and themes.
- * Shows word frequency cloud, theme clustering, and recent responses.
- *
- * This is now a thin wrapper around the shared TextAnalysis component.
+ * Shows recurring tasks with concrete examples and owner-defined themes.
  */
 export function DiscoveryAnalysis({ data }: DiscoveryAnalysisProps) {
-  const { wordFrequency, themes, recentResponses, totalSubmissions } = data;
+  const {
+    themes,
+    recentResponses,
+    totalSubmissions,
+    phrases = [],
+    quotes = [],
+    confidenceLevel,
+  } = data;
 
   // Transform recentResponses to the format expected by TextAnalysis
   const transformedResponses = recentResponses.map((response) => ({
@@ -35,18 +40,24 @@ export function DiscoveryAnalysis({ data }: DiscoveryAnalysisProps) {
   return (
     <TextAnalysis
       analysisContext="GENERAL_FEEDBACK"
-      wordFrequency={wordFrequency}
+      phrases={phrases}
+      quotes={quotes}
+      confidenceLevel={confidenceLevel}
+      phraseFieldId={SPECIALIZED_SURVEY_FIELD_IDS.task}
       themes={transformedThemes}
       recentResponses={transformedResponses}
       totalCount={totalSubmissions}
       showResponseStatus
       labels={{
-        wordCloudTitle: "Ordfrekvens",
-        themesTitle: "Identifiserte temaer",
-        recentTitle: "Siste svar",
-        recentSubtitle: "Hva brukere sier de kom for å gjøre",
-        emptyMessage:
-          "Ingen discovery-data tilgjengelig ennå. Data vises når brukere begynner å svare på discovery-surveyen.",
+        insightsTitle: "Det brukerne prøver å gjøre",
+        insightsSubtitle:
+          "Se hva som går igjen, og åpne svarene bak hvert uttrykk.",
+        phrasesTitle: "Oppgaver som går igjen",
+        examplesTitle: "Eksempler fra brukerne",
+        themesTitle: "Egne oppgavetemaer",
+        themesSubtitle:
+          "Bruk egne temaer når dere vil følge de samme oppgavetypene over tid.",
+        emptyMessage: "Her vises mønstre når de første brukerne har svart.",
       }}
     />
   );

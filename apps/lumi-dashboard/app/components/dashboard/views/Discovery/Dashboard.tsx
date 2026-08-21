@@ -9,7 +9,7 @@ import { DiscoveryAnalysis } from "./index";
 import { Skeleton as DiscoveryAnalysisSkeleton } from "./Skeleton";
 
 /**
- * Discovery Dashboard - word cloud, themes, recent responses
+ * Discovery dashboard — recurring tasks, examples and owner-defined themes.
  */
 export function DiscoveryDashboard() {
   const { data, isPending } = useDiscoveryStats();

@@ -8,6 +8,7 @@ import { SPECIALIZED_SURVEY_FIELD_IDS } from "@navikt/lumi-survey";
 import type { BlockerResponse, FeedbackDto } from "~/types/api";
 import { mockThemes } from "../themes";
 import { applyFeedbackFilters, STOP_WORDS, stemNorwegian } from "./common";
+import { extractPhrases } from "./phrases";
 
 /**
  * Calculate blocker pattern statistics from Top Tasks feedback.
@@ -24,6 +25,7 @@ export function getMockBlockerStats(
 
   // Extract blocker responses
   const blockerResponses: Array<{
+    id: string;
     blocker: string;
     task: string;
     submittedAt: string;
@@ -53,12 +55,21 @@ export function getMockBlockerStats(
       if (taskFilter && taskId !== taskFilter) continue;
 
       blockerResponses.push({
+        id: item.id,
         blocker: blockerAnswer.value.text,
         task,
         submittedAt: item.submittedAt,
       });
     }
   }
+
+  const textInsights = extractPhrases(
+    blockerResponses.map((response) => ({
+      id: response.id,
+      text: response.blocker,
+      submittedAt: response.submittedAt,
+    })),
+  );
 
   // Calculate word frequency with stem-based grouping
   const stemAccumulators = new Map<
@@ -220,6 +231,12 @@ export function getMockBlockerStats(
         (a, b) =>
           new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime(),
       )
-      .slice(0, 10),
+      .slice(0, 10)
+      .map(({ blocker, task, submittedAt }) => ({
+        blocker,
+        task,
+        submittedAt,
+      })),
+    ...textInsights,
   };
 }

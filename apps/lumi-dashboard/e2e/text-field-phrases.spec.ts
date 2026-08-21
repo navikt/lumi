@@ -11,16 +11,18 @@ test.describe("TextFieldCard phrases", () => {
     await expect(page.locator("main")).toBeVisible({ timeout: 15000 });
 
     // Phrase heading must be visible
-    const heading = page.getByText("Hyppigste fraser");
+    const heading = page.getByText("Uttrykk som går igjen");
     await expect(heading.first()).toBeVisible({ timeout: 10000 });
 
     // Should have an ordered list of phrase links
-    const phraseList = page.getByRole("list", { name: /hyppigste fraser/i });
+    const phraseList = page.getByRole("list", {
+      name: /uttrykk som går igjen/i,
+    });
     await expect(phraseList.first()).toBeVisible();
 
     // Phrase links should be visible and clickable
     const phraseLinks = page.getByRole("link", {
-      name: /Vis \d+ tilbakemeldinger med frasen/i,
+      name: /Vis \d+ tilbakemeldinger med uttrykket/i,
     });
     await expect(phraseLinks.first()).toBeVisible({ timeout: 5000 });
 
@@ -38,14 +40,14 @@ test.describe("TextFieldCard phrases", () => {
     await expect(page.locator("main")).toBeVisible({ timeout: 15000 });
 
     const phraseLinks = page.getByRole("link", {
-      name: /Vis \d+ tilbakemeldinger med frasen/i,
+      name: /Vis \d+ tilbakemeldinger med uttrykket/i,
     });
     await expect(phraseLinks.first()).toBeVisible({ timeout: 10000 });
 
     // Extract phrase text from aria-label before clicking
     const firstLink = phraseLinks.first();
     const ariaLabel = await firstLink.getAttribute("aria-label");
-    const phraseMatch = ariaLabel?.match(/frasen «(.+?)»/);
+    const phraseMatch = ariaLabel?.match(/uttrykket «(.+?)»/);
     const phraseText = phraseMatch?.[1] ?? "";
 
     // Extract count from aria-label
@@ -82,22 +84,11 @@ test.describe("TextFieldCard phrases", () => {
     const chipText = new RegExp(`«${phraseText}»`);
     await expect(page.getByText(chipText)).toBeVisible({ timeout: 5000 });
 
-    // totalElements header or row count should reflect the expected count
+    // The filter must return the exact set used to calculate the phrase count.
     if (expectedCount) {
-      const total = page.getByText(
-        new RegExp(`${expectedCount}\\s*(tilbakemelding|treff|resultat)`),
-      );
-      // This is a soft check — mock may render differently
-      const totalVisible = await total
-        .first()
-        .isVisible()
-        .catch(() => false);
-      if (!totalVisible) {
-        // Fallback: at least verify some feedback rows render
-        await expect(page.locator("main")).toContainText("tilbakemelding", {
-          timeout: 5000,
-        });
-      }
+      await expect(
+        page.getByText(new RegExp(`Viser ${expectedCount} svar`)),
+      ).toBeVisible({ timeout: 5000 });
     }
   });
 });

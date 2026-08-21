@@ -251,32 +251,23 @@ export const STOP_WORDS = new Set([
  * Mirrors the backend implementation in DiscoveryService.kt.
  */
 export function stemNorwegian(word: string): string {
-  const stem = word.toLowerCase().trim();
+  let stem = word.toLowerCase().trim();
 
-  // Common Norwegian suffixes to remove (order matters - longer first)
-  const suffixes = [
-    // Noun definite/indefinite forms
-    "ene",
-    "ane", // plural definite
-    "en",
-    "et",
-    "a", // singular definite
-    "er",
-    "ar", // plural indefinite
-
-    // Verb forms
-    "te",
-    "de", // past tense
-    "ere",
-    "est", // comparative/superlative
-  ];
-
-  for (const suffix of suffixes) {
-    // Only remove if stem would still be meaningful (3+ chars)
-    if (stem.length > suffix.length + 2 && stem.endsWith(suffix)) {
-      return stem.slice(0, -suffix.length);
-    }
+  if (stem.length > 4 && stem.endsWith("s")) stem = stem.slice(0, -1);
+  if (stem.length > 7 && /(?:heter|heten)$/.test(stem))
+    return stem.slice(0, -5);
+  if (stem.length > 5 && /(?:dom|het)$/.test(stem)) return stem.slice(0, -3);
+  if (stem.length > 7 && /(?:elser|elsen)$/.test(stem))
+    return stem.slice(0, -5);
+  if (stem.length > 6 && /(?:ende|else|este|eren)$/.test(stem)) {
+    return stem.slice(0, -4);
   }
+  if (stem.length > 5 && /(?:ere|est|ene)$/.test(stem))
+    return stem.slice(0, -3);
+  if (stem.length > 4 && /(?:er|en|et|st|te)$/.test(stem)) {
+    return stem.slice(0, -2);
+  }
+  if (stem.length > 3 && /[aen]$/.test(stem)) return stem.slice(0, -1);
 
   return stem;
 }

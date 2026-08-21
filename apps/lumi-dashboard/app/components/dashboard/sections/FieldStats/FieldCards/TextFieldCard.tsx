@@ -1,20 +1,15 @@
-import { ArrowRightIcon, ChatExclamationmarkIcon } from "@navikt/aksel-icons";
-import { BodyShort, Detail, HStack, Tag, VStack } from "@navikt/ds-react";
-import { Link } from "@tanstack/react-router";
+import { ChatExclamationmarkIcon } from "@navikt/aksel-icons";
+import { BodyShort, HStack, Tag, VStack } from "@navikt/ds-react";
 
 import { DashboardCard } from "~/components/dashboard";
+import { PhraseList } from "~/components/shared/PhraseList";
 import type { TextStats } from "~/types/api";
-import { stringifyPhraseFilter } from "~/utils/phraseFilterUtils";
 import { formatRelativeTime } from "~/utils/wordAnalysis";
 
 import { FieldCardHeader } from "./FieldCardHeader";
 import styles from "./TextFieldCard.module.css";
 import type { FieldCardProps } from "./types";
 
-// Phrase rendering is intentionally inlined rather than reusing PhraseList,
-// because PhraseList wraps itself in DashboardCard — and TextFieldCard IS a
-// DashboardCard, which would cause visual nesting. Extract a shared
-// "PhraseItems" sub-component if a third consumer appears.
 export function TextFieldCard({ field, totalCount }: FieldCardProps) {
   const stats = field.stats as TextStats;
   const responseRate =
@@ -22,9 +17,6 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
 
   const phrases = stats.topPhrases ?? [];
   const hasPhrases = phrases.length > 0;
-  const displayedPhrases = phrases.slice(0, 5);
-  const maxCount = displayedPhrases[0]?.count ?? 1;
-
   const hasKeywords = stats.topKeywords && stats.topKeywords.length > 0;
   const hasRecentResponses =
     stats.recentResponses && stats.recentResponses.length > 0;
@@ -50,63 +42,13 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
             weight="semibold"
             className={styles.sectionHeading}
           >
-            Hyppigste fraser
+            Uttrykk som går igjen
           </BodyShort>
-          <ol className={styles.phraseList} aria-label="Hyppigste fraser">
-            {displayedPhrases.map((phrase, index) => (
-              <li key={phrase.text} className={styles.phraseItem}>
-                <Link
-                  to="/feedback"
-                  search={(prev) => ({
-                    ...prev,
-                    phrase: stringifyPhraseFilter(field.fieldId, phrase.text),
-                    query: undefined,
-                    page: "1",
-                    hasText: "true",
-                  })}
-                  className={styles.phraseLink}
-                  aria-label={`Vis ${phrase.count} tilbakemeldinger med frasen «${phrase.text}»`}
-                >
-                  <HStack align="center" gap="space-8" wrap={false}>
-                    <span className={styles.phraseRank}>{index + 1}</span>
-                    <span className={styles.phraseBar}>
-                      <span
-                        className={styles.phraseBarFill}
-                        style={{
-                          width: `${Math.round((phrase.count / maxCount) * 100)}%`,
-                        }}
-                      />
-                      <HStack
-                        align="center"
-                        gap="space-8"
-                        justify="space-between"
-                        wrap={false}
-                        className={styles.phraseContent}
-                      >
-                        <BodyShort size="small" weight="semibold" truncate>
-                          {phrase.text}
-                        </BodyShort>
-                        <HStack
-                          gap="space-8"
-                          align="center"
-                          className={styles.phraseMeta}
-                        >
-                          <Detail className={styles.phraseCount}>
-                            {phrase.count}
-                          </Detail>
-                          <ArrowRightIcon
-                            fontSize="var(--ax-font-size-medium)"
-                            className={styles.phraseArrow}
-                            aria-hidden
-                          />
-                        </HStack>
-                      </HStack>
-                    </span>
-                  </HStack>
-                </Link>
-              </li>
-            ))}
-          </ol>
+          <PhraseList
+            phrases={phrases}
+            fieldId={field.fieldId}
+            ariaLabel="Uttrykk som går igjen"
+          />
         </VStack>
       ) : (
         hasKeywords && (
