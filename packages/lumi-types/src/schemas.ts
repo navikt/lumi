@@ -61,7 +61,7 @@ export const FeedbackParamsSchema = z.object({
   choice: z.array(z.string()).optional(),
   /** Rating filters as repeated query params, each in format "fieldId:value" */
   rating: z.array(z.string()).optional(),
-  /** Phrase filter in format "fieldId:word1 word2" — exact bigram match */
+  /** Phrase filter in format "fieldId:natural phrase text" */
   phrase: z.string().optional(),
 });
 
@@ -376,7 +376,7 @@ export const ExportParamsSchema = z.object({
   choice: z.array(z.string()).optional(),
   /** Rating filters as repeated query params, each in format "fieldId:value" */
   rating: z.array(z.string()).optional(),
-  /** Phrase filter in format "fieldId:word1 word2" — exact bigram match */
+  /** Phrase filter in format "fieldId:natural phrase text" */
   phrase: z.string().optional(),
 });
 
@@ -1137,25 +1137,6 @@ export const ContextTagsResponseSchema = z.object({
   maxCardinality: z.number().optional(),
 });
 
-// Word frequency schema (shared by Discovery and Blocker)
-const WordVariantSchema = z.object({
-  word: z.string(),
-  count: z.number(),
-});
-
-const SourceResponseSchema = z.object({
-  text: z.string(),
-  submittedAt: z.string(),
-});
-
-const WordFrequencySchema = z.object({
-  word: z.string(),
-  stem: z.string(),
-  count: z.number(),
-  variants: z.array(WordVariantSchema).optional(),
-  sourceResponses: z.array(SourceResponseSchema).optional(),
-});
-
 const PhraseEntrySchema = z.object({
   text: z.string(),
   count: z.number(),
@@ -1179,7 +1160,6 @@ const DiscoveryThemeSchema = z.object({
 
 export const DiscoveryResponseSchema = z.object({
   totalSubmissions: z.number(),
-  wordFrequency: z.array(WordFrequencySchema),
   themes: z.array(DiscoveryThemeSchema),
   recentResponses: z.array(
     z.object({
@@ -1205,7 +1185,6 @@ const BlockerThemeSchema = z.object({
 
 export const BlockerResponseSchema = z.object({
   totalBlockers: z.number(),
-  wordFrequency: z.array(WordFrequencySchema),
   themes: z.array(BlockerThemeSchema),
   recentBlockers: z.array(
     z.object({

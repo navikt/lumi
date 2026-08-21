@@ -436,7 +436,7 @@ data class FeedbackQuery(
     val choiceFilters: List<Pair<String, String>> = emptyList(),
     /** Multi-value rating filters: list of (fieldId, ratingValue) pairs */
     val ratingFilters: List<Pair<String, Int>> = emptyList(),
-    /** Single phrase filter for exact bigram matching */
+    /** Single phrase filter matched by its two normalized content words */
     val phraseFilter: PhraseFilter? = null,
 )
 

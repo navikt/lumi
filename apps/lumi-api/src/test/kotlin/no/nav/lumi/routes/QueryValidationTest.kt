@@ -155,6 +155,12 @@ class QueryValidationTest : FunSpec({
             result shouldBe PhraseFilter(fieldId = "fieldId", surface = "vanskelig svare")
         }
 
+        test("accepts natural display text and normalizes it to two content words") {
+            val result = parsePhraseFilter(listOf("fieldId:vanskelig å svare"))
+
+            result shouldBe PhraseFilter(fieldId = "fieldId", surface = "vanskelig svare")
+        }
+
         test("returns null for null input") {
             parsePhraseFilter(null) shouldBe null
         }
@@ -171,6 +177,24 @@ class QueryValidationTest : FunSpec({
 
             ex.message shouldContain "Invalid phrase format"
             ex.message.shouldNotContain(rawInput)
+        }
+
+        test("rejects an extra colon in the phrase surface") {
+            shouldThrow<ApiErrorException.BadRequestException> {
+                parsePhraseFilter(listOf("fieldId:vanskelig:svare"))
+            }
+        }
+
+        test("rejects punctuation as an implicit word separator") {
+            listOf(
+                "fieldId:vanskelig/svare",
+                "fieldId:vanskelig,svare",
+                "fieldId:vanskelig-svare",
+            ).forEach { rawInput ->
+                shouldThrow<ApiErrorException.BadRequestException> {
+                    parsePhraseFilter(listOf(rawInput))
+                }
+            }
         }
 
         test("rejects blank surface after normalization") {

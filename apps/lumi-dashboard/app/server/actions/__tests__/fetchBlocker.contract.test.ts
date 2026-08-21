@@ -6,23 +6,6 @@ describe("fetchBlocker contract", () => {
   it("validates real-world Blocker response shape", () => {
     const payload = {
       totalBlockers: 42,
-      wordFrequency: [
-        {
-          word: "skjema",
-          stem: "skjem",
-          count: 18,
-          variants: [
-            { word: "skjema", count: 12 },
-            { word: "skjemaet", count: 6 },
-          ],
-          sourceResponses: [
-            {
-              text: "Fant ikke skjemaet jeg trengte",
-              submittedAt: "2026-01-21T10:00:00Z",
-            },
-          ],
-        },
-      ],
       themes: [
         {
           theme: "Skjema",
@@ -47,7 +30,6 @@ describe("fetchBlocker contract", () => {
   it("rejects theme missing required fields", () => {
     const invalidPayload = {
       totalBlockers: 1,
-      wordFrequency: [],
       themes: [
         {
           theme: "Incomplete",

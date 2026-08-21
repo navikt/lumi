@@ -9,6 +9,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiErrorException, ErrorType } from "~/types/errors";
 
 import { TextAnalysis, type TextAnalysisProps } from ".";
 
@@ -22,6 +23,10 @@ const themeState = vi.hoisted(() => ({
   }>,
   isLoading: false,
   error: null as Error | null,
+  availableWords: [] as string[],
+  createTheme: vi.fn(),
+  updateTheme: vi.fn(),
+  deleteTheme: vi.fn(),
 }));
 
 vi.mock("~/hooks/useThemes", () => ({
@@ -29,9 +34,9 @@ vi.mock("~/hooks/useThemes", () => ({
     themes: themeState.themes,
     isLoading: themeState.isLoading,
     error: themeState.error,
-    createTheme: vi.fn(),
-    updateTheme: vi.fn(),
-    deleteTheme: vi.fn(),
+    createTheme: themeState.createTheme,
+    updateTheme: themeState.updateTheme,
+    deleteTheme: themeState.deleteTheme,
     isCreating: false,
     isUpdating: false,
     isDeleting: false,
@@ -39,8 +44,34 @@ vi.mock("~/hooks/useThemes", () => ({
 }));
 
 vi.mock("~/components/shared/ThemeModal", () => ({
-  ThemeModal: ({ isOpen }: { isOpen: boolean }) =>
-    isOpen ? <div role="dialog">Opprett tema</div> : null,
+  ThemeModal: ({
+    isOpen,
+    availableWords = [],
+    onSubmit,
+    mutationError,
+    nameError,
+  }: {
+    isOpen: boolean;
+    availableWords?: string[];
+    onSubmit: (data: { name: string; keywords: string[] }) => void;
+    mutationError?: string;
+    nameError?: string;
+  }) => {
+    themeState.availableWords = availableWords;
+    return isOpen ? (
+      <div role="dialog">
+        Opprett tema
+        {mutationError && <div role="status">{mutationError}</div>}
+        {nameError && <div data-testid="theme-name-error">{nameError}</div>}
+        <button
+          type="button"
+          onClick={() => onSubmit({ name: "Testtema", keywords: ["test"] })}
+        >
+          Lagre testtema
+        </button>
+      </div>
+    ) : null;
+  },
 }));
 
 async function renderWithRouter(ui: React.ReactElement) {
@@ -89,6 +120,10 @@ describe("TextAnalysis", () => {
     themeState.themes = [];
     themeState.isLoading = false;
     themeState.error = null;
+    themeState.availableWords = [];
+    themeState.createTheme.mockReset();
+    themeState.updateTheme.mockReset();
+    themeState.deleteTheme.mockReset();
   });
 
   it("prioriterer fraser og utvalgte eksempler når svargrunnlaget er stort", async () => {
@@ -149,12 +184,73 @@ describe("TextAnalysis", () => {
     expect(screen.getByText("Egne temaer")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Lag egne temaer når dere vil følge de samme tingene over tid.",
+        "Lag egne temaer når dere vil følge de samme tingene over tid. Ett svar kan høre til flere temaer.",
       ),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Nytt tema" }),
     ).toBeInTheDocument();
+  });
+
+  it("foreslår bare innholdsordene fra naturlige fraser som nøkkelord", async () => {
+    await renderWithRouter(
+      <TextAnalysis
+        {...baseProps}
+        phrases={[{ text: "vanskelig å svare", count: 4 }]}
+      />,
+    );
+
+    expect(themeState.availableWords).toEqual(["svare", "vanskelig"]);
+  });
+
+  it("viser mutasjonsfeil og lar brukeren prøve opprettelsen på nytt", async () => {
+    const user = userEvent.setup();
+    let attempt = 0;
+    themeState.createTheme.mockImplementation(
+      (
+        _data: unknown,
+        callbacks: { onSuccess?: () => void; onError?: () => void },
+      ) => {
+        attempt++;
+        if (attempt === 1) callbacks.onError?.();
+        else callbacks.onSuccess?.();
+      },
+    );
+    await renderWithRouter(<TextAnalysis {...baseProps} />);
+
+    await user.click(screen.getByRole("button", { name: "Nytt tema" }));
+    await user.click(screen.getByRole("button", { name: "Lagre testtema" }));
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Kunne ikke opprette temaet. Prøv igjen.",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Lagre testtema" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(themeState.createTheme).toHaveBeenCalledTimes(2);
+  });
+
+  it("forklarer navnekonflikt som en feil brukeren kan rette", async () => {
+    const user = userEvent.setup();
+    themeState.createTheme.mockImplementation(
+      (_data: unknown, callbacks: { onError?: (error: Error) => void }) =>
+        callbacks.onError?.(
+          new ApiErrorException({
+            status: 409,
+            type: ErrorType.CONFLICT,
+            message: "Theme name already exists",
+            timestamp: new Date().toISOString(),
+          }),
+        ),
+    );
+    await renderWithRouter(<TextAnalysis {...baseProps} />);
+
+    await user.click(screen.getByRole("button", { name: "Nytt tema" }));
+    await user.click(screen.getByRole("button", { name: "Lagre testtema" }));
+
+    expect(screen.getByTestId("theme-name-error")).toHaveTextContent(
+      "Det finnes allerede et tema med dette navnet. Velg et annet navn.",
+    );
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
   it("holder egne temaer uten treff tilgjengelige og skiller svar uten tema", async () => {
@@ -183,7 +279,7 @@ describe("TextAnalysis", () => {
 
     expect(screen.getByText("1 eget tema")).toBeInTheDocument();
     expect(screen.getByText("Utbetaling")).toBeInTheDocument();
-    expect(screen.getByText("0 (0%)")).toBeInTheDocument();
+    expect(screen.getByText(/0 svar \(0 %\)/)).toBeInTheDocument();
     expect(screen.getByText("Uten tema")).toBeInTheDocument();
     expect(screen.getByText("9 svar")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Uten tema/ })).toHaveAttribute(
@@ -217,7 +313,12 @@ describe("TextAnalysis", () => {
       />,
     );
 
-    expect(screen.getByText("75%")).toBeInTheDocument();
+    expect(screen.getByText("75 % kom i mål")).toBeInTheDocument();
+    const progress = screen.getByRole("progressbar", {
+      name: "10 prosent av svarene handler om Utbetaling",
+    });
+    expect(progress).toHaveAttribute("value", "12");
+    expect(progress).toHaveAttribute("max", "120");
   });
 
   it("viser hindringstemaer uten en filterlenke som API-et ikke støtter", async () => {

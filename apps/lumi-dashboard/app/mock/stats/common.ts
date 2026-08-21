@@ -11,7 +11,7 @@ import type {
   FieldStats,
   FieldType,
 } from "~/types/api";
-import { extractWords } from "../utils/textAnalysis";
+import { extractTopKeywords } from "./phrases";
 
 export {
   getBlockerTextFromFeedback,
@@ -23,7 +23,7 @@ export {
 } from "../utils/extractors";
 // Re-export filter utilities for convenience
 export { applyFeedbackFilters, type FilterParams } from "../utils/filters";
-export { extractWords, STOP_WORDS, stemNorwegian } from "../utils/textAnalysis";
+export { stemNorwegian } from "../utils/textAnalysis";
 
 // ============================================
 // Types
@@ -236,18 +236,10 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
       }
 
       default: {
-        // Extract top keywords from text responses
-        const wordCounts = new Map<string, number>();
-        for (const response of field.textResponses) {
-          const words = extractWords(response.text);
-          for (const word of words) {
-            wordCounts.set(word, (wordCounts.get(word) || 0) + 1);
-          }
-        }
-        const topKeywords = Array.from(wordCounts.entries())
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 10)
-          .map(([word, count]) => ({ word, count }));
+        const topKeywords = extractTopKeywords(
+          field.textResponses.map((response) => response.text),
+          10,
+        );
 
         const recentResponses = field.textResponses
           .sort(

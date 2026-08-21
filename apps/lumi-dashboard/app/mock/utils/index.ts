@@ -24,10 +24,4 @@ export {
   toURLSearchParams,
 } from "./filters";
 // Text analysis utilities
-export {
-  extractStemmedWords,
-  extractWords,
-  matchesThemeKeywords,
-  STOP_WORDS,
-  stemNorwegian,
-} from "./textAnalysis";
+export { matchesThemeKeywords, stemNorwegian } from "./textAnalysis";

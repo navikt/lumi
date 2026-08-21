@@ -41,6 +41,19 @@ export const DiscoveryFieldIds = {
   ] as const,
 } as const;
 
+/** Canonical task text used by Discovery stats and drilldown filters. */
+export function getDiscoveryTaskText(item: FeedbackDto): string | null {
+  if (item.surveyType !== "discovery") return null;
+  const taskAnswer = item.answers.find((answer) =>
+    DiscoveryFieldIds.task.includes(
+      answer.fieldId as (typeof DiscoveryFieldIds.task)[number],
+    ),
+  );
+  return taskAnswer?.fieldType === "TEXT"
+    ? (taskAnswer.value.text ?? null)
+    : null;
+}
+
 export const TaskPriorityFieldIds = {
   priority: [
     SPECIALIZED_SURVEY_FIELD_IDS.priority,

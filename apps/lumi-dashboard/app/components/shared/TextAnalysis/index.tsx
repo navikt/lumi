@@ -35,6 +35,7 @@ import type {
   TextTheme,
   UpdateThemeInput,
 } from "~/types/api";
+import { ApiErrorException, ErrorType } from "~/types/errors";
 import {
   THEME_COLOR_AMBER,
   THEME_COLOR_BLUE,
@@ -77,7 +78,7 @@ interface RecentResponseItem {
 export interface TextAnalysisProps {
   /** Analysis context determines which theme set to use */
   analysisContext: AnalysisContext;
-  /** Automatically extracted bigram phrases */
+  /** Automatically extracted recurring phrases */
   phrases: PhraseEntry[];
   /** Examples sampled from the underlying responses */
   quotes: QuoteEntry[];
@@ -294,31 +295,58 @@ export function TextAnalysis({
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTheme, setEditingTheme] = useState<TextTheme | undefined>();
+  const [themeMutationError, setThemeMutationError] = useState<string>();
+  const [themeNameError, setThemeNameError] = useState<string>();
 
   // Open modal for creating new theme
   const handleOpenCreate = useCallback(() => {
     setEditingTheme(undefined);
+    setThemeMutationError(undefined);
+    setThemeNameError(undefined);
     setIsModalOpen(true);
   }, []);
 
   // Open modal for editing existing theme
   const handleOpenEdit = useCallback((theme: TextTheme) => {
     setEditingTheme(theme);
+    setThemeMutationError(undefined);
+    setThemeNameError(undefined);
     setIsModalOpen(true);
   }, []);
 
   // Handle modal submit
   const handleSubmit = useCallback(
     (data: CreateThemeInput | (UpdateThemeInput & { themeId: string })) => {
+      setThemeMutationError(undefined);
+      setThemeNameError(undefined);
+      const handleMutationError = (error: Error, fallback: string) => {
+        if (
+          error instanceof ApiErrorException &&
+          error.error.type === ErrorType.CONFLICT
+        ) {
+          setThemeNameError(
+            "Det finnes allerede et tema med dette navnet. Velg et annet navn.",
+          );
+          return;
+        }
+        setThemeMutationError(fallback);
+      };
       if ("themeId" in data) {
         updateTheme(data, {
           onSuccess: () => setIsModalOpen(false),
+          onError: (error) =>
+            handleMutationError(error, "Kunne ikke lagre temaet. Prøv igjen."),
         });
       } else {
         createTheme(
           { ...data, analysisContext },
           {
             onSuccess: () => setIsModalOpen(false),
+            onError: (error) =>
+              handleMutationError(
+                error,
+                "Kunne ikke opprette temaet. Prøv igjen.",
+              ),
           },
         );
       }
@@ -329,8 +357,11 @@ export function TextAnalysis({
   // Handle delete
   const handleDelete = useCallback(
     (themeId: string) => {
+      setThemeMutationError(undefined);
       deleteTheme(themeId, {
         onSuccess: () => setIsModalOpen(false),
+        onError: () =>
+          setThemeMutationError("Kunne ikke slette temaet. Prøv igjen."),
       });
     },
     [deleteTheme],
@@ -367,7 +398,12 @@ export function TextAnalysis({
       Array.from(
         new Set(
           phrases.flatMap((phrase) =>
-            phrase.text.split(/\s+/).filter((word) => word.length > 0),
+            (() => {
+              const words = phrase.text.split(/\s+/).filter(Boolean);
+              return words.length > 1
+                ? [words[0], words[words.length - 1]]
+                : words;
+            })(),
           ),
         ),
       ).sort((left, right) => left.localeCompare(right, "nb")),
@@ -426,7 +462,6 @@ export function TextAnalysis({
     );
   }
 
-  const maxThemeCount = configuredThemesDisplay[0]?.count || 1;
   const hasCachedThemes = definedThemes.length > 0;
 
   return (
@@ -505,7 +540,7 @@ export function TextAnalysis({
                     </Heading>
                   </HStack>
                   <BodyShort size="small" textColor="subtle">
-                    Klikk på et uttrykk for å se svarene det kommer fra.
+                    Velg et uttrykk for å se svarene det kommer fra.
                   </BodyShort>
                   <PhraseList
                     phrases={phrases}
@@ -562,10 +597,12 @@ export function TextAnalysis({
                   {labels.themesTitle}
                 </Heading>
                 <Tooltip content="Temaer følger nøkkelord dere velger selv, og kan brukes til å følge de samme problemstillingene over tid.">
-                  <InformationSquareIcon
-                    fontSize="1rem"
-                    className={styles.helpIcon}
-                    aria-hidden
+                  <Button
+                    data-color="neutral"
+                    variant="tertiary"
+                    size="small"
+                    icon={<InformationSquareIcon aria-hidden />}
+                    aria-label="Hva er egne temaer?"
                   />
                 </Tooltip>
               </HStack>
@@ -574,7 +611,7 @@ export function TextAnalysis({
                 textColor="subtle"
                 className={styles.sectionSubtitle}
               >
-                {labels.themesSubtitle}
+                {labels.themesSubtitle} Ett svar kan høre til flere temaer.
               </BodyShort>
               <BodyShort
                 size="small"
@@ -635,28 +672,10 @@ export function TextAnalysis({
                 const canNavigateToTheme =
                   analysisContext === "GENERAL_FEEDBACK" && themeId !== null;
                 const themeAccentClass = getThemeAccentClass(theme.color);
-                const handleNavigateToTheme = () => {
-                  if (!canNavigateToTheme) return;
-                  const url = new URL(window.location.href);
-                  url.pathname = "/feedback";
-                  url.searchParams.set("theme", themeId);
-                  url.searchParams.set("page", "1");
-                  window.location.href = url.toString();
-                };
-
                 return (
                   <div
                     key={theme.theme}
-                    className={[
-                      styles.themeListRow,
-                      themeAccentClass,
-                      canNavigateToTheme ? styles.themeListRowClickable : "",
-                    ].join(" ")}
-                    title={
-                      canNavigateToTheme
-                        ? "Klikk for å se tilbakemeldinger med dette temaet"
-                        : ""
-                    }
+                    className={`${styles.themeListRow} ${themeAccentClass}`}
                   >
                     <HStack
                       justify="space-between"
@@ -669,10 +688,14 @@ export function TextAnalysis({
                         className={styles.themeRowMain}
                       >
                         {theme.color && <div className={styles.themeDot} />}
-                        {canNavigateToTheme ? (
-                          <button
-                            type="button"
-                            onClick={handleNavigateToTheme}
+                        {canNavigateToTheme && themeId ? (
+                          <Link
+                            to="/feedback"
+                            search={(prev) => ({
+                              ...prev,
+                              theme: themeId,
+                              page: "1",
+                            })}
                             className={`${styles.themeLinkButton} ${styles.themeLinkButtonEnabled}`}
                             title="Klikk for å se tilbakemeldinger med dette temaet"
                           >
@@ -684,7 +707,7 @@ export function TextAnalysis({
                             >
                               {theme.theme}
                             </BodyShort>
-                          </button>
+                          </Link>
                         ) : (
                           <BodyShort
                             as="span"
@@ -716,7 +739,7 @@ export function TextAnalysis({
                         className={styles.themeMeta}
                       >
                         <BodyShort size="small" textColor="subtle">
-                          {theme.count} ({percentage}%)
+                          {theme.count} svar ({percentage} %)
                         </BodyShort>
                         {theme.successRate !== undefined && (
                           <Tag
@@ -729,7 +752,7 @@ export function TextAnalysis({
                                   : "error"
                             }
                           >
-                            {Math.round(theme.successRate * 100)}%
+                            {Math.round(theme.successRate * 100)} % kom i mål
                           </Tag>
                         )}
                       </HStack>
@@ -739,8 +762,8 @@ export function TextAnalysis({
                     <progress
                       className={styles.themeProgress}
                       value={theme.count}
-                      max={maxThemeCount}
-                      aria-label={`Andel for tema ${theme.theme}`}
+                      max={totalCount > 0 ? totalCount : 1}
+                      aria-label={`${percentage} prosent av svarene handler om ${theme.theme}`}
                     />
 
                     {/* Example quote */}
@@ -801,13 +824,19 @@ export function TextAnalysis({
       {/* Theme Modal */}
       <ThemeModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setThemeMutationError(undefined);
+          setThemeNameError(undefined);
+          setIsModalOpen(false);
+        }}
         onSubmit={handleSubmit}
         onDelete={handleDelete}
         isSubmitting={isCreating || isUpdating || isDeleting}
+        mutationError={themeMutationError}
+        nameError={themeNameError}
+        onClearNameError={() => setThemeNameError(undefined)}
         theme={editingTheme}
         availableWords={themeKeywordSuggestions}
-        allThemes={definedThemes}
       />
     </>
   );

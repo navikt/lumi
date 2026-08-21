@@ -290,7 +290,7 @@ class StatsService(
     }
 
     /**
-     * Get blocker text analysis for Top Tasks (word frequency, themes, recent blockers).
+     * Get blocker text analysis for Top Tasks (phrases, themes, and recent blockers).
      * Uses themes where analysisContext = BLOCKER.
      */
     suspend fun getBlockerStats(query: StatsQuery): BlockerStatsResponse {
@@ -299,7 +299,6 @@ class StatsService(
             if (stats.masked) {
                 return@getOrComputeCached BlockerStatsResponse(
                     totalBlockers = 0,
-                    wordFrequency = emptyList(),
                     themes = emptyList(),
                     recentBlockers = emptyList()
                 )

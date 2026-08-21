@@ -7,7 +7,8 @@
 import type { FeedbackDto, TopTaskStats, TopTasksResponse } from "~/types/api";
 import { mockThemes } from "../themes";
 import { TopTasksFieldIds } from "../utils/extractors";
-import { applyFeedbackFilters, stemNorwegian } from "./common";
+import { matchesThemeKeywords } from "../utils/textAnalysis";
+import { applyFeedbackFilters } from "./common";
 
 // Internal type for aggregation with additional fields
 interface InternalTaskStats
@@ -174,20 +175,10 @@ export function getMockTopTasksStats(
     };
 
     for (const blockerText of stats.blockerTexts) {
-      const blockerWords = blockerText
-        .toLowerCase()
-        .replace(/[^\wæøå\s]/g, "")
-        .split(/\s+/)
-        .map(stemNorwegian);
-
       let matchedAny = false;
 
       for (const theme of blockerThemes) {
-        const keywordStems = theme.keywords.map((k) =>
-          stemNorwegian(k.toLowerCase()),
-        );
-
-        if (keywordStems.some((kStem) => blockerWords.includes(kStem))) {
+        if (matchesThemeKeywords(blockerText, theme.keywords)) {
           const themeEntry = blockersByTheme[theme.id];
           if (themeEntry) {
             themeEntry.count++;

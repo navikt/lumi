@@ -10,9 +10,9 @@ import type { FeedbackDto } from "~/types/api";
 import { parseChoiceParam } from "~/utils/choiceFilterUtils";
 import { parsePhraseParam } from "~/utils/phraseFilterUtils";
 import { parseRatingParam } from "~/utils/ratingFilterUtils";
-import { textMatchesPhrase } from "../stats/phrases";
+import { phraseStemKey, textMatchesPhrase } from "../stats/phrases";
 import { mockThemes } from "../themes";
-import { getTaskIdFromFeedback } from "./extractors";
+import { getDiscoveryTaskText, getTaskIdFromFeedback } from "./extractors";
 import { matchesThemeKeywords } from "./textAnalysis";
 
 const DISCOVERY_TASK_FIELD_IDS = new Set<string>([
@@ -90,23 +90,28 @@ export function applyFeedbackFilters(
   }
 
   if (filters.theme) {
+    const generalThemes = mockThemes.filter(
+      (theme) => theme.analysisContext === "GENERAL_FEEDBACK",
+    );
     if (filters.theme === "uncategorized") {
       filtered = filtered.filter((item) => {
-        const text = getFeedbackText(item);
-        if (!text) return true;
-        return !mockThemes.some((theme) =>
+        const text = getDiscoveryTaskText(item);
+        if (!text) return false;
+        return !generalThemes.some((theme) =>
           matchesThemeKeywords(text, theme.keywords),
         );
       });
     } else {
-      const targetTheme = mockThemes.find(
+      const targetTheme = generalThemes.find(
         (theme) => theme.id === filters.theme,
       );
-      if (targetTheme?.keywords.length) {
-        filtered = filtered.filter((item) =>
-          matchesThemeKeywords(getFeedbackText(item), targetTheme.keywords),
-        );
-      }
+      if (!targetTheme) return [];
+      filtered = filtered.filter((item) =>
+        matchesThemeKeywords(
+          getDiscoveryTaskText(item) ?? "",
+          targetTheme.keywords,
+        ),
+      );
     }
   }
 
@@ -173,7 +178,13 @@ export function applyFeedbackFilters(
   }
 
   const phraseFilter = parsePhraseParam(filters.phrase);
+  if (filters.phrase && !phraseFilter) {
+    throw new Error("Invalid phrase format");
+  }
   if (phraseFilter) {
+    if (phraseStemKey(phraseFilter.surface) === null) {
+      throw new Error("Invalid phrase format");
+    }
     filtered = filtered.filter((item) =>
       item.answers.some((answer) => {
         const sameField = answer.fieldId === phraseFilter.fieldId;
@@ -189,11 +200,6 @@ export function applyFeedbackFilters(
   }
 
   return filtered;
-}
-
-function getFeedbackText(item: FeedbackDto): string {
-  const textAnswer = item.answers.find((answer) => answer.fieldType === "TEXT");
-  return textAnswer?.fieldType === "TEXT" ? (textAnswer.value.text ?? "") : "";
 }
 
 function normalizeParams(params: FilterParams | URLSearchParams): FilterParams {

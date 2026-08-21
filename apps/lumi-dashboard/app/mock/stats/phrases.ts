@@ -7,8 +7,8 @@ interface TextWithMeta {
   id?: string;
 }
 
-// Keep this set aligned with TextProcessor.STOP_WORDS in the API. Phrase
-// extraction deliberately removes stopwords before pairing content words.
+// Keep this set aligned with TextProcessor.STOP_WORDS in the API. Stopwords
+// are omitted from grouping keys, but retained in natural display text.
 const PHRASE_STOP_WORDS = new Set([
   "og",
   "i",
@@ -207,32 +207,60 @@ const PHRASE_STOP_WORDS = new Set([
 interface StemmedBigram {
   surface: string;
   stemKey: string;
+  previousStemKey?: string;
 }
 
-function phraseWords(text: string): string[] {
+function compareCodePoints(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function rawPhraseWords(text: string): string[] {
   return text
     .replace(/\[[A-ZÆØÅ][A-ZÆØÅ\s-]+\]/g, " ")
     .toLowerCase()
     .replace(/[^a-zæøå0-9\s]/g, " ")
     .split(/\s+/)
-    .filter((word) => word.length > 2 && !PHRASE_STOP_WORDS.has(word));
+    .filter(Boolean);
+}
+
+function phraseWords(text: string): string[] {
+  return rawPhraseWords(text).filter(
+    (word) => word.length > 2 && !PHRASE_STOP_WORDS.has(word),
+  );
 }
 
 /** Mirrors TextProcessor.extractBigrams in the API. */
 export function extractStemmedBigrams(text: string): StemmedBigram[] {
-  const words = phraseWords(text);
-  return words.slice(0, -1).map((word, index) => {
-    const nextWord = words[index + 1];
-    return {
-      surface: `${word} ${nextWord}`,
+  return text
+    .split(/[.!?;,:…\n\u2028\u2029]+/)
+    .flatMap((segment) => extractStemmedBigramsFromSegment(segment));
+}
+
+function extractStemmedBigramsFromSegment(text: string): StemmedBigram[] {
+  const words = rawPhraseWords(text);
+  const contentWordIndexes = words.flatMap((word, index) =>
+    word.length > 2 && !PHRASE_STOP_WORDS.has(word) ? [index] : [],
+  );
+  let previousStemKey: string | undefined;
+  return contentWordIndexes.slice(0, -1).map((firstIndex, index) => {
+    const secondIndex = contentWordIndexes[index + 1];
+    const word = words[firstIndex];
+    const nextWord = words[secondIndex];
+    const bigram = {
+      surface: words.slice(firstIndex, secondIndex + 1).join(" "),
       stemKey: `${stemNorwegian(word)}|${stemNorwegian(nextWord)}`,
+      previousStemKey,
     };
+    previousStemKey = bigram.stemKey;
+    return bigram;
   });
 }
 
 export function phraseStemKey(surface: string): string | null {
   const words = phraseWords(surface);
   if (words.length !== 2) return null;
+  if (words.some((word) => word.length > 30)) return null;
+  if (words.join(" ").length > 80) return null;
   return `${stemNorwegian(words[0])}|${stemNorwegian(words[1])}`;
 }
 
@@ -246,8 +274,47 @@ export function textMatchesPhrase(text: string, surface: string): boolean {
   );
 }
 
+export function extractTopKeywords(
+  texts: string[],
+  limit = 5,
+): Array<{ word: string; count: number }> {
+  const accumulators = new Map<
+    string,
+    { count: number; surfaces: Map<string, number> }
+  >();
+
+  for (const text of texts) {
+    for (const word of phraseWords(text)) {
+      const stem = stemNorwegian(word);
+      const accumulator = accumulators.get(stem) ?? {
+        count: 0,
+        surfaces: new Map<string, number>(),
+      };
+      accumulator.count++;
+      accumulator.surfaces.set(word, (accumulator.surfaces.get(word) ?? 0) + 1);
+      accumulators.set(stem, accumulator);
+    }
+  }
+
+  return Array.from(accumulators.entries())
+    .sort(
+      ([leftStem, left], [rightStem, right]) =>
+        right.count - left.count || compareCodePoints(leftStem, rightStem),
+    )
+    .slice(0, limit)
+    .map(([, accumulator]) => ({
+      word:
+        Array.from(accumulator.surfaces.entries()).sort(
+          ([leftSurface, leftCount], [rightSurface, rightCount]) =>
+            rightCount - leftCount ||
+            compareCodePoints(leftSurface, rightSurface),
+        )[0]?.[0] ?? "",
+      count: accumulator.count,
+    }));
+}
+
 /**
- * Extract bigrams, representative quotes, and confidence level from text responses.
+ * Extract recurring phrases, representative quotes, and confidence level from text responses.
  * Used by mock discovery and blocker stats to populate phrase fields.
  */
 export function extractPhrases(
@@ -262,25 +329,27 @@ export function extractPhrases(
   const confidenceLevel: ConfidenceLevel =
     total < 30 ? "low" : total <= 100 ? "medium" : "high";
 
-  // Build stem-grouped bigram counts, deduplicated per response.
+  // Build stem-grouped phrase counts, deduplicated per response.
   const bigramCounts = new Map<
     string,
     {
       count: number;
       sourceIds: string[];
       surfaceCounts: Map<string, number>;
+      adjacentSourceIds: Map<string, Set<string>>;
     }
   >();
 
   for (const [idx, response] of responses.entries()) {
     const seenInResponse = new Set<string>();
+    const sourceId = response.id ?? `mock-${idx}`;
+    const bigrams = extractStemmedBigrams(response.text);
 
-    for (const bigram of extractStemmedBigrams(response.text)) {
+    for (const bigram of bigrams) {
       if (seenInResponse.has(bigram.stemKey)) continue;
       seenInResponse.add(bigram.stemKey);
 
       const existing = bigramCounts.get(bigram.stemKey);
-      const sourceId = response.id ?? `mock-${idx}`;
       if (existing) {
         existing.count++;
         existing.sourceIds.push(sourceId);
@@ -293,24 +362,68 @@ export function extractPhrases(
           count: 1,
           sourceIds: [sourceId],
           surfaceCounts: new Map([[bigram.surface, 1]]),
+          adjacentSourceIds: new Map(),
         });
       }
     }
+
+    for (const bigram of bigrams) {
+      if (!bigram.previousStemKey) continue;
+      const accumulator = bigramCounts.get(bigram.stemKey);
+      if (!accumulator) continue;
+      const adjacentIds =
+        accumulator.adjacentSourceIds.get(bigram.previousStemKey) ?? new Set();
+      adjacentIds.add(sourceId);
+      accumulator.adjacentSourceIds.set(bigram.previousStemKey, adjacentIds);
+    }
   }
 
-  const phrases: PhraseEntry[] = Array.from(bigramCounts.entries())
+  const candidates = Array.from(bigramCounts.entries())
     .filter(([, v]) => v.count >= 2)
-    .sort((a, b) => b[1].count - a[1].count)
-    .slice(0, maxPhrases)
-    .map(([, v]) => ({
-      text:
-        Array.from(v.surfaceCounts.entries()).sort(
-          (left, right) =>
-            right[1] - left[1] || left[0].localeCompare(right[0], "nb"),
-        )[0]?.[0] ?? "",
-      count: v.count,
-      sourceResponseIds: v.sourceIds.slice(0, maxSourceIds),
-    }));
+    .sort((a, b) => b[1].count - a[1].count || compareCodePoints(a[0], b[0]));
+  const selected: typeof candidates = [];
+  const grouped = new Set<string>();
+
+  const isRelatedWindow = (
+    [leftKey, left]: (typeof candidates)[number],
+    [rightKey, right]: (typeof candidates)[number],
+  ) => {
+    const smallerSize = Math.min(left.sourceIds.length, right.sourceIds.length);
+    if (smallerSize === 0) return false;
+    const observedTogether = new Set([
+      ...(left.adjacentSourceIds.get(rightKey) ?? []),
+      ...(right.adjacentSourceIds.get(leftKey) ?? []),
+    ]);
+    return observedTogether.size / smallerSize >= 0.8;
+  };
+
+  for (const candidate of candidates) {
+    if (grouped.has(candidate[0])) continue;
+    selected.push(candidate);
+    grouped.add(candidate[0]);
+
+    const queue = [candidate];
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (!current) break;
+      for (const other of candidates) {
+        if (grouped.has(other[0]) || !isRelatedWindow(current, other)) continue;
+        grouped.add(other[0]);
+        queue.push(other);
+      }
+    }
+    if (selected.length === maxPhrases) break;
+  }
+
+  const phrases: PhraseEntry[] = selected.map(([, v]) => ({
+    text:
+      Array.from(v.surfaceCounts.entries()).sort(
+        (left, right) =>
+          right[1] - left[1] || compareCodePoints(left[0], right[0]),
+      )[0]?.[0] ?? "",
+    count: v.count,
+    sourceResponseIds: v.sourceIds.slice(0, maxSourceIds),
+  }));
 
   // Select 3-5 representative quotes (30-300 chars), deterministic
   const validQuotes = responses

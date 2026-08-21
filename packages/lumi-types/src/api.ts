@@ -197,7 +197,7 @@ export interface TextStats {
   topKeywords: Array<{ word: string; count: number }>;
   /** Most recent text responses with timestamps */
   recentResponses: Array<{ text: string; submittedAt: string }>;
-  /** Top bigram phrases extracted from text responses */
+  /** Recurring content-word pairs extracted from text responses */
   topPhrases?: Array<{ text: string; count: number }>;
 }
 
@@ -384,35 +384,6 @@ export interface ContextTagsResponse {
 // Discovery Survey Types
 // ============================================
 
-/** Word variant with its occurrence count */
-export interface WordVariant {
-  word: string;
-  count: number;
-}
-
-/** Source response for context examples */
-export interface SourceResponse {
-  text: string;
-  submittedAt: string;
-}
-
-/**
- * Word frequency entry for word cloud (unified for Discovery and Blocker).
- * Groups word variants by stem and provides context examples.
- */
-export interface WordFrequency {
-  /** Canonical display form (most common surface form) */
-  word: string;
-  /** Normalized/stemmed form (stable key for grouping) */
-  stem: string;
-  /** Total occurrences across all variants */
-  count: number;
-  /** Top word variants with their counts (max 5) */
-  variants?: WordVariant[];
-  /** Source responses containing this word for context examples */
-  sourceResponses?: SourceResponse[];
-}
-
 export interface PhraseEntry {
   text: string;
   count: number;
@@ -436,7 +407,6 @@ export interface DiscoveryTheme {
 
 export interface DiscoveryResponse {
   totalSubmissions: number;
-  wordFrequency: WordFrequency[];
   themes: DiscoveryTheme[];
   recentResponses: Array<{
     task: string;
@@ -463,7 +433,6 @@ export interface BlockerTheme {
 
 export interface BlockerResponse {
   totalBlockers: number;
-  wordFrequency: WordFrequency[];
   themes: BlockerTheme[];
   recentBlockers: Array<{
     blocker: string;

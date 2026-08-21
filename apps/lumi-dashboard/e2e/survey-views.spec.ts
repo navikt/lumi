@@ -66,7 +66,7 @@ test.describe("Survey Views", () => {
     test("opens the responses behind a phrase and fits a narrow viewport", async ({
       page,
     }) => {
-      await page.setViewportSize({ width: 390, height: 844 });
+      await page.setViewportSize({ width: 320, height: 844 });
       await page.goto("/?surveyId=survey-discovery&fromDate=2000-01-01");
       await page.waitForLoadState("networkidle");
 
@@ -99,6 +99,38 @@ test.describe("Survey Views", () => {
       await expect(page.getByText("Ingen tilbakemeldinger funnet")).toHaveCount(
         0,
       );
+    });
+
+    test("theme editor fits a narrow viewport without structural accessibility violations", async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 320, height: 844 });
+      await page.goto("/?surveyId=survey-discovery&fromDate=2000-01-01");
+      await page.waitForLoadState("networkidle");
+
+      await page
+        .getByRole("button", { name: /Rediger temaet/ })
+        .first()
+        .click();
+      const dialog = page.getByRole("dialog", { name: "Rediger tema" });
+      await expect(dialog).toBeVisible();
+      await expect(
+        dialog.getByRole("button", { name: "Slett tema" }),
+      ).toBeVisible();
+      expect(
+        await dialog.evaluate(
+          (element) => element.scrollWidth <= element.clientWidth,
+        ),
+      ).toBe(true);
+
+      const accessibility = await new AxeBuilder({ page })
+        .include("dialog")
+        // Playwright's dialog backdrop blending gives Aksel's primary button a
+        // false contrast value; page-level axe tests cover the same button token.
+        .disableRules(["color-contrast"])
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+        .analyze();
+      expect(accessibility.violations).toEqual([]);
     });
   });
 

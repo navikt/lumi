@@ -7,7 +7,8 @@
 import { SPECIALIZED_SURVEY_FIELD_IDS } from "@navikt/lumi-survey";
 import type { BlockerResponse, FeedbackDto } from "~/types/api";
 import { mockThemes } from "../themes";
-import { applyFeedbackFilters, STOP_WORDS, stemNorwegian } from "./common";
+import { matchesThemeKeywords } from "../utils/textAnalysis";
+import { applyFeedbackFilters } from "./common";
 import { extractPhrases } from "./phrases";
 
 /**
@@ -71,81 +72,6 @@ export function getMockBlockerStats(
     })),
   );
 
-  // Calculate word frequency with stem-based grouping
-  const stemAccumulators = new Map<
-    string,
-    {
-      stem: string;
-      surfaceCounts: Map<string, number>;
-      totalCount: number;
-      sourceResponses: Array<{ text: string; submittedAt: string }>;
-      usedTexts: Set<string>;
-    }
-  >();
-
-  for (const response of blockerResponses) {
-    const words = response.blocker
-      .toLowerCase()
-      .replace(/[^\wæøå\s]/g, "")
-      .split(/\s+/);
-    const seenStemsInResponse = new Set<string>();
-
-    for (const word of words) {
-      if (word.length > 2 && !STOP_WORDS.has(word)) {
-        const stem = stemNorwegian(word);
-
-        if (!stemAccumulators.has(stem)) {
-          stemAccumulators.set(stem, {
-            stem,
-            surfaceCounts: new Map(),
-            totalCount: 0,
-            sourceResponses: [],
-            usedTexts: new Set(),
-          });
-        }
-
-        const acc = stemAccumulators.get(stem);
-        if (!acc) continue;
-        acc.totalCount++;
-        acc.surfaceCounts.set(word, (acc.surfaceCounts.get(word) || 0) + 1);
-
-        // Add source response (max 5 per stem for blocker, deduped by text)
-        if (!seenStemsInResponse.has(stem) && acc.sourceResponses.length < 5) {
-          if (!acc.usedTexts.has(response.blocker)) {
-            acc.sourceResponses.push({
-              text: response.blocker,
-              submittedAt: response.submittedAt,
-            });
-            acc.usedTexts.add(response.blocker);
-          }
-          seenStemsInResponse.add(stem);
-        }
-      }
-    }
-  }
-
-  // Build word frequency list with canonical form and variants
-  const wordFrequency = Array.from(stemAccumulators.values())
-    .map((acc) => {
-      const sortedSurfaces = Array.from(acc.surfaceCounts.entries()).sort(
-        (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
-      );
-      const canonicalWord = sortedSurfaces[0]?.[0] || acc.stem;
-      const variants = sortedSurfaces
-        .slice(0, 5)
-        .map(([word, count]) => ({ word, count }));
-
-      return {
-        word: canonicalWord,
-        stem: acc.stem,
-        count: acc.totalCount,
-        variants,
-        sourceResponses: acc.sourceResponses,
-      };
-    })
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 30);
-
   // Get blocker themes only
   const blockerThemes = mockThemes.filter(
     (t) => t.analysisContext === "BLOCKER",
@@ -172,12 +98,6 @@ export function getMockBlockerStats(
 
   // Theme clustering with inclusive matching
   for (const response of blockerResponses) {
-    const blockerWords = response.blocker
-      .toLowerCase()
-      .replace(/[^\wæøå\s]/g, "")
-      .split(/\s+/)
-      .map(stemNorwegian);
-
     let matchedAny = false;
 
     for (const themeStat of themeStats) {
@@ -186,11 +106,7 @@ export function getMockBlockerStats(
       const theme = blockerThemes.find((t) => t.id === themeStat.themeId);
       if (!theme) continue;
 
-      const keywordStems = theme.keywords.map((k) =>
-        stemNorwegian(k.toLowerCase()),
-      );
-
-      if (keywordStems.some((kStem) => blockerWords.includes(kStem))) {
+      if (matchesThemeKeywords(response.blocker, theme.keywords)) {
         themeStat.count++;
         if (
           themeStat.examples.length < 3 &&
@@ -221,7 +137,6 @@ export function getMockBlockerStats(
 
   return {
     totalBlockers: blockerResponses.length,
-    wordFrequency,
     themes: themeStats
       .filter((t) => t.count > 0)
       .map(({ usedExamples, ...rest }) => rest)

@@ -5,7 +5,6 @@ import no.nav.lumi.domain.*
 import no.nav.lumi.service.TextProcessor
 import no.nav.lumi.service.text.BigramAccumulator
 import no.nav.lumi.service.text.QuoteSelector
-import no.nav.lumi.service.text.StemWordAccumulator
 import org.jetbrains.exposed.v1.core.*
 import org.jetbrains.exposed.v1.jdbc.*
 import org.slf4j.LoggerFactory
@@ -21,8 +20,7 @@ class FeedbackStatsRepository {
         /** Minimum number of responses required to show aggregated statistics */
         const val MIN_AGGREGATION_THRESHOLD = 5
         
-        /** Maximum source responses per word for blocker analysis */
-        const val MAX_SOURCE_RESPONSES_BLOCKER = 5
+        const val MAX_PHRASE_SOURCE_RESPONSES_BLOCKER = 5
 
         private const val MAX_PHRASES_BLOCKER = 30
         private const val MIN_PHRASE_OCCURRENCES = 2
@@ -448,37 +446,17 @@ class FeedbackStatsRepository {
             TextProcessor.extractBigrams(blockerText).forEach { bg ->
                 val acc = bigramAccumulators.getOrPut(bg.stemKey) { BigramAccumulator(bg.stemKey) }
                 acc.addOccurrence(bg.surface, feedback.id)
+                bg.previousStemKey?.let { acc.addAdjacentWindow(it, feedback.id) }
             }
             quoteCandidates.add(blockerText to feedback.submittedAt)
         }
 
-        val wordAccumulators = mutableMapOf<String, StemWordAccumulator>()
-        for (response in blockerResponses) {
-            val seenStemsInResponse = mutableSetOf<String>()
-            TextProcessor.extractStemmedWords(response.blocker).forEach { (surface, stem) ->
-                val acc = wordAccumulators.getOrPut(stem) { StemWordAccumulator(stem) }
-                acc.addOccurrence(surface)
-
-                if (!seenStemsInResponse.contains(stem) && acc.sourceResponses.size < MAX_SOURCE_RESPONSES_BLOCKER) {
-                    if (!acc.usedTexts.contains(response.blocker)) {
-                        acc.sourceResponses.add(SourceResponse(text = response.blocker, submittedAt = response.submittedAt))
-                        acc.usedTexts.add(response.blocker)
-                    }
-                    seenStemsInResponse.add(stem)
-                }
-            }
-        }
-
-        val wordFrequency = wordAccumulators.values
-            .sortedByDescending { it.totalCount }
-            .take(30)
-            .map { it.toWordFrequencyEntry() }
-
-        val phrases = bigramAccumulators.values
-            .filter { it.totalCount >= MIN_PHRASE_OCCURRENCES }
-            .sortedByDescending { it.totalCount }
-            .take(MAX_PHRASES_BLOCKER)
-            .map { it.toPhraseEntry(maxSourceIds = MAX_SOURCE_RESPONSES_BLOCKER) }
+        val phrases = BigramAccumulator.selectDiverse(
+            accumulators = bigramAccumulators.values,
+            minimumOccurrences = MIN_PHRASE_OCCURRENCES,
+            maximumPhrases = MAX_PHRASES_BLOCKER,
+        )
+            .map { it.toPhraseEntry(maxSourceIds = MAX_PHRASE_SOURCE_RESPONSES_BLOCKER) }
 
         val quoteSeed = blockerResponses.size.toLong() xor (quoteCandidates.firstOrNull()?.first?.hashCode()?.toLong() ?: 0L)
         val quotes = QuoteSelector.selectQuotes(quoteCandidates, seed = quoteSeed)
@@ -502,15 +480,13 @@ class FeedbackStatsRepository {
         )
 
         for (response in blockerResponses) {
-            val blockerWordStems = TextProcessor.tokenize(response.blocker).map { TextProcessor.stemNorwegian(it) }
             var matchedAny = false
 
             for (acc in themeAccumulators) {
                 if (acc.themeId == annetThemeId) continue
 
                 val theme = themes.find { it.id == acc.themeId } ?: continue
-                val keywordStems = theme.keywords.map { TextProcessor.stemNorwegian(it.lowercase()) }
-                if (keywordStems.any { it in blockerWordStems }) {
+                if (TextProcessor.matchesThemeKeywords(response.blocker, theme.keywords)) {
                     acc.count++
                     if (acc.examples.size < 3 && acc.usedExamples.add(response.blocker)) {
                         acc.examples.add(response.blocker)
@@ -541,7 +517,6 @@ class FeedbackStatsRepository {
 
         return BlockerStatsResponse(
             totalBlockers = blockerResponses.size,
-            wordFrequency = wordFrequency,
             themes = themeResults,
             recentBlockers = recentBlockers,
             phrases = phrases,

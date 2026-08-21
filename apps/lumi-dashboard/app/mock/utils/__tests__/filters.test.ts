@@ -194,6 +194,84 @@ describe("applyFeedbackFilters", () => {
     ]);
   });
 
+  it("filters Discovery themes by the task field rather than answer order", () => {
+    const discovery = makeItem({
+      id: "discovery-theme",
+      surveyType: "discovery",
+      answers: [
+        {
+          fieldId: "blocker",
+          fieldType: "TEXT",
+          question: { label: "Hva hindret deg?" },
+          value: { type: "text", text: "Innlogging" },
+        },
+        {
+          fieldId: "task",
+          fieldType: "TEXT",
+          question: { label: "Hva prøvde du å gjøre?" },
+          value: { type: "text", text: "Sjekke søknaden" },
+        },
+      ],
+    });
+
+    expect(
+      applyFeedbackFilters([discovery], {
+        theme: "33333333-3333-3333-3333-333333333333",
+      }).map((item) => item.id),
+    ).toEqual(["discovery-theme"]);
+  });
+
+  it("does not treat a redaction marker as Discovery theme content", () => {
+    const discovery = makeItem({
+      id: "redacted-theme",
+      surveyType: "discovery",
+      answers: [
+        {
+          fieldId: "task",
+          fieldType: "TEXT",
+          question: { label: "Hva prøvde du å gjøre?" },
+          value: {
+            type: "text",
+            text: "[SYKEPENGER FJERNET] trenger hjelp",
+          },
+        },
+      ],
+    });
+
+    expect(
+      applyFeedbackFilters([discovery], {
+        theme: "11111111-1111-1111-1111-111111111111",
+      }),
+    ).toEqual([]);
+  });
+
+  it("matches multi-word Discovery theme keywords", () => {
+    const discovery = makeItem({
+      id: "multi-word-theme",
+      surveyType: "discovery",
+      answers: [
+        {
+          fieldId: "task",
+          fieldType: "TEXT",
+          question: { label: "Hva prøvde du å gjøre?" },
+          value: { type: "text", text: "Jeg fant ikke riktig skjema" },
+        },
+      ],
+    });
+
+    expect(
+      applyFeedbackFilters([discovery], {
+        theme: "55555555-5555-5555-5555-555555555555",
+      }).map((item) => item.id),
+    ).toEqual(["multi-word-theme"]);
+  });
+
+  it("returns no feedback for an unknown theme id like the API", () => {
+    expect(applyFeedbackFilters([itemA], { theme: "deleted-theme" })).toEqual(
+      [],
+    );
+  });
+
   it("AND-filters multiple rating and choice fields", () => {
     const withMultipleFields: FeedbackDto[] = [
       makeItem({
@@ -311,9 +389,61 @@ describe("applyFeedbackFilters", () => {
     ];
 
     const filtered = applyFeedbackFilters(phraseItems, {
-      phrase: "task:vanskelig svare",
+      phrase: "task:vanskelig å svare",
     });
 
     expect(filtered.map((item) => item.id)).toEqual(["legacy-discovery"]);
+  });
+
+  it("rejects a phrase filter with more than two content words like the API", () => {
+    expect(() =>
+      applyFeedbackFilters([], {
+        phrase: "task:three content words",
+      }),
+    ).toThrow("Invalid phrase format");
+  });
+
+  it.each([
+    "missing-colon",
+    "task:!!!",
+    "task:vanskelig/svare",
+    "task:vanskelig,svare",
+    "task:vanskelig-svare",
+  ])("rejects malformed phrase filter %s like the API", (phrase) => {
+    expect(() => applyFeedbackFilters([], { phrase })).toThrow(
+      "Invalid phrase format",
+    );
+  });
+
+  it.each([
+    "field$:vanskelig svare",
+    `field:${"a".repeat(31)} svare`,
+    `field:${"a".repeat(30)} ${"b".repeat(30)} ekstra`,
+  ])("rejects unsafe or oversized phrase filter %s", (phrase) => {
+    expect(() => applyFeedbackFilters([], { phrase })).toThrow(
+      "Invalid phrase format",
+    );
+  });
+
+  it("normalizes repeated whitespace in a phrase filter like the API", () => {
+    const phraseItems = [
+      makeItem({
+        id: "normalized-space",
+        answers: [
+          {
+            fieldId: "feedback",
+            fieldType: "TEXT",
+            question: { label: "Hvorfor?" },
+            value: { type: "text", text: "vanskelig å svare" },
+          },
+        ],
+      }),
+    ];
+
+    expect(
+      applyFeedbackFilters(phraseItems, {
+        phrase: "feedback:vanskelig  å  svare",
+      }).map((item) => item.id),
+    ).toEqual(["normalized-space"]);
   });
 });

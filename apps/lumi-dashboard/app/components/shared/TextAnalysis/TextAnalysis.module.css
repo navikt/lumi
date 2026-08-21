@@ -2,11 +2,6 @@
   overflow: hidden;
 }
 
-.helpIcon {
-  cursor: help;
-  color: var(--ax-text-neutral-subtle);
-}
-
 .sectionSubtitle {
   margin-top: var(--ax-space-4);
 }
@@ -82,14 +77,6 @@
   transition: background-color 0.2s ease;
 }
 
-.themeListRowClickable {
-  cursor: pointer;
-}
-
-.themeListRowClickable:hover {
-  background: var(--ax-bg-neutral-soft);
-}
-
 .themeRowMain {
   min-width: 0;
 }
@@ -105,14 +92,20 @@
 .themeLinkButton {
   background: none;
   border: none;
+  color: inherit;
   padding: 0;
   cursor: default;
   text-align: left;
+  text-decoration: none;
   min-width: 0;
 }
 
 .themeLinkButtonEnabled {
   cursor: pointer;
+}
+
+.themeLinkButtonEnabled:hover {
+  text-decoration: underline;
 }
 
 .themeMeta {

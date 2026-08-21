@@ -2,10 +2,7 @@ package no.nav.lumi.service
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
-import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.comparables.shouldBeGreaterThan
-import io.kotest.matchers.doubles.shouldBeGreaterThan
 import io.kotest.matchers.doubles.shouldBeLessThan
 import io.kotest.matchers.shouldBe
 import no.nav.lumi.domain.*
@@ -19,62 +16,8 @@ class DiscoveryServiceTest : FunSpec({
             val result = service.processStats(emptyList(), emptyList())
             
             result.totalSubmissions shouldBe 0
-            result.wordFrequency.shouldBeEmpty()
             result.themes.shouldBeEmpty()
             result.recentResponses.shouldBeEmpty()
-        }
-
-        test("calculates word frequency correctly with stems") {
-            val feedbacks = listOf(
-                createDiscoveryFeedback("Sjekke sykepenger status"),
-                createDiscoveryFeedback("Sjekke utbetaling status"),
-                createDiscoveryFeedback("Sjekke søknad status")
-            )
-            
-            val result = service.processStats(feedbacks, emptyList())
-            
-            // Lucene Light stems "sjekke" → "sjekk" (strips -e for len > 3)
-            val sjekkeEntry = result.wordFrequency.find { it.stem == "sjekk" }
-            sjekkeEntry?.count shouldBe 3
-            sjekkeEntry?.word shouldBe "sjekke"  // canonical = most common surface form
-            
-            // "status" → possessive -s strip → "statu" (Lucene behaviour)
-            val statusEntry = result.wordFrequency.find { it.stem == "statu" }
-            statusEntry?.count shouldBe 3
-        }
-
-        test("groups word variants under same stem") {
-            val feedbacks = listOf(
-                createDiscoveryFeedback("Søke om sykepenger"),
-                createDiscoveryFeedback("Søknaden min"),
-                createDiscoveryFeedback("Søknad status"),
-                createDiscoveryFeedback("Søknadene mine")
-            )
-            
-            val result = service.processStats(feedbacks, emptyList())
-            
-            // All variants should be grouped under one stem
-            val søknadEntry = result.wordFrequency.find { it.stem == "søknad" }
-            søknadEntry?.count shouldBe 3 // søknaden, søknad, søknadene
-            søknadEntry?.variants?.size?.shouldBeGreaterThan(0)
-            
-            // "søknad" should be the canonical form (most common)
-            // Variants should include the different forms
-            søknadEntry?.variants?.any { it.word.startsWith("søknad") } shouldBe true
-        }
-
-        test("includes sourceResponses for context") {
-            val feedbacks = listOf(
-                createDiscoveryFeedback("Sjekke sykepenger status"),
-                createDiscoveryFeedback("Sjekke utbetaling status")
-            )
-            
-            val result = service.processStats(feedbacks, emptyList())
-            
-            // Lucene Light stems "sjekke" → "sjekk"
-            val sjekkeEntry = result.wordFrequency.find { it.stem == "sjekk" }
-            sjekkeEntry?.sourceResponses?.size?.shouldBeGreaterThan(0)
-            sjekkeEntry?.sourceResponses?.first()?.text shouldBe "Sjekke sykepenger status"
         }
 
         test("groups by theme correctly") {
@@ -97,6 +40,35 @@ class DiscoveryServiceTest : FunSpec({
             val utbTheme = result.themes.find { it.theme == "Utbetaling" }
             utbTheme?.count shouldBe 1
             utbTheme?.successRate shouldBe 0.0
+        }
+
+        test("counts a response in every matching theme") {
+            val themes = listOf(
+                TextThemeDto("1", "team", "Søknad", listOf("søknad"), priority = 10, analysisContext = AnalysisContext.GENERAL_FEEDBACK),
+                TextThemeDto("2", "team", "Utbetaling", listOf("utbetaling"), priority = 0, analysisContext = AnalysisContext.GENERAL_FEEDBACK),
+            )
+
+            val result = service.processStats(
+                listOf(createDiscoveryFeedback("Sjekke utbetaling i søknaden", "yes")),
+                themes,
+            )
+
+            result.themes.find { it.theme == "Søknad" }?.count shouldBe 1
+            result.themes.find { it.theme == "Utbetaling" }?.count shouldBe 1
+            result.themes.none { it.theme == "Annet" } shouldBe true
+        }
+
+        test("matches multi-word theme keywords") {
+            val themes = listOf(
+                TextThemeDto("1", "team", "Innlogging", listOf("logget ut"), priority = 0, analysisContext = AnalysisContext.GENERAL_FEEDBACK),
+            )
+
+            val result = service.processStats(
+                listOf(createDiscoveryFeedback("Jeg ble logget ut av løsningen", "no")),
+                themes,
+            )
+
+            result.themes.single().theme shouldBe "Innlogging"
         }
 
         test("calculates success rate with partial weighting") {
@@ -164,14 +136,13 @@ class DiscoveryServiceTest : FunSpec({
                 result.confidenceLevel shouldBe ConfidenceLevel.LOW
             }
 
-            test("wordFrequency is unchanged with bigram addition") {
+            test("extracts phrases and representative examples") {
                 val feedbacks = listOf(
                     createDiscoveryFeedback("vanskelig å svare", "no"),
                     createDiscoveryFeedback("vanskelig å svare riktig", "partial"),
                 )
                 val result = service.processStats(feedbacks, emptyList())
 
-                result.wordFrequency.isNotEmpty() shouldBe true
                 result.phrases.isNotEmpty() shouldBe true
             }
         }

@@ -18,9 +18,10 @@ import type {
 import { parseChoiceParam } from "~/utils/choiceFilterUtils";
 import { parseRatingParam } from "~/utils/ratingFilterUtils";
 import { getScreenResolutionBucket } from "~/utils/screenResolution";
-import { getTopKeywords, IGNORED_WORDS } from "~/utils/wordAnalysis";
 import { getRating, hasTextResponse } from "./helpers";
-import { extractPhrases } from "./stats/phrases";
+import { extractPhrases, extractTopKeywords } from "./stats/phrases";
+import { getDiscoveryTaskText } from "./utils/extractors";
+import { matchesThemeKeywords } from "./utils/textAnalysis";
 
 const isDiscoveryTaskField = (fieldId: string) =>
   fieldId === SPECIALIZED_SURVEY_FIELD_IDS.task ||
@@ -34,47 +35,6 @@ const isPriorityField = (fieldId: string) =>
 
 // Note: circular dependency if we import mockFeedbackItems here directly while mockData imports stats.
 // To avoid this, we will accept items as arguments in the functions.
-
-// ============================================
-// Norwegian Stemmer
-// ============================================
-
-/**
- * Simple Norwegian stemmer that removes common suffixes.
- * Handles definite articles, plurals, and verb forms.
- * Mirrors the backend implementation in DiscoveryService.kt
- */
-function stemNorwegian(word: string): string {
-  const stem = word.toLowerCase().trim();
-
-  // Order matters: check longer suffixes first
-  const suffixes = [
-    // Definite plural
-    "ene",
-    "ane",
-    // Definite singular
-    "en",
-    "et",
-    "a",
-    // Indefinite plural
-    "er",
-    "ar",
-    // Verb past tense
-    "te",
-    "de",
-    // Adjective endings
-    "ere",
-    "est",
-  ];
-
-  for (const suffix of suffixes) {
-    if (stem.length > suffix.length + 2 && stem.endsWith(suffix)) {
-      return stem.slice(0, -suffix.length);
-    }
-  }
-
-  return stem;
-}
 
 // ============================================
 // Stats calculation
@@ -225,7 +185,7 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
       const nonEmpty = texts.filter((t) => t && t.trim().length > 0);
 
       // Get top keywords from text responses
-      const topKeywords = getTopKeywords(nonEmpty, 5);
+      const topKeywords = extractTopKeywords(nonEmpty, 10);
 
       // Get 3 most recent non-empty responses, sorted by date descending
       const recentResponses = field.textResponses
@@ -727,17 +687,12 @@ export function getMockDiscoveryStats(
       isSuccessField(answer.fieldId),
     );
 
-    let task = "Ukjent oppgave";
-    if (taskAnswer) {
-      if (taskAnswer.fieldType === "TEXT") {
-        // TEXT type - get the text value directly
-        task = taskAnswer.value.text || "Ukjent oppgave";
-      } else if (taskAnswer.fieldType === "SINGLE_CHOICE") {
-        const option = taskAnswer.question.options?.find(
-          (o) => o.id === taskAnswer.value.selectedOptionId,
-        );
-        task = option ? option.label : taskAnswer.value.selectedOptionId;
-      }
+    let task = getDiscoveryTaskText(item) ?? "Ukjent oppgave";
+    if (taskAnswer?.fieldType === "SINGLE_CHOICE") {
+      const option = taskAnswer.question.options?.find(
+        (o) => o.id === taskAnswer.value.selectedOptionId,
+      );
+      task = option ? option.label : taskAnswer.value.selectedOptionId;
     }
 
     let success: "yes" | "partial" | "no" = "no";
@@ -755,53 +710,6 @@ export function getMockDiscoveryStats(
       submittedAt: item.submittedAt,
     };
   });
-
-  // Calculate word frequency using shared IGNORED_WORDS list
-  // Track source responses for each word so we can display context examples
-  const wordData = new Map<
-    string,
-    {
-      count: number;
-      sourceResponses: Array<{ text: string; submittedAt: string }>;
-    }
-  >();
-
-  for (const response of responses) {
-    const words = response.task
-      .toLowerCase()
-      .replace(/[^\wæøå\s]/g, "")
-      .split(/\s+/);
-    const seenWordsInResponse = new Set<string>();
-    for (const word of words) {
-      if (word.length > 2 && !IGNORED_WORDS.has(word)) {
-        if (!wordData.has(word)) {
-          wordData.set(word, { count: 0, sourceResponses: [] });
-        }
-        const data = wordData.get(word);
-        if (!data) continue;
-        data.count++;
-        // Only add source response once per word per response (avoid duplicates)
-        // Limit to 5 source responses per word to keep response size reasonable
-        if (!seenWordsInResponse.has(word) && data.sourceResponses.length < 5) {
-          data.sourceResponses.push({
-            text: response.task,
-            submittedAt: response.submittedAt,
-          });
-          seenWordsInResponse.add(word);
-        }
-      }
-    }
-  }
-
-  const wordFrequency = Array.from(wordData.entries())
-    .map(([word, data]) => ({
-      word,
-      stem: word, // Legacy: word is already the stem-like key
-      count: data.count,
-      sourceResponses: data.sourceResponses,
-    }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 30);
 
   const textInsights = extractPhrases(
     responses.map((response) => ({
@@ -847,21 +755,13 @@ export function getMockDiscoveryStats(
   // INCLUSIVE MATCHING: Each response can match multiple themes (multi-tagging)
   // This ensures dashboard counts match feedback filter results
   for (const response of responses) {
-    const taskWords = response.task
-      .toLowerCase()
-      .replace(/[^\wæøå\s]/g, "")
-      .split(/\s+/)
-      .map(stemNorwegian);
     let matchedAnyTheme = false;
 
     // Check ALL themes (no break - response can belong to multiple themes)
     for (const theme of themes) {
       if (!theme.keywords || theme.keywords.length === 0) continue; // Skip "Annet"
 
-      const keywordStems = theme.keywords.map((k) =>
-        stemNorwegian(k.toLowerCase()),
-      );
-      if (keywordStems.some((kStem) => taskWords.includes(kStem))) {
+      if (matchesThemeKeywords(response.task, theme.keywords)) {
         theme.totalCount++;
         if (response.success === "yes") theme.successCount++;
         if (response.success === "partial") theme.partialCount++;
@@ -902,7 +802,6 @@ export function getMockDiscoveryStats(
 
   return {
     totalSubmissions: responses.length,
-    wordFrequency,
     themes: themes
       .filter((t) => t.totalCount > 0)
       .map((t) => ({
@@ -1173,20 +1072,10 @@ export function getMockTopTasksStats(
 
     // Categorize each blocker
     for (const blockerText of stats.blockerTexts) {
-      const blockerWords = blockerText
-        .toLowerCase()
-        .replace(/[^\wæøå\s]/g, "")
-        .split(/\s+/)
-        .map(stemNorwegian);
-
       let matchedAny = false;
 
       for (const theme of blockerThemes) {
-        const keywordStems = theme.keywords.map((k) =>
-          stemNorwegian(k.toLowerCase()),
-        );
-
-        if (keywordStems.some((kStem) => blockerWords.includes(kStem))) {
+        if (matchesThemeKeywords(blockerText, theme.keywords)) {
           const themeEntry = blockersByTheme[theme.id];
           if (themeEntry) {
             themeEntry.count++;
@@ -1348,52 +1237,6 @@ export function getMockBlockerStats(
     }
   }
 
-  // Calculate word frequency from blocker text
-  // Track source responses for each word so we can display context examples
-  const wordData = new Map<
-    string,
-    {
-      count: number;
-      sourceResponses: Array<{ text: string; submittedAt: string }>;
-    }
-  >();
-  for (const response of blockerResponses) {
-    const words = response.blocker
-      .toLowerCase()
-      .replace(/[^\wæøå\s]/g, "")
-      .split(/\s+/);
-    const seenWordsInResponse = new Set<string>();
-    for (const word of words) {
-      if (word.length > 2 && !IGNORED_WORDS.has(word)) {
-        if (!wordData.has(word)) {
-          wordData.set(word, { count: 0, sourceResponses: [] });
-        }
-        const data = wordData.get(word);
-        if (!data) continue;
-        data.count++;
-        // Only add source response once per word per response (avoid duplicates)
-        // Limit to 5 source responses per word to keep response size reasonable
-        if (!seenWordsInResponse.has(word) && data.sourceResponses.length < 5) {
-          data.sourceResponses.push({
-            text: response.blocker,
-            submittedAt: response.submittedAt,
-          });
-          seenWordsInResponse.add(word);
-        }
-      }
-    }
-  }
-
-  const wordFrequency = Array.from(wordData.entries())
-    .map(([word, data]) => ({
-      word,
-      stem: word, // Legacy: word is already the stem-like key
-      count: data.count,
-      sourceResponses: data.sourceResponses,
-    }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 30);
-
   const textInsights = extractPhrases(
     blockerResponses.map((response) => ({
       id: response.id,
@@ -1428,12 +1271,6 @@ export function getMockBlockerStats(
   });
 
   for (const response of blockerResponses) {
-    const blockerWords = response.blocker
-      .toLowerCase()
-      .replace(/[^\wæøå\s]/g, "")
-      .split(/\s+/)
-      .map(stemNorwegian);
-
     let matchedAny = false;
 
     for (const themeStat of themeStats) {
@@ -1442,11 +1279,7 @@ export function getMockBlockerStats(
       const theme = blockerThemes.find((t) => t.id === themeStat.themeId);
       if (!theme) continue;
 
-      const keywordStems = theme.keywords.map((k) =>
-        stemNorwegian(k.toLowerCase()),
-      );
-
-      if (keywordStems.some((kStem) => blockerWords.includes(kStem))) {
+      if (matchesThemeKeywords(response.blocker, theme.keywords)) {
         themeStat.count++;
         if (
           themeStat.examples.length < 3 &&
@@ -1478,7 +1311,6 @@ export function getMockBlockerStats(
 
   return {
     totalBlockers: blockerResponses.length,
-    wordFrequency,
     themes: themeStats
       .filter((t) => t.count > 0)
       .map(({ usedExamples, ...rest }) => rest) // Remove internal Set

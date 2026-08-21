@@ -177,7 +177,6 @@ class BlockerRoutesTest : FunSpec({
             val stats = json.decodeFromString<BlockerStatsResponse>(response.bodyAsText())
 
             stats.totalBlockers shouldBe 2
-            stats.wordFrequency shouldHaveAtLeastSize 1
             stats.recentBlockers shouldHaveAtLeastSize 1
         }
     }
