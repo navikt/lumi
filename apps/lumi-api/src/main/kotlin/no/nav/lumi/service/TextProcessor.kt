@@ -11,11 +11,12 @@ object TextProcessor {
     private val redactionMarkerRegex = Regex("\\[[A-ZÆØÅ][A-ZÆØÅ\\s-]+]")
     private val tokenCleanupRegex = Regex("[^a-zæøåA-ZÆØÅ0-9\\s]")
     private val whitespaceRegex = Regex("\\s+")
+    private val phraseBoundaryRegex = Regex("[.!?;,:…\\n\\u2028\\u2029]+")
 
     /**
      * Norwegian stop words — data-driven from analysis of 1 283 production survey responses.
      * Covers bokmål and nynorsk function words. No English (< 1% of text, not useful).
-     * These are filtered out before word frequency / bigram analysis.
+     * These are filtered out before keyword and phrase analysis.
      */
     val STOP_WORDS = setOf(
         // --- Core bokmål function words ---
@@ -66,7 +67,7 @@ object TextProcessor {
 
     /**
      * Extract words from text, filtering stop words and short words.
-     * Used for frequency analysis / word clouds where noise should be removed.
+     * Used for keyword analysis where noise should be removed.
      */
     fun extractWords(text: String): List<String> {
         return tokenize(text).filter { it !in STOP_WORDS }
@@ -78,6 +79,20 @@ object TextProcessor {
      */
     fun tokenize(text: String): List<String> {
         return rawTokens(text).filter { it.length > 2 }
+    }
+
+    /** Match single- or multi-word theme keywords within one text segment. */
+    fun matchesThemeKeywords(text: String, keywords: List<String>): Boolean {
+        val textSegments = text.replace(redactionMarkerRegex, "…")
+            .split(phraseBoundaryRegex)
+            .map { segment -> rawTokens(segment).map(::stemNorwegian) }
+
+        return keywords.any { keyword ->
+            val keywordTokens = rawTokens(keyword).map(::stemNorwegian)
+            keywordTokens.isNotEmpty() && textSegments.any { segment ->
+                segment.windowed(keywordTokens.size).any { it == keywordTokens }
+            }
+        }
     }
 
     private fun rawTokens(text: String): List<String> {
@@ -102,11 +117,12 @@ object TextProcessor {
     data class StemmedWord(val surface: String, val stem: String)
 
     /**
-     * A bigram (two-word phrase) with its stemmed key for grouping.
+     * A content-word pair with its stemmed key for grouping and natural display text.
      */
     data class StemmedBigram(
         val surface: String,
         val stemKey: String,
+        val previousStemKey: String? = null,
     )
 
     /**
@@ -120,20 +136,33 @@ object TextProcessor {
     }
 
     /**
-     * Extract content-word bigrams from text.
-     * Stopwords are filtered first, then adjacent content words are paired.
-     * This means stopwords between content words are skipped:
-     * "vanskelig å svare" → ["vanskelig", "svare"] → bigram "vanskelig svare"
+     * Extract adjacent content-word pairs from text. The stem key omits stopwords
+     * for stable grouping, while the surface keeps words between the pair so the
+     * phrase reads naturally: "vanskelig å svare" is displayed as written and
+     * grouped by the key for "vanskelig|svare".
      */
     fun extractBigrams(text: String): List<StemmedBigram> {
-        val contentWords = extractWords(text)
-        if (contentWords.size < 2) return emptyList()
+        return text.split(phraseBoundaryRegex).flatMap(::extractBigramsFromSegment)
+    }
 
-        return contentWords.zipWithNext().map { (w1, w2) ->
-            StemmedBigram(
-                surface = "$w1 $w2",
-                stemKey = "${stemNorwegian(w1)}|${stemNorwegian(w2)}",
+    private fun extractBigramsFromSegment(segment: String): List<StemmedBigram> {
+        val words = rawTokens(segment)
+        val contentWordIndexes = words.indices.filter { index ->
+            words[index].length > 2 && words[index] !in STOP_WORDS
+        }
+        if (contentWordIndexes.size < 2) return emptyList()
+
+        var previousStemKey: String? = null
+        return contentWordIndexes.zipWithNext().map { (firstIndex, secondIndex) ->
+            val first = words[firstIndex]
+            val second = words[secondIndex]
+            val bigram = StemmedBigram(
+                surface = words.subList(firstIndex, secondIndex + 1).joinToString(" "),
+                stemKey = "${stemNorwegian(first)}|${stemNorwegian(second)}",
+                previousStemKey = previousStemKey,
             )
+            previousStemKey = bigram.stemKey
+            bigram
         }
     }
 }

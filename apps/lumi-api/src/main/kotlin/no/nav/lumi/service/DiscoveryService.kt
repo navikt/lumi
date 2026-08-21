@@ -5,7 +5,6 @@ import no.nav.lumi.repository.DiscoveryStatsRepository
 import no.nav.lumi.repository.TextThemeRepository
 import no.nav.lumi.service.text.BigramAccumulator
 import no.nav.lumi.service.text.QuoteSelector
-import no.nav.lumi.service.text.StemWordAccumulator
 
 /**
  * Service layer for Discovery analytics.
@@ -23,14 +22,10 @@ class DiscoveryService(
         /** Maximum recent responses to return */
         const val MAX_RECENT_RESPONSES = 20
         
-        /** Maximum words in frequency list */
-        const val MAX_WORD_FREQUENCY = 50
-
         const val MAX_PHRASES = 30
         const val MIN_PHRASE_OCCURRENCES = 2
         
-        /** Maximum source responses per word in discovery */
-        const val MAX_SOURCE_RESPONSES_DISCOVERY = 3
+        const val MAX_PHRASE_SOURCE_RESPONSES = 3
     }
 
     /**
@@ -50,8 +45,6 @@ class DiscoveryService(
         feedbacks: List<FeedbackDto>,
         themes: List<TextThemeDto>
     ): DiscoveryStatsResponse {
-        // Stem-based word frequency accumulator
-        val wordAccumulators = mutableMapOf<String, StemWordAccumulator>()
         val bigramAccumulators = mutableMapOf<String, BigramAccumulator>()
         val quoteCandidates = mutableListOf<Pair<String, String>>()
         val themeStats = themes.associate { it.name to ThemeAccumulator() }.toMutableMap()
@@ -81,42 +74,29 @@ class DiscoveryService(
                 else -> null
             }
             
-            // Word frequency analysis with stem grouping
-            val seenStemsInResponse = mutableSetOf<String>()
-            TextProcessor.extractStemmedWords(taskText).forEach { (surface, stem) ->
-                val acc = wordAccumulators.getOrPut(stem) { StemWordAccumulator(stem) }
-                acc.addOccurrence(surface)
-                
-                // Add source response (max 3 per stem, deduped by text, max 1 per response per stem)
-                if (!seenStemsInResponse.contains(stem) && acc.sourceResponses.size < MAX_SOURCE_RESPONSES_DISCOVERY) {
-                    val sourceText = taskText
-                    if (!acc.usedTexts.contains(sourceText)) {
-                        acc.sourceResponses.add(SourceResponse(text = sourceText, submittedAt = dto.submittedAt))
-                        acc.usedTexts.add(sourceText)
-                    }
-                    seenStemsInResponse.add(stem)
-                }
-            }
-
-            // Bigram extraction — pairs of adjacent content words
+            // Phrase extraction — adjacent content words with natural display text
             TextProcessor.extractBigrams(taskText).forEach { bg ->
                 val acc = bigramAccumulators.getOrPut(bg.stemKey) { BigramAccumulator(bg.stemKey) }
                 acc.addOccurrence(bg.surface, dto.id)
+                bg.previousStemKey?.let { acc.addAdjacentWindow(it, dto.id) }
             }
 
             // Collect quote candidates
             quoteCandidates.add(taskText to dto.submittedAt)
             
-            // Theme matching (find first matching theme based on priority)
-            val matchedTheme = matchTheme(taskText, themes)
-            val accumulator = themeStats[matchedTheme]!!
-            accumulator.count++
-            when (successValue) {
-                "yes" -> accumulator.successCount++
-                "partial" -> accumulator.partialCount++
-            }
-            if (accumulator.examples.size < MAX_EXAMPLES) {
-                accumulator.examples.add(taskText)
+            // A response can illuminate more than one theme. Only responses
+            // without any configured match belong in the catch-all bucket.
+            val matchedThemes = matchingThemeNames(taskText, themes).ifEmpty { listOf("Annet") }
+            for (matchedTheme in matchedThemes) {
+                val accumulator = themeStats.getValue(matchedTheme)
+                accumulator.count++
+                when (successValue) {
+                    "yes" -> accumulator.successCount++
+                    "partial" -> accumulator.partialCount++
+                }
+                if (accumulator.examples.size < MAX_EXAMPLES) {
+                    accumulator.examples.add(taskText)
+                }
             }
             
             // Recent responses
@@ -130,18 +110,13 @@ class DiscoveryService(
             }
         }
         
-        // Build word frequency list from accumulators
-        val wordFrequency = wordAccumulators.values
-            .sortedByDescending { it.totalCount }
-            .take(MAX_WORD_FREQUENCY)
-            .map { it.toWordFrequencyEntry() }
-
         // Build phrase list from bigram accumulators
-        val phrases = bigramAccumulators.values
-            .filter { it.totalCount >= MIN_PHRASE_OCCURRENCES }
-            .sortedByDescending { it.totalCount }
-            .take(MAX_PHRASES)
-            .map { it.toPhraseEntry(maxSourceIds = MAX_SOURCE_RESPONSES_DISCOVERY) }
+        val phrases = BigramAccumulator.selectDiverse(
+            accumulators = bigramAccumulators.values,
+            minimumOccurrences = MIN_PHRASE_OCCURRENCES,
+            maximumPhrases = MAX_PHRASES,
+        )
+            .map { it.toPhraseEntry(maxSourceIds = MAX_PHRASE_SOURCE_RESPONSES) }
 
         // Select representative quotes (seed combines size + first ID for uniqueness per dataset)
         val quoteSeed = feedbacks.size.toLong() xor (feedbacks.firstOrNull()?.id?.hashCode()?.toLong() ?: 0L)
@@ -156,7 +131,6 @@ class DiscoveryService(
         
         return DiscoveryStatsResponse(
             totalSubmissions = feedbacks.size,
-            wordFrequency = wordFrequency,
             themes = themeResults,
             recentResponses = recentResponses,
             phrases = phrases,
@@ -168,18 +142,15 @@ class DiscoveryService(
     /**
      * Match text to a theme based on keywords.
      * Uses tokenize() (not extractWords()) so stopwords can still be theme keywords.
-     * Returns the name of the first matching theme (by priority) or "Annet".
+     * Returns every matching configured theme. Theme priority is retained in
+     * storage for compatibility, but does not hide overlapping insights.
      */
-    internal fun matchTheme(text: String, themes: List<TextThemeDto>): String {
-        val textWords = TextProcessor.tokenize(text).map { TextProcessor.stemNorwegian(it) }.toSet()
-        
-        for (theme in themes.sortedByDescending { it.priority }) {
-            val keywordStems = theme.keywords.map { TextProcessor.stemNorwegian(it.lowercase()) }.toSet()
-            if (textWords.any { it in keywordStems }) {
-                return theme.name
-            }
+    internal fun matchingThemeNames(text: String, themes: List<TextThemeDto>): List<String> {
+        return themes.mapNotNull { theme ->
+            if (TextProcessor.matchesThemeKeywords(text, theme.keywords)) {
+                theme.name
+            } else null
         }
-        return "Annet"
     }
 }
 

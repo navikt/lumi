@@ -184,65 +184,7 @@ export * from "./helpers"; // export helpers if needed by tests
 // Feedback filtering and pagination
 // ============================================
 
-import { mockThemes } from "~/mock/themes";
 import { hasTextResponse } from "./helpers";
-
-/**
- * Simple Norwegian stemmer for keyword matching.
- * Mirrors the backend implementation in DiscoveryService.kt
- */
-function stemNorwegian(word: string): string {
-  const stem = word.toLowerCase().trim();
-
-  const suffixes = [
-    "ene",
-    "ane",
-    "en",
-    "et",
-    "a",
-    "er",
-    "ar",
-    "te",
-    "de",
-    "ere",
-    "est",
-  ];
-
-  for (const suffix of suffixes) {
-    if (stem.length > suffix.length + 2 && stem.endsWith(suffix)) {
-      return stem.slice(0, -suffix.length);
-    }
-  }
-
-  return stem;
-}
-
-/**
- * Check if feedback text matches any keyword from a theme.
- */
-function matchesThemeKeywords(text: string, keywords: string[]): boolean {
-  const textWords = text
-    .toLowerCase()
-    .replace(/[^\wæøå\s]/g, "")
-    .split(/\s+/)
-    .map(stemNorwegian);
-
-  const keywordStems = keywords.map((k) => stemNorwegian(k.toLowerCase()));
-  return keywordStems.some((kStem) => textWords.includes(kStem));
-}
-
-/**
- * Get text content from a feedback item for theme matching.
- */
-function getFeedbackText(item: FeedbackDto): string {
-  const textParts: string[] = [];
-  for (const answer of item.answers) {
-    if (answer.value.type === "text" && answer.value.text) {
-      textParts.push(answer.value.text);
-    }
-  }
-  return textParts.join(" ");
-}
 
 function applyFilters(
   items: FeedbackDto[],
@@ -381,24 +323,7 @@ function applyFilters(
 
   // Filter by theme
   if (theme) {
-    if (theme === "uncategorized") {
-      // Show feedback that doesn't match any theme's keywords
-      filtered = filtered.filter((item) => {
-        const text = getFeedbackText(item);
-        if (!text) return true; // No text = uncategorized
-        // Check if it matches any theme
-        return !mockThemes.some((t) => matchesThemeKeywords(text, t.keywords));
-      });
-    } else {
-      // Find the theme by ID
-      const targetTheme = mockThemes.find((t) => t.id === theme);
-      if (targetTheme && targetTheme.keywords.length > 0) {
-        filtered = filtered.filter((item) => {
-          const text = getFeedbackText(item);
-          return matchesThemeKeywords(text, targetTheme.keywords);
-        });
-      }
-    }
+    filtered = applyFeedbackFilters(filtered, { theme });
   }
 
   // Filter by segment (context.tags format: "key:value,key:value")

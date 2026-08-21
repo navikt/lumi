@@ -73,7 +73,7 @@ fun Route.statsRoutes(
         call.respond(statsService.getTopTasksStats(query))
     }
 
-    // Blocker statistics for Top Tasks (word frequency + theme clustering)
+    // Blocker text analysis for Top Tasks (phrases, examples, and themes)
     get<ApiV1Intern.Stats.Blockers> { params ->
         val query = params.parent.toStatsQuery(call.authorizedTeam)
         call.respond(statsService.getBlockerStats(query))

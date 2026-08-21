@@ -65,43 +65,6 @@ data class ThemeResult(
 )
 
 /**
- * Source response for context examples in word cloud
- */
-@Serializable
-data class SourceResponse(
-    val text: String,
-    val submittedAt: String
-)
-
-/**
- * Word variant with its count (for showing normalization info)
- */
-@Serializable
-data class WordVariant(
-    val word: String,
-    val count: Int
-)
-
-/**
- * Word frequency entry for word cloud (unified for Discovery and Blocker).
- * Groups word variants by stem and provides context examples.
- *
- * @property word Canonical display form (most common surface form)
- * @property stem Normalized/stemmed form (stable key for grouping)
- * @property count Total occurrences across all variants
- * @property variants Top word variants with their counts (max 5)
- * @property sourceResponses Example responses containing this word (max 3 for discovery, 5 for blocker)
- */
-@Serializable
-data class WordFrequencyEntry(
-    val word: String,
-    val stem: String,
-    val count: Int,
-    val variants: List<WordVariant> = emptyList(),
-    val sourceResponses: List<SourceResponse> = emptyList()
-)
-
-/**
  * Recent discovery response
  */
 @Serializable
@@ -113,7 +76,8 @@ data class DiscoveryRecentResponse(
 )
 
 /**
- * A frequently occurring two-word phrase (bigram) extracted from free-text responses.
+ * A frequently occurring pair of content words extracted from free-text responses.
+ * Display text may retain short words and stopwords between the pair.
  */
 @Serializable
 data class PhraseEntry(
@@ -133,7 +97,7 @@ data class QuoteEntry(
 
 /**
  * Confidence level for text analysis based on response volume.
- * Determines how much weight to give bigram phrases vs. individual quotes.
+ * Determines how much weight to give recurring phrases vs. individual quotes.
  */
 @Serializable
 enum class ConfidenceLevel {
@@ -148,7 +112,6 @@ enum class ConfidenceLevel {
 @Serializable
 data class DiscoveryStatsResponse(
     val totalSubmissions: Int,
-    val wordFrequency: List<WordFrequencyEntry>,
     val themes: List<ThemeResult>,
     val recentResponses: List<DiscoveryRecentResponse>,
     val phrases: List<PhraseEntry> = emptyList(),
@@ -179,7 +142,6 @@ data class RecentBlockerResponse(
 @Serializable
 data class BlockerStatsResponse(
     val totalBlockers: Int,
-    val wordFrequency: List<WordFrequencyEntry>,  // Uses unified WordFrequencyEntry
     val themes: List<BlockerThemeResult>,
     val recentBlockers: List<RecentBlockerResponse>,
     val phrases: List<PhraseEntry> = emptyList(),

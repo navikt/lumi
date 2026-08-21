@@ -205,7 +205,6 @@ describe("fetchStats contract", () => {
   it("accepts PhraseEntry without sourceResponseIds (backwards-compat)", () => {
     const discoveryPayload = {
       totalSubmissions: 10,
-      wordFrequency: [],
       themes: [],
       recentResponses: [],
       phrases: [

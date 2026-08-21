@@ -1,16 +1,11 @@
 import { CheckmarkIcon, TrashIcon } from "@navikt/aksel-icons";
 import {
   Alert,
-  BodyShort,
-  Box,
   Button,
   UNSAFE_Combobox as Combobox,
+  Fieldset,
   HStack,
-  Label,
   Modal,
-  Pagination,
-  Select,
-  Tabs,
   TextField,
   VStack,
 } from "@navikt/ds-react";
@@ -28,12 +23,6 @@ import {
 } from "~/utils/colors";
 import styles from "./ThemeModal.module.css";
 
-/** Context example for peek context feature */
-export interface ContextExample {
-  text: string;
-  submittedAt: string;
-}
-
 interface ThemeModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -42,18 +31,13 @@ interface ThemeModalProps {
   ) => void;
   onDelete?: (themeId: string) => void;
   isSubmitting?: boolean;
+  mutationError?: string;
+  nameError?: string;
+  onClearNameError?: () => void;
   /** If provided, we're editing. Otherwise creating. */
   theme?: TextTheme;
-  /** Pre-fill keywords (e.g., from word cloud click) */
-  initialKeywords?: string[];
   /** List of available words for autocomplete */
   availableWords?: string[];
-  /** List of all defined themes for autocomplete */
-  allThemes?: TextTheme[];
-  /** Context examples containing the clicked word */
-  contextExamples?: ContextExample[];
-  /** Word variants that were grouped under this stem (for showing normalization info) */
-  wordVariants?: Array<{ word: string; count: number }>;
 }
 
 const COLOR_CLASS_BY_HEX: Record<string, string> = {
@@ -69,6 +53,19 @@ const COLOR_CLASS_BY_HEX: Record<string, string> = {
   [THEME_COLOR_GRAY]: styles.colorGray,
 };
 
+const COLOR_NAME_BY_HEX: Record<string, string> = {
+  [THEME_COLORS[0]]: "Blå",
+  [THEME_COLORS[1]]: "Grønn",
+  [THEME_COLORS[2]]: "Gul",
+  [THEME_COLORS[3]]: "Rød",
+  [THEME_COLORS[4]]: "Lilla",
+  [THEME_COLORS[5]]: "Rosa",
+  [THEME_COLORS[6]]: "Turkis",
+  [THEME_COLORS[7]]: "Limegrønn",
+  [THEME_COLOR_ORANGE]: "Oransje",
+  [THEME_COLOR_GRAY]: "Grå",
+};
+
 /**
  * Modal for creating or editing a text theme.
  * Supports keyword management with chips.
@@ -79,38 +76,24 @@ export function ThemeModal({
   onSubmit,
   onDelete,
   isSubmitting = false,
+  mutationError,
+  nameError,
+  onClearNameError,
   theme,
-  initialKeywords = [],
   availableWords = [],
-  allThemes = [],
-  contextExamples = [],
-  wordVariants = [],
 }: ThemeModalProps) {
   const isEditing = !!theme;
-
-  // "existing" | "new". If editing, we don't use tabs.
-  const [activeTab, setActiveTab] = useState<string>("existing");
-
-  // Form state for "Create New" / "Edit"
   const [name, setName] = useState(theme?.name ?? "");
-  const [keywords, setKeywords] = useState<string[]>(
-    theme?.keywords ?? initialKeywords,
-  );
+  const [keywords, setKeywords] = useState<string[]>(theme?.keywords ?? []);
 
   const [color, setColor] = useState(theme?.color ?? THEME_COLOR_BLUE);
-
-  // State for "Add to Existing"
-  const [selectedExistingThemeId, setSelectedExistingThemeId] =
-    useState<string>("");
 
   const [errors, setErrors] = useState<{
     name?: string;
     keywords?: string;
-    existingTheme?: string;
   }>({});
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [examplesPage, setExamplesPage] = useState(1);
-  const EXAMPLES_PER_PAGE = 3;
+  const mutationInFlightRef = useRef(false);
 
   // Track previous state to determine if we should reset
   const prevIsOpen = useRef(isOpen);
@@ -123,65 +106,43 @@ export function ThemeModal({
 
     if (hasOpened || themeChanged) {
       setName(theme?.name ?? "");
-      setKeywords(theme?.keywords ?? initialKeywords);
+      setKeywords(theme?.keywords ?? []);
       setColor(theme?.color ?? THEME_COLOR_BLUE);
-
-      // Default to "existing" tab only if we are creating AND have initial keywords (clicked a word)
-      // Otherwise default to "new"
-      const shouldDefaultToExisting = !theme && initialKeywords.length > 0;
-      setActiveTab(shouldDefaultToExisting ? "existing" : "new");
-
-      setSelectedExistingThemeId("");
       setErrors({});
       setConfirmDelete(false);
-      setExamplesPage(1); // Reset pagination
     }
 
     prevIsOpen.current = isOpen;
     prevThemeId.current = theme?.id;
-  }, [isOpen, theme, initialKeywords]);
+  }, [isOpen, theme]);
+
+  useEffect(() => {
+    if (!isSubmitting) mutationInFlightRef.current = false;
+  }, [isSubmitting]);
 
   const validateNew = (): boolean => {
     const newErrors: { name?: string; keywords?: string } = {};
-    if (!name.trim()) newErrors.name = "Tema-navn er påkrevd";
+    if (!name.trim()) newErrors.name = "Skriv inn et navn på temaet";
+    else if (name.trim().toLocaleLowerCase("nb") === "annet")
+      newErrors.name = "Velg et annet navn. «Annet» brukes for svar uten tema.";
     if (keywords.length === 0)
       newErrors.keywords = "Minst ett nøkkelord er påkrevd";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const validateExisting = (): boolean => {
-    const newErrors: { existingTheme?: string } = {};
-    if (!selectedExistingThemeId)
-      newErrors.existingTheme = "Du må velge et tema";
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const isMutationLocked = () => isSubmitting || mutationInFlightRef.current;
+
+  const requestClose = () => {
+    if (isMutationLocked()) return;
+    setConfirmDelete(false);
+    onClose();
   };
 
   const handleSubmit = () => {
-    // CASE 1: Add to Existing (Tab 1)
-    if (!isEditing && activeTab === "existing") {
-      if (!validateExisting()) return;
-
-      const existingTheme = allThemes.find(
-        (t) => t.id === selectedExistingThemeId,
-      );
-      if (!existingTheme) return;
-
-      // Merge keywords
-      const mergedKeywords = Array.from(
-        new Set([...existingTheme.keywords, ...initialKeywords]),
-      );
-
-      onSubmit({
-        themeId: existingTheme.id,
-        keywords: mergedKeywords,
-      });
-      return;
-    }
-
-    // CASE 2: Create New or Edit (Tab 2 / Default)
+    if (isMutationLocked()) return;
     if (!validateNew()) return;
+    mutationInFlightRef.current = true;
 
     if (isEditing && theme) {
       onSubmit({
@@ -203,8 +164,10 @@ export function ThemeModal({
   };
 
   const handleDelete = () => {
+    if (isMutationLocked()) return;
     if (theme && onDelete) {
       if (confirmDelete) {
+        mutationInFlightRef.current = true;
         onDelete(theme.id);
       } else {
         setConfirmDelete(true);
@@ -212,259 +175,89 @@ export function ThemeModal({
     }
   };
 
-  const themeOptions = allThemes
-    .filter((t) => t.name !== "Annet")
-    .sort((a, b) => a.name.localeCompare(b.name));
-
   return (
     <Modal
       open={isOpen}
-      onClose={() => {
-        setConfirmDelete(false);
-        onClose();
-      }}
+      onClose={requestClose}
+      onBeforeClose={() => !isMutationLocked()}
       header={{
-        heading: isEditing
-          ? "Rediger tema"
-          : initialKeywords.length > 0
-            ? "Kategoriser ord"
-            : "Opprett nytt tema",
+        heading: isEditing ? "Rediger tema" : "Opprett nytt tema",
         closeButton: true,
       }}
       width="medium"
     >
       <Modal.Body>
-        {/* TABS only when we have a word to categorize */}
-        {!isEditing && initialKeywords.length > 0 && (
-          <Tabs
-            value={activeTab}
-            onChange={setActiveTab}
-            className={styles.tabs}
-          >
-            <Tabs.List>
-              <Tabs.Tab value="existing" label="Legg til i eksisterende tema" />
-              <Tabs.Tab value="new" label="Opprett nytt tema" />
-            </Tabs.List>
-          </Tabs>
-        )}
-
-        {/* TAB 1: ADD TO EXISTING (only when we have a word) */}
-        {!isEditing &&
-          initialKeywords.length > 0 &&
-          activeTab === "existing" && (
-            <VStack gap="space-24">
-              <Alert variant="info" size="small">
-                Du legger til følgende ord:{" "}
-                <strong>{initialKeywords.join(", ")}</strong>
-              </Alert>
-
-              <Select
-                label="Velg tema"
-                description={`Velg hvilket tema du vil legge ${initialKeywords.length > 1 ? "ordene" : "ordet"} til i.`}
-                value={selectedExistingThemeId}
-                onChange={(e) => {
-                  setSelectedExistingThemeId(e.target.value);
-                  setErrors((err) => ({ ...err, existingTheme: undefined }));
-                }}
-                error={errors.existingTheme}
-              >
-                <option value="">Velg...</option>
-                {themeOptions.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </Select>
-            </VStack>
+        <VStack gap="space-24">
+          {mutationError && (
+            <Alert variant="error" size="small" role="status">
+              {mutationError}
+            </Alert>
           )}
+          <TextField
+            label="Navn på temaet"
+            description="Et beskrivende navn for temaet"
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              setErrors((e) => ({ ...e, name: undefined }));
+              onClearNameError?.();
+            }}
+            error={errors.name ?? nameError}
+            autoFocus={!isEditing}
+          />
 
-        {/* TAB 2 / EDIT MODE / NO-WORD CREATE: FORM */}
-        {(isEditing || activeTab === "new" || initialKeywords.length === 0) && (
-          <VStack gap="space-24">
-            <TextField
-              label="Tema-navn"
-              description="Et beskrivende navn for temaet"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setErrors((e) => ({ ...e, name: undefined }));
-              }}
-              error={errors.name}
-              autoFocus={activeTab === "new"}
-            />
+          <Combobox
+            label="Nøkkelord"
+            description="Tekster som inneholder disse ordene blir gruppert under temaet. Vi finner også bøyde former av ordet – «søknad» treffer «søknaden» og «søknader»."
+            error={errors.keywords}
+            placeholder="Skriv et nøkkelord..."
+            options={availableWords}
+            selectedOptions={keywords}
+            onToggleSelected={(option, isSelected) => {
+              if (isSelected) {
+                const trimmed = option.trim().toLowerCase();
+                if (trimmed) {
+                  setKeywords([...keywords, trimmed]);
+                  setErrors((e) => ({ ...e, keywords: undefined }));
+                }
+              } else {
+                setKeywords(keywords.filter((k) => k !== option));
+              }
+            }}
+            allowNewValues
+            isMultiSelect
+            shouldAutocomplete={true}
+            className={styles.combobox}
+          />
 
-            <div>
-              <Label>Nøkkelord</Label>
-              <BodyShort
-                size="small"
-                textColor="subtle"
-                className={styles.keywordsDescription}
-              >
-                Tekster som inneholder disse ordene blir gruppert under dette
-                temaet. Vi bruker smart søk – "søknad" treffer også "søknaden"
-                og "søknader".
-              </BodyShort>
-
-              <HStack
-                gap="space-8"
-                className={styles.keywordInputRow}
-                align="end"
-              >
-                <Combobox
-                  label="Legg til nøkkelord"
-                  hideLabel
-                  placeholder="Skriv et nøkkelord..."
-                  options={availableWords}
-                  selectedOptions={keywords}
-                  onToggleSelected={(option, isSelected) => {
-                    if (isSelected) {
-                      const trimmed = option.trim().toLowerCase();
-                      if (trimmed) {
-                        setKeywords([...keywords, trimmed]);
-                        setErrors((e) => ({ ...e, keywords: undefined }));
-                      }
-                    } else {
-                      setKeywords(keywords.filter((k) => k !== option));
-                    }
-                  }}
-                  allowNewValues
-                  isMultiSelect
-                  shouldAutocomplete={true}
-                  className={styles.combobox}
-                />
-              </HStack>
-
-              {errors.keywords && (
-                <BodyShort size="small" className={styles.keywordsError}>
-                  {errors.keywords}
-                </BodyShort>
-              )}
-            </div>
-
-            <div>
-              <Label>Farge</Label>
-              <HStack gap="space-8" className={styles.colorSwatches}>
-                {THEME_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setColor(c)}
-                    className={[
-                      styles.colorButton,
-                      COLOR_CLASS_BY_HEX[c] ?? styles.colorGray,
-                      color === c ? styles.colorButtonSelected : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                    aria-label={`Velg farge ${c}`}
-                  >
-                    {color === c && (
-                      <CheckmarkIcon
-                        title="Valgt farge"
-                        className={styles.checkmark}
-                      />
-                    )}
-                  </button>
-                ))}
-              </HStack>
-            </div>
-          </VStack>
-        )}
-
-        {/* Context Examples Section */}
-        {contextExamples.length > 0 && initialKeywords.length > 0 && (
-          <Box
-            marginBlock="space-24 space-0"
-            paddingBlock="space-16"
-            borderWidth="1 0 0 0"
-            borderColor="neutral-subtle"
-          >
-            <Label size="small" className={styles.examplesHeading}>
-              📝 Slik brukes "{initialKeywords[0]}" i svarene (
-              {contextExamples.length} treff)
-            </Label>
-
-            {/* Show variants if multiple word forms were grouped */}
-            {wordVariants.length > 1 && (
-              <BodyShort
-                size="small"
-                textColor="subtle"
-                className={styles.variantsNote}
-              >
-                Normalisert fra:{" "}
-                {wordVariants.map((v, i) => (
-                  <span key={v.word}>
-                    {v.word} ({v.count})
-                    {i < wordVariants.length - 1 ? ", " : ""}
-                  </span>
-                ))}
-              </BodyShort>
-            )}
-
-            <VStack gap="space-8">
-              {contextExamples
-                .slice(
-                  (examplesPage - 1) * EXAMPLES_PER_PAGE,
-                  examplesPage * EXAMPLES_PER_PAGE,
-                )
-                .map((example) => {
-                  // Highlight keyword using cumulative position as key
-                  const keyword = initialKeywords[0];
-                  const highlightTerm = example.text
-                    .toLowerCase()
-                    .includes(keyword.toLowerCase())
-                    ? keyword
-                    : (wordVariants.find((v) =>
-                        example.text
-                          .toLowerCase()
-                          .includes(v.word.toLowerCase()),
-                      )?.word ?? keyword);
-
-                  const regex = new RegExp(`(${highlightTerm})`, "gi");
-                  const parts = example.text.split(regex);
-                  return (
-                    <Box
-                      key={`${example.text}-${example.submittedAt}`}
-                      padding="space-12"
-                      background="neutral-soft"
-                      borderRadius="8"
-                    >
-                      <BodyShort size="small">
-                        "
-                        {parts.map((part, partIdx) => {
-                          const key = `${example.submittedAt}-${partIdx}`;
-                          return part.toLowerCase() ===
-                            highlightTerm.toLowerCase() ? (
-                            <strong key={key} className={styles.highlight}>
-                              {part}
-                            </strong>
-                          ) : (
-                            <span key={key}>{part}</span>
-                          );
-                        })}
-                        "
-                      </BodyShort>
-                    </Box>
-                  );
-                })}
-            </VStack>
-
-            {/* Pagination */}
-            {contextExamples.length > EXAMPLES_PER_PAGE && (
-              <HStack justify="center" className={styles.examplesPagination}>
-                <Pagination
-                  page={examplesPage}
-                  onPageChange={setExamplesPage}
-                  count={Math.ceil(contextExamples.length / EXAMPLES_PER_PAGE)}
-                  size="xsmall"
-                  prevNextTexts
-                  siblingCount={0}
-                  boundaryCount={1}
-                />
-              </HStack>
-            )}
-          </Box>
-        )}
+          <Fieldset legend="Farge" size="small">
+            <HStack gap="space-8" className={styles.colorSwatches}>
+              {THEME_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  className={[
+                    styles.colorButton,
+                    COLOR_CLASS_BY_HEX[c] ?? styles.colorGray,
+                    color === c ? styles.colorButtonSelected : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  aria-label={COLOR_NAME_BY_HEX[c] ?? "Farge"}
+                  aria-pressed={color === c}
+                >
+                  {color === c && (
+                    <CheckmarkIcon
+                      title="Valgt farge"
+                      className={styles.checkmark}
+                    />
+                  )}
+                </button>
+              ))}
+            </HStack>
+          </Fieldset>
+        </VStack>
       </Modal.Body>
       <Modal.Footer>
         <HStack
@@ -472,17 +265,13 @@ export function ThemeModal({
           align="center"
           className={styles.footerRow}
         >
-          <HStack gap="space-12">
+          <HStack gap="space-12" className={styles.footerActions}>
             <Button onClick={handleSubmit} loading={isSubmitting}>
-              {isEditing
-                ? "Lagre endringer"
-                : activeTab === "existing"
-                  ? "Legg til i tema"
-                  : "Opprett tema"}
+              {isEditing ? "Lagre endringer" : "Opprett tema"}
             </Button>
             <Button
               variant="secondary"
-              onClick={onClose}
+              onClick={requestClose}
               disabled={isSubmitting}
             >
               Avbryt

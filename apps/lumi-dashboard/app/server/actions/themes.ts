@@ -10,6 +10,7 @@ import {
   mockDelay,
 } from "~/server/utils";
 import type { TextTheme } from "~/types/api";
+import { ApiErrorException, ErrorType } from "~/types/errors";
 import { handleApiResponse } from "../fetchUtils";
 
 // ============================================
@@ -26,8 +27,14 @@ const FetchThemesParamsSchema = z.object({
   team: z.string().optional(),
 });
 
+const ThemeNameSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .refine((name) => name.toLocaleLowerCase("nb") !== "annet");
+
 const CreateThemeSchema = z.object({
-  name: z.string().min(1),
+  name: ThemeNameSchema,
   keywords: z.array(z.string()).min(1),
   color: z.string().optional(),
   priority: z.number().optional(),
@@ -37,8 +44,8 @@ const CreateThemeSchema = z.object({
 
 const UpdateThemeSchema = z.object({
   themeId: z.string(),
-  name: z.string().optional(),
-  keywords: z.array(z.string()).optional(),
+  name: ThemeNameSchema.optional(),
+  keywords: z.array(z.string()).min(1).optional(),
   color: z.string().optional(),
   priority: z.number().optional(),
   analysisContext: z.enum(["GENERAL_FEEDBACK", "BLOCKER"]),
@@ -46,6 +53,29 @@ const UpdateThemeSchema = z.object({
 });
 
 import { mockThemes } from "~/mock/themes";
+
+function throwThemeNameConflict(): never {
+  throw new ApiErrorException({
+    status: 409,
+    type: ErrorType.CONFLICT,
+    message: "Theme name already exists",
+    timestamp: new Date().toISOString(),
+  });
+}
+
+export function themeNameExists(
+  name: string,
+  team: string,
+  excludedId?: string,
+): boolean {
+  const normalized = name.trim();
+  return mockThemes.some(
+    (theme) =>
+      theme.id !== excludedId &&
+      theme.team === team &&
+      theme.name.trim() === normalized,
+  );
+}
 
 // ============================================
 // Server Functions
@@ -106,9 +136,11 @@ export const createThemeServerFn = createServerFn({ method: "POST" })
 
     if (isMockMode()) {
       await mockDelay();
+      const team = data.team ?? "team-esyfo";
+      if (themeNameExists(data.name, team)) throwThemeNameConflict();
       const newTheme: TextTheme = {
         id: crypto.randomUUID(),
-        team: data.team ?? "team-esyfo",
+        team,
         name: data.name,
         keywords: data.keywords,
         color: data.color,
@@ -151,6 +183,9 @@ export const updateThemeServerFn = createServerFn({ method: "POST" })
       await mockDelay();
       const theme = mockThemes.find((t) => t.id === themeId);
       if (!theme) throw new Error("Theme not found");
+      if (data.name && themeNameExists(data.name, theme.team, themeId)) {
+        throwThemeNameConflict();
+      }
 
       // Filter out undefined values to prevent overwriting existing data
       const cleanUpdateData = Object.fromEntries(

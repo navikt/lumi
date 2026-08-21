@@ -6,9 +6,14 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.put
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import no.nav.lumi.TestDatabase
@@ -18,6 +23,7 @@ import no.nav.lumi.insertTestFeedbackWithJson
 import no.nav.lumi.insertTestTheme
 import no.nav.lumi.testModule
 import java.time.OffsetDateTime
+import java.util.UUID
 
 class DiscoveryRoutesTest : FunSpec({
 
@@ -81,7 +87,7 @@ class DiscoveryRoutesTest : FunSpec({
         TestDatabase.clearAllData()
     }
 
-    test("GET /api/v1/intern/stats/discovery returns discovery stats with word frequency") {
+    test("GET /api/v1/intern/stats/discovery returns phrase and theme insights") {
         testApplication {
             application { testModule() }
 
@@ -120,9 +126,6 @@ class DiscoveryRoutesTest : FunSpec({
             val stats = json.decodeFromString<DiscoveryStatsResponse>(response.bodyAsText())
 
             stats.totalSubmissions shouldBe 3
-
-            // Word frequency should contain common words
-            stats.wordFrequency shouldHaveAtLeastSize 1
 
             // Recent responses should be included
             stats.recentResponses shouldHaveAtLeastSize 1
@@ -187,69 +190,6 @@ class DiscoveryRoutesTest : FunSpec({
         }
     }
 
-    test("GET /api/v1/intern/stats/discovery includes stem and variants in word frequency") {
-        testApplication {
-            application { testModule() }
-
-            val team = "flex"
-            val app = "spinnsyn"
-            val surveyId = "survey-discovery-stems"
-
-            val t0 = OffsetDateTime.now()
-
-            // Multiple forms of the same word
-            insertTestFeedbackWithJson(team = team, app = app, feedbackJson = discoveryJson(surveyId, "Søknaden min status", "yes"), opprettet = t0)
-            insertTestFeedbackWithJson(team = team, app = app, feedbackJson = discoveryJson(surveyId, "Se søknad status", "yes"), opprettet = t0.plusMinutes(1))
-            insertTestFeedbackWithJson(team = team, app = app, feedbackJson = discoveryJson(surveyId, "Søknadene mine", "partial"), opprettet = t0.plusMinutes(2))
-
-            val response = createTestClient().get("/api/v1/intern/stats/discovery?team=$team&app=$app&surveyId=$surveyId") {
-                header(HttpHeaders.Authorization, "Bearer test-token")
-            }
-
-            response.status shouldBe HttpStatusCode.OK
-
-            val stats = json.decodeFromString<DiscoveryStatsResponse>(response.bodyAsText())
-
-            // Should group søknaden, søknad, søknadene under same stem
-            val søknadEntry = stats.wordFrequency.find { it.stem == "søknad" || it.word.startsWith("søknad") }
-            søknadEntry shouldNotBe null
-            // Variants should contain different forms
-            søknadEntry?.variants?.isEmpty() shouldBe false
-        }
-    }
-
-    test("GET /api/v1/intern/stats/discovery includes source responses for context") {
-        testApplication {
-            application { testModule() }
-
-            val team = "flex"
-            val app = "spinnsyn"
-            val surveyId = "survey-discovery-sources"
-
-            val t0 = OffsetDateTime.now()
-
-            insertTestFeedbackWithJson(
-                team = team,
-                app = app,
-                feedbackJson = discoveryJson(surveyId, "Sjekke status på saken min", "yes"),
-                opprettet = t0
-            )
-
-            val response = createTestClient().get("/api/v1/intern/stats/discovery?team=$team&app=$app&surveyId=$surveyId") {
-                header(HttpHeaders.Authorization, "Bearer test-token")
-            }
-
-            response.status shouldBe HttpStatusCode.OK
-
-            val stats = json.decodeFromString<DiscoveryStatsResponse>(response.bodyAsText())
-
-            // Word frequency entries should have source responses
-            val entryWithSources = stats.wordFrequency.find { it.sourceResponses.isNotEmpty() }
-            entryWithSources shouldNotBe null
-            entryWithSources?.sourceResponses?.first()?.text shouldNotBe null
-        }
-    }
-
     test("GET /api/v1/intern/stats/discovery filters by date range") {
         testApplication {
             application { testModule() }
@@ -278,6 +218,78 @@ class DiscoveryRoutesTest : FunSpec({
 
             // Only 2 should be in range
             stats.totalSubmissions shouldBe 2
+        }
+    }
+
+    test("reserves Annet for the catch-all theme on create and update") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+
+            val createResponse = client.post("/api/v1/intern/themes") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """{"name":" annet ","keywords":["hjelp"],"analysisContext":"GENERAL_FEEDBACK"}"""
+                )
+            }
+            createResponse.status shouldBe HttpStatusCode.BadRequest
+
+            val themeId = insertTestTheme(
+                team = "team-test",
+                name = "Hjelp",
+                keywords = listOf("hjelp"),
+                analysisContext = "GENERAL_FEEDBACK",
+            )
+            val updateResponse = client.put("/api/v1/intern/themes/$themeId?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """{"name":"ANNET","analysisContext":"GENERAL_FEEDBACK"}"""
+                )
+            }
+            updateResponse.status shouldBe HttpStatusCode.BadRequest
+        }
+    }
+
+    test("returns standard conflicts for duplicate theme names on create and update") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+            val suffix = UUID.randomUUID().toString().take(8)
+            val existingName = "Søknad-$suffix"
+            insertTestTheme(
+                team = "team-test",
+                name = existingName,
+                keywords = listOf("søknad"),
+                analysisContext = "GENERAL_FEEDBACK",
+            )
+            val otherThemeId = insertTestTheme(
+                team = "team-test",
+                name = "Utbetaling-$suffix",
+                keywords = listOf("utbetaling"),
+                analysisContext = "GENERAL_FEEDBACK",
+            )
+
+            val createResponse = client.post("/api/v1/intern/themes?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """{"name":"$existingName","keywords":["skjema"],"analysisContext":"GENERAL_FEEDBACK"}"""
+                )
+            }
+            createResponse.status shouldBe HttpStatusCode.Conflict
+            createResponse.bodyAsText().contains("\"type\":\"CONFLICT\"") shouldBe true
+
+            val updateResponse = client.put("/api/v1/intern/themes/$otherThemeId?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(
+                    """{"name":"$existingName","analysisContext":"GENERAL_FEEDBACK"}"""
+                )
+            }
+            updateResponse.status shouldBe HttpStatusCode.Conflict
+            updateResponse.bodyAsText().contains("\"type\":\"CONFLICT\"") shouldBe true
         }
     }
 })

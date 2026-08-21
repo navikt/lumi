@@ -17,8 +17,11 @@ describe("parsePhraseParam", () => {
     expect(parsePhraseParam("field-1:hello")).toBeNull();
   });
 
-  it("returns null for 3+ word surface", () => {
-    expect(parsePhraseParam("field:one two three")).toBeNull();
+  it("preserves natural phrases with words between the content pair", () => {
+    expect(parsePhraseParam("field:vanskelig å svare")).toEqual({
+      fieldId: "field",
+      surface: "vanskelig å svare",
+    });
   });
 
   it("returns null for surface with colon", () => {
@@ -45,16 +48,30 @@ describe("parsePhraseParam", () => {
     expect(parsePhraseParam("field:")).toBeNull();
   });
 
-  it("returns null for surface with multiple consecutive spaces", () => {
-    expect(parsePhraseParam("field:word1  word2")).toBeNull();
+  it("returns null for unsafe or oversized field ids", () => {
+    expect(parsePhraseParam("field$:vanskelig svare")).toBeNull();
+    expect(parsePhraseParam(`${"a".repeat(201)}:vanskelig svare`)).toBeNull();
   });
 
-  it("returns null for surface with leading space", () => {
-    expect(parsePhraseParam("field: word1 word2")).toBeNull();
+  it("normalizes multiple consecutive spaces", () => {
+    expect(parsePhraseParam("field:word1  word2")).toEqual({
+      fieldId: "field",
+      surface: "word1 word2",
+    });
   });
 
-  it("returns null for surface with trailing space", () => {
-    expect(parsePhraseParam("field:word1 word2 ")).toBeNull();
+  it("normalizes leading space", () => {
+    expect(parsePhraseParam("field: word1 word2")).toEqual({
+      fieldId: "field",
+      surface: "word1 word2",
+    });
+  });
+
+  it("normalizes trailing space", () => {
+    expect(parsePhraseParam("field:word1 word2 ")).toEqual({
+      fieldId: "field",
+      surface: "word1 word2",
+    });
   });
 
   it("roundtrips with stringifyPhraseFilter", () => {

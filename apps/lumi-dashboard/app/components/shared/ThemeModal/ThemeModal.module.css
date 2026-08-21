@@ -1,25 +1,10 @@
-.tabs {
-  margin-bottom: 1.5rem;
-}
-
-.keywordsDescription {
-  margin-bottom: 0.5rem;
-}
-
-.keywordInputRow {
-  margin-bottom: 0.5rem;
-}
-
 .combobox {
   flex: 1;
 }
 
-.keywordsError {
-  color: var(--ax-text-danger);
-}
-
 .colorSwatches {
   margin-top: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .colorButton {
@@ -82,23 +67,26 @@
   filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.5));
 }
 
-.examplesHeading {
-  margin-bottom: 0.5rem;
-}
-
-.variantsNote {
-  margin-bottom: 0.75rem;
-  font-style: italic;
-}
-
-.highlight {
-  color: var(--ax-text-action);
-}
-
-.examplesPagination {
-  margin-top: 0.75rem;
-}
-
 .footerRow {
   width: 100%;
+  flex-wrap: wrap;
+  gap: var(--ax-space-12);
+}
+
+.footerActions {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+  .footerRow,
+  .footerActions {
+    align-items: stretch;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .footerRow button,
+  .footerActions button {
+    width: 100%;
+  }
 }

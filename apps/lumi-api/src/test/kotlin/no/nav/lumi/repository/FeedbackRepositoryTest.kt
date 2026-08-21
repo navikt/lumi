@@ -425,6 +425,20 @@ class FeedbackRepositoryTest : FunSpec({
                 priority = 1,
                 analysisContext = "GENERAL_FEEDBACK"
             )
+            val overlappingThemeId = insertTestTheme(
+                team = "team-test",
+                name = "Venting",
+                keywords = listOf("venter"),
+                priority = 0,
+                analysisContext = "GENERAL_FEEDBACK"
+            )
+            val multiWordThemeId = insertTestTheme(
+                team = "team-test",
+                name = "Venter på svar",
+                keywords = listOf("venter paa"),
+                priority = 0,
+                analysisContext = "GENERAL_FEEDBACK"
+            )
 
             insertTestFeedbackWithJson(
                 id = "theme-match",
@@ -475,6 +489,18 @@ class FeedbackRepositoryTest : FunSpec({
             )
             matched shouldHaveSize 1
             matched.first().id shouldBe "theme-match"
+
+            val (overlappingMatch, _, _) = repository.findPaginated(
+                FeedbackQuery(team = "team-test", theme = overlappingThemeId)
+            )
+            overlappingMatch shouldHaveSize 1
+            overlappingMatch.first().id shouldBe "theme-match"
+
+            val (multiWordMatch, _, _) = repository.findPaginated(
+                FeedbackQuery(team = "team-test", theme = multiWordThemeId)
+            )
+            multiWordMatch shouldHaveSize 1
+            multiWordMatch.first().id shouldBe "theme-match"
 
             val (uncategorized, _, _) = repository.findPaginated(
                 FeedbackQuery(team = "team-test", theme = "uncategorized")

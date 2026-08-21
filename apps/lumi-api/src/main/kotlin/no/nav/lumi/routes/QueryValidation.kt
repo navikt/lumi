@@ -257,6 +257,12 @@ internal fun parsePhraseFilter(raw: List<String>?): PhraseFilter? {
 
     val fieldId = validateJsonPathFieldId(parts[0], "phraseFieldId", validationLog)
         ?: throw ApiErrorException.BadRequestException("Invalid phrase format")
+    if (parts[1].contains(':')) {
+        throw ApiErrorException.BadRequestException("Invalid phrase format")
+    }
+    if (!parts[1].matches(Regex("^[\\p{L}\\p{N}\\s]+$"))) {
+        throw ApiErrorException.BadRequestException("Invalid phrase format")
+    }
 
     val normalizedWords = TextProcessor.extractWords(parts[1])
     if (normalizedWords.size != 2) {

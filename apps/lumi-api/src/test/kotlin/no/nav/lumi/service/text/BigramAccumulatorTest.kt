@@ -57,4 +57,40 @@ class BigramAccumulatorTest : FunSpec({
         val acc = BigramAccumulator("foo|bar")
         acc.getCanonicalSurface() shouldBe "foo|bar"
     }
+
+    test("selectDiverse collapses word chains but keeps unrelated findings from the same responses") {
+        val first = BigramAccumulator("endring|min")
+        val second = BigramAccumulator("min|lagr")
+        val chainStart = BigramAccumulator("usikker|endring")
+        val distinct = BigramAccumulator("kontakt|nav")
+        repeat(10) { index ->
+            first.addOccurrence("endringene mine", "same-$index")
+            second.addOccurrence("mine ble lagret", "same-$index")
+            chainStart.addOccurrence("usikker på endringene", "same-$index")
+            distinct.addOccurrence("kontakte nav", "same-$index")
+            first.addAdjacentWindow(chainStart.stemKey, "same-$index")
+            second.addAdjacentWindow(first.stemKey, "same-$index")
+        }
+
+        BigramAccumulator.selectDiverse(
+            accumulators = listOf(first, second, chainStart, distinct),
+            minimumOccurrences = 2,
+            maximumPhrases = 10,
+        ).map { it.stemKey } shouldBe listOf("endring|min", "kontakt|nav")
+    }
+
+    test("keeps separate sentences that share a common word") {
+        val sent = BigramAccumulator("søknad|sendt")
+        val missing = BigramAccumulator("søknad|mangl")
+        repeat(5) { index ->
+            sent.addOccurrence("søknaden sendt", "same-$index")
+            missing.addOccurrence("søknaden mangler", "same-$index")
+        }
+
+        BigramAccumulator.selectDiverse(
+            accumulators = listOf(sent, missing),
+            minimumOccurrences = 2,
+            maximumPhrases = 10,
+        ).map { it.stemKey } shouldBe listOf("søknad|mangl", "søknad|sendt")
+    }
 })

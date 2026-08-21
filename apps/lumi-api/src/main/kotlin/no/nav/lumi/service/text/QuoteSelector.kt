@@ -40,9 +40,9 @@ object QuoteSelector {
 
     /**
      * Determine confidence level based on total response count.
-     * - "low": fewer than 30 responses — bigrams are unreliable, prefer quotes
-     * - "medium": 30–100 responses — bigrams are useful alongside quotes
-     * - "high": more than 100 responses — bigrams provide strong signal
+     * - "low": fewer than 30 responses — recurring phrases are unreliable, prefer quotes
+     * - "medium": 30–100 responses — phrases are useful alongside quotes
+     * - "high": more than 100 responses — phrases provide strong signal
      */
     fun confidenceLevel(totalResponses: Int): ConfidenceLevel {
         return when {

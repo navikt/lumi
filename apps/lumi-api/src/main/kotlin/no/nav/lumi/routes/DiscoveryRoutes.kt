@@ -9,6 +9,7 @@ import io.ktor.server.resources.delete
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import no.nav.lumi.config.auth.authorizedTeam
+import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.*
 import no.nav.lumi.repository.TextThemeRepository
 import no.nav.lumi.service.DiscoveryService
@@ -18,6 +19,17 @@ import java.util.*
 private val log = LoggerFactory.getLogger("DiscoveryRoutes")
 private val defaultThemeRepository = TextThemeRepository()
 private val defaultDiscoveryService = DiscoveryService()
+private const val RESERVED_CATCH_ALL_THEME_NAME = "Annet"
+
+private fun isReservedThemeName(name: String): Boolean =
+    name.trim().equals(RESERVED_CATCH_ALL_THEME_NAME, ignoreCase = true)
+
+private fun Throwable.isThemeNameConflict(): Boolean =
+    generateSequence(this as Throwable?) { it.cause }.any { cause ->
+        val message = cause.message.orEmpty()
+        message.contains("unique", ignoreCase = true) ||
+            message.contains("duplicate", ignoreCase = true)
+    }
 
 fun Route.discoveryRoutes(
     themeRepository: TextThemeRepository = defaultThemeRepository,
@@ -56,6 +68,10 @@ fun Route.discoveryRoutes(
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Theme name is required"))
             return@post
         }
+        if (isReservedThemeName(request.name)) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Theme name is reserved"))
+            return@post
+        }
         if (request.keywords.isEmpty()) {
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to "At least one keyword is required"))
             return@post
@@ -66,11 +82,10 @@ fun Route.discoveryRoutes(
             call.respond(HttpStatusCode.Created, theme)
         } catch (e: Exception) {
             log.warn("Failed to create theme", e)
-            if (e.message?.contains("unique") == true || e.message?.contains("duplicate") == true) {
-                call.respond(HttpStatusCode.Conflict, mapOf("error" to "Theme with this name already exists"))
-            } else {
-                throw e
+            if (e.isThemeNameConflict()) {
+                throw ApiErrorException.ConflictException("Theme name already exists", e)
             }
+            throw e
         }
     }
 
@@ -91,8 +106,24 @@ fun Route.discoveryRoutes(
         }
 
         val request = call.receive<UpdateThemeRequest>()
+        if (request.name != null && (request.name.isBlank() || isReservedThemeName(request.name))) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Theme name is invalid or reserved"))
+            return@put
+        }
+        if (request.keywords != null && request.keywords.isEmpty()) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "At least one keyword is required"))
+            return@put
+        }
 
-        val updated = themeRepository.update(id, request)
+        val updated = try {
+            themeRepository.update(id, request)
+        } catch (e: Exception) {
+            log.warn("Failed to update theme", e)
+            if (e.isThemeNameConflict()) {
+                throw ApiErrorException.ConflictException("Theme name already exists", e)
+            }
+            throw e
+        }
         if (updated) {
             val theme = themeRepository.findById(id)
             call.respond(theme ?: HttpStatusCode.NotFound)

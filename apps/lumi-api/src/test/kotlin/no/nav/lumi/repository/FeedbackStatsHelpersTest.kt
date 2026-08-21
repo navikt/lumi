@@ -164,7 +164,7 @@ class FeedbackStatsHelpersTest : FunSpec({
         fieldIdsInReverseOrder shouldBe fieldIdsInForwardOrder
     }
 
-    test("buildFieldStats returns top phrases with per-response deduplication and max 10 entries") {
+    test("buildFieldStats returns diverse phrases with per-response deduplication") {
         val repeatedPhraseText = "digital søknad digital søknad hjelper"
         val longPhraseText = "anker bjerk cider drage elgen fabel glimt havet isbre jolle kanel lampe måne"
         val uniquePhraseText = "ensom frase unik"
@@ -204,7 +204,7 @@ class FeedbackStatsHelpersTest : FunSpec({
             )
         ).single().stats as FieldStats.Text
 
-        textStats.topPhrases shouldHaveSize 10
+        textStats.topPhrases shouldHaveSize 2
         textStats.topPhrases.map { it.text } shouldContain "digital søknad"
         textStats.topPhrases.map { it.text } shouldContain "anker bjerk"
         textStats.topPhrases.map { it.text } shouldNotContain "ensom frase"

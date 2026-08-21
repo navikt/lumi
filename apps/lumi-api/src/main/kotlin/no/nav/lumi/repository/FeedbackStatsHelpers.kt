@@ -2,6 +2,7 @@ package no.nav.lumi.repository
 
 import no.nav.lumi.domain.*
 import no.nav.lumi.service.TextProcessor
+import no.nav.lumi.service.text.BigramAccumulator
 import no.nav.lumi.service.text.StemWordAccumulator
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -110,8 +111,7 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
             FieldType.TEXT -> {
                 val texts = mutableListOf<RecentTextResponse>()
                 val wordAccumulators = mutableMapOf<String, StemWordAccumulator>()
-                val bigramCounts = mutableMapOf<String, Int>()
-                val bigramSurfaces = mutableMapOf<String, MutableMap<String, Int>>()
+                val bigramAccumulators = mutableMapOf<String, BigramAccumulator>()
                 var responseCount = 0
 
                 for ((dto, answer) in entries) {
@@ -127,16 +127,12 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
                         acc.addOccurrence(word)
                     }
 
-                    val bigrams = TextProcessor.extractBigrams(text)
-
-                    for (bigram in bigrams.map { it.stemKey }.toSet()) {
-                        bigramCounts[bigram] = (bigramCounts[bigram] ?: 0) + 1
-                    }
-
-                    // Dedup surfaces per response to avoid bias from repeated phrases
-                    for (bigram in bigrams.distinctBy { it.stemKey to it.surface }) {
-                        val surfaces = bigramSurfaces.getOrPut(bigram.stemKey) { mutableMapOf() }
-                        surfaces[bigram.surface] = (surfaces[bigram.surface] ?: 0) + 1
+                    for (bigram in TextProcessor.extractBigrams(text)) {
+                        val accumulator = bigramAccumulators.getOrPut(bigram.stemKey) {
+                            BigramAccumulator(bigram.stemKey)
+                        }
+                        accumulator.addOccurrence(bigram.surface, dto.id)
+                        bigram.previousStemKey?.let { accumulator.addAdjacentWindow(it, dto.id) }
                     }
                 }
 
@@ -151,16 +147,13 @@ internal fun buildFieldStats(records: List<FeedbackDto>): List<FieldStat> {
                     .take(10)
                     .map { acc -> KeywordCount(word = acc.getCanonicalForm(), count = acc.totalCount) }
 
-                val topPhrases = bigramCounts.entries
-                    .asSequence()
-                    .filter { it.value >= 2 }
-                    .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
-                    .take(10)
-                    .map { (stemKey, count) ->
-                        val bestSurface = bigramSurfaces[stemKey]?.maxByOrNull { it.value }?.key ?: stemKey
-                        TextPhrase(text = bestSurface, count = count)
-                    }
-                    .toList()
+                val topPhrases = BigramAccumulator.selectDiverse(
+                    accumulators = bigramAccumulators.values,
+                    minimumOccurrences = 2,
+                    maximumPhrases = 10,
+                ).map { accumulator ->
+                    TextPhrase(text = accumulator.getCanonicalSurface(), count = accumulator.totalCount)
+                }
 
                 val recentResponses = texts
                     .sortedByDescending { parseSubmittedAt(it.submittedAt) }

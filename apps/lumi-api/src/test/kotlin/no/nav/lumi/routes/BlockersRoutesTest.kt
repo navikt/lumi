@@ -38,7 +38,7 @@ class BlockersRoutesTest : FunSpec({
             val themeInnloggingId = insertTestTheme(
                 team = team,
                 name = "Innlogging",
-                keywords = listOf("bankid", "innlogging"),
+                keywords = listOf("bankid", "logget ut"),
                 color = "var(--ax-status-warning)",
                 analysisContext = "BLOCKER",
             )
@@ -82,7 +82,7 @@ class BlockersRoutesTest : FunSpec({
             }
 
             val t0 = OffsetDateTime.parse("2025-01-01T10:00:00+01:00")
-            insertTestFeedbackWithJson(team = team, app = app, feedbackJson = topTasksJson("a", "Innlogging feiler bankid"), opprettet = t0)
+            insertTestFeedbackWithJson(team = team, app = app, feedbackJson = topTasksJson("a", "Jeg ble logget ut"), opprettet = t0)
             insertTestFeedbackWithJson(team = team, app = app, feedbackJson = topTasksJson("a", "Bankid virker ikke"), opprettet = t0.plusMinutes(1))
             insertTestFeedbackWithJson(team = team, app = app, feedbackJson = topTasksJson("b", "Skjema krasjer"), opprettet = t0.plusMinutes(2))
             insertTestFeedbackWithJson(team = team, app = app, feedbackJson = topTasksJson("b", ""), opprettet = t0.plusMinutes(3))

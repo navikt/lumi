@@ -279,7 +279,7 @@ export function generateTopTasksMockData(): FeedbackDto[] {
 
       // Determine success
       const successRand = randomFloat();
-      let successValue = "Ja";
+      let successValue: "yes" | "partial" | "no" = "yes";
       let blocker: string | undefined;
 
       // Oppgavespesifikke blocker-meldinger for bedre mønsteranalyse
@@ -365,10 +365,10 @@ export function generateTopTasksMockData(): FeedbackDto[] {
       if (successRand > selectedTask.successRate) {
         // Fail or partial
         if (randomFloat() > 0.4) {
-          successValue = "Nei";
+          successValue = "no";
           blocker = blockerPool[Math.floor(randomFloat() * blockerPool.length)];
         } else {
-          successValue = "Delvis";
+          successValue = "partial";
           blocker = blockerPool[Math.floor(randomFloat() * blockerPool.length)];
         }
       }
@@ -379,7 +379,7 @@ export function generateTopTasksMockData(): FeedbackDto[] {
       let durationMs = baseTimeMs * (0.8 + randomFloat() * 0.4);
 
       // Failures usually take longer (searching around) or very short (rage quit)
-      if (successValue === "Nei") {
+      if (successValue === "no") {
         durationMs = randomFloat() > 0.5 ? durationMs * 2 : durationMs * 0.3;
       }
 
@@ -424,6 +424,12 @@ export function generateTopTasksMockData(): FeedbackDto[] {
             SPECIALIZED_SURVEY_FIELD_IDS.success,
             "Klarte du det?",
             successValue,
+            undefined,
+            [
+              { id: "yes", label: "Ja" },
+              { id: "partial", label: "Delvis" },
+              { id: "no", label: "Nei" },
+            ],
           ),
           ...(blocker
             ? [

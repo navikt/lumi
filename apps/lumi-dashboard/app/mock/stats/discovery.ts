@@ -1,18 +1,19 @@
 /**
  * Discovery stats calculation.
  *
- * Analyzes discovery survey responses for theme clustering and word frequency.
+ * Analyzes discovery survey responses for themes, phrases, and quotes.
  */
 
 import type { DiscoveryResponse, FeedbackDto } from "~/types/api";
 import { mockThemes } from "../themes";
-import { DiscoveryFieldIds } from "../utils/extractors";
-import { applyFeedbackFilters, STOP_WORDS, stemNorwegian } from "./common";
+import { DiscoveryFieldIds, getDiscoveryTaskText } from "../utils/extractors";
+import { matchesThemeKeywords } from "../utils/textAnalysis";
+import { applyFeedbackFilters } from "./common";
 import { extractPhrases } from "./phrases";
 
 /**
  * Calculate Discovery stats from feedback items.
- * Uses theme clustering and word frequency analysis.
+ * Uses theme clustering and phrase analysis.
  */
 export function getMockDiscoveryStats(
   items: FeedbackDto[],
@@ -34,16 +35,12 @@ export function getMockDiscoveryStats(
       ),
     );
 
-    let task = "Ukjent oppgave";
-    if (taskAnswer) {
-      if (taskAnswer.fieldType === "TEXT") {
-        task = taskAnswer.value.text || "Ukjent oppgave";
-      } else if (taskAnswer.fieldType === "SINGLE_CHOICE") {
-        const option = taskAnswer.question.options?.find(
-          (o) => o.id === taskAnswer.value.selectedOptionId,
-        );
-        task = option ? option.label : taskAnswer.value.selectedOptionId;
-      }
+    let task = getDiscoveryTaskText(item) ?? "Ukjent oppgave";
+    if (taskAnswer?.fieldType === "SINGLE_CHOICE") {
+      const option = taskAnswer.question.options?.find(
+        (o) => o.id === taskAnswer.value.selectedOptionId,
+      );
+      task = option ? option.label : taskAnswer.value.selectedOptionId;
     }
 
     let success: "yes" | "partial" | "no" = "no";
@@ -62,60 +59,6 @@ export function getMockDiscoveryStats(
     };
   });
 
-  // Calculate word frequency with stem-based grouping
-  // Group word variants by stem, track surface form counts for canonical selection
-  const stemAccumulators = new Map<
-    string,
-    {
-      stem: string;
-      surfaceCounts: Map<string, number>;
-      totalCount: number;
-      sourceResponses: Array<{ text: string; submittedAt: string }>;
-      usedTexts: Set<string>;
-    }
-  >();
-
-  for (const response of responses) {
-    const words = response.task
-      .toLowerCase()
-      .replace(/[^\wæøå\s]/g, "")
-      .split(/\s+/);
-    const seenStemsInResponse = new Set<string>();
-
-    for (const word of words) {
-      if (word.length > 2 && !STOP_WORDS.has(word)) {
-        const stem = stemNorwegian(word);
-
-        if (!stemAccumulators.has(stem)) {
-          stemAccumulators.set(stem, {
-            stem,
-            surfaceCounts: new Map(),
-            totalCount: 0,
-            sourceResponses: [],
-            usedTexts: new Set(),
-          });
-        }
-
-        const acc = stemAccumulators.get(stem);
-        if (!acc) continue;
-        acc.totalCount++;
-        acc.surfaceCounts.set(word, (acc.surfaceCounts.get(word) || 0) + 1);
-
-        // Add source response (max 3 per stem, deduped by text)
-        if (!seenStemsInResponse.has(stem) && acc.sourceResponses.length < 3) {
-          if (!acc.usedTexts.has(response.task)) {
-            acc.sourceResponses.push({
-              text: response.task,
-              submittedAt: response.submittedAt,
-            });
-            acc.usedTexts.add(response.task);
-          }
-          seenStemsInResponse.add(stem);
-        }
-      }
-    }
-  }
-
   const textInsights = extractPhrases(
     responses.map((response) => ({
       id: response.id,
@@ -124,31 +67,6 @@ export function getMockDiscoveryStats(
     })),
     { maxSourceIds: 3 },
   );
-
-  // Build word frequency list with canonical form and variants
-  const wordFrequency = Array.from(stemAccumulators.values())
-    .map((acc) => {
-      // Get canonical form (most common surface form)
-      const sortedSurfaces = Array.from(acc.surfaceCounts.entries()).sort(
-        (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
-      );
-      const canonicalWord = sortedSurfaces[0]?.[0] || acc.stem;
-
-      // Get top 5 variants
-      const variants = sortedSurfaces
-        .slice(0, 5)
-        .map(([word, count]) => ({ word, count }));
-
-      return {
-        word: canonicalWord,
-        stem: acc.stem,
-        count: acc.totalCount,
-        variants,
-        sourceResponses: acc.sourceResponses,
-      };
-    })
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 30);
 
   // Theme clustering - only use GENERAL_FEEDBACK themes
   const generalThemes = mockThemes.filter(
@@ -182,20 +100,12 @@ export function getMockDiscoveryStats(
 
   // INCLUSIVE MATCHING: Each response can match multiple themes
   for (const response of responses) {
-    const taskWords = response.task
-      .toLowerCase()
-      .replace(/[^\wæøå\s]/g, "")
-      .split(/\s+/)
-      .map(stemNorwegian);
     let matchedAnyTheme = false;
 
     for (const theme of themes) {
       if (!theme.keywords || theme.keywords.length === 0) continue;
 
-      const keywordStems = theme.keywords.map((k) =>
-        stemNorwegian(k.toLowerCase()),
-      );
-      if (keywordStems.some((kStem) => taskWords.includes(kStem))) {
+      if (matchesThemeKeywords(response.task, theme.keywords)) {
         theme.totalCount++;
         if (response.success === "yes") theme.successCount++;
         if (response.success === "partial") theme.partialCount++;
@@ -234,7 +144,6 @@ export function getMockDiscoveryStats(
 
   return {
     totalSubmissions: responses.length,
-    wordFrequency,
     themes: themes
       .filter((t) => t.totalCount > 0)
       .map((t) => ({

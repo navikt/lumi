@@ -6,28 +6,6 @@ describe("fetchDiscovery contract", () => {
   it("validates real-world Discovery response shape", () => {
     const payload = {
       totalSubmissions: 85,
-      wordFrequency: [
-        {
-          word: "sykepenger",
-          stem: "sykepeng",
-          count: 25,
-          variants: [
-            { word: "sykepenger", count: 20 },
-            { word: "sykepengar", count: 5 },
-          ],
-          sourceResponses: [
-            {
-              text: "Jeg kom for å søke sykepenger",
-              submittedAt: "2026-01-21T10:00:00Z",
-            },
-          ],
-        },
-        {
-          word: "arbeidsgiver",
-          stem: "arbeidsgiv",
-          count: 15,
-        },
-      ],
       themes: [
         {
           theme: "Økonomi",
@@ -69,7 +47,6 @@ describe("fetchDiscovery contract", () => {
   it("rejects invalid success value in recentResponses", () => {
     const invalidPayload = {
       totalSubmissions: 10,
-      wordFrequency: [],
       themes: [],
       recentResponses: [
         {
@@ -86,7 +63,6 @@ describe("fetchDiscovery contract", () => {
   it("validates minimal response with empty arrays", () => {
     const minimalPayload = {
       totalSubmissions: 0,
-      wordFrequency: [],
       themes: [],
       recentResponses: [],
     };
@@ -97,7 +73,6 @@ describe("fetchDiscovery contract", () => {
   it("validates theme structure with all required fields", () => {
     const payload = {
       totalSubmissions: 5,
-      wordFrequency: [],
       themes: [
         {
           theme: "Navigation",
@@ -115,7 +90,6 @@ describe("fetchDiscovery contract", () => {
   it("rejects theme missing required fields", () => {
     const invalidPayload = {
       totalSubmissions: 5,
-      wordFrequency: [],
       themes: [
         {
           theme: "Incomplete Theme",

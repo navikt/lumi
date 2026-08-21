@@ -155,14 +155,13 @@ internal fun matchesThemeFilter(
 
     val taskAnswer = SpecializedSurveyFieldIds.findTask(feedback.surveyType, feedback.answers)
     val taskText = (taskAnswer?.value as? AnswerValue.Text)?.text ?: return false
-    val matchedTheme = matchThemeName(taskText, themes)
 
     if (themeId == "uncategorized") {
-        return matchedTheme == "Annet"
+        return themes.none { themeMatchesText(taskText, it) }
     }
 
     val targetTheme = themes.find { it.id == themeId } ?: return false
-    return matchedTheme == targetTheme.name
+    return themeMatchesText(taskText, targetTheme)
 }
 
 internal fun buildPhraseStemKey(surface: String): String {
@@ -200,18 +199,8 @@ internal fun matchesPhraseFilter(feedback: FeedbackDto, fieldId: String, expecte
         }
 }
 
-private fun matchThemeName(text: String, themes: List<TextThemeDto>): String {
-    val textWords = TextProcessor.tokenize(text)
-        .map { TextProcessor.stemNorwegian(it) }
-        .toSet()
-
-    for (theme in themes.sortedByDescending { it.priority }) {
-        val keywordStems = theme.keywords.map { TextProcessor.stemNorwegian(it.lowercase()) }.toSet()
-        if (textWords.any { it in keywordStems }) {
-            return theme.name
-        }
-    }
-    return "Annet"
+private fun themeMatchesText(text: String, theme: TextThemeDto): Boolean {
+    return TextProcessor.matchesThemeKeywords(text, theme.keywords)
 }
 
 internal fun matchesContextTagFilters(

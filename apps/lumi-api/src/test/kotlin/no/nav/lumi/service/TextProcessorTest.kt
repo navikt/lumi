@@ -126,17 +126,32 @@ class TextProcessorTest : FunSpec({
     }
 
     context("extractBigrams") {
-        test("pairs adjacent content words, skipping stopwords") {
+        test("groups adjacent content words while preserving natural display text") {
             val bigrams = TextProcessor.extractBigrams("vanskelig å svare")
             bigrams shouldHaveSize 1
-            bigrams[0].surface shouldBe "vanskelig svare"
+            bigrams[0].surface shouldBe "vanskelig å svare"
+            bigrams[0].stemKey shouldBe "vanskelig|svar"
         }
 
         test("generates multiple bigrams from content words") {
             val bigrams = TextProcessor.extractBigrams("dårlig design er helt forvirrende")
             bigrams shouldHaveSize 2
             bigrams[0].surface shouldBe "dårlig design"
-            bigrams[1].surface shouldBe "design forvirrende"
+            bigrams[1].surface shouldBe "design er helt forvirrende"
+        }
+
+        test("does not join unrelated phrases across sentence boundaries") {
+            val bigrams = TextProcessor.extractBigrams("Endringene ble lagret. Kontakte Nav var vanskelig")
+
+            bigrams.map { it.stemKey } shouldNotContain "lagr|kontakt"
+            bigrams.last().previousStemKey shouldBe null
+        }
+
+        test("treats Unicode ellipsis and line separators as sentence boundaries") {
+            val bigrams = TextProcessor.extractBigrams("Fungerte ikke… Fant hjelp\u2028Søknaden sendt")
+
+            bigrams.map { it.stemKey } shouldNotContain "fungert|fant"
+            bigrams.map { it.stemKey } shouldNotContain "hjelp|søknad"
         }
 
         test("returns empty for text with fewer than 2 content words") {
@@ -169,6 +184,21 @@ class TextProcessorTest : FunSpec({
             bigrams.flatMap { it.surface.split(" ") } shouldNotContain "mulig"
             bigrams.flatMap { it.surface.split(" ") } shouldNotContain "navn"
             bigrams.any { it.surface == "kontaktet igår" } shouldBe true
+        }
+    }
+
+    context("matchesThemeKeywords") {
+        test("matches multi-word keywords within a segment") {
+            TextProcessor.matchesThemeKeywords(
+                "Jeg ble logget ut av løsningen",
+                listOf("logget ut"),
+            ) shouldBe true
+        }
+
+        test("does not match multi-word keywords across sentence boundaries or redaction markers") {
+            TextProcessor.matchesThemeKeywords("Jeg logget. Ut igjen", listOf("logget ut")) shouldBe false
+            TextProcessor.matchesThemeKeywords("[LOGGET UT] igjen", listOf("logget ut")) shouldBe false
+            TextProcessor.matchesThemeKeywords("Jeg fant [PERSON FJERNET] ikke siden", listOf("fant ikke")) shouldBe false
         }
     }
 
