@@ -4,6 +4,10 @@ import { z } from "zod";
 const optionalStringParam = fallback(z.string().optional(), undefined).catch(
   undefined,
 );
+const optionalDateModeParam = fallback(
+  z.enum(["auto", "fixed"]).optional(),
+  undefined,
+).catch(undefined);
 
 export const searchSchema = z
   .object({
@@ -11,6 +15,7 @@ export const searchSchema = z
     app: optionalStringParam,
     page: optionalStringParam,
     size: optionalStringParam,
+    dateMode: optionalDateModeParam,
     fromDate: optionalStringParam,
     toDate: optionalStringParam,
     hasText: optionalStringParam,

@@ -135,8 +135,10 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
             to: "/feedback",
             search: {
               ...params,
+              dateMode: "fixed",
               fromDate: clickData.date,
               toDate: clickData.date,
+              page: "1",
               lowRating: clickData.average < 3 ? "true" : undefined,
             },
           });

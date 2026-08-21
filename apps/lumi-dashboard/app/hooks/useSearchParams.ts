@@ -48,13 +48,16 @@ export function useSearchParams() {
     [navigate],
   );
 
-  const resetParams = useCallback(() => {
-    void navigate({
-      // @ts-expect-error -- shared hook used across routes; strict typing not feasible
-      search: {},
-      replace: true,
-    });
-  }, [navigate]);
+  const resetParams = useCallback(
+    (nextParams: Partial<SearchParams> = {}) => {
+      void navigate({
+        // @ts-expect-error -- shared hook used across routes; strict typing not feasible
+        search: nextParams,
+        replace: true,
+      });
+    },
+    [navigate],
+  );
 
   return { params, setParam, setParams, resetParams };
 }

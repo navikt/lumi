@@ -69,6 +69,16 @@ describe("useSearchParams", () => {
     expect(getResult().params.app).toBe("spinnsyn");
   });
 
+  it("parses the dashboard date mode from the URL", async () => {
+    expect(searchSchema.parse({ dateMode: "auto" })).toMatchObject({
+      dateMode: "auto",
+    });
+
+    const { getResult } = await setup(["/?dateMode=auto"]);
+
+    expect(getResult().params.dateMode).toBe("auto");
+  });
+
   it("setParam adds a new parameter", async () => {
     const { router, getResult } = await setup();
 
@@ -193,6 +203,32 @@ describe("useSearchParams", () => {
     await waitFor(() => {
       expect(router.state.location.searchStr).toBe("");
       expect(getResult().params).toEqual({});
+    });
+  });
+
+  it("resetParams can replace all parameters with bounded defaults atomically", async () => {
+    const { router, getResult } = await setup([
+      "/?team=flex&app=spinnsyn&query=tekst",
+    ]);
+
+    await act(async () => {
+      getResult().resetParams({
+        team: "flex",
+        dateMode: "auto",
+        fromDate: "2026-05-05",
+        toDate: "2026-06-03",
+        page: "1",
+      });
+    });
+
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({
+        team: "flex",
+        dateMode: "auto",
+        fromDate: "2026-05-05",
+        toDate: "2026-06-03",
+        page: "1",
+      });
     });
   });
 

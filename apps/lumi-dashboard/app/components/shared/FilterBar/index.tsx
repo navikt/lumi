@@ -1,5 +1,7 @@
 import { XMarkIcon } from "@navikt/aksel-icons";
 import {
+  Alert,
+  BodyShort,
   Box,
   Button,
   Hide,
@@ -19,6 +21,10 @@ import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import { useThemes } from "~/hooks/useThemes";
+import {
+  resolveDashboardPeriod,
+  type SurveyPeriodMetadata,
+} from "~/utils/dashboardPeriod";
 import { getFilterLabels } from "~/utils/filterLabels";
 import {
   isSurveyArchived,
@@ -45,6 +51,12 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
     stats,
     themes,
   });
+  const currentPeriod = resolveDashboardPeriod({
+    dateMode: params.dateMode,
+    fromDate: params.fromDate,
+    toDate: params.toDate,
+  });
+  const rollingAutomaticPeriod = resolveDashboardPeriod({ dateMode: "auto" });
 
   const selectedTags = params.tag
     ? params.tag
@@ -61,6 +73,12 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
   const surveysByApp = bootstrap?.surveysByApp ?? {};
   const allTags = bootstrap?.tags ?? [];
   const showArchived = params.showArchived === "true";
+  const getSurveyPeriodMetadata = (
+    surveyId: string,
+  ): SurveyPeriodMetadata | undefined =>
+    (params.app
+      ? bootstrap?.surveyMetaByApp?.[params.app]?.[surveyId]
+      : undefined) ?? bootstrap?.surveyMeta?.[surveyId];
 
   const allAvailableSurveys = Array.from(
     new Set(Object.values(surveysByApp).flat()),
@@ -165,16 +183,36 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
       rating: undefined,
       ...(shouldClearSurvey && {
         surveyId: undefined,
+        ...(currentPeriod.dateMode === "auto" && {
+          dateMode: "auto" as const,
+          fromDate: rollingAutomaticPeriod.fromDate,
+          toDate: rollingAutomaticPeriod.toDate,
+        }),
       }),
     });
   };
 
   const handleSurveyChange = (newSurveyId: string | undefined) => {
+    const selectedSurveyMeta = newSurveyId
+      ? getSurveyPeriodMetadata(newSurveyId)
+      : undefined;
+    const period = resolveDashboardPeriod({
+      dateMode: params.dateMode,
+      fromDate: params.fromDate,
+      toDate: params.toDate,
+      surveyMeta: selectedSurveyMeta,
+    });
+
     setParams({
       surveyId: newSurveyId,
       choice: undefined,
       rating: undefined,
       phrase: undefined,
+      ...(period.dateMode === "auto" && {
+        dateMode: "auto",
+        fromDate: period.fromDate,
+        toDate: period.toDate,
+      }),
       page: "1",
     });
   };
@@ -182,6 +220,15 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
   const selectedSurveyIsArchived =
     !!params.surveyId &&
     isSurveyArchived(params.surveyId, bootstrap?.surveyMeta);
+  const selectedSurveyMeta = params.surveyId
+    ? getSurveyPeriodMetadata(params.surveyId)
+    : undefined;
+  const selectedSurveyPeriod = resolveDashboardPeriod({
+    dateMode: params.dateMode,
+    fromDate: params.fromDate,
+    toDate: params.toDate,
+    surveyMeta: selectedSurveyMeta,
+  });
   // Guarded on loaded bootstrap: while data is pending visibleApps is empty,
   // and an unguarded check would wipe the app filter from bookmarked URLs.
   const selectedAppIsHidden =
@@ -198,6 +245,11 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
         choice: undefined,
         rating: undefined,
         phrase: undefined,
+        ...(currentPeriod.dateMode === "auto" && {
+          dateMode: "auto" as const,
+          fromDate: rollingAutomaticPeriod.fromDate,
+          toDate: rollingAutomaticPeriod.toDate,
+        }),
         page: "1",
       });
     } else if (!showArchived && selectedSurveyIsArchived) {
@@ -206,24 +258,67 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
         choice: undefined,
         rating: undefined,
         phrase: undefined,
+        ...(currentPeriod.dateMode === "auto" && {
+          dateMode: "auto" as const,
+          fromDate: rollingAutomaticPeriod.fromDate,
+          toDate: rollingAutomaticPeriod.toDate,
+        }),
         page: "1",
       });
     }
-  }, [showArchived, selectedAppIsHidden, selectedSurveyIsArchived, setParams]);
+  }, [
+    currentPeriod.dateMode,
+    rollingAutomaticPeriod.fromDate,
+    rollingAutomaticPeriod.toDate,
+    selectedAppIsHidden,
+    selectedSurveyIsArchived,
+    setParams,
+    showArchived,
+  ]);
+
+  useEffect(() => {
+    if (
+      !bootstrap ||
+      !params.surveyId ||
+      selectedAppIsHidden ||
+      (!showArchived && selectedSurveyIsArchived) ||
+      selectedSurveyPeriod.dateMode !== "auto" ||
+      (params.dateMode === "auto" &&
+        params.fromDate === selectedSurveyPeriod.fromDate &&
+        params.toDate === selectedSurveyPeriod.toDate)
+    ) {
+      return;
+    }
+
+    setParams({
+      dateMode: "auto",
+      fromDate: selectedSurveyPeriod.fromDate,
+      toDate: selectedSurveyPeriod.toDate,
+      page: "1",
+    });
+  }, [
+    bootstrap,
+    params.dateMode,
+    params.fromDate,
+    params.surveyId,
+    params.toDate,
+    selectedAppIsHidden,
+    selectedSurveyIsArchived,
+    selectedSurveyPeriod.dateMode,
+    selectedSurveyPeriod.fromDate,
+    selectedSurveyPeriod.toDate,
+    setParams,
+    showArchived,
+  ]);
 
   const handleReset = () => {
-    const team = params.team;
-    resetParams();
-    const end = dayjs();
-    const start = dayjs().subtract(29, "day");
-
-    setTimeout(() => {
-      setParams({
-        team,
-        fromDate: start.format("YYYY-MM-DD"),
-        toDate: end.format("YYYY-MM-DD"),
-      });
-    }, 0);
+    resetParams({
+      team: params.team,
+      dateMode: "auto",
+      fromDate: rollingAutomaticPeriod.fromDate,
+      toDate: rollingAutomaticPeriod.toDate,
+      page: "1",
+    });
   };
 
   const handleTeamChange = (newTeam: string) => {
@@ -231,6 +326,11 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
       team: newTeam,
       fromDate: params.fromDate,
       toDate: params.toDate,
+      ...(currentPeriod.dateMode === "auto" && {
+        dateMode: "auto",
+        fromDate: rollingAutomaticPeriod.fromDate,
+        toDate: rollingAutomaticPeriod.toDate,
+      }),
       app: undefined,
       surveyId: undefined,
       query: undefined,
@@ -250,6 +350,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
   };
 
   const hasActiveFilters =
+    params.dateMode === "fixed" ||
     params.query ||
     params.surveyId ||
     params.app ||
@@ -492,6 +593,41 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
           </VStack>
         </Hide>
       </Box>
+
+      {selectedSurveyPeriod.dateMode === "fixed" &&
+        selectedSurveyPeriod.isOutsideSurveyPeriod &&
+        selectedSurveyPeriod.surveyPeriod && (
+          <Alert variant="info" size="small">
+            <VStack gap="space-8" align="start">
+              <BodyShort size="small">
+                Surveyen har registrerte svar fra{" "}
+                {dayjs(selectedSurveyPeriod.surveyPeriod.fromDate).format(
+                  "DD.MM.YYYY",
+                )}{" "}
+                til{" "}
+                {dayjs(selectedSurveyPeriod.surveyPeriod.toDate).format(
+                  "DD.MM.YYYY",
+                )}
+                .
+              </BodyShort>
+              <Button
+                type="button"
+                variant="tertiary"
+                size="small"
+                onClick={() =>
+                  setParams({
+                    dateMode: "fixed",
+                    fromDate: selectedSurveyPeriod.surveyPeriod?.fromDate,
+                    toDate: selectedSurveyPeriod.surveyPeriod?.toDate,
+                    page: "1",
+                  })
+                }
+              >
+                Vis hele svarperioden
+              </Button>
+            </VStack>
+          </Alert>
+        )}
     </VStack>
   );
 }
