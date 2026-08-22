@@ -13,6 +13,8 @@ import io.ktor.server.testing.testApplication
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.micrometer.prometheusmetrics.PrometheusConfig
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonObject
@@ -20,18 +22,29 @@ import kotlinx.serialization.json.jsonPrimitive
 import no.nav.lumi.config.configureRateLimiting
 import no.nav.lumi.config.configureSerialization
 import no.nav.lumi.config.configureStatusPages
+import no.nav.lumi.config.SubmissionObservability
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.createTestClient
 import no.nav.lumi.domain.SaveResult
 import no.nav.lumi.service.SubmissionOutcome
 import no.nav.lumi.service.SubmissionService
 
-private fun Application.submissionRoutesTestModule(submissionService: SubmissionService) {
+private fun Application.submissionRoutesTestModule(
+    submissionService: SubmissionService,
+    submissionObservability: SubmissionObservability? = null
+) {
     configureSerialization()
     configureStatusPages()
     configureRateLimiting()
     routing {
-        submissionRoutes(submissionService = submissionService)
+        if (submissionObservability == null) {
+            submissionRoutes(submissionService = submissionService)
+        } else {
+            submissionRoutes(
+                submissionService = submissionService,
+                submissionObservability = submissionObservability
+            )
+        }
     }
 }
 
@@ -150,6 +163,87 @@ private fun repeatedTextFieldsJson(count: Int): String =
     }
 
 class SubmissionV2RoutesTest : FunSpec({
+    test("records a successful TokenX submission") {
+        val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+        val submissionObservability = SubmissionObservability(meterRegistry)
+        val submissionService = mockk<SubmissionService>()
+        coEvery {
+            submissionService.submit(any(), any(), any(), any(), any())
+        } returns SubmissionOutcome(SaveResult.Created("created-v2"), "hash-v2")
+
+        testApplication {
+            application {
+                submissionRoutesTestModule(submissionService, submissionObservability)
+            }
+
+            val response = createTestClient().post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(submissionPayloadV2())
+            }
+
+            response.status shouldBe HttpStatusCode.Created
+            meterRegistry.get(SubmissionObservability.METRIC_NAME)
+                .tag("channel", "tokenx")
+                .tag("outcome", "created")
+                .counter()
+                .count() shouldBe 1.0
+        }
+    }
+
+    test("records a rejected TokenX submission") {
+        val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+        val submissionObservability = SubmissionObservability(meterRegistry)
+        val submissionService = mockk<SubmissionService>()
+
+        testApplication {
+            application {
+                submissionRoutesTestModule(submissionService, submissionObservability)
+            }
+
+            val response = createTestClient().post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody("{")
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            meterRegistry.get(SubmissionObservability.METRIC_NAME)
+                .tag("channel", "tokenx")
+                .tag("outcome", "rejected")
+                .counter()
+                .count() shouldBe 1.0
+            coVerify(exactly = 0) {
+                submissionService.submit(any(), any(), any(), any(), any())
+            }
+        }
+    }
+
+    test("records a successful Azure submission") {
+        val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+        val submissionObservability = SubmissionObservability(meterRegistry)
+        val submissionService = mockk<SubmissionService>()
+        coEvery {
+            submissionService.submit(any(), any(), any(), any(), any())
+        } returns SubmissionOutcome(SaveResult.Created("created-azure"), "hash-azure")
+
+        testApplication {
+            application {
+                submissionRoutesTestModule(submissionService, submissionObservability)
+            }
+
+            val response = createTestClient().post("/api/azure/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(submissionPayloadV2())
+            }
+
+            response.status shouldBe HttpStatusCode.Created
+            meterRegistry.get(SubmissionObservability.METRIC_NAME)
+                .tag("channel", "azure")
+                .tag("outcome", "created")
+                .counter()
+                .count() shouldBe 1.0
+        }
+    }
+
     test("v1 still works on existing submission endpoint") {
         val submissionService = mockk<SubmissionService>()
         coEvery {
@@ -882,6 +976,8 @@ class SubmissionV2RoutesTest : FunSpec({
     }
 
     test("v2 deduplicates retry with same deduplicationKey") {
+        val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+        val submissionObservability = SubmissionObservability(meterRegistry)
         val submissionService = mockk<SubmissionService>()
         coEvery {
             submissionService.submit(any(), any(), any(), any(), any())
@@ -891,7 +987,9 @@ class SubmissionV2RoutesTest : FunSpec({
         )
 
         testApplication {
-            application { submissionRoutesTestModule(submissionService) }
+            application {
+                submissionRoutesTestModule(submissionService, submissionObservability)
+            }
             val client = createTestClient()
 
             val firstResponse = client.post("/api/tokenx/v1/feedback") {
@@ -911,6 +1009,16 @@ class SubmissionV2RoutesTest : FunSpec({
             val secondBody = Json.parseToJsonElement(secondResponse.bodyAsText()).jsonObject
             secondBody["id"]?.jsonPrimitive?.content shouldBe firstId
             secondBody["duplicate"]?.jsonPrimitive?.boolean shouldBe true
+            meterRegistry.get(SubmissionObservability.METRIC_NAME)
+                .tag("channel", "tokenx")
+                .tag("outcome", "created")
+                .counter()
+                .count() shouldBe 1.0
+            meterRegistry.get(SubmissionObservability.METRIC_NAME)
+                .tag("channel", "tokenx")
+                .tag("outcome", "duplicate")
+                .counter()
+                .count() shouldBe 1.0
         }
     }
 })

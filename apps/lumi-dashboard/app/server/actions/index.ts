@@ -40,6 +40,11 @@ export {
   fetchMarkersServerFn,
   updateMarkerServerFn,
 } from "./markers";
+// Release verification (dev only)
+export {
+  fetchReleaseVerificationConfigServerFn,
+  submitReleaseVerificationServerFn,
+} from "./releaseVerification";
 // Survey authoring
 export {
   createSurveyAuthoringProjectServerFn,

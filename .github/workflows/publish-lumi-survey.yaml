@@ -58,6 +58,11 @@ jobs:
       - name: Pack (dry-run)
         run: pnpm --filter @navikt/lumi-survey pack --dry-run
 
+      - name: Verify packed consumer
+        run: pnpm run verify:lumi-survey-consumer
+        env:
+          NPM_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Enforce publish policy (main branch only)
         if: ${{ inputs.dry_run == 'false' }}
         run: |

@@ -1,0 +1,23 @@
+{
+  "name": "lumi-survey-packed-consumer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@navikt/ds-css": "8.9.0",
+    "@navikt/ds-react": "8.9.0",
+    "@navikt/lumi-survey": "file:./lumi-survey.tgz",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.0.3",
+    "@vitejs/plugin-react": "5.1.4",
+    "typescript": "6.0.2",
+    "vite": "7.3.5"
+  }
+}

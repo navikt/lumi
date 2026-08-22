@@ -7,6 +7,9 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import no.nav.lumi.config.SubmissionChannel
+import no.nav.lumi.config.SubmissionMetricOutcome
+import no.nav.lumi.config.SubmissionObservability
 import no.nav.lumi.config.SubmissionRateLimit
 import no.nav.lumi.config.UserSubmissionRateLimit
 import no.nav.lumi.config.auth.AzureSubmissionAuthPlugin
@@ -23,6 +26,7 @@ import org.slf4j.LoggerFactory
 private val log = LoggerFactory.getLogger("SubmissionRoutes")
 private val defaultFeedbackService = FeedbackService()
 private val defaultSurveyDefinitionService = SurveyDefinitionService()
+private val defaultSubmissionObservability = SubmissionObservability()
 
 /**
  * Submission routes for feedback collection.
@@ -41,13 +45,23 @@ private val defaultSurveyDefinitionService = SurveyDefinitionService()
 fun Route.submissionRoutes(
     feedbackService: FeedbackService = defaultFeedbackService,
     surveyDefinitionService: SurveyDefinitionService = defaultSurveyDefinitionService,
-    submissionService: SubmissionService = SubmissionService(feedbackService, surveyDefinitionService)
+    submissionService: SubmissionService = SubmissionService(feedbackService, surveyDefinitionService),
+    submissionObservability: SubmissionObservability = defaultSubmissionObservability
 ) {
     route("/api/tokenx") {
         install(TokenXSubmissionAuthPlugin)
         rateLimit(SubmissionRateLimit) {
             rateLimit(UserSubmissionRateLimit) {
-                post("/v1/feedback") { handleSubmission(call, submissionService) }
+                post("/v1/feedback") {
+                    submissionObservability.observeAttempt(SubmissionChannel.TOKENX) {
+                        handleSubmission(
+                            call,
+                            submissionService,
+                            submissionObservability,
+                            SubmissionChannel.TOKENX
+                        )
+                    }
+                }
             }
         }
     }
@@ -56,7 +70,16 @@ fun Route.submissionRoutes(
         install(AzureSubmissionAuthPlugin)
         rateLimit(SubmissionRateLimit) {
             rateLimit(UserSubmissionRateLimit) {
-                post("/v1/feedback") { handleSubmission(call, submissionService) }
+                post("/v1/feedback") {
+                    submissionObservability.observeAttempt(SubmissionChannel.AZURE) {
+                        handleSubmission(
+                            call,
+                            submissionService,
+                            submissionObservability,
+                            SubmissionChannel.AZURE
+                        )
+                    }
+                }
             }
         }
     }
@@ -64,7 +87,9 @@ fun Route.submissionRoutes(
 
 private suspend fun handleSubmission(
     call: io.ktor.server.application.ApplicationCall,
-    submissionService: SubmissionService
+    submissionService: SubmissionService,
+    submissionObservability: SubmissionObservability,
+    submissionChannel: SubmissionChannel
 ) {
     val identity = call.getCallerIdentity()
     val body = receiveTextWithLimit(call)
@@ -80,7 +105,7 @@ private suspend fun handleSubmission(
 
     val parsedSubmission = decodeValidatedSubmission(jsonElement)
 
-    respondWithSubmissionResult(
+    val outcome = respondWithSubmissionResult(
         call = call,
         identity = identity,
         submission = parsedSubmission.submission,
@@ -92,6 +117,7 @@ private suspend fun handleSubmission(
             definition = parsedSubmission.definition
         )
     )
+    submissionObservability.record(submissionChannel, outcome)
 }
 
 private suspend fun respondWithSubmissionResult(
@@ -99,13 +125,14 @@ private suspend fun respondWithSubmissionResult(
     identity: no.nav.lumi.config.auth.CallerIdentity,
     submission: FeedbackSubmissionV1,
     submissionOutcome: no.nav.lumi.service.SubmissionOutcome
-) {
+): SubmissionMetricOutcome {
     when (val saveResult = submissionOutcome.saveResult) {
         is SaveResult.Created -> {
             log.info(
                 "Saved feedback id=${saveResult.id} team=${identity.team} app=${identity.app} surveyId=${submission.surveyId} definitionHash=${submissionOutcome.definitionHash}"
             )
             call.respond(HttpStatusCode.Created, mapOf("id" to saveResult.id))
+            return SubmissionMetricOutcome.CREATED
         }
 
         is SaveResult.Duplicate -> {
@@ -119,6 +146,7 @@ private suspend fun respondWithSubmissionResult(
                     put("duplicate", true)
                 }
             )
+            return SubmissionMetricOutcome.DUPLICATE
         }
     }
 }

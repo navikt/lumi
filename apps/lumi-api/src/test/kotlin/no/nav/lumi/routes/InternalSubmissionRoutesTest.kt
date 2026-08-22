@@ -16,12 +16,15 @@ import kotlinx.coroutines.coroutineScope
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.micrometer.prometheusmetrics.PrometheusConfig
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import no.nav.lumi.TestDatabase
 import no.nav.lumi.config.DatabaseHolder
+import no.nav.lumi.config.SubmissionObservability
 import no.nav.lumi.config.configureSerialization
 import no.nav.lumi.config.configureStatusPages
 import no.nav.lumi.domain.FeedbackQuery
@@ -187,6 +190,42 @@ class InternalSubmissionRoutesTest : FunSpec({
         }
     }
 
+    test("should record successful proxy submissions") {
+        val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+        val submissionObservability = SubmissionObservability(meterRegistry)
+        val submissionService = mockk<SubmissionService>()
+        coEvery {
+            submissionService.submit(any(), any(), any(), any(), any())
+        } returns SubmissionOutcome(SaveResult.Created("created-proxy"), "hash-proxy")
+
+        testApplication {
+            application {
+                configureSerialization()
+                configureStatusPages()
+                routing {
+                    internalSubmissionRoutes(
+                        submissionService = submissionService,
+                        submissionKey = TEST_PSK,
+                        submissionObservability = submissionObservability
+                    )
+                }
+            }
+
+            val response = client.post("/api/internal/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                header("X-Lumi-Submission-Key", TEST_PSK)
+                header("X-Lumi-Caller-Identity", VALID_IDENTITY)
+                setBody(validPayloadV2())
+            }
+
+            response.status shouldBe HttpStatusCode.Created
+            meterRegistry.get(SubmissionObservability.METRIC_NAME)
+                .tag("channel", "internal_proxy")
+                .tag("outcome", "created")
+                .counter()
+                .count() shouldBe 1.0
+        }
+    }
 
     test("should apply immutable definition validation on internal route") {
         testApplication {
