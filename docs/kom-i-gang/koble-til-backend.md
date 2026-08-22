@@ -66,7 +66,7 @@ spec:
       value: "api://prod-gcp.team-esyfo.lumi-api/.default"
 ```
 
-**Dev:**
+**Dev med `trygdeetaten.no`-tenant:**
 
 ```yaml
 spec:
@@ -77,10 +77,26 @@ spec:
       value: "api://dev-gcp.team-esyfo.lumi-submission-proxy/.default"
 ```
 
-::: warning Tenant-mismatch i dev
-Lumi API bruker Azure-tenant `nav.no`. Hvis appen din bruker tenant `trygdeetaten.no` i dev (f.eks. Modia-apper), kan ikke AzureAD OBO-tokens krysse tenantgrensen. I dev må du derfor rute trafikken via `lumi-submission-proxy` — en proxyapp som brokerer mellom tenantene.
+**Dev med `nav.no`-tenant:**
 
-I **prod** bruker alle apper `nav.no`-tenant, og du kan kalle `lumi-api` direkte.
+```yaml
+spec:
+  env:
+    - name: LUMI_API_HOST
+      value: http://lumi-api.team-esyfo
+    - name: LUMI_AUDIENCE
+      value: "api://dev-gcp.team-esyfo.lumi-api/.default"
+```
+
+::: warning Tenant-mismatch i dev
+Lumi API bruker Azure-tenant `nav.no`. Hvis appen din bruker tenant
+`trygdeetaten.no` i dev (f.eks. Modia-apper), kan ikke AzureAD OBO-tokens
+krysse tenantgrensen. Da må du rute trafikken via
+`lumi-submission-proxy` — en proxyapp som brokerer mellom tenantene. Apper
+som bruker `nav.no` i dev, kaller `lumi-api` direkte.
+
+I **prod** bruker alle apper `nav.no`-tenant, proxyen finnes ikke, og du må
+kalle `lumi-api` direkte.
 :::
 
 ## 3. Send inn svar til Lumi API
@@ -118,11 +134,23 @@ export async function submitFeedback(
 
 ## 4. Konfigurer access policies
 
-Begge parter må konfigurere tilgangspolicyer (Zero Trust).
+Begge parter må konfigurere tilgangspolicyer (Zero Trust). Outbound-regelen,
+hosten og token-audience må peke på den samme mottakeren:
+
+| Auth | Miljø | Azure-tenant i din app | Mottaker |
+| :--- | :--- | :--- | :--- |
+| TokenX | dev-gcp | – | `lumi-api` |
+| TokenX | prod-gcp | – | `lumi-api` |
+| AzureAD | dev-gcp | `nav.no` | `lumi-api` |
+| AzureAD | dev-gcp | `trygdeetaten.no` | `lumi-submission-proxy` |
+| AzureAD | prod-gcp | `nav.no` | `lumi-api` |
+
+`lumi-submission-proxy` finnes bare i dev-gcp. Hvis du er usikker på hvilken
+tenant appen bruker, sjekk `spec.azure.application.tenant` i NAIS-manifestet.
 
 ### Din app (outbound)
 
-Legg til i ditt NAIS-manifest:
+For direkte kall til `lumi-api`, legg til:
 
 ```yaml
 spec:
@@ -133,9 +161,23 @@ spec:
           namespace: team-esyfo
 ```
 
-### Lumi API (inbound)
+For AzureAD i dev med `trygdeetaten.no`-tenant, legg i stedet til:
 
-Team eSyfo må legge til din app som inbound. [**Opprett en issue**](https://github.com/navikt/lumi/issues/new?template=access-request.yml) med app-navn, namespace og auth-type, så ordner vi resten:
+```yaml
+spec:
+  accessPolicy:
+    outbound:
+      rules:
+        - application: lumi-submission-proxy
+          namespace: team-esyfo
+```
+
+### Mottakeren (inbound)
+
+Team eSyfo må legge til appen din som inbound i mottakeren du fant i tabellen:
+`lumi-api` for direkte kall, eller `lumi-submission-proxy` for
+`trygdeetaten.no` i dev. [**Opprett en issue**](https://github.com/navikt/lumi/issues/new?template=access-request.yml)
+med app-navn, namespace, auth-type, miljø og dev-tenant, så ordner vi resten:
 
 ```yaml
 spec:
@@ -145,6 +187,9 @@ spec:
         - application: din-app
           namespace: ditt-team
 ```
+
+Når du går via proxyen, trenger appen din ikke i tillegg inbound i
+`lumi-api`; proxyen har allerede sin egen tilgang videre.
 
 ## 5. Storage-strategi
 
@@ -175,8 +220,8 @@ Før du deployer, verifiser at du har:
 - [ ] Token exchange i ditt endepunkt (TokenX eller AzureAD)
 - [ ] Riktig endepunkt (`/api/tokenx/v1/feedback` eller `/api/azure/v1/feedback`)
 - [ ] `LUMI_API_HOST` og `LUMI_AUDIENCE` satt i NAIS-manifest
-- [ ] Outbound access policy mot `lumi-api` i `team-esyfo`
-- [ ] Inbound access policy i Lumi API ([opprett issue](https://github.com/navikt/lumi/issues/new?template=access-request.yml))
+- [ ] Outbound access policy mot riktig mottaker (`lumi-api` eller `lumi-submission-proxy`) i `team-esyfo`
+- [ ] Inbound access policy i samme mottaker ([opprett issue](https://github.com/navikt/lumi/issues/new?template=access-request.yml))
 - [ ] Riktig `storageStrategy` (`consent` / `localStorage` / `none`)
 - [ ] Testet i dev — innsending → data synlig i dashboardet
 
