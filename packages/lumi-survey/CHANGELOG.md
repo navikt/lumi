@@ -6,6 +6,15 @@ This project follows SemVer.
 
 ## [Unreleased]
 
+### Fixed
+
+- Rating questions now expose exactly one named group to assistive
+  technology. The prompt is the fieldset legend (a level 3 heading when
+  visible), the fieldset itself carries `role="radiogroup"`, and the
+  visually hidden legend copy no longer duplicates an external prompt
+  heading. Screen readers previously announced the question up to three
+  times per rating group.
+
 ## [2.1.1] - 2026-08-22
 
 ### Fixed

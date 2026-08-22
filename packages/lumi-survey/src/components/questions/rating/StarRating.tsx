@@ -99,122 +99,118 @@ export function StarRating({
       fieldsetPaddingBlock={fieldsetPaddingBlock}
       fieldsetPaddingInline={fieldsetPaddingInline}
     >
-      {(groupProps) => (
-        <VStack gap="space-4" align="center">
-          <HStack
-            {...groupProps}
-            gap="space-2"
-            justify="space-between"
-            align="center"
-            wrap={false}
-            onKeyDown={radioGroup.onKeyDown}
-            style={{ width: "100%", flexWrap: "nowrap" }}
-          >
-            {Array.from({ length: scale }, (_, index) => {
-              const starValue = index + 1;
-              const isFilled =
-                displayValue !== null && starValue <= displayValue;
-              const isActive = activeState === starValue;
-              const label = labels[starValue] ?? String(starValue);
+      <VStack gap="space-4" align="center">
+        <HStack
+          gap="space-2"
+          justify="space-between"
+          align="center"
+          wrap={false}
+          onKeyDown={radioGroup.onKeyDown}
+          style={{ width: "100%", flexWrap: "nowrap" }}
+        >
+          {Array.from({ length: scale }, (_, index) => {
+            const starValue = index + 1;
+            const isFilled = displayValue !== null && starValue <= displayValue;
+            const isActive = activeState === starValue;
+            const label = labels[starValue] ?? String(starValue);
 
-              return (
-                <button
-                  key={starValue}
-                  type="button"
-                  role="radio"
-                  aria-checked={isActive}
-                  aria-label={`${starValue} av ${scale} stjerner. ${label}`}
-                  onClick={() => handleSelect(starValue)}
-                  onMouseEnter={() => !disabled && setHoverValue(starValue)}
-                  onMouseLeave={() => setHoverValue(null)}
-                  onFocus={() => !disabled && setHoverValue(starValue)}
-                  onBlur={() => setHoverValue(null)}
-                  disabled={disabled}
-                  tabIndex={radioGroup.getTabIndex(starValue)}
+            return (
+              <button
+                key={starValue}
+                type="button"
+                role="radio"
+                aria-checked={isActive}
+                aria-label={`${starValue} av ${scale} stjerner. ${label}`}
+                onClick={() => handleSelect(starValue)}
+                onMouseEnter={() => !disabled && setHoverValue(starValue)}
+                onMouseLeave={() => setHoverValue(null)}
+                onFocus={() => !disabled && setHoverValue(starValue)}
+                onBlur={() => setHoverValue(null)}
+                disabled={disabled}
+                tabIndex={radioGroup.getTabIndex(starValue)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding:
+                    scale <= 5 ? "var(--ax-space-8)" : "var(--ax-space-6)",
+                  border: "none",
+                  borderRadius: "var(--ax-radius-4)",
+                  background: "transparent",
+                  cursor: disabled ? "not-allowed" : "pointer",
+                  opacity: disabled ? 0.5 : 1,
+                  transition: "transform 0.1s ease",
+                  transform:
+                    hoverValue === starValue ? "scale(1.2)" : "scale(1)",
+                  flex: "1 1 0",
+                  minWidth: 0,
+                }}
+              >
+                <span
+                  aria-hidden
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding:
-                      scale <= 5 ? "var(--ax-space-8)" : "var(--ax-space-6)",
-                    border: "none",
-                    borderRadius: "var(--ax-radius-4)",
-                    background: "transparent",
-                    cursor: disabled ? "not-allowed" : "pointer",
-                    opacity: disabled ? 0.5 : 1,
-                    transition: "transform 0.1s ease",
-                    transform:
-                      hoverValue === starValue ? "scale(1.2)" : "scale(1)",
-                    flex: "1 1 0",
-                    minWidth: 0,
+                    display: "inline-block",
+                    width: "2.5rem",
+                    height: "2.5rem",
+                    position: "relative",
+                    pointerEvents: "none",
                   }}
                 >
-                  <span
+                  <StarFillIcon
                     aria-hidden
                     style={{
-                      display: "inline-block",
+                      position: "absolute",
+                      inset: 0,
                       width: "2.5rem",
                       height: "2.5rem",
-                      position: "relative",
-                      pointerEvents: "none",
+                      color: "var(--ax-text-warning)",
+                      opacity: isFilled ? 1 : 0,
                     }}
-                  >
-                    <StarFillIcon
-                      aria-hidden
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        width: "2.5rem",
-                        height: "2.5rem",
-                        color: "var(--ax-text-warning)",
-                        opacity: isFilled ? 1 : 0,
-                      }}
-                    />
-                    <StarIcon
-                      aria-hidden
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        width: "2.5rem",
-                        height: "2.5rem",
-                        color: "var(--ax-text-neutral-subtle)",
-                        opacity: isFilled ? 0 : 1,
-                      }}
-                    />
-                  </span>
-                </button>
-              );
-            })}
-          </HStack>
-          {/* Label display based on showLabels prop */}
-          {showLabels === "always" && (
-            <BodyShort
-              size="small"
-              style={{
-                color: "var(--ax-text-neutral-subtle)",
-                minHeight: "1.5rem",
-                textAlign: "center",
-              }}
-            >
-              {activeState
-                ? (labels[activeState] ?? `${activeState} av ${scale}`)
-                : `Velg 1-${scale}`}
-            </BodyShort>
-          )}
-          {showLabels === "hover" && displayValue && (
-            <BodyShort
-              size="small"
-              style={{
-                color: "var(--ax-text-neutral-subtle)",
-                minHeight: "1.5rem",
-                textAlign: "center",
-              }}
-            >
-              {labels[displayValue] ?? `${displayValue} av ${scale}`}
-            </BodyShort>
-          )}
-        </VStack>
-      )}
+                  />
+                  <StarIcon
+                    aria-hidden
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      width: "2.5rem",
+                      height: "2.5rem",
+                      color: "var(--ax-text-neutral-subtle)",
+                      opacity: isFilled ? 0 : 1,
+                    }}
+                  />
+                </span>
+              </button>
+            );
+          })}
+        </HStack>
+        {/* Label display based on showLabels prop */}
+        {showLabels === "always" && (
+          <BodyShort
+            size="small"
+            style={{
+              color: "var(--ax-text-neutral-subtle)",
+              minHeight: "1.5rem",
+              textAlign: "center",
+            }}
+          >
+            {activeState
+              ? (labels[activeState] ?? `${activeState} av ${scale}`)
+              : `Velg 1-${scale}`}
+          </BodyShort>
+        )}
+        {showLabels === "hover" && displayValue && (
+          <BodyShort
+            size="small"
+            style={{
+              color: "var(--ax-text-neutral-subtle)",
+              minHeight: "1.5rem",
+              textAlign: "center",
+            }}
+          >
+            {labels[displayValue] ?? `${displayValue} av ${scale}`}
+          </BodyShort>
+        )}
+      </VStack>
     </RatingFieldset>
   );
 }

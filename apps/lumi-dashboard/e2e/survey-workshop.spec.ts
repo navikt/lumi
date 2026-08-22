@@ -895,7 +895,7 @@ test("an any/all group over two conditions gates the question live in the stage"
 
   const stage = page.getByLabel("Forhåndsvisning");
   await expect(
-    stage.getByRole("group", { name: "Vil du utdype?" }),
+    stage.getByRole("radiogroup", { name: "Vil du utdype?" }),
   ).toBeVisible();
 
   // First condition: rating answered. Second: the text question answered.
@@ -921,13 +921,13 @@ test("an any/all group over two conditions gates the question live in the stage"
 
   // ALL: nothing answered yet → hidden; rating alone is not enough.
   await expect(
-    stage.getByRole("group", { name: "Vil du utdype?" }),
+    stage.getByRole("radiogroup", { name: "Vil du utdype?" }),
   ).not.toBeVisible({
     timeout: 10000,
   });
   await stage.getByRole("radio").nth(3).click();
   await expect(
-    stage.getByRole("group", { name: "Vil du utdype?" }),
+    stage.getByRole("radiogroup", { name: "Vil du utdype?" }),
   ).not.toBeVisible();
 
   // ANY: the document edit remounts the stage (answers reset), and one
@@ -935,11 +935,11 @@ test("an any/all group over two conditions gates the question live in the stage"
   await page.getByText("Minst én må stemme").click();
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
   await expect(
-    stage.getByRole("group", { name: "Vil du utdype?" }),
+    stage.getByRole("radiogroup", { name: "Vil du utdype?" }),
   ).not.toBeVisible({ timeout: 10000 });
   await stage.getByRole("radio").nth(3).click();
   await expect(
-    stage.getByRole("group", { name: "Vil du utdype?" }),
+    stage.getByRole("radiogroup", { name: "Vil du utdype?" }),
   ).toBeVisible();
 
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
@@ -953,11 +953,11 @@ test("an any/all group over two conditions gates the question live in the stage"
   await expect(page.getByText("Minst én må stemme")).toHaveCount(0);
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
   await expect(
-    stage.getByRole("group", { name: "Vil du utdype?" }),
+    stage.getByRole("radiogroup", { name: "Vil du utdype?" }),
   ).not.toBeVisible({ timeout: 10000 });
   await stage.getByRole("radio").nth(3).click();
   await expect(
-    stage.getByRole("group", { name: "Vil du utdype?" }),
+    stage.getByRole("radiogroup", { name: "Vil du utdype?" }),
   ).toBeVisible();
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
 });

@@ -179,55 +179,52 @@ const EmojiRating = ({
       fieldsetPaddingBlock={fieldsetPaddingBlock}
       fieldsetPaddingInline={fieldsetPaddingInline}
     >
-      {(groupProps) => (
-        <HStack
-          {...groupProps}
-          gap="space-16"
-          justify="start"
-          align="center"
-          wrap={wrap}
-          className={joinClassNames(CLASS_NAMES.row, rowClassName)}
-          onKeyDown={radioGroup.onKeyDown}
-        >
-          {options.map((option, index) => {
-            const variant = resolveVariant(index);
-            const labelText = resolveLabel(
-              question as EmojiRatingQuestion,
-              option,
-            );
-            const isActive = activeState === option;
-            const buttonClass = joinClassNames(
-              CLASS_NAMES.button,
-              variant.className,
-              isActive ? CLASS_NAMES.active : undefined,
-              buttonClassName,
-            );
-            const buttonStyle = isActive
-              ? { color: variant.activeColor }
-              : undefined;
-            const Icon = variant.Icon;
-            const ariaLabel = `${option}. ${labelText}`;
+      <HStack
+        gap="space-16"
+        justify="start"
+        align="center"
+        wrap={wrap}
+        className={joinClassNames(CLASS_NAMES.row, rowClassName)}
+        onKeyDown={radioGroup.onKeyDown}
+      >
+        {options.map((option, index) => {
+          const variant = resolveVariant(index);
+          const labelText = resolveLabel(
+            question as EmojiRatingQuestion,
+            option,
+          );
+          const isActive = activeState === option;
+          const buttonClass = joinClassNames(
+            CLASS_NAMES.button,
+            variant.className,
+            isActive ? CLASS_NAMES.active : undefined,
+            buttonClassName,
+          );
+          const buttonStyle = isActive
+            ? { color: variant.activeColor }
+            : undefined;
+          const Icon = variant.Icon;
+          const ariaLabel = `${option}. ${labelText}`;
 
-            return (
-              <EmojiButton
-                key={option}
-                feedback={option}
-                activeState={activeState}
-                setActiveState={handleSelect}
-                className={buttonClass}
-                style={buttonStyle}
-                text={labelText}
-                renderText={!hideValueLabels}
-                ariaLabel={ariaLabel}
-                disabled={disabled}
-                tabIndex={radioGroup.getTabIndex(option)}
-              >
-                <Icon fill={isActive ? variant.activeFill : undefined} />
-              </EmojiButton>
-            );
-          })}
-        </HStack>
-      )}
+          return (
+            <EmojiButton
+              key={option}
+              feedback={option}
+              activeState={activeState}
+              setActiveState={handleSelect}
+              className={buttonClass}
+              style={buttonStyle}
+              text={labelText}
+              renderText={!hideValueLabels}
+              ariaLabel={ariaLabel}
+              disabled={disabled}
+              tabIndex={radioGroup.getTabIndex(option)}
+            >
+              <Icon fill={isActive ? variant.activeFill : undefined} />
+            </EmojiButton>
+          );
+        })}
+      </HStack>
     </RatingFieldset>
   );
 };

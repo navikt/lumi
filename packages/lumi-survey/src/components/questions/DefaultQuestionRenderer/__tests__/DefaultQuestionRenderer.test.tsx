@@ -328,7 +328,9 @@ describe("DefaultQuestionRenderer", () => {
     const errorRegion = container.querySelector(".aksel-fieldset__error");
 
     expect(fieldset).toHaveClass("aksel-fieldset");
-    expect(legend).toHaveClass("aksel-sr-only");
+    // The legend is the single, visible prompt for the group.
+    expect(legend).not.toHaveClass("aksel-sr-only");
+    expect(legend).toHaveTextContent(question.prompt);
     expect(errorRegion).toHaveClass("aksel-fieldset__error");
     expect(errorRegion).toHaveAttribute("aria-live", "polite");
     expect(errorRegion).toHaveTextContent("This field is required");
