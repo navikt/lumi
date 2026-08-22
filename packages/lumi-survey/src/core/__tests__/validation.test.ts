@@ -77,6 +77,76 @@ describe("validateAnswers", () => {
     ]);
   });
 
+  it("rejects text answers longer than the configured maxLength", () => {
+    const question: LumiSurveyQuestion = {
+      id: "feedback",
+      type: "text",
+      prompt: "Kommentar",
+      maxLength: 5,
+    };
+
+    expect(validateAnswers([question], { feedback: "12345" })).toEqual([]);
+    expect(validateAnswers([question], { feedback: "123456" })).toEqual([
+      "feedback",
+    ]);
+  });
+
+  it("uses the widget default and caps configured text limits at the API maximum", () => {
+    const defaultQuestion: LumiSurveyQuestion = {
+      id: "default-feedback",
+      type: "text",
+      prompt: "Kommentar",
+    };
+    const oversizedQuestion: LumiSurveyQuestion = {
+      id: "oversized-feedback",
+      type: "text",
+      prompt: "Kommentar",
+      maxLength: 5_000,
+    };
+    const fractionalLegacyQuestion: LumiSurveyQuestion = {
+      id: "fractional-legacy-feedback",
+      type: "text",
+      prompt: "Kommentar",
+      maxLength: 0.5,
+    };
+
+    expect(
+      validateAnswers([defaultQuestion], {
+        "default-feedback": "a".repeat(1_000),
+      }),
+    ).toEqual([]);
+    expect(
+      validateAnswers([defaultQuestion], {
+        "default-feedback": "a".repeat(1_001),
+      }),
+    ).toEqual(["default-feedback"]);
+    expect(
+      validateAnswers([oversizedQuestion], {
+        "oversized-feedback": "a".repeat(2_000),
+      }),
+    ).toEqual([]);
+    expect(
+      validateAnswers([oversizedQuestion], {
+        "oversized-feedback": "a".repeat(2_001),
+      }),
+    ).toEqual(["oversized-feedback"]);
+    expect(
+      validateAnswers([defaultQuestion], {
+        "default-feedback": " ".repeat(1_001),
+      }),
+    ).toEqual(["default-feedback"]);
+    expect(
+      validateAnswers([fractionalLegacyQuestion], {
+        "fractional-legacy-feedback": "a",
+      }),
+    ).toEqual([]);
+    expect(
+      validateAnswers([fractionalLegacyQuestion], {
+        "fractional-legacy-feedback": "ab",
+      }),
+    ).toEqual(["fractional-legacy-feedback"]);
+  });
+
   it("enforces unique multi-choice values and maxSelections", () => {
     const question: LumiSurveyQuestion = {
       id: "priority",

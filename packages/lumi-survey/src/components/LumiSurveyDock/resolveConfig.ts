@@ -20,6 +20,8 @@ export interface ResolvedConfig {
   submitPendingLabel: string;
   cancelLabel: string;
   validationErrorMessage: string;
+  validationSummaryHeading: string;
+  textTooLongErrorMessage: (maxLength: number) => string;
   transportErrorMessage: string;
   minimizedButtonLabel: string;
 
@@ -78,6 +80,10 @@ export function resolveConfig(
     cancelLabel: labels?.cancel ?? DEFAULT_COPY.cancelLabel,
     validationErrorMessage:
       labels?.validationError ?? DEFAULT_COPY.validationErrorMessage,
+    validationSummaryHeading:
+      labels?.validationSummary ?? DEFAULT_COPY.validationSummaryHeading,
+    textTooLongErrorMessage:
+      labels?.textTooLong ?? DEFAULT_COPY.textTooLongErrorMessage,
     transportErrorMessage:
       labels?.transportError ?? DEFAULT_COPY.transportErrorMessage,
     minimizedButtonLabel: labels?.minimizedButton ?? "Gi tilbakemelding",

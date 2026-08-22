@@ -43,6 +43,28 @@ class SurveyAuthoringDocumentValidatorTest : FunSpec({
         changed.definition.computeHash() shouldBe original.definition.computeHash()
     }
 
+    test("rejects fractional text maxLength") {
+        val invalid = Json.parseToJsonElement(
+            validDocument().toString().replace("\"maxLength\":1000", "\"maxLength\":0.5"),
+        ).jsonObject
+
+        shouldThrow<ApiErrorException.BadRequestException> {
+            SurveyAuthoringDocumentValidator.validate(invalid, "survey-v1")
+        }.errorMessage shouldBe "Text question 'comment' has invalid maxLength"
+    }
+
+    test("rejects quoted text numeric fields") {
+        listOf("maxLength" to "1000", "minRows" to "4").forEach { (field, number) ->
+            val invalid = Json.parseToJsonElement(
+                validDocument().toString().replace("\"$field\":$number", "\"$field\":\"$number\""),
+            ).jsonObject
+
+            shouldThrow<ApiErrorException.BadRequestException> {
+                SurveyAuthoringDocumentValidator.validate(invalid, "survey-v1")
+            }.errorMessage shouldBe "Text question 'comment' has invalid $field"
+        }
+    }
+
     test("document hash is independent of object key order") {
         val original = SurveyAuthoringDocumentValidator.validate(validDocument(), "survey-v1")
         val reordered = Json.parseToJsonElement(

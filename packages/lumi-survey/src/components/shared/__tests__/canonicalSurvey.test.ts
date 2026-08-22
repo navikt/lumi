@@ -255,6 +255,14 @@ describe("buildCanonicalSurvey", () => {
       buildRaw({
         id: "page",
         questions: [
+          { id: "text", type: "text", prompt: "Text", maxLength: 0.5 },
+        ],
+      }),
+    ).toThrowError(/invalid maxLength/i);
+    expect(() =>
+      buildRaw({
+        id: "page",
+        questions: [
           {
             id: "choice",
             type: "multiChoice",

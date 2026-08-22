@@ -472,7 +472,10 @@ function validateDocumentQuestion(
       const value = candidate[numberKey];
       if (
         value !== undefined &&
-        (typeof value !== "number" || !Number.isFinite(value) || value <= 0)
+        (typeof value !== "number" ||
+          !Number.isFinite(value) ||
+          value <= 0 ||
+          (numberKey === "maxLength" && !Number.isInteger(value)))
       ) {
         throw new Error(
           `Lumi: Text question "${candidate.id}" has an invalid ${numberKey}`,

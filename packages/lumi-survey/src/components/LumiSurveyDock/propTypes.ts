@@ -14,6 +14,10 @@ export interface LumiSurveyLabels {
   cancel?: string;
   /** Error message for validation failures. @default "Vennligst fyll ut alle påkrevde felt" */
   validationError?: string;
+  /** Heading shown when multiple answers need correction. */
+  validationSummary?: string;
+  /** Error formatter for a text answer above its effective character limit. */
+  textTooLong?: (maxLength: number) => string;
   /** Error message for transport failures. @default "Noe gikk galt ved innsending. Prøv igjen senere." */
   transportError?: string;
   /** Label for the minimized button. @default "Gi tilbakemelding" */

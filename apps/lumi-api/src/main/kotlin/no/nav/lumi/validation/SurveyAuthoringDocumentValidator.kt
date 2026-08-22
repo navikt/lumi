@@ -213,8 +213,14 @@ object SurveyAuthoringDocumentValidator {
     private fun validateText(question: JsonObject, questionId: String): FieldDefinition {
         for (key in listOf("maxLength", "minRows")) {
             question[key]?.let { value ->
-                val number = (value as? JsonPrimitive)?.doubleOrNull
-                if (number == null || !number.isFinite() || number <= 0) {
+                val primitive = value as? JsonPrimitive
+                val number = primitive?.takeUnless { it.isString }?.doubleOrNull
+                if (
+                    number == null ||
+                    !number.isFinite() ||
+                    number <= 0 ||
+                    (key == "maxLength" && number % 1.0 != 0.0)
+                ) {
                     invalid("Text question '$questionId' has invalid $key")
                 }
             }

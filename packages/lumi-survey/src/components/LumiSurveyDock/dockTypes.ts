@@ -30,6 +30,8 @@ export interface QuestionContextProps {
   promptDescriptionIsQuestionDescription?: boolean;
   questionAnchorPrefix: string;
   validationErrorMessage: string;
+  validationSummaryHeading: string;
+  textTooLongErrorMessage: (maxLength: number) => string;
 }
 
 export interface IntroProps {

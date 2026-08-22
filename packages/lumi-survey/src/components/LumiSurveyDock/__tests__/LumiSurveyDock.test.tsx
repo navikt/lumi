@@ -1,4 +1,10 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
@@ -16,6 +22,7 @@ import type {
 } from "../../surveyTypes.js";
 import { CLASS_NAMES } from "../classNames.js";
 import { LumiSurveyDock } from "../LumiSurveyDock.js";
+import type { LumiSurveyLabels } from "../propTypes.js";
 
 function createSurvey(): LumiSurveyConfig {
   return createRatingSurvey({
@@ -47,6 +54,7 @@ function renderDock(options?: {
   context?: Record<string, unknown>;
   initialOpen?: boolean;
   behavior?: Record<string, unknown>;
+  labels?: LumiSurveyLabels;
 }) {
   const transport: LumiSurveyTransport = options?.transport ?? {
     submit: vi.fn().mockResolvedValue(undefined),
@@ -58,6 +66,7 @@ function renderDock(options?: {
       survey={options?.survey ?? createSurvey()}
       transport={transport}
       events={options?.events}
+      labels={options?.labels}
       context={options?.context}
       behavior={{
         initialOpen: options?.initialOpen ?? true,
@@ -136,7 +145,7 @@ describe("LumiSurveyDock", () => {
     await user.click(screen.getByRole("button", { name: "Neste" }));
 
     const errorSummary = await screen.findByText(
-      "Du må svare på disse spørsmålene før du kan fortsette:",
+      "Du må rette svarene før du kan fortsette:",
     );
     expect(errorSummary).toHaveFocus();
     expect(
@@ -340,18 +349,14 @@ describe("LumiSurveyDock", () => {
     renderDock({ survey, behavior: { storageStrategy: "none" } });
     await user.click(await screen.findByRole("button", { name: "Neste" }));
     expect(
-      screen.getByText(
-        "Du må svare på disse spørsmålene før du kan fortsette:",
-      ),
+      screen.getByText("Du må rette svarene før du kan fortsette:"),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Lukk" }));
     await user.click(screen.getByRole("button", { name: "Gi tilbakemelding" }));
 
     expect(
-      screen.queryByText(
-        "Du må svare på disse spørsmålene før du kan fortsette:",
-      ),
+      screen.queryByText("Du må rette svarene før du kan fortsette:"),
     ).not.toBeInTheDocument();
   });
 
@@ -506,18 +511,14 @@ describe("LumiSurveyDock", () => {
     await user.click(await screen.findByRole("radio", { name: "Ja" }));
     await user.click(screen.getByRole("button", { name: "Neste" }));
     expect(
-      screen.getByText(
-        "Du må svare på disse spørsmålene før du kan fortsette:",
-      ),
+      screen.getByText("Du må rette svarene før du kan fortsette:"),
     ).toBeInTheDocument();
 
     const noOption = screen.getByRole("radio", { name: "Nei" });
     await user.click(noOption);
 
     expect(
-      screen.queryByText(
-        "Du må svare på disse spørsmålene før du kan fortsette:",
-      ),
+      screen.queryByText("Du må rette svarene før du kan fortsette:"),
     ).not.toBeInTheDocument();
     expect(noOption).toHaveFocus();
   });
@@ -1314,6 +1315,51 @@ describe("LumiSurveyDock", () => {
       expect.arrayContaining(["feedback"]),
     );
     expect(screen.getByLabelText(/hva kan vi forbedre/i)).toHaveFocus();
+  });
+
+  it("blocks text answers that exceed the configured limit", async () => {
+    const user = userEvent.setup();
+    const events: LumiSurveyEvents = { onValidationFailed: vi.fn() };
+    const transport: LumiSurveyTransport = {
+      submit: vi.fn().mockResolvedValue(undefined),
+    };
+    const survey: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      pages: [
+        {
+          id: "feedback-page",
+          questions: [
+            {
+              id: "feedback",
+              type: "text",
+              prompt: "Hva kan vi forbedre?",
+              maxLength: 5,
+            },
+          ],
+        },
+      ],
+    };
+
+    renderDock({
+      survey,
+      events,
+      transport,
+      labels: {
+        textTooLong: (maxLength) =>
+          `Answer must be at most ${maxLength} characters.`,
+      },
+    });
+    fireEvent.change(
+      await screen.findByRole("textbox", { name: /hva kan vi forbedre/i }),
+      { target: { value: "123456" } },
+    );
+    await user.click(screen.getByRole("button", { name: /send/i }));
+
+    expect(transport.submit).not.toHaveBeenCalled();
+    expect(events.onValidationFailed).toHaveBeenCalledWith(["feedback"]);
+    expect(
+      screen.getByText("Answer must be at most 5 characters."),
+    ).toBeInTheDocument();
   });
 
   it("calls onViewDock when the dock mounts", () => {
