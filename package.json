@@ -14,7 +14,7 @@
     "verify:lumi-survey-consumer": "./scripts/verify-lumi-survey-consumer.sh",
     "check:lumi-survey-release-drift": "node scripts/check-lumi-survey-release-drift.mjs",
     "test:release-guards": "node --test scripts/check-lumi-survey-release-drift.test.mjs",
-    "test": "pnpm --filter @navikt/lumi-types run test && pnpm --filter lumi-dashboard run test",
+    "test": "pnpm --filter @navikt/lumi-types run test && pnpm --filter @navikt/lumi-survey exec vitest run && pnpm --filter lumi-dashboard run test",
     "e2e": "pnpm --filter lumi-dashboard run e2e",
     "e2e:full-chain": "pnpm --filter lumi-dashboard run e2e:full-chain",
     "test:full-chain": "./scripts/lumi-full-chain-e2e.sh",
