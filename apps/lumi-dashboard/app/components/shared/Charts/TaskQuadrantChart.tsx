@@ -183,7 +183,11 @@ export function TaskQuadrantChart({
       minWidth={2}
       minHeight={2}
     >
-      <ScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+      <ScatterChart
+        margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+        role="img"
+        aria-label={`Punktdiagram som viser volum og suksessrate for ${data.length} oppgaver. Samme data vises i tabellen.`}
+      >
         {/* Quadrant background zones */}
         {/* Bottom-right: CRISIS (high volume, low success) */}
         <ReferenceArea

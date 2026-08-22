@@ -97,6 +97,8 @@ export function SurveyTypeDistribution({
         data={data}
         layout="vertical"
         margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+        role="img"
+        aria-label={`Søylediagram som viser antall surveys per type: ${data.map((item) => `${item.label} ${item.count}`).join(", ")}`}
       >
         <CartesianGrid strokeDasharray="3 3" opacity={0.1} horizontal={false} />
         <XAxis type="number" hide />
