@@ -10,7 +10,7 @@ brukes som en måte å ta produktbeslutningen på.
 | --- | --- | --- |
 | Historiske surveys i dashboardet | Klar | Automatisk periode velges fra surveyens faktiske datointervall; eksplisitt valgt periode beholdes |
 | Pakket `@navikt/lumi-survey` | Automatisert | `pnpm run verify:lumi-survey-consumer` installerer tarballen i en ren konsument og kjører typecheck + Vite-build |
-| Widget → proxy → API → Postgres → dashboard | Automatisert | `pnpm run test:full-chain` kjører proxy- og dashboard-rundturen mot en isolert Compose-stack og CI laster opp én aggregert terminalrapport |
+| Widget → proxy → API → Postgres → dashboard | Automatisert | `pnpm run test:full-chain` kjører alle ti stabile survey- og feltvarianter mot en isolert Compose-stack og CI laster opp én aggregert terminalrapport med receipt per scenario |
 | Ekte Azure OBO i dev | Selvbetjent | `/release-verification` kjører team-preflight, startprobe, 15 minutters hold og sluttprobe med eksakt receipt-readback |
 | Innsendingshelse | Instrumentert | `lumi_submissions_total` skiller kanal og utfall; prod varsler på serverfeil og rejection-spike |
 | Hvilke eksisterende surveys som skal fortsette | Avventer | Må avklares før migrering; surveys som skal stoppes migreres ikke |
@@ -49,6 +49,28 @@ CI laster opp `apps/lumi-dashboard/test-results/full-chain` som
 `full-chain-release-verification-<run-id>`, også når testen feiler. Dette gjør
 resultatet lesbart for CI, en agent eller et menneske uten Grafana, NAIS-konsoll
 eller direkte loggtilgang.
+
+### Automatisk kontraktsmatrise
+
+Fullkjedetesten oppdager scenarioene som den lokale testbenken faktisk viser og
+feiler dersom den kjente matrisen driver fra disse. Hvert scenario går gjennom
+den publiserte widgeten, lokal submission-proxy, Lumi API, Postgres og
+dashboardets feedback- og typevisning. V2-definisjonen og alle svar
+sammenlignes før transport; den utvidede feedbackraden sammenlignes etter
+lagring.
+
+Matrisen dekker:
+
+- surveytypene `rating`, `discovery`, `topTasks`, `taskPriority` og `custom`
+- ratingvariantene emoji, tommel, stjerner og NPS
+- tekst, enkeltvalg, flervalg med avkryssing og flervalg med komboboks
+- `SurveyDocumentV1` med flere sider, flere spørsmål per side og `visibleIf`
+
+`DATE` finnes i den bredere API-kontrakten for lagrede svar, men er ikke en
+spørsmålstype som `@navikt/lumi-survey` kan authorere eller rendre. Den er derfor
+ikke del av widgetens støttede kontraktsmatrise. Hvis dato skal bli en offentlig
+widgetfunksjon, må renderer, authoring, transport og fullkjedescenario legges til
+samlet.
 
 ## Beslutningstabell for neste uke
 

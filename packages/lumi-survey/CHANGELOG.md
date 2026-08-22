@@ -6,6 +6,21 @@ This project follows SemVer.
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-08-22
+
+### Fixed
+
+- Star-rating icons now keep a stable pointer target while hover and focus
+  feedback changes. In Chromium, swapping the icon element during a real
+  pointer interaction could leave the star focused but unchecked, so a
+  required star question could not be submitted.
+
+### Internal
+
+- The local full-chain verification now exercises every stable survey and
+  field scenario from the test bench and records per-scenario receipts in the
+  release evidence.
+
 ## [2.1.0] - 2026-08-20
 
 ### Added
