@@ -40,6 +40,8 @@ spec:
       value: http://lumi-api.team-esyfo
     - name: LUMI_AUDIENCE
       value: "prod-gcp:team-esyfo:lumi-api"
+    - name: LUMI_FEEDBACK_PATH
+      value: /api/tokenx/v1/feedback
 ```
 
 **Dev:**
@@ -51,6 +53,8 @@ spec:
       value: http://lumi-api.team-esyfo
     - name: LUMI_AUDIENCE
       value: "dev-gcp:team-esyfo:lumi-api"
+    - name: LUMI_FEEDBACK_PATH
+      value: /api/tokenx/v1/feedback
 ```
 
 ### AzureAD (interne flater)
@@ -64,6 +68,8 @@ spec:
       value: http://lumi-api.team-esyfo
     - name: LUMI_AUDIENCE
       value: "api://prod-gcp.team-esyfo.lumi-api/.default"
+    - name: LUMI_FEEDBACK_PATH
+      value: /api/azure/v1/feedback
 ```
 
 **Dev med `trygdeetaten.no`-tenant:**
@@ -75,6 +81,8 @@ spec:
       value: http://lumi-submission-proxy.team-esyfo
     - name: LUMI_AUDIENCE
       value: "api://dev-gcp.team-esyfo.lumi-submission-proxy/.default"
+    - name: LUMI_FEEDBACK_PATH
+      value: /api/azure/v1/feedback
 ```
 
 **Dev med `nav.no`-tenant:**
@@ -86,6 +94,8 @@ spec:
       value: http://lumi-api.team-esyfo
     - name: LUMI_AUDIENCE
       value: "api://dev-gcp.team-esyfo.lumi-api/.default"
+    - name: LUMI_FEEDBACK_PATH
+      value: /api/azure/v1/feedback
 ```
 
 ::: warning Tenant-mismatch i dev
@@ -101,7 +111,10 @@ kalle `lumi-api` direkte.
 
 ## 3. Send inn svar til Lumi API
 
-Widgeten gir deg en `transportPayload` som du sender videre til Lumi API fra server-side. Her er et eksempel med [`@navikt/oasis`](https://github.com/navikt/oasis) for token exchange:
+Widgeten gir deg en `transportPayload` som du sender videre til Lumi API fra
+server-side. Miljøblokken du valgte i steg 2 setter host, audience og sti som
+én sammenhengende konfigurasjon. Her er et eksempel med
+[`@navikt/oasis`](https://github.com/navikt/oasis) for token exchange:
 
 ```ts
 import type { LumiSurveyTransportPayload } from "@navikt/lumi-survey";
@@ -111,20 +124,25 @@ export async function submitFeedback(
   token: string,
   payload: LumiSurveyTransportPayload,
 ) {
-  const obo = await requestOboToken(token, process.env.LUMI_AUDIENCE);
+  const host = process.env.LUMI_API_HOST;
+  const audience = process.env.LUMI_AUDIENCE;
+  const feedbackPath = process.env.LUMI_FEEDBACK_PATH;
+
+  if (!host || !audience || !feedbackPath) {
+    throw new Error("Lumi-konfigurasjon mangler");
+  }
+
+  const obo = await requestOboToken(token, audience);
   if (!obo.ok) throw new Error("Token exchange feilet");
 
-  const response = await fetch(
-    `${process.env.LUMI_API_HOST}/api/tokenx/v1/feedback`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${obo.token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
+  const response = await fetch(`${host}${feedbackPath}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${obo.token}`,
+      "Content-Type": "application/json",
     },
-  );
+    body: JSON.stringify(payload),
+  });
 
   if (!response.ok) {
     throw new Error(`Lumi API svarte med ${response.status}`);
@@ -219,7 +237,7 @@ Før du deployer, verifiser at du har:
 - [ ] Implementert `transport.submit` som sender `submission.transportPayload` til din backend
 - [ ] Token exchange i ditt endepunkt (TokenX eller AzureAD)
 - [ ] Riktig endepunkt (`/api/tokenx/v1/feedback` eller `/api/azure/v1/feedback`)
-- [ ] `LUMI_API_HOST` og `LUMI_AUDIENCE` satt i NAIS-manifest
+- [ ] `LUMI_API_HOST`, `LUMI_AUDIENCE` og `LUMI_FEEDBACK_PATH` satt fra samme miljøblokk i NAIS-manifestet
 - [ ] Outbound access policy mot riktig mottaker (`lumi-api` eller `lumi-submission-proxy`) i `team-esyfo`
 - [ ] Inbound access policy i samme mottaker ([opprett issue](https://github.com/navikt/lumi/issues/new?template=access-request.yml))
 - [ ] Riktig `storageStrategy` (`consent` / `localStorage` / `none`)
