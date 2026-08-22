@@ -21,8 +21,13 @@ export interface DashboardPeriod {
 }
 
 export interface SurveyPeriodMetadata {
+  archivedAt?: string | null;
   firstSubmissionAt?: string | null;
   lastSubmissionAt?: string | null;
+}
+
+interface TeamSubmissionPeriodOptions {
+  includeArchived?: boolean;
 }
 
 interface ResolveDashboardPeriodInput {
@@ -96,5 +101,36 @@ export function resolveDashboardPeriod({
     dateMode: "auto",
     fromDate: start.format("YYYY-MM-DD"),
     toDate: end.format("YYYY-MM-DD"),
+  };
+}
+
+/**
+ * The span from the team's first to its last registered submission across
+ * surveys visible under the current archive filter. Used by empty states to
+ * offer "show the full survey period" when the current period has no hits.
+ */
+export function getTeamSubmissionPeriod(
+  surveyMeta: Record<string, SurveyPeriodMetadata> | undefined,
+  { includeArchived = false }: TeamSubmissionPeriodOptions = {},
+): { fromDate: string; toDate: string } | undefined {
+  if (!surveyMeta) return undefined;
+
+  let first: dayjs.Dayjs | undefined;
+  let last: dayjs.Dayjs | undefined;
+
+  for (const meta of Object.values(surveyMeta)) {
+    if (!includeArchived && meta.archivedAt) continue;
+
+    const metaFirst = toOsloDate(meta.firstSubmissionAt);
+    const metaLast = toOsloDate(meta.lastSubmissionAt);
+    if (metaFirst && (!first || metaFirst.isBefore(first))) first = metaFirst;
+    if (metaLast && (!last || metaLast.isAfter(last))) last = metaLast;
+  }
+
+  if (!first || !last || first.isAfter(last, "day")) return undefined;
+
+  return {
+    fromDate: first.format("YYYY-MM-DD"),
+    toDate: last.format("YYYY-MM-DD"),
   };
 }

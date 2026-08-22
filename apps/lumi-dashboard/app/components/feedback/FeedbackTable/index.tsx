@@ -18,13 +18,15 @@ import {
   Tooltip,
   VStack,
 } from "@navikt/ds-react";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
+import { useActiveFilters } from "~/hooks/useActiveFilters";
 import { useArchiveSurvey } from "~/hooks/useArchiveSurvey";
 import { useDeleteFeedback } from "~/hooks/useDeleteFeedback";
 import { useFeedback } from "~/hooks/useFeedback";
 import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
 import { useSearchParams } from "~/hooks/useSearchParams";
+import { getTeamSubmissionPeriod } from "~/utils/dashboardPeriod";
 import {
   formatRelativeSubmissionTime,
   isReceivingAfterArchive,
@@ -33,6 +35,7 @@ import {
 import { ArchiveSurveyDialog } from "../../dashboard/ArchiveSurveyDialog";
 import { DeleteSurveyDialog } from "../../dashboard/DeleteSurveyDialog";
 import { DeleteFeedbackDialog } from "../DeleteFeedbackDialog";
+import { FeedbackEmptyState } from "./EmptyState";
 import { FeedbackCard } from "./FeedbackCard";
 import { FeedbackExpandedView } from "./FeedbackExpandedView";
 import { FeedbackRow } from "./FeedbackRow";
@@ -45,7 +48,7 @@ import styles from "./styles.module.css";
  * Supports expand/collapse for detailed view, deletion, and filtering.
  */
 export function FeedbackTable() {
-  const { params, setParam } = useSearchParams();
+  const { params, setParam, setParams } = useSearchParams();
   const page = Number.parseInt(params.page || "1", 10);
   const { data, error, isPending } = useFeedback();
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -55,6 +58,22 @@ export function FeedbackTable() {
   const deleteFeedbackMutation = useDeleteFeedback();
   const { data: bootstrap } = useFilterBootstrap();
   const { restoreMutation } = useArchiveSurvey(params.surveyId);
+  const { hasActiveNonPeriodFilters, resetFilters } = useActiveFilters();
+  const feedbackList = data?.content || [];
+  const totalPages = data?.totalPages || 1;
+  const totalElements = data?.totalElements || 0;
+  const hasOutOfRangePage =
+    !isPending &&
+    !error &&
+    feedbackList.length === 0 &&
+    totalElements > 0 &&
+    page > totalPages;
+
+  useEffect(() => {
+    if (hasOutOfRangePage) {
+      setParam("page", String(totalPages));
+    }
+  }, [hasOutOfRangePage, setParam, totalPages]);
 
   const toggleExpanded = (id: string) => {
     setExpandedRows((prev) => {
@@ -75,14 +94,11 @@ export function FeedbackTable() {
 
   // isPending: no cached data AND fetching (TanStack Query v5 best practice)
   // With placeholderData: keepPreviousData, isPending stays false during refetches
-  if (isPending) {
+  if (isPending || hasOutOfRangePage) {
     return <FeedbackTableSkeleton showToolbar />;
   }
 
   // Data extraction
-  const feedbackList = data?.content || [];
-  const totalPages = data?.totalPages || 1;
-  const totalElements = data?.totalElements || 0;
   const selectedSurvey = params.surveyId;
   const selectedSurveyMeta = selectedSurvey
     ? bootstrap?.surveyMeta?.[selectedSurvey]
@@ -110,7 +126,24 @@ export function FeedbackTable() {
       )}
 
       {feedbackList.length === 0 ? (
-        <Alert variant="info">Ingen tilbakemeldinger funnet</Alert>
+        <FeedbackEmptyState
+          hasAnyData={bootstrap ? bootstrap.apps.length > 0 : undefined}
+          hasActiveNonPeriodFilters={hasActiveNonPeriodFilters}
+          onResetFilters={resetFilters}
+          periodFromDate={params.fromDate}
+          periodToDate={params.toDate}
+          fullPeriod={getTeamSubmissionPeriod(bootstrap?.surveyMeta, {
+            includeArchived: params.showArchived === "true",
+          })}
+          onShowFullPeriod={(period) =>
+            setParams({
+              dateMode: "fixed",
+              fromDate: period.fromDate,
+              toDate: period.toDate,
+              page: "1",
+            })
+          }
+        />
       ) : (
         <>
           {/* Desktop: Table view */}

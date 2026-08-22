@@ -101,9 +101,9 @@ test.describe("Survey Views", () => {
       await expect(
         page.getByText(new RegExp(`Viser ${expectedCount} svar`)),
       ).toBeVisible();
-      await expect(page.getByText("Ingen tilbakemeldinger funnet")).toHaveCount(
-        0,
-      );
+      await expect(
+        page.getByText(/Ingen tilbakemeldinger|Ingen treff/),
+      ).toHaveCount(0);
     });
 
     test("theme editor fits a narrow viewport without structural accessibility violations", async ({

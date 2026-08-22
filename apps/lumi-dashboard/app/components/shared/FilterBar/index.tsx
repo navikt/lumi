@@ -17,6 +17,7 @@ import dayjs from "dayjs";
 import { useEffect } from "react";
 import { PeriodSelector } from "~/components/dashboard/PeriodSelector";
 import { getSurveyFeatures } from "~/config/surveyConfig";
+import { useActiveFilters } from "~/hooks/useActiveFilters";
 import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
@@ -39,7 +40,7 @@ interface FilterBarProps {
 }
 
 export function FilterBar({ showDetails = false }: FilterBarProps) {
-  const { params, setParams, resetParams } = useSearchParams();
+  const { params, setParams } = useSearchParams();
   const { data: bootstrap, isPending: isPendingBootstrap } =
     useFilterBootstrap();
   const { data: stats, isPending: isPendingStats } = useStats();
@@ -57,6 +58,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
     toDate: params.toDate,
   });
   const rollingAutomaticPeriod = resolveDashboardPeriod({ dateMode: "auto" });
+  const { hasActiveFilters, resetFilters: handleReset } = useActiveFilters();
 
   const selectedTags = params.tag
     ? params.tag
@@ -311,16 +313,6 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
     showArchived,
   ]);
 
-  const handleReset = () => {
-    resetParams({
-      team: params.team,
-      dateMode: "auto",
-      fromDate: rollingAutomaticPeriod.fromDate,
-      toDate: rollingAutomaticPeriod.toDate,
-      page: "1",
-    });
-  };
-
   const handleTeamChange = (newTeam: string) => {
     setParams({
       team: newTeam,
@@ -349,29 +341,13 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
     });
   };
 
-  const hasActiveFilters =
-    params.dateMode === "fixed" ||
-    params.query ||
-    params.surveyId ||
-    params.app ||
-    params.lowRating ||
-    params.hasText ||
-    params.deviceType ||
-    params.tag ||
-    params.segment ||
-    params.task ||
-    params.theme ||
-    params.choice ||
-    params.rating ||
-    params.phrase;
-
   const isPending = isPendingBootstrap || isPendingStats;
 
   if (isPending) {
     return (
       <FilterBarSkeleton
         showDetails={showDetails}
-        hasActiveFilters={!!hasActiveFilters}
+        hasActiveFilters={hasActiveFilters}
       />
     );
   }

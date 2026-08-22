@@ -57,9 +57,9 @@ test.describe("Dashboard response period", () => {
         .getByText(HISTORICAL_SURVEY_ID, { exact: true })
         .first(),
     ).toBeVisible();
-    await expect(page.getByText("Ingen tilbakemeldinger funnet")).toHaveCount(
-      0,
-    );
+    await expect(
+      page.getByText(/Ingen tilbakemeldinger|Ingen treff/),
+    ).toHaveCount(0);
 
     await page.getByRole("link", { name: "Eksporter" }).click();
     await expect(page).toHaveURL(/\/export/);

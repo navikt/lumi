@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { resolveDashboardPeriod } from "../dashboardPeriod";
+import {
+  getTeamSubmissionPeriod,
+  resolveDashboardPeriod,
+} from "../dashboardPeriod";
 
 describe("resolveDashboardPeriod", () => {
   it("uses a rolling 30-day period in auto mode when no survey is selected", () => {
@@ -95,6 +98,37 @@ describe("resolveDashboardPeriod", () => {
         toDate: "2024-02-18",
       },
       isOutsideSurveyPeriod: true,
+    });
+  });
+});
+
+describe("getTeamSubmissionPeriod", () => {
+  const surveyMeta = {
+    active: {
+      archivedAt: null,
+      firstSubmissionAt: "2026-02-01T12:00:00Z",
+      lastSubmissionAt: "2026-02-10T12:00:00Z",
+    },
+    archived: {
+      archivedAt: "2026-03-02T12:00:00Z",
+      firstSubmissionAt: "2026-01-01T12:00:00Z",
+      lastSubmissionAt: "2026-03-01T12:00:00Z",
+    },
+  };
+
+  it("uses only surveys visible under the default archive filter", () => {
+    expect(getTeamSubmissionPeriod(surveyMeta)).toEqual({
+      fromDate: "2026-02-01",
+      toDate: "2026-02-10",
+    });
+  });
+
+  it("includes archived surveys when they are visible", () => {
+    expect(
+      getTeamSubmissionPeriod(surveyMeta, { includeArchived: true }),
+    ).toEqual({
+      fromDate: "2026-01-01",
+      toDate: "2026-03-01",
     });
   });
 });
