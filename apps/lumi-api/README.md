@@ -94,7 +94,20 @@ API-et maskerer automatisk PII i fritekst:
 
 Begge parter må konfigurere NAIS-tilgangspolicyer (Zero Trust).
 
-**Din app** (outbound):
+Mottakeren avhenger av auth, miljø og Azure-tenant:
+
+| Auth | Miljø | Azure-tenant i din app | Mottaker |
+| :--- | :--- | :--- | :--- |
+| TokenX | dev-gcp / prod-gcp | – | `lumi-api` |
+| AzureAD | dev-gcp | `nav.no` | `lumi-api` |
+| AzureAD | dev-gcp | `trygdeetaten.no` | `lumi-submission-proxy` |
+| AzureAD | prod-gcp | `nav.no` | `lumi-api` |
+
+Proxyen finnes bare i dev-gcp. Se
+[integrasjonsguiden](https://navikt.github.io/lumi/kom-i-gang/koble-til-backend)
+for riktige host- og audience-verdier.
+
+**Din app** (outbound ved direkte kall til `lumi-api`):
 
 ```yaml
 spec:
@@ -105,7 +118,18 @@ spec:
           namespace: team-esyfo
 ```
 
-**Lumi API** (inbound) — opprett en issue i dette repoet eller lag en PR:
+**Din app** (outbound via proxy for AzureAD fra `trygdeetaten.no` i dev):
+
+```yaml
+spec:
+  accessPolicy:
+    outbound:
+      rules:
+        - application: lumi-submission-proxy
+          namespace: team-esyfo
+```
+
+**Valgt mottaker** (inbound) — opprett en issue i dette repoet eller lag en PR:
 
 ```yaml
 spec:
@@ -115,6 +139,9 @@ spec:
         - application: din-app
           namespace: ditt-team
 ```
+
+Når appen går via proxyen, trenger den ikke en egen inbound-regel i
+`lumi-api`; proxyen har tilgang videre.
 
 Innsending er splittet på issuer:
 

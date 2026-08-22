@@ -51,10 +51,18 @@ Uten CSS-import kan widgeten rendre med usynlige elementer. Se [Layout virker to
 
 **Symptom:** `transport.submit` feiler med HTTP 403.
 
-**Årsak:** NAIS access policies er ikke riktig konfigurert — enten utgående fra din app, eller innkommende til `lumi-api`.
+**Årsak:** NAIS access policies er ikke riktig konfigurert — enten utgående
+fra appen din, eller innkommende til Lumi-mottakeren.
 
 **Sjekk:**
-1. **Din app** har outbound-regel:
+
+1. **Finn riktig mottaker.** Bruk `lumi-api` for TokenX, produksjon og
+   AzureAD-apper med `nav.no`-tenant. Bruk `lumi-submission-proxy` bare for
+   AzureAD i dev når appen har `trygdeetaten.no`-tenant. Se den komplette
+   [rutetabellen](/kom-i-gang/koble-til-backend#_4-konfigurer-access-policies).
+
+2. **Din app** har outbound-regel mot denne mottakeren. For direkte kall til
+   `lumi-api`:
    ```yaml
    spec:
      accessPolicy:
@@ -64,7 +72,19 @@ Uten CSS-import kan widgeten rendre med usynlige elementer. Se [Layout virker to
              namespace: team-esyfo
    ```
 
-2. **Lumi API** har inbound-regel for din app:
+   For AzureAD i dev med `trygdeetaten.no`-tenant:
+   ```yaml
+   spec:
+     accessPolicy:
+       outbound:
+         rules:
+           - application: lumi-submission-proxy
+             namespace: team-esyfo
+   ```
+
+3. **Den samme mottakeren** har inbound-regel for appen din. Team eSyfo
+   vedlikeholder denne regelen etter en
+   [tilgangsforespørsel](https://github.com/navikt/lumi/issues/new?template=access-request.yml):
    ```yaml
    spec:
      accessPolicy:
@@ -74,17 +94,15 @@ Uten CSS-import kan widgeten rendre med usynlige elementer. Se [Layout virker to
              namespace: ditt-team
    ```
 
-3. **Token exchange** er korrekt konfigurert — sjekk at du bruker riktig endepunkt:
+4. **Token exchange** er korrekt konfigurert — sjekk at du bruker riktig endepunkt:
    - Sluttbruker (TokenX): `POST /api/tokenx/v1/feedback`
    - Intern (AzureAD): `POST /api/azure/v1/feedback`
 
-4. **Miljøvariabler** er satt i NAIS-manifest:
-   ```yaml
-   spec:
-     env:
-       - name: LUMI_API_HOST
-         value: http://lumi-api.team-esyfo
-   ```
+5. **Host og audience peker på samme mottaker som access policy.** Direkte
+   kall bruker `http://lumi-api.team-esyfo`; AzureAD fra
+   `trygdeetaten.no` i dev bruker
+   `http://lumi-submission-proxy.team-esyfo`. Se
+   [miljøvariablene for alle kombinasjoner](/kom-i-gang/koble-til-backend#_2-sett-miljøvariabler-i-nais).
 
 ## Ingen data i dashboard
 
