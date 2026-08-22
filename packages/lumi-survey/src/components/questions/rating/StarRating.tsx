@@ -150,25 +150,39 @@ export function StarRating({
                     minWidth: 0,
                   }}
                 >
-                  {isFilled ? (
+                  <span
+                    aria-hidden
+                    style={{
+                      display: "inline-block",
+                      width: "2.5rem",
+                      height: "2.5rem",
+                      position: "relative",
+                      pointerEvents: "none",
+                    }}
+                  >
                     <StarFillIcon
                       aria-hidden
                       style={{
+                        position: "absolute",
+                        inset: 0,
                         width: "2.5rem",
                         height: "2.5rem",
                         color: "var(--ax-text-warning)",
+                        opacity: isFilled ? 1 : 0,
                       }}
                     />
-                  ) : (
                     <StarIcon
                       aria-hidden
                       style={{
+                        position: "absolute",
+                        inset: 0,
                         width: "2.5rem",
                         height: "2.5rem",
                         color: "var(--ax-text-neutral-subtle)",
+                        opacity: isFilled ? 0 : 1,
                       }}
                     />
-                  )}
+                  </span>
                 </button>
               );
             })}
