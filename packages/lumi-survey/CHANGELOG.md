@@ -8,6 +8,9 @@ This project follows SemVer.
 
 ### Fixed
 
+- Consent storage no longer leaves the widget blank for five seconds when the
+  Nav decorator is unavailable. The initial view is released after a 300 ms
+  grace period while a late persisted dismissal can still be applied.
 - Rating questions now expose exactly one named group to assistive
   technology. The prompt is the fieldset legend (a level 3 heading when
   visible), the fieldset itself carries `role="radiogroup"`, and the

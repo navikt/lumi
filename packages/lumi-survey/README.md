@@ -116,6 +116,11 @@ Se [Koble til backend](https://navikt.github.io/lumi/kom-i-gang/koble-til-backen
 - `localStorage` passer for interne flater uten samtykke-API.
 - `none` lagrer ikke at brukeren har lukket widgeten.
 
+Ved `consent` venter widgeten høyst 300 ms på den første lagringslesingen før
+den rendrer ut fra `initialOpen`. Et consent-API som blir klart senere kan
+fortsatt anvende en lagret dismissal, så lenge brukeren ikke allerede har
+interagert med widgeten.
+
 ```tsx
 <LumiSurveyDock
   {...otherProps}
