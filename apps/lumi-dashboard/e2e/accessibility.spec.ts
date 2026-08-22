@@ -64,6 +64,54 @@ test.describe("Accessibility - WCAG Compliance", () => {
 });
 
 test.describe("Keyboard Navigation", () => {
+  test("Header has one semantic link per navigation target", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+
+    const header = page.getByRole("banner");
+    const navigation = header.getByRole("navigation", { name: "Hovedmeny" });
+
+    await expect(navigation).toHaveCount(1);
+    await expect(
+      header.getByRole("link", {
+        name: "Lumi Dashboard - gå til forsiden",
+        exact: true,
+      }),
+    ).toBeVisible();
+
+    const expectedLinks = [
+      "Dashboard",
+      "Tilbakemeldinger",
+      "Eksporter",
+      "Surveyverksted",
+    ];
+    await expect(navigation.getByRole("link")).toHaveCount(
+      expectedLinks.length,
+    );
+
+    for (const name of expectedLinks) {
+      const link = navigation.getByRole("link", { name, exact: true });
+      await expect(link).toHaveCount(1);
+      await expect(link).toHaveJSProperty("tagName", "A");
+    }
+
+    await expect(header.locator("a button, button a")).toHaveCount(0);
+    await expect(header.locator('a[role="button"]')).toHaveCount(0);
+
+    const feedbackLink = navigation.getByRole("link", {
+      name: "Tilbakemeldinger",
+      exact: true,
+    });
+    const initialUrl = page.url();
+    await feedbackLink.focus();
+    await page.keyboard.press("Space");
+    await expect(page).toHaveURL(initialUrl);
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/feedback(?:\?|$)/);
+  });
+
   test("Can navigate dashboard with keyboard only", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
