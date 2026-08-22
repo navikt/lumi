@@ -81,8 +81,10 @@ interface LumiContext {
   screenResolution?: { width: number; height: number };
   userAgent?: string;
 
-  // Opt-in (krever collectLocation: true)
+  // Kun eksplisitt context (samles aldri inn automatisk)
   url?: string;              // Gjeldende side-URL
+
+  // Eksplisitt context, eller automatisk med collectLocation: true
   pathname?: string;         // URL pathname
 
   // Segmentering (LAV KARDINALITET → dashboard-grafer)
@@ -132,6 +134,8 @@ Bruk de ferdige oppsettene i Surveyverkstedet eller funksjonene som er beskrevet
 `success` skal ha nøyaktig de tre svarverdiene i tabellen; ekstra utfall kan ikke klassifiseres av analysen og blir avvist.
 
 ## Komplett eksempel
+
+I eksempelet er `context.url` satt eksplisitt av konsumentappen; widgeten samler aldri inn full URL automatisk. `pathname` kan settes eksplisitt eller samles inn med `collectLocation: true`.
 
 ```json
 {
