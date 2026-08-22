@@ -8,6 +8,10 @@ This project follows SemVer.
 
 ### Fixed
 
+- Focus now follows dock transitions: opening targets the active heading,
+  closing targets the minimized trigger, and successful submission targets the
+  receipt heading. The minimized trigger no longer references an unmounted
+  panel through disclosure attributes.
 - Consent storage no longer leaves the widget blank for five seconds when the
   Nav decorator is unavailable. The initial view is released after a 300 ms
   grace period while a late persisted dismissal can still be applied.
