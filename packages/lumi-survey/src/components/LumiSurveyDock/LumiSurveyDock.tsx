@@ -671,6 +671,8 @@ export const LumiSurveyDock = ({
             promptDescriptionIsQuestionDescription,
             questionAnchorPrefix: `${surveyId}-question`,
             validationErrorMessage: config.validationErrorMessage,
+            validationSummaryHeading: config.validationSummaryHeading,
+            textTooLongErrorMessage: config.textTooLongErrorMessage,
           }}
           intro={{
             isIntro: showIntro,

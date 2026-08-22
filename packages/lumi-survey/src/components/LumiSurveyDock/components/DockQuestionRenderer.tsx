@@ -10,6 +10,7 @@ interface DockQuestionRendererProps extends LumiSurveyRenderQuestionProps {
   promptDescriptionId?: string;
   promptDescriptionIsQuestionDescription?: boolean;
   validationErrorMessage: string;
+  textTooLongErrorMessage: (maxLength: number) => string;
 }
 
 export const DockQuestionRenderer = React.memo(
@@ -25,6 +26,7 @@ export const DockQuestionRenderer = React.memo(
     promptDescriptionId,
     promptDescriptionIsQuestionDescription = true,
     validationErrorMessage,
+    textTooLongErrorMessage,
   }: DockQuestionRendererProps) => {
     if (question.type === "rating") {
       const rating = question as RatingQuestion;
@@ -73,6 +75,7 @@ export const DockQuestionRenderer = React.memo(
         isMissing={isMissing}
         disabled={disabled}
         validationErrorMessage={validationErrorMessage}
+        textTooLongErrorMessage={textTooLongErrorMessage}
         hideLabel={hideLabel}
       />
     );

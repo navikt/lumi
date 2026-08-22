@@ -1,9 +1,11 @@
+import { getTextAnswerMaxLength } from "./textAnswerLimits.js";
 import type {
   ChoiceOption,
   ChoiceQuestion,
   LumiSurveyAnswerValue,
   LumiSurveyQuestion,
   RatingQuestion,
+  TextQuestion,
 } from "./types";
 
 export function validateAnswers(
@@ -13,19 +15,40 @@ export function validateAnswers(
   const missingIds: string[] = [];
 
   for (const question of questions) {
-    const answer = answers[question.id];
-
-    if (!isAnswerPresent(answer)) {
-      if (question.required) missingIds.push(question.id);
-      continue;
-    }
-
-    if (!isAnswerValidForQuestion(question, answer)) {
+    if (getAnswerValidationIssue(question, answers[question.id])) {
       missingIds.push(question.id);
     }
   }
 
   return missingIds;
+}
+
+export type AnswerValidationIssue =
+  | { type: "missing" }
+  | { type: "invalid" }
+  | { type: "textTooLong"; maxLength: number };
+
+export function getAnswerValidationIssue(
+  question: LumiSurveyQuestion,
+  answer: LumiSurveyAnswerValue | undefined,
+): AnswerValidationIssue | undefined {
+  // Optional blank answers are normally ignored. Check the raw text length
+  // first so an over-limit whitespace value from initial state cannot reach
+  // the API even though it trims to an empty answer.
+  if (question.type === "text" && typeof answer === "string") {
+    const maxLength = getTextAnswerMaxLength(question);
+    if (answer.length > maxLength) {
+      return { type: "textTooLong", maxLength };
+    }
+  }
+
+  if (!isAnswerPresent(answer)) {
+    return question.required ? { type: "missing" } : undefined;
+  }
+
+  return isAnswerValidForQuestion(question, answer)
+    ? undefined
+    : { type: "invalid" };
 }
 
 function isAnswerPresent(
@@ -54,7 +77,7 @@ function isAnswerValidForQuestion(
     case "rating":
       return isValidRatingAnswer(question, rawAnswer);
     case "text":
-      return typeof rawAnswer === "string";
+      return isValidTextAnswer(question, rawAnswer);
     case "singleChoice":
       return isValidSingleChoiceAnswer(question, rawAnswer);
     case "multiChoice":
@@ -62,6 +85,16 @@ function isAnswerValidForQuestion(
     default:
       return true;
   }
+}
+
+function isValidTextAnswer(
+  question: TextQuestion,
+  rawAnswer: LumiSurveyAnswerValue,
+): boolean {
+  return (
+    typeof rawAnswer === "string" &&
+    rawAnswer.length <= getTextAnswerMaxLength(question)
+  );
 }
 
 function isValidRatingAnswer(

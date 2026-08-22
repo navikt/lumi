@@ -10,6 +10,7 @@ import {
 } from "@navikt/ds-react";
 import React, { useCallback, useEffect, useRef } from "react";
 import type { LumiSurveyAnswerValue, LumiSurveyQuestion } from "../../../core";
+import { getAnswerValidationIssue } from "../../../core/validation.js";
 import { formatQuestionPrompt } from "../../questions/utils/formatQuestionPrompt.js";
 import type { CanonicalSurveyPage } from "../../shared/canonicalSurvey.js";
 import { CLASS_NAMES } from "../classNames.js";
@@ -113,6 +114,8 @@ export const SurveyFormContent = React.memo(
       promptDescriptionIsQuestionDescription,
       questionAnchorPrefix,
       validationErrorMessage,
+      validationSummaryHeading,
+      textTooLongErrorMessage,
     } = questionContext;
     const currentStepNumber = currentStep + 1;
     const stepStatus = hasBranching
@@ -190,6 +193,7 @@ export const SurveyFormContent = React.memo(
               promptDescriptionIsQuestionDescription
             }
             validationErrorMessage={validationErrorMessage}
+            textTooLongErrorMessage={textTooLongErrorMessage}
           />
         </div>
       );
@@ -199,12 +203,18 @@ export const SurveyFormContent = React.memo(
       <ErrorSummary
         ref={errorSummaryRef}
         size="small"
-        heading="Du må svare på disse spørsmålene før du kan fortsette:"
+        heading={validationSummaryHeading}
       >
         {validationMissing.map((questionId) => {
           const question = orderedQuestions.find(
             (candidate) => candidate.id === questionId,
           );
+          const issue = question
+            ? getAnswerValidationIssue(question, answers[questionId])
+            : undefined;
+          const questionLabel = question
+            ? formatQuestionPrompt(question)
+            : validationErrorMessage;
           return (
             <ErrorSummary.Item
               key={questionId}
@@ -214,9 +224,9 @@ export const SurveyFormContent = React.memo(
                 focusQuestionField(questionAnchorPrefix, questionId);
               }}
             >
-              {question
-                ? formatQuestionPrompt(question)
-                : validationErrorMessage}
+              {issue?.type === "textTooLong"
+                ? `${questionLabel}: ${textTooLongErrorMessage(issue.maxLength)}`
+                : questionLabel}
             </ErrorSummary.Item>
           );
         })}

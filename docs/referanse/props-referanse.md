@@ -160,6 +160,8 @@ Velkomstsiden og bekreftelsen etter innsending er ikke med i fremdriften.
 | `submitPending` | `string` | `"Sender inn..."` | Knapp mens innsending pågår |
 | `cancel` | `string` | `"Lukk"` | Knapp for å lukke |
 | `validationError` | `string` | `"Vennligst fyll ut alle påkrevde felt"` | Feil ved manglende svar |
+| `validationSummary` | `string` | `"Du må rette svarene før du kan fortsette:"` | Overskrift når flere svar må rettes |
+| `textTooLong` | `(maxLength: number) => string` | Norsk feilmelding med grensen | Feilformatter når et fritekstsvar er for langt |
 | `transportError` | `string` | `"Noe gikk galt ved innsending. Prøv igjen senere."` | Feil ved innsending |
 | `minimizedButton` | `string` | `"Gi tilbakemelding"` | Knapp når widgeten er minimert |
 
@@ -168,6 +170,9 @@ Velkomstsiden og bekreftelsen etter innsending er ikke med i fremdriften.
   labels={{
     submit: "Send tilbakemelding",
     cancel: "Avbryt",
+    validationSummary: "Correct these answers:",
+    textTooLong: (maxLength) =>
+      `Answer must be at most ${maxLength} characters.`,
     minimizedButton: "Hjelp oss å bli bedre",
   }}
 />

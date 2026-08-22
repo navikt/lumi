@@ -17,6 +17,7 @@ export const DefaultQuestionRenderer = ({
   value,
   onChange,
   validationErrorMessage,
+  textTooLongErrorMessage,
   isMissing,
   disabled,
   hideLabel,
@@ -44,6 +45,7 @@ export const DefaultQuestionRenderer = ({
           value={value}
           onChange={(next: string) => onChange(next)}
           validationErrorMessage={validationErrorMessage}
+          textTooLongErrorMessage={textTooLongErrorMessage}
           isMissing={isMissing}
           disabled={disabled}
           hideLabel={hideLabel}

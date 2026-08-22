@@ -15,4 +15,5 @@ export interface LumiSurveyRenderQuestionProps {
 export interface LumiSurveyDefaultQuestionProps
   extends LumiSurveyRenderQuestionProps {
   validationErrorMessage: string;
+  textTooLongErrorMessage?: (maxLength: number) => string;
 }

@@ -82,6 +82,9 @@ function defaultProps(
       promptHeadingId: "heading-id",
       questionAnchorPrefix: "survey-question",
       validationErrorMessage: "Feltet er påkrevd",
+      validationSummaryHeading: "Rett svarene før du fortsetter:",
+      textTooLongErrorMessage: (maxLength: number) =>
+        `Svaret kan være maks ${maxLength} tegn.`,
     },
 
     // Notices
@@ -234,6 +237,46 @@ describe("SurveyFormContent", () => {
       render(<SurveyFormContent {...defaultProps()} />);
 
       expect(screen.getByRole("button", { name: /send/i })).toBeInTheDocument();
+    });
+
+    it("uses localized, cause-specific copy for mixed validation errors", () => {
+      const requiredRating = { ...ratingQuestion, required: true };
+      const limitedText = {
+        ...textQuestion,
+        required: true,
+        maxLength: 5,
+      };
+
+      render(
+        <SurveyFormContent
+          {...defaultProps({
+            orderedQuestions: [requiredRating, limitedText],
+            answers: { feedback: "123456" },
+            validationMissing: ["rating", "feedback"],
+            questionContext: {
+              promptQuestionId: "rating",
+              promptHeadingId: "heading-id",
+              questionAnchorPrefix: "survey-question",
+              validationErrorMessage: "This field is required",
+              validationSummaryHeading: "Correct these answers:",
+              textTooLongErrorMessage: (maxLength: number) =>
+                `Answer must be at most ${maxLength} characters.`,
+            },
+          })}
+        />,
+      );
+
+      expect(
+        screen.getByRole("heading", { name: "Correct these answers:" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Hvor fornøyd er du?" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", {
+          name: "Hva kan vi forbedre?: Answer must be at most 5 characters.",
+        }),
+      ).toBeInTheDocument();
     });
   });
 

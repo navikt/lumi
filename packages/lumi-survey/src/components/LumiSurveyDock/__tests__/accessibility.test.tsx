@@ -361,9 +361,7 @@ describe("LumiSurveyDock Accessibility", () => {
 
     await user.click(await screen.findByRole("button", { name: "Neste" }));
     expect(
-      await screen.findByText(
-        "Du må svare på disse spørsmålene før du kan fortsette:",
-      ),
+      await screen.findByText("Du må rette svarene før du kan fortsette:"),
     ).toHaveFocus();
 
     const results = await axe.run(container);

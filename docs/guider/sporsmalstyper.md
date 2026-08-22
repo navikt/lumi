@@ -90,7 +90,9 @@ NPS bruker en skala fra 0 til 10 med valgfrie tekster i hver ende.
 
 ## Text
 
-Fritekstfelt med valgfri maks-lengde. Bra for oppfølgingsspørsmål.
+Fritekstfelt med valgfri maks-lengde. Bra for oppfølgingsspørsmål. Standardgrensen
+er 1000 tegn, og API-kontrakten tillater maksimalt 2000 tegn. `maxLength` må
+være et positivt heltall. Høyere verdier begrenses til 2000 i widgeten.
 
 ```tsx
 {
@@ -111,7 +113,7 @@ Fritekstfelt med valgfri maks-lengde. Bra for oppfølgingsspørsmål.
 | `prompt` | `string` | ✅ | Spørsmålsteksten |
 | `description` | `string` | ❌ | Hjelpetekst under prompt |
 | `required` | `boolean` | ❌ | Om svaret er påkrevd |
-| `maxLength` | `number` | ❌ | Maks antall tegn |
+| `maxLength` | `number` | ❌ | Positivt heltall (standard 1000, øvre grense 2000) |
 | `minRows` | `number` | ❌ | Minimum antall rader i tekstfeltet |
 | `placeholder` | `string` | ❌ | Plassholdertekst |
 | `autoComplete` | `string` | ❌ | HTML autocomplete-attributt |

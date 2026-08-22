@@ -483,6 +483,36 @@ describe("DefaultQuestionRenderer", () => {
     expect(handleChange).toHaveBeenCalledWith("Great");
   });
 
+  it("shows the effective text limit and a specific over-limit error", () => {
+    const textTooLongErrorMessage = vi.fn(
+      (maxLength: number) => `Answer must be at most ${maxLength} characters.`,
+    );
+
+    render(
+      <DefaultQuestionRenderer
+        question={{
+          id: "text-limit",
+          type: "text",
+          prompt: "Describe your experience",
+          maxLength: 5_000,
+        }}
+        value={"a".repeat(2_001)}
+        onChange={() => undefined}
+        validationErrorMessage="You must answer"
+        textTooLongErrorMessage={textTooLongErrorMessage}
+        isMissing={false}
+        disabled={false}
+      />,
+    );
+
+    expect(textTooLongErrorMessage).toHaveBeenCalledWith(2_000);
+    expect(
+      screen.getByText("Answer must be at most 2000 characters."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.queryByText("You must answer")).not.toBeInTheDocument();
+  });
+
   it("renders a single choice question and shows validation message when missing", () => {
     const handleChange = vi.fn();
     const question = {

@@ -60,6 +60,8 @@ const baseProps = {
   promptHeadingId: "heading-id",
   promptDescriptionId: "desc-id",
   validationErrorMessage: "Feltet er påkrevd",
+  textTooLongErrorMessage: (maxLength: number) =>
+    `Svaret kan være maks ${maxLength} tegn`,
 };
 
 // ---------------------------------------------------------------------------

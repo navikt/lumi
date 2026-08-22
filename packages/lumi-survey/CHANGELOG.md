@@ -17,6 +17,9 @@ This project follows SemVer.
   feedback changes. In Chromium, swapping the icon element during a real
   pointer interaction could leave the star focused but unchecked, so a
   required star question could not be submitted.
+- Text answers that exceed the configured limit, or the API maximum of 2000
+  characters, are now blocked in the widget with a field-level validation
+  message instead of failing permanently as a generic transport error.
 
 ### Internal
 
