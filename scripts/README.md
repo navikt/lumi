@@ -93,8 +93,10 @@ containerloggene før opprydding.
 
 Workspace-importer kan skjule manglende exports, typer, CSS eller runtime-
 avhengigheter. Denne testen pakker `@navikt/lumi-survey` og installerer
-tarballen offline i en midlertidig, frittstående React/Vite-konsument. Kjør
-ordinær `pnpm install` først slik at den låste dependency-storen er fylt:
+tarballen i en midlertidig, frittstående React/Vite-konsument. Kjør ordinær
+`pnpm install` først slik at den låste dependency-storen er fylt med GitHub
+Packages-avhengighetene; manglende offentlige transitive pakker kan hentes uten
+at pakketokenet sendes videre til verifikasjonsskriptet:
 
 ```bash
 pnpm run verify:lumi-survey-consumer

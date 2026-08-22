@@ -26,7 +26,10 @@ if [[ ${#archives[@]} -ne 1 || ! -f "${archives[0]}" ]]; then
 fi
 mv -- "${archives[0]}" "$CONSUMER_DIR/lumi-survey.tgz"
 
-pnpm --dir "$CONSUMER_DIR" install --offline --lockfile=false
+# Reuse the authenticated workspace install for GitHub Packages, while still
+# allowing public transitive packages that are not present in pnpm's store to
+# be downloaded without passing a package token to this script.
+pnpm --dir "$CONSUMER_DIR" install --prefer-offline --lockfile=false
 pnpm --dir "$CONSUMER_DIR" run typecheck
 pnpm --dir "$CONSUMER_DIR" run build
 
