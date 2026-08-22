@@ -31,6 +31,11 @@ Default-strategien for nav.no-flater. Widgeten leser fra `window.__DECORATOR_DAT
 `consent`-strategien fungerer kun på sider med Nav-dekoratøren (nav.no). Uten den kan ikke widgeten lagre dismissed-tilstand, og surveyen vil dukke opp igjen ved hver sidelast.
 :::
 
+Widgeten venter høyst 300 ms på den første consent-lesingen før den rendrer ut
+fra `initialOpen`. Consent-oppslaget fortsetter i bakgrunnen: Hvis dekoratøren
+blir klar senere, anvendes en lagret dismissal så lenge brukeren ikke allerede
+har interagert med surveyen.
+
 ## `localStorage`
 
 For interne flater (Modia, fagsystemer) som ikke har Nav-dekoratøren:
@@ -96,6 +101,9 @@ flowchart TD
 
 ::: danger Vanlig feil på interne flater
 Default er `consent`, som krever Nav consent API (`window.webStorageController`). Uten consent-API-et vil widgeten ikke kunne huske at brukeren lukket surveyen — den dukker opp igjen og igjen.
+
+Fravær av consent-API blokkerer ikke widgeten i mer enn 300 ms, men det gir
+fortsatt ingen persistering.
 
 **Løsning:** Sett `storageStrategy: "localStorage"` for alle interne flater.
 

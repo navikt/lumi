@@ -191,10 +191,6 @@ export const LumiSurveyDock = ({
   const skipIntro = requestedPageExists;
   const [showIntro, setShowIntro] = useState(config.hasIntro && !skipIntro);
 
-  const handleIntroStart = useCallback(() => {
-    setShowIntro(false);
-  }, []);
-
   // Track previous showIntro value to detect intro → question transition
   const prevShowIntroRef = useRef(showIntro);
   const pendingStepFocusRef = useRef(false);
@@ -374,18 +370,29 @@ export const LumiSurveyDock = ({
     setShowIntro(config.hasIntro && !skipIntro);
   }, [reset, resetNavigation, config.hasIntro, skipIntro]);
 
-  const { dismissed, shouldHideCompletely, isLoading, closeDock, reopenDock } =
-    usePersistedDismissal({
-      surveyId,
-      initialOpen: config.initialOpen,
-      dismissCooldownDays: config.dismissCooldownDays,
-      events,
-      resetOnClose: config.resetOnClose,
-      onReset: handleFullReset,
-      storageStrategy: config.storageStrategy,
-      viewEnabled:
-        source === "legacy" || visibleQuestions.length > 0 || showIntro,
-    });
+  const {
+    dismissed,
+    shouldHideCompletely,
+    isLoading,
+    markUserInteraction,
+    closeDock,
+    reopenDock,
+  } = usePersistedDismissal({
+    surveyId,
+    initialOpen: config.initialOpen,
+    dismissCooldownDays: config.dismissCooldownDays,
+    events,
+    resetOnClose: config.resetOnClose,
+    onReset: handleFullReset,
+    storageStrategy: config.storageStrategy,
+    viewEnabled:
+      source === "legacy" || visibleQuestions.length > 0 || showIntro,
+  });
+
+  const handleIntroStart = useCallback(() => {
+    markUserInteraction();
+    setShowIntro(false);
+  }, [markUserInteraction]);
 
   // Progressive submit: hide the button until a currently visible question has
   // at least one meaningful answer. Required-answer validation happens on submit.
@@ -436,6 +443,8 @@ export const LumiSurveyDock = ({
   ]);
 
   const handleNext = useCallback(async () => {
+    markUserInteraction();
+
     if (source === "document-v1") {
       const missing = validateAnswers(currentPageQuestions, answers);
       if (missing.length > 0) {
@@ -467,20 +476,23 @@ export const LumiSurveyDock = ({
     currentPageQuestions,
     events,
     goToNext,
+    markUserInteraction,
     source,
     submit,
     visitedQuestions,
   ]);
 
   const handleBack = useCallback(() => {
+    markUserInteraction();
     const previousIndex = goToPrevious();
     if (previousIndex === null) return;
     setStepValidationMissing([]);
     pendingStepFocusRef.current = true;
-  }, [goToPrevious]);
+  }, [goToPrevious, markUserInteraction]);
 
   const handleQuestionChange = useCallback(
     (questionId: string, value: Parameters<typeof setAnswer>[1]) => {
+      markUserInteraction();
       setAnswer(questionId, value);
       setStepValidationMissing((missing) =>
         missing.includes(questionId)
@@ -488,12 +500,13 @@ export const LumiSurveyDock = ({
           : missing,
       );
     },
-    [setAnswer],
+    [markUserInteraction, setAnswer],
   );
 
   const handleSubmit = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
+      markUserInteraction();
       const missing = validateAnswers(visitedQuestions, answers);
       if (missing.length > 0) {
         setStepValidationMissing(missing);
@@ -504,7 +517,7 @@ export const LumiSurveyDock = ({
       setStepValidationMissing([]);
       await submit(visitedQuestions);
     },
-    [answers, events, submit, visitedQuestions],
+    [answers, events, markUserInteraction, submit, visitedQuestions],
   );
 
   const isSubmitting = status === "submitting";
@@ -609,6 +622,8 @@ export const LumiSurveyDock = ({
       data-feedback-id={surveyId}
       data-state={dismissed ? "dismissed" : "open"}
       aria-label="Tilbakemeldingspanel"
+      onFocusCapture={markUserInteraction}
+      onPointerDownCapture={markUserInteraction}
     >
       {dismissed ? (
         <MinimizedDock
