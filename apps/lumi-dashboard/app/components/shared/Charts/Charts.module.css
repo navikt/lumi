@@ -234,15 +234,15 @@
 }
 
 .tooltipRatingGood {
-  color: #34d399;
+  color: var(--ax-text-success);
 }
 
 .tooltipRatingMedium {
-  color: #fbbf24;
+  color: var(--ax-text-warning);
 }
 
 .tooltipRatingLow {
-  color: #f87171;
+  color: var(--ax-text-danger);
 }
 
 /* Rating bar rows */
