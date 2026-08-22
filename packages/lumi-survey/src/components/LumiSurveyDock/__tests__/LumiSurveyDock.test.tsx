@@ -7,7 +7,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   LumiSurveyEvents,
   LumiSurveyTransport,
@@ -1504,6 +1504,165 @@ describe("LumiSurveyDock", () => {
       expect(
         screen.getByRole("heading", { name: /hvor fornøyd er du/i }),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("dismissal persistence failures", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("reports localStorage write failures with their cause", async () => {
+      const persistError = new DOMException(
+        "The quota has been exceeded",
+        "QuotaExceededError",
+      );
+      vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
+        throw persistError;
+      });
+      const onDismissalPersistFailed = vi.fn();
+      const user = userEvent.setup();
+
+      renderDock({
+        behavior: { storageStrategy: "localStorage" },
+        events: { onDismissalPersistFailed },
+      });
+
+      await user.click(await screen.findByRole("button", { name: "Lukk" }));
+
+      await waitFor(() => {
+        expect(onDismissalPersistFailed).toHaveBeenCalledOnce();
+      });
+      expect(onDismissalPersistFailed).toHaveBeenCalledWith(persistError);
+    });
+
+    it("does not retry a consumer failure callback that throws", async () => {
+      const persistError = new DOMException(
+        "The quota has been exceeded",
+        "QuotaExceededError",
+      );
+      vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
+        throw persistError;
+      });
+      const onDismissalPersistFailed = vi.fn(() => {
+        throw new Error("consumer callback failed");
+      });
+      const user = userEvent.setup();
+
+      renderDock({
+        behavior: { storageStrategy: "localStorage" },
+        events: { onDismissalPersistFailed },
+      });
+
+      await user.click(await screen.findByRole("button", { name: "Lukk" }));
+
+      await waitFor(() => {
+        expect(onDismissalPersistFailed).toHaveBeenCalledOnce();
+      });
+      expect(onDismissalPersistFailed).toHaveBeenCalledWith(persistError);
+    });
+
+    it("reports localStorage removal failures when reopening", async () => {
+      const removalError = new DOMException(
+        "Storage is unavailable",
+        "SecurityError",
+      );
+      vi.spyOn(window.localStorage, "removeItem").mockImplementation(() => {
+        throw removalError;
+      });
+      const onDismissalPersistFailed = vi.fn();
+      const user = userEvent.setup();
+
+      renderDock({
+        behavior: { storageStrategy: "localStorage" },
+        events: { onDismissalPersistFailed },
+      });
+
+      await user.click(await screen.findByRole("button", { name: "Lukk" }));
+      await user.click(
+        await screen.findByRole("button", { name: "Gi tilbakemelding" }),
+      );
+
+      await waitFor(() => {
+        expect(onDismissalPersistFailed).toHaveBeenCalledOnce();
+      });
+      expect(onDismissalPersistFailed).toHaveBeenCalledWith(removalError);
+    });
+
+    it("reports denied survey consent with a meaningful cause", async () => {
+      const controller = (
+        globalThis as unknown as {
+          webStorageController: {
+            getCurrentConsent: () => {
+              consent: { analytics: boolean; surveys: boolean };
+              userActionTaken: boolean;
+            };
+          };
+        }
+      ).webStorageController;
+      vi.spyOn(controller, "getCurrentConsent").mockReturnValue({
+        consent: { analytics: true, surveys: false },
+        userActionTaken: true,
+      });
+      const onDismissalPersistFailed = vi.fn();
+      const user = userEvent.setup();
+
+      renderDock({ events: { onDismissalPersistFailed } });
+
+      await user.click(await screen.findByRole("button", { name: "Lukk" }));
+
+      await waitFor(() => {
+        expect(onDismissalPersistFailed).toHaveBeenCalledOnce();
+      });
+      expect(onDismissalPersistFailed).toHaveBeenCalledWith(expect.any(Error));
+      expect(onDismissalPersistFailed.mock.calls[0]?.[0]).toHaveProperty(
+        "message",
+        expect.stringMatching(/consent/i),
+      );
+    });
+
+    it("recovers when the consent controller throws", async () => {
+      const controllerError = new Error("consent controller failed");
+      const controller = (
+        globalThis as unknown as {
+          webStorageController: {
+            isStorageKeyAllowed: (key: string) => boolean;
+          };
+        }
+      ).webStorageController;
+      vi.spyOn(controller, "isStorageKeyAllowed").mockImplementation(() => {
+        throw controllerError;
+      });
+      const onDismissalPersistFailed = vi.fn();
+      const user = userEvent.setup();
+
+      renderDock({ events: { onDismissalPersistFailed } });
+
+      await user.click(await screen.findByRole("button", { name: "Lukk" }));
+
+      await waitFor(() => {
+        expect(onDismissalPersistFailed).toHaveBeenCalledOnce();
+      });
+      expect(onDismissalPersistFailed).toHaveBeenCalledWith(controllerError);
+    });
+
+    it("keeps the intentional none strategy silent", async () => {
+      const onDismissalPersistFailed = vi.fn();
+      const user = userEvent.setup();
+
+      renderDock({
+        behavior: { storageStrategy: "none" },
+        events: { onDismissalPersistFailed },
+      });
+
+      await user.click(await screen.findByRole("button", { name: "Lukk" }));
+
+      await waitFor(() => {
+        expect(
+          document.querySelector('[data-feedback-id="dock-feedback"]'),
+        ).toHaveAttribute("data-state", "dismissed");
+      });
+      expect(onDismissalPersistFailed).not.toHaveBeenCalled();
     });
   });
 

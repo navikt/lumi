@@ -22,6 +22,8 @@ This project follows SemVer.
   message instead of failing permanently as a generic transport error.
 - Inline `events` objects no longer count parent re-renders as new dock views
   or restart the success auto-close timer.
+- Dismissal storage failures now invoke `onDismissalPersistFailed` with their
+  cause, while intentional `none` storage and server rendering remain silent.
 
 ### Internal
 
