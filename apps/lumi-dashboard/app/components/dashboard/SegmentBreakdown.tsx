@@ -51,7 +51,7 @@ export function SegmentBreakdown({
 
   return (
     <VStack gap="space-16" marginBlock="space-24 space-16">
-      <Heading level="3" size="small">
+      <Heading level="2" size="small">
         Segmentering
       </Heading>
 
@@ -93,7 +93,7 @@ function SegmentCard({ segmentKey, values, onValueClick }: SegmentCardProps) {
   return (
     <DashboardCard padding={{ xs: "space-16", md: "space-24" }}>
       <VStack gap="space-12">
-        <Heading level="4" size="xsmall">
+        <Heading level="3" size="xsmall">
           {label}
         </Heading>
         <VStack gap="space-4">

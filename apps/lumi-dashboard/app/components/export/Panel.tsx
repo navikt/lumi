@@ -115,7 +115,9 @@ export function ExportPanel() {
       )}
       <DashboardCard padding="space-24">
         <VStack gap="space-16">
-          <Heading size="small">Velg format</Heading>
+          <Heading size="small" level="2">
+            Velg format
+          </Heading>
 
           <RadioGroup
             legend="Eksportformat"
@@ -169,7 +171,9 @@ export function ExportPanel() {
       </DashboardCard>
       <DashboardCard padding="space-24">
         <VStack gap="space-16">
-          <Heading size="small">Aktive filtre</Heading>
+          <Heading size="small" level="2">
+            Aktive filtre
+          </Heading>
           <ActiveFilters params={params} />
           <BodyShort size="small" textColor="subtle">
             Eksporten inkluderer alle svar med metadata (enhet, side, tidspunkt)

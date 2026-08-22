@@ -14,7 +14,9 @@ export function PrivacyMaskedNotice({ privacy }: PrivacyMaskedNoticeProps) {
     <Box marginBlock="space-16">
       <Alert variant="info">
         <VStack gap="space-4">
-          <Heading size="xsmall">For få svar til å vise statistikk</Heading>
+          <Heading size="xsmall" level="2">
+            For få svar til å vise statistikk
+          </Heading>
           <BodyShort size="small">
             For å beskytte personvernet til de som har svart, kreves det minst{" "}
             {privacy.threshold} svar før statistikk vises. Akkurat nå har denne

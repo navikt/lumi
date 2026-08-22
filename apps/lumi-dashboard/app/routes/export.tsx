@@ -37,7 +37,9 @@ function ExportPage() {
         as="main"
       >
         <VStack gap="space-24">
-          <Heading size="large">Eksporter data</Heading>
+          <Heading size="large" level="1">
+            Eksporter data
+          </Heading>
 
           <FilterBar showDetails />
 

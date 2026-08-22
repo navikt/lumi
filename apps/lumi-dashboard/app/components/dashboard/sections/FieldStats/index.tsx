@@ -30,7 +30,7 @@ export function FieldStatsSection() {
       gap="space-16"
       marginBlock="space-24 space-16"
     >
-      <Heading level="3" size="small">
+      <Heading level="2" size="small">
         Statistikk per felt
       </Heading>
 

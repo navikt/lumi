@@ -235,7 +235,9 @@ function ReleaseVerificationPage() {
           </HStack>
 
           <VStack gap="space-8">
-            <Heading size="xlarge">Bevis kjeden før utrulling</Heading>
+            <Heading size="xlarge" level="1">
+              Bevis kjeden før utrulling
+            </Heading>
             <BodyLong size="large">
               En kontrollert, syntetisk kjøring gjennom widget, innlogget
               dashboard, Lumi API og Postgres. Resultatet bygges fra eksakt

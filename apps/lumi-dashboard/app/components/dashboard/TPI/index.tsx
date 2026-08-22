@@ -89,7 +89,9 @@ export function TPIDashboard({ data }: TPIDashboardProps) {
             <span className={styles.headerIcon}>
               <ThumbUpIcon fontSize="1.25rem" aria-hidden />
             </span>
-            <Heading size="small">TPI per oppgave</Heading>
+            <Heading size="small" level="2">
+              TPI per oppgave
+            </Heading>
           </HStack>
           <BodyShort
             size="small"

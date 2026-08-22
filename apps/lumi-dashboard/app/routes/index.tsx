@@ -163,7 +163,9 @@ function DashboardPage() {
           {/* Page header */}
           <HStack justify="space-between" align="center" wrap gap="space-8">
             <HStack align="center" gap={{ xs: "space-8", md: "space-16" }}>
-              <Heading size="large">Dashboard</Heading>
+              <Heading size="large" level="1">
+                Dashboard
+              </Heading>
               {hasSurveyFilter && config && surveyType && (
                 <Tooltip content={SURVEY_DESCRIPTIONS[surveyType]}>
                   <Tag

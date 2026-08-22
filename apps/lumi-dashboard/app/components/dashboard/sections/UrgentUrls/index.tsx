@@ -37,7 +37,7 @@ export function UrgentUrls() {
         borderWidth="0 0 1 0"
         borderColor="neutral-subtle"
       >
-        <Heading size="small" className={styles.titleRow}>
+        <Heading size="small" level="2" className={styles.titleRow}>
           <LinkIcon aria-hidden /> Sider med lavest score
         </Heading>
       </Box>
