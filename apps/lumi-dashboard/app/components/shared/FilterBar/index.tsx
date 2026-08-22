@@ -16,6 +16,7 @@ import {
 import dayjs from "dayjs";
 import { useEffect } from "react";
 import { PeriodSelector } from "~/components/dashboard/PeriodSelector";
+import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { getSurveyFeatures } from "~/config/surveyConfig";
 import { useActiveFilters } from "~/hooks/useActiveFilters";
 import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
@@ -40,10 +41,34 @@ interface FilterBarProps {
 }
 
 export function FilterBar({ showDetails = false }: FilterBarProps) {
+  const bootstrapQuery = useFilterBootstrap();
+  const statsQuery = useStats();
+
+  return (
+    <DataFetchBoundary
+      title="Kunne ikke hente filtre"
+      queries={[bootstrapQuery, statsQuery]}
+    >
+      <FilterBarContent
+        showDetails={showDetails}
+        bootstrapQuery={bootstrapQuery}
+        statsQuery={statsQuery}
+      />
+    </DataFetchBoundary>
+  );
+}
+
+function FilterBarContent({
+  showDetails,
+  bootstrapQuery,
+  statsQuery,
+}: Required<FilterBarProps> & {
+  bootstrapQuery: ReturnType<typeof useFilterBootstrap>;
+  statsQuery: ReturnType<typeof useStats>;
+}) {
   const { params, setParams } = useSearchParams();
-  const { data: bootstrap, isPending: isPendingBootstrap } =
-    useFilterBootstrap();
-  const { data: stats, isPending: isPendingStats } = useStats();
+  const { data: bootstrap, isPending: isPendingBootstrap } = bootstrapQuery;
+  const { data: stats, isPending: isPendingStats } = statsQuery;
   const { themes } = useThemes();
 
   const features = getSurveyFeatures(stats?.surveyType);

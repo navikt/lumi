@@ -4,7 +4,6 @@ import {
   TrashIcon,
 } from "@navikt/aksel-icons";
 import {
-  Alert,
   BodyShort,
   Box,
   Button,
@@ -34,6 +33,7 @@ import {
 } from "~/utils/surveyArchiveUtils";
 import { ArchiveSurveyDialog } from "../../dashboard/ArchiveSurveyDialog";
 import { DeleteSurveyDialog } from "../../dashboard/DeleteSurveyDialog";
+import { DataFetchBoundary } from "../../shared/DataFetchBoundary";
 import { DeleteFeedbackDialog } from "../DeleteFeedbackDialog";
 import { FeedbackEmptyState } from "./EmptyState";
 import { FeedbackCard } from "./FeedbackCard";
@@ -48,9 +48,26 @@ import styles from "./styles.module.css";
  * Supports expand/collapse for detailed view, deletion, and filtering.
  */
 export function FeedbackTable() {
+  const feedbackQuery = useFeedback();
+
+  return (
+    <DataFetchBoundary
+      title="Kunne ikke hente tilbakemeldinger"
+      queries={[feedbackQuery]}
+    >
+      <FeedbackTableContent feedbackQuery={feedbackQuery} />
+    </DataFetchBoundary>
+  );
+}
+
+function FeedbackTableContent({
+  feedbackQuery,
+}: {
+  feedbackQuery: ReturnType<typeof useFeedback>;
+}) {
   const { params, setParam, setParams } = useSearchParams();
   const page = Number.parseInt(params.page || "1", 10);
-  const { data, error, isPending } = useFeedback();
+  const { data, error, isPending } = feedbackQuery;
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
@@ -86,11 +103,6 @@ export function FeedbackTable() {
       return next;
     });
   };
-
-  // Loading and error states
-  if (error) {
-    return <Alert variant="error">Kunne ikke laste tilbakemeldinger</Alert>;
-  }
 
   // isPending: no cached data AND fetching (TanStack Query v5 best practice)
   // With placeholderData: keepPreviousData, isPending stays false during refetches

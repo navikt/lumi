@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Route, test } from "@playwright/test";
 
 test.describe("Dashboard", () => {
   test("loads dashboard page", async ({ page }) => {
@@ -13,6 +13,42 @@ test.describe("Dashboard", () => {
 
     // Check for main element
     await expect(page.locator("main")).toBeVisible({ timeout: 15000 });
+  });
+
+  test("shows a retryable error instead of empty data when stats fail", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    const surveySelect = page.getByRole("combobox", { name: "Survey" });
+    await expect(surveySelect).toBeVisible();
+
+    const failDashboardRequests = async (route: Route) => {
+      const request = route.request();
+      if (["fetch", "xhr"].includes(request.resourceType())) {
+        await route.fulfill({ status: 500, body: "simulated stats failure" });
+        return;
+      }
+      await route.continue();
+    };
+    await page.route("**/*", failDashboardRequests);
+
+    await surveySelect.selectOption("survey-vurdering");
+
+    const errorAlert = page.getByRole("alert");
+    await expect(errorAlert).toContainText("Kunne ikke hente dashboarddata", {
+      timeout: 15000,
+    });
+    await expect(page.getByText(/Ingen data for valgt periode/)).toHaveCount(0);
+
+    await page.unroute("**/*", failDashboardRequests);
+    await errorAlert.getByRole("button", { name: "Prøv igjen" }).click();
+
+    await expect(errorAlert).toHaveCount(0);
+    await expect(
+      page.getByRole("status").filter({ hasText: "Dataene er lastet inn." }),
+    ).toHaveCount(1);
+    await expect(page.getByText("Vurdering", { exact: true })).toBeVisible();
   });
 
   test("archive visibility survives navigation and reload", async ({

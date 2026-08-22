@@ -1,4 +1,5 @@
 import { Box, Label, Select, VStack } from "@navikt/ds-react";
+import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { useContextTags } from "~/hooks/useContextTags";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
 import { formatMetadataLabel, formatMetadataValue } from "~/utils/segmentUtils";
@@ -12,8 +13,29 @@ interface ContextTagsFilterProps {
  * Renders one single-select per key.
  */
 export function ContextTagsFilter({ surveyId }: ContextTagsFilterProps) {
+  const contextTagsQuery = useContextTags(surveyId);
+
+  return (
+    <DataFetchBoundary
+      title="Kunne ikke hente segmentfiltre"
+      queries={[contextTagsQuery]}
+    >
+      <ContextTagsFilterContent
+        surveyId={surveyId}
+        contextTagsQuery={contextTagsQuery}
+      />
+    </DataFetchBoundary>
+  );
+}
+
+function ContextTagsFilterContent({
+  surveyId,
+  contextTagsQuery,
+}: ContextTagsFilterProps & {
+  contextTagsQuery: ReturnType<typeof useContextTags>;
+}) {
   const { activeFilters, addSegment, removeSegment } = useSegmentFilter();
-  const { data } = useContextTags(surveyId);
+  const { data } = contextTagsQuery;
 
   const contextTags = data?.contextTags || {};
   const hasTags = Object.keys(contextTags).length > 0;

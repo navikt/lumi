@@ -1,5 +1,6 @@
 import { Heading, Skeleton, VStack } from "@navikt/ds-react";
 import { DashboardCard, DashboardGrid } from "~/components/dashboard";
+import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { useContextTags } from "~/hooks/useContextTags";
 import type { MetadataValueWithCount } from "~/types/api";
 import { formatMetadataLabel } from "~/utils/segmentUtils";
@@ -31,15 +32,31 @@ export function SegmentBreakdown({
   surveyId,
   onSegmentClick,
 }: SegmentBreakdownProps) {
-  const { data, isLoading, error } = useContextTags(surveyId);
+  const contextTagsQuery = useContextTags(surveyId);
+
+  return (
+    <DataFetchBoundary
+      title="Kunne ikke hente segmentering"
+      queries={[contextTagsQuery]}
+    >
+      <SegmentBreakdownContent
+        contextTagsQuery={contextTagsQuery}
+        onSegmentClick={onSegmentClick}
+      />
+    </DataFetchBoundary>
+  );
+}
+
+function SegmentBreakdownContent({
+  contextTagsQuery,
+  onSegmentClick,
+}: Pick<SegmentBreakdownProps, "onSegmentClick"> & {
+  contextTagsQuery: ReturnType<typeof useContextTags>;
+}) {
+  const { data, isLoading } = contextTagsQuery;
 
   if (isLoading) {
     return <SegmentBreakdownSkeleton />;
-  }
-
-  if (error) {
-    console.error("SegmentBreakdown error:", error);
-    return null;
   }
 
   const contextTags = data?.contextTags ?? {};

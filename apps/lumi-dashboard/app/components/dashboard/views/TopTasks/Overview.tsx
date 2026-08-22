@@ -14,6 +14,7 @@ import { DeviceBreakdownSection } from "~/components/dashboard/sections/FieldSta
 import { TimelineSection } from "~/components/dashboard/sections/Timeline";
 import { BlockerAnalysis } from "~/components/dashboard/views/Discovery/BlockerAnalysis";
 import { TaskQuadrantChart } from "~/components/shared/Charts/TaskQuadrantChart";
+import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
 import { useTopTasksStats } from "~/hooks/useTopTasksStats";
@@ -46,7 +47,24 @@ const THEME_DOT_CLASS_BY_HEX: Record<string, string> = {
 };
 
 export function TopTasksOverview() {
-  const { data, isLoading } = useTopTasksStats();
+  const topTasksQuery = useTopTasksStats();
+
+  return (
+    <DataFetchBoundary
+      title="Kunne ikke hente Top Tasks-data"
+      queries={[topTasksQuery]}
+    >
+      <TopTasksOverviewContent topTasksQuery={topTasksQuery} />
+    </DataFetchBoundary>
+  );
+}
+
+function TopTasksOverviewContent({
+  topTasksQuery,
+}: {
+  topTasksQuery: ReturnType<typeof useTopTasksStats>;
+}) {
+  const { data, isLoading } = topTasksQuery;
   const { params, setParams } = useSearchParams();
   const { addSegment } = useSegmentFilter();
   const surveyId = params.surveyId;
