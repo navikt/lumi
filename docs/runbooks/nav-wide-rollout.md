@@ -10,8 +10,8 @@ brukes som en måte å ta produktbeslutningen på.
 | --- | --- | --- |
 | Historiske surveys i dashboardet | Klar | Automatisk periode velges fra surveyens faktiske datointervall; eksplisitt valgt periode beholdes |
 | Pakket `@navikt/lumi-survey` | Automatisert | `pnpm run verify:lumi-survey-consumer` installerer tarballen i en ren konsument og kjører typecheck + Vite-build |
-| Widget → proxy → API → Postgres → dashboard | Automatisert | `pnpm run test:full-chain` kjører to Playwright-scenarier mot en isolert Compose-stack |
-| Ekte Azure OBO i dev | Klar til kjøring | `/release-verification` i dev-dashboardet bruker en ny syntetisk survey-ID per kjøring |
+| Widget → proxy → API → Postgres → dashboard | Automatisert | `pnpm run test:full-chain` kjører proxy- og dashboard-rundturen mot en isolert Compose-stack og CI laster opp én aggregert terminalrapport |
+| Ekte Azure OBO i dev | Selvbetjent | `/release-verification` kjører team-preflight, startprobe, 15 minutters hold og sluttprobe med eksakt receipt-readback |
 | Innsendingshelse | Instrumentert | `lumi_submissions_total` skiller kanal og utfall; prod varsler på serverfeil og rejection-spike |
 | Hvilke eksisterende surveys som skal fortsette | Avventer | Må avklares før migrering; surveys som skal stoppes migreres ikke |
 | Ekte trygdeetaten-proxy fra konsument i dev | Avventer canary | Verifiseres i første avklarte interne konsument før bredere migrering |
@@ -23,13 +23,32 @@ beholdes og skal fortsatt være lesbare selv om en survey skrus av.
 
 1. Hold fullkjedetesten, pakkekonsumenttesten, lint, typecheck og tester grønne.
 2. Deploy Lumi-endringene til dev etter ordinær review.
-3. Kjør `/release-verification` i dev og finn sporingsmerknaden i dashboardet.
-4. Bekreft `created` på `azure`-kanalen og fravær av `failed`/`rejected` i minst
-   15 minutter.
-5. Review canary-PR-en uten å merge den.
+3. Åpne `/release-verification` i dev. Ikke send noe dersom team-preflighten
+   feiler.
+4. Send startproben med de syntetiske valgene. Vent til siden låser opp
+   sluttproben etter 15 minutter, og send den.
+5. Del rapportlenken eller last ned JSON-beviset. For den kontrollerte kjeden
+   skal `outcome` og `coverage.controlledRoundTrip` være `passed`.
+6. Review canary-PR-en uten å merge den.
 
 Dette gir release-evidens uten å aktivere, migrere eller sende data fra en ekte
-survey.
+survey. Rapporten er bevisst avgrenset: `globalAzureHealth` er
+`not-assessed`, `trygdeetatenProxy` er `not-tested`, og `navWideRelease`
+forblir `pending`. Den kan derfor ikke alene brukes som godkjenning av en
+NAV-wide utrulling.
+
+### Hva rapporten faktisk beviser
+
+Dev-profilen går gjennom den publiserte widgeten, dashboardets innloggede
+Azure OBO-flyt, Lumi API, Postgres og det eksakte analytics-readbacket. Siden
+kan lukkes og åpnes igjen; receipt-ID-ene i URL-en rekonstruerer rapporten fra
+lagrede data i stedet for nettleserstate.
+
+Den lokale profilen bruker den samme rapportmodellen med null minutters hold.
+CI laster opp `apps/lumi-dashboard/test-results/full-chain` som
+`full-chain-release-verification-<run-id>`, også når testen feiler. Dette gjør
+resultatet lesbart for CI, en agent eller et menneske uten Grafana, NAIS-konsoll
+eller direkte loggtilgang.
 
 ## Beslutningstabell for neste uke
 
@@ -54,9 +73,17 @@ Regler:
 3. Deploy til dev uten auto-merge.
 4. Send ett gjenkjennelig testsvar gjennom den faktiske konsumenten. For en
    trygdeetaten-app skal dette gå gjennom `lumi-submission-proxy`.
-5. Finn svaret i dashboardet med automatisk periode og kontroller kanalmetrikken.
-6. Vent minst 15 minutter uten `failed` eller rejection-spike.
+5. Finn receipt/svaret i dashboardet med automatisk periode og kontroller team,
+   app, survey-ID og forventede syntetiske svar. Dette tester den faktiske
+   konsumentens proxy-integrasjon uten eksterne driftsverktøy.
+6. Vent minst 15 minutter og send en ny syntetisk probe gjennom den samme
+   canary-flaten. Kontroller også denne eksakte raden i dashboardet.
 7. Merge én liten produksjonsbatch, observer, og utvid først etter grønn holdetid.
+
+Lumi sin `/release-verification` kan ikke bevise en annen apps deployede
+trygdeetaten-proxy. Det beviset må komme fra første canary-app. Global
+kanalhelse og alarmer er supplerende operasjonell overvåking, ikke en skjult
+forutsetning for å produsere den selvbetjente rapporten.
 
 ## Stoppkriterier
 

@@ -43,6 +43,7 @@ export {
 // Release verification (dev only)
 export {
   fetchReleaseVerificationConfigServerFn,
+  fetchReleaseVerificationRunServerFn,
   submitReleaseVerificationServerFn,
 } from "./releaseVerification";
 // Survey authoring

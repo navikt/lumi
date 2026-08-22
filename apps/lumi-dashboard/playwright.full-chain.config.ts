@@ -6,7 +6,11 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 1,
-  reporter: "list",
+  reporter: [
+    ["list"],
+    ["json", { outputFile: "test-results/full-chain/playwright-report.json" }],
+  ],
+  outputDir: "test-results/full-chain/artifacts",
   timeout: 60_000,
   use: {
     trace: "on-first-retry",
