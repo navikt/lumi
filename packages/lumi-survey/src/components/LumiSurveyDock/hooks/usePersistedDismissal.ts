@@ -82,6 +82,11 @@ export const usePersistedDismissal = (
     useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const userInteractedRef = useRef(false);
+  // Consumer examples use inline event objects. Their identity must not define
+  // a new view, while future lifecycle transitions should use fresh callbacks.
+  const eventsRef = useRef(events);
+  eventsRef.current = events;
+  const viewedSurveyIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -140,10 +145,18 @@ export const usePersistedDismissal = (
   }, [initialOpen, storageKey, storageAdapter]);
 
   useEffect(() => {
-    if (!dismissed && viewEnabled) {
-      events?.onViewDock?.(surveyId);
+    if (dismissed || !viewEnabled) {
+      viewedSurveyIdRef.current = null;
+      return;
     }
-  }, [dismissed, events, surveyId, viewEnabled]);
+
+    if (viewedSurveyIdRef.current === surveyId) {
+      return;
+    }
+
+    viewedSurveyIdRef.current = surveyId;
+    eventsRef.current?.onViewDock?.(surveyId);
+  }, [dismissed, surveyId, viewEnabled]);
 
   const persistDismissedState = useCallback(
     async (nextDismissed: boolean, hideCompletely?: boolean) => {
@@ -170,10 +183,10 @@ export const usePersistedDismissal = (
             JSON.stringify(payload),
           );
           if (result.allowed && !result.persisted) {
-            events?.onDismissalPersistFailed?.(result.error);
+            eventsRef.current?.onDismissalPersistFailed?.(result.error);
           }
         } catch (persistError) {
-          events?.onDismissalPersistFailed?.(persistError);
+          eventsRef.current?.onDismissalPersistFailed?.(persistError);
         }
         return;
       }
@@ -181,10 +194,10 @@ export const usePersistedDismissal = (
       try {
         await storageAdapter.remove(storageKey);
       } catch (persistError) {
-        events?.onDismissalPersistFailed?.(persistError);
+        eventsRef.current?.onDismissalPersistFailed?.(persistError);
       }
     },
-    [dismissCooldownDays, events, storageKey, storageAdapter],
+    [dismissCooldownDays, storageKey, storageAdapter],
   );
 
   const closeDock = useCallback(
