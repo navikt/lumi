@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canStartReleaseVerificationRun,
   createReleaseVerificationSurveyId,
   isReleaseVerificationEnabled,
 } from "~/utils/releaseVerification";
@@ -42,5 +43,12 @@ describe("release verification", () => {
         localAuthBypass: false,
       }),
     ).toBe(false);
+  });
+
+  it("does not allow the test id to change while a submission is in flight", () => {
+    expect(canStartReleaseVerificationRun("idle")).toBe(true);
+    expect(canStartReleaseVerificationRun("success")).toBe(true);
+    expect(canStartReleaseVerificationRun("error")).toBe(true);
+    expect(canStartReleaseVerificationRun("sending")).toBe(false);
   });
 });

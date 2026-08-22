@@ -45,9 +45,9 @@ wait_for() {
 }
 
 "${COMPOSE[@]}" up --detach --build
-wait_for "lumi-api" "http://localhost:8080/internal/isAlive"
-wait_for "lumi-dashboard" "http://localhost:3000"
-wait_for "lumi-local-demo" "http://localhost:3001/healthz"
+wait_for "lumi-api" "http://127.0.0.1:8080/internal/isAlive"
+wait_for "lumi-dashboard" "http://127.0.0.1:3000"
+wait_for "lumi-local-demo" "http://127.0.0.1:3001/healthz"
 
 cd "$ROOT"
 pnpm run e2e:full-chain

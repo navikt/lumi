@@ -4,6 +4,7 @@ import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.plugins.ratelimit.*
+import io.ktor.server.request.path
 import io.ktor.server.routing.*
 import io.ktor.util.*
 import io.ktor.util.collections.*
@@ -45,6 +46,7 @@ val ExportRateLimit = RateLimitName("export")
 
 private const val EXPORT_REQUESTS_PER_MINUTE = 30
 private val RATE_LIMIT_REFILL_PERIOD = 1.minutes
+private val defaultRateLimitSubmissionObservability = SubmissionObservability()
 
 private val RejectedExportAuthenticationRateLimit = createRouteScopedPlugin(
     "RejectedExportAuthenticationRateLimit"
@@ -117,11 +119,16 @@ internal fun Route.refundRejectedExportAuthenticationAfterAuthorization() {
     install(AuthorizedExportAuthenticationRefund)
 }
 
-fun Application.configureRateLimiting() {
+fun Application.configureRateLimiting(
+    submissionObservability: SubmissionObservability = defaultRateLimitSubmissionObservability
+) {
     install(RateLimit) {
         register(SubmissionRateLimit) {
             rateLimiter(limit = 100, refillPeriod = RATE_LIMIT_REFILL_PERIOD)
             requestKey { call -> call.rateLimitKey() }
+            modifyResponse { call, state ->
+                recordRejectedSubmissionWhenExhausted(call, state, submissionObservability)
+            }
         }
 
         register(UserSubmissionRateLimit) {
@@ -132,6 +139,9 @@ fun Application.configureRateLimiting() {
             }
             requestWeight { call, _ ->
                 if (call.attributes.getOrNull(UserRateLimitHashKey) != null) 1 else 0
+            }
+            modifyResponse { call, state ->
+                recordRejectedSubmissionWhenExhausted(call, state, submissionObservability)
             }
         }
         
@@ -147,7 +157,28 @@ fun Application.configureRateLimiting() {
         
         global {
             rateLimiter(limit = 1000, refillPeriod = RATE_LIMIT_REFILL_PERIOD)
+            modifyResponse { call, state ->
+                recordRejectedSubmissionWhenExhausted(call, state, submissionObservability)
+            }
         }
+    }
+}
+
+private fun recordRejectedSubmissionWhenExhausted(
+    call: ApplicationCall,
+    state: RateLimiter.State,
+    submissionObservability: SubmissionObservability
+) {
+    if (state !is RateLimiter.State.Exhausted) return
+
+    val channel = when (call.request.path()) {
+        "/api/tokenx/v1/feedback" -> SubmissionChannel.TOKENX
+        "/api/azure/v1/feedback" -> SubmissionChannel.AZURE
+        "/api/internal/v1/feedback" -> SubmissionChannel.INTERNAL_PROXY
+        else -> null
+    }
+    if (channel != null) {
+        submissionObservability.record(channel, SubmissionMetricOutcome.REJECTED)
     }
 }
 

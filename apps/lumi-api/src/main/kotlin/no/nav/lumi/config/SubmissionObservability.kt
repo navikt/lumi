@@ -60,9 +60,7 @@ private fun Throwable.toMetricOutcome(): SubmissionMetricOutcome = when (this) {
 
     is ApiErrorException,
     is BadRequestException,
-    is NotFoundException,
-    is IllegalArgumentException,
-    is IllegalStateException -> SubmissionMetricOutcome.REJECTED
+    is NotFoundException -> SubmissionMetricOutcome.REJECTED
 
     else -> SubmissionMetricOutcome.FAILED
 }

@@ -49,6 +49,16 @@ class SubmissionObservabilityTest : FunSpec({
                 throw RuntimeException("database unavailable")
             }
         }
+        shouldThrow<IllegalArgumentException> {
+            observability.observeAttempt(SubmissionChannel.AZURE) {
+                throw IllegalArgumentException("broken server invariant")
+            }
+        }
+        shouldThrow<IllegalStateException> {
+            observability.observeAttempt(SubmissionChannel.AZURE) {
+                throw IllegalStateException("unexpected server state")
+            }
+        }
 
         meterRegistry.get(SubmissionObservability.METRIC_NAME)
             .tag("channel", "azure")
@@ -61,6 +71,6 @@ class SubmissionObservabilityTest : FunSpec({
             .tag("outcome", "failed")
             .counter()
             .count()
-            .shouldBeExactly(1.0)
+            .shouldBeExactly(3.0)
     }
 })

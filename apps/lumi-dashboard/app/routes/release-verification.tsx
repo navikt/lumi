@@ -26,7 +26,10 @@ import {
   fetchReleaseVerificationConfigServerFn,
   submitReleaseVerificationServerFn,
 } from "~/server/actions";
-import { createReleaseVerificationSurveyId } from "~/utils/releaseVerification";
+import {
+  canStartReleaseVerificationRun,
+  createReleaseVerificationSurveyId,
+} from "~/utils/releaseVerification";
 
 const verificationSurvey: SurveyDocumentV1 = {
   authoringSchemaVersion: 1,
@@ -109,6 +112,7 @@ function ReleaseVerificationPage() {
   );
 
   const startNewRun = () => {
+    if (!canStartReleaseVerificationRun(attempt.status)) return;
     setSurveyId(createReleaseVerificationSurveyId());
     setAttempt({ status: "idle" });
   };
@@ -200,6 +204,9 @@ function ReleaseVerificationPage() {
                         variant="secondary"
                         size="small"
                         onClick={startNewRun}
+                        disabled={
+                          !canStartReleaseVerificationRun(attempt.status)
+                        }
                       >
                         Ny test-ID
                       </Button>

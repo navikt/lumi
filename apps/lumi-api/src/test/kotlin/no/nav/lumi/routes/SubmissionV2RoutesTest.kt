@@ -35,7 +35,11 @@ private fun Application.submissionRoutesTestModule(
 ) {
     configureSerialization()
     configureStatusPages()
-    configureRateLimiting()
+    if (submissionObservability == null) {
+        configureRateLimiting()
+    } else {
+        configureRateLimiting(submissionObservability)
+    }
     routing {
         if (submissionObservability == null) {
             submissionRoutes(submissionService = submissionService)
@@ -214,6 +218,42 @@ class SubmissionV2RoutesTest : FunSpec({
             coVerify(exactly = 0) {
                 submissionService.submit(any(), any(), any(), any(), any())
             }
+        }
+    }
+
+    test("records a user rate-limited TokenX submission as rejected") {
+        val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+        val submissionObservability = SubmissionObservability(meterRegistry)
+        val submissionService = mockk<SubmissionService>()
+        coEvery {
+            submissionService.submit(any(), any(), any(), any(), any())
+        } returns SubmissionOutcome(SaveResult.Created("created-v2"), "hash-v2")
+
+        testApplication {
+            application {
+                submissionRoutesTestModule(submissionService, submissionObservability)
+            }
+            val client = createTestClient()
+
+            repeat(15) {
+                val response = client.post("/api/tokenx/v1/feedback") {
+                    contentType(ContentType.Application.Json)
+                    setBody(submissionPayloadV2())
+                }
+                response.status shouldBe HttpStatusCode.Created
+            }
+
+            val blockedResponse = client.post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(submissionPayloadV2())
+            }
+
+            blockedResponse.status shouldBe HttpStatusCode.TooManyRequests
+            meterRegistry.get(SubmissionObservability.METRIC_NAME)
+                .tag("channel", "tokenx")
+                .tag("outcome", "rejected")
+                .counter()
+                .count() shouldBe 1.0
         }
     }
 

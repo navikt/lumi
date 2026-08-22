@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-const DEMO_URL = process.env.LUMI_DEMO_URL ?? "http://localhost:3001";
-const DASHBOARD_URL = process.env.LUMI_DASHBOARD_URL ?? "http://localhost:3000";
+const DEMO_URL = process.env.LUMI_DEMO_URL ?? "http://127.0.0.1:3001";
+const DASHBOARD_URL = process.env.LUMI_DASHBOARD_URL ?? "http://127.0.0.1:3000";
 
 test("a SurveyDocumentV1 response travels from the widget to the dashboard", async ({
   page,

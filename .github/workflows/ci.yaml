@@ -122,6 +122,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -134,7 +135,7 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
         env:
-          NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
+          NPM_AUTH_TOKEN: ${{ github.token }}
       - name: Check lumi-survey release drift
         run: pnpm run test:release-guards && pnpm run check:lumi-survey-release-drift
       - name: Dependency audit (production)
@@ -153,8 +154,6 @@ jobs:
         run: pnpm run verify:lumi-survey
       - name: Verify packed lumi-survey consumer
         run: pnpm run verify:lumi-survey-consumer
-        env:
-          NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
       - name: Unit tests
         run: pnpm test
       - name: Set up Node 22 for Playwright install
@@ -207,6 +206,7 @@ jobs:
     timeout-minutes: 25
     permissions:
       contents: read
+      packages: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
@@ -217,7 +217,7 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
         env:
-          NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
+          NPM_AUTH_TOKEN: ${{ github.token }}
       - name: Set up Node 22 for Playwright install
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
@@ -232,7 +232,7 @@ jobs:
       - name: Run full-chain smoke
         run: pnpm run test:full-chain
         env:
-          NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
+          NPM_AUTH_TOKEN: ${{ github.token }}
 
   docs:
     name: Build docs
@@ -241,6 +241,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
@@ -251,6 +252,6 @@ jobs:
       - name: Install docs deps
         run: pnpm install --filter lumi-docs --frozen-lockfile
         env:
-          NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
+          NPM_AUTH_TOKEN: ${{ github.token }}
       - name: Build docs
         run: pnpm --filter lumi-docs run build

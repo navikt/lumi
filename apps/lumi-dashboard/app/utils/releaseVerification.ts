@@ -6,6 +6,18 @@ interface ReleaseVerificationEnvironment {
   localAuthBypass: boolean;
 }
 
+export type ReleaseVerificationAttemptStatus =
+  | "idle"
+  | "sending"
+  | "success"
+  | "error";
+
+export function canStartReleaseVerificationRun(
+  status: ReleaseVerificationAttemptStatus,
+): boolean {
+  return status !== "sending";
+}
+
 export function createReleaseVerificationSurveyId(
   now: Date = new Date(),
   randomId: string = globalThis.crypto.randomUUID(),

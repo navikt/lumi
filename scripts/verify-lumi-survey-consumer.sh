@@ -26,7 +26,7 @@ if [[ ${#archives[@]} -ne 1 || ! -f "${archives[0]}" ]]; then
 fi
 mv -- "${archives[0]}" "$CONSUMER_DIR/lumi-survey.tgz"
 
-pnpm --dir "$CONSUMER_DIR" install --lockfile=false
+pnpm --dir "$CONSUMER_DIR" install --offline --lockfile=false
 pnpm --dir "$CONSUMER_DIR" run typecheck
 pnpm --dir "$CONSUMER_DIR" run build
 

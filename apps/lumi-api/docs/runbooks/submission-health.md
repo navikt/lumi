@@ -36,8 +36,8 @@ logger for å finne den konkrete konsumenten etter at kanalen er identifisert.
 | --- | --- | --- |
 | `created` | Ny respons er lagret og svar er sendt til konsumenten | Ingen |
 | `duplicate` | En retry traff samme dedupliseringsnøkkel; ingen ekstra rad ble opprettet | Forventet ved nettverksretry; undersøk kun ved kraftig økning |
-| `rejected` | Autentisert kall ble avvist som 4xx, for eksempel ugyldig payload eller definisjonskonflikt | Finn konsument og valider survey-kontrakten |
-| `failed` | Behandlingen eller responsen feilet som 5xx | Stans utrulling og undersøk API, database og avhengigheter |
+| `rejected` | Autentisert kall ble avvist som 4xx, for eksempel rate limit, ugyldig payload eller definisjonskonflikt | Finn konsument og valider survey-kontrakten |
+| `failed` | Behandlingen eller responsen traff en uventet intern feil | Stans utrulling og undersøk API, database og avhengigheter |
 
 Ved `409 DefinitionConflict` følger du også
 [runbooken for survey-definisjonskonflikter](./survey-definition-conflicts.md).

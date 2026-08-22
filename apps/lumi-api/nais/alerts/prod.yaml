@@ -32,10 +32,14 @@ spec:
             severity: warning
             namespace: team-esyfo
         - alert: LumiSubmissionRejectionSpike
-          expr: sum(increase(lumi_submissions_total{app="lumi-api",outcome="rejected"}[10m])) >= 5 and sum(increase(lumi_submissions_total{app="lumi-api",outcome="rejected"}[10m])) / clamp_min(sum(increase(lumi_submissions_total{app="lumi-api"}[10m])), 1) > 0.1
+          expr: >-
+            sum by (channel) (increase(lumi_submissions_total{app="lumi-api",outcome="rejected"}[10m])) >= 5
+            and
+            sum by (channel) (increase(lumi_submissions_total{app="lumi-api",outcome="rejected"}[10m]))
+            / clamp_min(sum by (channel) (increase(lumi_submissions_total{app="lumi-api"}[10m])), 1) > 0.1
           annotations:
             summary: "Lumi avviser uvanlig mange survey-innsendinger"
-            consequence: "Minst fem innsendinger er avvist, og mer enn 10 prosent av trafikken de siste ti minuttene er berørt."
+            consequence: "Minst fem innsendinger i én kanal er avvist, og mer enn 10 prosent av kanalens trafikk de siste ti minuttene er berørt."
             action: "Stans nye migreringer, identifiser berørt kanal i Grafana og følg runbooken."
             runbook_url: "https://github.com/navikt/lumi/blob/main/apps/lumi-api/docs/runbooks/submission-health.md"
           labels:
