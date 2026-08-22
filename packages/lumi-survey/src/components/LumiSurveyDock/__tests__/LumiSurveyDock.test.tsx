@@ -6,6 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   LumiSurveyEvents,
@@ -1370,6 +1371,74 @@ describe("LumiSurveyDock", () => {
     renderDock({ events });
 
     expect(events.onViewDock).toHaveBeenCalledWith("dock-feedback");
+  });
+
+  it("counts a StrictMode mount as one dock view", () => {
+    const onViewDock = vi.fn();
+
+    render(
+      <StrictMode>
+        <LumiSurveyDock
+          surveyId="dock-feedback"
+          survey={createSurvey()}
+          transport={{ submit: vi.fn().mockResolvedValue(undefined) }}
+          events={{ onViewDock }}
+        />
+      </StrictMode>,
+    );
+
+    expect(onViewDock).toHaveBeenCalledOnce();
+  });
+
+  it("counts reopening the dock as a new view", async () => {
+    const onViewDock = vi.fn();
+    const user = userEvent.setup();
+
+    renderDock({
+      events: { onViewDock },
+      behavior: { storageStrategy: "none" },
+    });
+
+    expect(onViewDock).toHaveBeenCalledOnce();
+
+    await user.click(await screen.findByRole("button", { name: "Lukk" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Gi tilbakemelding" }),
+    );
+
+    expect(onViewDock).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not count parent rerenders as new dock views", () => {
+    const initialOnViewDock = vi.fn();
+    const latestOnViewDock = vi.fn();
+    const survey = createSurvey();
+    const transport: LumiSurveyTransport = {
+      submit: vi.fn().mockResolvedValue(undefined),
+    };
+    const dock = (surveyId: string, onViewDock: (surveyId: string) => void) => (
+      <LumiSurveyDock
+        surveyId={surveyId}
+        survey={survey}
+        transport={transport}
+        events={{ onViewDock }}
+      />
+    );
+    const { rerender } = render(dock("dock-feedback", initialOnViewDock));
+
+    expect(initialOnViewDock).toHaveBeenCalledTimes(1);
+
+    for (let index = 0; index < 5; index++) {
+      rerender(dock("dock-feedback", latestOnViewDock));
+    }
+
+    expect(initialOnViewDock).toHaveBeenCalledTimes(1);
+    expect(latestOnViewDock).not.toHaveBeenCalled();
+
+    rerender(dock("another-survey", latestOnViewDock));
+
+    expect(latestOnViewDock).toHaveBeenCalledOnce();
+    expect(latestOnViewDock).toHaveBeenCalledWith("another-survey");
   });
 
   it("renders the minimized button when initialOpen is false", async () => {

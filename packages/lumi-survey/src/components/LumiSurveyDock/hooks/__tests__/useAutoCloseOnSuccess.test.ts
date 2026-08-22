@@ -127,4 +127,31 @@ describe("useAutoCloseOnSuccess", () => {
     });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("keeps the deadline when the onClose reference changes", () => {
+    const firstOnClose = vi.fn();
+    const latestOnClose = vi.fn();
+
+    const { rerender } = renderHook(
+      ({ onClose }: { onClose: () => void }) =>
+        useAutoCloseOnSuccess({
+          enabled: true,
+          status: "success",
+          delayMs: 1000,
+          onClose,
+        }),
+      { initialProps: { onClose: firstOnClose } },
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    rerender({ onClose: latestOnClose });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(firstOnClose).not.toHaveBeenCalled();
+    expect(latestOnClose).toHaveBeenCalledTimes(1);
+  });
 });

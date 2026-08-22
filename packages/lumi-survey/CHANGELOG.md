@@ -20,6 +20,8 @@ This project follows SemVer.
 - Text answers that exceed the configured limit, or the API maximum of 2000
   characters, are now blocked in the widget with a field-level validation
   message instead of failing permanently as a generic transport error.
+- Inline `events` objects no longer count parent re-renders as new dock views
+  or restart the success auto-close timer.
 
 ### Internal
 
