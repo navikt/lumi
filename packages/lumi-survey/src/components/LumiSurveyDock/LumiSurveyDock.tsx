@@ -194,6 +194,10 @@ export const LumiSurveyDock = ({
   // Track previous showIntro value to detect intro → question transition
   const prevShowIntroRef = useRef(showIntro);
   const pendingStepFocusRef = useRef(false);
+  const dockRef = useRef<HTMLElement>(null);
+  const minimizedButtonRef = useRef<HTMLButtonElement>(null);
+  const focusWithinDockRef = useRef(false);
+  const pendingDockFocusRef = useRef<"open-heading" | "minimized" | null>(null);
   const [stepValidationMissing, setStepValidationMissing] = useState<string[]>(
     [],
   );
@@ -394,6 +398,24 @@ export const LumiSurveyDock = ({
     setShowIntro(false);
   }, [markUserInteraction]);
 
+  const handleDockFocusCapture = useCallback(() => {
+    focusWithinDockRef.current = true;
+    markUserInteraction();
+  }, [markUserInteraction]);
+
+  const handleDockBlurCapture = useCallback(
+    (event: React.FocusEvent<HTMLElement>) => {
+      const nextTarget = event.relatedTarget;
+      if (
+        nextTarget instanceof Node &&
+        !event.currentTarget.contains(nextTarget)
+      ) {
+        focusWithinDockRef.current = false;
+      }
+    },
+    [],
+  );
+
   // Progressive submit: hide the button until a currently visible question has
   // at least one meaningful answer. Required-answer validation happens on submit.
   const isSubmitBlocked = useMemo(
@@ -522,14 +544,55 @@ export const LumiSurveyDock = ({
 
   const isSubmitting = status === "submitting";
   const isSuccess = status === "success";
+  const previousStatusRef = useRef(status);
+
+  useEffect(() => {
+    const enteredSuccess =
+      previousStatusRef.current !== "success" && status === "success";
+    previousStatusRef.current = status;
+
+    if (enteredSuccess && focusWithinDockRef.current) {
+      document.getElementById(successHeadingId)?.focus();
+    }
+  }, [status, successHeadingId]);
 
   const handleCloseDock = useCallback(() => {
-    if (isSuccess && config.hideAfterSubmit) {
-      closeDock(true);
-    } else {
-      closeDock();
-    }
+    const hideCompletely = isSuccess && config.hideAfterSubmit;
+    const focusIsWithinDock = dockRef.current?.contains(document.activeElement);
+    pendingDockFocusRef.current =
+      focusIsWithinDock && !hideCompletely ? "minimized" : null;
+    closeDock(hideCompletely);
   }, [closeDock, isSuccess, config.hideAfterSubmit]);
+
+  const handleReopenDock = useCallback(() => {
+    pendingDockFocusRef.current = "open-heading";
+    reopenDock();
+  }, [reopenDock]);
+
+  useEffect(() => {
+    if (pendingDockFocusRef.current === "minimized" && dismissed) {
+      minimizedButtonRef.current?.focus();
+      pendingDockFocusRef.current = null;
+      return;
+    }
+
+    if (pendingDockFocusRef.current === "open-heading" && !dismissed) {
+      const headingId = isSuccess
+        ? successHeadingId
+        : showIntro
+          ? introHeadingId
+          : promptHeadingId;
+      document.getElementById(headingId)?.focus();
+      pendingDockFocusRef.current = null;
+    }
+  }, [
+    dismissed,
+    introHeadingId,
+    isSuccess,
+    promptHeadingId,
+    showIntro,
+    successHeadingId,
+  ]);
 
   useAutoCloseOnSuccess({
     enabled: config.autoCloseOnSuccess,
@@ -614,6 +677,7 @@ export const LumiSurveyDock = ({
 
   return (
     <aside
+      ref={dockRef}
       className={joinClassNames(
         CLASS_NAMES.container,
         config.containerClassName,
@@ -622,15 +686,16 @@ export const LumiSurveyDock = ({
       data-feedback-id={surveyId}
       data-state={dismissed ? "dismissed" : "open"}
       aria-label="Tilbakemeldingspanel"
-      onFocusCapture={markUserInteraction}
+      onFocusCapture={handleDockFocusCapture}
+      onBlurCapture={handleDockBlurCapture}
       onPointerDownCapture={markUserInteraction}
     >
       {dismissed ? (
         <MinimizedDock
           label={config.minimizedButtonLabel}
-          panelId={panelId}
-          onReopen={reopenDock}
+          onReopen={handleReopenDock}
           className={CLASS_NAMES.minimizedButton}
+          buttonRef={minimizedButtonRef}
         />
       ) : (
         <DockPanel

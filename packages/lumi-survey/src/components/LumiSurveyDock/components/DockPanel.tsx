@@ -175,6 +175,7 @@ export const DockPanel = ({
                   size="small"
                   className={CLASS_NAMES.ratingHeading}
                   id={introHeadingId}
+                  tabIndex={-1}
                 >
                   {introTitle}
                 </Heading>
@@ -218,6 +219,7 @@ export const DockPanel = ({
                     size="small"
                     className={CLASS_NAMES.ratingHeading}
                     id={successHeadingId}
+                    tabIndex={-1}
                   >
                     {successTitle}
                   </Heading>

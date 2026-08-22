@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -267,6 +267,120 @@ describe("LumiSurveyDock Accessibility", () => {
       });
       expect(questionHeading).toHaveFocus();
     });
+  });
+
+  it("moves focus from the minimized trigger to the opened heading", async () => {
+    const user = userEvent.setup();
+    render(
+      <LumiSurveyDock
+        surveyId="focus-open-test"
+        survey={survey}
+        transport={mockTransport}
+        behavior={{ initialOpen: false, storageStrategy: "none" }}
+      />,
+    );
+
+    await user.click(
+      await screen.findByRole("button", { name: /gi tilbakemelding/i }),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /hvor fornøyd er du/i }),
+    ).toHaveFocus();
+  });
+
+  it("moves focus to the intro heading when reopening an intro survey", async () => {
+    const user = userEvent.setup();
+    render(
+      <LumiSurveyDock
+        surveyId="focus-open-intro-test"
+        survey={survey}
+        transport={mockTransport}
+        intro={{ title: "Velkommen", body: "Kort intro" }}
+        behavior={{ initialOpen: false, storageStrategy: "none" }}
+      />,
+    );
+
+    await user.click(
+      await screen.findByRole("button", { name: /gi tilbakemelding/i }),
+    );
+
+    expect(screen.getByRole("heading", { name: /velkommen/i })).toHaveFocus();
+  });
+
+  it("moves focus from the close button to the minimized trigger", async () => {
+    const user = userEvent.setup();
+    render(
+      <LumiSurveyDock
+        surveyId="focus-close-test"
+        survey={survey}
+        transport={mockTransport}
+        behavior={{ storageStrategy: "none" }}
+      />,
+    );
+
+    await screen.findByRole("radio", { name: /5\./i });
+    await user.click(screen.getByRole("button", { name: /lukk/i }));
+
+    expect(
+      screen.getByRole("button", { name: /gi tilbakemelding/i }),
+    ).toHaveFocus();
+  });
+
+  it("moves focus from submit to the success heading", async () => {
+    const user = userEvent.setup();
+    render(
+      <LumiSurveyDock
+        surveyId="focus-success-test"
+        survey={survey}
+        transport={mockTransport}
+        behavior={{ storageStrategy: "none" }}
+      />,
+    );
+
+    await user.click(await screen.findByRole("radio", { name: /5\./i }));
+    await user.click(screen.getByRole("button", { name: /send/i }));
+
+    expect(
+      await screen.findByRole("heading", {
+        name: /takk for tilbakemeldingen/i,
+      }),
+    ).toHaveFocus();
+  });
+
+  it("does not steal focus back when a pending submit finishes", async () => {
+    let resolveSubmission!: () => void;
+    const submission = new Promise<void>((resolve) => {
+      resolveSubmission = resolve;
+    });
+    const transport = { submit: vi.fn().mockReturnValue(submission) };
+    const user = userEvent.setup();
+
+    render(
+      <>
+        <button type="button">Vertsside</button>
+        <LumiSurveyDock
+          surveyId="focus-success-host-test"
+          survey={survey}
+          transport={transport}
+          behavior={{ storageStrategy: "none" }}
+        />
+      </>,
+    );
+
+    await user.click(await screen.findByRole("radio", { name: /5\./i }));
+    await user.click(screen.getByRole("button", { name: /send/i }));
+    await user.click(screen.getByRole("button", { name: /vertsside/i }));
+
+    await act(async () => {
+      resolveSubmission();
+      await submission;
+    });
+
+    await screen.findByRole("heading", {
+      name: /takk for tilbakemeldingen/i,
+    });
+    expect(screen.getByRole("button", { name: /vertsside/i })).toHaveFocus();
   });
 
   it("moves focus to the new question heading after Next and Back", async () => {

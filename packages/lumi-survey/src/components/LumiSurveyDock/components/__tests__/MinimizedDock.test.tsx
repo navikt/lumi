@@ -8,7 +8,6 @@ describe("MinimizedDock", () => {
     render(
       <MinimizedDock
         label="Gi tilbakemelding"
-        panelId="test-panel"
         onReopen={vi.fn()}
         className="test-class"
       />,
@@ -26,7 +25,6 @@ describe("MinimizedDock", () => {
     render(
       <MinimizedDock
         label="Gi tilbakemelding"
-        panelId="test-panel"
         onReopen={onReopen}
         className="test-class"
       />,
@@ -36,26 +34,24 @@ describe("MinimizedDock", () => {
     expect(onReopen).toHaveBeenCalledTimes(1);
   });
 
-  it("has correct aria attributes for accessibility", () => {
+  it("does not reference a panel that is absent while minimized", () => {
     render(
       <MinimizedDock
         label="Gi tilbakemelding"
-        panelId="test-panel"
         onReopen={vi.fn()}
         className="test-class"
       />,
     );
 
     const button = screen.getByRole("button");
-    expect(button).toHaveAttribute("aria-controls", "test-panel");
-    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(button).not.toHaveAttribute("aria-controls");
+    expect(button).not.toHaveAttribute("aria-expanded");
   });
 
   it("applies custom className", () => {
     render(
       <MinimizedDock
         label="Gi tilbakemelding"
-        panelId="test-panel"
         onReopen={vi.fn()}
         className="custom-class"
       />,
