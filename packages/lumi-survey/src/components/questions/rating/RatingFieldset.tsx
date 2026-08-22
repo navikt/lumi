@@ -1,15 +1,8 @@
 import { BodyShort, Box, Fieldset, Heading, VStack } from "@navikt/ds-react";
-import type { AriaAttributes, ComponentProps, ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { useId } from "react";
 import type { RatingQuestion } from "../../../core/types.js";
 import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
-
-export interface RatingGroupAccessibilityProps {
-  role: "radiogroup";
-  "aria-labelledby": string;
-  "aria-describedby": AriaAttributes["aria-describedby"];
-  "aria-invalid": AriaAttributes["aria-invalid"];
-}
 
 interface RatingFieldsetProps {
   question: RatingQuestion;
@@ -24,7 +17,7 @@ interface RatingFieldsetProps {
   hideDescription?: boolean;
   fieldsetPaddingBlock?: ComponentProps<typeof Box>["paddingBlock"];
   fieldsetPaddingInline?: ComponentProps<typeof Box>["paddingInline"];
-  children: (groupProps: RatingGroupAccessibilityProps) => ReactNode;
+  children: ReactNode;
 }
 
 const joinIds = (...ids: Array<string | undefined>): string | undefined =>
@@ -33,6 +26,13 @@ const joinIds = (...ids: Array<string | undefined>): string | undefined =>
 /**
  * Uses Aksel for the standard form-field semantics while rating variants keep
  * their domain-specific visual controls and ARIA radio interaction.
+ *
+ * The fieldset itself carries `role="radiogroup"` (an allowed role for
+ * fieldset), so the accessibility tree exposes exactly one named group per
+ * question. The prompt exists in one place only: as the legend. When the
+ * prompt is visible it is a level 3 heading inside the legend; when an
+ * external heading labels the group, the legend copy is removed from the
+ * accessibility tree entirely.
  */
 export function RatingFieldset({
   question,
@@ -50,12 +50,10 @@ export function RatingFieldset({
   children,
 }: RatingFieldsetProps) {
   const instanceId = useId();
-  const fallbackHeadingId = `${instanceId}-heading`;
+  const headingId = `${instanceId}-heading`;
   const fallbackDescriptionId = `${instanceId}-description`;
   const legendContentId = `${instanceId}-legend`;
   const errorId = `${instanceId}-error`;
-  const headingId =
-    ariaLabelledBy ?? (!hidePrompt ? fallbackHeadingId : legendContentId);
   const descriptionId =
     !hideDescription && question.description
       ? fallbackDescriptionId
@@ -66,44 +64,49 @@ export function RatingFieldset({
     descriptionId,
     hasError ? errorId : undefined,
   );
+  const promptText = formatQuestionPrompt(question);
 
-  const groupProps: RatingGroupAccessibilityProps = {
-    role: "radiogroup",
-    "aria-labelledby": headingId,
-    "aria-describedby": describedBy,
-    "aria-invalid": hasError || undefined,
-  };
+  // Exactly one name source for the group:
+  // - visible prompt: the heading inside the legend (named via Aksel's legend
+  //   wiring, since no aria-labelledby is passed)
+  // - hidden prompt with an external heading: the external heading names the
+  //   group; the legend copy is aria-hidden so the text is not duplicated
+  // - hidden prompt without an external heading: the visually hidden legend
+  //   is the only name source
+  const legend = !hidePrompt ? (
+    <Heading id={headingId} level="3" size="xsmall">
+      {promptText}
+    </Heading>
+  ) : ariaLabelledBy ? (
+    <span aria-hidden="true">{promptText}</span>
+  ) : (
+    <span id={legendContentId}>{promptText}</span>
+  );
 
   return (
     <VStack gap="space-8" className={className}>
-      {!hidePrompt && (
-        <Heading
-          id={ariaLabelledBy ? undefined : fallbackHeadingId}
-          level="3"
-          size="xsmall"
-        >
-          {formatQuestionPrompt(question)}
-        </Heading>
-      )}
-      {question.description && !hideDescription && (
-        <BodyShort id={fallbackDescriptionId}>{question.description}</BodyShort>
-      )}
       <Fieldset
         className={fieldsetClassName}
-        legend={
-          <span id={legendContentId}>{formatQuestionPrompt(question)}</span>
-        }
-        hideLegend
+        legend={legend}
+        hideLegend={hidePrompt}
         error={hasError ? validationErrorMessage : undefined}
         errorId={errorId}
         disabled={disabled}
-        aria-labelledby={headingId}
+        role="radiogroup"
+        aria-labelledby={ariaLabelledBy}
+        aria-describedby={describedBy}
+        aria-invalid={hasError || undefined}
       >
+        {question.description && !hideDescription && (
+          <BodyShort id={fallbackDescriptionId}>
+            {question.description}
+          </BodyShort>
+        )}
         <Box
           paddingBlock={fieldsetPaddingBlock ?? "space-12"}
           paddingInline={fieldsetPaddingInline ?? "space-16"}
         >
-          {children(groupProps)}
+          {children}
         </Box>
       </Fieldset>
     </VStack>

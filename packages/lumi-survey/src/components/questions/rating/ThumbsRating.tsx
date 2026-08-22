@@ -75,51 +75,48 @@ export function ThumbsRating({
       fieldsetPaddingBlock={fieldsetPaddingBlock}
       fieldsetPaddingInline={fieldsetPaddingInline}
     >
-      {(groupProps) => (
-        <HStack
-          {...groupProps}
-          gap="space-8"
-          justify="center"
-          align="center"
-          onKeyDown={radioGroup.onKeyDown}
-          wrap
-        >
-          <Box style={{ flex: "1 1 0" }}>
-            <Button
-              type="button"
-              role="radio"
-              aria-checked={activeState === 1}
-              aria-label="Nei, tommel ned"
-              onClick={() => handleSelect(1)}
-              disabled={disabled}
-              tabIndex={radioGroup.getTabIndex(1)}
-              data-color={activeState === 1 ? "danger" : undefined}
-              variant={activeState === 1 ? "primary" : "secondary"}
-              icon={<ThumbDownIcon fontSize="1.75rem" aria-hidden />}
-              style={{ width: "100%", justifyContent: "center" }}
-            >
-              Nei
-            </Button>
-          </Box>
+      <HStack
+        gap="space-8"
+        justify="center"
+        align="center"
+        onKeyDown={radioGroup.onKeyDown}
+        wrap
+      >
+        <Box style={{ flex: "1 1 0" }}>
+          <Button
+            type="button"
+            role="radio"
+            aria-checked={activeState === 1}
+            aria-label="Nei, tommel ned"
+            onClick={() => handleSelect(1)}
+            disabled={disabled}
+            tabIndex={radioGroup.getTabIndex(1)}
+            data-color={activeState === 1 ? "danger" : undefined}
+            variant={activeState === 1 ? "primary" : "secondary"}
+            icon={<ThumbDownIcon fontSize="1.75rem" aria-hidden />}
+            style={{ width: "100%", justifyContent: "center" }}
+          >
+            Nei
+          </Button>
+        </Box>
 
-          <Box style={{ flex: "1 1 0" }}>
-            <Button
-              type="button"
-              role="radio"
-              aria-checked={activeState === 2}
-              aria-label="Ja, tommel opp"
-              onClick={() => handleSelect(2)}
-              disabled={disabled}
-              tabIndex={radioGroup.getTabIndex(2)}
-              variant={activeState === 2 ? "primary" : "secondary"}
-              icon={<ThumbUpIcon fontSize="1.75rem" aria-hidden />}
-              style={{ width: "100%", justifyContent: "center" }}
-            >
-              Ja
-            </Button>
-          </Box>
-        </HStack>
-      )}
+        <Box style={{ flex: "1 1 0" }}>
+          <Button
+            type="button"
+            role="radio"
+            aria-checked={activeState === 2}
+            aria-label="Ja, tommel opp"
+            onClick={() => handleSelect(2)}
+            disabled={disabled}
+            tabIndex={radioGroup.getTabIndex(2)}
+            variant={activeState === 2 ? "primary" : "secondary"}
+            icon={<ThumbUpIcon fontSize="1.75rem" aria-hidden />}
+            style={{ width: "100%", justifyContent: "center" }}
+          >
+            Ja
+          </Button>
+        </Box>
+      </HStack>
     </RatingFieldset>
   );
 }

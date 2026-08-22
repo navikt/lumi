@@ -99,71 +99,68 @@ export function NpsRating({
       fieldsetPaddingBlock={fieldsetPaddingBlock ?? "space-8"}
       fieldsetPaddingInline={fieldsetPaddingInline ?? "space-12"}
     >
-      {(groupProps) => (
-        <VStack gap="space-8">
-          <Box
-            {...groupProps}
-            as="div"
-            onKeyDown={radioGroup.onKeyDown}
-            style={{
-              width: "100%",
-              display: "grid",
-              gridTemplateColumns: "repeat(11, minmax(0, 1fr))",
-              gap: "var(--ax-space-2)",
-              overflow: "hidden",
-            }}
+      <VStack gap="space-8">
+        <Box
+          as="div"
+          onKeyDown={radioGroup.onKeyDown}
+          style={{
+            width: "100%",
+            display: "grid",
+            gridTemplateColumns: "repeat(11, minmax(0, 1fr))",
+            gap: "var(--ax-space-2)",
+            overflow: "hidden",
+          }}
+        >
+          {NPS_VALUES.map((value) => {
+            const isActive = activeState === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={isActive}
+                aria-label={`${value} av 10`}
+                onClick={() => handleSelect(value)}
+                disabled={disabled}
+                tabIndex={radioGroup.getTabIndex(value)}
+                className="lumi-survey-rating__nps-button"
+                style={{
+                  ["--lumi-nps-bg" as string]: getNpsColor(value, isActive),
+                  ["--lumi-nps-border" as string]: getNpsBorderColor(
+                    value,
+                    isActive,
+                  ),
+                  ["--lumi-nps-hover-bg" as string]: isActive
+                    ? getNpsColor(value, true)
+                    : "var(--ax-bg-neutral-soft)",
+                  ["--lumi-nps-hover-border" as string]: isActive
+                    ? getNpsBorderColor(value, true)
+                    : "var(--ax-border-neutral-subtle)",
+                  ["--lumi-nps-font-weight" as string]: isActive ? 700 : 500,
+                }}
+              >
+                {value}
+              </button>
+            );
+          })}
+        </Box>
+        <HStack justify="space-between" style={{ width: "100%" }}>
+          <BodyShort
+            id={lowLabelId}
+            size="small"
+            style={{ color: "var(--ax-text-neutral-subtle)" }}
           >
-            {NPS_VALUES.map((value) => {
-              const isActive = activeState === value;
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={isActive}
-                  aria-label={`${value} av 10`}
-                  onClick={() => handleSelect(value)}
-                  disabled={disabled}
-                  tabIndex={radioGroup.getTabIndex(value)}
-                  className="lumi-survey-rating__nps-button"
-                  style={{
-                    ["--lumi-nps-bg" as string]: getNpsColor(value, isActive),
-                    ["--lumi-nps-border" as string]: getNpsBorderColor(
-                      value,
-                      isActive,
-                    ),
-                    ["--lumi-nps-hover-bg" as string]: isActive
-                      ? getNpsColor(value, true)
-                      : "var(--ax-bg-neutral-soft)",
-                    ["--lumi-nps-hover-border" as string]: isActive
-                      ? getNpsBorderColor(value, true)
-                      : "var(--ax-border-neutral-subtle)",
-                    ["--lumi-nps-font-weight" as string]: isActive ? 700 : 500,
-                  }}
-                >
-                  {value}
-                </button>
-              );
-            })}
-          </Box>
-          <HStack justify="space-between" style={{ width: "100%" }}>
-            <BodyShort
-              id={lowLabelId}
-              size="small"
-              style={{ color: "var(--ax-text-neutral-subtle)" }}
-            >
-              {lowLabel}
-            </BodyShort>
-            <BodyShort
-              id={highLabelId}
-              size="small"
-              style={{ color: "var(--ax-text-neutral-subtle)" }}
-            >
-              {highLabel}
-            </BodyShort>
-          </HStack>
-        </VStack>
-      )}
+            {lowLabel}
+          </BodyShort>
+          <BodyShort
+            id={highLabelId}
+            size="small"
+            style={{ color: "var(--ax-text-neutral-subtle)" }}
+          >
+            {highLabel}
+          </BodyShort>
+        </HStack>
+      </VStack>
     </RatingFieldset>
   );
 }
