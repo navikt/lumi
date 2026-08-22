@@ -10,6 +10,9 @@ This project follows SemVer.
 
 ### Fixed
 
+- The published stylesheet now contains only `lumi-`-namespaced selectors.
+  Unused CSS Module output previously leaked generic selectors such as
+  `.container`, `.header`, `.panel` and `.active` into consumer applications.
 - Star-rating icons now keep a stable pointer target while hover and focus
   feedback changes. In Chromium, swapping the icon element during a real
   pointer interaction could leave the star focused but unchecked, so a

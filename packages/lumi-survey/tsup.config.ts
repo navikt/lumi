@@ -7,7 +7,6 @@ export default defineConfig({
   clean: true,
   external: ["@navikt/ds-react", "@navikt/aksel-icons"],
   loader: {
-    ".module.css": "local-css",
     ".css": "css",
   },
 });

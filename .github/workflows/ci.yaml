@@ -47,6 +47,8 @@ jobs:
               - 'packages/**'
               - 'scripts/check-lumi-survey-release-drift.mjs'
               - 'scripts/check-lumi-survey-release-drift.test.mjs'
+              - 'scripts/verify-lumi-survey-package.mjs'
+              - 'scripts/verify-lumi-survey-package.test.mjs'
               - 'scripts/verify-lumi-survey-consumer.sh'
               - 'scripts/fixtures/lumi-survey-consumer/**'
             api:
