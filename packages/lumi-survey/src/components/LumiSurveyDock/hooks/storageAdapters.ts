@@ -1,17 +1,15 @@
 import {
   readConsentValue,
   removeConsentValue,
+  type StorageMutationResult,
   writeConsentValue,
 } from "../../shared/consentStorage.js";
 import type { StorageStrategy } from "../propTypes.js";
 
 export interface StorageAdapter {
   read(key: string): Promise<string | null>;
-  write(
-    key: string,
-    value: string,
-  ): Promise<{ persisted: boolean; allowed: boolean; error?: unknown }>;
-  remove(key: string): Promise<void>;
+  write(key: string, value: string): Promise<StorageMutationResult>;
+  remove(key: string): Promise<StorageMutationResult>;
 }
 
 // Simple localStorage wrapper
@@ -24,25 +22,22 @@ const localStorageAdapter: StorageAdapter = {
       return null;
     }
   },
-  async write(
-    key: string,
-    value: string,
-  ): Promise<{ persisted: boolean; allowed: boolean; error?: unknown }> {
-    if (typeof window === "undefined")
-      return { persisted: false, allowed: false };
+  async write(key: string, value: string): Promise<StorageMutationResult> {
+    if (typeof window === "undefined") return { outcome: "skipped" };
     try {
       window.localStorage.setItem(key, value);
-      return { persisted: true, allowed: true };
+      return { outcome: "applied" };
     } catch (error) {
-      return { persisted: false, allowed: false, error };
+      return { outcome: "failed", error };
     }
   },
-  async remove(key: string): Promise<void> {
-    if (typeof window === "undefined") return;
+  async remove(key: string): Promise<StorageMutationResult> {
+    if (typeof window === "undefined") return { outcome: "skipped" };
     try {
       window.localStorage.removeItem(key);
-    } catch {
-      // ignore
+      return { outcome: "applied" };
+    } catch (error) {
+      return { outcome: "failed", error };
     }
   },
 };
@@ -52,15 +47,11 @@ const noopStorageAdapter: StorageAdapter = {
   async read(): Promise<string | null> {
     return null;
   },
-  async write(): Promise<{
-    persisted: boolean;
-    allowed: boolean;
-    error?: unknown;
-  }> {
-    return { persisted: false, allowed: true };
+  async write(): Promise<StorageMutationResult> {
+    return { outcome: "skipped" };
   },
-  async remove(): Promise<void> {
-    // no-op
+  async remove(): Promise<StorageMutationResult> {
+    return { outcome: "skipped" };
   },
 };
 

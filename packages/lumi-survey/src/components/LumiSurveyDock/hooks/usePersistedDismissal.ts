@@ -88,6 +88,14 @@ export const usePersistedDismissal = (
   eventsRef.current = events;
   const viewedSurveyIdRef = useRef<string | null>(null);
 
+  const notifyPersistenceFailure = useCallback((cause: unknown) => {
+    try {
+      eventsRef.current?.onDismissalPersistFailed?.(cause);
+    } catch {
+      // Consumer event handlers must not reject detached persistence work.
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -121,8 +129,14 @@ export const usePersistedDismissal = (
       }
 
       if (isResumeExpired(parsed.resumeAt ?? null)) {
-        await storageAdapter.remove(storageKey);
-        if (!cancelled && !userInteractedRef.current) {
+        const result = await storageAdapter.remove(storageKey);
+        if (cancelled) {
+          return;
+        }
+        if (result.outcome === "failed") {
+          notifyPersistenceFailure(result.error);
+        }
+        if (!userInteractedRef.current) {
           setDismissed(!initialOpen);
           setShouldHideCompletely(false);
         }
@@ -142,7 +156,7 @@ export const usePersistedDismissal = (
     return () => {
       cancelled = true;
     };
-  }, [initialOpen, storageKey, storageAdapter]);
+  }, [initialOpen, notifyPersistenceFailure, storageKey, storageAdapter]);
 
   useEffect(() => {
     if (dismissed || !viewEnabled) {
@@ -177,27 +191,34 @@ export const usePersistedDismissal = (
           hideCompletely: hideCompletely ?? false,
         };
 
+        let result: Awaited<ReturnType<typeof storageAdapter.write>>;
         try {
-          const result = await storageAdapter.write(
+          result = await storageAdapter.write(
             storageKey,
             JSON.stringify(payload),
           );
-          if (result.allowed && !result.persisted) {
-            eventsRef.current?.onDismissalPersistFailed?.(result.error);
-          }
         } catch (persistError) {
-          eventsRef.current?.onDismissalPersistFailed?.(persistError);
+          notifyPersistenceFailure(persistError);
+          return;
+        }
+        if (result.outcome === "failed") {
+          notifyPersistenceFailure(result.error);
         }
         return;
       }
 
+      let result: Awaited<ReturnType<typeof storageAdapter.remove>>;
       try {
-        await storageAdapter.remove(storageKey);
+        result = await storageAdapter.remove(storageKey);
       } catch (persistError) {
-        eventsRef.current?.onDismissalPersistFailed?.(persistError);
+        notifyPersistenceFailure(persistError);
+        return;
+      }
+      if (result.outcome === "failed") {
+        notifyPersistenceFailure(result.error);
       }
     },
-    [dismissCooldownDays, storageKey, storageAdapter],
+    [dismissCooldownDays, notifyPersistenceFailure, storageKey, storageAdapter],
   );
 
   const closeDock = useCallback(
