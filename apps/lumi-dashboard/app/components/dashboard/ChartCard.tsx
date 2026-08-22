@@ -27,7 +27,9 @@ export function ChartCard({
     <DashboardCard padding={{ xs: "space-16", md: "space-24" }}>
       <VStack gap="space-16">
         <VStack gap="space-4">
-          <Heading size="small">{title}</Heading>
+          <Heading size="small" level="2">
+            {title}
+          </Heading>
           {subtitle && <span className={styles.subtitle}>{subtitle}</span>}
         </VStack>
         <div className={chartHeightClass}>{children}</div>

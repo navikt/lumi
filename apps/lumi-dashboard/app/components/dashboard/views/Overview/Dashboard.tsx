@@ -23,7 +23,9 @@ export function OverviewDashboard() {
       <DashboardGrid columns={{ xs: 1, md: 3 }}>
         <DashboardCard padding={{ xs: "space-16", md: "space-24" }}>
           <VStack gap="space-16">
-            <Heading size="small">Tilbakemeldinger per app</Heading>
+            <Heading size="small" level="2">
+              Tilbakemeldinger per app
+            </Heading>
             <div className={styles.chartContainer}>
               <TopAppsChart />
             </div>
@@ -32,7 +34,9 @@ export function OverviewDashboard() {
 
         <DashboardCard padding={{ xs: "space-16", md: "space-24" }}>
           <VStack gap="space-16">
-            <Heading size="small">Enheter</Heading>
+            <Heading size="small" level="2">
+              Enheter
+            </Heading>
             <div className={styles.chartContainer}>
               <DeviceBreakdownChart showScreenResolution={false} />
             </div>
@@ -41,7 +45,9 @@ export function OverviewDashboard() {
 
         <DashboardCard padding={{ xs: "space-16", md: "space-24" }}>
           <VStack gap="space-16">
-            <Heading size="small">Survey-typer</Heading>
+            <Heading size="small" level="2">
+              Survey-typer
+            </Heading>
             <div className={styles.chartContainer}>
               <SurveyTypeDistribution height="100%" />
             </div>

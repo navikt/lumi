@@ -123,7 +123,9 @@ export function TopTasksExport({ data, surveyId }: TopTasksExportProps) {
           <span className={styles.headerIcon}>
             <DownloadIcon fontSize="1.25rem" aria-hidden />
           </span>
-          <Heading size="small">Eksporter data</Heading>
+          <Heading size="small" level="2">
+            Eksporter data
+          </Heading>
         </HStack>
         <BodyShort size="small" textColor="subtle" className={styles.introText}>
           Last ned Top Tasks data for videre analyse

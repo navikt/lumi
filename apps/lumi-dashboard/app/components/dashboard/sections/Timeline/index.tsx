@@ -29,7 +29,9 @@ export function TimelineSection({
   return (
     <DashboardCard padding={{ xs: "space-12", md: "space-16" }}>
       <VStack gap="space-12">
-        <Heading size="small">{title}</Heading>
+        <Heading size="small" level="2">
+          {title}
+        </Heading>
         <div className={styles.chartContainer}>
           {variant === "topTasks" ? (
             <TopTasksTimelineChart />

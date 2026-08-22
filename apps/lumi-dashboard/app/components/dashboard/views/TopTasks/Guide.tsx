@@ -28,7 +28,9 @@ export function TopTasksGuide() {
           <span className={styles.headerIcon}>
             <InformationIcon fontSize="1.25rem" aria-hidden />
           </span>
-          <Heading size="small">Top Tasks Guide</Heading>
+          <Heading size="small" level="2">
+            Top Tasks Guide
+          </Heading>
         </HStack>
         <BodyShort size="small" textColor="subtle" className={styles.introText}>
           Forstå metodikken og metrikker

@@ -145,3 +145,71 @@ test.describe("Screen Reader Announcements", () => {
     expect(header).toBeGreaterThan(0);
   });
 });
+
+test.describe("Heading hierarchy", () => {
+  const dashboardViews = [
+    ["aggregert dashboard", "/?fromDate=2000-01-01", "Vurderingsfordeling"],
+    [
+      "vurderingsdashboard",
+      "/?surveyId=survey-vurdering&fromDate=2000-01-01",
+      "Antall tilbakemeldinger",
+    ],
+    [
+      "custom-dashboard",
+      "/?surveyId=survey-custom&fromDate=2000-01-01",
+      "Antall tilbakemeldinger",
+    ],
+    [
+      "Top Tasks-dashboard",
+      "/?surveyId=survey-top-tasks&fromDate=2000-01-01",
+      "Oppgavekvadrant",
+    ],
+    [
+      "Discovery-dashboard",
+      "/?surveyId=survey-discovery&fromDate=2000-01-01",
+      "Det brukerne prøver å gjøre",
+    ],
+    [
+      "Task Priority-dashboard",
+      "/?surveyId=survey-task-priority&fromDate=2000-01-01",
+      'Task Priority - "Long Neck"',
+    ],
+  ] as const;
+
+  for (const [name, url, expectedSection] of dashboardViews) {
+    test(`${name} has one page heading without level skips`, async ({
+      page,
+    }) => {
+      await page.goto(url);
+      await page.waitForLoadState("networkidle");
+      await expect(
+        page.getByRole("heading", {
+          level: 2,
+          name: expectedSection,
+          exact: true,
+        }),
+      ).toBeVisible({ timeout: 15000 });
+
+      const headings = page.locator(
+        "main h1, main h2, main h3, main h4, main h5, main h6",
+      );
+      const levels = await headings.evaluateAll((elements) =>
+        elements
+          // Closed Aksel modals stay mounted, but are not exposed visually or
+          // in the accessibility tree and are not part of the page hierarchy.
+          .filter((element) => element.getClientRects().length > 0)
+          .map((element) => Number(element.tagName.slice(1))),
+      );
+
+      expect(levels.filter((level) => level === 1)).toHaveLength(1);
+      expect(levels[0]).toBe(1);
+
+      for (let index = 1; index < levels.length; index++) {
+        expect(
+          levels[index],
+          `${name} har nivårekkefølgen ${levels.join(" → ")}`,
+        ).toBeLessThanOrEqual(levels[index - 1] + 1);
+      }
+    });
+  }
+});

@@ -143,7 +143,9 @@ export function RatingDashboard({
           <DashboardCard padding={{ xs: "space-12", md: "space-16" }}>
             <VStack gap="space-12">
               <HStack justify="space-between" align="center" wrap gap="space-8">
-                <Heading size="small">Gjennomsnittlig vurdering</Heading>
+                <Heading size="small" level="2">
+                  Gjennomsnittlig vurdering
+                </Heading>
                 <Button
                   variant="secondary"
                   size="small"

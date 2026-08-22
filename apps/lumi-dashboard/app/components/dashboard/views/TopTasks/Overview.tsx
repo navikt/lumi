@@ -82,7 +82,9 @@ export function TopTasksOverview() {
       <TimelineSection title="Suksessrate over tid" variant="topTasks" />
       <DashboardCard padding={{ xs: "space-16", md: "space-24" }}>
         <Box paddingBlock="space-0 space-16">
-          <Heading size="small">Oppgavekvadrant</Heading>
+          <Heading size="small" level="2">
+            Oppgavekvadrant
+          </Heading>
           <BodyShort size="small" className={styles.quadrantDescription}>
             Volum vs suksessrate. Klikk på et punkt for å filtrere hele
             dashboardet.
@@ -101,7 +103,7 @@ export function TopTasksOverview() {
           borderWidth="0 0 1 0"
           borderColor="neutral-subtle"
         >
-          <Heading size="small">
+          <Heading size="small" level="2">
             {data.questionText ? `Spørsmål: ${data.questionText}` : "Spørsmål"}
           </Heading>
         </Box>
@@ -158,7 +160,7 @@ export function TopTasksOverview() {
                     content={
                       hasBlockers ? (
                         <div className={styles.expandableContent}>
-                          <Heading size="xsmall" level="4" spacing>
+                          <Heading size="xsmall" level="3" spacing>
                             Årsaker til at oppgaven stoppet
                           </Heading>
                           <VStack gap="space-12">

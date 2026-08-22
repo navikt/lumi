@@ -64,7 +64,9 @@ export function TaskPriorityAnalysis({ data }: TaskPriorityAnalysisProps) {
             <span className={styles.headerIcon}>
               <TasklistIcon fontSize="1.25rem" aria-hidden />
             </span>
-            <Heading size="small">Task Priority - "Long Neck"</Heading>
+            <Heading size="small" level="2">
+              Task Priority - "Long Neck"
+            </Heading>
           </HStack>
           <BodyShort
             size="small"

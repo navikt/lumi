@@ -38,7 +38,9 @@ function FeedbackPage() {
         as="main"
       >
         <VStack gap="space-24">
-          <Heading size="large">Tilbakemeldinger</Heading>
+          <Heading size="large" level="1">
+            Tilbakemeldinger
+          </Heading>
           <FilterBar showDetails />
           <ActiveFiltersChips />
           <FeedbackTable />
