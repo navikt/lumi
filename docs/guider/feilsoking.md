@@ -104,6 +104,30 @@ fra appen din, eller innkommende til Lumi-mottakeren.
    `http://lumi-submission-proxy.team-esyfo`. Se
    [miljøvariablene for alle kombinasjoner](/kom-i-gang/koble-til-backend#_2-sett-miljøvariabler-i-nais).
 
+## 401 eller 404 fra API
+
+**Symptom:** `transport.submit` feiler med HTTP 401 eller 404.
+
+- **401 Unauthorized** betyr vanligvis at tokenet ikke har issueren som
+  endepunktet forventer. TokenX-token skal sendes til
+  `/api/tokenx/v1/feedback`, mens AzureAD-token skal sendes til
+  `/api/azure/v1/feedback`.
+- **404 Not Found** betyr vanligvis at host og sti ikke passer sammen. Dette
+  skjer for eksempel hvis `/api/tokenx/v1/feedback` sendes til
+  `lumi-submission-proxy`, som bare eksponerer AzureAD-endepunktet.
+
+**Sjekk:**
+
+1. Velg miljøblokken som passer auth-type, miljø og Azure-tenant i
+   [backend-guiden](/kom-i-gang/koble-til-backend#_2-sett-miljøvariabler-i-nais).
+2. Kopier `LUMI_API_HOST`, `LUMI_AUDIENCE` og `LUMI_FEEDBACK_PATH` fra den
+   samme blokken. Ikke bland verdier fra ulike blokker.
+3. Verifiser at token exchange bruker `LUMI_AUDIENCE`, og at requesten sendes
+   til `${LUMI_API_HOST}${LUMI_FEEDBACK_PATH}`.
+
+Hvis responsen er **403**, er token og rute normalt funnet, men access policy
+mangler. Følg [403-sjekklisten](#_403-fra-api).
+
 ## Ingen data i dashboard
 
 **Symptom:** Innsending ser ut til å fungere (ingen feil), men data dukker ikke opp i dashboardet.
