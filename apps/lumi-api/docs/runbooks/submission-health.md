@@ -45,11 +45,15 @@ Ved `409 DefinitionConflict` følger du også
 ## Verifikasjon etter retting
 
 1. Kjør `pnpm test:full-chain` lokalt.
-2. Kjør den kontrollerte dev-verifikasjonen med en ny syntetisk survey-ID på
-   formen `lumi-release-verification-YYYYMMDD-<kort-id>`.
-3. Bekreft `created` i metrikken for riktig kanal.
-4. Bekreft at svaret er synlig i dev-dashboardet.
-5. Observer `failed` og `rejected` i minst 15 minutter før neste migrering.
+2. Kjør `/release-verification` i dev. Den oppretter en ny syntetisk survey-ID
+   på formen `lumi-release-verification-YYYYMMDD-<kort-id>`.
+3. Bekreft team-preflighten og send startproben. Dashboardet leser den eksakte
+   receipt-raden tilbake fra Postgres via analytics-API-et.
+4. Etter 15 minutter sender du sluttproben. Del rapportlenken eller last ned
+   JSON-beviset når den kontrollerte dev-kjeden er `passed`.
+5. Global feilrate og alarmer vurderes separat ved en faktisk hendelse. De er
+   ikke del av den databaseforankrede release-rapporten, som eksplisitt viser
+   `globalAzureHealth: not-assessed`.
 
 Syntetiske survey-ID-er skal aldri gjenbrukes med en annen struktur. Dataene
 kan arkiveres i dashboardet etter testen; de skal ikke slettes som del av

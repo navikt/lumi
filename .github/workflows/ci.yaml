@@ -233,6 +233,14 @@ jobs:
         run: pnpm run test:full-chain
         env:
           NPM_AUTH_TOKEN: ${{ github.token }}
+      - name: Upload full-chain evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: full-chain-release-verification-${{ github.run_id }}
+          path: apps/lumi-dashboard/test-results/full-chain
+          if-no-files-found: warn
+          retention-days: 14
 
   docs:
     name: Build docs
