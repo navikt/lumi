@@ -14,16 +14,16 @@ Widgeten samler automatisk disse verdiene fra browseren:
 | :--- | :--- | :--- |
 | `viewport` | `{ width, height }` | Nettleservinduets dimensjoner |
 | `screenResolution` | `{ width, height }` | Skjermens dimensjoner rapportert av nettleseren |
-| `deviceType` | `"mobile" \| "tablet" \| "desktop"` | Basert på viewport-bredde (ikke fysisk enhet) |
+| `deviceType` | `"mobile" \| "tablet" \| "desktop"` | Bruker nettleserens device hints og user agent først, med viewport-bredde som fallback |
 | `userAgent` | `string` | Nettleserens user agent-streng |
 
-::: info deviceType er viewport-basert
-`deviceType` utledes fra viewport-bredde, ikke den fysiske enheten. Hvis DevTools er åpent, kan viewporten bli smalere enn forventet.
+::: info Hvordan deviceType bestemmes
+`deviceType` er en best-effort-klassifisering. Widgeten prioriterer kjente nettbrettsignaler, browserens Client Hints og mønstre i user agent før viewport-bredde brukes som fallback. I Surveyverkstedets innebygde preview klassifiseres `deviceType` bevisst fra `behavior.simulatedViewport`, slik at forhåndsvisningen følger den simulerte bredden i stedet for maskinen du bruker.
 :::
 
 ### Hva som *ikke* samles inn automatisk
 
-`url` og `pathname` samles **ikke** automatisk. Dette er bevisst — dynamiske ruter kan inneholde identifikatorer (f.eks. `/sak/12345`).
+`url` samles **aldri** automatisk. `pathname` samles ikke som standard, men kan velges inn med `collectLocation`. Dette er bevisst — dynamiske ruter kan inneholde identifikatorer (f.eks. `/sak/12345`).
 
 ## Valgfri innsamling: `collectLocation`
 

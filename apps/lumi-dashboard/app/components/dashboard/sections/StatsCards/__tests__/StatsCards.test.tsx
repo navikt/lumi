@@ -38,6 +38,27 @@ beforeEach(() => {
 });
 
 describe("StatsCards", () => {
+  it("describes a historical period with its actual dates", () => {
+    givenSearchParams({ surveyId: "survey-1" });
+    givenStats({
+      totalCount: 12,
+      countWithText: 4,
+      period: {
+        fromDate: "2024-01-05",
+        toDate: "2024-03-20",
+        days: 76,
+      },
+      privacy: { masked: false, threshold: 5 },
+    });
+
+    render(<StatsCards />);
+
+    expect(
+      screen.getByText("I perioden 05.01.2024–20.03.2024"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Siste 76 dager")).not.toBeInTheDocument();
+  });
+
   it("renders detailed survey stats using fieldStats when surveyId is set", () => {
     givenSearchParams({ surveyId: "survey-1" });
     givenStats({

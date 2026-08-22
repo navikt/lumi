@@ -10,6 +10,7 @@ import { DashboardCard, DashboardGrid } from "~/components/dashboard";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import type { RatingStats, TextStats } from "~/types/api";
+import { formatDateLong } from "~/utils/dateUtils";
 import {
   calculateThumbsPositiveRate,
   getRatingScaleLabel,
@@ -62,6 +63,10 @@ export function StatsCards({ showRating = false }: StatsCardsProps) {
 
   const totalCount = stats?.totalCount || 0;
   const periodDays = stats?.period?.days || 30;
+  const periodSubtitle =
+    stats?.period?.fromDate && stats.period.toDate
+      ? `I perioden ${formatDateLong(stats.period.fromDate)}–${formatDateLong(stats.period.toDate)}`
+      : "I valgt periode";
   const countWithText = stats?.countWithText || 0;
   const textPercentage =
     totalCount > 0 ? Math.round((countWithText / totalCount) * 100) : 0;
@@ -156,7 +161,7 @@ export function StatsCards({ showRating = false }: StatsCardsProps) {
           icon={<ChatIcon fontSize="1.25rem" aria-hidden />}
           label="Tilbakemeldinger"
           value={isPrivacyMasked ? "–" : totalCount.toLocaleString("no-NO")}
-          subtitle={`Siste ${periodDays} dager`}
+          subtitle={periodSubtitle}
         />
 
         {showRating && (
@@ -199,7 +204,7 @@ export function StatsCards({ showRating = false }: StatsCardsProps) {
         icon={<ChatIcon fontSize="1.25rem" aria-hidden />}
         label="Tilbakemeldinger"
         value={totalCount.toLocaleString("no-NO")}
-        subtitle={`Siste ${periodDays} dager`}
+        subtitle={periodSubtitle}
       />
 
       <StatCard
