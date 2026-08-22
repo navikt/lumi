@@ -34,6 +34,9 @@ const {
     },
     error: null as Error | null,
     isPending: false,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn().mockResolvedValue(undefined),
   },
   mockSetParam: vi.fn(),
   mockSetParams: vi.fn(),
@@ -156,6 +159,29 @@ describe("FeedbackTable empty states", () => {
     };
     mockFeedback.error = null;
     mockFeedback.isPending = false;
+    mockFeedback.isError = false;
+    mockFeedback.isFetching = false;
+  });
+
+  it("shows an explicit error instead of an empty state and can retry", () => {
+    mockBootstrap.data = bootstrapWithData();
+    mockFeedback.error = new Error("API unavailable");
+    mockFeedback.isError = true;
+    mockFeedback.refetch.mockImplementationOnce(
+      () => new Promise<never>(() => undefined),
+    );
+
+    render(<FeedbackTable />);
+
+    expect(
+      screen.getByText("Kunne ikke hente tilbakemeldinger"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Ingen tilbakemeldinger/),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Prøv igjen" }));
+    expect(mockFeedback.refetch).toHaveBeenCalledOnce();
   });
 
   it("shows onboarding guidance when the team has no data at all", () => {

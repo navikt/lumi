@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveDashboardPeriod } from "~/utils/dashboardPeriod";
 import { FilterBar } from "../index";
 
-const { mockParams, mockSetParams, mockResetParams, mockBootstrap } =
+const { mockParams, mockSetParams, mockResetParams, mockBootstrap, mockStats } =
   vi.hoisted(() => ({
     mockParams: {
       team: "team-test",
@@ -20,6 +20,16 @@ const { mockParams, mockSetParams, mockResetParams, mockBootstrap } =
     mockBootstrap: {
       data: undefined as unknown,
       isPending: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn().mockResolvedValue(undefined),
+    },
+    mockStats: {
+      data: undefined as unknown,
+      isPending: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn().mockResolvedValue(undefined),
     },
   }));
 
@@ -93,7 +103,7 @@ function sharedSurveyBootstrapData() {
 }
 
 vi.mock("~/hooks/useStats", () => ({
-  useStats: () => ({ data: undefined, isPending: false }),
+  useStats: () => mockStats,
 }));
 
 vi.mock("~/hooks/useThemes", () => ({
@@ -111,8 +121,34 @@ describe("FilterBar archive state", () => {
     mockParams.query = undefined;
     mockBootstrap.data = loadedBootstrapData();
     mockBootstrap.isPending = false;
+    mockBootstrap.isError = false;
+    mockBootstrap.isFetching = false;
+    mockStats.isError = false;
+    mockStats.isFetching = false;
     mockSetParams.mockClear();
     mockResetParams.mockClear();
+    mockBootstrap.refetch.mockClear();
+    mockStats.refetch.mockClear();
+  });
+
+  it("shows an explicit error instead of empty filters and retries the failed query", () => {
+    mockBootstrap.isError = true;
+    mockBootstrap.refetch.mockImplementationOnce(
+      () => new Promise<never>(() => undefined),
+    );
+
+    render(<FilterBar />);
+
+    expect(screen.getByText("Kunne ikke hente filtre")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("combobox", { name: "App" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Prøv igjen" }));
+
+    expect(mockBootstrap.refetch).toHaveBeenCalledOnce();
+    expect(mockStats.refetch).not.toHaveBeenCalled();
+    expect(mockSetParams).not.toHaveBeenCalled();
   });
 
   it("does not clear an app filter while bootstrap is still loading", () => {

@@ -1,4 +1,5 @@
 import { SPECIALIZED_SURVEY_FIELD_IDS } from "@navikt/lumi-survey";
+import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { TextAnalysis } from "~/components/shared/TextAnalysis";
 import { useBlockerStats } from "~/hooks/useBlockerStats";
 import type { BlockerResponse } from "~/types/api";
@@ -14,6 +15,26 @@ interface BlockerAnalysisProps {
 export function BlockerAnalysis({ data: providedData }: BlockerAnalysisProps) {
   const blockerQuery = useBlockerStats();
 
+  return (
+    <DataFetchBoundary
+      title="Kunne ikke hente hindringer"
+      queries={providedData ? [] : [blockerQuery]}
+    >
+      <BlockerAnalysisContent
+        providedData={providedData}
+        blockerQuery={blockerQuery}
+      />
+    </DataFetchBoundary>
+  );
+}
+
+function BlockerAnalysisContent({
+  providedData,
+  blockerQuery,
+}: {
+  providedData?: BlockerResponse;
+  blockerQuery: ReturnType<typeof useBlockerStats>;
+}) {
   // Use provided data or fetch from hook
   const data = providedData ?? blockerQuery.data;
   const isLoading =

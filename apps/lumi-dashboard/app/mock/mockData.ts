@@ -63,7 +63,23 @@ export {
 
 function generateFieldStatsOrderingSurveyData(count: number): FeedbackDto[] {
   const items: FeedbackDto[] = [];
-  const now = new Date();
+  const osloDateParts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Oslo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+    .formatToParts(new Date())
+    .reduce<Record<string, string>>((parts, part) => {
+      if (part.type !== "literal") parts[part.type] = part.value;
+      return parts;
+    }, {});
+  // Mock date filters compare ISO strings to calendar-date query params. Keep
+  // this E2E-only survey safely inside today's Oslo date, including the hours
+  // after Oslo midnight but before UTC midnight.
+  const now = new Date(
+    `${osloDateParts.year}-${osloDateParts.month}-${osloDateParts.day}T12:00:00Z`,
+  );
 
   for (let i = 0; i < count; i++) {
     const minutesAgo = i * 7;

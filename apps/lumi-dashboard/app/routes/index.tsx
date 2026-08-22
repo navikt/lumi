@@ -9,6 +9,7 @@ import { RatingDashboard } from "~/components/dashboard/views/Rating/Dashboard";
 import { TaskPriorityDashboard } from "~/components/dashboard/views/TaskPriority/Dashboard";
 import { TopTasksOverview } from "~/components/dashboard/views/TopTasks/Overview";
 import { ActiveFiltersChips } from "~/components/shared/ActiveFiltersChips";
+import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { FilterBar } from "~/components/shared/FilterBar";
 import { Header } from "~/components/shared/Header";
 import { PrivacyMaskedNotice } from "~/components/shared/PrivacyMaskedNotice";
@@ -106,7 +107,8 @@ export const Route = createFileRoute("/")({
 
 function DashboardPage() {
   const { params, setParams } = useSearchParams();
-  const { data: stats, isPending } = useStats();
+  const statsQuery = useStats();
+  const { data: stats, isPending } = statsQuery;
   const hasSurveyFilter = !!params.surveyId;
   const surveyType = stats?.surveyType;
   const isPrivacyMasked = stats?.privacy?.masked;
@@ -180,13 +182,18 @@ function DashboardPage() {
             </HStack>
           </HStack>
 
-          <FilterBar />
+          <DataFetchBoundary
+            title="Kunne ikke hente dashboarddata"
+            queries={[statsQuery]}
+          >
+            <FilterBar />
 
-          {/* Active drill-down filters (global) */}
-          <ActiveFiltersChips />
+            {/* Active drill-down filters (global) */}
+            <ActiveFiltersChips />
 
-          {/* Type-specific dashboard view */}
-          {renderDashboardContent()}
+            {/* Type-specific dashboard view */}
+            {renderDashboardContent()}
+          </DataFetchBoundary>
         </VStack>
       </Box>
     </>

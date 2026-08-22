@@ -11,6 +11,7 @@ import {
 import { ChartEmptyState } from "~/components/shared/Charts/ChartEmptyState";
 import { ChartLoadingState } from "~/components/shared/Charts/ChartLoadingState";
 import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
+import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { useTheme } from "~/context/ThemeContext";
 import { useSurveyTypeDistribution } from "~/hooks/useSurveyTypeDistribution";
 import type { SurveyType } from "~/types/api";
@@ -62,7 +63,28 @@ function SurveyTypeBarShape(props: SurveyTypeBarShapeProps) {
 export function SurveyTypeDistribution({
   height = "100%",
 }: SurveyTypeDistributionProps) {
-  const { data: distribution, isPending } = useSurveyTypeDistribution();
+  const distributionQuery = useSurveyTypeDistribution();
+
+  return (
+    <DataFetchBoundary
+      title="Kunne ikke hente surveytyper"
+      queries={[distributionQuery]}
+    >
+      <SurveyTypeDistributionContent
+        height={height}
+        distributionQuery={distributionQuery}
+      />
+    </DataFetchBoundary>
+  );
+}
+
+function SurveyTypeDistributionContent({
+  height,
+  distributionQuery,
+}: Required<SurveyTypeDistributionProps> & {
+  distributionQuery: ReturnType<typeof useSurveyTypeDistribution>;
+}) {
+  const { data: distribution, isPending } = distributionQuery;
   const { theme } = useTheme();
 
   const colors = theme === "light" ? CHART_COLORS_LIGHT : CHART_COLORS;

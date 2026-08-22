@@ -1,6 +1,7 @@
 import { SegmentBreakdown } from "~/components/dashboard/SegmentBreakdown";
 import { DeviceBreakdownSection } from "~/components/dashboard/sections/FieldStats/DeviceBreakdownSection";
 import { TimelineSection } from "~/components/dashboard/sections/Timeline";
+import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
 import { useTaskPriorityStats } from "~/hooks/useTaskPriorityStats";
@@ -11,13 +12,17 @@ import { Skeleton as TaskPriorityAnalysisSkeleton } from "./Skeleton";
  * Task Priority Dashboard - Long Neck chart, vote distribution
  */
 export function TaskPriorityDashboard() {
-  const { data, isPending } = useTaskPriorityStats();
+  const taskPriorityQuery = useTaskPriorityStats();
+  const { data, isPending } = taskPriorityQuery;
   const { params } = useSearchParams();
   const { addSegment } = useSegmentFilter();
   const surveyId = params.surveyId;
 
   return (
-    <>
+    <DataFetchBoundary
+      title="Kunne ikke hente Task Priority-data"
+      queries={[taskPriorityQuery]}
+    >
       {/* Task Priority Analysis - show skeleton while loading */}
       {isPending ? (
         <TaskPriorityAnalysisSkeleton />
@@ -35,6 +40,6 @@ export function TaskPriorityDashboard() {
 
       {/* Device breakdown */}
       <DeviceBreakdownSection />
-    </>
+    </DataFetchBoundary>
   );
 }
