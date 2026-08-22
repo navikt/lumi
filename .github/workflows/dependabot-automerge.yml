@@ -9,6 +9,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: navikt/teamesyfo-github-actions-workflows/.github/workflows/dependabot-automerge.yaml@main
+    uses: navikt/teamesyfo-github-actions-workflows/.github/workflows/dependabot-automerge.yaml@0516def23d1fa6a69736c970bf64ba31bec10749 # main
     secrets:
       APP_PRIVATE_KEY: ${{ secrets.AUTOMERGE_APP_PRIVATE_KEY }}
