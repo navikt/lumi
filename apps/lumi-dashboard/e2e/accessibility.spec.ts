@@ -3,64 +3,40 @@ import { expect, test } from "@playwright/test";
 
 /**
  * Accessibility tests using axe-core.
- * Scans all main routes for WCAG violations.
+ * Scans stable landing routes for WCAG violations. Stateful Surveyverksted
+ * editor and revision screens are scanned after setup in survey-workshop.spec.ts.
  */
 
 test.describe("Accessibility - WCAG Compliance", () => {
-  test("Dashboard page has no critical a11y violations", async ({ page }) => {
-    await page.goto("/");
-    await page.waitForLoadState("networkidle");
+  const routes = [
+    ["Dashboard", "/"],
+    ["Feedback", "/feedback"],
+    ["Export", "/export"],
+    ["Surveyverksted", "/surveyverksted"],
+  ] as const;
 
-    const results = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .analyze();
+  for (const [name, route] of routes) {
+    test(`${name} page has no WCAG A/AA violations`, async ({ page }) => {
+      await page.goto(route);
+      await page.waitForLoadState("networkidle");
 
-    // Log violations for debugging
-    if (results.violations.length > 0) {
-      console.log(
-        "Dashboard a11y violations:",
-        JSON.stringify(results.violations, null, 2),
-      );
-    }
+      const results = await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+        // WCAG 1.4.3 exempts pure decoration. Axe cannot infer that the
+        // aria-hidden workshop masthead number is visual decoration only.
+        .exclude('[data-a11y-decorative="survey-workshop-masthead-mark"]')
+        .analyze();
 
-    expect(results.violations).toEqual([]);
-  });
+      if (results.violations.length > 0) {
+        console.log(
+          `${name} a11y violations:`,
+          JSON.stringify(results.violations, null, 2),
+        );
+      }
 
-  test("Feedback page has no critical a11y violations", async ({ page }) => {
-    await page.goto("/feedback");
-    await page.waitForLoadState("networkidle");
-
-    const results = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .analyze();
-
-    if (results.violations.length > 0) {
-      console.log(
-        "Feedback a11y violations:",
-        JSON.stringify(results.violations, null, 2),
-      );
-    }
-
-    expect(results.violations).toEqual([]);
-  });
-
-  test("Export page has no critical a11y violations", async ({ page }) => {
-    await page.goto("/export");
-    await page.waitForLoadState("networkidle");
-
-    const results = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .analyze();
-
-    if (results.violations.length > 0) {
-      console.log(
-        "Export a11y violations:",
-        JSON.stringify(results.violations, null, 2),
-      );
-    }
-
-    expect(results.violations).toEqual([]);
-  });
+      expect(results.violations).toEqual([]);
+    });
+  }
 });
 
 test.describe("Keyboard Navigation", () => {

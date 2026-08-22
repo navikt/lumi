@@ -296,7 +296,11 @@ function SurveyWorkshopIndex() {
               en app.
             </BodyLong>
           </VStack>
-          <div aria-hidden className={styles.mastheadMark}>
+          <div
+            aria-hidden
+            data-a11y-decorative="survey-workshop-masthead-mark"
+            className={styles.mastheadMark}
+          >
             01
           </div>
         </div>
