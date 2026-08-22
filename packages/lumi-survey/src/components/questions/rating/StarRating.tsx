@@ -6,7 +6,6 @@ import type {
   LumiSurveyAnswerValue,
   StarRatingQuestion,
 } from "../../../core/types.js";
-import styles from "./emo.module.css";
 import { RatingFieldset } from "./RatingFieldset.js";
 import { useRatingRadioGroup } from "./useRatingRadioGroup.js";
 import "./emo.fallback.css";
@@ -92,7 +91,7 @@ export function StarRating({
       isMissing={isMissing}
       disabled={disabled}
       className={className}
-      fieldsetClassName={styles.fieldset ?? "lumi-survey-rating__fieldset"}
+      fieldsetClassName="lumi-survey-rating__fieldset"
       ariaLabelledBy={ariaLabelledBy}
       ariaDescribedBy={ariaDescribedBy}
       hidePrompt={hidePrompt}

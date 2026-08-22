@@ -5,8 +5,6 @@ import type {
   LumiSurveyAnswerValue,
   NpsRatingQuestion,
 } from "../../../core/types.js";
-import styles from "./emo.module.css";
-import npsStyles from "./nps.module.css";
 import { RatingFieldset } from "./RatingFieldset.js";
 import { useRatingRadioGroup } from "./useRatingRadioGroup.js";
 import "./emo.fallback.css";
@@ -93,7 +91,7 @@ export function NpsRating({
       isMissing={isMissing}
       disabled={disabled}
       className={className}
-      fieldsetClassName={styles.fieldset ?? "lumi-survey-rating__fieldset"}
+      fieldsetClassName="lumi-survey-rating__fieldset"
       ariaLabelledBy={ariaLabelledBy}
       ariaDescribedBy={groupDescriptionIds}
       hidePrompt={hidePrompt}
@@ -127,9 +125,7 @@ export function NpsRating({
                   onClick={() => handleSelect(value)}
                   disabled={disabled}
                   tabIndex={radioGroup.getTabIndex(value)}
-                  className={
-                    npsStyles.npsButton ?? "lumi-survey-rating__nps-button"
-                  }
+                  className="lumi-survey-rating__nps-button"
                   style={{
                     ["--lumi-nps-bg" as string]: getNpsColor(value, isActive),
                     ["--lumi-nps-border" as string]: getNpsBorderColor(

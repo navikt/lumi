@@ -1,5 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { generate, parse, walk } from "css-tree";
 
 const repoRoot = process.cwd();
 
@@ -57,6 +59,48 @@ function assertCssRuleOmitsProperty(css, selector, property) {
         `packages/lumi-survey/dist/index.css must not set ${property} in ${selector}; use Aksel typography props instead`,
       );
     }
+  }
+}
+
+export function findNonNamespacedCssSelectors(css) {
+  const ast = parse(css);
+  const invalidSelectors = [];
+
+  walk(ast, {
+    visit: "Rule",
+    enter(node) {
+      if (this.atrule?.name.toLowerCase().endsWith("keyframes")) {
+        return;
+      }
+
+      if (node.prelude.type !== "SelectorList") {
+        invalidSelectors.push(
+          generate(node.prelude) || "<unparseable selector>",
+        );
+        return;
+      }
+
+      node.prelude.children.forEach((selectorNode) => {
+        const selector = generate(selectorNode);
+        const isScopedNestedSelector = this.rule && selector.startsWith("&");
+
+        if (!selector.startsWith(".lumi-") && !isScopedNestedSelector) {
+          invalidSelectors.push(selector);
+        }
+      });
+    },
+  });
+
+  return [...new Set(invalidSelectors)];
+}
+
+function assertCssSelectorsAreNamespaced(css) {
+  const invalidSelectors = findNonNamespacedCssSelectors(css);
+
+  if (invalidSelectors.length > 0) {
+    fail(
+      `packages/lumi-survey/dist/index.css contains non-namespaced selectors: ${invalidSelectors.join(", ")}`,
+    );
   }
 }
 
@@ -138,6 +182,7 @@ async function main() {
   await scanFileForForbiddenStrings(distIndexDts);
 
   const distCss = await readText(distIndexCss);
+  assertCssSelectorsAreNamespaced(distCss);
   for (const selector of [
     ".ratingHeading",
     ".ratingDescription",
@@ -150,4 +195,9 @@ async function main() {
   console.log("[verify:lumi-survey] OK");
 }
 
-await main();
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  await main();
+}

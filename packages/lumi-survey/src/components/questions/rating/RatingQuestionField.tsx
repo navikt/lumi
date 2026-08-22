@@ -6,7 +6,6 @@ import type {
   RatingQuestion,
 } from "../../../core/types.js";
 import { EmojiButton } from "./EmojiButton.js";
-import styles from "./emo.module.css";
 import { Glad, Lei, Noytral, Sinna, VeldigGlad } from "./emojies.js";
 import { NpsRating } from "./NpsRating.js";
 import { RatingFieldset } from "./RatingFieldset.js";
@@ -57,19 +56,16 @@ interface EmojiVariant {
 }
 
 const CLASS_NAMES = {
-  row: styles.emojiRow ?? "lumi-survey-rating__row",
-  fieldset: styles.fieldset ?? "lumi-survey-rating__fieldset",
-  button: styles.emobutton ?? "lumi-survey-rating__emoji-button",
-  active: styles.active ?? "lumi-survey-rating__emoji-button--active",
+  row: "lumi-survey-rating__row",
+  fieldset: "lumi-survey-rating__fieldset",
+  button: "lumi-survey-rating__emoji-button",
+  active: "lumi-survey-rating__emoji-button--active",
   variants: {
-    sinna: styles.sinnaButton ?? "lumi-survey-rating__emoji-button--sinna",
-    lei: styles.leiButton ?? "lumi-survey-rating__emoji-button--lei",
-    noytral:
-      styles.noytralButton ?? "lumi-survey-rating__emoji-button--noytral",
-    glad: styles.gladButton ?? "lumi-survey-rating__emoji-button--glad",
-    veldigGlad:
-      styles.veldigGladButton ??
-      "lumi-survey-rating__emoji-button--veldig-glad",
+    sinna: "lumi-survey-rating__emoji-button--sinna",
+    lei: "lumi-survey-rating__emoji-button--lei",
+    noytral: "lumi-survey-rating__emoji-button--noytral",
+    glad: "lumi-survey-rating__emoji-button--glad",
+    veldigGlad: "lumi-survey-rating__emoji-button--veldig-glad",
   },
 } as const;
 
