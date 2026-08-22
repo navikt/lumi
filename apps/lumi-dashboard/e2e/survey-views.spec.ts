@@ -18,6 +18,11 @@ test.describe("Survey Views", () => {
       await expect(
         page.getByRole("heading", { name: "Det som hindrer brukerne" }),
       ).toBeVisible();
+      await expect(
+        page.getByRole("img", {
+          name: /punktdiagram som viser volum og suksessrate for \d+ oppgaver/i,
+        }),
+      ).toBeVisible();
       const blockerPhrase = page
         .getByRole("link", { name: /tilbakemeldinger med uttrykket/i })
         .first();
