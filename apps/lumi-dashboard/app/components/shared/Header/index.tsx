@@ -4,11 +4,50 @@ import {
   PencilWritingIcon,
   TableIcon,
 } from "@navikt/aksel-icons";
-import { Box, Button, Hide, HStack } from "@navikt/ds-react";
-import { Link, useLocation } from "@tanstack/react-router";
+import { Box, Button, type ButtonProps, Hide, HStack } from "@navikt/ds-react";
+import { createLink, Link, useLocation } from "@tanstack/react-router";
+import {
+  type ComponentPropsWithoutRef,
+  forwardRef,
+  type KeyboardEvent,
+  type Ref,
+} from "react";
 import lumiLogo from "~/assets/lumi.png";
 import { ThemeToggle } from "~/components/shared/ThemeToggle";
 import styles from "./Header.module.css";
+
+function keepLinkKeyboardSemantics(event: KeyboardEvent<HTMLAnchorElement>) {
+  // Aksel Button adds Space activation when rendered as another component.
+  // These controls navigate, so keep native link behaviour (Enter only).
+  if (event.key === " ") {
+    event.preventDefault();
+  }
+}
+
+type ButtonAnchorProps = ComponentPropsWithoutRef<"a"> &
+  Pick<ButtonProps, "variant" | "size" | "icon" | "iconPosition">;
+
+// Aksel supports `as="a"` at runtime, but ButtonProps pins DOM event types to
+// HTMLButtonElement. Keep that type bridge local to the custom-link adapter.
+const AkselAnchorButton = Button as unknown as (
+  props: ButtonAnchorProps & { as: "a"; ref?: Ref<HTMLAnchorElement> },
+) => ReturnType<typeof Button>;
+
+const ButtonAnchor = forwardRef<HTMLAnchorElement, ButtonAnchorProps>(
+  function ButtonAnchor(props, ref) {
+    return (
+      <AkselAnchorButton
+        as="a"
+        {...props}
+        ref={ref}
+        role="link"
+        onKeyUp={keepLinkKeyboardSemantics}
+      />
+    );
+  },
+);
+
+const HeaderNavLink = createLink(ButtonAnchor);
 
 export function Header() {
   const logoHeight = 32;
@@ -16,11 +55,6 @@ export function Header() {
   const logoWidth = Math.round((logoHeight * 1920) / 1080);
   const location = useLocation();
   const currentPath = location.pathname;
-
-  const handleResetAndNavigate = () => {
-    // Force navigation to root and clear search params
-    window.location.href = "/";
-  };
 
   // Helper to determine button variant based on active path
   const getVariant = (path: string) => {
@@ -45,11 +79,11 @@ export function Header() {
         className={styles.inner}
       >
         {/* Logo and title */}
-        <button
-          type="button"
-          onClick={handleResetAndNavigate}
+        <Link
+          to="/"
+          search={{}}
           aria-label="Lumi Dashboard - gå til forsiden"
-          className={styles.brandButton}
+          className={styles.brandLink}
         >
           <img
             src={lumiLogo}
@@ -62,63 +96,63 @@ export function Header() {
           <Hide below="sm" asChild>
             <span>Lumi Dashboard</span>
           </Hide>
-        </button>
+        </Link>
 
         {/* Navigation */}
         <HStack gap={{ xs: "space-4", sm: "space-8", md: "space-16" }}>
-          <Link to="/" search={(prev) => prev} aria-label="Dashboard">
-            <Button
-              variant={getVariant("/")}
-              size="small"
-              aria-label="Dashboard"
-              icon={<BarChartIcon aria-hidden />}
-            >
-              {/* Hide button text on mobile, show on tablet+ */}
-              <Hide below="md" asChild>
-                <span>Dashboard</span>
-              </Hide>
-            </Button>
-          </Link>
-          <Link
-            to="/feedback"
-            search={(prev) => prev}
-            aria-label="Tilbakemeldinger"
-          >
-            <Button
-              variant={getVariant("/feedback")}
-              size="small"
-              aria-label="Tilbakemeldinger"
-              icon={<TableIcon aria-hidden />}
-            >
-              <Hide below="md" asChild>
-                <span>Tilbakemeldinger</span>
-              </Hide>
-            </Button>
-          </Link>
-          <Link to="/export" search={(prev) => prev} aria-label="Eksporter">
-            <Button
-              variant={getVariant("/export")}
-              size="small"
-              aria-label="Eksporter"
-              icon={<DownloadIcon aria-hidden />}
-            >
-              <Hide below="md" asChild>
-                <span>Eksporter</span>
-              </Hide>
-            </Button>
-          </Link>
-          <Link to="/surveyverksted" search={{}} aria-label="Surveyverksted">
-            <Button
-              variant={getVariant("/surveyverksted")}
-              size="small"
-              aria-label="Surveyverksted"
-              icon={<PencilWritingIcon aria-hidden />}
-            >
-              <Hide below="md" asChild>
-                <span>Surveyverksted</span>
-              </Hide>
-            </Button>
-          </Link>
+          <nav aria-label="Hovedmeny">
+            <HStack gap={{ xs: "space-4", sm: "space-8", md: "space-16" }}>
+              <HeaderNavLink
+                to="/"
+                search={(prev) => prev}
+                variant={getVariant("/")}
+                size="small"
+                aria-label="Dashboard"
+                icon={<BarChartIcon aria-hidden />}
+              >
+                {/* Hide button text on mobile, show on tablet+ */}
+                <Hide below="md" asChild>
+                  <span>Dashboard</span>
+                </Hide>
+              </HeaderNavLink>
+              <HeaderNavLink
+                to="/feedback"
+                search={(prev) => prev}
+                variant={getVariant("/feedback")}
+                size="small"
+                aria-label="Tilbakemeldinger"
+                icon={<TableIcon aria-hidden />}
+              >
+                <Hide below="md" asChild>
+                  <span>Tilbakemeldinger</span>
+                </Hide>
+              </HeaderNavLink>
+              <HeaderNavLink
+                to="/export"
+                search={(prev) => prev}
+                variant={getVariant("/export")}
+                size="small"
+                aria-label="Eksporter"
+                icon={<DownloadIcon aria-hidden />}
+              >
+                <Hide below="md" asChild>
+                  <span>Eksporter</span>
+                </Hide>
+              </HeaderNavLink>
+              <HeaderNavLink
+                to="/surveyverksted"
+                search={{}}
+                variant={getVariant("/surveyverksted")}
+                size="small"
+                aria-label="Surveyverksted"
+                icon={<PencilWritingIcon aria-hidden />}
+              >
+                <Hide below="md" asChild>
+                  <span>Surveyverksted</span>
+                </Hide>
+              </HeaderNavLink>
+            </HStack>
+          </nav>
 
           {/* Divider - hide on very small screens */}
           <Hide below="sm">
