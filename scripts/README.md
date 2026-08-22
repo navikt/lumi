@@ -26,7 +26,7 @@ export NPM_AUTH_TOKEN="$(gh auth token)"
 Start alt fra repo-roten:
 
 ```bash
-npm run local:up
+pnpm run local:up
 ```
 
 Første bygg laster ned Node-/JVM-avhengigheter og tar noen minutter. Når
@@ -70,9 +70,39 @@ til `127.0.0.1`.
 ### Teardown
 
 ```bash
-npm run local:down   # behold data
-npm run local:reset  # slett også Postgres-volumet
+pnpm run local:down   # behold data
+pnpm run local:reset  # slett også Postgres-volumet
 ```
+
+### Automatisert fullkjede
+
+Den samme stakken inngår nå i merge-gaten. Playwright sender både fra den
+lokale testbenken og fra dashboardets dev-only release-rigg, og verifiserer at
+den unike teksten kan leses tilbake i dashboardet:
+
+```bash
+export NPM_AUTH_TOKEN="$(gh auth token)"
+pnpm run test:full-chain
+```
+
+Kommandoen bruker Compose-prosjektet `lumi-full-chain-smoke`, oppretter et eget
+databasevolum og rydder kun dette prosjektet etter kjøringen. Ved feil skrives
+containerloggene før opprydding.
+
+### Verifiser den publiserbare pakken
+
+Workspace-importer kan skjule manglende exports, typer, CSS eller runtime-
+avhengigheter. Denne testen pakker `@navikt/lumi-survey` og installerer
+tarballen i en midlertidig, frittstående React/Vite-konsument. Kjør ordinær
+`pnpm install` først slik at den låste dependency-storen er fylt med GitHub
+Packages-avhengighetene; manglende offentlige transitive pakker kan hentes uten
+at pakketokenet sendes videre til verifikasjonsskriptet:
+
+```bash
+pnpm run verify:lumi-survey-consumer
+```
+
+Testen kjører i både CI og publish-workflowen.
 
 ## Local end-to-end submission flow
 

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SurveyverkstedRouteImport } from './routes/surveyverksted'
 import { Route as SurveyPreviewRouteImport } from './routes/survey-preview'
+import { Route as ReleaseVerificationRouteImport } from './routes/release-verification'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as ExportRouteImport } from './routes/export'
 import { Route as IndexRouteImport } from './routes/index'
@@ -29,6 +30,11 @@ const SurveyverkstedRoute = SurveyverkstedRouteImport.update({
 const SurveyPreviewRoute = SurveyPreviewRouteImport.update({
   id: '/survey-preview',
   path: '/survey-preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReleaseVerificationRoute = ReleaseVerificationRouteImport.update({
+  id: '/release-verification',
+  path: '/release-verification',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeedbackRoute = FeedbackRouteImport.update({
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/export': typeof ExportRoute
   '/feedback': typeof FeedbackRoute
+  '/release-verification': typeof ReleaseVerificationRoute
   '/survey-preview': typeof SurveyPreviewRoute
   '/surveyverksted': typeof SurveyverkstedRouteWithChildren
   '/surveyverksted/$projectId': typeof SurveyverkstedProjectIdRoute
@@ -95,6 +102,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/export': typeof ExportRoute
   '/feedback': typeof FeedbackRoute
+  '/release-verification': typeof ReleaseVerificationRoute
   '/survey-preview': typeof SurveyPreviewRoute
   '/surveyverksted/$projectId': typeof SurveyverkstedProjectIdRoute
   '/surveyverksted': typeof SurveyverkstedIndexRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/export': typeof ExportRoute
   '/feedback': typeof FeedbackRoute
+  '/release-verification': typeof ReleaseVerificationRoute
   '/survey-preview': typeof SurveyPreviewRoute
   '/surveyverksted': typeof SurveyverkstedRouteWithChildren
   '/surveyverksted/$projectId': typeof SurveyverkstedProjectIdRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
     | '/'
     | '/export'
     | '/feedback'
+    | '/release-verification'
     | '/survey-preview'
     | '/surveyverksted'
     | '/surveyverksted/$projectId'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/'
     | '/export'
     | '/feedback'
+    | '/release-verification'
     | '/survey-preview'
     | '/surveyverksted/$projectId'
     | '/surveyverksted'
@@ -148,6 +159,7 @@ export interface FileRouteTypes {
     | '/'
     | '/export'
     | '/feedback'
+    | '/release-verification'
     | '/survey-preview'
     | '/surveyverksted'
     | '/surveyverksted/$projectId'
@@ -162,6 +174,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ExportRoute: typeof ExportRoute
   FeedbackRoute: typeof FeedbackRoute
+  ReleaseVerificationRoute: typeof ReleaseVerificationRoute
   SurveyPreviewRoute: typeof SurveyPreviewRoute
   SurveyverkstedRoute: typeof SurveyverkstedRouteWithChildren
   ApiInternalIsAliveRoute: typeof ApiInternalIsAliveRoute
@@ -183,6 +196,13 @@ declare module '@tanstack/react-router' {
       path: '/survey-preview'
       fullPath: '/survey-preview'
       preLoaderRoute: typeof SurveyPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/release-verification': {
+      id: '/release-verification'
+      path: '/release-verification'
+      fullPath: '/release-verification'
+      preLoaderRoute: typeof ReleaseVerificationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/feedback': {
@@ -272,6 +292,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ExportRoute: ExportRoute,
   FeedbackRoute: FeedbackRoute,
+  ReleaseVerificationRoute: ReleaseVerificationRoute,
   SurveyPreviewRoute: SurveyPreviewRoute,
   SurveyverkstedRoute: SurveyverkstedRouteWithChildren,
   ApiInternalIsAliveRoute: ApiInternalIsAliveRoute,

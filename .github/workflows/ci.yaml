@@ -24,6 +24,7 @@ jobs:
       node: ${{ steps.filter.outputs.node }}
       api: ${{ steps.filter.outputs.api }}
       docs: ${{ steps.filter.outputs.docs }}
+      full_chain: ${{ steps.filter.outputs.full_chain }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - id: filter
@@ -46,6 +47,8 @@ jobs:
               - 'packages/**'
               - 'scripts/check-lumi-survey-release-drift.mjs'
               - 'scripts/check-lumi-survey-release-drift.test.mjs'
+              - 'scripts/verify-lumi-survey-consumer.sh'
+              - 'scripts/fixtures/lumi-survey-consumer/**'
             api:
               - '.github/workflows/**'
               - '.dockerignore'
@@ -55,10 +58,25 @@ jobs:
             docs:
               - 'docs/**'
               - 'packages/lumi-survey/CHANGELOG.md'
+            full_chain:
+              - '.github/actions/install-playwright/**'
+              - '.github/workflows/ci.yaml'
+              - '.dockerignore'
+              - 'docker-compose.yml'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'apps/lumi-api/**'
+              - 'apps/lumi-dashboard/**'
+              - 'apps/lumi-local-demo/**'
+              - 'apps/lumi-submission-proxy/**'
+              - 'packages/lumi-survey/**'
+              - 'packages/lumi-types/**'
+              - 'scripts/lumi-full-chain-e2e.sh'
 
   required:
     name: Merge gate
-    needs: [changes, node, api, docs]
+    needs: [changes, node, api, docs, full-chain]
     runs-on: ubuntu-latest
     if: always()
     permissions:
@@ -76,6 +94,7 @@ jobs:
             "node=${{ needs.node.result }}"
             "api=${{ needs.api.result }}"
             "docs=${{ needs.docs.result }}"
+            "full-chain=${{ needs.full-chain.result }}"
           )
           printf '%s\n' "${results[@]}"
 
@@ -103,6 +122,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -115,7 +135,7 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
         env:
-          NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
+          NPM_AUTH_TOKEN: ${{ github.token }}
       - name: Check lumi-survey release drift
         run: pnpm run test:release-guards && pnpm run check:lumi-survey-release-drift
       - name: Dependency audit (production)
@@ -132,6 +152,8 @@ jobs:
           NPM_AUTH_TOKEN: config-only
       - name: Verify lumi-survey packaging boundaries
         run: pnpm run verify:lumi-survey
+      - name: Verify packed lumi-survey consumer
+        run: pnpm run verify:lumi-survey-consumer
       - name: Unit tests
         run: pnpm test
       - name: Set up Node 22 for Playwright install
@@ -176,6 +198,42 @@ jobs:
         working-directory: apps/lumi-submission-proxy
         run: ./gradlew test
 
+  full-chain:
+    name: Full-chain smoke
+    needs: changes
+    if: always() && (github.event_name == 'merge_group' || needs.changes.outputs.full_chain == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+        env:
+          NPM_AUTH_TOKEN: ${{ github.token }}
+      - name: Set up Node 22 for Playwright install
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - name: Install Playwright
+        timeout-minutes: 10
+        uses: ./.github/actions/install-playwright
+      - name: Restore Node from package.json
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: package.json
+      - name: Run full-chain smoke
+        run: pnpm run test:full-chain
+        env:
+          NPM_AUTH_TOKEN: ${{ github.token }}
+
   docs:
     name: Build docs
     needs: changes
@@ -183,6 +241,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
@@ -193,6 +252,6 @@ jobs:
       - name: Install docs deps
         run: pnpm install --filter lumi-docs --frozen-lockfile
         env:
-          NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
+          NPM_AUTH_TOKEN: ${{ github.token }}
       - name: Build docs
         run: pnpm --filter lumi-docs run build

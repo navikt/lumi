@@ -169,6 +169,42 @@ test("the publish guard treats the packaged root license as meaningful", () => {
   assert.doesNotMatch(workflow, /CHANGED=\$\(git diff/);
 });
 
+test("pull request verification does not use the long-lived reader token", () => {
+  const workflow = readFileSync(
+    path.join(repositoryRoot, ".github/workflows/ci.yaml"),
+    "utf8",
+  );
+
+  assert.doesNotMatch(workflow, /secrets\.READER_TOKEN/);
+  assert.match(workflow, /NPM_AUTH_TOKEN: \$\{\{ github\.token \}\}/);
+});
+
+test("publish verification is read-only and write access is main-only", () => {
+  const workflow = readFileSync(
+    path.join(repositoryRoot, ".github/workflows/publish-lumi-survey.yaml"),
+    "utf8",
+  );
+  const verifyStart = workflow.indexOf("\n  verify:\n");
+  const publishStart = workflow.indexOf("\n  publish:\n");
+
+  assert.notEqual(verifyStart, -1, "expected a separate verify job");
+  assert.notEqual(publishStart, -1, "expected a separate publish job");
+  assert.ok(verifyStart < publishStart, "verify must run before publish");
+
+  const verifyJob = workflow.slice(verifyStart, publishStart);
+  const publishJob = workflow.slice(publishStart);
+  assert.match(verifyJob, /permissions:\n\s+contents: read\n\s+packages: read/);
+  assert.doesNotMatch(verifyJob, /contents: write|packages: write/);
+  assert.match(
+    publishJob,
+    /if:.*inputs\.dry_run == 'false'.*github\.ref_name == 'main'/,
+  );
+  assert.match(
+    publishJob,
+    /permissions:\n\s+contents: write\n\s+packages: write/,
+  );
+});
+
 test("publish mode rejects a version-only release", () => {
   const { cwd, packageDir } = createTaggedPackage();
   writeFileSync(

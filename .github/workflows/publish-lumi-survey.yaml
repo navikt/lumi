@@ -17,12 +17,15 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
-  packages: write
+  contents: read
+  packages: read
 
 jobs:
-  publish:
+  verify:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -38,8 +41,8 @@ jobs:
         run: pnpm install --frozen-lockfile
         env:
           # Repo uses .npmrc with ${NPM_AUTH_TOKEN}
-          NPM_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_AUTH_TOKEN: ${{ github.token }}
+          NODE_AUTH_TOKEN: ${{ github.token }}
       - name: Dependency audit (production)
         run: pnpm audit --prod --audit-level=high
 
@@ -57,6 +60,9 @@ jobs:
 
       - name: Pack (dry-run)
         run: pnpm --filter @navikt/lumi-survey pack --dry-run
+
+      - name: Verify packed consumer
+        run: pnpm run verify:lumi-survey-consumer
 
       - name: Enforce publish policy (main branch only)
         if: ${{ inputs.dry_run == 'false' }}
@@ -113,15 +119,39 @@ jobs:
       - name: Guard against empty release (no meaningful changes)
         run: node scripts/check-lumi-survey-release-drift.mjs --require-meaningful-change
 
+  publish:
+    needs: verify
+    if: ${{ inputs.dry_run == 'false' && github.ref_type == 'branch' && github.ref_name == 'main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: package.json
+          cache: pnpm
+
+      # This job can only run for the already-verified main commit. The write
+      # token is therefore never exposed to branch-controlled verification.
+      - name: Install publish dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          NPM_AUTH_TOKEN: ${{ github.token }}
+          NODE_AUTH_TOKEN: ${{ github.token }}
+
       - name: Publish
-        if: ${{ inputs.dry_run == 'false' }}
         run: pnpm --filter @navikt/lumi-survey publish --publish-branch main
         env:
-          NPM_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_AUTH_TOKEN: ${{ github.token }}
+          NODE_AUTH_TOKEN: ${{ github.token }}
 
       - name: Tag release
-        if: ${{ inputs.dry_run == 'false' }}
         run: |
           set -euo pipefail
           VERSION=$(node -p "require('./packages/lumi-survey/package.json').version")

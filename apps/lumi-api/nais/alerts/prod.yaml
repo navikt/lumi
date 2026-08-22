@@ -19,3 +19,29 @@ spec:
           labels:
             severity: warning
             namespace: team-esyfo
+    - name: lumi-api-submission-health
+      rules:
+        - alert: LumiSubmissionFailure
+          expr: sum(increase(lumi_submissions_total{app="lumi-api",outcome="failed"}[5m])) > 0
+          annotations:
+            summary: "Lumi feiler ved behandling av survey-innsendinger"
+            consequence: "Minst én autentisert innsending har feilet med en serverfeil og kan mangle i dashboardet."
+            action: "Bryt videre utrulling og følg runbooken for å finne kanal og feil i loggene."
+            runbook_url: "https://github.com/navikt/lumi/blob/main/apps/lumi-api/docs/runbooks/submission-health.md"
+          labels:
+            severity: warning
+            namespace: team-esyfo
+        - alert: LumiSubmissionRejectionSpike
+          expr: >-
+            sum by (channel) (increase(lumi_submissions_total{app="lumi-api",outcome="rejected"}[10m])) >= 5
+            and
+            sum by (channel) (increase(lumi_submissions_total{app="lumi-api",outcome="rejected"}[10m]))
+            / clamp_min(sum by (channel) (increase(lumi_submissions_total{app="lumi-api"}[10m])), 1) > 0.1
+          annotations:
+            summary: "Lumi avviser uvanlig mange survey-innsendinger"
+            consequence: "Minst fem innsendinger i én kanal er avvist, og mer enn 10 prosent av kanalens trafikk de siste ti minuttene er berørt."
+            action: "Stans nye migreringer, identifiser berørt kanal i Grafana og følg runbooken."
+            runbook_url: "https://github.com/navikt/lumi/blob/main/apps/lumi-api/docs/runbooks/submission-health.md"
+          labels:
+            severity: warning
+            namespace: team-esyfo
