@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FeedbackTable } from "../index";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -87,8 +87,14 @@ function bootstrapWith(surveyMeta: Record<string, unknown>) {
 
 describe("FeedbackTable recency and badge", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T12:00:00Z"));
     mockParams.surveyId = "survey-1";
     mockBootstrap.isPending = false;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("shows relative last-submission time for the selected survey", () => {
