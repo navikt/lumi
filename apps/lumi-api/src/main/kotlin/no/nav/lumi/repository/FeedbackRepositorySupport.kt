@@ -1,14 +1,150 @@
 package no.nav.lumi.repository
 
+import no.nav.lumi.config.exception.ApiErrorException
+import no.nav.lumi.config.exception.ErrorType
 import no.nav.lumi.domain.*
 import no.nav.lumi.service.TextProcessor
 import org.jetbrains.exposed.v1.core.*
-import org.jetbrains.exposed.v1.jdbc.Query
-import org.jetbrains.exposed.v1.jdbc.andWhere
-import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.*
 import org.slf4j.Logger
+import java.nio.charset.StandardCharsets
 import java.time.LocalDate
 import java.time.ZoneId
+
+internal const val MAX_IN_MEMORY_ANALYSIS_ROWS = 10_000
+// Raw JSON is retained while DTOs are decoded. Keep the per-request budget low
+// enough to leave headroom for decoded objects and concurrent DB-pool workers.
+internal const val MAX_IN_MEMORY_ANALYSIS_JSON_BYTES = 8L * 1024 * 1024
+private const val IN_MEMORY_ANALYSIS_FETCH_SIZE = 8
+
+private class JsonTextOctetLength(
+    private val expression: Expression<*>,
+) : org.jetbrains.exposed.v1.core.Function<Long>(LongColumnType()) {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) {
+        queryBuilder.append("OCTET_LENGTH(CAST(")
+        expression.toQueryBuilder(queryBuilder)
+        queryBuilder.append(" AS VARCHAR))")
+    }
+}
+
+/**
+ * Uses a SQL-side row/byte preflight before any feedback JSON crosses into the
+ * JVM, then streams small JDBC batches and re-checks the byte budget while
+ * materializing. The second check closes the race between preflight and fetch.
+ */
+internal fun Query.materializeFeedbackForAnalysis(
+    maxRows: Int = MAX_IN_MEMORY_ANALYSIS_ROWS,
+    maxJsonBytes: Long = MAX_IN_MEMORY_ANALYSIS_JSON_BYTES,
+): List<FeedbackDbRecord> {
+    require(maxRows in 1 until Int.MAX_VALUE) { "maxRows must be a positive integer" }
+    require(maxJsonBytes > 0) { "maxJsonBytes must be positive" }
+
+    val jsonBytes = JsonTextOctetLength(FeedbackTable.feedbackJson).alias("json_bytes")
+    val boundedRows = copy()
+        .adjustSelect { select(jsonBytes) }
+        .limit(maxRows + 1)
+        .alias("bounded_analysis_rows")
+    val boundedJsonBytes = boundedRows[jsonBytes]
+    val rowCount = boundedJsonBytes.count()
+    val totalJsonBytes = boundedJsonBytes.sum()
+    val budget = boundedRows
+        .select(rowCount, totalJsonBytes)
+        .single()
+
+    if (budget[rowCount] > maxRows || (budget[totalJsonBytes] ?: 0L) > maxJsonBytes) {
+        throwAnalysisBudgetExceeded(maxRows, maxJsonBytes)
+    }
+
+    val records = ArrayList<FeedbackDbRecord>(minOf(maxRows, 1_024))
+    var materializedJsonBytes = 0L
+    limit(maxRows + 1)
+        .fetchSize(IN_MEMORY_ANALYSIS_FETCH_SIZE)
+        .forEach { row ->
+            if (records.size >= maxRows) {
+                throwAnalysisBudgetExceeded(maxRows, maxJsonBytes)
+            }
+
+            val record = row.toDbRecord()
+            materializedJsonBytes += record.feedbackJson
+                .toByteArray(StandardCharsets.UTF_8)
+                .size
+            if (materializedJsonBytes > maxJsonBytes) {
+                throwAnalysisBudgetExceeded(maxRows, maxJsonBytes)
+            }
+            records.add(record)
+        }
+
+    return records
+}
+
+private fun throwAnalysisBudgetExceeded(maxRows: Int, maxJsonBytes: Long): Nothing {
+    val maxJsonMiB = maxJsonBytes / (1024 * 1024)
+    throw ApiErrorException.BadRequestException(
+        "Too much feedback data for in-memory analysis " +
+            "(max $maxRows responses and $maxJsonMiB MiB total JSON size). " +
+            "Narrow the date range or add filters.",
+        type = ErrorType.ANALYSIS_BUDGET_EXCEEDED,
+    )
+}
+
+internal fun applyContextTagAnalysisFilters(
+    query: Query,
+    segments: List<Pair<String, String>>,
+    fromDate: String?,
+    toDate: String?,
+    deviceType: String?,
+    hasText: Boolean,
+    lowRating: Boolean,
+) {
+    segments.forEach { (key, value) ->
+        val safeKey = key.trim()
+        val safeValue = value.trim()
+        if (safeKey.isNotBlank() && safeValue.isNotBlank()) {
+            query.andWhere {
+                JsonExtract(FeedbackTable.feedbackJson, listOf("context", "tags", safeKey)) eq safeValue
+            }
+        }
+    }
+
+    fromDate?.takeIf { it.isNotBlank() }?.let { value ->
+        runCatching { LocalDate.parse(value) }.getOrNull()?.let { date ->
+            val startOfDay = date.atStartOfDay(ZoneId.of("Europe/Oslo")).toInstant()
+            query.andWhere { FeedbackTable.opprettet greaterEq startOfDay }
+        }
+    }
+    toDate?.takeIf { it.isNotBlank() }?.let { value ->
+        runCatching { LocalDate.parse(value) }.getOrNull()?.let { date ->
+            val nextDayStart = date.plusDays(1)
+                .atStartOfDay(ZoneId.of("Europe/Oslo"))
+                .toInstant()
+            query.andWhere { FeedbackTable.opprettet less nextDayStart }
+        }
+    }
+
+    deviceType?.takeIf { it.isNotBlank() }?.let { device ->
+        query.andWhere {
+            JsonExtract(FeedbackTable.feedbackJson, listOf("context", "deviceType")) eq device
+        }
+    }
+
+    if (hasText) {
+        query.andWhere {
+            JsonbPathExists(
+                FeedbackTable.feedbackJson,
+                "$.answers[*] ? (@.value.type == \"text\" && @.value.text != \"\")"
+            )
+        }
+    }
+
+    if (lowRating) {
+        val ratingText = JsonbPathQueryFirstText(
+            FeedbackTable.feedbackJson,
+            "$.answers[*] ? (@.value.type == \"rating\").value.rating"
+        )
+        val ratingExpr = Cast(ratingText, IntegerColumnType())
+        query.andWhere { ratingExpr lessEq 2 }
+    }
+}
 
 /**
  * Escape special characters for SQL LIKE patterns to prevent SQL injection.
@@ -201,71 +337,6 @@ internal fun matchesPhraseFilter(feedback: FeedbackDto, fieldId: String, expecte
 
 private fun themeMatchesText(text: String, theme: TextThemeDto): Boolean {
     return TextProcessor.matchesThemeKeywords(text, theme.keywords)
-}
-
-internal fun matchesContextTagFilters(
-    record: FeedbackDbRecord,
-    feedback: FeedbackDto,
-    segments: List<Pair<String, String>>,
-    fromDate: String?,
-    toDate: String?,
-    deviceType: String?,
-    hasText: Boolean,
-    lowRating: Boolean
-): Boolean {
-    if (segments.isNotEmpty()) {
-        val tags = feedback.context?.tags ?: return false
-        val matchesSegments = segments.all { (key, value) ->
-            val safeKey = key.trim()
-            val safeValue = value.trim()
-            safeKey.isNotBlank() && safeValue.isNotBlank() && tags[safeKey] == safeValue
-        }
-        if (!matchesSegments) return false
-    }
-
-    if (!fromDate.isNullOrBlank()) {
-        try {
-            val localDate = LocalDate.parse(fromDate)
-            val startOfDay = localDate.atStartOfDay(ZoneId.of("Europe/Oslo")).toInstant()
-            if (record.opprettet.toInstant() < startOfDay) return false
-        } catch (_: Exception) {
-            // ignore invalid date
-        }
-    }
-    if (!toDate.isNullOrBlank()) {
-        try {
-            val localDate = LocalDate.parse(toDate)
-            val nextDayStart = localDate.plusDays(1)
-                .atStartOfDay(ZoneId.of("Europe/Oslo"))
-                .toInstant()
-            if (record.opprettet.toInstant() >= nextDayStart) return false
-        } catch (_: Exception) {
-            // ignore invalid date
-        }
-    }
-
-    if (!deviceType.isNullOrBlank()) {
-        val actual = feedback.context?.deviceType?.name?.lowercase()
-        if (actual == null || actual != deviceType.lowercase()) return false
-    }
-
-    if (hasText) {
-        val hasTextAnswer = feedback.answers.any { answer ->
-            val text = (answer.value as? AnswerValue.Text)?.text.orEmpty()
-            text.isNotBlank()
-        }
-        if (!hasTextAnswer) return false
-    }
-
-    if (lowRating) {
-        val hasLowRating = feedback.answers.any { answer ->
-            val rating = (answer.value as? AnswerValue.Rating)?.rating
-            rating != null && rating <= 2
-        }
-        if (!hasLowRating) return false
-    }
-
-    return true
 }
 
 internal fun findTagsByFeedbackId(id: String): List<String> {

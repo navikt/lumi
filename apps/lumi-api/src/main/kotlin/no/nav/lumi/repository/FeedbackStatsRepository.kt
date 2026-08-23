@@ -206,7 +206,7 @@ class FeedbackStatsRepository {
             val fieldRecords = if (includeFieldStats) {
                 val fieldQuery = FeedbackTable.selectAll()
                 applyStatsFilters(fieldQuery, query)
-                fieldQuery.map { it.toDbRecord() }
+                fieldQuery.materializeFeedbackForAnalysis()
             } else {
                 emptyList()
             }
@@ -274,7 +274,7 @@ class FeedbackStatsRepository {
             val dbQuery = FeedbackTable.selectAll()
             applyStatsFilters(dbQuery, query)
             dbQuery.andWhere { JsonExtract(FeedbackTable.feedbackJson, listOf("surveyType")) eq "topTasks" }
-            dbQuery.map { it.toDbRecord() }
+            dbQuery.materializeFeedbackForAnalysis()
         }
 
         val dtos = records.map { it.toDto() }
@@ -334,7 +334,7 @@ class FeedbackStatsRepository {
             val dbQuery = FeedbackTable.selectAll()
             applyStatsFilters(dbQuery, query)
             dbQuery.andWhere { JsonExtract(FeedbackTable.feedbackJson, listOf("surveyType")) eq "taskPriority" }
-            dbQuery.map { it.toDbRecord() }
+            dbQuery.materializeFeedbackForAnalysis()
         }
 
         val dtos = records.map { it.toDto() }
@@ -406,7 +406,7 @@ class FeedbackStatsRepository {
             val dbQuery = FeedbackTable.selectAll()
             applyStatsFilters(dbQuery, query)
             dbQuery.andWhere { JsonExtract(FeedbackTable.feedbackJson, listOf("surveyType")) eq "topTasks" }
-            dbQuery.map { it.toDbRecord() }
+            dbQuery.materializeFeedbackForAnalysis()
         }
 
         val dtos = records.map { it.toDto() }.sortedBy { it.submittedAt }

@@ -18,6 +18,7 @@ import { useStats } from "~/hooks/useStats";
 import { searchSchema } from "~/schemas/searchSchema";
 import type { SurveyType } from "~/types/api";
 import { applyDashboardSearchDefaults } from "~/utils/dashboardSearchDefaults";
+import { getDashboardStatsErrorDescription } from "~/utils/dashboardStatsError";
 import styles from "./index.module.css";
 
 /**
@@ -182,15 +183,16 @@ function DashboardPage() {
             </HStack>
           </HStack>
 
+          <FilterBar />
+
+          {/* Keep recovery controls available when a broad query exceeds the analysis budget. */}
+          <ActiveFiltersChips />
+
           <DataFetchBoundary
             title="Kunne ikke hente dashboarddata"
+            description={getDashboardStatsErrorDescription(statsQuery.error)}
             queries={[statsQuery]}
           >
-            <FilterBar />
-
-            {/* Active drill-down filters (global) */}
-            <ActiveFiltersChips />
-
             {/* Type-specific dashboard view */}
             {renderDashboardContent()}
           </DataFetchBoundary>

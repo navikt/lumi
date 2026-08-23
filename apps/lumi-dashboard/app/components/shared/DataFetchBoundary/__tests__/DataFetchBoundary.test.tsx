@@ -38,6 +38,7 @@ describe("DataFetchBoundary", () => {
     render(
       <DataFetchBoundary
         title="Kunne ikke hente dashboarddata"
+        description="Snevre inn perioden eller legg til filtre før du prøver igjen."
         queries={[
           {
             isError: true,
@@ -57,6 +58,11 @@ describe("DataFetchBoundary", () => {
 
     expect(
       screen.getByText("Kunne ikke hente dashboarddata"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Snevre inn perioden eller legg til filtre før du prøver igjen.",
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByText("0 tilbakemeldinger")).not.toBeInTheDocument();
 

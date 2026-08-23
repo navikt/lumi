@@ -4,6 +4,7 @@ import {
   applyBaselineSecurityHeaders,
   buildCspHeaderValue,
 } from "~/server/securityHeaders";
+import { apiErrorSerializationAdapter } from "~/utils/apiErrorSerialization";
 
 const securityHeadersMiddleware = createMiddleware().server(
   async ({ next, context }) => {
@@ -32,5 +33,6 @@ const securityHeadersMiddleware = createMiddleware().server(
 );
 
 export const startInstance = createStart(() => ({
+  serializationAdapters: [apiErrorSerializationAdapter],
   requestMiddleware: [securityHeadersMiddleware],
 }));

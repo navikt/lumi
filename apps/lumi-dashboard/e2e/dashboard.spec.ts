@@ -39,6 +39,11 @@ test.describe("Dashboard", () => {
     await expect(errorAlert).toContainText("Kunne ikke hente dashboarddata", {
       timeout: 15000,
     });
+    await expect(errorAlert).toContainText(
+      "Vi viser ikke data før forespørselen lykkes",
+    );
+    await expect(errorAlert).not.toContainText("Snevre inn perioden");
+    await expect(surveySelect).toBeVisible();
     await expect(page.getByText(/Ingen data for valgt periode/)).toHaveCount(0);
 
     await page.unroute("**/*", failDashboardRequests);
