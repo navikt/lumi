@@ -1,4 +1,5 @@
 import {
+  allowedVisibleIfOperators,
   createDiscoverySurveyDocument,
   createTaskPrioritySurveyDocument,
   createTopTasksSurveyDocument,
@@ -871,22 +872,13 @@ export function insertPageAt(
 
 /**
  * Operators that behave correctly against the referenced question type at
- * runtime. multiChoice answers are arrays: strict EQ/NEQ never match, so
- * only EXISTS and CONTAINS are offered.
+ * runtime. Delegates to the widget package's canonical table, so the
+ * workshop's operator picker and the document validator can never disagree.
  */
 export function allowedConditionOperators(
   type: SurveyQuestionV1["type"],
 ): string[] {
-  switch (type) {
-    case "rating":
-      return ["EXISTS", "EQ", "NEQ", "GT", "LT"];
-    case "singleChoice":
-      return ["EXISTS", "EQ", "NEQ"];
-    case "multiChoice":
-      return ["EXISTS", "CONTAINS"];
-    default:
-      return ["EXISTS", "EQ", "NEQ", "CONTAINS"];
-  }
+  return [...allowedVisibleIfOperators(type)];
 }
 
 export interface HandoffIssue {
