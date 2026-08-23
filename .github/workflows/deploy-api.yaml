@@ -4,7 +4,12 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'apps/lumi-api/**'
   pull_request:
+    paths:
+      - 'apps/lumi-api/**'
+      - '.github/workflows/deploy-api.yaml'
   workflow_dispatch:
     inputs:
       target:
@@ -66,8 +71,9 @@ jobs:
 
   deploy-dev:
     if: |
-      github.ref == 'refs/heads/main' ||
-      (github.event_name == 'workflow_dispatch' && inputs.target == 'dev')
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' &&
+        (inputs.target == 'dev' || inputs.target == 'prod'))
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -75,6 +81,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
       - uses: nais/deploy/actions/deploy@849e900e3cfa7faf7ad1532bb3a3e6499c932199
         env:
           CLUSTER: dev-gcp
@@ -83,7 +91,7 @@ jobs:
 
   deploy-prod:
     if: |
-      github.ref == 'refs/heads/main' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'workflow_dispatch' && inputs.target == 'prod')
     needs: [build, deploy-dev]
     runs-on: ubuntu-latest
@@ -92,6 +100,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
       - uses: nais/deploy/actions/deploy@849e900e3cfa7faf7ad1532bb3a3e6499c932199
         env:
           CLUSTER: prod-gcp
