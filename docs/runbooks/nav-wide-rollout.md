@@ -4,6 +4,9 @@ Denne runbooken skiller teknisk release-readiness fra beslutningen om hvilke
 surveys som faktisk skal være aktive. Migrering eller reaktivering skal ikke
 brukes som en måte å ta produktbeslutningen på.
 
+Datert status og kostbevisst risikovurdering finnes i
+[readiness-rapporten fra 23. august 2026](./nav-wide-readiness-2026-08-23.md).
+
 ## Nå-status
 
 | Område | Status | Bevis |
