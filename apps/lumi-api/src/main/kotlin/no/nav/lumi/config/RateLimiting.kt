@@ -12,6 +12,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import no.nav.lumi.config.auth.AuthorizationAttributes
 import no.nav.lumi.config.auth.CallerIdentityKey
+import no.nav.lumi.config.auth.InternalSubmissionAuthenticatedKey
 import no.nav.lumi.config.auth.UserRateLimitHashKey
 import no.nav.lumi.config.auth.pseudonymizeIdentifier
 import no.nav.lumi.config.exception.ApiErrorException
@@ -28,6 +29,10 @@ import kotlin.time.Duration.Companion.minutes
  *   [UserRateLimitHashKey] in its `onCall`, which runs before the RateLimit
  *   `requestKey`. These routes are therefore keyed per caller-app and, when a
  *   user hash is present, per hashed user.
+ * - Internal proxy submissions: PSK authentication runs before the named
+ *   submission limit and sets [InternalSubmissionAuthenticatedKey]. The proxy
+ *   remains keyed by its trusted socket peer because the forwarded caller
+ *   identity is validated inside the handler.
  * - Analytics/export/bootstrap-refresh routes: `rateLimit` is nested inside `authenticate`, so
  *   [rateLimitKey] uses the validated `BrukerPrincipal` and a pseudonymized
  *   user identifier to separate dashboard users of the shared client.
@@ -180,9 +185,8 @@ fun Application.configureRateLimiting(
             requestWeight { call, _ ->
                 if (call.request.path().startsWith("/internal/")) 0 else 1
             }
-            modifyResponse { call, state ->
-                recordRejectedSubmissionWhenExhausted(call, state, submissionObservability)
-            }
+            // This guard runs before route authentication. Its 429 responses are
+            // perimeter traffic, not authenticated submission outcomes.
         }
     }
 }
@@ -198,9 +202,18 @@ private fun recordRejectedSubmissionWhenExhausted(
         "/api/tokenx/v1/feedback" -> SubmissionChannel.TOKENX
         "/api/azure/v1/feedback" -> SubmissionChannel.AZURE
         "/api/internal/v1/feedback" -> SubmissionChannel.INTERNAL_PROXY
-        else -> null
+        else -> return
     }
-    if (channel != null) {
+    // A matching path is caller-controlled. Require the channel's trusted auth
+    // marker before treating a limiter response as a submission outcome.
+    val isAuthenticated = when (channel) {
+        SubmissionChannel.TOKENX,
+        SubmissionChannel.AZURE -> call.attributes.getOrNull(CallerIdentityKey) != null
+
+        SubmissionChannel.INTERNAL_PROXY ->
+            call.attributes.getOrNull(InternalSubmissionAuthenticatedKey) != null
+    }
+    if (isAuthenticated) {
         submissionObservability.record(channel, SubmissionMetricOutcome.REJECTED)
     }
 }

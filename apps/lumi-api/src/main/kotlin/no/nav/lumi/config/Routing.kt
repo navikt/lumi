@@ -27,9 +27,7 @@ fun Application.configureRouting() {
         internalRoutes()
         
         // Internal proxy-forwarded submissions (dev only, PSK-protected)
-        rateLimit(SubmissionRateLimit) {
-            internalSubmissionRoutes()
-        }
+        internalSubmissionRoutes()
         
         // Public submission API - issuer-specific endpoints (/api/tokenx/* and /api/azure/*)
         submissionRoutes()

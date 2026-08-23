@@ -25,6 +25,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import no.nav.lumi.TestDatabase
 import no.nav.lumi.config.DatabaseHolder
 import no.nav.lumi.config.SubmissionObservability
+import no.nav.lumi.config.configureRateLimiting
 import no.nav.lumi.config.configureSerialization
 import no.nav.lumi.config.configureStatusPages
 import no.nav.lumi.domain.FeedbackQuery
@@ -227,6 +228,57 @@ class InternalSubmissionRoutesTest : FunSpec({
         }
     }
 
+    test("should rate limit only authenticated proxy submissions and record the rejection") {
+        val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+        val submissionObservability = SubmissionObservability(meterRegistry)
+        val submissionService = mockk<SubmissionService>()
+        coEvery {
+            submissionService.submit(any(), any(), any(), any(), any())
+        } returns SubmissionOutcome(SaveResult.Created("created-proxy"), "hash-proxy")
+
+        testApplication {
+            application {
+                configureSerialization()
+                configureStatusPages()
+                configureRateLimiting(submissionObservability)
+                routing {
+                    internalSubmissionRoutes(
+                        submissionService = submissionService,
+                        submissionKey = TEST_PSK,
+                        submissionObservability = submissionObservability,
+                    )
+                }
+            }
+
+            suspend fun submit(psk: String) = client.post("/api/internal/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                header("X-Lumi-Submission-Key", psk)
+                header("X-Lumi-Caller-Identity", VALID_IDENTITY)
+                setBody(validPayload)
+            }
+
+            repeat(100) {
+                submit("wrong-key").status shouldBe HttpStatusCode.Unauthorized
+            }
+            meterRegistry.get(SubmissionObservability.METRIC_NAME)
+                .tag("channel", "internal_proxy")
+                .tag("outcome", "rejected")
+                .counter()
+                .count() shouldBe 0.0
+
+            repeat(100) {
+                submit(TEST_PSK).status shouldBe HttpStatusCode.Created
+            }
+            submit(TEST_PSK).status shouldBe HttpStatusCode.TooManyRequests
+
+            meterRegistry.get(SubmissionObservability.METRIC_NAME)
+                .tag("channel", "internal_proxy")
+                .tag("outcome", "rejected")
+                .counter()
+                .count() shouldBe 1.0
+        }
+    }
+
     test("should apply immutable definition validation on internal route") {
         testApplication {
             application {
@@ -304,6 +356,9 @@ class InternalSubmissionRoutesTest : FunSpec({
     }
 
     test("should return 401 when PSK is missing") {
+        val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+        val submissionObservability = SubmissionObservability(meterRegistry)
+
         testApplication {
             application {
                 configureSerialization()
@@ -311,7 +366,8 @@ class InternalSubmissionRoutesTest : FunSpec({
                 routing {
                     internalSubmissionRoutes(
                         feedbackService = FeedbackService(),
-                        submissionKey = TEST_PSK
+                        submissionKey = TEST_PSK,
+                        submissionObservability = submissionObservability,
                     )
                 }
             }
@@ -323,10 +379,18 @@ class InternalSubmissionRoutesTest : FunSpec({
             }
 
             response.status shouldBe HttpStatusCode.Unauthorized
+            meterRegistry.get(SubmissionObservability.METRIC_NAME)
+                .tag("channel", "internal_proxy")
+                .tag("outcome", "rejected")
+                .counter()
+                .count() shouldBe 0.0
         }
     }
 
     test("should return 401 when PSK is incorrect") {
+        val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+        val submissionObservability = SubmissionObservability(meterRegistry)
+
         testApplication {
             application {
                 configureSerialization()
@@ -334,7 +398,8 @@ class InternalSubmissionRoutesTest : FunSpec({
                 routing {
                     internalSubmissionRoutes(
                         feedbackService = FeedbackService(),
-                        submissionKey = TEST_PSK
+                        submissionKey = TEST_PSK,
+                        submissionObservability = submissionObservability,
                     )
                 }
             }
@@ -347,6 +412,11 @@ class InternalSubmissionRoutesTest : FunSpec({
             }
 
             response.status shouldBe HttpStatusCode.Unauthorized
+            meterRegistry.get(SubmissionObservability.METRIC_NAME)
+                .tag("channel", "internal_proxy")
+                .tag("outcome", "rejected")
+                .counter()
+                .count() shouldBe 0.0
         }
     }
 
@@ -398,6 +468,9 @@ class InternalSubmissionRoutesTest : FunSpec({
     }
 
     test("should return 400 for invalid JSON body") {
+        val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+        val submissionObservability = SubmissionObservability(meterRegistry)
+
         testApplication {
             application {
                 configureSerialization()
@@ -405,7 +478,8 @@ class InternalSubmissionRoutesTest : FunSpec({
                 routing {
                     internalSubmissionRoutes(
                         feedbackService = FeedbackService(),
-                        submissionKey = TEST_PSK
+                        submissionKey = TEST_PSK,
+                        submissionObservability = submissionObservability,
                     )
                 }
             }
@@ -418,6 +492,11 @@ class InternalSubmissionRoutesTest : FunSpec({
             }
 
             response.status shouldBe HttpStatusCode.BadRequest
+            meterRegistry.get(SubmissionObservability.METRIC_NAME)
+                .tag("channel", "internal_proxy")
+                .tag("outcome", "rejected")
+                .counter()
+                .count() shouldBe 1.0
         }
     }
 

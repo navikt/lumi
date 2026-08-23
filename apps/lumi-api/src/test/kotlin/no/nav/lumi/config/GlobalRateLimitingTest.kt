@@ -3,12 +3,16 @@ package no.nav.lumi.config
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.request.get
+import io.ktor.client.request.post
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
 import io.ktor.server.response.respond
 import io.ktor.server.routing.get
+import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
+import io.micrometer.prometheusmetrics.PrometheusConfig
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 
 class GlobalRateLimitingTest : FunSpec({
     test("an exhausted global bucket never blocks internal health routes") {
@@ -96,6 +100,34 @@ class GlobalRateLimitingTest : FunSpec({
             client.get("/load") {
                 headers.append("X-Test-Source", "source-b")
             }.status shouldBe HttpStatusCode.OK
+        }
+    }
+
+    test("a pre-auth global rejection is not recorded as a submission") {
+        val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+        val submissionObservability = SubmissionObservability(meterRegistry)
+
+        testApplication {
+            application {
+                configureRateLimiting(
+                    submissionObservability = submissionObservability,
+                    globalRequestsPerMinute = 1,
+                )
+                routing {
+                    post("/api/tokenx/v1/feedback") {
+                        call.respond(HttpStatusCode.Unauthorized)
+                    }
+                }
+            }
+
+            client.post("/api/tokenx/v1/feedback").status shouldBe HttpStatusCode.Unauthorized
+            client.post("/api/tokenx/v1/feedback").status shouldBe HttpStatusCode.TooManyRequests
+
+            meterRegistry.get(SubmissionObservability.METRIC_NAME)
+                .tag("channel", "tokenx")
+                .tag("outcome", "rejected")
+                .counter()
+                .count() shouldBe 0.0
         }
     }
 
