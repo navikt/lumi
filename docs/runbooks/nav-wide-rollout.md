@@ -10,7 +10,7 @@ brukes som en måte å ta produktbeslutningen på.
 | --- | --- | --- |
 | Historiske surveys i dashboardet | Klar | Automatisk periode velges fra surveyens faktiske datointervall; eksplisitt valgt periode beholdes |
 | Pakket `@navikt/lumi-survey` | Automatisert | `pnpm run verify:lumi-survey-consumer` installerer tarballen i en ren konsument og kjører typecheck + Vite-build |
-| Widget → proxy → API → Postgres → dashboard | Automatisert | `pnpm run test:full-chain` kjører alle ti stabile survey- og feltvarianter mot en isolert Compose-stack og CI laster opp én aggregert terminalrapport med receipt per scenario |
+| Widget → proxy → API → Postgres → dashboard | Automatisert | `pnpm run test:full-chain` kjører alle elleve stabile survey- og feltvarianter mot en isolert Compose-stack, inkludert legacy v1 → kompatibel widget-v2 på samme survey-ID, og CI laster opp én aggregert terminalrapport med receipt per innsending |
 | Ekte Azure OBO i dev | Selvbetjent | `/release-verification` kjører team-preflight, startprobe, 15 minutters hold og sluttprobe med eksakt receipt-readback |
 | Innsendingshelse | Instrumentert | `lumi_submissions_total` skiller kanal og utfall; prod varsler på serverfeil og rejection-spike |
 | Hvilke eksisterende surveys som skal fortsette | Avventer | Må avklares før migrering; surveys som skal stoppes migreres ikke |
@@ -28,7 +28,8 @@ beholdes og skal fortsatt være lesbare selv om en survey skrus av.
 4. Send startproben med de syntetiske valgene. Vent til siden låser opp
    sluttproben etter 15 minutter, og send den.
 5. Del rapportlenken eller last ned JSON-beviset. For den kontrollerte kjeden
-   skal `outcome` og `coverage.controlledRoundTrip` være `passed`.
+   skal `outcome` og `coverage.controlledRoundTrip` være `passed`. CI-profilen
+   krever i tillegg `coverage.legacyCompatibility: passed`.
 6. Review canary-PR-en uten å merge den.
 
 Dette gir release-evidens uten å aktivere, migrere eller sende data fra en ekte
@@ -65,6 +66,15 @@ Matrisen dekker:
 - ratingvariantene emoji, tommel, stjerner og NPS
 - tekst, enkeltvalg, flervalg med avkryssing og flervalg med komboboks
 - `SurveyDocumentV1` med flere sider, flere spørsmål per side og `visibleIf`
+- eksisterende flat `LumiSurveyConfig`: først en representativ
+  `schemaVersion: 1` uten `definition` eller `deduplicationKey`, deretter en
+  kompatibel `schemaVersion: 2` fra dagens widget på samme survey-ID
+
+Legacy-sporet krever `201` og ulike receipt-ID-er for begge innsendingene. Det
+finner deretter hver feedbackrad ved eksakt receipt-ID og kontrollerer survey,
+app og egne svar i dashboardet. Resultatet lagres separat under
+`automation.legacyCompatibility`, slik at en grønn generell matrise ikke kan
+skjule et brudd i overgangsformatet.
 
 `DATE` finnes i den bredere API-kontrakten for lagrede svar, men er ikke en
 spørsmålstype som `@navikt/lumi-survey` kan authorere eller rendre. Den er derfor

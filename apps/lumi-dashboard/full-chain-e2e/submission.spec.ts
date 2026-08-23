@@ -1,9 +1,14 @@
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import type {
+  LumiApiFeedbackSubmissionV1,
+  LumiApiFeedbackSubmissionV2,
+} from "@navikt/lumi-survey";
 import {
   expect,
   type Locator,
   type Page,
+  type Response,
   type TestInfo,
   test,
 } from "@playwright/test";
@@ -34,6 +39,7 @@ interface FullChainReport {
     controlledRoundTrip: "pending" | "passed" | "failed";
     localSubmissionProxy: "not-tested" | "passed" | "failed";
     surveyContractMatrix?: "not-tested" | "passed" | "failed";
+    legacyCompatibility?: "passed" | "failed";
     globalAzureHealth: "not-assessed";
     trygdeetatenProxy: "not-tested";
     navWideRelease: "pending";
@@ -42,6 +48,7 @@ interface FullChainReport {
     runner: "playwright";
     failures: string[];
     matrix: MatrixScenarioEvidence[];
+    legacyCompatibility: LegacyCompatibilityEvidence;
   };
 }
 
@@ -67,18 +74,6 @@ interface TransportAnswer {
   };
 }
 
-interface TransportPayload {
-  schemaVersion: number;
-  surveyId: string;
-  surveyType: string;
-  definition: {
-    surveyType: string;
-    fields: TransportFieldDefinition[];
-  };
-  context?: { tags?: Record<string, string> };
-  answers: TransportAnswer[];
-}
-
 type MatrixAction =
   | { kind: "radio"; name: string | RegExp }
   | { kind: "textbox"; name: string; suffix: string }
@@ -88,6 +83,7 @@ type MatrixAction =
 
 interface MatrixScenario {
   id: string;
+  authoringFormat: "legacy-flat" | "document-v1";
   surveyType: "rating" | "topTasks" | "discovery" | "taskPriority" | "custom";
   dashboardType:
     | "Vurdering"
@@ -106,10 +102,37 @@ interface MatrixScenarioEvidence {
   scenarioId: string;
   surveyId: string;
   surveyType: MatrixScenario["surveyType"];
+  authoringFormat: MatrixScenario["authoringFormat"];
   facets: string[];
   status: "passed" | "failed";
   receiptId: string | null;
   detail: string;
+}
+
+interface LegacySubmissionEvidence {
+  schemaVersion: 1 | 2;
+  receiptId: string | null;
+  marker: string | null;
+  readback: "not-tested" | "passed" | "failed";
+}
+
+interface LegacyCompatibilityEvidence {
+  scenarioId: "legacy-flat-rating";
+  surveyId: string;
+  status: "passed" | "failed";
+  legacySubmission: LegacySubmissionEvidence & { schemaVersion: 1 };
+  widgetSubmission: LegacySubmissionEvidence & { schemaVersion: 2 };
+  detail: string;
+}
+
+interface LocalSurveyMatrixResult {
+  matrix: MatrixScenarioEvidence[];
+  legacyCompatibility: LegacyCompatibilityEvidence;
+}
+
+interface CurrentWidgetSubmission {
+  receiptId: string;
+  response: Response;
 }
 
 class MatrixScenarioFailure extends Error {
@@ -119,6 +142,21 @@ class MatrixScenarioFailure extends Error {
   ) {
     super(message);
     this.name = "MatrixScenarioFailure";
+  }
+}
+
+class LegacyCompatibilityFailure extends MatrixScenarioFailure {
+  constructor(
+    message: string,
+    readonly legacyReceiptId: string | null,
+    widgetReceiptId: string | null,
+    readonly legacyMarker: string,
+    readonly widgetMarker: string,
+    readonly legacyReadback: "not-tested" | "passed" | "failed",
+    readonly widgetReadback: "not-tested" | "passed" | "failed",
+  ) {
+    super(message, widgetReceiptId);
+    this.name = "LegacyCompatibilityFailure";
   }
 }
 
@@ -140,6 +178,16 @@ const MATRIX_SCENARIOS: MatrixScenario[] = [
     rating: 4,
     textFieldId: "feedback",
     textPrompt: "Har du andre tilbakemeldinger?",
+  }),
+  ratingScenario({
+    id: "legacy-flat-rating",
+    authoringFormat: "legacy-flat",
+    facet: "emoji",
+    ratingFieldId: "rating",
+    ratingAction: { kind: "radio", name: "4. Bra" },
+    rating: 4,
+    textFieldId: "feedback",
+    textPrompt: "Hva bør vi forbedre?",
   }),
   ratingScenario({
     id: "rating-thumbs",
@@ -173,6 +221,7 @@ const MATRIX_SCENARIOS: MatrixScenario[] = [
   }),
   {
     id: "discovery",
+    authoringFormat: "document-v1",
     surveyType: "discovery",
     dashboardType: "Discovery",
     facets: ["text", "singleChoice", "pages", "visibleIf"],
@@ -205,6 +254,7 @@ const MATRIX_SCENARIOS: MatrixScenario[] = [
   },
   {
     id: "top-tasks",
+    authoringFormat: "document-v1",
     surveyType: "topTasks",
     dashboardType: "Top Tasks",
     facets: ["singleChoice", "text", "pages", "visibleIf"],
@@ -253,6 +303,7 @@ const MATRIX_SCENARIOS: MatrixScenario[] = [
   ]),
   {
     id: "custom-field-matrix",
+    authoringFormat: "document-v1",
     surveyType: "custom",
     dashboardType: "Custom",
     facets: ["text", "singleChoice", "multiChoice", "checkbox"],
@@ -285,6 +336,7 @@ const MATRIX_SCENARIOS: MatrixScenario[] = [
   },
   {
     id: "pages-multi-question",
+    authoringFormat: "document-v1",
     surveyType: "custom",
     dashboardType: "Custom",
     facets: ["pages", "multi-question", "visibleIf", "stars"],
@@ -330,26 +382,38 @@ test("the full chain produces one terminal release-verification report", async (
   const startedAt = new Date().toISOString();
   const failures: string[] = [];
   let matrixEvidence: MatrixScenarioEvidence[] = [];
+  let legacyCompatibility = failedLegacyCompatibilityEvidence(
+    "Kompatibilitetssporet ble ikke kjørt",
+  );
   let localProxyStatus: "passed" | "failed" = "passed";
   let controlledReport: FullChainReport | null = null;
 
   try {
-    matrixEvidence = await verifyLocalSurveyMatrix(page);
+    const matrixResult = await verifyLocalSurveyMatrix(page);
+    matrixEvidence = matrixResult.matrix;
+    legacyCompatibility = matrixResult.legacyCompatibility;
     const matrixFailures = matrixEvidence.filter(
       ({ status }) => status === "failed",
     );
     if (matrixFailures.length > 0) {
       localProxyStatus = "failed";
       failures.push(
-        ...matrixFailures.map(
-          ({ scenarioId, detail }) =>
-            `survey-contract-matrix/${scenarioId}: ${detail}`,
-        ),
+        ...matrixFailures
+          .filter(({ authoringFormat }) => authoringFormat !== "legacy-flat")
+          .map(
+            ({ scenarioId, detail }) =>
+              `survey-contract-matrix/${scenarioId}: ${detail}`,
+          ),
       );
     }
   } catch (error) {
     localProxyStatus = "failed";
     failures.push(`survey-contract-matrix: ${errorMessage(error)}`);
+  }
+
+  if (legacyCompatibility.status === "failed") {
+    localProxyStatus = "failed";
+    failures.push(`legacy-compatibility: ${legacyCompatibility.detail}`);
   }
 
   try {
@@ -362,6 +426,7 @@ test("the full chain produces one terminal release-verification report", async (
   const report = controlledReport ?? createFailedReport(startedAt, finishedAt);
   report.coverage.localSubmissionProxy = localProxyStatus;
   report.coverage.surveyContractMatrix = localProxyStatus;
+  report.coverage.legacyCompatibility = legacyCompatibility.status;
   report.checks.push({
     id: "local-submission-proxy",
     status: localProxyStatus,
@@ -380,10 +445,17 @@ test("the full chain produces one terminal release-verification report", async (
         ? `${matrixEvidence.length}/${MATRIX_SCENARIOS.length} survey- og feltvarianter er verifisert`
         : `${matrixEvidence.filter(({ status }) => status === "passed").length}/${MATRIX_SCENARIOS.length} survey- og feltvarianter er verifisert`,
   });
+  report.checks.push({
+    id: "legacy-compatibility",
+    status: legacyCompatibility.status,
+    completedAt: finishedAt,
+    detail: legacyCompatibility.detail,
+  });
   report.automation = {
     runner: "playwright",
     failures,
     matrix: matrixEvidence,
+    legacyCompatibility,
   };
   report.generatedAt = finishedAt;
   report.finishedAt = finishedAt;
@@ -398,7 +470,7 @@ test("the full chain produces one terminal release-verification report", async (
 
 async function verifyLocalSurveyMatrix(
   page: Page,
-): Promise<MatrixScenarioEvidence[]> {
+): Promise<LocalSurveyMatrixResult> {
   await page.goto(DEMO_URL);
   await expect(
     page.getByRole("heading", { name: "Full-chain testbenk" }),
@@ -406,31 +478,64 @@ async function verifyLocalSurveyMatrix(
   const scenarioSelect = page.getByRole("combobox", {
     name: "Survey- og feltvariant",
   });
-  const renderedScenarioIds = await scenarioSelect
+  const renderedScenarios = await scenarioSelect
     .locator("option")
     .evaluateAll((options) =>
-      options.map((option) => (option as HTMLOptionElement).value),
+      options.map((option) => ({
+        id: (option as HTMLOptionElement).value,
+        authoringFormat: option.getAttribute("data-authoring-format"),
+      })),
     );
-  expect(renderedScenarioIds).toEqual(MATRIX_SCENARIOS.map(({ id }) => id));
+  expect(renderedScenarios).toEqual(
+    MATRIX_SCENARIOS.map(({ id, authoringFormat }) => ({
+      id,
+      authoringFormat,
+    })),
+  );
 
   const evidence: MatrixScenarioEvidence[] = [];
+  let legacyCompatibility: LegacyCompatibilityEvidence | null = null;
   for (const scenario of MATRIX_SCENARIOS) {
     try {
-      evidence.push(await verifyMatrixScenario(page, scenario));
+      if (scenario.authoringFormat === "legacy-flat") {
+        const result = await verifyLegacyCompatibilityScenario(page, scenario);
+        evidence.push(result.matrix);
+        legacyCompatibility = result.compatibility;
+      } else {
+        evidence.push(await verifyMatrixScenario(page, scenario));
+      }
     } catch (error) {
       evidence.push({
         scenarioId: scenario.id,
         surveyId: `local-demo-${scenario.id}`,
         surveyType: scenario.surveyType,
+        authoringFormat: scenario.authoringFormat,
         facets: scenario.facets,
         status: "failed",
         receiptId:
           error instanceof MatrixScenarioFailure ? error.receiptId : null,
         detail: errorMessage(error),
       });
+      if (scenario.authoringFormat === "legacy-flat") {
+        legacyCompatibility =
+          error instanceof LegacyCompatibilityFailure
+            ? failedLegacyCompatibilityEvidence(error.message, error)
+            : failedLegacyCompatibilityEvidence(errorMessage(error));
+      }
     }
   }
-  return evidence;
+  expect(
+    legacyCompatibility,
+    "legacy-flat-scenario mangler i matrisen",
+  ).not.toBeNull();
+  return {
+    matrix: evidence,
+    legacyCompatibility:
+      legacyCompatibility ??
+      failedLegacyCompatibilityEvidence(
+        "legacy-flat-scenario mangler i matrisen",
+      ),
+  };
 }
 
 async function verifyMatrixScenario(
@@ -441,67 +546,29 @@ async function verifyMatrixScenario(
   const marker = `matrix-${scenario.id}-${Date.now()}`;
   let receiptId: string | null = null;
   try {
-    await page.goto(DEMO_URL);
-    await page
-      .getByRole("combobox", { name: "Survey- og feltvariant" })
-      .selectOption(scenario.id);
-    await expect(page.getByText(surveyId, { exact: true })).toBeVisible();
-
-    const widget = page.getByRole("complementary", {
-      name: "Tilbakemeldingspanel",
+    const widget = await openAndFillScenario(page, scenario, marker);
+    const submission = await submitCurrentWidget(page, widget);
+    receiptId = submission.receiptId;
+    await assertCurrentWidgetSubmission(
+      page,
+      submission.response,
+      scenario,
+      surveyId,
+      marker,
+    );
+    const feedbackTable = await openSurveyFeedback(page, surveyId);
+    await assertReceiptReadback(page, feedbackTable, {
+      receiptId,
+      surveyId,
+      values: scenario.dashboardValues(marker),
     });
-    for (const action of scenario.actions) {
-      await performMatrixAction(page, widget, action, marker);
-    }
-
-    const responsePromise = page.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.url().includes("/api/azure/v1/feedback"),
-    );
-    await widget.getByRole("button", { name: "Send", exact: true }).click();
-    const response = await responsePromise;
-    expect(response.ok()).toBe(true);
-    const receipt = (await response.json()) as { id?: string };
-    expect(receipt.id).toEqual(expect.any(String));
-    receiptId = receipt.id ?? null;
-    const payload = response.request().postDataJSON() as TransportPayload;
-    assertTransportPayload(payload, scenario, surveyId, marker);
-
-    await expect(
-      page.getByRole("heading", { name: "Signal lagret" }),
-    ).toBeVisible();
-
-    await page.goto(
-      `${DASHBOARD_URL}/feedback?team=local-dev&app=local-app&surveyId=${encodeURIComponent(surveyId)}&dateMode=auto`,
-    );
-    await expect(page.getByText(/Viser \d+ svar for/)).toBeVisible();
-    const feedbackTable = page.getByRole("table");
-    const newestRow = feedbackTable.getByRole("row").nth(1);
-    await expect(newestRow).toBeVisible();
-    await newestRow
-      .getByRole("button", { name: "Utvid rad" })
-      .click({ timeout: 5_000 });
-    const expandedRow = feedbackTable.getByRole("row").nth(2);
-    await expect(expandedRow).toBeVisible();
-    for (const value of scenario.dashboardValues(marker)) {
-      await expect(expandedRow).toContainText(value);
-    }
-
-    await page.goto(
-      `${DASHBOARD_URL}/?team=local-dev&app=local-app&surveyId=${encodeURIComponent(surveyId)}&dateMode=auto`,
-    );
-    await expect(
-      page
-        .locator("main")
-        .getByText(scenario.dashboardType, { exact: true })
-        .first(),
-    ).toBeVisible();
+    await assertDashboardType(page, scenario, surveyId);
 
     return {
       scenarioId: scenario.id,
       surveyId,
       surveyType: scenario.surveyType,
+      authoringFormat: scenario.authoringFormat,
       facets: scenario.facets,
       status: "passed",
       receiptId,
@@ -510,6 +577,340 @@ async function verifyMatrixScenario(
   } catch (error) {
     throw new MatrixScenarioFailure(errorMessage(error), receiptId);
   }
+}
+
+async function verifyLegacyCompatibilityScenario(
+  page: Page,
+  scenario: MatrixScenario,
+): Promise<{
+  matrix: MatrixScenarioEvidence;
+  compatibility: LegacyCompatibilityEvidence;
+}> {
+  const surveyId = `local-demo-${scenario.id}`;
+  const markerSeed = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const legacyMarker = `legacy-v1-${markerSeed}`;
+  const widgetMarker = `widget-v2-${markerSeed}`;
+  let legacyReceiptId: string | null = null;
+  let widgetReceiptId: string | null = null;
+  let legacyReadback: LegacySubmissionEvidence["readback"] = "not-tested";
+  let widgetReadback: LegacySubmissionEvidence["readback"] = "not-tested";
+
+  try {
+    const widget = await openAndFillScenario(
+      page,
+      scenario,
+      widgetMarker,
+      false,
+    );
+    legacyReceiptId = await submitLegacyV1(page, {
+      surveyId,
+      scenarioId: scenario.id,
+      marker: legacyMarker,
+    });
+
+    for (const action of scenario.actions) {
+      await performMatrixAction(page, widget, action, widgetMarker);
+    }
+    const widgetSubmission = await submitCurrentWidget(page, widget);
+    widgetReceiptId = widgetSubmission.receiptId;
+    await assertCurrentWidgetSubmission(
+      page,
+      widgetSubmission.response,
+      scenario,
+      surveyId,
+      widgetMarker,
+    );
+    expect(widgetReceiptId).not.toBe(legacyReceiptId);
+
+    const feedbackTable = await openSurveyFeedback(page, surveyId);
+    try {
+      await assertReceiptReadback(page, feedbackTable, {
+        receiptId: legacyReceiptId,
+        surveyId,
+        values: [legacyMarker, "3/5"],
+      });
+      legacyReadback = "passed";
+    } catch (error) {
+      legacyReadback = "failed";
+      throw error;
+    }
+    try {
+      await assertReceiptReadback(page, feedbackTable, {
+        receiptId: widgetReceiptId,
+        surveyId,
+        values: scenario.dashboardValues(widgetMarker),
+      });
+      widgetReadback = "passed";
+    } catch (error) {
+      widgetReadback = "failed";
+      throw error;
+    }
+    await assertDashboardType(page, scenario, surveyId);
+
+    const detail =
+      "Schema v1 og flatkonfigurert widget-schema v2 ble lagret med ulike kvitteringer og lest tilbake i dashboardet";
+    return {
+      matrix: {
+        scenarioId: scenario.id,
+        surveyId,
+        surveyType: scenario.surveyType,
+        authoringFormat: scenario.authoringFormat,
+        facets: scenario.facets,
+        status: "passed",
+        receiptId: widgetReceiptId,
+        detail,
+      },
+      compatibility: {
+        scenarioId: "legacy-flat-rating",
+        surveyId,
+        status: "passed",
+        legacySubmission: {
+          schemaVersion: 1,
+          receiptId: legacyReceiptId,
+          marker: legacyMarker,
+          readback: legacyReadback,
+        },
+        widgetSubmission: {
+          schemaVersion: 2,
+          receiptId: widgetReceiptId,
+          marker: `${widgetMarker}-emoji`,
+          readback: widgetReadback,
+        },
+        detail,
+      },
+    };
+  } catch (error) {
+    throw new LegacyCompatibilityFailure(
+      errorMessage(error),
+      legacyReceiptId,
+      widgetReceiptId,
+      legacyMarker,
+      `${widgetMarker}-emoji`,
+      legacyReadback,
+      widgetReadback,
+    );
+  }
+}
+
+async function openAndFillScenario(
+  page: Page,
+  scenario: MatrixScenario,
+  marker: string,
+  performActions = true,
+): Promise<Locator> {
+  await page.goto(DEMO_URL);
+  await page
+    .getByRole("combobox", { name: "Survey- og feltvariant" })
+    .selectOption(scenario.id);
+  await expect(
+    page.getByText(surveyIdFor(scenario), { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(scenario.authoringFormat, { exact: true }),
+  ).toBeVisible();
+
+  const widget = page.getByRole("complementary", {
+    name: "Tilbakemeldingspanel",
+  });
+  if (performActions) {
+    for (const action of scenario.actions) {
+      await performMatrixAction(page, widget, action, marker);
+    }
+  }
+  return widget;
+}
+
+async function submitCurrentWidget(
+  page: Page,
+  widget: Locator,
+): Promise<CurrentWidgetSubmission> {
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.url().includes("/api/azure/v1/feedback"),
+  );
+  await widget.getByRole("button", { name: "Send", exact: true }).click();
+  const response = await responsePromise;
+  const responseBody = await response.text();
+  expect(response.status(), responseBody).toBe(201);
+  const receipt = JSON.parse(responseBody) as { id?: string };
+  expect(receipt.id).toEqual(expect.any(String));
+  return { receiptId: receipt.id ?? "", response };
+}
+
+async function assertCurrentWidgetSubmission(
+  page: Page,
+  response: Response,
+  scenario: MatrixScenario,
+  surveyId: string,
+  marker: string,
+): Promise<void> {
+  const payload = response
+    .request()
+    .postDataJSON() as LumiApiFeedbackSubmissionV2;
+  assertTransportPayload(payload, scenario, surveyId, marker);
+  await expect(
+    page.getByRole("heading", { name: "Signal lagret" }),
+  ).toBeVisible();
+}
+
+async function submitLegacyV1(
+  page: Page,
+  input: { surveyId: string; scenarioId: string; marker: string },
+): Promise<string> {
+  const payload: LumiApiFeedbackSubmissionV1 = {
+    schemaVersion: 1,
+    surveyId: input.surveyId,
+    surveyType: "rating",
+    submittedAt: new Date().toISOString(),
+    context: {
+      tags: {
+        environment: "local-full-chain",
+        scenario: input.scenarioId,
+        compatibilityPhase: "legacy-v1",
+      },
+    },
+    answers: [
+      {
+        fieldId: "rating",
+        fieldType: "RATING",
+        question: { label: "Hvordan var opplevelsen?" },
+        value: {
+          type: "rating",
+          rating: 3,
+          ratingVariant: "emoji",
+          ratingScale: 5,
+        },
+      },
+      {
+        fieldId: "feedback",
+        fieldType: "TEXT",
+        question: { label: "Hva bør vi forbedre?" },
+        value: { type: "text", text: input.marker },
+      },
+    ],
+  };
+  expect(payload).not.toHaveProperty("definition");
+  expect(payload).not.toHaveProperty("deduplicationKey");
+  const response = await page.evaluate(async (body) => {
+    const result = await fetch("/api/azure/v1/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return { status: result.status, body: await result.text() };
+  }, payload);
+  expect(response.status, response.body).toBe(201);
+  const receipt = JSON.parse(response.body) as { id?: string };
+  expect(receipt.id).toEqual(expect.any(String));
+  return receipt.id ?? "";
+}
+
+async function openSurveyFeedback(
+  page: Page,
+  surveyId: string,
+): Promise<Locator> {
+  await page.goto(
+    `${DASHBOARD_URL}/feedback?team=local-dev&app=local-app&surveyId=${encodeURIComponent(surveyId)}&dateMode=auto`,
+  );
+  await expect(page.getByText(/Viser \d+ svar for/)).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "App" }).first()).toHaveValue(
+    "local-app",
+  );
+  return page.getByRole("table");
+}
+
+async function assertReceiptReadback(
+  page: Page,
+  feedbackTable: Locator,
+  input: {
+    receiptId: string;
+    surveyId: string;
+    values: string[];
+  },
+): Promise<void> {
+  const dataRows = feedbackTable.locator("tbody > tr").filter({
+    has: page.getByRole("button", { name: /^(Utvid|Minimer) rad$/ }),
+  });
+  await expect(dataRows.first()).toBeVisible();
+
+  const receipt = feedbackTable.getByText(`ID: ${input.receiptId}`, {
+    exact: true,
+  });
+  let dataRow: Locator | null = null;
+  const rowCount = await dataRows.count();
+  for (let index = 0; index < rowCount; index += 1) {
+    const candidate = dataRows.nth(index);
+    const expandButton = candidate.getByRole("button", { name: "Utvid rad" });
+    if (await expandButton.isVisible()) {
+      await expandButton.click({ timeout: 5_000 });
+    }
+    const minimizeButton = candidate.getByRole("button", {
+      name: "Minimer rad",
+    });
+    await expect(minimizeButton).toBeVisible();
+    if (await receipt.isVisible()) {
+      dataRow = candidate;
+      break;
+    }
+    await minimizeButton.click({ timeout: 5_000 });
+  }
+
+  if (dataRow === null) {
+    throw new Error(`Fant ikke feedbackrad med ID ${input.receiptId}`);
+  }
+  await expect(dataRow).toContainText(input.surveyId);
+  await expect(dataRow).toContainText("local-app");
+  await expect(receipt).toBeVisible();
+  const expandedRow = receipt.locator("xpath=ancestor::tr");
+  await expect(expandedRow).toContainText(`Survey: ${input.surveyId}`);
+  for (const value of input.values) {
+    await expect(expandedRow).toContainText(value);
+  }
+}
+
+async function assertDashboardType(
+  page: Page,
+  scenario: MatrixScenario,
+  surveyId: string,
+): Promise<void> {
+  await page.goto(
+    `${DASHBOARD_URL}/?team=local-dev&app=local-app&surveyId=${encodeURIComponent(surveyId)}&dateMode=auto`,
+  );
+  await expect(
+    page
+      .locator("main")
+      .getByText(scenario.dashboardType, { exact: true })
+      .first(),
+  ).toBeVisible();
+}
+
+function surveyIdFor(scenario: MatrixScenario): string {
+  return `local-demo-${scenario.id}`;
+}
+
+function failedLegacyCompatibilityEvidence(
+  detail: string,
+  failure?: LegacyCompatibilityFailure,
+): LegacyCompatibilityEvidence {
+  return {
+    scenarioId: "legacy-flat-rating",
+    surveyId: "local-demo-legacy-flat-rating",
+    status: "failed",
+    legacySubmission: {
+      schemaVersion: 1,
+      receiptId: failure?.legacyReceiptId ?? null,
+      marker: failure?.legacyMarker ?? null,
+      readback: failure?.legacyReadback ?? "not-tested",
+    },
+    widgetSubmission: {
+      schemaVersion: 2,
+      receiptId: failure?.receiptId ?? null,
+      marker: failure?.widgetMarker ?? null,
+      readback: failure?.widgetReadback ?? "not-tested",
+    },
+    detail,
+  };
 }
 
 async function performMatrixAction(
@@ -553,7 +954,7 @@ async function performMatrixAction(
 }
 
 function assertTransportPayload(
-  payload: TransportPayload,
+  payload: LumiApiFeedbackSubmissionV2,
   scenario: MatrixScenario,
   surveyId: string,
   marker: string,
@@ -576,7 +977,7 @@ function assertTransportPayload(
       payload.definition.fields.find(
         ({ fieldId }) => fieldId === expectedField.fieldId,
       ),
-    ).toMatchObject(expectedField);
+    ).toEqual(expect.objectContaining({ ...expectedField }));
   }
 
   const expectedAnswers = scenario.expectedAnswers(marker);
@@ -584,12 +985,13 @@ function assertTransportPayload(
   for (const expectedAnswer of expectedAnswers) {
     expect(
       payload.answers.find(({ fieldId }) => fieldId === expectedAnswer.fieldId),
-    ).toMatchObject(expectedAnswer);
+    ).toEqual(expect.objectContaining({ ...expectedAnswer }));
   }
 }
 
 function ratingScenario({
   id,
+  authoringFormat = "document-v1",
   facet,
   ratingFieldId,
   ratingAction,
@@ -598,6 +1000,7 @@ function ratingScenario({
   textPrompt,
 }: {
   id: string;
+  authoringFormat?: MatrixScenario["authoringFormat"];
   facet: "emoji" | "thumbs" | "stars" | "nps";
   ratingFieldId: string;
   ratingAction: Extract<MatrixAction, { kind: "radio" }>;
@@ -606,8 +1009,15 @@ function ratingScenario({
   textPrompt: string;
 }): MatrixScenario {
   const scale = facet === "thumbs" ? 2 : facet === "nps" ? 11 : 5;
+  const dashboardRating =
+    facet === "thumbs"
+      ? "👍 Ja"
+      : facet === "nps"
+        ? `${rating}/10`
+        : `${rating}/${scale}`;
   return {
     id,
+    authoringFormat,
     surveyType: "rating",
     dashboardType: "Vurdering",
     facets: ["rating", facet, "text", "visibleIf"],
@@ -627,7 +1037,7 @@ function ratingScenario({
       ratingAnswer(ratingFieldId, facet, scale, rating),
       textAnswer(textFieldId, `${marker}-${facet}`),
     ],
-    dashboardValues: (marker) => [`${marker}-${facet}`],
+    dashboardValues: (marker) => [`${marker}-${facet}`, dashboardRating],
   };
 }
 
@@ -638,6 +1048,7 @@ function taskPriorityScenario(
 ): MatrixScenario {
   return {
     id,
+    authoringFormat: "document-v1",
     surveyType: "taskPriority",
     dashboardType: "Task Priority",
     facets: ["multiChoice", facet],
@@ -777,6 +1188,7 @@ function createFailedReport(
     coverage: {
       controlledRoundTrip: "failed",
       localSubmissionProxy: "not-tested",
+      legacyCompatibility: "failed",
       globalAzureHealth: "not-assessed",
       trygdeetatenProxy: "not-tested",
       navWideRelease: "pending",

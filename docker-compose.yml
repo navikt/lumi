@@ -14,7 +14,7 @@ services:
       POSTGRES_USER: lumi
       POSTGRES_PASSWORD: lumi
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${LUMI_POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - lumi-postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -41,7 +41,7 @@ services:
       LUMI_LOCAL_AUTH_BYPASS: "true"
       LUMI_INTERNAL_SUBMISSION_KEY: "local-full-chain-only"
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${LUMI_API_HOST_PORT:-8080}:8080"
 
   submission-proxy:
     build:
@@ -55,7 +55,7 @@ services:
       LUMI_INTERNAL_SUBMISSION_KEY: "local-full-chain-only"
       LUMI_LOCAL_AUTH_BYPASS: "true"
     ports:
-      - "127.0.0.1:8081:8080"
+      - "127.0.0.1:${LUMI_SUBMISSION_PROXY_HOST_PORT:-8081}:8080"
 
   dashboard:
     build:
@@ -71,19 +71,21 @@ services:
       USE_MOCK_DATA: "false"
       LUMI_LOCAL_AUTH_BYPASS: "true"
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${LUMI_DASHBOARD_HOST_PORT:-3000}:3000"
 
   demo:
     build:
       context: .
       dockerfile: apps/lumi-local-demo/Dockerfile.local
+      args:
+        VITE_LUMI_DASHBOARD_HOST_PORT: "${LUMI_DASHBOARD_HOST_PORT:-3000}"
       secrets:
         - npm_token
     container_name: lumi-local-demo
     depends_on:
       - submission-proxy
     ports:
-      - "127.0.0.1:3001:8080"
+      - "127.0.0.1:${LUMI_DEMO_HOST_PORT:-3001}:8080"
 
 volumes:
   lumi-postgres-data:
