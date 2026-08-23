@@ -23,9 +23,6 @@ private class FixedTeamLookup(
 ) : NaisTeamLookup {
     override suspend fun getTeamSlugsForUserResult(email: String): NaisApiResult<Set<String>> =
         NaisApiResult.Success(teams)
-
-    override suspend fun getTeamSlugsForViewerResult(): NaisApiResult<Set<String>> =
-        NaisApiResult.Success(teams)
 }
 
 private fun Application.boundaryTestModule(
