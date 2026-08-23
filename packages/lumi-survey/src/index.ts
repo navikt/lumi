@@ -22,6 +22,7 @@ export type {
   SurveySuccessV1,
   SurveyType,
 } from "./components/surveyTypes.js";
+export { allowedVisibleIfOperators } from "./core/conditionUtils.js";
 export * from "./core/index.js";
 export {
   createDiscoverySurvey,

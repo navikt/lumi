@@ -1,6 +1,8 @@
 import type {
   LogicConditionGroup,
   LogicLeafCondition,
+  LogicOperator,
+  LumiSurveyQuestionType,
   VisibleIfCondition,
 } from "./types.js";
 
@@ -58,4 +60,25 @@ export function isLeafCondition(
     typeof (condition as { operator?: unknown }).operator === "string" &&
     LOGIC_OPERATORS.has((condition as { operator: string }).operator)
   );
+}
+
+/**
+ * The operators that are meaningful against each question type in
+ * `visibleIf`. multiChoice answers are arrays, so strict EQ/NEQ never
+ * match; GT/LT compare numbers and only fit rating scores. Authoring
+ * validation and the workshop's operator picker share this table.
+ */
+export function allowedVisibleIfOperators(
+  type: LumiSurveyQuestionType,
+): readonly LogicOperator[] {
+  switch (type) {
+    case "rating":
+      return ["EXISTS", "EQ", "NEQ", "GT", "LT"];
+    case "singleChoice":
+      return ["EXISTS", "EQ", "NEQ"];
+    case "multiChoice":
+      return ["EXISTS", "CONTAINS"];
+    case "text":
+      return ["EXISTS", "EQ", "NEQ", "CONTAINS"];
+  }
 }

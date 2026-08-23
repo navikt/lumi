@@ -1,4 +1,5 @@
 import {
+  allowedVisibleIfOperators,
   getLeafConditions,
   isConditionGroup,
   isLeafCondition,
@@ -107,6 +108,8 @@ export function buildCanonicalSurvey(
     ids.add(question.id);
   }
 
+  const questionById = new Map(questions.map((q) => [q.id, q]));
+
   // Validate cross-references in visibility and branching logic
   for (const question of questions) {
     const visibleIf = question.visibleIf;
@@ -209,6 +212,17 @@ export function buildCanonicalSurvey(
           throw new Error(
             `Lumi: Question "${question.id}" has visibleIf.questionId "${leaf.questionId}", but version 1 survey documents may only reference earlier questions`,
           );
+        }
+        if (isDocument && leaf.field !== "METADATA" && leaf.questionId) {
+          const referenced = questionById.get(leaf.questionId);
+          const allowed = referenced
+            ? allowedVisibleIfOperators(referenced.type)
+            : undefined;
+          if (referenced && allowed && !allowed.includes(leaf.operator)) {
+            throw new Error(
+              `Lumi: Question "${question.id}" has a ${leaf.operator} visibleIf against question "${leaf.questionId}" (${referenced.type}) — allowed operators for ${referenced.type} are ${allowed.join(", ")}`,
+            );
+          }
         }
       }
     }
