@@ -29,8 +29,7 @@ interface ThumbsRatingProps {
 
 /**
  * 2-point thumbs rating: 👎 👍
- * Modern inline style inspired by ChatGPT/Claude feedback.
- * Clean, minimal, with subtle hover effects.
+ * Compact inline layout with subtle hover effects.
  */
 export function ThumbsRating({
   question,

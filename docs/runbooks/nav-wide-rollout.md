@@ -4,9 +4,6 @@ Denne runbooken skiller teknisk release-readiness fra beslutningen om hvilke
 surveys som faktisk skal være aktive. Migrering eller reaktivering skal ikke
 brukes som en måte å ta produktbeslutningen på.
 
-Datert status og kostbevisst risikovurdering finnes i
-[readiness-rapporten fra 23. august 2026](./nav-wide-readiness-2026-08-23.md).
-
 ## Nå-status
 
 | Område | Status | Bevis |
@@ -109,6 +106,23 @@ Lumi sin `/release-verification` kan ikke bevise en annen apps deployede
 trygdeetaten-proxy. Det beviset må komme fra første canary-app. Global
 kanalhelse og alarmer er supplerende operasjonell overvåking, ikke en skjult
 forutsetning for å produsere den selvbetjente rapporten.
+
+## Før aktivering for flere team
+
+I tillegg til en grønn canary må disse varige gatene være lukket:
+
+1. Retensjonsperiode, slettemodell og dataeier er besluttet og dokumentert.
+2. Teamtilgang feiler lukket, og maksimal tid for tilbakekalling av tilgang er
+   avtalt og verifisert.
+3. Eventuell lesetilgang på tvers av team har navngitt eier, dokumentert formål
+   og minste nødvendige databasetilganger.
+4. Ansvar og forventet behandlingstid for onboarding av nye konsumentapper er
+   dokumentert.
+5. Surveylisten og målingskontinuiteten er avklart etter beslutningstabellen
+   over.
+6. Kapasitets- og recovery-valg bygger på avtalte RPO-/RTO-krav eller målte
+   terskler. HA, PITR og oppskalering skal ikke innføres som skjulte
+   standardvalg.
 
 ## Stoppkriterier
 
