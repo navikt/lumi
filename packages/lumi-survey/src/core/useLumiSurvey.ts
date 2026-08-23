@@ -24,7 +24,10 @@ export interface UseLumiSurveyOptions {
   questions: LumiSurveyQuestion[];
   transport: LumiSurveyTransport;
   events?: LumiSurveyEvents;
-  /** Structured context for segmentation (tags) and debugging (debug) */
+  /**
+   * Structured context. `tags` support segmentation; `debug` is stored but is
+   * not exposed by the current dashboard/export read model.
+   */
   context?: LumiSurveyContext;
   initialAnswers?: Record<string, LumiSurveyAnswerValue>;
   surveyType?: SurveyType;

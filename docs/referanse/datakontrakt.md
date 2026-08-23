@@ -90,21 +90,25 @@ interface LumiContext {
   // Segmentering (LAV KARDINALITET → dashboard-grafer)
   tags?: Record<string, string | number | boolean>;
 
-  // Debugging (HØY KARDINALITET → kun i detaljvisning)
+  // Valgfri debug-data (lagres, men finnes ikke i dagens lesemodell)
   debug?: Record<string, unknown>;
 }
 ```
+
+`userAgent` og `debug` tas imot og lagres, men returneres ikke av dagens lesemodell og er derfor ikke tilgjengelige i dashboard eller eksport.
 
 ### Tags vs. debug
 
 | Felt | Kardinalitet | Bruksområde | Eksempel |
 | :--- | :--- | :--- | :--- |
 | `tags` | Lav (< 10 verdier) | Grafer, segmentering | `{ abTest: "A", rolle: "arbeidsgiver" }` |
-| `debug` | Høy (OK) | Inspeksjon av enkeltinnslag | `{ sessionId: "abc-123", behandlingId: "..." }` |
+| `debug` | Høy (OK) | Lagres, men er ikke tilgjengelig i dagens lesemodell | `{ buildVersion: "2.4.1", featureVariant: "ny-kvittering" }` |
 
-::: warning Ikke legg høy-kardinalitet i tags
-Tags med mange unike verdier (f.eks. bruker-IDer) gir ubrukelige grafer i dashboardet. Bruk `debug`-feltet for slike verdier.
+::: warning Hold identifikatorer ute av context
+Tags med mange unike verdier gir ubrukelige grafer i dashboardet. Ikke flytt bruker-, person- eller saksidentifikatorer til `debug`; feltet lagres selv om det ikke kan leses i dagens dashboard eller eksport.
 :::
+
+Se [hvor og når PII-maskering skjer](/referanse/sikkerhet#pii-feltdekning) for nøyaktig feltdekning og begrensninger.
 
 ## Survey-typer
 

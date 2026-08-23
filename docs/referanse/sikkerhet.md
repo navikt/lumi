@@ -4,15 +4,15 @@ title: Sikkerhet & personvern
 
 # Sikkerhet & personvern
 
-Lumi håndterer sikkerhet og personvern automatisk — du trenger ikke gjøre noe spesielt i din integrasjon.
+Lumi har innebygde sikkerhets- og personvernmekanismer. De reduserer risiko, men erstatter ikke ansvaret for å unngå personopplysninger i surveyen og konteksten.
 
 ## PII-maskering {#pii-maskering}
 
-API-et maskerer automatisk personlig identifiserbar informasjon (PII) i fritekst-svar. Maskering skjer **ved lagring**, slik at sensitive data aldri finnes i klartekst i databasen.
+API-et maskerer kjente mønstre for personlig identifiserbar informasjon (PII) i fritekstsvar og utvalgte kontekstfelt. Maskeringen er mønsterbasert og er et sikkerhetsnett, ikke en garanti for at alle personopplysninger fanges opp.
 
 | Mønster | Eksempel | Erstatning |
 | :--- | :--- | :--- |
-| Fødselsnummer | `12345678901` | `[FØDSELSNUMMER FJERNET]` |
+| Fødselsnummer | `01020349294` | `[FØDSELSNUMMER FJERNET]` |
 | Nav-ident | `A123456` | `[NAVIDENT FJERNET]` |
 | E-post | `test@nav.no` | `[E-POST FJERNET]` |
 | Telefonnummer | `12345678` | `[TELEFON FJERNET]` |
@@ -20,8 +20,21 @@ API-et maskerer automatisk personlig identifiserbar informasjon (PII) i fritekst
 | Kontonummer | `1234.56.12345` | `[KONTONUMMER FJERNET]` |
 | Hemmelig adresse | «hemmelig adresse» | `[HEMMELIG ADRESSE]` |
 
+### Hvor og når maskering skjer {#pii-feltdekning}
+
+| Felt | Ved lagring | Ved lesing | Merknad |
+| :--- | :--- | :--- | :--- |
+| Fritekstsvar (`answers[].value.text`) | PII-mønstre maskeres | PII-mønstre maskeres på nytt | Det eneste feltet med dobbel maskering |
+| `context.url` | PII-mønstre maskeres i path, query-parametere og fragment | Ingen ekstra maskering | Maskeringen dekoder URL-verdier for å fange kodede mønstre |
+| `context.pathname` | PII-mønstre maskeres etter URL-dekoding | Ingen ekstra maskering | Samle helst en statisk eller allerede renset path |
+| `context.tags` | PII-mønstre maskeres i både nøkler og verdier | Ingen ekstra maskering | Bruk kun lavkardinalitetsverdier, aldri identifikatorer |
+| `context.debug` | PII-mønstre maskeres rekursivt i nøkler og verdier | Ingen ekstra maskering | Feltet finnes ikke i dagens lesemodell |
+| `context.userAgent` | HTML fjernes, men PII-mønstre maskeres ikke | Ingen ekstra maskering | Sendes automatisk av widgeten og finnes ikke i dagens lesemodell |
+| Surveydefinert metadata (`surveyId`, `fieldId`, spørsmålstekst/-beskrivelse og svaralternativenes ID/tekst) | PII-mønstre maskeres ikke | PII-mønstre maskeres ikke | Verdiene valideres, men må ikke inneholde personopplysninger |
+| Strukturerte svar (rating, valgte alternativ-ID-er og dato) | PII-mønstre maskeres ikke | PII-mønstre maskeres ikke | Bruk bare svarverdier som ikke identifiserer personen |
+
 ::: info Dobbel maskering
-PII-redaksjon kjøres både ved lagring og ved lesing. Selv om et mønster slipper gjennom ved lagring, fanges det ved visning.
+Dobbel maskering gjelder bare fritekstsvar. Kontekstfeltene som er markert i tabellen maskeres ved lagring, men får ingen ny PII-kontroll ved lesing.
 :::
 
 ## Rate limiting

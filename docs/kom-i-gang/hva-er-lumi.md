@@ -9,7 +9,7 @@ Lumi er et verktøy for å kjøre personvernvennlige surveys i Nav-apper. Du def
 ## Hvorfor Lumi?
 
 - **Survey som dokument** — bygg sider og spørsmål i Surveyverksted eller TypeScript. Appen eier produksjonsversjonen.
-- **Privacy by design** — all data blir i Nav-clusteret, og personopplysninger maskeres automatisk.
+- **Privacy by design** — all data blir i Nav-clusteret, og kjente personopplysningsmønstre maskeres i utvalgte felt som et sikkerhetsnett. Se [Sikkerhet & personvern](/referanse/sikkerhet#pii-maskering) for begrensningene.
 - **Aksel-basert** — widgeten bruker Navs designsystem og følger WCAG.
 - **Rask integrasjon** — installer en React-widget, koble til backend, ferdig.
 - **Dashboard** — filtrer, segmenter og eksporter survey-data med teambasert tilgangsstyring.
