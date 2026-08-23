@@ -635,3 +635,189 @@ describe("validateSurveyDocumentV1", () => {
     ).toThrow(/success/i);
   });
 });
+
+describe("visibleIf operator validation against referenced question type", () => {
+  const documentWithFollowUp = (
+    visibleIf: unknown,
+    referencedQuestion?: unknown,
+  ): SurveyDocumentV1 =>
+    ({
+      authoringSchemaVersion: 1,
+      type: "custom",
+      pages: [
+        {
+          id: "p1",
+          questions: [
+            referencedQuestion ?? {
+              id: "multi",
+              type: "multiChoice",
+              prompt: "Hva brukte du?",
+              options: [
+                { value: "sok", label: "Søk" },
+                { value: "meny", label: "Meny" },
+              ],
+            },
+          ],
+        },
+        {
+          id: "p2",
+          questions: [
+            {
+              id: "follow",
+              type: "text",
+              prompt: "Fortell mer",
+              visibleIf,
+            },
+          ],
+        },
+      ],
+    }) as unknown as SurveyDocumentV1;
+
+  it.each([
+    "EQ",
+    "NEQ",
+  ] as const)("rejects %s against a multiChoice question", (operator) => {
+    expect(() =>
+      validateSurveyDocumentV1(
+        documentWithFollowUp({ operator, questionId: "multi", value: "sok" }),
+      ),
+    ).toThrowError(/"follow".*EQ|NEQ.*"multi".*multiChoice.*EXISTS, CONTAINS/s);
+  });
+
+  it("names the owner, the referenced question, its type, the operator and the allowed set", () => {
+    expect(() =>
+      validateSurveyDocumentV1(
+        documentWithFollowUp({
+          operator: "EQ",
+          questionId: "multi",
+          value: "sok",
+        }),
+      ),
+    ).toThrowError(
+      /Question "follow".*EQ.*"multi".*\(multiChoice\).*EXISTS, CONTAINS/s,
+    );
+  });
+
+  it.each([
+    { operator: "CONTAINS", value: "sok" },
+    { operator: "EXISTS", value: undefined },
+  ])("accepts $operator against a multiChoice question", ({
+    operator,
+    value,
+  }) => {
+    const document = documentWithFollowUp({
+      operator,
+      questionId: "multi",
+      ...(value !== undefined && { value }),
+    });
+    expect(() => validateSurveyDocumentV1(document)).not.toThrow();
+  });
+
+  it.each([
+    "any",
+    "all",
+  ] as const)("applies the same rules to leaves in an %s group", (groupKey) => {
+    const invalid = documentWithFollowUp({
+      [groupKey]: [
+        { operator: "EXISTS", questionId: "multi" },
+        { operator: "EQ", questionId: "multi", value: "sok" },
+      ],
+    });
+    expect(() => validateSurveyDocumentV1(invalid)).toThrowError(
+      /"follow".*EQ.*multiChoice/s,
+    );
+
+    const valid = documentWithFollowUp({
+      [groupKey]: [
+        { operator: "EXISTS", questionId: "multi" },
+        { operator: "CONTAINS", questionId: "multi", value: "sok" },
+      ],
+    });
+    expect(() => validateSurveyDocumentV1(valid)).not.toThrow();
+  });
+
+  it("keeps CONTAINS against a singleChoice question compatible", () => {
+    expect(() =>
+      validateSurveyDocumentV1(
+        documentWithFollowUp(
+          { operator: "CONTAINS", questionId: "single", value: "a" },
+          {
+            id: "single",
+            type: "singleChoice",
+            prompt: "Velg én",
+            options: [{ value: "a", label: "A" }],
+          },
+        ),
+      ),
+    ).not.toThrow();
+  });
+
+  it("rejects numeric comparisons against a singleChoice question", () => {
+    expect(() =>
+      validateSurveyDocumentV1(
+        documentWithFollowUp(
+          { operator: "GT", questionId: "single", value: 1 },
+          {
+            id: "single",
+            type: "singleChoice",
+            prompt: "Velg én",
+            options: [{ value: "a", label: "A" }],
+          },
+        ),
+      ),
+    ).toThrowError(/"follow".*GT.*singleChoice.*EXISTS, EQ, NEQ, CONTAINS/s);
+  });
+
+  it("rejects GT against a text question but accepts it against rating", () => {
+    expect(() =>
+      validateSurveyDocumentV1(
+        documentWithFollowUp(
+          { operator: "GT", questionId: "fritekst", value: 2 },
+          { id: "fritekst", type: "text", prompt: "Skriv" },
+        ),
+      ),
+    ).toThrowError(/"follow".*GT.*text.*EXISTS, EQ, NEQ, CONTAINS/s);
+
+    expect(() =>
+      validateSurveyDocumentV1(
+        documentWithFollowUp(
+          { operator: "GT", questionId: "score", value: 3 },
+          { id: "score", type: "rating", prompt: "Vurder" },
+        ),
+      ),
+    ).not.toThrow();
+  });
+
+  it("keeps METADATA conditions structurally validated only", () => {
+    expect(() =>
+      validateSurveyDocumentV1(
+        documentWithFollowUp({
+          field: "METADATA",
+          key: "kanal",
+          operator: "EQ",
+          value: "web",
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  it("does not tighten legacy flat surveys", () => {
+    const legacy: LumiSurveyConfig = {
+      questions: [
+        {
+          id: "multi",
+          type: "multiChoice",
+          prompt: "Hva brukte du?",
+          options: [{ value: "sok", label: "Søk" }],
+        },
+        {
+          id: "follow",
+          type: "text",
+          prompt: "Fortell mer",
+          visibleIf: { operator: "EQ", questionId: "multi", value: "sok" },
+        },
+      ] as unknown as LumiSurveyConfig["questions"],
+    };
+    expect(() => buildCanonicalSurvey(legacy)).not.toThrow();
+  });
+});
