@@ -3,18 +3,33 @@ import {
   createTopTasksSurveyDocument,
   DEFAULT_DISCOVERY_SURVEY_DOCUMENT,
   DEFAULT_RATING_SURVEY_DOCUMENT,
-  type LumiSurveyDefinition,
+  type LumiSurveyConfig,
+  type LumiSurveyQuestionType,
+  type MultiChoiceVariant,
+  type RatingVariant,
   type SurveyDocumentV1,
   type SurveyQuestionV1,
+  type SurveyType,
 } from "@navikt/lumi-survey";
 
-export interface DemoScenario {
+export type SurveyAuthoringFormat = "legacy-flat" | "document-v1";
+
+interface DemoScenarioBase {
   id: string;
   title: string;
   summary: string;
   coverage: string[];
-  survey: LumiSurveyDefinition;
 }
+
+export type DemoScenario =
+  | (DemoScenarioBase & {
+      authoringFormat: "legacy-flat";
+      survey: LumiSurveyConfig;
+    })
+  | (DemoScenarioBase & {
+      authoringFormat: "document-v1";
+      survey: SurveyDocumentV1;
+    });
 
 const tasks = [
   { value: "apply", label: "Søke om en ytelse" },
@@ -37,16 +52,53 @@ function ratingDocument(
   };
 }
 
-export const demoScenarios: DemoScenario[] = [
+const legacyFlatRatingSurvey = {
+  type: "rating",
+  questions: [
+    {
+      id: "rating",
+      type: "rating",
+      variant: "emoji",
+      prompt: "Hvordan var opplevelsen?",
+      required: true,
+    },
+    {
+      id: "feedback",
+      type: "text",
+      prompt: "Hva bør vi forbedre?",
+      maxLength: 500,
+      visibleIf: { questionId: "rating", operator: "EXISTS" },
+    },
+  ],
+} satisfies LumiSurveyConfig;
+
+function defineDemoScenarios<const Id extends string>(
+  scenarios: Array<DemoScenario & { id: Id }>,
+): Array<DemoScenario & { id: Id }> {
+  return scenarios;
+}
+
+export const demoScenarios = defineDemoScenarios([
   {
     id: "rating-emoji",
+    authoringFormat: "document-v1",
     title: "Rating · emoji",
     summary: "Standard 1–5-opplevelse med progressiv fritekst.",
     coverage: ["rating", "emoji", "text", "visibleIf"],
     survey: DEFAULT_RATING_SURVEY_DOCUMENT,
   },
   {
+    id: "legacy-flat-rating",
+    authoringFormat: "legacy-flat",
+    title: "Rating · eksisterende flat konfigurasjon",
+    summary:
+      "Kompatibilitetsspor for eksisterende LumiSurveyConfig; ikke anbefalt for nye surveyer.",
+    coverage: ["rating", "emoji", "text", "visibleIf"],
+    survey: legacyFlatRatingSurvey,
+  },
+  {
     id: "rating-thumbs",
+    authoringFormat: "document-v1",
     title: "Rating · tommel",
     summary: "Binært hjelpsomhetsspørsmål med oppfølging.",
     coverage: ["rating", "thumbs", "text"],
@@ -71,6 +123,7 @@ export const demoScenarios: DemoScenario[] = [
   },
   {
     id: "rating-stars",
+    authoringFormat: "document-v1",
     title: "Rating · stjerner",
     summary: "Fem stjerner og valgfri begrunnelse.",
     coverage: ["rating", "stars", "text"],
@@ -95,6 +148,7 @@ export const demoScenarios: DemoScenario[] = [
   },
   {
     id: "rating-nps",
+    authoringFormat: "document-v1",
     title: "Rating · NPS",
     summary: "0–10-skala med endeetiketter.",
     coverage: ["rating", "nps", "text"],
@@ -122,6 +176,7 @@ export const demoScenarios: DemoScenario[] = [
   },
   {
     id: "discovery",
+    authoringFormat: "document-v1",
     title: "Discovery",
     summary: "Oppgave i fritekst, gjennomføring og eventuell hindring.",
     coverage: ["discovery", "text", "singleChoice"],
@@ -129,6 +184,7 @@ export const demoScenarios: DemoScenario[] = [
   },
   {
     id: "top-tasks",
+    authoringFormat: "document-v1",
     title: "Top Tasks",
     summary: "Sidebasert oppgavevalg med annet-felt og relevante oppfølginger.",
     coverage: ["topTasks", "singleChoice", "visibleIf", "pages", "text"],
@@ -140,6 +196,7 @@ export const demoScenarios: DemoScenario[] = [
   },
   {
     id: "task-priority-checkbox",
+    authoringFormat: "document-v1",
     title: "Task Priority · avkryssing",
     summary: "Flervalg i kompakt checkbox-variant.",
     coverage: ["taskPriority", "multiChoice", "checkbox"],
@@ -152,6 +209,7 @@ export const demoScenarios: DemoScenario[] = [
   },
   {
     id: "task-priority-combobox",
+    authoringFormat: "document-v1",
     title: "Task Priority · komboboks",
     summary: "Søkbar flervalgsliste med chips.",
     coverage: ["taskPriority", "multiChoice", "combobox"],
@@ -164,6 +222,7 @@ export const demoScenarios: DemoScenario[] = [
   },
   {
     id: "custom-field-matrix",
+    authoringFormat: "document-v1",
     title: "Custom · feltmatrise",
     summary: "Alle generiske felttyper i én eksplisitt stegflyt.",
     coverage: ["custom", "text", "singleChoice", "multiChoice"],
@@ -212,6 +271,7 @@ export const demoScenarios: DemoScenario[] = [
   },
   {
     id: "pages-multi-question",
+    authoringFormat: "document-v1",
     title: "Pages · flere spørsmål",
     summary:
       "To eksplisitte sider med samlet validering og betinget felt på siste side.",
@@ -274,4 +334,100 @@ export const demoScenarios: DemoScenario[] = [
       ],
     },
   },
-];
+]);
+
+export type DemoScenarioId = (typeof demoScenarios)[number]["id"];
+
+interface SurveyContractCoverage {
+  authoringFormats: Record<SurveyAuthoringFormat, DemoScenarioId[]>;
+  surveyTypes: Record<SurveyType, DemoScenarioId[]>;
+  questionTypes: Record<LumiSurveyQuestionType, DemoScenarioId[]>;
+  ratingVariants: Record<RatingVariant, DemoScenarioId[]>;
+  multiChoiceVariants: Record<MultiChoiceVariant, DemoScenarioId[]>;
+}
+
+/**
+ * Derived inventory for the public survey contract. The explicit empty
+ * buckets make new public union members a compile error; the runtime guard
+ * requires every member to occur in a rendered full-chain scenario.
+ */
+export const surveyContractCoverage = buildSurveyContractCoverage();
+
+function buildSurveyContractCoverage(): SurveyContractCoverage {
+  const coverage: SurveyContractCoverage = {
+    authoringFormats: { "legacy-flat": [], "document-v1": [] },
+    surveyTypes: {
+      rating: [],
+      topTasks: [],
+      discovery: [],
+      taskPriority: [],
+      custom: [],
+    },
+    questionTypes: {
+      rating: [],
+      text: [],
+      singleChoice: [],
+      multiChoice: [],
+    },
+    ratingVariants: { emoji: [], thumbs: [], stars: [], nps: [] },
+    multiChoiceVariants: { checkbox: [], combobox: [] },
+  };
+
+  for (const scenario of demoScenarios) {
+    addScenario(
+      coverage.authoringFormats[scenario.authoringFormat],
+      scenario.id,
+    );
+    addScenario(
+      coverage.surveyTypes[scenario.survey.type ?? "custom"],
+      scenario.id,
+    );
+    const questions =
+      scenario.authoringFormat === "legacy-flat"
+        ? scenario.survey.questions
+        : scenario.survey.pages.flatMap((page) => page.questions);
+
+    for (const question of questions) {
+      addScenario(coverage.questionTypes[question.type], scenario.id);
+      if (question.type === "rating") {
+        addScenario(
+          coverage.ratingVariants[question.variant ?? "emoji"],
+          scenario.id,
+        );
+      }
+      if (question.type === "multiChoice") {
+        addScenario(
+          coverage.multiChoiceVariants[question.variant ?? "checkbox"],
+          scenario.id,
+        );
+      }
+    }
+  }
+
+  assertEveryMemberCovered("authoringFormats", coverage.authoringFormats);
+  assertEveryMemberCovered("surveyTypes", coverage.surveyTypes);
+  assertEveryMemberCovered("questionTypes", coverage.questionTypes);
+  assertEveryMemberCovered("ratingVariants", coverage.ratingVariants);
+  assertEveryMemberCovered("multiChoiceVariants", coverage.multiChoiceVariants);
+  return coverage;
+}
+
+function addScenario(
+  scenarioIds: DemoScenarioId[],
+  scenarioId: DemoScenarioId,
+): void {
+  if (!scenarioIds.includes(scenarioId)) {
+    scenarioIds.push(scenarioId);
+  }
+}
+
+function assertEveryMemberCovered<Member extends string>(
+  category: string,
+  members: Record<Member, DemoScenarioId[]>,
+): void {
+  for (const member in members) {
+    if (members[member].length === 0) {
+      throw new Error(`Mangler full-chain-scenario for ${category}.${member}`);
+    }
+  }
+}

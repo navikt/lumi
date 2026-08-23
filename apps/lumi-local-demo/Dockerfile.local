@@ -13,6 +13,8 @@ RUN --mount=type=secret,id=npm_token,target=/run/secrets/npm_token \
 
 COPY apps/lumi-local-demo apps/lumi-local-demo
 COPY packages/lumi-survey packages/lumi-survey
+ARG VITE_LUMI_DASHBOARD_HOST_PORT=3000
+ENV VITE_LUMI_DASHBOARD_HOST_PORT=$VITE_LUMI_DASHBOARD_HOST_PORT
 RUN pnpm --filter @navikt/lumi-survey run build && pnpm --filter lumi-local-demo run build
 
 FROM cgr.dev/chainguard/nginx:latest

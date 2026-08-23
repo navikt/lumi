@@ -6,9 +6,11 @@ import {
 } from "@navikt/lumi-survey";
 import { useMemo, useState } from "react";
 
-import { demoScenarios } from "./scenarios";
+import { type DemoScenarioId, demoScenarios } from "./scenarios";
 
-const DASHBOARD_URL = "http://localhost:3000/feedback";
+const DASHBOARD_HOST_PORT =
+  import.meta.env.VITE_LUMI_DASHBOARD_HOST_PORT ?? "3000";
+const DASHBOARD_URL = `http://localhost:${DASHBOARD_HOST_PORT}/feedback`;
 
 type SubmissionState =
   | { status: "idle" }
@@ -17,7 +19,9 @@ type SubmissionState =
   | { status: "error"; surveyId: string; message: string };
 
 export function App() {
-  const [scenarioId, setScenarioId] = useState(demoScenarios[0].id);
+  const [scenarioId, setScenarioId] = useState<DemoScenarioId>(
+    demoScenarios[0].id,
+  );
   const [submission, setSubmission] = useState<SubmissionState>({
     status: "idle",
   });
@@ -62,7 +66,11 @@ export function App() {
 
   const selectScenario = (nextScenarioId: string) => {
     if (isSending) return;
-    setScenarioId(nextScenarioId);
+    const nextScenario = demoScenarios.find(
+      (candidate) => candidate.id === nextScenarioId,
+    );
+    if (!nextScenario) return;
+    setScenarioId(nextScenario.id);
     setSubmission({ status: "idle" });
   };
 
@@ -97,7 +105,11 @@ export function App() {
             onChange={(event) => selectScenario(event.target.value)}
           >
             {demoScenarios.map((candidate) => (
-              <option key={candidate.id} value={candidate.id}>
+              <option
+                key={candidate.id}
+                value={candidate.id}
+                data-authoring-format={candidate.authoringFormat}
+              >
                 {candidate.title}
               </option>
             ))}
@@ -106,6 +118,9 @@ export function App() {
           <div className="scenarioReadout">
             <p>{scenario.summary}</p>
             <div className="tagRow">
+              <Tag size="small" variant="outline">
+                {scenario.authoringFormat}
+              </Tag>
               {scenario.coverage.map((item) => (
                 <Tag key={item} size="small" variant="outline">
                   {item}

@@ -48,6 +48,7 @@ definisjonskontroll også testes. Testbenken dekker:
 | Scenario | Surveytype | Felt/variant |
 | --- | --- | --- |
 | Rating · emoji | `rating` | `rating/emoji`, `text`, `visibleIf` |
+| Rating · eksisterende flat konfigurasjon | `rating` | `LumiSurveyConfig`, `rating/emoji`, `text`, `visibleIf` |
 | Rating · tommel | `rating` | `rating/thumbs`, `text` |
 | Rating · stjerner | `rating` | `rating/stars`, `text` |
 | Rating · NPS | `rating` | `rating/nps`, `text` |
@@ -77,8 +78,10 @@ pnpm run local:reset  # slett også Postgres-volumet
 ### Automatisert fullkjede
 
 Den samme stakken inngår nå i merge-gaten. Playwright sender både fra den
-lokale testbenken og fra dashboardets dev-only release-rigg, og verifiserer at
-den unike teksten kan leses tilbake i dashboardet:
+lokale testbenken og fra dashboardets dev-only release-rigg. Legacy-scenarioet
+forhåndssender schema v1 gjennom samme proxy før dagens flate widget sender en
+kompatibel schema-v2 på samme survey-ID. Begge innsendingene og resten av
+matrisen bindes til eksakt receipt ved tilbake-lesing i dashboardet:
 
 ```bash
 export NPM_AUTH_TOKEN="$(gh auth token)"
@@ -87,7 +90,17 @@ pnpm run test:full-chain
 
 Kommandoen bruker Compose-prosjektet `lumi-full-chain-smoke`, oppretter et eget
 databasevolum og rydder kun dette prosjektet etter kjøringen. Ved feil skrives
-containerloggene før opprydding.
+containerloggene før opprydding. Hvis en standardport allerede er opptatt, kan
+alle host-portene overstyres uten å endre containertrafikken:
+
+```bash
+LUMI_API_HOST_PORT=18080 \
+LUMI_SUBMISSION_PROXY_HOST_PORT=18081 \
+LUMI_DASHBOARD_HOST_PORT=13000 \
+LUMI_DEMO_HOST_PORT=13001 \
+LUMI_POSTGRES_HOST_PORT=15432 \
+pnpm run test:full-chain
+```
 
 ### Verifiser den publiserbare pakken
 
@@ -141,6 +154,18 @@ cd apps/lumi-api && ./gradlew run     # Flyway migrates on boot
 ./scripts/lumi-local-smoke.sh         # in another terminal
 ```
 
+Ved portkollisjon må både den publiserte Compose-porten og API-ens
+databaseport peke på samme alternative port:
+
+```bash
+export LUMI_POSTGRES_HOST_PORT=15432
+docker compose up -d postgres
+(cd apps/lumi-api && DB_PORT="$LUMI_POSTGRES_HOST_PORT" ./gradlew run)
+
+# Fra repo-roten i et annet terminalvindu:
+LUMI_POSTGRES_HOST_PORT=15432 ./scripts/lumi-local-smoke.sh
+```
+
 Both give "local mode" (auth disabled). The API reads `DB_*` env vars, so the
 container points at the `postgres` service while the host falls back to
 `localhost:5432`.
@@ -155,8 +180,9 @@ prints the resulting DB rows:
 | Same `deduplicationKey` again | `200 OK` (deduplicated, no new row) |
 | Structural change, same `surveyId` | `409 Conflict` (immutable definition guard) |
 
-> Requires port `5432` to be free. If you already run a local Postgres, stop it
-> or change the published port in `docker-compose.yml`.
+> Krever som standard at port `5432` er ledig. Option A trenger bare
+> `LUMI_POSTGRES_HOST_PORT`; for Option B må `DB_PORT` i den host-kjørte API-en
+> ha samme verdi, som vist over.
 
 ### Manual curl
 
