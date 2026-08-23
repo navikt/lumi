@@ -4,7 +4,7 @@ title: Context & tags
 
 # Context & tags
 
-Kontekst gir deg metadata om *hvem* og *hvor* tilbakemeldingen kom fra — uten å samle personopplysninger. Bruk det til å segmentere data i dashboardet.
+Kontekst gir metadata om *hvor* og i hvilken situasjon tilbakemeldingen kom fra. Bruk lavkardinalitetsverdier til segmentering i dashboardet, og ikke legg person- eller saksidentifikatorer i konteksten.
 
 ## Automatisk innsamling
 
@@ -76,9 +76,9 @@ Tags brukes til segmentering og grafer i dashboardet. Hold kardinaliteten lav �
 
 ❌ **Dårlige tags**: `behandlingId: "abc-123"`, `timestamp: 1699000000`
 
-### `context.debug` — høy kardinalitet OK
+### `context.debug` — høy kardinalitet, ikke synlig i dag
 
-Debug-verdier vises kun i detaljvisningen for enkeltinnsendinger. De brukes *ikke* til grafer eller segmentering.
+Debug-verdier lagres med innsendingen, men inngår ikke i dagens lesemodell og vises derfor verken i dashboardet eller eksport. De brukes *ikke* til grafer eller segmentering. Ikke send person-, saks- eller andre identifikatorer i feltet.
 
 ```tsx
 <LumiSurveyDock
@@ -88,8 +88,8 @@ Debug-verdier vises kun i detaljvisningen for enkeltinnsendinger. De brukes *ikk
   context={{
     tags: { rolle: "arbeidsgiver" },
     debug: {
-      sessionId: "abc-123",
       buildVersion: "2.4.1",
+      featureVariant: "ny-kvittering",
     },
   }}
 />
@@ -100,7 +100,7 @@ Debug-verdier vises kun i detaljvisningen for enkeltinnsendinger. De brukes *ikk
 | Felt | Kardinalitet | Brukes til | Eksempel |
 | :--- | :--- | :--- | :--- |
 | `context.tags` | Lav | Segmentering, grafer i dashboard | `rolle`, `tjeneste`, `abTest` |
-| `context.debug` | Høy OK | Feilsøking av enkeltinnsendinger | `sessionId`, `buildVersion` |
+| `context.debug` | Høy OK | Lagres, men er ikke tilgjengelig i dagens lesemodell | `buildVersion`, `featureVariant` |
 
 ## Komplett eksempel
 
@@ -116,9 +116,6 @@ Debug-verdier vises kun i detaljvisningen for enkeltinnsendinger. De brukes *ikk
       abTest: "A",
       rolle: "arbeidsgiver",
     },
-    debug: {
-      sessionId: crypto.randomUUID(),
-    },
   }}
 />
 ```
@@ -129,7 +126,7 @@ Debug-verdier vises kun i detaljvisningen for enkeltinnsendinger. De brukes *ikk
 - Bruk aldri person-ID, fødselsnummer, eller behandlings-ID i `context`
 - Unngå `collectLocation: true` på dynamiske ruter med ID-er i URL-en
 - `tags` skal ha lav kardinalitet — ikke bruk unike verdier
-- Backend (lumi-api) maskerer PII automatisk, men unngå å sende det i utgangspunktet
+- Backend maskerer kjente PII-mønstre i URL, pathname, tags og debug-data ved lagring. Se [hvor og når maskering skjer](/referanse/sikkerhet#pii-feltdekning), og unngå å sende personopplysninger i utgangspunktet
 :::
 
-Lumi er designet for **privacy by design** — all data forblir i Nav-clusteret, og PII reduseres i hele kjeden. Kontekst-feltet skal brukes til å forstå *mønstre*, ikke identifisere enkeltpersoner.
+Lumi har innebygde personvernmekanismer, men mønsterbasert maskering erstatter ikke dataminimering. Kontekstfeltet skal brukes til å forstå *mønstre*, ikke identifisere enkeltpersoner.

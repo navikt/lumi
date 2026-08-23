@@ -360,34 +360,38 @@ export interface LumiSurveyTransportPayload {
 export type DeviceType = "mobile" | "tablet" | "desktop";
 
 /**
- * Structured context for feedback segmentation and debugging.
+ * Structured context stored with a survey submission.
  *
  * @example
  * ```tsx
  * <LumiSurveyDock
  *   context={{
- *     tags: { abTest: "A", rolle: "arbeidsgiver" },
- *     debug: { sessionId: "abc-123" }
+ *     tags: { abTest: "A", rolle: "arbeidsgiver" }
  *   }}
  * />
  * ```
  */
 export interface LumiSurveyContext {
   // ============================================
+  // Location (not included by default)
+  // ============================================
+
+  /** Current page URL. Never auto-collected. */
+  url?: string;
+  /** Current pathname (without domain). Explicit context or opt-in via collectLocation. */
+  pathname?: string;
+
+  // ============================================
   // System-collected (auto-populated by widget)
   // ============================================
 
-  /** Current page URL */
-  url?: string;
-  /** Current pathname (without domain) */
-  pathname?: string;
   /** Browser viewport dimensions */
   viewport?: { width: number; height: number };
   /** Physical screen resolution (unaffected by window size) */
   screenResolution?: { width: number; height: number };
   /** Device type derived from UA Client Hints, user-agent parsing, or viewport fallback */
   deviceType?: DeviceType;
-  /** Browser user agent */
+  /** Browser user agent. Stored, but not returned by the current dashboard/export read model. */
   userAgent?: string;
 
   // ============================================
@@ -405,13 +409,12 @@ export interface LumiSurveyContext {
   tags?: Record<string, string | number | boolean>;
 
   // ============================================
-  // Debug (for detailed debugging) - HIGH CARDINALITY OK
-  // Shown only in individual feedback detail view
+  // Optional debug data (stored, but not exposed by the current read model)
   // ============================================
 
   /**
-   * High-cardinality debug info for individual feedback inspection.
-   * Not used for graphs/segmentation.
+   * Optional diagnostic data. Not used for graphs/segmentation.
+   * Never include personal, user, or case identifiers.
    */
   debug?: Record<string, unknown>;
 }

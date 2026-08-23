@@ -24,7 +24,7 @@ export interface SubmissionContextV1 {
   userAgent?: string | null;
   /** Low-cardinality segmentation tags (values must be JSON primitives). */
   tags?: Record<string, JsonPrimitive> | null;
-  /** Debug payload (ignored by backend storage/analytics). */
+  /** Stored with the submission, but not exposed by the current read model or analytics. */
   debug?: Record<string, unknown> | null;
 }
 

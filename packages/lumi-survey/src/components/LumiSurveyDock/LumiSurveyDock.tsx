@@ -103,7 +103,9 @@ export interface LumiSurveyDockProps {
   intro?: LumiSurveyIntroConfig;
 
   /**
-   * Structured context for segmentation (tags) and debugging (debug).
+   * Structured context for segmentation (`tags`) and optional diagnostic data (`debug`).
+   * Debug data is stored with submissions, but is not exposed by the current
+   * dashboard/export read model.
    * System fields (viewport, screenResolution, deviceType, userAgent) are
    * auto-collected. `deviceType` uses browser client hints and user-agent
    * parsing first, with viewport width as a final fallback.

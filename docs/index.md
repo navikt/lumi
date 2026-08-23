@@ -20,7 +20,7 @@ features:
     details: Bygg surveyen i Surveyverksted eller TypeScript. Appen eier versjonen som møter brukerne.
   - icon: 🔒
     title: Data forblir i Nav
-    details: Zero trust hele veien. All data lagres internt, og personopplysninger maskeres automatisk.
+    details: Zero trust hele veien. All data lagres internt, og kjente personopplysningsmønstre maskeres i utvalgte felt.
   - icon: 🎨
     title: Designet for Nav
     details: Bruker Aksel-komponenter. Ser ut og føles som resten av tjenesten din.
