@@ -15,7 +15,8 @@ data class ServerEnv(
     val nais: NaisEnv,
     val auth: AuthEnv,
     val valkey: ValkeyEnv,
-    val naisApi: NaisApiEnv
+    val naisApi: NaisApiEnv,
+    val rateLimit: RateLimitEnv,
 ) {
     /**
      * Database connection configuration.
@@ -219,7 +220,8 @@ data class ServerEnv(
                 nais = nais,
                 auth = AuthEnv.fromEnvironment(nais.clusterName),
                 valkey = ValkeyEnv.fromEnvironment(),
-                naisApi = NaisApiEnv.fromEnvironment()
+                naisApi = NaisApiEnv.fromEnvironment(),
+                rateLimit = RateLimitEnv.fromEnvironment(),
             )
         }
         
@@ -234,7 +236,8 @@ data class ServerEnv(
                 nais = NaisEnv.forLocal(),
                 auth = AuthEnv.forLocal(),
                 valkey = ValkeyEnv.forLocal(),
-                naisApi = NaisApiEnv.forLocal()
+                naisApi = NaisApiEnv.forLocal(),
+                rateLimit = RateLimitEnv.fromEnvironment(),
             )
         }
         
@@ -258,7 +261,8 @@ data class ServerEnv(
                 nais = NaisEnv.forLocal(),
                 auth = AuthEnv.forLocal(),
                 valkey = ValkeyEnv.forLocal(),
-                naisApi = NaisApiEnv(graphqlUrl = null, tokenPath = null, staticKey = null)
+                naisApi = NaisApiEnv(graphqlUrl = null, tokenPath = null, staticKey = null),
+                rateLimit = RateLimitEnv.default(),
             )
         }
     }

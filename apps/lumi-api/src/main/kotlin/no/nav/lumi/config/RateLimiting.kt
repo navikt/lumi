@@ -37,6 +37,10 @@ import kotlin.time.Duration.Companion.minutes
  *   only after client and team authorization have completed. Rejected requests
  *   keep the permit and receive 429 after 30 attempts per minute, even when
  *   every token value is different.
+ * - Global guard: runs before route authentication, so it is keyed by the
+ *   non-spoofable socket peer instead of caller-controlled forwarding headers.
+ *   Internal health/metrics routes have zero request weight and can therefore
+ *   never be blocked by exhausted traffic buckets.
  */
 
 val SubmissionRateLimit = RateLimitName("submission")
@@ -55,7 +59,7 @@ private val RejectedExportAuthenticationRateLimit = createRouteScopedPlugin(
     val pluginApplication = application
 
     onCall { call ->
-        val key = call.sourceAddress()
+        val key = call.socketPeerAddress()
         val bucket = buckets.computeIfAbsent(key) {
             RejectedAuthenticationBucket(limit = EXPORT_REQUESTS_PER_MINUTE).also { created ->
                 pluginApplication.launch {
@@ -120,7 +124,9 @@ internal fun Route.refundRejectedExportAuthenticationAfterAuthorization() {
 }
 
 fun Application.configureRateLimiting(
-    submissionObservability: SubmissionObservability = defaultRateLimitSubmissionObservability
+    submissionObservability: SubmissionObservability = defaultRateLimitSubmissionObservability,
+    globalRequestsPerMinute: Int = ServerEnv.current.rateLimit.globalRequestsPerSourcePerMinute,
+    globalRequestKey: suspend (ApplicationCall) -> Any = { call -> call.socketPeerAddress() },
 ) {
     install(RateLimit) {
         register(SubmissionRateLimit) {
@@ -154,9 +160,13 @@ fun Application.configureRateLimiting(
             rateLimiter(limit = EXPORT_REQUESTS_PER_MINUTE, refillPeriod = RATE_LIMIT_REFILL_PERIOD)
             requestKey { call -> call.rateLimitKey() }
         }
-        
+
         global {
-            rateLimiter(limit = 1000, refillPeriod = RATE_LIMIT_REFILL_PERIOD)
+            rateLimiter(limit = globalRequestsPerMinute, refillPeriod = RATE_LIMIT_REFILL_PERIOD)
+            requestKey(globalRequestKey)
+            requestWeight { call, _ ->
+                if (call.request.path().startsWith("/internal/")) 0 else 1
+            }
             modifyResponse { call, state ->
                 recordRejectedSubmissionWhenExhausted(call, state, submissionObservability)
             }
@@ -207,15 +217,8 @@ private fun io.ktor.server.application.ApplicationCall.rateLimitKey(): String {
         }
     }
 
-    return sourceAddress()
+    return socketPeerAddress()
 }
 
-private fun io.ktor.server.application.ApplicationCall.sourceAddress(): String {
-    val forwardedFor = if (ServerEnv.current.nais.isNais) {
-        request.headers["X-Forwarded-For"]?.split(",")?.firstOrNull()?.trim()
-    } else {
-        null
-    }
-
-    return forwardedFor ?: request.local.remoteAddress
-}
+private fun io.ktor.server.application.ApplicationCall.socketPeerAddress(): String =
+    request.local.remoteAddress
