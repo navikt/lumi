@@ -13,7 +13,7 @@
     "verify:lumi-survey": "pnpm --filter @navikt/lumi-survey run build && node scripts/verify-lumi-survey-package.mjs",
     "verify:lumi-survey-consumer": "./scripts/verify-lumi-survey-consumer.sh",
     "check:lumi-survey-release-drift": "node scripts/check-lumi-survey-release-drift.mjs",
-    "test:release-guards": "node --test scripts/check-lumi-survey-release-drift.test.mjs scripts/verify-github-actions-pins.test.mjs scripts/verify-lumi-survey-package.test.mjs",
+    "test:release-guards": "node --test scripts/check-lumi-survey-release-drift.test.mjs scripts/verify-deploy-api-trigger.test.mjs scripts/verify-github-actions-pins.test.mjs scripts/verify-lumi-survey-package.test.mjs",
     "test": "pnpm --filter @navikt/lumi-types run test && pnpm --filter @navikt/lumi-survey run test && pnpm --filter lumi-dashboard run test",
     "e2e": "pnpm --filter lumi-dashboard run e2e",
     "e2e:full-chain": "pnpm --filter lumi-dashboard run e2e:full-chain",
