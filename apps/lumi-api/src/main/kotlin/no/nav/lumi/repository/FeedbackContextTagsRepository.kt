@@ -213,7 +213,7 @@ class FeedbackContextTagsRepository {
             val dbQuery = FeedbackTable.selectAll()
             dbQuery.andWhere { FeedbackTable.team eq team }
             dbQuery.andWhere { JsonExtract(FeedbackTable.feedbackJson, listOf("surveyId")) eq surveyId }
-            dbQuery.map { it.toDbRecord() }
+            dbQuery.materializeFeedbackForAnalysis()
         }
 
         val enriched = records.map { record -> record to record.toDto() }

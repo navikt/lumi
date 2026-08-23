@@ -1,5 +1,6 @@
 package no.nav.lumi.repository
 
+import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.*
 import no.nav.lumi.service.TextProcessor
 import org.jetbrains.exposed.v1.core.*
@@ -9,6 +10,29 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.slf4j.Logger
 import java.time.LocalDate
 import java.time.ZoneId
+
+internal const val MAX_IN_MEMORY_ANALYSIS_ROWS = 10_000
+
+/**
+ * Materializes feedback JSON only while the result remains within the bounded
+ * in-memory analysis budget. Fetching one sentinel row lets us reject an
+ * oversized result without first loading the team's complete history.
+ */
+internal fun Query.materializeFeedbackForAnalysis(
+    maxRows: Int = MAX_IN_MEMORY_ANALYSIS_ROWS,
+): List<FeedbackDbRecord> {
+    require(maxRows in 1 until Int.MAX_VALUE) { "maxRows must be a positive integer" }
+
+    val records = limit(maxRows + 1).map { it.toDbRecord() }
+    if (records.size > maxRows) {
+        throw ApiErrorException.BadRequestException(
+            "Too many feedback responses for analysis (max $maxRows). " +
+                "Narrow the date range or add filters."
+        )
+    }
+
+    return records
+}
 
 /**
  * Escape special characters for SQL LIKE patterns to prevent SQL injection.

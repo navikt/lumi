@@ -300,7 +300,7 @@ class FeedbackRepository(
 
             val records = dbQuery
                 .orderBy(FeedbackTable.opprettet to SortOrder.DESC)
-                .map { it.toDbRecord() }
+                .materializeFeedbackForAnalysis()
 
             val tagsById = findTagsByFeedbackIds(records.map { it.id })
             RecordsSnapshot(records, tagsById)
@@ -351,7 +351,7 @@ class FeedbackRepository(
 
             dbQuery
                 .orderBy(FeedbackTable.opprettet to SortOrder.DESC)
-                .map { it.toDbRecord() }
+                .materializeFeedbackForAnalysis()
         }
 
         val matchingRecords = records.filter { recordMatchesPhraseFilter(it, phraseFilter.fieldId, expectedStemKey) }

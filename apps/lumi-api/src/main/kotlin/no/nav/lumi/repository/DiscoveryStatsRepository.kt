@@ -63,7 +63,7 @@ class DiscoveryStatsRepository {
             
             dbQuery
                 .orderBy(FeedbackTable.opprettet to SortOrder.DESC)
-                .map { it.toDbRecord() }
+                .materializeFeedbackForAnalysis()
         }
 
         return records.map { it.toDto() }
