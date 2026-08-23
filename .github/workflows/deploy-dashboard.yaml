@@ -32,6 +32,55 @@ permissions:
   packages: write
 
 jobs:
+  deployment-scope:
+    name: Read dashboard deployment scope
+    if: |
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    outputs:
+      required: ${{ steps.decision.outputs.required }}
+    steps:
+      - name: Download scope from the successful CI run
+        id: download
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          SCOPE_DIR: ${{ runner.temp }}/dashboard-deploy-scope
+        run: |
+          set -euo pipefail
+          mkdir -p "$SCOPE_DIR"
+          gh run download "$RUN_ID" --repo "$REPOSITORY" --name dashboard-deploy-scope --dir "$SCOPE_DIR"
+          required="$(<"$SCOPE_DIR/required")"
+          case "$required" in
+            true|false) ;;
+            *)
+              echo "Invalid dashboard deployment scope: $required" >&2
+              exit 1
+              ;;
+          esac
+          echo "required=$required" >> "$GITHUB_OUTPUT"
+      - name: Resolve fail-open deployment decision
+        id: decision
+        if: always()
+        env:
+          DOWNLOAD_OUTCOME: ${{ steps.download.outcome }}
+          DOWNLOADED_REQUIRED: ${{ steps.download.outputs.required }}
+        run: |
+          required=true
+          if [[ "$DOWNLOAD_OUTCOME" == "success" && "$DOWNLOADED_REQUIRED" == "false" ]]; then
+            required=false
+          elif [[ "$DOWNLOAD_OUTCOME" != "success" ]]; then
+            echo "::warning::Could not read dashboard deployment scope; deploying to avoid a false negative"
+          fi
+          echo "required=$required" >> "$GITHUB_OUTPUT"
+
   checks:
     name: Run checks
     # CI already runs this full gate for every commit pushed to main. Keep the
@@ -73,11 +122,13 @@ jobs:
 
   build-demo:
     name: Build demo (mock data)
-    needs: checks
+    needs: [checks, deployment-scope]
     runs-on: ubuntu-latest
     if: |
       always() && (
-        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+        (github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          needs.deployment-scope.outputs.required == 'true') ||
         (needs.checks.result == 'success' && (
           startsWith(github.ref_name, 'demo-') ||
           (github.event_name == 'workflow_dispatch' && inputs.target == 'demo')
@@ -134,11 +185,13 @@ jobs:
 
   build-production:
     name: Build production
-    needs: checks
+    needs: [checks, deployment-scope]
     runs-on: ubuntu-latest
     if: |
       always() && (
-        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+        (github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          needs.deployment-scope.outputs.required == 'true') ||
         (needs.checks.result == 'success' &&
           github.event_name == 'workflow_dispatch' &&
           (inputs.target == 'dev' || inputs.target == 'prod'))
@@ -195,10 +248,8 @@ jobs:
     name: Deploy to dev-gcp (Demo)
     needs: build-demo
     runs-on: ubuntu-latest
-    # `checks` is skipped for workflow_run, so the build jobs only survive via
-    # always(). Without the same treatment here the skip propagates down the
-    # needs chain and every deploy is skipped — state the build result instead
-    # of relying on the implicit success().
+    # `checks` is skipped for workflow_run, so state the build result instead
+    # of relying on the implicit success() inherited through the needs chain.
     if: |
       always() && needs.build-demo.result == 'success' && (
         github.event_name == 'workflow_run' ||
@@ -225,7 +276,8 @@ jobs:
     if: |
       always() && needs.build-production.result == 'success' && (
         github.event_name == 'workflow_run' ||
-        (github.event_name == 'workflow_dispatch' && inputs.target == 'dev')
+        (github.event_name == 'workflow_dispatch' &&
+          (inputs.target == 'dev' || inputs.target == 'prod'))
       )
     environment:
       name: dev

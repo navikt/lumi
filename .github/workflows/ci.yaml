@@ -21,10 +21,14 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'merge_group'
     outputs:
-      node: ${{ steps.filter.outputs.node }}
+      node: ${{ steps.dashboard-scope.outputs.node || steps.filter.outputs.node }}
       api: ${{ steps.filter.outputs.api }}
       docs: ${{ steps.filter.outputs.docs }}
-      full_chain: ${{ steps.filter.outputs.full_chain }}
+      full_chain: ${{ steps.dashboard-scope.outputs.full_chain || steps.filter.outputs.full_chain }}
+      dashboard_deploy: ${{ steps.dashboard-scope.outputs.required || steps.filter.outputs.dashboard_deploy }}
+    permissions:
+      actions: read
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - id: filter
@@ -35,6 +39,7 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
+              - '.npmrc'
               - 'biome.json'
               - '.dockerignore'
               - 'docker-compose.yml'
@@ -49,6 +54,7 @@ jobs:
               - 'scripts/check-lumi-survey-release-drift.mjs'
               - 'scripts/check-lumi-survey-release-drift.test.mjs'
               - 'scripts/verify-deploy-api-trigger.test.mjs'
+              - 'scripts/verify-deploy-dashboard-trigger.test.mjs'
               - 'scripts/verify-github-actions-pins.test.mjs'
               - 'scripts/verify-lumi-survey-package.mjs'
               - 'scripts/verify-lumi-survey-package.test.mjs'
@@ -78,6 +84,70 @@ jobs:
               - 'packages/lumi-survey/**'
               - 'packages/lumi-types/**'
               - 'scripts/lumi-full-chain-e2e.sh'
+            dashboard_deploy:
+              - '.github/workflows/deploy-dashboard.yaml'
+              - '.npmrc'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'tsconfig*.json'
+              - 'apps/lumi-dashboard/**'
+              - 'packages/lumi-survey/**'
+              - 'packages/lumi-types/**'
+      - name: Record dashboard deployment scope
+        id: dashboard-scope
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          DASHBOARD_DEPLOY_REQUIRED: ${{ steps.filter.outputs.dashboard_deploy }}
+          NODE_REQUIRED: ${{ steps.filter.outputs.node }}
+          FULL_CHAIN_REQUIRED: ${{ steps.filter.outputs.full_chain }}
+          BEFORE_SHA: ${{ github.event.before }}
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          required="$DASHBOARD_DEPLOY_REQUIRED"
+          node_required="$NODE_REQUIRED"
+          full_chain_required="$FULL_CHAIN_REQUIRED"
+
+          # A newer main push can cancel the previous CI run. If that happened,
+          # validate and deploy the cumulative current head so no type of next
+          # change can hide its unvalidated predecessor.
+          previous_success_count="$(
+            gh run list \
+              --repo "$REPOSITORY" \
+              --workflow ci.yaml \
+              --commit "$BEFORE_SHA" \
+              --branch main \
+              --event push \
+              --status success \
+              --limit 1 \
+              --json databaseId \
+              --jq 'length' || true
+          )"
+          if [[ "$previous_success_count" != "1" ]]; then
+            required=true
+            node_required=true
+            full_chain_required=true
+            echo "::warning::Previous main commit has no successful CI run; validating and deploying the cumulative head"
+          fi
+
+          mkdir -p "$RUNNER_TEMP/dashboard-deploy-scope"
+          printf '%s\n' "$required" > "$RUNNER_TEMP/dashboard-deploy-scope/required"
+          {
+            echo "required=$required"
+            echo "node=$node_required"
+            echo "full_chain=$full_chain_required"
+          } >> "$GITHUB_OUTPUT"
+      - name: Publish dashboard deployment scope
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dashboard-deploy-scope
+          path: ${{ runner.temp }}/dashboard-deploy-scope/required
+          if-no-files-found: error
+          retention-days: 1
 
   required:
     name: Merge gate
