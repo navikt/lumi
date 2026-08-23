@@ -75,7 +75,7 @@ export function allowedVisibleIfOperators(
     case "rating":
       return ["EXISTS", "EQ", "NEQ", "GT", "LT"];
     case "singleChoice":
-      return ["EXISTS", "EQ", "NEQ"];
+      return ["EXISTS", "EQ", "NEQ", "CONTAINS"];
     case "multiChoice":
       return ["EXISTS", "CONTAINS"];
     case "text":

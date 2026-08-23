@@ -13,9 +13,11 @@ This project follows SemVer.
   example `EQ` against a multiChoice question, whose array answers never
   strictly equal a single value. The error names the owning question, the
   referenced question and its type, and the operators that are allowed. The
-  allowed set per type is exported as `allowedVisibleIfOperators` and is the
-  same table the workshop's condition editor uses. METADATA conditions and
-  legacy flat surveys are unaffected.
+  runtime-compatible set per type is exported as
+  `allowedVisibleIfOperators`. `CONTAINS` remains supported for string-valued
+  single-choice answers so existing code-authored V1 documents keep working;
+  the workshop continues to offer exact equality for that type. METADATA
+  conditions and legacy flat surveys are unaffected.
 
 - Focus now follows dock transitions: opening targets the active heading,
   closing targets the minimized trigger, and successful submission targets the

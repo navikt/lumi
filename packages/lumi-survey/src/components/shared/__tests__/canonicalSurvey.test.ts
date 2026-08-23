@@ -736,7 +736,7 @@ describe("visibleIf operator validation against referenced question type", () =>
     expect(() => validateSurveyDocumentV1(valid)).not.toThrow();
   });
 
-  it("rejects CONTAINS against a singleChoice question", () => {
+  it("keeps CONTAINS against a singleChoice question compatible", () => {
     expect(() =>
       validateSurveyDocumentV1(
         documentWithFollowUp(
@@ -749,7 +749,23 @@ describe("visibleIf operator validation against referenced question type", () =>
           },
         ),
       ),
-    ).toThrowError(/"follow".*CONTAINS.*singleChoice.*EXISTS, EQ, NEQ/s);
+    ).not.toThrow();
+  });
+
+  it("rejects numeric comparisons against a singleChoice question", () => {
+    expect(() =>
+      validateSurveyDocumentV1(
+        documentWithFollowUp(
+          { operator: "GT", questionId: "single", value: 1 },
+          {
+            id: "single",
+            type: "singleChoice",
+            prompt: "Velg én",
+            options: [{ value: "a", label: "A" }],
+          },
+        ),
+      ),
+    ).toThrowError(/"follow".*GT.*singleChoice.*EXISTS, EQ, NEQ, CONTAINS/s);
   });
 
   it("rejects GT against a text question but accepts it against rating", () => {

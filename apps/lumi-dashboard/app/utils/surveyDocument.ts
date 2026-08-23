@@ -871,14 +871,19 @@ export function insertPageAt(
 }
 
 /**
- * Operators that behave correctly against the referenced question type at
- * runtime. Delegates to the widget package's canonical table, so the
- * workshop's operator picker and the document validator can never disagree.
+ * Operators offered by the workshop for the referenced question type.
+ * The package's runtime-compatible table also permits CONTAINS for string
+ * singleChoice answers to preserve code-authored V1 documents. The workshop
+ * intentionally keeps exact equality for that type, matching the backend's
+ * release-gate policy and avoiding ambiguous substring conditions.
  */
 export function allowedConditionOperators(
   type: SurveyQuestionV1["type"],
 ): string[] {
-  return [...allowedVisibleIfOperators(type)];
+  const compatible = allowedVisibleIfOperators(type);
+  return type === "singleChoice"
+    ? compatible.filter((operator) => operator !== "CONTAINS")
+    : [...compatible];
 }
 
 export interface HandoffIssue {
