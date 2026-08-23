@@ -8,7 +8,10 @@ import no.nav.lumi.TestDatabase
 import no.nav.lumi.config.DatabaseHolder
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.insertTestFeedback
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
+import java.time.OffsetDateTime
 
 class InMemoryAnalysisGuardTest : FunSpec({
     beforeSpec {
@@ -46,5 +49,64 @@ class InMemoryAnalysisGuardTest : FunSpec({
         }
 
         records shouldHaveSize 2
+    }
+
+    test("rejects analysis when JSON bytes exceed the configured memory budget") {
+        insertTestFeedback(
+            id = "large-feedback",
+            team = "team-a",
+            text = "x".repeat(2_000),
+        )
+
+        val exception = shouldThrow<ApiErrorException.BadRequestException> {
+            dbQuery {
+                FeedbackTable.selectAll()
+                    .materializeFeedbackForAnalysis(
+                        maxRows = 10,
+                        maxJsonBytes = 128,
+                    )
+            }
+        }
+
+        exception.message shouldContain "JSON size"
+    }
+
+    test("applies SQL-compatible context filters before enforcing the analysis budget") {
+        insertTestFeedback(
+            id = "old-1",
+            team = "team-a",
+            surveyId = "survey-a",
+            opprettet = OffsetDateTime.parse("2024-01-01T12:00:00Z"),
+        )
+        insertTestFeedback(
+            id = "old-2",
+            team = "team-a",
+            surveyId = "survey-a",
+            opprettet = OffsetDateTime.parse("2024-01-02T12:00:00Z"),
+        )
+        insertTestFeedback(
+            id = "in-range",
+            team = "team-a",
+            surveyId = "survey-a",
+            opprettet = OffsetDateTime.parse("2024-02-01T12:00:00Z"),
+        )
+
+        val records = dbQuery {
+            val query = FeedbackTable.selectAll()
+            query.andWhere { FeedbackTable.team eq "team-a" }
+            query.andWhere { JsonExtract(FeedbackTable.feedbackJson, listOf("surveyId")) eq "survey-a" }
+            applyContextTagAnalysisFilters(
+                query = query,
+                segments = emptyList(),
+                fromDate = "2024-02-01",
+                toDate = "2024-02-01",
+                deviceType = null,
+                hasText = false,
+                lowRating = false,
+            )
+            query.materializeFeedbackForAnalysis(maxRows = 1)
+        }
+
+        records shouldHaveSize 1
     }
 })

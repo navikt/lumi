@@ -213,28 +213,20 @@ class FeedbackContextTagsRepository {
             val dbQuery = FeedbackTable.selectAll()
             dbQuery.andWhere { FeedbackTable.team eq team }
             dbQuery.andWhere { JsonExtract(FeedbackTable.feedbackJson, listOf("surveyId")) eq surveyId }
+            applyContextTagAnalysisFilters(
+                query = dbQuery,
+                segments = segments,
+                fromDate = fromDate,
+                toDate = toDate,
+                deviceType = deviceType,
+                hasText = hasText,
+                lowRating = lowRating,
+            )
             dbQuery.materializeFeedbackForAnalysis()
         }
 
         val enriched = records.map { record -> record to record.toDto() }
-        val taskFiltered = enriched.filter { (record, feedback) ->
-            if (!matchesContextTagFilters(record, feedback, segments, fromDate, toDate, deviceType, hasText, lowRating)) {
-                return@filter false
-            }
-
-            // Segment filter (context.tags)
-            if (segments.isNotEmpty()) {
-                val tags = feedback.context?.tags
-                if (tags == null) return@filter false
-
-                val matchesSegments = segments.all { (key, value) ->
-                    val safeKey = key.trim()
-                    val safeValue = value.trim()
-                    safeKey.isNotBlank() && safeValue.isNotBlank() && tags[safeKey] == safeValue
-                }
-                if (!matchesSegments) return@filter false
-            }
-
+        val taskFiltered = enriched.filter { (_, feedback) ->
             val taskAnswer = SpecializedSurveyFieldIds.findTask(feedback.surveyType, feedback.answers)
             if (taskAnswer != null && taskAnswer.fieldType == FieldType.SINGLE_CHOICE) {
                 val selectedId = (taskAnswer.value as? AnswerValue.SingleChoice)?.selectedOptionId

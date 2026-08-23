@@ -151,6 +151,19 @@ describe("FilterBar archive state", () => {
     expect(mockSetParams).not.toHaveBeenCalled();
   });
 
+  it("keeps recovery filters available when only dashboard stats fail", () => {
+    mockStats.isError = true;
+
+    render(<FilterBar />);
+
+    expect(
+      screen.getAllByRole("combobox", { name: "Survey" }).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.queryByText("Kunne ikke hente filtre"),
+    ).not.toBeInTheDocument();
+  });
+
   it("does not clear an app filter while bootstrap is still loading", () => {
     mockParams.app = "app-test";
     mockParams.surveyId = "survey-active";

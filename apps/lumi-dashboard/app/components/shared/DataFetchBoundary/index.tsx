@@ -11,6 +11,7 @@ interface RefetchableQuery {
 
 interface DataFetchBoundaryProps {
   children?: ReactNode;
+  description?: ReactNode;
   queries: RefetchableQuery[];
   title: string;
 }
@@ -21,6 +22,7 @@ interface DataFetchBoundaryProps {
  */
 export function DataFetchBoundary({
   children,
+  description = "Vi viser ikke data før forespørselen lykkes, fordi et tomt resultat kan være misvisende.",
   queries,
   title,
 }: DataFetchBoundaryProps) {
@@ -79,10 +81,7 @@ export function DataFetchBoundary({
       <Alert variant="error" role="alert">
         <VStack gap="space-8" align="start">
           <BodyShort weight="semibold">{title}</BodyShort>
-          <BodyShort size="small">
-            Vi viser ikke data før forespørselen lykkes, fordi et tomt resultat
-            kan være misvisende.
-          </BodyShort>
+          <BodyShort size="small">{description}</BodyShort>
           <Button
             type="button"
             variant="tertiary"

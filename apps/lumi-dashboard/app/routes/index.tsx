@@ -182,15 +182,16 @@ function DashboardPage() {
             </HStack>
           </HStack>
 
+          <FilterBar />
+
+          {/* Keep recovery controls available when a broad query exceeds the analysis budget. */}
+          <ActiveFiltersChips />
+
           <DataFetchBoundary
             title="Kunne ikke hente dashboarddata"
+            description="Snevre inn perioden eller legg til filtre før du prøver igjen."
             queries={[statsQuery]}
           >
-            <FilterBar />
-
-            {/* Active drill-down filters (global) */}
-            <ActiveFiltersChips />
-
             {/* Type-specific dashboard view */}
             {renderDashboardContent()}
           </DataFetchBoundary>

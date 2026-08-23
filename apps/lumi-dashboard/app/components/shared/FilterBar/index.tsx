@@ -44,10 +44,12 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
   const bootstrapQuery = useFilterBootstrap();
   const statsQuery = useStats();
 
+  // Stats failures must not hide the controls users need to narrow the query.
+  // Bootstrap failures still hide the controls because their options are unknown.
   return (
     <DataFetchBoundary
       title="Kunne ikke hente filtre"
-      queries={[bootstrapQuery, statsQuery]}
+      queries={[bootstrapQuery]}
     >
       <FilterBarContent
         showDetails={showDetails}
