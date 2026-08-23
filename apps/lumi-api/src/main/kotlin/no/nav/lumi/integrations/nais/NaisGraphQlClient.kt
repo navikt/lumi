@@ -234,15 +234,16 @@ class NaisGraphQlClient private constructor(
     }
 
     /**
-     * Get team slugs for the current "viewer" (authenticated API key owner).
-     * This is a fallback when email lookup doesn't work.
+     * Get team slugs for the current "viewer" (authenticated token owner).
+     * This is diagnostic information and must not authorize another user.
      */
     suspend fun getTeamSlugsForViewer(): Set<String> {
         return getTeamSlugsForViewerResult().getOrDefault(emptySet())
     }
     
     /**
-     * Get team slugs for viewer with detailed result.
+     * Get diagnostic team slugs for the current viewer with detailed result.
+     * Must not be used to authorize another user.
      */
     suspend fun getTeamSlugsForViewerResult(): NaisApiResult<Set<String>> {
         val viewerCacheKey = "__viewer__"

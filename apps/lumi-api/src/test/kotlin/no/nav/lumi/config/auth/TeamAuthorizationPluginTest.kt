@@ -26,22 +26,20 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 private class FakeNaisTeamLookup(
     private val teamsByEmail: Set<String> = emptySet(),
-    private val teamsByViewer: Set<String> = emptySet(),
 ) : NaisTeamLookup {
-    override suspend fun getTeamSlugsForUserResult(email: String): NaisApiResult<Set<String>> =
-        NaisApiResult.Success(teamsByEmail)
+    var userLookupCount: Int = 0
+        private set
 
-    override suspend fun getTeamSlugsForViewerResult(): NaisApiResult<Set<String>> =
-        NaisApiResult.Success(teamsByViewer)
+    override suspend fun getTeamSlugsForUserResult(email: String): NaisApiResult<Set<String>> {
+        userLookupCount++
+        return NaisApiResult.Success(teamsByEmail)
+    }
 }
 
 private class ErroringNaisTeamLookup(
     private val message: String = "NAIS API unavailable"
 ) : NaisTeamLookup {
     override suspend fun getTeamSlugsForUserResult(email: String): NaisApiResult<Set<String>> =
-        NaisApiResult.Error(message)
-
-    override suspend fun getTeamSlugsForViewerResult(): NaisApiResult<Set<String>> =
         NaisApiResult.Error(message)
 }
 
@@ -230,7 +228,7 @@ class TeamAuthorizationPluginTest {
             routing {
                 authenticate(AZURE_REALM) {
                     install(TeamAuthorizationPlugin) {
-                        naisTeamLookupProvider = { FakeNaisTeamLookup(teamsByEmail = emptySet(), teamsByViewer = emptySet()) }
+                        naisTeamLookupProvider = { FakeNaisTeamLookup(teamsByEmail = emptySet()) }
                     }
 
                     get("/team") {
@@ -294,7 +292,10 @@ class TeamAuthorizationPluginTest {
     }
 
     @Test
-    fun `falls back to viewer teams when email lookup is empty`() = testApplication {
+    fun `does not authorize requested team when email lookup is empty`() = testApplication {
+        val handlerInvoked = AtomicBoolean(false)
+        val lookup = FakeNaisTeamLookup(teamsByEmail = emptySet())
+
         application {
             install(ContentNegotiation) {
                 json()
@@ -317,27 +318,75 @@ class TeamAuthorizationPluginTest {
             routing {
                 authenticate(AZURE_REALM) {
                     install(TeamAuthorizationPlugin) {
-                        naisTeamLookupProvider = {
-                            FakeNaisTeamLookup(
-                                teamsByEmail = emptySet(),
-                                teamsByViewer = setOf("team-esyfo"),
-                            )
-                        }
+                        naisTeamLookupProvider = { lookup }
                     }
 
                     get("/team") {
-                        call.respondText(call.authorizedTeam)
+                        handlerInvoked.set(true)
+                        call.respondText("ok")
                     }
                 }
             }
         }
 
-        val response = client.get("/team") {
+        val response = client.get("/team?team=team-esyfo") {
             header(HttpHeaders.Authorization, "Bearer whatever")
         }
 
-        assertEquals(HttpStatusCode.OK, response.status)
-        assertEquals("team-esyfo", response.bodyAsText())
+        assertEquals(HttpStatusCode.Forbidden, response.status)
+        assertFalse(handlerInvoked.get())
+        assertEquals(1, lookup.userLookupCount)
+    }
+
+    @Test
+    fun `does not authorize when email claim is missing or blank`() {
+        listOf<String?>(null, "", "   ").forEach { email ->
+            testApplication {
+                val handlerInvoked = AtomicBoolean(false)
+                val lookup = FakeNaisTeamLookup()
+
+                application {
+                    install(ContentNegotiation) {
+                        json()
+                    }
+                    configureStatusPages()
+                    install(Authentication) {
+                        bearer(AZURE_REALM) {
+                            authenticate { _ ->
+                                BrukerPrincipal(
+                                    navIdent = "Z123456",
+                                    name = "Test User",
+                                    email = email,
+                                    clientId = "client",
+                                    groups = emptyList(),
+                                )
+                            }
+                        }
+                    }
+
+                    routing {
+                        authenticate(AZURE_REALM) {
+                            install(TeamAuthorizationPlugin) {
+                                naisTeamLookupProvider = { lookup }
+                            }
+
+                            get("/team") {
+                                handlerInvoked.set(true)
+                                call.respondText("ok")
+                            }
+                        }
+                    }
+                }
+
+                val response = client.get("/team") {
+                    header(HttpHeaders.Authorization, "Bearer whatever")
+                }
+
+                assertEquals(HttpStatusCode.Forbidden, response.status, "email=$email")
+                assertFalse(handlerInvoked.get(), "email=$email")
+                assertEquals(0, lookup.userLookupCount, "email=$email")
+            }
+        }
     }
 
     @Test
@@ -460,7 +509,7 @@ class TeamAuthorizationPluginTest {
             routing {
                 authenticate(AZURE_REALM) {
                     install(TeamAuthorizationPlugin) {
-                        naisTeamLookupProvider = { FakeNaisTeamLookup(teamsByEmail = emptySet(), teamsByViewer = emptySet()) }
+                        naisTeamLookupProvider = { FakeNaisTeamLookup(teamsByEmail = emptySet()) }
                     }
 
                     get("/team") {

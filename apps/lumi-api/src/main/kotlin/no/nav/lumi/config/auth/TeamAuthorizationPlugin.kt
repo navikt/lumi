@@ -3,44 +3,24 @@ package no.nav.lumi.config.auth
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.routing.*
-import io.micrometer.core.instrument.Counter
 import no.nav.lumi.config.ServerEnv
-import no.nav.lumi.config.appMicrometerRegistry
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.integrations.nais.NaisApiResult
 import no.nav.lumi.integrations.nais.NaisGraphQlClient
 import org.slf4j.LoggerFactory
 
 private val log = LoggerFactory.getLogger("no.nav.lumi.config.auth.TeamAuthorizationPlugin")
-private val viewerFallbackMissingEmailCounter = Counter.builder("team_authorization_viewer_fallback_total")
-    .description("Number of times TeamAuthorization falls back to NAIS viewer lookup")
-    .tag("reason", "missing_email_claim")
-    .register(appMicrometerRegistry)
-private val viewerFallbackEmptyUserLookupCounter = Counter.builder("team_authorization_viewer_fallback_total")
-    .description("Number of times TeamAuthorization falls back to NAIS viewer lookup")
-    .tag("reason", "empty_user_lookup")
-    .register(appMicrometerRegistry)
 
 /**
  * Minimal abstraction so TeamAuthorizationPlugin can be tested without calling the real NAIS API.
  */
 interface NaisTeamLookup {
     suspend fun getTeamSlugsForUserResult(email: String): NaisApiResult<Set<String>>
-    suspend fun getTeamSlugsForViewerResult(): NaisApiResult<Set<String>>
-
-    suspend fun getTeamSlugsForUser(email: String): Set<String> =
-        getTeamSlugsForUserResult(email).getOrDefault(emptySet())
-
-    suspend fun getTeamSlugsForViewer(): Set<String> =
-        getTeamSlugsForViewerResult().getOrDefault(emptySet())
 }
 
 private class NaisGraphQlTeamLookup(private val client: NaisGraphQlClient) : NaisTeamLookup {
     override suspend fun getTeamSlugsForUserResult(email: String): NaisApiResult<Set<String>> =
         client.getTeamSlugsForUserResult(email)
-
-    override suspend fun getTeamSlugsForViewerResult(): NaisApiResult<Set<String>> =
-        client.getTeamSlugsForViewerResult()
 }
 
 class TeamAuthorizationConfig {
@@ -165,24 +145,16 @@ private suspend fun resolveAuthorizedTeams(
 ): NaisApiResult<Set<String>> {
     val email = principal.email
 
-    val teamsByEmailResult: NaisApiResult<Set<String>> = if (!email.isNullOrBlank()) {
-        naisLookup.getTeamSlugsForUserResult(email)
-    } else {
-        // Some tokens may not include email; try viewer query instead.
-        viewerFallbackMissingEmailCounter.increment()
-        val userId = pseudonymizeIdentifier(principal.navIdent)
-        if (ServerEnv.current.nais.isNais) {
-            log.warn(
-                "User {} is missing email claim; falling back to NAIS viewer lookup. Verify token claims from identity provider.",
-                userId
-            )
-        } else {
-            log.debug("User {} has no email claim, falling back to NAIS viewer lookup", userId)
-        }
-        naisLookup.getTeamSlugsForViewerResult()
+    if (email.isNullOrBlank()) {
+        log.warn(
+            "TeamAuthorization: User {} is missing email claim; denying team access",
+            pseudonymizeIdentifier(principal.navIdent),
+        )
+        return NaisApiResult.Success(emptySet())
     }
 
-    val resolvedTeamsResult: NaisApiResult<Set<String>> = when (teamsByEmailResult) {
+    val teamsByEmailResult = naisLookup.getTeamSlugsForUserResult(email)
+    return when (teamsByEmailResult) {
         is NaisApiResult.Success -> {
             if (teamsByEmailResult.value.isNotEmpty()) {
                 log.debug(
@@ -190,30 +162,11 @@ private suspend fun resolveAuthorizedTeams(
                     pseudonymizeIdentifier(principal.navIdent),
                     teamsByEmailResult.value.size
                 )
-                teamsByEmailResult
-            } else {
-                // Matches NAIS Console behavior: `me { ... on User { teams { ... }}}`.
-                // Depending on NAIS API auth configuration, `me` might not be a User.
-                viewerFallbackEmptyUserLookupCounter.increment()
-                log.warn(
-                    "NAIS user lookup returned no teams for {}; falling back to viewer query for diagnostics/compatibility",
-                    pseudonymizeIdentifier(principal.navIdent)
-                )
-                val viewerTeamsResult = naisLookup.getTeamSlugsForViewerResult()
-                if (viewerTeamsResult is NaisApiResult.Success && viewerTeamsResult.value.isNotEmpty()) {
-                    log.warn(
-                        "Resolved teams from NAIS API (viewer query) for {} (count={}). Verify NAIS_API_KEY identity type.",
-                        pseudonymizeIdentifier(principal.navIdent),
-                        viewerTeamsResult.value.size
-                    )
-                }
-                viewerTeamsResult
             }
+            teamsByEmailResult
         }
         is NaisApiResult.Error -> teamsByEmailResult
     }
-
-    return resolvedTeamsResult
 }
 
 /**

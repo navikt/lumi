@@ -279,9 +279,6 @@ fun Application.testModule(
 
         override suspend fun getTeamSlugsForUserResult(email: String): NaisApiResult<Set<String>> =
             NaisApiResult.Success(teams)
-
-        override suspend fun getTeamSlugsForViewerResult(): NaisApiResult<Set<String>> =
-            NaisApiResult.Success(teams)
     }
     
     // Create services with the injected repositories/services
