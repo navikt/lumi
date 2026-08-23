@@ -10,6 +10,8 @@ import io.ktor.server.plugins.ratelimit.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.testing.*
+import io.micrometer.prometheusmetrics.PrometheusConfig
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import no.nav.lumi.config.auth.BrukerPrincipal
 import no.nav.lumi.config.auth.CallerIdentity
 import no.nav.lumi.config.auth.CallerIdentityKey
@@ -505,6 +507,45 @@ class RateLimitingKeyingTest : FunSpec({
                 header("X-Test-User-Hash", "user:team-esyfo:app-a:hash-user-new")
             }
             blockedResponse.status shouldBe HttpStatusCode.TooManyRequests
+        }
+    }
+
+    test("an authenticated app-level rejection is recorded once") {
+        val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+        val submissionObservability = SubmissionObservability(meterRegistry)
+
+        testApplication {
+            application {
+                configureRateLimiting(submissionObservability)
+                routing {
+                    route("/api/tokenx/v1") {
+                        install(HeaderCallerIdentityPlugin)
+                        rateLimit(SubmissionRateLimit) {
+                            rateLimit(UserSubmissionRateLimit) {
+                                post("/feedback") {
+                                    call.respond(HttpStatusCode.Created)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            repeat(100) {
+                client.post("/api/tokenx/v1/feedback") {
+                    header("X-Test-Caller", "team-esyfo:app-a")
+                }.status shouldBe HttpStatusCode.Created
+            }
+
+            client.post("/api/tokenx/v1/feedback") {
+                header("X-Test-Caller", "team-esyfo:app-a")
+            }.status shouldBe HttpStatusCode.TooManyRequests
+
+            meterRegistry.get(SubmissionObservability.METRIC_NAME)
+                .tag("channel", "tokenx")
+                .tag("outcome", "rejected")
+                .counter()
+                .count() shouldBe 1.0
         }
     }
 })

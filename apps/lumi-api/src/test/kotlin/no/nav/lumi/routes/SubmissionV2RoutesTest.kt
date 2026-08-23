@@ -221,39 +221,44 @@ class SubmissionV2RoutesTest : FunSpec({
         }
     }
 
-    test("records a user rate-limited TokenX submission as rejected") {
-        val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
-        val submissionObservability = SubmissionObservability(meterRegistry)
-        val submissionService = mockk<SubmissionService>()
-        coEvery {
-            submissionService.submit(any(), any(), any(), any(), any())
-        } returns SubmissionOutcome(SaveResult.Created("created-v2"), "hash-v2")
+    listOf(
+        Triple("TokenX", "/api/tokenx/v1/feedback", "tokenx"),
+        Triple("Azure", "/api/azure/v1/feedback", "azure"),
+    ).forEach { (issuer, path, channel) ->
+        test("records a user rate-limited $issuer submission as rejected") {
+            val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+            val submissionObservability = SubmissionObservability(meterRegistry)
+            val submissionService = mockk<SubmissionService>()
+            coEvery {
+                submissionService.submit(any(), any(), any(), any(), any())
+            } returns SubmissionOutcome(SaveResult.Created("created-v2"), "hash-v2")
 
-        testApplication {
-            application {
-                submissionRoutesTestModule(submissionService, submissionObservability)
-            }
-            val client = createTestClient()
+            testApplication {
+                application {
+                    submissionRoutesTestModule(submissionService, submissionObservability)
+                }
+                val client = createTestClient()
 
-            repeat(15) {
-                val response = client.post("/api/tokenx/v1/feedback") {
+                repeat(15) {
+                    val response = client.post(path) {
+                        contentType(ContentType.Application.Json)
+                        setBody(submissionPayloadV2())
+                    }
+                    response.status shouldBe HttpStatusCode.Created
+                }
+
+                val blockedResponse = client.post(path) {
                     contentType(ContentType.Application.Json)
                     setBody(submissionPayloadV2())
                 }
-                response.status shouldBe HttpStatusCode.Created
-            }
 
-            val blockedResponse = client.post("/api/tokenx/v1/feedback") {
-                contentType(ContentType.Application.Json)
-                setBody(submissionPayloadV2())
+                blockedResponse.status shouldBe HttpStatusCode.TooManyRequests
+                meterRegistry.get(SubmissionObservability.METRIC_NAME)
+                    .tag("channel", channel)
+                    .tag("outcome", "rejected")
+                    .counter()
+                    .count() shouldBe 1.0
             }
-
-            blockedResponse.status shouldBe HttpStatusCode.TooManyRequests
-            meterRegistry.get(SubmissionObservability.METRIC_NAME)
-                .tag("channel", "tokenx")
-                .tag("outcome", "rejected")
-                .counter()
-                .count() shouldBe 1.0
         }
     }
 
