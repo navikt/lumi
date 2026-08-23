@@ -28,7 +28,7 @@ import kotlin.time.Duration.Companion.minutes
  *   [UserRateLimitHashKey] in its `onCall`, which runs before the RateLimit
  *   `requestKey`. These routes are therefore keyed per caller-app and, when a
  *   user hash is present, per hashed user.
- * - Analytics/export routes: `rateLimit` is nested inside `authenticate`, so
+ * - Analytics/export/bootstrap-refresh routes: `rateLimit` is nested inside `authenticate`, so
  *   [rateLimitKey] uses the validated `BrukerPrincipal` and a pseudonymized
  *   user identifier to separate dashboard users of the shared client.
  * - Rejected export authentication: Ktor does not execute an inner rate limiter
@@ -46,9 +46,11 @@ import kotlin.time.Duration.Companion.minutes
 val SubmissionRateLimit = RateLimitName("submission")
 val UserSubmissionRateLimit = RateLimitName("user-submission")
 val AnalyticsRateLimit = RateLimitName("analytics")
+val BootstrapRefreshRateLimit = RateLimitName("bootstrap-refresh")
 val ExportRateLimit = RateLimitName("export")
 
 private const val EXPORT_REQUESTS_PER_MINUTE = 30
+private const val BOOTSTRAP_REFRESH_REQUESTS_PER_MINUTE = 6
 private val RATE_LIMIT_REFILL_PERIOD = 1.minutes
 private val defaultRateLimitSubmissionObservability = SubmissionObservability()
 
@@ -154,6 +156,17 @@ fun Application.configureRateLimiting(
         register(AnalyticsRateLimit) {
             rateLimiter(limit = 300, refillPeriod = RATE_LIMIT_REFILL_PERIOD)
             requestKey { call -> call.rateLimitKey() }
+        }
+
+        register(BootstrapRefreshRateLimit) {
+            rateLimiter(
+                limit = BOOTSTRAP_REFRESH_REQUESTS_PER_MINUTE,
+                refillPeriod = RATE_LIMIT_REFILL_PERIOD,
+            )
+            requestKey { call -> call.rateLimitKey() }
+            requestWeight { call, _ ->
+                if (call.request.queryParameters["refresh"] == "true") 1 else 0
+            }
         }
 
         register(ExportRateLimit) {

@@ -3,6 +3,9 @@ import { useSearchParams } from "~/hooks/useSearchParams";
 import { fetchFilterBootstrapServerFn } from "~/server/actions";
 import type { FilterBootstrapResponse } from "~/types/schemas";
 
+export const filterBootstrapQueryKey = (team?: string) =>
+  ["filterBootstrap", { team }] as const;
+
 /**
  * Hook to fetch filter bootstrap data.
  *
@@ -33,7 +36,7 @@ export function useFilterBootstrap() {
   const { params } = useSearchParams();
 
   return useQuery<FilterBootstrapResponse>({
-    queryKey: ["filterBootstrap", { team: params.team }],
+    queryKey: filterBootstrapQueryKey(params.team),
     queryFn: () =>
       fetchFilterBootstrapServerFn({ data: { team: params.team } }),
     staleTime: 5 * 60 * 1000, // 5 minutes - bootstrap data changes rarely

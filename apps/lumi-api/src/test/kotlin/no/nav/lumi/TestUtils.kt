@@ -241,6 +241,7 @@ fun Application.testModule(
     feedbackService: FeedbackService = FeedbackService(),
     statsRepository: FeedbackStatsRepository = FeedbackStatsRepository(),
     bootstrapCache: StringCache = InMemoryStringCache(),
+    filterFeedbackRepository: FeedbackRepository = FeedbackRepository(),
 ) {
     // Initialize test database
     DatabaseHolder.initializeForTesting(TestDatabase.dataSource)
@@ -308,7 +309,10 @@ fun Application.testModule(
                 statsCacheInvalidator = statsCacheInvalidator,
             )
             surveyAuthoringRoutes()
-            filterRoutes(bootstrapCache = bootstrapCache)
+            filterRoutes(
+                feedbackRepository = filterFeedbackRepository,
+                bootstrapCache = bootstrapCache,
+            )
             markerRoutes()
             statsRoutes(statsService)
             exportRoutes(exportService)

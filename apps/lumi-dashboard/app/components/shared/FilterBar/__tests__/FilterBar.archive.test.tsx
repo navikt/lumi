@@ -46,6 +46,12 @@ vi.mock("~/hooks/useFilterBootstrap", () => ({
   useFilterBootstrap: () => mockBootstrap,
 }));
 
+vi.mock("~/components/shared/RefreshSurveyOverview", () => ({
+  RefreshSurveyOverview: () => (
+    <button type="button">Oppdater surveyoversikt</button>
+  ),
+}));
+
 function loadedBootstrapData() {
   return {
     selectedTeam: "team-test",
@@ -143,6 +149,9 @@ describe("FilterBar archive state", () => {
     expect(
       screen.queryByRole("combobox", { name: "App" }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Oppdater surveyoversikt" }),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Prøv igjen" }));
 

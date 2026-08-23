@@ -22,7 +22,10 @@ export { fetchDiscoveryServerFn } from "./fetchDiscovery";
 // Feedback
 export { fetchFeedbackServerFn } from "./fetchFeedback";
 // Filter Bootstrap
-export { fetchFilterBootstrapServerFn } from "./fetchFilterBootstrap";
+export {
+  fetchFilterBootstrapServerFn,
+  refreshFilterBootstrapServerFn,
+} from "./fetchFilterBootstrap";
 // Stats
 export { fetchStatsServerFn } from "./fetchStats";
 // Surveys

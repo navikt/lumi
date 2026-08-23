@@ -223,6 +223,8 @@ class ApiV1Intern {
             val parent: Filters = Filters(),
             /** Optional team scope. If omitted, the backend selects a default authorized team. */
             val team: String? = null,
+            /** Bypass the cached response without changing the shared cache entry. */
+            val refresh: String? = null,
         )
     }
 
