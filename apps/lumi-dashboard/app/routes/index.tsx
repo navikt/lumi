@@ -18,6 +18,7 @@ import { useStats } from "~/hooks/useStats";
 import { searchSchema } from "~/schemas/searchSchema";
 import type { SurveyType } from "~/types/api";
 import { applyDashboardSearchDefaults } from "~/utils/dashboardSearchDefaults";
+import { getDashboardStatsErrorDescription } from "~/utils/dashboardStatsError";
 import styles from "./index.module.css";
 
 /**
@@ -189,7 +190,7 @@ function DashboardPage() {
 
           <DataFetchBoundary
             title="Kunne ikke hente dashboarddata"
-            description="Snevre inn perioden eller legg til filtre før du prøver igjen."
+            description={getDashboardStatsErrorDescription(statsQuery.error)}
             queries={[statsQuery]}
           >
             {/* Type-specific dashboard view */}

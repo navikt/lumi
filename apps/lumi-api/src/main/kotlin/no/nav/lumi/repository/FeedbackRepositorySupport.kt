@@ -1,6 +1,7 @@
 package no.nav.lumi.repository
 
 import no.nav.lumi.config.exception.ApiErrorException
+import no.nav.lumi.config.exception.ErrorType
 import no.nav.lumi.domain.*
 import no.nav.lumi.service.TextProcessor
 import org.jetbrains.exposed.v1.core.*
@@ -81,7 +82,8 @@ private fun throwAnalysisBudgetExceeded(maxRows: Int, maxJsonBytes: Long): Nothi
     throw ApiErrorException.BadRequestException(
         "Too much feedback data for in-memory analysis " +
             "(max $maxRows responses and $maxJsonMiB MiB total JSON size). " +
-            "Narrow the date range or add filters."
+            "Narrow the date range or add filters.",
+        type = ErrorType.ANALYSIS_BUDGET_EXCEEDED,
     )
 }
 

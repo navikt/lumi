@@ -3,10 +3,12 @@ package no.nav.lumi.repository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import no.nav.lumi.TestDatabase
 import no.nav.lumi.config.DatabaseHolder
 import no.nav.lumi.config.exception.ApiErrorException
+import no.nav.lumi.config.exception.ErrorType
 import no.nav.lumi.insertTestFeedback
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.andWhere
@@ -35,6 +37,7 @@ class InMemoryAnalysisGuardTest : FunSpec({
             }
         }
 
+        exception.type shouldBe ErrorType.ANALYSIS_BUDGET_EXCEEDED
         exception.message shouldContain "Narrow the date range or add filters"
     }
 
@@ -68,6 +71,7 @@ class InMemoryAnalysisGuardTest : FunSpec({
             }
         }
 
+        exception.type shouldBe ErrorType.ANALYSIS_BUDGET_EXCEEDED
         exception.message shouldContain "JSON size"
     }
 

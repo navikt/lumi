@@ -40,8 +40,9 @@ test.describe("Dashboard", () => {
       timeout: 15000,
     });
     await expect(errorAlert).toContainText(
-      "Snevre inn perioden eller legg til filtre før du prøver igjen.",
+      "Vi viser ikke data før forespørselen lykkes",
     );
+    await expect(errorAlert).not.toContainText("Snevre inn perioden");
     await expect(surveySelect).toBeVisible();
     await expect(page.getByText(/Ingen data for valgt periode/)).toHaveCount(0);
 
