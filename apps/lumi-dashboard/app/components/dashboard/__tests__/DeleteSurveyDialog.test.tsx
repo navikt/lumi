@@ -77,9 +77,16 @@ describe("DeleteSurveyDialog", () => {
       screen.getByText(/den registrerte surveydefinisjonen beholdes/i),
     ).toBeVisible();
     expect(
-      screen.getByText(
-        /survey-ID-en kan ikke gjenbrukes med en annen struktur/i,
-      ),
+      screen.getByText(/survey-ID-en forblir knyttet til definisjonen/i),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/en inkompatibel struktur krever en ny survey-ID/i),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/sletting stopper ikke nye innsendinger/i),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/fjern widgeten fra frontend-koden/i),
     ).toBeVisible();
     expect(
       screen.getByRole("checkbox", {
@@ -121,9 +128,16 @@ describe("DeleteSurveyDialog", () => {
       screen.getByText(/den registrerte surveydefinisjonen beholdes/i),
     ).toBeVisible();
     expect(
-      screen.getByText(
-        /survey-ID-en kan ikke gjenbrukes med en annen struktur/i,
-      ),
+      screen.getByText(/survey-ID-en forblir knyttet til definisjonen/i),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/en inkompatibel struktur krever en ny survey-ID/i),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/sletting stopper ikke nye innsendinger/i),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/fjern widgeten fra frontend-koden/i),
     ).toBeVisible();
     expect(
       screen.queryByText(/all data for denne surveyen/i),

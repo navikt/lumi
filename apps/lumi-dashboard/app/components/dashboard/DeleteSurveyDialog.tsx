@@ -113,8 +113,8 @@ export function DeleteSurveyDialog({
 
           <BodyLong>
             {hasNoAnswers
-              ? "Denne handlingen kan ikke angres. Eventuelle markører og dashboardmetadata for surveyen slettes permanent. Den registrerte surveydefinisjonen beholdes, og survey-ID-en kan ikke gjenbrukes med en annen struktur."
-              : "Denne handlingen kan ikke angres. Alle svar, eventuelle markører og dashboardmetadata for surveyen slettes permanent. Den registrerte surveydefinisjonen beholdes, og survey-ID-en kan ikke gjenbrukes med en annen struktur."}
+              ? "Denne handlingen kan ikke angres. Eventuelle markører og dashboardmetadata for surveyen slettes permanent. Den registrerte surveydefinisjonen beholdes. Survey-ID-en forblir knyttet til definisjonen, og en inkompatibel struktur krever en ny survey-ID. Sletting stopper ikke nye innsendinger. Fjern widgeten fra frontend-koden for å stoppe datainnsamlingen."
+              : "Denne handlingen kan ikke angres. Alle svar, eventuelle markører og dashboardmetadata for surveyen slettes permanent. Den registrerte surveydefinisjonen beholdes. Survey-ID-en forblir knyttet til definisjonen, og en inkompatibel struktur krever en ny survey-ID. Sletting stopper ikke nye innsendinger. Fjern widgeten fra frontend-koden for å stoppe datainnsamlingen."}
           </BodyLong>
 
           <ConfirmationPanel
