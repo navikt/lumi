@@ -1,6 +1,7 @@
 import { Box, Heading, VStack } from "@navikt/ds-react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
+import { useState } from "react";
 import { FeedbackTable } from "~/components/feedback/FeedbackTable";
 import { ActiveFiltersChips } from "~/components/shared/ActiveFiltersChips";
 import { FilterBar } from "~/components/shared/FilterBar";
@@ -27,6 +28,8 @@ export const Route = createFileRoute("/feedback")({
 });
 
 function FeedbackPage() {
+  const [filterResetVersion, setFilterResetVersion] = useState(0);
+
   return (
     <>
       <Header />
@@ -41,9 +44,13 @@ function FeedbackPage() {
           <Heading size="large" level="1">
             Tilbakemeldinger
           </Heading>
-          <FilterBar showDetails />
+          <FilterBar showDetails filterResetVersion={filterResetVersion} />
           <ActiveFiltersChips />
-          <FeedbackTable />
+          <FeedbackTable
+            onResetFilters={() =>
+              setFilterResetVersion((version) => version + 1)
+            }
+          />
         </VStack>
       </Box>
     </>

@@ -14,7 +14,7 @@ import {
   VStack,
 } from "@navikt/ds-react";
 import dayjs from "dayjs";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { PeriodSelector } from "~/components/dashboard/PeriodSelector";
 import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { RefreshSurveyOverview } from "~/components/shared/RefreshSurveyOverview";
@@ -36,12 +36,17 @@ import {
 import styles from "./FilterBar.module.css";
 import { FilterMenu } from "./FilterMenu";
 import { Skeleton as FilterBarSkeleton } from "./Skeleton";
+import { useDebouncedSearchQuery } from "./useDebouncedSearchQuery";
 
 interface FilterBarProps {
   showDetails?: boolean;
+  filterResetVersion?: number;
 }
 
-export function FilterBar({ showDetails = false }: FilterBarProps) {
+export function FilterBar({
+  showDetails = false,
+  filterResetVersion = 0,
+}: FilterBarProps) {
   const bootstrapQuery = useFilterBootstrap();
   const statsQuery = useStats();
 
@@ -58,6 +63,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
       >
         <FilterBarContent
           showDetails={showDetails}
+          filterResetVersion={filterResetVersion}
           bootstrapQuery={bootstrapQuery}
           statsQuery={statsQuery}
         />
@@ -68,6 +74,7 @@ export function FilterBar({ showDetails = false }: FilterBarProps) {
 
 function FilterBarContent({
   showDetails,
+  filterResetVersion,
   bootstrapQuery,
   statsQuery,
 }: Required<FilterBarProps> & {
@@ -78,6 +85,21 @@ function FilterBarContent({
   const { data: bootstrap, isPending: isPendingBootstrap } = bootstrapQuery;
   const { data: stats, isPending: isPendingStats } = statsQuery;
   const { themes } = useThemes();
+  const commitSearchQuery = useCallback(
+    (query: string) =>
+      setParams({
+        query: query || undefined,
+        phrase: undefined,
+        page: "1",
+      }),
+    [setParams],
+  );
+  const { queryDraft, updateQueryDraft, clearQueryDraft } =
+    useDebouncedSearchQuery({
+      query: params.query,
+      resetVersion: filterResetVersion,
+      onCommit: commitSearchQuery,
+    });
 
   const features = getSurveyFeatures(stats?.surveyType);
   const { themeLabel } = getFilterLabels({
@@ -91,7 +113,12 @@ function FilterBarContent({
     toDate: params.toDate,
   });
   const rollingAutomaticPeriod = resolveDashboardPeriod({ dateMode: "auto" });
-  const { hasActiveFilters, resetFilters: handleReset } = useActiveFilters();
+  const { hasActiveFilters, resetFilters } = useActiveFilters();
+
+  const handleReset = () => {
+    clearQueryDraft();
+    resetFilters();
+  };
 
   const selectedTags = params.tag
     ? params.tag
@@ -347,6 +374,7 @@ function FilterBarContent({
   ]);
 
   const handleTeamChange = (newTeam: string) => {
+    clearQueryDraft();
     setParams({
       team: newTeam,
       fromDate: params.fromDate,
@@ -454,14 +482,8 @@ function FilterBarContent({
                   label="Søk"
                   hideLabel
                   size="small"
-                  value={params.query || ""}
-                  onChange={(e) =>
-                    setParams({
-                      query: e.target.value || undefined,
-                      phrase: undefined,
-                      page: "1",
-                    })
-                  }
+                  value={queryDraft}
+                  onChange={(e) => updateQueryDraft(e.target.value)}
                   placeholder="Søk i tekst..."
                   className={styles.desktopSearch}
                 />
@@ -587,14 +609,8 @@ function FilterBarContent({
                 label="Søk"
                 hideLabel
                 size="small"
-                value={params.query || ""}
-                onChange={(e) =>
-                  setParams({
-                    query: e.target.value || undefined,
-                    phrase: undefined,
-                    page: "1",
-                  })
-                }
+                value={queryDraft}
+                onChange={(e) => updateQueryDraft(e.target.value)}
                 placeholder="Søk i tekst..."
                 className={styles.mobileSearch}
               />

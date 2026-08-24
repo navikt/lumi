@@ -201,14 +201,16 @@ describe("FeedbackTable empty states", () => {
   it("offers a reset action when active filters exclude everything", () => {
     mockBootstrap.data = bootstrapWithData();
     mockParams.query = "finnesikke";
+    const onResetFilters = vi.fn();
 
-    render(<FeedbackTable />);
+    render(<FeedbackTable onResetFilters={onResetFilters} />);
 
     expect(
       screen.getByText("Ingen treff med gjeldende filtre"),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /nullstill filtre/i }));
+    expect(onResetFilters).toHaveBeenCalledOnce();
     expect(mockResetParams).toHaveBeenCalled();
   });
 

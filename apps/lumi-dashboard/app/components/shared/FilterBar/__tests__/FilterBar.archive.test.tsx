@@ -1,7 +1,14 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveDashboardPeriod } from "~/utils/dashboardPeriod";
 import { FilterBar } from "../index";
+import { SEARCH_QUERY_DEBOUNCE_MS } from "../useDebouncedSearchQuery";
 
 const { mockParams, mockSetParams, mockResetParams, mockBootstrap, mockStats } =
   vi.hoisted(() => ({
@@ -549,5 +556,340 @@ describe("FilterBar archive state", () => {
         page: "1",
       }),
     );
+  });
+});
+
+describe("FilterBar search", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    mockParams.app = undefined;
+    mockParams.surveyId = undefined;
+    mockParams.showArchived = undefined;
+    mockParams.dateMode = "auto";
+    mockParams.fromDate = "2026-07-23";
+    mockParams.toDate = "2026-08-21";
+    mockParams.query = undefined;
+    mockBootstrap.data = loadedBootstrapData();
+    mockBootstrap.isPending = false;
+    mockBootstrap.isError = false;
+    mockBootstrap.isFetching = false;
+    mockStats.data = undefined;
+    mockStats.isPending = false;
+    mockStats.isError = false;
+    mockStats.isFetching = false;
+    mockSetParams.mockClear();
+    mockResetParams.mockClear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("updates the field immediately and commits only the final query", () => {
+    render(<FilterBar showDetails />);
+    const searchFields = screen.getAllByRole("textbox", { name: "Søk" });
+
+    fireEvent.change(searchFields[0], { target: { value: "s" } });
+    fireEvent.change(searchFields[0], { target: { value: "sø" } });
+    fireEvent.change(searchFields[0], { target: { value: "søk" } });
+
+    expect(searchFields[0]).toHaveValue("søk");
+    expect(searchFields[1]).toHaveValue("søk");
+    expect(mockSetParams).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_QUERY_DEBOUNCE_MS - 1);
+    });
+    expect(mockSetParams).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(mockSetParams).toHaveBeenCalledOnce();
+    expect(mockSetParams).toHaveBeenCalledWith({
+      query: "søk",
+      phrase: undefined,
+      page: "1",
+    });
+  });
+
+  it("removes an empty query after the debounce period", () => {
+    mockParams.query = "gammelt søk";
+    render(<FilterBar showDetails />);
+
+    fireEvent.change(screen.getAllByRole("textbox", { name: "Søk" })[0], {
+      target: { value: "" },
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_QUERY_DEBOUNCE_MS);
+    });
+    expect(mockSetParams).toHaveBeenCalledWith({
+      query: undefined,
+      phrase: undefined,
+      page: "1",
+    });
+  });
+
+  it("uses a newer URL query and cancels the pending draft", () => {
+    mockParams.query = "første";
+    const { rerender } = render(<FilterBar showDetails />);
+
+    fireEvent.change(screen.getAllByRole("textbox", { name: "Søk" })[0], {
+      target: { value: "ventende" },
+    });
+    mockParams.query = "fra-url";
+    rerender(<FilterBar showDetails />);
+
+    for (const field of screen.getAllByRole("textbox", { name: "Søk" })) {
+      expect(field).toHaveValue("fra-url");
+    }
+
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_QUERY_DEBOUNCE_MS);
+    });
+    expect(mockSetParams).not.toHaveBeenCalled();
+  });
+
+  it("keeps newer typing when the router acknowledges an earlier query", () => {
+    const { rerender } = render(<FilterBar showDetails />);
+    const searchField = screen.getAllByRole("textbox", { name: "Søk" })[0];
+
+    fireEvent.change(searchField, { target: { value: "første" } });
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_QUERY_DEBOUNCE_MS);
+    });
+    expect(mockSetParams).toHaveBeenCalledTimes(1);
+
+    fireEvent.change(searchField, { target: { value: "nyere" } });
+    mockParams.query = "første";
+    rerender(<FilterBar showDetails />);
+
+    for (const field of screen.getAllByRole("textbox", { name: "Søk" })) {
+      expect(field).toHaveValue("nyere");
+    }
+
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_QUERY_DEBOUNCE_MS);
+    });
+    expect(mockSetParams).toHaveBeenLastCalledWith({
+      query: "nyere",
+      phrase: undefined,
+      page: "1",
+    });
+    expect(mockSetParams).toHaveBeenCalledTimes(2);
+  });
+
+  it("commits a revert after an earlier query is acknowledged", () => {
+    const { rerender } = render(<FilterBar showDetails />);
+    const searchField = screen.getAllByRole("textbox", { name: "Søk" })[0];
+
+    fireEvent.change(searchField, { target: { value: "første" } });
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_QUERY_DEBOUNCE_MS);
+    });
+    expect(mockSetParams).toHaveBeenCalledTimes(1);
+
+    fireEvent.change(searchField, { target: { value: "" } });
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_QUERY_DEBOUNCE_MS);
+    });
+    expect(mockSetParams).toHaveBeenCalledTimes(1);
+
+    mockParams.query = "første";
+    rerender(<FilterBar showDetails />);
+
+    expect(mockSetParams).toHaveBeenLastCalledWith({
+      query: undefined,
+      phrase: undefined,
+      page: "1",
+    });
+    expect(mockSetParams).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps a pending query across an ordinary URL filter change", () => {
+    const { rerender } = render(<FilterBar showDetails />);
+
+    fireEvent.change(screen.getAllByRole("textbox", { name: "Søk" })[0], {
+      target: { value: "ventende" },
+    });
+    mockParams.app = "app-test";
+    rerender(<FilterBar showDetails />);
+
+    for (const field of screen.getAllByRole("textbox", { name: "Søk" })) {
+      expect(field).toHaveValue("ventende");
+    }
+
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_QUERY_DEBOUNCE_MS);
+    });
+    expect(mockSetParams).toHaveBeenCalledWith({
+      query: "ventende",
+      phrase: undefined,
+      page: "1",
+    });
+  });
+
+  it("cancels a pending query when filters are reset outside FilterBar", () => {
+    mockParams.app = "app-test";
+    const { rerender } = render(
+      <FilterBar showDetails filterResetVersion={0} />,
+    );
+
+    fireEvent.change(screen.getAllByRole("textbox", { name: "Søk" })[0], {
+      target: { value: "ventende" },
+    });
+
+    // The feedback empty state owns a separate reset action. Model its URL
+    // update without calling FilterBar's local reset handler.
+    mockParams.app = undefined;
+    rerender(<FilterBar showDetails filterResetVersion={1} />);
+
+    for (const field of screen.getAllByRole("textbox", { name: "Søk" })) {
+      expect(field).toHaveValue("");
+    }
+
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_QUERY_DEBOUNCE_MS);
+    });
+    expect(mockSetParams).not.toHaveBeenCalled();
+  });
+
+  it("reasserts an external reset after an in-flight query is acknowledged", () => {
+    const { rerender } = render(
+      <FilterBar showDetails filterResetVersion={0} />,
+    );
+
+    fireEvent.change(screen.getAllByRole("textbox", { name: "Søk" })[0], {
+      target: { value: "på vei" },
+    });
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_QUERY_DEBOUNCE_MS);
+    });
+    expect(mockSetParams).toHaveBeenCalledTimes(1);
+
+    rerender(<FilterBar showDetails filterResetVersion={1} />);
+    mockParams.query = "på vei";
+    rerender(<FilterBar showDetails filterResetVersion={1} />);
+
+    expect(mockSetParams).toHaveBeenLastCalledWith({
+      query: undefined,
+      phrase: undefined,
+      page: "1",
+    });
+    expect(mockSetParams).toHaveBeenCalledTimes(2);
+  });
+
+  it("allows a new query when reset cancels an in-flight navigation", () => {
+    const { rerender } = render(
+      <FilterBar showDetails filterResetVersion={0} />,
+    );
+
+    fireEvent.change(screen.getAllByRole("textbox", { name: "Søk" })[0], {
+      target: { value: "kansellert" },
+    });
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_QUERY_DEBOUNCE_MS);
+    });
+    expect(mockSetParams).toHaveBeenCalledTimes(1);
+
+    rerender(<FilterBar showDetails filterResetVersion={1} />);
+    fireEvent.change(screen.getAllByRole("textbox", { name: "Søk" })[0], {
+      target: { value: "nytt søk" },
+    });
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_QUERY_DEBOUNCE_MS);
+    });
+
+    expect(mockSetParams).toHaveBeenLastCalledWith({
+      query: "nytt søk",
+      phrase: undefined,
+      page: "1",
+    });
+    expect(mockSetParams).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores a discarded acknowledgement while a newer query is in flight", () => {
+    const { rerender } = render(
+      <FilterBar showDetails filterResetVersion={0} />,
+    );
+    const searchField = screen.getAllByRole("textbox", { name: "Søk" })[0];
+
+    fireEvent.change(searchField, { target: { value: "kansellert" } });
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_QUERY_DEBOUNCE_MS);
+    });
+    rerender(<FilterBar showDetails filterResetVersion={1} />);
+
+    fireEvent.change(searchField, { target: { value: "nyeste" } });
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_QUERY_DEBOUNCE_MS);
+    });
+    expect(mockSetParams).toHaveBeenCalledTimes(2);
+
+    mockParams.query = "kansellert";
+    rerender(<FilterBar showDetails filterResetVersion={1} />);
+    for (const field of screen.getAllByRole("textbox", { name: "Søk" })) {
+      expect(field).toHaveValue("nyeste");
+    }
+
+    mockParams.query = "nyeste";
+    rerender(<FilterBar showDetails filterResetVersion={1} />);
+    expect(mockSetParams).toHaveBeenCalledTimes(2);
+  });
+
+  it("treats the same query as external after a canceled navigation settles", async () => {
+    let settleNavigation: (() => void) | undefined;
+    mockSetParams.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        settleNavigation = resolve;
+      }),
+    );
+    const { rerender } = render(
+      <FilterBar showDetails filterResetVersion={0} />,
+    );
+
+    fireEvent.change(screen.getAllByRole("textbox", { name: "Søk" })[0], {
+      target: { value: "kansellert" },
+    });
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_QUERY_DEBOUNCE_MS);
+    });
+    rerender(<FilterBar showDetails filterResetVersion={1} />);
+
+    await act(async () => {
+      settleNavigation?.();
+    });
+    mockParams.query = "kansellert";
+    rerender(<FilterBar showDetails filterResetVersion={1} />);
+
+    for (const field of screen.getAllByRole("textbox", { name: "Søk" })) {
+      expect(field).toHaveValue("kansellert");
+    }
+    expect(mockSetParams).toHaveBeenCalledOnce();
+  });
+
+  it("cancels a pending query when all filters are reset", () => {
+    mockParams.app = "app-test";
+    render(<FilterBar showDetails />);
+
+    fireEvent.change(screen.getAllByRole("textbox", { name: "Søk" })[0], {
+      target: { value: "ventende" },
+    });
+    fireEvent.click(
+      screen.getAllByRole("button", {
+        name: "Nullstill alle filtre til standard (siste 30 dager)",
+      })[0],
+    );
+
+    for (const field of screen.getAllByRole("textbox", { name: "Søk" })) {
+      expect(field).toHaveValue("");
+    }
+    expect(mockResetParams).toHaveBeenCalledOnce();
+
+    act(() => {
+      vi.advanceTimersByTime(SEARCH_QUERY_DEBOUNCE_MS);
+    });
+    expect(mockSetParams).not.toHaveBeenCalled();
   });
 });
