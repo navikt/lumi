@@ -50,7 +50,7 @@ describe("DeleteSurveyDialog", () => {
     expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 
-  it("describes permanent survey deletion without referring to zero answers", () => {
+  it("explains what is retained when an empty survey is removed", () => {
     mockUseSurveyTotalCount.mockReturnValue({
       data: 0,
       isLoading: false,
@@ -67,16 +67,67 @@ describe("DeleteSurveyDialog", () => {
       />,
     );
 
+    expect(
+      screen.getByRole("heading", {
+        name: "Slett svar og fjern surveyen",
+      }),
+    ).toBeVisible();
     expect(screen.getByText(/surveyen har ingen lagrede svar/i)).toBeVisible();
     expect(
+      screen.getByText(/den registrerte surveydefinisjonen beholdes/i),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        /survey-ID-en kan ikke gjenbrukes med en annen struktur/i,
+      ),
+    ).toBeVisible();
+    expect(
       screen.getByRole("checkbox", {
-        name: /ja, slett surveyen permanent/i,
+        name: /ja, fjern surveyen fra dashboardet/i,
       }),
     ).toBeEnabled();
     expect(
-      screen.getByRole("button", { name: /slett survey permanent/i }),
+      screen.getByRole("button", { name: /fjern fra dashboardet/i }),
     ).toBeDisabled();
     expect(screen.queryByText(/slette alle 0 svar/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/all data for denne surveyen/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("distinguishes deleted survey data from the retained definition", () => {
+    mockUseSurveyTotalCount.mockReturnValue({
+      data: 5,
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+    });
+
+    render(
+      <DeleteSurveyDialog
+        surveyId="survey-with-responses"
+        filteredCount={5}
+        isOpen
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        /alle svar, eventuelle markører og dashboardmetadata for surveyen slettes permanent/i,
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/den registrerte surveydefinisjonen beholdes/i),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        /survey-ID-en kan ikke gjenbrukes med en annen struktur/i,
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/all data for denne surveyen/i),
+    ).not.toBeInTheDocument();
   });
 
   it("blocks deletion while a cached total count is being refreshed", () => {

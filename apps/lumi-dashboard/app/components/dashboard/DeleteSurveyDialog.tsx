@@ -74,7 +74,7 @@ export function DeleteSurveyDialog({
       open={isOpen}
       onClose={handleClose}
       header={{
-        heading: "Slett hele surveyen",
+        heading: "Slett svar og fjern surveyen",
         icon: <TrashIcon aria-hidden />,
       }}
       width="small"
@@ -92,7 +92,7 @@ export function DeleteSurveyDialog({
             ) : hasNoAnswers ? (
               <>
                 Surveyen <strong>"{surveyId}"</strong> har ingen lagrede svar.
-                Du kan fortsatt slette surveyen permanent fra dashboardet.
+                Du kan fortsatt fjerne surveyen fra dashboardet.
               </>
             ) : (
               <>
@@ -113,8 +113,8 @@ export function DeleteSurveyDialog({
 
           <BodyLong>
             {hasNoAnswers
-              ? "Denne handlingen kan ikke angres. Surveyen og eventuelle markører vil bli permanent fjernet fra dashboardet."
-              : "Denne handlingen kan ikke angres. All data for denne surveyen vil bli permanent fjernet fra databasen."}
+              ? "Denne handlingen kan ikke angres. Eventuelle markører og dashboardmetadata for surveyen slettes permanent. Den registrerte surveydefinisjonen beholdes, og survey-ID-en kan ikke gjenbrukes med en annen struktur."
+              : "Denne handlingen kan ikke angres. Alle svar, eventuelle markører og dashboardmetadata for surveyen slettes permanent. Den registrerte surveydefinisjonen beholdes, og survey-ID-en kan ikke gjenbrukes med en annen struktur."}
           </BodyLong>
 
           <ConfirmationPanel
@@ -124,7 +124,7 @@ export function DeleteSurveyDialog({
               totalCountUnavailable
                 ? "Antall svar må lastes før sletting"
                 : hasNoAnswers
-                  ? "Ja, slett surveyen permanent"
+                  ? "Ja, fjern surveyen fra dashboardet"
                   : `Ja, slett permanent alle ${totalCount} svar`
             }
             disabled={totalCountUnavailable}
@@ -152,7 +152,7 @@ export function DeleteSurveyDialog({
             {totalCountUnavailable
               ? "Slett svar permanent"
               : hasNoAnswers
-                ? "Slett survey permanent"
+                ? "Fjern fra dashboardet"
                 : `Slett ${totalCount} svar permanent`}
           </Button>
         </HStack>
