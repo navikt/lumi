@@ -2,17 +2,15 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DeleteSurveyDialog } from "../DeleteSurveyDialog";
 
-const { mockMutateAsync, mockUseSurveyTotalCount } = vi.hoisted(() => ({
-  mockMutateAsync: vi.fn(),
-  mockUseSurveyTotalCount: vi.fn(),
-}));
+const { mockMutateAsync, mockUseDeleteSurvey, mockUseSurveyTotalCount } =
+  vi.hoisted(() => ({
+    mockMutateAsync: vi.fn(),
+    mockUseDeleteSurvey: vi.fn(),
+    mockUseSurveyTotalCount: vi.fn(),
+  }));
 
 vi.mock("~/hooks/useDeleteSurvey", () => ({
-  useDeleteSurvey: () => ({
-    mutateAsync: mockMutateAsync,
-    isError: false,
-    isPending: false,
-  }),
+  useDeleteSurvey: mockUseDeleteSurvey,
 }));
 
 vi.mock("~/hooks/useSurveyTotalCount", () => ({
@@ -22,6 +20,11 @@ vi.mock("~/hooks/useSurveyTotalCount", () => ({
 describe("DeleteSurveyDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseDeleteSurvey.mockReturnValue({
+      mutateAsync: mockMutateAsync,
+      isError: false,
+      isPending: false,
+    });
     mockUseSurveyTotalCount.mockReturnValue({
       data: undefined,
       isLoading: false,
@@ -41,13 +44,47 @@ describe("DeleteSurveyDialog", () => {
     );
 
     expect(
-      screen.getByText(/Kunne ikke hente totalt antall svar/i),
+      screen.getByText(
+        /Kunne ikke hente totalt antall svar.*før svar og dashboarddata kan slettes/i,
+      ),
     ).toBeInTheDocument();
     expect(screen.getByRole("checkbox")).toBeDisabled();
     expect(
       screen.getByRole("button", { name: /Slett svar permanent/i }),
     ).toBeDisabled();
     expect(mockMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("describes a failed deletion without claiming the definition was deleted", () => {
+    mockUseDeleteSurvey.mockReturnValue({
+      mutateAsync: mockMutateAsync,
+      isError: true,
+      isPending: false,
+    });
+    mockUseSurveyTotalCount.mockReturnValue({
+      data: 5,
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+    });
+
+    render(
+      <DeleteSurveyDialog
+        surveyId="survey-failed"
+        filteredCount={5}
+        isOpen
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        /Kunne ikke slette svar og fjerne surveyen fra dashboardet/i,
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/Kunne ikke slette survey/i),
+    ).not.toBeInTheDocument();
   });
 
   it("explains what is retained when an empty survey is removed", () => {

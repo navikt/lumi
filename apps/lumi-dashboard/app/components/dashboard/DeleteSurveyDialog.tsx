@@ -87,7 +87,7 @@ export function DeleteSurveyDialog({
             ) : isTotalCountError || totalCount === undefined ? (
               <>
                 Kunne ikke hente totalt antall svar. Last antallet på nytt før
-                surveyen kan slettes.
+                svar og dashboarddata kan slettes.
               </>
             ) : hasNoAnswers ? (
               <>
@@ -132,7 +132,8 @@ export function DeleteSurveyDialog({
 
           {deleteMutation.isError && (
             <Alert variant="error">
-              Kunne ikke slette survey. Prøv igjen senere.
+              Kunne ikke slette svar og fjerne surveyen fra dashboardet. Prøv
+              igjen senere.
             </Alert>
           )}
         </VStack>
