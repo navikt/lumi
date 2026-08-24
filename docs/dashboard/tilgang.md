@@ -23,7 +23,9 @@ Innlogging skjer automatisk via Microsoft Entra ID (Azure AD) første gang du å
 Dashboardet viser kun data fra teamene dine. Hvilke team du tilhører hentes automatisk fra NAIS Console.
 
 ::: tip Mangler du tilgang?
-Sjekk at du er lagt til som medlem i riktig NAIS-team via [NAIS Console](https://console.nav.cloud.nais.io). Teammedlemskap caches i opptil 1 time, så det kan ta litt tid før endringer trer i kraft.
+Sjekk at du er lagt til som medlem i riktig NAIS-team via [NAIS Console](https://console.nav.cloud.nais.io).
+
+Lumi cacher teamoppslag som gir minst ett team i opptil 12 timer. Nye eller fjernede teamtilganger for en bruker som allerede har tilgang til andre team, kan derfor bruke opptil 12 timer på å tre i kraft. Oppslag som ikke gir noen team, caches i 5 minutter. Fjerning fra et team kan gi fortsatt tilgang til teamets data frem til den positive cachen utløper, så lenge brukeren fortsatt kan logge inn.
 :::
 
 ## Se også
