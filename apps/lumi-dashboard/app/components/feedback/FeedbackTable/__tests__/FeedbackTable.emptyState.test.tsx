@@ -331,4 +331,17 @@ describe("FeedbackTable empty states", () => {
       screen.getByText("Ingen tilbakemeldinger funnet"),
     ).toBeInTheDocument();
   });
+
+  it("describes the selected-survey delete action without implying submissions stop", () => {
+    mockBootstrap.data = bootstrapWithData();
+    mockParams.surveyId = "survey-1";
+
+    render(<FeedbackTable />);
+
+    expect(
+      screen.getByRole("button", {
+        name: /slett alle svar og fjern surveyen fra dashboardet.*nye innsendinger stoppes ikke/i,
+      }),
+    ).toBeVisible();
+  });
 });

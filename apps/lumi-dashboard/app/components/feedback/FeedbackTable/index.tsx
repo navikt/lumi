@@ -341,7 +341,7 @@ function SurveyToolbar({
               </Button>
             </Tooltip>
           )}
-          <Tooltip content="Slett hele surveyen (alle svar, uavhengig av filtrering)">
+          <Tooltip content="Slett alle svar og fjern surveyen fra dashboardet — nye innsendinger stoppes ikke">
             <Button
               data-color="danger"
               variant="primary"

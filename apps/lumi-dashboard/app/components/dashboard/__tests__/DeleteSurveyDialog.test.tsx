@@ -2,17 +2,15 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DeleteSurveyDialog } from "../DeleteSurveyDialog";
 
-const { mockMutateAsync, mockUseSurveyTotalCount } = vi.hoisted(() => ({
-  mockMutateAsync: vi.fn(),
-  mockUseSurveyTotalCount: vi.fn(),
-}));
+const { mockMutateAsync, mockUseDeleteSurvey, mockUseSurveyTotalCount } =
+  vi.hoisted(() => ({
+    mockMutateAsync: vi.fn(),
+    mockUseDeleteSurvey: vi.fn(),
+    mockUseSurveyTotalCount: vi.fn(),
+  }));
 
 vi.mock("~/hooks/useDeleteSurvey", () => ({
-  useDeleteSurvey: () => ({
-    mutateAsync: mockMutateAsync,
-    isError: false,
-    isPending: false,
-  }),
+  useDeleteSurvey: mockUseDeleteSurvey,
 }));
 
 vi.mock("~/hooks/useSurveyTotalCount", () => ({
@@ -22,6 +20,11 @@ vi.mock("~/hooks/useSurveyTotalCount", () => ({
 describe("DeleteSurveyDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseDeleteSurvey.mockReturnValue({
+      mutateAsync: mockMutateAsync,
+      isError: false,
+      isPending: false,
+    });
     mockUseSurveyTotalCount.mockReturnValue({
       data: undefined,
       isLoading: false,
@@ -41,7 +44,9 @@ describe("DeleteSurveyDialog", () => {
     );
 
     expect(
-      screen.getByText(/Kunne ikke hente totalt antall svar/i),
+      screen.getByText(
+        /Kunne ikke hente totalt antall svar.*før svar og dashboarddata kan slettes/i,
+      ),
     ).toBeInTheDocument();
     expect(screen.getByRole("checkbox")).toBeDisabled();
     expect(
@@ -50,7 +55,39 @@ describe("DeleteSurveyDialog", () => {
     expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 
-  it("describes permanent survey deletion without referring to zero answers", () => {
+  it("describes a failed deletion without claiming the definition was deleted", () => {
+    mockUseDeleteSurvey.mockReturnValue({
+      mutateAsync: mockMutateAsync,
+      isError: true,
+      isPending: false,
+    });
+    mockUseSurveyTotalCount.mockReturnValue({
+      data: 5,
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+    });
+
+    render(
+      <DeleteSurveyDialog
+        surveyId="survey-failed"
+        filteredCount={5}
+        isOpen
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        /Kunne ikke slette svar og fjerne surveyen fra dashboardet/i,
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/Kunne ikke slette survey/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("explains what is retained when an empty survey is removed", () => {
     mockUseSurveyTotalCount.mockReturnValue({
       data: 0,
       isLoading: false,
@@ -67,16 +104,81 @@ describe("DeleteSurveyDialog", () => {
       />,
     );
 
+    expect(
+      screen.getByRole("heading", {
+        name: "Slett svar og fjern surveyen",
+      }),
+    ).toBeVisible();
     expect(screen.getByText(/surveyen har ingen lagrede svar/i)).toBeVisible();
     expect(
+      screen.getByText(/den registrerte surveydefinisjonen beholdes/i),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/survey-ID-en forblir knyttet til definisjonen/i),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/en inkompatibel struktur krever en ny survey-ID/i),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/sletting stopper ikke nye innsendinger/i),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/fjern widgeten fra frontend-koden/i),
+    ).toBeVisible();
+    expect(
       screen.getByRole("checkbox", {
-        name: /ja, slett surveyen permanent/i,
+        name: /ja, fjern surveyen fra dashboardet/i,
       }),
     ).toBeEnabled();
     expect(
-      screen.getByRole("button", { name: /slett survey permanent/i }),
+      screen.getByRole("button", { name: /fjern fra dashboardet/i }),
     ).toBeDisabled();
     expect(screen.queryByText(/slette alle 0 svar/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/all data for denne surveyen/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("distinguishes deleted survey data from the retained definition", () => {
+    mockUseSurveyTotalCount.mockReturnValue({
+      data: 5,
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+    });
+
+    render(
+      <DeleteSurveyDialog
+        surveyId="survey-with-responses"
+        filteredCount={5}
+        isOpen
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        /alle svar, eventuelle markører og dashboardmetadata for surveyen slettes permanent/i,
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/den registrerte surveydefinisjonen beholdes/i),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/survey-ID-en forblir knyttet til definisjonen/i),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/en inkompatibel struktur krever en ny survey-ID/i),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/sletting stopper ikke nye innsendinger/i),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/fjern widgeten fra frontend-koden/i),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/all data for denne surveyen/i),
+    ).not.toBeInTheDocument();
   });
 
   it("blocks deletion while a cached total count is being refreshed", () => {

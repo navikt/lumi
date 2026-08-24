@@ -74,7 +74,7 @@ export function DeleteSurveyDialog({
       open={isOpen}
       onClose={handleClose}
       header={{
-        heading: "Slett hele surveyen",
+        heading: "Slett svar og fjern surveyen",
         icon: <TrashIcon aria-hidden />,
       }}
       width="small"
@@ -87,12 +87,12 @@ export function DeleteSurveyDialog({
             ) : isTotalCountError || totalCount === undefined ? (
               <>
                 Kunne ikke hente totalt antall svar. Last antallet på nytt før
-                surveyen kan slettes.
+                svar og dashboarddata kan slettes.
               </>
             ) : hasNoAnswers ? (
               <>
                 Surveyen <strong>"{surveyId}"</strong> har ingen lagrede svar.
-                Du kan fortsatt slette surveyen permanent fra dashboardet.
+                Du kan fortsatt fjerne surveyen fra dashboardet.
               </>
             ) : (
               <>
@@ -113,8 +113,8 @@ export function DeleteSurveyDialog({
 
           <BodyLong>
             {hasNoAnswers
-              ? "Denne handlingen kan ikke angres. Surveyen og eventuelle markører vil bli permanent fjernet fra dashboardet."
-              : "Denne handlingen kan ikke angres. All data for denne surveyen vil bli permanent fjernet fra databasen."}
+              ? "Denne handlingen kan ikke angres. Eventuelle markører og dashboardmetadata for surveyen slettes permanent. Den registrerte surveydefinisjonen beholdes. Survey-ID-en forblir knyttet til definisjonen, og en inkompatibel struktur krever en ny survey-ID. Sletting stopper ikke nye innsendinger. Fjern widgeten fra frontend-koden for å stoppe datainnsamlingen."
+              : "Denne handlingen kan ikke angres. Alle svar, eventuelle markører og dashboardmetadata for surveyen slettes permanent. Den registrerte surveydefinisjonen beholdes. Survey-ID-en forblir knyttet til definisjonen, og en inkompatibel struktur krever en ny survey-ID. Sletting stopper ikke nye innsendinger. Fjern widgeten fra frontend-koden for å stoppe datainnsamlingen."}
           </BodyLong>
 
           <ConfirmationPanel
@@ -124,7 +124,7 @@ export function DeleteSurveyDialog({
               totalCountUnavailable
                 ? "Antall svar må lastes før sletting"
                 : hasNoAnswers
-                  ? "Ja, slett surveyen permanent"
+                  ? "Ja, fjern surveyen fra dashboardet"
                   : `Ja, slett permanent alle ${totalCount} svar`
             }
             disabled={totalCountUnavailable}
@@ -132,7 +132,8 @@ export function DeleteSurveyDialog({
 
           {deleteMutation.isError && (
             <Alert variant="error">
-              Kunne ikke slette survey. Prøv igjen senere.
+              Kunne ikke slette svar og fjerne surveyen fra dashboardet. Prøv
+              igjen senere.
             </Alert>
           )}
         </VStack>
@@ -152,7 +153,7 @@ export function DeleteSurveyDialog({
             {totalCountUnavailable
               ? "Slett svar permanent"
               : hasNoAnswers
-                ? "Slett survey permanent"
+                ? "Fjern fra dashboardet"
                 : `Slett ${totalCount} svar permanent`}
           </Button>
         </HStack>
