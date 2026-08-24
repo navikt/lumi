@@ -47,7 +47,11 @@ import styles from "./styles.module.css";
  * Shows table on desktop, card grid on mobile.
  * Supports expand/collapse for detailed view, deletion, and filtering.
  */
-export function FeedbackTable() {
+interface FeedbackTableProps {
+  onResetFilters?: () => void;
+}
+
+export function FeedbackTable({ onResetFilters }: FeedbackTableProps = {}) {
   const feedbackQuery = useFeedback();
 
   return (
@@ -55,15 +59,20 @@ export function FeedbackTable() {
       title="Kunne ikke hente tilbakemeldinger"
       queries={[feedbackQuery]}
     >
-      <FeedbackTableContent feedbackQuery={feedbackQuery} />
+      <FeedbackTableContent
+        feedbackQuery={feedbackQuery}
+        onResetFilters={onResetFilters}
+      />
     </DataFetchBoundary>
   );
 }
 
 function FeedbackTableContent({
   feedbackQuery,
+  onResetFilters,
 }: {
   feedbackQuery: ReturnType<typeof useFeedback>;
+  onResetFilters?: () => void;
 }) {
   const { params, setParam, setParams } = useSearchParams();
   const page = Number.parseInt(params.page || "1", 10);
@@ -85,6 +94,10 @@ function FeedbackTableContent({
     feedbackList.length === 0 &&
     totalElements > 0 &&
     page > totalPages;
+  const handleResetFilters = () => {
+    onResetFilters?.();
+    resetFilters();
+  };
 
   useEffect(() => {
     if (hasOutOfRangePage) {
@@ -141,7 +154,7 @@ function FeedbackTableContent({
         <FeedbackEmptyState
           hasAnyData={bootstrap ? bootstrap.apps.length > 0 : undefined}
           hasActiveNonPeriodFilters={hasActiveNonPeriodFilters}
-          onResetFilters={resetFilters}
+          onResetFilters={handleResetFilters}
           periodFromDate={params.fromDate}
           periodToDate={params.toDate}
           fullPeriod={getTeamSubmissionPeriod(bootstrap?.surveyMeta, {

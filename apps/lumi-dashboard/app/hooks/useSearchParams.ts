@@ -29,7 +29,7 @@ export function useSearchParams() {
 
   const setParams = useCallback(
     (newParams: Partial<SearchParams>) => {
-      void navigate({
+      return navigate({
         // @ts-expect-error -- shared hook used across routes; strict typing not feasible
         search: (prev: Record<string, string | undefined>) => {
           const next = { ...prev };
