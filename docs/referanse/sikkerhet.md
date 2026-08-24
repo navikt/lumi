@@ -60,28 +60,6 @@ Alle submissions valideres nå strengt i API-et før lagring. Dette inkluderer l
 
 For integratører betyr dette at ugyldig payload avvises tidlig med tydelig valideringsfeil, i stedet for å bli lagret med uforutsigbar struktur.
 
-## Direkte databasetilgang
-
-Teamautorisasjonen i Lumi beskytter lesing gjennom API-et. Direkte tilgang til
-PostgreSQL går utenom denne kontrollen og må derfor forvaltes separat.
-
-Migreringene oppretter i dag rollen `esyfo-analyse` med lesetilgang til alle
-tabeller i `public`-skjemaet. Standardprivilegier gir også rollen lesetilgang
-til nye tabeller. Dette er ikke en teamavgrenset tilgangsmodell.
-
-::: warning Uavklart analysebruk
-Rollen er ikke deklarert som en ekstra databasebruker i Lumis
-NAIS-manifester, og repoet dokumenterer verken aktiv tilkobling, ansvarlig eier
-eller formålet med tilgangen. Kildekoden alene kan derfor ikke fastslå om rollen
-brukes i dev eller prod.
-:::
-
-Før Lumi aktiveres for flere team må faktisk bruk verifiseres i hvert miljø,
-og eventuell lesetilgang på tvers av team må ha navngitt eier, dokumentert
-formål og minste nødvendige privilegier. En ubrukt rolle skal fjernes gjennom
-en ny migrering; en rolle som fortsatt trengs skal avgrenses etter den avtalte
-analysekontrakten. Se [runbook for Nav-bred utrulling](/runbooks/nav-wide-rollout).
-
 ## Penetrasjonstest
 
 Lumi har gjennomgått en penetrasjonstest utført av Team SåPe, Navs interne sikkerhetstest-team.
