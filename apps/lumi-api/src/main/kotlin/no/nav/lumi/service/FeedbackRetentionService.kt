@@ -1,0 +1,76 @@
+package no.nav.lumi.service
+
+import no.nav.lumi.config.RetentionObservability
+import no.nav.lumi.repository.FeedbackRetentionBatchResult
+import no.nav.lumi.repository.FeedbackRetentionRepository
+import no.nav.lumi.repository.FeedbackRetentionResult
+import org.slf4j.LoggerFactory
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
+
+class FeedbackRetentionService(
+    private val repository: FeedbackRetentionRepository = FeedbackRetentionRepository(),
+    private val observability: RetentionObservability = RetentionObservability(),
+    private val statsCacheInvalidator: StatsCacheInvalidator = StatsCacheInvalidator(),
+    private val bootstrapCacheInvalidator: BootstrapCacheInvalidator = BootstrapCacheInvalidator(),
+    private val clock: Clock = Clock.systemUTC(),
+    private val batchSize: Int = DEFAULT_BATCH_SIZE,
+) {
+    private val log = LoggerFactory.getLogger(FeedbackRetentionService::class.java)
+
+    fun runOnce(): FeedbackRetentionResult {
+        val cutoff = retentionCutoff(Instant.now(clock))
+        return try {
+            repository.deleteExpiredFeedback(cutoff, batchSize) { batch ->
+                publishCommittedBatch(batch)
+            }.also { result ->
+                if (result.executed) {
+                    observability.recordExecuted(Instant.now(clock))
+                    log.info(
+                        "Automatic retention completed: deletedFeedback={}, cutoff={}",
+                        result.deletedFeedback,
+                        cutoff,
+                    )
+                } else {
+                    observability.recordSkipped()
+                    log.info("Automatic retention skipped because another instance holds the cleanup lock")
+                }
+            }
+        } catch (cause: Throwable) {
+            observability.recordFailed()
+            log.error("Automatic retention failed", cause)
+            throw cause
+        }
+    }
+
+    internal fun retentionCutoff(now: Instant): Instant =
+        now.atZone(ZoneOffset.UTC)
+            .minusMonths(RESPONSE_RETENTION_MONTHS)
+            .toInstant()
+
+    private fun publishCommittedBatch(batch: FeedbackRetentionBatchResult) {
+        var invalidationFailure: Throwable? = null
+        batch.affectedTeams.forEach { team ->
+            runCatching { statsCacheInvalidator.invalidateTeam(team) }
+                .onFailure { cause ->
+                    invalidationFailure = invalidationFailure.append(cause)
+                }
+            runCatching { bootstrapCacheInvalidator.invalidateTeam(team) }
+                .onFailure { cause ->
+                    invalidationFailure = invalidationFailure.append(cause)
+                }
+        }
+        observability.recordDeletedFeedback(batch.deletedFeedback)
+        invalidationFailure?.let { throw it }
+    }
+
+    private fun Throwable?.append(cause: Throwable): Throwable =
+        this?.also { it.addSuppressed(cause) } ?: cause
+
+    companion object {
+        const val RESPONSE_RETENTION_MONTHS = 12L
+        const val DEFINITION_WARNING_LEAD_MONTHS = 3L
+        const val DEFAULT_BATCH_SIZE = 500
+    }
+}

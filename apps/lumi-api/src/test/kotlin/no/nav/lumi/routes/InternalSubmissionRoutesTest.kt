@@ -2,6 +2,7 @@ package no.nav.lumi.routes
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -730,7 +731,7 @@ class InternalSubmissionRoutesTest : FunSpec({
 
             val storedAfter = surveyDefinitionRepository.findByTeamAndSurveyId("teamsykefravr", "modia-dedup-extension-survey")!!
             storedAfter.definitionHash shouldBe storedBefore.definitionHash
-            storedAfter.definition.fields.map { it.fieldId } shouldBe listOf("feedback")
+            storedAfter.definition.shouldNotBeNull().fields.map { it.fieldId } shouldBe listOf("feedback")
 
             val (_, total, _) = feedbackRepository.findPaginated(FeedbackQuery(team = "teamsykefravr"))
             total shouldBe 1
@@ -852,7 +853,7 @@ class InternalSubmissionRoutesTest : FunSpec({
             duplicateBody["duplicate"]?.jsonPrimitive?.boolean shouldBe true
 
             val stored = surveyDefinitionRepository.findByTeamAndSurveyId("teamsykefravr", "modia-dedup-race-conflict-survey")!!
-            stored.definition.fields.single().optionIds shouldBe listOf("apply")
+            stored.definition.shouldNotBeNull().fields.single().optionIds shouldBe listOf("apply")
 
             val (_, total, _) = feedbackRepository.findPaginated(FeedbackQuery(team = "teamsykefravr"))
             total shouldBe 1

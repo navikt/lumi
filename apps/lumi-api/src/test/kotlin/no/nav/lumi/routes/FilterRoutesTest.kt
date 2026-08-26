@@ -15,6 +15,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import no.nav.lumi.TestDatabase
@@ -25,8 +26,12 @@ import no.nav.lumi.integrations.valkey.InMemoryStringCache
 import no.nav.lumi.repository.FeedbackRepository
 import no.nav.lumi.repository.SurveyMetadataRepository
 import no.nav.lumi.testModule
+import java.sql.Timestamp
 import java.time.Duration
+import java.time.Instant
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 
 class FilterRoutesTest : FunSpec({
     beforeSpec {
@@ -40,7 +45,7 @@ class FilterRoutesTest : FunSpec({
             email = "test@nav.no",
             clientId = null,
         )
-        bootstrapCacheKey("Team-Test", principal) shouldBe "team=team-test&user=a123456&responseVersion=2"
+        bootstrapCacheKey("Team-Test", principal) shouldBe "team=team-test&user=a123456&responseVersion=3"
     }
 
     test("bootstrapCacheKey falls back to email when navIdent is missing") {
@@ -50,7 +55,7 @@ class FilterRoutesTest : FunSpec({
             email = "Test.User@nav.no",
             clientId = null,
         )
-        bootstrapCacheKey("team-test", principal) shouldBe "team=team-test&user=test.user@nav.no&responseVersion=2"
+        bootstrapCacheKey("team-test", principal) shouldBe "team=team-test&user=test.user@nav.no&responseVersion=3"
     }
 
     test("bootstrapCacheKey falls back to email when navIdent is blank") {
@@ -60,7 +65,7 @@ class FilterRoutesTest : FunSpec({
             email = "Test.User@nav.no",
             clientId = null,
         )
-        bootstrapCacheKey("team-test", principal) shouldBe "team=team-test&user=test.user@nav.no&responseVersion=2"
+        bootstrapCacheKey("team-test", principal) shouldBe "team=team-test&user=test.user@nav.no&responseVersion=3"
     }
 
     test("bootstrapCacheKey returns null when navIdent and email are blank") {
@@ -224,6 +229,38 @@ class FilterRoutesTest : FunSpec({
 
     beforeTest {
         TestDatabase.clearAllData()
+    }
+
+    test("bootstrap exposes team-scoped retention warnings after 15 inactive months") {
+        val lastActivity = Instant.now().atZone(ZoneOffset.UTC)
+            .minusMonths(16)
+            .toInstant()
+            .truncatedTo(ChronoUnit.MICROS)
+        insertSurveyDefinition("team-test", "survey-inactive", lastActivity)
+        insertSurveyDefinition(
+            "team-test",
+            "survey-recent",
+            Instant.now().atZone(ZoneOffset.UTC).minusMonths(14).toInstant(),
+        )
+        insertSurveyDefinition("another-team", "survey-other-team", lastActivity)
+
+        testApplication {
+            application { testModule() }
+
+            val response = createTestClient().get("/api/v1/intern/filters/bootstrap?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.OK
+            val warnings = Json.parseToJsonElement(response.bodyAsText())
+                .jsonObject["retentionWarnings"]!!.jsonArray
+            warnings.size shouldBe 1
+            val warning = warnings.single().jsonObject
+            warning["surveyId"]!!.jsonPrimitive.content shouldBe "survey-inactive"
+            warning["lastActivityAt"]!!.jsonPrimitive.content shouldBe lastActivity.toString()
+            warning["scheduledFor"]!!.jsonPrimitive.content shouldBe
+                lastActivity.atZone(ZoneOffset.UTC).plusMonths(18).toInstant().toString()
+        }
     }
 
     test("bootstrap exposes archive state per survey in surveyMeta") {
@@ -433,3 +470,32 @@ class FilterRoutesTest : FunSpec({
         }
     }
 })
+
+private fun insertSurveyDefinition(team: String, surveyId: String, lastActivityAt: Instant) {
+    TestDatabase.dataSource.connection.use { connection ->
+        connection.prepareStatement(
+            """
+                INSERT INTO survey_definitions (
+                    team, survey_id, definition_hash, definition,
+                    last_submission_at, definition_retention_at
+                )
+                VALUES (?, ?, ?, ?::jsonb, ?, ?)
+            """.trimIndent()
+        ).use { statement ->
+            statement.setString(1, team)
+            statement.setString(2, surveyId)
+            statement.setString(3, "a".repeat(64))
+            statement.setString(
+                4,
+                """{"surveyId":"$surveyId","surveyType":"custom","fields":[]}""",
+            )
+            statement.setTimestamp(5, Timestamp.from(lastActivityAt))
+            statement.setTimestamp(
+                6,
+                Timestamp.from(lastActivityAt.atZone(ZoneOffset.UTC).plusMonths(18).toInstant()),
+            )
+            statement.executeUpdate()
+        }
+        connection.commit()
+    }
+}

@@ -15,11 +15,17 @@ import no.nav.lumi.config.auth.authorizedTeam
 import no.nav.lumi.config.auth.authorizedTeams
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.integrations.valkey.StringCache
-import no.nav.lumi.integrations.valkey.ValkeyStringCache
+import no.nav.lumi.service.BootstrapCacheInvalidator
+import no.nav.lumi.service.bootstrapCacheGenerationKey
+import no.nav.lumi.service.bootstrapCacheTeamPrefix
+import no.nav.lumi.service.sharedBootstrapCache
 import no.nav.lumi.repository.FeedbackRepository
 import no.nav.lumi.repository.SurveyMetadataRepository
+import no.nav.lumi.repository.SurveyDefinitionRepository
+import no.nav.lumi.service.FeedbackRetentionService
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneOffset
 
 /**
  * Response for GET /api/v1/intern/filters/bootstrap
@@ -38,6 +44,14 @@ data class FilterBootstrapResponse(
     val tags: List<String>,
     val surveyMeta: Map<String, SurveyMetaEntry> = emptyMap(),
     val surveyMetaByApp: Map<String, Map<String, SurveyMetaEntry>> = emptyMap(),
+    val retentionWarnings: List<SurveyRetentionWarning> = emptyList(),
+)
+
+@Serializable
+data class SurveyRetentionWarning(
+    val surveyId: String,
+    val lastActivityAt: String,
+    val scheduledFor: String,
 )
 
 /**
@@ -56,20 +70,7 @@ data class SurveyMetaEntry(
 
 private val defaultRepository = FeedbackRepository()
 private val defaultSurveyMetadataRepository = SurveyMetadataRepository()
-
-/**
- * Shared bootstrap cache instance so mutations (e.g. survey archiving) can
- * invalidate what the bootstrap route cached. Keys start with "team=<team>&"
- * — see [bootstrapCacheTeamPrefix].
- */
-internal val sharedBootstrapCache: StringCache by lazy {
-    ValkeyStringCache.fromEnvOrFallback(keyPrefix = "filters:bootstrap:")
-}
-
-/** Cache-key prefix covering every user's bootstrap entry for a team. */
-internal fun bootstrapCacheTeamPrefix(team: String) = "team=${team.lowercase()}&"
-
-private fun bootstrapCacheGenerationKey(team: String) = "generation:team=${team.lowercase()}"
+private val defaultSurveyDefinitionRepository = SurveyDefinitionRepository()
 
 /**
  * Per-user bootstrap cache key, or null when the principal has no stable user
@@ -80,7 +81,7 @@ internal fun bootstrapCacheKey(team: String, principal: no.nav.lumi.config.auth.
     val userIdentity = stablePrincipalIdentity(principal) ?: return null
     // Version the response contract so rolling deploys cannot reuse bootstrap
     // payloads that predate newly added metadata fields.
-    return "${bootstrapCacheTeamPrefix(team)}user=${userIdentity.lowercase()}&responseVersion=2"
+    return "${bootstrapCacheTeamPrefix(team)}user=${userIdentity.lowercase()}&responseVersion=3"
 }
 
 internal fun stablePrincipalIdentity(principal: no.nav.lumi.config.auth.BrukerPrincipal): String? =
@@ -98,6 +99,8 @@ internal data class BootstrapCacheLookup(
  * advances the team generation; late writes remain on the old generation.
  */
 internal class VersionedBootstrapCache(private val cache: StringCache) {
+    private val invalidator = BootstrapCacheInvalidator(cache)
+
     fun lookup(
         team: String,
         principal: no.nav.lumi.config.auth.BrukerPrincipal,
@@ -114,8 +117,7 @@ internal class VersionedBootstrapCache(private val cache: StringCache) {
     }
 
     fun invalidate(team: String) {
-        cache.increment(bootstrapCacheGenerationKey(team))
-        cache.clearByPrefix(bootstrapCacheTeamPrefix(team))
+        invalidator.invalidateTeam(team)
     }
 }
 
@@ -133,6 +135,7 @@ private val json = Json {
 fun Route.filterRoutes(
     feedbackRepository: FeedbackRepository = defaultRepository,
     surveyMetadataRepository: SurveyMetadataRepository = defaultSurveyMetadataRepository,
+    surveyDefinitionRepository: SurveyDefinitionRepository = defaultSurveyDefinitionRepository,
     bootstrapCache: StringCache = sharedBootstrapCache,
 ) {
     val versionedBootstrapCache = VersionedBootstrapCache(bootstrapCache)
@@ -169,6 +172,19 @@ fun Route.filterRoutes(
             val surveyOverview = feedbackRepository.findSurveyOverview(team)
             val tags = feedbackRepository.findAllTags(team)
             val archiveStates = surveyMetadataRepository.findByTeam(team).associateBy { it.surveyId }
+            val now = Instant.now()
+            val scheduledBefore = now.atZone(ZoneOffset.UTC)
+                .plusMonths(FeedbackRetentionService.DEFINITION_WARNING_LEAD_MONTHS)
+                .toInstant()
+            val retentionWarnings = surveyDefinitionRepository
+                .findUpcomingRetentionCandidates(team, scheduledBefore)
+                .map { candidate ->
+                    SurveyRetentionWarning(
+                        surveyId = candidate.surveyId,
+                        lastActivityAt = candidate.lastActivityAt.toString(),
+                        scheduledFor = candidate.scheduledFor.toString(),
+                    )
+                }
             val firstSubmissionBySurvey = surveyOverview.firstSubmissionBySurvey
             val lastSubmissionBySurvey = surveyOverview.lastSubmissionBySurvey
             val surveyMeta = (
@@ -199,6 +215,7 @@ fun Route.filterRoutes(
                 tags = tags.sorted(),
                 surveyMeta = surveyMeta,
                 surveyMetaByApp = surveyMetaByApp,
+                retentionWarnings = retentionWarnings,
             )
 
             if (!forceRefresh) {

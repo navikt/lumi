@@ -25,8 +25,89 @@ import no.nav.lumi.domain.computeHash
 import no.nav.lumi.repository.StoredSurveyDefinition
 import no.nav.lumi.repository.SurveyDefinitionRepository
 import no.nav.lumi.repository.SurveyDefinitionSource
+import java.time.Instant
 
 class SurveyDefinitionServiceTest : FunSpec({
+    test("legacy submission cannot reactivate a retired definition") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val submission = ratingSubmission()
+        val definition = SurveyDefinition.fromSubmission(submission)
+
+        coEvery { repository.findByTeamAndSurveyId("team-a", "survey-1") } returns
+            StoredSurveyDefinition(
+                team = "team-a",
+                surveyId = "survey-1",
+                definitionHash = definition.computeHash(),
+                definition = null,
+                retiredAt = Instant.parse("2026-01-01T00:00:00Z"),
+            )
+
+        val exception = shouldThrowConflict {
+            service.registerOrValidate("team-a", submission)
+        }
+
+        exception.message shouldContain "has been retired"
+        exception.message shouldContain "schemaVersion 2"
+        exception.message shouldContain "new surveyId"
+    }
+
+    test("schemaVersion=2 reactivates a retired matching definition") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val submission = ratingSubmission()
+        val definition = SurveyDefinition.fromSubmission(submission)
+        val definitionHash = definition.computeHash()
+
+        coEvery { repository.findByTeamAndSurveyId("team-a", "survey-1") } returns
+            StoredSurveyDefinition(
+                team = "team-a",
+                surveyId = "survey-1",
+                definitionHash = definitionHash,
+                definition = null,
+                source = SurveyDefinitionSource.API,
+                retiredAt = Instant.parse("2026-01-01T00:00:00Z"),
+            )
+        coEvery {
+            repository.updateApiDefinitionIfHashMatches(
+                "team-a",
+                "survey-1",
+                definitionHash,
+                definition,
+                definitionHash,
+            )
+        } returns true
+
+        service.registerOrValidateV2("team-a", submission, definition) shouldBe
+            RegistrationResult("survey-1", definitionHash)
+    }
+
+    test("schemaVersion=2 rejects an incompatible retired definition") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val submission = ratingSubmission()
+        val incomingDefinition = SurveyDefinition.fromSubmission(submission)
+
+        coEvery { repository.findByTeamAndSurveyId("team-a", "survey-1") } returns
+            StoredSurveyDefinition(
+                team = "team-a",
+                surveyId = "survey-1",
+                definitionHash = "a".repeat(64),
+                definition = null,
+                source = SurveyDefinitionSource.API,
+                retiredAt = Instant.parse("2026-01-01T00:00:00Z"),
+            )
+
+        val exception = shouldThrowConflict {
+            service.registerOrValidateV2("team-a", submission, incomingDefinition)
+        }
+
+        exception.message shouldContain "retired surveyId=survey-1"
+        coVerify(exactly = 0) {
+            repository.updateApiDefinitionIfHashMatches(any(), any(), any(), any(), any())
+        }
+    }
+
     test("first submission registers definition") {
         val repository = mockk<SurveyDefinitionRepository>()
         val service = SurveyDefinitionService(repository)

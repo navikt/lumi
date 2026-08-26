@@ -1,8 +1,18 @@
 import { render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { FeedbackTable } from "../index";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const originalTimeZone = process.env.TZ;
 
 const { mockParams, mockBootstrap } = vi.hoisted(() => ({
   mockParams: {
@@ -74,7 +84,14 @@ vi.mock("~/hooks/useArchiveSurvey", () => ({
   }),
 }));
 
-function bootstrapWith(surveyMeta: Record<string, unknown>) {
+function bootstrapWith(
+  surveyMeta: Record<string, unknown>,
+  retentionWarnings: Array<{
+    surveyId: string;
+    lastActivityAt: string;
+    scheduledFor: string;
+  }> = [],
+) {
   return {
     selectedTeam: "team-test",
     availableTeams: ["team-test"],
@@ -82,10 +99,23 @@ function bootstrapWith(surveyMeta: Record<string, unknown>) {
     surveysByApp: { "app-test": ["survey-1"] },
     tags: [],
     surveyMeta,
+    retentionWarnings,
   };
 }
 
 describe("FeedbackTable recency and badge", () => {
+  beforeAll(() => {
+    process.env.TZ = "UTC";
+  });
+
+  afterAll(() => {
+    if (originalTimeZone === undefined) {
+      delete process.env.TZ;
+    } else {
+      process.env.TZ = originalTimeZone;
+    }
+  });
+
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-12T12:00:00Z"));
@@ -141,6 +171,27 @@ describe("FeedbackTable recency and badge", () => {
 
     expect(
       screen.queryByText("Mottar fortsatt innsendinger"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows an informational warning for inactive survey definitions", () => {
+    mockBootstrap.data = bootstrapWith({}, [
+      {
+        surveyId: "survey-inactive",
+        lastActivityAt: "2025-02-01T00:00:00Z",
+        scheduledFor: "2026-08-31T22:30:00Z",
+      },
+    ]);
+
+    render(<FeedbackTable />);
+
+    expect(
+      screen.getByText("En inaktiv survey nærmer seg automatisk opprydding"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("survey-inactive")).toBeInTheDocument();
+    expect(screen.getByText(/1. september 2026/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /behold|slett nå/i }),
     ).not.toBeInTheDocument();
   });
 });

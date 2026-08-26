@@ -4,6 +4,7 @@ import {
   TrashIcon,
 } from "@navikt/aksel-icons";
 import {
+  Alert,
   BodyShort,
   Box,
   Button,
@@ -132,6 +133,8 @@ function FeedbackTableContent({
     !!selectedSurvey && isSurveyArchived(selectedSurvey, bootstrap?.surveyMeta);
   return (
     <div className={styles.table}>
+      <RetentionWarnings warnings={bootstrap?.retentionWarnings ?? []} />
+
       {/* Toolbar with bulk actions when survey is selected. Not gated on
           totalElements: old surveys without hits in the current period are
           exactly the ones users want to archive. */}
@@ -275,6 +278,40 @@ function FeedbackTableContent({
       />
     </div>
   );
+}
+
+function RetentionWarnings({
+  warnings,
+}: {
+  warnings: Array<{ surveyId: string; scheduledFor: string }>;
+}) {
+  if (warnings.length === 0) return null;
+
+  return (
+    <Alert variant="warning" size="small" className={styles.retentionWarning}>
+      <BodyShort size="small" weight="semibold">
+        {warnings.length === 1
+          ? "En inaktiv survey nærmer seg automatisk opprydding"
+          : `${warnings.length} inaktive surveyer nærmer seg automatisk opprydding`}
+      </BodyShort>
+      <ul className={styles.retentionWarningList}>
+        {warnings.map((warning) => (
+          <li key={warning.surveyId}>
+            <strong>{warning.surveyId}</strong>: definisjonen ryddes etter{" "}
+            {formatRetentionDate(warning.scheduledFor)} hvis det ikke kommer nye
+            svar.
+          </li>
+        ))}
+      </ul>
+    </Alert>
+  );
+}
+
+function formatRetentionDate(value: string): string {
+  return new Intl.DateTimeFormat("nb-NO", {
+    dateStyle: "long",
+    timeZone: "Europe/Oslo",
+  }).format(new Date(value));
 }
 
 /**

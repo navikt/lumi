@@ -24,20 +24,27 @@ class SubmissionService(
         definition: SurveyDefinition? = null
     ): SubmissionOutcome {
         if (submission.deduplicationKey == null) {
-            val definitionResult = registerDefinition(
-                team = team,
-                submission = submission,
-                definition = definition,
-                inCurrentTransaction = false
-            )
-            val saveResult = feedbackService.save(
-                feedbackJson = feedbackJson,
-                team = team,
-                app = app,
-                surveyId = definitionResult.surveyId,
-                definitionHash = definitionResult.definitionHash
-            )
-            return SubmissionOutcome(saveResult, definitionResult.definitionHash)
+            val prepared = feedbackService.prepareForSave(feedbackJson, team, submission.surveyId)
+            return feedbackRepository.withTransaction {
+                val definitionResult = registerDefinition(
+                    team = team,
+                    submission = submission,
+                    definition = definition,
+                    inCurrentTransaction = true
+                )
+                val saveResult = feedbackRepository.saveInCurrentTransaction(
+                    feedbackJson = prepared.feedbackJson,
+                    team = team,
+                    app = app,
+                    surveyId = definitionResult.surveyId,
+                    definitionHash = definitionResult.definitionHash,
+                )
+                surveyDefinitionService.recordStoredSubmissionInCurrentTransaction(
+                    team,
+                    definitionResult.surveyId,
+                )
+                SubmissionOutcome(saveResult, definitionResult.definitionHash)
+            }
         }
 
         val duplicateId = feedbackService.findDuplicateSubmissionId(
@@ -80,6 +87,13 @@ class SubmissionService(
                 definitionHash = definitionResult.definitionHash,
                 deduplicationKeyHash = deduplicationKeyHash
             )
+
+            if (saveResult is SaveResult.Created) {
+                surveyDefinitionService.recordStoredSubmissionInCurrentTransaction(
+                    team,
+                    definitionResult.surveyId,
+                )
+            }
 
             SubmissionOutcome(
                 saveResult = saveResult,
