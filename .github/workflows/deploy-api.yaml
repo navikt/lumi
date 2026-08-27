@@ -32,6 +32,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       id-token: write
     outputs:
@@ -39,25 +40,49 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          fetch-depth: 0
           ref: ${{ inputs.ref || github.ref }}
 
+      - name: Determine whether the workload image changed
+        if: github.event_name != 'workflow_dispatch'
+        id: what-changed
+        uses: nais/what-changed@e253615426610a2e873ada19749ca58896f3679f
+        with:
+          # List every input that can change app.jar or the production container.
+          # Using image inputs (rather than manifests) avoids false rebuilds from
+          # unrelated commits between path-filtered workflow runs in this monorepo.
+          files: >-
+            .github/workflows/deploy-api.yaml,
+            apps/lumi-api/Dockerfile,
+            apps/lumi-api/build.gradle.kts,
+            apps/lumi-api/gradle.properties,
+            apps/lumi-api/gradle/**,
+            apps/lumi-api/gradlew,
+            apps/lumi-api/gradlew.bat,
+            apps/lumi-api/settings.gradle.kts,
+            apps/lumi-api/src/main/**
+
       - name: Setup Java
+        if: github.event_name == 'workflow_dispatch' || steps.what-changed.outputs.changed != 'non-inputs'
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
           distribution: temurin
           java-version: 21
 
       - name: Setup Gradle
+        if: github.event_name == 'workflow_dispatch' || steps.what-changed.outputs.changed != 'non-inputs'
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           cache-overwrite-existing: true
 
       - name: Build with Gradle
+        if: github.event_name == 'workflow_dispatch' || steps.what-changed.outputs.changed != 'non-inputs'
         working-directory: apps/lumi-api
         run: ./gradlew shadowJar
 
       - name: Push docker image to GAR
+        if: github.event_name == 'workflow_dispatch' || steps.what-changed.outputs.changed != 'non-inputs'
         uses: nais/docker-build-push@8e41f1f58749b9248e376c25d33bfbdd2b1163c0
         id: docker-build-push
         with:
@@ -87,7 +112,7 @@ jobs:
         env:
           CLUSTER: dev-gcp
           RESOURCE: apps/lumi-api/nais/app/dev.yaml
-          VAR: image=${{ needs.build.outputs.image }}
+          WORKLOAD_IMAGE: ${{ needs.build.outputs.image }}
 
   deploy-prod:
     if: |
@@ -106,4 +131,4 @@ jobs:
         env:
           CLUSTER: prod-gcp
           RESOURCE: apps/lumi-api/nais/app/prod.yaml,apps/lumi-api/nais/alerts/prod.yaml
-          VAR: image=${{ needs.build.outputs.image }}
+          WORKLOAD_IMAGE: ${{ needs.build.outputs.image }}

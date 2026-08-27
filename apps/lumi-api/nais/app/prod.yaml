@@ -6,7 +6,6 @@ metadata:
   labels:
     team: team-esyfo
 spec:
-  image: {{image}}
   port: 8080
   replicas:
     min: 2
