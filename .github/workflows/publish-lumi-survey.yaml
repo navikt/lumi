@@ -1,4 +1,4 @@
-name: Publish @navikt/lumi-survey (GitHub Packages)
+name: Publish @navikt/lumi-survey (npmjs + GitHub Packages)
 
 on:
   workflow_dispatch:
@@ -30,6 +30,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
@@ -96,7 +97,7 @@ jobs:
           node - <<'NODE'
           const pkg = require('./packages/lumi-survey/package.json');
           if (pkg.private) {
-            console.error('packages/lumi-survey/package.json has private=true. pnpm publish will refuse.');
+            console.error('packages/lumi-survey/package.json has private=true. Publishing is not allowed.');
             process.exit(1);
           }
           NODE
@@ -125,11 +126,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
       packages: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
@@ -145,20 +148,59 @@ jobs:
           NPM_AUTH_TOKEN: ${{ github.token }}
           NODE_AUTH_TOKEN: ${{ github.token }}
 
-      - name: Publish
-        run: pnpm --filter @navikt/lumi-survey publish --publish-branch main
+      - name: Use npm with trusted publishing support
+        run: npm install --global npm@11.19.0
+
+      - name: Pack release artifact once
+        id: pack
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./packages/lumi-survey/package.json').version")
+          TARBALL="${RUNNER_TEMP}/navikt-lumi-survey-${VERSION}.tgz"
+          pnpm --filter @navikt/lumi-survey pack --pack-destination "${RUNNER_TEMP}"
+          test -f "${TARBALL}"
+          echo "tarball=${TARBALL}" >> "${GITHUB_OUTPUT}"
+
+      # npmjs is first so a missing or incorrect trusted-publisher setup cannot
+      # create a GitHub Packages-only release. Trusted publishing adds provenance.
+      - name: Publish to npmjs
+        run: node scripts/publish-lumi-survey-registry.mjs --tarball="${TARBALL}" --registry=https://registry.npmjs.org
+        env:
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+
+      - name: Configure GitHub Packages authentication
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: package.json
+          registry-url: https://npm.pkg.github.com
+          scope: "@navikt"
+
+      - name: Publish compatibility mirror to GitHub Packages
+        run: node scripts/publish-lumi-survey-registry.mjs --tarball="${TARBALL}" --registry=https://npm.pkg.github.com
         env:
           NPM_AUTH_TOKEN: ${{ github.token }}
           NODE_AUTH_TOKEN: ${{ github.token }}
+          TARBALL: ${{ steps.pack.outputs.tarball }}
 
       - name: Tag release
         run: |
           set -euo pipefail
           VERSION=$(node -p "require('./packages/lumi-survey/package.json').version")
           TAG="lumi-survey-v${VERSION}"
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          git tag -a "${TAG}" -m "@navikt/lumi-survey ${VERSION}"
-          git push origin "${TAG}"
+          TAG_OBJECT_SHA="$(
+            gh api \
+              --method POST \
+              "repos/${GITHUB_REPOSITORY}/git/tags" \
+              -f "tag=${TAG}" \
+              -f "message=@navikt/lumi-survey ${VERSION}" \
+              -f "object=${GITHUB_SHA}" \
+              -f "type=commit" \
+              --jq '.sha'
+          )"
+          gh api \
+            --method POST \
+            "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f "ref=refs/tags/${TAG}" \
+            -f "sha=${TAG_OBJECT_SHA}"
+        env:
+          GH_TOKEN: ${{ github.token }}

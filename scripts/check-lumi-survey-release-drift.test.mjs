@@ -201,7 +201,7 @@ test("publish verification is read-only and write access is main-only", () => {
   );
   assert.match(
     publishJob,
-    /permissions:\n\s+contents: write\n\s+packages: write/,
+    /permissions:\n\s+contents: write\n\s+id-token: write\n\s+packages: write/,
   );
 });
 

@@ -60,7 +60,7 @@ Prinsipp:
 - Skriv kort og konkret (1–6 bullets). Tenk: "hva trenger en konsument å vite?".
 - Interne refactors som ikke påvirker konsumenter kan stå under "Changed" eller utelates.
 
-## Publisering til GitHub Packages (anbefalt)
+## Publisering til npmjs og GitHub Packages
 
 Publisering er en “to-trinns” prosess:
 
@@ -83,20 +83,38 @@ Publisering er en “to-trinns” prosess:
    - `pnpm --filter @navikt/lumi-survey pack --dry-run`
 5. Commit og push PR-en. Få PR-en merget til `main`.
 6. Publiser:
-   - GitHub → Actions → `Publish @navikt/lumi-survey (GitHub Packages)`
+   - GitHub → Actions → `Publish @navikt/lumi-survey (npmjs + GitHub Packages)`
    - Kjør først gjerne med `dry_run=true` (verifiserer alt uten publish)
    - Kjør deretter med `dry_run=false` for faktisk publisering
 
+Workflowen pakker én tarball og publiserer den først til npmjs og deretter til
+GitHub Packages. En omkjøring hopper bare over en eksisterende versjon når
+tarballens digester er identiske. Release-taggen opprettes etter at begge
+registrene er verifisert.
+
+Publisering til npmjs bruker trusted publishing og krever ikke et langlivet
+npm-token. Trusted publisher for pakken skal peke på GitHub-repoet
+`navikt/lumi`, workflowfilen `publish-lumi-survey.yaml` og tillate
+`npm publish`. GitHub Packages bruker workflowens kortlivede `GITHUB_TOKEN`.
+
+**Første publisering til npmjs:**
+
+npm krever at pakken finnes før trusted publisher kan konfigureres. En
+npm-admin må derfor bootstrap-publisere en eksisterende release som offentlig
+pakke og deretter konfigurere trusted publisher før den første kjøringen som
+publiserer til begge registre. Ikke legg et npm-token i workflowen for å omgå
+bootstrapen.
+
+Monorepoets `.npmrc` beholdes fordi repoet også installerer interne
+`@navikt`-pakker som bare finnes i GitHub Packages. Konsumenter av
+`@navikt/lumi-survey` trenger ikke denne konfigurasjonen.
+
 ### Publisering (manuelt)
 
-Dette er normalt ikke nødvendig. Anbefalt flyt er å publisere fra `main` via workflowen over.
+Dette er normalt ikke nødvendig. Anbefalt flyt er å publisere fra `main` via
+workflowen over.
 
-Bruk manuell publisering kun hvis du må debugge/rette opp et publish-problem, og gjør det med samme krav som workflowen (lint/typecheck/verify/tests + `pack --dry-run`).
-
-Per i dag publiserer vi til GitHub Packages (se `publishConfig.registry` i `packages/lumi-survey/package.json`).
-
-For å publisere manuelt må du ha en token som kan skrive til GitHub Packages og en `.npmrc`/miljøvariabel som gir auth (samme mekanisme som i CI).
-
-Publiser fra repo root:
-
-- `pnpm --filter @navikt/lumi-survey publish --publish-branch main`
+Bruk manuell publisering kun sammen med en npm-admin for bootstrap eller for å
+rette opp en konkret publiseringsfeil. Den ordinære flyten skal alltid gå via
+workflowen, slik at npmjs-publiseringen får provenance og begge registre
+mottar samme tarball.

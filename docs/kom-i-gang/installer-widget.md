@@ -6,15 +6,10 @@ title: Installer widget
 
 Denne siden viser deg hvordan du installerer `@navikt/lumi-survey` og får widgeten til å rendre i appen din.
 
-## 1. Konfigurer registry
+## 1. Installer pakken
 
-`@navikt/lumi-survey` publiseres til GitHub Packages. Legg til en `.npmrc`-fil i roten av prosjektet ditt (ved siden av `package.json`). Denne konfigurasjonen brukes av npm-kompatible package managere som pnpm, npm og Yarn:
-
-```properties
-@navikt:registry=https://npm.pkg.github.com
-```
-
-## 2. Installer pakken
+`@navikt/lumi-survey` publiseres offentlig på npmjs. Installasjonen krever
+verken `.npmrc` eller GitHub-token:
 
 ```sh
 pnpm add @navikt/lumi-survey @navikt/ds-react @navikt/ds-css
@@ -34,7 +29,7 @@ pnpm add @navikt/lumi-survey
 ```
 :::
 
-## 3. Importer CSS
+## 2. Importer CSS
 
 Importer stilarkene i appens entry-punkt (f.eks. `main.tsx`, `App.tsx` eller layout-filen din):
 
@@ -47,7 +42,7 @@ import "@navikt/lumi-survey/styles.css";
 `@navikt/ds-css` **må** importeres **før** `@navikt/lumi-survey/styles.css` for at styling skal fungere korrekt.
 :::
 
-## 4. Rendre widgeten
+## 3. Rendre widgeten
 
 Her er et minimalt eksempel som viser en survey-widget i appen din:
 

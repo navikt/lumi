@@ -6,6 +6,16 @@ This project follows SemVer.
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-08-27
+
+### Distribution
+
+- The package is now published to npmjs as the primary, anonymously readable
+  registry and to GitHub Packages as a compatibility mirror. Consumers no
+  longer need registry configuration or a GitHub token to install it.
+- Published metadata now declares the MIT license and the package's source
+  directory in `navikt/lumi`.
+
 ### Fixed
 
 - `validateSurveyDocumentV1` and `buildCanonicalSurvey` now reject `visibleIf`
@@ -18,7 +28,6 @@ This project follows SemVer.
   single-choice answers so existing code-authored V1 documents keep working;
   the workshop continues to offer exact equality for that type. METADATA
   conditions and legacy flat surveys are unaffected.
-
 - Focus now follows dock transitions: opening targets the active heading,
   closing targets the minimized trigger, and successful submission targets the
   receipt heading. The minimized trigger no longer references an unmounted
@@ -28,15 +37,10 @@ This project follows SemVer.
   grace period while a late persisted dismissal can still be applied.
 - Rating questions now expose exactly one named group to assistive
   technology. The prompt is the fieldset legend (a level 3 heading when
-  visible), the fieldset itself carries `role="radiogroup"`, and the
-  visually hidden legend copy no longer duplicates an external prompt
-  heading. Screen readers previously announced the question up to three
-  times per rating group.
-
-## [2.1.1] - 2026-08-22
-
-### Fixed
-
+  visible), the fieldset itself carries `role="radiogroup"`, and the visually
+  hidden legend copy no longer duplicates an external prompt heading. Screen
+  readers previously announced the question up to three times per rating
+  group.
 - The published stylesheet now contains only `lumi-`-namespaced selectors.
   Unused CSS Module output previously leaked generic selectors such as
   `.container`, `.header`, `.panel` and `.active` into consumer applications.
