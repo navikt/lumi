@@ -25,7 +25,9 @@ class FeedbackRetentionRepository(
         batchSize: Int,
         onBatchCommitted: (FeedbackRetentionBatchResult) -> Unit = {},
     ): FeedbackRetentionResult {
-        require(batchSize > 0) { "batchSize must be greater than zero" }
+        require(batchSize in 1..MAX_DELETE_BATCH_SIZE) {
+            "batchSize must be between 1 and $MAX_DELETE_BATCH_SIZE"
+        }
 
         return dataSource.connection.use { connection ->
             connection.autoCommit = false
@@ -35,22 +37,16 @@ class FeedbackRetentionRepository(
             }
 
             try {
-                var deletedTotal = 0
-                val affectedTeams = mutableSetOf<String>()
-                do {
-                    val deletedBatch = connection.deleteExpiredBatch(cutoff, batchSize)
-                    connection.commit()
-                    deletedTotal += deletedBatch.deletedFeedback
-                    affectedTeams += deletedBatch.affectedTeams
-                    if (deletedBatch.deletedFeedback > 0) {
-                        onBatchCommitted(deletedBatch)
-                    }
-                } while (deletedBatch.deletedFeedback == batchSize)
+                val deletedBatch = connection.deleteExpiredBatch(cutoff, batchSize)
+                connection.commit()
+                if (deletedBatch.deletedFeedback > 0) {
+                    onBatchCommitted(deletedBatch)
+                }
 
                 FeedbackRetentionResult(
                     executed = true,
-                    deletedFeedback = deletedTotal,
-                    affectedTeams = affectedTeams,
+                    deletedFeedback = deletedBatch.deletedFeedback,
+                    affectedTeams = deletedBatch.affectedTeams,
                 )
             } catch (cause: Throwable) {
                 connection.rollback()
@@ -115,5 +111,6 @@ class FeedbackRetentionRepository(
 
     internal companion object {
         const val CLEANUP_LOCK_ID = 4_861_756_693_849L
+        const val MAX_DELETE_BATCH_SIZE = 500
     }
 }

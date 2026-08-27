@@ -86,3 +86,6 @@ spec:
       value: https://lumi-dashboard.ansatt.nav.no
     - name: LUMI_GLOBAL_REQUESTS_PER_SOURCE_PER_MINUTE
       value: "10000"
+    # Enable in a separate, controlled rollout after migration and metrics verification.
+    - name: LUMI_RETENTION_ENABLED
+      value: "false"

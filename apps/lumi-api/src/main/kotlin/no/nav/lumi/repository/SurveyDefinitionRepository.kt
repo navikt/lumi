@@ -242,7 +242,7 @@ class SurveyDefinitionRepository {
                 SET last_submission_at = GREATEST(last_submission_at, now()),
                     definition_retention_at = GREATEST(
                         definition_retention_at,
-                        now() + INTERVAL '18 months'
+                        (now() AT TIME ZONE 'UTC' + INTERVAL '18 months') AT TIME ZONE 'UTC'
                     )
                 WHERE team = ? AND survey_id = ?
             """.trimIndent()

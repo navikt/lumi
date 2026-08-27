@@ -1,56 +1,21 @@
--- Activity timestamps used by automatic survey retention.
--- The structural definition remains NOT NULL until all running application
--- versions can safely read retired definition rows.
+-- Add nullable activity columns and install the rolling-deploy trigger in a
+-- short migration. Backfill runs in V17 after this transaction has committed,
+-- so CREATE TRIGGER does not block feedback inserts during a full table scan.
 
 ALTER TABLE survey_definitions
-    ADD COLUMN last_submission_at TIMESTAMPTZ;
-
-WITH submission_activity AS (
-    SELECT
-        team,
-        COALESCE(survey_id, feedback_json ->> 'surveyId') AS survey_id,
-        MAX(opprettet) AS last_submission_at
-    FROM feedback
-    GROUP BY team, COALESCE(survey_id, feedback_json ->> 'surveyId')
-)
-UPDATE survey_definitions definition
-SET last_submission_at = submission_activity.last_submission_at
-FROM submission_activity
-WHERE submission_activity.team = definition.team
-  AND submission_activity.survey_id = definition.survey_id;
-
-UPDATE survey_definitions
-SET last_submission_at = created_at
-WHERE last_submission_at IS NULL;
-
-ALTER TABLE survey_definitions
-    ALTER COLUMN last_submission_at SET NOT NULL,
-    ALTER COLUMN last_submission_at SET DEFAULT now();
-
-ALTER TABLE survey_definitions
+    ADD COLUMN last_submission_at TIMESTAMPTZ,
     ADD COLUMN definition_retention_at TIMESTAMPTZ,
     ADD COLUMN retired_at TIMESTAMPTZ;
 
--- Existing definitions that are already beyond 18 months receive the same
--- three-month warning period as definitions that approach the limit later.
-UPDATE survey_definitions
-SET definition_retention_at = GREATEST(
-    last_submission_at + INTERVAL '18 months',
-    now() + INTERVAL '3 months'
-);
-
+-- Old application instances do not write the new columns explicitly. Defaults
+-- keep definitions created between V16 and V17 valid without changing existing
+-- rows, which remain NULL until the backfill.
 ALTER TABLE survey_definitions
-    ALTER COLUMN definition_retention_at SET NOT NULL,
-    ALTER COLUMN definition_retention_at SET DEFAULT (now() + INTERVAL '18 months');
+    ALTER COLUMN last_submission_at SET DEFAULT now(),
+    ALTER COLUMN definition_retention_at SET DEFAULT (
+        (now() AT TIME ZONE 'UTC' + INTERVAL '18 months') AT TIME ZONE 'UTC'
+    );
 
-CREATE INDEX idx_survey_definitions_active_retention
-    ON survey_definitions(definition_retention_at)
-    WHERE retired_at IS NULL;
-
--- Keep activity correct while old and new application versions run together.
--- The application also records activity transactionally, but the trigger covers
--- writers from before these columns existed and remains safe for retries because
--- it only runs after a feedback row has actually been inserted.
 CREATE OR REPLACE FUNCTION update_survey_definition_activity()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -58,10 +23,16 @@ DECLARE
 BEGIN
     IF submitted_survey_id IS NOT NULL THEN
         UPDATE survey_definitions
-        SET last_submission_at = GREATEST(last_submission_at, NEW.opprettet),
+        SET last_submission_at = GREATEST(
+                COALESCE(last_submission_at, NEW.opprettet),
+                NEW.opprettet
+            ),
             definition_retention_at = GREATEST(
-                definition_retention_at,
-                NEW.opprettet + INTERVAL '18 months'
+                COALESCE(
+                    definition_retention_at,
+                    (NEW.opprettet AT TIME ZONE 'UTC' + INTERVAL '18 months') AT TIME ZONE 'UTC'
+                ),
+                (NEW.opprettet AT TIME ZONE 'UTC' + INTERVAL '18 months') AT TIME ZONE 'UTC'
             )
         WHERE team = NEW.team
           AND survey_id = submitted_survey_id;
@@ -75,28 +46,3 @@ CREATE TRIGGER feedback_survey_definition_activity
     AFTER INSERT ON feedback
     FOR EACH ROW
     EXECUTE FUNCTION update_survey_definition_activity();
-
--- CREATE TRIGGER takes a lock that blocks later inserts until this migration
--- commits. Repeating the activity aggregation after that lock is acquired
--- closes the gap for inserts that committed after the first backfill but before
--- the trigger existed.
-WITH submission_activity AS (
-    SELECT
-        team,
-        COALESCE(survey_id, feedback_json ->> 'surveyId') AS survey_id,
-        MAX(opprettet) AS last_submission_at
-    FROM feedback
-    GROUP BY team, COALESCE(survey_id, feedback_json ->> 'surveyId')
-)
-UPDATE survey_definitions definition
-SET last_submission_at = GREATEST(
-        definition.last_submission_at,
-        submission_activity.last_submission_at
-    ),
-    definition_retention_at = GREATEST(
-        definition.definition_retention_at,
-        submission_activity.last_submission_at + INTERVAL '18 months'
-    )
-FROM submission_activity
-WHERE submission_activity.team = definition.team
-  AND submission_activity.survey_id = definition.survey_id;

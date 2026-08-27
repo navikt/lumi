@@ -15,7 +15,7 @@ class FeedbackRetentionService(
     private val statsCacheInvalidator: StatsCacheInvalidator = StatsCacheInvalidator(),
     private val bootstrapCacheInvalidator: BootstrapCacheInvalidator = BootstrapCacheInvalidator(),
     private val clock: Clock = Clock.systemUTC(),
-    private val batchSize: Int = DEFAULT_BATCH_SIZE,
+    private val batchSize: Int = FeedbackRetentionRepository.MAX_DELETE_BATCH_SIZE,
 ) {
     private val log = LoggerFactory.getLogger(FeedbackRetentionService::class.java)
 
@@ -28,7 +28,7 @@ class FeedbackRetentionService(
                 if (result.executed) {
                     observability.recordExecuted(Instant.now(clock))
                     log.info(
-                        "Automatic retention completed: deletedFeedback={}, cutoff={}",
+                        "Automatic retention run completed: deletedFeedback={}, cutoff={}",
                         result.deletedFeedback,
                         cutoff,
                     )
@@ -71,6 +71,5 @@ class FeedbackRetentionService(
     companion object {
         const val RESPONSE_RETENTION_MONTHS = 12L
         const val DEFINITION_WARNING_LEAD_MONTHS = 3L
-        const val DEFAULT_BATCH_SIZE = 500
     }
 }

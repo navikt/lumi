@@ -17,7 +17,7 @@ class FeedbackRetentionRepositoryTest : FunSpec({
         TestDatabase.clearAllData()
     }
 
-    test("deletes only feedback strictly older than cutoff in multiple batches") {
+    test("deletes only one bounded batch of feedback strictly older than cutoff") {
         val cutoff = Instant.parse("2025-08-26T12:00:00Z")
         insertFeedback("old-1", cutoff.minusSeconds(2), "team-a")
         insertFeedback("old-2", cutoff.minusSeconds(1), "team-b")
@@ -26,16 +26,35 @@ class FeedbackRetentionRepositoryTest : FunSpec({
         insertTag("old-1", "expired")
         insertTag("boundary", "kept")
 
-        val result = FeedbackRetentionRepository(TestDatabase.dataSource)
+        val repository = FeedbackRetentionRepository(TestDatabase.dataSource)
+        val firstResult = repository
             .deleteExpiredFeedback(cutoff, batchSize = 1)
 
-        result shouldBe FeedbackRetentionResult(
+        firstResult shouldBe FeedbackRetentionResult(
             executed = true,
-            deletedFeedback = 2,
-            affectedTeams = setOf("team-a", "team-b"),
+            deletedFeedback = 1,
+            affectedTeams = setOf("team-a"),
+        )
+        remainingFeedbackIds() shouldContainExactlyInAnyOrder listOf("old-2", "boundary", "new")
+        remainingTagFeedbackIds() shouldContainExactlyInAnyOrder listOf("boundary")
+
+        val secondResult = repository.deleteExpiredFeedback(cutoff, batchSize = 1)
+
+        secondResult shouldBe FeedbackRetentionResult(
+            executed = true,
+            deletedFeedback = 1,
+            affectedTeams = setOf("team-b"),
         )
         remainingFeedbackIds() shouldContainExactlyInAnyOrder listOf("boundary", "new")
-        remainingTagFeedbackIds() shouldContainExactlyInAnyOrder listOf("boundary")
+    }
+
+    test("rejects a batch size above the defensive per-run limit") {
+        shouldThrow<IllegalArgumentException> {
+            FeedbackRetentionRepository(TestDatabase.dataSource).deleteExpiredFeedback(
+                cutoff = Instant.parse("2025-08-26T12:00:00Z"),
+                batchSize = FeedbackRetentionRepository.MAX_DELETE_BATCH_SIZE + 1,
+            )
+        }.message shouldBe "batchSize must be between 1 and 500"
     }
 
     test("skips cleanup when another connection holds the advisory lock") {

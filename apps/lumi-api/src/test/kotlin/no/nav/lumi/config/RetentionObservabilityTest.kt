@@ -31,10 +31,25 @@ class RetentionObservabilityTest : FunSpec({
             .gauge()
             .value()
             .shouldBeExactly(1_787_745_600.0)
+        registry.get(RetentionObservability.ENABLED_METRIC_NAME)
+            .gauge()
+            .value()
+            .shouldBeExactly(1.0)
         val scrape = registry.scrape()
         scrape shouldContain "lumi_retention_runs_total{outcome=\"failed\"} 1.0"
         scrape shouldContain "lumi_retention_last_success_timestamp_seconds 1.7877456E9"
         scrape shouldNotContain "survey_id"
         scrape shouldNotContain "team="
+    }
+
+    test("reports disabled state without running cleanup") {
+        val registry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+
+        RetentionObservability(registry, enabled = false)
+
+        registry.get(RetentionObservability.ENABLED_METRIC_NAME)
+            .gauge()
+            .value()
+            .shouldBeExactly(0.0)
     }
 })

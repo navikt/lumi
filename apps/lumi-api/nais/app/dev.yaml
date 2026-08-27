@@ -83,3 +83,5 @@ spec:
       value: https://lumi-dashboard.ansatt.dev.nav.no
     - name: LUMI_GLOBAL_REQUESTS_PER_SOURCE_PER_MINUTE
       value: "10000"
+    - name: LUMI_RETENTION_ENABLED
+      value: "true"

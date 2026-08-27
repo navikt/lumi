@@ -58,12 +58,16 @@ spec:
             severity: warning
             namespace: team-esyfo
         - alert: LumiRetentionCleanupStale
-          expr: (time() - max(max_over_time(lumi_retention_last_success_timestamp_seconds{app="lumi-api"}[36h])) > 129600) or on() absent_over_time(lumi_retention_last_success_timestamp_seconds{app="lumi-api"}[15m])
+          expr: >-
+            max(lumi_retention_enabled{app="lumi-api"}) == 1
+            and on()
+            ((time() - max(max_over_time(lumi_retention_last_success_timestamp_seconds{app="lumi-api"}[36h])) > 129600)
+            or on() absent_over_time(lumi_retention_last_success_timestamp_seconds{app="lumi-api"}[15m]))
           for: 15m
           annotations:
             summary: "Automatisk sletting av gamle Lumi-svar har ikke fullført"
             consequence: "Ingen API-instans har rapportert en vellykket opprydding de siste 36 timene."
-            action: "Kontroller scheduler, database og Prometheus-scraping, og kjør runbooken."
+            action: "Kontroller konfigurasjon, scheduler, database og Prometheus-scraping, og kjør runbooken."
             runbook_url: "https://github.com/navikt/lumi/blob/main/apps/lumi-api/docs/runbooks/automatic-retention.md"
           labels:
             severity: warning
