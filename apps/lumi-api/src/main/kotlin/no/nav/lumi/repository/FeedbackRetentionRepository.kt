@@ -3,13 +3,20 @@ package no.nav.lumi.repository
 import no.nav.lumi.config.DatabaseHolder
 import java.sql.Connection
 import java.sql.Timestamp
+import java.time.Duration
 import java.time.Instant
 import javax.sql.DataSource
+
+enum class FeedbackRetentionSkipReason {
+    LOCK_HELD,
+    MINIMUM_INTERVAL_NOT_ELAPSED,
+}
 
 data class FeedbackRetentionResult(
     val executed: Boolean,
     val deletedFeedback: Int = 0,
     val affectedTeams: Set<String> = emptySet(),
+    val skipReason: FeedbackRetentionSkipReason? = null,
 )
 
 data class FeedbackRetentionBatchResult(
@@ -22,22 +29,38 @@ class FeedbackRetentionRepository(
 ) {
     fun deleteExpiredFeedback(
         cutoff: Instant,
+        minimumInterval: Duration,
         batchSize: Int,
         onBatchCommitted: (FeedbackRetentionBatchResult) -> Unit = {},
     ): FeedbackRetentionResult {
         require(batchSize in 1..MAX_DELETE_BATCH_SIZE) {
             "batchSize must be between 1 and $MAX_DELETE_BATCH_SIZE"
         }
+        require(!minimumInterval.isNegative && minimumInterval.toMillis() > 0) {
+            "minimumInterval must be positive"
+        }
 
         return dataSource.connection.use { connection ->
             connection.autoCommit = false
             if (!connection.tryAcquireCleanupLock()) {
                 connection.rollback()
-                return@use FeedbackRetentionResult(executed = false)
+                return@use FeedbackRetentionResult(
+                    executed = false,
+                    skipReason = FeedbackRetentionSkipReason.LOCK_HELD,
+                )
             }
 
             try {
+                if (!connection.isCleanupDue(minimumInterval)) {
+                    connection.rollback()
+                    return@use FeedbackRetentionResult(
+                        executed = false,
+                        skipReason = FeedbackRetentionSkipReason.MINIMUM_INTERVAL_NOT_ELAPSED,
+                    )
+                }
+
                 val deletedBatch = connection.deleteExpiredBatch(cutoff, batchSize)
+                connection.recordCleanupCompleted()
                 connection.commit()
                 if (deletedBatch.deletedFeedback > 0) {
                     onBatchCommitted(deletedBatch)
@@ -54,6 +77,39 @@ class FeedbackRetentionRepository(
             } finally {
                 connection.releaseCleanupLock()
             }
+        }
+    }
+
+    private fun Connection.isCleanupDue(minimumInterval: Duration): Boolean =
+        prepareStatement(
+            """
+                SELECT last_completed_at <=
+                    clock_timestamp() - (? * INTERVAL '1 millisecond') AS due
+                FROM feedback_retention_job_state
+                WHERE job_name = ?
+            """.trimIndent()
+        ).use { statement ->
+            statement.setLong(1, minimumInterval.toMillis())
+            statement.setString(2, JOB_NAME)
+            statement.executeQuery().use { result ->
+                !result.next() || result.getBoolean("due")
+            }
+        }
+
+    private fun Connection.recordCleanupCompleted() {
+        prepareStatement(
+            """
+                INSERT INTO feedback_retention_job_state (job_name, last_completed_at)
+                VALUES (?, clock_timestamp())
+                ON CONFLICT (job_name) DO UPDATE
+                SET last_completed_at = GREATEST(
+                    feedback_retention_job_state.last_completed_at,
+                    EXCLUDED.last_completed_at
+                )
+            """.trimIndent()
+        ).use { statement ->
+            statement.setString(1, JOB_NAME)
+            check(statement.executeUpdate() == 1) { "Retention job state was not updated" }
         }
     }
 
@@ -110,6 +166,7 @@ class FeedbackRetentionRepository(
     }
 
     internal companion object {
+        const val JOB_NAME = "feedback-cleanup"
         const val CLEANUP_LOCK_ID = 4_861_756_693_849L
         const val MAX_DELETE_BATCH_SIZE = 500
     }

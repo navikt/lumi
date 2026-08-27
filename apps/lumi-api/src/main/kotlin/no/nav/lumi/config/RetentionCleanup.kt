@@ -16,7 +16,7 @@ fun Application.configureRetentionCleanup(
     config: RetentionEnv = ServerEnv.current.retention,
     observability: RetentionObservability = RetentionObservability(enabled = config.enabled),
     service: FeedbackRetentionService = FeedbackRetentionService(observability = observability),
-    interval: Duration = Duration.ofDays(1),
+    pollInterval: Duration = Duration.ofHours(1),
 ) {
     if (!ServerEnv.current.nais.isNais) {
         retentionLog.info("Automatic retention scheduler is disabled outside NAIS")
@@ -32,7 +32,7 @@ fun Application.configureRetentionCleanup(
             runCatching {
                 withContext(Dispatchers.IO) { service.runOnce() }
             }
-            delay(interval.toMillis())
+            delay(pollInterval.toMillis())
         }
     }
 }

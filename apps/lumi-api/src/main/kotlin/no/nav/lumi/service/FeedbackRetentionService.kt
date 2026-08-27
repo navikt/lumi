@@ -4,8 +4,10 @@ import no.nav.lumi.config.RetentionObservability
 import no.nav.lumi.repository.FeedbackRetentionBatchResult
 import no.nav.lumi.repository.FeedbackRetentionRepository
 import no.nav.lumi.repository.FeedbackRetentionResult
+import no.nav.lumi.repository.FeedbackRetentionSkipReason
 import org.slf4j.LoggerFactory
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
 
@@ -20,9 +22,14 @@ class FeedbackRetentionService(
     private val log = LoggerFactory.getLogger(FeedbackRetentionService::class.java)
 
     fun runOnce(): FeedbackRetentionResult {
-        val cutoff = retentionCutoff(Instant.now(clock))
+        val runAt = Instant.now(clock)
+        val cutoff = retentionCutoff(runAt)
         return try {
-            repository.deleteExpiredFeedback(cutoff, batchSize) { batch ->
+            repository.deleteExpiredFeedback(
+                cutoff = cutoff,
+                minimumInterval = MINIMUM_RUN_INTERVAL,
+                batchSize = batchSize,
+            ) { batch ->
                 publishCommittedBatch(batch)
             }.also { result ->
                 if (result.executed) {
@@ -34,7 +41,13 @@ class FeedbackRetentionService(
                     )
                 } else {
                     observability.recordSkipped()
-                    log.info("Automatic retention skipped because another instance holds the cleanup lock")
+                    when (result.skipReason) {
+                        FeedbackRetentionSkipReason.LOCK_HELD ->
+                            log.info("Automatic retention skipped because another instance holds the cleanup lock")
+                        FeedbackRetentionSkipReason.MINIMUM_INTERVAL_NOT_ELAPSED ->
+                            log.info("Automatic retention skipped because the global run interval has not elapsed")
+                        null -> log.warn("Automatic retention skipped without a reason")
+                    }
                 }
             }
         } catch (cause: Throwable) {
@@ -71,5 +84,6 @@ class FeedbackRetentionService(
     companion object {
         const val RESPONSE_RETENTION_MONTHS = 12L
         const val DEFINITION_WARNING_LEAD_MONTHS = 3L
+        val MINIMUM_RUN_INTERVAL: Duration = Duration.ofDays(1)
     }
 }

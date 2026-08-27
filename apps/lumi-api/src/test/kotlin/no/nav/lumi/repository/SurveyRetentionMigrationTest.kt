@@ -90,6 +90,28 @@ class SurveyRetentionMigrationTest : FunSpec({
                         result.next() shouldBe false
                     }
                 }
+                connection.prepareStatement(
+                    """
+                        SELECT indexdef
+                        FROM pg_indexes
+                        WHERE schemaname = 'public'
+                          AND indexname = 'idx_survey_definitions_active_retention'
+                    """.trimIndent()
+                ).use { statement ->
+                    statement.executeQuery().use { result ->
+                        result.next() shouldBe true
+                        result.getString("indexdef") shouldContain
+                            "(team, definition_retention_at) WHERE (retired_at IS NULL)"
+                    }
+                }
+                connection.prepareStatement(
+                    "SELECT to_regclass('public.feedback_retention_job_state')::text"
+                ).use { statement ->
+                    statement.executeQuery().use { result ->
+                        result.next() shouldBe true
+                        result.getString(1) shouldBe "feedback_retention_job_state"
+                    }
+                }
             }
         }
     }

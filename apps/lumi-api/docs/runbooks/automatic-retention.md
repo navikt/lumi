@@ -1,18 +1,69 @@
 # Automatic retention
 
 Lumi deletes stored survey responses when their server-side creation timestamp is
-older than 12 months. When `LUMI_RETENTION_ENABLED=true`, every API instance starts
-the daily cleanup loop, while a PostgreSQL advisory lock ensures that only one
-instance performs cleanup at a time. The setting is fail-closed: a missing or false
-value disables deletion.
+older than 12 months. When `LUMI_RETENTION_ENABLED=true`, every API instance polls
+hourly. A PostgreSQL advisory lock and the persisted
+`feedback_retention_job_state` row allow only one global cleanup every 24 hours,
+including across pod restarts and replica changes. The setting is fail-closed: a
+missing or false value disables deletion.
 
-Each run deletes at most 500 of the oldest eligible responses. Later daily runs
-continue with the remaining rows. This limit bounds the impact of one run and must
-not be increased without checking production volume and query performance first.
+Each global run deletes at most 500 of the oldest eligible responses. Later runs
+continue with the remaining rows. The deletion and the persisted completion time
+commit in the same database transaction. This bounds deletion to 500 rows in any
+rolling 24-hour period and must not be increased without checking production volume
+and query performance first.
 
 Production is initially deployed with cleanup disabled. Enable it in a separate,
 controlled manifest change after verifying the migration, metrics, eligible-row
 count, query plan, and database recovery readiness.
+
+## Production activation
+
+Before opening the activation PR:
+
+1. Let development complete at least one global run and confirm that
+   `lumi_retention_runs_total{outcome="failed"}` does not increase.
+2. Confirm that Flyway migrations V16–V18 succeeded and inspect
+   `feedback_retention_job_state`.
+3. Count eligible rows with the same UTC calendar cutoff as the application:
+
+   ```sql
+   SELECT COUNT(*)
+   FROM feedback
+   WHERE opprettet < (
+       (now() AT TIME ZONE 'UTC' - INTERVAL '12 months') AT TIME ZONE 'UTC'
+   );
+   ```
+
+4. Run `EXPLAIN (ANALYZE, BUFFERS)` on the bounded `SELECT` from the cleanup CTE,
+   never on the `DELETE`, and confirm use of `idx_feedback_opprettet`.
+5. Verify a tested recovery path. Prefer point-in-time recovery for a destructive
+   workload. If only scheduled backups are available, explicitly accept the recovery
+   window after testing clone/restore.
+6. Change only the production `LUMI_RETENTION_ENABLED` value in a separately
+   reviewed PR. Development must already have been observed before that PR merges,
+   because the current workflow deploys production automatically after development.
+
+After deployment:
+
+1. Confirm `min(lumi_retention_enabled{app="lumi-api"}) == 1`, so every live pod has
+   the intended configuration.
+2. Confirm one executed run and no failed runs.
+3. Confirm the increase in `lumi_retention_deleted_feedback_total` is at most 500
+   over 24 hours, and compare it with the eligible-row count.
+4. Confirm that dashboard counts and filters are refreshed for affected teams.
+
+## Emergency stop
+
+Set production `LUMI_RETENTION_ENABLED` back to `false` by reverting the activation
+commit or merging an emergency manifest PR. The switch is deploy-based: a deletion
+transaction already in progress may commit up to its 500-row limit before the old pod
+terminates.
+
+After the rollout, confirm
+`max(lumi_retention_enabled{app="lumi-api"}) == 0` across all live pods. Record the
+increase in the deletion counter, recount eligible rows, and use the verified recovery
+procedure if rows outside the approved retention set were removed.
 
 ## Alerts
 

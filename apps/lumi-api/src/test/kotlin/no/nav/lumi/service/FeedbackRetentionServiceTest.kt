@@ -7,10 +7,12 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import no.nav.lumi.config.RetentionObservability
-import no.nav.lumi.repository.FeedbackRetentionRepository
 import no.nav.lumi.repository.FeedbackRetentionBatchResult
+import no.nav.lumi.repository.FeedbackRetentionRepository
 import no.nav.lumi.repository.FeedbackRetentionResult
+import no.nav.lumi.repository.FeedbackRetentionSkipReason
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
 
@@ -36,8 +38,10 @@ class FeedbackRetentionServiceTest : FunSpec({
             affectedTeams = setOf("team-b", "team-a"),
         )
 
-        every { repository.deleteExpiredFeedback(expectedCutoff, 25, any()) } answers {
-            thirdArg<(FeedbackRetentionBatchResult) -> Unit>().invoke(
+        every {
+            repository.deleteExpiredFeedback(expectedCutoff, Duration.ofDays(1), 25, any())
+        } answers {
+            lastArg<(FeedbackRetentionBatchResult) -> Unit>().invoke(
                 FeedbackRetentionBatchResult(3, setOf("team-b", "team-a")),
             )
             expectedResult
@@ -49,7 +53,9 @@ class FeedbackRetentionServiceTest : FunSpec({
 
         service.runOnce() shouldBe expectedResult
 
-        verify(exactly = 1) { repository.deleteExpiredFeedback(expectedCutoff, 25, any()) }
+        verify(exactly = 1) {
+            repository.deleteExpiredFeedback(expectedCutoff, Duration.ofDays(1), 25, any())
+        }
         verify(exactly = 1) { statsCacheInvalidator.invalidateTeam("team-a") }
         verify(exactly = 1) { statsCacheInvalidator.invalidateTeam("team-b") }
         verify(exactly = 1) { bootstrapCacheInvalidator.invalidateTeam("team-a") }
@@ -75,8 +81,10 @@ class FeedbackRetentionServiceTest : FunSpec({
         )
         val failure = IllegalStateException("later batch failed")
 
-        every { repository.deleteExpiredFeedback(expectedCutoff, 25, any()) } answers {
-            thirdArg<(FeedbackRetentionBatchResult) -> Unit>().invoke(
+        every {
+            repository.deleteExpiredFeedback(expectedCutoff, Duration.ofDays(1), 25, any())
+        } answers {
+            lastArg<(FeedbackRetentionBatchResult) -> Unit>().invoke(
                 FeedbackRetentionBatchResult(2, setOf("team-a")),
             )
             throw failure
@@ -93,5 +101,39 @@ class FeedbackRetentionServiceTest : FunSpec({
         verify(exactly = 1) { observability.recordDeletedFeedback(2) }
         verify(exactly = 1) { observability.recordFailed() }
         verify(exactly = 0) { observability.recordExecuted(any()) }
+    }
+
+    test("records a globally rate-limited attempt as skipped") {
+        val now = Instant.parse("2026-02-28T12:00:00Z")
+        val expectedCutoff = Instant.parse("2025-02-28T12:00:00Z")
+        val repository = mockk<FeedbackRetentionRepository>()
+        val observability = mockk<RetentionObservability>()
+        val service = FeedbackRetentionService(
+            repository = repository,
+            observability = observability,
+            statsCacheInvalidator = mockk(),
+            bootstrapCacheInvalidator = mockk(),
+            clock = Clock.fixed(now, ZoneOffset.UTC),
+        )
+        val expectedResult = FeedbackRetentionResult(
+            executed = false,
+            skipReason = FeedbackRetentionSkipReason.MINIMUM_INTERVAL_NOT_ELAPSED,
+        )
+
+        every {
+            repository.deleteExpiredFeedback(
+                expectedCutoff,
+                Duration.ofDays(1),
+                FeedbackRetentionRepository.MAX_DELETE_BATCH_SIZE,
+                any(),
+            )
+        } returns expectedResult
+        every { observability.recordSkipped() } returns Unit
+
+        service.runOnce() shouldBe expectedResult
+
+        verify(exactly = 1) { observability.recordSkipped() }
+        verify(exactly = 0) { observability.recordExecuted(any()) }
+        verify(exactly = 0) { observability.recordFailed() }
     }
 })
