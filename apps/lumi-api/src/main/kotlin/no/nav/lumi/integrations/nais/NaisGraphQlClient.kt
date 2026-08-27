@@ -56,8 +56,8 @@ sealed class NaisApiResult<out T> {
  * Different TTLs based on whether user has teams or not.
  */
 object CacheTtl {
-    /** TTL when user HAS teams - team membership changes rarely */
-    val HAS_TEAMS: Duration = Duration.ofHours(12)
+    /** TTL when user HAS teams - bounds access after team membership is revoked */
+    val HAS_TEAMS: Duration = Duration.ofMinutes(10)
     
     /** TTL when user has NO teams - allow quick onboarding */
     val NO_TEAMS: Duration = Duration.ofMinutes(5)

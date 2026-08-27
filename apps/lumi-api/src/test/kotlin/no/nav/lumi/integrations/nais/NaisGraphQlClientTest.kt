@@ -526,8 +526,8 @@ class NaisGraphQlClientTest {
     }
 
     @Test
-    fun `team cache TTLs keep positive memberships warm while allowing onboarding`() {
-        assertEquals(Duration.ofHours(12), CacheTtl.HAS_TEAMS)
+    fun `team cache TTLs bound membership revocation while allowing onboarding`() {
+        assertEquals(Duration.ofMinutes(10), CacheTtl.HAS_TEAMS)
         assertEquals(Duration.ofMinutes(5), CacheTtl.NO_TEAMS)
         assertEquals(Duration.ofSeconds(30), CacheTtl.ERROR)
     }
@@ -558,12 +558,11 @@ class NaisGraphQlClientTest {
             client = mockClient
         )
         
-        // First call - caches with long TTL (because user HAS teams)
+        // First call caches the positive team lookup.
         client.getTeamSlugsForUser("test@nav.no")
         assertEquals(1, callCount)
 
-        // Even after 30 minutes, cache should still be valid
-        // (In real usage, TTL is enforced by Valkey, but InMemoryTeamCache respects the TTL)
+        // A subsequent call within the TTL should use the cache.
         client.getTeamSlugsForUser("test@nav.no")
         assertEquals(1, callCount)
     }
