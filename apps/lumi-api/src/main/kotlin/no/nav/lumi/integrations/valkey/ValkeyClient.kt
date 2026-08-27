@@ -77,7 +77,8 @@ class InMemoryTeamCache : TeamCache {
  */
 class ValkeyTeamCache private constructor(
     private val redisClient: RedisClient,
-    private val keyPrefix: String = "teams:",
+    // Versioned so entries written with the previous 12-hour TTL are ignored after deployment.
+    private val keyPrefix: String = "teams:v2:",
     private val fallback: InMemoryTeamCache = InMemoryTeamCache()
 ) : TeamCache {
     
