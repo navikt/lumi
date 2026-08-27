@@ -1,0 +1,8 @@
+# GitHub only discovers CODEOWNERS in the repository root, .github/, or docs/.
+/.github/CODEOWNERS @navikt/team-esyfo
+/.github/ISSUE_TEMPLATE/access-request.yml @navikt/team-esyfo
+/.github/workflows/deploy-api.yaml @navikt/team-esyfo
+/.github/workflows/deploy-proxy.yaml @navikt/team-esyfo
+/apps/lumi-api/ @navikt/team-esyfo
+/apps/lumi-dashboard/ @navikt/team-esyfo
+/apps/lumi-submission-proxy/ @navikt/team-esyfo
