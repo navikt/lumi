@@ -21,6 +21,10 @@ data class RegistrationResult(
 class SurveyDefinitionService(
     private val repository: SurveyDefinitionRepository = SurveyDefinitionRepository()
 ) {
+    internal fun recordStoredSubmissionInCurrentTransaction(team: String, surveyId: String) {
+        repository.recordStoredSubmissionInCurrentTransaction(team, surveyId)
+    }
+
     suspend fun registerOrValidate(team: String, submission: FeedbackSubmissionV1): RegistrationResult {
         return registerOrValidate(
             team = team,
@@ -188,9 +192,49 @@ class SurveyDefinitionService(
         incomingSource: String,
         updateDefinition: suspend (String, String, String, SurveyDefinition, String) -> Boolean
     ): ExistingDefinitionResult {
+        val storedDefinition = stored.definition
+        if (storedDefinition == null) {
+            if (stored.retiredAt == null) {
+                throw ApiErrorException.InternalServerErrorException(
+                    "Survey definition is missing without being retired for surveyId=${stored.surveyId}"
+                )
+            }
+            if (incomingSource == SurveyDefinitionSource.AUTO) {
+                throw ApiErrorException.DefinitionConflictException(
+                    team = team,
+                    surveyId = stored.surveyId,
+                    errorMessage = "Survey definition for surveyId=${stored.surveyId} has been retired. " +
+                        "Upgrade to schemaVersion 2 with the complete original definition, or use a new surveyId."
+                )
+            }
+
+            val incomingHash = incomingDefinition.computeHash()
+            if (incomingHash != stored.definitionHash) {
+                throw ApiErrorException.DefinitionConflictException(
+                    team = team,
+                    surveyId = stored.surveyId,
+                    errorMessage = "Survey definition conflict for retired surveyId=${stored.surveyId}. " +
+                        "Use the complete original definition or a new surveyId."
+                )
+            }
+
+            val updated = updateDefinition(
+                team,
+                stored.surveyId,
+                stored.definitionHash,
+                incomingDefinition,
+                incomingHash,
+            )
+            return if (updated) {
+                ExistingDefinitionResult.Resolved(RegistrationResult(stored.surveyId, incomingHash))
+            } else {
+                ExistingDefinitionResult.Retry
+            }
+        }
+
         if (!allowDefinitionExpansion) {
             val enrichedStoredDefinition =
-                stored.definition.withMissingMaxSelectionsFrom(incomingDefinition)
+                storedDefinition.withMissingMaxSelectionsFrom(incomingDefinition)
             val definitionDiff = diff(enrichedStoredDefinition, incomingDefinition)
             if (stored.source == SurveyDefinitionSource.AUTO && incomingSource == SurveyDefinitionSource.API) {
                 if (definitionDiff.changedFields.isNotEmpty() || definitionDiff.removedFields.isNotEmpty()) {
@@ -212,7 +256,7 @@ class SurveyDefinitionService(
                 throwDefinitionConflict(team, stored.surveyId, definitionDiff, redactIdentifiers = true)
             }
 
-            if (enrichedStoredDefinition !== stored.definition) {
+            if (enrichedStoredDefinition !== storedDefinition) {
                 val enrichedHash = enrichedStoredDefinition.computeHash()
                 val updated = updateDefinition(
                     team,
@@ -236,7 +280,7 @@ class SurveyDefinitionService(
         }
 
         if (stored.source == SurveyDefinitionSource.API) {
-            val definitionDiff = diff(stored.definition, incomingDefinition)
+            val definitionDiff = diff(storedDefinition, incomingDefinition)
             if (definitionDiff.changedFields.isNotEmpty() || definitionDiff.addedFields.isNotEmpty()) {
                 throwDefinitionConflict(team, stored.surveyId, definitionDiff)
             }
@@ -246,8 +290,8 @@ class SurveyDefinitionService(
             )
         }
 
-        val mergedDefinition = stored.definition.mergeWith(incomingDefinition)
-        val definitionDiff = diff(stored.definition, mergedDefinition)
+        val mergedDefinition = storedDefinition.mergeWith(incomingDefinition)
+        val definitionDiff = diff(storedDefinition, mergedDefinition)
         if (definitionDiff.changedFields.isNotEmpty()) {
             throwDefinitionConflict(team, stored.surveyId, definitionDiff)
         }

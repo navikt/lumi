@@ -169,6 +169,16 @@ export const SurveyMetaEntrySchema = z.object({
 
 export type SurveyMetaEntry = z.infer<typeof SurveyMetaEntrySchema>;
 
+export const SurveyRetentionWarningSchema = z.object({
+  surveyId: z.string(),
+  lastActivityAt: z.string(),
+  scheduledFor: z.string(),
+});
+
+export type SurveyRetentionWarning = z.infer<
+  typeof SurveyRetentionWarningSchema
+>;
+
 export const FilterBootstrapResponseSchema = z.object({
   generatedAt: z.string(),
   selectedTeam: z.string(),
@@ -182,6 +192,8 @@ export const FilterBootstrapResponseSchema = z.object({
   surveyMetaByApp: z
     .record(z.string(), z.record(z.string(), SurveyMetaEntrySchema))
     .optional(),
+  /** Inactive survey definitions approaching automatic retirement. */
+  retentionWarnings: z.array(SurveyRetentionWarningSchema).optional(),
 });
 
 export type FilterBootstrapResponse = z.infer<

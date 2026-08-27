@@ -19,6 +19,7 @@ import no.nav.lumi.domain.TeamsAndApps
 import no.nav.lumi.repository.FeedbackRepository
 import no.nav.lumi.service.FeedbackService
 import no.nav.lumi.service.StatsCacheInvalidator
+import no.nav.lumi.service.sharedBootstrapCache
 import no.nav.lumi.integrations.valkey.ValkeyStatsCache
 import no.nav.lumi.integrations.valkey.StringCache
 import org.slf4j.LoggerFactory

@@ -4,8 +4,11 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.Runs
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.verify
 import no.nav.lumi.domain.Answer
 import no.nav.lumi.domain.AnswerValue
 import no.nav.lumi.domain.FeedbackSubmissionV1
@@ -29,8 +32,29 @@ class SubmissionServiceTest : FunSpec({
         val registrationResult = RegistrationResult("survey-1", "definition-hash-v2")
         val saveResult = SaveResult.Created("feedback-1")
 
-        coEvery { surveyDefinitionService.registerOrValidateV2("team-a", submission, definition) } returns registrationResult
-        coEvery { feedbackService.save("{}", "team-a", "app-a", "survey-1", "definition-hash-v2") } returns saveResult
+        val prepared = FeedbackService.PreparedFeedbackSave("redacted-json", null)
+        every { feedbackService.prepareForSave("{}", "team-a", "survey-1") } returns prepared
+        coEvery {
+            feedbackRepository.withTransaction(any<suspend () -> SubmissionOutcome>())
+        } coAnswers {
+            arg<suspend () -> SubmissionOutcome>(0).invoke()
+        }
+        coEvery {
+            surveyDefinitionService.registerOrValidateV2InCurrentTransaction("team-a", submission, definition)
+        } returns registrationResult
+        every {
+            feedbackRepository.saveInCurrentTransaction(
+                "redacted-json",
+                "team-a",
+                "app-a",
+                "survey-1",
+                "definition-hash-v2",
+                null,
+            )
+        } returns saveResult
+        every {
+            surveyDefinitionService.recordStoredSubmissionInCurrentTransaction("team-a", "survey-1")
+        } just Runs
 
         val result = runSubmission {
             service.submit(
@@ -43,10 +67,15 @@ class SubmissionServiceTest : FunSpec({
         }
 
         result shouldBe SubmissionOutcome(saveResult, "definition-hash-v2")
-        coVerify(exactly = 1) { surveyDefinitionService.registerOrValidateV2("team-a", submission, definition) }
+        coVerify(exactly = 1) {
+            surveyDefinitionService.registerOrValidateV2InCurrentTransaction("team-a", submission, definition)
+        }
         coVerify(exactly = 0) { surveyDefinitionService.registerOrValidate("team-a", submission) }
         coVerify(exactly = 0) { surveyDefinitionService.registerOrValidateInCurrentTransaction(any(), any()) }
-        coVerify(exactly = 0) { surveyDefinitionService.registerOrValidateV2InCurrentTransaction(any(), any(), any()) }
+        coVerify(exactly = 0) { surveyDefinitionService.registerOrValidateV2(any(), any(), any()) }
+        verify(exactly = 1) {
+            surveyDefinitionService.recordStoredSubmissionInCurrentTransaction("team-a", "survey-1")
+        }
     }
 
     test("provided definition uses v2 registration in current transaction") {
@@ -88,6 +117,9 @@ class SubmissionServiceTest : FunSpec({
                 "dedup-hash"
             )
         } returns saveResult
+        every {
+            surveyDefinitionService.recordStoredSubmissionInCurrentTransaction("team-a", "survey-1")
+        } just Runs
 
         val result = runSubmission {
             service.submit(
@@ -106,6 +138,30 @@ class SubmissionServiceTest : FunSpec({
         coVerify(exactly = 0) { surveyDefinitionService.registerOrValidateInCurrentTransaction("team-a", submission) }
         coVerify(exactly = 0) { surveyDefinitionService.registerOrValidate("team-a", submission) }
         coVerify(exactly = 0) { surveyDefinitionService.registerOrValidateV2("team-a", submission, definition) }
+        verify(exactly = 1) {
+            surveyDefinitionService.recordStoredSubmissionInCurrentTransaction("team-a", "survey-1")
+        }
+    }
+
+    test("duplicate submission does not update retention activity") {
+        val feedbackService = mockk<FeedbackService>()
+        val surveyDefinitionService = mockk<SurveyDefinitionService>()
+        val feedbackRepository = mockk<FeedbackRepository>()
+        val service = SubmissionService(feedbackService, surveyDefinitionService, feedbackRepository)
+        val submission = ratingSubmission(deduplicationKey = "client-key-123456")
+
+        coEvery {
+            feedbackService.findDuplicateSubmissionId("team-a", "survey-1", "client-key-123456")
+        } returns "feedback-existing"
+
+        val result = runSubmission {
+            service.submit("{}", "team-a", "app-a", submission, expandedDefinition())
+        }
+
+        result shouldBe SubmissionOutcome(SaveResult.Duplicate("feedback-existing"))
+        verify(exactly = 0) {
+            surveyDefinitionService.recordStoredSubmissionInCurrentTransaction(any(), any())
+        }
     }
 })
 

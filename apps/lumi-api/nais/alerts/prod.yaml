@@ -45,3 +45,30 @@ spec:
           labels:
             severity: warning
             namespace: team-esyfo
+    - name: lumi-api-retention
+      rules:
+        - alert: LumiRetentionCleanupFailure
+          expr: sum(increase(lumi_retention_runs_total{app="lumi-api",outcome="failed"}[15m])) > 0
+          annotations:
+            summary: "Automatisk sletting av gamle Lumi-svar feiler"
+            consequence: "Survey-svar som har passert lagringstiden kan bli liggende lenger enn 12 måneder."
+            action: "Undersøk feilen og kontroller at neste opprydding fullføres."
+            runbook_url: "https://github.com/navikt/lumi/blob/main/apps/lumi-api/docs/runbooks/automatic-retention.md"
+          labels:
+            severity: warning
+            namespace: team-esyfo
+        - alert: LumiRetentionCleanupStale
+          expr: >-
+            max(lumi_retention_enabled{app="lumi-api"}) == 1
+            and on()
+            ((time() - max(max_over_time(lumi_retention_last_success_timestamp_seconds{app="lumi-api"}[36h])) > 129600)
+            or on() absent_over_time(lumi_retention_last_success_timestamp_seconds{app="lumi-api"}[15m]))
+          for: 15m
+          annotations:
+            summary: "Automatisk sletting av gamle Lumi-svar har ikke fullført"
+            consequence: "Ingen API-instans har rapportert en vellykket opprydding de siste 36 timene."
+            action: "Kontroller konfigurasjon, scheduler, database og Prometheus-scraping, og kjør runbooken."
+            runbook_url: "https://github.com/navikt/lumi/blob/main/apps/lumi-api/docs/runbooks/automatic-retention.md"
+          labels:
+            severity: warning
+            namespace: team-esyfo

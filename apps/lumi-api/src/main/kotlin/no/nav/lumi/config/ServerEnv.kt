@@ -17,6 +17,7 @@ data class ServerEnv(
     val valkey: ValkeyEnv,
     val naisApi: NaisApiEnv,
     val rateLimit: RateLimitEnv,
+    val retention: RetentionEnv,
 ) {
     /**
      * Database connection configuration.
@@ -222,6 +223,7 @@ data class ServerEnv(
                 valkey = ValkeyEnv.fromEnvironment(),
                 naisApi = NaisApiEnv.fromEnvironment(),
                 rateLimit = RateLimitEnv.fromEnvironment(),
+                retention = RetentionEnv.fromEnvironment(),
             )
         }
         
@@ -238,6 +240,7 @@ data class ServerEnv(
                 valkey = ValkeyEnv.forLocal(),
                 naisApi = NaisApiEnv.forLocal(),
                 rateLimit = RateLimitEnv.fromEnvironment(),
+                retention = RetentionEnv.disabled(),
             )
         }
         
@@ -263,6 +266,7 @@ data class ServerEnv(
                 valkey = ValkeyEnv.forLocal(),
                 naisApi = NaisApiEnv(graphqlUrl = null, tokenPath = null, staticKey = null),
                 rateLimit = RateLimitEnv.default(),
+                retention = RetentionEnv.disabled(),
             )
         }
     }

@@ -11,8 +11,17 @@ data class StoredSurveyDefinition(
     val team: String,
     val surveyId: String,
     val definitionHash: String,
-    val definition: SurveyDefinition,
-    val source: String = SurveyDefinitionSource.AUTO
+    val definition: SurveyDefinition?,
+    val source: String = SurveyDefinitionSource.AUTO,
+    val lastSubmissionAt: Instant = Instant.EPOCH,
+    val definitionRetentionAt: Instant = Instant.MAX,
+    val retiredAt: Instant? = null,
+)
+
+data class SurveyRetentionCandidate(
+    val surveyId: String,
+    val lastActivityAt: Instant,
+    val scheduledFor: Instant,
 )
 
 object SurveyDefinitionSource {
@@ -27,6 +36,31 @@ class SurveyDefinitionRepository {
         return dbQuery {
             findByTeamAndSurveyIdInCurrentTransaction(team, surveyId)
         }
+    }
+
+    suspend fun findUpcomingRetentionCandidates(
+        team: String,
+        scheduledBefore: Instant,
+    ): List<SurveyRetentionCandidate> = dbQuery {
+        SurveyDefinitionTable
+            .select(
+                SurveyDefinitionTable.surveyId,
+                SurveyDefinitionTable.lastSubmissionAt,
+                SurveyDefinitionTable.definitionRetentionAt,
+            )
+            .where {
+                (SurveyDefinitionTable.team eq team) and
+                    SurveyDefinitionTable.retiredAt.isNull() and
+                    (SurveyDefinitionTable.definitionRetentionAt lessEq scheduledBefore)
+            }
+            .orderBy(SurveyDefinitionTable.definitionRetentionAt to SortOrder.ASC)
+            .map { row ->
+                SurveyRetentionCandidate(
+                    surveyId = row[SurveyDefinitionTable.surveyId],
+                    lastActivityAt = row[SurveyDefinitionTable.lastSubmissionAt],
+                    scheduledFor = row[SurveyDefinitionTable.definitionRetentionAt],
+                )
+            }
     }
 
     /**
@@ -115,8 +149,12 @@ class SurveyDefinitionRepository {
                     team = row[SurveyDefinitionTable.team],
                     surveyId = row[SurveyDefinitionTable.surveyId],
                     definitionHash = row[SurveyDefinitionTable.definitionHash],
-                    definition = json.decodeFromString(row[SurveyDefinitionTable.definition]),
-                    source = row[SurveyDefinitionTable.dbSource]
+                    definition = row[SurveyDefinitionTable.definition]
+                        ?.let { json.decodeFromString(it) },
+                    source = row[SurveyDefinitionTable.dbSource],
+                    lastSubmissionAt = row[SurveyDefinitionTable.lastSubmissionAt],
+                    definitionRetentionAt = row[SurveyDefinitionTable.definitionRetentionAt],
+                    retiredAt = row[SurveyDefinitionTable.retiredAt],
                 )
             }
     }
@@ -187,11 +225,34 @@ class SurveyDefinitionRepository {
         }) {
             it[SurveyDefinitionTable.definitionHash] = newDefinitionHash
             it[SurveyDefinitionTable.definition] = definitionJson
+            it[SurveyDefinitionTable.retiredAt] = null
             if (source != null) {
                 it[SurveyDefinitionTable.dbSource] = source
             }
             it[SurveyDefinitionTable.updatedAt] = Instant.now()
         } > 0
+    }
+
+    internal fun recordStoredSubmissionInCurrentTransaction(team: String, surveyId: String) {
+        val transaction = org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager.current()
+        val conn = transaction.connection.connection as java.sql.Connection
+        conn.prepareStatement(
+            """
+                UPDATE survey_definitions
+                SET last_submission_at = GREATEST(last_submission_at, now()),
+                    definition_retention_at = GREATEST(
+                        definition_retention_at,
+                        (now() AT TIME ZONE 'UTC' + INTERVAL '18 months') AT TIME ZONE 'UTC'
+                    )
+                WHERE team = ? AND survey_id = ?
+            """.trimIndent()
+        ).use { statement ->
+            statement.setString(1, team)
+            statement.setString(2, surveyId)
+            check(statement.executeUpdate() == 1) {
+                "Survey definition disappeared while recording stored submission"
+            }
+        }
     }
 
     internal fun updateApiDefinitionIfHashMatchesInCurrentTransaction(

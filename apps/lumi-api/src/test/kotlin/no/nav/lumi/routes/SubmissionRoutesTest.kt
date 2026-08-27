@@ -2,6 +2,7 @@ package no.nav.lumi.routes
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -1348,7 +1349,7 @@ class SubmissionRoutesTest : FunSpec({
 
             val storedAfter = surveyDefinitionRepository.findByTeamAndSurveyId("local-dev", "dedup-conflict-survey")!!
             storedAfter.definitionHash shouldBe storedBefore.definitionHash
-            storedAfter.definition.fields.single().optionIds shouldBe listOf("apply")
+            storedAfter.definition.shouldNotBeNull().fields.single().optionIds shouldBe listOf("apply")
 
             val (_, total, _) = feedbackRepository.findPaginated(FeedbackQuery(team = "local-dev"))
             total shouldBe 1
@@ -1482,7 +1483,7 @@ class SubmissionRoutesTest : FunSpec({
             secondResponse.status shouldBe HttpStatusCode.Created
 
             val stored = surveyDefinitionRepository.findByTeamAndSurveyId("local-dev", "dedup-extension-survey")!!
-            stored.definition.fields.map { it.fieldId } shouldBe listOf("feedback", "followup")
+            stored.definition.shouldNotBeNull().fields.map { it.fieldId } shouldBe listOf("feedback", "followup")
 
             val (_, total, _) = feedbackRepository.findPaginated(FeedbackQuery(team = "local-dev"))
             total shouldBe 2
@@ -1808,7 +1809,7 @@ class SubmissionRoutesTest : FunSpec({
             duplicateBody["duplicate"]?.jsonPrimitive?.boolean shouldBe true
 
             val stored = surveyDefinitionRepository.findByTeamAndSurveyId("local-dev", "dedup-race-conflict-survey")!!
-            stored.definition.fields.single().optionIds shouldBe listOf("apply")
+            stored.definition.shouldNotBeNull().fields.single().optionIds shouldBe listOf("apply")
 
             val (_, total, _) = feedbackRepository.findPaginated(FeedbackQuery(team = "local-dev"))
             total shouldBe 1
@@ -1923,7 +1924,7 @@ class SubmissionRoutesTest : FunSpec({
             duplicateBody["duplicate"]?.jsonPrimitive?.boolean shouldBe true
 
             val stored = surveyDefinitionRepository.findByTeamAndSurveyId("local-dev", "dedup-race-extension-survey")!!
-            stored.definition.fields.map { it.fieldId } shouldBe listOf("feedback")
+            stored.definition.shouldNotBeNull().fields.map { it.fieldId } shouldBe listOf("feedback")
 
             val saved = feedbackRepository.findRawById(createdId, "local-dev")
             saved?.feedbackJson?.contains("Første payload") shouldBe true

@@ -84,7 +84,8 @@ object TestDatabase {
             conn.createStatement().use { stmt ->
                 stmt.execute(
                     "TRUNCATE TABLE rating_marker, feedback, survey_definitions, survey_metadata, " +
-                        "survey_authoring_revisions, survey_authoring_projects CASCADE"
+                        "survey_authoring_revisions, survey_authoring_projects, " +
+                        "feedback_retention_job_state CASCADE"
                 )
             }
             conn.commit()

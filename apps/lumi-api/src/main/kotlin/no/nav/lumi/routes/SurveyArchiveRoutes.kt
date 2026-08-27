@@ -10,6 +10,7 @@ import no.nav.lumi.config.auth.authorizedTeam
 import no.nav.lumi.integrations.valkey.StringCache
 import no.nav.lumi.repository.SurveyMetadataRepository
 import no.nav.lumi.service.StatsCacheInvalidator
+import no.nav.lumi.service.sharedBootstrapCache
 
 private val defaultSurveyMetadataRepository = SurveyMetadataRepository()
 private val defaultArchiveStatsCacheInvalidator = StatsCacheInvalidator()

@@ -70,6 +70,8 @@ class FeedbackRepository(
         }
     }
 
+    suspend fun <T> withTransaction(block: suspend () -> T): T = dbQuery { block() }
+
     suspend fun save(
         feedbackJson: String,
         team: String,

@@ -8,6 +8,7 @@ import no.nav.lumi.config.configureDatabase
 import no.nav.lumi.config.configureSecurityHeaders
 import no.nav.lumi.config.configureMetrics
 import no.nav.lumi.config.configureRateLimiting
+import no.nav.lumi.config.configureRetentionCleanup
 import no.nav.lumi.config.configureRouting
 import no.nav.lumi.config.configureSerialization
 import no.nav.lumi.config.configureStatusPages
@@ -31,5 +32,6 @@ fun Application.module() {
     configureAuth()
     configureDatabase()
     configureMetrics()
+    configureRetentionCleanup()
     configureRouting()
 }
