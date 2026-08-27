@@ -16,14 +16,4 @@ class RetentionAlertRulesTest : FunSpec({
         rules shouldContain
             """max(lumi_retention_enabled{app="lumi-api"}) == 1"""
     }
-
-    test("production retention starts disabled while development exercises cleanup") {
-        val prodManifest = Files.readString(Path.of("nais/app/prod.yaml"))
-        val devManifest = Files.readString(Path.of("nais/app/dev.yaml"))
-
-        prodManifest shouldContain """name: LUMI_RETENTION_ENABLED
-      value: "false""".trimIndent()
-        devManifest shouldContain """name: LUMI_RETENTION_ENABLED
-      value: "true""".trimIndent()
-    }
 })

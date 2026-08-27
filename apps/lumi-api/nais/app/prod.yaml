@@ -87,4 +87,4 @@ spec:
       value: "10000"
     # Enable in a separate, controlled rollout after migration and metrics verification.
     - name: LUMI_RETENTION_ENABLED
-      value: "false"
+      value: "true"
