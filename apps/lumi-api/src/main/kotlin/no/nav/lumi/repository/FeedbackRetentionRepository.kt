@@ -14,6 +14,7 @@ enum class FeedbackRetentionSkipReason {
 
 data class FeedbackRetentionResult(
     val executed: Boolean,
+    val cutoff: Instant? = null,
     val deletedFeedback: Int = 0,
     val affectedTeams: Set<String> = emptySet(),
     val skipReason: FeedbackRetentionSkipReason? = null,
@@ -28,7 +29,7 @@ class FeedbackRetentionRepository(
     private val dataSource: DataSource = DatabaseHolder.dataSource,
 ) {
     fun deleteExpiredFeedback(
-        cutoff: Instant,
+        retentionMonths: Int,
         minimumInterval: Duration,
         batchSize: Int,
         onBatchCommitted: (FeedbackRetentionBatchResult) -> Unit = {},
@@ -36,6 +37,7 @@ class FeedbackRetentionRepository(
         require(batchSize in 1..MAX_DELETE_BATCH_SIZE) {
             "batchSize must be between 1 and $MAX_DELETE_BATCH_SIZE"
         }
+        require(retentionMonths > 0) { "retentionMonths must be positive" }
         require(!minimumInterval.isNegative && minimumInterval.toMillis() > 0) {
             "minimumInterval must be positive"
         }
@@ -59,6 +61,7 @@ class FeedbackRetentionRepository(
                     )
                 }
 
+                val cutoff = connection.retentionCutoff(retentionMonths)
                 val deletedBatch = connection.deleteExpiredBatch(cutoff, batchSize)
                 connection.recordCleanupCompleted()
                 connection.commit()
@@ -68,6 +71,7 @@ class FeedbackRetentionRepository(
 
                 FeedbackRetentionResult(
                     executed = true,
+                    cutoff = cutoff,
                     deletedFeedback = deletedBatch.deletedFeedback,
                     affectedTeams = deletedBatch.affectedTeams,
                 )
@@ -79,6 +83,21 @@ class FeedbackRetentionRepository(
             }
         }
     }
+
+    private fun Connection.retentionCutoff(retentionMonths: Int): Instant =
+        prepareStatement(
+            """
+                SELECT (
+                    clock_timestamp() AT TIME ZONE 'UTC' - make_interval(months => ?)
+                ) AT TIME ZONE 'UTC' AS cutoff
+            """.trimIndent()
+        ).use { statement ->
+            statement.setInt(1, retentionMonths)
+            statement.executeQuery().use { result ->
+                check(result.next()) { "Retention cutoff query returned no result" }
+                result.getTimestamp("cutoff").toInstant()
+            }
+        }
 
     private fun Connection.isCleanupDue(minimumInterval: Duration): Boolean =
         prepareStatement(

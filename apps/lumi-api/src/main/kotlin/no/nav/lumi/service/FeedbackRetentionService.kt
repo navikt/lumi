@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
-import java.time.ZoneOffset
 
 class FeedbackRetentionService(
     private val repository: FeedbackRetentionRepository = FeedbackRetentionRepository(),
@@ -22,17 +21,18 @@ class FeedbackRetentionService(
     private val log = LoggerFactory.getLogger(FeedbackRetentionService::class.java)
 
     fun runOnce(): FeedbackRetentionResult {
-        val runAt = Instant.now(clock)
-        val cutoff = retentionCutoff(runAt)
         return try {
             repository.deleteExpiredFeedback(
-                cutoff = cutoff,
+                retentionMonths = RESPONSE_RETENTION_MONTHS,
                 minimumInterval = MINIMUM_RUN_INTERVAL,
                 batchSize = batchSize,
             ) { batch ->
                 publishCommittedBatch(batch)
             }.also { result ->
                 if (result.executed) {
+                    val cutoff = checkNotNull(result.cutoff) {
+                        "Executed retention result did not include the database cutoff"
+                    }
                     observability.recordExecuted(Instant.now(clock))
                     log.info(
                         "Automatic retention run completed: deletedFeedback={}, cutoff={}",
@@ -57,11 +57,6 @@ class FeedbackRetentionService(
         }
     }
 
-    internal fun retentionCutoff(now: Instant): Instant =
-        now.atZone(ZoneOffset.UTC)
-            .minusMonths(RESPONSE_RETENTION_MONTHS)
-            .toInstant()
-
     private fun publishCommittedBatch(batch: FeedbackRetentionBatchResult) {
         var invalidationFailure: Throwable? = null
         batch.affectedTeams.forEach { team ->
@@ -82,7 +77,7 @@ class FeedbackRetentionService(
         this?.also { it.addSuppressed(cause) } ?: cause
 
     companion object {
-        const val RESPONSE_RETENTION_MONTHS = 12L
+        const val RESPONSE_RETENTION_MONTHS = 12
         const val DEFINITION_WARNING_LEAD_MONTHS = 3L
         val MINIMUM_RUN_INTERVAL: Duration = Duration.ofDays(1)
     }

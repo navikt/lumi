@@ -17,7 +17,7 @@ import java.time.Instant
 import java.time.ZoneOffset
 
 class FeedbackRetentionServiceTest : FunSpec({
-    test("uses a 12 calendar month cutoff and records completion") {
+    test("requests a 12 calendar month cutoff and records completion") {
         val now = Instant.parse("2026-02-28T12:00:00Z")
         val expectedCutoff = Instant.parse("2025-02-28T12:00:00Z")
         val repository = mockk<FeedbackRetentionRepository>()
@@ -34,12 +34,13 @@ class FeedbackRetentionServiceTest : FunSpec({
         )
         val expectedResult = FeedbackRetentionResult(
             executed = true,
+            cutoff = expectedCutoff,
             deletedFeedback = 3,
             affectedTeams = setOf("team-b", "team-a"),
         )
 
         every {
-            repository.deleteExpiredFeedback(expectedCutoff, Duration.ofDays(1), 25, any())
+            repository.deleteExpiredFeedback(12, Duration.ofDays(1), 25, any())
         } answers {
             lastArg<(FeedbackRetentionBatchResult) -> Unit>().invoke(
                 FeedbackRetentionBatchResult(3, setOf("team-b", "team-a")),
@@ -54,7 +55,7 @@ class FeedbackRetentionServiceTest : FunSpec({
         service.runOnce() shouldBe expectedResult
 
         verify(exactly = 1) {
-            repository.deleteExpiredFeedback(expectedCutoff, Duration.ofDays(1), 25, any())
+            repository.deleteExpiredFeedback(12, Duration.ofDays(1), 25, any())
         }
         verify(exactly = 1) { statsCacheInvalidator.invalidateTeam("team-a") }
         verify(exactly = 1) { statsCacheInvalidator.invalidateTeam("team-b") }
@@ -66,7 +67,6 @@ class FeedbackRetentionServiceTest : FunSpec({
 
     test("publishes a committed batch before a later cleanup failure") {
         val now = Instant.parse("2026-02-28T12:00:00Z")
-        val expectedCutoff = Instant.parse("2025-02-28T12:00:00Z")
         val repository = mockk<FeedbackRetentionRepository>()
         val observability = mockk<RetentionObservability>()
         val statsCacheInvalidator = mockk<StatsCacheInvalidator>()
@@ -82,7 +82,7 @@ class FeedbackRetentionServiceTest : FunSpec({
         val failure = IllegalStateException("later batch failed")
 
         every {
-            repository.deleteExpiredFeedback(expectedCutoff, Duration.ofDays(1), 25, any())
+            repository.deleteExpiredFeedback(12, Duration.ofDays(1), 25, any())
         } answers {
             lastArg<(FeedbackRetentionBatchResult) -> Unit>().invoke(
                 FeedbackRetentionBatchResult(2, setOf("team-a")),
@@ -105,7 +105,6 @@ class FeedbackRetentionServiceTest : FunSpec({
 
     test("records a globally rate-limited attempt as skipped") {
         val now = Instant.parse("2026-02-28T12:00:00Z")
-        val expectedCutoff = Instant.parse("2025-02-28T12:00:00Z")
         val repository = mockk<FeedbackRetentionRepository>()
         val observability = mockk<RetentionObservability>()
         val service = FeedbackRetentionService(
@@ -122,7 +121,7 @@ class FeedbackRetentionServiceTest : FunSpec({
 
         every {
             repository.deleteExpiredFeedback(
-                expectedCutoff,
+                12,
                 Duration.ofDays(1),
                 FeedbackRetentionRepository.MAX_DELETE_BATCH_SIZE,
                 any(),

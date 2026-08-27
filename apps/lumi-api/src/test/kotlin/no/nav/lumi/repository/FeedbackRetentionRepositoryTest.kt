@@ -4,7 +4,9 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import no.nav.lumi.TestDatabase
+import java.sql.SQLException
 import java.sql.Timestamp
 import java.time.Duration
 import java.time.Instant
@@ -19,35 +21,36 @@ class FeedbackRetentionRepositoryTest : FunSpec({
     }
 
     test("deletes only one bounded batch of feedback strictly older than cutoff") {
-        val cutoff = Instant.parse("2025-08-26T12:00:00Z")
-        insertFeedback("old-1", cutoff.minusSeconds(2), "team-a")
-        insertFeedback("old-2", cutoff.minusSeconds(1), "team-b")
-        insertFeedback("boundary", cutoff, "team-a")
-        insertFeedback("new", cutoff.plusSeconds(1), "team-a")
+        val cutoff = databaseRetentionCutoff()
+        insertFeedback("old-1", cutoff.minusSeconds(120), "team-a")
+        insertFeedback("old-2", cutoff.minusSeconds(60), "team-b")
+        insertFeedback("inside-window", cutoff.plusSeconds(60), "team-a")
+        insertFeedback("new", cutoff.plusSeconds(3600), "team-a")
         insertTag("old-1", "expired")
-        insertTag("boundary", "kept")
+        insertTag("inside-window", "kept")
 
         val repository = FeedbackRetentionRepository(TestDatabase.dataSource)
         val firstResult = repository
             .deleteExpiredFeedback(
-                cutoff = cutoff,
+                retentionMonths = 12,
                 minimumInterval = Duration.ofDays(1),
                 batchSize = 1,
             )
 
-        firstResult shouldBe FeedbackRetentionResult(
+        firstResult.cutoff shouldNotBe null
+        firstResult.copy(cutoff = null) shouldBe FeedbackRetentionResult(
             executed = true,
             deletedFeedback = 1,
             affectedTeams = setOf("team-a"),
         )
-        remainingFeedbackIds() shouldContainExactlyInAnyOrder listOf("old-2", "boundary", "new")
-        remainingTagFeedbackIds() shouldContainExactlyInAnyOrder listOf("boundary")
+        remainingFeedbackIds() shouldContainExactlyInAnyOrder listOf("old-2", "inside-window", "new")
+        remainingTagFeedbackIds() shouldContainExactlyInAnyOrder listOf("inside-window")
 
         ageCleanupState(Duration.ofHours(23))
 
         val restartResult = FeedbackRetentionRepository(TestDatabase.dataSource)
             .deleteExpiredFeedback(
-                cutoff = cutoff,
+                retentionMonths = 12,
                 minimumInterval = Duration.ofDays(1),
                 batchSize = 1,
             )
@@ -56,29 +59,30 @@ class FeedbackRetentionRepositoryTest : FunSpec({
             executed = false,
             skipReason = FeedbackRetentionSkipReason.MINIMUM_INTERVAL_NOT_ELAPSED,
         )
-        remainingFeedbackIds() shouldContainExactlyInAnyOrder listOf("old-2", "boundary", "new")
+        remainingFeedbackIds() shouldContainExactlyInAnyOrder listOf("old-2", "inside-window", "new")
 
         ageCleanupState(Duration.ofDays(1).plusSeconds(1))
 
         val secondResult = FeedbackRetentionRepository(TestDatabase.dataSource)
             .deleteExpiredFeedback(
-                cutoff = cutoff,
+                retentionMonths = 12,
                 minimumInterval = Duration.ofDays(1),
                 batchSize = 1,
             )
 
-        secondResult shouldBe FeedbackRetentionResult(
+        secondResult.cutoff shouldNotBe null
+        secondResult.copy(cutoff = null) shouldBe FeedbackRetentionResult(
             executed = true,
             deletedFeedback = 1,
             affectedTeams = setOf("team-b"),
         )
-        remainingFeedbackIds() shouldContainExactlyInAnyOrder listOf("boundary", "new")
+        remainingFeedbackIds() shouldContainExactlyInAnyOrder listOf("inside-window", "new")
     }
 
     test("rejects a batch size above the defensive per-run limit") {
         shouldThrow<IllegalArgumentException> {
             FeedbackRetentionRepository(TestDatabase.dataSource).deleteExpiredFeedback(
-                cutoff = Instant.parse("2025-08-26T12:00:00Z"),
+                retentionMonths = 12,
                 minimumInterval = Duration.ofDays(1),
                 batchSize = FeedbackRetentionRepository.MAX_DELETE_BATCH_SIZE + 1,
             )
@@ -95,7 +99,7 @@ class FeedbackRetentionRepositoryTest : FunSpec({
 
             val result = FeedbackRetentionRepository(TestDatabase.dataSource)
                 .deleteExpiredFeedback(
-                    cutoff = Instant.parse("2025-08-26T12:00:00Z"),
+                    retentionMonths = 12,
                     minimumInterval = Duration.ofDays(1),
                     batchSize = 10,
                 )
@@ -115,15 +119,15 @@ class FeedbackRetentionRepositoryTest : FunSpec({
     }
 
     test("publishes a batch only after its deletion is committed") {
-        val cutoff = Instant.parse("2025-08-26T12:00:00Z")
-        insertFeedback("first", cutoff.minusSeconds(2), "team-a")
-        insertFeedback("second", cutoff.minusSeconds(1), "team-b")
+        val cutoff = databaseRetentionCutoff()
+        insertFeedback("first", cutoff.minusSeconds(120), "team-a")
+        insertFeedback("second", cutoff.minusSeconds(60), "team-b")
         val published = mutableListOf<FeedbackRetentionBatchResult>()
 
         shouldThrow<IllegalStateException> {
             FeedbackRetentionRepository(TestDatabase.dataSource)
                 .deleteExpiredFeedback(
-                    cutoff = cutoff,
+                    retentionMonths = 12,
                     minimumInterval = Duration.ofDays(1),
                     batchSize = 1,
                 ) { batch ->
@@ -141,7 +145,7 @@ class FeedbackRetentionRepositoryTest : FunSpec({
         remainingFeedbackIds() shouldBe listOf("second")
 
         FeedbackRetentionRepository(TestDatabase.dataSource).deleteExpiredFeedback(
-            cutoff = cutoff,
+            retentionMonths = 12,
             minimumInterval = Duration.ofDays(1),
             batchSize = 1,
         ) shouldBe FeedbackRetentionResult(
@@ -150,7 +154,44 @@ class FeedbackRetentionRepositoryTest : FunSpec({
         )
         remainingFeedbackIds() shouldBe listOf("second")
     }
+
+    test("rolls back deletion when retention job state cannot be written") {
+        val cutoff = databaseRetentionCutoff()
+        insertFeedback("kept-after-rollback", cutoff.minusSeconds(60), "team-a")
+        installRejectingStateTrigger()
+
+        try {
+            shouldThrow<SQLException> {
+                FeedbackRetentionRepository(TestDatabase.dataSource).deleteExpiredFeedback(
+                    retentionMonths = 12,
+                    minimumInterval = Duration.ofDays(1),
+                    batchSize = 1,
+                )
+            }
+
+            remainingFeedbackIds() shouldBe listOf("kept-after-rollback")
+            retentionJobStateCount() shouldBe 0
+        } finally {
+            removeRejectingStateTrigger()
+        }
+    }
 })
+
+private fun databaseRetentionCutoff(): Instant =
+    TestDatabase.dataSource.connection.use { connection ->
+        connection.prepareStatement(
+            """
+                SELECT (
+                    clock_timestamp() AT TIME ZONE 'UTC' - make_interval(months => 12)
+                ) AT TIME ZONE 'UTC' AS cutoff
+            """.trimIndent()
+        ).use { statement ->
+            statement.executeQuery().use { result ->
+                check(result.next())
+                result.getTimestamp("cutoff").toInstant()
+            }
+        }
+    }
 
 private fun insertFeedback(id: String, createdAt: Instant, team: String) {
     TestDatabase.dataSource.connection.use { connection ->
@@ -184,6 +225,49 @@ private fun ageCleanupState(age: Duration) {
         connection.commit()
     }
 }
+
+private fun installRejectingStateTrigger() {
+    TestDatabase.dataSource.connection.use { connection ->
+        connection.createStatement().use { statement ->
+            statement.execute(
+                """
+                    CREATE FUNCTION reject_retention_state_write()
+                    RETURNS trigger
+                    AS 'BEGIN RAISE EXCEPTION ''forced retention state failure''; END;'
+                    LANGUAGE plpgsql
+                """.trimIndent()
+            )
+            statement.execute(
+                """
+                    CREATE TRIGGER reject_retention_state_write
+                    BEFORE INSERT OR UPDATE ON feedback_retention_job_state
+                    FOR EACH ROW EXECUTE FUNCTION reject_retention_state_write()
+                """.trimIndent()
+            )
+        }
+        connection.commit()
+    }
+}
+
+private fun removeRejectingStateTrigger() {
+    TestDatabase.dataSource.connection.use { connection ->
+        connection.createStatement().use { statement ->
+            statement.execute("DROP TRIGGER IF EXISTS reject_retention_state_write ON feedback_retention_job_state")
+            statement.execute("DROP FUNCTION IF EXISTS reject_retention_state_write()")
+        }
+        connection.commit()
+    }
+}
+
+private fun retentionJobStateCount(): Int =
+    TestDatabase.dataSource.connection.use { connection ->
+        connection.createStatement().use { statement ->
+            statement.executeQuery("SELECT COUNT(*) FROM feedback_retention_job_state").use { result ->
+                check(result.next())
+                result.getInt(1)
+            }
+        }
+    }
 
 private fun insertTag(feedbackId: String, tag: String) {
     TestDatabase.dataSource.connection.use { connection ->

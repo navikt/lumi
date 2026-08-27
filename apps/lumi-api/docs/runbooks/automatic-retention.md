@@ -87,5 +87,7 @@ and whether one instance can acquire a database connection and the retention loc
   `0` when it is disabled. The stale alert is inactive while all instances are
   disabled.
 
-A skipped run is expected on instances that do not acquire the lock. It is not an
-error as long as another instance reports an executed run.
+A skipped poll is expected when the global 24-hour interval has not elapsed or
+another instance holds the lock. The metric combines both reasons; application logs
+distinguish them. Skips are not errors as long as a global executed run is reported
+within the stale-alert window.
