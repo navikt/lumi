@@ -38,11 +38,15 @@ del av widgetens registerbytte.
    `id-token: write`-permission lar npm verifisere akkurat denne workflowen med
    en kortlivet identitet; ingen langlivet npm-hemmelighet lagres i repoet.
    Offentlige releaser får provenance som knytter pakken til workflowen og
-   kildekoden i `navikt/lumi`.
+   kildekoden i `navikt/lumi`. Trusted publisher bindes også til GitHub
+   Actions-environmentet `npm-publish`, som bare tillater branch `main`. Dette
+   hindrer at en endret kopi av workflowen publiserer fra en feature-branch.
 4. **Førstegangspublisering er en kontrollert bootstrap.** npm krever at en
    pakke allerede finnes før trusted publisher kan konfigureres. En npm-admin
-   publiserer derfor en eksisterende release én gang og konfigurerer deretter
-   `navikt/lumi` og `publish-lumi-survey.yaml` som trusted publisher.
+   publiserer derfor den eksisterende `2.1.0`-tarballen fra GitHub Packages én
+   gang og konfigurerer deretter `navikt/lumi`,
+   `publish-lumi-survey.yaml` og `npm-publish` som trusted publisher. Tarballen
+   bygges ikke på nytt, og digestene verifiseres i begge registre.
 5. **Publisering tåler omkjøring.** npmjs publiseres før speilet. Hvis en
    versjon allerede finnes, hoppes den bare over når registerets SHA-1- og
    SHA-512-digester er identiske med den lokale tarballen. Et avvik stopper
@@ -51,6 +55,10 @@ del av widgetens registerbytte.
    tilhørende installasjonsoppsett er fortsatt nødvendig for interne
    `@navikt`-avhengigheter. Konsumentdokumentasjonen skal ikke arve dette
    interne behovet.
+7. **Release-rettigheter separeres.** Pakking og preflight skjer read-only.
+   npmjs-jobben får bare `id-token: write`, speiljobben får bare
+   `packages: write`, og taggjobben får bare `contents: write`. Det samme
+   verifiserte workflow-artefaktet brukes i begge registre.
 
 ## Konsekvenser
 

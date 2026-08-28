@@ -185,24 +185,24 @@ test("publish verification is read-only and write access is main-only", () => {
     "utf8",
   );
   const verifyStart = workflow.indexOf("\n  verify:\n");
-  const publishStart = workflow.indexOf("\n  publish:\n");
+  const publishStart = workflow.indexOf("\n  publish_npmjs:\n");
 
   assert.notEqual(verifyStart, -1, "expected a separate verify job");
-  assert.notEqual(publishStart, -1, "expected a separate publish job");
+  assert.notEqual(publishStart, -1, "expected separate publish jobs");
   assert.ok(verifyStart < publishStart, "verify must run before publish");
 
   const verifyJob = workflow.slice(verifyStart, publishStart);
-  const publishJob = workflow.slice(publishStart);
+  const publishJobs = workflow.slice(publishStart);
   assert.match(verifyJob, /permissions:\n\s+contents: read\n\s+packages: read/);
   assert.doesNotMatch(verifyJob, /contents: write|packages: write/);
   assert.match(
-    publishJob,
+    publishJobs,
     /if:.*inputs\.dry_run == 'false'.*github\.ref_name == 'main'/,
   );
-  assert.match(
-    publishJob,
-    /permissions:\n\s+contents: write\n\s+id-token: write\n\s+packages: write/,
-  );
+  assert.equal((publishJobs.match(/id-token: write/g) ?? []).length, 1);
+  assert.equal((publishJobs.match(/packages: write/g) ?? []).length, 1);
+  assert.equal((publishJobs.match(/contents: write/g) ?? []).length, 1);
+  assert.match(publishJobs, /environment: npm-publish/);
 });
 
 test("publish mode rejects a version-only release", () => {

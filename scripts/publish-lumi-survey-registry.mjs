@@ -1,6 +1,6 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,6 +8,7 @@ const PACKAGE_NAME = "@navikt/lumi-survey";
 const NPMJS_REGISTRY = "https://registry.npmjs.org";
 const GITHUB_REGISTRY = "https://npm.pkg.github.com";
 const ALLOWED_REGISTRIES = new Set([NPMJS_REGISTRY, GITHUB_REGISTRY]);
+const ALLOWED_MODES = new Set(["check", "publish", "verify"]);
 
 function fail(message) {
   throw new Error(`[publish:lumi-survey] ${message}`);
@@ -112,13 +113,20 @@ export function buildPublishArguments(tarballPath, registryUrl) {
   return publishArguments;
 }
 
-async function publishedDigests({ registryUrl, name, version, token }) {
+async function publishedDigests({
+  registryUrl,
+  name,
+  version,
+  token,
+  fetchImplementation = fetch,
+}) {
   const headers = { accept: "application/json" };
   if (token) headers.authorization = `Bearer ${token}`;
 
-  const response = await fetch(registryPackageUrl(registryUrl, name), {
-    headers,
-  });
+  const response = await fetchImplementation(
+    registryPackageUrl(registryUrl, name),
+    { headers },
+  );
   if (response.status === 404) return undefined;
   if (!response.ok) {
     fail(
@@ -130,7 +138,7 @@ async function publishedDigests({ registryUrl, name, version, token }) {
   return publishedVersionDigests(metadata, version);
 }
 
-function parseArguments(arguments_) {
+export function parseArguments(arguments_) {
   const values = new Map();
   for (const argument of arguments_) {
     const separator = argument.indexOf("=");
@@ -142,45 +150,90 @@ function parseArguments(arguments_) {
 
   const tarballPath = values.get("tarball");
   const registryUrl = values.get("registry");
-  if (!tarballPath || !registryUrl || values.size !== 2) {
-    fail("Usage: --tarball=<path> --registry=<url>");
+  const mode = values.get("mode") ?? "publish";
+  const hasUnknownKey = [...values.keys()].some(
+    (key) => !["tarball", "registry", "mode"].includes(key),
+  );
+  if (
+    !tarballPath ||
+    !registryUrl ||
+    hasUnknownKey ||
+    !ALLOWED_MODES.has(mode) ||
+    values.size < 2 ||
+    values.size > 3
+  ) {
+    fail(
+      "Usage: --tarball=<path> --registry=<url> [--mode=check|publish|verify]",
+    );
   }
   return {
     tarballPath: path.resolve(tarballPath),
     registryUrl: normalizeRegistryUrl(registryUrl),
+    mode,
   };
 }
 
-async function main() {
-  const { tarballPath, registryUrl } = parseArguments(process.argv.slice(2));
+export async function runPublication({
+  tarballPath,
+  registryUrl,
+  mode = "publish",
+  environment = process.env,
+  fetchImplementation = fetch,
+  spawnImplementation = spawnSync,
+}) {
+  if (!ALLOWED_MODES.has(mode)) {
+    fail(`Unsupported mode: ${mode}`);
+  }
+
+  const normalizedRegistryUrl = normalizeRegistryUrl(registryUrl);
   const { name, version } = readPackedManifest(tarballPath);
   const localDigests = tarballDigests(tarballPath);
-  const isGitHubPackages = registryUrl === GITHUB_REGISTRY;
-  const readToken = isGitHubPackages ? process.env.NODE_AUTH_TOKEN : undefined;
+  const isGitHubPackages = normalizedRegistryUrl === GITHUB_REGISTRY;
+  const readToken = isGitHubPackages ? environment.NODE_AUTH_TOKEN : undefined;
 
   if (isGitHubPackages && !readToken) {
     fail("NODE_AUTH_TOKEN is required for GitHub Packages.");
   }
 
   const remoteDigests = await publishedDigests({
-    registryUrl,
+    registryUrl: normalizedRegistryUrl,
     name,
     version,
     token: readToken,
+    fetchImplementation,
   });
   const decision = publicationDecision(localDigests, remoteDigests);
   if (decision === "skip") {
     console.log(
-      `[publish:lumi-survey] ${name}@${version} already exists in ${registryUrl} with the same tarball; skipping.`,
+      `[publish:lumi-survey] ${name}@${version} already exists in ${normalizedRegistryUrl} with the same tarball; skipping.`,
     );
-    return;
+    return decision;
   }
 
-  const result = spawnSync(
+  if (mode === "verify") {
+    fail(
+      `${name}@${version} is not published in ${normalizedRegistryUrl}; expected an identical published version.`,
+    );
+  }
+
+  if (mode === "check") {
+    console.log(
+      `[publish:lumi-survey] ${name}@${version} is not published in ${normalizedRegistryUrl}; preflight passed.`,
+    );
+    return decision;
+  }
+
+  const publishEnvironment = { ...environment };
+  if (!isGitHubPackages) {
+    delete publishEnvironment.NODE_AUTH_TOKEN;
+    delete publishEnvironment.NPM_AUTH_TOKEN;
+  }
+
+  const result = spawnImplementation(
     "npm",
-    buildPublishArguments(tarballPath, registryUrl),
+    buildPublishArguments(tarballPath, normalizedRegistryUrl),
     {
-      env: process.env,
+      env: publishEnvironment,
       stdio: "inherit",
     },
   );
@@ -189,11 +242,18 @@ async function main() {
   if (result.status !== 0) {
     fail(`npm publish exited with status ${String(result.status)}.`);
   }
+  return decision;
+}
+
+async function main() {
+  const arguments_ = parseArguments(process.argv.slice(2));
+  await runPublication(arguments_);
 }
 
 if (
   process.argv[1] &&
-  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+  realpathSync(path.resolve(process.argv[1])) ===
+    realpathSync(fileURLToPath(import.meta.url))
 ) {
   try {
     await main();
