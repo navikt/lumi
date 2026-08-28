@@ -98,9 +98,13 @@ Før trafikk eller migrering fortsetter:
    reviewet NAIS-endring. Bekreft `/internal/isReady` og vanlige
    databaseavhengige lesekall.
 5. Hold automatisk retention avslått til radomfanget er kontrollert.
-6. Kjør én syntetisk innsending gjennom `/release-verification`, og bekreft den
-   eksakte receipt-raden i dashboardet. Ikke bruk en ekte survey eller ekte
-   respondentdata som test.
+6. Dersom en kontrollert produksjonssurvey allerede er tilgjengelig: avtal én
+   syntetisk innsending uten personopplysninger med survey-eieren, og bekreft
+   den eksakte receipt-raden i dashboardet. Ikke opprett eller reaktiver en
+   survey bare for recovery-testen. Hvis ingen egnet survey finnes, følg den
+   første forventede innsendingen via receipt-ID og metrikker uten å kopiere
+   svarinnhold. `/release-verification` er bare aktiv i dev og er derfor ikke
+   bevis på at produksjonsdatabasen er gjenopprettet.
 7. Kontroller `LumiSubmissionFailure`,
    `LumiSubmissionRejectionSpike` og applikasjonslogger før hendelsen lukkes.
 
