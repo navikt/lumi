@@ -8,13 +8,8 @@ Aksel-basert React-widget for å samle inn brukertilbakemeldinger via Lumi.
 
 ## Installer
 
-Pakken publiseres til GitHub Packages. Legg dette i prosjektets `.npmrc`:
-
-```properties
-@navikt:registry=https://npm.pkg.github.com
-```
-
-Installer pakken og Aksel 8 eller nyere:
+Pakken publiseres offentlig på npmjs og kan installeres uten `.npmrc` eller
+GitHub-token. Installer pakken og Aksel 8 eller nyere:
 
 ```sh
 pnpm add @navikt/lumi-survey @navikt/ds-react @navikt/ds-css

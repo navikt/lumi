@@ -60,7 +60,7 @@ Prinsipp:
 - Skriv kort og konkret (1–6 bullets). Tenk: "hva trenger en konsument å vite?".
 - Interne refactors som ikke påvirker konsumenter kan stå under "Changed" eller utelates.
 
-## Publisering til GitHub Packages (anbefalt)
+## Publisering til npmjs og GitHub Packages
 
 Publisering er en “to-trinns” prosess:
 
@@ -83,20 +83,118 @@ Publisering er en “to-trinns” prosess:
    - `pnpm --filter @navikt/lumi-survey pack --dry-run`
 5. Commit og push PR-en. Få PR-en merget til `main`.
 6. Publiser:
-   - GitHub → Actions → `Publish @navikt/lumi-survey (GitHub Packages)`
+   - GitHub → Actions → `Publish @navikt/lumi-survey (npmjs + GitHub Packages)`
    - Kjør først gjerne med `dry_run=true` (verifiserer alt uten publish)
    - Kjør deretter med `dry_run=false` for faktisk publisering
 
+Workflowen pakker én tarball og publiserer den først til npmjs og deretter til
+GitHub Packages. En omkjøring hopper bare over en eksisterende versjon når
+tarballens digester er identiske. Release-taggen opprettes etter at begge
+registrene er verifisert. Pakking skjer i en read-only jobb; npmjs-publisering,
+GitHub Packages-publisering og tagging har separate minimumsrettigheter.
+
+Publisering til npmjs bruker trusted publishing og krever ikke et langlivet
+npm-token. Trusted publisher for pakken skal peke på GitHub-repoet
+`navikt/lumi`, workflowfilen `publish-lumi-survey.yaml`, environmentet
+`npm-publish` og tillate `npm publish`. GitHub Packages bruker workflowens
+kortlivede `GITHUB_TOKEN`.
+
+**Første publisering til npmjs:**
+
+npm krever at pakken finnes før trusted publisher kan konfigureres. Følg denne
+engangsprosedyren før PR-en som innfører workflowen merges:
+
+1. Opprett GitHub Actions-environmentet `npm-publish` i repo-innstillingene.
+   Tillat bare beskyttede branches og kontroller at `main` er repoets eneste
+   beskyttede branch. Hvis repoet senere får flere beskyttede branches, skal
+   regelen endres til eksplisitt `main`. Environmentet trenger ingen secrets
+   eller required reviewers.
+2. Last ned **den allerede publiserte** `2.1.0`-tarballen fra GitHub Packages.
+   Ikke bygg den på nytt. Fra repo-roten, med `NPM_AUTH_TOKEN` satt til et
+   GitHub-token med `read:packages`:
+
+   ```bash
+   BOOTSTRAP_DIRECTORY="$(mktemp -d)"
+   npm pack @navikt/lumi-survey@2.1.0 \
+     --pack-destination="${BOOTSTRAP_DIRECTORY}" \
+     --registry=https://npm.pkg.github.com \
+     --@navikt:registry=https://npm.pkg.github.com
+   ```
+
+3. Verifiser tarballen før publisering:
+
+   ```text
+   SHA-1:   cfbbe9c392ae19a3792cd9053e29944a56e84738
+   SHA-512: sha512-CZiEu/tTQur7R5BqEMDpysvkVijKwhYnw8Ujf+Yb/S9MZ2yl6tYA50WrkgagvkE+oaxKLeVvlObnydZl9BK87g==
+   ```
+
+   Denne kommandoen beregner lokale digester og sammenligner dem med GitHub
+   Packages-metadata. Den skal rapportere at tarballen er identisk:
+
+   ```bash
+   NODE_AUTH_TOKEN="${NPM_AUTH_TOKEN}" \
+     node scripts/publish-lumi-survey-registry.mjs \
+       --mode=verify \
+       --tarball="${BOOTSTRAP_DIRECTORY}/navikt-lumi-survey-2.1.0.tgz" \
+       --registry=https://npm.pkg.github.com
+   ```
+
+4. En bruker som npm-administratorene har gitt publiseringstilgang, publiserer
+   nøyaktig denne filen som offentlig pakke. Begge registry-flaggene er
+   nødvendige fordi repoets `.npmrc` peker hele `@navikt`-scopet mot GitHub
+   Packages:
+
+   ```bash
+   unset NPM_AUTH_TOKEN NODE_AUTH_TOKEN
+   npm publish "${BOOTSTRAP_DIRECTORY}/navikt-lumi-survey-2.1.0.tgz" \
+     --registry=https://registry.npmjs.org \
+     --@navikt:registry=https://registry.npmjs.org \
+     --access=public \
+     --ignore-scripts
+   ```
+
+5. Kontroller at npmjs viser de samme SHA-1- og SHA-512-digestene:
+
+   ```bash
+   node scripts/publish-lumi-survey-registry.mjs \
+     --mode=verify \
+     --tarball="${BOOTSTRAP_DIRECTORY}/navikt-lumi-survey-2.1.0.tgz" \
+     --registry=https://registry.npmjs.org
+   ```
+
+   Kommandoen skal rapportere at tarballen er identisk. Konfigurer deretter
+   trusted publisher i npmjs-grensesnittet, eller med:
+
+   ```bash
+   npm trust github @navikt/lumi-survey \
+     --repo navikt/lumi \
+     --file publish-lumi-survey.yaml \
+     --env npm-publish \
+     --allow-publish
+   ```
+
+Ikke legg et npm-token i workflowen for å omgå bootstrapen. Etter at trusted
+publishing er verifisert, skal pakken settes til å kreve tofaktor og avvise
+tokenbasert publisering. Eventuelle gamle publiseringstokener tilbakekalles.
+Kun npm-administratorer og de få Lumi-maintainerne som må forvalte
+pakkeoppsettet, skal ha menneskelig npm-tilgang. Konsumenter trenger ingen
+npm-konto.
+
+Monorepoets `.npmrc` beholdes fordi repoet også installerer interne
+`@navikt`-pakker som bare finnes i GitHub Packages. Konsumenter av
+`@navikt/lumi-survey` trenger ikke denne konfigurasjonen.
+
 ### Publisering (manuelt)
 
-Dette er normalt ikke nødvendig. Anbefalt flyt er å publisere fra `main` via workflowen over.
+Dette er normalt ikke nødvendig. Anbefalt flyt er å publisere fra `main` via
+workflowen over.
 
-Bruk manuell publisering kun hvis du må debugge/rette opp et publish-problem, og gjør det med samme krav som workflowen (lint/typecheck/verify/tests + `pack --dry-run`).
+Bruk manuell publisering kun sammen med en npm-admin for bootstrap eller for å
+rette opp en konkret publiseringsfeil. Den ordinære flyten skal alltid gå via
+workflowen, slik at npmjs-publiseringen får provenance og begge registre
+mottar samme tarball.
 
-Per i dag publiserer vi til GitHub Packages (se `publishConfig.registry` i `packages/lumi-survey/package.json`).
-
-For å publisere manuelt må du ha en token som kan skrive til GitHub Packages og en `.npmrc`/miljøvariabel som gir auth (samme mekanisme som i CI).
-
-Publiser fra repo root:
-
-- `pnpm --filter @navikt/lumi-survey publish --publish-branch main`
+Hvis registrene er oppdatert, men taggsteget feiler, må operatøren kontrollere
+at begge registry-digestene matcher tarballen og at `lumi-survey-v<versjon>`
+peker på riktig commit. Feil innhold skal aldri avpubliseres og publiseres på
+nytt med samme versjon; rettelsen gis en ny patch-versjon.
