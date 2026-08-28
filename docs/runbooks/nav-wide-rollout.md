@@ -130,9 +130,10 @@ I tillegg til en grønn canary må disse varige gatene være lukket:
    dokumentert.
 5. Surveylisten og målingskontinuiteten er avklart etter beslutningstabellen
    over.
-6. Kapasitets- og recovery-valg bygger på avtalte RPO-/RTO-krav eller målte
-   terskler. HA, PITR og oppskalering skal ikke innføres som skjulte
-   standardvalg.
+6. Kapasitets- og recovery-valget følger
+   [ADR 0005](../adr/0005-database-recovery-og-kapasitet.md): dagens database
+   beholdes med eksplisitt RPO/RTO og målte stoppterskler. HA, PITR og
+   oppskalering skal ikke innføres som skjulte standardvalg.
 
 ## Stoppkriterier
 

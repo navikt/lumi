@@ -37,9 +37,9 @@ Before opening the activation PR:
 
 4. Run `EXPLAIN (ANALYZE, BUFFERS)` on the bounded `SELECT` from the cleanup CTE,
    never on the `DELETE`, and confirm use of `idx_feedback_opprettet`.
-5. Verify a tested recovery path. Prefer point-in-time recovery for a destructive
-   workload. If only scheduled backups are available, explicitly accept the recovery
-   window after testing clone/restore.
+5. Follow the [database recovery runbook](./database-recovery.md). Confirm the
+   latest successful backup and explicitly accept the recovery window from
+   [ADR 0005](../../../../docs/adr/0005-database-recovery-og-kapasitet.md).
 6. Change only the production `LUMI_RETENTION_ENABLED` value in a separately
    reviewed PR. Development must already have been observed before that PR merges,
    because the current workflow deploys production automatically after development.
