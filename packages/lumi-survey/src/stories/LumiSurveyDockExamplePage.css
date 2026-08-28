@@ -1,0 +1,24 @@
+.lumi-storybook-example-page {
+  min-height: 120vh;
+  padding: var(--ax-space-16);
+  background: var(--ax-bg-neutral-soft);
+  color: var(--ax-text-neutral);
+}
+
+.lumi-storybook-example-page__content {
+  display: grid;
+  max-width: 640px;
+  gap: var(--ax-space-16);
+}
+
+@media (max-width: 22rem) {
+  .lumi-storybook-code-preview__badge {
+    display: none;
+  }
+}
+
+@media (min-width: 48rem) {
+  .lumi-storybook-example-page {
+    padding: var(--ax-space-48);
+  }
+}

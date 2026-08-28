@@ -1,68 +1,120 @@
 import { CopyButton } from "@navikt/ds-react";
 import { useState } from "react";
+import type {
+  LumiSurveyConfig,
+  SurveyDocumentV1,
+} from "../components/surveyTypes.js";
 
-interface SurveyCodePreviewProps {
-  /**
-   * The survey configuration object to display
-   */
-  survey: unknown;
-  /**
-   * The context object (tags, etc.) to display
-   */
-  context?: unknown;
-  /**
-   * The behavior configuration to display
-   */
-  behavior?: unknown;
-  /**
-   * Optional title for the code panel
-   * @default "Survey-konfigurasjon"
-   */
-  title?: string;
-  /**
-   * Whether to show the code panel collapsed by default
-   * @default false
-   */
+interface CodePreviewProps {
+  code: string;
+  title: string;
+  badge: string;
+  note?: string;
+  tone?: "current" | "legacy" | "payload";
   defaultCollapsed?: boolean;
 }
 
-/**
- * A code preview component that displays the survey configuration as formatted TypeScript/JSON.
- * Used in Storybook to help developers understand what configuration produces what UI.
- */
-export function SurveyCodePreview({
+interface SurveyCodePreviewProps {
+  survey: LumiSurveyConfig | SurveyDocumentV1;
+  context?: unknown;
+  behavior?: unknown;
+  sourceCode?: string;
+  defaultCollapsed?: boolean;
+}
+
+function isSurveyDocumentV1(
+  survey: LumiSurveyConfig | SurveyDocumentV1,
+): survey is SurveyDocumentV1 {
+  return "authoringSchemaVersion" in survey;
+}
+
+function serialize(value: unknown): string {
+  return JSON.stringify(value, null, 2);
+}
+
+export function buildSurveySource({
   survey,
   context,
   behavior,
-  title = "Survey-konfigurasjon",
-  defaultCollapsed = false,
-}: SurveyCodePreviewProps) {
-  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
+}: Pick<SurveyCodePreviewProps, "survey" | "context" | "behavior">): string {
+  const currentDocument = isSurveyDocumentV1(survey);
+  const typeName = currentDocument ? "SurveyDocumentV1" : "LumiSurveyConfig";
+  const importedTypes = [typeName];
+  if (context !== undefined) {
+    importedTypes.push("LumiSurveyContext");
+  }
+  if (behavior !== undefined) {
+    importedTypes.push("LumiSurveyBehavior");
+  }
+  const imports = `import type { ${importedTypes.join(", ")} } from "@navikt/lumi-survey";`;
+  const sections = [
+    imports,
+    "",
+    `const survey = ${serialize(survey)} satisfies ${typeName};`,
+  ];
 
-  // Format the full configuration object - include all non-undefined props
-  const fullConfig: Record<string, unknown> = { survey };
-  if (context) fullConfig.context = context;
-  if (behavior) fullConfig.behavior = behavior;
-  const formattedCode = JSON.stringify(fullConfig, null, 2);
+  if (context !== undefined) {
+    sections.push(
+      "",
+      `const context = ${serialize(context)} satisfies LumiSurveyContext;`,
+    );
+  }
+  if (behavior !== undefined) {
+    sections.push(
+      "",
+      `const behavior = ${serialize(behavior)} satisfies LumiSurveyBehavior;`,
+    );
+  }
+
+  return sections.join("\n");
+}
+
+export function CodePreview({
+  code,
+  title,
+  badge,
+  note,
+  tone = "current",
+  defaultCollapsed = false,
+}: CodePreviewProps) {
+  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
+  const toneStyles = {
+    current: {
+      badgeBackground: "var(--ax-bg-success-soft)",
+      badgeColor: "var(--ax-text-success-subtle)",
+      noteBackground: "var(--ax-bg-info-soft)",
+      noteColor: "var(--ax-text-neutral)",
+    },
+    legacy: {
+      badgeBackground: "var(--ax-bg-warning-soft)",
+      badgeColor: "var(--ax-text-warning-subtle)",
+      noteBackground: "var(--ax-bg-warning-soft)",
+      noteColor: "var(--ax-text-neutral)",
+    },
+    payload: {
+      badgeBackground: "var(--ax-bg-accent-soft)",
+      badgeColor: "var(--ax-text-accent-subtle)",
+      noteBackground: "var(--ax-bg-accent-soft)",
+      noteColor: "var(--ax-text-neutral)",
+    },
+  }[tone];
 
   return (
-    <div
+    <section
       style={{
-        marginTop: "var(--ax-space-24)",
-        background: "var(--ax-bg-neutral)",
+        background: "var(--ax-bg-default)",
         border: "1px solid var(--ax-border-neutral-subtle)",
         borderRadius: "var(--ax-radius-8)",
         overflow: "hidden",
       }}
     >
-      {/* Header with title and copy button */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          gap: "var(--ax-space-12)",
           padding: "var(--ax-space-12) var(--ax-space-16)",
-          background: "var(--ax-bg-neutral-moderate)",
+          background: "var(--ax-bg-neutral-soft)",
           borderBottom: isCollapsed
             ? "none"
             : "1px solid var(--ax-border-neutral-subtle)",
@@ -70,63 +122,102 @@ export function SurveyCodePreview({
       >
         <button
           type="button"
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={() => setIsCollapsed((collapsed) => !collapsed)}
           aria-expanded={!isCollapsed}
           style={{
             display: "flex",
             alignItems: "center",
             gap: "var(--ax-space-8)",
             flex: "1 1 auto",
-            width: "100%",
-            cursor: "pointer",
+            minWidth: 0,
             padding: 0,
             border: 0,
             background: "transparent",
+            color: "inherit",
+            cursor: "pointer",
             textAlign: "left",
           }}
         >
-          <span
-            style={{
-              transform: isCollapsed ? "rotate(-90deg)" : "rotate(0deg)",
-              transition: "transform 0.2s",
-              display: "inline-block",
-            }}
-          >
-            ▼
-          </span>
+          <span aria-hidden="true">{isCollapsed ? "▶" : "▼"}</span>
           <strong style={{ fontSize: "0.875rem" }}>{title}</strong>
           <span
+            className="lumi-storybook-code-preview__badge"
             style={{
+              padding: "2px var(--ax-space-8)",
+              borderRadius: "var(--ax-radius-full)",
+              background: toneStyles.badgeBackground,
+              color: toneStyles.badgeColor,
               fontSize: "0.75rem",
-              color: "var(--ax-text-neutral-subtle)",
-              background: "var(--ax-bg-neutral-soft)",
-              padding: "2px 8px",
-              borderRadius: "var(--ax-radius-4)",
+              fontWeight: 600,
+              whiteSpace: "nowrap",
             }}
           >
-            TypeScript
+            {badge}
           </span>
         </button>
-        <CopyButton copyText={formattedCode} size="small" />
+        <CopyButton copyText={code} size="small" />
       </div>
 
-      {/* Code content */}
       {!isCollapsed && (
-        <pre
-          style={{
-            margin: 0,
-            padding: "var(--ax-space-16)",
-            overflow: "auto",
-            maxHeight: "400px",
-            fontSize: "0.8125rem",
-            lineHeight: 1.5,
-            fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-            background: "var(--ax-bg-neutral)",
-          }}
-        >
-          <code>{formattedCode}</code>
-        </pre>
+        <>
+          {note && (
+            <p
+              style={{
+                margin: 0,
+                padding: "var(--ax-space-12) var(--ax-space-16)",
+                background: toneStyles.noteBackground,
+                color: toneStyles.noteColor,
+                fontSize: "0.8125rem",
+              }}
+            >
+              {note}
+            </p>
+          )}
+          <section
+            aria-label={`${title} kode`}
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: axe requires scrollable code regions to be keyboard-focusable.
+            tabIndex={0}
+            style={{
+              padding: "var(--ax-space-16)",
+              overflow: "auto",
+              maxHeight: "520px",
+              background: "var(--ax-bg-default)",
+              color: "var(--ax-text-neutral)",
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+              fontSize: "0.8125rem",
+              lineHeight: 1.55,
+            }}
+          >
+            <pre style={{ margin: 0, font: "inherit" }}>
+              <code>{code}</code>
+            </pre>
+          </section>
+        </>
       )}
-    </div>
+    </section>
+  );
+}
+
+export function SurveyCodePreview({
+  survey,
+  context,
+  behavior,
+  sourceCode,
+  defaultCollapsed,
+}: SurveyCodePreviewProps) {
+  const currentDocument = isSurveyDocumentV1(survey);
+  return (
+    <CodePreview
+      code={sourceCode ?? buildSurveySource({ survey, context, behavior })}
+      title={currentDocument ? "Survey-dokument" : "Legacy-konfigurasjon"}
+      badge={currentDocument ? "SurveyDocumentV1" : "Legacy 2.x"}
+      note={
+        currentDocument
+          ? "authoringSchemaVersion beskriver dokumentformatet. Send inn eksempelet for å se den separate transport-payloaden."
+          : "Flat questions[] støttes i 2.x for eksisterende integrasjoner, men skal ikke brukes for nye surveyer."
+      }
+      tone={currentDocument ? "current" : "legacy"}
+      defaultCollapsed={defaultCollapsed}
+    />
   );
 }
