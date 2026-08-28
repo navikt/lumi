@@ -39,12 +39,16 @@ del av widgetens registerbytte.
    en kortlivet identitet; ingen langlivet npm-hemmelighet lagres i repoet.
    Offentlige releaser får provenance som knytter pakken til workflowen og
    kildekoden i `navikt/lumi`. Trusted publisher bindes også til GitHub
-   Actions-environmentet `npm-publish`, som bare tillater branch `main`. Dette
-   hindrer at en endret kopi av workflowen publiserer fra en feature-branch.
+   Actions-environmentet `npm-publish`, som bare tillater beskyttede branches.
+   `main` er repoets eneste beskyttede branch. Sammen med workflowens eksplisitte
+   `main`-sjekk hindrer dette at en endret kopi av workflowen publiserer fra en
+   feature-branch. Hvis repoet får flere beskyttede branches, skal environmentet
+   strammes inn til en eksplisitt `main`-regel.
 4. **Førstegangspublisering er en kontrollert bootstrap.** npm krever at en
-   pakke allerede finnes før trusted publisher kan konfigureres. En npm-admin
-   publiserer derfor den eksisterende `2.1.0`-tarballen fra GitHub Packages én
-   gang og konfigurerer deretter `navikt/lumi`,
+   pakke allerede finnes før trusted publisher kan konfigureres. En bruker som
+   npm-administratorene har gitt publiseringstilgang, publiserer derfor den
+   eksisterende `2.1.0`-tarballen fra GitHub Packages én gang og konfigurerer
+   deretter `navikt/lumi`,
    `publish-lumi-survey.yaml` og `npm-publish` som trusted publisher. Tarballen
    bygges ikke på nytt, og digestene verifiseres i begge registre.
 5. **Publisering tåler omkjøring.** npmjs publiseres før speilet. Hvis en
@@ -59,6 +63,13 @@ del av widgetens registerbytte.
    npmjs-jobben får bare `id-token: write`, speiljobben får bare
    `packages: write`, og taggjobben får bare `contents: write`. Det samme
    verifiserte workflow-artefaktet brukes i begge registre.
+8. **npmjs er et bevisst unntak fra Navs hovedregel.** Nav anbefaler GitHub
+   Packages for interne pakker fordi npmjs ikke har SSO. Lumi Survey er derimot
+   en offentlig, MIT-lisensiert konsumentpakke der anonym installasjon er et
+   eksplisitt mål. Konsumenter trenger ingen npm-konto. Menneskelig tilgang til
+   `@navikt` på npmjs begrenses til npm-administratorer og de få Lumi-
+   maintainerne som trenger å forvalte pakkeoppsettet. Ordinær publisering skjer
+   med trusted publishing, ikke med personlige eller langlivede tokens.
 
 ## Konsekvenser
 
@@ -76,9 +87,15 @@ del av widgetens registerbytte.
 
 - To registre må publiseres og overvåkes per release.
 - Den første npmjs-publiseringen og trusted-publisher-oppsettet krever en
-  manuell npm-adminhandling.
+  manuell handling fra en bruker som npm-administratorene har gitt tilgang.
+- npmjs mangler SSO. Medlemskap, rolleendringer og fjerning av menneskelig
+  tilgang må derfor fortsatt forvaltes manuelt sammen med npm-administratorene.
 - Lumi-repoet beholder GitHub Packages-autentisering selv om widgetkonsumentene
   ikke trenger den.
+
+Denne kostnaden holdes avgrenset ved at konsumenter aldri trenger medlemskap,
+at antallet maintainere holdes lavt, og at releaser ikke er avhengige av en
+persons npm-token.
 
 ## Vurderte alternativer
 

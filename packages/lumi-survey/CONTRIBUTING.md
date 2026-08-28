@@ -105,8 +105,10 @@ npm krever at pakken finnes før trusted publisher kan konfigureres. Følg denne
 engangsprosedyren før PR-en som innfører workflowen merges:
 
 1. Opprett GitHub Actions-environmentet `npm-publish` i repo-innstillingene.
-   Velg bare branch `main` under deployment branches. Environmentet trenger
-   ingen secrets eller required reviewers.
+   Tillat bare beskyttede branches og kontroller at `main` er repoets eneste
+   beskyttede branch. Hvis repoet senere får flere beskyttede branches, skal
+   regelen endres til eksplisitt `main`. Environmentet trenger ingen secrets
+   eller required reviewers.
 2. Last ned **den allerede publiserte** `2.1.0`-tarballen fra GitHub Packages.
    Ikke bygg den på nytt. Fra repo-roten, med `NPM_AUTH_TOKEN` satt til et
    GitHub-token med `read:packages`:
@@ -137,9 +139,10 @@ engangsprosedyren før PR-en som innfører workflowen merges:
        --registry=https://npm.pkg.github.com
    ```
 
-4. En npm-admin publiserer nøyaktig denne filen som offentlig pakke. Begge
-   registry-flaggene er nødvendige fordi repoets `.npmrc` peker hele
-   `@navikt`-scopet mot GitHub Packages:
+4. En bruker som npm-administratorene har gitt publiseringstilgang, publiserer
+   nøyaktig denne filen som offentlig pakke. Begge registry-flaggene er
+   nødvendige fordi repoets `.npmrc` peker hele `@navikt`-scopet mot GitHub
+   Packages:
 
    ```bash
    unset NPM_AUTH_TOKEN NODE_AUTH_TOKEN
@@ -173,6 +176,9 @@ engangsprosedyren før PR-en som innfører workflowen merges:
 Ikke legg et npm-token i workflowen for å omgå bootstrapen. Etter at trusted
 publishing er verifisert, skal pakken settes til å kreve tofaktor og avvise
 tokenbasert publisering. Eventuelle gamle publiseringstokener tilbakekalles.
+Kun npm-administratorer og de få Lumi-maintainerne som må forvalte
+pakkeoppsettet, skal ha menneskelig npm-tilgang. Konsumenter trenger ingen
+npm-konto.
 
 Monorepoets `.npmrc` beholdes fordi repoet også installerer interne
 `@navikt`-pakker som bare finnes i GitHub Packages. Konsumenter av
