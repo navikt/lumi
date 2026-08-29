@@ -40,9 +40,8 @@ En release pinner kildekatalogrevisjonen og eksakt tillatt kombinasjon av:
 - `(team_slug, app, survey_id)`
 - `definition_status` og tillatte `definition_hash`-verdier, med eksplisitt
   legacy-regel for `NULL`
-- tillatte `flow_hash`-verdier med normalisert `visibleIf`, eventuell eldre
-  `logic`, eksplisitte avhengigheter og evaluatorversjoner; manglende historisk
-  flow må være eksplisitt tillatt som `UNPINNED`
+- tillatte ikke-null `flow_hash`-verdier med normalisert `visibleIf`,
+  eksplisitte avhengigheter og evaluatorversjon
 - `field_id`, `field_type`, ratingvariant/-skala og `max_selections`
 - tillatte `option_id`-er
 - godkjente metadatarevisjoner og dimensjoner
@@ -52,8 +51,12 @@ automatisk publisert eller droppet fra en ellers publisert innsending. Bare
 berørt produkt går til `Må vurderes`, fryser nye data ved siste trygge
 `data_cutoff_at` og fortsetter purge-only refresh for retensjon og
 kildesletting. Andre produkter fra samme source-snapshot fortsetter uavhengig.
-`UNPINNED` godtas bare når releasen eksplisitt har tillatt historiske rader med
-manglende flow; det er ikke det samme som å godta en ukjent hash.
+Historiske `UNPINNED`-rader kan ikke tillates av en release. De ekskluderes
+eksplisitt når en nyere, kjent flyt etablerer et trygt cutover. Hvis den sist
+observerte innsendingen igjen er `UNPINNED`, blokkeres ny release og et aktivt
+produkt fryser ved siste trygge cutoff. Dermed kan en rollback til gammel
+klient eller deprecated `logic` aldri stille starte en stadig voksende
+eksklusjon. En ukjent ikke-null hash blokkerer alltid.
 
 Kildeendringen tas inn gjennom et nytt utkast, ny preview og ny validert
 release. En ny flervalgsoption er kompatibel når releasen legger til en
@@ -66,9 +69,10 @@ reglene for godkjent metadata nedenfor.
 ## `responses_<app>_<survey>_wide_v1`
 
 Det publiseres én wide-view per valgt `(app, survey_id)`. Den har én rad per
-innsending og er fasit for total response-populasjon og applicability-baserte
-denominatorer. En
-innsending er med selv om ingen av de valgte svarfeltene ble besvart.
+release-tillatt, pinnet innsending og er fasit for den eksplisitt avgrensede
+response-populasjonen og applicability-baserte denominatorer. Historiske
+`UNPINNED`-rader er synlig rapportert som ekskludert i preview/release. En
+tillatt innsending er med selv om ingen av de valgte svarfeltene ble besvart.
 
 Viewnavn og dynamiske kolonnenavn avledes deterministisk fra stabil ID,
 kollisjonssikker slug og kort hash. Brukeren kan ikke skrive SQL-identifikatorer.
@@ -95,20 +99,64 @@ flow_status        STRING NOT NULL    -- PINNED | UNPINNED
 Lumi fabrikerer aldri en `definition_hash`. Legacy-rader uten registrert hash
 har `definition_hash=NULL` og `definition_status=LEGACY_DERIVED`.
 
-`flow_hash` er hash av hele den normaliserte flytdefinisjonen: `visibleIf`-
-grafen, eventuell eldre `logic`, dependency-identitetene og evaluatorenes
-semantikkversjoner. `PINNED` krever en ikke-null hash som ble registrert og
-matchet ved ingest; en klientoppgitt, ukjent hash er aldri tilstrekkelig. Samme
+`flow_hash` er hash av hele den normaliserte `visibleIf`-flyten:
+spørsmålsrekkefølge, predicate-avhengigheter og evaluatorens semantikkversjon.
+`PINNED` krever en ikke-null hash som API-et selv beregnet fra en validert,
+fullstendig flow-kontrakt og matchet ved ingest; en klientoppgitt hash er aldri
+tilstrekkelig. Samme
 `definition_hash` med endret flyt skal gi ulik `flow_hash`. Eksisterende rader
 uten en entydig historisk flytrevisjon får `flow_hash=NULL` og
 `flow_status=UNPINNED`; Lumi rekonstruerer dem aldri med dagens betingelser.
-V1 beregner bare eksakt applicability for den kanoniske `visibleIf`-modellen.
-Eldre `logic` som kan påvirke eksponering gir `NULL` og kvalitetsvarsel selv om
-flytrevisjonen kan identifiseres.
+En survey som bruker deprecated `logic`, sender ingen flow-kontrakt og blir
+`UNPINNED`. V1 lagrer, hasher eller evaluerer ikke `logic`; surveyen må
+migreres til `visibleIf` før nye rader kan få eksakt applicability.
+
+Flow-kontrakten registreres immutable og app-avgrenset på
+`(team, app, survey_id, definition_hash, flow_hash)` før feedbackraden lagres i
+samme transaksjon. Bare hashene lagres på feedbackraden. Definition og flow
+fjernes fra rå feedback-JSON, og kildekatalogen leser materialiserte
+kontraktobservasjoner i stedet for å skanne feedbacktabellen. Gamle klienter
+fortsetter å virke med `flow_hash=NULL`.
+
+En flow-kontrakt kan ha maksimalt 50 immutable revisjoner per
+`(team, app, survey_id, definition_hash)`. Predicate-nøkler er maksimalt 200
+tegn, predicate-strenger maksimalt 2048 tegn, og answer-predicates valideres
+mot felttype, ratingintervall og choice-domene. Normalisert flow er maksimalt
+64 KiB, og lagrede definition-/flow-kontrakter har et samlet budsjett på
+16 MiB per team. Budsjettet serialiseres bare når en ny revisjon registreres;
+kjente revisjoner deler eksisterende kontrakt. Når en revisjons- eller
+bytegrense nås, lagres selve svaret fortsatt, men med `flow_hash=NULL`; kilden
+blir dermed fail-closed `UNPINNED`. En kontrakt slettes automatisk når siste
+feedbackrad som refererer den slettes. Kontrakten kan derfor ikke leve lenger
+enn kildedataene den dokumenterer.
+
+### Normativ `visible-if-v1`-semantikk
+
+Alle conditions evalueres mot tilstanden ved innsending. En manglende verdi er
+`undefined`; `null`, objekter og frie JSON-verdier finnes ikke i kontrakten.
+
+| Operator | Normativ betydning |
+| --- | --- |
+| `EXISTS` | sann når input ikke er `undefined` |
+| `EQ` | streng likhet uten typekonvertering |
+| `NEQ` | negasjonen av streng likhet |
+| `GT` / `LT` | numerisk sammenligning av endelige tall |
+| `CONTAINS` på streng | case-insensitiv substring |
+| `CONTAINS` på flervalg | eksakt medlemskap i listen |
+
+`ALL` er sann når alle conditions er sanne; `ANY` er sann når minst én er
+sann. Conditions normaliseres til deterministisk rekkefølge før hashing, men
+rekkefølgen endrer ikke evaluatorresultatet. ANSWER kan bare referere et
+tidligere felt. Den lukkede `deviceType`-dimensjonen støtter `EXISTS`, `EQ`,
+`NEQ` og `CONTAINS`; likhetsverdier må være `desktop`, `mobile` eller
+`tablet`. Enhver endring i disse sannhetstabellene, null-/typesemantikken eller
+normaliseringen krever en ny evaluatorversjon og ny hashdomeneidentitet.
 
 `flow_status=PINNED` krever både `definition_status=REGISTERED` og ikke-null
 `flow_hash`. `flow_status=UNPINNED` krever `flow_hash=NULL`. Brudd på denne
-invarianten stopper produktpubliseringen.
+invarianten stopper produktpubliseringen. En `UNPINNED` kilderad er aldri en
+aktiv offentlig V1-rad; statusen brukes i privat validering og preview for å
+forklare blokkering eller eksplisitt historisk eksklusjon.
 
 ### Dynamiske kolonner
 
@@ -128,34 +176,31 @@ dimensjon:       dim_<key>_<hash> STRING|BOOL|FLOAT64
   evalueres deterministisk til sann.
 - `FALSE` betyr at en registrert, fullstendig definisjon beviser at feltet ikke
   fantes, eller at en pinnet og sikkert evaluerbar `visibleIf` var usann.
-- `NULL` betyr at feltet finnes, men relevans ikke kan fastslås, blant annet
-  ved `flow_status=UNPINNED`, `LEGACY_DERIVED` eller eldre `logic`.
+- `NULL` er bare gyldig når en tillatt, pinnet definisjon ikke kan uttrykke en
+  offentlig verdi for feltet; en `UNPINNED` kilderad ekskluderes før viewet.
 
-Prioriteten er normativ: strukturelt bevist fravær i en registrert definisjon
-gir `FALSE` selv om raden mangler flow. Når feltet finnes, gir `UNPINNED`
-derimot alltid `NULL`; dagens predicate kan aldri brukes. For
-`LEGACY_DERIVED` kan heller ikke strukturelt fravær bevises, og resultatet er
-`NULL`.
+Prioriteten er normativ: strukturelt bevist fravær i en release-tillatt,
+registrert definisjon gir `FALSE`. Dagens predicate brukes aldri på en annen
+historisk flytrevisjon. `UNPINNED` og `LEGACY_DERIVED` inngår ikke i den aktive
+V1-populasjonen.
 
 Alle answer- og metadataavhengigheter i en predicate må selv være eksplisitt
 valgt, klassifisert og offentlig i samme produkt før det betingede feltet kan
 inngå i en release. Preview viser avhengigheten og hvilken inferens både
 answer-tilstedeværelse og applicability røper. En bare allowlistet, men uvalgt
 avhengighet blokkerer releasen; det finnes ingen skjult «evaluation-only»-omvei
-i V1. `NULL` er en konservativ fallback for allerede publiserte historiske
-rader med unpinned/ukomplett flyt, ikke en måte å godkjenne et nytt ufullstendig
-scope på. En betinget gren kan aldri merkes `TRUE` bare fordi feltet finnes i
-definisjonen. `NULL` gir kvalitetsvarsel og utelates fra eksakte feltrater. Et
+i V1. Historiske rader med unpinned/ukomplett flyt ekskluderes med et synlig
+kvalitetsvarsel; `NULL` brukes ikke som en omvei til å publisere dem. En
+betinget gren kan aldri merkes `TRUE` bare fordi feltet finnes i definisjonen. Et
 ubesvart, men bevist tilgjengelig felt har derimot `applicable=TRUE` og `NULL` i
 svarverdien.
 
 En offentlig svarverdi kan bare finnes når feltets applicability er `TRUE`.
 `FALSE` eller `NULL` gir alltid `NULL` i alle wide-svarkolonner og ingen
-tilsvarende long-rad. For `UNPINNED` historikk undertrykkes en eventuell
-kildeverdi med `PASSED_WITH_WARNINGS`. Manifestet viser bare kvalitetsstatus;
-team-scope preview kan vise et personverntersklet antall uten verdiinnhold.
-Dette er en eksplisitt legacyregel og kan ikke aktiveres for en ukjent
-ikke-null flow-hash.
+tilsvarende long-rad. `UNPINNED` historikk ekskluderes fra både wide og long
+med `PASSED_WITH_WARNINGS`. Manifestet viser bare kvalitetsstatus; team-scope
+preview kan vise et personverntersklet antall uten verdiinnhold. Dette kan ikke
+aktiveres for en ukjent ikke-null flow-hash.
 
 Hvis applicability er `FALSE`, men kildekandidaten likevel har et svar, er det
 et kontraktsbrudd. Produktet fryser før aktivering og fortsetter bare
@@ -244,8 +289,8 @@ mens raden representerer ett verdiatom.
 Duplisert option-ID i en registrert definisjon eller duplisert valgt option i
 et registrert/pinnet svar er et kontraktsbrudd og fryser produktet. Wide sin
 `selection_count` og long sin N beregnes fra samme validerte option-sett og er
-dermed identiske. `LEGACY_DERIVED`/`UNPINNED` publiserer ingen svarverdier og
-har derfor ingen offentlig dedupliseringssemantikk.
+dermed identiske. `LEGACY_DERIVED`/`UNPINNED` publiseres ikke og har derfor
+ingen offentlig dedupliseringssemantikk.
 
 Ratingvariant, skala og min/max skal være innbyrdes konsistente med den
 release-pinnede kildedefinisjonen. NPS har intervallet `0..10`; verdien `0` er

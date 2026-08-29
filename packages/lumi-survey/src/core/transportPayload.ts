@@ -1,4 +1,5 @@
 import { buildDefinitionBlock } from "./definitionBlock.js";
+import { buildFlowBlock } from "./flowBlock.js";
 import { assertSpecializedSurveyContract } from "./specializedSurveyContract.js";
 import type {
   ChoiceOption,
@@ -48,6 +49,7 @@ export function buildTransportPayload(
   });
 
   const definition = buildDefinitionBlock(questions, resolvedSurveyType);
+  const flow = buildFlowBlock(questions);
 
   const payload: LumiSurveyTransportPayload = {
     schemaVersion: 2,
@@ -57,6 +59,7 @@ export function buildTransportPayload(
     startedAt,
     deduplicationKey,
     definition,
+    ...(flow ? { flow } : {}),
     context,
     answers: [],
   };

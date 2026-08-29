@@ -101,6 +101,41 @@ class AnalysisSourceCatalogRepositoryTest : FunSpec({
         source.warnings shouldContain AnalysisCatalogWarning.LEGACY_DEFINITION_OBSERVED
         source.warnings shouldContain AnalysisCatalogWarning.SOURCE_ID_MISMATCH
     }
+
+    test("fails closed when a materialized observation has no registered contract") {
+        insertDefinition("team-a", "survey", "a".repeat(64), "field")
+        feedbackRepository.save(
+            feedbackJson("survey"),
+            "team-a",
+            "app-a",
+            "survey",
+            "a".repeat(64),
+        )
+        TestDatabase.dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                INSERT INTO analysis_control.analysis_source_contract_observations (
+                    team, app, survey_id, definition_hash, flow_hash,
+                    first_submission_at, last_submission_at
+                )
+                VALUES ('team-a', 'app-a', 'survey', ?, ?, now() + interval '1 second', now() + interval '1 second')
+                """.trimIndent(),
+            ).use { statement ->
+                statement.setString(1, "a".repeat(64))
+                statement.setString(2, "f".repeat(64))
+                statement.executeUpdate() shouldBe 1
+            }
+            connection.commit()
+        }
+
+        val source = repository.findCatalog("team-a").sources.single()
+
+        source.flowStatus shouldBe AnalysisFlowStatus.UNPINNED
+        source.flowHash shouldBe null
+        source.flowHashes shouldBe emptyList()
+        source.observedFlowHashes shouldBe listOf(null, "f".repeat(64))
+        source.warnings shouldContain AnalysisCatalogWarning.UNKNOWN_FLOW_OBSERVED
+    }
 })
 
 private fun insertDefinition(

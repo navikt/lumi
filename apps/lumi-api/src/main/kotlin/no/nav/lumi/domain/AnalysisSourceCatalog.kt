@@ -27,9 +27,23 @@ enum class AnalysisLabelSource {
 }
 
 @Serializable
+enum class AnalysisFlowDependencySource {
+    ANSWER,
+    METADATA,
+}
+
+@Serializable
+data class AnalysisFlowDependencyV1(
+    val source: AnalysisFlowDependencySource,
+    val key: String,
+)
+
+@Serializable
 enum class AnalysisCatalogWarning {
     LEGACY_DEFINITION_OBSERVED,
     HISTORICAL_DEFINITION_UNRESOLVED,
+    LEGACY_FLOW_OBSERVED,
+    UNKNOWN_FLOW_OBSERVED,
     DEFINITION_CONTENT_MISMATCH,
     SOURCE_ID_MISMATCH,
 }
@@ -44,6 +58,7 @@ data class AnalysisCatalogFieldV1(
     val maxSelections: Int? = null,
     val label: String? = null,
     val labelSource: AnalysisLabelSource = AnalysisLabelSource.UNKNOWN,
+    val flowDependencies: List<AnalysisFlowDependencyV1> = emptyList(),
 )
 
 @Serializable
@@ -56,6 +71,8 @@ data class AnalysisCatalogSourceV1(
     val definitionStatus: AnalysisDefinitionStatus,
     val observedDefinitionHashes: List<String?>,
     val flowHash: String? = null,
+    val flowHashes: List<String> = emptyList(),
+    val observedFlowHashes: List<String?> = emptyList(),
     val flowStatus: AnalysisFlowStatus,
     val fields: List<AnalysisCatalogFieldV1>,
     val warnings: List<AnalysisCatalogWarning>,
@@ -208,6 +225,11 @@ object AnalysisCatalogRevision {
         add(source.definitionHash ?: "<null>")
         add(source.definitionStatus.name)
         add(source.flowHash ?: "<null>")
+        source.flowHashes.sorted().forEach(::add)
+        source.observedFlowHashes
+            .map { it ?: "<null>" }
+            .sorted()
+            .forEach(::add)
         add(source.flowStatus.name)
         source.observedDefinitionHashes
             .map { it ?: "<null>" }
@@ -238,6 +260,12 @@ object AnalysisCatalogRevision {
         if (field.labelSource != AnalysisLabelSource.UNKNOWN) {
             add(field.label ?: "<null>")
         }
+        field.flowDependencies
+            .sortedWith(compareBy(AnalysisFlowDependencyV1::source, AnalysisFlowDependencyV1::key))
+            .forEach { dependency ->
+                add(dependency.source.name)
+                add(dependency.key)
+            }
     }
 
     private fun MutableList<String>.addDimensionFacts(dimension: AnalysisDimensionDefinitionV1) {

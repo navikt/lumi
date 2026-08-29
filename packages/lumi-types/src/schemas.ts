@@ -782,6 +782,164 @@ export const SubmissionDefinitionSchema = z
     }
   });
 
+const SubmissionFlowConditionSchema = z
+  .object({
+    source: z.enum(["ANSWER", "METADATA"]),
+    key: z
+      .string()
+      .min(1)
+      .max(200)
+      .refine(
+        (key) => key.trim().length > 0,
+        "flow condition key must be non-blank",
+      ),
+    operator: z.enum(["EQ", "NEQ", "GT", "LT", "CONTAINS", "EXISTS"]),
+    value: z
+      .union([z.string().max(2_048), z.number().finite(), z.boolean()])
+      .optional(),
+  })
+  .strict()
+  .superRefine((condition, ctx) => {
+    if (condition.operator === "EXISTS" && condition.value !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "EXISTS flow conditions must not include value",
+        path: ["value"],
+      });
+    }
+    if (condition.operator !== "EXISTS" && condition.value === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${condition.operator} flow conditions require value`,
+        path: ["value"],
+      });
+    }
+  });
+
+const SubmissionFlowFieldSchema = z
+  .object({
+    fieldId: z.string().min(1).max(200),
+    visibleIf: z
+      .object({
+        combinator: z.enum(["ALL", "ANY"]),
+        conditions: z.array(SubmissionFlowConditionSchema).min(1).max(50),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+
+export const SubmissionFlowV1Schema = z
+  .object({
+    schemaVersion: z.literal(1),
+    evaluatorVersion: z.literal("visible-if-v1"),
+    fields: z.array(SubmissionFlowFieldSchema).min(1).max(50),
+  })
+  .strict()
+  .superRefine((flow, ctx) => {
+    const seen = new Set<string>();
+    for (let i = 0; i < flow.fields.length; i += 1) {
+      const fieldId = flow.fields[i]?.fieldId;
+      if (!fieldId) continue;
+      if (seen.has(fieldId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `flow.fields.fieldId must be unique (duplicate: ${fieldId})`,
+          path: ["fields", i, "fieldId"],
+        });
+      }
+      seen.add(fieldId);
+    }
+  });
+
+function validateFlowConditionAgainstField(
+  condition: z.infer<typeof SubmissionFlowConditionSchema>,
+  field: z.infer<typeof SubmissionFieldDefinitionSchema>,
+  path: Array<string | number>,
+  ctx: z.RefinementCtx,
+) {
+  const allowedByType = {
+    RATING: ["EXISTS", "EQ", "NEQ", "GT", "LT"],
+    SINGLE_CHOICE: ["EXISTS", "EQ", "NEQ", "CONTAINS"],
+    MULTI_CHOICE: ["EXISTS", "CONTAINS"],
+    TEXT: ["EXISTS", "EQ", "NEQ", "CONTAINS"],
+    DATE: ["EXISTS", "EQ", "NEQ", "CONTAINS"],
+  } as const;
+  if (
+    !(allowedByType[field.fieldType] as readonly string[]).includes(
+      condition.operator,
+    )
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `flow operator ${condition.operator} is not supported for ${field.fieldType}`,
+      path: [...path, "operator"],
+    });
+    return;
+  }
+  if (condition.operator === "EXISTS") return;
+
+  const value = condition.value;
+  let valid = true;
+  switch (field.fieldType) {
+    case "RATING": {
+      const minimum = field.ratingVariant === "nps" ? 0 : 1;
+      const maximum =
+        field.ratingScale - (field.ratingVariant === "nps" ? 1 : 0);
+      valid =
+        typeof value === "number" &&
+        Number.isInteger(value) &&
+        value >= minimum &&
+        value <= maximum;
+      break;
+    }
+    case "SINGLE_CHOICE":
+    case "MULTI_CHOICE":
+      valid = typeof value === "string" && field.optionIds.includes(value);
+      break;
+    case "TEXT":
+    case "DATE":
+      valid = typeof value === "string" && value.trim().length > 0;
+      break;
+  }
+  if (!valid) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `flow condition value is outside the domain for ${field.fieldType}`,
+      path: [...path, "value"],
+    });
+  }
+}
+
+function validateFlowMetadataCondition(
+  condition: z.infer<typeof SubmissionFlowConditionSchema>,
+  path: Array<string | number>,
+  ctx: z.RefinementCtx,
+) {
+  if (condition.key !== "deviceType") return;
+  if (!["EXISTS", "EQ", "NEQ", "CONTAINS"].includes(condition.operator)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `flow operator ${condition.operator} is not supported for metadata deviceType`,
+      path: [...path, "operator"],
+    });
+    return;
+  }
+  if (condition.operator === "EXISTS") return;
+  if (
+    typeof condition.value !== "string" ||
+    (condition.operator !== "CONTAINS" &&
+      !["desktop", "mobile", "tablet"].includes(condition.value))
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "flow condition value is outside the domain for metadata deviceType",
+      path: [...path, "value"],
+    });
+  }
+}
+
 const DeduplicationKeySchema = z
   .string()
   .min(16)
@@ -948,6 +1106,7 @@ export const FeedbackSubmissionV2Schema = z
     timeToCompleteMs: z.number().int().nonnegative().nullable().optional(),
     deduplicationKey: DeduplicationKeySchema,
     definition: SubmissionDefinitionSchema,
+    flow: SubmissionFlowV1Schema.optional(),
     context: SubmissionContextV1Schema.nullable().optional(),
     answers: z.array(SubmissionAnswerSchema).min(1),
   })
@@ -964,6 +1123,72 @@ export const FeedbackSubmissionV2Schema = z
     const fieldsById = new Map(
       submission.definition.fields.map((field) => [field.fieldId, field]),
     );
+    if (submission.flow) {
+      const definitionFieldIds = submission.definition.fields.map(
+        (field) => field.fieldId,
+      );
+      const flowFieldIds = submission.flow.fields.map((field) => field.fieldId);
+      if (
+        definitionFieldIds.length !== flowFieldIds.length ||
+        definitionFieldIds.some(
+          (fieldId, index) => fieldId !== flowFieldIds[index],
+        )
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "flow.fields must match definition.fields in order",
+          path: ["flow", "fields"],
+        });
+      }
+
+      const priorFieldIds = new Set<string>();
+      submission.flow.fields.forEach((field, fieldIndex) => {
+        field.visibleIf?.conditions.forEach((condition, conditionIndex) => {
+          const conditionPath = [
+            "flow",
+            "fields",
+            fieldIndex,
+            "visibleIf",
+            "conditions",
+            conditionIndex,
+          ] as Array<string | number>;
+          if (
+            condition.source === "ANSWER" &&
+            !priorFieldIds.has(condition.key)
+          ) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "ANSWER flow conditions must reference an earlier field",
+              path: [
+                "flow",
+                "fields",
+                fieldIndex,
+                "visibleIf",
+                "conditions",
+                conditionIndex,
+                "key",
+              ],
+            });
+            return;
+          }
+          if (condition.source === "ANSWER") {
+            const referenced = fieldsById.get(condition.key);
+            if (referenced) {
+              validateFlowConditionAgainstField(
+                condition,
+                referenced,
+                conditionPath,
+                ctx,
+              );
+            }
+          } else {
+            validateFlowMetadataCondition(condition, conditionPath, ctx);
+          }
+        });
+        priorFieldIds.add(field.fieldId);
+      });
+    }
+
     for (let i = 0; i < submission.answers.length; i += 1) {
       const answer = submission.answers[i];
       if (!answer) continue;

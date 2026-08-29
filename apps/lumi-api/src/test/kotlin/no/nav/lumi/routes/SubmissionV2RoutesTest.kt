@@ -104,6 +104,33 @@ private fun submissionPayloadV2Raw(
     }
 """.trimIndent()
 
+private fun submissionPayloadV2WithFlow() = """
+    {
+      "schemaVersion": 2,
+      "surveyId": "dp-feedback-v2",
+      "surveyType": "rating",
+      "submittedAt": "2026-01-10T12:00:12Z",
+      "deduplicationKey": "client-key-123456",
+      "definition": {
+        "surveyType": "rating",
+        "fields": [{"fieldId": "feedback", "fieldType": "TEXT"}]
+      },
+      "flow": {
+        "schemaVersion": 1,
+        "evaluatorVersion": "visible-if-v1",
+        "fields": [{"fieldId": "feedback"}]
+      },
+      "answers": [
+        {
+          "fieldId": "feedback",
+          "fieldType": "TEXT",
+          "question": {"label": "Hvorfor?"},
+          "value": {"type": "text", "text": "Bra"}
+        }
+      ]
+    }
+""".trimIndent()
+
 private fun topTasksPayloadV2(successFieldId: String = "success") = """
     {
       "schemaVersion": 2,
@@ -172,7 +199,7 @@ class SubmissionV2RoutesTest : FunSpec({
         val submissionObservability = SubmissionObservability(meterRegistry)
         val submissionService = mockk<SubmissionService>()
         coEvery {
-            submissionService.submit(any(), any(), any(), any(), any())
+            submissionService.submit(any(), any(), any(), any(), any(), any())
         } returns SubmissionOutcome(SaveResult.Created("created-v2"), "hash-v2")
 
         testApplication {
@@ -216,7 +243,7 @@ class SubmissionV2RoutesTest : FunSpec({
                 .counter()
                 .count() shouldBe 1.0
             coVerify(exactly = 0) {
-                submissionService.submit(any(), any(), any(), any(), any())
+                submissionService.submit(any(), any(), any(), any(), any(), any())
             }
         }
     }
@@ -230,7 +257,7 @@ class SubmissionV2RoutesTest : FunSpec({
             val submissionObservability = SubmissionObservability(meterRegistry)
             val submissionService = mockk<SubmissionService>()
             coEvery {
-                submissionService.submit(any(), any(), any(), any(), any())
+                submissionService.submit(any(), any(), any(), any(), any(), any())
             } returns SubmissionOutcome(SaveResult.Created("created-v2"), "hash-v2")
 
             testApplication {
@@ -267,7 +294,7 @@ class SubmissionV2RoutesTest : FunSpec({
         val submissionObservability = SubmissionObservability(meterRegistry)
         val submissionService = mockk<SubmissionService>()
         coEvery {
-            submissionService.submit(any(), any(), any(), any(), any())
+            submissionService.submit(any(), any(), any(), any(), any(), any())
         } returns SubmissionOutcome(SaveResult.Created("created-azure"), "hash-azure")
 
         testApplication {
@@ -292,7 +319,7 @@ class SubmissionV2RoutesTest : FunSpec({
     test("v1 still works on existing submission endpoint") {
         val submissionService = mockk<SubmissionService>()
         coEvery {
-            submissionService.submit(any(), any(), any(), any(), any())
+            submissionService.submit(any(), any(), any(), any(), any(), any())
         } returns SubmissionOutcome(SaveResult.Created("created-v1"), "hash-v1")
 
         testApplication {
@@ -323,7 +350,7 @@ class SubmissionV2RoutesTest : FunSpec({
 
             response.status shouldBe HttpStatusCode.Created
             coVerify(exactly = 1) {
-                submissionService.submit(any(), "local-dev", "local-app", any(), null)
+                submissionService.submit(any(), "local-dev", "local-app", any(), null, null)
             }
         }
     }
@@ -331,7 +358,7 @@ class SubmissionV2RoutesTest : FunSpec({
     test("v2 accepts complete definition on existing submission endpoint") {
         val submissionService = mockk<SubmissionService>()
         coEvery {
-            submissionService.submit(any(), any(), any(), any(), any())
+            submissionService.submit(any(), any(), any(), any(), any(), any())
         } returns SubmissionOutcome(SaveResult.Created("created-v2"), "hash-v2")
 
         testApplication {
@@ -354,8 +381,62 @@ class SubmissionV2RoutesTest : FunSpec({
                         it.surveyId == "dp-feedback-v2" &&
                             it.surveyType.name == "RATING" &&
                             it.fields.map { field -> field.fieldId } == listOf("feedback")
-                    }
+                    },
+                    null,
                 )
+            }
+        }
+    }
+
+    test("v2 passes a validated visibleIf flow contract to ingest") {
+        val submissionService = mockk<SubmissionService>()
+        coEvery {
+            submissionService.submit(any(), any(), any(), any(), any(), any())
+        } returns SubmissionOutcome(SaveResult.Created("created-flow"), "definition-hash", "flow-hash")
+
+        testApplication {
+            application { submissionRoutesTestModule(submissionService) }
+            val response = createTestClient().post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(submissionPayloadV2WithFlow())
+            }
+
+            response.status shouldBe HttpStatusCode.Created
+            coVerify(exactly = 1) {
+                submissionService.submit(
+                    any(),
+                    "local-dev",
+                    "local-app",
+                    any(),
+                    any(),
+                    match {
+                        it.schemaVersion == 1 &&
+                            it.evaluatorVersion == "visible-if-v1" &&
+                            it.fields.map { field -> field.fieldId } == listOf("feedback")
+                    },
+                )
+            }
+        }
+    }
+
+    test("v2 rejects an unknown flow evaluator before ingest") {
+        val submissionService = mockk<SubmissionService>()
+
+        testApplication {
+            application { submissionRoutesTestModule(submissionService) }
+            val response = createTestClient().post("/api/tokenx/v1/feedback") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    submissionPayloadV2WithFlow().replace(
+                        "visible-if-v1",
+                        "visible-if-v2",
+                    ),
+                )
+            }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            coVerify(exactly = 0) {
+                submissionService.submit(any(), any(), any(), any(), any(), any())
             }
         }
     }
@@ -363,7 +444,7 @@ class SubmissionV2RoutesTest : FunSpec({
     test("v2 accepts the canonical specialized survey contract") {
         val submissionService = mockk<SubmissionService>()
         coEvery {
-            submissionService.submit(any(), any(), any(), any(), any())
+            submissionService.submit(any(), any(), any(), any(), any(), any())
         } returns SubmissionOutcome(SaveResult.Created("created-specialized"), "hash-specialized")
 
         testApplication {
@@ -375,7 +456,7 @@ class SubmissionV2RoutesTest : FunSpec({
 
             response.status shouldBe HttpStatusCode.Created
             coVerify(exactly = 1) {
-                submissionService.submit(any(), any(), any(), any(), any())
+                submissionService.submit(any(), any(), any(), any(), any(), any())
             }
         }
     }
@@ -383,7 +464,7 @@ class SubmissionV2RoutesTest : FunSpec({
     test("v2 accepts the success field emitted by deprecated Top Tasks builders") {
         val submissionService = mockk<SubmissionService>()
         coEvery {
-            submissionService.submit(any(), any(), any(), any(), any())
+            submissionService.submit(any(), any(), any(), any(), any(), any())
         } returns SubmissionOutcome(SaveResult.Created("created-legacy"), "hash-legacy")
 
         testApplication {
@@ -395,7 +476,7 @@ class SubmissionV2RoutesTest : FunSpec({
 
             response.status shouldBe HttpStatusCode.Created
             coVerify(exactly = 1) {
-                submissionService.submit(any(), any(), any(), any(), any())
+                submissionService.submit(any(), any(), any(), any(), any(), any())
             }
         }
     }
@@ -433,7 +514,7 @@ class SubmissionV2RoutesTest : FunSpec({
             response.status shouldBe HttpStatusCode.BadRequest
             Json.parseToJsonElement(response.bodyAsText()).jsonObject["message"]?.jsonPrimitive?.content shouldBe
                 "Invalid payload: definition is required for schemaVersion=2"
-            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any(), any()) }
         }
     }
 
@@ -478,7 +559,7 @@ class SubmissionV2RoutesTest : FunSpec({
             response.status shouldBe HttpStatusCode.BadRequest
             Json.parseToJsonElement(response.bodyAsText()).jsonObject["message"]?.jsonPrimitive?.content shouldBe
                 "Invalid payload: deduplicationKey is required for schemaVersion=2"
-            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any(), any()) }
         }
     }
 
@@ -516,7 +597,7 @@ class SubmissionV2RoutesTest : FunSpec({
             response.status shouldBe HttpStatusCode.BadRequest
             Json.parseToJsonElement(response.bodyAsText()).jsonObject["message"]?.jsonPrimitive?.content shouldBe
                 "Invalid payload"
-            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any(), any()) }
         }
     }
 
@@ -561,7 +642,7 @@ class SubmissionV2RoutesTest : FunSpec({
 
             response.status shouldBe HttpStatusCode.BadRequest
             response.bodyAsText() shouldContain "schemaVersion must be an integer"
-            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any(), any()) }
         }
     }
 
@@ -606,7 +687,7 @@ class SubmissionV2RoutesTest : FunSpec({
 
             response.status shouldBe HttpStatusCode.BadRequest
             response.bodyAsText() shouldContain "schemaVersion must be an integer"
-            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any(), any()) }
         }
     }
 
@@ -624,7 +705,7 @@ class SubmissionV2RoutesTest : FunSpec({
 
             response.status shouldBe HttpStatusCode.BadRequest
             response.bodyAsText() shouldContain "surveyType must match definition.surveyType"
-            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any(), any()) }
         }
     }
 
@@ -642,7 +723,7 @@ class SubmissionV2RoutesTest : FunSpec({
 
             response.status shouldBe HttpStatusCode.BadRequest
             response.bodyAsText() shouldContain "answers.fieldId"
-            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any(), any()) }
         }
     }
 
@@ -690,7 +771,7 @@ class SubmissionV2RoutesTest : FunSpec({
 
             response.status shouldBe HttpStatusCode.BadRequest
             response.bodyAsText() shouldContain "must not include optionIds"
-            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any(), any()) }
         }
     }
 
@@ -735,7 +816,7 @@ class SubmissionV2RoutesTest : FunSpec({
 
             response.status shouldBe HttpStatusCode.BadRequest
             response.bodyAsText() shouldContain "fieldType=SINGLE_CHOICE, expected TEXT"
-            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any(), any()) }
         }
     }
 
@@ -767,7 +848,7 @@ class SubmissionV2RoutesTest : FunSpec({
 
             response.status shouldBe HttpStatusCode.BadRequest
             response.bodyAsText() shouldContain "definition.fields max count"
-            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any(), any()) }
         }
     }
 
@@ -807,7 +888,7 @@ class SubmissionV2RoutesTest : FunSpec({
 
             response.status shouldBe HttpStatusCode.BadRequest
             response.bodyAsText() shouldContain "question.options"
-            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any(), any()) }
         }
     }
 
@@ -854,14 +935,14 @@ class SubmissionV2RoutesTest : FunSpec({
 
             response.status shouldBe HttpStatusCode.BadRequest
             response.bodyAsText() shouldContain "definition.optionIds"
-            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any(), any()) }
         }
     }
 
     test("v2 accepts choice answer when question options match definition") {
         val submissionService = mockk<SubmissionService>()
         coEvery {
-            submissionService.submit(any(), any(), any(), any(), any())
+            submissionService.submit(any(), any(), any(), any(), any(), any())
         } returns SubmissionOutcome(SaveResult.Created("created-choice"), "hash-choice")
 
         testApplication {
@@ -903,7 +984,7 @@ class SubmissionV2RoutesTest : FunSpec({
 
             response.status shouldBe HttpStatusCode.Created
             coVerify(exactly = 1) {
-                submissionService.submit(any(), any(), any(), any(), any())
+                submissionService.submit(any(), any(), any(), any(), any(), any())
             }
         }
     }
@@ -951,14 +1032,14 @@ class SubmissionV2RoutesTest : FunSpec({
 
             response.status shouldBe HttpStatusCode.BadRequest
             response.bodyAsText() shouldContain "exceeds maxSelections=1"
-            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 0) { submissionService.submit(any(), any(), any(), any(), any(), any()) }
         }
     }
 
     test("v2 returns 409 when full definition structure changes for same surveyId") {
         val submissionService = mockk<SubmissionService>()
         coEvery {
-            submissionService.submit(any(), any(), any(), any(), any())
+            submissionService.submit(any(), any(), any(), any(), any(), any())
         } answers {
             if (firstArg<String>().contains("followup")) {
                 throw ApiErrorException.ConflictException(
@@ -1025,7 +1106,7 @@ class SubmissionV2RoutesTest : FunSpec({
         val submissionObservability = SubmissionObservability(meterRegistry)
         val submissionService = mockk<SubmissionService>()
         coEvery {
-            submissionService.submit(any(), any(), any(), any(), any())
+            submissionService.submit(any(), any(), any(), any(), any(), any())
         } returnsMany listOf(
             SubmissionOutcome(SaveResult.Created("created-v2"), "hash-v2"),
             SubmissionOutcome(SaveResult.Duplicate("created-v2"))
