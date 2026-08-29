@@ -36,7 +36,8 @@ class AnalysisProductMigrationTest : FunSpec({
                         'analysis_control.analysis_products',
                         'analysis_control.analysis_product_drafts',
                         'analysis_control.analysis_product_releases',
-                        'analysis_control.analysis_product_audit_events'
+                        'analysis_control.analysis_product_audit_events',
+                        'analysis_control.analysis_sources'
                     ]) AS table_name
                 """.trimIndent(),
             ).use { statement ->

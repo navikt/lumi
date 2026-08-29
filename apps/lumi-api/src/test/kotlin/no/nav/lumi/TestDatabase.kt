@@ -98,6 +98,7 @@ object TestDatabase {
                         "analysis_control.analysis_product_releases, " +
                         "analysis_control.analysis_product_drafts, " +
                         "analysis_control.analysis_products, " +
+                        "analysis_control.analysis_sources, " +
                         "rating_marker, feedback, survey_definitions, survey_metadata, " +
                         "survey_authoring_revisions, survey_authoring_projects, " +
                         "feedback_retention_job_state CASCADE"

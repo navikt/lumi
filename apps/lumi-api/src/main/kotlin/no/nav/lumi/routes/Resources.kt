@@ -5,7 +5,29 @@ import kotlinx.serialization.Serializable
 
 @Resource("/api/v1/intern")
 class ApiV1Intern {
-    
+    @Resource("analysis-products")
+    @Serializable
+    class AnalysisProducts(
+        val parent: ApiV1Intern = ApiV1Intern(),
+        /** Optional team scope. The authorization plugin validates this value. */
+        val team: String? = null,
+    ) {
+        @Resource("catalog")
+        @Serializable
+        class Catalog(val parent: AnalysisProducts = AnalysisProducts())
+
+        @Resource("{productId}")
+        @Serializable
+        class Id(
+            val parent: AnalysisProducts = AnalysisProducts(),
+            val productId: String,
+        ) {
+            @Resource("preview")
+            @Serializable
+            class Preview(val parent: Id)
+        }
+    }
+
     @Resource("feedback")
     @Serializable
     class Feedback(

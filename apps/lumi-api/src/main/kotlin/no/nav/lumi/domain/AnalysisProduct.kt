@@ -114,12 +114,12 @@ object AnalysisProductDocumentValidator {
     }
 
     private fun normalizeSource(source: AnalysisProductSourceSelection): AnalysisProductSourceSelection {
-        val fieldIds = source.fieldIds.map { normalizeIdentifier("fieldId", it, 200) }.distinct()
+        val fieldIds = source.fieldIds.map { normalizeOpaqueIdentifier("fieldId", it, 200) }.distinct()
         require(fieldIds.size == source.fieldIds.size) { "fieldIds must be unique within a source" }
         require(fieldIds.size <= 500) { "At most 500 fields can be selected per source" }
         return source.copy(
-            app = normalizeIdentifier("app", source.app, 255),
-            surveyId = normalizeIdentifier("surveyId", source.surveyId, 200),
+            app = normalizeOpaqueIdentifier("app", source.app, 255),
+            surveyId = normalizeOpaqueIdentifier("surveyId", source.surveyId, 255),
             fieldIds = fieldIds,
         )
     }
@@ -133,6 +133,11 @@ object AnalysisProductDocumentValidator {
         require(it.isNotEmpty()) { "$name is required" }
         require(it.length <= maxLength) { "$name must be at most $maxLength characters" }
         require(identifierPattern.matches(it)) { "$name contains unsupported characters" }
+    }
+
+    private fun normalizeOpaqueIdentifier(name: String, value: String, maxLength: Int): String = value.also {
+        require(it.isNotBlank()) { "$name is required" }
+        require(it.length <= maxLength) { "$name must be at most $maxLength characters" }
     }
 }
 
