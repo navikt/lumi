@@ -45,13 +45,26 @@ sikkerhetstilbakekallinger. Brudd i kontrakten lager en ny major-versjon; en
 gammel major kan aldri bevare felt, dimensjoner eller retensjon som ikke lenger
 er tillatt.
 
-Releasen pinner også en separat `flow_hash`: normalisert `visibleIf`-graf,
-eventuell eldre `logic`, predicate-avhengigheter og evaluatorversjoner. Dagens
-strukturelle `definition_hash` inneholder ikke dette og kan ikke brukes til å
-rekonstruere historisk synlighet. Rader uten en registrert, ingest-matchet
-flytrevisjon får `flow_status=UNPINNED` og aldri en oppdiktet eksakt
-applicability. Eldre `logic` gir ikke eksakt applicability i V1 selv når
-flytrevisjonen kan identifiseres.
+Releasen pinner også separate `flow_hash`-verdier: normalisert
+`visibleIf`-flyt, predicate-avhengigheter, spørsmålsrekkefølge og
+evaluatorversjon. Dagens strukturelle `definition_hash` inneholder ikke dette
+og kan ikke brukes til å rekonstruere historisk synlighet. Rader uten en
+registrert, ingest-matchet flytrevisjon får `flow_status=UNPINNED` og aldri en
+oppdiktet eksakt applicability. Deprecated `logic` inngår ikke i den nye
+analysemodellen; surveys som fortsatt bruker den sender ingen flow-kontrakt og
+må migreres til `visibleIf` før nye rader kan pinnes.
+
+En release tillater bare ikke-null, serverberegnede flow-hasher. Historisk
+`UNPINNED` kan ekskluderes etter et nyere, pinnet cutover, men hvis siste
+observerte rad igjen er `UNPINNED`, blokkeres kilden. Flowregisteret er
+app-avgrenset, har maksimalt 50 revisjoner per kilde og definisjon, og lagrer
+predicate-strenger på maksimalt 2048 tegn. Hver normaliserte flow er begrenset
+til 64 KiB, og definition-/flow-registeret har et samlet 16 MiB-budsjett per
+team. Kvoteoverflow stopper ikke feedbackinnsamling; raden lagres `UNPINNED`.
+Immutable kontrakter slettes når siste refererende feedbackrad slettes, slik
+at predicate-konstanter følger kildens retention. `visible-if-v1` sin operator-, type-, null- og
+normaliseringssemantikk er normativt spesifisert i V1-datakontrakten; enhver
+endring krever ny evaluatorversjon.
 
 Lumi oppretter en lukket publiseringsflate, men gir aldri menneskelig
 lesetilgang. Personer og grupper søker om og får tilgang gjennom

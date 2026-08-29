@@ -337,6 +337,35 @@ export interface TransportDefinition {
   fields: TransportFieldDefinition[];
 }
 
+export type TransportFlowConditionSource = "ANSWER" | "METADATA";
+
+export interface TransportFlowCondition {
+  source: TransportFlowConditionSource;
+  key: string;
+  operator: LogicOperator;
+  value?: string | number | boolean;
+}
+
+export interface TransportVisibleIf {
+  combinator: "ALL" | "ANY";
+  conditions: TransportFlowCondition[];
+}
+
+export interface TransportFlowField {
+  fieldId: string;
+  visibleIf?: TransportVisibleIf;
+}
+
+/**
+ * Canonical, visibleIf-only flow contract sent with schemaVersion 2.
+ * Deprecated imperative `logic` is deliberately not representable here.
+ */
+export interface TransportFlowV1 {
+  schemaVersion: 1;
+  evaluatorVersion: "visible-if-v1";
+  fields: TransportFlowField[];
+}
+
 /**
  * Canonical submission payload (schemaVersion=2).
  * Includes full definition of all fields and deduplication key.
@@ -350,6 +379,7 @@ export interface LumiSurveyTransportPayload {
   timeToCompleteMs?: number;
   deduplicationKey: string;
   definition: TransportDefinition;
+  flow?: TransportFlowV1;
   context?: LumiSurveyContext;
   answers: TransportAnswer[];
 }

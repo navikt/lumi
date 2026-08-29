@@ -6,6 +6,15 @@ This project follows SemVer.
 
 ## [Unreleased]
 
+### Added
+
+- Schema V2 submissions now include a versioned, canonical `visibleIf` flow
+  contract. Surveys that still use deprecated imperative `logic` remain
+  submission-compatible but deliberately omit the flow contract so analytics
+  treats those rows as unpinned. Legacy `visibleIf` shapes that cannot be
+  represented exactly by `visible-if-v1` likewise keep submitting without a
+  flow contract instead of failing or recording false provenance.
+
 ### Fixed
 
 - `validateSurveyDocumentV1` and `buildCanonicalSurvey` now reject `visibleIf`

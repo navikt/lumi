@@ -1,11 +1,13 @@
 package no.nav.lumi.repository
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.lumi.PsqlContainer
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.MigrationVersion
 import java.sql.DriverManager
+import java.sql.SQLException
 import java.sql.Types
 import java.time.OffsetDateTime
 
@@ -70,6 +72,30 @@ class AnalysisSourceCatalogMigrationTest : FunSpec({
         Flyway.configure()
             .dataSource(container.jdbcUrl, container.username, container.password)
             .locations("classpath:db/migration")
+            .target(MigrationVersion.fromVersion("22"))
+            .load()
+            .migrate()
+
+        DriverManager.getConnection(container.jdbcUrl, container.username, container.password).use { connection ->
+            insertFeedback(connection, "feedback-contract-rolling", "2026-08-01T14:00:00Z", "app-c", "survey-a", "survey-a")
+            connection.prepareStatement(
+                """
+                SELECT COUNT(*)
+                FROM analysis_control.analysis_source_contract_observations
+                WHERE team = 'team-a' AND app = 'app-c' AND survey_id = 'survey-a'
+                  AND flow_hash IS NULL
+                """.trimIndent(),
+            ).use { statement ->
+                statement.executeQuery().use { result ->
+                    result.next() shouldBe true
+                    result.getInt(1) shouldBe 1
+                }
+            }
+        }
+
+        Flyway.configure()
+            .dataSource(container.jdbcUrl, container.username, container.password)
+            .locations("classpath:db/migration")
             .load()
             .migrate()
 
@@ -93,6 +119,10 @@ class AnalysisSourceCatalogMigrationTest : FunSpec({
                     result.getString("survey_id") shouldBe "survey-a"
 
                     result.next() shouldBe true
+                    result.getString("app") shouldBe "app-c"
+                    result.getString("survey_id") shouldBe "survey-a"
+
+                    result.next() shouldBe true
                     result.getString("app") shouldBe "app-json"
                     result.getString("survey_id") shouldBe "survey-json"
                     result.next() shouldBe false
@@ -107,6 +137,132 @@ class AnalysisSourceCatalogMigrationTest : FunSpec({
                     result.getBoolean(1) shouldBe false
                 }
             }
+
+            connection.prepareStatement(
+                """
+                SELECT
+                    has_table_privilege(
+                        'esyfo-analyse',
+                        'analysis_control.analysis_source_contracts',
+                        'SELECT'
+                    ),
+                    has_table_privilege(
+                        'esyfo-analyse',
+                        'analysis_control.analysis_source_contract_observations',
+                        'SELECT'
+                    )
+                """.trimIndent(),
+            ).use { statement ->
+                statement.executeQuery().use { result ->
+                    result.next() shouldBe true
+                    result.getBoolean(1) shouldBe false
+                    result.getBoolean(2) shouldBe false
+                }
+            }
+        }
+
+        DriverManager.getConnection(container.jdbcUrl, container.username, container.password).use { connection ->
+            connection.autoCommit = false
+            shouldThrow<SQLException> {
+                connection.prepareStatement(
+                    """
+                    INSERT INTO feedback (
+                        id, feedback_json, team, app, survey_id, definition_hash, flow_hash
+                    ) VALUES (
+                        'unknown-flow', '{"surveyId":"survey-a","answers":[]}'::jsonb,
+                        'team-a', 'app-unknown', 'survey-a', ?, ?
+                    )
+                    """.trimIndent(),
+                ).use { statement ->
+                    statement.setString(1, "a".repeat(64))
+                    statement.setString(2, "e".repeat(64))
+                    statement.executeUpdate()
+                }
+            }
+            connection.rollback()
+        }
+
+        DriverManager.getConnection(container.jdbcUrl, container.username, container.password).use { connection ->
+            connection.autoCommit = false
+            shouldThrow<SQLException> {
+                connection.prepareStatement(
+                    """
+                    INSERT INTO analysis_control.analysis_source_contracts (
+                        team, app, survey_id, definition_hash, flow_hash, definition, flow_definition
+                    ) VALUES (
+                        'team-a', 'app-large', 'survey-a', ?, ?, '{}'::jsonb,
+                        jsonb_build_object(
+                            'schemaVersion', 1,
+                            'evaluatorVersion', 'visible-if-v1',
+                            'padding', repeat('x', 65536)
+                        )
+                    )
+                    """.trimIndent(),
+                ).use { statement ->
+                    statement.setString(1, "a".repeat(64))
+                    statement.setString(2, "f".repeat(64))
+                    statement.executeUpdate()
+                }
+            }
+            connection.rollback()
+        }
+
+        DriverManager.getConnection(container.jdbcUrl, container.username, container.password).use { connection ->
+            connection.autoCommit = false
+            shouldThrow<SQLException> {
+                connection.prepareStatement(
+                    """
+                    INSERT INTO feedback (
+                        id, feedback_json, team, app, survey_id, definition_hash, flow_hash
+                    ) VALUES (
+                        'flow-without-survey', '{"surveyId":"survey-a","answers":[]}'::jsonb,
+                        'team-a', 'app-unknown', NULL, ?, ?
+                    )
+                    """.trimIndent(),
+                ).use { statement ->
+                    statement.setString(1, "a".repeat(64))
+                    statement.setString(2, "e".repeat(64))
+                    statement.executeUpdate()
+                }
+            }
+            connection.rollback()
+        }
+
+        DriverManager.getConnection(container.jdbcUrl, container.username, container.password).use { connection ->
+            connection.autoCommit = false
+            connection.createStatement().use { statement ->
+                statement.executeUpdate(
+                    """
+                    INSERT INTO analysis_control.analysis_source_contracts (
+                        team, app, survey_id, definition_hash, flow_hash, definition, flow_definition
+                    ) VALUES (
+                        'team-a', 'app-a', 'survey-a', '${"a".repeat(64)}', '${"f".repeat(64)}',
+                        '{}'::jsonb,
+                        '{"schemaVersion":1,"evaluatorVersion":"visible-if-v1"}'::jsonb
+                    )
+                    """.trimIndent(),
+                )
+                shouldThrow<SQLException> {
+                    statement.executeUpdate(
+                        """
+                        UPDATE analysis_control.analysis_source_contracts
+                        SET flow_definition = flow_definition
+                        WHERE team = 'team-a' AND app = 'app-a' AND survey_id = 'survey-a'
+                        """.trimIndent(),
+                    )
+                }
+            }
+            connection.rollback()
+        }
+
+        DriverManager.getConnection(container.jdbcUrl, container.username, container.password).use { connection ->
+            connection.autoCommit = false
+            shouldThrow<SQLException> {
+                connection.createStatement().use { statement ->
+                    statement.execute("TRUNCATE analysis_control.analysis_source_contracts")
+                }
+            }
+            connection.rollback()
         }
     }
 })

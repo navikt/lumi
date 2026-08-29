@@ -87,6 +87,27 @@ export interface SubmissionDefinition {
   fields: SubmissionFieldDefinition[];
 }
 
+export interface SubmissionFlowCondition {
+  source: "ANSWER" | "METADATA";
+  key: string;
+  operator: "EQ" | "NEQ" | "GT" | "LT" | "CONTAINS" | "EXISTS";
+  value?: string | number | boolean;
+}
+
+export interface SubmissionFlowField {
+  fieldId: string;
+  visibleIf?: {
+    combinator: "ALL" | "ANY";
+    conditions: SubmissionFlowCondition[];
+  };
+}
+
+export interface SubmissionFlowV1 {
+  schemaVersion: 1;
+  evaluatorVersion: "visible-if-v1";
+  fields: SubmissionFlowField[];
+}
+
 export interface FeedbackSubmissionV2 {
   schemaVersion: 2;
   surveyId: string;
@@ -96,6 +117,7 @@ export interface FeedbackSubmissionV2 {
   timeToCompleteMs?: number | null;
   deduplicationKey: string;
   definition: SubmissionDefinition;
+  flow?: SubmissionFlowV1;
   context?: SubmissionContextV1 | null;
   answers: Answer[];
 }

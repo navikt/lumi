@@ -114,7 +114,8 @@ private suspend fun handleSubmission(
             team = identity.team,
             app = identity.app,
             submission = parsedSubmission.submission,
-            definition = parsedSubmission.definition
+            definition = parsedSubmission.definition,
+            flow = parsedSubmission.flow,
         )
     )
     submissionObservability.record(submissionChannel, outcome)
@@ -129,7 +130,7 @@ private suspend fun respondWithSubmissionResult(
     when (val saveResult = submissionOutcome.saveResult) {
         is SaveResult.Created -> {
             log.info(
-                "Saved feedback id=${saveResult.id} team=${identity.team} app=${identity.app} surveyId=${submission.surveyId} definitionHash=${submissionOutcome.definitionHash}"
+                "Saved feedback id=${saveResult.id} team=${identity.team} app=${identity.app} surveyId=${submission.surveyId} definitionHash=${submissionOutcome.definitionHash} flowPinned=${submissionOutcome.flowHash != null}"
             )
             call.respond(HttpStatusCode.Created, mapOf("id" to saveResult.id))
             return SubmissionMetricOutcome.CREATED

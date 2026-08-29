@@ -45,6 +45,7 @@ data class FeedbackSubmissionV2(
     val timeToCompleteMs: Long? = null,
     val deduplicationKey: String,
     val definition: SurveyDefinitionPayload,
+    val flow: SurveyFlowDefinitionV1? = null,
     val context: SubmissionContextV1? = null,
     val answers: List<Answer>
 )

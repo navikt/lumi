@@ -84,6 +84,8 @@ enum class AnalysisCompilationIssueCode {
     DEFINITION_HASH_UNRESOLVED,
     LEGACY_DEFINITION_OBSERVED,
     FLOW_NOT_PINNED,
+    UNPINNED_FLOW_HISTORY_EXCLUDED,
+    FLOW_DEPENDENCY_NOT_SELECTED,
     FIELD_UNAVAILABLE,
     FIELD_NOT_ALLOWED,
     FIELD_MALFORMED,
@@ -110,6 +112,7 @@ data class AnalysisSourcePinV1(
     val surveyType: SurveyType,
     val definitionHash: String,
     val flowHash: String,
+    val allowedFlowHashes: List<String> = listOf(flowHash),
     val fields: List<AnalysisFieldPinV1>,
 )
 
@@ -123,6 +126,7 @@ data class AnalysisFieldPinV1(
     val maxSelections: Int? = null,
     val label: String? = null,
     val labelSource: AnalysisLabelSource,
+    val flowDependencies: List<AnalysisFlowDependencyV1> = emptyList(),
 )
 
 @Serializable
@@ -210,7 +214,7 @@ class AnalysisContractCompiler {
                     )
                     return@mapNotNull null
                 }
-                validateSource(source, selection, issues)
+                validateSource(source, selection, input.document.dimensionKeys, issues)
                 ResolvedAnalysisSource(
                     source = source,
                     selectedFields = selection.fieldIds.sorted().mapNotNull { fieldId ->
@@ -294,6 +298,9 @@ class AnalysisContractCompiler {
                         surveyType = requireNotNull(resolved.source.surveyType),
                         definitionHash = requireNotNull(resolved.source.definitionHash),
                         flowHash = requireNotNull(resolved.source.flowHash),
+                        allowedFlowHashes = resolved.source.flowHashes.sorted().ifEmpty {
+                            listOf(requireNotNull(resolved.source.flowHash))
+                        },
                         fields = resolved.selectedFields.map { field ->
                             AnalysisFieldPinV1(
                                 fieldId = field.fieldId,
@@ -304,6 +311,7 @@ class AnalysisContractCompiler {
                                 maxSelections = field.maxSelections,
                                 label = field.label.takeIf { field.labelSource != AnalysisLabelSource.UNKNOWN },
                                 labelSource = field.labelSource,
+                                flowDependencies = field.flowDependencies,
                             )
                         },
                     )
@@ -339,6 +347,7 @@ class AnalysisContractCompiler {
     private fun validateSource(
         source: AnalysisCatalogSourceV1,
         selection: AnalysisProductSourceSelection,
+        selectedDimensionKeys: List<String>,
         issues: MutableList<AnalysisCompilationIssue>,
     ) {
         if (source.definitionStatus != AnalysisDefinitionStatus.REGISTERED || source.surveyType == null) {
@@ -383,6 +392,27 @@ class AnalysisContractCompiler {
                 surveyId = source.surveyId,
             )
         }
+        if (
+            source.flowHashes.any { !it.matches(SHA256_PATTERN) } ||
+            (source.flowHashes.isNotEmpty() && source.flowHash !in source.flowHashes)
+        ) {
+            issues += issue(
+                AnalysisCompilationIssueCode.FLOW_NOT_PINNED,
+                app = source.app,
+                surveyId = source.surveyId,
+            )
+        }
+        if (
+            source.flowStatus == AnalysisFlowStatus.PINNED &&
+            AnalysisCatalogWarning.LEGACY_FLOW_OBSERVED in source.warnings
+        ) {
+            issues += issue(
+                AnalysisCompilationIssueCode.UNPINNED_FLOW_HISTORY_EXCLUDED,
+                severity = AnalysisCompilationIssueSeverity.WARNING,
+                app = source.app,
+                surveyId = source.surveyId,
+            )
+        }
         if (AnalysisCatalogWarning.SOURCE_ID_MISMATCH in source.warnings) {
             issues += issue(
                 AnalysisCompilationIssueCode.SOURCE_ID_MISMATCH,
@@ -390,6 +420,26 @@ class AnalysisContractCompiler {
                 surveyId = source.surveyId,
             )
         }
+        source.fields
+            .filter { it.fieldId in selection.fieldIds }
+            .flatMap { field -> field.flowDependencies.map { dependency -> field.fieldId to dependency } }
+            .forEach { (fieldId, dependency) ->
+                val selected = when (dependency.source) {
+                    AnalysisFlowDependencySource.ANSWER -> dependency.key in selection.fieldIds
+                    AnalysisFlowDependencySource.METADATA -> dependency.key in selectedDimensionKeys
+                }
+                if (!selected) {
+                    issues += issue(
+                        AnalysisCompilationIssueCode.FLOW_DEPENDENCY_NOT_SELECTED,
+                        app = source.app,
+                        surveyId = source.surveyId,
+                        fieldId = fieldId,
+                        dimensionKey = dependency.key.takeIf {
+                            dependency.source == AnalysisFlowDependencySource.METADATA
+                        },
+                    )
+                }
+            }
         if (selection.fieldIds.isEmpty()) {
             // An empty source is allowed in a draft and produces a population-only
             // wide schema. The UI may use this while fields are being selected.
@@ -602,6 +652,7 @@ class AnalysisContractCompiler {
                     add(pin.surveyType.name)
                     add(pin.definitionHash)
                     add(pin.flowHash)
+                    pin.allowedFlowHashes.sorted().forEach(::add)
                     pin.fields.forEach { field ->
                         add(field.fieldId)
                         add(field.fieldType.name)
@@ -611,6 +662,12 @@ class AnalysisContractCompiler {
                         add(field.maxSelections?.toString() ?: "<null>")
                         add(field.label ?: "<null>")
                         add(field.labelSource.name)
+                        field.flowDependencies
+                            .sortedWith(compareBy(AnalysisFlowDependencyV1::source, AnalysisFlowDependencyV1::key))
+                            .forEach { dependency ->
+                                add(dependency.source.name)
+                                add(dependency.key)
+                            }
                     }
                 }
                 specification.dimensions.forEach { dimension ->

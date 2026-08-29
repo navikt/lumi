@@ -83,7 +83,7 @@ object TestDatabase {
         dataSource.connection.use { conn ->
             conn.createStatement().use { stmt ->
                 // Production history is protected from TRUNCATE. Disable only
-                // those two named triggers inside this rolled-back-on-failure
+                // the named triggers inside this rolled-back-on-failure
                 // test cleanup transaction.
                 stmt.execute(
                     "ALTER TABLE analysis_control.analysis_product_audit_events " +
@@ -94,10 +94,16 @@ object TestDatabase {
                         "DISABLE TRIGGER trg_analysis_product_release_truncate_immutable",
                 )
                 stmt.execute(
+                    "ALTER TABLE analysis_control.analysis_source_contracts " +
+                        "DISABLE TRIGGER trg_analysis_source_contract_reject_truncate",
+                )
+                stmt.execute(
                     "TRUNCATE TABLE analysis_control.analysis_product_audit_events, " +
                         "analysis_control.analysis_product_releases, " +
                         "analysis_control.analysis_product_drafts, " +
                         "analysis_control.analysis_products, " +
+                        "analysis_control.analysis_source_contract_observations, " +
+                        "analysis_control.analysis_source_contracts, " +
                         "analysis_control.analysis_sources, " +
                         "rating_marker, feedback, survey_definitions, survey_metadata, " +
                         "survey_authoring_revisions, survey_authoring_projects, " +
@@ -110,6 +116,10 @@ object TestDatabase {
                 stmt.execute(
                     "ALTER TABLE analysis_control.analysis_product_releases " +
                         "ENABLE TRIGGER trg_analysis_product_release_truncate_immutable",
+                )
+                stmt.execute(
+                    "ALTER TABLE analysis_control.analysis_source_contracts " +
+                        "ENABLE TRIGGER trg_analysis_source_contract_reject_truncate",
                 )
             }
             conn.commit()

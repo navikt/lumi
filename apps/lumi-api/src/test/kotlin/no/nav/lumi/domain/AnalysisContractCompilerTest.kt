@@ -122,6 +122,69 @@ class AnalysisContractCompilerTest : FunSpec({
         first.catalogRevision shouldNotBe second.catalogRevision
     }
 
+    test("pins all known flow revisions and warns without inventing legacy flow") {
+        val currentFlow = "f".repeat(64)
+        val earlierFlow = "e".repeat(64)
+        val source = catalogSource(
+            fields = listOf(
+                catalogField("score", FieldType.RATING, RatingVariant.NPS, 11).copy(
+                    flowDependencies = listOf(
+                        AnalysisFlowDependencyV1(AnalysisFlowDependencySource.METADATA, "deviceType"),
+                    ),
+                ),
+            ),
+        ).copy(
+            flowHash = currentFlow,
+            flowHashes = listOf(earlierFlow, currentFlow),
+            observedFlowHashes = listOf(null, earlierFlow, currentFlow),
+            flowStatus = AnalysisFlowStatus.PINNED,
+            warnings = listOf(AnalysisCatalogWarning.LEGACY_FLOW_OBSERVED),
+        )
+        val document = productDocument(
+            listOf(AnalysisProductSourceSelection("my-app", "survey-one", listOf("score"))),
+            dimensionKeys = listOf("deviceType"),
+        )
+
+        val preview = compiler.compilePreview(compilationInput(document, catalogSnapshot(listOf(source))))
+
+        preview.status shouldBe AnalysisContractPreviewStatus.READY_WITH_WARNINGS
+        preview.issues.map { it.code } shouldContain AnalysisCompilationIssueCode.UNPINNED_FLOW_HISTORY_EXCLUDED
+        preview.publicationSpecification?.sourcePins?.single()?.flowHash shouldBe currentFlow
+        preview.publicationSpecification?.sourcePins?.single()?.allowedFlowHashes shouldBe
+            listOf(earlierFlow, currentFlow)
+    }
+
+    test("blocks a conditional field until its flow dependency is selected") {
+        val source = catalogSource(
+            fields = listOf(
+                catalogField("score", FieldType.RATING, RatingVariant.NPS, 11).copy(
+                    flowDependencies = listOf(
+                        AnalysisFlowDependencyV1(AnalysisFlowDependencySource.METADATA, "deviceType"),
+                    ),
+                ),
+            ),
+        ).copy(
+            flowHash = "f".repeat(64),
+            flowHashes = listOf("f".repeat(64)),
+            flowStatus = AnalysisFlowStatus.PINNED,
+        )
+        val selection = listOf(AnalysisProductSourceSelection("my-app", "survey-one", listOf("score")))
+
+        val blocked = compiler.compilePreview(
+            compilationInput(productDocument(selection), catalogSnapshot(listOf(source))),
+        )
+        val ready = compiler.compilePreview(
+            compilationInput(
+                productDocument(selection, dimensionKeys = listOf("deviceType")),
+                catalogSnapshot(listOf(source)),
+            ),
+        )
+
+        blocked.status shouldBe AnalysisContractPreviewStatus.BLOCKED
+        blocked.issues.map { it.code } shouldContain AnalysisCompilationIssueCode.FLOW_DEPENDENCY_NOT_SELECTED
+        ready.status shouldBe AnalysisContractPreviewStatus.READY
+    }
+
     test("publication specification binds retention") {
         val source = catalogSource().copy(
             flowHash = "f".repeat(64),

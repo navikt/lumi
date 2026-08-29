@@ -111,7 +111,10 @@ nøkkelversjon og eierskap skal være dokumentert før shadow.
 - [ ] `flow_hash` beregnes fra normalisert flyt, dependencies og
       evaluatorversjoner, registreres før ingest og inngår i release/effective
       spec. Ukjent klienthash avvises; manglende historikk blir `UNPINNED`, og
-      eldre `logic` brukes ikke til eksakt V1-applicability.
+      eldre `logic` lagres eller hashes ikke og brukes ikke til eksakt
+      V1-applicability. Siste observerte flow styrer cutoverstatus;
+      revisjonskvote, 64 KiB per flow, 16 MiB kontraktbudsjett per team,
+      verdi-/størrelsesgrenser og kontrakt-GC følger retention.
 - [ ] Team-scope avledes gjennom eksisterende autorisasjon på hvert endepunkt.
 - [ ] Preview bruker bare syntetiske rader og en versjonert terskelpolicy:
       1–4 distinkte innsendinger gir `BELOW_THRESHOLD`, 0 kan vises som 0, og
@@ -177,11 +180,11 @@ nøkkelversjon og eierskap skal være dokumentert før shadow.
       en ny release av det betingede feltet. Samme `definition_hash` med endret
       `visibleIf` får ny `flow_hash`, og historiske rader uten entydig flow får
       `NULL`/kvalitetsvarsel og evalueres aldri med dagens predicate.
-- [ ] `UNPINNED` felt som finnes får `applicable=NULL`, null wide-verdi og ingen
-      long-rad selv når kilden inneholder et svar. Manifestet viser bare
+- [ ] `UNPINNED` historikk ekskluderes fra wide og long med synlig
       kvalitetsvarsel; eventuelt count i team-preview følger terskelpolicy.
-      Strukturelt bevist fravær i en registrert definition gir fortsatt
-      `FALSE`.
+      En nyere `UNPINNED` rad etter cutover blokkerer ny release i stedet for å
+      øke eksklusjonen stille. Strukturelt bevist fravær i en tillatt,
+      registrert definition gir fortsatt `FALSE`.
 - [ ] Enhver `applicable=FALSE` kombinert med kildeverdi fryser produktet før
       aktivering for rating, enkeltvalg, flervalg og `EMPTY_SELECTION`, både ved
       strukturelt fravær og usann predicate. Ingen verdi blir en tilsynelatende

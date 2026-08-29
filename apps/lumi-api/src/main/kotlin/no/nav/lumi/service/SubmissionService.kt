@@ -3,17 +3,22 @@ package no.nav.lumi.service
 import no.nav.lumi.domain.FeedbackSubmissionV1
 import no.nav.lumi.domain.SaveResult
 import no.nav.lumi.domain.SurveyDefinition
+import no.nav.lumi.domain.SurveyFlowDefinitionV1
+import no.nav.lumi.repository.AnalysisSourceContractRepository
 import no.nav.lumi.repository.FeedbackRepository
+import no.nav.lumi.validation.SurveyFlowValidator
 
 data class SubmissionOutcome(
     val saveResult: SaveResult,
-    val definitionHash: String? = null
+    val definitionHash: String? = null,
+    val flowHash: String? = null,
 )
 
 class SubmissionService(
     private val feedbackService: FeedbackService = FeedbackService(),
     private val surveyDefinitionService: SurveyDefinitionService = SurveyDefinitionService(),
     private val feedbackRepository: FeedbackRepository = FeedbackRepository(),
+    private val sourceContractRepository: AnalysisSourceContractRepository = AnalysisSourceContractRepository(),
     internal val afterScopedDeduplicationLockAcquired: suspend () -> Unit = {}
 ) {
     suspend fun submit(
@@ -21,7 +26,8 @@ class SubmissionService(
         team: String,
         app: String,
         submission: FeedbackSubmissionV1,
-        definition: SurveyDefinition? = null
+        definition: SurveyDefinition? = null,
+        flow: SurveyFlowDefinitionV1? = null,
     ): SubmissionOutcome {
         if (submission.deduplicationKey == null) {
             val prepared = feedbackService.prepareForSave(feedbackJson, team, submission.surveyId)
@@ -32,18 +38,20 @@ class SubmissionService(
                     definition = definition,
                     inCurrentTransaction = true
                 )
+                val flowHash = registerFlowContract(team, app, definitionResult, definition, flow)
                 val saveResult = feedbackRepository.saveInCurrentTransaction(
                     feedbackJson = prepared.feedbackJson,
                     team = team,
                     app = app,
                     surveyId = definitionResult.surveyId,
                     definitionHash = definitionResult.definitionHash,
+                    flowHash = flowHash,
                 )
                 surveyDefinitionService.recordStoredSubmissionInCurrentTransaction(
                     team,
                     definitionResult.surveyId,
                 )
-                SubmissionOutcome(saveResult, definitionResult.definitionHash)
+                SubmissionOutcome(saveResult, definitionResult.definitionHash, flowHash)
             }
         }
 
@@ -79,12 +87,14 @@ class SubmissionService(
                 definition = definition,
                 inCurrentTransaction = true
             )
+            val flowHash = registerFlowContract(team, app, definitionResult, definition, flow)
             val saveResult = feedbackRepository.saveInCurrentTransaction(
                 feedbackJson = prepared.feedbackJson,
                 team = team,
                 app = app,
                 surveyId = definitionResult.surveyId,
                 definitionHash = definitionResult.definitionHash,
+                flowHash = flowHash,
                 deduplicationKeyHash = deduplicationKeyHash
             )
 
@@ -97,9 +107,28 @@ class SubmissionService(
 
             SubmissionOutcome(
                 saveResult = saveResult,
-                definitionHash = definitionResult.definitionHash.takeIf { saveResult is SaveResult.Created }
+                definitionHash = definitionResult.definitionHash.takeIf { saveResult is SaveResult.Created },
+                flowHash = flowHash.takeIf { saveResult is SaveResult.Created },
             )
         }
+    }
+
+    private fun registerFlowContract(
+        team: String,
+        app: String,
+        definitionResult: RegistrationResult,
+        definition: SurveyDefinition?,
+        flow: SurveyFlowDefinitionV1?,
+    ): String? {
+        if (definition == null || flow == null) return null
+        SurveyFlowValidator.validate(flow, definition)
+        return sourceContractRepository.registerInCurrentTransaction(
+            team = team,
+            app = app,
+            definitionHash = definitionResult.definitionHash,
+            definition = definition,
+            flow = flow,
+        )
     }
 
     private suspend fun registerDefinition(

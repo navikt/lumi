@@ -1,5 +1,6 @@
 package no.nav.lumi.repository
 
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import no.nav.lumi.domain.AnalysisCatalogFieldV1
 import no.nav.lumi.domain.AnalysisCatalogRevision
@@ -8,10 +9,15 @@ import no.nav.lumi.domain.AnalysisCatalogWarning
 import no.nav.lumi.domain.AnalysisDefinitionStatus
 import no.nav.lumi.domain.AnalysisDimensionRegistry
 import no.nav.lumi.domain.AnalysisFlowStatus
+import no.nav.lumi.domain.AnalysisFlowDependencySource
+import no.nav.lumi.domain.AnalysisFlowDependencyV1
 import no.nav.lumi.domain.AnalysisLabelSource
 import no.nav.lumi.domain.AnalysisSourceCatalogV1
 import no.nav.lumi.domain.SurveyDefinition
+import no.nav.lumi.domain.SurveyFlowConditionSource
+import no.nav.lumi.domain.SurveyFlowDefinitionV1
 import no.nav.lumi.domain.computeHash
+import no.nav.lumi.validation.SurveyFlowValidator
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 
 class AnalysisSourceCatalogRepository {
@@ -23,18 +29,49 @@ class AnalysisSourceCatalogRepository {
             """
             WITH observations AS (
                 SELECT
-                    app,
-                    COALESCE(survey_id, feedback_json ->> 'surveyId') AS catalog_survey_id,
-                    jsonb_agg(DISTINCT definition_hash ORDER BY definition_hash) AS definition_hashes,
+                    observation.app,
+                    observation.survey_id,
+                    jsonb_agg(
+                        DISTINCT observation.definition_hash
+                        ORDER BY observation.definition_hash
+                    ) AS definition_hashes,
+                    jsonb_agg(
+                        DISTINCT observation.flow_hash
+                        ORDER BY observation.flow_hash
+                    ) AS observed_flow_hashes,
+                    (
+                        array_agg(
+                            observation.flow_hash
+                            ORDER BY observation.last_submission_at DESC,
+                                     observation.flow_hash ASC NULLS FIRST
+                        )
+                    )[1] AS latest_flow_hash,
+                    COALESCE(
+                        jsonb_agg(
+                            jsonb_build_object(
+                                'definitionHash', contract.definition_hash,
+                                'flowHash', contract.flow_hash,
+                                'definition', contract.definition,
+                                'flow', contract.flow_definition
+                            )
+                            ORDER BY observation.last_submission_at DESC, observation.flow_hash DESC
+                        ) FILTER (WHERE contract.flow_hash IS NOT NULL),
+                        '[]'::jsonb
+                    ) AS registered_flow_contracts,
+                    BOOL_OR(observation.flow_hash IS NULL) AS has_unpinned_flow,
                     BOOL_OR(
-                        survey_id IS NOT NULL AND
-                        feedback_json ->> 'surveyId' IS NOT NULL AND
-                        survey_id <> feedback_json ->> 'surveyId'
-                    ) AS has_source_id_mismatch
-                FROM feedback
-                WHERE team = ?
-                  AND length(btrim(COALESCE(survey_id, feedback_json ->> 'surveyId', ''))) > 0
-                GROUP BY app, COALESCE(survey_id, feedback_json ->> 'surveyId')
+                        observation.flow_hash IS NOT NULL AND contract.flow_hash IS NULL
+                    ) AS has_unknown_flow,
+                    BOOL_OR(observation.has_source_id_mismatch) AS has_source_id_mismatch
+                FROM analysis_control.analysis_source_contract_observations AS observation
+                LEFT JOIN analysis_control.analysis_source_contracts AS contract
+                  ON contract.team = observation.team
+                 AND contract.app = observation.app
+                 AND contract.survey_id = observation.survey_id
+                 AND contract.definition_hash = observation.definition_hash
+                 AND contract.flow_hash = observation.flow_hash
+                WHERE observation.team = ?
+                GROUP BY observation.app, observation.survey_id
             )
             SELECT
                 source.app,
@@ -45,6 +82,11 @@ class AnalysisSourceCatalogRepository {
                 definition.retired_at,
                 metadata.archived_at,
                 COALESCE(observation.definition_hashes, '[]'::jsonb)::text AS observed_definition_hashes,
+                COALESCE(observation.observed_flow_hashes, '[]'::jsonb)::text AS observed_flow_hashes,
+                observation.latest_flow_hash,
+                COALESCE(observation.registered_flow_contracts, '[]'::jsonb)::text AS registered_flow_contracts,
+                COALESCE(observation.has_unpinned_flow, FALSE) AS has_unpinned_flow,
+                COALESCE(observation.has_unknown_flow, FALSE) AS has_unknown_flow,
                 COALESCE(observation.has_source_id_mismatch, FALSE) AS has_source_id_mismatch
             FROM analysis_control.analysis_sources AS source
             LEFT JOIN survey_definitions AS definition
@@ -55,7 +97,7 @@ class AnalysisSourceCatalogRepository {
              AND metadata.survey_id = source.survey_id
             LEFT JOIN observations AS observation
               ON observation.app = source.app
-             AND observation.catalog_survey_id = source.survey_id
+             AND observation.survey_id = source.survey_id
             WHERE source.team = ?
             ORDER BY source.app, source.survey_id
             """.trimIndent(),
@@ -70,10 +112,48 @@ class AnalysisSourceCatalogRepository {
                         val observedDefinitionHashes = json.decodeFromString<List<String?>>(
                             result.getString("observed_definition_hashes"),
                         ).distinct().sortedWith(nullsFirst(naturalOrder()))
+                        val observedFlowHashes = json.decodeFromString<List<String?>>(
+                            result.getString("observed_flow_hashes"),
+                        ).distinct().sortedWith(nullsFirst(naturalOrder()))
+                        val decodedContracts = runCatching {
+                            json.decodeFromString<List<CatalogRegisteredFlowContract>>(
+                                result.getString("registered_flow_contracts"),
+                            )
+                        }
+                        val registeredContracts = decodedContracts.getOrDefault(emptyList())
+                        val validContracts = registeredContracts.filter { contract ->
+                            contract.isValidFor(surveyId)
+                        }
+                        val knownFlowHashes = validContracts.map { it.flowHash }.distinct().sorted()
+                        val latestObservedFlowHash = result.getString("latest_flow_hash")
+                        val currentFlowHash = validContracts
+                            .singleOrNull { it.flowHash == latestObservedFlowHash }
+                            ?.flowHash
+                        val hasUnpinnedFlow = result.getBoolean("has_unpinned_flow")
+                        val hasUnknownFlow = result.getBoolean("has_unknown_flow") ||
+                            decodedContracts.isFailure || validContracts.size != registeredContracts.size
                         val hasSourceIdMismatch = result.getBoolean("has_source_id_mismatch")
                         val definitionJson = result.getString("definition")
                         val definition = definitionJson?.let { json.decodeFromString<SurveyDefinition>(it) }
                         val definitionHash = result.getString("definition_hash")
+                        val dependenciesByField = validContracts
+                            .flatMap { contract -> contract.flow.fields }
+                            .groupBy { it.fieldId }
+                            .mapValues { (_, flowFields) ->
+                                flowFields.flatMap { flowField ->
+                                    flowField.visibleIf?.conditions.orEmpty().map { condition ->
+                                        AnalysisFlowDependencyV1(
+                                            source = when (condition.source) {
+                                                SurveyFlowConditionSource.ANSWER -> AnalysisFlowDependencySource.ANSWER
+                                                SurveyFlowConditionSource.METADATA -> AnalysisFlowDependencySource.METADATA
+                                            },
+                                            key = condition.key,
+                                        )
+                                    }
+                                }.distinct().sortedWith(
+                                    compareBy(AnalysisFlowDependencyV1::source, AnalysisFlowDependencyV1::key),
+                                )
+                            }
                         val definitionStatus = when {
                             definition == null && definitionHash == null -> AnalysisDefinitionStatus.MISSING
                             result.getObject("retired_at") != null || definition == null -> AnalysisDefinitionStatus.RETIRED
@@ -95,6 +175,12 @@ class AnalysisSourceCatalogRepository {
                             if (hasSourceIdMismatch) {
                                 add(AnalysisCatalogWarning.SOURCE_ID_MISMATCH)
                             }
+                            if (hasUnpinnedFlow) {
+                                add(AnalysisCatalogWarning.LEGACY_FLOW_OBSERVED)
+                            }
+                            if (hasUnknownFlow) {
+                                add(AnalysisCatalogWarning.UNKNOWN_FLOW_OBSERVED)
+                            }
                             if (definition != null && definition.surveyId != surveyId) {
                                 add(AnalysisCatalogWarning.SOURCE_ID_MISMATCH)
                             }
@@ -111,8 +197,14 @@ class AnalysisSourceCatalogRepository {
                                 definitionHash = definitionHash,
                                 definitionStatus = definitionStatus,
                                 observedDefinitionHashes = observedDefinitionHashes,
-                                flowHash = null,
-                                flowStatus = AnalysisFlowStatus.UNPINNED,
+                                flowHash = currentFlowHash,
+                                flowHashes = knownFlowHashes,
+                                observedFlowHashes = observedFlowHashes,
+                                flowStatus = if (currentFlowHash != null && !hasUnknownFlow) {
+                                    AnalysisFlowStatus.PINNED
+                                } else {
+                                    AnalysisFlowStatus.UNPINNED
+                                },
                                 fields = definition?.fields.orEmpty()
                                     .sortedBy { it.fieldId }
                                     .map { field ->
@@ -127,6 +219,7 @@ class AnalysisSourceCatalogRepository {
                                             // public metadata and are intentionally unavailable here.
                                             label = null,
                                             labelSource = AnalysisLabelSource.UNKNOWN,
+                                            flowDependencies = dependenciesByField[field.fieldId].orEmpty(),
                                         )
                                     },
                                 warnings = warnings.sortedBy { it.name },
@@ -145,4 +238,19 @@ class AnalysisSourceCatalogRepository {
         )
     }
 
+}
+
+@Serializable
+private data class CatalogRegisteredFlowContract(
+    val definitionHash: String,
+    val flowHash: String,
+    val definition: SurveyDefinition,
+    val flow: SurveyFlowDefinitionV1,
+) {
+    fun isValidFor(surveyId: String): Boolean = runCatching {
+        check(definition.surveyId == surveyId)
+        check(definition.computeHash() == definitionHash)
+        check(flow.computeHash() == flowHash)
+        SurveyFlowValidator.validate(flow, definition)
+    }.isSuccess
 }
