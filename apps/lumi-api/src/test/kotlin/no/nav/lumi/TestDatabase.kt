@@ -82,10 +82,33 @@ object TestDatabase {
     fun clearAllData() {
         dataSource.connection.use { conn ->
             conn.createStatement().use { stmt ->
+                // Production history is protected from TRUNCATE. Disable only
+                // those two named triggers inside this rolled-back-on-failure
+                // test cleanup transaction.
                 stmt.execute(
-                    "TRUNCATE TABLE rating_marker, feedback, survey_definitions, survey_metadata, " +
+                    "ALTER TABLE analysis_control.analysis_product_audit_events " +
+                        "DISABLE TRIGGER trg_analysis_product_audit_truncate_immutable",
+                )
+                stmt.execute(
+                    "ALTER TABLE analysis_control.analysis_product_releases " +
+                        "DISABLE TRIGGER trg_analysis_product_release_truncate_immutable",
+                )
+                stmt.execute(
+                    "TRUNCATE TABLE analysis_control.analysis_product_audit_events, " +
+                        "analysis_control.analysis_product_releases, " +
+                        "analysis_control.analysis_product_drafts, " +
+                        "analysis_control.analysis_products, " +
+                        "rating_marker, feedback, survey_definitions, survey_metadata, " +
                         "survey_authoring_revisions, survey_authoring_projects, " +
                         "feedback_retention_job_state CASCADE"
+                )
+                stmt.execute(
+                    "ALTER TABLE analysis_control.analysis_product_audit_events " +
+                        "ENABLE TRIGGER trg_analysis_product_audit_truncate_immutable",
+                )
+                stmt.execute(
+                    "ALTER TABLE analysis_control.analysis_product_releases " +
+                        "ENABLE TRIGGER trg_analysis_product_release_truncate_immutable",
                 )
             }
             conn.commit()
