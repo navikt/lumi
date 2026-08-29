@@ -31,6 +31,7 @@ import no.nav.lumi.routes.surveyArchiveRoutes
 import no.nav.lumi.routes.surveyAuthoringRoutes
 import no.nav.lumi.routes.surveyFacetRoutes
 import no.nav.lumi.routes.submissionRoutes
+import no.nav.lumi.routes.analysisProductRoutes
 import no.nav.lumi.routes.discoveryRoutes
 import no.nav.lumi.repository.FeedbackStatsRepository
 import java.time.LocalDate
@@ -317,6 +318,7 @@ fun Application.testModule(
             statsRoutes(statsService)
             exportRoutes(exportService)
             discoveryRoutes()
+            analysisProductRoutes()
         }
     }
 }

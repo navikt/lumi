@@ -6,6 +6,7 @@ import io.ktor.server.plugins.ratelimit.*
 import io.ktor.server.routing.*
 import no.nav.lumi.config.auth.ClientAuthorizationPlugin
 import no.nav.lumi.config.auth.TeamAuthorizationPlugin
+import no.nav.lumi.routes.analysisProductRoutes
 import no.nav.lumi.routes.discoveryRoutes
 import no.nav.lumi.routes.feedbackRoutes
 import no.nav.lumi.routes.exportRoutes
@@ -48,6 +49,7 @@ fun Application.configureRouting() {
                     markerRoutes()
                     statsRoutes()
                     discoveryRoutes()
+                    analysisProductRoutes()
                     teamsRoutes()
                 }
             }

@@ -20,9 +20,9 @@ class AnalysisProductTest : FunSpec({
                 reviewDate = "2027-08-29",
                 sources = listOf(
                     AnalysisProductSourceSelection(
-                        app = " bro-frontend ",
-                        surveyId = " kartlegging ",
-                        fieldIds = listOf(" opplevelse "),
+                        app = "bro-frontend",
+                        surveyId = "kartlegging",
+                        fieldIds = listOf("opplevelse"),
                     ),
                 ),
                 dimensionKeys = listOf(" deviceType "),
@@ -46,12 +46,12 @@ class AnalysisProductTest : FunSpec({
         }
     }
 
-    test("rejects duplicate normalized source and field identities") {
+    test("rejects duplicate source and field identities") {
         shouldThrow<IllegalArgumentException> {
             AnalysisProductDocumentValidator.validate(
                 validDocument(
                     sources = listOf(
-                        AnalysisProductSourceSelection("app-a", "survey-a", listOf("field-a", " field-a ")),
+                        AnalysisProductSourceSelection("app-a", "survey-a", listOf("field-a", "field-a")),
                     ),
                 ),
                 today,
@@ -63,12 +63,30 @@ class AnalysisProductTest : FunSpec({
                 validDocument(
                     sources = listOf(
                         AnalysisProductSourceSelection("app-a", "survey-a"),
-                        AnalysisProductSourceSelection(" app-a ", "survey-a"),
+                        AnalysisProductSourceSelection("app-a", "survey-a"),
                     ),
                 ),
                 today,
             )
         }
+    }
+
+    test("accepts bounded opaque source identifiers") {
+        val validated = AnalysisProductDocumentValidator.validate(
+            validDocument(
+                sources = listOf(
+                    AnalysisProductSourceSelection(
+                        app = " app/flate ",
+                        surveyId = "survey:2026",
+                        fieldIds = listOf("mål-1"),
+                    ),
+                ),
+            ),
+            today,
+        )
+
+        validated.document.sources.single() shouldBe
+            AnalysisProductSourceSelection(" app/flate ", "survey:2026", listOf("mål-1"))
     }
 })
 
