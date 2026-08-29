@@ -23,6 +23,8 @@ export function useStats() {
       params.task,
       params.rating,
       params.choice,
+      params.trendFieldId,
+      params.trendGranularity,
     ],
     queryFn: () =>
       fetchStatsServerFn({
@@ -38,6 +40,11 @@ export function useStats() {
           task: params.task,
           rating: splitRatingParam(params.rating),
           choice: splitChoiceParam(params.choice),
+          trendFieldId: params.surveyId ? params.trendFieldId : undefined,
+          trendGranularity:
+            params.surveyId && params.trendFieldId
+              ? (params.trendGranularity ?? "week")
+              : undefined,
         },
       }),
     staleTime: 30000,

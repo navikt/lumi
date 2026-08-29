@@ -25,6 +25,8 @@ describe("fetchStats contract", () => {
       task: "task-123",
       rating: ["rating-1:5", "thumbs-1:2"],
       choice: ["choice-1:opt-a", "choice-2:opt-b"],
+      trendFieldId: "choice-1",
+      trendGranularity: "week",
     });
 
     expect(params).toEqual({
@@ -39,6 +41,8 @@ describe("fetchStats contract", () => {
       task: "task-123",
       rating: ["rating-1:5", "thumbs-1:2"],
       choice: ["choice-1:opt-a", "choice-2:opt-b"],
+      trendFieldId: "choice-1",
+      trendGranularity: "week",
     });
   });
 
@@ -49,6 +53,8 @@ describe("fetchStats contract", () => {
       segment: "a:b,,c:d",
       rating: ["rating-1:5", "thumbs-1:2"],
       choice: ["choice-1:opt-a", "choice-2:opt-b"],
+      trendFieldId: "choice-1",
+      trendGranularity: "month",
     });
 
     const parsed = new URL(url);
@@ -64,6 +70,8 @@ describe("fetchStats contract", () => {
       "choice-1:opt-a",
       "choice-2:opt-b",
     ]);
+    expect(parsed.searchParams.get("trendFieldId")).toBe("choice-1");
+    expect(parsed.searchParams.get("trendGranularity")).toBe("month");
   });
 
   it("accepts real-world dashboard payload shape (incl. privacy)", () => {
@@ -84,6 +92,19 @@ describe("fetchStats contract", () => {
       byPathname: { "/": { count: 10, averageRating: 3.2 } },
       lowestRatingPaths: {},
       fieldStats: [],
+      fieldTrend: {
+        fieldId: "choice-1",
+        granularity: "week",
+        points: [
+          {
+            periodStart: "2026-01-19",
+            responseCount: 10,
+            average: null,
+            distribution: { "opt-a": 6, "opt-b": 4 },
+            masked: false,
+          },
+        ],
+      },
       surveyType: "rating",
       period: { fromDate: "2026-01-01", toDate: "2026-01-21", days: 21 },
       privacy: { masked: false, threshold: 5 },

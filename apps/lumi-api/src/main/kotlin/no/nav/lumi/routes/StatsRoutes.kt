@@ -4,7 +4,9 @@ import io.ktor.server.resources.get
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import no.nav.lumi.config.auth.authorizedTeam
+import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.FILTER_ALL
+import no.nav.lumi.domain.FieldTrendGranularity
 import no.nav.lumi.domain.StatsQuery
 import no.nav.lumi.integrations.valkey.ValkeyStatsCache
 import no.nav.lumi.service.StatsService
@@ -23,19 +25,25 @@ internal fun ApiV1Intern.Stats.toStatsQuery(
     val normalizedFromDate = fromDate?.takeIf { it.isNotBlank() }
     val normalizedToDate = toDate?.takeIf { it.isNotBlank() }
     validateDateRange(normalizedFromDate, normalizedToDate)
+    val parsedTrendGranularity = FieldTrendGranularity.fromWireName(trendGranularity)
+        ?: throw ApiErrorException.BadRequestException(
+            "Invalid trendGranularity: expected day, week or month"
+        )
     return StatsQuery(
-    team = team,
-    includeArchived = includeArchived ?: false,
-    app = app?.takeIf { it != FILTER_ALL },
-    fromDate = normalizedFromDate,
-    toDate = normalizedToDate,
-    surveyId = surveyIdOverride,
-    deviceType = deviceType?.takeIf { it != FILTER_ALL },
-    segments = parseSegments(segment),
-    task = task,
-    choiceFilters = parseChoiceFilters(choice, choiceFieldId, choiceValue),
-    ratingFilters = parseRatingFilters(rating, ratingFieldId, ratingValue),
-)
+        team = team,
+        includeArchived = includeArchived ?: false,
+        app = app?.takeIf { it != FILTER_ALL },
+        fromDate = normalizedFromDate,
+        toDate = normalizedToDate,
+        surveyId = surveyIdOverride,
+        deviceType = deviceType?.takeIf { it != FILTER_ALL },
+        segments = parseSegments(segment),
+        task = task,
+        choiceFilters = parseChoiceFilters(choice, choiceFieldId, choiceValue),
+        ratingFilters = parseRatingFilters(rating, ratingFieldId, ratingValue),
+        trendFieldId = parseTrendFieldId(trendFieldId),
+        trendGranularity = parsedTrendGranularity,
+    )
 }
 
 /**

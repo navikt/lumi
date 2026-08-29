@@ -146,6 +146,11 @@ private fun requireValidFieldId(fieldId: String, filterType: String): String {
     return fieldId
 }
 
+internal fun parseTrendFieldId(rawFieldId: String?): String? {
+    val fieldId = rawFieldId?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    return requireValidFieldId(fieldId, "trend")
+}
+
 /**
  * Parse repeated "fieldId:optionId" choice filter params into pairs.
  * Also merges in legacy single-value params for backward compat.

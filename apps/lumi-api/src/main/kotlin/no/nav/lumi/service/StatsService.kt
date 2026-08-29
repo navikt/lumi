@@ -7,6 +7,7 @@ import no.nav.lumi.integrations.valkey.StatsCache
 import no.nav.lumi.integrations.valkey.ValkeyStatsCache
 import no.nav.lumi.repository.FeedbackRepository
 import no.nav.lumi.repository.FeedbackStatsRepository
+import no.nav.lumi.repository.FieldTrendRepository
 import no.nav.lumi.repository.TextThemeRepository
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -29,6 +30,7 @@ private val json = Json {
 class StatsService(
     private val feedbackRepository: FeedbackRepository = FeedbackRepository(),
     private val statsRepository: FeedbackStatsRepository = FeedbackStatsRepository(),
+    private val fieldTrendRepository: FieldTrendRepository = FieldTrendRepository(),
     private val themeRepository: TextThemeRepository = TextThemeRepository(),
     private val statsCache: StatsCache = ValkeyStatsCache.fromEnvOrFallback(),
     private val cacheTtl: Duration = Duration.ofMinutes(3)
@@ -74,9 +76,11 @@ class StatsService(
             "task" to task,
             "choice" to choiceValue,
             "rating" to ratingValue,
+            "trendFieldId" to trendFieldId,
+            "trendGranularity" to trendFieldId?.let { trendGranularity.postgresUnit },
             // Bump when the cached response semantics change. This prevents a
             // rolling deploy from serving values written by an older version.
-            "resultVersion" to "2",
+            "resultVersion" to "3",
         )
             .filter { (_, value) -> value != null }
             .map { (key, value) -> "${enc(key)}=${enc(value!!)}" }
@@ -134,6 +138,16 @@ class StatsService(
         } else {
             null
         }
+
+        val fieldTrend = if (!stats.masked && query.surveyId != null && query.trendFieldId != null) {
+            fieldTrendRepository.getFieldTrend(
+                query = query,
+                fieldId = query.trendFieldId,
+                granularity = query.trendGranularity,
+            )
+        } else {
+            null
+        }
         
         val averageRating = calculateAverageRating(stats.byRating)
         val days = calculateDays(query.fromDate, query.toDate)
@@ -170,6 +184,7 @@ class StatsService(
             byPathname = if (stats.masked) emptyMap() else analytics?.byPathname.orEmpty(),
             lowestRatingPaths = if (stats.masked) emptyMap() else analytics?.lowestRatingPaths.orEmpty(),
             fieldStats = if (stats.masked) emptyList() else analytics?.fieldStats.orEmpty(),
+            fieldTrend = fieldTrend,
             privacy = privacy
         )
     }

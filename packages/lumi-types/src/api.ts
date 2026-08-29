@@ -296,6 +296,7 @@ export interface FeedbackStats {
 
   // New: per-field statistics
   fieldStats: FieldStat[];
+  fieldTrend?: FieldTrend | null;
 
   surveyType?: SurveyType;
 
@@ -307,6 +308,22 @@ export interface FeedbackStats {
 
   // Privacy threshold info
   privacy?: PrivacyInfo;
+}
+
+export type FieldTrendGranularity = "day" | "week" | "month";
+
+export interface FieldTrendPoint {
+  periodStart: string;
+  responseCount: number | null;
+  average: number | null;
+  distribution: Record<string, number>;
+  masked: boolean;
+}
+
+export interface FieldTrend {
+  fieldId: string;
+  granularity: FieldTrendGranularity;
+  points: FieldTrendPoint[];
 }
 
 /**

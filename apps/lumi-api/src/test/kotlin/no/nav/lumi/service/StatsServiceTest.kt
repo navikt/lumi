@@ -11,8 +11,23 @@ class StatsServiceTest {
     @Test
     fun `stats cache key includes the result contract version`() {
         assertEquals(
-            "dashboard:team=flex&includeArchived=false&resultVersion=2",
+            "dashboard:team=flex&includeArchived=false&resultVersion=3",
             service.statsCacheKey("dashboard", StatsQuery(team = "flex")),
+        )
+    }
+
+    @Test
+    fun `stats cache key distinguishes selected field trend`() {
+        assertEquals(
+            "dashboard:team=flex&includeArchived=false&trendFieldId=priority&trendGranularity=month&resultVersion=3",
+            service.statsCacheKey(
+                "dashboard",
+                StatsQuery(
+                    team = "flex",
+                    trendFieldId = "priority",
+                    trendGranularity = no.nav.lumi.domain.FieldTrendGranularity.MONTH,
+                ),
+            ),
         )
     }
     

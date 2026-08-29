@@ -284,8 +284,53 @@ data class FeedbackStats(
     @OptIn(ExperimentalSerializationApi::class)
     @EncodeDefault(EncodeDefault.Mode.ALWAYS)
     val fieldStats: List<FieldStat> = emptyList(),
+    /** Optional database-aggregated time series for one selected structured field. */
+    val fieldTrend: FieldTrend? = null,
     // Privacy threshold info
     val privacy: PrivacyInfo? = null
+)
+
+@Serializable
+enum class FieldTrendGranularity {
+    @SerialName("day") DAY,
+    @SerialName("week") WEEK,
+    @SerialName("month") MONTH;
+
+    val postgresUnit: String
+        get() = when (this) {
+            DAY -> "day"
+            WEEK -> "week"
+            MONTH -> "month"
+        }
+
+    companion object {
+        fun fromWireName(value: String?): FieldTrendGranularity? = when (value?.lowercase()) {
+            null, "", "week" -> WEEK
+            "day" -> DAY
+            "month" -> MONTH
+            else -> null
+        }
+    }
+}
+
+@Serializable
+data class FieldTrend(
+    val fieldId: String,
+    val granularity: FieldTrendGranularity,
+    val points: List<FieldTrendPoint>,
+)
+
+@Serializable
+data class FieldTrendPoint(
+    /** Start of the calendar interval in Europe/Oslo, formatted as YYYY-MM-DD. */
+    val periodStart: String,
+    /** Null for privacy-masked intervals. */
+    val responseCount: Int? = null,
+    /** Present for rating fields, null for choice fields and masked intervals. */
+    val average: Double? = null,
+    /** Option id to respondent count for choice fields. Empty for rating and masked intervals. */
+    val distribution: Map<String, Int> = emptyMap(),
+    val masked: Boolean = false,
 )
 
 @Serializable
@@ -466,6 +511,9 @@ data class StatsQuery(
     val choiceFilters: List<Pair<String, String>> = emptyList(),
     /** Multi-value rating filters: list of (fieldId, ratingValue) pairs */
     val ratingFilters: List<Pair<String, Int>> = emptyList(),
+    /** Structured field selected for an optional database-aggregated time series. */
+    val trendFieldId: String? = null,
+    val trendGranularity: FieldTrendGranularity = FieldTrendGranularity.WEEK,
 )
 
 // ============================================

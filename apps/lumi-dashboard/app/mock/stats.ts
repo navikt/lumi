@@ -3,6 +3,8 @@ import {
   SPECIALIZED_SURVEY_FIELD_IDS,
 } from "@navikt/lumi-survey";
 import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { mockThemes } from "~/mock/themes";
 import type {
   Answer,
@@ -11,6 +13,8 @@ import type {
   FeedbackDto,
   FeedbackStats,
   FieldStat,
+  FieldTrend,
+  FieldTrendGranularity,
   TaskPriorityResponse,
   TopTaskStats,
   TopTasksResponse,
@@ -22,6 +26,9 @@ import { getRating, hasTextResponse } from "./helpers";
 import { extractPhrases, extractTopKeywords } from "./stats/phrases";
 import { getDiscoveryTaskText } from "./utils/extractors";
 import { matchesThemeKeywords } from "./utils/textAnalysis";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const isDiscoveryTaskField = (fieldId: string) =>
   fieldId === SPECIALIZED_SURVEY_FIELD_IDS.task ||
@@ -290,6 +297,93 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
   return fieldStats;
 }
 
+function fieldTrendPeriodStart(
+  submittedAt: string,
+  granularity: FieldTrendGranularity,
+): string {
+  const osloDate = dayjs.utc(submittedAt).tz("Europe/Oslo");
+  if (granularity === "month") {
+    return osloDate.startOf("month").format("YYYY-MM-DD");
+  }
+  if (granularity === "week") {
+    const daysSinceMonday = (osloDate.day() + 6) % 7;
+    return osloDate.subtract(daysSinceMonday, "day").format("YYYY-MM-DD");
+  }
+  return osloDate.format("YYYY-MM-DD");
+}
+
+function calculateFieldTrend(
+  items: FeedbackDto[],
+  fieldId: string,
+  granularity: FieldTrendGranularity,
+): FieldTrend {
+  const buckets = new Map<
+    string,
+    {
+      responseCount: number;
+      ratingSum: number;
+      ratingCount: number;
+      distribution: Record<string, number>;
+    }
+  >();
+
+  for (const item of items) {
+    const answer = item.answers.find(
+      (candidate) => candidate.fieldId === fieldId,
+    );
+    if (!answer) continue;
+
+    const selectedOptionIds =
+      answer.value.type === "singleChoice"
+        ? answer.value.selectedOptionId
+          ? [answer.value.selectedOptionId]
+          : []
+        : answer.value.type === "multiChoice"
+          ? [...new Set(answer.value.selectedOptionIds)]
+          : [];
+    const rating = answer.value.type === "rating" ? answer.value.rating : null;
+    if (rating === null && selectedOptionIds.length === 0) continue;
+
+    const periodStart = fieldTrendPeriodStart(item.submittedAt, granularity);
+    const bucket = buckets.get(periodStart) ?? {
+      responseCount: 0,
+      ratingSum: 0,
+      ratingCount: 0,
+      distribution: {},
+    };
+    bucket.responseCount += 1;
+
+    if (rating !== null) {
+      bucket.ratingSum += rating;
+      bucket.ratingCount += 1;
+    }
+    for (const optionId of selectedOptionIds) {
+      bucket.distribution[optionId] = (bucket.distribution[optionId] ?? 0) + 1;
+    }
+    buckets.set(periodStart, bucket);
+  }
+
+  return {
+    fieldId,
+    granularity,
+    points: [...buckets.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([periodStart, bucket]) => {
+        const masked = bucket.responseCount < 5;
+        return {
+          periodStart,
+          responseCount: masked ? null : bucket.responseCount,
+          average:
+            masked || bucket.ratingCount === 0
+              ? null
+              : bucket.ratingSum / bucket.ratingCount,
+          distribution: masked ? {} : bucket.distribution,
+          masked,
+        };
+      }),
+  };
+}
+
 export function calculateStats(
   items: FeedbackDto[],
   params: URLSearchParams,
@@ -551,6 +645,16 @@ export function calculateStats(
   const MIN_AGGREGATION_THRESHOLD = 5;
   const totalCount = filtered.length;
   const shouldMask = totalCount > 0 && totalCount < MIN_AGGREGATION_THRESHOLD;
+  const trendFieldId = params.get("trendFieldId");
+  const rawGranularity = params.get("trendGranularity");
+  const trendGranularity: FieldTrendGranularity =
+    rawGranularity === "day" || rawGranularity === "month"
+      ? rawGranularity
+      : "week";
+  const fieldTrend =
+    !shouldMask && trendFieldId
+      ? calculateFieldTrend(filtered, trendFieldId, trendGranularity)
+      : null;
 
   const privacy = shouldMask
     ? {
@@ -579,6 +683,7 @@ export function calculateStats(
     byPathname: shouldMask ? {} : byPathname,
     lowestRatingPaths: shouldMask ? {} : lowestRatingPaths,
     fieldStats: shouldMask ? [] : fieldStats,
+    fieldTrend,
     period: calculatePeriod(fromDate, toDate),
     surveyType: totalCount > 0 ? filtered[0].surveyType || "rating" : undefined,
     privacy,

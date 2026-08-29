@@ -27,6 +27,9 @@ export const StatsParamsSchema = z.object({
   choice: z.array(z.string()).optional(),
   /** Rating filters as repeated query params, each in format "fieldId:value" */
   rating: z.array(z.string()).optional(),
+  /** Optional structured field and calendar bucket for its time series. */
+  trendFieldId: z.string().optional(),
+  trendGranularity: z.enum(["day", "week", "month"]).optional(),
 });
 
 export type StatsParams = z.infer<typeof StatsParamsSchema>;
@@ -1090,6 +1093,20 @@ const PrivacyInfoSchema = z.object({
   threshold: z.number(),
 });
 
+const FieldTrendSchema = z.object({
+  fieldId: z.string(),
+  granularity: z.enum(["day", "week", "month"]),
+  points: z.array(
+    z.object({
+      periodStart: z.string(),
+      responseCount: z.number().nullable(),
+      average: z.number().nullable(),
+      distribution: z.record(z.string(), z.number()),
+      masked: z.boolean(),
+    }),
+  ),
+});
+
 export const FeedbackStatsSchema = z.object({
   totalCount: z.number(),
   countWithText: z.number(),
@@ -1117,6 +1134,7 @@ export const FeedbackStatsSchema = z.object({
     z.object({ count: z.number(), averageRating: z.number() }),
   ),
   fieldStats: z.array(FieldStatSchema),
+  fieldTrend: FieldTrendSchema.nullish(),
   surveyType: SurveyTypeSchema.optional(),
   period: z.object({
     fromDate: z.string().nullable(),

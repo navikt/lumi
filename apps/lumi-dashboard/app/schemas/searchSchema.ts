@@ -8,6 +8,14 @@ const optionalDateModeParam = fallback(
   z.enum(["auto", "fixed"]).optional(),
   undefined,
 ).catch(undefined);
+const optionalTrendGranularityParam = fallback(
+  z.enum(["day", "week", "month"]).optional(),
+  undefined,
+).catch(undefined);
+const optionalTrendMeasureParam = fallback(
+  z.enum(["count", "percentage"]).optional(),
+  undefined,
+).catch(undefined);
 
 export const searchSchema = z
   .object({
@@ -30,6 +38,9 @@ export const searchSchema = z
     task: optionalStringParam,
     choice: optionalStringParam,
     rating: optionalStringParam,
+    trendFieldId: optionalStringParam,
+    trendGranularity: optionalTrendGranularityParam,
+    trendMeasure: optionalTrendMeasureParam,
     phrase: optionalStringParam,
     // Legacy params — kept temporarily for bookmarked URL migration
     choiceFieldId: optionalStringParam,

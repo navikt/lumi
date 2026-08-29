@@ -3,6 +3,7 @@ import { Box, Heading, HStack, Tag, Tooltip, VStack } from "@navikt/ds-react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { type ReactNode, useEffect } from "react";
+import { FieldTrendSection } from "~/components/dashboard/sections/FieldTrend";
 import { DiscoveryDashboard } from "~/components/dashboard/views/Discovery/Dashboard";
 import { OverviewDashboard } from "~/components/dashboard/views/Overview/Dashboard";
 import { RatingDashboard } from "~/components/dashboard/views/Rating/Dashboard";
@@ -146,7 +147,14 @@ function DashboardPage() {
     }
 
     if (config) {
-      return config.dashboard(hasSurveyFilter, surveyType === "rating");
+      return (
+        <>
+          {config.dashboard(hasSurveyFilter, surveyType === "rating")}
+          {hasSurveyFilter && (
+            <FieldTrendSection excludeRatingFields={surveyType === "rating"} />
+          )}
+        </>
+      );
     }
 
     return <OverviewDashboard />;
