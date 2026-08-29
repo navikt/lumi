@@ -5,6 +5,7 @@ import type {
   FeedbackDto,
   FeedbackPage,
   FeedbackStats,
+  FieldTrendResponse,
   TaskPriorityResponse,
   TeamsAndApps,
   TopTasksResponse,
@@ -39,7 +40,7 @@ export {
   generateTopTasksMockData,
 };
 
-import { calculateStats } from "./stats";
+import { calculateFieldTrendResponse, calculateStats } from "./stats";
 import {
   getMockBlockerStats as calculateBlockerStats,
   getMockDiscoveryStats as calculateDiscoveryStats,
@@ -497,6 +498,10 @@ export function filterFeedback(
 
 export function getMockStats(params: URLSearchParams): FeedbackStats {
   return calculateStats(getMockAnalyticsItems(params), params);
+}
+
+export function getMockFieldTrend(params: URLSearchParams): FieldTrendResponse {
+  return calculateFieldTrendResponse(getMockAnalyticsItems(params), params);
 }
 
 export function getMockFeedback(params: URLSearchParams): FeedbackPage {

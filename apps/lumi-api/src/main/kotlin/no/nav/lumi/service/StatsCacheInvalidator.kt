@@ -28,6 +28,7 @@ class StatsCacheInvalidator(
             "surveyTypes:$teamPrefix",
             "blockers:$teamPrefix",
             "taskPriority:$teamPrefix",
+            "field-trend-v2:$teamPrefix",
         )
 
         prefixes.forEach { statsCache.clearByPrefix(it) }

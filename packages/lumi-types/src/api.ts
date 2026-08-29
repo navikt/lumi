@@ -296,7 +296,6 @@ export interface FeedbackStats {
 
   // New: per-field statistics
   fieldStats: FieldStat[];
-  fieldTrend?: FieldTrend | null;
 
   surveyType?: SurveyType;
 
@@ -318,12 +317,30 @@ export interface FieldTrendPoint {
   average: number | null;
   distribution: Record<string, number>;
   masked: boolean;
+  empty: boolean;
 }
 
 export interface FieldTrend {
   fieldId: string;
   granularity: FieldTrendGranularity;
   points: FieldTrendPoint[];
+}
+
+export interface FieldTrendField {
+  fieldId: string;
+  fieldType: "RATING" | "SINGLE_CHOICE" | "MULTI_CHOICE";
+  label: string;
+  options: ChoiceOption[];
+  ratingVariant: "emoji" | "thumbs" | "stars" | "nps" | null;
+  ratingScale: number | null;
+  ratingMin: number | null;
+  ratingMax: number | null;
+}
+
+export interface FieldTrendResponse {
+  fields: FieldTrendField[];
+  trend: FieldTrend | null;
+  privacyThreshold: number;
 }
 
 /**

@@ -102,10 +102,6 @@ class ApiV1Intern {
         val choice: List<String>? = null,
         /** Rating filters — repeated params, each in format "fieldId:ratingValue" */
         val rating: List<String>? = null,
-        /** Optional structured field to aggregate over time in the dashboard response. */
-        val trendFieldId: String? = null,
-        /** Calendar bucket for trendFieldId: day, week or month. Defaults to week. */
-        val trendGranularity: String? = null,
         // Legacy single-value params (backward compat for bookmarked URLs)
         val ratingFieldId: String? = null,
         val ratingValue: Int? = null,
@@ -147,6 +143,15 @@ class ApiV1Intern {
         @Resource("task-priority")
         @Serializable
         class TaskPriority(val parent: Stats)
+
+        @Resource("field-trend")
+        @Serializable
+        class FieldTrend(
+            val parent: Stats,
+            val fieldId: String? = null,
+            /** Calendar bucket: day, week or month. Defaults to week. */
+            val granularity: String? = null,
+        )
     }
 
     @Resource("themes")

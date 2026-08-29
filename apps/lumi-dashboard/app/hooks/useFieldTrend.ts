@@ -1,17 +1,16 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "~/hooks/useSearchParams";
-import { fetchStatsServerFn } from "~/server/actions";
+import { fetchFieldTrendServerFn } from "~/server/actions";
 import { splitChoiceParam } from "~/utils/choiceFilterUtils";
 import { splitRatingParam } from "~/utils/ratingFilterUtils";
 
-export type { FeedbackStats } from "~/types/api";
-
-export function useStats() {
+export function useFieldTrend() {
   const { params } = useSearchParams();
+  const granularity = params.trendGranularity ?? "week";
 
   return useQuery({
     queryKey: [
-      "stats",
+      "field-trend",
       params.team,
       params.showArchived,
       params.app,
@@ -23,24 +22,29 @@ export function useStats() {
       params.task,
       params.rating,
       params.choice,
+      params.trendFieldId,
+      granularity,
     ],
     queryFn: () =>
-      fetchStatsServerFn({
+      fetchFieldTrendServerFn({
         data: {
           team: params.team,
           includeArchived: params.showArchived === "true" ? "true" : undefined,
           app: params.app,
           fromDate: params.fromDate,
           toDate: params.toDate,
-          surveyId: params.surveyId,
+          surveyId: params.surveyId as string,
           deviceType: params.deviceType,
           segment: params.segment,
           task: params.task,
           rating: splitRatingParam(params.rating),
           choice: splitChoiceParam(params.choice),
+          fieldId: params.trendFieldId,
+          granularity,
         },
       }),
-    staleTime: 30000,
+    enabled: Boolean(params.surveyId),
+    staleTime: 30_000,
     placeholderData: keepPreviousData,
   });
 }

@@ -21,6 +21,7 @@ export { fetchContextTagsServerFn } from "./fetchContextTags";
 export { fetchDiscoveryServerFn } from "./fetchDiscovery";
 // Feedback
 export { fetchFeedbackServerFn } from "./fetchFeedback";
+export { fetchFieldTrendServerFn } from "./fetchFieldTrend";
 // Filter Bootstrap
 export {
   fetchFilterBootstrapServerFn,

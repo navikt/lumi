@@ -243,6 +243,8 @@ function FilterBarContent({
       phrase: undefined,
       choice: undefined,
       rating: undefined,
+      trendFieldId: undefined,
+      trendOptionId: undefined,
       ...(shouldClearSurvey && {
         surveyId: undefined,
         ...(currentPeriod.dateMode === "auto" && {
@@ -270,6 +272,8 @@ function FilterBarContent({
       choice: undefined,
       rating: undefined,
       phrase: undefined,
+      trendFieldId: undefined,
+      trendOptionId: undefined,
       ...(period.dateMode === "auto" && {
         dateMode: "auto",
         fromDate: period.fromDate,
@@ -307,6 +311,8 @@ function FilterBarContent({
         choice: undefined,
         rating: undefined,
         phrase: undefined,
+        trendFieldId: undefined,
+        trendOptionId: undefined,
         ...(currentPeriod.dateMode === "auto" && {
           dateMode: "auto" as const,
           fromDate: rollingAutomaticPeriod.fromDate,
@@ -320,6 +326,8 @@ function FilterBarContent({
         choice: undefined,
         rating: undefined,
         phrase: undefined,
+        trendFieldId: undefined,
+        trendOptionId: undefined,
         ...(currentPeriod.dateMode === "auto" && {
           dateMode: "auto" as const,
           fromDate: rollingAutomaticPeriod.fromDate,
@@ -397,6 +405,8 @@ function FilterBarContent({
       choice: undefined,
       rating: undefined,
       phrase: undefined,
+      trendFieldId: undefined,
+      trendOptionId: undefined,
       page: undefined,
       size: undefined,
     });

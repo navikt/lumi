@@ -16,6 +16,19 @@ const optionalTrendMeasureParam = fallback(
   z.enum(["count", "percentage"]).optional(),
   undefined,
 ).catch(undefined);
+const optionalFieldIdParam = fallback(
+  z
+    .string()
+    .trim()
+    .max(200)
+    .regex(/^[\p{L}\p{N}_-]+$/u)
+    .optional(),
+  undefined,
+).catch(undefined);
+const optionalOptionIdParam = fallback(
+  z.string().trim().min(1).max(200).optional(),
+  undefined,
+).catch(undefined);
 
 export const searchSchema = z
   .object({
@@ -38,7 +51,8 @@ export const searchSchema = z
     task: optionalStringParam,
     choice: optionalStringParam,
     rating: optionalStringParam,
-    trendFieldId: optionalStringParam,
+    trendFieldId: optionalFieldIdParam,
+    trendOptionId: optionalOptionIdParam,
     trendGranularity: optionalTrendGranularityParam,
     trendMeasure: optionalTrendMeasureParam,
     phrase: optionalStringParam,

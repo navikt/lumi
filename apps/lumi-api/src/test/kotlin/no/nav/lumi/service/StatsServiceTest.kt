@@ -1,6 +1,8 @@
 package no.nav.lumi.service
 
 import no.nav.lumi.domain.StatsQuery
+import no.nav.lumi.domain.FieldTrendGranularity
+import no.nav.lumi.integrations.valkey.InMemoryStatsCache
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 
@@ -17,20 +19,37 @@ class StatsServiceTest {
     }
 
     @Test
-    fun `stats cache key distinguishes selected field trend`() {
-        assertEquals(
-            "dashboard:team=flex&includeArchived=false&trendFieldId=priority&trendGranularity=month&resultVersion=3",
-            service.statsCacheKey(
-                "dashboard",
-                StatsQuery(
-                    team = "flex",
-                    trendFieldId = "priority",
-                    trendGranularity = no.nav.lumi.domain.FieldTrendGranularity.MONTH,
-                ),
-            ),
+    fun `field trend cache keys separate default selection from a field named auto`() {
+        val query = StatsQuery(team = "flex", surveyId = "survey-1")
+
+        assertNotEquals(
+            service.fieldTrendCacheKey(query, null, FieldTrendGranularity.WEEK),
+            service.fieldTrendCacheKey(query, "auto", FieldTrendGranularity.WEEK),
         )
     }
-    
+
+    @Test
+    fun `team invalidation clears field trend cache without clearing another team`() {
+        val cache = InMemoryStatsCache()
+        val flexKey = service.fieldTrendCacheKey(
+            StatsQuery(team = "flex", surveyId = "survey-1"),
+            "field-1",
+            FieldTrendGranularity.WEEK,
+        )
+        val otherKey = service.fieldTrendCacheKey(
+            StatsQuery(team = "other", surveyId = "survey-1"),
+            "field-1",
+            FieldTrendGranularity.WEEK,
+        )
+        cache.set(flexKey, "flex-value")
+        cache.set(otherKey, "other-value")
+
+        StatsCacheInvalidator(cache).invalidateTeam("flex")
+
+        assertNull(cache.get(flexKey))
+        assertEquals("other-value", cache.get(otherKey))
+    }
+
     @Test
     fun `calculateAverageRating returns correct average`() {
         val byRating = mapOf("5" to 3, "4" to 5, "3" to 2)

@@ -79,6 +79,27 @@ describe("useSearchParams", () => {
     expect(getResult().params.dateMode).toBe("auto");
   });
 
+  it("drops field trend IDs that the backend would reject", () => {
+    expect(searchSchema.parse({ trendFieldId: "field-1_æ" }).trendFieldId).toBe(
+      "field-1_æ",
+    );
+    expect(
+      searchSchema.parse({ trendFieldId: "field.with.path" }).trendFieldId,
+    ).toBeUndefined();
+    expect(
+      searchSchema.parse({ trendFieldId: "x".repeat(201) }).trendFieldId,
+    ).toBeUndefined();
+  });
+
+  it("keeps bounded option IDs for shareable high-cardinality trend series", () => {
+    expect(
+      searchSchema.parse({ trendOptionId: "option.with spaces" }).trendOptionId,
+    ).toBe("option.with spaces");
+    expect(
+      searchSchema.parse({ trendOptionId: "x".repeat(201) }).trendOptionId,
+    ).toBeUndefined();
+  });
+
   it("setParam adds a new parameter", async () => {
     const { router, getResult } = await setup();
 

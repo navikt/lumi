@@ -25,10 +25,6 @@ internal fun ApiV1Intern.Stats.toStatsQuery(
     val normalizedFromDate = fromDate?.takeIf { it.isNotBlank() }
     val normalizedToDate = toDate?.takeIf { it.isNotBlank() }
     validateDateRange(normalizedFromDate, normalizedToDate)
-    val parsedTrendGranularity = FieldTrendGranularity.fromWireName(trendGranularity)
-        ?: throw ApiErrorException.BadRequestException(
-            "Invalid trendGranularity: expected day, week or month"
-        )
     return StatsQuery(
         team = team,
         includeArchived = includeArchived ?: false,
@@ -41,8 +37,6 @@ internal fun ApiV1Intern.Stats.toStatsQuery(
         task = task,
         choiceFilters = parseChoiceFilters(choice, choiceFieldId, choiceValue),
         ratingFilters = parseRatingFilters(rating, ratingFieldId, ratingValue),
-        trendFieldId = parseTrendFieldId(trendFieldId),
-        trendGranularity = parsedTrendGranularity,
     )
 }
 
@@ -93,6 +87,24 @@ fun Route.statsRoutes(
     get<ApiV1Intern.Stats.TaskPriority> { params ->
         val query = params.parent.toStatsQuery(call.authorizedTeam)
         call.respond(statsService.getTaskPriorityStats(query))
+    }
+
+    // Definition-backed field catalog and one separately cached time series.
+    get<ApiV1Intern.Stats.FieldTrend> { params ->
+        val surveyId = params.parent.surveyId?.trim()?.takeIf { it.isNotEmpty() }
+            ?: throw ApiErrorException.BadRequestException("surveyId is required for field trend")
+        val granularity = FieldTrendGranularity.fromWireName(params.granularity)
+            ?: throw ApiErrorException.BadRequestException(
+                "Invalid trendGranularity: expected day, week or month"
+            )
+        val query = params.parent.toStatsQuery(call.authorizedTeam).copy(surveyId = surveyId)
+        call.respond(
+            statsService.getFieldTrend(
+                query = query,
+                requestedFieldId = parseTrendFieldId(params.fieldId),
+                granularity = granularity,
+            )
+        )
     }
 
     // Survey Type distribution (surveyId forced to null — counts across all surveys)

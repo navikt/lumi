@@ -284,8 +284,6 @@ data class FeedbackStats(
     @OptIn(ExperimentalSerializationApi::class)
     @EncodeDefault(EncodeDefault.Mode.ALWAYS)
     val fieldStats: List<FieldStat> = emptyList(),
-    /** Optional database-aggregated time series for one selected structured field. */
-    val fieldTrend: FieldTrend? = null,
     // Privacy threshold info
     val privacy: PrivacyInfo? = null
 )
@@ -321,6 +319,27 @@ data class FieldTrend(
 )
 
 @Serializable
+data class FieldTrendResponse(
+    /** Stable, definition-backed fields for the selected survey. */
+    val fields: List<FieldTrendField>,
+    /** The requested field, or the first supported field when the request is missing or stale. */
+    val trend: FieldTrend? = null,
+    val privacyThreshold: Int,
+)
+
+@Serializable
+data class FieldTrendField(
+    val fieldId: String,
+    val fieldType: FieldType,
+    val label: String,
+    val options: List<ChoiceOption> = emptyList(),
+    val ratingVariant: RatingVariant? = null,
+    val ratingScale: Int? = null,
+    val ratingMin: Int? = null,
+    val ratingMax: Int? = null,
+)
+
+@Serializable
 data class FieldTrendPoint(
     /** Start of the calendar interval in Europe/Oslo, formatted as YYYY-MM-DD. */
     val periodStart: String,
@@ -331,6 +350,8 @@ data class FieldTrendPoint(
     /** Option id to respondent count for choice fields. Empty for rating and masked intervals. */
     val distribution: Map<String, Int> = emptyMap(),
     val masked: Boolean = false,
+    /** True when the interval exists in the requested calendar range but has no answers. */
+    val empty: Boolean = false,
 )
 
 @Serializable
@@ -511,9 +532,6 @@ data class StatsQuery(
     val choiceFilters: List<Pair<String, String>> = emptyList(),
     /** Multi-value rating filters: list of (fieldId, ratingValue) pairs */
     val ratingFilters: List<Pair<String, Int>> = emptyList(),
-    /** Structured field selected for an optional database-aggregated time series. */
-    val trendFieldId: String? = null,
-    val trendGranularity: FieldTrendGranularity = FieldTrendGranularity.WEEK,
 )
 
 // ============================================

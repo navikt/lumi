@@ -14,7 +14,9 @@ import type {
   FeedbackStats,
   FieldStat,
   FieldTrend,
+  FieldTrendField,
   FieldTrendGranularity,
+  FieldTrendResponse,
   TaskPriorityResponse,
   TopTaskStats,
   TopTasksResponse,
@@ -316,6 +318,8 @@ function calculateFieldTrend(
   items: FeedbackDto[],
   fieldId: string,
   granularity: FieldTrendGranularity,
+  fromDate?: string | null,
+  toDate?: string | null,
 ): FieldTrend {
   const buckets = new Map<
     string,
@@ -363,14 +367,12 @@ function calculateFieldTrend(
     buckets.set(periodStart, bucket);
   }
 
-  return {
-    fieldId,
-    granularity,
-    points: [...buckets.entries()]
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([periodStart, bucket]) => {
-        const masked = bucket.responseCount < 5;
-        return {
+  const populated = new Map(
+    [...buckets.entries()].map(([periodStart, bucket]) => {
+      const masked = bucket.responseCount < 5;
+      return [
+        periodStart,
+        {
           periodStart,
           responseCount: masked ? null : bucket.responseCount,
           average:
@@ -379,8 +381,127 @@ function calculateFieldTrend(
               : bucket.ratingSum / bucket.ratingCount,
           distribution: masked ? {} : bucket.distribution,
           masked,
-        };
-      }),
+          empty: false,
+        },
+      ] as const;
+    }),
+  );
+  const first = fromDate
+    ? fieldTrendPeriodStart(`${fromDate}T12:00:00Z`, granularity)
+    : [...populated.keys()].sort()[0];
+  const last = toDate
+    ? fieldTrendPeriodStart(`${toDate}T12:00:00Z`, granularity)
+    : [...populated.keys()].sort().at(-1);
+  const points: FieldTrend["points"] = [];
+
+  if (first && last) {
+    let current = dayjs(first);
+    const end = dayjs(last);
+    while (!current.isAfter(end)) {
+      const periodStart = current.format("YYYY-MM-DD");
+      points.push(
+        populated.get(periodStart) ?? {
+          periodStart,
+          responseCount: 0,
+          average: null,
+          distribution: {},
+          masked: false,
+          empty: true,
+        },
+      );
+      current = current.add(
+        1,
+        granularity === "day"
+          ? "day"
+          : granularity === "week"
+            ? "week"
+            : "month",
+      );
+    }
+  }
+
+  return {
+    fieldId,
+    granularity,
+    points,
+  };
+}
+
+export function calculateFieldTrendResponse(
+  items: FeedbackDto[],
+  params: URLSearchParams,
+): FieldTrendResponse {
+  const surveyId = params.get("surveyId");
+  const app = params.get("app");
+  const catalogItems = items
+    .filter(
+      (item) =>
+        (!surveyId || item.surveyId === surveyId) && (!app || item.app === app),
+    )
+    .sort((left, right) => right.submittedAt.localeCompare(left.submittedAt));
+  const fieldMap = new Map<string, FieldTrendField>();
+
+  for (const item of catalogItems) {
+    for (const answer of item.answers) {
+      if (fieldMap.has(answer.fieldId)) continue;
+      if (
+        answer.fieldType !== "RATING" &&
+        answer.fieldType !== "SINGLE_CHOICE" &&
+        answer.fieldType !== "MULTI_CHOICE"
+      ) {
+        continue;
+      }
+
+      const ratingValue = answer.value.type === "rating" ? answer.value : null;
+      const ratingScale = ratingValue?.ratingScale ?? null;
+      if (answer.fieldType === "RATING" && ratingScale === null) continue;
+      const ratingVariant = ratingValue?.ratingVariant ?? null;
+      fieldMap.set(answer.fieldId, {
+        fieldId: answer.fieldId,
+        fieldType: answer.fieldType,
+        label: answer.question.label,
+        options: answer.question.options ?? [],
+        ratingVariant,
+        ratingScale,
+        ratingMin:
+          answer.fieldType === "RATING"
+            ? ratingVariant === "nps"
+              ? 0
+              : 1
+            : null,
+        ratingMax:
+          answer.fieldType === "RATING"
+            ? ratingVariant === "nps"
+              ? (ratingScale ?? 1) - 1
+              : ratingScale
+            : null,
+      });
+    }
+  }
+
+  const fields = [...fieldMap.values()];
+  const requestedFieldId = params.get("fieldId");
+  const selectedField =
+    fields.find((field) => field.fieldId === requestedFieldId) ?? fields[0];
+  const granularityParam = params.get("granularity");
+  const granularity: FieldTrendGranularity =
+    granularityParam === "day" || granularityParam === "month"
+      ? granularityParam
+      : "week";
+  const filtered = applyFiltersToItems(items, params);
+
+  return {
+    fields,
+    trend: selectedField
+      ? calculateFieldTrend(
+          filtered,
+          selectedField.fieldId,
+          granularity,
+          params.get("fromDate"),
+          params.get("toDate"),
+        )
+      : null,
+    privacyThreshold: 5,
   };
 }
 
@@ -388,112 +509,9 @@ export function calculateStats(
   items: FeedbackDto[],
   params: URLSearchParams,
 ): FeedbackStats {
-  // Filter items based on params
-  let filtered = [...items];
-
-  const app = params.get("app");
+  const filtered = applyFiltersToItems(items, params);
   const fromDate = params.get("fromDate");
   const toDate = params.get("toDate");
-  const surveyId = params.get("surveyId");
-  const deviceType = params.get("deviceType");
-  const rating = params.get("rating");
-
-  if (app) {
-    filtered = filtered.filter((item) => item.app === app);
-  }
-  if (fromDate) {
-    filtered = filtered.filter((item) => item.submittedAt >= fromDate);
-  }
-  if (toDate) {
-    filtered = filtered.filter(
-      (item) => item.submittedAt <= `${toDate}T23:59:59Z`,
-    );
-  }
-  if (surveyId) {
-    filtered = filtered.filter((item) => item.surveyId === surveyId);
-  }
-  if (deviceType) {
-    filtered = filtered.filter(
-      (item) => item.context?.deviceType === deviceType,
-    );
-  }
-
-  const ratingFilters = Object.entries(parseRatingParam(rating ?? undefined));
-  if (ratingFilters.length > 0) {
-    filtered = filtered.filter((item) =>
-      ratingFilters.every(([fieldId, ratingValue]) => {
-        const parsed = Number.parseInt(ratingValue, 10);
-        if (Number.isNaN(parsed)) {
-          return false;
-        }
-
-        return item.answers.some(
-          (answer) =>
-            answer.fieldType === "RATING" &&
-            answer.fieldId === fieldId &&
-            answer.value.type === "rating" &&
-            answer.value.rating === parsed,
-        );
-      }),
-    );
-  }
-
-  const choice = params.get("choice");
-  const choiceFilters = Object.entries(parseChoiceParam(choice ?? undefined));
-  if (choiceFilters.length > 0) {
-    filtered = filtered.filter((item) =>
-      choiceFilters.every(([fieldId, optionId]) =>
-        item.answers.some((answer) => {
-          if (answer.fieldId !== fieldId) return false;
-          if (
-            answer.fieldType === "SINGLE_CHOICE" &&
-            answer.value.type === "singleChoice"
-          ) {
-            return answer.value.selectedOptionId === optionId;
-          }
-          if (
-            answer.fieldType === "MULTI_CHOICE" &&
-            answer.value.type === "multiChoice"
-          ) {
-            return answer.value.selectedOptionIds.includes(optionId);
-          }
-          return false;
-        }),
-      ),
-    );
-  }
-
-  // Filter by segment (context.tags format: "key:value,key:value")
-  const segment = params.get("segment");
-  if (segment) {
-    const segmentFilters = segment.split(",").map((t) => {
-      const [key, value] = t.split(":");
-      return { key, value };
-    });
-    filtered = filtered.filter((item) => {
-      // Check if item.metadata matches all segment filters
-      if (!item.metadata) return false;
-      return segmentFilters.every(
-        (filter) => item.metadata?.[filter.key] === filter.value,
-      );
-    });
-  }
-
-  // Task filter: use the stable option id so label edits keep one history.
-  const taskFilter = params.get("task");
-  if (taskFilter) {
-    filtered = filtered.filter((item) => {
-      // Only applies to topTasks survey type
-      if (item.surveyType !== "topTasks") return false;
-
-      const taskAnswer = item.answers.find(
-        (a) => a.fieldId === SPECIALIZED_SURVEY_FIELD_IDS.task,
-      );
-      if (!taskAnswer || taskAnswer.fieldType !== "SINGLE_CHOICE") return false;
-
-      return taskAnswer.value.selectedOptionId === taskFilter;
-    });
-  }
 
   // Legacy aggregations
   const byRating: Record<string, number> = {
@@ -645,17 +663,6 @@ export function calculateStats(
   const MIN_AGGREGATION_THRESHOLD = 5;
   const totalCount = filtered.length;
   const shouldMask = totalCount > 0 && totalCount < MIN_AGGREGATION_THRESHOLD;
-  const trendFieldId = params.get("trendFieldId");
-  const rawGranularity = params.get("trendGranularity");
-  const trendGranularity: FieldTrendGranularity =
-    rawGranularity === "day" || rawGranularity === "month"
-      ? rawGranularity
-      : "week";
-  const fieldTrend =
-    !shouldMask && trendFieldId
-      ? calculateFieldTrend(filtered, trendFieldId, trendGranularity)
-      : null;
-
   const privacy = shouldMask
     ? {
         masked: true,
@@ -683,7 +690,6 @@ export function calculateStats(
     byPathname: shouldMask ? {} : byPathname,
     lowestRatingPaths: shouldMask ? {} : lowestRatingPaths,
     fieldStats: shouldMask ? [] : fieldStats,
-    fieldTrend,
     period: calculatePeriod(fromDate, toDate),
     surveyType: totalCount > 0 ? filtered[0].surveyType || "rating" : undefined,
     privacy,
@@ -701,12 +707,20 @@ function applyFiltersToItems(
   const surveyId = params.get("surveyId");
   const deviceType = params.get("deviceType");
   if (app) filtered = filtered.filter((item) => item.app === app);
-  if (fromDate)
-    filtered = filtered.filter((item) => item.submittedAt >= fromDate);
-  if (toDate)
+  if (fromDate) {
     filtered = filtered.filter(
-      (item) => item.submittedAt <= `${toDate}T23:59:59Z`,
+      (item) =>
+        dayjs.utc(item.submittedAt).tz("Europe/Oslo").format("YYYY-MM-DD") >=
+        fromDate,
     );
+  }
+  if (toDate) {
+    filtered = filtered.filter(
+      (item) =>
+        dayjs.utc(item.submittedAt).tz("Europe/Oslo").format("YYYY-MM-DD") <=
+        toDate,
+    );
+  }
   if (surveyId)
     filtered = filtered.filter((item) => item.surveyId === surveyId);
   if (deviceType)
@@ -767,6 +781,20 @@ function applyFiltersToItems(
       if (!item.metadata) return false;
       return segmentFilters.every(
         (filter) => item.metadata?.[filter.key] === filter.value,
+      );
+    });
+  }
+
+  const task = params.get("task");
+  if (task) {
+    filtered = filtered.filter((item) => {
+      if (item.surveyType !== "topTasks") return false;
+      const answer = item.answers.find(
+        (candidate) => candidate.fieldId === SPECIALIZED_SURVEY_FIELD_IDS.task,
+      );
+      return (
+        answer?.fieldType === "SINGLE_CHOICE" &&
+        answer.value.selectedOptionId === task
       );
     });
   }

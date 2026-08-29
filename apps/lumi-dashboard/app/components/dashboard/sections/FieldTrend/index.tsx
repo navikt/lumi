@@ -23,10 +23,10 @@ import {
 import { DashboardCard } from "~/components/dashboard";
 import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import { useTheme } from "~/context/ThemeContext";
+import { useFieldTrend } from "~/hooks/useFieldTrend";
 import { useSearchParams } from "~/hooks/useSearchParams";
-import { useStats } from "~/hooks/useStats";
 import type {
-  FieldStat,
+  FieldTrendField,
   FieldTrendGranularity,
   FieldTrendPoint,
 } from "~/types/api";
@@ -36,11 +36,7 @@ dayjs.extend(isoWeek);
 
 type TrendMeasure = "count" | "percentage";
 
-interface FieldTrendSectionProps {
-  /** Standard rating surveys already have a richer marker-enabled trend. */
-  excludeRatingFields?: boolean;
-}
-
+const MAX_VISIBLE_SERIES = 8;
 const LIGHT_SERIES_COLORS = [
   "#005B82",
   "#A86400",
@@ -62,29 +58,19 @@ const DARK_SERIES_COLORS = [
   "#B4D46A",
 ];
 
-export function FieldTrendSection({
-  excludeRatingFields = false,
-}: FieldTrendSectionProps) {
-  const statsQuery = useStats();
-  const { data: stats, isFetching, isPlaceholderData } = statsQuery;
+export function FieldTrendSection() {
+  const trendQuery = useFieldTrend();
+  const { data, error, isPending, isFetching, isPlaceholderData } = trendQuery;
   const { params, setParams } = useSearchParams();
-
-  const fields = useMemo(
-    () =>
-      (stats?.fieldStats ?? []).filter(
-        (field) =>
-          (field.fieldType === "RATING" ||
-            field.fieldType === "SINGLE_CHOICE" ||
-            field.fieldType === "MULTI_CHOICE") &&
-          !(excludeRatingFields && field.fieldType === "RATING"),
-      ),
-    [excludeRatingFields, stats?.fieldStats],
-  );
-
-  const selectedField =
-    fields.find((field) => field.fieldId === params.trendFieldId) ?? fields[0];
+  const fields = data?.fields ?? [];
   const granularity: FieldTrendGranularity = params.trendGranularity ?? "week";
   const measure: TrendMeasure = params.trendMeasure ?? "percentage";
+  const selectedField = useMemo(
+    () =>
+      fields.find((field) => field.fieldId === data?.trend?.fieldId) ??
+      fields[0],
+    [data?.trend?.fieldId, fields],
+  );
 
   useEffect(() => {
     if (isPlaceholderData || !selectedField) return;
@@ -93,9 +79,11 @@ export function FieldTrendSection({
       trendFieldId?: string;
       trendGranularity?: FieldTrendGranularity;
       trendMeasure?: TrendMeasure;
+      trendOptionId?: string;
     } = {};
     if (params.trendFieldId !== selectedField.fieldId) {
       next.trendFieldId = selectedField.fieldId;
+      next.trendOptionId = undefined;
     }
     if (!params.trendGranularity) next.trendGranularity = "week";
     if (!params.trendMeasure) next.trendMeasure = "percentage";
@@ -109,16 +97,17 @@ export function FieldTrendSection({
     setParams,
   ]);
 
-  if (fields.length === 0 || !selectedField) return null;
+  const blockingError = error && !data;
+  if (!isPending && !blockingError && fields.length === 0) return null;
 
-  const trend = stats?.fieldTrend;
-  const trendMatchesSelection =
-    trend?.fieldId === selectedField.fieldId &&
-    trend.granularity === granularity;
+  const trendMatchesSelection = Boolean(
+    data?.trend &&
+      selectedField &&
+      data.trend.fieldId === selectedField.fieldId &&
+      data.trend.granularity === granularity,
+  );
   const showLoading =
-    isFetching ||
-    !trendMatchesSelection ||
-    params.trendFieldId !== selectedField.fieldId;
+    isPending || isPlaceholderData || (isFetching && !trendMatchesSelection);
 
   return (
     <section aria-labelledby="field-trend-heading">
@@ -134,62 +123,87 @@ export function FieldTrendSection({
             </BodyShort>
           </VStack>
 
-          <HStack gap="space-16" align="end" wrap className={styles.controls}>
-            <Select
-              label="Spørsmål"
-              size="small"
-              value={selectedField.fieldId}
-              onChange={(event) =>
-                void setParams({ trendFieldId: event.target.value })
-              }
-              className={styles.fieldSelect}
-            >
-              {fields.map((field) => (
-                <option key={field.fieldId} value={field.fieldId}>
-                  {field.label}
-                </option>
-              ))}
-            </Select>
-
-            <ToggleGroup
-              label="Tidsoppløsning"
-              size="small"
-              value={granularity}
-              onChange={(value) =>
-                void setParams({
-                  trendGranularity: value as FieldTrendGranularity,
-                })
-              }
-            >
-              <ToggleGroup.Item value="day" label="Dag" />
-              <ToggleGroup.Item value="week" label="Uke" />
-              <ToggleGroup.Item value="month" label="Måned" />
-            </ToggleGroup>
-
-            {selectedField.stats.type === "choice" && (
-              <ToggleGroup
-                label="Visning"
-                size="small"
-                value={measure}
-                onChange={(value) =>
-                  void setParams({ trendMeasure: value as TrendMeasure })
-                }
-              >
-                <ToggleGroup.Item value="percentage" label="Andel" />
-                <ToggleGroup.Item value="count" label="Antall" />
-              </ToggleGroup>
-            )}
-          </HStack>
-
-          {showLoading ? (
+          {blockingError ? (
+            <Alert variant="error" size="small">
+              Vi klarte ikke å hente utviklingen akkurat nå. Prøv igjen senere.
+            </Alert>
+          ) : showLoading || !selectedField ? (
             <Skeleton variant="rectangle" height={340} />
           ) : (
-            <FieldTrendContent
-              field={selectedField}
-              points={trend?.points ?? []}
-              granularity={granularity}
-              measure={measure}
-            />
+            <>
+              {error && data && (
+                <Alert variant="warning" size="small">
+                  Oppdateringen feilet. Vi viser sist hentede utvikling.
+                </Alert>
+              )}
+              <HStack
+                gap="space-16"
+                align="end"
+                wrap
+                className={styles.controls}
+              >
+                <Select
+                  label="Spørsmål"
+                  size="small"
+                  value={selectedField.fieldId}
+                  onChange={(event) =>
+                    void setParams({
+                      trendFieldId: event.target.value,
+                      trendOptionId: undefined,
+                    })
+                  }
+                  className={styles.fieldSelect}
+                >
+                  {fields.map((field) => (
+                    <option key={field.fieldId} value={field.fieldId}>
+                      {field.label}
+                    </option>
+                  ))}
+                </Select>
+
+                <ToggleGroup
+                  label="Tidsoppløsning"
+                  size="small"
+                  value={granularity}
+                  onChange={(value) =>
+                    void setParams({
+                      trendGranularity: value as FieldTrendGranularity,
+                    })
+                  }
+                >
+                  <ToggleGroup.Item value="day" label="Dag" />
+                  <ToggleGroup.Item value="week" label="Uke" />
+                  <ToggleGroup.Item value="month" label="Måned" />
+                </ToggleGroup>
+
+                {selectedField.fieldType !== "RATING" && (
+                  <ToggleGroup
+                    label="Visning"
+                    size="small"
+                    value={measure}
+                    onChange={(value) =>
+                      void setParams({ trendMeasure: value as TrendMeasure })
+                    }
+                  >
+                    <ToggleGroup.Item value="percentage" label="Andel" />
+                    <ToggleGroup.Item value="count" label="Antall" />
+                  </ToggleGroup>
+                )}
+              </HStack>
+
+              <FieldTrendContent
+                key={selectedField.fieldId}
+                field={selectedField}
+                points={data?.trend?.points ?? []}
+                granularity={granularity}
+                measure={measure}
+                privacyThreshold={data?.privacyThreshold ?? 5}
+                selectedOptionId={params.trendOptionId}
+                onSelectedOptionChange={(trendOptionId) =>
+                  void setParams({ trendOptionId })
+                }
+              />
+            </>
           )}
         </VStack>
       </DashboardCard>
@@ -198,18 +212,27 @@ export function FieldTrendSection({
 }
 
 interface FieldTrendContentProps {
-  field: FieldStat;
+  field: FieldTrendField;
   points: FieldTrendPoint[];
   granularity: FieldTrendGranularity;
   measure: TrendMeasure;
+  privacyThreshold: number;
+  selectedOptionId?: string;
+  onSelectedOptionChange: (optionId: string | undefined) => void;
 }
 
-type ChartPoint = {
+type TrendOption = {
+  id: string;
+  label: string;
+  seriesKey: string;
+};
+
+type ChartPoint = Record<string, string | number | boolean | null> & {
   periodStart: string;
   masked: boolean;
+  empty: boolean;
   responseCount: number | null;
   average: number | null;
-  [seriesId: string]: string | number | boolean | null;
 };
 
 function FieldTrendContent({
@@ -217,44 +240,72 @@ function FieldTrendContent({
   points,
   granularity,
   measure,
+  privacyThreshold,
+  selectedOptionId,
+  onSelectedOptionChange,
 }: FieldTrendContentProps) {
   const { theme } = useTheme();
   const colors = theme === "light" ? LIGHT_SERIES_COLORS : DARK_SERIES_COLORS;
-  const choiceDistribution =
-    field.stats.type === "choice" ? field.stats.distribution : null;
-  const options = choiceDistribution
-    ? [
-        ...new Set([
-          ...Object.keys(choiceDistribution),
-          ...points.flatMap((point) => Object.keys(point.distribution)),
-        ]),
-      ].map((id) => ({
-        id,
-        label: choiceDistribution[id]?.label ?? id,
-      }))
-    : [];
+  const allOptions = useMemo(() => {
+    const labels = new Map(
+      field.options.map((option) => [option.id, option.label]),
+    );
+    for (const point of points) {
+      for (const optionId of Object.keys(point.distribution)) {
+        if (!labels.has(optionId)) labels.set(optionId, optionId);
+      }
+    }
+    return [...labels].map(([id, label], index) => ({
+      id,
+      label,
+      seriesKey: `series_${index}`,
+    }));
+  }, [field.options, points]);
+  const selectedOption =
+    allOptions.find((option) => option.id === selectedOptionId) ??
+    allOptions[0];
+  const visibleOptions =
+    allOptions.length > MAX_VISIBLE_SERIES
+      ? selectedOption
+        ? [selectedOption]
+        : []
+      : allOptions;
+  useEffect(() => {
+    const canonicalOptionId =
+      allOptions.length > MAX_VISIBLE_SERIES ? selectedOption?.id : undefined;
+    if (selectedOptionId !== canonicalOptionId) {
+      onSelectedOptionChange(canonicalOptionId);
+    }
+  }, [
+    allOptions.length,
+    onSelectedOptionChange,
+    selectedOption,
+    selectedOptionId,
+  ]);
   const hasMaskedPoints = points.some((point) => point.masked);
-  const visiblePoints = points.filter((point) => !point.masked);
+  const hasDataPoints = points.some((point) => !point.masked && !point.empty);
+  const hasAnyAnswers = points.some((point) => !point.empty);
   const chartData: ChartPoint[] = points.map((point) => ({
     periodStart: point.periodStart,
     masked: point.masked,
+    empty: point.empty,
     responseCount: point.responseCount,
-    average: point.average,
+    average: point.empty ? null : point.average,
     ...Object.fromEntries(
-      options.map((option) => {
+      allOptions.map((option) => {
         const count = point.distribution[option.id] ?? 0;
         const value =
-          point.masked || point.responseCount === null
+          point.masked || point.empty || point.responseCount === null
             ? null
             : measure === "percentage"
               ? Math.round((count / point.responseCount) * 1000) / 10
               : count;
-        return [option.id, value];
+        return [option.seriesKey, value];
       }),
     ),
   }));
 
-  if (points.length === 0) {
+  if (!hasAnyAnswers) {
     return (
       <Alert variant="info" size="small">
         Ingen svar på dette spørsmålet i den valgte perioden.
@@ -262,7 +313,7 @@ function FieldTrendContent({
     );
   }
 
-  if (visiblePoints.length === 0) {
+  if (!hasDataPoints) {
     return (
       <Alert variant="info" size="small">
         Det er for få svar i hvert tidsintervall til å vise utviklingen.
@@ -270,31 +321,41 @@ function FieldTrendContent({
     );
   }
 
-  const isRating = field.stats.type === "rating";
-  const ratingValues =
-    field.stats.type === "rating"
-      ? Object.keys(field.stats.distribution)
-          .map(Number)
-          .filter(Number.isFinite)
-      : [];
-  const ratingMin = ratingValues.includes(0) ? 0 : 1;
-  const ratingMax = Math.max(5, ...ratingValues);
+  const isRating = field.fieldType === "RATING";
 
   return (
     <VStack gap="space-16">
       {hasMaskedPoints && (
         <Alert variant="info" size="small">
-          Noen tidsintervaller er skjult fordi de har færre enn fem svar.
+          Noen tidsintervaller er skjult fordi de har færre enn{" "}
+          {privacyThreshold} svar.
         </Alert>
+      )}
+
+      {!isRating && allOptions.length > MAX_VISIBLE_SERIES && (
+        <Select
+          label="Svaralternativ i grafen"
+          description={`Grafen viser ett alternativ om gangen fordi spørsmålet har ${allOptions.length} alternativer. Tabellen viser alle.`}
+          size="small"
+          value={selectedOption?.id}
+          onChange={(event) => onSelectedOptionChange(event.target.value)}
+          className={styles.seriesSelect}
+        >
+          {allOptions.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
       )}
 
       {!isRating && (
         <ul className={styles.legend} aria-label="Svaralternativer">
-          {options.map((option, index) => (
+          {visibleOptions.map((option, index) => (
             <li key={option.id}>
               <span
                 className={styles.legendSwatch}
-                style={{ backgroundColor: colors[index % colors.length] }}
+                style={{ backgroundColor: colors[index] }}
                 aria-hidden
               />
               {option.label}
@@ -321,7 +382,14 @@ function FieldTrendContent({
             data={chartData}
             margin={{ top: 12, right: 20, bottom: 16, left: 4 }}
             role="img"
-            aria-label={chartAriaLabel(field, granularity, measure)}
+            aria-label={chartAriaLabel(
+              field,
+              granularity,
+              measure,
+              allOptions.length > MAX_VISIBLE_SERIES
+                ? selectedOption?.label
+                : undefined,
+            )}
           >
             <CartesianGrid
               vertical={false}
@@ -337,7 +405,12 @@ function FieldTrendContent({
               interval="preserveStartEnd"
             />
             <YAxis
-              domain={isRating ? [ratingMin, ratingMax] : [0, "auto"]}
+              allowDecimals={isRating || measure === "percentage"}
+              domain={
+                isRating
+                  ? [field.ratingMin ?? 1, field.ratingMax ?? 5]
+                  : [0, "auto"]
+              }
               tickFormatter={(value) =>
                 !isRating && measure === "percentage" ? `${value}%` : `${value}`
               }
@@ -347,6 +420,7 @@ function FieldTrendContent({
               width={44}
             />
             <Tooltip
+              filterNull={false}
               content={({ active, payload }) => {
                 if (!active || !payload?.[0]) return null;
                 const point = payload[0].payload as ChartPoint;
@@ -357,16 +431,18 @@ function FieldTrendContent({
                     </strong>
                     {point.masked ? (
                       <span>For få svar til å vise verdier</span>
+                    ) : point.empty ? (
+                      <span>Ingen svar</span>
                     ) : isRating ? (
                       <>
                         <span>Gjennomsnitt: {point.average?.toFixed(1)}</span>
                         <span>{point.responseCount} svar</span>
                       </>
                     ) : (
-                      options.map((option) => (
+                      visibleOptions.map((option) => (
                         <span key={option.id}>
                           {option.label}:{" "}
-                          {formatChoiceValue(point[option.id], measure)}
+                          {formatChoiceValue(point[option.seriesKey], measure)}
                         </span>
                       ))
                     )}
@@ -386,21 +462,17 @@ function FieldTrendContent({
                 activeDot={{ r: 6, fill: colors[0] }}
               />
             ) : (
-              options.map((option, index) => (
+              visibleOptions.map((option, index) => (
                 <Line
                   key={option.id}
                   type="monotone"
-                  dataKey={option.id}
+                  dataKey={option.seriesKey}
                   name={option.label}
                   connectNulls={false}
-                  stroke={colors[index % colors.length]}
+                  stroke={colors[index]}
                   strokeWidth={2.5}
-                  dot={{
-                    r: 3.5,
-                    fill: colors[index % colors.length],
-                    strokeWidth: 0,
-                  }}
-                  activeDot={{ r: 5, fill: colors[index % colors.length] }}
+                  dot={{ r: 3.5, fill: colors[index], strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: colors[index] }}
                 />
               ))
             )}
@@ -410,22 +482,27 @@ function FieldTrendContent({
 
       <details className={styles.tableDisclosure}>
         <summary>Vis data som tabell</summary>
-        <div className={styles.tableScroll}>
+        <section className={styles.tableScroll} aria-label="Trenddata i tabell">
           <TrendTable
             field={field}
             points={points}
-            options={options}
+            options={allOptions}
             granularity={granularity}
             measure={measure}
+            privacyThreshold={privacyThreshold}
           />
-        </div>
+        </section>
       </details>
     </VStack>
   );
 }
 
-interface TrendTableProps extends FieldTrendContentProps {
-  options: Array<{ id: string; label: string }>;
+interface TrendTableProps
+  extends Omit<
+    FieldTrendContentProps,
+    "selectedOptionId" | "onSelectedOptionChange"
+  > {
+  options: TrendOption[];
 }
 
 function TrendTable({
@@ -434,10 +511,11 @@ function TrendTable({
   options,
   granularity,
   measure,
+  privacyThreshold,
 }: TrendTableProps) {
-  const isRating = field.stats.type === "rating";
+  const isRating = field.fieldType === "RATING";
   return (
-    <Table size="small">
+    <Table size="small" tabIndex={0}>
       <Table.Header>
         <Table.Row>
           <Table.HeaderCell>Periode</Table.HeaderCell>
@@ -461,11 +539,17 @@ function TrendTable({
             <Table.HeaderCell scope="row">
               {formatPeriodLong(point.periodStart, granularity)}
             </Table.HeaderCell>
-            {point.masked ? (
+            {point.empty ? (
               <Table.DataCell
                 colSpan={isRating ? 2 : Math.max(1, options.length)}
               >
-                Skjult – færre enn fem svar
+                Ingen svar
+              </Table.DataCell>
+            ) : point.masked ? (
+              <Table.DataCell
+                colSpan={isRating ? 2 : Math.max(1, options.length)}
+              >
+                Skjult – færre enn {privacyThreshold} svar
               </Table.DataCell>
             ) : isRating ? (
               <>
@@ -503,15 +587,19 @@ function TrendTable({
 }
 
 function chartAriaLabel(
-  field: FieldStat,
+  field: FieldTrendField,
   granularity: FieldTrendGranularity,
   measure: TrendMeasure,
+  visibleOptionLabel?: string,
 ): string {
   const interval = { day: "dag", week: "uke", month: "måned" }[granularity];
-  if (field.stats.type === "rating") {
+  if (field.fieldType === "RATING") {
     return `Linjediagram med gjennomsnittlig vurdering per ${interval} for ${field.label}`;
   }
-  return `Linjediagram med ${measure === "percentage" ? "andel" : "antall"} svar per ${interval} for ${field.label}`;
+  const option = visibleOptionLabel
+    ? `, svaralternativ ${visibleOptionLabel}`
+    : "";
+  return `Linjediagram med ${measure === "percentage" ? "andel" : "antall"} svar per ${interval} for ${field.label}${option}`;
 }
 
 function formatChoiceValue(value: unknown, measure: TrendMeasure): string {
@@ -523,8 +611,11 @@ function formatChoiceValue(value: unknown, measure: TrendMeasure): string {
 
 function formatPeriod(value: string, granularity: FieldTrendGranularity) {
   if (granularity === "month") return dayjs(value).format("MM.YY");
-  if (granularity === "week") return `Uke ${dayjs(value).isoWeek()}`;
-  return dayjs(value).format("DD.MM");
+  if (granularity === "week") {
+    const period = dayjs(value);
+    return `Uke ${period.isoWeek()}, ${period.isoWeekYear()}`;
+  }
+  return dayjs(value).format("DD.MM.YY");
 }
 
 function formatPeriodLong(value: string, granularity: FieldTrendGranularity) {

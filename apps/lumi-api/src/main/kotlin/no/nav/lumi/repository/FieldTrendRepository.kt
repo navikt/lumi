@@ -1,23 +1,111 @@
 package no.nav.lumi.repository
 
+import kotlinx.serialization.json.Json
+import no.nav.lumi.config.exception.ApiErrorException
+import no.nav.lumi.domain.ChoiceOption
 import no.nav.lumi.domain.FieldTrend
 import no.nav.lumi.domain.FieldTrendGranularity
 import no.nav.lumi.domain.FieldTrendPoint
+import no.nav.lumi.domain.FieldType
+import no.nav.lumi.domain.RatingVariant
 import no.nav.lumi.domain.StatsQuery
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import java.sql.Connection
 import java.sql.PreparedStatement
 import java.sql.Timestamp
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
+import java.time.temporal.TemporalAdjusters
 
 /**
  * Computes one structured field's time series entirely in PostgreSQL.
  *
- * Only aggregate rows cross the JDBC boundary. The query deliberately reuses
- * the dashboard's team, survey, date, segment and answer-filter semantics.
+ * Only aggregate rows cross the JDBC boundary. Field presentation metadata is
+ * read independently of dashboard filters so valid fields do not disappear
+ * when the selected period or segment happens to contain no answers.
  */
 class FieldTrendRepository {
+    data class FieldPresentation(
+        val fieldId: String,
+        val fieldType: FieldType,
+        val label: String,
+        val options: List<ChoiceOption>,
+        val ratingVariant: RatingVariant?,
+        val ratingScale: Int?,
+    )
+
+    suspend fun getFieldPresentations(query: StatsQuery): List<FieldPresentation> = dbQuery {
+        val surveyId = requireNotNull(query.surveyId)
+        val conditions = mutableListOf(
+            "f.team = ?",
+            "f.feedback_json->>'surveyId' = ?",
+        )
+        val parameters = mutableListOf<Any>(query.team, surveyId)
+        query.app?.let {
+            conditions += "f.app = ?"
+            parameters += it
+        }
+
+        val sql = """
+            WITH recent_feedback AS (
+                SELECT f.opprettet, f.feedback_json
+                FROM feedback f
+                WHERE ${conditions.joinToString("\n                  AND ")}
+                ORDER BY f.opprettet DESC
+                LIMIT 100
+            ), latest_field AS (
+                SELECT DISTINCT ON (answer.value->>'fieldId')
+                    answer.value->>'fieldId' AS field_id,
+                    answer.value->>'fieldType' AS field_type,
+                    answer.value->'question'->>'label' AS label,
+                    answer.value->'question'->'options' AS options,
+                    answer.value->'value'->>'ratingVariant' AS rating_variant,
+                    answer.value->'value'->>'ratingScale' AS rating_scale,
+                    recent_feedback.opprettet,
+                    answer.ordinality
+                FROM recent_feedback
+                CROSS JOIN LATERAL jsonb_array_elements(
+                    CASE WHEN jsonb_typeof(recent_feedback.feedback_json->'answers') = 'array'
+                        THEN recent_feedback.feedback_json->'answers' ELSE '[]'::jsonb END
+                ) WITH ORDINALITY AS answer(value, ordinality)
+                WHERE answer.value->>'fieldType' IN ('RATING', 'SINGLE_CHOICE', 'MULTI_CHOICE')
+                  AND COALESCE(answer.value->>'fieldId', '') <> ''
+                ORDER BY answer.value->>'fieldId', recent_feedback.opprettet DESC, answer.ordinality
+            )
+            SELECT field_id, field_type, label, options::text AS options_json,
+                   rating_variant, rating_scale
+            FROM latest_field
+            ORDER BY opprettet DESC, ordinality
+        """.trimIndent()
+
+        val connection = TransactionManager.current().connection.connection as Connection
+        connection.prepareStatement(sql).use { statement ->
+            parameters.forEachIndexed { index, value -> statement.setString(index + 1, value as String) }
+            statement.executeQuery().use { result ->
+                buildList {
+                    while (result.next()) {
+                        val options = result.getString("options_json")
+                            ?.takeIf { it.isNotBlank() && it != "null" }
+                            ?.let { PRESENTATION_JSON.decodeFromString<List<ChoiceOption>>(it) }
+                            .orEmpty()
+                        add(
+                            FieldPresentation(
+                                fieldId = result.getString("field_id"),
+                                fieldType = FieldType.valueOf(result.getString("field_type")),
+                                label = result.getString("label").orEmpty(),
+                                options = options,
+                                ratingVariant = parseRatingVariant(result.getString("rating_variant")),
+                                ratingScale = result.getString("rating_scale")?.toIntOrNull(),
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     suspend fun getFieldTrend(
         query: StatsQuery,
         fieldId: String,
@@ -25,14 +113,14 @@ class FieldTrendRepository {
     ): FieldTrend = dbQuery {
         val sql = FieldTrendSql(query, fieldId, granularity)
         val connection = TransactionManager.current().connection.connection as Connection
-        val points = linkedMapOf<String, MutableFieldTrendPoint>()
+        val points = linkedMapOf<LocalDate, MutableFieldTrendPoint>()
 
         connection.prepareStatement(sql.statement).use { statement ->
             sql.bind(statement)
             statement.fetchSize = 64
             statement.executeQuery().use { result ->
                 while (result.next()) {
-                    val periodStart = result.getObject("period_start", LocalDate::class.java).toString()
+                    val periodStart = result.getObject("period_start", LocalDate::class.java)
                     val responseCount = result.getInt("response_count")
                     val point = points.getOrPut(periodStart) {
                         MutableFieldTrendPoint(
@@ -48,20 +136,46 @@ class FieldTrendRepository {
             }
         }
 
+        val firstBucket = query.fromDate?.let(LocalDate::parse)?.toBucketStart(granularity)
+            ?: points.keys.firstOrNull()
+        val lastBucket = query.toDate?.let(LocalDate::parse)?.toBucketStart(granularity)
+            ?: points.keys.lastOrNull()
+
         FieldTrend(
             fieldId = fieldId,
             granularity = granularity,
-            points = points.map { (periodStart, point) ->
-                val masked = point.responseCount < FeedbackStatsRepository.MIN_AGGREGATION_THRESHOLD
-                FieldTrendPoint(
-                    periodStart = periodStart,
-                    responseCount = point.responseCount.takeUnless { masked },
-                    average = point.average.takeUnless { masked },
-                    distribution = point.distribution.takeUnless { masked }.orEmpty(),
-                    masked = masked,
-                )
+            points = calendarBuckets(firstBucket, lastBucket, granularity).map { periodStart ->
+                val point = points[periodStart]
+                if (point == null) {
+                    FieldTrendPoint(
+                        periodStart = periodStart.toString(),
+                        responseCount = 0,
+                        empty = true,
+                    )
+                } else {
+                    val masked = point.responseCount < FeedbackStatsRepository.MIN_AGGREGATION_THRESHOLD
+                    FieldTrendPoint(
+                        periodStart = periodStart.toString(),
+                        responseCount = point.responseCount.takeUnless { masked },
+                        average = point.average.takeUnless { masked },
+                        distribution = point.distribution.takeUnless { masked }.orEmpty(),
+                        masked = masked,
+                    )
+                }
             },
         )
+    }
+
+    private fun parseRatingVariant(value: String?): RatingVariant? = when (value) {
+        "emoji", "EMOJI" -> RatingVariant.EMOJI
+        "thumbs", "THUMBS" -> RatingVariant.THUMBS
+        "stars", "STARS" -> RatingVariant.STARS
+        "nps", "NPS" -> RatingVariant.NPS
+        else -> null
+    }
+
+    private companion object {
+        val PRESENTATION_JSON = Json { ignoreUnknownKeys = true }
     }
 }
 
@@ -70,6 +184,45 @@ private data class MutableFieldTrendPoint(
     val average: Double?,
     val distribution: MutableMap<String, Int> = linkedMapOf(),
 )
+
+private fun LocalDate.toBucketStart(granularity: FieldTrendGranularity): LocalDate = when (granularity) {
+    FieldTrendGranularity.DAY -> this
+    FieldTrendGranularity.WEEK -> with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    FieldTrendGranularity.MONTH -> withDayOfMonth(1)
+}
+
+private fun calendarBuckets(
+    first: LocalDate?,
+    last: LocalDate?,
+    granularity: FieldTrendGranularity,
+): List<LocalDate> {
+    val firstBucket = first ?: return emptyList()
+    val lastBucket = last ?: return emptyList()
+    if (firstBucket.isAfter(lastBucket)) return emptyList()
+
+    val bucketCount = when (granularity) {
+        FieldTrendGranularity.DAY -> ChronoUnit.DAYS.between(firstBucket, lastBucket) + 1
+        FieldTrendGranularity.WEEK -> ChronoUnit.WEEKS.between(firstBucket, lastBucket) + 1
+        FieldTrendGranularity.MONTH -> ChronoUnit.MONTHS.between(firstBucket, lastBucket) + 1
+    }
+    if (bucketCount > MAX_TREND_POINTS) {
+        throw ApiErrorException.BadRequestException(
+            "Field trend cannot exceed $MAX_TREND_POINTS calendar buckets"
+        )
+    }
+
+    return buildList {
+        var current = firstBucket
+        while (!current.isAfter(lastBucket)) {
+            add(current)
+            current = when (granularity) {
+                FieldTrendGranularity.DAY -> current.plusDays(1)
+                FieldTrendGranularity.WEEK -> current.plusWeeks(1)
+                FieldTrendGranularity.MONTH -> current.plusMonths(1)
+            }
+        }
+    }
+}
 
 private class FieldTrendSql(
     query: StatsQuery,
@@ -105,15 +258,11 @@ private class FieldTrendSql(
         }
         query.fromDate?.let {
             conditions += "f.opprettet >= ?"
-            parameters += Timestamp.from(
-                LocalDate.parse(it).atStartOfDay(OSLO_ZONE).toInstant()
-            )
+            parameters += Timestamp.from(LocalDate.parse(it).atStartOfDay(OSLO_ZONE).toInstant())
         }
         query.toDate?.let {
             conditions += "f.opprettet < ?"
-            parameters += Timestamp.from(
-                LocalDate.parse(it).plusDays(1).atStartOfDay(OSLO_ZONE).toInstant()
-            )
+            parameters += Timestamp.from(LocalDate.parse(it).plusDays(1).atStartOfDay(OSLO_ZONE).toInstant())
         }
         query.deviceType?.let {
             conditions += "f.feedback_json->'context'->>'deviceType' = ?"
@@ -284,3 +433,5 @@ private class FieldTrendSql(
         val OSLO_ZONE: ZoneId = ZoneId.of("Europe/Oslo")
     }
 }
+
+private const val MAX_TREND_POINTS = 2_000

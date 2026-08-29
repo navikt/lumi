@@ -27,8 +27,6 @@ interface StatsActionParams {
   task?: string;
   rating?: string[];
   choice?: string[];
-  trendFieldId?: string;
-  trendGranularity?: "day" | "week" | "month";
 }
 
 function toMockSearchParams(data: StatsActionParams): URLSearchParams {
@@ -61,8 +59,6 @@ export function transformStatsToBackendParams(data: StatsActionParams) {
     task: data.task,
     rating: data.rating,
     choice: data.choice,
-    trendFieldId: data.trendFieldId,
-    trendGranularity: data.trendGranularity,
   };
 }
 

@@ -7,6 +7,10 @@
   min-width: min(100%, 18rem);
 }
 
+.seriesSelect {
+  max-width: 28rem;
+}
+
 .chart {
   width: 100%;
   height: 340px;

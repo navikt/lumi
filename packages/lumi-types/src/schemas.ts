@@ -27,12 +27,21 @@ export const StatsParamsSchema = z.object({
   choice: z.array(z.string()).optional(),
   /** Rating filters as repeated query params, each in format "fieldId:value" */
   rating: z.array(z.string()).optional(),
-  /** Optional structured field and calendar bucket for its time series. */
-  trendFieldId: z.string().optional(),
-  trendGranularity: z.enum(["day", "week", "month"]).optional(),
 });
 
 export type StatsParams = z.infer<typeof StatsParamsSchema>;
+
+export const FieldTrendParamsSchema = StatsParamsSchema.extend({
+  surveyId: z.string().min(1),
+  fieldId: z
+    .string()
+    .max(200)
+    .regex(/^[\p{L}\p{N}_-]+$/u)
+    .optional(),
+  granularity: z.enum(["day", "week", "month"]).optional(),
+});
+
+export type FieldTrendParams = z.infer<typeof FieldTrendParamsSchema>;
 
 /**
  * Frontend URL params schema.
@@ -1103,8 +1112,26 @@ const FieldTrendSchema = z.object({
       average: z.number().nullable(),
       distribution: z.record(z.string(), z.number()),
       masked: z.boolean(),
+      empty: z.boolean(),
     }),
   ),
+});
+
+const FieldTrendFieldSchema = z.object({
+  fieldId: z.string(),
+  fieldType: z.enum(["RATING", "SINGLE_CHOICE", "MULTI_CHOICE"]),
+  label: z.string(),
+  options: z.array(z.object({ id: z.string(), label: z.string() })),
+  ratingVariant: z.enum(["emoji", "thumbs", "stars", "nps"]).nullable(),
+  ratingScale: z.number().int().nullable(),
+  ratingMin: z.number().int().nullable(),
+  ratingMax: z.number().int().nullable(),
+});
+
+export const FieldTrendResponseSchema = z.object({
+  fields: z.array(FieldTrendFieldSchema),
+  trend: FieldTrendSchema.nullable(),
+  privacyThreshold: z.number().int().positive(),
 });
 
 export const FeedbackStatsSchema = z.object({
@@ -1134,7 +1161,6 @@ export const FeedbackStatsSchema = z.object({
     z.object({ count: z.number(), averageRating: z.number() }),
   ),
   fieldStats: z.array(FieldStatSchema),
-  fieldTrend: FieldTrendSchema.nullish(),
   surveyType: SurveyTypeSchema.optional(),
   period: z.object({
     fromDate: z.string().nullable(),

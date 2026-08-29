@@ -2,12 +2,14 @@ package no.nav.lumi.service
 
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.*
 import no.nav.lumi.integrations.valkey.StatsCache
 import no.nav.lumi.integrations.valkey.ValkeyStatsCache
 import no.nav.lumi.repository.FeedbackRepository
 import no.nav.lumi.repository.FeedbackStatsRepository
 import no.nav.lumi.repository.FieldTrendRepository
+import no.nav.lumi.repository.SurveyDefinitionRepository
 import no.nav.lumi.repository.TextThemeRepository
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -31,6 +33,7 @@ class StatsService(
     private val feedbackRepository: FeedbackRepository = FeedbackRepository(),
     private val statsRepository: FeedbackStatsRepository = FeedbackStatsRepository(),
     private val fieldTrendRepository: FieldTrendRepository = FieldTrendRepository(),
+    private val surveyDefinitionRepository: SurveyDefinitionRepository = SurveyDefinitionRepository(),
     private val themeRepository: TextThemeRepository = TextThemeRepository(),
     private val statsCache: StatsCache = ValkeyStatsCache.fromEnvOrFallback(),
     private val cacheTtl: Duration = Duration.ofMinutes(3)
@@ -42,9 +45,23 @@ class StatsService(
     private val surveyTypesCacheTtl: Duration = Duration.ofMinutes(5)
     private val blockersCacheTtl: Duration = Duration.ofMinutes(3)
     private val taskPriorityCacheTtl: Duration = Duration.ofMinutes(3)
+    private val fieldTrendCacheTtl: Duration = Duration.ofMinutes(3)
 
     internal fun statsCacheKey(prefix: String, query: StatsQuery): String =
         "$prefix:${query.toCacheKey()}"
+
+    internal fun fieldTrendCacheKey(
+        query: StatsQuery,
+        requestedFieldId: String?,
+        granularity: FieldTrendGranularity,
+    ): String {
+        val selection = if (requestedFieldId == null) {
+            "selection=default"
+        } else {
+            "selection=field&fieldId=${encodeCachePart(requestedFieldId)}"
+        }
+        return "${statsCacheKey("field-trend-v2", query)}&$selection&granularity=${granularity.postgresUnit}"
+    }
 
     private fun StatsQuery.toCacheKey(): String {
         fun enc(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)
@@ -76,8 +93,6 @@ class StatsService(
             "task" to task,
             "choice" to choiceValue,
             "rating" to ratingValue,
-            "trendFieldId" to trendFieldId,
-            "trendGranularity" to trendFieldId?.let { trendGranularity.postgresUnit },
             // Bump when the cached response semantics change. This prevents a
             // rolling deploy from serving values written by an older version.
             "resultVersion" to "3",
@@ -93,9 +108,13 @@ class StatsService(
         query: StatsQuery,
         ttl: Duration,
         crossinline compute: suspend () -> T
-    ): T {
-        val cacheKey = statsCacheKey(prefix, query)
+    ): T = getOrComputeCached(statsCacheKey(prefix, query), ttl, compute)
 
+    private suspend inline fun <reified T> getOrComputeCached(
+        cacheKey: String,
+        ttl: Duration,
+        crossinline compute: suspend () -> T,
+    ): T {
         statsCache.get(cacheKey)?.let { cached ->
             return try {
                 json.decodeFromString<T>(cached)
@@ -139,16 +158,6 @@ class StatsService(
             null
         }
 
-        val fieldTrend = if (!stats.masked && query.surveyId != null && query.trendFieldId != null) {
-            fieldTrendRepository.getFieldTrend(
-                query = query,
-                fieldId = query.trendFieldId,
-                granularity = query.trendGranularity,
-            )
-        } else {
-            null
-        }
-        
         val averageRating = calculateAverageRating(stats.byRating)
         val days = calculateDays(query.fromDate, query.toDate)
         
@@ -184,9 +193,114 @@ class StatsService(
             byPathname = if (stats.masked) emptyMap() else analytics?.byPathname.orEmpty(),
             lowestRatingPaths = if (stats.masked) emptyMap() else analytics?.lowestRatingPaths.orEmpty(),
             fieldStats = if (stats.masked) emptyList() else analytics?.fieldStats.orEmpty(),
-            fieldTrend = fieldTrend,
             privacy = privacy
         )
+    }
+
+    suspend fun getFieldTrend(
+        query: StatsQuery,
+        requestedFieldId: String?,
+        granularity: FieldTrendGranularity,
+    ): FieldTrendResponse {
+        requireNotNull(query.surveyId) { "surveyId is required for field trend" }
+        if (query.fromDate != null && query.toDate != null) {
+            val from = LocalDate.parse(query.fromDate)
+            val to = LocalDate.parse(query.toDate)
+            val bucketCount = when (granularity) {
+                FieldTrendGranularity.DAY -> ChronoUnit.DAYS.between(from, to) + 1
+                FieldTrendGranularity.WEEK -> ChronoUnit.WEEKS.between(from, to) + 2
+                FieldTrendGranularity.MONTH -> ChronoUnit.MONTHS.between(
+                    from.withDayOfMonth(1),
+                    to.withDayOfMonth(1),
+                ) + 1
+            }
+            if (bucketCount > MAX_FIELD_TREND_POINTS) {
+                throw ApiErrorException.BadRequestException(
+                    "Field trend cannot exceed $MAX_FIELD_TREND_POINTS calendar buckets"
+                )
+            }
+        }
+        return getOrComputeCached(
+            fieldTrendCacheKey(query, requestedFieldId, granularity),
+            fieldTrendCacheTtl,
+        ) {
+            val storedDefinition = surveyDefinitionRepository
+                .findByTeamAndSurveyId(query.team, query.surveyId)
+                ?.definition
+            val presentations = fieldTrendRepository.getFieldPresentations(query)
+            val fields = buildFieldTrendFields(storedDefinition, presentations)
+            val selectedField = fields.find { it.fieldId == requestedFieldId } ?: fields.firstOrNull()
+
+            FieldTrendResponse(
+                fields = fields,
+                trend = selectedField?.let { field ->
+                    fieldTrendRepository.getFieldTrend(
+                        query = query,
+                        fieldId = field.fieldId,
+                        granularity = granularity,
+                    )
+                },
+                privacyThreshold = FeedbackStatsRepository.MIN_AGGREGATION_THRESHOLD,
+            )
+        }
+    }
+
+    private fun buildFieldTrendFields(
+        definition: SurveyDefinition?,
+        presentations: List<FieldTrendRepository.FieldPresentation>,
+    ): List<FieldTrendField> {
+        val presentationById = presentations.associateBy { it.fieldId }
+        val structuralFields = definition?.fields ?: presentations.map { it.toFieldDefinition() }
+
+        return structuralFields.mapNotNull { field ->
+            if (field.fieldType !in TREND_FIELD_TYPES) return@mapNotNull null
+            val presentation = presentationById[field.fieldId]
+            val ratingVariant = field.ratingVariant ?: presentation?.ratingVariant
+            val ratingScale = field.ratingScale ?: presentation?.ratingScale
+            if (field.fieldType == FieldType.RATING && ratingScale == null) return@mapNotNull null
+
+            val optionLabels = presentation?.options.orEmpty().associateBy { it.id }
+            val options = (field.optionIds ?: presentation?.options?.map { it.id }).orEmpty()
+                .map { optionId -> optionLabels[optionId] ?: ChoiceOption(optionId, optionId) }
+            val ratingMin = when {
+                field.fieldType != FieldType.RATING -> null
+                ratingVariant == RatingVariant.NPS -> 0
+                else -> 1
+            }
+            val ratingMax = when {
+                field.fieldType != FieldType.RATING -> null
+                ratingVariant == RatingVariant.NPS -> ratingScale?.minus(1)
+                else -> ratingScale
+            }
+
+            FieldTrendField(
+                fieldId = field.fieldId,
+                fieldType = field.fieldType,
+                label = presentation?.label?.takeIf { it.isNotBlank() } ?: field.fieldId,
+                options = options,
+                ratingVariant = ratingVariant,
+                ratingScale = ratingScale,
+                ratingMin = ratingMin,
+                ratingMax = ratingMax,
+            )
+        }
+    }
+
+    private fun encodeCachePart(value: String): String =
+        URLEncoder.encode(value, StandardCharsets.UTF_8)
+
+    private fun FieldTrendRepository.FieldPresentation.toFieldDefinition(): FieldDefinition =
+        FieldDefinition(
+            fieldId = fieldId,
+            fieldType = fieldType,
+            ratingVariant = ratingVariant,
+            ratingScale = ratingScale,
+            optionIds = options.map { it.id }.takeIf { it.isNotEmpty() },
+        )
+
+    private companion object {
+        val TREND_FIELD_TYPES = setOf(FieldType.RATING, FieldType.SINGLE_CHOICE, FieldType.MULTI_CHOICE)
+        const val MAX_FIELD_TREND_POINTS = 2_000L
     }
 
     /**

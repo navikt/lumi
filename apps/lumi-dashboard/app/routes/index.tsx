@@ -146,18 +146,16 @@ function DashboardPage() {
       return <PrivacyMaskedNotice privacy={stats.privacy} />;
     }
 
-    if (config) {
-      return (
-        <>
-          {config.dashboard(hasSurveyFilter, surveyType === "rating")}
-          {hasSurveyFilter && (
-            <FieldTrendSection excludeRatingFields={surveyType === "rating"} />
-          )}
-        </>
-      );
-    }
-
-    return <OverviewDashboard />;
+    return (
+      <>
+        {config ? (
+          config.dashboard(hasSurveyFilter, surveyType === "rating")
+        ) : (
+          <OverviewDashboard />
+        )}
+        {hasSurveyFilter && <FieldTrendSection />}
+      </>
+    );
   };
 
   return (

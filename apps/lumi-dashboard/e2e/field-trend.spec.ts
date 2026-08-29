@@ -4,9 +4,7 @@ test.describe("Field trend", () => {
   test("follows the selected question, period bucket and measure in the URL", async ({
     page,
   }) => {
-    await page.goto(
-      "/?surveyId=survey-custom&fromDate=2000-01-01&toDate=2026-12-31",
-    );
+    await page.goto("/?surveyId=survey-custom&trendFieldId=field.with.path");
 
     const trend = page.getByRole("region", {
       name: "Utvikling per spørsmål",
@@ -14,16 +12,16 @@ test.describe("Field trend", () => {
     await expect(trend).toBeVisible({ timeout: 15000 });
 
     const question = trend.getByRole("combobox", { name: "Spørsmål" });
-    await expect(question).toHaveValue("satisfaction");
-    await expect(page).toHaveURL(/trendFieldId=satisfaction/);
+    await expect(question).toHaveValue("role");
+    await expect(page).toHaveURL(/trendFieldId=role/);
     await expect(page).toHaveURL(/trendGranularity=week/);
     await expect(page).toHaveURL(/trendMeasure=percentage/);
 
-    await question.selectOption("role");
+    await question.selectOption("features");
     await trend.getByRole("radio", { name: "Måned" }).click();
     await trend.getByRole("radio", { name: "Antall" }).click();
 
-    await expect(page).toHaveURL(/trendFieldId=role/);
+    await expect(page).toHaveURL(/trendFieldId=features/);
     await expect(page).toHaveURL(/trendGranularity=month/);
     await expect(page).toHaveURL(/trendMeasure=count/);
 
@@ -34,7 +32,7 @@ test.describe("Field trend", () => {
       table.getByRole("columnheader", { name: "Periode" }),
     ).toBeVisible();
     await expect(
-      table.getByRole("columnheader", { name: "Privatperson" }),
+      table.getByRole("columnheader", { name: "Innsending" }),
     ).toBeVisible();
   });
 
@@ -43,7 +41,7 @@ test.describe("Field trend", () => {
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(
-      "/?surveyId=survey-custom&fromDate=2000-01-01&toDate=2026-12-31&trendFieldId=features&trendGranularity=month&trendMeasure=percentage",
+      "/?surveyId=survey-custom&trendFieldId=features&trendGranularity=month&trendMeasure=percentage",
     );
 
     const trend = page.getByRole("region", {
@@ -59,5 +57,19 @@ test.describe("Field trend", () => {
       page: document.documentElement.scrollWidth,
     }));
     expect(widths.page).toBeLessThanOrEqual(widths.viewport);
+  });
+
+  test("keeps the definition-backed empty state when active filters have no matches", async ({
+    page,
+  }) => {
+    await page.goto("/?surveyId=survey-custom&segment=variant%3Ano-matches");
+
+    const trend = page.getByRole("region", {
+      name: "Utvikling per spørsmål",
+    });
+    await expect(trend).toBeVisible({ timeout: 15000 });
+    await expect(
+      trend.getByText("Ingen svar på dette spørsmålet i den valgte perioden."),
+    ).toBeVisible();
   });
 });
