@@ -552,6 +552,13 @@ LEFT JOIN responses_example_wide_v1 AS resource
 WHERE manifest.resource_name = 'responses_example_wide_v1'
 ```
 
+Ved normal oppdatering forblir siste komplette snapshot lesbart frem til én ny
+komplett pointer aktiveres. `FROZEN`, subtraktiv endring eller 36 timer uten
+bekreftet deletion-capable refresh stenger derimot hele produktflaten. Dette
+skal gi en eksplisitt utilgjengelig-/feiltilstand i Metabase, Quarto og andre
+konsumenter; views skal aldri returnere et tilsynelatende gyldig tomt datasett
+som substitutt for en stengt read lease.
+
 ## Syntetisk semantikkeksempel
 
 En syntetisk innsending besvarer ratingfeltet `opplevelse` med `4` og
