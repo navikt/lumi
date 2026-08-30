@@ -1,6 +1,7 @@
 package no.nav.lumi.domain
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import java.security.MessageDigest
 
 const val ANALYSIS_SOURCE_CATALOG_SCHEMA_VERSION = 1
@@ -70,12 +71,42 @@ data class AnalysisCatalogSourceV1(
     val definitionHash: String? = null,
     val definitionStatus: AnalysisDefinitionStatus,
     val observedDefinitionHashes: List<String?>,
+    /**
+     * Latest observed, validated flow hash. This is an independent catalog
+     * summary and must not be paired with [definitionHash], which is the
+     * currently registered definition. Exact pairs are kept in
+     * [contractRevisions] for publication compilation.
+     */
     val flowHash: String? = null,
     val flowHashes: List<String> = emptyList(),
     val observedFlowHashes: List<String?> = emptyList(),
     val flowStatus: AnalysisFlowStatus,
     val fields: List<AnalysisCatalogFieldV1>,
     val warnings: List<AnalysisCatalogWarning>,
+    @Transient
+    internal val contractRevisions: List<AnalysisCatalogContractRevision> = emptyList(),
+)
+
+/**
+ * Trusted compiler input assembled from immutable source contracts.
+ *
+ * This is deliberately excluded from the serialized team catalog: the UI only
+ * needs the safe aggregate catalog, while publication compilation needs the
+ * exact definition-flow pairing and historical field structure.
+ */
+data class AnalysisCatalogContractRevision(
+    val definitionHash: String,
+    val flowHash: String,
+    val surveyType: SurveyType,
+    val fields: List<AnalysisCatalogFieldV1>,
+    val evaluatorVersion: String,
+    val dependenciesByField: List<AnalysisFieldDependenciesV1>,
+)
+
+@Serializable
+data class AnalysisFieldDependenciesV1(
+    val fieldId: String,
+    val dependencies: List<AnalysisFlowDependencyV1>,
 )
 
 @Serializable
@@ -236,6 +267,30 @@ object AnalysisCatalogRevision {
             .sorted()
             .forEach(::add)
         source.warnings.map(Enum<*>::name).sorted().forEach(::add)
+        source.contractRevisions
+            .sortedWith(compareBy(AnalysisCatalogContractRevision::definitionHash, AnalysisCatalogContractRevision::flowHash))
+            .forEach { revision ->
+                add(revision.definitionHash)
+                add(revision.flowHash)
+                add(revision.surveyType.name)
+                add(revision.evaluatorVersion)
+                revision.fields
+                    .filter { it.fieldId in selectedFieldIds }
+                    .sortedBy { it.fieldId }
+                    .forEach { field -> addFieldFacts(field) }
+                revision.dependenciesByField
+                    .filter { it.fieldId in selectedFieldIds }
+                    .sortedBy { it.fieldId }
+                    .forEach { fieldDependencies ->
+                        add(fieldDependencies.fieldId)
+                        fieldDependencies.dependencies
+                            .sortedWith(compareBy(AnalysisFlowDependencyV1::source, AnalysisFlowDependencyV1::key))
+                            .forEach { dependency ->
+                                add(dependency.source.name)
+                                add(dependency.key)
+                            }
+                    }
+            }
 
         val fieldsById = source.fields.associateBy { it.fieldId }
         selectedFieldIds.sorted().forEach { fieldId ->

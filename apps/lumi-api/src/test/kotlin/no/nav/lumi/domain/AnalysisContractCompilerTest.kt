@@ -49,6 +49,7 @@ class AnalysisContractCompilerTest : FunSpec({
 
         first.baseSchemaDigest shouldBe second.baseSchemaDigest
         first.resources shouldBe second.resources
+        first.schemaVersion shouldBe 2
         first.dataOrigin shouldBe PreviewDataOrigin.SYNTHETIC
         first.status shouldBe AnalysisContractPreviewStatus.BLOCKED
         first.issues.map { it.code } shouldContain AnalysisCompilationIssueCode.FLOW_NOT_PINNED
@@ -66,7 +67,7 @@ class AnalysisContractCompilerTest : FunSpec({
             Regex("^[0-9a-f]{64}$"),
         ) shouldBe true
 
-        val serialized = AnalysisContractJson.encodeToString(AnalysisProductContractPreviewV1.serializer(), first)
+        val serialized = AnalysisContractJson.encodeToString(AnalysisProductContractPreviewV2.serializer(), first)
         serialized.contains("untrusted question label") shouldBe false
         serialized.contains("untrusted option label") shouldBe false
         serialized.contains("feedback_json") shouldBe false
@@ -97,16 +98,14 @@ class AnalysisContractCompilerTest : FunSpec({
     test("pins complete field and dimension contracts when provenance is available") {
         val firstSource = catalogSource(
             fields = listOf(catalogField("reason", FieldType.SINGLE_CHOICE, optionIds = listOf("a", "b"))),
-        ).copy(
-            flowHash = "f".repeat(64),
-            flowStatus = AnalysisFlowStatus.PINNED,
-        )
-        val secondSource = firstSource.copy(
+        ).withPinnedContracts()
+        val secondSource = catalogSource(
             fields = listOf(catalogField("reason", FieldType.SINGLE_CHOICE, optionIds = listOf("a", "b", "c"))),
-        )
+        ).withPinnedContracts(definitionHash = "e".repeat(64))
         val document = productDocument(
             sources = listOf(AnalysisProductSourceSelection("my-app", "survey-one", listOf("reason"))),
             dimensionKeys = listOf("deviceType"),
+            includeSubmittedHour = true,
         )
 
         val first = compiler.compilePreview(compilationInput(document, catalogSnapshot(listOf(firstSource))))
@@ -115,7 +114,9 @@ class AnalysisContractCompilerTest : FunSpec({
         first.status shouldBe AnalysisContractPreviewStatus.READY
         first.publicationSpecification shouldNotBe null
         val specification = requireNotNull(first.publicationSpecification)
-        specification.sourcePins.single().fields.single().optionIds shouldBe listOf("a", "b")
+        specification.schemaVersion shouldBe 2
+        specification.includeSubmittedHour shouldBe true
+        specification.sources.single().definitions.single().fields.single().availableOptionIds shouldBe listOf("a", "b")
         specification.dimensions.single().allowedValues shouldBe listOf("desktop", "mobile", "tablet")
         first.baseSchemaDigest shouldBe second.baseSchemaDigest
         first.publicationSpecificationDigest shouldNotBe second.publicationSpecificationDigest
@@ -125,19 +126,23 @@ class AnalysisContractCompilerTest : FunSpec({
     test("pins all known flow revisions and warns without inventing legacy flow") {
         val currentFlow = "f".repeat(64)
         val earlierFlow = "e".repeat(64)
-        val source = catalogSource(
-            fields = listOf(
-                catalogField("score", FieldType.RATING, RatingVariant.NPS, 11).copy(
-                    flowDependencies = listOf(
-                        AnalysisFlowDependencyV1(AnalysisFlowDependencySource.METADATA, "deviceType"),
-                    ),
+        val sourceFields = listOf(
+            catalogField("score", FieldType.RATING, RatingVariant.NPS, 11).copy(
+                flowDependencies = listOf(
+                    AnalysisFlowDependencyV1(AnalysisFlowDependencySource.METADATA, "deviceType"),
                 ),
             ),
+        )
+        val source = catalogSource(
+            fields = sourceFields,
+        ).withPinnedContracts(
+            revisions = listOf(
+                catalogContractRevision(flowHash = earlierFlow, fields = sourceFields),
+                catalogContractRevision(flowHash = currentFlow, fields = sourceFields),
+            ),
+            currentFlowHash = currentFlow,
         ).copy(
-            flowHash = currentFlow,
-            flowHashes = listOf(earlierFlow, currentFlow),
             observedFlowHashes = listOf(null, earlierFlow, currentFlow),
-            flowStatus = AnalysisFlowStatus.PINNED,
             warnings = listOf(AnalysisCatalogWarning.LEGACY_FLOW_OBSERVED),
         )
         val document = productDocument(
@@ -149,9 +154,223 @@ class AnalysisContractCompilerTest : FunSpec({
 
         preview.status shouldBe AnalysisContractPreviewStatus.READY_WITH_WARNINGS
         preview.issues.map { it.code } shouldContain AnalysisCompilationIssueCode.UNPINNED_FLOW_HISTORY_EXCLUDED
-        preview.publicationSpecification?.sourcePins?.single()?.flowHash shouldBe currentFlow
-        preview.publicationSpecification?.sourcePins?.single()?.allowedFlowHashes shouldBe
+        preview.publicationSpecification?.sources?.single()?.definitions?.single()?.flows?.map { it.flowHash } shouldBe
             listOf(earlierFlow, currentFlow)
+    }
+
+    test("pins historical definitions without creating false definition-flow combinations") {
+        val firstDefinitionHash = "c".repeat(64)
+        val secondDefinitionHash = "d".repeat(64)
+        val firstFlowHash = "e".repeat(64)
+        val secondFlowHash = "f".repeat(64)
+        val firstFields = listOf(catalogField("score", FieldType.RATING, RatingVariant.NPS, 11))
+        val secondFields = firstFields +
+            catalogField("reason", FieldType.SINGLE_CHOICE, optionIds = listOf("a", "b"))
+        val source = catalogSource(fields = secondFields).withPinnedContracts(
+            definitionHash = secondDefinitionHash,
+            currentFlowHash = firstFlowHash,
+            revisions = listOf(
+                catalogContractRevision(firstDefinitionHash, firstFlowHash, firstFields),
+                catalogContractRevision(secondDefinitionHash, secondFlowHash, secondFields),
+            ),
+        )
+        val document = productDocument(
+            sources = listOf(
+                AnalysisProductSourceSelection("my-app", "survey-one", listOf("score", "reason")),
+            ),
+        )
+
+        val preview = compiler.compilePreview(compilationInput(document, catalogSnapshot(listOf(source))))
+
+        preview.status shouldBe AnalysisContractPreviewStatus.READY
+        val definitions = requireNotNull(preview.publicationSpecification).sources.single().definitions
+        definitions.map { it.definitionHash } shouldBe listOf(firstDefinitionHash, secondDefinitionHash)
+        definitions[0].flows.map { it.flowHash } shouldBe listOf(firstFlowHash)
+        definitions[1].flows.map { it.flowHash } shouldBe listOf(secondFlowHash)
+        definitions[0].fields.single { it.fieldId == "reason" }.presence shouldBe AnalysisFieldPresence.ABSENT
+        definitions[1].fields.single { it.fieldId == "reason" }.presence shouldBe AnalysisFieldPresence.PRESENT
+        definitions[1].fields.single { it.fieldId == "reason" }.availableOptionIds shouldBe listOf("a", "b")
+    }
+
+    test("blocks a current definition that has no exact observed contract revision") {
+        val historicalFields = listOf(catalogField("score", FieldType.RATING, RatingVariant.NPS, 11))
+        val currentFields = listOf(catalogField("score", FieldType.SINGLE_CHOICE, optionIds = listOf("yes", "no")))
+        val historicalFlowHash = "e".repeat(64)
+        val source = catalogSource(fields = currentFields).withPinnedContracts(
+            definitionHash = "d".repeat(64),
+            currentFlowHash = historicalFlowHash,
+            revisions = listOf(
+                catalogContractRevision(
+                    definitionHash = "c".repeat(64),
+                    flowHash = historicalFlowHash,
+                    fields = historicalFields,
+                ),
+            ),
+        )
+        val document = productDocument(
+            sources = listOf(AnalysisProductSourceSelection("my-app", "survey-one", listOf("score"))),
+        )
+
+        val preview = compiler.compilePreview(compilationInput(document, catalogSnapshot(listOf(source))))
+
+        preview.status shouldBe AnalysisContractPreviewStatus.BLOCKED
+        preview.issues.map { it.code } shouldContain AnalysisCompilationIssueCode.CONTRACT_REVISION_UNAVAILABLE
+        preview.publicationSpecification shouldBe null
+    }
+
+    test("blocks a selected field that is absent from every exact contract revision") {
+        val currentFields = listOf(
+            catalogField("score", FieldType.RATING, RatingVariant.NPS, 11),
+            catalogField("reason", FieldType.SINGLE_CHOICE, optionIds = listOf("yes", "no")),
+        )
+        val source = catalogSource(fields = currentFields).withPinnedContracts(
+            revisions = listOf(
+                catalogContractRevision(fields = currentFields.take(1)),
+            ),
+        )
+        val document = productDocument(
+            sources = listOf(AnalysisProductSourceSelection("my-app", "survey-one", listOf("reason"))),
+        )
+
+        val preview = compiler.compilePreview(compilationInput(document, catalogSnapshot(listOf(source))))
+
+        preview.status shouldBe AnalysisContractPreviewStatus.BLOCKED
+        preview.issues.map { it.code } shouldContain AnalysisCompilationIssueCode.CONTRACT_REVISION_UNAVAILABLE
+        preview.publicationSpecification shouldBe null
+    }
+
+    test("blocks incompatible field semantics across definition revisions") {
+        val currentFields = listOf(catalogField("score", FieldType.RATING, RatingVariant.NPS, 11))
+        val source = catalogSource(fields = currentFields).withPinnedContracts(
+            revisions = listOf(
+                catalogContractRevision(
+                    definitionHash = "c".repeat(64),
+                    flowHash = "e".repeat(64),
+                    fields = listOf(catalogField("score", FieldType.RATING, RatingVariant.EMOJI, 5)),
+                ),
+                catalogContractRevision(fields = currentFields),
+            ),
+        )
+        val document = productDocument(
+            sources = listOf(AnalysisProductSourceSelection("my-app", "survey-one", listOf("score"))),
+        )
+
+        val preview = compiler.compilePreview(compilationInput(document, catalogSnapshot(listOf(source))))
+
+        preview.status shouldBe AnalysisContractPreviewStatus.BLOCKED
+        preview.issues.map { it.code } shouldContain AnalysisCompilationIssueCode.CONTRACT_REVISION_CONFLICT
+        preview.publicationSpecification shouldBe null
+    }
+
+    test("blocks changed multi-choice selection semantics across definition revisions") {
+        val currentFields = listOf(
+            catalogField(
+                "reason",
+                FieldType.MULTI_CHOICE,
+                optionIds = listOf("a", "b"),
+                maxSelections = 2,
+            ),
+        )
+        val source = catalogSource(fields = currentFields).withPinnedContracts(
+            revisions = listOf(
+                catalogContractRevision(
+                    definitionHash = "c".repeat(64),
+                    flowHash = "e".repeat(64),
+                    fields = listOf(
+                        catalogField(
+                            "reason",
+                            FieldType.MULTI_CHOICE,
+                            optionIds = listOf("a", "b"),
+                            maxSelections = 1,
+                        ),
+                    ),
+                ),
+                catalogContractRevision(fields = currentFields),
+            ),
+        )
+        val document = productDocument(
+            sources = listOf(AnalysisProductSourceSelection("my-app", "survey-one", listOf("reason"))),
+        )
+
+        val preview = compiler.compilePreview(compilationInput(document, catalogSnapshot(listOf(source))))
+
+        preview.status shouldBe AnalysisContractPreviewStatus.BLOCKED
+        preview.issues.map { it.code } shouldContain AnalysisCompilationIssueCode.CONTRACT_REVISION_CONFLICT
+    }
+
+    test("blocks malformed exact contract revision shapes") {
+        val field = catalogField("score", FieldType.RATING, RatingVariant.NPS, 11)
+        val malformedRevision = catalogContractRevision(fields = listOf(field, field)).copy(
+            dependenciesByField = listOf(
+                AnalysisFieldDependenciesV1("score", emptyList()),
+                AnalysisFieldDependenciesV1("score", emptyList()),
+            ),
+        )
+        val source = catalogSource(fields = listOf(field)).withPinnedContracts(
+            revisions = listOf(malformedRevision),
+        )
+        val document = productDocument(
+            sources = listOf(AnalysisProductSourceSelection("my-app", "survey-one", listOf("score"))),
+        )
+
+        val preview = compiler.compilePreview(compilationInput(document, catalogSnapshot(listOf(source))))
+
+        preview.status shouldBe AnalysisContractPreviewStatus.BLOCKED
+        preview.issues.map { it.code } shouldContain AnalysisCompilationIssueCode.CONTRACT_REVISION_CONFLICT
+        preview.publicationSpecification shouldBe null
+    }
+
+    test("serialized public catalogs cannot silently cross the trusted compiler boundary") {
+        val source = catalogSource().withPinnedContracts()
+        val catalog = catalogSnapshot(listOf(source))
+        val publicRoundTrip = AnalysisContractJson.decodeFromString(
+            AnalysisSourceCatalogV1.serializer(),
+            AnalysisContractJson.encodeToString(AnalysisSourceCatalogV1.serializer(), catalog),
+        )
+        val document = productDocument(
+            sources = listOf(AnalysisProductSourceSelection("my-app", "survey-one", listOf("score"))),
+        )
+
+        val preview = compiler.compilePreview(compilationInput(document, publicRoundTrip))
+
+        preview.status shouldBe AnalysisContractPreviewStatus.BLOCKED
+        preview.issues.map { it.code } shouldContain AnalysisCompilationIssueCode.CONTRACT_REVISION_UNAVAILABLE
+        preview.publicationSpecification shouldBe null
+    }
+
+    test("wide schema includes the union of allowed historical multi-choice options") {
+        val firstDefinitionHash = "c".repeat(64)
+        val currentFields = listOf(
+            catalogField("reason", FieldType.MULTI_CHOICE, optionIds = listOf("a")),
+        )
+        val source = catalogSource(fields = currentFields).withPinnedContracts(
+            revisions = listOf(
+                catalogContractRevision(
+                    definitionHash = firstDefinitionHash,
+                    flowHash = "e".repeat(64),
+                    fields = listOf(
+                        catalogField("reason", FieldType.MULTI_CHOICE, optionIds = listOf("a", "b")),
+                    ),
+                ),
+                catalogContractRevision(fields = currentFields),
+            ),
+        )
+        val document = productDocument(
+            sources = listOf(AnalysisProductSourceSelection("my-app", "survey-one", listOf("reason"))),
+        )
+
+        val preview = compiler.compilePreview(compilationInput(document, catalogSnapshot(listOf(source))))
+
+        preview.status shouldBe AnalysisContractPreviewStatus.READY
+        preview.resources.single { it.kind == AnalysisResourceKind.WIDE }.columns
+            .filter { it.logicalId.startsWith("field:reason:option:") }
+            .map { it.logicalId } shouldBe listOf(
+            "field:reason:option:a:selected",
+            "field:reason:option:b:selected",
+        )
+        requireNotNull(preview.publicationSpecification).sources.single().definitions
+            .single { it.definitionHash == firstDefinitionHash }
+            .fields.single().availableOptionIds shouldBe listOf("a", "b")
     }
 
     test("blocks a conditional field until its flow dependency is selected") {
@@ -163,11 +382,7 @@ class AnalysisContractCompilerTest : FunSpec({
                     ),
                 ),
             ),
-        ).copy(
-            flowHash = "f".repeat(64),
-            flowHashes = listOf("f".repeat(64)),
-            flowStatus = AnalysisFlowStatus.PINNED,
-        )
+        ).withPinnedContracts()
         val selection = listOf(AnalysisProductSourceSelection("my-app", "survey-one", listOf("score")))
 
         val blocked = compiler.compilePreview(
@@ -186,10 +401,7 @@ class AnalysisContractCompilerTest : FunSpec({
     }
 
     test("publication specification binds retention") {
-        val source = catalogSource().copy(
-            flowHash = "f".repeat(64),
-            flowStatus = AnalysisFlowStatus.PINNED,
-        )
+        val source = catalogSource().withPinnedContracts()
         val sourceSelection = listOf(AnalysisProductSourceSelection("my-app", "survey-one", listOf("score")))
         val shortRetention = compiler.compilePreview(
             compilationInput(
@@ -210,17 +422,11 @@ class AnalysisContractCompilerTest : FunSpec({
     }
 
     test("selection revision ignores unrelated catalog sources and unselected fields") {
-        val selected = catalogSource().copy(
-            flowHash = "f".repeat(64),
-            flowStatus = AnalysisFlowStatus.PINNED,
-        )
+        val selected = catalogSource().withPinnedContracts()
         val selectedWithExtraField = selected.copy(
             fields = selected.fields + catalogField("not-selected", FieldType.RATING, RatingVariant.EMOJI, 5),
         )
-        val unrelated = catalogSource(app = "another-app").copy(
-            flowHash = "e".repeat(64),
-            flowStatus = AnalysisFlowStatus.PINNED,
-        )
+        val unrelated = catalogSource(app = "another-app").withPinnedContracts(flowHash = "e".repeat(64))
         val document = productDocument(
             sources = listOf(AnalysisProductSourceSelection("my-app", "survey-one", listOf("score"))),
         )
@@ -370,7 +576,7 @@ class AnalysisContractCompilerTest : FunSpec({
     }
 
     test("warns at 80 dynamic columns and blocks only above 120") {
-        fun previewFor(ratingFields: Int, dimensions: List<String> = emptyList()): AnalysisProductContractPreviewV1 {
+        fun previewFor(ratingFields: Int, dimensions: List<String> = emptyList()): AnalysisProductContractPreviewV2 {
             val fields = (1..ratingFields).map { catalogField("rating-$it", FieldType.RATING, RatingVariant.EMOJI, 5) }
             val source = catalogSource(fields = fields)
             return compiler.compilePreview(
@@ -483,4 +689,40 @@ private fun catalogField(
     maxSelections = maxSelections,
     label = null,
     labelSource = AnalysisLabelSource.UNKNOWN,
+)
+
+private fun AnalysisCatalogSourceV1.withPinnedContracts(
+    definitionHash: String = this.definitionHash ?: "d".repeat(64),
+    flowHash: String = "f".repeat(64),
+    revisions: List<AnalysisCatalogContractRevision> = listOf(
+        catalogContractRevision(
+            definitionHash = definitionHash,
+            flowHash = flowHash,
+            fields = fields,
+        ),
+    ),
+    currentFlowHash: String = flowHash,
+): AnalysisCatalogSourceV1 = copy(
+    definitionHash = definitionHash,
+    observedDefinitionHashes = revisions.map { it.definitionHash }.distinct().sorted(),
+    flowHash = currentFlowHash,
+    flowHashes = revisions.map { it.flowHash }.distinct().sorted(),
+    observedFlowHashes = revisions.map { it.flowHash }.distinct().sorted(),
+    flowStatus = AnalysisFlowStatus.PINNED,
+    contractRevisions = revisions,
+)
+
+private fun catalogContractRevision(
+    definitionHash: String = "d".repeat(64),
+    flowHash: String = "f".repeat(64),
+    fields: List<AnalysisCatalogFieldV1>,
+): AnalysisCatalogContractRevision = AnalysisCatalogContractRevision(
+    definitionHash = definitionHash,
+    flowHash = flowHash,
+    surveyType = SurveyType.CUSTOM,
+    fields = fields,
+    evaluatorVersion = SURVEY_FLOW_EVALUATOR_VERSION,
+    dependenciesByField = fields.map { field ->
+        AnalysisFieldDependenciesV1(field.fieldId, field.flowDependencies)
+    },
 )

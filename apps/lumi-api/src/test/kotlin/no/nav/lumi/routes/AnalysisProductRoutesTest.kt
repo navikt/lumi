@@ -14,7 +14,7 @@ import no.nav.lumi.domain.AnalysisContractPreviewStatus
 import no.nav.lumi.domain.AnalysisCompilationIssueCode
 import no.nav.lumi.domain.FieldDefinition
 import no.nav.lumi.domain.FieldType
-import no.nav.lumi.domain.AnalysisProductContractPreviewV1
+import no.nav.lumi.domain.AnalysisProductContractPreviewV2
 import no.nav.lumi.domain.AnalysisProductDocumentV1
 import no.nav.lumi.domain.AnalysisProductRetention
 import no.nav.lumi.domain.AnalysisProductSourceSelection
@@ -93,7 +93,7 @@ class AnalysisProductRoutesTest : FunSpec({
             }
 
             response.status shouldBe HttpStatusCode.OK
-            val preview = response.body<AnalysisProductContractPreviewV1>()
+            val preview = response.body<AnalysisProductContractPreviewV2>()
             preview.status shouldBe AnalysisContractPreviewStatus.BLOCKED
             preview.issues.map { it.code } shouldBe listOf(AnalysisCompilationIssueCode.FLOW_NOT_PINNED)
             preview.aggregatePreviewAvailable shouldBe false

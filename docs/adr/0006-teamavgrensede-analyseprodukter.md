@@ -66,6 +66,36 @@ at predicate-konstanter følger kildens retention. `visible-if-v1` sin operator-
 normaliseringssemantikk er normativt spesifisert i V1-datakontrakten; enhver
 endring krever ny evaluatorversjon.
 
+Nye releaser bruker `PublicationSpecification V2`. Den pinner hver tillatte
+`definition_hash` med sine eksakte `flow_hash`-verdier; de to listene kan aldri
+kombineres som et kartesisk produkt. For hvert valgt felt lagrer hver
+definisjonsrevisjon eksplisitt `PRESENT` eller `ABSENT`, samt den eksakte
+felt-, rating- og optionstrukturen. Dermed kan en D1-rad skille «feltet fantes
+ikke» fra «feltet var ubesvart», også etter at D2 har introdusert feltet eller
+en ny option. Spesifikasjonen kopierer ikke rå definition, predicates,
+predicate-verdier eller klientlabels.
+
+`PublicationSpecification V2` inneholder også `includeSubmittedHour` og det
+kompilerte offentlige ressursskjemaet. Preview-konvolutten er versjonert som
+V2, mens selve konsumentkontrakten fortsatt er V1. Samme frosne
+V2-ressurskompilator brukes ved preview og ved validering av en lagret release;
+lagrede resources må være strukturelt identiske med output av eksakte pins,
+dimensjoner og timevalget selv om alle digester er beregnet på nytt.
+
+Historiske V1-releaser forblir immutable og lesbare som provenance, men kan
+ikke bli eksportgrunnlag. Et V1-utkast må valideres og publiseres som en ny
+V2-release fra dagens kildekatalog.
+
+Den aktive releasen materialiseres gjennom et deterministisk effective scope.
+En nyere ønsket release blir straks en subtractiv øvre allowlist for det
+aktive produktet; nye surveys, felt og dimensjoner blir først synlige i den
+nye kandidaten ved aktivering. Rollback til en eldre release kan derfor ikke
+gjeninnføre bredere scope, men må publiseres som en ny release. Pause tillater
+utkast og validering, men ikke aktivering før produktet gjenopptas.
+`submitted_hour` følger samme regel: fjerning gir straks `NULL_ONLY` i det
+vedlikeholdte produktet, mens tillegg bare finnes i den nye kandidaten frem til
+aktivering.
+
 Lumi oppretter en lukket publiseringsflate, men gir aldri menneskelig
 lesetilgang. Personer og grupper søker om og får tilgang gjennom
 Datamarkedsplassen.
@@ -121,10 +151,14 @@ tilgjengelig for konsumenter.
 ### Eksporten bruker ett autoritativt fullsnapshot
 
 V1 starter med én Lumi-eid Cloud SQL-connection og én planlagt federated query
-til en versjonert, read-only `analytics_export_v1`-kontrakt. Hver kjøring leser
-kilden én gang til unik staging, validerer source-globale invarianter og flytter
-en monoton source-snapshot-pointer atomisk. Delvise, feilende eller eldre
-kildelesninger kan aldri bli aktive.
+til en versjonert, read-only `analytics_export_v1`-kontrakt. Kontrakten er én
+transportuavhengig, source-global atomstrøm: kildefakta eksporteres én gang,
+mens tynne memberships knytter dem til effective scopes. Den er ikke et
+analytikergrensesnitt; konsumenter får fortsatt bare wide-, long-, katalog- og
+manifestressursene. Hver kjøring leser kilden én gang til unik staging,
+validerer source-globale invarianter og flytter en monoton
+source-snapshot-pointer atomisk. Delvise, feilende eller eldre kildelesninger
+kan aldri bli aktive.
 
 Hvert produkt materialiseres deretter fra den aktive source-kandidaten og får
 sin egen atomiske produktpointer. Produktet flyttes bare når release-,
