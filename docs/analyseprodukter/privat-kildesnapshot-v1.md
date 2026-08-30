@@ -107,6 +107,56 @@ opprettes, må følgende være avklart og testet:
 8. Federation velges bare hvis målingene viser akseptabel Cloud SQL-last;
    ellers brukes en sentral NAIS Job mot samme kontrakt.
 
+## Syntetisk modellspike 30. august 2026
+
+En isolert Kotlin-prototype testet om grensen over kan representeres uten en
+per-produktkopi av kildefakta. Prototypen brukte bare syntetiske in-memory-data,
+hadde en separat testnøkkelavleder og ble fjernet etter kjøring.
+
+Alle 17 modellkontroller passerte i to etterfølgende verifikasjonskjøringer:
+
+- intern feedback-ID, rå payload, fritekst, datosvar og klientlabel krysset ikke
+  grensen
+- alle private radtyper var flate og skalarbaserte
+- source-globale innsendinger ble deduplisert selv når to produkter valgte
+  samme kilde
+- felt- og dimensjonsatomer ble filtrert med produktets egne, flate
+  allowlist-rader
+- teamkryssing, korrupte memberships og scope/source-mismatch feilet lukket
+- utløpte rader, pause-cutoff og offboarding reduserte det lesbare datasettet
+- sletting var borte i neste aktive snapshot; eldre generasjon og inaktiv
+  snapshot-ID kunne ikke aktiveres eller leses gjennom aktiv-reader
+- `response_key` var stabil gjennom en releaseendring i samme produkt og ulik
+  mellom produkter, mens `snapshot_row_ref` endret seg mellom kandidater
+
+Skalascenariet brukte 50 team, 500 produkter og to overlappende
+produkt-memberships per kildeinnsending:
+
+| Scenario | Kildeinnsendinger | Memberships | Logiske flatrader | Lokal byggetid |
+| --- | ---: | ---: | ---: | ---: |
+| 1x | 27 571 | 55 142 | 139 856 | 0,43–0,44 s |
+| 10x | 275 710 | 551 420 | 1 380 551 | 2,22–2,23 s |
+
+Tidene måler bare JVM-objektgenerering og validering på én utviklermaskin. De
+kan ikke sammenlignes med stoppgrensene i ADR 0005 og sier ingenting om Cloud
+SQL CPU, I/O, forbindelser, query-plan, overførte bytes eller BigQuery-kostnad.
+Scenariet dekket representativ overlapp på to produkter per kildefakta, ikke
+verstefall med alle ti tillatte produkter på teamet over samme kilde.
+
+Spiken støtter derfor den logiske retningen med source-globale faktarader,
+flate allowlist-atomer og tynne memberships. Den godkjenner ikke en transport
+eller produksjonskobling. Følgende porter står fortsatt åpne:
+
+- NADA-review av nøkkelavledning, KMS/keyset, region, IAM og datasetteierskap
+- syntetisk databasefixture med konsistent snapshot under samtidige inserts,
+  deletes og scopeendringer
+- 1x, representativ 10x og verste tillatte membership-overlapp målt med
+  query-plan, CPU, I/O, forbindelser, bytes og tidsavbrudd i dev
+- atomisk staging/aktivering, fysisk opprydding av gamle kandidater og
+  fail-closed replay mot den valgte BigQuery-topologien
+- hele definition-, option- og flow-kontrakten med kompilerte byte- og
+  atomgrenser
+
 Den fremtidige databaseflaten skal ligge i eget låst schema, eies av en
 dedikert `NOLOGIN`-rolle og gi leseren bare `CONNECT`, schema `USAGE` og
 `EXECUTE` på én versjonert funksjon. Ingen tabell-`SELECT` eller menneskelig
