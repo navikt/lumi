@@ -8,6 +8,9 @@ metadata:
 spec:
   image: {{image}}
   port: 3000
+  frontend:
+    generatedConfig:
+      mountPath: /app/nais.js
   replicas:
     min: 2
     max: 4

@@ -30,6 +30,19 @@ describe("security headers", () => {
     expect(scriptSrcDirective).toContain("'nonce-test-nonce'");
   });
 
+  it("allows only the two NAIS browser telemetry collectors in production", () => {
+    const csp = buildCspHeaderValue({ isDev: false });
+    const connectSrc = csp
+      .split(";")
+      .map((directive) => directive.trim())
+      .find((directive) => directive.startsWith("connect-src "));
+
+    expect(connectSrc).toBe(
+      "connect-src 'self' https://telemetry.nav.no https://telemetry.ekstern.dev.nav.no",
+    );
+    expect(connectSrc).not.toContain("*");
+  });
+
   it("uses CSP level 3 style directives in compatibility mode by default", () => {
     const csp = buildCspHeaderValue({ isDev: false });
 

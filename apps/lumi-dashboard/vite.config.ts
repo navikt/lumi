@@ -24,6 +24,10 @@ export default defineConfig(({ command, mode }) => {
 
   return {
     base,
+    build: {
+      // Browser telemetry uses the release SHA to resolve these maps from NAV CDN.
+      sourcemap: isProductionBuild,
+    },
     server: {
       port: 3000,
       strictPort: true,
