@@ -1,6 +1,7 @@
 import { StartClient } from "@tanstack/react-start/client";
 import { StrictMode, startTransition } from "react";
 import { hydrateRoot } from "react-dom/client";
+import { initBrowserObservability } from "~/observability/browser";
 
 type RecoverableErrorInfo = {
   componentStack?: string;
@@ -164,6 +165,7 @@ function logRecoverableHydrationError(
 }
 
 syncManifestIntegrityFromRenderedDom();
+initBrowserObservability();
 
 startTransition(() => {
   hydrateRoot(

@@ -2,6 +2,10 @@ import { z } from "zod";
 
 const clientSchema = z.object({
   VITE_MOCK_DATA: z.enum(["true", "false"]).optional(),
+  VITE_LUMI_RELEASE: z
+    .string()
+    .regex(/^[0-9a-f]{40}$/)
+    .optional(),
 });
 
 /**

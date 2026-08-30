@@ -211,6 +211,10 @@ jobs:
         env:
           NPM_AUTH_TOKEN: ${{ secrets.READER_TOKEN }}
 
+      - name: Resolve dashboard release
+        id: release
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Build shared types
         run: pnpm --filter @navikt/lumi-types run build
 
@@ -218,6 +222,7 @@ jobs:
         run: pnpm --filter lumi-dashboard run build
         env:
           CDN_BASE_PATH: '/lumi-dashboard'
+          VITE_LUMI_RELEASE: ${{ steps.release.outputs.sha }}
 
       - name: Copy static files
         run: |
