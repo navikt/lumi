@@ -52,4 +52,23 @@ class RetentionObservabilityTest : FunSpec({
             .value()
             .shouldBeExactly(0.0)
     }
+
+    test("rehydrates last success without recording a new execution") {
+        val registry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+        val observability = RetentionObservability(registry)
+        val persistedCompletion = Instant.parse("2026-08-29T18:54:24Z")
+
+        observability.recordLastSuccess(persistedCompletion)
+        observability.recordLastSuccess(persistedCompletion.minusSeconds(60))
+
+        registry.get(RetentionObservability.LAST_SUCCESS_METRIC_NAME)
+            .gauge()
+            .value()
+            .shouldBeExactly(persistedCompletion.epochSecond.toDouble())
+        registry.get(RetentionObservability.RUNS_METRIC_NAME)
+            .tag("outcome", "executed")
+            .counter()
+            .count()
+            .shouldBeExactly(0.0)
+    }
 })
