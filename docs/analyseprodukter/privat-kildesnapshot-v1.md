@@ -148,14 +148,86 @@ flate allowlist-atomer og tynne memberships. Den godkjenner ikke en transport
 eller produksjonskobling. Følgende porter står fortsatt åpne:
 
 - NADA-review av nøkkelavledning, KMS/keyset, region, IAM og datasetteierskap
-- syntetisk databasefixture med konsistent snapshot under samtidige inserts,
-  deletes og scopeendringer
 - 1x, representativ 10x og verste tillatte membership-overlapp målt med
-  query-plan, CPU, I/O, forbindelser, bytes og tidsavbrudd i dev
+  faktisk radbredde, CPU, I/O, forbindelser, bytes og tidsavbrudd i dev
 - atomisk staging/aktivering, fysisk opprydding av gamle kandidater og
   fail-closed replay mot den valgte BigQuery-topologien
 - hele definition-, option- og flow-kontrakten med kompilerte byte- og
   atomgrenser
+
+## PostgreSQL-spike 30. august 2026
+
+En ny, isolert prototype kjørte alle produksjonsmigreringer til og med V26 i
+PostgreSQL 17.11 og brukte den faktiske `feedback`-tabellen. Foreslåtte
+effective-generation-, source-, field- og dimension-rader lå i et separat
+scratch-schema. Det ble ikke opprettet databasebruker, grant, skyressurs eller
+kobling til dev eller produksjon.
+
+Prototypen testet én read-only statement i `REPEATABLE READ`. Queryformen som
+holdt best, gjorde to eksplisitte sekvensielle passeringer over `feedback`, én
+loop hver:
+
+1. materialiser bare kandidat-lokal referanse, transient intern ID og
+   nødvendige skalarer for kvalifiserte innsendinger
+2. materialiser bare flate, strukturerte svaratomer; rå `feedback_json` brukes
+   under skannet, men lagres ikke i mellomresultatet
+3. filtrer svaratomer, dimensjoner og memberships mot de dedupliserte
+   effective allowlist-radene
+
+Intern ID brukes bare til join innen samme statement og finnes ikke i den
+logiske outputen. Planassertene krevde to `Seq Scan`-noder med `Actual Loops=1`
+og forventet kilderadtall. Produkt- og membership-overlapp oppretter dermed
+ikke flere kildepasseringer.
+
+Fire andre former ble forkastet:
+
+- materialisering av hele `feedback_json` var rask lokalt, men skrev omtrent
+  154 MiB og leste 331 MiB PostgreSQL-temp ved representativ 10x
+- én korrelert lateral allowlist-evaluering per kilderad fullførte ikke innen
+  flere minutter og ble avbrutt
+- kompakte submissions med ett PK-oppslag per svar gjorde 275 710
+  `feedback_pkey`-oppslag og over 1,1 millioner buffer hits ved 10x
+- policy-drevet svarskann reduserte bufferarbeidet, men gjorde 250
+  bitmap-passeringer og ga en mindre forutsigbar plan
+
+Den valgte formen passerte både en interaktiv kjøring og en samlet
+verifikasjonskjøring:
+
+| Scenario | Kilderader | Memberships | Logiske flatrader | Feedback-plan | Lokal querytid | Temp lest/skrevet |
+| --- | ---: | ---: | ---: | --- | ---: | ---: |
+| 1x, overlapp 2 | 27 571 | 55 142 | 139 856 | 2 × sekvensiell, 1 loop | 100,0–116,2 ms | 0 / 0 MiB |
+| 10x, overlapp 2 | 275 710 | 551 420 | 1 380 551 | 2 × sekvensiell, 1 loop | 1 047,1–1 063,6 ms | 144,5 / 121,2 MiB |
+| 10x, overlapp 10 | 275 710 | 2 757 100 | 3 586 231 | 2 × sekvensiell, 1 loop | 1 737,8–1 745,0 ms | 245,8 / 222,5 MiB |
+
+Ved 1x var `feedback` 23,0 MiB inkludert indekser; ved 10x var den 181,4 MiB.
+Tempbruken kommer fra kompakte materialiserte submissions, svaratomer og den
+større membership-mengden. Den skal ikke skjules ved å øke `work_mem`; faktisk
+Cloud SQL-plan og temp-I/O må måles med realistisk konfigurasjon.
+
+Samtidighetstesten etablerte et read-only snapshot ved control epoch 1 med to
+lesbare innsendinger. En annen transaksjon slettet én rad, satte inn to og
+committet offboarding ved epoch 2. Den etablerte leseren så fortsatt epoch 1 og
+to konsistente innsendinger; en ny leser så epoch 2 og null lesbare
+innsendinger, mens rå kilderadtall hadde gått fra to til tre. Det lukker den
+lokale databasefixturen for samtidige inserts, deletes og scopeendringer.
+
+Spiken må ikke tolkes som kapasitets- eller transportgodkjenning:
+
+- queryen materialiserte og talte radtyper, men målte ikke full radbredde,
+  serialisering, nettverk eller bytes gjennom `EXTERNAL_QUERY`
+- hver syntetiske innsending hadde ett strukturert svaratom; realistisk
+  felt-, option- og flow-ekspansjon må inngå i dev-målingen
+- scratch-tabellene representerte den logiske effective-kontrakten, ikke en
+  ferdig `analytics_export_v1`-funksjon eller minste-privilegium-rolle
+- lokal buffer- og tidsmåling sier ingenting om Cloud SQL CPU, I/O,
+  forbindelser, samtidige produksjonslaster eller BigQuery-kostnad
+- BigQuery-staging, atomisk pointerbytte, replay, cleanup og observability ble
+  ikke testet
+
+Resultatet godkjenner derfor bare neste trinn: en fullbredde dev-shadow med
+samme flate kontrakt, realistisk svarmultiplikasjon og eksplisitte stoppgrenser.
+Det velger ikke federering fremfor en sentral NAIS Job og gir ingen
+produksjonsgodkjenning.
 
 Den fremtidige databaseflaten skal ligge i eget låst schema, eies av en
 dedikert `NOLOGIN`-rolle og gi leseren bare `CONNECT`, schema `USAGE` og
