@@ -29,9 +29,9 @@ long, feltkatalog og manifest publiseres som én samlet kontrakt.
 
 `response_key` og `answer_key` er nøkkelbaserte, produktspesifikke
 pseudonymer. De er stabile gjennom releaser og major-visninger i samme produkt,
-men forskjellige mellom produkter. Intern Lumi-ID og privat `source_row_key`
-finnes aldri i kontrakten. Nøkkelrotasjon er en breaking endring og krever ny
-major-versjon og kontrollert parallellperiode.
+men forskjellige mellom produkter. Intern Lumi-ID og snapshot-lokal
+`snapshot_row_ref` finnes aldri i kontrakten. Nøkkelrotasjon er en breaking
+endring og krever ny major-versjon og kontrollert parallellperiode.
 
 ## Release-pinnet kildekontrakt
 
