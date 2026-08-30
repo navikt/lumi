@@ -97,8 +97,21 @@ object TestDatabase {
                     "ALTER TABLE analysis_control.analysis_source_contracts " +
                         "DISABLE TRIGGER trg_analysis_source_contract_reject_truncate",
                 )
+                listOf(
+                    "analysis_effective_plan_generations" to
+                        "trg_analysis_effective_generation_truncate_immutable",
+                    "analysis_effective_specs" to
+                        "trg_analysis_effective_spec_truncate_immutable",
+                    "analysis_effective_atoms" to
+                        "trg_analysis_effective_atom_truncate_immutable",
+                ).forEach { (table, trigger) ->
+                    stmt.execute("ALTER TABLE analysis_control.$table DISABLE TRIGGER $trigger")
+                }
                 stmt.execute(
-                    "TRUNCATE TABLE analysis_control.analysis_product_audit_events, " +
+                    "TRUNCATE TABLE analysis_control.analysis_effective_atoms, " +
+                        "analysis_control.analysis_effective_specs, " +
+                        "analysis_control.analysis_effective_plan_generations, " +
+                        "analysis_control.analysis_product_audit_events, " +
                         "analysis_control.analysis_product_releases, " +
                         "analysis_control.analysis_product_drafts, " +
                         "analysis_control.analysis_products, " +
@@ -121,6 +134,16 @@ object TestDatabase {
                     "ALTER TABLE analysis_control.analysis_source_contracts " +
                         "ENABLE TRIGGER trg_analysis_source_contract_reject_truncate",
                 )
+                listOf(
+                    "analysis_effective_plan_generations" to
+                        "trg_analysis_effective_generation_truncate_immutable",
+                    "analysis_effective_specs" to
+                        "trg_analysis_effective_spec_truncate_immutable",
+                    "analysis_effective_atoms" to
+                        "trg_analysis_effective_atom_truncate_immutable",
+                ).forEach { (table, trigger) ->
+                    stmt.execute("ALTER TABLE analysis_control.$table ENABLE TRIGGER $trigger")
+                }
             }
             conn.commit()
         }

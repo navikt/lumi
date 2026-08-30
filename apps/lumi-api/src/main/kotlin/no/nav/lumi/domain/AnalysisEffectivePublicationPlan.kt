@@ -45,6 +45,43 @@ sealed interface AnalysisPublicationPlan {
     data object None : AnalysisPublicationPlan
 }
 
+/**
+ * Digest for the complete resolver result, separate from each effective
+ * specification digest. This is the idempotency boundary for immutable
+ * control-plane generations.
+ */
+internal object AnalysisPublicationPlanDigests {
+    fun digest(
+        state: AnalysisPublicationControlState,
+        plan: AnalysisPublicationPlan,
+    ): String = AnalysisCanonicalHash.digest(
+        domain = "analysis-effective-publication-plan-v1",
+        parts = buildList {
+            add(state.productId)
+            add(state.team)
+            add(state.lifecycleState.name)
+            add(state.activeReleaseNumber?.toString() ?: "<null>")
+            add(state.desiredReleaseNumber?.toString() ?: "<null>")
+            add(state.dataCutoffAt?.toEpochMicroseconds()?.toString() ?: "<null>")
+            when (plan) {
+                is AnalysisPublicationPlan.Enabled -> {
+                    add("ENABLED")
+                    add(plan.maintainedTarget.effectiveSpecificationDigest)
+                    add(plan.candidate?.effectiveSpecificationDigest ?: "<null>")
+                }
+
+                is AnalysisPublicationPlan.Paused -> {
+                    add("PAUSED")
+                    add(plan.maintainedTarget.effectiveSpecificationDigest)
+                }
+
+                is AnalysisPublicationPlan.Offboarding -> add("OFFBOARDING")
+                AnalysisPublicationPlan.None -> add("NONE")
+            }
+        },
+    )
+}
+
 data class EffectivePublicationSpecification(
     val productId: String,
     val team: String,
