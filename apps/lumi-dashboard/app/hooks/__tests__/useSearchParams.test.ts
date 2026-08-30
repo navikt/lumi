@@ -79,6 +79,19 @@ describe("useSearchParams", () => {
     expect(getResult().params.dateMode).toBe("auto");
   });
 
+  it("restores the complete question trend configuration from the URL", async () => {
+    const { getResult } = await setup([
+      "/?surveyId=survey-1&trendField=choice-1&trendInterval=month&trendMeasure=count",
+    ]);
+
+    expect(getResult().params).toMatchObject({
+      surveyId: "survey-1",
+      trendField: "choice-1",
+      trendInterval: "month",
+      trendMeasure: "count",
+    });
+  });
+
   it("setParam adds a new parameter", async () => {
     const { router, getResult } = await setup();
 

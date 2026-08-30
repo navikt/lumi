@@ -2,6 +2,7 @@ package no.nav.lumi.routes
 
 import io.ktor.resources.*
 import kotlinx.serialization.Serializable
+import no.nav.lumi.domain.QuestionTrendInterval
 
 @Resource("/api/v1/intern")
 class ApiV1Intern {
@@ -145,6 +146,14 @@ class ApiV1Intern {
         @Resource("timeline")
         @Serializable
         class Timeline(val parent: Stats)
+
+        @Resource("question-trend")
+        @Serializable
+        class QuestionTrend(
+            val parent: Stats,
+            val fieldId: String,
+            val interval: QuestionTrendInterval = QuestionTrendInterval.DAY,
+        )
 
         @Resource("top-tasks")
         @Serializable

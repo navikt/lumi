@@ -24,6 +24,7 @@ class StatsCacheInvalidator(
             "overview:$teamPrefix",
             "ratings:$teamPrefix",
             "timeline:$teamPrefix",
+            "questionTrend:$teamPrefix",
             "topTasks:$teamPrefix",
             "surveyTypes:$teamPrefix",
             "blockers:$teamPrefix",
