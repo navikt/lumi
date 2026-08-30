@@ -1,6 +1,7 @@
 package no.nav.lumi.repository
 
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.assertions.nondeterministic.eventually
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -35,6 +36,7 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import java.util.UUID
+import kotlin.time.Duration.Companion.seconds
 
 class AnalysisProductTransitionRepositoryTest : FunSpec({
     val repository = AnalysisProductRepository(
@@ -101,7 +103,7 @@ class AnalysisProductTransitionRepositoryTest : FunSpec({
         audit.nextState shouldBe AnalysisProductLifecycleState.ENABLED
     }
 
-    test("pause freezes a database timestamp, resume clears it, and both keep purge scope sealed") {
+    test("pause freezes the latest verified snapshot and keeps purge scope sealed") {
         val fixture = createEnabledProduct(repository)
 
         val paused = repository.pause(
@@ -112,25 +114,14 @@ class AnalysisProductTransitionRepositoryTest : FunSpec({
         ) as ChangeAnalysisProductStateResult.Changed
 
         paused.product.lifecycleState shouldBe AnalysisProductLifecycleState.PAUSED
-        paused.product.dataCutoffAt shouldBe paused.effectiveGeneration.dataCutoffAt.toString()
+        java.time.OffsetDateTime.parse(paused.product.dataCutoffAt).toInstant() shouldBe ACTIVE_SNAPSHOT_AT
+        java.time.OffsetDateTime.parse(paused.product.dataCutoffAt).toInstant() shouldBe
+            paused.effectiveGeneration.dataCutoffAt
         paused.effectiveGeneration.planKind shouldBe EffectivePlanKind.PAUSED
-
-        val resumed = repository.resume(
-            fixture.team,
-            fixture.productId,
-            expectedProductVersion = 4,
-            principalIdentity = "A123456",
-        ) as ChangeAnalysisProductStateResult.Changed
-
-        resumed.product.lifecycleState shouldBe AnalysisProductLifecycleState.ENABLED
-        resumed.product.dataCutoffAt shouldBe null
-        resumed.effectiveGeneration.planKind shouldBe EffectivePlanKind.ENABLED
-        repository.findAuditEvents(fixture.team, fixture.productId)!!.takeLast(2).map {
-            it.previousState to it.nextState
-        } shouldBe listOf(
-            AnalysisProductLifecycleState.ENABLED to AnalysisProductLifecycleState.PAUSED,
-            AnalysisProductLifecycleState.PAUSED to AnalysisProductLifecycleState.ENABLED,
-        )
+        repository.findAuditEvents(fixture.team, fixture.productId)!!.last().let {
+            (it.previousState to it.nextState) shouldBe
+                (AnalysisProductLifecycleState.ENABLED to AnalysisProductLifecycleState.PAUSED)
+        }
     }
 
     test("moves a newer release through candidate and activation without allowing rollback") {
@@ -169,7 +160,7 @@ class AnalysisProductTransitionRepositoryTest : FunSpec({
         )
     }
 
-    test("offboarding is fail closed and cannot be resumed or assigned a release") {
+    test("offboarding is fail closed and cannot be assigned a release") {
         val fixture = createEnabledProduct(repository)
 
         val offboarding = repository.beginOffboarding(
@@ -182,14 +173,6 @@ class AnalysisProductTransitionRepositoryTest : FunSpec({
         offboarding.product.lifecycleState shouldBe AnalysisProductLifecycleState.OFFBOARDING
         offboarding.effectiveGeneration.planKind shouldBe EffectivePlanKind.OFFBOARDING
 
-        repository.resume(
-            fixture.team,
-            fixture.productId,
-            expectedProductVersion = 4,
-            principalIdentity = "A123456",
-        ) shouldBe ChangeAnalysisProductStateResult.Rejected(
-            AnalysisProductTransitionRejection.INVALID_LIFECYCLE,
-        )
         repository.desireRelease(
             fixture.team,
             fixture.productId,
@@ -261,6 +244,254 @@ class AnalysisProductTransitionRepositoryTest : FunSpec({
         results.filterIsInstance<ChangeAnalysisProductStateResult.Changed>() shouldHaveSize 1
         results.filterIsInstance<ChangeAnalysisProductStateResult.VersionConflict>() shouldHaveSize 1
         countEffectiveGenerations(fixture.productId) shouldBe 3
+    }
+
+    test("pause fails closed until a verified active snapshot exists") {
+        val fixture = createEnabledProduct(repository, withSnapshotActivation = false)
+
+        repository.pause(
+            fixture.team,
+            fixture.productId,
+            expectedProductVersion = 3,
+            principalIdentity = "A123456",
+        ) shouldBe ChangeAnalysisProductStateResult.Rejected(
+            AnalysisProductTransitionRejection.NO_ACTIVE_SNAPSHOT,
+        )
+        repository.findById(fixture.team, fixture.productId)!!.lifecycleState shouldBe
+            AnalysisProductLifecycleState.ENABLED
+    }
+
+    test("database rejects rollback of product and release counters") {
+        val fixture = createEnabledProduct(repository)
+        insertTransitionRelease(fixture.productId, fixture.team, schemaVersion = 2, releaseNumber = 2)
+
+        shouldThrow<SQLException> {
+            executeRejectedProductUpdate(fixture, "row_version = 2")
+        }.sqlState shouldBe "23514"
+        shouldThrow<SQLException> {
+            executeRejectedControlUpdate(fixture, "last_release_number = 1")
+        }.sqlState shouldBe "23514"
+    }
+
+    test("immutable release and product release counter must commit together") {
+        val fixture = createEnabledProduct(repository)
+
+        shouldThrow<SQLException> {
+            insertTransitionRelease(
+                fixture.productId,
+                fixture.team,
+                schemaVersion = 2,
+                releaseNumber = 2,
+                updateReleaseCounter = false,
+            )
+        }.sqlState shouldBe "23514"
+        repository.findReleases(fixture.team, fixture.productId)!! shouldHaveSize 1
+    }
+
+    test("database rejects future or regressing snapshot activations") {
+        val fixture = createEnabledProduct(repository, withSnapshotActivation = false)
+
+        insertSnapshotActivation(fixture, ACTIVE_SNAPSHOT_AT)
+        shouldThrow<SQLException> {
+            insertSnapshotActivation(fixture, Instant.parse("2999-01-01T00:00:00Z"))
+        }.sqlState shouldBe "23514"
+        shouldThrow<SQLException> {
+            insertSnapshotActivation(fixture, ACTIVE_SNAPSHOT_AT.minusSeconds(1))
+        }.sqlState shouldBe "23514"
+    }
+
+    test("database binds a snapshot activation to the current enabled effective generation") {
+        val fixture = createEnabledProduct(repository, withSnapshotActivation = false)
+
+        shouldThrow<SQLException> {
+            insertSnapshotActivation(fixture, ACTIVE_SNAPSHOT_AT, controlEpochDelta = 1)
+        }.sqlState shouldBe "23514"
+        insertSnapshotActivation(fixture, ACTIVE_SNAPSHOT_AT)
+
+        insertTransitionRelease(fixture.productId, fixture.team, schemaVersion = 2, releaseNumber = 2)
+        repository.desireRelease(
+            fixture.team,
+            fixture.productId,
+            expectedProductVersion = 3,
+            releaseNumber = 2,
+            principalIdentity = "A123456",
+        )
+        shouldThrow<SQLException> {
+            insertSnapshotActivation(
+                fixture,
+                ACTIVE_SNAPSHOT_AT.plusSeconds(1),
+                useLatestGeneration = false,
+            )
+        }.sqlState shouldBe "23514"
+    }
+
+    test("editing a draft does not stale the unchanged active effective generation") {
+        val fixture = createEnabledProduct(repository, withSnapshotActivation = false)
+        val product = checkNotNull(repository.findById(fixture.team, fixture.productId))
+        val draft = checkNotNull(product.draft)
+
+        repository.updateDraft(
+            team = fixture.team,
+            productId = fixture.productId,
+            draftId = UUID.fromString(draft.id),
+            expectedRevision = draft.revision,
+            document = transitionDocument().copy(purpose = "Videre arbeid i utkastet"),
+            principalIdentity = "A123456",
+        ).let { check(it is UpdateAnalysisProductDraftResult.Updated) }
+
+        insertSnapshotActivation(fixture, ACTIVE_SNAPSHOT_AT)
+        repository.pause(
+            fixture.team,
+            fixture.productId,
+            expectedProductVersion = 4,
+            principalIdentity = "A123456",
+        ).let { paused ->
+            check(paused is ChangeAnalysisProductStateResult.Changed)
+            java.time.OffsetDateTime.parse(paused.product.dataCutoffAt).toInstant() shouldBe ACTIVE_SNAPSHOT_AT
+        }
+    }
+
+    test("snapshot activation history is immutable and stops when the product pauses") {
+        val fixture = createEnabledProduct(repository)
+        repository.pause(
+            fixture.team,
+            fixture.productId,
+            expectedProductVersion = 3,
+            principalIdentity = "A123456",
+        )
+
+        shouldThrow<SQLException> {
+            insertSnapshotActivation(fixture, ACTIVE_SNAPSHOT_AT.plusSeconds(1))
+        }.sqlState shouldBe "23514"
+        shouldThrow<SQLException> {
+            mutateSnapshotActivation("UPDATE", fixture)
+        }.sqlState shouldBe "55000"
+        shouldThrow<SQLException> {
+            mutateSnapshotActivation("DELETE", fixture)
+        }.sqlState shouldBe "55000"
+        shouldThrow<SQLException> {
+            mutateSnapshotActivation("TRUNCATE", fixture)
+        }.sqlState shouldBe "55000"
+    }
+
+    test("a concurrent pause waits for an in-flight snapshot activation and freezes its source boundary") {
+        val fixture = createEnabledProduct(repository, withSnapshotActivation = false)
+        val concurrentSnapshotAt = ACTIVE_SNAPSHOT_AT.plusSeconds(30)
+
+        TestDatabase.dataSource.connection.use { activationConnection ->
+            activationConnection.autoCommit = false
+            val activationBackendPid = activationConnection.createStatement().use { statement ->
+                statement.executeQuery("SELECT pg_backend_pid()").use { result ->
+                    check(result.next())
+                    result.getInt(1)
+                }
+            }
+            insertSnapshotActivationRow(activationConnection, fixture, concurrentSnapshotAt)
+
+            coroutineScope {
+                val pause = async(Dispatchers.IO) {
+                    repository.pause(
+                        fixture.team,
+                        fixture.productId,
+                        expectedProductVersion = 3,
+                        principalIdentity = "A123456",
+                    )
+                }
+                waitUntilDatabaseSessionIsBlockedBy(activationBackendPid)
+                activationConnection.commit()
+
+                val paused = pause.await() as ChangeAnalysisProductStateResult.Changed
+                java.time.OffsetDateTime.parse(paused.product.dataCutoffAt).toInstant() shouldBe
+                    concurrentSnapshotAt
+            }
+        }
+    }
+
+    test("a snapshot activation waiting behind pause is rejected after pause commits") {
+        val fixture = createEnabledProduct(repository)
+
+        TestDatabase.dataSource.connection.use { pauseConnection ->
+            pauseConnection.autoCommit = false
+            val pauseBackendPid = pauseConnection.createStatement().use { statement ->
+                statement.executeQuery("SELECT pg_backend_pid()").use { result ->
+                    check(result.next())
+                    result.getInt(1)
+                }
+            }
+            pauseProductInTransaction(pauseConnection, fixture)
+
+            coroutineScope {
+                val activation = async(Dispatchers.IO) {
+                    runCatching {
+                        insertSnapshotActivation(fixture, ACTIVE_SNAPSHOT_AT.plusSeconds(60))
+                    }
+                }
+                waitUntilDatabaseSessionIsBlockedBy(pauseBackendPid)
+                pauseConnection.commit()
+
+                val failure = activation.await().exceptionOrNull() as SQLException
+                failure.sqlState shouldBe "23514"
+            }
+        }
+        repository.findById(fixture.team, fixture.productId)!!.lifecycleState shouldBe
+            AnalysisProductLifecycleState.PAUSED
+    }
+
+    test("database does not allow paused products to resume without a revalidation transition") {
+        val fixture = createEnabledProduct(repository)
+        repository.pause(
+            fixture.team,
+            fixture.productId,
+            expectedProductVersion = 3,
+            principalIdentity = "A123456",
+        )
+
+        shouldThrow<SQLException> {
+            executeRejectedControlUpdate(fixture, "lifecycle_state = 'ENABLED', data_cutoff_at = NULL")
+        }.sqlState shouldBe "23514"
+    }
+
+    test("database binds transition audit state and actor exactly") {
+        val pauseFixture = createEnabledProduct(repository)
+        installAuditRewriteTrigger("actor")
+        try {
+            shouldThrow<SQLException> {
+                repository.pause(
+                    pauseFixture.team,
+                    pauseFixture.productId,
+                    expectedProductVersion = 3,
+                    principalIdentity = "A123456",
+                )
+            }.sqlState shouldBe "23514"
+        } finally {
+            removeAuditRewriteTrigger()
+        }
+        repository.findById(pauseFixture.team, pauseFixture.productId)!!.lifecycleState shouldBe
+            AnalysisProductLifecycleState.ENABLED
+
+        val activationFixture = createEnabledProduct(repository, team = "team-b")
+        insertTransitionRelease(activationFixture.productId, activationFixture.team, schemaVersion = 2, releaseNumber = 2)
+        repository.desireRelease(
+            activationFixture.team,
+            activationFixture.productId,
+            expectedProductVersion = 3,
+            releaseNumber = 2,
+            principalIdentity = "A123456",
+        )
+        installAuditRewriteTrigger("state")
+        try {
+            shouldThrow<SQLException> {
+                repository.activateDesiredRelease(
+                    activationFixture.team,
+                    activationFixture.productId,
+                    expectedProductVersion = 4,
+                    principalIdentity = "A123456",
+                )
+            }.sqlState shouldBe "23514"
+        } finally {
+            removeAuditRewriteTrigger()
+        }
+        repository.findById(activationFixture.team, activationFixture.productId)!!.activeReleaseNumber shouldBe 1
     }
 
     test("audit or generation failure rolls the entire control transition back") {
@@ -353,8 +584,12 @@ private suspend fun createProductWithRelease(
     return TransitionFixture(team, productId)
 }
 
-private suspend fun createEnabledProduct(repository: AnalysisProductRepository): TransitionFixture =
-    createProductWithRelease(repository).also { fixture ->
+private suspend fun createEnabledProduct(
+    repository: AnalysisProductRepository,
+    withSnapshotActivation: Boolean = true,
+    team: String = "team-a",
+): TransitionFixture =
+    createProductWithRelease(repository, team = team).also { fixture ->
         repository.desireRelease(
             fixture.team,
             fixture.productId,
@@ -368,6 +603,7 @@ private suspend fun createEnabledProduct(repository: AnalysisProductRepository):
             expectedProductVersion = 2,
             principalIdentity = "reconciler:lumi-analysis",
         )
+        if (withSnapshotActivation) insertSnapshotActivation(fixture, ACTIVE_SNAPSHOT_AT)
     }
 
 private fun transitionDocument() = AnalysisProductDocumentV1(
@@ -386,6 +622,7 @@ private fun insertTransitionRelease(
     team: String,
     schemaVersion: Int,
     releaseNumber: Long = 1,
+    updateReleaseCounter: Boolean = true,
 ) {
     val specification = transitionSpecification(productId, team)
     val specificationJson = if (schemaVersion == 2) {
@@ -479,13 +716,15 @@ private fun insertTransitionRelease(
             statement.setString(11, specification.baseSchemaDigest)
             statement.executeUpdate() shouldBe 1
         }
-        connection.prepareStatement(
-            "UPDATE analysis_control.analysis_products SET last_release_number = ? WHERE team = ? AND id = ?",
-        ).use { statement ->
-            statement.setLong(1, releaseNumber)
-            statement.setString(2, team)
-            statement.setObject(3, productId)
-            statement.executeUpdate() shouldBe 1
+        if (updateReleaseCounter) {
+            connection.prepareStatement(
+                "UPDATE analysis_control.analysis_products SET last_release_number = ? WHERE team = ? AND id = ?",
+            ).use { statement ->
+                statement.setLong(1, releaseNumber)
+                statement.setString(2, team)
+                statement.setObject(3, productId)
+                statement.executeUpdate() shouldBe 1
+            }
         }
         connection.commit()
     }
@@ -602,7 +841,14 @@ private fun commitDesiredControlDirectly(fixture: TransitionFixture, includeAudi
 }
 
 private fun executeRejectedControlUpdate(fixture: TransitionFixture, assignment: String) {
-    check(assignment in setOf("desired_release_number = 1", "lifecycle_state = 'DRAFT'"))
+    check(
+        assignment in setOf(
+            "desired_release_number = 1",
+            "lifecycle_state = 'DRAFT'",
+            "lifecycle_state = 'ENABLED', data_cutoff_at = NULL",
+            "last_release_number = 1",
+        ),
+    )
     TestDatabase.dataSource.connection.use { connection ->
         try {
             connection.prepareStatement(
@@ -623,6 +869,184 @@ private fun executeRejectedControlUpdate(fixture: TransitionFixture, assignment:
         }
     }
 }
+
+private fun executeRejectedProductUpdate(fixture: TransitionFixture, assignment: String) {
+    check(assignment == "row_version = 2")
+    TestDatabase.dataSource.connection.use { connection ->
+        try {
+            connection.prepareStatement(
+                "UPDATE analysis_control.analysis_products SET $assignment WHERE team = ? AND id = ?",
+            ).use { statement ->
+                statement.setString(1, fixture.team)
+                statement.setObject(2, fixture.productId)
+                statement.executeUpdate()
+            }
+            connection.commit()
+        } catch (error: SQLException) {
+            connection.rollback()
+            throw error
+        }
+    }
+}
+
+private fun insertSnapshotActivation(
+    fixture: TransitionFixture,
+    sourceSnapshotAt: Instant,
+    controlEpochDelta: Long = 0,
+    useLatestGeneration: Boolean = true,
+) {
+    val generationOrder = if (useLatestGeneration) "DESC" else "ASC"
+    TestDatabase.dataSource.connection.use { connection ->
+        try {
+            insertSnapshotActivationRow(
+                connection,
+                fixture,
+                sourceSnapshotAt,
+                controlEpochDelta,
+                generationOrder,
+            )
+            connection.commit()
+        } catch (error: SQLException) {
+            connection.rollback()
+            throw error
+        }
+    }
+}
+
+private fun insertSnapshotActivationRow(
+    connection: java.sql.Connection,
+    fixture: TransitionFixture,
+    sourceSnapshotAt: Instant,
+    controlEpochDelta: Long = 0,
+    generationOrder: String = "DESC",
+) {
+    check(generationOrder in setOf("ASC", "DESC"))
+    connection.prepareStatement(
+        """
+            INSERT INTO analysis_control.analysis_product_snapshot_activations (
+                team, product_id, product_snapshot_id,
+                effective_generation_id, control_epoch, release_number,
+                source_snapshot_at
+            )
+            SELECT ?, ?, ?, generation.id, generation.control_epoch + ?,
+                   generation.active_release_number, ?
+            FROM analysis_control.analysis_effective_plan_generations AS generation
+            WHERE generation.team = ?
+              AND generation.product_id = ?
+              AND generation.plan_kind = 'ENABLED'
+            ORDER BY generation.generation $generationOrder
+            LIMIT 1
+        """.trimIndent(),
+    ).use { statement ->
+        statement.setString(1, fixture.team)
+        statement.setObject(2, fixture.productId)
+        statement.setString(3, "snapshot-${UUID.randomUUID()}")
+        statement.setLong(4, controlEpochDelta)
+        statement.setObject(5, sourceSnapshotAt.atOffset(ZoneOffset.UTC))
+        statement.setString(6, fixture.team)
+        statement.setObject(7, fixture.productId)
+        statement.executeUpdate() shouldBe 1
+    }
+}
+
+private fun pauseProductInTransaction(connection: java.sql.Connection, fixture: TransitionFixture) {
+    val productVersion = connection.prepareStatement(
+        """
+            UPDATE analysis_control.analysis_products
+            SET lifecycle_state = 'PAUSED',
+                data_cutoff_at = ?,
+                row_version = row_version + 1,
+                updated_by = 'A123456',
+                updated_at = clock_timestamp()
+            WHERE team = ? AND id = ?
+            RETURNING row_version
+        """.trimIndent(),
+    ).use { statement ->
+        statement.setObject(1, ACTIVE_SNAPSHOT_AT.atOffset(ZoneOffset.UTC))
+        statement.setString(2, fixture.team)
+        statement.setObject(3, fixture.productId)
+        statement.executeQuery().use { result ->
+            check(result.next())
+            result.getLong(1)
+        }
+    }
+    connection.prepareStatement(
+        """
+            INSERT INTO analysis_control.analysis_product_audit_events (
+                id, team, product_id, event_number, event_type, actor_id,
+                product_version, previous_state, next_state
+            ) VALUES (
+                gen_random_uuid(), ?, ?, ?, 'LIFECYCLE_CHANGED', 'A123456',
+                ?, 'ENABLED', 'PAUSED'
+            )
+        """.trimIndent(),
+    ).use { statement ->
+        statement.setString(1, fixture.team)
+        statement.setObject(2, fixture.productId)
+        statement.setLong(3, productVersion)
+        statement.setLong(4, productVersion)
+        statement.executeUpdate() shouldBe 1
+    }
+    AnalysisEffectivePlanRepository().persistCurrent(connection, fixture.team, fixture.productId).let {
+        check(it is PersistEffectivePlanResult.Created)
+    }
+}
+
+private suspend fun waitUntilDatabaseSessionIsBlockedBy(blockingPid: Int) {
+    eventually(10.seconds) {
+        val blocked = TestDatabase.dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_stat_activity
+                        WHERE ? = ANY(pg_blocking_pids(pid))
+                    )
+                """.trimIndent(),
+            ).use { statement ->
+                statement.setInt(1, blockingPid)
+                statement.executeQuery().use { result ->
+                    check(result.next())
+                    result.getBoolean(1)
+                }
+            }
+        }
+        blocked shouldBe true
+    }
+}
+
+private fun mutateSnapshotActivation(operation: String, fixture: TransitionFixture) {
+    check(operation in setOf("UPDATE", "DELETE", "TRUNCATE"))
+    TestDatabase.dataSource.connection.use { connection ->
+        try {
+            val sql = when (operation) {
+                "UPDATE" ->
+                    "UPDATE analysis_control.analysis_product_snapshot_activations " +
+                        "SET source_snapshot_at = source_snapshot_at + interval '1 second' " +
+                        "WHERE team = ? AND product_id = ?"
+
+                "DELETE" ->
+                    "DELETE FROM analysis_control.analysis_product_snapshot_activations " +
+                        "WHERE team = ? AND product_id = ?"
+
+                else -> "TRUNCATE analysis_control.analysis_product_snapshot_activations"
+            }
+            connection.prepareStatement(sql).use { statement ->
+                if (operation != "TRUNCATE") {
+                    statement.setString(1, fixture.team)
+                    statement.setObject(2, fixture.productId)
+                }
+                statement.executeUpdate()
+            }
+            connection.commit()
+        } catch (error: SQLException) {
+            connection.rollback()
+            throw error
+        }
+    }
+}
+
+private val ACTIVE_SNAPSHOT_AT = Instant.parse("2026-08-29T23:45:00Z")
 
 private fun installRejectingTrigger(table: String, trigger: String) {
     TestDatabase.dataSource.connection.use { connection ->
@@ -653,6 +1077,52 @@ private fun removeRejectingTrigger(table: String, trigger: String) {
         connection.createStatement().use { statement ->
             statement.execute("DROP TRIGGER IF EXISTS $trigger ON analysis_control.$table")
             statement.execute("DROP FUNCTION IF EXISTS analysis_control.reject_transition_for_test()")
+        }
+        connection.commit()
+    }
+}
+
+private fun installAuditRewriteTrigger(mode: String) {
+    check(mode in setOf("actor", "state"))
+    val mutation = when (mode) {
+        "actor" -> "NEW.actor_id := 'forged-actor';"
+        else -> "NEW.previous_state := 'DRAFT'; NEW.next_state := 'ENABLED';"
+    }
+    TestDatabase.dataSource.connection.use { connection ->
+        connection.createStatement().use { statement ->
+            statement.execute(
+                """
+                    CREATE FUNCTION analysis_control.rewrite_transition_audit_for_test()
+                    RETURNS TRIGGER
+                    LANGUAGE plpgsql
+                    AS ${'$'}${'$'}
+                    BEGIN
+                        $mutation
+                        RETURN NEW;
+                    END;
+                    ${'$'}${'$'}
+                """.trimIndent(),
+            )
+            statement.execute(
+                """
+                    CREATE TRIGGER rewrite_transition_audit_for_test
+                    BEFORE INSERT ON analysis_control.analysis_product_audit_events
+                    FOR EACH ROW EXECUTE FUNCTION analysis_control.rewrite_transition_audit_for_test()
+                """.trimIndent(),
+            )
+        }
+        connection.commit()
+    }
+}
+
+private fun removeAuditRewriteTrigger() {
+    TestDatabase.dataSource.connection.use { connection ->
+        connection.createStatement().use { statement ->
+            statement.execute(
+                "DROP TRIGGER IF EXISTS rewrite_transition_audit_for_test " +
+                    "ON analysis_control.analysis_product_audit_events",
+            )
+            statement.execute("DROP FUNCTION IF EXISTS analysis_control.rewrite_transition_audit_for_test()")
         }
         connection.commit()
     }

@@ -21,6 +21,7 @@ import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.Types
 import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -42,6 +43,7 @@ enum class AnalysisProductTransitionRejection {
     RELEASE_NOT_V2,
     RELEASE_NOT_FORWARD,
     NO_DESIRED_RELEASE,
+    NO_ACTIVE_SNAPSHOT,
 }
 
 sealed interface ChangeAnalysisProductStateResult {
@@ -293,7 +295,7 @@ class AnalysisProductRepository(
                 return@dbQuery rejected(AnalysisProductTransitionRejection.RELEASE_NOT_V2)
             }
             if (
-                releaseNumber != product.lastReleaseNumber ||
+                releaseNumber != findLatestReleaseNumber(connection, normalizedTeam, productId) ||
                 product.desiredReleaseNumber?.let { releaseNumber < it } == true ||
                 product.activeReleaseNumber?.let { releaseNumber < it } == true
             ) {
@@ -428,24 +430,12 @@ class AnalysisProductRepository(
         requiredState = AnalysisProductLifecycleState.ENABLED,
         targetState = AnalysisProductLifecycleState.PAUSED,
         unchangedState = AnalysisProductLifecycleState.PAUSED,
-        cutoffAssignment = DataCutoffAssignment.SET_NOW,
+        cutoffAssignment = DataCutoffAssignment.LAST_ACTIVE_SNAPSHOT,
     )
 
-    suspend fun resume(
-        team: String,
-        productId: UUID,
-        expectedProductVersion: Long,
-        principalIdentity: String,
-    ): ChangeAnalysisProductStateResult = changeLifecycle(
-        team = team,
-        productId = productId,
-        expectedProductVersion = expectedProductVersion,
-        principalIdentity = principalIdentity,
-        requiredState = AnalysisProductLifecycleState.PAUSED,
-        targetState = AnalysisProductLifecycleState.ENABLED,
-        unchangedState = null,
-        cutoffAssignment = DataCutoffAssignment.CLEAR,
-    )
+    // Resume is deliberately absent from this slice. PAUSED -> ENABLED must
+    // first gain an atomic command that binds fresh validation evidence to the
+    // new effective generation; clearing the cutoff alone is not sufficient.
 
     suspend fun beginOffboarding(
         team: String,
@@ -478,7 +468,8 @@ class AnalysisProductRepository(
                 expectedProductVersion = expectedProductVersion,
                 actor = actor,
                 targetState = AnalysisProductLifecycleState.OFFBOARDING,
-                cutoffAssignment = DataCutoffAssignment.KEEP,
+                keepDataCutoff = true,
+                dataCutoffAt = null,
             )
             insertLifecycleAudit(
                 connection,
@@ -571,6 +562,12 @@ class AnalysisProductRepository(
                 return@dbQuery rejected(AnalysisProductTransitionRejection.INVALID_LIFECYCLE)
             }
 
+            val dataCutoffAt = when (cutoffAssignment) {
+                DataCutoffAssignment.LAST_ACTIVE_SNAPSHOT ->
+                    lockLastActiveSnapshotAt(connection, normalizedTeam, productId)
+                        ?: return@dbQuery rejected(AnalysisProductTransitionRejection.NO_ACTIVE_SNAPSHOT)
+            }
+
             val productVersion = updateLifecycle(
                 connection = connection,
                 team = normalizedTeam,
@@ -578,7 +575,8 @@ class AnalysisProductRepository(
                 expectedProductVersion = expectedProductVersion,
                 actor = actor,
                 targetState = targetState,
-                cutoffAssignment = cutoffAssignment,
+                keepDataCutoff = false,
+                dataCutoffAt = dataCutoffAt,
             )
             insertLifecycleAudit(
                 connection,
@@ -600,13 +598,14 @@ class AnalysisProductRepository(
         expectedProductVersion: Long,
         actor: String,
         targetState: AnalysisProductLifecycleState,
-        cutoffAssignment: DataCutoffAssignment,
+        keepDataCutoff: Boolean,
+        dataCutoffAt: Instant?,
     ): Long {
         return connection.prepareStatement(
             """
                 UPDATE analysis_control.analysis_products
                 SET lifecycle_state = ?,
-                    data_cutoff_at = ${cutoffAssignment.sql},
+                    data_cutoff_at = CASE WHEN ? THEN data_cutoff_at ELSE ? END,
                     row_version = row_version + 1,
                     updated_by = ?,
                     updated_at = clock_timestamp()
@@ -615,10 +614,16 @@ class AnalysisProductRepository(
             """.trimIndent(),
         ).use { statement ->
             statement.setString(1, targetState.name)
-            statement.setString(2, actor)
-            statement.setString(3, team)
-            statement.setObject(4, productId)
-            statement.setLong(5, expectedProductVersion)
+            statement.setBoolean(2, keepDataCutoff)
+            if (dataCutoffAt == null) {
+                statement.setNull(3, Types.TIMESTAMP_WITH_TIMEZONE)
+            } else {
+                statement.setObject(3, dataCutoffAt.atOffset(java.time.ZoneOffset.UTC))
+            }
+            statement.setString(4, actor)
+            statement.setString(5, team)
+            statement.setObject(6, productId)
+            statement.setLong(7, expectedProductVersion)
             statement.executeQuery().use { result ->
                 check(result.next()) { "Locked analysis product changed unexpectedly" }
                 result.getLong("row_version")
@@ -681,7 +686,7 @@ class AnalysisProductRepository(
         productId: UUID,
     ): ControlProduct? = connection.prepareStatement(
         """
-            SELECT row_version, lifecycle_state, last_release_number,
+            SELECT row_version, lifecycle_state,
                    desired_release_number, active_release_number
             FROM analysis_control.analysis_products
             WHERE team = ? AND id = ?
@@ -695,7 +700,6 @@ class AnalysisProductRepository(
             ControlProduct(
                 rowVersion = result.getLong("row_version"),
                 lifecycleState = AnalysisProductLifecycleState.valueOf(result.getString("lifecycle_state")),
-                lastReleaseNumber = result.getLong("last_release_number"),
                 desiredReleaseNumber = result.nullableLong("desired_release_number"),
                 activeReleaseNumber = result.nullableLong("active_release_number"),
             )
@@ -724,6 +728,47 @@ class AnalysisProductRepository(
                 schemaVersion = result.getString("schema_version")?.toIntOrNull(),
                 specificationDigest = result.getString("publication_specification_digest"),
             )
+        }
+    }
+
+    private fun findLatestReleaseNumber(
+        connection: Connection,
+        team: String,
+        productId: UUID,
+    ): Long? = connection.prepareStatement(
+        """
+            SELECT max(release_number) AS latest_release_number
+            FROM analysis_control.analysis_product_releases
+            WHERE team = ? AND product_id = ?
+        """.trimIndent(),
+    ).use { statement ->
+        statement.setString(1, team)
+        statement.setObject(2, productId)
+        statement.executeQuery().use { result ->
+            check(result.next())
+            result.nullableLong("latest_release_number")
+        }
+    }
+
+    private fun lockLastActiveSnapshotAt(
+        connection: Connection,
+        team: String,
+        productId: UUID,
+    ): Instant? = connection.prepareStatement(
+        """
+            SELECT source_snapshot_at
+            FROM analysis_control.analysis_product_snapshot_activations
+            WHERE team = ? AND product_id = ?
+            ORDER BY source_snapshot_at DESC
+            LIMIT 1
+            FOR SHARE
+        """.trimIndent(),
+    ).use { statement ->
+        statement.setString(1, team)
+        statement.setObject(2, productId)
+        statement.executeQuery().use { result ->
+            if (!result.next()) return@use null
+            result.getObject("source_snapshot_at", OffsetDateTime::class.java).toInstant()
         }
     }
 
@@ -940,7 +985,6 @@ class AnalysisProductRepository(
     private data class ControlProduct(
         val rowVersion: Long,
         val lifecycleState: AnalysisProductLifecycleState,
-        val lastReleaseNumber: Long,
         val desiredReleaseNumber: Long?,
         val activeReleaseNumber: Long?,
     )
@@ -950,10 +994,8 @@ class AnalysisProductRepository(
         val specificationDigest: String,
     )
 
-    private enum class DataCutoffAssignment(val sql: String) {
-        SET_NOW("clock_timestamp()"),
-        CLEAR("NULL"),
-        KEEP("data_cutoff_at"),
+    private enum class DataCutoffAssignment {
+        LAST_ACTIVE_SNAPSHOT,
     }
 
     private companion object {

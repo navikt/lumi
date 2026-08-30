@@ -134,4 +134,10 @@ private fun insertReleaseFixture(connection: Connection, schemaVersion: Int) {
         statement.setString(8, baseSchemaDigest)
         statement.executeUpdate() shouldBe 1
     }
+    connection.prepareStatement(
+        "UPDATE analysis_control.analysis_products SET last_release_number = 1 WHERE id = ?",
+    ).use { statement ->
+        statement.setObject(1, productId)
+        statement.executeUpdate() shouldBe 1
+    }
 }

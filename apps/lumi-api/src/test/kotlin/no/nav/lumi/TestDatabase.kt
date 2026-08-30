@@ -98,6 +98,8 @@ object TestDatabase {
                         "DISABLE TRIGGER trg_analysis_source_contract_reject_truncate",
                 )
                 listOf(
+                    "analysis_product_snapshot_activations" to
+                        "trg_analysis_product_snapshot_activation_immutable_table",
                     "analysis_effective_plan_generations" to
                         "trg_analysis_effective_generation_truncate_immutable",
                     "analysis_effective_specs" to
@@ -108,7 +110,8 @@ object TestDatabase {
                     stmt.execute("ALTER TABLE analysis_control.$table DISABLE TRIGGER $trigger")
                 }
                 stmt.execute(
-                    "TRUNCATE TABLE analysis_control.analysis_effective_atoms, " +
+                    "TRUNCATE TABLE analysis_control.analysis_product_snapshot_activations, " +
+                        "analysis_control.analysis_effective_atoms, " +
                         "analysis_control.analysis_effective_specs, " +
                         "analysis_control.analysis_effective_plan_generations, " +
                         "analysis_control.analysis_product_audit_events, " +
@@ -135,6 +138,8 @@ object TestDatabase {
                         "ENABLE TRIGGER trg_analysis_source_contract_reject_truncate",
                 )
                 listOf(
+                    "analysis_product_snapshot_activations" to
+                        "trg_analysis_product_snapshot_activation_immutable_table",
                     "analysis_effective_plan_generations" to
                         "trg_analysis_effective_generation_truncate_immutable",
                     "analysis_effective_specs" to

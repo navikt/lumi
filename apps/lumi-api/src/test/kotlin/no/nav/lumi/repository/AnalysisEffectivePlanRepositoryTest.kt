@@ -510,6 +510,32 @@ private fun updateLifecycle(
                 )
             }
         }
+        if (lifecycle == AnalysisProductLifecycleState.PAUSED) {
+            connection.prepareStatement(
+                """
+                    INSERT INTO analysis_control.analysis_product_snapshot_activations (
+                        team, product_id, product_snapshot_id,
+                        effective_generation_id, control_epoch, release_number,
+                        source_snapshot_at
+                    )
+                    SELECT ?, ?, ?, generation.id, generation.control_epoch,
+                           generation.active_release_number, ?
+                    FROM analysis_control.analysis_effective_plan_generations AS generation
+                    WHERE generation.team = ? AND generation.product_id = ?
+                      AND generation.plan_kind = 'ENABLED'
+                    ORDER BY generation.generation DESC
+                    LIMIT 1
+                """.trimIndent(),
+            ).use { statement ->
+                statement.setString(1, current.first)
+                statement.setObject(2, productId)
+                statement.setString(3, "snapshot-${UUID.randomUUID()}")
+                statement.setObject(4, checkNotNull(dataCutoffAt).atOffset(java.time.ZoneOffset.UTC))
+                statement.setString(5, current.first)
+                statement.setObject(6, productId)
+                statement.executeUpdate() shouldBe 1
+            }
+        }
         connection.prepareStatement(
             """
                 UPDATE analysis_control.analysis_products
