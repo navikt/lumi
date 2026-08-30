@@ -2,6 +2,7 @@ package no.nav.lumi.repository
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import no.nav.lumi.domain.AnalysisCatalogContractRevision
 import no.nav.lumi.domain.AnalysisCatalogFieldV1
 import no.nav.lumi.domain.AnalysisCatalogRevision
 import no.nav.lumi.domain.AnalysisCatalogSourceV1
@@ -11,6 +12,7 @@ import no.nav.lumi.domain.AnalysisDimensionRegistry
 import no.nav.lumi.domain.AnalysisFlowStatus
 import no.nav.lumi.domain.AnalysisFlowDependencySource
 import no.nav.lumi.domain.AnalysisFlowDependencyV1
+import no.nav.lumi.domain.AnalysisFieldDependenciesV1
 import no.nav.lumi.domain.AnalysisLabelSource
 import no.nav.lumi.domain.AnalysisSourceCatalogV1
 import no.nav.lumi.domain.SurveyDefinition
@@ -39,10 +41,25 @@ class AnalysisSourceCatalogRepository {
                         DISTINCT observation.flow_hash
                         ORDER BY observation.flow_hash
                     ) AS observed_flow_hashes,
+                    jsonb_agg(
+                        DISTINCT jsonb_build_object(
+                            'definitionHash', observation.definition_hash,
+                            'flowHash', observation.flow_hash
+                        )
+                    ) AS observed_contract_pairs,
+                    (
+                        array_agg(
+                            observation.definition_hash
+                            ORDER BY observation.last_submission_at DESC,
+                                     observation.definition_hash ASC NULLS FIRST,
+                                     observation.flow_hash ASC NULLS FIRST
+                        )
+                    )[1] AS latest_definition_hash,
                     (
                         array_agg(
                             observation.flow_hash
                             ORDER BY observation.last_submission_at DESC,
+                                     observation.definition_hash ASC NULLS FIRST,
                                      observation.flow_hash ASC NULLS FIRST
                         )
                     )[1] AS latest_flow_hash,
@@ -83,6 +100,8 @@ class AnalysisSourceCatalogRepository {
                 metadata.archived_at,
                 COALESCE(observation.definition_hashes, '[]'::jsonb)::text AS observed_definition_hashes,
                 COALESCE(observation.observed_flow_hashes, '[]'::jsonb)::text AS observed_flow_hashes,
+                COALESCE(observation.observed_contract_pairs, '[]'::jsonb)::text AS observed_contract_pairs,
+                observation.latest_definition_hash,
                 observation.latest_flow_hash,
                 COALESCE(observation.registered_flow_contracts, '[]'::jsonb)::text AS registered_flow_contracts,
                 COALESCE(observation.has_unpinned_flow, FALSE) AS has_unpinned_flow,
@@ -115,6 +134,14 @@ class AnalysisSourceCatalogRepository {
                         val observedFlowHashes = json.decodeFromString<List<String?>>(
                             result.getString("observed_flow_hashes"),
                         ).distinct().sortedWith(nullsFirst(naturalOrder()))
+                        val observedContractPairs = json.decodeFromString<List<CatalogObservedContract>>(
+                            result.getString("observed_contract_pairs"),
+                        ).distinct().sortedWith(
+                            compareBy<CatalogObservedContract>(
+                                { it.definitionHash ?: "" },
+                                { it.flowHash ?: "" },
+                            ),
+                        )
                         val decodedContracts = runCatching {
                             json.decodeFromString<List<CatalogRegisteredFlowContract>>(
                                 result.getString("registered_flow_contracts"),
@@ -124,11 +151,23 @@ class AnalysisSourceCatalogRepository {
                         val validContracts = registeredContracts.filter { contract ->
                             contract.isValidFor(surveyId)
                         }
+                        val contractRevisions = validContracts
+                            .map(CatalogRegisteredFlowContract::toCatalogRevision)
+                            .distinctBy { it.definitionHash to it.flowHash }
+                            .sortedWith(
+                                compareBy(
+                                    AnalysisCatalogContractRevision::definitionHash,
+                                    AnalysisCatalogContractRevision::flowHash,
+                                ),
+                            )
                         val knownFlowHashes = validContracts.map { it.flowHash }.distinct().sorted()
+                        val latestObservedDefinitionHash = result.getString("latest_definition_hash")
                         val latestObservedFlowHash = result.getString("latest_flow_hash")
-                        val currentFlowHash = validContracts
-                            .singleOrNull { it.flowHash == latestObservedFlowHash }
-                            ?.flowHash
+                        val latestContract = validContracts.singleOrNull {
+                            it.definitionHash == latestObservedDefinitionHash &&
+                                it.flowHash == latestObservedFlowHash
+                        }
+                        val currentFlowHash = latestContract?.flowHash
                         val hasUnpinnedFlow = result.getBoolean("has_unpinned_flow")
                         val hasUnknownFlow = result.getBoolean("has_unknown_flow") ||
                             decodedContracts.isFailure || validContracts.size != registeredContracts.size
@@ -166,8 +205,13 @@ class AnalysisSourceCatalogRepository {
                                 add(AnalysisCatalogWarning.LEGACY_DEFINITION_OBSERVED)
                             }
                             if (
-                                observedDefinitionHashes.any { observed ->
-                                    observed != null && observed != definitionHash
+                                observedContractPairs.any { observed ->
+                                    observed.definitionHash != null &&
+                                        observed.definitionHash != definitionHash &&
+                                        validContracts.none { contract ->
+                                            contract.definitionHash == observed.definitionHash &&
+                                                contract.flowHash == observed.flowHash
+                                        }
                                 }
                             ) {
                                 add(AnalysisCatalogWarning.HISTORICAL_DEFINITION_UNRESOLVED)
@@ -223,6 +267,7 @@ class AnalysisSourceCatalogRepository {
                                         )
                                     },
                                 warnings = warnings.sortedBy { it.name },
+                                contractRevisions = contractRevisions,
                             ),
                         )
                     }
@@ -237,7 +282,6 @@ class AnalysisSourceCatalogRepository {
             dimensions = dimensions.dimensions,
         )
     }
-
 }
 
 @Serializable
@@ -253,4 +297,52 @@ private data class CatalogRegisteredFlowContract(
         check(flow.computeHash() == flowHash)
         SurveyFlowValidator.validate(flow, definition)
     }.isSuccess
+
+    fun toCatalogRevision(): AnalysisCatalogContractRevision {
+        val dependencies = flow.fields
+            .map { flowField ->
+                AnalysisFieldDependenciesV1(
+                    fieldId = flowField.fieldId,
+                    dependencies = flowField.visibleIf?.conditions.orEmpty()
+                        .map { condition ->
+                            AnalysisFlowDependencyV1(
+                                source = when (condition.source) {
+                                    SurveyFlowConditionSource.ANSWER -> AnalysisFlowDependencySource.ANSWER
+                                    SurveyFlowConditionSource.METADATA -> AnalysisFlowDependencySource.METADATA
+                                },
+                                key = condition.key,
+                            )
+                        }
+                        .distinct()
+                        .sortedWith(compareBy(AnalysisFlowDependencyV1::source, AnalysisFlowDependencyV1::key)),
+                )
+            }
+            .sortedBy { it.fieldId }
+        return AnalysisCatalogContractRevision(
+            definitionHash = definitionHash,
+            flowHash = flowHash,
+            surveyType = definition.surveyType,
+            fields = definition.fields.sortedBy { it.fieldId }.map { field ->
+                AnalysisCatalogFieldV1(
+                    fieldId = field.fieldId,
+                    fieldType = field.fieldType,
+                    ratingVariant = field.ratingVariant,
+                    ratingScale = field.ratingScale,
+                    optionIds = field.optionIds,
+                    maxSelections = field.maxSelections,
+                    label = null,
+                    labelSource = AnalysisLabelSource.UNKNOWN,
+                    flowDependencies = dependencies.singleOrNull { it.fieldId == field.fieldId }?.dependencies.orEmpty(),
+                )
+            },
+            evaluatorVersion = flow.evaluatorVersion,
+            dependenciesByField = dependencies,
+        )
+    }
 }
+
+@Serializable
+private data class CatalogObservedContract(
+    val definitionHash: String?,
+    val flowHash: String?,
+)

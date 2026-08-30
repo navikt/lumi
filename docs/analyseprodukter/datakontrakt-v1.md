@@ -35,11 +35,28 @@ major-versjon og kontrollert parallellperiode.
 
 ## Release-pinnet kildekontrakt
 
+Den offentlige datakontrakten heter fortsatt V1. Internt kompilerer Lumi nye
+releaser som `PublicationSpecification V2`: hver tillatte `definition_hash`
+inneholder bare sine faktisk observerte `flow_hash`-er, og hvert valgt felt er
+eksplisitt `PRESENT` eller `ABSENT` i den definisjonen. Dermed kan ingen
+definition–flow-kombinasjon konstrueres ved kryssprodukt, og et felt introdusert
+i D2 blir ikke tolket som et ubesvart felt i D1. Historiske
+`PublicationSpecification V1` beholdes som immutable proveniens, men kan ikke
+bli effective eksport-scope.
+
+I den serialiserte teamkatalogen er `definitionHash` den nå registrerte
+definisjonen, mens `flowHash` er den sist observerte, validerte flowen. De to
+feltene er uavhengige sammendrag og skal aldri tolkes som et eksakt par. Bare
+de internt bevarte `(definition_hash, flow_hash)`-revisjonene kan inngå i en
+PublicationSpecification V2. En ny registrert definisjon må ha minst én slik
+eksakt observert revisjon før preview kan bli `READY`.
+
 En release pinner kildekatalogrevisjonen og eksakt tillatt kombinasjon av:
 
 - `(team_slug, app, survey_id)`
-- `definition_status` og tillatte `definition_hash`-verdier, med eksplisitt
-  legacy-regel for `NULL`
+- `definition_status=REGISTERED` og tillatte ikke-null `definition_hash`-verdier;
+  legacy-statusen består i offentlig V1-schema, men er aldri del av effective
+  V2-scope
 - tillatte ikke-null `flow_hash`-verdier med normalisert `visibleIf`,
   eksplisitte avhengigheter og evaluatorversjon
 - `field_id`, `field_type`, ratingvariant/-skala og `max_selections`

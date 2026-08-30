@@ -163,6 +163,19 @@ class AnalysisProductMigrationTest : FunSpec({
         ) shouldBe 1
     }
 
+    test("release history accepts V1 and V2 specifications but rejects unknown versions") {
+        val v1Draft = insertValidatedDraft()
+        insertRelease(v1Draft, publicationSpecification = """{"schemaVersion":1}""")
+
+        val v2Draft = insertValidatedDraft()
+        insertRelease(v2Draft, publicationSpecification = """{"schemaVersion":2}""")
+
+        val unsupportedDraft = insertValidatedDraft()
+        shouldThrow<SQLException> {
+            insertRelease(unsupportedDraft, publicationSpecification = """{"schemaVersion":3}""")
+        }
+    }
+
     test("audit storage rejects foreign references, mismatched digests and stale versions") {
         val draft = insertValidatedDraft()
         insertRelease(draft)

@@ -8,6 +8,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import no.nav.lumi.TestDatabase
 import no.nav.lumi.createdId
 import no.nav.lumi.domain.AnalysisCatalogWarning
+import no.nav.lumi.domain.AnalysisContractJson
 import no.nav.lumi.domain.AnalysisFlowStatus
 import no.nav.lumi.domain.AnalysisFlowDependencySource
 import no.nav.lumi.domain.Answer
@@ -27,6 +28,7 @@ import no.nav.lumi.domain.SurveyFlowFieldDefinition
 import no.nav.lumi.domain.SurveyFlowOperator
 import no.nav.lumi.domain.SurveyType
 import no.nav.lumi.domain.SurveyVisibleIfDefinition
+import no.nav.lumi.domain.computeHash
 import no.nav.lumi.service.SubmissionService
 
 class AnalysisSourceContractIngestTest : FunSpec({
@@ -86,6 +88,17 @@ class AnalysisSourceContractIngestTest : FunSpec({
             dependency.source shouldBe AnalysisFlowDependencySource.ANSWER
             dependency.key shouldBe "rating"
         }
+        val revision = source.contractRevisions.single()
+        revision.definitionHash shouldBe result.definitionHash
+        revision.flowHash shouldBe flowHash
+        revision.dependenciesByField.single { it.fieldId == "details" }.dependencies.single().let { dependency ->
+            dependency.source shouldBe AnalysisFlowDependencySource.ANSWER
+            dependency.key shouldBe "rating"
+        }
+        no.nav.lumi.domain.AnalysisContractJson.encodeToString(
+            no.nav.lumi.domain.AnalysisSourceCatalogV1.serializer(),
+            catalogRepository.findCatalog("team-a"),
+        ) shouldNotContain "contractRevisions"
     }
 
     test("keeps unpinned history visible as a warning after future rows become pinned") {
@@ -162,6 +175,49 @@ class AnalysisSourceContractIngestTest : FunSpec({
         source.flowStatus shouldBe AnalysisFlowStatus.PINNED
         source.flowHashes shouldBe listOf(first.flowHash!!, second.flowHash!!).sorted()
         source.observedFlowHashes shouldBe source.flowHashes
+        source.contractRevisions.map { it.definitionHash to it.flowHash } shouldBe listOf(
+            first.definitionHash!! to first.flowHash,
+            second.definitionHash!! to second.flowHash,
+        ).sortedWith(compareBy<Pair<String, String>>({ it.first }, { it.second }))
+    }
+
+    test("keeps a known historical definition pinned when an old client submits last") {
+        val first = submissionService.submit(
+            payload("first-123456789012345", includeFlow = true, threshold = 7),
+            "team-a",
+            "app-a",
+            submission("first-123456789012345"),
+            definition(),
+            flow(7),
+        )
+        val expandedDefinition = definitionWithAdditionalField()
+        replaceCurrentDefinition("team-a", expandedDefinition)
+        val second = submissionService.submit(
+            payloadWithAdditionalField("second-12345678901234"),
+            "team-a",
+            "app-a",
+            submission("second-12345678901234"),
+            expandedDefinition,
+            flowWithAdditionalField(),
+        )
+
+        feedbackRepository.save(
+            feedbackJson = "{}",
+            team = "team-a",
+            app = "app-a",
+            surveyId = "survey",
+            definitionHash = first.definitionHash,
+            flowHash = first.flowHash,
+        )
+
+        val source = catalogRepository.findCatalog("team-a").sources.single()
+        source.flowStatus shouldBe AnalysisFlowStatus.PINNED
+        source.flowHash shouldBe first.flowHash
+        source.definitionHash shouldBe second.definitionHash
+        source.contractRevisions.map { it.definitionHash to it.flowHash } shouldBe listOf(
+            first.definitionHash!! to first.flowHash!!,
+            second.definitionHash!! to second.flowHash!!,
+        ).sortedWith(compareBy<Pair<String, String>>({ it.first }, { it.second }))
     }
 
     test("bounds immutable revisions and keeps overflow feedback unpinned") {
@@ -315,6 +371,33 @@ private fun flow(threshold: Int) = SurveyFlowDefinitionV1(
     ),
 )
 
+private fun definitionWithAdditionalField() = definition().copy(
+    fields = definition().fields + FieldDefinition("followUp", FieldType.RATING, RatingVariant.NPS, 11, null),
+)
+
+private fun flowWithAdditionalField() = flow(7).copy(
+    fields = flow(7).fields + SurveyFlowFieldDefinition("followUp"),
+)
+
+private fun replaceCurrentDefinition(team: String, definition: SurveyDefinition) {
+    TestDatabase.dataSource.connection.use { connection ->
+        connection.prepareStatement(
+            """
+            UPDATE survey_definitions
+            SET definition_hash = ?, definition = ?::jsonb
+            WHERE team = ? AND survey_id = ?
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setString(1, definition.computeHash())
+            statement.setString(2, AnalysisContractJson.encodeToString(SurveyDefinition.serializer(), definition))
+            statement.setString(3, team)
+            statement.setString(4, definition.surveyId)
+            statement.executeUpdate() shouldBe 1
+        }
+        connection.commit()
+    }
+}
+
 private fun metadataFlow(value: String) = SurveyFlowDefinitionV1(
     schemaVersion = 1,
     evaluatorVersion = SURVEY_FLOW_EVALUATOR_VERSION,
@@ -407,6 +490,49 @@ private fun payload(deduplicationKey: String, includeFlow: Boolean, threshold: I
         ]
       },
       """ else ""}
+      "answers": [
+        {
+          "fieldId": "rating",
+          "fieldType": "RATING",
+          "question": {"label": "Rating"},
+          "value": {"type": "rating", "rating": 5, "ratingVariant": "nps", "ratingScale": 11}
+        }
+      ]
+    }
+""".trimIndent()
+
+private fun payloadWithAdditionalField(deduplicationKey: String): String = """
+    {
+      "schemaVersion": 2,
+      "surveyId": "survey",
+      "surveyType": "custom",
+      "submittedAt": "2026-08-29T12:00:00Z",
+      "deduplicationKey": "$deduplicationKey",
+      "definition": {
+        "surveyType": "custom",
+        "fields": [
+          {"fieldId": "rating", "fieldType": "RATING", "ratingVariant": "nps", "ratingScale": 11},
+          {"fieldId": "details", "fieldType": "TEXT"},
+          {"fieldId": "followUp", "fieldType": "RATING", "ratingVariant": "nps", "ratingScale": 11}
+        ]
+      },
+      "flow": {
+        "schemaVersion": 1,
+        "evaluatorVersion": "visible-if-v1",
+        "fields": [
+          {"fieldId": "rating"},
+          {
+            "fieldId": "details",
+            "visibleIf": {
+              "combinator": "ALL",
+              "conditions": [
+                {"source": "ANSWER", "key": "rating", "operator": "LT", "value": 7}
+              ]
+            }
+          },
+          {"fieldId": "followUp"}
+        ]
+      },
       "answers": [
         {
           "fieldId": "rating",

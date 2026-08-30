@@ -8,11 +8,23 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import java.util.Locale
 
-const val ANALYSIS_CONTRACT_COMPILER_VERSION = "analysis-contract-compiler-v1"
+const val ANALYSIS_CONTRACT_COMPILER_VERSION = "analysis-contract-compiler-v2"
 const val ANALYSIS_CONTRACT_VERSION = "v1"
 const val ANALYSIS_PREVIEW_PRIVACY_POLICY_VERSION = "synthetic-only-v1"
 private val SHA256_PATTERN = Regex("^[0-9a-f]{64}$")
 private val SYNTHETIC_FLOW_HASH = AnalysisCanonicalHash.digest("analysis-synthetic-flow-v1", emptyList())
+internal val ANALYSIS_EXCLUDED_DATA_CATEGORIES_V1 = listOf(
+    "CLIENT_LABELS",
+    "CONTEXT_TAGS",
+    "DATE_ANSWERS",
+    "DEBUG",
+    "DEDUPLICATION_HASH",
+    "INTERNAL_FEEDBACK_ID",
+    "RAW_JSON",
+    "TEXT_ANSWERS",
+    "URL_AND_PATH",
+    "USER_AGENT_AND_VIEWPORT",
+)
 
 val AnalysisContractJson = Json {
     encodeDefaults = true
@@ -89,6 +101,8 @@ enum class AnalysisCompilationIssueCode {
     FIELD_UNAVAILABLE,
     FIELD_NOT_ALLOWED,
     FIELD_MALFORMED,
+    CONTRACT_REVISION_UNAVAILABLE,
+    CONTRACT_REVISION_CONFLICT,
     DIMENSION_UNAVAILABLE,
     WIDE_COLUMN_BUDGET_WARNING,
     WIDE_COLUMN_BUDGET_EXCEEDED,
@@ -106,40 +120,57 @@ data class AnalysisCompilationIssue(
 )
 
 @Serializable
-data class AnalysisSourcePinV1(
+data class AnalysisSourcePinV2(
     val app: String,
     val surveyId: String,
     val surveyType: SurveyType,
-    val definitionHash: String,
-    val flowHash: String,
-    val allowedFlowHashes: List<String> = listOf(flowHash),
-    val fields: List<AnalysisFieldPinV1>,
+    val selectedFieldIds: List<String>,
+    val definitions: List<AnalysisDefinitionPinV1>,
 )
 
 @Serializable
-data class AnalysisFieldPinV1(
+data class AnalysisDefinitionPinV1(
+    val definitionHash: String,
+    val fields: List<AnalysisDefinitionFieldPinV1>,
+    val flows: List<AnalysisFlowPinV1>,
+)
+
+@Serializable
+enum class AnalysisFieldPresence {
+    PRESENT,
+    ABSENT,
+}
+
+@Serializable
+data class AnalysisDefinitionFieldPinV1(
     val fieldId: String,
-    val fieldType: FieldType,
+    val presence: AnalysisFieldPresence,
+    val fieldType: FieldType? = null,
     val ratingVariant: RatingVariant? = null,
     val ratingScale: Int? = null,
-    val optionIds: List<String> = emptyList(),
     val maxSelections: Int? = null,
-    val label: String? = null,
-    val labelSource: AnalysisLabelSource,
-    val flowDependencies: List<AnalysisFlowDependencyV1> = emptyList(),
+    val availableOptionIds: List<String> = emptyList(),
 )
 
 @Serializable
-data class AnalysisPublicationSpecificationV1(
-    val schemaVersion: Int = 1,
+data class AnalysisFlowPinV1(
+    val flowHash: String,
+    val evaluatorVersion: String,
+    val dependenciesByField: List<AnalysisFieldDependenciesV1>,
+)
+
+@Serializable
+data class AnalysisPublicationSpecificationV2(
+    val schemaVersion: Int = 2,
     val compilerVersion: String = ANALYSIS_CONTRACT_COMPILER_VERSION,
-    val canonicalizationVersion: String = "length-prefixed-v1",
+    val canonicalizationVersion: String = "length-prefixed-v2",
     val contractVersion: String = ANALYSIS_CONTRACT_VERSION,
     val productId: String,
     val team: String,
     val retention: AnalysisProductRetention,
+    val includeSubmittedHour: Boolean,
     val catalogRevision: String,
-    val sourcePins: List<AnalysisSourcePinV1>,
+    val sources: List<AnalysisSourcePinV2>,
     val dimensions: List<AnalysisDimensionDefinitionV1>,
     val resources: List<AnalysisResourceSchemaV1>,
     val excludedDataCategories: List<String>,
@@ -147,8 +178,8 @@ data class AnalysisPublicationSpecificationV1(
 )
 
 @Serializable
-data class AnalysisProductContractPreviewV1(
-    val schemaVersion: Int = 1,
+data class AnalysisProductContractPreviewV2(
+    val schemaVersion: Int = 2,
     val compilerVersion: String = ANALYSIS_CONTRACT_COMPILER_VERSION,
     val contractVersion: String = ANALYSIS_CONTRACT_VERSION,
     val privacyPolicyVersion: String = ANALYSIS_PREVIEW_PRIVACY_POLICY_VERSION,
@@ -165,7 +196,7 @@ data class AnalysisProductContractPreviewV1(
     val issues: List<AnalysisCompilationIssue>,
     val excludedDataCategories: List<String>,
     val aggregatePreviewAvailable: Boolean = false,
-    val publicationSpecification: AnalysisPublicationSpecificationV1? = null,
+    val publicationSpecification: AnalysisPublicationSpecificationV2? = null,
 )
 
 data class AnalysisProductCompilationInput(
@@ -180,7 +211,7 @@ data class AnalysisProductCompilationInput(
 )
 
 class AnalysisContractCompiler {
-    fun compilePreview(input: AnalysisProductCompilationInput): AnalysisProductContractPreviewV1 {
+    fun compilePreview(input: AnalysisProductCompilationInput): AnalysisProductContractPreviewV2 {
         val issues = mutableListOf<AnalysisCompilationIssue>()
         if (input.catalog.team != input.team) {
             issues += issue(AnalysisCompilationIssueCode.TEAM_SCOPE_MISMATCH)
@@ -268,63 +299,38 @@ class AnalysisContractCompiler {
                 { it.dimensionKey.orEmpty() },
             ),
         )
-        val baseSchemaDigest = digestResources(resources)
-        val exclusions = listOf(
-            "CLIENT_LABELS",
-            "CONTEXT_TAGS",
-            "DATE_ANSWERS",
-            "DEBUG",
-            "DEDUPLICATION_HASH",
-            "INTERNAL_FEEDBACK_ID",
-            "RAW_JSON",
-            "TEXT_ANSWERS",
-            "URL_AND_PATH",
-            "USER_AGENT_AND_VIEWPORT",
-        )
+        val baseSchemaDigest = AnalysisPublicationSpecificationDigests.schema(resources)
+        val exclusions = ANALYSIS_EXCLUDED_DATA_CATEGORIES_V1
         val hasBlockers = sortedIssues.any { it.severity == AnalysisCompilationIssueSeverity.BLOCKER }
         val bareResources = resources.map { it.copy(syntheticRows = emptyList()) }
         val specification = if (hasBlockers) {
             null
         } else {
-            AnalysisPublicationSpecificationV1(
+            val sourcePins = resolvedSources.map(::compileSourcePin)
+            val expectedResources = AnalysisPublicationResourceCompilerV2.compile(
+                sources = sourcePins,
+                dimensions = selectedDimensions,
+                includeSubmittedHour = input.document.includeSubmittedHour,
+            )
+            check(bareResources == expectedResources) {
+                "preview resources diverged from publication specification V2"
+            }
+            AnalysisPublicationSpecificationV2(
                 productId = input.productId,
                 team = input.team,
                 retention = input.document.retention,
+                includeSubmittedHour = input.document.includeSubmittedHour,
                 catalogRevision = selectionCatalogRevision,
-                sourcePins = resolvedSources.map { resolved ->
-                    AnalysisSourcePinV1(
-                        app = resolved.source.app,
-                        surveyId = resolved.source.surveyId,
-                        surveyType = requireNotNull(resolved.source.surveyType),
-                        definitionHash = requireNotNull(resolved.source.definitionHash),
-                        flowHash = requireNotNull(resolved.source.flowHash),
-                        allowedFlowHashes = resolved.source.flowHashes.sorted().ifEmpty {
-                            listOf(requireNotNull(resolved.source.flowHash))
-                        },
-                        fields = resolved.selectedFields.map { field ->
-                            AnalysisFieldPinV1(
-                                fieldId = field.fieldId,
-                                fieldType = field.fieldType,
-                                ratingVariant = field.ratingVariant,
-                                ratingScale = field.ratingScale,
-                                optionIds = field.optionIds.orEmpty(),
-                                maxSelections = field.maxSelections,
-                                label = field.label.takeIf { field.labelSource != AnalysisLabelSource.UNKNOWN },
-                                labelSource = field.labelSource,
-                                flowDependencies = field.flowDependencies,
-                            )
-                        },
-                    )
-                },
+                sources = sourcePins,
                 dimensions = selectedDimensions,
-                resources = bareResources,
+                resources = expectedResources,
                 excludedDataCategories = exclusions,
                 baseSchemaDigest = baseSchemaDigest,
             )
         }
-        val specificationDigest = specification?.let(::digestSpecification)
+        val specificationDigest = specification?.let(AnalysisPublicationSpecificationDigests::specification)
 
-        return AnalysisProductContractPreviewV1(
+        return AnalysisProductContractPreviewV2(
             productId = input.productId,
             draftId = input.draftId,
             draftRevision = input.draftRevision,
@@ -364,9 +370,21 @@ class AnalysisContractCompiler {
                 surveyId = source.surveyId,
             )
         }
-        if (source.definitionHash != null && source.observedDefinitionHashes.any { it != null && it != source.definitionHash }) {
+        if (
+            source.flowStatus == AnalysisFlowStatus.PINNED &&
+            source.definitionHash != null &&
+            source.contractRevisions.none { it.definitionHash == source.definitionHash }
+        ) {
             issues += issue(
-                AnalysisCompilationIssueCode.DEFINITION_HASH_UNRESOLVED,
+                AnalysisCompilationIssueCode.CONTRACT_REVISION_UNAVAILABLE,
+                app = source.app,
+                surveyId = source.surveyId,
+            )
+        }
+        val contractPairs = source.contractRevisions.map { it.definitionHash to it.flowHash }
+        if (contractPairs.size != contractPairs.distinct().size) {
+            issues += issue(
+                AnalysisCompilationIssueCode.CONTRACT_REVISION_CONFLICT,
                 app = source.app,
                 surveyId = source.surveyId,
             )
@@ -394,13 +412,20 @@ class AnalysisContractCompiler {
         }
         if (
             source.flowHashes.any { !it.matches(SHA256_PATTERN) } ||
-            (source.flowHashes.isNotEmpty() && source.flowHash !in source.flowHashes)
+            (source.flowHashes.isNotEmpty() && source.flowHash !in source.flowHashes) ||
+            source.flowHashes.toSet() != source.contractRevisions.map { it.flowHash }.toSet()
         ) {
             issues += issue(
                 AnalysisCompilationIssueCode.FLOW_NOT_PINNED,
                 app = source.app,
                 surveyId = source.surveyId,
             )
+        }
+        if (
+            source.flowStatus == AnalysisFlowStatus.PINNED &&
+            source.flowHash?.matches(SHA256_PATTERN) == true
+        ) {
+            validateContractRevisions(source, selection, selectedDimensionKeys, issues)
         }
         if (
             source.flowStatus == AnalysisFlowStatus.PINNED &&
@@ -420,9 +445,100 @@ class AnalysisContractCompiler {
                 surveyId = source.surveyId,
             )
         }
-        source.fields
-            .filter { it.fieldId in selection.fieldIds }
-            .flatMap { field -> field.flowDependencies.map { dependency -> field.fieldId to dependency } }
+        if (selection.fieldIds.isEmpty()) {
+            // An empty source is allowed in a draft and produces a population-only
+            // wide schema. The UI may use this while fields are being selected.
+            return
+        }
+    }
+
+    private fun validateContractRevisions(
+        source: AnalysisCatalogSourceV1,
+        selection: AnalysisProductSourceSelection,
+        selectedDimensionKeys: List<String>,
+        issues: MutableList<AnalysisCompilationIssue>,
+    ) {
+        val revisions = source.contractRevisions
+        if (source.flowStatus == AnalysisFlowStatus.PINNED && revisions.isEmpty()) {
+            issues += issue(
+                AnalysisCompilationIssueCode.CONTRACT_REVISION_UNAVAILABLE,
+                app = source.app,
+                surveyId = source.surveyId,
+            )
+            return
+        }
+        if (revisions.any { revision ->
+                !revision.definitionHash.matches(SHA256_PATTERN) ||
+                    !revision.flowHash.matches(SHA256_PATTERN) ||
+                    revision.evaluatorVersion != SURVEY_FLOW_EVALUATOR_VERSION ||
+                    revision.surveyType != source.surveyType ||
+                    !revision.isWellFormed()
+            }
+        ) {
+            issues += issue(
+                AnalysisCompilationIssueCode.CONTRACT_REVISION_CONFLICT,
+                app = source.app,
+                surveyId = source.surveyId,
+            )
+        }
+        if (
+            revisions.groupBy { it.definitionHash }.values.any { sameDefinition ->
+                sameDefinition
+                    .map { revision ->
+                        revision.fields.sortedBy { it.fieldId }.map { field ->
+                            field.copy(flowDependencies = emptyList())
+                        }
+                    }
+                    .distinct()
+                    .size > 1
+            }
+        ) {
+            issues += issue(
+                AnalysisCompilationIssueCode.CONTRACT_REVISION_CONFLICT,
+                app = source.app,
+                surveyId = source.surveyId,
+            )
+        }
+        selection.fieldIds.sorted().forEach { fieldId ->
+            val historicalFields = revisions.mapNotNull { revision ->
+                revision.fields.singleOrNull { it.fieldId == fieldId }
+            }
+            if (historicalFields.isEmpty()) {
+                issues += issue(
+                    AnalysisCompilationIssueCode.CONTRACT_REVISION_UNAVAILABLE,
+                    app = source.app,
+                    surveyId = source.surveyId,
+                    fieldId = fieldId,
+                )
+            }
+            if (historicalFields.any { !it.isWellFormed() }) {
+                issues += issue(
+                    AnalysisCompilationIssueCode.FIELD_MALFORMED,
+                    app = source.app,
+                    surveyId = source.surveyId,
+                    fieldId = fieldId,
+                )
+            }
+            if (
+                historicalFields.map { it.fieldType }.distinct().size > 1 ||
+                historicalFields.map { it.ratingVariant to it.ratingScale }.distinct().size > 1 ||
+                historicalFields.map { it.maxSelections }.distinct().size > 1
+            ) {
+                issues += issue(
+                    AnalysisCompilationIssueCode.CONTRACT_REVISION_CONFLICT,
+                    app = source.app,
+                    surveyId = source.surveyId,
+                    fieldId = fieldId,
+                )
+            }
+        }
+        revisions
+            .flatMap { revision ->
+                revision.dependenciesByField
+                    .filter { it.fieldId in selection.fieldIds }
+                    .flatMap { field -> field.dependencies.map { dependency -> field.fieldId to dependency } }
+            }
+            .distinct()
             .forEach { (fieldId, dependency) ->
                 val selected = when (dependency.source) {
                     AnalysisFlowDependencySource.ANSWER -> dependency.key in selection.fieldIds
@@ -440,11 +556,65 @@ class AnalysisContractCompiler {
                     )
                 }
             }
-        if (selection.fieldIds.isEmpty()) {
-            // An empty source is allowed in a draft and produces a population-only
-            // wide schema. The UI may use this while fields are being selected.
-            return
-        }
+    }
+
+    private fun compileSourcePin(resolved: ResolvedAnalysisSource): AnalysisSourcePinV2 {
+        val selectedFieldIds = resolved.selectedFields.map { it.fieldId }.sorted()
+        val definitions = resolved.source.contractRevisions
+            .groupBy { it.definitionHash }
+            .toSortedMap()
+            .map { (definitionHash, revisions) ->
+                val structuralFields = revisions.first().fields.associateBy { it.fieldId }
+                AnalysisDefinitionPinV1(
+                    definitionHash = definitionHash,
+                    fields = selectedFieldIds.map { fieldId ->
+                        val field = structuralFields[fieldId]
+                        if (field == null) {
+                            AnalysisDefinitionFieldPinV1(
+                                fieldId = fieldId,
+                                presence = AnalysisFieldPresence.ABSENT,
+                            )
+                        } else {
+                            AnalysisDefinitionFieldPinV1(
+                                fieldId = fieldId,
+                                presence = AnalysisFieldPresence.PRESENT,
+                                fieldType = field.fieldType,
+                                ratingVariant = field.ratingVariant,
+                                ratingScale = field.ratingScale,
+                                maxSelections = field.maxSelections,
+                                availableOptionIds = field.optionIds.orEmpty(),
+                            )
+                        }
+                    },
+                    flows = revisions.sortedBy { it.flowHash }.map { revision ->
+                        val dependenciesByField = selectedFieldIds.mapNotNull { fieldId ->
+                            if (revision.fields.none { it.fieldId == fieldId }) {
+                                null
+                            } else {
+                                AnalysisFieldDependenciesV1(
+                                    fieldId = fieldId,
+                                    dependencies = revision.dependenciesByField
+                                        .singleOrNull { it.fieldId == fieldId }
+                                        ?.dependencies
+                                        .orEmpty(),
+                                )
+                            }
+                        }
+                        AnalysisFlowPinV1(
+                            flowHash = revision.flowHash,
+                            evaluatorVersion = revision.evaluatorVersion,
+                            dependenciesByField = dependenciesByField,
+                        )
+                    },
+                )
+            }
+        return AnalysisSourcePinV2(
+            app = resolved.source.app,
+            surveyId = resolved.source.surveyId,
+            surveyType = requireNotNull(resolved.source.surveyType),
+            selectedFieldIds = selectedFieldIds,
+            definitions = definitions,
+        )
     }
 
     private fun buildResources(
@@ -455,7 +625,26 @@ class AnalysisContractCompiler {
         includeSubmittedHour: Boolean,
         issues: MutableList<AnalysisCompilationIssue>,
     ): List<AnalysisResourceSchemaV1> {
-        val wide = sources.map { resolved ->
+        val resourceSources = sources.map { resolved ->
+            resolved.copy(
+                selectedFields = resolved.selectedFields.map { selectedField ->
+                    val historicalOptionIds = resolved.source.contractRevisions
+                        .flatMap { revision -> revision.fields }
+                        .filter { field -> field.fieldId == selectedField.fieldId }
+                        .flatMap { field -> field.optionIds.orEmpty() }
+                        .distinct()
+                        .sorted()
+                    if (selectedField.fieldType in setOf(FieldType.SINGLE_CHOICE, FieldType.MULTI_CHOICE)) {
+                        selectedField.copy(
+                            optionIds = historicalOptionIds.ifEmpty { selectedField.optionIds.orEmpty() },
+                        )
+                    } else {
+                        selectedField
+                    }
+                },
+            )
+        }
+        val wide = resourceSources.map { resolved ->
             val dynamicColumns = buildDynamicColumns(resolved.selectedFields, dimensions)
             val budget = dynamicColumns.size
             if (budget >= 80) {
@@ -496,7 +685,7 @@ class AnalysisContractCompiler {
             kind = AnalysisResourceKind.LONG,
             rowMeaning = "One synthetic row represents one structured answer value atom.",
             columns = longColumns,
-            syntheticRows = sources.firstNotNullOfOrNull { resolved ->
+            syntheticRows = resourceSources.firstNotNullOfOrNull { resolved ->
                 resolved.selectedFields.firstOrNull()?.let { field ->
                     syntheticLongRow(productId, team, resolved, field, dimensions, longColumns)
                 }
@@ -507,7 +696,7 @@ class AnalysisContractCompiler {
             kind = AnalysisResourceKind.FIELD_CATALOG,
             rowMeaning = "One synthetic row represents a field or option metadata entry.",
             columns = catalogColumns,
-            syntheticRows = sources.firstNotNullOfOrNull { resolved ->
+            syntheticRows = resourceSources.firstNotNullOfOrNull { resolved ->
                 resolved.selectedFields.firstOrNull()?.let { field ->
                     syntheticCatalogRows(productId, team, resolved, field, catalogColumns)
                 }
@@ -526,80 +715,6 @@ class AnalysisContractCompiler {
         return publicResources + manifestResource
     }
 
-    private fun buildDynamicColumns(
-        fields: List<AnalysisCatalogFieldV1>,
-        dimensions: List<AnalysisDimensionDefinitionV1>,
-    ): List<AnalysisColumnV1> = buildList {
-        fields.sortedBy { it.fieldId }.forEach { field ->
-            add(
-                column(
-                    logicalId = "field:${field.fieldId}:applicable",
-                    name = AnalysisPhysicalNames.fieldColumn(field.fieldId, "applicable"),
-                    type = AnalysisColumnType.BOOL,
-                    nullable = true,
-                    description = "Whether structured field '${field.fieldId}' was applicable.",
-                ),
-            )
-            when (field.fieldType) {
-                FieldType.RATING -> add(
-                    column(
-                        "field:${field.fieldId}:rating",
-                        AnalysisPhysicalNames.fieldColumn(field.fieldId, "rating"),
-                        AnalysisColumnType.INT64,
-                        true,
-                        "Rating value for structured field '${field.fieldId}'.",
-                    ),
-                )
-
-                FieldType.SINGLE_CHOICE -> add(
-                    column(
-                        "field:${field.fieldId}:option_id",
-                        AnalysisPhysicalNames.fieldColumn(field.fieldId, "option_id"),
-                        AnalysisColumnType.STRING,
-                        true,
-                        "Selected option ID for structured field '${field.fieldId}'.",
-                    ),
-                )
-
-                FieldType.MULTI_CHOICE -> {
-                    add(
-                        column(
-                            "field:${field.fieldId}:selection_count",
-                            AnalysisPhysicalNames.fieldColumn(field.fieldId, "selection_count"),
-                            AnalysisColumnType.INT64,
-                            true,
-                            "Distinct selected option count for structured field '${field.fieldId}'.",
-                        ),
-                    )
-                    field.optionIds.orEmpty().sorted().forEach { optionId ->
-                        add(
-                            column(
-                                "field:${field.fieldId}:option:$optionId:selected",
-                                AnalysisPhysicalNames.optionColumn(field.fieldId, optionId),
-                                AnalysisColumnType.BOOL,
-                                true,
-                                "Whether option '$optionId' was selected for structured field '${field.fieldId}'.",
-                            ),
-                        )
-                    }
-                }
-
-                FieldType.TEXT, FieldType.DATE -> Unit
-            }
-        }
-        dimensions.sortedBy { it.key }.forEach { dimension ->
-            add(
-                column(
-                    "dimension:${dimension.key}",
-                    AnalysisPhysicalNames.dimensionColumn(dimension),
-                    dimension.type,
-                    true,
-                    dimension.description,
-                ),
-            )
-        }
-    }
-
     private fun ensureUniqueColumns(
         columns: List<AnalysisColumnV1>,
         source: AnalysisCatalogSourceV1,
@@ -613,8 +728,107 @@ class AnalysisContractCompiler {
             )
         }
     }
+}
 
-    private fun digestResources(resources: List<AnalysisResourceSchemaV1>): String = AnalysisCanonicalHash.digest(
+/**
+ * Frozen schema derivation for PublicationSpecification V2.
+ *
+ * Both preview compilation and stored-release validation use this exact
+ * implementation. Changing its output requires a new specification version.
+ */
+internal object AnalysisPublicationResourceCompilerV2 {
+    fun compile(
+        sources: List<AnalysisSourcePinV2>,
+        dimensions: List<AnalysisDimensionDefinitionV1>,
+        includeSubmittedHour: Boolean,
+    ): List<AnalysisResourceSchemaV1> {
+        val resourceSources = sources
+            .sortedWith(compareBy(AnalysisSourcePinV2::app, AnalysisSourcePinV2::surveyId))
+            .map { source ->
+                PublicationResourceSourceV2(
+                    app = source.app,
+                    surveyId = source.surveyId,
+                    fields = source.selectedFieldIds.sorted().map { fieldId ->
+                        source.outputField(fieldId)
+                    },
+                )
+            }
+        val sortedDimensions = dimensions.sortedBy { it.key }
+        val wide = resourceSources.map { source ->
+            val dynamicColumns = buildDynamicColumns(source.fields, sortedDimensions)
+            require(dynamicColumns.size <= 120) { "publication wide-column budget exceeded" }
+            AnalysisResourceSchemaV1(
+                name = AnalysisPhysicalNames.resourceName(source.app, source.surveyId),
+                kind = AnalysisResourceKind.WIDE,
+                rowMeaning = "One synthetic row represents one submission for this app and survey.",
+                sourceApp = source.app,
+                sourceSurveyId = source.surveyId,
+                columns = commonColumns(includeSubmittedHour) + dynamicColumns,
+                syntheticRows = emptyList(),
+            )
+        }
+        val publicResources = wide + listOf(
+            AnalysisResourceSchemaV1(
+                name = "answers_long_v1",
+                kind = AnalysisResourceKind.LONG,
+                rowMeaning = "One synthetic row represents one structured answer value atom.",
+                columns = longColumns(includeSubmittedHour, sortedDimensions),
+                syntheticRows = emptyList(),
+            ),
+            AnalysisResourceSchemaV1(
+                name = "field_catalog_v1",
+                kind = AnalysisResourceKind.FIELD_CATALOG,
+                rowMeaning = "One synthetic row represents a field or option metadata entry.",
+                columns = fieldCatalogColumns(),
+                syntheticRows = emptyList(),
+            ),
+        )
+        return publicResources + AnalysisResourceSchemaV1(
+            name = "product_manifest_v1",
+            kind = AnalysisResourceKind.MANIFEST,
+            rowMeaning = "One synthetic row represents one public analytic resource, excluding the manifest itself.",
+            columns = manifestColumns(),
+            syntheticRows = emptyList(),
+        )
+    }
+
+    private fun AnalysisSourcePinV2.outputField(fieldId: String): AnalysisCatalogFieldV1 {
+        val presentFields = definitions.map { definition ->
+            definition.fields.single { it.fieldId == fieldId }
+        }.filter { it.presence == AnalysisFieldPresence.PRESENT }
+        require(presentFields.isNotEmpty()) { "selected publication field is absent from every definition" }
+        val structuralShapes = presentFields.map { field ->
+            listOf(field.fieldType, field.ratingVariant, field.ratingScale, field.maxSelections)
+        }.distinct()
+        require(structuralShapes.size == 1) { "selected publication field changes structural type" }
+        val first = presentFields.first()
+        val fieldType = requireNotNull(first.fieldType)
+        val optionIds = if (fieldType in setOf(FieldType.SINGLE_CHOICE, FieldType.MULTI_CHOICE)) {
+            presentFields.flatMap(AnalysisDefinitionFieldPinV1::availableOptionIds).distinct().sorted()
+        } else {
+            null
+        }
+        return AnalysisCatalogFieldV1(
+            fieldId = fieldId,
+            fieldType = fieldType,
+            ratingVariant = first.ratingVariant,
+            ratingScale = first.ratingScale,
+            optionIds = optionIds,
+            maxSelections = first.maxSelections,
+            label = null,
+            labelSource = AnalysisLabelSource.UNKNOWN,
+        )
+    }
+}
+
+private data class PublicationResourceSourceV2(
+    val app: String,
+    val surveyId: String,
+    val fields: List<AnalysisCatalogFieldV1>,
+)
+
+internal object AnalysisPublicationSpecificationDigests {
+    fun schema(resources: List<AnalysisResourceSchemaV1>): String = AnalysisCanonicalHash.digest(
         "analysis-public-schema-v1",
         resources.sortedBy { it.name }.flatMap { resource ->
             buildList {
@@ -634,9 +848,9 @@ class AnalysisContractCompiler {
         },
     )
 
-    private fun digestSpecification(specification: AnalysisPublicationSpecificationV1): String =
+    fun specification(specification: AnalysisPublicationSpecificationV2): String =
         AnalysisCanonicalHash.digest(
-            "analysis-publication-specification-v1",
+            "analysis-publication-specification-v2",
             buildList {
                 add(specification.schemaVersion.toString())
                 add(specification.compilerVersion)
@@ -645,32 +859,44 @@ class AnalysisContractCompiler {
                 add(specification.productId)
                 add(specification.team)
                 add(specification.retention.name)
+                add(specification.includeSubmittedHour.toString())
                 add(specification.catalogRevision)
-                specification.sourcePins.forEach { pin ->
-                    add(pin.app)
-                    add(pin.surveyId)
-                    add(pin.surveyType.name)
-                    add(pin.definitionHash)
-                    add(pin.flowHash)
-                    pin.allowedFlowHashes.sorted().forEach(::add)
-                    pin.fields.forEach { field ->
-                        add(field.fieldId)
-                        add(field.fieldType.name)
-                        add(field.ratingVariant?.name ?: "<null>")
-                        add(field.ratingScale?.toString() ?: "<null>")
-                        field.optionIds.forEach(::add)
-                        add(field.maxSelections?.toString() ?: "<null>")
-                        add(field.label ?: "<null>")
-                        add(field.labelSource.name)
-                        field.flowDependencies
-                            .sortedWith(compareBy(AnalysisFlowDependencyV1::source, AnalysisFlowDependencyV1::key))
-                            .forEach { dependency ->
-                                add(dependency.source.name)
-                                add(dependency.key)
+                specification.sources
+                    .sortedWith(compareBy(AnalysisSourcePinV2::app, AnalysisSourcePinV2::surveyId))
+                    .forEach { pin ->
+                        add(pin.app)
+                        add(pin.surveyId)
+                        add(pin.surveyType.name)
+                        pin.selectedFieldIds.sorted().forEach(::add)
+                        pin.definitions.sortedBy { it.definitionHash }.forEach { definition ->
+                            add(definition.definitionHash)
+                            definition.fields.sortedBy { it.fieldId }.forEach { field ->
+                                add(field.fieldId)
+                                add(field.presence.name)
+                                add(field.fieldType?.name ?: "<null>")
+                                add(field.ratingVariant?.name ?: "<null>")
+                                add(field.ratingScale?.toString() ?: "<null>")
+                                add(field.maxSelections?.toString() ?: "<null>")
+                                field.availableOptionIds.forEach(::add)
                             }
+                            definition.flows.sortedBy { it.flowHash }.forEach { flow ->
+                                add(flow.flowHash)
+                                add(flow.evaluatorVersion)
+                                flow.dependenciesByField.sortedBy { it.fieldId }.forEach { fieldDependencies ->
+                                    add(fieldDependencies.fieldId)
+                                    fieldDependencies.dependencies
+                                        .sortedWith(
+                                            compareBy(AnalysisFlowDependencyV1::source, AnalysisFlowDependencyV1::key),
+                                        )
+                                        .forEach { dependency ->
+                                            add(dependency.source.name)
+                                            add(dependency.key)
+                                        }
+                                }
+                            }
+                        }
                     }
-                }
-                specification.dimensions.forEach { dimension ->
+                specification.dimensions.sortedBy { it.key }.forEach { dimension ->
                     add(dimension.key)
                     add(dimension.outputId)
                     add(dimension.type.name)
@@ -686,7 +912,6 @@ class AnalysisContractCompiler {
                 specification.excludedDataCategories.sorted().forEach(::add)
             },
         )
-
 }
 
 private data class ResolvedAnalysisSource(
@@ -750,6 +975,35 @@ private fun AnalysisCatalogFieldV1.isWellFormed(): Boolean = when (fieldType) {
     FieldType.TEXT, FieldType.DATE -> true
 }
 
+private fun AnalysisCatalogContractRevision.isWellFormed(): Boolean {
+    val fieldIds = fields.map { it.fieldId }
+    val dependenciesFieldIds = dependenciesByField.map { it.fieldId }
+    if (
+        fieldIds.distinct().size != fieldIds.size ||
+        dependenciesFieldIds.distinct().size != dependenciesFieldIds.size ||
+        fieldIds.toSet() != dependenciesFieldIds.toSet()
+    ) {
+        return false
+    }
+    val dependenciesByFieldId = dependenciesByField.associateBy { it.fieldId }
+    return fields.all { field ->
+        val dependencies = dependenciesByFieldId.getValue(field.fieldId).dependencies
+        field.isWellFormed() &&
+            field.label == null &&
+            field.labelSource == AnalysisLabelSource.UNKNOWN &&
+            dependencies.distinct().size == dependencies.size &&
+            dependencies.all { dependency ->
+                dependency.key.isNotBlank() &&
+                    (dependency.source != AnalysisFlowDependencySource.ANSWER || dependency.key in fieldIds)
+            } &&
+            field.flowDependencies.sortedWith(
+                compareBy(AnalysisFlowDependencyV1::source, AnalysisFlowDependencyV1::key),
+            ) == dependencies.sortedWith(
+                compareBy(AnalysisFlowDependencyV1::source, AnalysisFlowDependencyV1::key),
+            )
+    }
+}
+
 private fun issue(
     code: AnalysisCompilationIssueCode,
     severity: AnalysisCompilationIssueSeverity = AnalysisCompilationIssueSeverity.BLOCKER,
@@ -766,6 +1020,80 @@ private fun column(
     nullable: Boolean,
     description: String,
 ) = AnalysisColumnV1(logicalId, name, type, nullable, description)
+
+private fun buildDynamicColumns(
+    fields: List<AnalysisCatalogFieldV1>,
+    dimensions: List<AnalysisDimensionDefinitionV1>,
+): List<AnalysisColumnV1> = buildList {
+    fields.sortedBy { it.fieldId }.forEach { field ->
+        add(
+            column(
+                logicalId = "field:${field.fieldId}:applicable",
+                name = AnalysisPhysicalNames.fieldColumn(field.fieldId, "applicable"),
+                type = AnalysisColumnType.BOOL,
+                nullable = true,
+                description = "Whether structured field '${field.fieldId}' was applicable.",
+            ),
+        )
+        when (field.fieldType) {
+            FieldType.RATING -> add(
+                column(
+                    "field:${field.fieldId}:rating",
+                    AnalysisPhysicalNames.fieldColumn(field.fieldId, "rating"),
+                    AnalysisColumnType.INT64,
+                    true,
+                    "Rating value for structured field '${field.fieldId}'.",
+                ),
+            )
+
+            FieldType.SINGLE_CHOICE -> add(
+                column(
+                    "field:${field.fieldId}:option_id",
+                    AnalysisPhysicalNames.fieldColumn(field.fieldId, "option_id"),
+                    AnalysisColumnType.STRING,
+                    true,
+                    "Selected option ID for structured field '${field.fieldId}'.",
+                ),
+            )
+
+            FieldType.MULTI_CHOICE -> {
+                add(
+                    column(
+                        "field:${field.fieldId}:selection_count",
+                        AnalysisPhysicalNames.fieldColumn(field.fieldId, "selection_count"),
+                        AnalysisColumnType.INT64,
+                        true,
+                        "Distinct selected option count for structured field '${field.fieldId}'.",
+                    ),
+                )
+                field.optionIds.orEmpty().sorted().forEach { optionId ->
+                    add(
+                        column(
+                            "field:${field.fieldId}:option:$optionId:selected",
+                            AnalysisPhysicalNames.optionColumn(field.fieldId, optionId),
+                            AnalysisColumnType.BOOL,
+                            true,
+                            "Whether option '$optionId' was selected for structured field '${field.fieldId}'.",
+                        ),
+                    )
+                }
+            }
+
+            FieldType.TEXT, FieldType.DATE -> Unit
+        }
+    }
+    dimensions.sortedBy { it.key }.forEach { dimension ->
+        add(
+            column(
+                "dimension:${dimension.key}",
+                AnalysisPhysicalNames.dimensionColumn(dimension),
+                dimension.type,
+                true,
+                dimension.description,
+            ),
+        )
+    }
+}
 
 private fun commonColumns(includeSubmittedHour: Boolean): List<AnalysisColumnV1> = buildList {
     add(column("response_key", "response_key", AnalysisColumnType.STRING, false, "Product-scoped stable response key."))
