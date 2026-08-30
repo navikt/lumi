@@ -26,6 +26,7 @@ export {
   fetchFilterBootstrapServerFn,
   refreshFilterBootstrapServerFn,
 } from "./fetchFilterBootstrap";
+export { fetchQuestionTrendServerFn } from "./fetchQuestionTrend";
 // Stats
 export { fetchStatsServerFn } from "./fetchStats";
 // Surveys

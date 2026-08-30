@@ -331,6 +331,37 @@ export interface FeedbackStats {
   privacy?: PrivacyInfo;
 }
 
+export type QuestionTrendInterval = "day" | "week" | "month";
+
+export interface QuestionTrendOption {
+  id: string;
+  label: string;
+}
+
+export interface QuestionTrendChoiceValue {
+  count: number;
+  percentage: number;
+}
+
+export interface QuestionTrendBucket {
+  /** Calendar date for the start of this bucket in Europe/Oslo. */
+  startDate: string;
+  masked: boolean;
+  responseCount?: number | null;
+  average?: number | null;
+  distribution: Record<string, QuestionTrendChoiceValue>;
+}
+
+export interface QuestionTrendResponse {
+  fieldId: string;
+  fieldType: "RATING" | "SINGLE_CHOICE" | "MULTI_CHOICE";
+  label: string;
+  interval: QuestionTrendInterval;
+  privacyThreshold: number;
+  options: QuestionTrendOption[];
+  buckets: QuestionTrendBucket[];
+}
+
 /**
  * Privacy information for aggregation threshold
  * Used to prevent identification of individuals in small datasets

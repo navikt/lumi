@@ -39,6 +39,7 @@ export {
   generateTopTasksMockData,
 };
 
+import { calculateQuestionTrend } from "./questionTrend";
 import { calculateStats } from "./stats";
 import {
   getMockBlockerStats as calculateBlockerStats,
@@ -497,6 +498,19 @@ export function filterFeedback(
 
 export function getMockStats(params: URLSearchParams): FeedbackStats {
   return calculateStats(getMockAnalyticsItems(params), params);
+}
+
+export function getMockQuestionTrend(
+  params: URLSearchParams,
+  fieldId: string,
+  interval: import("~/types/api").QuestionTrendInterval,
+) {
+  return calculateQuestionTrend(
+    getMockAnalyticsItems(params),
+    params,
+    fieldId,
+    interval,
+  );
 }
 
 export function getMockFeedback(params: URLSearchParams): FeedbackPage {

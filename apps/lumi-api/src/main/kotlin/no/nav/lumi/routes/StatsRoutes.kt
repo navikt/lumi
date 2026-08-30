@@ -69,6 +69,13 @@ fun Route.statsRoutes(
         call.respond(statsService.getTimeline(query))
     }
 
+    // Aggregated development over time for one structured question.
+    get<ApiV1Intern.Stats.QuestionTrend> { params ->
+        val query = params.parent.toStatsQuery(call.authorizedTeam)
+        val fieldId = parseQuestionTrendFieldId(params.fieldId)
+        call.respond(statsService.getQuestionTrend(query, fieldId, params.interval))
+    }
+
     // Top Tasks statistics
     get<ApiV1Intern.Stats.TopTasks> { params ->
         val query = params.parent.toStatsQuery(call.authorizedTeam)

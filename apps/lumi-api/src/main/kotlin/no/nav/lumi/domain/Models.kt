@@ -556,6 +556,48 @@ data class TimelineResponse(
     val data: List<TimelineEntry>
 )
 
+@Serializable
+enum class QuestionTrendInterval {
+    @SerialName("day") DAY,
+    @SerialName("week") WEEK,
+    @SerialName("month") MONTH,
+}
+
+@Serializable
+data class QuestionTrendOption(
+    val id: String,
+    val label: String,
+)
+
+@Serializable
+data class QuestionTrendChoiceValue(
+    val count: Int,
+    val percentage: Double,
+)
+
+@Serializable
+data class QuestionTrendBucket(
+    val startDate: String,
+    val masked: Boolean,
+    /** Null for masked buckets so small response counts are not exposed. */
+    val responseCount: Int? = null,
+    /** Only populated for unmasked rating buckets. */
+    val average: Double? = null,
+    /** Empty for rating and masked choice buckets. */
+    val distribution: Map<String, QuestionTrendChoiceValue> = emptyMap(),
+)
+
+@Serializable
+data class QuestionTrendResponse(
+    val fieldId: String,
+    val fieldType: FieldType,
+    val label: String,
+    val interval: QuestionTrendInterval,
+    val privacyThreshold: Int,
+    val options: List<QuestionTrendOption> = emptyList(),
+    val buckets: List<QuestionTrendBucket>,
+)
+
 // ============================================
 // Top Tasks Statistics
 // ============================================
