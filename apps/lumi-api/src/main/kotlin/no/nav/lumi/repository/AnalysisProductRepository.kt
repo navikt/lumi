@@ -21,6 +21,7 @@ import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.Types
 import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -36,6 +37,27 @@ sealed interface UpdateAnalysisProductDraftResult {
     data object VersionConflict : UpdateAnalysisProductDraftResult
 }
 
+enum class AnalysisProductTransitionRejection {
+    INVALID_LIFECYCLE,
+    RELEASE_UNAVAILABLE,
+    RELEASE_NOT_V2,
+    RELEASE_NOT_FORWARD,
+    NO_DESIRED_RELEASE,
+    NO_ACTIVE_SNAPSHOT,
+}
+
+sealed interface ChangeAnalysisProductStateResult {
+    data class Changed(
+        val product: AnalysisProduct,
+        val effectiveGeneration: EffectivePlanGeneration,
+    ) : ChangeAnalysisProductStateResult
+
+    data class Unchanged(val product: AnalysisProduct) : ChangeAnalysisProductStateResult
+    data class Rejected(val reason: AnalysisProductTransitionRejection) : ChangeAnalysisProductStateResult
+    data object NotFound : ChangeAnalysisProductStateResult
+    data object VersionConflict : ChangeAnalysisProductStateResult
+}
+
 /**
  * Team-scoped persistence for the analysis-product control plane.
  *
@@ -46,6 +68,7 @@ sealed interface UpdateAnalysisProductDraftResult {
  */
 class AnalysisProductRepository(
     private val clock: Clock = Clock.systemUTC(),
+    private val effectivePlanRepository: AnalysisEffectivePlanRepository = AnalysisEffectivePlanRepository(),
 ) {
     private val json = Json {
         encodeDefaults = true
@@ -241,6 +264,226 @@ class AnalysisProductRepository(
         }
     }
 
+    suspend fun desireRelease(
+        team: String,
+        productId: UUID,
+        expectedProductVersion: Long,
+        releaseNumber: Long,
+        principalIdentity: String,
+    ): ChangeAnalysisProductStateResult {
+        require(expectedProductVersion > 0) { "expectedProductVersion must be positive" }
+        require(releaseNumber > 0) { "releaseNumber must be positive" }
+        val normalizedTeam = requiredValue("team", team, 255)
+        val actor = requiredValue("principalIdentity", principalIdentity, 320)
+
+        return dbQuery {
+            val connection = currentJdbcConnection()
+            val product = lockControlProduct(connection, normalizedTeam, productId)
+                ?: return@dbQuery ChangeAnalysisProductStateResult.NotFound
+            if (product.rowVersion != expectedProductVersion) {
+                return@dbQuery ChangeAnalysisProductStateResult.VersionConflict
+            }
+            if (product.lifecycleState !in DESIRABLE_LIFECYCLES) {
+                return@dbQuery rejected(AnalysisProductTransitionRejection.INVALID_LIFECYCLE)
+            }
+            if (product.desiredReleaseNumber == releaseNumber) {
+                return@dbQuery unchangedProduct(connection, normalizedTeam, productId)
+            }
+            val release = findReleaseReference(connection, normalizedTeam, productId, releaseNumber)
+                ?: return@dbQuery rejected(AnalysisProductTransitionRejection.RELEASE_UNAVAILABLE)
+            if (release.schemaVersion != 2) {
+                return@dbQuery rejected(AnalysisProductTransitionRejection.RELEASE_NOT_V2)
+            }
+            if (
+                releaseNumber != findLatestReleaseNumber(connection, normalizedTeam, productId) ||
+                product.desiredReleaseNumber?.let { releaseNumber < it } == true ||
+                product.activeReleaseNumber?.let { releaseNumber < it } == true
+            ) {
+                return@dbQuery rejected(AnalysisProductTransitionRejection.RELEASE_NOT_FORWARD)
+            }
+
+            val productVersion = connection.prepareStatement(
+                """
+                    UPDATE analysis_control.analysis_products
+                    SET desired_release_number = ?,
+                        row_version = row_version + 1,
+                        updated_by = ?,
+                        updated_at = clock_timestamp()
+                    WHERE team = ? AND id = ? AND row_version = ?
+                    RETURNING row_version
+                """.trimIndent(),
+            ).use { statement ->
+                statement.setLong(1, releaseNumber)
+                statement.setString(2, actor)
+                statement.setString(3, normalizedTeam)
+                statement.setObject(4, productId)
+                statement.setLong(5, expectedProductVersion)
+                statement.executeQuery().use { result ->
+                    check(result.next()) { "Locked analysis product changed unexpectedly" }
+                    result.getLong("row_version")
+                }
+            }
+            insertAuditEvent(
+                connection = connection,
+                team = normalizedTeam,
+                productId = productId,
+                eventNumber = productVersion,
+                eventType = AnalysisProductAuditEventType.RELEASE_DESIRED,
+                actor = actor,
+                productVersion = productVersion,
+                releaseNumber = releaseNumber,
+                subjectDigest = release.specificationDigest,
+            )
+            completeControlTransition(connection, normalizedTeam, productId)
+        }
+    }
+
+    suspend fun activateDesiredRelease(
+        team: String,
+        productId: UUID,
+        expectedProductVersion: Long,
+        principalIdentity: String,
+    ): ChangeAnalysisProductStateResult {
+        require(expectedProductVersion > 0) { "expectedProductVersion must be positive" }
+        val normalizedTeam = requiredValue("team", team, 255)
+        val actor = requiredValue("principalIdentity", principalIdentity, 320)
+
+        return dbQuery {
+            val connection = currentJdbcConnection()
+            val product = lockControlProduct(connection, normalizedTeam, productId)
+                ?: return@dbQuery ChangeAnalysisProductStateResult.NotFound
+            if (product.rowVersion != expectedProductVersion) {
+                return@dbQuery ChangeAnalysisProductStateResult.VersionConflict
+            }
+            if (product.lifecycleState !in ACTIVATABLE_LIFECYCLES) {
+                return@dbQuery rejected(AnalysisProductTransitionRejection.INVALID_LIFECYCLE)
+            }
+            val desiredRelease = product.desiredReleaseNumber
+                ?: return@dbQuery rejected(AnalysisProductTransitionRejection.NO_DESIRED_RELEASE)
+            if (
+                product.lifecycleState == AnalysisProductLifecycleState.ENABLED &&
+                product.activeReleaseNumber == desiredRelease
+            ) {
+                return@dbQuery unchangedProduct(connection, normalizedTeam, productId)
+            }
+            if (product.activeReleaseNumber?.let { desiredRelease < it } == true) {
+                return@dbQuery rejected(AnalysisProductTransitionRejection.RELEASE_NOT_FORWARD)
+            }
+            val release = findReleaseReference(connection, normalizedTeam, productId, desiredRelease)
+                ?: return@dbQuery rejected(AnalysisProductTransitionRejection.RELEASE_UNAVAILABLE)
+            if (release.schemaVersion != 2) {
+                return@dbQuery rejected(AnalysisProductTransitionRejection.RELEASE_NOT_V2)
+            }
+
+            val previousState = product.lifecycleState
+            val productVersion = connection.prepareStatement(
+                """
+                    UPDATE analysis_control.analysis_products
+                    SET lifecycle_state = 'ENABLED',
+                        active_release_number = desired_release_number,
+                        data_cutoff_at = NULL,
+                        row_version = row_version + 1,
+                        updated_by = ?,
+                        updated_at = clock_timestamp()
+                    WHERE team = ? AND id = ? AND row_version = ?
+                    RETURNING row_version
+                """.trimIndent(),
+            ).use { statement ->
+                statement.setString(1, actor)
+                statement.setString(2, normalizedTeam)
+                statement.setObject(3, productId)
+                statement.setLong(4, expectedProductVersion)
+                statement.executeQuery().use { result ->
+                    check(result.next()) { "Locked analysis product changed unexpectedly" }
+                    result.getLong("row_version")
+                }
+            }
+            insertAuditEvent(
+                connection = connection,
+                team = normalizedTeam,
+                productId = productId,
+                eventNumber = productVersion,
+                eventType = AnalysisProductAuditEventType.RELEASE_ACTIVATED,
+                actor = actor,
+                productVersion = productVersion,
+                releaseNumber = desiredRelease,
+                subjectDigest = release.specificationDigest,
+                previousState = previousState.takeIf { it != AnalysisProductLifecycleState.ENABLED },
+                nextState = AnalysisProductLifecycleState.ENABLED.takeIf {
+                    previousState != AnalysisProductLifecycleState.ENABLED
+                },
+            )
+            completeControlTransition(connection, normalizedTeam, productId)
+        }
+    }
+
+    suspend fun pause(
+        team: String,
+        productId: UUID,
+        expectedProductVersion: Long,
+        principalIdentity: String,
+    ): ChangeAnalysisProductStateResult = changeLifecycle(
+        team = team,
+        productId = productId,
+        expectedProductVersion = expectedProductVersion,
+        principalIdentity = principalIdentity,
+        requiredState = AnalysisProductLifecycleState.ENABLED,
+        targetState = AnalysisProductLifecycleState.PAUSED,
+        unchangedState = AnalysisProductLifecycleState.PAUSED,
+        cutoffAssignment = DataCutoffAssignment.LAST_ACTIVE_SNAPSHOT,
+    )
+
+    // Resume is deliberately absent from this slice. PAUSED -> ENABLED must
+    // first gain an atomic command that binds fresh validation evidence to the
+    // new effective generation; clearing the cutoff alone is not sufficient.
+
+    suspend fun beginOffboarding(
+        team: String,
+        productId: UUID,
+        expectedProductVersion: Long,
+        principalIdentity: String,
+    ): ChangeAnalysisProductStateResult {
+        require(expectedProductVersion > 0) { "expectedProductVersion must be positive" }
+        val normalizedTeam = requiredValue("team", team, 255)
+        val actor = requiredValue("principalIdentity", principalIdentity, 320)
+
+        return dbQuery {
+            val connection = currentJdbcConnection()
+            val product = lockControlProduct(connection, normalizedTeam, productId)
+                ?: return@dbQuery ChangeAnalysisProductStateResult.NotFound
+            if (product.rowVersion != expectedProductVersion) {
+                return@dbQuery ChangeAnalysisProductStateResult.VersionConflict
+            }
+            if (product.lifecycleState == AnalysisProductLifecycleState.OFFBOARDING) {
+                return@dbQuery unchangedProduct(connection, normalizedTeam, productId)
+            }
+            if (product.lifecycleState == AnalysisProductLifecycleState.DELETED) {
+                return@dbQuery rejected(AnalysisProductTransitionRejection.INVALID_LIFECYCLE)
+            }
+
+            val productVersion = updateLifecycle(
+                connection = connection,
+                team = normalizedTeam,
+                productId = productId,
+                expectedProductVersion = expectedProductVersion,
+                actor = actor,
+                targetState = AnalysisProductLifecycleState.OFFBOARDING,
+                keepDataCutoff = true,
+                dataCutoffAt = null,
+            )
+            insertLifecycleAudit(
+                connection,
+                normalizedTeam,
+                productId,
+                productVersion,
+                actor,
+                product.lifecycleState,
+                AnalysisProductLifecycleState.OFFBOARDING,
+            )
+            completeControlTransition(connection, normalizedTeam, productId)
+        }
+    }
+
     suspend fun findReleases(team: String, productId: UUID): List<AnalysisProductRelease>? {
         val normalizedTeam = requiredValue("team", team, 255)
         return dbQuery {
@@ -288,6 +531,244 @@ class AnalysisProductRepository(
                     }
                 }
             }
+        }
+    }
+
+    private suspend fun changeLifecycle(
+        team: String,
+        productId: UUID,
+        expectedProductVersion: Long,
+        principalIdentity: String,
+        requiredState: AnalysisProductLifecycleState,
+        targetState: AnalysisProductLifecycleState,
+        unchangedState: AnalysisProductLifecycleState?,
+        cutoffAssignment: DataCutoffAssignment,
+    ): ChangeAnalysisProductStateResult {
+        require(expectedProductVersion > 0) { "expectedProductVersion must be positive" }
+        val normalizedTeam = requiredValue("team", team, 255)
+        val actor = requiredValue("principalIdentity", principalIdentity, 320)
+
+        return dbQuery {
+            val connection = currentJdbcConnection()
+            val product = lockControlProduct(connection, normalizedTeam, productId)
+                ?: return@dbQuery ChangeAnalysisProductStateResult.NotFound
+            if (product.rowVersion != expectedProductVersion) {
+                return@dbQuery ChangeAnalysisProductStateResult.VersionConflict
+            }
+            if (product.lifecycleState == unchangedState) {
+                return@dbQuery unchangedProduct(connection, normalizedTeam, productId)
+            }
+            if (product.lifecycleState != requiredState) {
+                return@dbQuery rejected(AnalysisProductTransitionRejection.INVALID_LIFECYCLE)
+            }
+
+            val dataCutoffAt = when (cutoffAssignment) {
+                DataCutoffAssignment.LAST_ACTIVE_SNAPSHOT ->
+                    lockLastActiveSnapshotAt(connection, normalizedTeam, productId)
+                        ?: return@dbQuery rejected(AnalysisProductTransitionRejection.NO_ACTIVE_SNAPSHOT)
+            }
+
+            val productVersion = updateLifecycle(
+                connection = connection,
+                team = normalizedTeam,
+                productId = productId,
+                expectedProductVersion = expectedProductVersion,
+                actor = actor,
+                targetState = targetState,
+                keepDataCutoff = false,
+                dataCutoffAt = dataCutoffAt,
+            )
+            insertLifecycleAudit(
+                connection,
+                normalizedTeam,
+                productId,
+                productVersion,
+                actor,
+                product.lifecycleState,
+                targetState,
+            )
+            completeControlTransition(connection, normalizedTeam, productId)
+        }
+    }
+
+    private fun updateLifecycle(
+        connection: Connection,
+        team: String,
+        productId: UUID,
+        expectedProductVersion: Long,
+        actor: String,
+        targetState: AnalysisProductLifecycleState,
+        keepDataCutoff: Boolean,
+        dataCutoffAt: Instant?,
+    ): Long {
+        return connection.prepareStatement(
+            """
+                UPDATE analysis_control.analysis_products
+                SET lifecycle_state = ?,
+                    data_cutoff_at = CASE WHEN ? THEN data_cutoff_at ELSE ? END,
+                    row_version = row_version + 1,
+                    updated_by = ?,
+                    updated_at = clock_timestamp()
+                WHERE team = ? AND id = ? AND row_version = ?
+                RETURNING row_version
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setString(1, targetState.name)
+            statement.setBoolean(2, keepDataCutoff)
+            if (dataCutoffAt == null) {
+                statement.setNull(3, Types.TIMESTAMP_WITH_TIMEZONE)
+            } else {
+                statement.setObject(3, dataCutoffAt.atOffset(java.time.ZoneOffset.UTC))
+            }
+            statement.setString(4, actor)
+            statement.setString(5, team)
+            statement.setObject(6, productId)
+            statement.setLong(7, expectedProductVersion)
+            statement.executeQuery().use { result ->
+                check(result.next()) { "Locked analysis product changed unexpectedly" }
+                result.getLong("row_version")
+            }
+        }
+    }
+
+    private fun insertLifecycleAudit(
+        connection: Connection,
+        team: String,
+        productId: UUID,
+        productVersion: Long,
+        actor: String,
+        previousState: AnalysisProductLifecycleState,
+        nextState: AnalysisProductLifecycleState,
+    ) = insertAuditEvent(
+        connection = connection,
+        team = team,
+        productId = productId,
+        eventNumber = productVersion,
+        eventType = AnalysisProductAuditEventType.LIFECYCLE_CHANGED,
+        actor = actor,
+        productVersion = productVersion,
+        previousState = previousState,
+        nextState = nextState,
+    )
+
+    private fun completeControlTransition(
+        connection: Connection,
+        team: String,
+        productId: UUID,
+    ): ChangeAnalysisProductStateResult.Changed {
+        val generation = when (val persisted = effectivePlanRepository.persistCurrent(connection, team, productId)) {
+            is PersistEffectivePlanResult.Created -> persisted.generation
+            is PersistEffectivePlanResult.Unchanged -> error(
+                "Control state changed without changing its effective plan digest",
+            )
+            PersistEffectivePlanResult.NotFound -> error("Analysis product disappeared during transition")
+        }
+        return ChangeAnalysisProductStateResult.Changed(
+            product = checkNotNull(findByIdInCurrentTransaction(connection, team, productId)),
+            effectiveGeneration = generation,
+        )
+    }
+
+    private fun unchangedProduct(
+        connection: Connection,
+        team: String,
+        productId: UUID,
+    ) = ChangeAnalysisProductStateResult.Unchanged(
+        checkNotNull(findByIdInCurrentTransaction(connection, team, productId)),
+    )
+
+    private fun rejected(reason: AnalysisProductTransitionRejection) =
+        ChangeAnalysisProductStateResult.Rejected(reason)
+
+    private fun lockControlProduct(
+        connection: Connection,
+        team: String,
+        productId: UUID,
+    ): ControlProduct? = connection.prepareStatement(
+        """
+            SELECT row_version, lifecycle_state,
+                   desired_release_number, active_release_number
+            FROM analysis_control.analysis_products
+            WHERE team = ? AND id = ?
+            FOR UPDATE
+        """.trimIndent(),
+    ).use { statement ->
+        statement.setString(1, team)
+        statement.setObject(2, productId)
+        statement.executeQuery().use { result ->
+            if (!result.next()) return@use null
+            ControlProduct(
+                rowVersion = result.getLong("row_version"),
+                lifecycleState = AnalysisProductLifecycleState.valueOf(result.getString("lifecycle_state")),
+                desiredReleaseNumber = result.nullableLong("desired_release_number"),
+                activeReleaseNumber = result.nullableLong("active_release_number"),
+            )
+        }
+    }
+
+    private fun findReleaseReference(
+        connection: Connection,
+        team: String,
+        productId: UUID,
+        releaseNumber: Long,
+    ): ReleaseReference? = connection.prepareStatement(
+        """
+            SELECT publication_specification ->> 'schemaVersion' AS schema_version,
+                   publication_specification_digest
+            FROM analysis_control.analysis_product_releases
+            WHERE team = ? AND product_id = ? AND release_number = ?
+        """.trimIndent(),
+    ).use { statement ->
+        statement.setString(1, team)
+        statement.setObject(2, productId)
+        statement.setLong(3, releaseNumber)
+        statement.executeQuery().use { result ->
+            if (!result.next()) return@use null
+            ReleaseReference(
+                schemaVersion = result.getString("schema_version")?.toIntOrNull(),
+                specificationDigest = result.getString("publication_specification_digest"),
+            )
+        }
+    }
+
+    private fun findLatestReleaseNumber(
+        connection: Connection,
+        team: String,
+        productId: UUID,
+    ): Long? = connection.prepareStatement(
+        """
+            SELECT max(release_number) AS latest_release_number
+            FROM analysis_control.analysis_product_releases
+            WHERE team = ? AND product_id = ?
+        """.trimIndent(),
+    ).use { statement ->
+        statement.setString(1, team)
+        statement.setObject(2, productId)
+        statement.executeQuery().use { result ->
+            check(result.next())
+            result.nullableLong("latest_release_number")
+        }
+    }
+
+    private fun lockLastActiveSnapshotAt(
+        connection: Connection,
+        team: String,
+        productId: UUID,
+    ): Instant? = connection.prepareStatement(
+        """
+            SELECT source_snapshot_at
+            FROM analysis_control.analysis_product_snapshot_activations
+            WHERE team = ? AND product_id = ?
+            ORDER BY source_snapshot_at DESC
+            LIMIT 1
+            FOR SHARE
+        """.trimIndent(),
+    ).use { statement ->
+        statement.setString(1, team)
+        statement.setObject(2, productId)
+        statement.executeQuery().use { result ->
+            if (!result.next()) return@use null
+            result.getObject("source_snapshot_at", OffsetDateTime::class.java).toInstant()
         }
     }
 
@@ -501,8 +982,34 @@ class AnalysisProductRepository(
 
     private data class StoredDocument(val json: String, val hash: String)
 
+    private data class ControlProduct(
+        val rowVersion: Long,
+        val lifecycleState: AnalysisProductLifecycleState,
+        val desiredReleaseNumber: Long?,
+        val activeReleaseNumber: Long?,
+    )
+
+    private data class ReleaseReference(
+        val schemaVersion: Int?,
+        val specificationDigest: String,
+    )
+
+    private enum class DataCutoffAssignment {
+        LAST_ACTIVE_SNAPSHOT,
+    }
+
     private companion object {
         const val MAX_PRODUCTS_PER_TEAM = 10
+
+        val DESIRABLE_LIFECYCLES = setOf(
+            AnalysisProductLifecycleState.DRAFT,
+            AnalysisProductLifecycleState.ENABLED,
+            AnalysisProductLifecycleState.PAUSED,
+        )
+        val ACTIVATABLE_LIFECYCLES = setOf(
+            AnalysisProductLifecycleState.DRAFT,
+            AnalysisProductLifecycleState.ENABLED,
+        )
 
         val PRODUCT_WITH_DRAFT_SELECT = """
             SELECT
