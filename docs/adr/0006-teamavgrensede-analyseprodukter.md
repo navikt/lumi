@@ -148,6 +148,15 @@ produktspesifikke pseudonymer. Samme kilderad får ulike nøkler i ulike
 produkter. Nøklene er ikke anonymisering, og nøkkelmateriale skal aldri være
 tilgjengelig for konsumenter.
 
+V1 oppretter ikke en egen varig analyseidentitet eller sidecar-tabell for hver
+feedbackrad. Intern feedback-ID kan bare brukes transient som input til den
+betrodde, produktspesifikke nøkkelavledningen og skal aldri persisteres i
+privat staging eller logges. Den source-globale atomstrømmen bruker i stedet en
+ugjennomsiktig `snapshot_row_ref` som bare kobler rader innen én kandidat og
+regenereres ved neste kjøring. Hver membership kobler denne referansen til det
+aktuelle produktets stabile `response_key`. En transport er ikke egnet dersom
+den ikke kan oppfylle dette uten å eksponere intern ID eller nøkkelmateriale.
+
 ### Eksporten bruker ett autoritativt fullsnapshot
 
 V1 starter med én Lumi-eid Cloud SQL-connection og én planlagt federated query

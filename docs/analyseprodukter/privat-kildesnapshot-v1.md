@@ -54,12 +54,24 @@ datosvar, klientlabels, URL/pathname, user-agent, viewport, debug,
 dedupliseringsnøkkel, intern feedback-UUID, vilkårlig context, `JSON`, `STRUCT`
 eller `ARRAY`.
 
-Fremtidig privat `source_row_key` skal være en tilfeldig 256-bits radnøkkel
-som lagres immutable med feedbackraden og slettes sammen med den. Den er ikke
-en respondentidentitet og kan aldri ligge i offentlig output, preview eller
-logger. Produktspesifikke offentlige pseudonymer avledes først ved
-produktmaterialisering. Eksakt KMS-/keysetmodell må godkjennes med NADA før
-noen ekte dev-connection opprettes.
+Den private relasjonen bruker en ugjennomsiktig `snapshot_row_ref` for å knytte
+`MEMBERSHIP`, `SUBMISSION` og underordnede atomer sammen. Referansen gjelder
+bare i én source-kandidat, regenereres ved neste kjøring og kan ikke brukes som
+stabil identitet på tvers av snapshots eller produkter. `SUBMISSION` og
+underordnede atomer bærer bare denne kandidat-lokale referansen. Hver
+`MEMBERSHIP` bærer i tillegg det aktuelle produktets stabile `response_key`,
+slik at samme source-globale faktarad kan materialiseres med ulike nøkler i
+ulike produkter uten en delt, varig analyseidentitet.
+
+Lumi oppretter ikke en varig 1:1 analyseidentitet eller sidecar-tabell per
+feedbackrad. Intern feedback-ID kan bare brukes transient i den betrodde
+nøkkelavledningen; den kan aldri persisteres i privat staging, inngå i
+kontrakten eller vises i output, preview eller logger. Den stabile identiteten
+er produktets nøkkelbaserte `response_key`, som avledes separat per produkt.
+Eksakt algoritme, derivasjonskontekst, KMS-/keysetmodell og hvor avledningen
+kjøres må godkjennes med NADA før noen ekte dev-connection opprettes. En
+transport som ikke kan gjøre dette uten å persistere intern ID eller eksponere
+nøkkelmateriale, kan ikke brukes.
 
 ## Effective scope og lifecycle
 
@@ -82,7 +94,8 @@ Før `analytics_export_v1`, databaseeier, login, connection, IAM eller scheduler
 opprettes, må følgende være avklart og testet:
 
 1. V2-release og effective-scope-kompilering er deterministisk og fail-closed.
-2. Privat `source_row_key` har sikker migrering, livsløp og negativ loggingtest.
+2. Snapshot-lokal referanse og stabil, produktspesifikk nøkkelavledning har
+   dokumentert livsløp og negative tester for intern ID og nøkkelmateriale.
 3. NADA bekrefter region, nettvei, minste IAM, KMS/keysetmodell og privat
    datasetteierskap.
 4. Syntetisk lasttest dekker 50 team, 500 produkter og 10 ganger dagens volum.
