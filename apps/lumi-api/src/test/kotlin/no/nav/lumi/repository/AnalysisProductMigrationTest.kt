@@ -273,14 +273,24 @@ class AnalysisProductMigrationTest : FunSpec({
             }
         }
 
-        executeUpdate(
-            """
-                UPDATE analysis_control.analysis_products
-                SET last_release_number = 1, desired_release_number = 1
-                WHERE id = ?
-            """.trimIndent(),
-            second.productId,
-        ) shouldBe 1
+        TestDatabase.dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                    UPDATE analysis_control.analysis_products
+                    SET row_version = row_version + 1,
+                        last_release_number = 1,
+                        desired_release_number = 1
+                    WHERE id = ?
+                """.trimIndent(),
+            ).use { statement ->
+                statement.setObject(1, second.productId)
+                statement.executeUpdate() shouldBe 1
+            }
+            // The immediate FK accepts this product's own release. Roll back
+            // because a committed control transition additionally requires its
+            // matching semantic audit and effective generation.
+            connection.rollback()
+        }
     }
 })
 

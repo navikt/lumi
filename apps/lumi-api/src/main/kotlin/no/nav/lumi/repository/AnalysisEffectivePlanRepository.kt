@@ -64,35 +64,45 @@ class AnalysisEffectivePlanRepository {
             require(it.length <= 255) { "team must be at most 255 characters" }
         }
 
-        return dbQuery {
-            val connection = currentJdbcConnection()
-            val product = lockProduct(connection, normalizedTeam, productId)
-                ?: return@dbQuery PersistEffectivePlanResult.NotFound
-            val state = product.toControlState()
-            val plan = AnalysisEffectivePublicationPlanResolver.resolve(
-                state = state,
-                releases = readReferencedV2Releases(connection, state),
-            )
-            val planDigest = AnalysisPublicationPlanDigests.digest(state, plan)
-            val latest = findLatest(connection, normalizedTeam, productId)
-            if (latest?.planDigest == planDigest) {
-                return@dbQuery PersistEffectivePlanResult.Unchanged(latest)
-            }
+        return dbQuery { persistCurrent(currentJdbcConnection(), normalizedTeam, productId) }
+    }
 
-            val generationNumber = (latest?.generation ?: 0) + 1
-            val generation = insertGeneration(
-                connection = connection,
-                product = product,
-                generation = generationNumber,
-                planKind = plan.kind(),
-                planDigest = planDigest,
-            )
-            plan.specifications().forEach { (role, specification) ->
-                insertSpecification(connection, generation.id, role, specification)
-                insertAtoms(connection, generation.id, role, specification)
-            }
-            PersistEffectivePlanResult.Created(generation)
+    /**
+     * Transaction-bound variant used by control-state commands. The caller
+     * owns the transaction, so the product mutation, audit row and effective
+     * generation either all commit or all roll back.
+     */
+    internal fun persistCurrent(
+        connection: Connection,
+        team: String,
+        productId: UUID,
+    ): PersistEffectivePlanResult {
+        val product = lockProduct(connection, team, productId)
+            ?: return PersistEffectivePlanResult.NotFound
+        val state = product.toControlState()
+        val plan = AnalysisEffectivePublicationPlanResolver.resolve(
+            state = state,
+            releases = readReferencedV2Releases(connection, state),
+        )
+        val planDigest = AnalysisPublicationPlanDigests.digest(state, plan)
+        val latest = findLatest(connection, team, productId)
+        if (latest?.planDigest == planDigest) {
+            return PersistEffectivePlanResult.Unchanged(latest)
         }
+
+        val generationNumber = (latest?.generation ?: 0) + 1
+        val generation = insertGeneration(
+            connection = connection,
+            product = product,
+            generation = generationNumber,
+            planKind = plan.kind(),
+            planDigest = planDigest,
+        )
+        plan.specifications().forEach { (role, specification) ->
+            insertSpecification(connection, generation.id, role, specification)
+            insertAtoms(connection, generation.id, role, specification)
+        }
+        return PersistEffectivePlanResult.Created(generation)
     }
 
     private fun lockProduct(

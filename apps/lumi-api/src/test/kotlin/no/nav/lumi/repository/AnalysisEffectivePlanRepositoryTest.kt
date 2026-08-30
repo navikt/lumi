@@ -41,16 +41,15 @@ class AnalysisEffectivePlanRepositoryTest : FunSpec({
     test("persists the resolver-owned effective scope as a sealed normalized generation") {
         val fixture = insertEffectivePlanFixture()
 
-        val result = AnalysisEffectivePlanRepository().persistCurrent(fixture.team, fixture.productId)
-            as PersistEffectivePlanResult.Created
+        val result = checkNotNull(fixture.initialGeneration)
 
-        result.generation.productId shouldBe fixture.productId
-        result.generation.generation shouldBe 1
-        result.generation.controlEpoch shouldBeGreaterThan 0
-        result.generation.planKind shouldBe EffectivePlanKind.ENABLED
-        result.generation.productRowVersion shouldBe 2
+        result.productId shouldBe fixture.productId
+        result.generation shouldBe 1
+        result.controlEpoch shouldBeGreaterThan 0
+        result.planKind shouldBe EffectivePlanKind.ENABLED
+        result.productRowVersion shouldBe 2
 
-        readAtomCounts(result.generation.id) shouldBe mapOf(
+        readAtomCounts(result.id) shouldBe mapOf(
             "DEFINITION" to 1,
             "DEFINITION_FIELD" to 2,
             "DEPENDENCY" to 2,
@@ -60,16 +59,16 @@ class AnalysisEffectivePlanRepositoryTest : FunSpec({
             "OPTION" to 2,
             "SOURCE" to 1,
         )
-        readSpecificationRoles(result.generation.id) shouldBe listOf("MAINTAINED")
+        readSpecificationRoles(result.id) shouldBe listOf("MAINTAINED")
 
         val same = AnalysisEffectivePlanRepository().persistCurrent(fixture.team, fixture.productId)
             as PersistEffectivePlanResult.Unchanged
-        same.generation shouldBe result.generation
+        same.generation shouldBe result
         countGenerations(fixture.productId) shouldBe 1
     }
 
     test("serializes concurrent reconcilers to one generation") {
-        val fixture = insertEffectivePlanFixture()
+        val fixture = insertEffectivePlanFixture(activate = false)
 
         val results = coroutineScope {
             List(2) {
@@ -86,10 +85,7 @@ class AnalysisEffectivePlanRepositoryTest : FunSpec({
 
     test("persists a desired release as a separate candidate without widening the maintained target") {
         val fixture = insertEffectivePlanFixture()
-        insertDesiredRelease(fixture)
-
-        val created = AnalysisEffectivePlanRepository().persistCurrent(fixture.team, fixture.productId)
-            as PersistEffectivePlanResult.Created
+        val created = insertDesiredRelease(fixture)
 
         readSpecificationReleases(created.generation.id) shouldBe listOf(
             Triple("CANDIDATE", 2L, 2L),
@@ -99,35 +95,31 @@ class AnalysisEffectivePlanRepositoryTest : FunSpec({
 
     test("creates a new globally fenced generation when effective lifecycle semantics change") {
         val fixture = insertEffectivePlanFixture()
-        val first = AnalysisEffectivePlanRepository().persistCurrent(fixture.team, fixture.productId)
-            as PersistEffectivePlanResult.Created
+        val first = checkNotNull(fixture.initialGeneration)
         val cutoff = Instant.parse("2026-08-30T09:15:00.123456Z")
-        updateLifecycle(
+        val second = updateLifecycle(
             fixture.productId,
             lifecycle = AnalysisProductLifecycleState.PAUSED,
             dataCutoffAt = cutoff,
         )
 
-        val second = AnalysisEffectivePlanRepository().persistCurrent(fixture.team, fixture.productId)
-            as PersistEffectivePlanResult.Created
-
         second.generation.generation shouldBe 2
-        second.generation.controlEpoch shouldBeGreaterThan first.generation.controlEpoch
+        second.generation.controlEpoch shouldBeGreaterThan first.controlEpoch
         second.generation.planKind shouldBe EffectivePlanKind.PAUSED
         second.generation.dataCutoffAt shouldBe cutoff
     }
 
     test("fails closed for a referenced legacy release and never persists partial scope") {
-        val fixture = insertEffectivePlanFixture(specificationVersion = 1)
+        val fixture = insertEffectivePlanFixture(specificationVersion = 1, activate = false)
 
         shouldThrow<IllegalArgumentException> {
-            AnalysisEffectivePlanRepository().persistCurrent(fixture.team, fixture.productId)
+            activateFixtureInTransaction(fixture)
         }
         countGenerations(fixture.productId) shouldBe 0
     }
 
     test("does not reveal whether another team's product exists") {
-        val fixture = insertEffectivePlanFixture()
+        val fixture = insertEffectivePlanFixture(activate = false)
 
         AnalysisEffectivePlanRepository().persistCurrent("another-team", fixture.productId) shouldBe
             PersistEffectivePlanResult.NotFound
@@ -136,8 +128,7 @@ class AnalysisEffectivePlanRepositoryTest : FunSpec({
 
     test("database seals generations and fences them to the locked control row") {
         val fixture = insertEffectivePlanFixture()
-        val created = AnalysisEffectivePlanRepository().persistCurrent(fixture.team, fixture.productId)
-            as PersistEffectivePlanResult.Created
+        val created = checkNotNull(fixture.initialGeneration)
 
         shouldThrow<SQLException> {
             executeUpdate(
@@ -149,7 +140,7 @@ class AnalysisEffectivePlanRepositoryTest : FunSpec({
                         effective_specification_digest, effective_schema_digest, resources
                     ) VALUES (?, 'CANDIDATE', ?, ?, 1, 1, 'ACTIVE', 'DAYS_90', 'INCLUDED', ?, ?, '[]'::jsonb)
                 """.trimIndent(),
-                created.generation.id,
+                created.id,
                 fixture.team,
                 fixture.productId,
                 "a".repeat(64),
@@ -161,25 +152,25 @@ class AnalysisEffectivePlanRepositoryTest : FunSpec({
             executeUpdate(
                 "UPDATE analysis_control.analysis_effective_plan_generations SET plan_digest = ? WHERE id = ?",
                 "f".repeat(64),
-                created.generation.id,
+                created.id,
             )
         }.sqlState shouldBe "55000"
         shouldThrow<SQLException> {
             executeUpdate(
                 "DELETE FROM analysis_control.analysis_effective_plan_generations WHERE id = ?",
-                created.generation.id,
+                created.id,
             )
         }.sqlState shouldBe "55000"
         shouldThrow<SQLException> {
             executeUpdate(
                 "UPDATE analysis_control.analysis_effective_specs SET retention = 'DAYS_30' WHERE generation_id = ?",
-                created.generation.id,
+                created.id,
             )
         }.sqlState shouldBe "55000"
         shouldThrow<SQLException> {
             executeUpdate(
                 "DELETE FROM analysis_control.analysis_effective_atoms WHERE generation_id = ?",
-                created.generation.id,
+                created.id,
             )
         }.sqlState shouldBe "55000"
         shouldThrow<SQLException> {
@@ -188,41 +179,19 @@ class AnalysisEffectivePlanRepositoryTest : FunSpec({
     }
 
     test("database rejects an incomplete generation at the transaction boundary") {
-        val fixture = insertEffectivePlanFixture()
+        val fixture = insertEffectivePlanFixture(activate = false)
 
         shouldThrow<SQLException> {
-            executeUpdate(
-                """
-                    INSERT INTO analysis_control.analysis_effective_plan_generations (
-                        team, product_id, generation, product_row_version,
-                        plan_kind, lifecycle_state, active_release_number,
-                        desired_release_number, plan_digest
-                    ) VALUES (?, ?, 1, 2, 'ENABLED', 'ENABLED', 1, 1, ?)
-                """.trimIndent(),
-                fixture.team,
-                fixture.productId,
-                "a".repeat(64),
-            )
+            commitActivationWithRawGeneration(fixture, generationProductVersion = 2)
         }.sqlState shouldBe "23514"
         countGenerations(fixture.productId) shouldBe 0
     }
 
     test("database rejects a generation fenced to a stale product version") {
-        val fixture = insertEffectivePlanFixture()
+        val fixture = insertEffectivePlanFixture(activate = false)
 
         shouldThrow<SQLException> {
-            executeUpdate(
-                """
-                    INSERT INTO analysis_control.analysis_effective_plan_generations (
-                        team, product_id, generation, product_row_version,
-                        plan_kind, lifecycle_state, active_release_number,
-                        desired_release_number, plan_digest
-                    ) VALUES (?, ?, 1, 1, 'ENABLED', 'ENABLED', 1, 1, ?)
-                """.trimIndent(),
-                fixture.team,
-                fixture.productId,
-                "a".repeat(64),
-            )
+            commitActivationWithRawGeneration(fixture, generationProductVersion = 1)
         }.sqlState shouldBe "40001"
         countGenerations(fixture.productId) shouldBe 0
     }
@@ -253,9 +222,14 @@ class AnalysisEffectivePlanRepositoryTest : FunSpec({
 private data class EffectivePlanFixture(
     val team: String,
     val productId: UUID,
+    val releaseDigest: String,
+    val initialGeneration: EffectivePlanGeneration?,
 )
 
-private fun insertEffectivePlanFixture(specificationVersion: Int = 2): EffectivePlanFixture {
+private fun insertEffectivePlanFixture(
+    specificationVersion: Int = 2,
+    activate: Boolean = true,
+): EffectivePlanFixture {
     val team = "team-a"
     val productId = UUID.randomUUID()
     val draftId = UUID.randomUUID()
@@ -337,24 +311,32 @@ private fun insertEffectivePlanFixture(specificationVersion: Int = 2): Effective
             statement.executeUpdate() shouldBe 1
         }
         connection.prepareStatement(
-            """
-                UPDATE analysis_control.analysis_products
-                SET lifecycle_state = 'ENABLED',
-                    row_version = 2,
-                    last_release_number = 1,
-                    desired_release_number = 1,
-                    active_release_number = 1,
-                    updated_at = clock_timestamp()
-                WHERE id = ? AND team = ?
-            """.trimIndent(),
+            "UPDATE analysis_control.analysis_products SET last_release_number = 1 WHERE id = ? AND team = ?",
         ).use { statement ->
             statement.setObject(1, productId)
             statement.setString(2, team)
             statement.executeUpdate() shouldBe 1
         }
+        val initialGeneration = if (activate) {
+            activateFixtureControl(connection, team, productId)
+            insertFixtureAudit(
+                connection = connection,
+                fixture = EffectivePlanFixture(team, productId, specificationDigest, null),
+                productVersion = 2,
+                eventType = "RELEASE_ACTIVATED",
+                releaseNumber = 1,
+                previousState = "DRAFT",
+                nextState = "ENABLED",
+            )
+            val persisted = AnalysisEffectivePlanRepository().persistCurrent(connection, team, productId)
+                as PersistEffectivePlanResult.Created
+            persisted.generation
+        } else {
+            null
+        }
         connection.commit()
+        return EffectivePlanFixture(team, productId, specificationDigest, initialGeneration)
     }
-    return EffectivePlanFixture(team, productId)
 }
 
 private fun effectivePlanSpecification(productId: UUID, team: String): AnalysisPublicationSpecificationV2 {
@@ -425,7 +407,7 @@ private fun effectivePlanSpecification(productId: UUID, team: String): AnalysisP
     )
 }
 
-private fun insertDesiredRelease(fixture: EffectivePlanFixture) {
+private fun insertDesiredRelease(fixture: EffectivePlanFixture): PersistEffectivePlanResult.Created {
     val specification = effectivePlanSpecification(fixture.productId, fixture.team)
     val specificationJson = AnalysisContractJson.encodeToString(specification)
     val specificationDigest = AnalysisPublicationSpecificationDigests.specification(specification)
@@ -491,7 +473,21 @@ private fun insertDesiredRelease(fixture: EffectivePlanFixture) {
             statement.setString(2, fixture.team)
             statement.executeUpdate() shouldBe 1
         }
+        insertFixtureAudit(
+            connection = connection,
+            fixture = fixture,
+            productVersion = 3,
+            eventType = "RELEASE_DESIRED",
+            releaseNumber = 2,
+            subjectDigest = specificationDigest,
+        )
+        val persisted = AnalysisEffectivePlanRepository().persistCurrent(
+            connection,
+            fixture.team,
+            fixture.productId,
+        ) as PersistEffectivePlanResult.Created
         connection.commit()
+        return persisted
     }
 }
 
@@ -499,8 +495,21 @@ private fun updateLifecycle(
     productId: UUID,
     lifecycle: AnalysisProductLifecycleState,
     dataCutoffAt: Instant?,
-) {
+): PersistEffectivePlanResult.Created {
     TestDatabase.dataSource.connection.use { connection ->
+        val current = connection.prepareStatement(
+            "SELECT team, row_version, lifecycle_state FROM analysis_control.analysis_products WHERE id = ?",
+        ).use { statement ->
+            statement.setObject(1, productId)
+            statement.executeQuery().use { result ->
+                check(result.next())
+                Triple(
+                    result.getString("team"),
+                    result.getLong("row_version"),
+                    AnalysisProductLifecycleState.valueOf(result.getString("lifecycle_state")),
+                )
+            }
+        }
         connection.prepareStatement(
             """
                 UPDATE analysis_control.analysis_products
@@ -513,7 +522,129 @@ private fun updateLifecycle(
             statement.setObject(3, productId)
             statement.executeUpdate() shouldBe 1
         }
+        val fixture = EffectivePlanFixture(current.first, productId, releaseDigest = "", initialGeneration = null)
+        insertFixtureAudit(
+            connection = connection,
+            fixture = fixture,
+            productVersion = current.second + 1,
+            eventType = "LIFECYCLE_CHANGED",
+            previousState = current.third.name,
+            nextState = lifecycle.name,
+        )
+        val persisted = AnalysisEffectivePlanRepository().persistCurrent(connection, current.first, productId)
+            as PersistEffectivePlanResult.Created
         connection.commit()
+        return persisted
+    }
+}
+
+private fun activateFixtureInTransaction(fixture: EffectivePlanFixture) {
+    TestDatabase.dataSource.connection.use { connection ->
+        try {
+            activateFixtureControl(connection, fixture.team, fixture.productId)
+            insertFixtureAudit(
+                connection = connection,
+                fixture = fixture,
+                productVersion = 2,
+                eventType = "RELEASE_ACTIVATED",
+                releaseNumber = 1,
+                previousState = "DRAFT",
+                nextState = "ENABLED",
+            )
+            AnalysisEffectivePlanRepository().persistCurrent(connection, fixture.team, fixture.productId)
+            connection.commit()
+        } catch (error: Exception) {
+            connection.rollback()
+            throw error
+        }
+    }
+}
+
+private fun commitActivationWithRawGeneration(
+    fixture: EffectivePlanFixture,
+    generationProductVersion: Long,
+) {
+    TestDatabase.dataSource.connection.use { connection ->
+        try {
+            activateFixtureControl(connection, fixture.team, fixture.productId)
+            insertFixtureAudit(
+                connection = connection,
+                fixture = fixture,
+                productVersion = 2,
+                eventType = "RELEASE_ACTIVATED",
+                releaseNumber = 1,
+                previousState = "DRAFT",
+                nextState = "ENABLED",
+            )
+            connection.prepareStatement(
+                """
+                    INSERT INTO analysis_control.analysis_effective_plan_generations (
+                        team, product_id, generation, product_row_version,
+                        plan_kind, lifecycle_state, active_release_number,
+                        desired_release_number, plan_digest
+                    ) VALUES (?, ?, 1, ?, 'ENABLED', 'ENABLED', 1, 1, ?)
+                """.trimIndent(),
+            ).use { statement ->
+                statement.setString(1, fixture.team)
+                statement.setObject(2, fixture.productId)
+                statement.setLong(3, generationProductVersion)
+                statement.setString(4, "a".repeat(64))
+                statement.executeUpdate() shouldBe 1
+            }
+            connection.commit()
+        } catch (error: SQLException) {
+            connection.rollback()
+            throw error
+        }
+    }
+}
+
+private fun activateFixtureControl(connection: java.sql.Connection, team: String, productId: UUID) {
+    connection.prepareStatement(
+        """
+            UPDATE analysis_control.analysis_products
+            SET lifecycle_state = 'ENABLED',
+                row_version = 2,
+                desired_release_number = 1,
+                active_release_number = 1,
+                updated_at = clock_timestamp()
+            WHERE id = ? AND team = ?
+        """.trimIndent(),
+    ).use { statement ->
+        statement.setObject(1, productId)
+        statement.setString(2, team)
+        statement.executeUpdate() shouldBe 1
+    }
+}
+
+private fun insertFixtureAudit(
+    connection: java.sql.Connection,
+    fixture: EffectivePlanFixture,
+    productVersion: Long,
+    eventType: String,
+    releaseNumber: Long? = null,
+    subjectDigest: String = fixture.releaseDigest,
+    previousState: String? = null,
+    nextState: String? = null,
+) {
+    connection.prepareStatement(
+        """
+            INSERT INTO analysis_control.analysis_product_audit_events (
+                id, team, product_id, event_number, event_type, actor_id,
+                product_version, release_number, subject_digest, previous_state, next_state
+            ) VALUES (gen_random_uuid(), ?, ?, ?, ?, 'A123456', ?, ?, ?, ?, ?)
+        """.trimIndent(),
+    ).use { statement ->
+        statement.setString(1, fixture.team)
+        statement.setObject(2, fixture.productId)
+        statement.setLong(3, productVersion)
+        statement.setString(4, eventType)
+        statement.setLong(5, productVersion)
+        statement.setObject(6, releaseNumber)
+        statement.setString(7, subjectDigest.takeIf { releaseNumber != null })
+        statement.setString(8, previousState)
+        statement.setString(9, nextState)
+        statement.executeUpdate() shouldBe 1
     }
 }
 
