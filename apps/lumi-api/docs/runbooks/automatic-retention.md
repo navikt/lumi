@@ -80,9 +80,11 @@ and whether one instance can acquire a database connection and the retention loc
 
 - `lumi_retention_runs_total{outcome}` counts executed, skipped, and failed runs.
 - `lumi_retention_deleted_feedback_total` counts deleted response rows.
-- `lumi_retention_last_success_timestamp_seconds` records the latest successful
-  run. The stale alert evaluates 36 hours of gauge history so pod restarts do
-  not erase the signal, and separately detects a missing metric series.
+- `lumi_retention_last_success_timestamp_seconds` records the latest committed
+  successful run. After a restart, each instance restores this timestamp from
+  `feedback_retention_job_state` on its first interval check. The stale alert
+  also evaluates 36 hours of gauge history and separately detects a missing
+  metric series.
 - `lumi_retention_enabled` is `1` when deletion is enabled for an instance and
   `0` when it is disabled. The stale alert is inactive while all instances are
   disabled.
