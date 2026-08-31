@@ -303,6 +303,24 @@ synlig på tvers av team i Datamarkedsplassen, fordi discovery er dens formål.
 Operasjonell metadata, preview-statistikk og ikke-publiserte navn er aldri del
 av dette unntaket.
 
+Offentlig plattformdokumentasjon låser tre ytterligere V1-grenser:
+
+- Hvert analyseprodukt får ett separat offentlig BigQuery-datasett. Tilgang
+  til én ressurs gir metadata-innsyn i resten av datasettet, så ulike produkter
+  eller team kan ikke dele datasett.
+- Produktdatasettene eies ikke av `spec.gcp.bigQueryDatasets` i Lumis
+  NAIS-manifest. Dagens dokumenterte NADA-tilgangsflyt kan ikke gjenbruke slike
+  datasett fordi NAIS overskriver senere tilgangsendringer.
+- Metabase-tilgjengelighet er en egen, svakere plattformstatus: grupper
+  synkroniseres ikke fra Datamarkedsplassen, og schemaendringer krever en
+  eksplisitt sync. Lumi kan derfor aldri utlede Metabase-tilgang fra et aktivt
+  datasnapshot.
+
+Offentlig dokumentasjon lukker ikke minste-IAM, servicekonto-only prosjekt,
+cross-dataset binding, programmatisk Marketplace-livsløp eller offboarding.
+Gate B forblir stengt til NADA har besvart den versjonerte
+[plattformvalideringen og avklaringspakken](../analyseprodukter/plattformvalidering-v1.md).
+
 Kravene og evidensen som må foreligge før dev, shadow og produksjon er
 spesifisert i
 [trussel- og verifikasjonsmodellen](../analyseprodukter/trusselmodell-v1.md).
@@ -392,6 +410,7 @@ ADR 0005 sine kapasitets- og recoverygrenser gjelder også for analyseeksporten.
 - [NADA: Metabase](https://docs.knada.io/analyse/metabase/)
 - [NADA: datafortellinger](https://docs.knada.io/analyse/datafortellinger/)
 - [NAIS: BigQuery](https://doc.nais.io/persistence/bigquery/)
+- [Plattformvalidering V1](../analyseprodukter/plattformvalidering-v1.md)
 - [Google Cloud: BigQuery authorized views](https://docs.cloud.google.com/bigquery/docs/authorized-views)
 - [Google Cloud: administrere BigQuery-views](https://docs.cloud.google.com/bigquery/docs/managing-views)
 - [Google Cloud: BigQuery quotas and limits](https://docs.cloud.google.com/bigquery/quotas)
