@@ -2,7 +2,8 @@
 
 Dette dokumentet beskriver den planlagte, transportuavhengige grensen mellom
 Lumi Postgres og privat analyse-staging. Grensen er ikke deployet, har ingen
-databasebruker eller grants og inneholder ingen produksjonskobling.
+ny eksportbruker eller eksportgrants og inneholder ingen kobling til dev eller
+produksjon.
 
 ## Formål
 
@@ -157,29 +158,18 @@ eller produksjonskobling. Følgende porter står fortsatt åpne:
 
 ## PostgreSQL-spike 30. august 2026
 
-En ny, isolert prototype kjørte alle produksjonsmigreringer til og med V26 i
-PostgreSQL 17.11 og brukte den faktiske `feedback`-tabellen. Foreslåtte
-effective-generation-, source-, field- og dimension-rader lå i et separat
-scratch-schema. Det ble ikke opprettet databasebruker, grant, skyressurs eller
-kobling til dev eller produksjon.
+En isolert prototype kjørte alle produksjonsmigreringer til og med V26 og den
+repeatable grant-migreringen i PostgreSQL 17.11. Den brukte den faktiske
+`feedback`-tabellen; foreslåtte effective-generation-, source-, field- og
+dimension-rader lå i et separat scratch-schema. V9 og repeatable-migreringen
+opprettet den eksisterende legacy-rollen `esyfo-analyse` og dens brede
+`SELECT`-grants inne i den disponible containeren. Spiken opprettet ingen ny
+eksportrolle eller eksportgrants og ingen skyressurs eller kobling til dev
+eller produksjon.
 
-Prototypen testet én read-only statement i `REPEATABLE READ`. Queryformen som
-holdt best, gjorde to eksplisitte sekvensielle passeringer over `feedback`, én
-loop hver:
-
-1. materialiser bare kandidat-lokal referanse, transient intern ID og
-   nødvendige skalarer for kvalifiserte innsendinger
-2. materialiser bare flate, strukturerte svaratomer; rå `feedback_json` brukes
-   under skannet, men lagres ikke i mellomresultatet
-3. filtrer svaratomer, dimensjoner og memberships mot de dedupliserte
-   effective allowlist-radene
-
-Intern ID brukes bare til join innen samme statement og finnes ikke i den
-logiske outputen. Planassertene krevde to `Seq Scan`-noder med `Actual Loops=1`
-og forventet kilderadtall. Produkt- og membership-overlapp oppretter dermed
-ikke flere kildepasseringer.
-
-Fire andre former ble forkastet:
+Fem queryformer ble undersøkt, og **alle er forkastet**. For de fire første
+ble verken harness eller rå output arkivert; tall og planbeskrivelser nedenfor
+er derfor uarkiverte lokale observasjoner, ikke reproduserbar evidens:
 
 - materialisering av hele `feedback_json` var rask lokalt, men skrev omtrent
   154 MiB og leste 331 MiB PostgreSQL-temp ved representativ 10x
@@ -189,27 +179,49 @@ Fire andre former ble forkastet:
   `feedback_pkey`-oppslag og over 1,1 millioner buffer hits ved 10x
 - policy-drevet svarskann reduserte bufferarbeidet, men gjorde 250
   bitmap-passeringer og ga en mindre forutsigbar plan
+- to eksplisitte sekvensielle passeringer materialiserte intern feedback-ID i
+  `eligible_submission` og `feedback_answer` og brukte den som generell
+  join-nøkkel. Det bryter identitetsinvarianten: intern ID kan bare være input
+  til betrodd, produktspesifikk nøkkelavledning, ikke en materialisert privat
+  mellomidentitet. At ID-en ikke fantes i sluttoutputen gjør ikke formen
+  kontraktsriktig.
 
-Den valgte formen passerte både en interaktiv kjøring og en samlet
-verifikasjonskjøring:
+Den siste, nå forkastede formen ga følgende lokale observasjoner. Første
+tidsverdi i hver rad er en uarkivert interaktiv observasjon; den andre finnes i
+det saniterte konsollsammendraget. De er enkeltmålinger, ikke et statistisk
+intervall:
 
-| Scenario | Kilderader | Memberships | Logiske flatrader | Feedback-plan | Lokal querytid | Temp lest/skrevet |
+| Scenario | Kilderader | Memberships | Logiske flatrader | Observert feedback-plan | Interaktiv / arkivert querytid | Temp lest/skrevet i arkivert kjøring |
 | --- | ---: | ---: | ---: | --- | ---: | ---: |
-| 1x, overlapp 2 | 27 571 | 55 142 | 139 856 | 2 × sekvensiell, 1 loop | 100,0–116,2 ms | 0 / 0 MiB |
-| 10x, overlapp 2 | 275 710 | 551 420 | 1 380 551 | 2 × sekvensiell, 1 loop | 1 047,1–1 063,6 ms | 144,5 / 121,2 MiB |
-| 10x, overlapp 10 | 275 710 | 2 757 100 | 3 586 231 | 2 × sekvensiell, 1 loop | 1 737,8–1 745,0 ms | 245,8 / 222,5 MiB |
+| 1x, overlapp 2 | 27 571 | 55 142 | 139 856 | 2 × `Seq Scan`, 1 loop | 100,0 / 116,2 ms | 0 / 0 MiB |
+| 10x, overlapp 2 | 275 710 | 551 420 | 1 380 551 | 2 × `Seq Scan`, 1 loop | 1 047,1 / 1 063,6 ms | 144,5 / 121,2 MiB |
+| 10x, overlapp 10 | 275 710 | 2 757 100 | 3 586 231 | 2 × `Seq Scan`, 1 loop | 1 737,8 / 1 745,0 ms | 245,8 / 222,5 MiB |
 
 Ved 1x var `feedback` 23,0 MiB inkludert indekser; ved 10x var den 181,4 MiB.
 Tempbruken kommer fra kompakte materialiserte submissions, svaratomer og den
 større membership-mengden. Den skal ikke skjules ved å øke `work_mem`; faktisk
 Cloud SQL-plan og temp-I/O må måles med realistisk konfigurasjon.
 
+I de to observerte lokale planene hadde begge feedback-nodene
+`Actual Loops=1`. Dette er en observasjon for akkurat fixture, statistikk og
+miljø, ikke en PostgreSQL-garanti. En senere kandidat må stoppe dersom den
+faktiske dev-planen bryter avtalte grenser. Cachetilstand, Docker CPU-grenser,
+`work_mem`, I/O-timing og full rå plan-JSON ble ikke bevart, så tidene kan ikke
+brukes som et robust ytelsesestimat.
+
 Samtidighetstesten etablerte et read-only snapshot ved control epoch 1 med to
 lesbare innsendinger. En annen transaksjon slettet én rad, satte inn to og
 committet offboarding ved epoch 2. Den etablerte leseren så fortsatt epoch 1 og
 to konsistente innsendinger; en ny leser så epoch 2 og null lesbare
-innsendinger, mens rå kilderadtall hadde gått fra to til tre. Det lukker den
-lokale databasefixturen for samtidige inserts, deletes og scopeendringer.
+innsendinger, mens rå kilderadtall hadde gått fra to til tre. Det observerer
+forventet `REPEATABLE READ`-isolasjon i fixturen, men lukker ikke databaseporten
+fordi selve queryformen er forkastet.
+
+Den eksakte siste harness-koden og et sanitert konsollsammendrag er bevart i
+[`evidence/postgresql-snapshot-spike-2026-08-30/`](evidence/postgresql-snapshot-spike-2026-08-30/README.md).
+Harnesset tolket full plan-JSON i minnet, men lagret den ikke. Opprinnelig plan
+kan derfor ikke etterprøves byte-for-byte; en ny kandidat må committe både
+reproduksjonsoppskrift og rå planoutput før resultatet kan lukke en port.
 
 Spiken må ikke tolkes som kapasitets- eller transportgodkjenning:
 
@@ -218,18 +230,23 @@ Spiken må ikke tolkes som kapasitets- eller transportgodkjenning:
 - hver syntetiske innsending hadde ett strukturert svaratom; realistisk
   felt-, option- og flow-ekspansjon må inngå i dev-målingen
 - scratch-tabellene representerte den logiske effective-kontrakten, ikke en
-  ferdig `analytics_export_v1`-funksjon eller minste-privilegium-rolle
+  ferdig versjonert databaseflate eller minste-privilegium-rolle
 - lokal buffer- og tidsmåling sier ingenting om Cloud SQL CPU, I/O,
   forbindelser, samtidige produksjonslaster eller BigQuery-kostnad
 - BigQuery-staging, atomisk pointerbytte, replay, cleanup og observability ble
   ikke testet
 
-Resultatet godkjenner derfor bare neste trinn: en fullbredde dev-shadow med
-samme flate kontrakt, realistisk svarmultiplikasjon og eksplisitte stoppgrenser.
-Det velger ikke federering fremfor en sentral NAIS Job og gir ingen
+Resultatet godkjenner ingen dev-shadow. Neste databasearbeid er en ny,
+reproduserbar og fortsatt isolert queryspike som ikke materialiserer intern ID
+utenfor den betrodde nøkkelavledningen, og som måler full radbredde og
+realistisk svarmultiplikasjon. Først når identitetsporten er lukket og Gate B i
+trusselmodellen er oppfylt, kan en ekte dev-connection vurderes. Spiken velger
+heller ikke federering fremfor en sentral NAIS Job og gir ingen
 produksjonsgodkjenning.
 
-Den fremtidige databaseflaten skal ligge i eget låst schema, eies av en
-dedikert `NOLOGIN`-rolle og gi leseren bare `CONNECT`, schema `USAGE` og
-`EXECUTE` på én versjonert funksjon. Ingen tabell-`SELECT` eller menneskelig
-lesetilgang tillates.
+Den fremtidige databaseflaten er fortsatt et åpent Gate B-valg. Den skal ligge
+i et låst schema uten tabelltilgang til `public.*`, men vi har ikke besluttet
+om minste flate er én versjonert funksjon med `EXECUTE` eller eksakte,
+versjonerte views med `SELECT`. Valget må avstemmes med NADA-/connectionmodellen
+og trusselmodellens privilegiumsmatrise før databaseeier, login eller grants
+opprettes. Ingen default grants eller menneskelig lesetilgang tillates.
