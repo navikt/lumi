@@ -44,6 +44,7 @@ dev-connection opprettes.
 | P08 | Datamarkedsplassen forvalter tilgang per tabell/view. For personopplysninger kreves relevant behandling i Behandlingskatalogen. | Lumi publiserer ingen menneskegrant. Produkteier må oppgi gyldig behandlingsreferanse der det kreves, og Datamarkedsplassen forblir godkjenningsport. | Bekreftet ansvar |
 | P09 | Metabase synkroniserer ikke gruppetilganger fra Datamarkedsplassen, bortsett fra `all-users@nav.no`. Tilgangsbegrensede datasett krever individuell tilgang. Schemaendringer krever sync, og ny skann skjer ellers daglig. | Lumi viser separat Metabase-status og kan ikke love at en gruppe eller ny kolonne er tilgjengelig. Piloten må verifisere individuelle iSyfo-brukere og eksplisitt schema-sync/re-scan. | Bekreftet begrensning |
 | P10 | Datafortellinger kan registreres og oppdateres programmatisk med team-token. Denne API-en publiserer selve fortellingen, ikke analyseproduktet eller BigQuery-tilgangen. | Datafortelling er en konsument av samme V1-kontrakt, ikke en egen eksport- eller IAM-modell i Lumi. | Bekreftet avgrensning |
+| P11 | NADA beskriver Soda v4 Data Contracts kjørt som NAIS Job, med Slack-varsler og tilgjengelige kontrollresultater. Dokumentasjonen beskriver ikke hvordan dette kobles til Lumis produktstatus, eierfornyelse eller operatørvarsling. | Soda kan være en ekstra kvalitetskontroll, men erstatter ikke Lumis fail-closed publiseringskontroller eller autoritative run-status. Kanal, mottaker, statusintegrasjon og ansvar må avklares før shadow. | Delvis bekreftet; ansvar åpent |
 
 ## Bindingsalternativer som skal spikes
 
@@ -89,6 +90,10 @@ mekanisme. Et muntlig «det går nok» lukker ikke en gate.
    dataprodukt, og hvordan håndteres schema-sync/re-scan i Metabase?
 10. Hvilke behandlings-/PVK-krav og metadatafelt må være oppfylt før første
     tilgang kan godkjennes?
+11. Er Soda v4 Data Contracts den støttede kvalitetsintegrasjonen for denne
+    modellen, og hvordan skal resultater og feil inngå i autoritativ
+    produktstatus? Hvilke kanaler og ansvarlige mottakere støttes for
+    operasjonelle avvik og varsler om eierfornyelse?
 
 ## Beslutningsport etter svar
 
@@ -98,6 +103,7 @@ Gate B kan bare åpnes når alle punktene under er dokumentert:
 - faktisk IAM-matrise uten udokumentert arv
 - region, privat nettvei og credential-eierskap
 - støttet provisioning- og offboardingmekanisme
+- støttet kvalitets-/statusintegrasjon og varsling med tydelig eierskap
 - syntetisk dev-plan for team A/B, forbudt-data-canary og feilinjeksjon
 
 Hvis NADA ikke tilbyr en sikker cross-dataset-binder, velges fysisk
@@ -112,10 +118,10 @@ godkjenningsmotor som omgår plattformen.
 - [NADA: tilgangsstyring](https://docs.knada.io/dataprodukter/tilgangsstyring/)
 - [NADA: Metabase](https://docs.knada.io/analyse/metabase/)
 - [NADA: datafortellinger](https://docs.knada.io/analyse/datafortellinger/)
+- [NADA: kvalitetssikring med Soda og Data Contracts](https://docs.knada.io/dataprodukter/kvalitetssikring/)
 - [NAIS: BigQuery-datasett](https://doc.nais.io/persistence/bigquery/)
 - [Google Cloud: federated queries](https://docs.cloud.google.com/bigquery/docs/federated-queries-intro)
 - [Google Cloud: koble BigQuery til Cloud SQL](https://docs.cloud.google.com/bigquery/docs/connect-to-sql)
 - [Google Cloud: scheduled queries](https://docs.cloud.google.com/bigquery/docs/scheduling-queries)
 - [Google Cloud: authorized views](https://docs.cloud.google.com/bigquery/docs/authorized-views)
 - [Google Cloud: authorized datasets](https://docs.cloud.google.com/bigquery/docs/authorized-datasets)
-

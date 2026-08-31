@@ -293,8 +293,9 @@ ikke gjette. Gate B og D krever fortsatt svar på:
 - krav til Behandlingskatalog/PVK og hvordan Metabase-grupper håndteres
 - støttet varsling for eierfornyelse og operasjonelle avvik
 
-Et ubesvart punkt kan gi en begrenset lokal/dev-spike når dataene er
-syntetiske, men kan ikke passere den relevante shadow- eller produksjonsgaten.
+Et ubesvart punkt kan bare gi en begrenset lokal/offline spike med syntetiske
+data og uten databasebruker, connection, IAM eller scheduler. Det kan ikke
+passere Gate B eller senere gater.
 
 ## Residualrisiko og revurdering
 
