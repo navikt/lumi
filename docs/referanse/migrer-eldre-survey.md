@@ -5,9 +5,22 @@ search: false
 
 # Migrer en eldre survey
 
-Eldre surveyer fortsetter å virke i `@navikt/lumi-survey` 2.x. Du trenger ikke migrere bare for å oppgradere pakken. Når du først endrer en survey, anbefaler vi å flytte den til `SurveyDocumentV1` slik at nye og eksisterende surveyer bruker samme modell.
+Eldre surveyer fortsetter å virke i `@navikt/lumi-survey` 2.x. Når et team
+tar i bruk den nye løsningen, skal det likevel bruke 2.2.0 eller nyere og flytte
+surveyene som skal beholdes til `SurveyDocumentV1`. Surveyer som skal stoppes,
+skal skrus av i stedet for å bli migrert bare for å standardisere kode.
 
-`SurveyDocumentV1` krever versjon 2.0.0 eller nyere.
+En oppgradering fra 0.x påvirker alle Lumi-widgeter som deler pakkeversjon i
+appen: 1.0.0 og nyere sender `schemaVersion: 2` med definisjon og
+dedupliseringsnøkkel. Kartlegg derfor alle eksisterende surveys i appen før
+pakkeoppgraderingen merges, også dersom bare én av dem skal være første canary.
+
+## Ansvarsgrense
+
+Lumi-teamet gjør pakken, API-et, dev-proxyen, dashboardet og veiledningen klar.
+Konsumentteamet eier endringene i sitt eget repository, valg av aktive surveys,
+dev-deploy, canary og produksjonssetting. Lumi-teamet skal ikke endre eller
+sende prober gjennom en annen app på teamets vegne.
 
 ## Dette er den nye modellen
 
@@ -116,11 +129,18 @@ Velg en ny `surveyId` når migreringen også endrer det dere måler. Se [Survey-
 
 ## Sjekk etter migrering
 
+- Bekreft eier og om hver eksisterende survey skal beholdes, stoppes eller
+  fortsatt avklares.
+- Oppgrader til `@navikt/lumi-survey@^2.2.0` og behold én pakkeversjon i appen.
 - Gå gjennom alle synlige veier i surveyen.
 - Sjekk at oppfølginger ikke vises før spørsmålet de avhenger av er besvart.
 - Sjekk fremdrift, tilbakeknapp og `onStepChange` hvis appen bruker dem.
 - Sammenlign innsendingsdataene før og etter når du beholder samme `surveyId`.
 - Prøv surveyen med tastatur og på liten skjerm.
+- Deploy først til dev uten auto-merge. En app i `trygdeetaten.no` skal bruke
+  `lumi-submission-proxy` i dev og kalle `lumi-api` direkte i produksjon.
+- Send en syntetisk startprobe, kontroller eksakt receipt i Lumi-dashboardet,
+  vent minst 15 minutter og gjenta før produksjonssetting.
 
 ## Støtte i 2.x
 

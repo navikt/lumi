@@ -6,6 +6,11 @@ This project follows SemVer.
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-08-31
+
+Version 2.1.1 was prepared in the repository but never published. Its changes
+are included in 2.2.0 together with the later additions since 2.1.0.
+
 ### Added
 
 - Schema V2 submissions now include a versioned, canonical `visibleIf` flow
@@ -41,11 +46,6 @@ This project follows SemVer.
   visually hidden legend copy no longer duplicates an external prompt
   heading. Screen readers previously announced the question up to three
   times per rating group.
-
-## [2.1.1] - 2026-08-22
-
-### Fixed
-
 - The published stylesheet now contains only `lumi-`-namespaced selectors.
   Unused CSS Module output previously leaked generic selectors such as
   `.container`, `.header`, `.panel` and `.active` into consumer applications.

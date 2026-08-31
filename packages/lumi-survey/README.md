@@ -17,7 +17,7 @@ Pakken publiseres til GitHub Packages. Legg dette i prosjektets `.npmrc`:
 Installer pakken og Aksel 8 eller nyere:
 
 ```sh
-pnpm add @navikt/lumi-survey @navikt/ds-react @navikt/ds-css
+pnpm add @navikt/lumi-survey@^2.2.0 @navikt/ds-react @navikt/ds-css
 ```
 
 Importer stilarkene i denne rekkefølgen:
@@ -131,3 +131,8 @@ interagert med widgeten.
 ## Eldre surveyer
 
 Flat `LumiSurveyConfig`, eldre presets, eldre builder-funksjoner og `logic` fortsetter å virke i 2.x. Ikke bruk dem i nye surveyer. Funksjonene som ender på `SurveyDocument` er de anbefalte, sidebaserte malene. Se [migreringsguiden](https://navikt.github.io/lumi/referanse/migrer-eldre-survey) når du skal endre en eksisterende survey.
+
+Ved oppgradering fra 0.x må konsumentteamet kartlegge alle Lumi-surveys som
+deler pakkeversjon i appen. 1.0.0 og nyere sender schema v2 for alle widgets,
+og surveys som skal beholdes bør migreres til `SurveyDocumentV1` før teamet
+setter endringen i produksjon.

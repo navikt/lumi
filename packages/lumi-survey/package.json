@@ -1,6 +1,6 @@
 {
   "name": "@navikt/lumi-survey",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "private": false,
   "description": "Aksel-based React widget for configurable NAV Lumi surveys.",
   "type": "module",
