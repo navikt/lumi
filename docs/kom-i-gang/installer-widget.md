@@ -17,20 +17,21 @@ Denne siden viser deg hvordan du installerer `@navikt/lumi-survey` og får widge
 ## 2. Installer pakken
 
 ```sh
-pnpm add @navikt/lumi-survey @navikt/ds-react @navikt/ds-css
-# eller: npm install @navikt/lumi-survey @navikt/ds-react @navikt/ds-css
-# eller: yarn add @navikt/lumi-survey @navikt/ds-react @navikt/ds-css
+pnpm add @navikt/lumi-survey@^2.2.0 @navikt/ds-react @navikt/ds-css
+# eller: npm install @navikt/lumi-survey@^2.2.0 @navikt/ds-react @navikt/ds-css
+# eller: yarn add @navikt/lumi-survey@^2.2.0 @navikt/ds-react @navikt/ds-css
 ```
 
-Guidene bruker `SurveyDocumentV1`, som krever `@navikt/lumi-survey` 2.0.0 eller nyere.
+Guidene bruker `SurveyDocumentV1`. Formatet finnes fra 2.0.0, mens 2.2.0 er
+den verifiserte grunnversjonen for nye integrasjoner og migreringer.
 
 ::: info Peer dependencies
 `@navikt/lumi-survey` krever Aksel v8 (`@navikt/ds-react` og `@navikt/ds-css` versjon 8 eller nyere) som peer dependencies. Har du disse fra før, trenger du bare:
 
 ```sh
-pnpm add @navikt/lumi-survey
-# eller: npm install @navikt/lumi-survey
-# eller: yarn add @navikt/lumi-survey
+pnpm add @navikt/lumi-survey@^2.2.0
+# eller: npm install @navikt/lumi-survey@^2.2.0
+# eller: yarn add @navikt/lumi-survey@^2.2.0
 ```
 :::
 

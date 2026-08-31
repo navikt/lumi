@@ -4,22 +4,45 @@ Denne runbooken skiller teknisk release-readiness fra beslutningen om hvilke
 surveys som faktisk skal være aktive. Migrering eller reaktivering skal ikke
 brukes som en måte å ta produktbeslutningen på.
 
+Den skiller også Lumi-teamets leveranse fra konsumentteamets utrulling. Lumi
+endrer, deployer eller sender ikke prober gjennom andre teams apper. Når
+plattformgatene nedenfor er grønne, er Lumi klar for konsumentmigrering; hvert
+konsumentteam eier deretter sin kodeendring, dev-canary og produksjonssetting.
+
 ## Nå-status
 
 | Område | Status | Bevis |
 | --- | --- | --- |
 | Historiske surveys i dashboardet | Klar | Automatisk periode velges fra surveyens faktiske datointervall; eksplisitt valgt periode beholdes |
-| Pakket `@navikt/lumi-survey` | Automatisert | `pnpm run verify:lumi-survey-consumer` installerer tarballen i en ren konsument og kjører typecheck + Vite-build |
+| Pakket `@navikt/lumi-survey` | Klar for 2.2.0-release | `pnpm run verify:lumi-survey-consumer` installerer tarballen i en ren konsument og kjører typecheck + Vite-build |
 | Widget → proxy → API → Postgres → dashboard | Automatisert | `pnpm run test:full-chain` kjører alle elleve stabile survey- og feltvarianter mot en isolert Compose-stack, inkludert legacy v1 → kompatibel widget-v2 på samme survey-ID, og CI laster opp én aggregert terminalrapport med receipt per innsending |
 | Ekte Azure OBO i dev | Selvbetjent | `/release-verification` kjører team-preflight, startprobe, 15 minutters hold og sluttprobe med eksakt receipt-readback |
 | Innsendingshelse | Instrumentert | `lumi_submissions_total` skiller kanal og utfall; prod varsler på serverfeil og rejection-spike |
-| Hvilke eksisterende surveys som skal fortsette | Avventer | Må avklares før migrering; surveys som skal stoppes migreres ikke |
-| Ekte trygdeetaten-proxy fra konsument i dev | Avventer canary | Verifiseres i første avklarte interne konsument før bredere migrering |
+| Hvilke eksisterende surveys som skal fortsette | Konsumenteid | Må avklares av data- og produkteier før migrering; surveys som skal stoppes migreres ikke |
+| Ekte trygdeetaten-proxy fra konsument i dev | Klar for konsumentverifikasjon | Proxyen og onboardingoppskriften leveres av Lumi; hver konsument verifiserer sin egen deployede OBO-flyt |
 
 Det skal ikke settes auto-merge på canary- eller migrerings-PR-er. Legacy-data
 beholdes og skal fortsatt være lesbare selv om en survey skrus av.
 
-## Det som kan gjøres før surveylisten er avklart
+## Ansvar ved handoff
+
+Lumi-teamet eier:
+
+- publisering og verifikasjon av `@navikt/lumi-survey`
+- Lumi API, `lumi-submission-proxy`, dashboard og inbound allowlisting
+- kontraktsmatrise, lokal fullkjede, release-verifikasjon og driftsalarmer
+- dokumentasjon av migreringsrekkefølge og stoppkriterier
+
+Konsumentteamet eier:
+
+- beslutningen om hvilke surveys som skal beholdes eller stoppes
+- oppgradering til `@navikt/lumi-survey@^2.2.0` og bruk av
+  `SurveyDocumentV1` for surveys som migreres
+- kode, outbound-policy, dev- og produksjonsdeploy i egen app
+- syntetiske canary-svar og kontroll av egne receipts i dashboardet
+- rollback dersom stoppkriteriene slår inn
+
+## Lumi-side release-verifikasjon
 
 1. Hold fullkjedetesten, pakkekonsumenttesten, lint, typecheck og tester grønne.
 2. Deploy Lumi-endringene til dev etter ordinær review.
@@ -30,13 +53,14 @@ beholdes og skal fortsatt være lesbare selv om en survey skrus av.
 5. Del rapportlenken eller last ned JSON-beviset. For den kontrollerte kjeden
    skal `outcome` og `coverage.controlledRoundTrip` være `passed`. CI-profilen
    krever i tillegg `coverage.legacyCompatibility: passed`.
-6. Review canary-PR-en uten å merge den.
+6. Lagre rapportlenken eller JSON-beviset sammen med release-evidensen.
 
 Dette gir release-evidens uten å aktivere, migrere eller sende data fra en ekte
 survey. Rapporten er bevisst avgrenset: `globalAzureHealth` er
 `not-assessed`, `trygdeetatenProxy` er `not-tested`, og `navWideRelease`
-forblir `pending`. Den kan derfor ikke alene brukes som godkjenning av en
-NAV-wide utrulling.
+forblir `pending`. Feltene beskriver det rapporten selv har observert; de betyr
+ikke at Lumi-teamet skal kjøre en annen apps canary. Konsumentens egen canary
+er fortsatt gate for den appens produksjonssetting.
 
 ### Hva rapporten faktisk beviser
 
@@ -82,7 +106,7 @@ ikke del av widgetens støttede kontraktsmatrise. Hvis dato skal bli en offentli
 widgetfunksjon, må renderer, authoring, transport og fullkjedescenario legges til
 samlet.
 
-## Beslutningstabell for neste uke
+## Beslutningstabell før konsumentmigrering
 
 Lag én rad per eksisterende survey før kode endres:
 
@@ -97,12 +121,16 @@ Regler:
 - `behold` + uendret måling: samme survey-ID kan beholdes
 - `behold` + endret spørsmål, alternativer eller betydning: ny survey-ID
 
-## Kontrollert migreringsrekkefølge
+## Konsumenteid migreringsrekkefølge
 
-1. Velg én avklart survey med tydelig eier og en fungerende dev-flate.
+Konsumentteamet gjennomfører denne rekkefølgen i eget repository og miljø:
+
+1. Kartlegg alle Lumi-surveys i appen, og velg én avklart survey med tydelig
+   eier og en fungerende dev-flate.
 2. Sammenlign gammel og ny definisjon: felt-ID, felttype, ratingvariant,
    option-ID og betydning.
-3. Deploy til dev uten auto-merge.
+3. Oppgrader til `@navikt/lumi-survey@^2.2.0`, migrer surveyen til
+   `SurveyDocumentV1` og deploy til dev uten auto-merge.
 4. Send ett gjenkjennelig testsvar gjennom den faktiske konsumenten. For en
    trygdeetaten-app skal dette gå gjennom `lumi-submission-proxy`.
 5. Finn receipt/svaret i dashboardet med automatisk periode og kontroller team,
@@ -113,9 +141,22 @@ Regler:
 7. Merge én liten produksjonsbatch, observer, og utvid først etter grønn holdetid.
 
 Lumi sin `/release-verification` kan ikke bevise en annen apps deployede
-trygdeetaten-proxy. Det beviset må komme fra første canary-app. Global
-kanalhelse og alarmer er supplerende operasjonell overvåking, ikke en skjult
-forutsetning for å produsere den selvbetjente rapporten.
+trygdeetaten-proxy. Det beviset må produseres av konsumentteamet i egen app.
+Global kanalhelse og alarmer er supplerende operasjonell overvåking, ikke en
+skjult forutsetning for å produsere den selvbetjente rapporten.
+
+## Lukkekriterium for Lumi-sporet
+
+Lumi er klar for konsumentmigrering når:
+
+1. anbefalt pakkeversjon er publisert og den pakkede konsumenttesten er grønn
+2. lokal fullkjede og dev release-verifikasjon er tilgjengelig
+3. API, proxy, dashboard, allowlisting og driftsalarmer er dokumentert
+4. migreringsrekkefølge, ansvarsgrense og stoppkriterier er tydelige
+
+Dette lukkekriteriet påstår ikke at en bestemt konsument er migrert. En
+konsument-canary er en release-gate for den konsumentens app, ikke en handling
+Lumi-teamet utfører på teamets vegne.
 
 ## Før aktivering for flere team
 
