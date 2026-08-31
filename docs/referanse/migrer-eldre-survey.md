@@ -6,9 +6,9 @@ search: false
 # Migrer en eldre survey
 
 Eldre surveyer fortsetter å virke i `@navikt/lumi-survey` 2.x. Når et team
-tar i bruk den nye løsningen, skal det likevel bruke 2.2.0 eller nyere og flytte
-surveyene som skal beholdes til `SurveyDocumentV1`. Surveyer som skal stoppes,
-skal skrus av i stedet for å bli migrert bare for å standardisere kode.
+tar en survey videre i den nye løsningen, skal det likevel bruke 2.2.0 eller
+nyere og flytte den til `SurveyDocumentV1`. Surveyer som skal stoppes, skal
+skrus av i stedet for å bli migrert bare for å standardisere kode.
 
 En oppgradering fra 0.x påvirker alle Lumi-widgeter som deler pakkeversjon i
 appen: 1.0.0 og nyere sender `schemaVersion: 2` med definisjon og
@@ -33,7 +33,7 @@ sende prober gjennom en annen app på teamets vegne.
 | `logic: SKIP` | `visibleIf` på spørsmålet som skulle hoppes over | Siden hoppes over når ingen spørsmål er synlige |
 | `logic: SUBMIT` | Skjul senere spørsmål med `visibleIf` | Den siste synlige siden får send-knapp. Brukeren bekrefter innsendingen selv |
 | Framoverrettet `JUMP_TO` | `visibleIf` på innholdet som skal hoppes over | Test alle grener og tilbakeknappen |
-| Bakoverrettet eller syklisk `JUMP_TO` | Behold eldre konfigurasjon foreløpig | Dokumentformatet har med vilje ingen direkte erstatning |
+| Bakoverrettet eller syklisk `JUMP_TO` | Ikke en støttet migrering | Redesign flyten før migrering, eller la surveyen stå urørt i eksisterende deploy. Ikke bruk den som canary |
 | `intro`-prop med vanlig tekst | `document.intro` | Behold prop-en for rik eller appspesifikk overstyring |
 | `success.title` og `success.body` | `document.success` | Knapp og automatisk lukking forblir props |
 | Preset eller builder | Lag tilsvarende dokument i Surveyverksted eller kode | Eksisterende oppsett kan fortsette å kjøre |
@@ -119,7 +119,10 @@ I dokumentformatet ligger sidene alltid i en forutsigbar rekkefølge. Bruk `visi
 }
 ```
 
-Behold den eldre konfigurasjonen hvis surveyen faktisk må hoppe bakover eller gå i en sirkel. Ikke bygg nye surveyer på dette mønsteret.
+En survey som faktisk må hoppe bakover eller gå i en sirkel, er ikke klar for
+denne migreringen. Redesign flyten før den flyttes til `SurveyDocumentV1`,
+eller la den stå urørt i eksisterende deploy. Ikke bruk den som første canary,
+og ikke bygg nye surveyer på dette mønsteret.
 
 ## Behold eller bytt `surveyId`
 

@@ -56,6 +56,8 @@ are included in 2.2.0 together with the later additions since 2.1.0.
 - Text answers that exceed the configured limit, or the API maximum of 2000
   characters, are now blocked in the widget with a field-level validation
   message instead of failing permanently as a generic transport error.
+  Consumers can customize the new validation summary and length message with
+  `labels.validationSummary` and `labels.textTooLong`.
 - Inline `events` objects no longer count parent re-renders as new dock views
   or restart the success auto-close timer.
 - Dismissal storage failures now invoke `onDismissalPersistFailed` with their
