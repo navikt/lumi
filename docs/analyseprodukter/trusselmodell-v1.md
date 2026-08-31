@@ -85,7 +85,7 @@ konfigurasjon:
 
 | Identitet | Skal kunne | Skal ikke kunne |
 | --- | --- | --- |
-| Cloud SQL export-bruker | `CONNECT`, `USAGE` på eksportskjema og `SELECT` på eksakte eksportviews | lese `public.*`, råtabeller, skrive eller arve default grants |
+| Cloud SQL export-bruker | `CONNECT`, `USAGE` på eksportskjema og enten `SELECT` på eksakte eksportviews eller `EXECUTE` på én eksakt eksportfunksjon, valgt i Gate B | lese `public.*`, råtabeller, andre eksportobjekter, skrive eller arve default grants |
 | BigQuery connection service agent | bruke avtalt Cloud SQL-connection | lese produktdatasett eller administrere IAM |
 | Scheduled-query servicekonto | starte jobb, bruke connection, skrive privat staging/canonical | lese råtabeller direkte, gi produkt-IAM eller skrive andre prosjekter |
 | Kontraktkompilator | produsere deterministisk viewdefinisjon, FQN og `schema_digest` fra immutable release minus auditerte tilbakekallinger | Cloud-, database-, data- eller IAM-tilgang |
@@ -126,6 +126,9 @@ nøkkelversjon og eierskap skal være dokumentert før shadow.
 ### Gate B – før dev-spike får bruke en ekte connection
 
 - [ ] NADA har bekreftet region, connection-modell og minste servicekonto-IAM.
+- [ ] Databaseflaten er valgt som eksakte, versjonerte views eller én eksakt,
+      versjonert funksjon; export-brukeren har bare privilegiet mekanismen
+      krever og kan ikke bruke andre objekter i eksportskjemaet.
 - [ ] Det er avklart om prosjekt/datasett arver menneskelig eller default
       lesetilgang.
 - [ ] Eksakt algoritme og forvaltning for produktspesifikke nøkler er
