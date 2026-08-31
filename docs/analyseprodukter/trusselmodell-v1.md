@@ -4,7 +4,9 @@ Denne modellen beskriver sikkerhetsgrensene for teamavgrensede
 analyseprodukter og bevisene som kreves før løsningen kan gå fra lokal
 utvikling til shadow-kjøring og produksjon. Den kompletterer
 [ADR 0006](../adr/0006-teamavgrensede-analyseprodukter.md) og
-[V1-datakontrakten](./datakontrakt-v1.md).
+[V1-datakontrakten](./datakontrakt-v1.md). Eksterne antakelser og den
+konkrete avklaringspakken er dokumentert i
+[plattformvalidering V1](./plattformvalidering-v1.md).
 
 Modellen gjelder også når dataene er pseudonymiserte. Pseudonymisering er ikke
 anonymisering, og lave volum, kombinasjoner av svar og teamkontekst kan gjøre
@@ -124,6 +126,11 @@ nøkkelversjon og eierskap skal være dokumentert før shadow.
 - [ ] Draft, validering og release har revisjonsvern og auditkrav.
 
 ### Gate B – før dev-spike får bruke en ekte connection
+
+**Status 31. august 2026: stengt.** P01–P04 og P08–P10 i
+plattformvalideringen bekrefter retning og avgrensning, men P05–P07 og
+avklaringspakken mangler plattformbekreftelse. Syntetiske, lokale spiker kan
+fortsette; databasebruker, connection, IAM og scheduler kan ikke opprettes.
 
 - [ ] NADA har bekreftet region, connection-modell og minste servicekonto-IAM.
 - [ ] Databaseflaten er valgt som eksakte, versjonerte views eller én eksakt,
@@ -270,8 +277,9 @@ stopper alltid source-publisering.
 
 ## Eksterne beslutninger som fortsatt er åpne
 
-Følgende skal avklares med NADA og dokumenteres som evidens; implementasjonen
-skal ikke gjette:
+Den daterte statusen, kildene og spørsmålene som skal sendes til NADA ligger i
+[plattformvalidering V1](./plattformvalidering-v1.md). Implementasjonen skal
+ikke gjette. Gate B og D krever fortsatt svar på:
 
 - om et dedikert analyseprosjekt og produktdatasett kan være servicekonto-only
   uten arvet menneskelig tilgang
