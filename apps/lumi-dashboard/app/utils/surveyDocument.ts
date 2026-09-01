@@ -598,9 +598,15 @@ export function addPage(
   // No default title: a page title is a group heading for several questions,
   // and seeding one makes every page ship with a heading that competes with
   // the question below it in the widget.
+  // Blank prompt: with the shared default prompt the survey instantly read
+  // as asking the same thing twice, and every rail entry got the same name.
+  // Empty renders as an explicit placeholder, the rail falls back to
+  // «Side N», and the handoff gate flags it until the author writes one.
   const page: SurveyPageV1 = {
     id: pageId,
-    questions: [createQuestion("rating", idFactory)] as QuestionList,
+    questions: [
+      { ...createQuestion("rating", idFactory), prompt: "" },
+    ] as QuestionList,
   };
   return {
     document: { ...document, pages: [...document.pages, page] as PageList },
@@ -1254,6 +1260,162 @@ export function conditionValueSuggestions(
     }
   }
   return [];
+}
+
+/* ---------- Follow-up branches («Legg til oppfølging») ---------- */
+
+export interface FollowUpBranch {
+  key: string;
+  /** Menu label, e.g. «Ved lavt svar (1–2)» */
+  label: string;
+  /** Seeded prompt for the created follow-up question */
+  prompt: string;
+  condition: (sourceQuestionId: string) => VisibleIfConditionV1;
+}
+
+function truncateOptionLabel(label: string, max = 40): string {
+  const trimmed = label.trim();
+  return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed;
+}
+
+/**
+ * One-gesture branches: each entry creates a text follow-up that is only
+ * visible for the given slice of answers on the source question. The
+ * catalog is variant-aware so the menu always matches the actual scale.
+ */
+export function followUpBranches(question: SurveyQuestionV1): FollowUpBranch[] {
+  const answered: FollowUpBranch = {
+    key: "answered",
+    label: "Uansett svar (når det er besvart)",
+    prompt: "Vil du utdype svaret ditt?",
+    condition: (id) => ({ questionId: id, operator: "EXISTS" }),
+  };
+  if (question.type === "rating") {
+    const variant = question.variant ?? "emoji";
+    if (variant === "thumbs") {
+      return [
+        {
+          key: "thumbs-down",
+          label: "Ved tommel ned",
+          prompt: "Hva var det som ikke fungerte?",
+          condition: (id) => ({ questionId: id, operator: "EQ", value: 1 }),
+        },
+        {
+          key: "thumbs-up",
+          label: "Ved tommel opp",
+          prompt: "Hva fungerte bra?",
+          condition: (id) => ({ questionId: id, operator: "EQ", value: 2 }),
+        },
+        answered,
+      ];
+    }
+    if (variant === "nps") {
+      return [
+        {
+          key: "nps-critics",
+          label: "Ved kritikere (0–6)",
+          prompt: "Hva må bli bedre?",
+          condition: (id) => ({ questionId: id, operator: "LT", value: 7 }),
+        },
+        {
+          key: "nps-passives",
+          label: "Ved passive (7–8)",
+          prompt: "Hva skal til for en enda bedre opplevelse?",
+          condition: (id) => ({
+            all: [
+              { questionId: id, operator: "GT", value: 6 },
+              { questionId: id, operator: "LT", value: 9 },
+            ],
+          }),
+        },
+        {
+          key: "nps-promoters",
+          label: "Ved ambassadører (9–10)",
+          prompt: "Hva setter du mest pris på?",
+          condition: (id) => ({ questionId: id, operator: "GT", value: 8 }),
+        },
+        answered,
+      ];
+    }
+    return [
+      {
+        key: "rating-low",
+        label: "Ved lavt svar (1–2)",
+        prompt: "Hva var det som ikke fungerte?",
+        condition: (id) => ({ questionId: id, operator: "LT", value: 3 }),
+      },
+      {
+        key: "rating-high",
+        label: "Ved høyt svar (4–5)",
+        prompt: "Hva fungerte bra?",
+        condition: (id) => ({ questionId: id, operator: "GT", value: 3 }),
+      },
+      answered,
+    ];
+  }
+  if (question.type === "singleChoice" || question.type === "multiChoice") {
+    const perOption = question.options
+      .filter(
+        (option) =>
+          !isSurveyTemplatePlaceholderValue(option.value) &&
+          option.label.trim().length > 0,
+      )
+      .slice(0, 6)
+      .map((option): FollowUpBranch => {
+        const label = truncateOptionLabel(option.label);
+        return question.type === "multiChoice"
+          ? {
+              key: `option-${option.value}`,
+              label: `Når «${label}» er valgt`,
+              prompt: `Fortell gjerne mer om «${label}».`,
+              condition: (id) => ({
+                questionId: id,
+                operator: "CONTAINS",
+                value: option.value,
+              }),
+            }
+          : {
+              key: `option-${option.value}`,
+              label: `Når svaret er «${label}»`,
+              prompt: `Fortell gjerne mer om «${label}».`,
+              condition: (id) => ({
+                questionId: id,
+                operator: "EQ",
+                value: option.value,
+              }),
+            };
+      });
+    return [...perOption, answered];
+  }
+  return [{ ...answered, label: "Når det er besvart" }];
+}
+
+/**
+ * Inserts a text follow-up question directly after the source question,
+ * pre-wired with the branch's visibility condition.
+ */
+export function addFollowUpQuestion(
+  document: SurveyDocumentV1,
+  pageId: string,
+  sourceQuestionId: string,
+  branch: FollowUpBranch,
+  idFactory: IdFactory = randomId,
+): { document: SurveyDocumentV1; questionId: string } | null {
+  const page = document.pages.find((candidate) => candidate.id === pageId);
+  if (!page) return null;
+  const index = page.questions.findIndex(
+    (question) => question.id === sourceQuestionId,
+  );
+  if (index === -1) return null;
+  const question: SurveyQuestionV1 = {
+    ...createQuestion("text", idFactory),
+    prompt: branch.prompt,
+    visibleIf: branch.condition(sourceQuestionId),
+  };
+  return {
+    document: insertQuestionAt(document, pageId, question, index + 1),
+    questionId: question.id,
+  };
 }
 
 export interface QuestionLocation {

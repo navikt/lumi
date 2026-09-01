@@ -7,6 +7,7 @@ import {
 } from "@navikt/lumi-survey";
 import { describe, expect, it } from "vitest";
 import {
+  addFollowUpQuestion,
   addOption,
   addPage,
   addQuestion,
@@ -21,8 +22,10 @@ import {
   duplicatePage,
   duplicateQuestion,
   findHandoffIssues,
+  followUpBranches,
   insertPageAt,
   insertQuestionAt,
+  isMetadataCondition,
   isRequiredSpecializedQuestion,
   isSpecializedQuestionContractValid,
   listReferenceableQuestions,
@@ -352,6 +355,209 @@ describe("addPage", () => {
     // A page title is a group heading, not a default: seeding one puts a
     // heading in the widget that competes with the question below it.
     expect(next.pages[2].title).toBeUndefined();
+  });
+
+  it("seeds the question with a blank placeholder prompt", () => {
+    // A copied default prompt made the survey read as asking the same thing
+    // twice and gave every rail entry the same name. Blank stays a valid
+    // draft but is flagged by the handoff gate until the author writes one.
+    const { document: next } = addPage(makeDocument(), sequentialIds());
+    const seeded = next.pages[2].questions[0];
+    expect(seeded.prompt).toBe("");
+    expect(() => validateSurveyDocumentV1(next)).not.toThrow();
+    expect(
+      findHandoffIssues(next).some((issue) => issue.questionId === seeded.id),
+    ).toBe(true);
+  });
+});
+
+describe("followUpBranches", () => {
+  it("offers low/high slices for the 1–5 rating scales", () => {
+    const question = createQuestion("rating", sequentialIds());
+    const branches = followUpBranches(question);
+    expect(branches.map((branch) => branch.key)).toEqual([
+      "rating-low",
+      "rating-high",
+      "answered",
+    ]);
+    expect(branches[0].condition("rating-1")).toEqual({
+      questionId: "rating-1",
+      operator: "LT",
+      value: 3,
+    });
+    expect(branches[1].condition("rating-1")).toEqual({
+      questionId: "rating-1",
+      operator: "GT",
+      value: 3,
+    });
+  });
+
+  it("uses NPS segments for the nps variant, passives as an all-group", () => {
+    const base = createQuestion("rating", sequentialIds());
+    if (base.type !== "rating") throw new Error("wrong type");
+    const question = { ...base, variant: "nps" as const };
+    const byKey = new Map(
+      followUpBranches(question).map((branch) => [branch.key, branch]),
+    );
+    expect(byKey.get("nps-critics")?.condition("q")).toEqual({
+      questionId: "q",
+      operator: "LT",
+      value: 7,
+    });
+    expect(byKey.get("nps-passives")?.condition("q")).toEqual({
+      all: [
+        { questionId: "q", operator: "GT", value: 6 },
+        { questionId: "q", operator: "LT", value: 9 },
+      ],
+    });
+    expect(byKey.get("nps-promoters")?.condition("q")).toEqual({
+      questionId: "q",
+      operator: "GT",
+      value: 8,
+    });
+  });
+
+  it("matches the workshop's operator allowlist per choice type", () => {
+    const single = makeDocument().pages[1].questions[0];
+    for (const branch of followUpBranches(single)) {
+      const condition = branch.condition("choice-1");
+      for (const leaf of visibleIfLeaves(condition)) {
+        if (isMetadataCondition(leaf)) continue;
+        expect(allowedConditionOperators("singleChoice")).toContain(
+          leaf.operator,
+        );
+      }
+    }
+    const multi = createQuestion("multiChoice", sequentialIds());
+    const optionBranch = followUpBranches(multi).find((branch) =>
+      branch.key.startsWith("option-"),
+    );
+    expect(optionBranch?.condition("m")).toMatchObject({
+      operator: "CONTAINS",
+    });
+  });
+
+  it("skips template placeholder options", () => {
+    const base = createQuestion("singleChoice", sequentialIds());
+    if (base.type !== "singleChoice") throw new Error("wrong type");
+    const question = {
+      ...base,
+      options: [
+        {
+          value: SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE,
+          label: "Bytt ut med en oppgave dere vil måle",
+        },
+        { value: "ekte", label: "Ekte alternativ" },
+      ],
+    };
+    const keys = followUpBranches(question).map((branch) => branch.key);
+    expect(keys).toEqual(["option-ekte", "answered"]);
+  });
+});
+
+describe("addFollowUpQuestion", () => {
+  it("inserts a wired text follow-up directly after the source", () => {
+    const document = makeDocument();
+    const branch = followUpBranches(document.pages[0].questions[0])[0];
+    const result = addFollowUpQuestion(
+      document,
+      "side-a",
+      "rating-1",
+      branch,
+      sequentialIds(),
+    );
+    expect(result).not.toBeNull();
+    const page = result?.document.pages[0];
+    expect(page?.questions.map((question) => question.id)).toEqual([
+      "rating-1",
+      result?.questionId,
+      "text-1",
+    ]);
+    const added = page?.questions[1];
+    expect(added?.type).toBe("text");
+    expect(added?.prompt).toBe(branch.prompt);
+    expect(added?.visibleIf).toEqual({
+      questionId: "rating-1",
+      operator: "LT",
+      value: 3,
+    });
+    // The wired document must satisfy the widget's structural validator —
+    // including the NPS passives all-group shape.
+    expect(() =>
+      validateSurveyDocumentV1(result?.document as SurveyDocumentV1),
+    ).not.toThrow();
+  });
+
+  it("returns null for an unknown page or source question", () => {
+    const document = makeDocument();
+    const branch = followUpBranches(document.pages[0].questions[0])[0];
+    expect(
+      addFollowUpQuestion(document, "finnes-ikke", "rating-1", branch),
+    ).toBeNull();
+    expect(
+      addFollowUpQuestion(document, "side-a", "finnes-ikke", branch),
+    ).toBeNull();
+  });
+
+  it("wires gate-valid documents for every nps segment", () => {
+    const base = createQuestion("rating", sequentialIds("nps"));
+    if (base.type !== "rating") throw new Error("wrong type");
+    const question = { ...base, variant: "nps" as const };
+    const withNps = insertQuestionAt(makeDocument(), "side-a", question, 2);
+    for (const branch of followUpBranches(question)) {
+      const result = addFollowUpQuestion(
+        withNps,
+        "side-a",
+        question.id,
+        branch,
+        sequentialIds(`n-${branch.key}`),
+      );
+      expect(() =>
+        validateSurveyDocumentV1(result?.document as SurveyDocumentV1),
+      ).not.toThrow();
+      expect(
+        findHandoffIssues(result?.document as SurveyDocumentV1).filter(
+          (issue) => issue.questionId === result?.questionId,
+        ),
+      ).toEqual([]);
+    }
+  });
+
+  it("produces a valid document for every branch of every seedable type", () => {
+    for (const type of [
+      "rating",
+      "text",
+      "singleChoice",
+      "multiChoice",
+    ] as const) {
+      let { document } = addPage(makeDocument(), sequentialIds(`side-${type}`));
+      const ids = sequentialIds(type);
+      const question = createQuestion(type, ids);
+      document = insertQuestionAt(
+        document,
+        "side-a",
+        question,
+        document.pages[0].questions.length,
+      );
+      for (const branch of followUpBranches(question)) {
+        const result = addFollowUpQuestion(
+          document,
+          "side-a",
+          question.id,
+          branch,
+          sequentialIds(`f-${branch.key}`),
+        );
+        expect(result).not.toBeNull();
+        expect(() =>
+          validateSurveyDocumentV1(result?.document as SurveyDocumentV1),
+        ).not.toThrow();
+        expect(
+          findHandoffIssues(result?.document as SurveyDocumentV1).filter(
+            (issue) => issue.questionId === result?.questionId,
+          ),
+        ).toEqual([]);
+      }
+    }
   });
 });
 

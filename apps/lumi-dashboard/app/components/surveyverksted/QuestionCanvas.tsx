@@ -1,4 +1,4 @@
-import { PlusIcon } from "@navikt/aksel-icons";
+import { BranchingIcon, PlusIcon } from "@navikt/aksel-icons";
 import { Detail, VStack } from "@navikt/ds-react";
 import type {
   SurveyDocumentV1,
@@ -9,14 +9,17 @@ import { SPECIALIZED_SURVEY_FIELD_IDS } from "@navikt/lumi-survey";
 import { Fragment, memo, useCallback, useMemo } from "react";
 import type {
   ConditionValueSuggestion,
+  FollowUpBranch,
   MoveDirection,
   QuestionTypeId,
   ReferenceableQuestion,
   VisibleIfConditionV1,
 } from "~/utils/surveyDocument";
 import {
+  isMetadataCondition,
   isRequiredSpecializedQuestion,
   isSpecializedQuestionContractValid,
+  visibleIfLeaves,
 } from "~/utils/surveyDocument";
 import type { OptionsEditorProps } from "./OptionsEditor";
 import { PageGroupHeader } from "./PageGroupHeader";
@@ -42,6 +45,8 @@ export interface QuestionCanvasProps {
   surveyType: SurveyDocumentV1["type"];
   expandedIds: ReadonlySet<string>;
   focusQuestionId: string | null;
+  /** Bumped to refocus an already-mounted target card (flow jumps) */
+  focusNonce: number;
   undo: CanvasUndo | null;
   onUndo: () => void;
   onUndoExpire: () => void;
@@ -71,6 +76,10 @@ export interface QuestionCanvasProps {
     condition: VisibleIfConditionV1 | undefined,
   ) => void;
   onAddQuestion: (type: QuestionTypeId) => void;
+  conditionSummaries: ReadonlyMap<string, string>;
+  onAddFollowUp: (questionId: string, branch: FollowUpBranch) => void;
+  /** Per conditional question: visible with the preview's answers right now */
+  liveVisibility: ReadonlyMap<string, boolean>;
 }
 
 export const QuestionCanvas = memo(function QuestionCanvas({
@@ -80,6 +89,7 @@ export const QuestionCanvas = memo(function QuestionCanvas({
   surveyType,
   expandedIds,
   focusQuestionId,
+  focusNonce,
   undo,
   onUndo,
   onUndoExpire,
@@ -103,8 +113,35 @@ export const QuestionCanvas = memo(function QuestionCanvas({
   suggestionsFor,
   onChangeVisibleIf,
   onAddQuestion,
+  conditionSummaries,
+  onAddFollowUp,
+  liveVisibility,
 }: QuestionCanvasProps) {
   const pad = (value: number) => String(value).padStart(2, "0");
+
+  // A question whose condition ONLY references the nearest preceding
+  // non-follow-up question renders indented under it as its follow-up.
+  const followUpFlags = useMemo(() => {
+    const flags: boolean[] = [];
+    let anchorId: string | null = null;
+    for (const [index, question] of page.questions.entries()) {
+      const leaves = visibleIfLeaves(question.visibleIf);
+      const isFollowUp =
+        index > 0 &&
+        anchorId !== null &&
+        leaves.length > 0 &&
+        leaves.every(
+          (leaf) => !isMetadataCondition(leaf) && leaf.questionId === anchorId,
+        );
+      flags.push(isFollowUp);
+      if (!isFollowUp) anchorId = question.id;
+    }
+    return flags;
+  }, [page.questions]);
+
+  const pageFullyConditional =
+    page.questions.length > 0 &&
+    page.questions.every((question) => question.visibleIf !== undefined);
 
   return (
     <VStack gap="space-24">
@@ -146,6 +183,13 @@ export const QuestionCanvas = memo(function QuestionCanvas({
             onUpdatePage((current) => ({ ...current, description }))
           }
         />
+        {pageFullyConditional ? (
+          <Detail as="p" className={styles.pageConditional}>
+            <BranchingIcon aria-hidden />
+            Hele siden er betinget — i surveyen hoppes den over når ingen av
+            spørsmålene skal vises.
+          </Detail>
+        ) : null}
       </div>
 
       <SortableList
@@ -166,8 +210,18 @@ export const QuestionCanvas = memo(function QuestionCanvas({
               <CanvasQuestion
                 question={question}
                 index={index}
+                pageNumber={pageNumber}
+                followUp={followUpFlags[index] ?? false}
+                conditionSummary={conditionSummaries.get(question.id)}
+                liveVisible={
+                  question.visibleIf
+                    ? liveVisibility.get(question.id)
+                    : undefined
+                }
+                onAddFollowUp={onAddFollowUp}
                 expanded={expandedIds.has(question.id)}
                 focusOnMount={focusQuestionId === question.id}
+                focusNonce={focusNonce}
                 canDelete={
                   page.questions.length > 1 &&
                   !isRequiredSpecializedQuestion(surveyType, question.id)
@@ -245,8 +299,14 @@ export const QuestionCanvas = memo(function QuestionCanvas({
 const CanvasQuestion = memo(function CanvasQuestion({
   question,
   index,
+  pageNumber,
+  followUp,
+  conditionSummary,
+  liveVisible,
+  onAddFollowUp,
   expanded,
   focusOnMount,
+  focusNonce,
   canDelete,
   contractLocked,
   minOptions,
@@ -266,8 +326,14 @@ const CanvasQuestion = memo(function CanvasQuestion({
 }: {
   question: SurveyQuestionV1;
   index: number;
+  pageNumber: number;
+  followUp: boolean;
+  conditionSummary: string | undefined;
+  liveVisible: boolean | undefined;
+  onAddFollowUp: QuestionCanvasProps["onAddFollowUp"];
   expanded: boolean;
   focusOnMount: boolean;
+  focusNonce: number;
   canDelete: boolean;
   contractLocked: boolean;
   minOptions: number;
@@ -330,6 +396,10 @@ const CanvasQuestion = memo(function CanvasQuestion({
       onChangeVisibleIf(questionId, condition),
     [onChangeVisibleIf, questionId],
   );
+  const handleAddFollowUp = useCallback(
+    (branch: FollowUpBranch) => onAddFollowUp(questionId, branch),
+    [onAddFollowUp, questionId],
+  );
 
   return (
     <div
@@ -343,8 +413,14 @@ const CanvasQuestion = memo(function CanvasQuestion({
       <QuestionCard
         question={question}
         index={index}
+        pageNumber={pageNumber}
+        followUp={followUp}
+        conditionSummary={conditionSummary}
+        liveVisible={liveVisible}
+        onAddFollowUp={expanded ? handleAddFollowUp : undefined}
         expanded={expanded}
         focusOnMount={focusOnMount}
+        focusNonce={focusNonce}
         canDelete={canDelete}
         contractLocked={contractLocked}
         minOptions={minOptions}

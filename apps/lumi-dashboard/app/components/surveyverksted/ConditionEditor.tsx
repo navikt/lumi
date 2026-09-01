@@ -9,6 +9,7 @@ import {
   Tooltip,
 } from "@navikt/ds-react";
 import { useEffect, useRef } from "react";
+import { describeVisibleIf } from "~/utils/conditionSummary";
 import {
   allowedConditionOperators,
   buildVisibleIf,
@@ -21,6 +22,7 @@ import {
   type VisibleIfConditionV1,
   visibleIfLeaves,
 } from "~/utils/surveyDocument";
+import { LiveVisibilityChip } from "./LiveVisibilityChip";
 import styles from "./verksted.module.css";
 
 /**
@@ -73,6 +75,10 @@ export interface ConditionEditorProps {
   referenceable: ReferenceableQuestion[];
   suggestionsFor: (referencedId: string) => ConditionValueSuggestion[];
   onChange: (condition: VisibleIfConditionV1 | undefined) => void;
+  /** Page number of the question owning the condition, for «på side N». */
+  ownPageNumber?: number;
+  /** Whether the condition holds with the preview's answers right now */
+  liveVisible?: boolean;
 }
 
 /**
@@ -87,8 +93,22 @@ export function ConditionEditor({
   referenceable,
   suggestionsFor,
   onChange,
+  ownPageNumber,
+  liveVisible,
 }: ConditionEditorProps) {
   const leaves = visibleIfLeaves(condition);
+  const sentence = describeVisibleIf(condition, {
+    resolveRef: (questionId) => {
+      const match = referenceable.find(
+        (candidate) => candidate.id === questionId,
+      );
+      return match
+        ? { prompt: match.prompt, pageNumber: match.pageNumber }
+        : null;
+    },
+    suggestionsFor,
+    ownPageNumber,
+  });
   const rowIds = useStableRowIds(leaves.length);
   const sectionRef = useRef<HTMLDivElement | null>(null);
   // `row:<id>` / "add" — resolved to a focus() after the removal renders,
@@ -201,18 +221,32 @@ export function ConditionEditor({
         <Detail as="span" className={styles.eyebrow}>
           VISES BARE HVIS
         </Detail>
-        <Tooltip content="Fjern betingelsen">
-          <Button
-            type="button"
-            variant="tertiary-neutral"
-            size="xsmall"
-            icon={<XMarkIcon aria-hidden />}
-            aria-label="Fjern betingelsen"
-            data-condition-remove-all=""
-            onClick={() => onChange(undefined)}
-          />
-        </Tooltip>
+        <span className={styles.conditionHeaderMeta}>
+          {liveVisible !== undefined ? (
+            <LiveVisibilityChip visible={liveVisible} />
+          ) : null}
+          <Tooltip content="Fjern betingelsen">
+            <Button
+              type="button"
+              variant="tertiary-neutral"
+              size="xsmall"
+              icon={<XMarkIcon aria-hidden />}
+              aria-label="Fjern betingelsen"
+              data-condition-remove-all=""
+              onClick={() => onChange(undefined)}
+            />
+          </Tooltip>
+        </span>
       </div>
+      {sentence ? (
+        <BodyShort
+          size="small"
+          className={styles.conditionSentence}
+          aria-hidden
+        >
+          {sentence}
+        </BodyShort>
+      ) : null}
       {leaves.length >= 2 ? (
         <ToggleGroup
           label="Kombiner betingelsene"
@@ -266,6 +300,10 @@ export function ConditionEditor({
           Legg til betingelse
         </Button>
       </div>
+      <Detail as="p" className={styles.conditionHint}>
+        Se grenen skje: gi svaret betingelsen krever i forhåndsvisningen, så
+        dukker spørsmålet opp der.
+      </Detail>
     </div>
   );
 }

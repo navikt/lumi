@@ -56,10 +56,20 @@ test("creates, edits, previews and shares a survey draft", async ({ page }) => {
       .getByRole("heading", { name: "Detaljer om opplevelsen" }),
   ).toBeVisible();
 
-  // A new page ships without a title, so the rail names it by its question.
+  // A new page seeds a blank placeholder question, so the rail falls back
+  // to naming the page by its number until a prompt or title is written.
   await page.getByRole("button", { name: "Ny side" }).click();
+  await expect(page.getByRole("button", { name: /02 Side 2/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  // Writing the placeholder's prompt gives the page its rail name — and
+  // clears the handoff warning so the draft can be shared below.
+  await page
+    .getByRole("textbox", { name: "Spørsmålstekst" })
+    .fill("Hvordan gikk det?");
   await expect(
-    page.getByRole("button", { name: /02 Hvordan opplevde du tjenesten/ }),
+    page.getByRole("button", { name: /02 Hvordan gikk det\?/ }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
 
@@ -251,7 +261,12 @@ test("replaces both Task Priority examples before sharing", async ({
   await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
 
   await page.getByRole("button", { name: "Del med utvikler" }).click();
-  await expect(page.getByText(/bytt ut eksempeloppgaven/i)).toBeVisible();
+  // Scoped to the dialog: the flow overview lists the same issue text.
+  await expect(
+    page
+      .getByRole("dialog", { name: "Del med utvikler" })
+      .getByText(/bytt ut eksempeloppgaven/i),
+  ).toBeVisible();
   await page.keyboard.press("Escape");
 
   const first = page.getByRole("textbox", {
@@ -960,4 +975,57 @@ test("an any/all group over two conditions gates the question live in the stage"
     stage.getByRole("radiogroup", { name: "Vil du utdype?" }),
   ).toBeVisible();
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
+});
+
+test("follow-up branches read live in the cards and in the flow overview", async ({
+  page,
+}) => {
+  await page.goto("/surveyverksted");
+  await page.getByLabel("Navn på utkastet").fill("Gren-utkast");
+  await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
+
+  const stage = page.getByLabel("Forhåndsvisning");
+
+  // One gesture wires a branch: a text follow-up gated on the low answers.
+  await page
+    .getByRole("button", { name: "Legg til oppfølging" })
+    .first()
+    .click();
+  await page.getByRole("menuitem", { name: "Ved lavt svar (1–2)" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Spørsmålstekst" }).nth(1),
+  ).toHaveValue("Hva var det som ikke fungerte?");
+  // The condition reads back in plain language inside the editor.
+  await expect(
+    page
+      .getByText("Vises når svaret på «Hvordan opplevde du tjenesten?» er 1–2")
+      .first(),
+  ).toBeVisible();
+  await expect(page.locator('[data-state="saved"]')).toBeVisible();
+
+  // Live mirror: without answers every branch is hidden; a low answer in
+  // the stage flips both conditional questions to visible. Scoped to the
+  // cards — the (closed) flow overview renders the same chips in its DOM.
+  const cardChips = (text: string) =>
+    page.locator("article").getByText(text, { exact: true });
+  await expect(cardChips("Vises nå")).toHaveCount(0);
+  await expect(cardChips("Skjult nå")).toHaveCount(2);
+  await stage.getByRole("radio").first().click();
+  await expect(cardChips("Vises nå")).toHaveCount(2);
+  await expect(cardChips("Skjult nå")).toHaveCount(0);
+
+  // The flow overview shows the same journey and jumps to the question.
+  await page.getByRole("button", { name: /Flyten/ }).click();
+  const flow = page.getByRole("dialog", { name: "Flyten" });
+  await expect(
+    flow.getByText(
+      "Vises når svaret på «Hvordan opplevde du tjenesten?» er 1–2",
+    ),
+  ).toBeVisible();
+  await expectNoAxeViolations(page);
+  await flow.getByRole("button", { name: /Hva kan vi gjøre bedre\?/ }).click();
+  await expect(flow).not.toBeVisible();
+  // The jump lands focus in the target's prompt, mounted or not.
+  await expect(page.locator(":focus")).toHaveValue("Hva kan vi gjøre bedre?");
 });

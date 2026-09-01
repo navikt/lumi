@@ -40,6 +40,7 @@ function canvasProps(
     surveyType: "custom" as const,
     expandedIds: new Set(["q2"]),
     focusQuestionId: null,
+    focusNonce: 0,
     undo: null,
     onUndo: noop,
     onUndoExpire: noop,
@@ -70,6 +71,9 @@ function canvasProps(
     suggestionsFor: () => [],
     onChangeVisibleIf: noop,
     onAddQuestion: noop,
+    conditionSummaries: new Map<string, string>(),
+    onAddFollowUp: noop,
+    liveVisibility: new Map<string, boolean>(),
   };
 }
 

@@ -632,8 +632,9 @@ describe("ConditionEditor", () => {
       />,
     );
     // Only the ANSWER row is editable; the metadata row shows its key.
+    // The key also appears in the plain-language sentence, hence getAll.
     expect(screen.getAllByLabelText("Vilkår")).toHaveLength(1);
-    expect(screen.getByText(/flow/)).toBeInTheDocument();
+    expect(screen.getAllByText(/flow/).length).toBeGreaterThan(0);
     await userEvent.click(
       screen.getByRole("button", { name: "Fjern betingelse 1" }),
     );
