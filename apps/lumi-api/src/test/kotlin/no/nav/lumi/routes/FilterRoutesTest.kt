@@ -3,8 +3,6 @@ package no.nav.lumi.routes
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import io.mockk.coEvery
-import io.mockk.mockk
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -23,7 +21,6 @@ import no.nav.lumi.config.auth.BrukerPrincipal
 import no.nav.lumi.createTestClient
 import no.nav.lumi.insertTestFeedback
 import no.nav.lumi.integrations.valkey.InMemoryStringCache
-import no.nav.lumi.repository.FeedbackRepository
 import no.nav.lumi.repository.SurveyMetadataRepository
 import no.nav.lumi.testModule
 import java.sql.Timestamp
@@ -102,129 +99,6 @@ class FilterRoutesTest : FunSpec({
         cache.set(staleLookup, "stale", Duration.ofMinutes(5))
 
         cache.lookup("team-test", principal).value shouldBe null
-    }
-
-    test("explicit refresh bypasses cached bootstrap without evicting the shared value") {
-        val bootstrapCache = InMemoryStringCache()
-
-        testApplication {
-            application { testModule(bootstrapCache = bootstrapCache) }
-            val client = createTestClient()
-
-            suspend fun fetchBootstrap(refresh: String? = null) = client.get(
-                "/api/v1/intern/filters/bootstrap?team=team-test" +
-                    refresh?.let { "&refresh=$it" }.orEmpty(),
-            ) {
-                header(HttpHeaders.Authorization, "Bearer test-token")
-            }
-
-            insertTestFeedback(id = "cached-feedback", surveyId = "survey-cached")
-            val initial = fetchBootstrap()
-            initial.status shouldBe HttpStatusCode.OK
-            Json.parseToJsonElement(initial.bodyAsText())
-                .jsonObject["surveyMeta"]!!.jsonObject["survey-cached"] shouldNotBe null
-
-            insertTestFeedback(id = "fresh-feedback", surveyId = "survey-fresh")
-            val stillCached = fetchBootstrap(refresh = "false")
-            stillCached.status shouldBe HttpStatusCode.OK
-            Json.parseToJsonElement(stillCached.bodyAsText())
-                .jsonObject["surveyMeta"]!!.jsonObject["survey-fresh"] shouldBe null
-
-            val refreshed = fetchBootstrap(refresh = "true")
-            refreshed.status shouldBe HttpStatusCode.OK
-            refreshed.headers[HttpHeaders.CacheControl] shouldBe "private, no-store"
-            Json.parseToJsonElement(refreshed.bodyAsText())
-                .jsonObject["surveyMeta"]!!.jsonObject["survey-fresh"] shouldNotBe null
-
-            val cachedAfterRefresh = fetchBootstrap()
-            cachedAfterRefresh.status shouldBe HttpStatusCode.OK
-            Json.parseToJsonElement(cachedAfterRefresh.bodyAsText())
-                .jsonObject["surveyMeta"]!!.jsonObject["survey-fresh"] shouldBe null
-        }
-    }
-
-    test("failed refresh preserves the previously cached bootstrap") {
-        val bootstrapCache = InMemoryStringCache()
-        val cache = VersionedBootstrapCache(bootstrapCache)
-        val principal = BrukerPrincipal(
-            navIdent = "A123456",
-            name = "Test User",
-            email = "test.user@nav.no",
-            clientId = "dev-gcp:team-esyfo:lumi-dashboard",
-        )
-        cache.set(
-            cache.lookup("team-test", principal),
-            "{\"cached\":true}",
-            Duration.ofMinutes(5),
-        )
-        val failingRepository = mockk<FeedbackRepository>()
-        coEvery { failingRepository.findDistinctApps(any()) } throws
-            RuntimeException("simulated repository failure")
-
-        testApplication {
-            application {
-                testModule(
-                    bootstrapCache = bootstrapCache,
-                    filterFeedbackRepository = failingRepository,
-                )
-            }
-            val client = createTestClient()
-
-            val refresh = client.get(
-                "/api/v1/intern/filters/bootstrap?team=team-test&refresh=true",
-            ) {
-                header(HttpHeaders.Authorization, "Bearer test-token")
-            }
-            refresh.status shouldBe HttpStatusCode.InternalServerError
-
-            val cached = client.get("/api/v1/intern/filters/bootstrap?team=team-test") {
-                header(HttpHeaders.Authorization, "Bearer test-token")
-            }
-            cached.status shouldBe HttpStatusCode.OK
-            cached.bodyAsText() shouldBe "{\"cached\":true}"
-        }
-    }
-
-    test("bootstrap rejects an invalid refresh value") {
-        testApplication {
-            application { testModule() }
-
-            val response = createTestClient().get(
-                "/api/v1/intern/filters/bootstrap?team=team-test&refresh=invalid",
-            ) {
-                header(HttpHeaders.Authorization, "Bearer test-token")
-            }
-
-            response.status shouldBe HttpStatusCode.BadRequest
-        }
-    }
-
-    test("bootstrap refresh has a dedicated rate limit without blocking ordinary reads") {
-        testApplication {
-            application { testModule() }
-            val client = createTestClient()
-
-            repeat(6) {
-                val response = client.get(
-                    "/api/v1/intern/filters/bootstrap?team=team-test&refresh=true",
-                ) {
-                    header(HttpHeaders.Authorization, "Bearer test-token")
-                }
-                response.status shouldBe HttpStatusCode.OK
-            }
-
-            val limited = client.get(
-                "/api/v1/intern/filters/bootstrap?team=team-test&refresh=true",
-            ) {
-                header(HttpHeaders.Authorization, "Bearer test-token")
-            }
-            limited.status shouldBe HttpStatusCode.TooManyRequests
-
-            val ordinary = client.get("/api/v1/intern/filters/bootstrap?team=team-test") {
-                header(HttpHeaders.Authorization, "Bearer test-token")
-            }
-            ordinary.status shouldBe HttpStatusCode.OK
-        }
     }
 
     beforeTest {

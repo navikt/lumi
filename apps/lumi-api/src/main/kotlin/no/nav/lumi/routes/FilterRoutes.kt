@@ -2,18 +2,15 @@ package no.nav.lumi.routes
 
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
-import io.ktor.server.plugins.ratelimit.rateLimit
 import io.ktor.server.resources.get
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import no.nav.lumi.config.BootstrapRefreshRateLimit
 import no.nav.lumi.config.auth.authorizedPrincipal
 import no.nav.lumi.config.auth.authorizedTeam
 import no.nav.lumi.config.auth.authorizedTeams
-import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.integrations.valkey.StringCache
 import no.nav.lumi.service.BootstrapCacheInvalidator
 import no.nav.lumi.service.bootstrapCacheGenerationKey
@@ -140,97 +137,81 @@ fun Route.filterRoutes(
 ) {
     val versionedBootstrapCache = VersionedBootstrapCache(bootstrapCache)
 
-    rateLimit(BootstrapRefreshRateLimit) {
-        get<ApiV1Intern.Filters.Bootstrap> { params ->
-            val team = call.authorizedTeam
-            val teams = call.authorizedTeams
-            val principal = call.authorizedPrincipal
-            val forceRefresh = when (params.refresh) {
-                null, "false" -> false
-                "true" -> true
-                else -> throw ApiErrorException.BadRequestException(
-                    "Invalid refresh: expected true or false",
+    get<ApiV1Intern.Filters.Bootstrap> {
+        val team = call.authorizedTeam
+        val teams = call.authorizedTeams
+        val principal = call.authorizedPrincipal
+
+        // Cache is shared across users (Valkey). Include user identity to avoid leaking
+        // `availableTeams`. Team comes first so team-scoped invalidation can clear by prefix.
+        // Principals without a stable identity are served uncached.
+        val cacheLookup = versionedBootstrapCache.lookup(team, principal)
+
+        cacheLookup.value?.let { cachedJson ->
+            call.response.headers.append(HttpHeaders.CacheControl, "private, max-age=300")
+            call.respondText(cachedJson, ContentType.Application.Json)
+            return@get
+        }
+
+        // Each repository call manages its own transaction. Survey options and
+        // recency metadata deliberately share one aggregation/snapshot.
+        val apps = feedbackRepository.findDistinctApps(team)
+        val surveyOverview = feedbackRepository.findSurveyOverview(team)
+        val tags = feedbackRepository.findAllTags(team)
+        val archiveStates = surveyMetadataRepository.findByTeam(team).associateBy { it.surveyId }
+        val now = Instant.now()
+        val scheduledBefore = now.atZone(ZoneOffset.UTC)
+            .plusMonths(FeedbackRetentionService.DEFINITION_WARNING_LEAD_MONTHS)
+            .toInstant()
+        val retentionWarnings = surveyDefinitionRepository
+            .findUpcomingRetentionCandidates(team, scheduledBefore)
+            .map { candidate ->
+                SurveyRetentionWarning(
+                    surveyId = candidate.surveyId,
+                    lastActivityAt = candidate.lastActivityAt.toString(),
+                    scheduledFor = candidate.scheduledFor.toString(),
                 )
             }
-
-            // Cache is shared across users (Valkey). Include user identity to avoid leaking
-            // `availableTeams`. Team comes first so team-scoped invalidation can clear by prefix.
-            // Principals without a stable identity are served uncached.
-            val cacheLookup = versionedBootstrapCache.lookup(team, principal)
-
-            if (!forceRefresh) {
-                cacheLookup.value?.let { cachedJson ->
-                    call.response.headers.append(HttpHeaders.CacheControl, "private, max-age=300")
-                    call.respondText(cachedJson, ContentType.Application.Json)
-                    return@get
-                }
-            }
-
-            // Each repository call manages its own transaction. Survey options and
-            // recency metadata deliberately share one aggregation/snapshot.
-            val apps = feedbackRepository.findDistinctApps(team)
-            val surveyOverview = feedbackRepository.findSurveyOverview(team)
-            val tags = feedbackRepository.findAllTags(team)
-            val archiveStates = surveyMetadataRepository.findByTeam(team).associateBy { it.surveyId }
-            val now = Instant.now()
-            val scheduledBefore = now.atZone(ZoneOffset.UTC)
-                .plusMonths(FeedbackRetentionService.DEFINITION_WARNING_LEAD_MONTHS)
-                .toInstant()
-            val retentionWarnings = surveyDefinitionRepository
-                .findUpcomingRetentionCandidates(team, scheduledBefore)
-                .map { candidate ->
-                    SurveyRetentionWarning(
-                        surveyId = candidate.surveyId,
-                        lastActivityAt = candidate.lastActivityAt.toString(),
-                        scheduledFor = candidate.scheduledFor.toString(),
-                    )
-                }
-            val firstSubmissionBySurvey = surveyOverview.firstSubmissionBySurvey
-            val lastSubmissionBySurvey = surveyOverview.lastSubmissionBySurvey
-            val surveyMeta = (
-                archiveStates.keys + firstSubmissionBySurvey.keys + lastSubmissionBySurvey.keys
-            ).associateWith { surveyId ->
+        val firstSubmissionBySurvey = surveyOverview.firstSubmissionBySurvey
+        val lastSubmissionBySurvey = surveyOverview.lastSubmissionBySurvey
+        val surveyMeta = (
+            archiveStates.keys + firstSubmissionBySurvey.keys + lastSubmissionBySurvey.keys
+        ).associateWith { surveyId ->
+            SurveyMetaEntry(
+                archivedAt = archiveStates[surveyId]?.archivedAt,
+                firstSubmissionAt = firstSubmissionBySurvey[surveyId],
+                lastSubmissionAt = lastSubmissionBySurvey[surveyId],
+            )
+        }
+        val surveyMetaByApp = surveyOverview.submissionBoundsByApp.mapValues { (_, boundsBySurvey) ->
+            boundsBySurvey.mapValues { (surveyId, bounds) ->
                 SurveyMetaEntry(
                     archivedAt = archiveStates[surveyId]?.archivedAt,
-                    firstSubmissionAt = firstSubmissionBySurvey[surveyId],
-                    lastSubmissionAt = lastSubmissionBySurvey[surveyId],
+                    firstSubmissionAt = bounds.firstSubmissionAt,
+                    lastSubmissionAt = bounds.lastSubmissionAt,
                 )
-            }
-            val surveyMetaByApp = surveyOverview.submissionBoundsByApp.mapValues { (_, boundsBySurvey) ->
-                boundsBySurvey.mapValues { (surveyId, bounds) ->
-                    SurveyMetaEntry(
-                        archivedAt = archiveStates[surveyId]?.archivedAt,
-                        firstSubmissionAt = bounds.firstSubmissionAt,
-                        lastSubmissionAt = bounds.lastSubmissionAt,
-                    )
-                }.toSortedMap()
             }.toSortedMap()
+        }.toSortedMap()
 
-            val response = FilterBootstrapResponse(
-                generatedAt = Instant.now().toString(),
-                selectedTeam = team,
-                availableTeams = teams.sorted(),
-                apps = apps.sorted(),
-                surveysByApp = surveyOverview.surveysByApp.mapValues { it.value.sorted() }.toSortedMap(),
-                tags = tags.sorted(),
-                surveyMeta = surveyMeta,
-                surveyMetaByApp = surveyMetaByApp,
-                retentionWarnings = retentionWarnings,
-            )
+        val response = FilterBootstrapResponse(
+            generatedAt = Instant.now().toString(),
+            selectedTeam = team,
+            availableTeams = teams.sorted(),
+            apps = apps.sorted(),
+            surveysByApp = surveyOverview.surveysByApp.mapValues { it.value.sorted() }.toSortedMap(),
+            tags = tags.sorted(),
+            surveyMeta = surveyMeta,
+            surveyMetaByApp = surveyMetaByApp,
+            retentionWarnings = retentionWarnings,
+        )
 
-            if (!forceRefresh) {
-                versionedBootstrapCache.set(
-                    cacheLookup,
-                    json.encodeToString(response),
-                    ttl = Duration.ofMinutes(5),
-                )
-            }
-            call.response.headers.append(
-                HttpHeaders.CacheControl,
-                if (forceRefresh) "private, no-store" else "private, max-age=300",
-            )
+        versionedBootstrapCache.set(
+            cacheLookup,
+            json.encodeToString(response),
+            ttl = Duration.ofMinutes(5),
+        )
+        call.response.headers.append(HttpHeaders.CacheControl, "private, max-age=300")
 
-            call.respond(response)
-        }
+        call.respond(response)
     }
 }

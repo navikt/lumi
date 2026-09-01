@@ -221,14 +221,6 @@ export const FilterBootstrapParamsSchema = z.object({
 
 export type FilterBootstrapParams = z.infer<typeof FilterBootstrapParamsSchema>;
 
-export const RefreshFilterBootstrapParamsSchema = z.object({
-  team: z.string().optional(),
-});
-
-export type RefreshFilterBootstrapParams = z.infer<
-  typeof RefreshFilterBootstrapParamsSchema
->;
-
 export const ArchiveSurveySchema = z.object({
   surveyId: z.string(),
   team: z.string().optional(),

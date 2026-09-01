@@ -17,7 +17,6 @@ import dayjs from "dayjs";
 import { useCallback, useEffect } from "react";
 import { PeriodSelector } from "~/components/dashboard/PeriodSelector";
 import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
-import { RefreshSurveyOverview } from "~/components/shared/RefreshSurveyOverview";
 import { getSurveyFeatures } from "~/config/surveyConfig";
 import { useActiveFilters } from "~/hooks/useActiveFilters";
 import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
@@ -53,22 +52,17 @@ export function FilterBar({
   // Stats failures must not hide the controls users need to narrow the query.
   // Bootstrap failures still hide the controls because their options are unknown.
   return (
-    <VStack gap="space-8">
-      <HStack justify="end">
-        <RefreshSurveyOverview />
-      </HStack>
-      <DataFetchBoundary
-        title="Kunne ikke hente filtre"
-        queries={[bootstrapQuery]}
-      >
-        <FilterBarContent
-          showDetails={showDetails}
-          filterResetVersion={filterResetVersion}
-          bootstrapQuery={bootstrapQuery}
-          statsQuery={statsQuery}
-        />
-      </DataFetchBoundary>
-    </VStack>
+    <DataFetchBoundary
+      title="Kunne ikke hente filtre"
+      queries={[bootstrapQuery]}
+    >
+      <FilterBarContent
+        showDetails={showDetails}
+        filterResetVersion={filterResetVersion}
+        bootstrapQuery={bootstrapQuery}
+        statsQuery={statsQuery}
+      />
+    </DataFetchBoundary>
   );
 }
 
