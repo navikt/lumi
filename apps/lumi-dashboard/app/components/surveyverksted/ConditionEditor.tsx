@@ -103,7 +103,11 @@ export function ConditionEditor({
         (candidate) => candidate.id === questionId,
       );
       return match
-        ? { prompt: match.prompt, pageNumber: match.pageNumber }
+        ? {
+            prompt: match.prompt,
+            pageNumber: match.pageNumber,
+            type: match.type,
+          }
         : null;
     },
     suggestionsFor,

@@ -917,13 +917,19 @@ function leafConditionIssues(
         ? condition.all
         : [condition];
   const issues: HandoffIssue[] = [];
-  for (const leaf of leaves) {
+  // Multi-leaf conditions prefix each finding with its row number, so two
+  // broken leaves never collapse into one indistinguishable message.
+  const withLeaf = (index: number, message: string) =>
+    leaves.length > 1 ? `Betingelse ${index + 1}: ${message}` : message;
+  for (const [index, leaf] of leaves.entries()) {
     if (isMetadataCondition(leaf)) {
       if ("questionId" in leaf) {
         issues.push({
           questionId: question.id,
-          message:
+          message: withLeaf(
+            index,
             "Betingelsen peker på metadata, men har også en spørsmålsreferanse — fjern «questionId» eller sett field til ANSWER.",
+          ),
         });
       }
       continue; // METADATA: no schema to validate against
@@ -934,8 +940,10 @@ function leafConditionIssues(
       // validated below.
       issues.push({
         questionId: question.id,
-        message:
+        message: withLeaf(
+          index,
           "Betingelsen peker på et spørsmål, men har også en metadata-nøkkel — fjern «key» eller sett field til METADATA.",
+        ),
       });
     }
     if (!leaf.questionId) continue;
@@ -944,8 +952,10 @@ function leafConditionIssues(
     if (!allowedConditionOperators(referenced.type).includes(leaf.operator)) {
       issues.push({
         questionId: question.id,
-        message:
+        message: withLeaf(
+          index,
           "Betingelsen bruker et vilkår som ikke passer spørsmålet det peker på.",
+        ),
       });
       continue;
     }
@@ -960,8 +970,10 @@ function leafConditionIssues(
       if (!known) {
         issues.push({
           questionId: question.id,
-          message:
+          message: withLeaf(
+            index,
             "Betingelsens verdi finnes ikke blant alternativene til spørsmålet det peker på.",
+          ),
         });
       }
     } else if (referenced.type === "rating") {
@@ -969,16 +981,20 @@ function leafConditionIssues(
       if (typeof leaf.value !== "number" || !scale.includes(leaf.value)) {
         issues.push({
           questionId: question.id,
-          message:
+          message: withLeaf(
+            index,
             "Betingelsens verdi er utenfor skalaen til spørsmålet det peker på.",
+          ),
         });
       }
     } else if (typeof leaf.value !== "string") {
       // Text answers compare strictly at runtime: 3 never matches "3".
       issues.push({
         questionId: question.id,
-        message:
+        message: withLeaf(
+          index,
           "Betingelsens verdi må være tekst når den peker på et tekstspørsmål.",
+        ),
       });
     } else if (leaf.value.trim().length === 0) {
       // Blank text answers are stripped from runtime answer state, so a
@@ -986,8 +1002,10 @@ function leafConditionIssues(
       // any answer, and CONTAINS that matches everything.
       issues.push({
         questionId: question.id,
-        message:
+        message: withLeaf(
+          index,
           "Betingelsens verdi kan ikke være tom når den peker på et tekstspørsmål.",
+        ),
       });
     }
   }

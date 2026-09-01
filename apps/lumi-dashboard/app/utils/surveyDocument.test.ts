@@ -933,6 +933,34 @@ describe("findHandoffIssues", () => {
     ).toBe(true);
   });
 
+  it("numbers condition issues per leaf in multi-leaf groups", () => {
+    // Two broken leaves must stay two distinct findings — identical texts
+    // would collapse in the flow overview and desync its warning badge.
+    const document = insertQuestionAt(
+      makeDocument(),
+      "side-b",
+      {
+        id: "text-gren",
+        type: "text",
+        prompt: "Utdyp gjerne",
+        visibleIf: {
+          all: [
+            { questionId: "choice-1", operator: "EQ", value: "slettet-a" },
+            { questionId: "choice-1", operator: "EQ", value: "slettet-b" },
+          ],
+        },
+      },
+      1,
+    );
+    const messages = findHandoffIssues(document)
+      .filter((issue) => issue.questionId === "text-gren")
+      .map((issue) => issue.message);
+    expect(messages).toHaveLength(2);
+    expect(messages[0]).toMatch(/^Betingelse 1: /);
+    expect(messages[1]).toMatch(/^Betingelse 2: /);
+    expect(new Set(messages).size).toBe(2);
+  });
+
   it.each([
     createDiscoverySurveyDocument(),
     createTopTasksSurveyDocument({

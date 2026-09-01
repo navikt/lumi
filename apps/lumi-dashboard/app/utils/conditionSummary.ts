@@ -1,4 +1,4 @@
-import type { SurveyDocumentV1 } from "@navikt/lumi-survey";
+import type { SurveyDocumentV1, SurveyQuestionV1 } from "@navikt/lumi-survey";
 import {
   type ConditionValueSuggestion,
   conditionCombinator,
@@ -11,6 +11,8 @@ import {
 export interface ConditionRefInfo {
   prompt: string;
   pageNumber: number;
+  /** Referenced question's type; decides membership vs. substring wording */
+  type?: SurveyQuestionV1["type"];
 }
 
 export interface DescribeConditionContext {
@@ -91,9 +93,11 @@ function describeLeaf(
       return `svaret på ${subject} er ${word} ${String(leaf.value ?? "")}`;
     }
     case "CONTAINS":
-      // With options the runtime checks membership; against free text it is
-      // a substring match — «er valgt» would misdescribe that.
-      return suggestions.length > 0
+      // Membership only against multiChoice answers; every other CONTAINS
+      // is a substring match at runtime (free text — or invalid, which the
+      // gates flag) and «er valgt» would misdescribe it.
+      return leaf.questionId &&
+        ctx.resolveRef(leaf.questionId)?.type === "multiChoice"
         ? `«${valueLabel()}» er valgt på ${subject}`
         : `svaret på ${subject} inneholder «${valueLabel()}»`;
     default:
@@ -164,6 +168,7 @@ export function buildConditionSummaries(
       refIndex.set(question.id, {
         prompt: question.prompt,
         pageNumber: pageIndex + 1,
+        type: question.type,
       });
     }
   });

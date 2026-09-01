@@ -42,6 +42,15 @@ function makeDocument(): SurveyDocumentV1 {
             ],
           },
           {
+            id: "multi-1",
+            type: "multiChoice",
+            prompt: "Hva er viktigst?",
+            options: [
+              { value: "pris", label: "Pris" },
+              { value: "tid", label: "Tid" },
+            ],
+          },
+          {
             id: "text-kryss",
             type: "text",
             prompt: "Utdyp gjerne",
@@ -60,7 +69,11 @@ function contextFor(document: SurveyDocumentV1, ownPageNumber?: number) {
         (question) =>
           [
             question.id,
-            { prompt: question.prompt, pageNumber: pageIndex + 1 },
+            {
+              prompt: question.prompt,
+              pageNumber: pageIndex + 1,
+              type: question.type,
+            },
           ] as const,
       ),
     ),
@@ -187,6 +200,55 @@ describe("describeVisibleIf", () => {
         contextFor(document, 1),
       ),
     ).toBe("Vises når svaret på «Hva var vanskelig?» inneholder «innlogging»");
+  });
+
+  it("describes CONTAINS as membership only for multiChoice references", () => {
+    const document = makeDocument();
+    expect(
+      describeVisibleIf(
+        { questionId: "multi-1", operator: "CONTAINS", value: "pris" },
+        contextFor(document, 2),
+      ),
+    ).toBe("Vises når «Pris» er valgt på «Hva er viktigst?»");
+    // Code-authored CONTAINS on a singleChoice is a substring match on the
+    // answer string at runtime — «er valgt» would overpromise.
+    expect(
+      describeVisibleIf(
+        { questionId: "choice-1", operator: "CONTAINS", value: "soke" },
+        contextFor(document, 2),
+      ),
+    ).toBe("Vises når svaret på «Hva kom du for å gjøre?» inneholder «Søke»");
+  });
+
+  it("intersects stacked lower bounds to the strictest one", () => {
+    const document = makeDocument();
+    expect(
+      describeVisibleIf(
+        {
+          all: [
+            { questionId: "rating-1", operator: "GT", value: 2 },
+            { questionId: "rating-1", operator: "GT", value: 3 },
+          ],
+        },
+        contextFor(document, 1),
+      ),
+    ).toBe("Vises når svaret på «Hvordan opplevde du tjenesten?» er 4–5");
+  });
+
+  it("falls back to the joined list when the interval is empty", () => {
+    const document = makeDocument();
+    const sentence = describeVisibleIf(
+      {
+        all: [
+          { questionId: "rating-1", operator: "GT", value: 3 },
+          { questionId: "rating-1", operator: "LT", value: 2 },
+        ],
+      },
+      contextFor(document, 1),
+    );
+    expect(sentence).toContain(" og ");
+    expect(sentence).toContain("er 4–5");
+    expect(sentence).toContain("er 1");
   });
 
   it("returns null without a condition", () => {

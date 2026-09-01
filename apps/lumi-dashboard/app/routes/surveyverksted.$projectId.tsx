@@ -549,18 +549,32 @@ function SurveyWorkshopEditor({
 
   const handleOpenFlow = useCallback(() => setFlowOpen(true), []);
 
+  const flowJumpTimeoutRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (flowJumpTimeoutRef.current !== null) {
+        window.clearTimeout(flowJumpTimeoutRef.current);
+      }
+    },
+    [],
+  );
   const handleFlowJump = useCallback((pageId: string, questionId: string) => {
     setFlowOpen(false);
     // Suppress the page-switch expansion reset; the jumped-to question is
-    // expanded and focused explicitly.
+    // expanded and focused explicitly. Crossing pages starts a fresh set so
+    // the previous page's expansions don't linger invisibly.
     previousPageIdRef.current = pageId;
     setSelectedPageId(pageId);
-    setExpandedIds((current) => new Set([...current, questionId]));
+    setExpandedIds((current) =>
+      pageId === selectedPageRef.current
+        ? new Set([...current, questionId])
+        : new Set([questionId]),
+    );
     // Focus in a LATER commit: while the modal's native dialog is open the
     // rest of the page is inert (focus() is a no-op), and closing restores
     // focus to the trigger — so the card focus must run after both. The
     // nonce re-triggers the effect for a card that is already mounted.
-    window.setTimeout(() => {
+    flowJumpTimeoutRef.current = window.setTimeout(() => {
       setFocusQuestionId(questionId);
       setFocusNonce((nonce) => nonce + 1);
     }, 0);
