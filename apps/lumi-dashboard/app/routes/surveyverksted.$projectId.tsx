@@ -533,6 +533,11 @@ function SurveyWorkshopEditor({
       await queryClient.invalidateQueries({
         queryKey: ["survey-authoring-revisions", project.team, project.id],
       });
+      // The team list carries each project's newest revision, so a fresh
+      // freeze must not leave a cached «Utkast» row behind for the overview.
+      await queryClient.invalidateQueries({
+        queryKey: ["survey-authoring-projects", project.team],
+      });
       await navigate({
         to: "/surveyverksted/revisions/$revisionId",
         params: { revisionId: revision.id },
