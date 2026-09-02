@@ -214,4 +214,48 @@ describe("mock survey authoring store", () => {
       }),
     ).rejects.toThrow(/bare brukes på flervalg/i);
   });
+  it("lists each project's newest shared version alongside the draft", async () => {
+    const store = await import("../surveyAuthoring");
+    const shared = store.createMockSurveyProject({
+      team: "team-a",
+      name: "Delt",
+      surveyId: "delt-v1",
+      document,
+    });
+    const draftOnly = store.createMockSurveyProject({
+      team: "team-a",
+      name: "Bare utkast",
+      surveyId: "utkast-v1",
+      document,
+    });
+    await store.createMockSurveyRevision({
+      team: "team-a",
+      projectId: shared.id,
+      expectedDraftVersion: 1,
+    });
+    store.saveMockSurveyProject({
+      team: "team-a",
+      projectId: shared.id,
+      expectedVersion: 1,
+      name: "Delt",
+      surveyId: "delt-v1",
+      document,
+    });
+    const second = await store.createMockSurveyRevision({
+      team: "team-a",
+      projectId: shared.id,
+      expectedDraftVersion: 2,
+    });
+
+    const byId = new Map(
+      store.listMockSurveyProjects("team-a").map((p) => [p.id, p]),
+    );
+    expect(byId.get(draftOnly.id)?.latestRevision).toBeNull();
+    expect(byId.get(shared.id)?.latestRevision).toEqual({
+      id: second.id,
+      revisionNumber: 2,
+      draftVersion: 2,
+      createdAt: second.createdAt,
+    });
+  });
 });

@@ -12,10 +12,24 @@ export interface SurveyAuthoringProject {
   updatedAt: string;
 }
 
+/**
+ * The newest frozen revision of a project, carried on the list so the
+ * overview can open a shared survey on its stable version and tell whether
+ * the draft has moved on since (draftVersion > latestRevision.draftVersion).
+ */
+export interface SurveyAuthoringLatestRevision {
+  id: string;
+  revisionNumber: number;
+  draftVersion: number;
+  createdAt: string;
+}
+
 export type SurveyAuthoringProjectSummary = Omit<
   SurveyAuthoringProject,
   "document"
->;
+> & {
+  latestRevision?: SurveyAuthoringLatestRevision | null;
+};
 
 export interface SurveyAuthoringRevision {
   id: string;
