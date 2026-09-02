@@ -24,7 +24,23 @@ export function listMockSurveyProjects(
   return [...projects.values()]
     .filter((project) => project.team === team)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .map(({ document: _document, ...summary }) => summary);
+    .map(({ document: _document, ...summary }) => {
+      // Mirror the API: the newest frozen revision rides on the summary.
+      const latest = [...revisions.values()]
+        .filter((revision) => revision.projectId === summary.id)
+        .sort((a, b) => b.revisionNumber - a.revisionNumber)[0];
+      return {
+        ...summary,
+        latestRevision: latest
+          ? {
+              id: latest.id,
+              revisionNumber: latest.revisionNumber,
+              draftVersion: latest.draftVersion,
+              createdAt: latest.createdAt,
+            }
+          : null,
+      };
+    });
 }
 
 export function getMockSurveyProject(

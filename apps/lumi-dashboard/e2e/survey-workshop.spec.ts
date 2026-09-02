@@ -473,21 +473,30 @@ test("deletes a draft from the index after confirmation", async ({ page }) => {
   // detail stays cached — the deletion must evict it, not a full reload.
   await page.getByRole("link", { name: "Surveyverksted" }).first().click();
   await page.waitForURL(/\/surveyverksted$/);
+
+  // A shared survey is one row with its state, and opens on the stable
+  // version — the draft is reached from the menu, not by the main click.
+  const card = page.getByRole("link", { name: new RegExp(draftName) });
+  await expect(card.getByText("Delt · versjon 1")).toBeVisible();
+  await expect(card).toHaveAttribute("href", /\/surveyverksted\/revisions\//);
   await page
     .getByRole("button", { name: `Handlinger for ${draftName}`, exact: false })
     .click();
-  await page.getByRole("menuitem", { name: "Slett utkast" }).click();
+  await expect(
+    page.getByRole("menuitem", { name: "Rediger utkastet" }),
+  ).toBeVisible();
+  await page.getByRole("menuitem", { name: "Slett survey" }).click();
 
-  const dialog = page.getByRole("dialog", { name: "Slett utkastet?" });
+  const dialog = page.getByRole("dialog", { name: "Slett surveyen?" });
   await expect(dialog.getByText(/delte versjoner/)).toBeVisible();
   await expectNoAxeViolations(page);
-  await dialog.getByRole("button", { name: "Slett utkastet" }).click();
+  await dialog.getByRole("button", { name: "Slett surveyen" }).click();
 
   await expect(dialog).not.toBeVisible();
   await expect(page.getByText(draftName)).toHaveCount(0);
   // The native dialog lost its trigger — focus lands on the list heading.
   await expect(
-    page.getByRole("heading", { name: "Teamets utkast" }),
+    page.getByRole("heading", { name: "Teamets surveys" }),
   ).toBeFocused();
 
   // History back is an SPA navigation: with the detail cache evicted the
@@ -539,9 +548,9 @@ test("the delete dialog refuses to close while deletion is pending", async ({
   await page
     .getByRole("button", { name: `Handlinger for ${draftName}`, exact: false })
     .click();
-  await page.getByRole("menuitem", { name: "Slett utkast" }).click();
-  const dialog = page.getByRole("dialog", { name: "Slett utkastet?" });
-  const confirm = dialog.getByRole("button", { name: "Slett utkastet" });
+  await page.getByRole("menuitem", { name: "Slett survey" }).click();
+  const dialog = page.getByRole("dialog", { name: "Slett surveyen?" });
+  const confirm = dialog.getByRole("button", { name: "Slett surveyen" });
   await confirm.click();
   await deleteRequestSent;
 
@@ -552,7 +561,7 @@ test("the delete dialog refuses to close while deletion is pending", async ({
   // The failure keeps the dialog with the error and a working retry.
   await expect(dialog.getByText(/kunne ikke slettes/i)).toBeVisible();
   await page.unroute("**/*");
-  await dialog.getByRole("button", { name: "Slett utkastet" }).click();
+  await dialog.getByRole("button", { name: "Slett surveyen" }).click();
   await expect(dialog).not.toBeVisible();
   await expect(page.getByText(draftName)).toHaveCount(0);
 });

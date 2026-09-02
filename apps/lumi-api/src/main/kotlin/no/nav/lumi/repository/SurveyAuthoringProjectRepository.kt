@@ -2,6 +2,7 @@ package no.nav.lumi.repository
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import no.nav.lumi.domain.SurveyAuthoringLatestRevision
 import no.nav.lumi.domain.SurveyAuthoringProject
 import no.nav.lumi.domain.SurveyAuthoringProjectSummary
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -9,6 +10,7 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.jetbrains.exposed.v1.jdbc.update
@@ -58,10 +60,32 @@ class SurveyAuthoringProjectRepository {
     }
 
     suspend fun findByTeam(team: String): List<SurveyAuthoringProjectSummary> = dbQuery {
-        SurveyAuthoringProjectTable.selectAll()
+        val projects = SurveyAuthoringProjectTable.selectAll()
             .where { SurveyAuthoringProjectTable.team eq team }
             .orderBy(SurveyAuthoringProjectTable.updatedAt to SortOrder.DESC)
             .map(::toSummary)
+        if (projects.isEmpty()) return@dbQuery projects
+
+        // One query for the whole team: newest revision per project. Ordered
+        // by revision number so the first row seen per project wins.
+        val latestByProject = mutableMapOf<String, SurveyAuthoringLatestRevision>()
+        SurveyAuthoringRevisionTable.selectAll()
+            .where {
+                SurveyAuthoringRevisionTable.projectId inList projects.map { UUID.fromString(it.id) }
+            }
+            .orderBy(SurveyAuthoringRevisionTable.revisionNumber to SortOrder.DESC)
+            .forEach { row ->
+                val projectId = row[SurveyAuthoringRevisionTable.projectId].toString()
+                if (projectId !in latestByProject) {
+                    latestByProject[projectId] = SurveyAuthoringLatestRevision(
+                        id = row[SurveyAuthoringRevisionTable.id].toString(),
+                        revisionNumber = row[SurveyAuthoringRevisionTable.revisionNumber],
+                        draftVersion = row[SurveyAuthoringRevisionTable.draftVersion],
+                        createdAt = row[SurveyAuthoringRevisionTable.createdAt].toString(),
+                    )
+                }
+            }
+        projects.map { project -> project.copy(latestRevision = latestByProject[project.id]) }
     }
 
     suspend fun findById(team: String, id: UUID): SurveyAuthoringProject? = dbQuery {

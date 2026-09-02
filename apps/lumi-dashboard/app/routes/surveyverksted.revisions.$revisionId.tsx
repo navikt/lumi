@@ -3,6 +3,7 @@ import {
   CheckmarkCircleIcon,
   CodeIcon,
   DownloadIcon,
+  PencilIcon,
 } from "@navikt/aksel-icons";
 import {
   Alert,
@@ -25,7 +26,10 @@ import { zodValidator } from "@tanstack/zod-adapter";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { StageSurface } from "~/components/surveyverksted/StageSurface";
-import { fetchSurveyAuthoringRevisionServerFn } from "~/server/actions";
+import {
+  fetchSurveyAuthoringRevisionServerFn,
+  fetchSurveyAuthoringRevisionsServerFn,
+} from "~/server/actions";
 import type { SurveyAuthoringRevisionDetail } from "~/types/surveyAuthoring";
 import { MIN_WIDGET_VERSION_FOR_DOCUMENTS } from "~/utils/surveyDocument";
 import {
@@ -81,8 +85,18 @@ function SurveyRevision({
   team: string;
 }) {
   const { revision, previousRevision } = detail;
+  const navigate = Route.useNavigate();
   const [restartNonce, setRestartNonce] = useState(0);
   const [revisionUrl, setRevisionUrl] = useState("");
+  // Every shared version of this survey, for moving between them here
+  // instead of via the editor's share dialog.
+  const revisionsQuery = useQuery({
+    queryKey: ["survey-authoring-revisions", team, revision.projectId],
+    queryFn: () =>
+      fetchSurveyAuthoringRevisionsServerFn({
+        data: { team, projectId: revision.projectId },
+      }),
+  });
 
   useEffect(() => setRevisionUrl(window.location.href), []);
 
@@ -134,12 +148,11 @@ function SurveyRevision({
     <main className={styles.revisionSurface}>
       <div className={styles.topline}>
         <Link
-          to="/surveyverksted/$projectId"
-          params={{ projectId: revision.projectId }}
+          to="/surveyverksted"
           search={{ team }}
           className={styles.backLink}
         >
-          Tilbake til redigerbart utkast
+          Til teamets surveys
         </Link>
         <Tag variant="success" size="small">
           Delt versjon
@@ -385,6 +398,55 @@ function SurveyRevision({
               <dd>{revision.draftVersion}</dd>
             </div>
           </dl>
+          <Button
+            type="button"
+            variant="secondary"
+            size="small"
+            icon={<PencilIcon aria-hidden />}
+            className={styles.editAction}
+            onClick={() =>
+              navigate({
+                to: "/surveyverksted/$projectId",
+                params: { projectId: revision.projectId },
+                search: { team },
+              })
+            }
+          >
+            Rediger utkastet
+          </Button>
+          <BodyShort size="small" textColor="subtle" spacing>
+            Endringer i utkastet rører ikke denne versjonen. Del en ny versjon
+            fra utkastet når dere er klare.
+          </BodyShort>
+          {revisionsQuery.data && revisionsQuery.data.length > 1 ? (
+            <div className={styles.versionList}>
+              <BodyShort size="small" weight="semibold">
+                Alle delte versjoner
+              </BodyShort>
+              <ul>
+                {revisionsQuery.data.map((candidate) =>
+                  candidate.id === revision.id ? (
+                    <li key={candidate.id} aria-current="page">
+                      Versjon {candidate.revisionNumber} · denne
+                    </li>
+                  ) : (
+                    <li key={candidate.id}>
+                      <Link
+                        to="/surveyverksted/revisions/$revisionId"
+                        params={{ revisionId: candidate.id }}
+                        search={{ team }}
+                      >
+                        Versjon {candidate.revisionNumber}
+                      </Link>{" "}
+                      <span className={styles.versionMeta}>
+                        {formatTimestamp(candidate.createdAt)}
+                      </span>
+                    </li>
+                  ),
+                )}
+              </ul>
+            </div>
+          ) : null}
           <details className={styles.technicalDetails}>
             <summary>Tekniske detaljer</summary>
             <div className={styles.hashBlock}>

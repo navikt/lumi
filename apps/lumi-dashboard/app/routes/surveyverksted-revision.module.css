@@ -375,3 +375,32 @@
   border-radius: var(--ax-radius-4);
   background: var(--ax-bg-neutral-moderate);
 }
+
+.editAction {
+  margin-block: var(--ax-space-8) var(--ax-space-8);
+}
+
+.versionList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-4);
+  margin-block-end: var(--ax-space-16);
+}
+
+.versionList ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-2);
+}
+
+.versionList li[aria-current="page"] {
+  font-weight: 600;
+}
+
+.versionMeta {
+  color: var(--ax-text-neutral-subtle);
+  font-size: var(--ax-font-size-small);
+}
