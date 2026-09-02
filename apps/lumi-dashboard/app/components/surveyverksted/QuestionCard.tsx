@@ -74,8 +74,6 @@ export interface QuestionCardProps {
   onChangeVisibleIf?: (condition: VisibleIfConditionV1 | undefined) => void;
   /** Plain-language reading of the question's own condition, if any */
   conditionSummary?: string;
-  /** Renders the card indented under the question that drives it */
-  followUp?: boolean;
   /** Page number the card lives on, for «på side N» in condition text */
   pageNumber?: number;
   /** Whether the condition holds with the preview's answers right now */
@@ -106,7 +104,6 @@ export const QuestionCard = memo(function QuestionCard({
   suggestionsFor,
   onChangeVisibleIf,
   conditionSummary,
-  followUp = false,
   pageNumber,
   liveVisible,
   onAddFollowUp,
@@ -137,11 +134,7 @@ export const QuestionCard = memo(function QuestionCard({
 
   if (!expanded) {
     return (
-      <article
-        className={styles.card}
-        data-expanded="false"
-        data-follow-up={followUp ? "true" : undefined}
-      >
+      <article className={styles.card} data-expanded="false">
         <button
           ref={collapsedButtonRef}
           type="button"
@@ -194,7 +187,6 @@ export const QuestionCard = memo(function QuestionCard({
     <article
       className={styles.card}
       data-expanded="true"
-      data-follow-up={followUp ? "true" : undefined}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           event.stopPropagation();
