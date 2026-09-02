@@ -64,14 +64,16 @@ function formatProjectDate(value: string): string {
  * revision was frozen from is the only state needed to tell the last two
  * apart.
  */
-type ProjectStatus =
+export type ProjectStatus =
   | { kind: "draft" }
   | {
       kind: "shared" | "shared-with-changes";
       revision: SurveyAuthoringLatestRevision;
     };
 
-function projectStatus(project: SurveyAuthoringProjectSummary): ProjectStatus {
+export function projectStatus(
+  project: SurveyAuthoringProjectSummary,
+): ProjectStatus {
   const revision = project.latestRevision;
   if (!revision) return { kind: "draft" };
   return {
@@ -116,11 +118,18 @@ function ProjectCardBody({
           ) : null}
         </div>
       </div>
-      <BodyShort size="small" textColor="subtle" className={styles.projectMeta}>
-        {status.kind === "draft"
-          ? `Sist endret ${formatProjectDate(project.updatedAt)}`
-          : `Delt ${formatProjectDate(status.revision.createdAt)}`}
-      </BodyShort>
+      <div className={styles.projectMetaColumn}>
+        <BodyShort size="small" textColor="subtle">
+          {status.kind === "draft"
+            ? `Sist endret ${formatProjectDate(project.updatedAt)}`
+            : `Delt ${formatProjectDate(status.revision.createdAt)}`}
+        </BodyShort>
+        {status.kind === "shared-with-changes" ? (
+          <BodyShort size="small" textColor="subtle">
+            Endret {formatProjectDate(project.updatedAt)}
+          </BodyShort>
+        ) : null}
+      </div>
     </>
   );
 }

@@ -21,7 +21,7 @@ import {
 } from "@navikt/ds-react";
 import { validateSurveyDocumentV1 } from "@navikt/lumi-survey";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
@@ -86,6 +86,12 @@ function SurveyRevision({
 }) {
   const { revision, previousRevision } = detail;
   const navigate = Route.useNavigate();
+  const router = useRouter();
+  const editHref = router.buildLocation({
+    to: "/surveyverksted/$projectId",
+    params: { projectId: revision.projectId },
+    search: { team },
+  }).href;
   const [restartNonce, setRestartNonce] = useState(0);
   const [revisionUrl, setRevisionUrl] = useState("");
   // Every shared version of this survey, for moving between them here
@@ -399,18 +405,32 @@ function SurveyRevision({
             </div>
           </dl>
           <Button
-            type="button"
+            as="a"
+            href={editHref}
             variant="secondary"
             size="small"
             icon={<PencilIcon aria-hidden />}
             className={styles.editAction}
-            onClick={() =>
+            onClick={(event) => {
+              // A real link (open in new tab, copy address), navigated
+              // in-app for plain clicks so the query cache is kept.
+              if (
+                event.defaultPrevented ||
+                event.button !== 0 ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              ) {
+                return;
+              }
+              event.preventDefault();
               navigate({
                 to: "/surveyverksted/$projectId",
                 params: { projectId: revision.projectId },
                 search: { team },
-              })
-            }
+              });
+            }}
           >
             Rediger utkastet
           </Button>
@@ -418,6 +438,11 @@ function SurveyRevision({
             Endringer i utkastet rører ikke denne versjonen. Del en ny versjon
             fra utkastet når dere er klare.
           </BodyShort>
+          {revisionsQuery.isError ? (
+            <BodyShort size="small" textColor="subtle" spacing>
+              Kunne ikke hente listen over delte versjoner.
+            </BodyShort>
+          ) : null}
           {revisionsQuery.data && revisionsQuery.data.length > 1 ? (
             <div className={styles.versionList}>
               <BodyShort size="small" weight="semibold">

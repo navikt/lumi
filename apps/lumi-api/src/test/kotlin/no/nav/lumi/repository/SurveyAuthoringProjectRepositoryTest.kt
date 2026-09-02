@@ -80,11 +80,20 @@ class SurveyAuthoringProjectRepositoryTest : FunSpec({
         )
         revisions.createFromDraft("team-a", java.util.UUID.fromString(shared.id), 2, "A123456", 10)
 
+        // A third project with a single revision: the global ordering by
+        // revision number must still pick each project's own newest row.
+        val once = repository.create(
+            team = "team-a", name = "Delt en gang", surveyId = "en-gang-v1", document = document,
+            principalIdentity = "A123456", maxProjects = 10,
+        )!!
+        revisions.createFromDraft("team-a", java.util.UUID.fromString(once.id), 1, "A123456", 10)
+
         val byId = repository.findByTeam("team-a").associateBy { it.id }
         byId.getValue(draftOnly.id).latestRevision shouldBe null
         val latest = byId.getValue(shared.id).latestRevision!!
         latest.revisionNumber shouldBe 2
         latest.draftVersion shouldBe 2
+        byId.getValue(once.id).latestRevision!!.revisionNumber shouldBe 1
         // Team scoping: another team never sees the project at all.
         repository.findByTeam("team-b").isEmpty() shouldBe true
     }

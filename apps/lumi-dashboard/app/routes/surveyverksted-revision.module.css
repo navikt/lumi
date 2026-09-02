@@ -377,7 +377,7 @@
 }
 
 .editAction {
-  margin-block: var(--ax-space-8) var(--ax-space-8);
+  margin-block: var(--ax-space-8);
 }
 
 .versionList {

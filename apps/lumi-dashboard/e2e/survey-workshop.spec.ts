@@ -469,6 +469,16 @@ test("deletes a draft from the index after confirmation", async ({ page }) => {
   await page.waitForURL(/\/surveyverksted\/revisions\//);
   const revisionUrl = page.url();
 
+  // Edit the draft after sharing, in the SAME SPA session: the autosave's
+  // list update must keep the freeze visible, not revive a cached
+  // «Utkast» row — and the newer edit must be flagged.
+  // Aksel renders `Button as="a"` as an anchor with the button role: a real
+  // href for new tabs and copying, addressed here by its role.
+  await page.getByRole("button", { name: "Rediger utkastet" }).click();
+  await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+\?/);
+  await draftField(page).fill("Hvordan opplevde du tjenesten i dag?");
+  await expect(page.locator('[data-state="saved"]')).toBeVisible();
+
   // SPA-navigate back to the index (same QueryClient!) so the revision
   // detail stays cached — the deletion must evict it, not a full reload.
   await page.getByRole("link", { name: "Surveyverksted" }).first().click();
@@ -478,7 +488,11 @@ test("deletes a draft from the index after confirmation", async ({ page }) => {
   // version — the draft is reached from the menu, not by the main click.
   const card = page.getByRole("link", { name: new RegExp(draftName) });
   await expect(card.getByText("Delt · versjon 1")).toBeVisible();
-  await expect(card).toHaveAttribute("href", /\/surveyverksted\/revisions\//);
+  await expect(card.getByText("Utkastet har nye endringer")).toBeVisible();
+  await expect(card).toHaveAttribute(
+    "href",
+    new RegExp(revisionUrl.split("?")[0].split("/revisions/")[1]),
+  );
   await page
     .getByRole("button", { name: `Handlinger for ${draftName}`, exact: false })
     .click();
@@ -499,9 +513,14 @@ test("deletes a draft from the index after confirmation", async ({ page }) => {
     page.getByRole("heading", { name: "Teamets surveys" }),
   ).toBeFocused();
 
-  // History back is an SPA navigation: with the detail cache evicted the
-  // route must refetch and land in the not-found state — a stale cache
-  // would render the deleted revision from memory.
+  // History back is an SPA navigation: with the caches evicted both routes
+  // must refetch and land in their not-found states — a stale cache would
+  // render the deleted draft or revision from memory. Two steps back: the
+  // draft editor visited above, then the revision.
+  await page.goBack();
+  await expect(page.getByText("Utkastet kunne ikke åpnes.")).toBeVisible({
+    timeout: 10000,
+  });
   await page.goBack();
   await expect(page).toHaveURL(revisionUrl);
   await expect(page.getByText(/Den delte versjonen finnes ikke/)).toBeVisible({

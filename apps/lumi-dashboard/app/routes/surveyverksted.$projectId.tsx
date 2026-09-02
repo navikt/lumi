@@ -533,8 +533,28 @@ function SurveyWorkshopEditor({
       await queryClient.invalidateQueries({
         queryKey: ["survey-authoring-revisions", project.team, project.id],
       });
-      // The team list carries each project's newest revision, so a fresh
-      // freeze must not leave a cached «Utkast» row behind for the overview.
+      // The team list carries each project's newest revision. Write it into
+      // the cached list directly: an invalidation alone is undone by the
+      // next autosave, whose setQueryData marks the list fresh again with
+      // the old revision still on it.
+      queryClient.setQueryData<SurveyAuthoringProjectSummary[]>(
+        ["survey-authoring-projects", project.team],
+        (list) =>
+          list?.map((candidate) =>
+            candidate.id === project.id
+              ? {
+                  ...candidate,
+                  draftVersion: revision.draftVersion,
+                  latestRevision: {
+                    id: revision.id,
+                    revisionNumber: revision.revisionNumber,
+                    draftVersion: revision.draftVersion,
+                    createdAt: revision.createdAt,
+                  },
+                }
+              : candidate,
+          ),
+      );
       await queryClient.invalidateQueries({
         queryKey: ["survey-authoring-projects", project.team],
       });

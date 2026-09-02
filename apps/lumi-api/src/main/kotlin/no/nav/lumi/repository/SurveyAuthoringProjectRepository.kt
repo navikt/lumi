@@ -11,6 +11,7 @@ import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.jetbrains.exposed.v1.jdbc.update
@@ -66,10 +67,17 @@ class SurveyAuthoringProjectRepository {
             .map(::toSummary)
         if (projects.isEmpty()) return@dbQuery projects
 
-        // One query for the whole team: newest revision per project. Ordered
-        // by revision number so the first row seen per project wins.
+        // One query for the whole team: newest revision per project. Scalar
+        // columns only — never the JSONB documents — and ordered by revision
+        // number so the first row seen per project wins.
         val latestByProject = mutableMapOf<String, SurveyAuthoringLatestRevision>()
-        SurveyAuthoringRevisionTable.selectAll()
+        SurveyAuthoringRevisionTable.select(
+            SurveyAuthoringRevisionTable.id,
+            SurveyAuthoringRevisionTable.projectId,
+            SurveyAuthoringRevisionTable.revisionNumber,
+            SurveyAuthoringRevisionTable.draftVersion,
+            SurveyAuthoringRevisionTable.createdAt,
+        )
             .where {
                 SurveyAuthoringRevisionTable.projectId inList projects.map { UUID.fromString(it.id) }
             }
