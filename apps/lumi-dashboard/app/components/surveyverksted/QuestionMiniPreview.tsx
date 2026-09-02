@@ -92,9 +92,17 @@ function MiniField({ question }: { question: SurveyQuestionV1 }) {
         />
       );
     case "text":
+      // An empty answer field says nothing about the question; without an
+      // authored placeholder, name what the respondent does here.
       return (
         <TextQuestionField
-          question={{ ...core, minRows: 2 }}
+          question={{
+            ...core,
+            minRows: 2,
+            placeholder:
+              core.placeholder?.trim() ||
+              "Respondenten skriver svaret sitt her",
+          }}
           value={undefined}
           onChange={noop}
           validationErrorMessage=""

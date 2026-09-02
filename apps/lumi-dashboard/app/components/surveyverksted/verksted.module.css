@@ -960,7 +960,10 @@
 /* ---------- Sortable (pointer drag) ---------- */
 
 .sortable {
+  --tree-indent: 28px;
+  --tree-depth: 0;
   position: relative;
+  padding-inline-start: calc(min(var(--tree-depth), 4) * var(--tree-indent));
   touch-action: manipulation;
 }
 
@@ -980,7 +983,11 @@
 .sortable[data-dragging="true"]::before {
   position: absolute;
   top: 50%;
-  inset-inline-start: calc(var(--ax-space-6) * -1);
+  inset-inline-start: calc(
+    min(var(--tree-depth), 4) *
+    var(--tree-indent) -
+    var(--ax-space-6)
+  );
   width: 3px;
   height: 1.5rem;
   translate: 0 -50%;
@@ -1011,21 +1018,60 @@
   white-space: nowrap;
 }
 
-/* A follow-up sits indented under the question that drives it, joined by
-   an elbow — the flat list reads as the tree it actually is. */
-.card[data-follow-up="true"] {
-  margin-inline-start: var(--ax-space-32);
+/* Dependency tree lines. Each nested card carries one guide per ancestor
+   level in its indent area: a trunk («line») where that ancestor still has
+   dependants further down, and at the parent level an elbow into the card —
+   continuing downward when siblings follow. The guides start in the gap
+   above the card so consecutive rows join into one unbroken line. */
+.treeGuides {
+  position: absolute;
+  inset-block: calc(var(--ax-space-12) * -1) 0;
+  inset-inline-start: 0;
+  width: calc(min(var(--tree-depth), 4) * var(--tree-indent));
+  pointer-events: none;
 }
 
-.card[data-follow-up="true"]::after {
+.treeGuide {
+  --tree-x: calc(var(--tree-level) * var(--tree-indent) + 13px);
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  inset-inline-start: var(--tree-x);
+  width: 0;
+  border-inline-start: 2px solid var(--ax-border-accent-subtle);
+}
+
+.treeGuide[data-kind="none"] {
+  display: none;
+}
+
+.treeGuide[data-kind="elbow"] {
+  bottom: auto;
+  height: 40px;
+  width: calc(var(--tree-indent) - 15px);
+  border-bottom: 2px solid var(--ax-border-accent-subtle);
+  border-end-start-radius: 10px;
+}
+
+.treeGuide[data-kind="elbow-continue"]::after {
   content: "";
   position: absolute;
-  top: -13px;
-  inset-inline-start: -18px;
-  width: 14px;
-  height: 42px;
-  border-inline-start: 2px solid var(--ax-border-accent-subtle);
-  border-bottom: 2px solid var(--ax-border-accent-subtle);
+  top: 38px;
+  inset-inline-start: 0;
+  width: calc(var(--tree-indent) - 15px);
+  border-top: 2px solid var(--ax-border-accent-subtle);
+}
+
+/* Conditional on something outside this page's tree (another page, several
+   questions, metadata): a dashed stub pointing upward, out of the list. */
+.treeExternal {
+  position: absolute;
+  top: calc(var(--ax-space-12) * -1);
+  inset-inline-start: -15px;
+  width: 13px;
+  height: 40px;
+  border-inline-start: 2px dashed var(--ax-border-accent-subtle);
+  border-bottom: 2px dashed var(--ax-border-accent-subtle);
   border-end-start-radius: 10px;
   pointer-events: none;
 }

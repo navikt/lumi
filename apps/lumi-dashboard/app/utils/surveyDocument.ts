@@ -1280,7 +1280,7 @@ export function conditionValueSuggestions(
   return [];
 }
 
-/* ---------- Follow-up branches («Legg til oppfølging») ---------- */
+/* ---------- Follow-up branches («Legg til oppfølgingsspørsmål») ---------- */
 
 export interface FollowUpBranch {
   key: string;

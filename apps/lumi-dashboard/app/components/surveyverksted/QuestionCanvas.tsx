@@ -6,7 +6,14 @@ import type {
   SurveyQuestionV1,
 } from "@navikt/lumi-survey";
 import { SPECIALIZED_SURVEY_FIELD_IDS } from "@navikt/lumi-survey";
-import { Fragment, memo, useCallback, useMemo } from "react";
+import {
+  type CSSProperties,
+  Fragment,
+  memo,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import type {
   ConditionValueSuggestion,
   FollowUpBranch,
@@ -16,14 +23,18 @@ import type {
   VisibleIfConditionV1,
 } from "~/utils/surveyDocument";
 import {
-  isMetadataCondition,
   isRequiredSpecializedQuestion,
   isSpecializedQuestionContractValid,
-  visibleIfLeaves,
 } from "~/utils/surveyDocument";
 import type { OptionsEditorProps } from "./OptionsEditor";
 import { PageGroupHeader } from "./PageGroupHeader";
 import { QuestionCard } from "./QuestionCard";
+import {
+  buildQuestionTree,
+  drawnGuides,
+  type QuestionTreeNode,
+  reuseStableNodes,
+} from "./questionTree";
 import { type ScreenUndo, SurveyScreenCard } from "./SurveyScreenCard";
 import { SortableList, useSortableItem } from "./sortable";
 import { TypeGallery } from "./TypeGallery";
@@ -119,25 +130,19 @@ export const QuestionCanvas = memo(function QuestionCanvas({
 }: QuestionCanvasProps) {
   const pad = (value: number) => String(value).padStart(2, "0");
 
-  // A question whose condition ONLY references the nearest preceding
-  // non-follow-up question renders indented under it as its follow-up.
-  const followUpFlags = useMemo(() => {
-    const flags: boolean[] = [];
-    let anchorId: string | null = null;
-    for (const [index, question] of page.questions.entries()) {
-      const leaves = visibleIfLeaves(question.visibleIf);
-      const isFollowUp =
-        index > 0 &&
-        anchorId !== null &&
-        leaves.length > 0 &&
-        leaves.every(
-          (leaf) => !isMetadataCondition(leaf) && leaf.questionId === anchorId,
-        );
-      flags.push(isFollowUp);
-      if (!isFollowUp) anchorId = question.id;
-    }
-    return flags;
-  }, [page.questions]);
+  // Dependency tree: dependants nest under the same-page question that
+  // drives them, with trunk lines reaching the actual driver.
+  // Nodes keep their identity across keystrokes that don't change the tree,
+  // so the per-question memo boundary below still holds.
+  const nodeCacheRef = useRef<ReadonlyMap<string, QuestionTreeNode>>(new Map());
+  const tree = useMemo(() => {
+    const nodes = reuseStableNodes(
+      nodeCacheRef.current,
+      buildQuestionTree(page),
+    );
+    nodeCacheRef.current = new Map(nodes.map((node) => [node.id, node]));
+    return nodes;
+  }, [page]);
 
   const pageFullyConditional =
     page.questions.length > 0 &&
@@ -211,7 +216,7 @@ export const QuestionCanvas = memo(function QuestionCanvas({
                 question={question}
                 index={index}
                 pageNumber={pageNumber}
-                followUp={followUpFlags[index] ?? false}
+                node={tree[index]}
                 conditionSummary={conditionSummaries.get(question.id)}
                 liveVisible={
                   question.visibleIf
@@ -300,7 +305,7 @@ const CanvasQuestion = memo(function CanvasQuestion({
   question,
   index,
   pageNumber,
-  followUp,
+  node,
   conditionSummary,
   liveVisible,
   onAddFollowUp,
@@ -327,7 +332,7 @@ const CanvasQuestion = memo(function CanvasQuestion({
   question: SurveyQuestionV1;
   index: number;
   pageNumber: number;
-  followUp: boolean;
+  node: QuestionTreeNode;
   conditionSummary: string | undefined;
   liveVisible: boolean | undefined;
   onAddFollowUp: QuestionCanvasProps["onAddFollowUp"];
@@ -405,16 +410,45 @@ const CanvasQuestion = memo(function CanvasQuestion({
     <div
       ref={sortable.setNodeRef}
       className={sortable.className}
-      style={sortable.style}
+      style={
+        {
+          ...sortable.style,
+          "--tree-depth": node.depth,
+        } as CSSProperties
+      }
       data-dragging={sortable.isDragging}
       data-draggable={!expanded}
+      data-depth={node.depth}
+      data-external={node.externalDependency || undefined}
       {...sortable.listeners}
     >
+      {node.depth > 0 ? (
+        <span className={styles.treeGuides} aria-hidden>
+          {drawnGuides(node).map((guide, level) => {
+            const kind = guide.isParent
+              ? guide.continues
+                ? "elbow-continue"
+                : "elbow"
+              : guide.continues
+                ? "line"
+                : "none";
+            return (
+              <span
+                key={guide.ancestorId}
+                className={styles.treeGuide}
+                data-kind={kind}
+                style={{ "--tree-level": level } as CSSProperties}
+              />
+            );
+          })}
+        </span>
+      ) : node.externalDependency ? (
+        <span className={styles.treeExternal} aria-hidden />
+      ) : null}
       <QuestionCard
         question={question}
         index={index}
         pageNumber={pageNumber}
-        followUp={followUp}
         conditionSummary={conditionSummary}
         liveVisible={liveVisible}
         onAddFollowUp={expanded ? handleAddFollowUp : undefined}

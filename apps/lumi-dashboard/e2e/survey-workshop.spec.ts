@@ -989,19 +989,25 @@ test("follow-up branches read live in the cards and in the flow overview", async
 
   // One gesture wires a branch: a text follow-up gated on the low answers.
   await page
-    .getByRole("button", { name: "Legg til oppfølging" })
+    .getByRole("button", { name: "Legg til oppfølgingsspørsmål" })
     .first()
     .click();
   await page.getByRole("menuitem", { name: "Ved lavt svar (1–2)" }).click();
   await expect(
     page.getByRole("textbox", { name: "Spørsmålstekst" }).nth(1),
   ).toHaveValue("Hva var det som ikke fungerte?");
-  // The condition reads back in plain language inside the editor.
+  // The condition reads back in plain language inside the editor, and the
+  // canvas nests both dependants (new follow-up + seeded comment) under
+  // the rating that drives them.
   await expect(
     page
       .getByText("Vises når svaret på «Hvordan opplevde du tjenesten?» er 1–2")
       .first(),
   ).toBeVisible();
+  const canvas = page.locator('section[aria-label^="Side 1"]');
+  await expect(canvas.locator('[data-depth="1"]')).toHaveCount(2);
+  await expect(canvas.locator('[data-depth="0"]')).toHaveCount(1);
+  await expect(canvas.locator("[data-external]")).toHaveCount(0);
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
 
   // Live mirror: without answers every branch is hidden; a low answer in
