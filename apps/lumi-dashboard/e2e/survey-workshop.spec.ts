@@ -1004,8 +1004,10 @@ test("follow-up branches read live in the cards and in the flow overview", async
       .getByText("Vises når svaret på «Hvordan opplevde du tjenesten?» er 1–2")
       .first(),
   ).toBeVisible();
-  await expect(page.locator('[data-depth="1"]')).toHaveCount(2);
-  await expect(page.locator('[data-depth="0"]')).toHaveCount(1);
+  const canvas = page.locator('section[aria-label^="Side 1"]');
+  await expect(canvas.locator('[data-depth="1"]')).toHaveCount(2);
+  await expect(canvas.locator('[data-depth="0"]')).toHaveCount(1);
+  await expect(canvas.locator("[data-external]")).toHaveCount(0);
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
 
   // Live mirror: without answers every branch is hidden; a low answer in

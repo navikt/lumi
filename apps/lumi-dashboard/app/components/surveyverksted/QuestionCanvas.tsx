@@ -12,6 +12,7 @@ import {
   memo,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
 import type {
   ConditionValueSuggestion,
@@ -28,7 +29,12 @@ import {
 import type { OptionsEditorProps } from "./OptionsEditor";
 import { PageGroupHeader } from "./PageGroupHeader";
 import { QuestionCard } from "./QuestionCard";
-import { buildQuestionTree, type QuestionTreeNode } from "./questionTree";
+import {
+  buildQuestionTree,
+  drawnGuides,
+  type QuestionTreeNode,
+  reuseStableNodes,
+} from "./questionTree";
 import { type ScreenUndo, SurveyScreenCard } from "./SurveyScreenCard";
 import { SortableList, useSortableItem } from "./sortable";
 import { TypeGallery } from "./TypeGallery";
@@ -126,7 +132,17 @@ export const QuestionCanvas = memo(function QuestionCanvas({
 
   // Dependency tree: dependants nest under the same-page question that
   // drives them, with trunk lines reaching the actual driver.
-  const tree = useMemo(() => buildQuestionTree(page), [page]);
+  // Nodes keep their identity across keystrokes that don't change the tree,
+  // so the per-question memo boundary below still holds.
+  const nodeCacheRef = useRef<ReadonlyMap<string, QuestionTreeNode>>(new Map());
+  const tree = useMemo(() => {
+    const nodes = reuseStableNodes(
+      nodeCacheRef.current,
+      buildQuestionTree(page),
+    );
+    nodeCacheRef.current = new Map(nodes.map((node) => [node.id, node]));
+    return nodes;
+  }, [page]);
 
   const pageFullyConditional =
     page.questions.length > 0 &&
@@ -408,19 +424,17 @@ const CanvasQuestion = memo(function CanvasQuestion({
     >
       {node.depth > 0 ? (
         <span className={styles.treeGuides} aria-hidden>
-          {node.ancestors.map((ancestorId, level) => {
-            const continues = node.guides[level] ?? false;
-            const isParentLevel = level === node.depth - 1;
-            const kind = isParentLevel
-              ? continues
+          {drawnGuides(node).map((guide, level) => {
+            const kind = guide.isParent
+              ? guide.continues
                 ? "elbow-continue"
                 : "elbow"
-              : continues
+              : guide.continues
                 ? "line"
                 : "none";
             return (
               <span
-                key={ancestorId}
+                key={guide.ancestorId}
                 className={styles.treeGuide}
                 data-kind={kind}
                 style={{ "--tree-level": level } as CSSProperties}
