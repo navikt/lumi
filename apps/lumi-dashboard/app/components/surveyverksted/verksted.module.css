@@ -293,6 +293,12 @@
   gap: var(--ax-space-8);
 }
 
+.conditionHeaderMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ax-space-8);
+}
+
 .conditionRow {
   display: grid;
   grid-template-columns: minmax(12rem, 2fr) minmax(8rem, 1fr) minmax(8rem, 1fr);
@@ -727,7 +733,7 @@
   justify-content: space-between;
   align-items: center;
   gap: var(--ax-space-12);
-  padding: var(--ax-space-10) var(--ax-space-16);
+  padding: var(--ax-space-8) var(--ax-space-16);
   color: var(--ax-text-neutral-subtle);
   background: var(--ax-bg-neutral-soft);
   border: 1px dashed var(--ax-border-neutral);
@@ -759,7 +765,7 @@
 }
 
 .stageStale {
-  padding: var(--ax-space-6) var(--ax-space-10);
+  padding: var(--ax-space-6) var(--ax-space-8);
   color: var(--ax-text-warning);
   background: var(--ax-bg-warning-soft);
   border-radius: var(--ax-radius-8);
@@ -910,7 +916,7 @@
 .revisionLink {
   flex: 1;
   display: flex;
-  gap: var(--ax-space-10);
+  gap: var(--ax-space-8);
   align-items: baseline;
   padding: var(--ax-space-6) var(--ax-space-8);
   color: inherit;
@@ -981,4 +987,254 @@
   border-radius: 99px;
   background: var(--ax-border-neutral);
   content: "";
+}
+
+/* ---------- Follow-up branches («Oppfølging») ---------- */
+
+/* Plain-language condition line on collapsed cards */
+.cardBranchLine {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ax-space-4);
+  min-width: 0;
+  color: var(--ax-text-accent-subtle, var(--ax-text-accent));
+}
+
+.cardBranchLine svg {
+  flex: 0 0 auto;
+  font-size: 1rem;
+}
+
+.cardBranchText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A follow-up sits indented under the question that drives it, joined by
+   an elbow — the flat list reads as the tree it actually is. */
+.card[data-follow-up="true"] {
+  margin-inline-start: var(--ax-space-32);
+}
+
+.card[data-follow-up="true"]::after {
+  content: "";
+  position: absolute;
+  top: -13px;
+  inset-inline-start: -18px;
+  width: 14px;
+  height: 42px;
+  border-inline-start: 2px solid var(--ax-border-accent-subtle);
+  border-bottom: 2px solid var(--ax-border-accent-subtle);
+  border-end-start-radius: 10px;
+  pointer-events: none;
+}
+
+.conditionSentence {
+  color: var(--ax-text-accent-subtle, var(--ax-text-accent));
+}
+
+/* Whole-page condition chip in the canvas header */
+.pageConditional {
+  display: flex;
+  align-items: center;
+  gap: var(--ax-space-6);
+  width: fit-content;
+  margin-top: var(--ax-space-8);
+  padding: var(--ax-space-6) var(--ax-space-8);
+  color: var(--ax-text-accent-subtle, var(--ax-text-accent));
+  background: var(--ax-bg-accent-soft);
+  border-radius: var(--ax-radius-8);
+}
+
+.pageConditional svg {
+  flex: 0 0 auto;
+  font-size: 1rem;
+}
+
+.railConditionalIcon {
+  vertical-align: -0.125em;
+  margin-inline-end: var(--ax-space-2);
+  color: var(--ax-text-accent-subtle, var(--ax-text-accent));
+}
+
+/* ---------- Live branch state (mirrored from the preview) ---------- */
+
+.liveChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ax-space-4);
+  color: var(--ax-text-neutral-subtle);
+  white-space: nowrap;
+}
+
+.liveChip[data-visible="true"] {
+  color: var(--ax-text-success);
+}
+
+.liveDot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--ax-bg-neutral-moderate);
+}
+
+.liveChip[data-visible="true"] .liveDot {
+  background: var(--ax-bg-success-strong);
+}
+
+.stageHeaderActions {
+  display: flex;
+  gap: var(--ax-space-2);
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+/* ---------- Flow overview («Flyten») ---------- */
+
+.flowBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-16);
+}
+
+.flowScreen {
+  display: flex;
+  gap: var(--ax-space-8);
+  align-items: center;
+  padding: var(--ax-space-6) var(--ax-space-8);
+  color: var(--ax-text-neutral-subtle);
+}
+
+.flowScreen svg {
+  flex: 0 0 auto;
+  font-size: 1.1rem;
+}
+
+.flowList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-12);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.flowPage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-8);
+  padding: var(--ax-space-12) var(--ax-space-16);
+  background: var(--ax-bg-raised);
+  border: 1px solid var(--ax-border-neutral-subtle);
+  border-radius: var(--ax-radius-12);
+}
+
+.flowPageHeader {
+  display: flex;
+  gap: var(--ax-space-8);
+  align-items: center;
+}
+
+.flowQuestions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.flowQuestion {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-2);
+  padding: var(--ax-space-6) var(--ax-space-8);
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: var(--ax-radius-8);
+  cursor: pointer;
+  font: inherit;
+}
+
+.flowQuestion:hover {
+  background: var(--ax-bg-neutral-soft);
+}
+
+.flowQuestion:focus-visible {
+  outline: 3px solid var(--ax-border-focus);
+  outline-offset: 1px;
+}
+
+.flowQuestionTop {
+  display: flex;
+  gap: var(--ax-space-8);
+  align-items: center;
+  min-width: 0;
+}
+
+.flowQuestionTop > svg {
+  flex: 0 0 auto;
+  font-size: 1rem;
+  color: var(--ax-text-neutral-subtle);
+}
+
+.flowNumber {
+  color: var(--ax-text-neutral-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.flowPrompt {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+
+.flowQuestion[data-hidden-now="true"] .flowPrompt {
+  color: var(--ax-text-neutral-subtle);
+}
+
+.flowBranchLine {
+  display: flex;
+  gap: var(--ax-space-4);
+  align-items: baseline;
+  padding-inline-start: var(--ax-space-24);
+  color: var(--ax-text-accent-subtle, var(--ax-text-accent));
+}
+
+.flowIssue {
+  display: flex;
+  gap: var(--ax-space-4);
+  align-items: baseline;
+  padding-inline-start: var(--ax-space-24);
+  color: var(--ax-text-warning);
+}
+
+.flowBody > .flowIssue {
+  padding-inline-start: var(--ax-space-8);
+}
+
+.flowIssue svg {
+  flex: 0 0 auto;
+  align-self: center;
+  font-size: 0.95rem;
+}
+
+.flowWarnBadge {
+  display: inline-grid;
+  place-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  margin-inline-start: var(--ax-space-6);
+  padding-inline: var(--ax-space-4);
+  color: var(--ax-text-warning);
+  font-size: var(--ax-font-size-small);
+  font-variant-numeric: tabular-nums;
+  background: var(--ax-bg-warning-soft);
+  border-radius: 99px;
 }
