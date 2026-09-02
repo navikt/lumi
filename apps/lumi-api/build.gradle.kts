@@ -36,7 +36,7 @@ val mockkVersion = "1.14.11"
 val testcontainersVersion = "1.21.4"
 val tokenSupportVersion = "5.0.13"
 val exposedVersion = "1.5.0"
-val micrometerVersion = "1.17.0"
+val micrometerVersion = "1.17.1"
 val log4jVersion = "2.26.1"
 val nettyVersion = "4.2.17.Final"
 
