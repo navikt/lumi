@@ -336,7 +336,7 @@ export const QuestionCard = memo(function QuestionCard({
                   size="small"
                   icon={<BranchingIcon aria-hidden />}
                 >
-                  Legg til oppfølging
+                  Legg til oppfølgingsspørsmål
                 </Button>
               </ActionMenu.Trigger>
               <ActionMenu.Content align="start">

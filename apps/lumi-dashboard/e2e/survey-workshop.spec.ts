@@ -989,7 +989,7 @@ test("follow-up branches read live in the cards and in the flow overview", async
 
   // One gesture wires a branch: a text follow-up gated on the low answers.
   await page
-    .getByRole("button", { name: "Legg til oppfølging" })
+    .getByRole("button", { name: "Legg til oppfølgingsspørsmål" })
     .first()
     .click();
   await page.getByRole("menuitem", { name: "Ved lavt svar (1–2)" }).click();
