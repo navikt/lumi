@@ -34,6 +34,9 @@ konsumenter.
 3. **En eksplisitt authoring-revisjon er immutable.** Revisjoner opprettes fra
    en gyldig, lagret draft. En revisjonslenke kan deles i GitHub,
    Trello eller Jira og viser preview, diff og deterministisk kodeeksport.
+   Strukturendringer kan deles under samme `surveyId`; en delt revisjon betyr
+   ikke at surveyen er tatt i bruk. Kompatibilitetskontrollen for innsamlede
+   svar ligger fortsatt i submission-domenet.
 4. **Produksjon forblir survey-as-code.** Utvikleren tar den eksporterte
    `SurveyDocumentV1` inn i konsumentappen og deployer på vanlig måte. Widgeten
    får ingen nye nettverkskall.
@@ -60,7 +63,8 @@ konsumenter.
 
 - opprette en revisjon som et atomisk snapshot av lagret draft-versjon
 - validere `SurveyDocumentV1` og beregne dokument- og definisjonshash i API-et
-- blokkere endret analytisk struktur under samme `surveyId`
+- tillate endret analytisk struktur under samme `surveyId` uten å endre
+  tidligere revisjoner (justert 2026-09-07)
 - åpne teamautorisert revisjonslenke med auditdata, diff og inert preview
 - eksportere deterministisk JSON, TypeScript og Markdown-lenke
 

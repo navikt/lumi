@@ -80,6 +80,17 @@ Et nytt forsøk med samme inkompatible payload løser ikke konflikten. Se
 [runbook for definisjonskonflikter](https://github.com/navikt/lumi/blob/main/apps/lumi-api/docs/runbooks/survey-definition-conflicts.md)
 for operativ feilsøking.
 
+## Delte versjoner i Surveyverkstedet
+
+Du kan endre spørsmål, svaralternativer og valggrenser og dele nye versjoner
+under samme `surveyId` i Surveyverkstedet. Hver delt versjon er et uforanderlig
+øyeblikksbilde; deling betyr ikke at surveyen er satt i produksjon.
+
+Før utvikleren tar en ny versjon i bruk, må den vurderes mot surveyen som faktisk
+samler inn svar. En inkompatibel endring krever fortsatt en ny `surveyId` ved
+utrulling. Innsamlingens kompatibilitetskontroll påvirkes ikke av delte versjoner
+i verkstedet.
+
 ## Tre ulike versjonsbegreper
 
 | Begrep | Betydning |

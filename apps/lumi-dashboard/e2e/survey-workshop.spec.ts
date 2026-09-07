@@ -174,6 +174,60 @@ test("creates, edits, previews and shares a survey draft", async ({ page }) => {
   await expectNoAxeViolations(page);
 });
 
+test("shares a changed choice limit with the same survey id and keeps the original version", async ({
+  page,
+}) => {
+  await page.goto("/surveyverksted");
+  await page.getByLabel("Navn på utkastet").fill("E2E delte valggrenser");
+  await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await expect(page).toHaveURL(/\/surveyverksted\/[0-9a-f-]+\?team=/);
+  const draftUrl = page.url();
+
+  await page.getByRole("button", { name: "Legg til spørsmål" }).click();
+  await page.getByRole("menuitem", { name: /Flervalg/ }).click();
+  const prompt = "Hva kunne gjort oppfølgingen enklere?";
+  await page
+    .getByRole("textbox", { name: "Spørsmålstekst" })
+    .last()
+    .fill(prompt);
+  await expect(page.locator('[data-state="saved"]')).toBeVisible();
+  await page.getByRole("button", { name: "Del med utvikler" }).click();
+  await page.getByRole("button", { name: "Del versjon 1" }).click();
+  await expect(page).toHaveURL(/\/surveyverksted\/revisions\/[0-9a-f-]+/);
+  const firstRevisionUrl = page.url();
+  await page.getByText("Se TypeScript-koden", { exact: true }).click();
+  await expect(
+    page.getByText('"maxSelections":', { exact: false }),
+  ).toHaveCount(0);
+
+  await page.goto(draftUrl);
+  await page.getByRole("button", { name: new RegExp(prompt) }).click();
+  await page
+    .getByLabel("Maks antall alternativer brukeren kan velge")
+    .fill("2");
+  await expect(page.locator('[data-state="saved"]')).toBeVisible();
+  await page.getByRole("button", { name: "Del med utvikler" }).click();
+  await page.getByRole("button", { name: "Del versjon 2" }).click();
+  await expect(page).toHaveURL(/\/surveyverksted\/revisions\/[0-9a-f-]+/);
+  expect(page.url()).not.toBe(firstRevisionUrl);
+  await expect(
+    page.getByText("e2e-delte-valggrenser", { exact: true }),
+  ).toBeVisible();
+  await page.getByText("Se TypeScript-koden", { exact: true }).click();
+  await expect(
+    page.getByText('"maxSelections": 2', { exact: false }),
+  ).toBeVisible();
+
+  await page.goto(firstRevisionUrl);
+  await page.getByText("Se TypeScript-koden", { exact: true }).click();
+  await expect(
+    page.getByText('"maxSelections":', { exact: false }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText("e2e-delte-valggrenser", { exact: true }),
+  ).toBeVisible();
+});
+
 test("starts a verified specialized survey from plain-language choices", async ({
   page,
 }) => {

@@ -146,17 +146,6 @@ export async function createMockSurveyRevision(input: {
   const projectRevisions = [...revisions.values()]
     .filter((revision) => revision.projectId === project.id)
     .sort((a, b) => b.revisionNumber - a.revisionNumber);
-  const previousForSurvey = projectRevisions.find(
-    (revision) => revision.surveyId === project.surveyId,
-  );
-  if (
-    previousForSurvey &&
-    analyticalStructure(previousForSurvey.document) !==
-      analyticalStructure(document)
-  ) {
-    throw new Error("Survey structure differs from the previous revision");
-  }
-
   const documentHash = await sha256(serializeSurveyDocumentJson(document));
   const definitionHash = await sha256(analyticalStructure(document));
   // Hashing yielded to the event loop — mirror the API's advisory lock by

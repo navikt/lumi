@@ -153,11 +153,6 @@ fun Route.surveyAuthoringRoutes(
                 throw ApiErrorException.TooManyRequestsException(
                     "Survey project has reached the limit of $MAX_REVISIONS_PER_PROJECT revisions",
                 )
-            is CreateSurveyAuthoringRevisionResult.DefinitionConflict ->
-                throw ApiErrorException.ConflictException(
-                    "Survey structure differs from revision ${result.previousRevisionNumber}. " +
-                        "Use a new surveyId before creating a shared revision.",
-                )
         }
     }
 
