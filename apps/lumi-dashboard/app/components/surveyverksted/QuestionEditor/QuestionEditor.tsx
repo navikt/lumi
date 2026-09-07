@@ -448,7 +448,6 @@ export function QuestionEditor({
           >
             Legg til spørsmål
           </Button>
-          <Detail>Vises til alle. Du kan begrense hvem som får det.</Detail>
         </VStack>
       </section>
       {screenNav("$success", "Takkeside", "Etter innsending")}
@@ -974,7 +973,6 @@ export function QuestionEditor({
               >
                 Legg til spørsmål
               </Button>
-              <Detail>Vises til alle. Du kan begrense hvem som får det.</Detail>
             </VStack>
           </>
         )}
