@@ -47,6 +47,8 @@ spec:
     inbound:
       rules:
         - application: lumi-dashboard
+        - application: dialogmote-frontend
+          namespace: team-esyfo
         - application: bro-frontend
         - application: syfo-oppfolgingsplan-frontend
         - application: narmesteleder-frontend

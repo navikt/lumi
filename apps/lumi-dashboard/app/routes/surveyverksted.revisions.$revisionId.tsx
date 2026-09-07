@@ -31,7 +31,10 @@ import {
   fetchSurveyAuthoringRevisionsServerFn,
 } from "~/server/actions";
 import type { SurveyAuthoringRevisionDetail } from "~/types/surveyAuthoring";
-import { MIN_WIDGET_VERSION_FOR_DOCUMENTS } from "~/utils/surveyDocument";
+import {
+  MIN_WIDGET_VERSION_FOR_DOCUMENTS,
+  RECOMMENDED_WIDGET_VERSION_FOR_DOCUMENTS,
+} from "~/utils/surveyDocument";
 import {
   createRevisionMarkdown,
   describeRevisionChanges,
@@ -289,13 +292,15 @@ function SurveyRevision({
             </BodyShort>
             <Alert variant="info" size="small" className={styles.exportNotice}>
               <BodyShort size="small" spacing>
-                Krever <code>@navikt/lumi-survey</code>{" "}
-                {MIN_WIDGET_VERSION_FOR_DOCUMENTS} eller nyere. Det sidebaserte
-                formatet finnes ikke i eldre versjoner, så eksporten verken
-                type-sjekker eller vises der.
+                Bruk <code>@navikt/lumi-survey</code>{" "}
+                {RECOMMENDED_WIDGET_VERSION_FOR_DOCUMENTS} eller nyere for
+                riktig håndtering av oppfølgingsspørsmål ved endrede svar og
+                fremdrift i betingede svarløp. Selve dokumentformatet krever
+                minst versjon {MIN_WIDGET_VERSION_FOR_DOCUMENTS}.
               </BodyShort>
               <code className={styles.exportInstall}>
-                pnpm add @navikt/lumi-survey@^{MIN_WIDGET_VERSION_FOR_DOCUMENTS}
+                pnpm add @navikt/lumi-survey@^
+                {RECOMMENDED_WIDGET_VERSION_FOR_DOCUMENTS}
               </code>
             </Alert>
             <div className={styles.exportGrid}>

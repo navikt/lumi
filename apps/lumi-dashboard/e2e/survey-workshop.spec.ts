@@ -134,6 +134,9 @@ test("creates, edits, previews and shares a survey draft", async ({ page }) => {
   await expect(
     page.getByText("Første delte versjon i prosjektet."),
   ).toBeVisible();
+  await expect(
+    page.getByText("pnpm add @navikt/lumi-survey@^2.2.1", { exact: true }),
+  ).toBeVisible();
 
   // The frozen revision is interactive right on the page
   await expect(
