@@ -4,7 +4,7 @@ All notable changes to `@navikt/lumi-survey` will be documented in this file.
 
 This project follows SemVer.
 
-## [Unreleased]
+## [2.2.1] - 2026-09-07
 
 ### Fixed
 
