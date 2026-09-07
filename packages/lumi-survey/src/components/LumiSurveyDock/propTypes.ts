@@ -132,10 +132,10 @@ export interface LumiSurveyBehavior {
   storageStrategy?: StorageStrategy;
 
   /**
-   * Show progress from the first question in step mode when there are at least
-   * two reachable steps, including visible step text above the indicator. Intro
-   * and success screens are not counted as steps. Branching shows only the known
-   * current step because its estimated total may change.
+   * Show progress in step mode. Linear surveys with at least two steps show
+   * a progress bar and an exact total. Branching surveys show only the current
+   * step, without a percentage or estimated total. Intro and success screens
+   * are not counted as steps.
    * @default false
    */
   showProgress?: boolean;

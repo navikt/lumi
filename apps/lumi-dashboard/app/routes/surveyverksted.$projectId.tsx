@@ -28,6 +28,7 @@ import {
   type CanvasUndo,
   QuestionCanvas,
 } from "~/components/surveyverksted/QuestionCanvas";
+import { QuestionEditor } from "~/components/surveyverksted/QuestionEditor/QuestionEditor";
 import { SettingsModal } from "~/components/surveyverksted/SettingsModal";
 import {
   ShareDialog,
@@ -193,6 +194,7 @@ function SurveyWorkshopEditor({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [flowOpen, setFlowOpen] = useState(false);
+  const [advancedMode, setAdvancedMode] = useState(false);
   // Live mirror of the preview's answers, reported by the stage dock.
   const [stageAnswers, setStageAnswers] = useState<
     Record<string, LumiSurveyAnswerValue>
@@ -1157,76 +1159,92 @@ function SurveyWorkshopEditor({
         </div>
       ) : null}
 
-      <div className={styles.editorGrid}>
-        <aside className={styles.outline}>
-          <PageRail
-            pages={pages}
-            selectedPageId={selectedPage.id}
-            protectedPageIds={protectedPageIds}
-            onSelect={handleSelectPage}
-            onAdd={handleAddPage}
-            onMove={handleMovePage}
-            onReorder={handleReorderPage}
-            onDuplicate={handleDuplicatePage}
-            onDelete={handleDeletePage}
-          />
-        </aside>
+      {advancedMode ? (
+        <>
+          <Box padding="space-16">
+            <Button variant="secondary" onClick={() => setAdvancedMode(false)}>
+              Tilbake til enkel redigering
+            </Button>
+          </Box>
+          <div className={styles.editorGrid}>
+            <aside className={styles.outline}>
+              <PageRail
+                pages={pages}
+                selectedPageId={selectedPage.id}
+                protectedPageIds={protectedPageIds}
+                onSelect={handleSelectPage}
+                onAdd={handleAddPage}
+                onMove={handleMovePage}
+                onReorder={handleReorderPage}
+                onDuplicate={handleDuplicatePage}
+                onDelete={handleDeletePage}
+              />
+            </aside>
 
-        <section
-          className={styles.canvas}
-          aria-label={`Side ${selectedPageNumber}: ${selectedPage.title ?? "uten tittel"}`}
-        >
-          <QuestionCanvas
-            page={selectedPage}
-            pageNumber={selectedPageNumber}
-            totalPages={pages.length}
-            surveyType={draft.document.type}
-            expandedIds={expandedIds}
-            intro={draft.document.intro}
-            success={draft.document.success}
-            introUndo={screenUndoFor("intro")}
-            successUndo={screenUndoFor("success")}
-            onChangeIntro={handleChangeIntro}
-            onChangeSuccess={handleChangeSuccess}
-            focusQuestionId={focusQuestionId}
-            focusNonce={focusNonce}
-            undo={canvasUndo}
-            onUndo={handleUndo}
-            onUndoExpire={clearUndo}
-            onExpand={handleExpand}
-            onCollapse={handleCollapse}
-            onUpdatePage={handleUpdatePage}
-            onQuestionChange={handleQuestionChange}
-            onChangeType={handleChangeType}
-            onDuplicate={handleDuplicateQuestion}
-            onDelete={handleDeleteQuestion}
-            onMoveQuestion={handleMoveQuestion}
-            onReorderQuestion={handleReorderQuestion}
-            optionHandlersFor={optionHandlersFor}
-            referenceableByQuestion={expandedReferenceable}
-            suggestionsFor={suggestionsFor}
-            onChangeVisibleIf={handleChangeVisibleIf}
-            onAddQuestion={handleAddQuestion}
-            conditionSummaries={conditionSummaries}
-            onAddFollowUp={handleAddFollowUp}
-            liveVisibility={liveVisibility}
-          />
-        </section>
+            <section
+              className={styles.canvas}
+              aria-label={`Side ${selectedPageNumber}: ${selectedPage.title ?? "uten tittel"}`}
+            >
+              <QuestionCanvas
+                page={selectedPage}
+                pageNumber={selectedPageNumber}
+                totalPages={pages.length}
+                surveyType={draft.document.type}
+                expandedIds={expandedIds}
+                intro={draft.document.intro}
+                success={draft.document.success}
+                introUndo={screenUndoFor("intro")}
+                successUndo={screenUndoFor("success")}
+                onChangeIntro={handleChangeIntro}
+                onChangeSuccess={handleChangeSuccess}
+                focusQuestionId={focusQuestionId}
+                focusNonce={focusNonce}
+                undo={canvasUndo}
+                onUndo={handleUndo}
+                onUndoExpire={clearUndo}
+                onExpand={handleExpand}
+                onCollapse={handleCollapse}
+                onUpdatePage={handleUpdatePage}
+                onQuestionChange={handleQuestionChange}
+                onChangeType={handleChangeType}
+                onDuplicate={handleDuplicateQuestion}
+                onDelete={handleDeleteQuestion}
+                onMoveQuestion={handleMoveQuestion}
+                onReorderQuestion={handleReorderQuestion}
+                optionHandlersFor={optionHandlersFor}
+                referenceableByQuestion={expandedReferenceable}
+                suggestionsFor={suggestionsFor}
+                onChangeVisibleIf={handleChangeVisibleIf}
+                onAddQuestion={handleAddQuestion}
+                conditionSummaries={conditionSummaries}
+                onAddFollowUp={handleAddFollowUp}
+                liveVisibility={liveVisibility}
+              />
+            </section>
 
-        <aside className={styles.preview}>
-          <PreviewStage
-            document={draft.document}
-            isValid={!validationError}
-            surveyId={draft.surveyId}
-            initialPageId={selectedPage.id}
-            fullPreviewHref={previewHref}
-            stats={stats}
-            onAnswersChange={handleStageAnswers}
-            onOpenFlow={handleOpenFlow}
-            flowIssueCount={handoffIssues.length}
-          />
-        </aside>
-      </div>
+            <aside className={styles.preview}>
+              <PreviewStage
+                document={draft.document}
+                isValid={!validationError}
+                surveyId={draft.surveyId}
+                initialPageId={selectedPage.id}
+                fullPreviewHref={previewHref}
+                stats={stats}
+                onAnswersChange={handleStageAnswers}
+                onOpenFlow={handleOpenFlow}
+                flowIssueCount={handoffIssues.length}
+              />
+            </aside>
+          </div>
+        </>
+      ) : (
+        <QuestionEditor
+          document={draft.document}
+          surveyId={draft.surveyId}
+          onChange={updateDocument}
+          onAdvanced={() => setAdvancedMode(true)}
+        />
+      )}
 
       <SettingsModal
         open={settingsOpen}

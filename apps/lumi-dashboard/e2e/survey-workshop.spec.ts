@@ -10,6 +10,15 @@ function draftField(target: import("@playwright/test").Page) {
   return target.getByRole("textbox", { name: "Spørsmålstekst" }).first();
 }
 
+/** These scenarios exercise the detailed editor; the simple flow has its own suite. */
+async function openAdvancedEditor(page: import("@playwright/test").Page) {
+  await page.getByText("Avanserte innstillinger", { exact: true }).click();
+  await page.getByRole("button", { name: "Åpne avansert redigering" }).click();
+  await expect(
+    page.getByRole("button", { name: "Tilbake til enkel redigering" }),
+  ).toBeVisible();
+}
+
 async function expectNoAxeViolations(page: import("@playwright/test").Page) {
   // Let open/close transitions settle so axe measures final colors.
   await page.evaluate(() =>
@@ -32,6 +41,7 @@ test("creates, edits, previews and shares a survey draft", async ({ page }) => {
   );
   await page.getByLabel("Foreslått survey-ID").fill("e2e-survey-v1");
   await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await openAdvancedEditor(page);
 
   await expect(page).toHaveURL(/\/surveyverksted\/[0-9a-f-]+\?team=team-esyfo/);
   await expect(
@@ -47,6 +57,7 @@ test("creates, edits, previews and shares a survey draft", async ({ page }) => {
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
 
   await page.reload();
+  await openAdvancedEditor(page);
   await expect(pageTitle).toHaveValue("Detaljer om opplevelsen");
 
   // The living mirror renders the real widget with the page content
@@ -180,6 +191,7 @@ test("shares a changed choice limit with the same survey id and keeps the origin
   await page.goto("/surveyverksted");
   await page.getByLabel("Navn på utkastet").fill("E2E delte valggrenser");
   await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await openAdvancedEditor(page);
   await expect(page).toHaveURL(/\/surveyverksted\/[0-9a-f-]+\?team=/);
   const draftUrl = page.url();
 
@@ -201,6 +213,7 @@ test("shares a changed choice limit with the same survey id and keeps the origin
   ).toHaveCount(0);
 
   await page.goto(draftUrl);
+  await openAdvancedEditor(page);
   await page.getByRole("button", { name: new RegExp(prompt) }).click();
   await page
     .getByLabel("Maks antall alternativer brukeren kan velge")
@@ -243,6 +256,7 @@ test("starts a verified specialized survey from plain-language choices", async (
 
   await page.getByLabel("Navn på utkastet").fill("E2E discoverymal");
   await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await openAdvancedEditor(page);
   await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
 
   await expect(draftField(page)).toHaveValue(
@@ -267,6 +281,7 @@ test("turns a Top Tasks example into a protected, shareable analysis", async ({
     .getByLabel("Navn på utkastet")
     .fill(`E2E top tasks ${testInfo.workerIndex}-${Date.now()}`);
   await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await openAdvancedEditor(page);
   await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
 
   const firstTask = page.getByRole("textbox", {
@@ -312,6 +327,7 @@ test("replaces both Task Priority examples before sharing", async ({
     .getByLabel("Navn på utkastet")
     .fill(`E2E priority ${testInfo.workerIndex}-${Date.now()}`);
   await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await openAdvancedEditor(page);
   await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
 
   await page.getByRole("button", { name: "Del med utvikler" }).click();
@@ -374,6 +390,7 @@ test("authors intro and confirmation screens that render in the real widget", as
   await page.goto("/surveyverksted");
   await page.getByLabel("Navn på utkastet").fill("Skjerm-utkast");
   await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await openAdvancedEditor(page);
   await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
 
   await page.getByRole("button", { name: "Legg til velkomstside" }).click();
@@ -515,6 +532,7 @@ test("deletes a draft from the index after confirmation", async ({ page }) => {
   await page.goto("/surveyverksted");
   await page.getByLabel("Navn på utkastet").fill(draftName);
   await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await openAdvancedEditor(page);
   await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
 
   // Freeze a revision so the deletion provably takes revisions with it.
@@ -530,6 +548,7 @@ test("deletes a draft from the index after confirmation", async ({ page }) => {
   // href for new tabs and copying, addressed here by its role.
   await page.getByRole("button", { name: "Rediger utkastet" }).click();
   await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+\?/);
+  await openAdvancedEditor(page);
   await draftField(page).fill("Hvordan opplevde du tjenesten i dag?");
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
 
@@ -589,6 +608,7 @@ test("the delete dialog refuses to close while deletion is pending", async ({
   await page.goto("/surveyverksted");
   await page.getByLabel("Navn på utkastet").fill(draftName);
   await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await openAdvancedEditor(page);
   await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
   await page.goto("/surveyverksted");
 
@@ -645,6 +665,7 @@ test("undo restores the deletion without losing later edits, and sharing surface
   await page.goto("/surveyverksted");
   await page.getByLabel("Navn på utkastet").fill("Angre-utkast");
   await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await openAdvancedEditor(page);
   await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
 
   // Two seeded questions, both auto-expanded. Delete the second one.
@@ -690,6 +711,7 @@ test("undo restores the deletion without losing later edits, and sharing surface
     .getByRole("link", { name: /Angre-utkast/ })
     .first()
     .click();
+  await openAdvancedEditor(page);
   await expect(draftField(page)).toHaveValue("Skrevet rett før tilbake");
   await draftField(page).fill("Redigert etter gjenåpning");
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
@@ -719,6 +741,7 @@ test("undo restores the deletion without losing later edits, and sharing surface
     .getByRole("link", { name: /Angre-utkast/ })
     .first()
     .click();
+  await openAdvancedEditor(page);
   await expect(draftField(page)).toHaveValue("Racer B under flush");
 
   // Inline name editing commits per keystroke, so browser Back mid-edit
@@ -745,6 +768,7 @@ test("the navigation flush is single-flight and never races the autosave", async
   await page.goto("/surveyverksted");
   await page.getByLabel("Navn på utkastet").fill("Flush-koordinator");
   await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await openAdvancedEditor(page);
   await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
 
@@ -787,6 +811,7 @@ test("the navigation flush is single-flight and never races the autosave", async
     .getByRole("link", { name: /Flush-koordinator/ })
     .first()
     .click();
+  await openAdvancedEditor(page);
   await expect(draftField(page)).toHaveValue("Treg autosave A");
   await draftField(page).fill("Etterpå");
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
@@ -806,6 +831,7 @@ test("a flush inherits a failed save instead of repeating it", async ({
   await page.goto("/surveyverksted");
   await page.getByLabel("Navn på utkastet").fill("Konflikt-test");
   await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await openAdvancedEditor(page);
   await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
   await expect(page.locator('[data-state="saved"]')).toBeVisible();
   const editorUrl = page.url();
@@ -813,6 +839,7 @@ test("a flush inherits a failed save instead of repeating it", async ({
   // Another tab saves version 2 behind this editor's back.
   const other = await context.newPage();
   await other.goto(editorUrl);
+  await openAdvancedEditor(other);
   await draftField(other).fill("Endret i fane B");
   await expect(other.locator('[data-state="saved"]')).toBeVisible();
   await other.close();
@@ -854,6 +881,7 @@ test("configures and previews a searchable multi-choice question", async ({
     .getByLabel("Navn på utkastet")
     .fill(`Søkbart flervalg ${testInfo.workerIndex}-${Date.now()}`);
   await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await openAdvancedEditor(page);
   await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
 
   await page.getByRole("button", { name: "Legg til spørsmål" }).click();
@@ -888,6 +916,7 @@ test("configures and previews a searchable multi-choice question", async ({
 
   // The choices are stored in the draft, not only held in the open editor.
   await page.reload();
+  await openAdvancedEditor(page);
   await expect(stage.getByRole("combobox", { name: prompt })).toBeVisible();
   await page.getByRole("button", { name: new RegExp(prompt) }).click();
   await expect(
@@ -918,6 +947,7 @@ test("a visibility condition set in the editor gates the question live in the st
   await page.goto("/surveyverksted");
   await page.getByLabel("Navn på utkastet").fill("Betinget-utkast");
   await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await openAdvancedEditor(page);
   await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
 
   const stage = page.getByLabel("Forhåndsvisning");
@@ -980,6 +1010,7 @@ test("an any/all group over two conditions gates the question live in the stage"
   await page.goto("/surveyverksted");
   await page.getByLabel("Navn på utkastet").fill("Gruppe-utkast");
   await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await openAdvancedEditor(page);
   await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
 
   // A third question that can reference both seeded questions.
@@ -1065,6 +1096,7 @@ test("follow-up branches read live in the cards and in the flow overview", async
   await page.goto("/surveyverksted");
   await page.getByLabel("Navn på utkastet").fill("Gren-utkast");
   await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await openAdvancedEditor(page);
   await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
 
   const stage = page.getByLabel("Forhåndsvisning");

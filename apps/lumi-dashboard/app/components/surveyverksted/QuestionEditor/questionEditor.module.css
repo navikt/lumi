@@ -1,0 +1,137 @@
+.root {
+  max-width: 112rem;
+  width: 100%;
+  box-sizing: border-box;
+  display: grid;
+  gap: var(--ax-space-24);
+  margin-inline: auto;
+  padding: var(--ax-space-24);
+  padding-bottom: var(--ax-space-40);
+}
+.listLayout {
+  display: grid;
+  grid-template-columns: minmax(15rem, 0.7fr) minmax(26rem, 1.4fr) minmax(
+      28rem,
+      1fr
+    );
+  gap: var(--ax-space-24);
+  align-items: start;
+}
+.panel {
+  background: var(--ax-bg-raised);
+  border: 1px solid var(--ax-border-neutral-subtle);
+  border-radius: var(--ax-radius-12);
+  padding: var(--ax-space-24);
+  min-width: 0;
+}
+.nav {
+  display: grid;
+  gap: var(--ax-space-16);
+  min-width: 0;
+  padding: var(--ax-space-16);
+  background: var(--ax-bg-raised);
+  border: 1px solid var(--ax-border-neutral-subtle);
+  border-radius: var(--ax-radius-12);
+}
+.nav .screenNav {
+  width: 100%;
+  font: inherit;
+  justify-content: space-between;
+}
+.nav .screenNav > span {
+  font: inherit;
+}
+.screenNav svg {
+  flex-shrink: 0;
+}
+.screenDescription {
+  padding-inline: var(--ax-space-12);
+  margin-top: var(--ax-space-4);
+  color: var(--ax-text-neutral-subtle);
+}
+.nav button[aria-current="step"] {
+  background: var(--ax-bg-neutral-moderate);
+}
+.questionGroup {
+  display: grid;
+  gap: var(--ax-space-8);
+  border-block: 1px solid var(--ax-border-neutral-subtle);
+  padding-block: var(--ax-space-20);
+}
+.previewPanel {
+  min-width: 0;
+  background: var(--ax-bg-neutral-soft);
+}
+.nav button {
+  text-align: left;
+  justify-content: flex-start;
+  white-space: normal;
+}
+.outlineHeading {
+  padding-inline: var(--ax-space-12);
+  padding-block-end: var(--ax-space-8);
+}
+.pageGroup {
+  display: grid;
+  gap: var(--ax-space-4);
+  border-inline-start: 2px solid var(--ax-border-neutral-subtle);
+  padding-inline-start: var(--ax-space-8);
+  margin-block: var(--ax-space-4);
+}
+.screenBody {
+  white-space: pre-wrap;
+}
+.previewOnly {
+  width: 100%;
+  max-width: 42.5rem;
+  margin-inline: auto;
+}
+.optionRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ax-space-4);
+}
+.optionRow > button {
+  justify-self: start;
+  white-space: normal;
+  text-align: left;
+}
+.questionNav {
+  width: 100%;
+}
+.audienceHint {
+  padding: var(--ax-space-4) var(--ax-space-12);
+  color: var(--ax-text-neutral-subtle);
+}
+.outlineArea {
+  min-width: 0;
+}
+.mobileOutline {
+  display: none;
+}
+@media (max-width: 90rem) {
+  .listLayout {
+    grid-template-columns: minmax(15rem, 0.6fr) minmax(26rem, 1.4fr);
+  }
+  .listLayout > :last-child {
+    grid-column: 2;
+  }
+}
+@media (max-width: 55rem) {
+  .root,
+  .panel {
+    padding: var(--ax-space-16);
+  }
+  .listLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .listLayout > :last-child {
+    grid-column: auto;
+  }
+  .mobileOutline {
+    display: block;
+  }
+  .desktopOutline {
+    display: none;
+  }
+}
