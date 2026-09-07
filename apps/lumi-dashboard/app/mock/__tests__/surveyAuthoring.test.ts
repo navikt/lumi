@@ -124,9 +124,9 @@ describe("mock survey authoring store", () => {
     expect(store.deleteMockSurveyProject("team-a", created.id)).toBe(false);
   });
 
-  it("rejects a changed multi-choice limit after the first revision", async () => {
+  it("shares a changed multi-choice limit under the same survey id without changing the previous revision", async () => {
     const store = await import("../surveyAuthoring");
-    const choiceDocument = (maxSelections: number): SurveyDocumentV1 => ({
+    const choiceDocument = (maxSelections?: number): SurveyDocumentV1 => ({
       authoringSchemaVersion: 1,
       type: "custom",
       pages: [
@@ -151,9 +151,9 @@ describe("mock survey authoring store", () => {
       team: "team-a",
       name: "Valggrense",
       surveyId: "valggrense",
-      document: choiceDocument(1),
+      document: choiceDocument(),
     });
-    await store.createMockSurveyRevision({
+    const first = await store.createMockSurveyRevision({
       team: "team-a",
       projectId: created.id,
       expectedDraftVersion: 1,
@@ -167,13 +167,22 @@ describe("mock survey authoring store", () => {
       document: choiceDocument(2),
     });
 
-    await expect(
-      store.createMockSurveyRevision({
-        team: "team-a",
-        projectId: created.id,
-        expectedDraftVersion: saved.draftVersion,
-      }),
-    ).rejects.toThrow(/structure differs/i);
+    const second = await store.createMockSurveyRevision({
+      team: "team-a",
+      projectId: created.id,
+      expectedDraftVersion: saved.draftVersion,
+    });
+    expect(second.surveyId).toBe(first.surveyId);
+    expect(second.revisionNumber).toBe(2);
+    expect(second.definitionHash).not.toBe(first.definitionHash);
+    expect(second.document).toEqual(choiceDocument(2));
+    expect(store.getMockSurveyRevisionDetail("team-a", second.id)).toEqual({
+      revision: second,
+      previousRevision: first,
+    });
+    expect(
+      store.getMockSurveyRevisionDetail("team-a", first.id)?.revision,
+    ).toEqual(first);
   });
 
   it("rejects a selection limit on a single-choice field", async () => {
