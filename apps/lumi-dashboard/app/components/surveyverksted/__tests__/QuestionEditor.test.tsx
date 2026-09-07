@@ -5,7 +5,7 @@ import {
   type SurveyDocumentV1,
   type SurveyQuestionV1,
 } from "@navikt/lumi-survey";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -86,6 +86,11 @@ async function selectQuestion(number: number, prompt: string) {
     screen.getAllByRole("button", {
       name: `Spørsmål ${number} · ${prompt}`,
     })[0],
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole("region", { name: "Rediger spørsmål" }),
+    ).toHaveFocus(),
   );
 }
 
