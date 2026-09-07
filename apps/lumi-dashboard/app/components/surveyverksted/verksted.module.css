@@ -781,8 +781,17 @@
   background: var(--ax-bg-sunken, var(--ax-bg-neutral-soft));
 }
 
+.stageViewport[data-roomy="true"] {
+  flex: 0 0 auto;
+  height: clamp(40.625rem, 78dvh, 53.125rem);
+  min-height: 0;
+}
+
 .stageInner {
-  position: relative;
+  /* The unscaled canvas must not determine the measured viewport's height. */
+  position: absolute;
+  top: 0;
+  left: 0;
   transform-origin: top left;
   overflow: hidden;
 }

@@ -4,7 +4,18 @@ All notable changes to `@navikt/lumi-survey` will be documented in this file.
 
 This project follows SemVer.
 
-## [Unreleased]
+## [2.2.1] - 2026-09-07
+
+### Fixed
+
+- V1 survey documents now ignore answers from hidden source questions when
+  deciding which follow-ups to show, validate and submit. Closing a branch
+  hides all dependent follow-ups while retaining their answers locally for
+  returning to that branch. Alternative `any` conditions, metadata conditions
+  and the existing behavior of negative conditions on visible, unanswered
+  questions are preserved. Legacy flat survey visibility is unchanged.
+- Conditional page flows show the current step without an estimated percentage
+  or fixed total. Linear flows retain their exact progress indicator.
 
 ## [2.2.0] - 2026-08-31
 
