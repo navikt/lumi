@@ -24,7 +24,14 @@ export const searchSchema = z
     page: optionalStringParam,
     size: optionalStringParam,
     dateMode: optionalDateModeParam,
+    compare: fallback(z.enum(["previous", "none"]).optional(), undefined).catch(
+      undefined,
+    ),
     fromDate: optionalStringParam,
+    periodPreset: fallback(
+      z.enum(["rolling", "yearToDate", "custom"]).optional(),
+      undefined,
+    ).catch(undefined),
     toDate: optionalStringParam,
     hasText: optionalStringParam,
     query: optionalStringParam,

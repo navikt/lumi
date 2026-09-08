@@ -51,7 +51,9 @@ describe("calculateQuestionTrend", () => {
     expect(result?.buckets).toHaveLength(2);
     expect(result?.buckets[0]).toMatchObject({
       startDate: "2026-01-01",
-      masked: true,
+      masked: false,
+      responseCount: 1,
+      average: 3,
     });
     expect(result?.buckets[1]).toMatchObject({
       startDate: "2026-01-02",
@@ -99,6 +101,61 @@ describe("calculateQuestionTrend", () => {
   it("returns null for text or missing fields", () => {
     expect(
       calculateQuestionTrend([], new URLSearchParams(), "text-1", "week"),
+    ).toBeNull();
+  });
+
+  it("retains explicit NPS scale and distribution when only low values were answered", () => {
+    const result = calculateQuestionTrend(
+      [
+        feedback(
+          "1",
+          "2026-09-01T12:00:00Z",
+          createRatingAnswer("nps", "Anbefale?", 1, undefined, "nps", 11),
+        ),
+        feedback(
+          "2",
+          "2026-09-01T12:00:00Z",
+          createRatingAnswer("nps", "Anbefale?", 2, undefined, "nps", 11),
+        ),
+      ],
+      new URLSearchParams({ surveyId: "survey-1" }),
+      "nps",
+      "day",
+    );
+    expect(result).toMatchObject({
+      ratingVariant: "nps",
+      ratingScale: 11,
+      buckets: [{ ratingDistribution: { "1": 1, "2": 1 } }],
+    });
+  });
+
+  it("returns a known field with empty buckets outside its response dates", () => {
+    const items = [
+      feedback(
+        "1",
+        "2026-09-01T12:00:00Z",
+        createRatingAnswer("rating", "Vurdering", 1, undefined, "emoji", 5),
+      ),
+    ];
+    const result = calculateQuestionTrend(
+      items,
+      new URLSearchParams({ surveyId: "survey-1", fromDate: "2026-09-02" }),
+      "rating",
+      "day",
+    );
+    expect(result).toMatchObject({
+      fieldId: "rating",
+      ratingVariant: "emoji",
+      ratingScale: 5,
+      buckets: [],
+    });
+    expect(
+      calculateQuestionTrend(
+        items,
+        new URLSearchParams({ surveyId: "another-survey" }),
+        "rating",
+        "day",
+      ),
     ).toBeNull();
   });
 });

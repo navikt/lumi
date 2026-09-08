@@ -1271,12 +1271,15 @@ export const FeedbackPageSchema = z.object({
 // Field stats schemas
 const RatingStatsSchema = z.object({
   type: z.literal("rating"),
+  ratingVariant: z.enum(["emoji", "thumbs", "stars", "nps"]).nullish(),
+  ratingScale: z.number().int().positive().nullish(),
   average: z.number(),
   distribution: z.record(z.string(), z.number()),
 });
 
 const TextStatsSchema = z.object({
   type: z.literal("text"),
+  analysisSampleSize: z.number().int().nonnegative().nullish(),
   responseCount: z.number(),
   responseRate: z.number(),
   topKeywords: z.array(z.object({ word: z.string(), count: z.number() })),
@@ -1323,6 +1326,7 @@ const PrivacyInfoSchema = z.object({
 });
 
 export const FeedbackStatsSchema = z.object({
+  retentionStartDate: z.string().date().optional(),
   totalCount: z.number(),
   countWithText: z.number(),
   countWithoutText: z.number(),
@@ -1349,19 +1353,23 @@ export const FeedbackStatsSchema = z.object({
     z.object({ count: z.number(), averageRating: z.number() }),
   ),
   fieldStats: z.array(FieldStatSchema),
-  surveyType: SurveyTypeSchema.optional(),
+  surveyType: SurveyTypeSchema.nullish().transform(
+    (value) => value ?? undefined,
+  ),
   period: z.object({
     fromDate: z.string().nullable(),
     toDate: z.string().nullable(),
     days: z.number(),
   }),
-  privacy: PrivacyInfoSchema.optional(),
+  privacy: PrivacyInfoSchema.nullish().transform((value) => value ?? undefined),
 });
 
 export const QuestionTrendResponseSchema = z.object({
   fieldId: z.string(),
   fieldType: z.enum(["RATING", "SINGLE_CHOICE", "MULTI_CHOICE"]),
   label: z.string(),
+  ratingVariant: z.enum(["emoji", "thumbs", "stars", "nps"]).nullish(),
+  ratingScale: z.number().int().positive().nullish(),
   interval: z.enum(["day", "week", "month"]),
   privacyThreshold: z.number().int().positive(),
   options: z.array(
@@ -1377,6 +1385,9 @@ export const QuestionTrendResponseSchema = z.object({
         masked: z.boolean(),
         responseCount: z.number().int().nonnegative().nullable().optional(),
         average: z.number().nullable().optional(),
+        ratingDistribution: z
+          .record(z.string(), z.number().int().nonnegative())
+          .optional(),
         distribution: z.record(
           z.string(),
           z.object({
@@ -1387,7 +1398,11 @@ export const QuestionTrendResponseSchema = z.object({
       })
       .superRefine((bucket, ctx) => {
         if (bucket.masked) {
-          if (bucket.responseCount != null || bucket.average != null) {
+          if (
+            bucket.responseCount != null ||
+            bucket.average != null ||
+            Object.keys(bucket.ratingDistribution ?? {}).length > 0
+          ) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               message: "masked buckets cannot expose answer values",

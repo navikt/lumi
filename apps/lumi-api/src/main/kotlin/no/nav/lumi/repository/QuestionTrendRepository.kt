@@ -22,6 +22,10 @@ class QuestionTrendRepository {
         fieldId: String,
         interval: QuestionTrendInterval,
     ): QuestionTrendResult? = dbQuery {
+        val knownField = StructuredFieldStatsRepository().catalog(query).find { it.definition.fieldId == fieldId }
+            ?.takeIf { it.definition.fieldType in setOf(FieldType.RATING, FieldType.SINGLE_CHOICE, FieldType.MULTI_CHOICE) }
+        val ratingSemantics = StructuredFieldStatsRepository().ratingSemantics(query)[fieldId]
+            ?: (knownField?.definition?.ratingVariant to knownField?.definition?.ratingScale)
         val filters = QuestionTrendSqlFilters(query)
         val bucketUnit = when (interval) {
             QuestionTrendInterval.DAY -> "day"
@@ -61,6 +65,10 @@ class QuestionTrendRepository {
                         )
                     }
 
+                    resultSet.getString("rating_value")?.let { rating ->
+                        if (!masked) bucket.ratingDistribution[rating] = resultSet.getInt("rating_count")
+                    }
+
                     val optionId = resultSet.getString("option_id") ?: continue
                     val optionLabel = resultSet.getString("option_label") ?: optionId
                     options.putIfAbsent(optionId, QuestionTrendOption(id = optionId, label = optionLabel))
@@ -78,25 +86,35 @@ class QuestionTrendRepository {
                     }
                 }
 
-                val resolvedFieldType = fieldType ?: return@dbQuery null
+                val resolvedFieldType = fieldType ?: knownField?.definition?.fieldType ?: return@dbQuery null
+                knownField?.definition?.optionIds.orEmpty().forEach { id ->
+                    options[id] = QuestionTrendOption(id, knownField?.optionLabels?.get(id) ?: id)
+                }
+                val orderedOptions = (knownField?.definition?.optionIds.orEmpty() + options.keys).distinct()
+                    .mapNotNull(options::get)
                 QuestionTrendResult(
-                    fieldTypeCount = fieldTypeCount,
+                    fieldTypeCount = if (fieldType == null) 1 else fieldTypeCount,
                     response = QuestionTrendResponse(
                         fieldId = fieldId,
                         fieldType = resolvedFieldType,
-                        label = label ?: fieldId,
+                        label = knownField?.label ?: label ?: fieldId,
                         interval = interval,
                         privacyThreshold = FeedbackStatsRepository.MIN_AGGREGATION_THRESHOLD,
-                        options = options.values.toList(),
+                        options = orderedOptions,
                         buckets = buckets.values.map { bucket ->
                             QuestionTrendBucket(
                                 startDate = bucket.startDate,
                                 masked = bucket.masked,
                                 responseCount = bucket.responseCount,
                                 average = bucket.average,
-                                distribution = bucket.distribution,
+                                distribution = if (resolvedFieldType != FieldType.RATING && !bucket.masked) {
+                                    orderedOptions.associate { it.id to (bucket.distribution[it.id] ?: QuestionTrendChoiceValue(0, 0.0)) }
+                                } else bucket.distribution,
+                                ratingDistribution = bucket.ratingDistribution,
                             )
                         },
+                        ratingVariant = ratingSemantics.first,
+                        ratingScale = ratingSemantics.second,
                     ),
                 )
             }
@@ -114,10 +132,11 @@ class QuestionTrendRepository {
         val responseCount: Int?,
         val average: Double?,
         val distribution: LinkedHashMap<String, QuestionTrendChoiceValue> = linkedMapOf(),
+        val ratingDistribution: LinkedHashMap<String, Int> = linkedMapOf(),
     )
 }
 
-private class QuestionTrendSqlFilters(query: StatsQuery) {
+internal class QuestionTrendSqlFilters(query: StatsQuery) {
     private val clauses = mutableListOf("f.team = ?")
     val parameters = mutableListOf<Any>(query.team)
 
@@ -211,7 +230,7 @@ private class QuestionTrendSqlFilters(query: StatsQuery) {
         LocalDate.parse(value).atStartOfDay(OSLO_ZONE).toInstant()
 }
 
-private fun PreparedStatement.bind(parameters: List<Any>) {
+internal fun PreparedStatement.bind(parameters: List<Any>) {
     parameters.forEachIndexed { index, value ->
         when (value) {
             is String -> setString(index + 1, value)
@@ -332,6 +351,10 @@ private fun buildQuestionTrendSql(whereSql: String, bucketUnit: String): String 
         FROM all_option_ids
         LEFT JOIN option_catalog USING (option_id)
     ),
+    rating_counts AS (
+        SELECT bucket_start, rating::integer::text AS rating_value, COUNT(*)::integer AS rating_count
+        FROM rating_values WHERE rating IS NOT NULL GROUP BY bucket_start, rating
+    ),
     option_counts AS (
         SELECT
             bucket_start,
@@ -349,7 +372,9 @@ private fun buildQuestionTrendSql(whereSql: String, bucketUnit: String): String 
         bucket_summary.rating_average,
         all_options.option_id,
         all_options.option_label,
-        COALESCE(option_counts.option_count, 0)::integer AS option_count
+        COALESCE(option_counts.option_count, 0)::integer AS option_count,
+        rating_counts.rating_value,
+        rating_counts.rating_count
     FROM selected_field
     CROSS JOIN type_summary
     CROSS JOIN bucket_summary
@@ -358,6 +383,7 @@ private fun buildQuestionTrendSql(whereSql: String, bucketUnit: String): String 
     LEFT JOIN option_counts
       ON option_counts.bucket_start = bucket_summary.bucket_start
      AND option_counts.option_id = all_options.option_id
+    LEFT JOIN rating_counts ON rating_counts.bucket_start = bucket_summary.bucket_start
     ORDER BY bucket_summary.bucket_start, all_options.option_order, all_options.option_id
 """.trimIndent()
 

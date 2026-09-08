@@ -17,6 +17,8 @@ import {
 import { SegmentBreakdown } from "~/components/dashboard/SegmentBreakdown";
 import { FieldStatsSection } from "~/components/dashboard/sections/FieldStats";
 import { DeviceBreakdownSection } from "~/components/dashboard/sections/FieldStats/DeviceBreakdownSection";
+import { ComparisonStatsCards } from "~/components/dashboard/sections/FieldStats/PeriodComparison/ComparisonStatsCards";
+import { getRatingMetric } from "~/components/dashboard/sections/FieldStats/PeriodComparison/model";
 import { StatsCards } from "~/components/dashboard/sections/StatsCards";
 import { TimelineSection } from "~/components/dashboard/sections/Timeline";
 import { UrgentUrls } from "~/components/dashboard/sections/UrgentUrls";
@@ -27,6 +29,7 @@ import { MarkerModal } from "~/components/shared/MarkerModal";
 import { useMarkers } from "~/hooks/useMarkers";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
+import { useStats } from "~/hooks/useStats";
 import type {
   CreateMarkerInput,
   RatingMarker,
@@ -49,6 +52,10 @@ export function RatingDashboard({
   isRatingSurvey = false,
 }: RatingDashboardProps) {
   const { params } = useSearchParams();
+  const { data: stats } = useStats();
+  const ratingFields =
+    stats?.fieldStats.filter((field) => field.fieldType === "RATING") ?? [];
+  const primaryRating = ratingFields.length === 1 ? ratingFields[0] : undefined;
   const { addSegment } = useSegmentFilter();
   const [isMarkerModalOpen, setIsMarkerModalOpen] = useState(false);
   const [editingMarker, setEditingMarker] = useState<RatingMarker>();
@@ -58,7 +65,7 @@ export function RatingDashboard({
 
   const surveyId = params.surveyId;
   const canManageMarkers = Boolean(
-    hasSurveyFilter && isRatingSurvey && surveyId,
+    hasSurveyFilter && isRatingSurvey && surveyId && primaryRating,
   );
 
   const markerState = useMarkers(
@@ -116,9 +123,9 @@ export function RatingDashboard({
 
   return (
     <>
-      <StatsCards showRating />
+      {hasSurveyFilter ? <ComparisonStatsCards /> : <StatsCards showRating />}
 
-      <TimelineSection title="Antall tilbakemeldinger" />
+      {!hasSurveyFilter && <TimelineSection title="Antall tilbakemeldinger" />}
 
       {/* Overview charts - only shown when no specific survey is selected */}
       {!hasSurveyFilter && (
@@ -137,6 +144,8 @@ export function RatingDashboard({
         </>
       )}
 
+      {hasSurveyFilter && <FieldStatsSection />}
+
       {/* Rating trend - only when a specific rating survey is selected */}
       {canManageMarkers && (
         <DashboardGrid>
@@ -144,7 +153,11 @@ export function RatingDashboard({
             <VStack gap="space-12">
               <HStack justify="space-between" align="center" wrap gap="space-8">
                 <Heading size="small" level="2">
-                  Gjennomsnittlig vurdering
+                  {primaryRating
+                    ? getRatingMetric(primaryRating).label === "Gjennomsnitt"
+                      ? "Gjennomsnittlig vurdering"
+                      : getRatingMetric(primaryRating).label
+                    : "Vurdering"}
                 </Heading>
                 <Button
                   variant="secondary"
@@ -250,15 +263,10 @@ export function RatingDashboard({
         </DashboardGrid>
       )}
 
-      {/* Field statistics - only when a survey is selected */}
-      {hasSurveyFilter && <FieldStatsSection />}
-
-      {/* Segment breakdown for survey-specific view */}
+      {hasSurveyFilter && <TimelineSection title="Antall tilbakemeldinger" />}
       {hasSurveyFilter && surveyId && (
         <SegmentBreakdown surveyId={surveyId} onSegmentClick={addSegment} />
       )}
-
-      {/* Device breakdown - at the bottom for consistency across all dashboards */}
       <DeviceBreakdownSection />
 
       <MarkerModal

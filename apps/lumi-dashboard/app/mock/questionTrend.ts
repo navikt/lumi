@@ -5,7 +5,8 @@ import type {
 } from "~/types/api";
 import { applyFeedbackFilters } from "./utils/filters";
 
-const PRIVACY_THRESHOLD = 5;
+// The response contract retains the threshold, but no non-empty bucket is hidden.
+const PRIVACY_THRESHOLD = 1;
 const OSLO_DATE_FORMAT = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Europe/Oslo",
   year: "numeric",
@@ -53,23 +54,60 @@ export function calculateQuestionTrend(
       ["RATING", "SINGLE_CHOICE", "MULTI_CHOICE"].includes(answer.fieldType),
     );
 
-  if (matchingAnswers.length === 0) return null;
+  const catalogParams = new URLSearchParams();
+  for (const key of ["surveyId", "app"]) {
+    const value = params.get(key);
+    if (value) catalogParams.set(key, value);
+  }
+  const catalogAnswers = applyFeedbackFilters(items, catalogParams).flatMap(
+    (item) =>
+      item.answers
+        .filter(
+          (answer) =>
+            answer.fieldId === fieldId &&
+            ["RATING", "SINGLE_CHOICE", "MULTI_CHOICE"].includes(
+              answer.fieldType,
+            ),
+        )
+        .map((answer) => ({ item, answer })),
+  );
+  if (catalogAnswers.length === 0) return null;
 
   const fieldTypes = new Set(
-    matchingAnswers.map(({ answer }) => answer.fieldType),
+    catalogAnswers.map(({ answer }) => answer.fieldType),
   );
   if (fieldTypes.size !== 1) {
     throw new Error("A question trend cannot combine different field types");
   }
 
-  const latest = [...matchingAnswers].sort((a, b) =>
+  const latest = [...catalogAnswers].sort((a, b) =>
     b.item.submittedAt.localeCompare(a.item.submittedAt),
   )[0];
   if (!latest) return null;
 
   const fieldType = latest.answer
     .fieldType as QuestionTrendResponse["fieldType"];
+  const ratingAnswers = matchingAnswers
+    .map(({ answer }) => answer.value)
+    .filter((value) => value.type === "rating");
+  const ratingContracts = new Set(
+    ratingAnswers.map(
+      (value) => `${value.ratingVariant ?? ""}:${value.ratingScale ?? ""}`,
+    ),
+  );
+  const ratingMetadata = ratingAnswers.length
+    ? ratingAnswers[0]
+    : latest.answer.value.type === "rating"
+      ? latest.answer.value
+      : undefined;
   const options = new Map<string, string>();
+  for (const { answer } of [...catalogAnswers].sort((a, b) =>
+    b.item.submittedAt.localeCompare(a.item.submittedAt),
+  )) {
+    for (const option of answer.question.options ?? []) {
+      if (!options.has(option.id)) options.set(option.id, option.label);
+    }
+  }
   const buckets = new Map<
     string,
     {
@@ -131,6 +169,9 @@ export function calculateQuestionTrend(
     fieldId,
     fieldType,
     label: latest.answer.question.label || fieldId,
+    ratingVariant:
+      ratingContracts.size > 1 ? null : ratingMetadata?.ratingVariant,
+    ratingScale: ratingContracts.size > 1 ? null : ratingMetadata?.ratingScale,
     interval,
     privacyThreshold: PRIVACY_THRESHOLD,
     options: [...options].map(([id, label]) => ({ id, label })),
@@ -154,6 +195,16 @@ export function calculateQuestionTrend(
                 ? undefined
                 : bucket.ratings.reduce((sum, value) => sum + value, 0) /
                   responseCount,
+            ratingDistribution:
+              masked || fieldType !== "RATING"
+                ? {}
+                : bucket.ratings.reduce<Record<string, number>>(
+                    (counts, rating) => {
+                      counts[rating] = (counts[rating] ?? 0) + 1;
+                      return counts;
+                    },
+                    {},
+                  ),
             distribution:
               masked || fieldType === "RATING"
                 ? {}
