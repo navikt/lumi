@@ -134,7 +134,10 @@ function DashboardPage() {
     });
   }, [params.hasText, params.lowRating, params.query, params.tag, setParams]);
 
-  const config = surveyType ? SURVEY_CONFIG[surveyType] : null;
+  // A mixed result set can report the type of its newest response. Only a
+  // selected survey should choose a type-specific dashboard.
+  const config =
+    hasSurveyFilter && surveyType ? SURVEY_CONFIG[surveyType] : null;
 
   // Show generic skeleton during initial load when a survey is selected
   // This prevents showing the wrong dashboard type before we know the surveyType
