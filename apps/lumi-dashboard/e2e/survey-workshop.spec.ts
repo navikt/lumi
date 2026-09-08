@@ -390,6 +390,9 @@ test("replaces both Task Priority examples before sharing", async ({
 test("authors intro and confirmation screens that render in the real widget", async ({
   page,
 }) => {
+  // Install before the editor creates timers, so cleanup can cancel every
+  // pending preview debounce when the document changes or restarts.
+  await page.clock.install();
   await page.goto("/surveyverksted");
   await page.getByLabel("Navn på utkastet").fill("Skjerm-utkast");
   await page.getByRole("button", { name: "Opprett utkast" }).click();
@@ -399,7 +402,6 @@ test("authors intro and confirmation screens that render in the real widget", as
   await page.getByRole("button", { name: "Legg til velkomstside" }).click();
   const introCard = page.getByRole("region", { name: "Velkomstside" });
   await expect(introCard).toBeVisible();
-  await page.clock.install();
   await page.clock.pauseAt(Date.now());
   await introCard.getByLabel("Tittel").fill("Velkommen");
   await introCard.getByLabel("Tekst (valgfri)").fill("To korte spørsmål.");
