@@ -285,7 +285,9 @@ data class FeedbackStats(
     @EncodeDefault(EncodeDefault.Mode.ALWAYS)
     val fieldStats: List<FieldStat> = emptyList(),
     // Privacy threshold info
-    val privacy: PrivacyInfo? = null
+    val privacy: PrivacyInfo? = null,
+    /** Earliest whole Oslo date within the response-retention policy, not proof of observed coverage. */
+    val retentionStartDate: String? = null,
 )
 
 @Serializable
@@ -322,7 +324,9 @@ sealed class FieldStats {
     data class Rating(
         val average: Double,
         /** Keys are serialized as strings in JSON ("1".."5"). */
-        val distribution: Map<String, Int>
+        val distribution: Map<String, Int>,
+        val ratingVariant: RatingVariant? = null,
+        val ratingScale: Int? = null,
     ) : FieldStats()
 
     @Serializable
@@ -332,7 +336,9 @@ sealed class FieldStats {
         val responseRate: Double,
         val topKeywords: List<KeywordCount> = emptyList(),
         val topPhrases: List<TextPhrase> = emptyList(),
-        val recentResponses: List<RecentTextResponse> = emptyList()
+        val recentResponses: List<RecentTextResponse> = emptyList(),
+        /** Number of latest responses used for text summaries when the full set is larger. */
+        val analysisSampleSize: Int? = null,
     ) : FieldStats()
 
     @Serializable
@@ -585,6 +591,7 @@ data class QuestionTrendBucket(
     val average: Double? = null,
     /** Empty for rating and masked choice buckets. */
     val distribution: Map<String, QuestionTrendChoiceValue> = emptyMap(),
+    val ratingDistribution: Map<String, Int> = emptyMap(),
 )
 
 @Serializable
@@ -596,6 +603,8 @@ data class QuestionTrendResponse(
     val privacyThreshold: Int,
     val options: List<QuestionTrendOption> = emptyList(),
     val buckets: List<QuestionTrendBucket>,
+    val ratingVariant: RatingVariant? = null,
+    val ratingScale: Int? = null,
 )
 
 // ============================================

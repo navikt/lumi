@@ -206,6 +206,8 @@ export type Answer =
 
 export interface RatingStats {
   type: "rating";
+  ratingVariant?: "emoji" | "thumbs" | "stars" | "nps" | null;
+  ratingScale?: number | null;
   average: number;
   /** JSON object keys are strings (e.g. "1", "2", ...). */
   distribution: Record<string, number>;
@@ -221,6 +223,8 @@ export interface TextStats {
   recentResponses: Array<{ text: string; submittedAt: string }>;
   /** Recurring content-word pairs extracted from text responses */
   topPhrases?: Array<{ text: string; count: number }>;
+  /** Number of responses included in text summaries when analysis is bounded. */
+  analysisSampleSize?: number | null;
 }
 
 export interface ChoiceStats {
@@ -296,6 +300,8 @@ export interface FeedbackPage {
 }
 
 export interface FeedbackStats {
+  /** Earliest whole Oslo calendar day within the API's retention window. */
+  retentionStartDate?: string;
   totalCount: number;
   countWithText: number;
   countWithoutText: number;
@@ -349,6 +355,7 @@ export interface QuestionTrendBucket {
   masked: boolean;
   responseCount?: number | null;
   average?: number | null;
+  ratingDistribution?: Record<string, number>;
   distribution: Record<string, QuestionTrendChoiceValue>;
 }
 
@@ -356,6 +363,8 @@ export interface QuestionTrendResponse {
   fieldId: string;
   fieldType: "RATING" | "SINGLE_CHOICE" | "MULTI_CHOICE";
   label: string;
+  ratingVariant?: "emoji" | "thumbs" | "stars" | "nps" | null;
+  ratingScale?: number | null;
   interval: QuestionTrendInterval;
   privacyThreshold: number;
   options: QuestionTrendOption[];

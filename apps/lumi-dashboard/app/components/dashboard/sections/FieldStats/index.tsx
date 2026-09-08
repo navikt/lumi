@@ -4,10 +4,11 @@ import { useChoiceFilter } from "~/hooks/useChoiceFilter";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import { ChoiceFieldCard, RatingFieldCard, TextFieldCard } from "./FieldCards";
+import { FieldStatsPeriodComparison } from "./PeriodComparison";
 import { Skeleton } from "./Skeleton";
 
 export function FieldStatsSection() {
-  const { data: stats, isPending } = useStats();
+  const { data: stats, isPending, isPlaceholderData } = useStats();
   const { params } = useSearchParams();
   const {
     activeFilters: activeChoiceFilters,
@@ -16,12 +17,19 @@ export function FieldStatsSection() {
   } = useChoiceFilter();
   const hasSurveyFilter = !!params.surveyId;
 
-  if (isPending && hasSurveyFilter) {
+  if ((isPending || isPlaceholderData) && hasSurveyFilter) {
     return <Skeleton />;
   }
 
   if (!stats?.fieldStats?.length) {
     return null;
+  }
+
+  if (
+    hasSurveyFilter &&
+    (stats.surveyType === "rating" || stats.surveyType === "custom")
+  ) {
+    return <FieldStatsPeriodComparison stats={stats} />;
   }
 
   return (

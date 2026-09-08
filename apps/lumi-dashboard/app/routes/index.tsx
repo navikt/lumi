@@ -3,6 +3,7 @@ import { Box, Heading, HStack, Tag, Tooltip, VStack } from "@navikt/ds-react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { type ReactNode, useEffect } from "react";
+import { ComparisonPeriodControl } from "~/components/dashboard/sections/FieldStats/PeriodComparison/ComparisonPeriodControl";
 import { QuestionTrendSection } from "~/components/dashboard/sections/QuestionTrend";
 import { DiscoveryDashboard } from "~/components/dashboard/views/Discovery/Dashboard";
 import { OverviewDashboard } from "~/components/dashboard/views/Overview/Dashboard";
@@ -114,6 +115,8 @@ function DashboardPage() {
   const hasSurveyFilter = !!params.surveyId;
   const surveyType = stats?.surveyType;
   const isPrivacyMasked = stats?.privacy?.masked;
+  const supportsComparison =
+    hasSurveyFilter && (surveyType === "rating" || surveyType === "custom");
 
   // Clean up params that are only used on the feedback route (not the dashboard).
   // page/size are kept because filter changes set page=1, and theme is used by discovery.
@@ -184,7 +187,11 @@ function DashboardPage() {
             </HStack>
           </HStack>
 
-          <FilterBar />
+          <FilterBar
+            periodControl={
+              supportsComparison ? <ComparisonPeriodControl /> : undefined
+            }
+          />
 
           {/* Keep recovery controls available when a broad query exceeds the analysis budget. */}
           <ActiveFiltersChips />
@@ -196,7 +203,10 @@ function DashboardPage() {
           >
             {/* Type-specific dashboard view */}
             {renderDashboardContent()}
-            {hasSurveyFilter && !isPrivacyMasked && !showInitialSkeleton ? (
+            {hasSurveyFilter &&
+            !isPrivacyMasked &&
+            !showInitialSkeleton &&
+            !supportsComparison ? (
               <QuestionTrendSection />
             ) : null}
           </DataFetchBoundary>

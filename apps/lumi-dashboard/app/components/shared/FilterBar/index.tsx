@@ -14,7 +14,7 @@ import {
   VStack,
 } from "@navikt/ds-react";
 import dayjs from "dayjs";
-import { useCallback, useEffect } from "react";
+import { type ReactNode, useCallback, useEffect } from "react";
 import { PeriodSelector } from "~/components/dashboard/PeriodSelector";
 import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { getSurveyFeatures } from "~/config/surveyConfig";
@@ -38,11 +38,13 @@ import { Skeleton as FilterBarSkeleton } from "./Skeleton";
 import { useDebouncedSearchQuery } from "./useDebouncedSearchQuery";
 
 interface FilterBarProps {
+  periodControl?: ReactNode;
   showDetails?: boolean;
   filterResetVersion?: number;
 }
 
 export function FilterBar({
+  periodControl = null,
   showDetails = false,
   filterResetVersion = 0,
 }: FilterBarProps) {
@@ -57,6 +59,7 @@ export function FilterBar({
       queries={[bootstrapQuery]}
     >
       <FilterBarContent
+        periodControl={periodControl}
         showDetails={showDetails}
         filterResetVersion={filterResetVersion}
         bootstrapQuery={bootstrapQuery}
@@ -67,6 +70,7 @@ export function FilterBar({
 }
 
 function FilterBarContent({
+  periodControl,
   showDetails,
   filterResetVersion,
   bootstrapQuery,
@@ -497,7 +501,7 @@ function FilterBarContent({
 
             <HStack gap="space-8" align="end">
               {archiveToggle}
-              <PeriodSelector />
+              {!periodControl && <PeriodSelector />}
               {hasActiveFilters && (
                 <Tooltip content="Nullstill alle filtre til standard (siste 30 dager)">
                   <Button
@@ -573,7 +577,7 @@ function FilterBarContent({
             <HStack gap="space-8" justify="space-between" align="center">
               <HStack gap="space-8" align="center">
                 {archiveToggle}
-                <PeriodSelector />
+                {!periodControl && <PeriodSelector />}
                 {showDetails && (
                   <FilterMenu
                     params={params}
@@ -611,6 +615,15 @@ function FilterBarContent({
             )}
           </VStack>
         </Hide>
+        {periodControl && (
+          <Box
+            marginBlock="space-16 space-0"
+            paddingBlock="space-16 space-0"
+            className={styles.periodRow}
+          >
+            {periodControl}
+          </Box>
+        )}
       </Box>
 
       {selectedSurveyPeriod.dateMode === "fixed" &&

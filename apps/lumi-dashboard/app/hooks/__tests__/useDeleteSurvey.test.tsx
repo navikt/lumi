@@ -64,6 +64,9 @@ describe("useDeleteSurvey", () => {
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["feedback"] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["stats"] });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["question-trend"],
+    });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["surveysByApp"] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["filterOptions"] });
     expect(invalidateSpy).toHaveBeenCalledWith({

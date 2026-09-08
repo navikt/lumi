@@ -92,6 +92,9 @@ export function generateSurveyData(
         "hovedsporsmal",
         config.questions.ratingLabel,
         poolItem.rating,
+        undefined,
+        "emoji",
+        5,
       ),
     ];
 

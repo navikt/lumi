@@ -70,7 +70,10 @@ interface TextResponseWithTimestamp {
   submittedAt: string;
 }
 
-export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
+export function calculateFieldStats(
+  items: FeedbackDto[],
+  catalogItems: FeedbackDto[] = items,
+): FieldStat[] {
   // Collect all unique fields across all items
   const fieldMap = new Map<
     string,
@@ -78,12 +81,17 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
       fieldId: string;
       fieldType: string;
       label: string;
+      ratingVariant?: "emoji" | "thumbs" | "stars" | "nps";
+      ratingScale?: number;
+      options: Map<string, string>;
       values: Answer["value"][];
       textResponses: TextResponseWithTimestamp[];
     }
   >();
 
-  for (const item of items) {
+  for (const item of [...catalogItems].sort((a, b) =>
+    b.submittedAt.localeCompare(a.submittedAt),
+  )) {
     for (const answer of item.answers) {
       const key = answer.fieldId;
       if (!fieldMap.has(key)) {
@@ -91,11 +99,30 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
           fieldId: answer.fieldId,
           fieldType: answer.fieldType,
           label: answer.question.label,
+          ratingVariant:
+            answer.value.type === "rating"
+              ? answer.value.ratingVariant
+              : undefined,
+          ratingScale:
+            answer.value.type === "rating"
+              ? answer.value.ratingScale
+              : undefined,
+          options: new Map(),
           values: [],
           textResponses: [],
         });
       }
       const fieldData = fieldMap.get(key);
+      for (const option of answer.question.options ?? []) {
+        if (!fieldData?.options.has(option.id))
+          fieldData?.options.set(option.id, option.label);
+      }
+    }
+  }
+
+  for (const item of items) {
+    for (const answer of item.answers) {
+      const fieldData = fieldMap.get(answer.fieldId);
       fieldData?.values.push(answer.value);
 
       // Track text responses with timestamps for sorting
@@ -118,17 +145,22 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
         (v) => (v as { type: "rating"; rating: number }).rating,
       );
 
-      // Extract variant and scale from first rating answer
-      const firstRating = ratingValues[0] as
-        | {
-            type: "rating";
-            rating: number;
-            ratingVariant?: string;
-            ratingScale?: number;
-          }
-        | undefined;
-      const ratingVariant = firstRating?.ratingVariant || "emoji";
-      const ratingScale = firstRating?.ratingScale || 5;
+      const contracts = new Set(
+        ratingValues.map(
+          (value) => `${value.ratingVariant ?? ""}:${value.ratingScale ?? ""}`,
+        ),
+      );
+      const unambiguous = contracts.size <= 1;
+      const ratingVariant = ratingValues.length
+        ? unambiguous
+          ? ratingValues[0].ratingVariant
+          : null
+        : field.ratingVariant;
+      const ratingScale = ratingValues.length
+        ? unambiguous
+          ? ratingValues[0].ratingScale
+          : null
+        : field.ratingScale;
 
       // Build distribution based on variant
       let distribution: Record<number, number> = {};
@@ -148,8 +180,10 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
           9: 0,
           10: 0,
         };
-      } else {
-        distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+      } else if (ratingScale) {
+        distribution = Object.fromEntries(
+          Array.from({ length: ratingScale }, (_, i) => [i + 1, 0]),
+        );
       }
 
       let sum = 0;
@@ -169,12 +203,6 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
           // Include variant info for display components
           ratingVariant,
           ratingScale,
-        } as {
-          type: "rating";
-          average: number;
-          distribution: Record<number, number>;
-          ratingVariant: string;
-          ratingScale: number;
         },
       });
     } else if (field.fieldType === "TEXT") {
@@ -222,10 +250,7 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
       field.fieldType === "MULTI_CHOICE"
     ) {
       // Get options from first answer with options
-      const firstAnswerWithOptions = items
-        .flatMap((i) => i.answers)
-        .find((a) => a.fieldId === field.fieldId && a.question.options?.length);
-      const options = firstAnswerWithOptions?.question.options || [];
+      const options = [...field.options].map(([id, label]) => ({ id, label }));
 
       // Count selections
       const selectionCounts: Record<string, number> = {};
@@ -238,7 +263,7 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
           const id = value.selectedOptionId;
           selectionCounts[id] = (selectionCounts[id] || 0) + 1;
         } else if (value.type === "multiChoice") {
-          for (const id of value.selectedOptionIds) {
+          for (const id of new Set(value.selectedOptionIds)) {
             selectionCounts[id] = (selectionCounts[id] || 0) + 1;
           }
         }
@@ -262,7 +287,14 @@ export function calculateFieldStats(items: FeedbackDto[]): FieldStat[] {
         string,
         { label: string; count: number; percentage: number }
       > = {};
-      for (const opt of options) {
+      const allOptions = new Map(
+        options.map((option) => [option.id, option.label]),
+      );
+      for (const id of Object.keys(selectionCounts)) {
+        if (!allOptions.has(id)) allOptions.set(id, id);
+      }
+      for (const [id, label] of allOptions) {
+        const opt = { id, label };
         const count = selectionCounts[opt.id] || 0;
         distribution[opt.id] = {
           label: opt.label,
@@ -545,10 +577,14 @@ export function calculateStats(
   }
 
   // Calculate new field stats
-  const fieldStats = calculateFieldStats(filtered);
+  const catalogItems = items.filter(
+    (item) =>
+      (!app || item.app === app) && (!surveyId || item.surveyId === surveyId),
+  );
+  const fieldStats = calculateFieldStats(filtered, catalogItems);
 
-  // Privacy threshold check
-  const MIN_AGGREGATION_THRESHOLD = 5;
+  // Match internal team analytics: every non-empty sample is visible.
+  const MIN_AGGREGATION_THRESHOLD = 1;
   const totalCount = filtered.length;
   const shouldMask = totalCount > 0 && totalCount < MIN_AGGREGATION_THRESHOLD;
 
@@ -561,6 +597,10 @@ export function calculateStats(
     : undefined;
 
   return {
+    retentionStartDate: dayjs()
+      .subtract(12, "month")
+      .add(1, "day")
+      .format("YYYY-MM-DD"),
     totalCount,
     countWithText,
     countWithoutText: totalCount - countWithText,
@@ -580,7 +620,9 @@ export function calculateStats(
     lowestRatingPaths: shouldMask ? {} : lowestRatingPaths,
     fieldStats: shouldMask ? [] : fieldStats,
     period: calculatePeriod(fromDate, toDate),
-    surveyType: totalCount > 0 ? filtered[0].surveyType || "rating" : undefined,
+    surveyType: [...catalogItems].sort((a, b) =>
+      b.submittedAt.localeCompare(a.submittedAt),
+    )[0]?.surveyType,
     privacy,
   };
 }

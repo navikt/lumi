@@ -60,6 +60,23 @@ beforeEach(() => {
 });
 
 describe("QuestionTrendSection", () => {
+  it("does not discard a new field while the previous source is placeholder data", () => {
+    mockUseSearchParams.mockReturnValue({
+      params: { surveyId: "new-survey", trendField: "new-field" },
+      setParams,
+    } as never);
+    mockUseStats.mockReturnValue({
+      data: { fieldStats: [] },
+      isPending: false,
+      isPlaceholderData: true,
+    } as never);
+    render(<QuestionTrendSection />);
+    expect(setParams).not.toHaveBeenCalled();
+    expect(mockUseQuestionTrend).toHaveBeenCalledWith(false);
+    expect(
+      screen.queryByRole("img", { name: "Testdiagram" }),
+    ).not.toBeInTheDocument();
+  });
   it("offers only structured fields and stores all choices in the URL", async () => {
     const user = userEvent.setup();
     render(<QuestionTrendSection />);
