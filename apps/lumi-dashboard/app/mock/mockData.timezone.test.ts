@@ -28,5 +28,16 @@ describe("timezone-safe mock data", () => {
       "Ordering Q3",
       "Ordering Q4",
     ]);
+
+    const filtered = getMockStats(
+      new URLSearchParams({
+        surveyId: "survey-ordering",
+        fromDate: "2026-08-23",
+        toDate: "2026-08-23",
+        segment: "sampleGroup:small",
+      }),
+    );
+    expect(filtered.totalCount).toBe(3);
+    expect(filtered.fieldStats).toHaveLength(4);
   });
 });
