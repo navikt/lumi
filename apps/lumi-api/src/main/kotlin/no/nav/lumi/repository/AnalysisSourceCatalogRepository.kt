@@ -27,6 +27,11 @@ class AnalysisSourceCatalogRepository {
 
     suspend fun findCatalog(team: String): AnalysisSourceCatalogV1 = dbQuery {
         val connection = TransactionManager.current().connection.connection as java.sql.Connection
+        findCatalog(connection, team)
+    }
+
+    /** One SQL statement, also usable inside the transaction that seals a release. */
+    internal fun findCatalog(connection: java.sql.Connection, team: String): AnalysisSourceCatalogV1 {
         val sources = connection.prepareStatement(
             """
             WITH observations AS (
@@ -275,7 +280,7 @@ class AnalysisSourceCatalogRepository {
             }
         }
         val dimensions = AnalysisDimensionRegistry.snapshot()
-        AnalysisSourceCatalogV1(
+        return AnalysisSourceCatalogV1(
             team = team,
             catalogRevision = AnalysisCatalogRevision.compute(team, sources, dimensions),
             sources = sources,
