@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 const DEMO_URL = process.env.LUMI_DEMO_URL ?? "http://127.0.0.1:3001";
@@ -84,17 +85,59 @@ test("a registered widget source can be saved, previewed and locked as an analys
     .getByRole("button", { name: "Felt og tillatte verdier", exact: true })
     .click();
   await expect(page.getByText("Stjerner: 1–5", { exact: true })).toBeVisible();
-  await page.setViewportSize({ width: 390, height: 844 });
   await page
-    .getByRole("heading", { name: "Kontroller tabellene" })
-    .scrollIntoViewIfNeeded();
-  // Aksel's autosizing textarea updates its hidden measuring element after resize.
-  await expect
-    .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
-    .toBeLessThanOrEqual(390);
-  await page.screenshot({
-    path: testInfo.outputPath("analysis-contract-mobile.png"),
-  });
+    .getByRole("button", { name: "Felt og tillatte verdier", exact: true })
+    .click();
+  for (const viewport of [
+    { width: 1280, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    const rows = page.getByRole("region", { name: /Eksempelrader, rull/ });
+    await rows.scrollIntoViewIfNeeded();
+    // Real compiler names must scroll, never collapse into one-letter lines.
+    const layout = await rows.evaluate((element) => {
+      const header = element.querySelector("th");
+      if (!header) throw new Error("Preview is missing column headers");
+      return {
+        width: element.clientWidth,
+        contentWidth: element.scrollWidth,
+        headerHeight: header.getBoundingClientRect().height,
+        headerWrapping: getComputedStyle(header).whiteSpace,
+      };
+    });
+    expect(layout.contentWidth).toBeGreaterThan(layout.width);
+    expect(layout.headerWrapping).toBe("nowrap");
+    expect(layout.headerHeight).toBeLessThan(60);
+    // Aksel's textarea measuring element settles after a viewport resize.
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
+      .toBeLessThanOrEqual(viewport.width);
+    await rows.focus();
+    await rows.press("ArrowRight");
+    await expect
+      .poll(() => rows.evaluate((element) => element.scrollLeft))
+      .toBeGreaterThan(0);
+    await rows.press("ArrowLeft");
+    await page.screenshot({
+      path: testInfo.outputPath(`analysis-contract-${viewport.width}.png`),
+    });
+    await page.getByRole("tab", { name: /^Kolonner/ }).click();
+    const columns = page.getByRole("tabpanel", { name: /^Kolonner/ });
+    await expect(
+      columns.getByText(/__rating$/, { exact: false }),
+    ).toBeVisible();
+    await expect(columns.getByText("Kan mangle (NULL)").first()).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
+      .toBeLessThanOrEqual(viewport.width);
+    const accessibility = await new AxeBuilder({ page })
+      .include("main")
+      .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+      .analyze();
+    expect(accessibility.violations).toEqual([]);
+    await page.getByRole("tab", { name: "Eksempelrader" }).click();
+  }
   await page.setViewportSize({ width: 1280, height: 900 });
 
   const updatedName = `${productName} oppdatert`;

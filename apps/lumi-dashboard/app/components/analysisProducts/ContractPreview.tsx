@@ -3,9 +3,10 @@ import {
   BodyShort,
   Box,
   Heading,
+  HStack,
   ReadMore,
   Select,
-  Table,
+  Show,
   Tag,
   VStack,
 } from "@navikt/ds-react";
@@ -14,10 +15,11 @@ import {
   type AnalysisPreview,
   analysisIssueText,
 } from "~/types/analysisProducts";
+import { ResourcePreview } from "./ResourcePreview";
 
 const labels = {
-  WIDE: "Svar — én rad per innsending",
-  LONG: "Svarfelt — én rad per verdi",
+  WIDE: "Svar",
+  LONG: "Svarfelt",
   FIELD_CATALOG: "Feltkatalog",
   MANIFEST: "Publiseringsstatus",
 };
@@ -28,14 +30,14 @@ export function ContractPreview({ preview }: { preview: AnalysisPreview }) {
     preview.resources[0];
   return (
     <VStack gap="space-16">
-      <div>
-        <Heading level="2" size="medium" spacing>
+      <HStack align="center" justify="space-between" gap="space-12">
+        <Heading level="2" size="medium">
           Kontroller tabellene
         </Heading>
         <Tag variant="outline" data-color="info" size="small">
           Syntetiske eksempeldata
         </Tag>
-      </div>
+      </HStack>
       <BodyShort>
         Dette viser formatet, ikke ekte svar, antall eller fordeling. Felter og
         kolonner bestemmes av den lagrede kontrakten.
@@ -87,10 +89,25 @@ export function ContractPreview({ preview }: { preview: AnalysisPreview }) {
               </option>
             ))}
           </Select>
-          <BodyShort size="small" textColor="subtle">
-            {resource.columns.length.toLocaleString("nb-NO")} kolonner ·{" "}
-            {resource.rowMeaning}
-          </BodyShort>
+          {resource.sourceSurveyId && (
+            <Show below="sm">
+              <BodyShort size="small" textColor="subtle">
+                {resource.sourceApp} / {resource.sourceSurveyId}
+              </BodyShort>
+            </Show>
+          )}
+          {resource.kind === "FIELD_CATALOG" && (
+            <BodyShort size="small">
+              Én rad beskriver et felt eller et svaralternativ. Bruk katalogen
+              til å forstå feltene i svartabellene.
+            </BodyShort>
+          )}
+          {resource.kind === "MANIFEST" && (
+            <BodyShort size="small">
+              Én rad beskriver en eksporttabell, utenom denne statustabellen.
+              Eksempelet viser formatet, ikke en aktiv publisering.
+            </BodyShort>
+          )}
           {(resource.kind === "WIDE" || resource.kind === "LONG") && (
             <BodyShort size="small">
               {resource.kind === "WIDE"
@@ -99,72 +116,7 @@ export function ContractPreview({ preview }: { preview: AnalysisPreview }) {
               NULL betyr ingen verdi, ikke 0 eller et ikke-valgt alternativ.
             </BodyShort>
           )}
-          <Box
-            style={{ overflowX: "auto", maxWidth: "100%" }}
-            tabIndex={0}
-            role="region"
-            aria-label="Eksempelrader, rull vannrett for alle kolonner"
-          >
-            <Table size="small">
-              <caption>{resource.name}</caption>
-              <Table.Header>
-                <Table.Row>
-                  {resource.columns.map((column) => (
-                    <Table.HeaderCell key={column.name} scope="col">
-                      {column.name}
-                    </Table.HeaderCell>
-                  ))}
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {resource.syntheticRows.map((row) => (
-                  <Table.Row key={JSON.stringify(row)}>
-                    {resource.columns.map((column) => (
-                      <Table.DataCell key={column.name}>
-                        {row[column.name] == null ? (
-                          <abbr title="Ingen verdi">NULL</abbr>
-                        ) : (
-                          String(row[column.name])
-                        )}
-                      </Table.DataCell>
-                    ))}
-                  </Table.Row>
-                ))}
-              </Table.Body>
-            </Table>
-          </Box>
-          <Box
-            style={{ overflowX: "auto", maxWidth: "100%" }}
-            tabIndex={0}
-            role="region"
-            aria-label="Kolonnebeskrivelser"
-          >
-            <Table size="small">
-              <caption>Kolonner og betydning</caption>
-              <Table.Header>
-                <Table.Row>
-                  <Table.HeaderCell scope="col">Kolonne</Table.HeaderCell>
-                  <Table.HeaderCell scope="col">Type</Table.HeaderCell>
-                  <Table.HeaderCell scope="col">Kan mangle</Table.HeaderCell>
-                  <Table.HeaderCell scope="col">Betydning</Table.HeaderCell>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {resource.columns.map((column) => (
-                  <Table.Row key={column.name}>
-                    <Table.HeaderCell scope="row">
-                      {column.name}
-                    </Table.HeaderCell>
-                    <Table.DataCell>{column.type}</Table.DataCell>
-                    <Table.DataCell>
-                      {column.nullable ? "Ja" : "Nei"}
-                    </Table.DataCell>
-                    <Table.DataCell>{column.description}</Table.DataCell>
-                  </Table.Row>
-                ))}
-              </Table.Body>
-            </Table>
-          </Box>
+          <ResourcePreview key={resource.name} resource={resource} />
         </>
       )}
       <BodyShort size="small" textColor="subtle">

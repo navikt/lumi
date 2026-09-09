@@ -318,7 +318,7 @@ export function AnalysisEditor({
                   minRows={2}
                   error={fieldErrors.purpose}
                 />
-                <HGrid columns={{ xs: 1, md: 2 }} gap="space-16">
+                <HGrid columns={{ xs: 1, md: 2 }} gap="space-20" align="end">
                   <TextField
                     label="Dataeier"
                     description="Ansvarlig person eller tydelig eierfunksjon."
@@ -372,10 +372,12 @@ export function AnalysisEditor({
                   }
                   error={fieldErrors.useCases}
                 >
-                  <Checkbox value="METABASE">Metabase</Checkbox>
-                  <Checkbox value="DATA_STORY_NOTEBOOK">
-                    Datafortelling / notebook
-                  </Checkbox>
+                  <HStack gap="space-8 space-24">
+                    <Checkbox value="METABASE">Metabase</Checkbox>
+                    <Checkbox value="DATA_STORY_NOTEBOOK">
+                      Datafortelling / notebook
+                    </Checkbox>
+                  </HStack>
                 </CheckboxGroup>
                 <TextField
                   label="Behandlingsreferanse (valgfritt)"

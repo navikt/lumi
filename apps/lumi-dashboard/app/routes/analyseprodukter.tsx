@@ -57,7 +57,7 @@ function AnalysisProductsPage() {
       <Box
         as="main"
         className="main-container"
-        style={{ overflowWrap: "anywhere" }}
+        style={{ overflowWrap: "anywhere", maxWidth: "76rem" }}
         paddingInline={{ xs: "space-12", sm: "space-16" }}
         paddingBlock={{ xs: "space-24", md: "space-40" }}
       >
