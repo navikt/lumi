@@ -1,5 +1,5 @@
-import { Alert, Box, Heading, VStack } from "@navikt/ds-react";
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { Alert, BodyShort, Box, Heading, VStack } from "@navikt/ds-react";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { ExportPanel } from "~/components/export/Panel";
 import { FilterBar } from "~/components/shared/FilterBar";
@@ -40,6 +40,28 @@ function ExportPage() {
           <Heading size="large" level="1">
             Eksporter data
           </Heading>
+
+          <Box
+            background="raised"
+            borderWidth="1"
+            borderColor="neutral-subtle"
+            borderRadius="8"
+            padding="space-20"
+          >
+            <Heading size="small" level="2" spacing>
+              Klargjør data for faste analyser
+            </Heading>
+            <BodyShort spacing>
+              Velg surveys og felt, se tabellformatet og opprett en kontrakt for
+              senere levering til Metabase eller Datafortelling.
+            </BodyShort>
+            <Link
+              to="/analyseprodukter"
+              search={(previous) => ({ team: previous.team })}
+            >
+              Åpne analyseprodukter
+            </Link>
+          </Box>
 
           <FilterBar showDetails />
 
