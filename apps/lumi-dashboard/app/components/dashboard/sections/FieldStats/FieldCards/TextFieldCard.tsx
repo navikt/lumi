@@ -1,6 +1,5 @@
 import { ChatExclamationmarkIcon } from "@navikt/aksel-icons";
 import { BodyShort, Detail, HStack, Tag, VStack } from "@navikt/ds-react";
-import type { ReactNode } from "react";
 
 import { DashboardCard } from "~/components/dashboard";
 import { PhraseList } from "~/components/shared/PhraseList";
@@ -13,18 +12,11 @@ import type { FieldCardProps } from "./types";
 
 export function TextFieldCard({
   field,
-  totalCount,
-  comparison,
-  headerSubtitle,
   semanticHeading = false,
 }: FieldCardProps & {
-  comparison?: ReactNode;
-  headerSubtitle?: string;
   semanticHeading?: boolean;
 }) {
   const stats = field.stats as TextStats;
-  const responseRate =
-    totalCount > 0 ? Math.round((stats.responseCount / totalCount) * 100) : 0;
 
   const phrases = stats.topPhrases ?? [];
   const hasPhrases = phrases.length > 0;
@@ -52,13 +44,8 @@ export function TextFieldCard({
         label={field.label}
         titleTestId={`field-stat-title-${field.fieldId}`}
         headingId={headingId}
-        subtitle={
-          headerSubtitle ??
-          `${stats.responseCount} av ${totalCount} har svart (${responseRate}%)`
-        }
+        subtitle={`${stats.responseCount.toLocaleString("nb-NO")} tekstsvar i valgt periode`}
       />
-
-      {comparison}
 
       {stats.analysisSampleSize !== undefined &&
       stats.analysisSampleSize !== null &&
