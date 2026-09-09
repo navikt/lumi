@@ -335,7 +335,7 @@ test("small filtered samples stay visible in the dashboard", async ({
   await expect(table.getByText("Skjult", { exact: true })).toHaveCount(0);
 });
 
-test("custom surveys keep key metrics minimal and compare text counts", async ({
+test("custom surveys show text counts as context, not a period comparison", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 1000 });
@@ -350,22 +350,25 @@ test("custom surveys keep key metrics minimal and compare text counts", async ({
   await expect(
     metrics.getByText("Andel med tekst", { exact: true }),
   ).toHaveCount(0);
-  const textComparison = page
-    .getByRole("table", { name: /Sammenligning av tekstsvar:/ })
-    .first();
+  const textCard = page.getByRole("region", { name: "Kommentar", exact: true });
+  const count = textCard.getByText(/^[\d\s]+ tekstsvar i valgt periode$/);
+  await expect(count).toBeVisible();
+  const countLabel = await count.textContent();
+  await expect(textCard.getByRole("table")).toHaveCount(0);
+  await expect(textCard.getByText("Endring", { exact: true })).toHaveCount(0);
+  await expect(textCard.getByText("Siste svar", { exact: true })).toBeVisible();
   await expect(
-    textComparison.getByRole("rowheader", { name: "Tekstsvar" }),
+    page.getByRole("columnheader", { name: "Før", exact: true }).first(),
   ).toBeVisible();
-  await expect(textComparison.getByRole("cell").last()).toHaveText(
-    /^(?:[+−-]\d+|Uendret)$/,
-  );
-  await expect(textComparison).not.toContainText("%");
+  await textCard.screenshot({
+    path: testInfo.outputPath("text-context-desktop.png"),
+  });
   await page.screenshot({
     path: testInfo.outputPath("custom-desktop.png"),
     fullPage: true,
   });
   await page.setViewportSize({ width: 320, height: 844 });
-  await expect(textComparison).toBeVisible();
+  await expect(count).toBeVisible();
   expect(
     await page.evaluate(
       () =>
@@ -377,6 +380,17 @@ test("custom surveys keep key metrics minimal and compare text counts", async ({
     path: testInfo.outputPath("custom-mobile.png"),
     fullPage: true,
   });
+  await textCard.screenshot({
+    path: testInfo.outputPath("text-context-mobile.png"),
+  });
+  await page
+    .getByRole("checkbox", { name: "Sammenlign med forrige periode" })
+    .uncheck();
+  await expect(count).toHaveText(countLabel ?? "");
+  await expect(textCard.getByRole("table")).toHaveCount(0);
+  await expect(
+    page.getByRole("columnheader", { name: "Før", exact: true }),
+  ).toHaveCount(0);
 });
 
 test("NPS comparisons retain their labels and table headers on narrow screens", async ({

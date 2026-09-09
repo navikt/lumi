@@ -11,10 +11,10 @@ import { QuestionTrendSection } from "~/components/dashboard/sections/QuestionTr
 import { useChoiceFilter } from "~/hooks/useChoiceFilter";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import type { FeedbackStats, FieldStat } from "~/types/api";
+import { TextFieldCard } from "../FieldCards/TextFieldCard";
 import {
   ComparisonChoiceFieldCard,
   ComparisonRatingFieldCard,
-  ComparisonTextFieldCard,
 } from "./ComparisonFieldCards";
 import { usePreviousPeriodStats } from "./usePreviousPeriodStats";
 
@@ -138,16 +138,11 @@ export function FieldStatsPeriodComparison({
 
             if (field.fieldType === "TEXT") {
               return (
-                <ComparisonTextFieldCard
+                <TextFieldCard
                   key={field.fieldId}
                   field={field}
-                  previousField={previousField}
-                  currentTotalCount={stats.totalCount}
-                  previousTotalCount={previousQuery.data?.totalCount ?? 0}
-                  comparisonEnabled={previousQuery.comparisonAvailable}
-                  comparisonPending={
-                    previousQuery.comparisonEnabled && previousQuery.isPending
-                  }
+                  totalCount={stats.totalCount}
+                  semanticHeading
                 />
               );
             }

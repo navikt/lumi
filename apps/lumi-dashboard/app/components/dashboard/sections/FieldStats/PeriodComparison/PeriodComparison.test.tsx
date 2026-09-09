@@ -10,7 +10,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchStatsServerFn } from "~/server/actions";
 import type { FeedbackStats, FieldStat } from "~/types/api";
-import { ComparisonTextFieldCard } from "./ComparisonFieldCards";
+import { TextFieldCard } from "../FieldCards/TextFieldCard";
 import { ComparisonStatsCards } from "./ComparisonStatsCards";
 import { getRatingMetric, ratingFieldsAreComparable } from "./model";
 import { getComparisonPeriods } from "./usePreviousPeriodStats";
@@ -272,7 +272,7 @@ const ratingField: FieldStat = {
   },
 };
 
-describe("text field comparisons", () => {
+describe("text field context", () => {
   const field: FieldStat = {
     fieldId: "comment",
     fieldType: "TEXT",
@@ -286,24 +286,30 @@ describe("text field comparisons", () => {
     },
   };
 
-  it("shows text counts without a response percentage", () => {
+  it.each([
+    0, 1, 259, 1259,
+  ])("shows %i current text answers without a comparison or percentage", (responseCount) => {
     const { container } = render(
-      <ComparisonTextFieldCard
-        field={field}
-        previousField={{
+      <TextFieldCard
+        field={{
           ...field,
-          stats: { ...field.stats, responseCount: 8 } as typeof field.stats,
+          stats: { ...field.stats, responseCount } as typeof field.stats,
         }}
-        currentTotalCount={100}
-        previousTotalCount={20}
-        comparisonEnabled
-        comparisonPending={false}
+        totalCount={2000}
+        semanticHeading
       />,
     );
     expect(
       screen.getByRole("heading", { name: "Kommentar" }),
     ).toBeInTheDocument();
-    expect(container.textContent).toContain("+2");
+    expect(
+      screen.getByText(
+        `${responseCount.toLocaleString("nb-NO")} tekstsvar i valgt periode`,
+        { normalizer: (text) => text },
+      ),
+    ).toBeVisible();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(container.textContent).not.toContain("Endring");
     expect(container.textContent).not.toContain("%");
     expect(container.textContent).not.toContain("Svarandel");
   });
