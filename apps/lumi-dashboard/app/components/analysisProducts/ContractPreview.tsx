@@ -187,8 +187,10 @@ function PinnedSelection({
   return (
     <VStack gap="space-8">
       <BodyShort size="small">
-        {specification.sources.length.toLocaleString("nb-NO")} surveys ·{" "}
-        {fieldCount.toLocaleString("nb-NO")} valgte svarfelt
+        {specification.sources.length.toLocaleString("nb-NO")}{" "}
+        {specification.sources.length === 1 ? "survey" : "surveys"} ·{" "}
+        {fieldCount.toLocaleString("nb-NO")}{" "}
+        {fieldCount === 1 ? "valgt" : "valgte"} svarfelt
       </BodyShort>
       <ReadMore header="Felt og tillatte verdier" size="small">
         <VStack gap="space-16">
