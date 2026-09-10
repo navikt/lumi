@@ -81,5 +81,36 @@ describe("DataSelection explicit scope", () => {
     );
     expect(screen.getByRole("checkbox", { name: "survey-a" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "score" })).toBeChecked();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Ingen surveys samsvarer med søket.",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Valgte surveys vises også, slik at du kan endre utvalget.",
+    );
+  });
+
+  it("shows matching surveys before retained selections and trims the search", () => {
+    render(
+      <DataSelection
+        catalog={{
+          ...catalog,
+          sources: [
+            ...catalog.sources,
+            { ...catalog.sources[0], surveyId: "survey-b", fields: [] },
+          ],
+        }}
+        document={document}
+        onChange={() => {}}
+      />,
+    );
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Søk etter app eller survey" }),
+      { target: { value: "  SURVEY-B  " } },
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "1 survey samsvarer med søket.",
+    );
+    expect(screen.getAllByRole("checkbox")[0]).toHaveAccessibleName("survey-b");
+    expect(screen.getByRole("checkbox", { name: "survey-a" })).toBeChecked();
   });
 });

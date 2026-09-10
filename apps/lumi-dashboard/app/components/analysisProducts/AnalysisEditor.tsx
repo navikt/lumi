@@ -263,7 +263,11 @@ export function AnalysisEditor({
         Object.fromEntries(
           parsed.error.issues.map((issue) => [
             String(issue.path[0]),
-            "Kontroller verdien i dette feltet.",
+            issue.path[0] === "sources"
+              ? "Kontroller surveyutvalget. Velg høyst 100 surveys og 500 svarfelt per survey. Fjern eventuelle ugyldige eller utdaterte felt-ID-er."
+              : issue.path[0] === "dimensionKeys"
+                ? "Kontroller metadatautvalget. Velg høyst 50 dimensjoner, og fjern ugyldige nøkler."
+                : "Kontroller verdien i dette feltet.",
           ]),
         ),
       );
@@ -400,6 +404,7 @@ export function AnalysisEditor({
                 catalog={catalog}
                 document={document}
                 onChange={setDocument}
+                errors={fieldErrors}
               />
             </Box>
           </VStack>

@@ -118,6 +118,51 @@ afterEach(() => {
 });
 
 describe("AnalysisEditor confirmation and recovery", () => {
+  it.each([
+    {
+      selection: {
+        sources: Array.from({ length: 101 }, (_, index) => ({
+          app: "app-a",
+          surveyId: `survey-${index}`,
+          fieldIds: [],
+        })),
+      },
+      message: /Velg høyst 100 surveys og 500 svarfelt per survey/,
+    },
+    {
+      selection: {
+        sources: [
+          {
+            app: "app-a",
+            surveyId: "survey-a",
+            fieldIds: Array.from(
+              { length: 501 },
+              (_, index) => `field-${index}`,
+            ),
+          },
+        ],
+      },
+      message: /Velg høyst 100 surveys og 500 svarfelt per survey/,
+    },
+    {
+      selection: { dimensionKeys: ["invalid dimension"] },
+      message: /Velg høyst 50 dimensjoner/,
+    },
+  ])("explains invalid data selection without sending a save ($selection)", async ({
+    selection,
+    message,
+  }) => {
+    if (!product.draft) throw new Error("Expected draft fixture");
+    setup({
+      ...product,
+      draft: { ...product.draft, document: { ...document, ...selection } },
+    });
+    changeName();
+    fireEvent.click(screen.getByRole("button", { name: "Lagre utkast" }));
+    expect(await screen.findByText(message)).toBeVisible();
+    expect(saveAnalysisDraft).not.toHaveBeenCalled();
+  });
+
   it("hides the saved preview immediately when the document becomes dirty", async () => {
     setup();
     expect(
