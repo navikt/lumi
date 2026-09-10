@@ -12,16 +12,10 @@ import {
 import type { ReactNode } from "react";
 import { DashboardCard } from "~/components/dashboard";
 import { useRatingFilter } from "~/hooks/useRatingFilter";
-import type {
-  ChoiceStats,
-  FieldStat,
-  RatingStats,
-  TextStats,
-} from "~/types/api";
+import type { ChoiceStats, FieldStat, RatingStats } from "~/types/api";
 import choiceStyles from "../FieldCards/ChoiceFieldCard.module.css";
 import { RatingBars } from "../FieldCards/Rating/RatingBars";
 import { ThumbsDrilldown } from "../FieldCards/Rating/ThumbsDrilldown";
-import { TextFieldCard } from "../FieldCards/TextFieldCard";
 import {
   choiceResponseCount,
   formatSigned,
@@ -458,53 +452,5 @@ export function ComparisonChoiceFieldCard({
         <TrendAction field={field} onClick={onShowTrend} />
       </HStack>
     </DashboardCard>
-  );
-}
-
-export function ComparisonTextFieldCard({
-  field,
-  previousField,
-  currentTotalCount,
-  comparisonEnabled,
-  comparisonPending,
-}: Omit<ComparisonCardProps, "onShowTrend">) {
-  const stats = field.stats as TextStats;
-  const previousStats = previousField?.stats as TextStats | undefined;
-  const difference = previousStats
-    ? stats.responseCount - previousStats.responseCount
-    : undefined;
-  const delta =
-    difference === undefined
-      ? "—"
-      : difference === 0
-        ? "Uendret"
-        : formatSigned(difference, 0);
-  const comparison = comparisonEnabled ? (
-    <FieldComparisonMatrix
-      label={`Sammenligning av tekstsvar: ${field.label}`}
-      row={{
-        label: "Tekstsvar",
-        current: stats.responseCount.toLocaleString("nb-NO"),
-        previous: (
-          <PendingValue pending={comparisonPending}>
-            {previousStats?.responseCount.toLocaleString("nb-NO") ?? "—"}
-          </PendingValue>
-        ),
-        delta: <PendingValue pending={comparisonPending}>{delta}</PendingValue>,
-      }}
-    />
-  ) : undefined;
-  return (
-    <TextFieldCard
-      field={field}
-      totalCount={currentTotalCount}
-      comparison={comparison}
-      headerSubtitle={
-        comparisonEnabled
-          ? "Antall svar på dette spørsmålet"
-          : `${stats.responseCount.toLocaleString("nb-NO")} tekstsvar`
-      }
-      semanticHeading
-    />
   );
 }
