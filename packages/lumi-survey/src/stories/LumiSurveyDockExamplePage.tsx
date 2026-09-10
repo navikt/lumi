@@ -1,11 +1,20 @@
 import { Button } from "@navikt/ds-react";
-import { useCallback, useEffect, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   LumiSurveyDock,
   type LumiSurveyDockProps,
 } from "../components/LumiSurveyDock";
 import { removeConsentValue } from "../components/shared/consentStorage.js";
-import { SurveyCodePreview } from "./SurveyCodePreview";
+import type { LumiSurveySubmission } from "../core/types.js";
+import "./LumiSurveyDockExamplePage.css";
+import { CodePreview, SurveyCodePreview } from "./SurveyCodePreview";
 
 // Type for the Storybook mock consent API
 interface LumiMockConsentApi {
@@ -28,8 +37,24 @@ export const SUCCESS_TRANSPORT: LumiSurveyDockProps["transport"] = {
   },
 };
 
-export const ExamplePage = (props: LumiSurveyDockProps) => {
+interface ExamplePageProps extends LumiSurveyDockProps {
+  sourceCode?: string;
+}
+
+interface ExampleStoryInfo {
+  name: string;
+  description: string;
+}
+
+export const ExampleStoryInfoContext = createContext<ExampleStoryInfo>({
+  name: "Lumi-eksempellab",
+  description: "Utforsk konfigurasjonen og test hele surveyflyten.",
+});
+
+export const ExamplePage = ({ sourceCode, ...props }: ExamplePageProps) => {
+  const storyInfo = useContext(ExampleStoryInfoContext);
   const [resetToken, setResetToken] = useState(0);
+  const [lastSubmission, setLastSubmission] = useState<LumiSurveySubmission>();
   const [hasConsent, setHasConsent] = useState(() => {
     const stored = localStorage.getItem("__lumi_survey_storybook_consent__");
     return stored === null ? true : stored === "true";
@@ -38,9 +63,22 @@ export const ExamplePage = (props: LumiSurveyDockProps) => {
   const handleReset = useCallback(() => {
     void (async () => {
       await removeConsentValue(`lumi-dismissed-${props.surveyId}`);
+      setLastSubmission(undefined);
       setResetToken((token) => token + 1);
     })();
   }, [props.surveyId]);
+
+  const previewTransport = useMemo<LumiSurveyDockProps["transport"]>(
+    () => ({
+      async submit(submission) {
+        await props.transport.submit(submission);
+        setLastSubmission(submission);
+      },
+    }),
+    [props.transport],
+  );
+
+  const currentDocument = "authoringSchemaVersion" in props.survey;
 
   const handleGrantConsent = useCallback(() => {
     const mockAPI = window.__LUMI_SURVEY_MOCK_CONSENT__;
@@ -77,26 +115,39 @@ export const ExamplePage = (props: LumiSurveyDockProps) => {
   }, []);
 
   return (
-    <div
-      style={{
-        minHeight: "120vh",
-        padding: "var(--ax-space-48)",
-        background: "var(--ax-bg-neutral-soft)",
-        color: "var(--ax-text-neutral)",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "640px",
-          display: "grid",
-          gap: "var(--ax-space-16)",
-        }}
-      >
-        <h2 style={{ margin: 0 }}>Designflate</h2>
-        <p style={{ margin: 0 }}>
-          Scroll litt for å se at docken holder seg i hjørnet. Bruk knappene
-          under for å teste ulike scenarier.
-        </p>
+    <div className="lumi-storybook-example-page">
+      <div className="lumi-storybook-example-page__content">
+        <div
+          style={{
+            display: "grid",
+            gap: "var(--ax-space-8)",
+            paddingBottom: "var(--ax-space-8)",
+            borderBottom: "1px solid var(--ax-border-neutral-subtle)",
+          }}
+        >
+          <span
+            style={{
+              width: "fit-content",
+              padding: "2px var(--ax-space-8)",
+              borderRadius: "var(--ax-radius-full)",
+              background: currentDocument
+                ? "var(--ax-bg-success-soft)"
+                : "var(--ax-bg-warning-soft)",
+              color: "var(--ax-text-neutral)",
+              fontSize: "0.75rem",
+              fontWeight: 600,
+            }}
+          >
+            {currentDocument ? "Anbefalt modell" : "Kompatibilitet i 2.x"}
+          </span>
+          <h2 style={{ margin: 0 }}>{storyInfo.name}</h2>
+          <p style={{ margin: 0 }}>{storyInfo.description}</p>
+          <p style={{ margin: 0, color: "var(--ax-text-neutral-subtle)" }}>
+            {currentDocument
+              ? "Test flyten og send inn for å se submission.transportPayload – schemaVersion 2-payloaden integrasjonen skal videresende."
+              : "Dette eksempelet viser eldre questions[]-konfigurasjon. Bruk SurveyDocumentV1 for nye surveyer."}
+          </p>
+        </div>
         <div
           style={{
             display: "flex",
@@ -176,12 +227,25 @@ export const ExamplePage = (props: LumiSurveyDockProps) => {
             survey={props.survey}
             context={props.context}
             behavior={props.behavior}
-            title="Survey-konfigurasjon"
+            sourceCode={sourceCode}
             defaultCollapsed={false}
           />
         )}
+        {lastSubmission && (
+          <CodePreview
+            code={JSON.stringify(lastSubmission.transportPayload, null, 2)}
+            title="Siste innsending"
+            badge="schemaVersion 2"
+            note="Dette er den kanoniske transport-payloaden. authoringSchemaVersion 1 og schemaVersion 2 versjonerer to forskjellige kontrakter."
+            tone="payload"
+          />
+        )}
       </div>
-      <LumiSurveyDock key={resetToken} {...props} />
+      <LumiSurveyDock
+        key={resetToken}
+        {...props}
+        transport={previewTransport}
+      />
     </div>
   );
 };

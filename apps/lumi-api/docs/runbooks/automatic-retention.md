@@ -37,9 +37,9 @@ Before opening the activation PR:
 
 4. Run `EXPLAIN (ANALYZE, BUFFERS)` on the bounded `SELECT` from the cleanup CTE,
    never on the `DELETE`, and confirm use of `idx_feedback_opprettet`.
-5. Verify a tested recovery path. Prefer point-in-time recovery for a destructive
-   workload. If only scheduled backups are available, explicitly accept the recovery
-   window after testing clone/restore.
+5. Follow the [database recovery runbook](./database-recovery.md). Confirm the
+   latest successful backup and explicitly accept the recovery window from
+   [ADR 0005](../../../../docs/adr/0005-database-recovery-og-kapasitet.md).
 6. Change only the production `LUMI_RETENTION_ENABLED` value in a separately
    reviewed PR. Development must already have been observed before that PR merges,
    because the current workflow deploys production automatically after development.
@@ -80,9 +80,11 @@ and whether one instance can acquire a database connection and the retention loc
 
 - `lumi_retention_runs_total{outcome}` counts executed, skipped, and failed runs.
 - `lumi_retention_deleted_feedback_total` counts deleted response rows.
-- `lumi_retention_last_success_timestamp_seconds` records the latest successful
-  run. The stale alert evaluates 36 hours of gauge history so pod restarts do
-  not erase the signal, and separately detects a missing metric series.
+- `lumi_retention_last_success_timestamp_seconds` records the latest committed
+  successful run. After a restart, each instance restores this timestamp from
+  `feedback_retention_job_state` on its first interval check. The stale alert
+  also evaluates 36 hours of gauge history and separately detects a missing
+  metric series.
 - `lumi_retention_enabled` is `1` when deletion is enabled for an instance and
   `0` when it is disabled. The stale alert is inactive while all instances are
   disabled.

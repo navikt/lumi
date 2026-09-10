@@ -235,34 +235,30 @@ export const SurveyFormContent = React.memo(
 
     return (
       <>
-        {showProgress && isStepMode && currentStep >= 0 && totalSteps > 1 && (
-          <VStack gap="space-4">
-            <BodyShort size="small" aria-hidden>
-              {stepStatus}
-            </BodyShort>
-            {hasBranching ? (
-              <ProgressBar
-                value={currentStepNumber}
-                valueMax={totalSteps}
-                size="small"
-                aria-hidden
-              />
-            ) : (
-              <ProgressBar
-                value={currentStepNumber}
-                valueMax={totalSteps}
-                size="small"
-                aria-valuetext={stepStatus}
-                aria-label="Fremdrift i undersøkelsen"
-              />
-            )}
-            {hasBranching && (
-              <BodyShort as="span" visuallyHidden>
-                {`Fremdrift i undersøkelsen: ${stepStatus}`}
+        {showProgress &&
+          isStepMode &&
+          currentStep >= 0 &&
+          (hasBranching || totalSteps > 1) && (
+            <VStack gap="space-4">
+              <BodyShort size="small" aria-hidden>
+                {stepStatus}
               </BodyShort>
-            )}
-          </VStack>
-        )}
+              {!hasBranching && (
+                <ProgressBar
+                  value={currentStepNumber}
+                  valueMax={totalSteps}
+                  size="small"
+                  aria-valuetext={stepStatus}
+                  aria-label="Fremdrift i undersøkelsen"
+                />
+              )}
+              {hasBranching && (
+                <BodyShort as="span" visuallyHidden>
+                  {`Fremdrift i undersøkelsen: ${stepStatus}`}
+                </BodyShort>
+              )}
+            </VStack>
+          )}
 
         <form onSubmit={onSubmit} noValidate>
           <VStack gap="space-16">

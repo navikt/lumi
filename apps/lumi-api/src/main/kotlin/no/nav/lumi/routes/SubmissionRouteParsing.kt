@@ -16,6 +16,7 @@ import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.FeedbackSubmissionV1
 import no.nav.lumi.domain.FeedbackSubmissionV2
 import no.nav.lumi.domain.SurveyDefinition
+import no.nav.lumi.domain.SurveyFlowDefinitionV1
 import no.nav.lumi.validation.SubmissionV2Validator
 import no.nav.lumi.validation.SubmissionValidator
 
@@ -29,7 +30,8 @@ internal val strictSubmissionJson = Json {
 
 internal data class ParsedSubmission(
     val submission: FeedbackSubmissionV1,
-    val definition: SurveyDefinition? = null
+    val definition: SurveyDefinition? = null,
+    val flow: SurveyFlowDefinitionV1? = null,
 )
 
 internal fun decodeValidatedSubmission(jsonElement: JsonElement): ParsedSubmission {
@@ -47,7 +49,8 @@ internal fun decodeValidatedSubmission(jsonElement: JsonElement): ParsedSubmissi
             SubmissionV2Validator.validateSubmissionV2(submission)
             ParsedSubmission(
                 submission = submission.toV1CompatibleSubmission(),
-                definition = submission.definition.toSurveyDefinition(submission.surveyId)
+                definition = submission.definition.toSurveyDefinition(submission.surveyId),
+                flow = submission.flow,
             )
         }
 

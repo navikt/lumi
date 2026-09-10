@@ -24,6 +24,7 @@ object SubmissionV2Validator {
 
         val definition = submission.definition.toSurveyDefinition(submission.surveyId)
         SurveyDefinitionValidator.validateDefinition(definition)
+        submission.flow?.let { SurveyFlowValidator.validate(it, definition) }
         SpecializedSurveyContractValidator.validateDefinition(
             surveyType = submission.surveyType,
             fields = submission.definition.fields

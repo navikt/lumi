@@ -104,18 +104,23 @@ kortlivede `GITHUB_TOKEN`.
 npm krever at pakken finnes før trusted publisher kan konfigureres. Følg denne
 engangsprosedyren før PR-en som innfører workflowen merges:
 
+Bruk NAV-arbeidskontoen som har fått publiseringsrettigheter i npm-organisasjonen
+`navikt`. Logg inn interaktivt med `pnpm login --registry=https://registry.npmjs.org`
+og kontroller kontoen med `pnpm whoami --registry=https://registry.npmjs.org`.
+Fullfør eventuell tofaktor i din egen terminal eller nettleser.
+
 1. Opprett GitHub Actions-environmentet `npm-publish` i repo-innstillingene.
    Tillat bare beskyttede branches og kontroller at `main` er repoets eneste
    beskyttede branch. Hvis repoet senere får flere beskyttede branches, skal
    regelen endres til eksplisitt `main`. Environmentet trenger ingen secrets
    eller required reviewers.
-2. Last ned **den allerede publiserte** `2.1.0`-tarballen fra GitHub Packages.
+2. Last ned **den allerede publiserte** `2.2.1`-tarballen fra GitHub Packages.
    Ikke bygg den på nytt. Fra repo-roten, med `NPM_AUTH_TOKEN` satt til et
    GitHub-token med `read:packages`:
 
    ```bash
    BOOTSTRAP_DIRECTORY="$(mktemp -d)"
-   npm pack @navikt/lumi-survey@2.1.0 \
+   npm pack @navikt/lumi-survey@2.2.1 \
      --pack-destination="${BOOTSTRAP_DIRECTORY}" \
      --registry=https://npm.pkg.github.com \
      --@navikt:registry=https://npm.pkg.github.com
@@ -124,8 +129,8 @@ engangsprosedyren før PR-en som innfører workflowen merges:
 3. Verifiser tarballen før publisering:
 
    ```text
-   SHA-1:   cfbbe9c392ae19a3792cd9053e29944a56e84738
-   SHA-512: sha512-CZiEu/tTQur7R5BqEMDpysvkVijKwhYnw8Ujf+Yb/S9MZ2yl6tYA50WrkgagvkE+oaxKLeVvlObnydZl9BK87g==
+   SHA-1:   c4b678d7fbb746f6a74d5afcb46b438478353c58
+   SHA-512: sha512-qJCgWRB+9bu3mhTBv3VQL4zSXHmZ+8SX2Ez/gnSZxgWDEUIIQzBvAY5x4YKUUBuY2l6/TXVPw/fqwLwx+zQwNw==
    ```
 
    Denne kommandoen beregner lokale digester og sammenligner dem med GitHub
@@ -135,7 +140,7 @@ engangsprosedyren før PR-en som innfører workflowen merges:
    NODE_AUTH_TOKEN="${NPM_AUTH_TOKEN}" \
      node scripts/publish-lumi-survey-registry.mjs \
        --mode=verify \
-       --tarball="${BOOTSTRAP_DIRECTORY}/navikt-lumi-survey-2.1.0.tgz" \
+       --tarball="${BOOTSTRAP_DIRECTORY}/navikt-lumi-survey-2.2.1.tgz" \
        --registry=https://npm.pkg.github.com
    ```
 
@@ -146,7 +151,7 @@ engangsprosedyren før PR-en som innfører workflowen merges:
 
    ```bash
    unset NPM_AUTH_TOKEN NODE_AUTH_TOKEN
-   npm publish "${BOOTSTRAP_DIRECTORY}/navikt-lumi-survey-2.1.0.tgz" \
+   npm publish "${BOOTSTRAP_DIRECTORY}/navikt-lumi-survey-2.2.1.tgz" \
      --registry=https://registry.npmjs.org \
      --@navikt:registry=https://registry.npmjs.org \
      --access=public \
@@ -158,7 +163,7 @@ engangsprosedyren før PR-en som innfører workflowen merges:
    ```bash
    node scripts/publish-lumi-survey-registry.mjs \
      --mode=verify \
-     --tarball="${BOOTSTRAP_DIRECTORY}/navikt-lumi-survey-2.1.0.tgz" \
+     --tarball="${BOOTSTRAP_DIRECTORY}/navikt-lumi-survey-2.2.1.tgz" \
      --registry=https://registry.npmjs.org
    ```
 

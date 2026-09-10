@@ -1,4 +1,4 @@
-import { PlusIcon } from "@navikt/aksel-icons";
+import { BranchingIcon, PlusIcon } from "@navikt/aksel-icons";
 import { Detail, VStack } from "@navikt/ds-react";
 import type {
   SurveyDocumentV1,
@@ -6,9 +6,17 @@ import type {
   SurveyQuestionV1,
 } from "@navikt/lumi-survey";
 import { SPECIALIZED_SURVEY_FIELD_IDS } from "@navikt/lumi-survey";
-import { Fragment, memo, useCallback, useMemo } from "react";
+import {
+  type CSSProperties,
+  Fragment,
+  memo,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import type {
   ConditionValueSuggestion,
+  FollowUpBranch,
   MoveDirection,
   QuestionTypeId,
   ReferenceableQuestion,
@@ -21,6 +29,12 @@ import {
 import type { OptionsEditorProps } from "./OptionsEditor";
 import { PageGroupHeader } from "./PageGroupHeader";
 import { QuestionCard } from "./QuestionCard";
+import {
+  buildQuestionTree,
+  drawnGuides,
+  type QuestionTreeNode,
+  reuseStableNodes,
+} from "./questionTree";
 import { type ScreenUndo, SurveyScreenCard } from "./SurveyScreenCard";
 import { SortableList, useSortableItem } from "./sortable";
 import { TypeGallery } from "./TypeGallery";
@@ -42,6 +56,8 @@ export interface QuestionCanvasProps {
   surveyType: SurveyDocumentV1["type"];
   expandedIds: ReadonlySet<string>;
   focusQuestionId: string | null;
+  /** Bumped to refocus an already-mounted target card (flow jumps) */
+  focusNonce: number;
   undo: CanvasUndo | null;
   onUndo: () => void;
   onUndoExpire: () => void;
@@ -71,6 +87,10 @@ export interface QuestionCanvasProps {
     condition: VisibleIfConditionV1 | undefined,
   ) => void;
   onAddQuestion: (type: QuestionTypeId) => void;
+  conditionSummaries: ReadonlyMap<string, string>;
+  onAddFollowUp: (questionId: string, branch: FollowUpBranch) => void;
+  /** Per conditional question: visible with the preview's answers right now */
+  liveVisibility: ReadonlyMap<string, boolean>;
 }
 
 export const QuestionCanvas = memo(function QuestionCanvas({
@@ -80,6 +100,7 @@ export const QuestionCanvas = memo(function QuestionCanvas({
   surveyType,
   expandedIds,
   focusQuestionId,
+  focusNonce,
   undo,
   onUndo,
   onUndoExpire,
@@ -103,8 +124,29 @@ export const QuestionCanvas = memo(function QuestionCanvas({
   suggestionsFor,
   onChangeVisibleIf,
   onAddQuestion,
+  conditionSummaries,
+  onAddFollowUp,
+  liveVisibility,
 }: QuestionCanvasProps) {
   const pad = (value: number) => String(value).padStart(2, "0");
+
+  // Dependency tree: dependants nest under the same-page question that
+  // drives them, with trunk lines reaching the actual driver.
+  // Nodes keep their identity across keystrokes that don't change the tree,
+  // so the per-question memo boundary below still holds.
+  const nodeCacheRef = useRef<ReadonlyMap<string, QuestionTreeNode>>(new Map());
+  const tree = useMemo(() => {
+    const nodes = reuseStableNodes(
+      nodeCacheRef.current,
+      buildQuestionTree(page),
+    );
+    nodeCacheRef.current = new Map(nodes.map((node) => [node.id, node]));
+    return nodes;
+  }, [page]);
+
+  const pageFullyConditional =
+    page.questions.length > 0 &&
+    page.questions.every((question) => question.visibleIf !== undefined);
 
   return (
     <VStack gap="space-24">
@@ -146,6 +188,13 @@ export const QuestionCanvas = memo(function QuestionCanvas({
             onUpdatePage((current) => ({ ...current, description }))
           }
         />
+        {pageFullyConditional ? (
+          <Detail as="p" className={styles.pageConditional}>
+            <BranchingIcon aria-hidden />
+            Hele siden er betinget — i surveyen hoppes den over når ingen av
+            spørsmålene skal vises.
+          </Detail>
+        ) : null}
       </div>
 
       <SortableList
@@ -166,8 +215,18 @@ export const QuestionCanvas = memo(function QuestionCanvas({
               <CanvasQuestion
                 question={question}
                 index={index}
+                pageNumber={pageNumber}
+                node={tree[index]}
+                conditionSummary={conditionSummaries.get(question.id)}
+                liveVisible={
+                  question.visibleIf
+                    ? liveVisibility.get(question.id)
+                    : undefined
+                }
+                onAddFollowUp={onAddFollowUp}
                 expanded={expandedIds.has(question.id)}
                 focusOnMount={focusQuestionId === question.id}
+                focusNonce={focusNonce}
                 canDelete={
                   page.questions.length > 1 &&
                   !isRequiredSpecializedQuestion(surveyType, question.id)
@@ -245,8 +304,14 @@ export const QuestionCanvas = memo(function QuestionCanvas({
 const CanvasQuestion = memo(function CanvasQuestion({
   question,
   index,
+  pageNumber,
+  node,
+  conditionSummary,
+  liveVisible,
+  onAddFollowUp,
   expanded,
   focusOnMount,
+  focusNonce,
   canDelete,
   contractLocked,
   minOptions,
@@ -266,8 +331,14 @@ const CanvasQuestion = memo(function CanvasQuestion({
 }: {
   question: SurveyQuestionV1;
   index: number;
+  pageNumber: number;
+  node: QuestionTreeNode;
+  conditionSummary: string | undefined;
+  liveVisible: boolean | undefined;
+  onAddFollowUp: QuestionCanvasProps["onAddFollowUp"];
   expanded: boolean;
   focusOnMount: boolean;
+  focusNonce: number;
   canDelete: boolean;
   contractLocked: boolean;
   minOptions: number;
@@ -330,21 +401,60 @@ const CanvasQuestion = memo(function CanvasQuestion({
       onChangeVisibleIf(questionId, condition),
     [onChangeVisibleIf, questionId],
   );
+  const handleAddFollowUp = useCallback(
+    (branch: FollowUpBranch) => onAddFollowUp(questionId, branch),
+    [onAddFollowUp, questionId],
+  );
 
   return (
     <div
       ref={sortable.setNodeRef}
       className={sortable.className}
-      style={sortable.style}
+      style={
+        {
+          ...sortable.style,
+          "--tree-depth": node.depth,
+        } as CSSProperties
+      }
       data-dragging={sortable.isDragging}
       data-draggable={!expanded}
+      data-depth={node.depth}
+      data-external={node.externalDependency || undefined}
       {...sortable.listeners}
     >
+      {node.depth > 0 ? (
+        <span className={styles.treeGuides} aria-hidden>
+          {drawnGuides(node).map((guide, level) => {
+            const kind = guide.isParent
+              ? guide.continues
+                ? "elbow-continue"
+                : "elbow"
+              : guide.continues
+                ? "line"
+                : "none";
+            return (
+              <span
+                key={guide.ancestorId}
+                className={styles.treeGuide}
+                data-kind={kind}
+                style={{ "--tree-level": level } as CSSProperties}
+              />
+            );
+          })}
+        </span>
+      ) : node.externalDependency ? (
+        <span className={styles.treeExternal} aria-hidden />
+      ) : null}
       <QuestionCard
         question={question}
         index={index}
+        pageNumber={pageNumber}
+        conditionSummary={conditionSummary}
+        liveVisible={liveVisible}
+        onAddFollowUp={expanded ? handleAddFollowUp : undefined}
         expanded={expanded}
         focusOnMount={focusOnMount}
+        focusNonce={focusNonce}
         canDelete={canDelete}
         contractLocked={contractLocked}
         minOptions={minOptions}

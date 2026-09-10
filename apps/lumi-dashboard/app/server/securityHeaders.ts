@@ -14,7 +14,9 @@ export function buildCspHeaderValue(options?: {
   const isDev = options?.isDev === true;
   const nonce = options?.nonce;
 
-  const connectSrc = isDev ? "'self' ws: wss:" : "'self'";
+  const connectSrc = isDev
+    ? "'self' ws: wss:"
+    : "'self' https://telemetry.nav.no https://telemetry.ekstern.dev.nav.no";
   const scriptSrcParts = ["'self'", "https://cdn.nav.no"];
   const styleSrcParts = ["'self'", "https://cdn.nav.no", "'unsafe-inline'"];
   const styleSrcElemParts = ["'self'", "https://cdn.nav.no"];

@@ -7,6 +7,7 @@ export type {
   SubmissionCreatedResponse as LumiApiSubmissionCreatedResponse,
   SubmissionDefinition as LumiApiSubmissionDefinition,
   SubmissionFieldDefinition as LumiApiSubmissionFieldDefinition,
+  SubmissionFlowV1 as LumiApiSubmissionFlowV1,
 } from "../contracts/lumiApi";
 export { ErrorType as LumiApiErrorType } from "../contracts/lumiApi";
 
@@ -25,4 +26,8 @@ export {
 export * from "./ratingLabels";
 export * from "./specializedSurveyContract.js";
 export * from "./types";
-export * from "./useLumiSurvey";
+export type {
+  UseLumiSurveyOptions,
+  UseLumiSurveyReturn,
+} from "./useLumiSurvey";
+export { useLumiSurvey } from "./useLumiSurvey";

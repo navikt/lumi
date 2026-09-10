@@ -114,6 +114,7 @@ class SubmissionServiceTest : FunSpec({
                 "app-a",
                 "survey-1",
                 "definition-hash-v2",
+                null,
                 "dedup-hash"
             )
         } returns saveResult

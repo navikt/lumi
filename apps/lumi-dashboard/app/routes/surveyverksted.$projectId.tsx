@@ -1,10 +1,14 @@
 import { Alert, Box, Button, HStack, Loader } from "@navikt/ds-react";
 import type {
+  LumiSurveyAnswerValue,
   SurveyDocumentV1,
   SurveyPageV1,
   SurveyQuestionV1,
 } from "@navikt/lumi-survey";
-import { validateSurveyDocumentV1 } from "@navikt/lumi-survey";
+import {
+  evaluateVisibility,
+  validateSurveyDocumentV1,
+} from "@navikt/lumi-survey";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useBlocker } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
@@ -14,12 +18,17 @@ import {
   EditorTopbar,
   type SaveState,
 } from "~/components/surveyverksted/EditorTopbar";
+import { FlowOverview } from "~/components/surveyverksted/FlowOverview";
 import { PageRail } from "~/components/surveyverksted/PageRail";
-import { PreviewStage } from "~/components/surveyverksted/PreviewStage";
+import {
+  PreviewStage,
+  STAGE_ENVIRONMENT_TAG,
+} from "~/components/surveyverksted/PreviewStage";
 import {
   type CanvasUndo,
   QuestionCanvas,
 } from "~/components/surveyverksted/QuestionCanvas";
+import { QuestionEditor } from "~/components/surveyverksted/QuestionEditor/QuestionEditor";
 import { SettingsModal } from "~/components/surveyverksted/SettingsModal";
 import {
   ShareDialog,
@@ -35,6 +44,7 @@ import type {
   SurveyAuthoringProject,
   SurveyAuthoringProjectSummary,
 } from "~/types/surveyAuthoring";
+import { buildConditionSummaries } from "~/utils/conditionSummary";
 import {
   isDraftConflictError,
   isRetryableSaveError,
@@ -44,6 +54,7 @@ import type {
   VisibleIfConditionV1,
 } from "~/utils/surveyDocument";
 import {
+  addFollowUpQuestion,
   addOption,
   addPage,
   addQuestion,
@@ -52,6 +63,7 @@ import {
   conditionValueSuggestions,
   duplicatePage,
   duplicateQuestion,
+  type FollowUpBranch,
   findHandoffIssues,
   getSpecializedAuthoringContractIssues,
   insertPageAt,
@@ -175,9 +187,18 @@ function SurveyWorkshopEditor({
     initialExpandedIds(project.document.pages[0]),
   );
   const [focusQuestionId, setFocusQuestionId] = useState<string | null>(null);
+  // Bumped when an already-mounted card must take focus again (flow jumps
+  // to a question that is expanded on the current page).
+  const [focusNonce, setFocusNonce] = useState(0);
   const [undo, setUndo] = useState<UndoState | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [flowOpen, setFlowOpen] = useState(false);
+  const [advancedMode, setAdvancedMode] = useState(false);
+  // Live mirror of the preview's answers, reported by the stage dock.
+  const [stageAnswers, setStageAnswers] = useState<
+    Record<string, LumiSurveyAnswerValue>
+  >({});
   const [repairNoticeVisible, setRepairNoticeVisible] = useState(false);
   const repairNoticeRef = useRef<HTMLDivElement>(null);
 
@@ -514,6 +535,31 @@ function SurveyWorkshopEditor({
       await queryClient.invalidateQueries({
         queryKey: ["survey-authoring-revisions", project.team, project.id],
       });
+      // The team list carries each project's newest revision. Write it into
+      // the cached list directly: an invalidation alone is undone by the
+      // next autosave, whose setQueryData marks the list fresh again with
+      // the old revision still on it.
+      queryClient.setQueryData<SurveyAuthoringProjectSummary[]>(
+        ["survey-authoring-projects", project.team],
+        (list) =>
+          list?.map((candidate) =>
+            candidate.id === project.id
+              ? {
+                  ...candidate,
+                  draftVersion: revision.draftVersion,
+                  latestRevision: {
+                    id: revision.id,
+                    revisionNumber: revision.revisionNumber,
+                    draftVersion: revision.draftVersion,
+                    createdAt: revision.createdAt,
+                  },
+                }
+              : candidate,
+          ),
+      );
+      await queryClient.invalidateQueries({
+        queryKey: ["survey-authoring-projects", project.team],
+      });
       await navigate({
         to: "/surveyverksted/revisions/$revisionId",
         params: { revisionId: revision.id },
@@ -521,6 +567,90 @@ function SurveyWorkshopEditor({
       });
     },
   });
+
+  const handleStageAnswers = useCallback(
+    (answers: Record<string, LumiSurveyAnswerValue>) =>
+      setStageAnswers(answers),
+    [],
+  );
+
+  const handleOpenFlow = useCallback(() => setFlowOpen(true), []);
+
+  const flowJumpTimeoutRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (flowJumpTimeoutRef.current !== null) {
+        window.clearTimeout(flowJumpTimeoutRef.current);
+      }
+    },
+    [],
+  );
+  const handleFlowJump = useCallback((pageId: string, questionId: string) => {
+    setFlowOpen(false);
+    // Suppress the page-switch expansion reset; the jumped-to question is
+    // expanded and focused explicitly. Crossing pages starts a fresh set so
+    // the previous page's expansions don't linger invisibly.
+    previousPageIdRef.current = pageId;
+    setSelectedPageId(pageId);
+    setExpandedIds((current) =>
+      pageId === selectedPageRef.current
+        ? new Set([...current, questionId])
+        : new Set([questionId]),
+    );
+    // Focus in a LATER commit: while the modal's native dialog is open the
+    // rest of the page is inert (focus() is a no-op), and closing restores
+    // focus to the trigger — so the card focus must run after both. The
+    // nonce re-triggers the effect for a card that is already mounted.
+    flowJumpTimeoutRef.current = window.setTimeout(() => {
+      setFocusQuestionId(questionId);
+      setFocusNonce((nonce) => nonce + 1);
+    }, 0);
+  }, []);
+  const handleFlowClose = useCallback(() => setFlowOpen(false), []);
+
+  // Which conditional questions are visible with the preview's answers now,
+  // computed with the package's own evaluator so editor and runtime can
+  // never drift apart. The stage dock's environment tag is mirrored into
+  // metadata; device/viewport metadata is not (METADATA conditions are
+  // code-authored and read-only in the workshop).
+  const liveVisibility = useMemo(() => {
+    const metadata = { environment: STAGE_ENVIRONMENT_TAG };
+    const map = new Map<string, boolean>();
+    for (const page of draft.document.pages) {
+      for (const question of page.questions) {
+        if (!question.visibleIf) continue;
+        // The document type (SurveyVisibleIfV1) and the runtime condition
+        // type disagree on METADATA+EXISTS's optional value; the evaluator
+        // itself accepts every document shape and fails closed on malformed
+        // input — the same boundary the dock's canonicalization crosses.
+        map.set(
+          question.id,
+          evaluateVisibility(
+            question.visibleIf as Parameters<typeof evaluateVisibility>[0],
+            stageAnswers,
+            metadata,
+          ),
+        );
+      }
+    }
+    return map;
+  }, [draft.document, stageAnswers]);
+
+  const handleAddFollowUp = useCallback(
+    (questionId: string, branch: FollowUpBranch) => {
+      const result = addFollowUpQuestion(
+        draftRef.current.document,
+        selectedPageRef.current,
+        questionId,
+        branch,
+      );
+      if (!result) return;
+      updateDocument(result.document);
+      setExpandedIds((current) => new Set([...current, result.questionId]));
+      setFocusQuestionId(result.questionId);
+    },
+    [updateDocument],
+  );
 
   const handleAddQuestion = useCallback(
     (type: QuestionTypeId) => {
@@ -584,7 +714,15 @@ function SurveyWorkshopEditor({
   const handleAddPage = useCallback(() => {
     const { document: next, pageId } = addPage(draftRef.current.document);
     updateDocument(next);
+    const firstQuestion = next.pages.find((page) => page.id === pageId)
+      ?.questions[0];
+    // Suppress the page-switch expansion reset; the seeded placeholder is
+    // expanded and focused explicitly so writing the prompt is one keystroke
+    // away.
+    previousPageIdRef.current = pageId;
     setSelectedPageId(pageId);
+    setExpandedIds(new Set(firstQuestion ? [firstQuestion.id] : []));
+    setFocusQuestionId(firstQuestion?.id ?? null);
   }, [updateDocument]);
 
   const handleSelectPage = useCallback((pageId: string) => {
@@ -756,6 +894,11 @@ function SurveyWorkshopEditor({
     return map;
   }, [draft.document, expandedIds]);
 
+  const conditionSummaries = useMemo(
+    () => buildConditionSummaries(draft.document),
+    [draft.document],
+  );
+
   const suggestionsFor = useCallback(
     (referencedId: string) =>
       conditionValueSuggestions(draftRef.current.document, referencedId),
@@ -864,6 +1007,23 @@ function SurveyWorkshopEditor({
     () => findHandoffIssues(draft.document),
     [draft.document],
   );
+
+  // The same issues the share gate enforces, surfaced early in the flow
+  // overview so broken branches are found while editing, not at handoff.
+  const flowIssues = useMemo(() => {
+    const byQuestion = new Map<string, string[]>();
+    const surveyLevel: string[] = [];
+    for (const issue of handoffIssues) {
+      if (issue.questionId) {
+        const list = byQuestion.get(issue.questionId) ?? [];
+        list.push(issue.message);
+        byQuestion.set(issue.questionId, list);
+      } else {
+        surveyLevel.push(issue.message);
+      }
+    }
+    return { byQuestion, surveyLevel };
+  }, [handoffIssues]);
 
   const shareStatus: ShareStatus = saveConflict
     ? "conflict"
@@ -999,69 +1159,92 @@ function SurveyWorkshopEditor({
         </div>
       ) : null}
 
-      <div className={styles.editorGrid}>
-        <aside className={styles.outline}>
-          <PageRail
-            pages={pages}
-            selectedPageId={selectedPage.id}
-            protectedPageIds={protectedPageIds}
-            onSelect={handleSelectPage}
-            onAdd={handleAddPage}
-            onMove={handleMovePage}
-            onReorder={handleReorderPage}
-            onDuplicate={handleDuplicatePage}
-            onDelete={handleDeletePage}
-          />
-        </aside>
+      {advancedMode ? (
+        <>
+          <Box padding="space-16">
+            <Button variant="secondary" onClick={() => setAdvancedMode(false)}>
+              Tilbake til enkel redigering
+            </Button>
+          </Box>
+          <div className={styles.editorGrid}>
+            <aside className={styles.outline}>
+              <PageRail
+                pages={pages}
+                selectedPageId={selectedPage.id}
+                protectedPageIds={protectedPageIds}
+                onSelect={handleSelectPage}
+                onAdd={handleAddPage}
+                onMove={handleMovePage}
+                onReorder={handleReorderPage}
+                onDuplicate={handleDuplicatePage}
+                onDelete={handleDeletePage}
+              />
+            </aside>
 
-        <section
-          className={styles.canvas}
-          aria-label={`Side ${selectedPageNumber}: ${selectedPage.title ?? "uten tittel"}`}
-        >
-          <QuestionCanvas
-            page={selectedPage}
-            pageNumber={selectedPageNumber}
-            totalPages={pages.length}
-            surveyType={draft.document.type}
-            expandedIds={expandedIds}
-            intro={draft.document.intro}
-            success={draft.document.success}
-            introUndo={screenUndoFor("intro")}
-            successUndo={screenUndoFor("success")}
-            onChangeIntro={handleChangeIntro}
-            onChangeSuccess={handleChangeSuccess}
-            focusQuestionId={focusQuestionId}
-            undo={canvasUndo}
-            onUndo={handleUndo}
-            onUndoExpire={clearUndo}
-            onExpand={handleExpand}
-            onCollapse={handleCollapse}
-            onUpdatePage={handleUpdatePage}
-            onQuestionChange={handleQuestionChange}
-            onChangeType={handleChangeType}
-            onDuplicate={handleDuplicateQuestion}
-            onDelete={handleDeleteQuestion}
-            onMoveQuestion={handleMoveQuestion}
-            onReorderQuestion={handleReorderQuestion}
-            optionHandlersFor={optionHandlersFor}
-            referenceableByQuestion={expandedReferenceable}
-            suggestionsFor={suggestionsFor}
-            onChangeVisibleIf={handleChangeVisibleIf}
-            onAddQuestion={handleAddQuestion}
-          />
-        </section>
+            <section
+              className={styles.canvas}
+              aria-label={`Side ${selectedPageNumber}: ${selectedPage.title ?? "uten tittel"}`}
+            >
+              <QuestionCanvas
+                page={selectedPage}
+                pageNumber={selectedPageNumber}
+                totalPages={pages.length}
+                surveyType={draft.document.type}
+                expandedIds={expandedIds}
+                intro={draft.document.intro}
+                success={draft.document.success}
+                introUndo={screenUndoFor("intro")}
+                successUndo={screenUndoFor("success")}
+                onChangeIntro={handleChangeIntro}
+                onChangeSuccess={handleChangeSuccess}
+                focusQuestionId={focusQuestionId}
+                focusNonce={focusNonce}
+                undo={canvasUndo}
+                onUndo={handleUndo}
+                onUndoExpire={clearUndo}
+                onExpand={handleExpand}
+                onCollapse={handleCollapse}
+                onUpdatePage={handleUpdatePage}
+                onQuestionChange={handleQuestionChange}
+                onChangeType={handleChangeType}
+                onDuplicate={handleDuplicateQuestion}
+                onDelete={handleDeleteQuestion}
+                onMoveQuestion={handleMoveQuestion}
+                onReorderQuestion={handleReorderQuestion}
+                optionHandlersFor={optionHandlersFor}
+                referenceableByQuestion={expandedReferenceable}
+                suggestionsFor={suggestionsFor}
+                onChangeVisibleIf={handleChangeVisibleIf}
+                onAddQuestion={handleAddQuestion}
+                conditionSummaries={conditionSummaries}
+                onAddFollowUp={handleAddFollowUp}
+                liveVisibility={liveVisibility}
+              />
+            </section>
 
-        <aside className={styles.preview}>
-          <PreviewStage
-            document={draft.document}
-            isValid={!validationError}
-            surveyId={draft.surveyId}
-            initialPageId={selectedPage.id}
-            fullPreviewHref={previewHref}
-            stats={stats}
-          />
-        </aside>
-      </div>
+            <aside className={styles.preview}>
+              <PreviewStage
+                document={draft.document}
+                isValid={!validationError}
+                surveyId={draft.surveyId}
+                initialPageId={selectedPage.id}
+                fullPreviewHref={previewHref}
+                stats={stats}
+                onAnswersChange={handleStageAnswers}
+                onOpenFlow={handleOpenFlow}
+                flowIssueCount={handoffIssues.length}
+              />
+            </aside>
+          </div>
+        </>
+      ) : (
+        <QuestionEditor
+          document={draft.document}
+          surveyId={draft.surveyId}
+          onChange={updateDocument}
+          onAdvanced={() => setAdvancedMode(true)}
+        />
+      )}
 
       <SettingsModal
         open={settingsOpen}
@@ -1099,6 +1282,18 @@ function SurveyWorkshopEditor({
             : null
         }
         onRetrySave={retrySaveNow}
+      />
+
+      <FlowOverview
+        open={flowOpen}
+        onClose={handleFlowClose}
+        document={draft.document}
+        conditionSummaries={conditionSummaries}
+        liveVisibility={liveVisibility}
+        hasStageAnswers={Object.keys(stageAnswers).length > 0}
+        issuesByQuestion={flowIssues.byQuestion}
+        surveyIssues={flowIssues.surveyLevel}
+        onJump={handleFlowJump}
       />
     </main>
   );

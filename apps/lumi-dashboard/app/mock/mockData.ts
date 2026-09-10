@@ -39,6 +39,7 @@ export {
   generateTopTasksMockData,
 };
 
+import { calculateQuestionTrend } from "./questionTrend";
 import { calculateStats } from "./stats";
 import {
   getMockBlockerStats as calculateBlockerStats,
@@ -94,6 +95,7 @@ function generateFieldStatsOrderingSurveyData(count: number): FeedbackDto[] {
       surveyId: "survey-ordering",
       surveyType: "custom",
       context: createContext("/ordering", "desktop"),
+      metadata: { sampleGroup: i < 3 ? "small" : "other" },
       answers: [
         createRatingAnswer("svar", "Ordering Q1", 5),
         createSingleChoiceAnswer(
@@ -497,6 +499,19 @@ export function filterFeedback(
 
 export function getMockStats(params: URLSearchParams): FeedbackStats {
   return calculateStats(getMockAnalyticsItems(params), params);
+}
+
+export function getMockQuestionTrend(
+  params: URLSearchParams,
+  fieldId: string,
+  interval: import("~/types/api").QuestionTrendInterval,
+) {
+  return calculateQuestionTrend(
+    getMockAnalyticsItems(params),
+    params,
+    fieldId,
+    interval,
+  );
 }
 
 export function getMockFeedback(params: URLSearchParams): FeedbackPage {

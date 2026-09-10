@@ -75,11 +75,26 @@ pnpm --filter lumi-dashboard run start
 
 ### Miljøvariabler
 
-| Variabel            | Beskrivelse                   | Standard                                     |
-| ------------------- | ----------------------------- | -------------------------------------------- |
-| `LUMI_API_URL`      | URL til backend-API           | `http://localhost:8080`                      |
-| `LUMI_API_AUDIENCE` | Azure AD-audience for OBO     | `api://dev-gcp.team-esyfo.lumi-api/.default` |
-| `NAIS_CLUSTER_NAME` | NAIS cluster (aktiverer auth) | -                                            |
+| Variabel             | Beskrivelse                              | Standard                                     |
+| -------------------- | ---------------------------------------- | -------------------------------------------- |
+| `LUMI_API_URL`       | URL til backend-API                      | `http://localhost:8080`                      |
+| `LUMI_API_AUDIENCE`  | Azure AD-audience for OBO                | `api://dev-gcp.team-esyfo.lumi-api/.default` |
+| `NAIS_CLUSTER_NAME`  | NAIS cluster (aktiverer auth)            | -                                            |
+| `VITE_LUMI_RELEASE`  | Git-SHA som identifiserer frontend-bygg  | -                                            |
+
+## Browser-observability
+
+Dashboardet sender tekniske nettlesersignaler til NAIS APM fra de ordinære
+dev- og prod-ingressene. Lokal utvikling og demo med mockdata sender ingenting.
+
+- App, team, miljø og eksakt Git-SHA følger hvert signal.
+- Side-ID-er bruker et lukket sett med rutemaler. Query-parametre, fragmenter og
+  dynamiske prosjekt- og revisjons-ID-er eksporteres ikke.
+- Console-logger, brukerkontekst, tracing, session replay og skjermbilder er
+  deaktivert. Uventede feil sendes med generiske tekster.
+- Alle tekniske nettlesersesjoner samples fordi trafikken er lav. En session-ID
+  er en kortlivet teknisk korrelasjonsnøkkel, ikke en brukeridentitet.
+- Produksjonsbygg publiserer sourcemaps sammen med versjonerte assets på NAV CDN.
 
 ## Deploy
 

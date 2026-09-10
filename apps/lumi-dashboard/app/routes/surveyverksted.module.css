@@ -77,6 +77,22 @@
   white-space: nowrap;
 }
 
+.projectStatus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ax-space-8);
+  margin-top: var(--ax-space-6);
+}
+
+.projectMetaColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--ax-space-2);
+  white-space: nowrap;
+}
+
 .projectLink:focus-visible {
   outline: 3px solid var(--ax-border-focus);
   outline-offset: 2px;

@@ -187,7 +187,7 @@ describe("filterLabels", () => {
         type: "rating" as const,
         average: 4.4,
         distribution: { 4: 2, 5: 6 },
-        ratingVariant: "stars",
+        ratingVariant: "stars" as const,
       };
 
       const stats = makeStats([
@@ -374,7 +374,7 @@ describe("filterLabels", () => {
         type: "rating" as const,
         average: 1.7,
         distribution: { 1: 2, 2: 5 },
-        ratingVariant: "thumbs",
+        ratingVariant: "thumbs" as const,
       };
 
       const stats = makeStats([

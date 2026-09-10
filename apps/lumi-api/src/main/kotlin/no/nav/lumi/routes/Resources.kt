@@ -2,10 +2,41 @@ package no.nav.lumi.routes
 
 import io.ktor.resources.*
 import kotlinx.serialization.Serializable
+import no.nav.lumi.domain.QuestionTrendInterval
 
 @Resource("/api/v1/intern")
 class ApiV1Intern {
-    
+    @Resource("analysis-products")
+    @Serializable
+    class AnalysisProducts(
+        val parent: ApiV1Intern = ApiV1Intern(),
+        /** Optional team scope. The authorization plugin validates this value. */
+        val team: String? = null,
+    ) {
+        @Resource("catalog")
+        @Serializable
+        class Catalog(val parent: AnalysisProducts = AnalysisProducts())
+
+        @Resource("{productId}")
+        @Serializable
+        class Id(
+            val parent: AnalysisProducts = AnalysisProducts(),
+            val productId: String,
+        ) {
+            @Resource("preview")
+            @Serializable
+            class Preview(val parent: Id)
+
+            @Resource("releases")
+            @Serializable
+            class Releases(val parent: Id)
+
+            @Resource("draft")
+            @Serializable
+            class Draft(val parent: Id)
+        }
+    }
+
     @Resource("feedback")
     @Serializable
     class Feedback(
@@ -124,6 +155,14 @@ class ApiV1Intern {
         @Serializable
         class Timeline(val parent: Stats)
 
+        @Resource("question-trend")
+        @Serializable
+        class QuestionTrend(
+            val parent: Stats,
+            val fieldId: String,
+            val interval: QuestionTrendInterval = QuestionTrendInterval.DAY,
+        )
+
         @Resource("top-tasks")
         @Serializable
         class TopTasks(val parent: Stats)
@@ -223,8 +262,6 @@ class ApiV1Intern {
             val parent: Filters = Filters(),
             /** Optional team scope. If omitted, the backend selects a default authorized team. */
             val team: String? = null,
-            /** Bypass the cached response without changing the shared cache entry. */
-            val refresh: String? = null,
         )
     }
 

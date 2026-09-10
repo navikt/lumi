@@ -13,7 +13,7 @@ hero:
       link: https://lumi-dashboard-demo.ekstern.dev.nav.no
     - theme: alt
       text: Utforsk widgeten
-      link: https://navikt.github.io/lumi/storybook/?path=/story/components-lumisurveydock-rating--rating
+      link: https://navikt.github.io/lumi/storybook/?path=/story/kom-i-gang-surveydocumentv1--recommended-structure
 features:
   - icon: 🧩
     title: Survey as code

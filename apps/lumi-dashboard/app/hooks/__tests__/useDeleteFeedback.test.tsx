@@ -52,6 +52,9 @@ describe("useDeleteFeedback", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["feedback"] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["stats"] });
     expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["question-trend"],
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["filterBootstrap"],
     });
     expect(invalidateSpy).toHaveBeenCalledWith({

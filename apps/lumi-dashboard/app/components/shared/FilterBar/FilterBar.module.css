@@ -6,6 +6,10 @@
   box-shadow: var(--ax-shadow-small);
 }
 
+.periodRow {
+  border-top: 1px solid var(--ax-border-neutral-subtle);
+}
+
 .desktopTeamSelect {
   min-width: 140px;
   max-width: 200px;

@@ -4,7 +4,6 @@ import {
   createTaskPrioritySurveyDocument,
   createTopTasksSurveyDocument,
   DEFAULT_DISCOVERY_SURVEY_DOCUMENT,
-  DEFAULT_SURVEY_RATING,
 } from "../presets/index.js";
 import { ExamplePage, SUCCESS_TRANSPORT } from "./LumiSurveyDockExamplePage";
 
@@ -56,20 +55,21 @@ const TASK_PRIORITY_SURVEY = createTaskPrioritySurveyDocument({
 });
 
 const meta: Meta<typeof LumiSurveyDock> = {
-  title: "Components/LumiSurveyDock/Tasks",
+  id: "components-lumisurveydock-tasks",
+  title: "Surveytyper/Discovery og oppgaver",
   component: LumiSurveyDock,
   parameters: {
     layout: "fullscreen",
     docs: {
       description: {
         component:
-          "Eksempelsamling som viser hvordan LumiSurveyDock kan konfigureres med ulike spørresett, tekster og plasseringer.",
+          "Sidebaserte SurveyDocumentV1-maler med faste felt-ID-er for Lumi-dashboardets spesialiserte analyser.",
       },
     },
   },
   args: {
     surveyId: "storybook-dock",
-    survey: DEFAULT_SURVEY_RATING,
+    survey: DEFAULT_DISCOVERY_SURVEY_DOCUMENT,
     transport: SUCCESS_TRANSPORT,
   },
   argTypes: {
@@ -77,6 +77,8 @@ const meta: Meta<typeof LumiSurveyDock> = {
     survey: { control: false },
     events: { control: false },
     context: { control: false },
+    intro: { control: false },
+    success: { control: false },
   },
 };
 
@@ -94,7 +96,7 @@ export const Discovery: Story = {
     docs: {
       description: {
         story:
-          "Sidebasert discovery-undersøkelse med `DEFAULT_DISCOVERY_SURVEY_DOCUMENT`. Viser ett spørsmål om gangen med Neste/Tilbake-knapper.",
+          "Sidebasert discovery-dokument med de faste felt-ID-ene som Lumi-dashboardets discovery-analyse forventer.",
       },
     },
   },

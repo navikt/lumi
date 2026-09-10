@@ -87,13 +87,14 @@ fun Route.internalSubmissionRoutes(
                         team = identity.team,
                         app = identity.app,
                         submission = submission,
-                        definition = parsedSubmission.definition
+                        definition = parsedSubmission.definition,
+                        flow = parsedSubmission.flow,
                     )
 
                     val metricOutcome = when (val saveResult = submissionOutcome.saveResult) {
                         is SaveResult.Created -> {
                             log.info(
-                                "Internal submission: saved feedback id=${saveResult.id} team=${identity.team} app=${identity.app} surveyId=${submission.surveyId} definitionHash=${submissionOutcome.definitionHash}"
+                                "Internal submission: saved feedback id=${saveResult.id} team=${identity.team} app=${identity.app} surveyId=${submission.surveyId} definitionHash=${submissionOutcome.definitionHash} flowPinned=${submissionOutcome.flowHash != null}"
                             )
                             call.respond(HttpStatusCode.Created, mapOf("id" to saveResult.id))
                             SubmissionMetricOutcome.CREATED

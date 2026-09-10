@@ -78,10 +78,11 @@ class FeedbackRepository(
         app: String,
         surveyId: String? = null,
         definitionHash: String? = null,
+        flowHash: String? = null,
         deduplicationKeyHash: String? = null
     ): SaveResult {
         return dbQuery {
-            saveInCurrentTransaction(feedbackJson, team, app, surveyId, definitionHash, deduplicationKeyHash)
+            saveInCurrentTransaction(feedbackJson, team, app, surveyId, definitionHash, flowHash, deduplicationKeyHash)
         }
     }
 
@@ -106,6 +107,7 @@ class FeedbackRepository(
         app: String,
         surveyId: String? = null,
         definitionHash: String? = null,
+        flowHash: String? = null,
         deduplicationKeyHash: String? = null
     ): SaveResult {
         val id = UUID.randomUUID().toString()
@@ -119,6 +121,7 @@ class FeedbackRepository(
                 it[FeedbackTable.app] = app
                 it[FeedbackTable.surveyId] = surveyId
                 it[FeedbackTable.definitionHash] = definitionHash
+                it[FeedbackTable.flowHash] = flowHash
                 it[FeedbackTable.deduplicationKeyHash] = deduplicationKeyHash
             }.insertedCount > 0
 
@@ -141,6 +144,7 @@ class FeedbackRepository(
                 it[FeedbackTable.app] = app
                 it[FeedbackTable.surveyId] = surveyId
                 it[FeedbackTable.definitionHash] = definitionHash
+                it[FeedbackTable.flowHash] = flowHash
                 it[FeedbackTable.deduplicationKeyHash] = deduplicationKeyHash
             }
 

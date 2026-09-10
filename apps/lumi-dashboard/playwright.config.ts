@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const DEFAULT_E2E_PORT = 3100;
+const productionBuild = process.env.PLAYWRIGHT_PRODUCTION === "true";
 const E2E_PORT = (() => {
   const raw = process.env.PLAYWRIGHT_PORT ?? process.env.E2E_PORT;
   if (!raw) return DEFAULT_E2E_PORT;
@@ -34,13 +35,17 @@ export default defineConfig({
   ],
   webServer: {
     // Force the expected port so Playwright doesn't probe the wrong server if 3000 is taken.
-    command: `pnpm run dev --port ${E2E_PORT} --strictPort`,
+    command: productionBuild
+      ? "pnpm run build && pnpm run start"
+      : `pnpm run dev --port ${E2E_PORT} --strictPort`,
     // Avoid depending on SSR route readiness: Vite always serves this when the dev server is up.
-    url: `http://localhost:${E2E_PORT}/@vite/client`,
-    reuseExistingServer: !process.env.CI,
+    url: `http://localhost:${E2E_PORT}/${productionBuild ? "" : "@vite/client"}`,
+    reuseExistingServer: !process.env.CI && !productionBuild,
     timeout: 120000,
     env: {
       USE_MOCK_DATA: "true",
+      PORT: String(E2E_PORT),
+      LUMI_DASHBOARD_ASSET_BASE_URL: "/",
     },
   },
 });

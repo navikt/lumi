@@ -6,11 +6,14 @@ import io.ktor.server.plugins.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
+import io.ktor.util.AttributeKey
+import no.nav.lumi.config.auth.CallerIdentityKey
 import no.nav.lumi.config.exception.ApiError
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.config.exception.ErrorType
-import no.nav.lumi.config.auth.CallerIdentityKey
 import org.slf4j.LoggerFactory
+
+val OpaqueNotFoundResponseKey = AttributeKey<Map<String, String>>("opaqueNotFoundResponse")
 
 private val statusPageLog = LoggerFactory.getLogger("StatusPages")
 private val defaultDefinitionConflictObservability = DefinitionConflictObservability()
@@ -50,8 +53,16 @@ fun Application.configureStatusPages(
         status(HttpStatusCode.NotFound) { call, status ->
             val path = call.request.path()
             statusPageLog.info("StatusPages caught 404 NotFound on $path - responding with ApiError")
-            val apiError = ApiError.notFound(status.description, path)
-            call.respond(HttpStatusCode.NotFound, apiError)
+            val opaqueResponse = call.attributes.getOrNull(OpaqueNotFoundResponseKey)
+            if (opaqueResponse != null) {
+                call.respond(
+                    HttpStatusCode.NotFound,
+                    opaqueResponse,
+                )
+            } else {
+                val apiError = ApiError.notFound(status.description, path)
+                call.respond(HttpStatusCode.NotFound, apiError)
+            }
         }
     }
 }

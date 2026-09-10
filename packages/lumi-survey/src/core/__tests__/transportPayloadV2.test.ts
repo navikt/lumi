@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { buildFlowBlock } from "../flowBlock.js";
 import type {
   LumiSurveyQuestion,
   LumiSurveySubmission,
@@ -283,6 +284,188 @@ describe("v2 transport payload", () => {
     const payload = submitMock.mock.calls[0][0].transportPayload;
     expect(payload.surveyType).toBe("rating");
     expect(payload.surveyType).toBe(payload.definition.surveyType);
+  });
+
+  it("includes a canonical visibleIf-only flow contract", async () => {
+    const submitMock = vi.fn(async (_: LumiSurveySubmission) => {});
+    const transport: LumiSurveyTransport = { submit: submitMock };
+    const questions: LumiSurveyQuestion[] = [
+      {
+        id: "rating",
+        type: "rating",
+        prompt: "Rating",
+        variant: "nps",
+      },
+      {
+        id: "details",
+        type: "text",
+        prompt: "Details",
+        visibleIf: {
+          any: [
+            {
+              field: "METADATA",
+              key: "deviceType",
+              operator: "EQ",
+              value: "mobile",
+            },
+            { questionId: "rating", operator: "LT", value: 7 },
+          ],
+        },
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      useLumiSurvey({ surveyId: SURVEY_ID, questions, transport }),
+    );
+    await act(() => result.current.setAnswer("rating", 5));
+    await act(() => result.current.setAnswer("details", "Could be better"));
+    await act(async () => result.current.submit());
+
+    expect(submitMock.mock.calls[0][0].transportPayload.flow).toEqual({
+      schemaVersion: 1,
+      evaluatorVersion: "visible-if-v1",
+      fields: [
+        { fieldId: "rating" },
+        {
+          fieldId: "details",
+          visibleIf: {
+            combinator: "ANY",
+            conditions: [
+              {
+                source: "ANSWER",
+                key: "rating",
+                operator: "LT",
+                value: 7,
+              },
+              {
+                source: "METADATA",
+                key: "deviceType",
+                operator: "EQ",
+                value: "mobile",
+              },
+            ],
+          },
+        },
+      ],
+    });
+  });
+
+  it("does not emit a flow contract for deprecated logic", async () => {
+    const submitMock = vi.fn(async (_: LumiSurveySubmission) => {});
+    const transport: LumiSurveyTransport = { submit: submitMock };
+    const questions: LumiSurveyQuestion[] = [
+      {
+        id: "rating",
+        type: "rating",
+        prompt: "Rating",
+        logic: [
+          {
+            condition: { operator: "LT", value: 3 },
+            action: { type: "SUBMIT" },
+          },
+        ],
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      useLumiSurvey({ surveyId: SURVEY_ID, questions, transport }),
+    );
+    await act(() => result.current.setAnswer("rating", 5));
+    await act(async () => result.current.submit());
+
+    expect(submitMock.mock.calls[0][0].transportPayload.flow).toBeUndefined();
+  });
+
+  it("omits flow for legacy visibleIf shapes that the pinned evaluator cannot represent", () => {
+    const forwardReference: LumiSurveyQuestion[] = [
+      {
+        id: "details",
+        type: "text",
+        prompt: "Details",
+        visibleIf: { questionId: "rating", operator: "LT", value: 7 },
+      },
+      {
+        id: "rating",
+        type: "rating",
+        prompt: "Rating",
+        variant: "nps",
+      },
+    ];
+    const invalidRatingDomain: LumiSurveyQuestion[] = [
+      forwardReference[1],
+      {
+        ...forwardReference[0],
+        visibleIf: {
+          questionId: "rating",
+          operator: "LT",
+          value: "7",
+        },
+      } as LumiSurveyQuestion,
+    ];
+
+    expect(buildFlowBlock(forwardReference)).toBeUndefined();
+    expect(buildFlowBlock(invalidRatingDomain)).toBeUndefined();
+  });
+
+  it("fails flow capability checks closed without throwing for malformed runtime input", () => {
+    const rating: LumiSurveyQuestion = {
+      id: "rating",
+      type: "rating",
+      prompt: "Rating",
+      variant: "nps",
+    };
+    const malformedConditions: unknown[] = [
+      null,
+      { questionId: "details", operator: "EXISTS" },
+      { operator: "EXISTS" },
+      {
+        any: [{ questionId: "rating", operator: "EXISTS" }],
+        all: [{ questionId: "rating", operator: "EXISTS" }],
+      },
+      {
+        any: Array.from({ length: 51 }, () => ({
+          questionId: "rating",
+          operator: "EXISTS",
+        })),
+      },
+      { field: "METADATA", key: "x".repeat(201), operator: "EXISTS" },
+      { field: "METADATA", key: 42, operator: "EXISTS" },
+      { questionId: 42, operator: "EXISTS" },
+      {
+        field: "METADATA",
+        key: "segment",
+        operator: "EQ",
+        value: "x".repeat(2_049),
+      },
+      { questionId: "rating", operator: "LT", value: Number.POSITIVE_INFINITY },
+      { questionId: "rating", operator: "UNKNOWN", value: 7 },
+    ];
+
+    for (const visibleIf of malformedConditions) {
+      const questions = [
+        rating,
+        {
+          id: "details",
+          type: "text",
+          prompt: "Details",
+          visibleIf,
+        } as LumiSurveyQuestion,
+      ];
+      expect(() => buildFlowBlock(questions)).not.toThrow();
+      expect(buildFlowBlock(questions)).toBeUndefined();
+    }
+
+    const unknownQuestionType = [
+      rating,
+      {
+        id: "details",
+        type: "unknown",
+        prompt: "Details",
+        visibleIf: { questionId: "rating", operator: "EXISTS" },
+      },
+    ] as unknown as LumiSurveyQuestion[];
+    expect(() => buildFlowBlock(unknownQuestionType)).not.toThrow();
+    expect(buildFlowBlock(unknownQuestionType)).toBeUndefined();
   });
 
   it("definition includes correct field metadata for rating and choice types", async () => {

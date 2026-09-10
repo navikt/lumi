@@ -17,10 +17,14 @@ import lumiLogo from "~/assets/lumi.png";
 import { ErrorComponent } from "~/components/shared/ErrorComponent";
 import { THEME_INIT_SCRIPT } from "~/config/themeInit";
 import { ThemeProvider, useTheme } from "~/context/ThemeContext";
+import { BrowserRouteTracker } from "~/observability/BrowserRouteTracker";
+import { fetchBrowserObservabilityMetaServerFn } from "~/server/browserObservabilityConfig";
 import "~/styles/global.css";
 
 export const Route = createRootRoute({
-  head: () => ({
+  loader: () => fetchBrowserObservabilityMetaServerFn(),
+  staleTime: Number.POSITIVE_INFINITY,
+  head: ({ loaderData }) => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
@@ -30,6 +34,7 @@ export const Route = createRootRoute({
         name: "description",
         content: "Analytics dashboard for Lumi feedback and surveys.",
       },
+      ...(loaderData ?? []),
     ],
     links: [
       {
@@ -72,6 +77,7 @@ function RootComponent() {
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <RootDocument>
+          <BrowserRouteTracker />
           <Outlet />
         </RootDocument>
       </QueryClientProvider>

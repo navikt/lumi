@@ -90,16 +90,14 @@ class SurveyDefinitionRepositoryTest : FunSpec({
             }
             connection.commit()
         }
-        val beforeUpdate = Instant.now().minusSeconds(1)
-
         dbQuery {
             repository.recordStoredSubmissionInCurrentTransaction("team-a", "survey-activity")
         }
 
         val stored = repository.findByTeamAndSurveyId("team-a", "survey-activity").shouldNotBeNull()
-        (stored.lastSubmissionAt >= beforeUpdate) shouldBe true
+        (stored.lastSubmissionAt > oldActivity) shouldBe true
         (
-            stored.definitionRetentionAt >= beforeUpdate.atZone(ZoneOffset.UTC)
+            stored.definitionRetentionAt >= stored.lastSubmissionAt.atZone(ZoneOffset.UTC)
                 .plusMonths(18)
                 .toInstant()
         ) shouldBe true

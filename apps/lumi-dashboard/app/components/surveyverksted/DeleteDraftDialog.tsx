@@ -43,18 +43,18 @@ export function DeleteDraftDialog({
       open={name !== null}
       onBeforeClose={() => !(isPending || confirmInFlightRef.current)}
       onClose={onClose}
-      header={{ heading: "Slett utkastet?", icon: <TrashIcon aria-hidden /> }}
+      header={{ heading: "Slett surveyen?", icon: <TrashIcon aria-hidden /> }}
       width="small"
     >
       <Modal.Body>
         <VStack gap="space-12">
           <BodyLong>
-            «{name}» slettes for hele teamet, sammen med alle delte versjoner i
-            prosjektet. Surveys som allerede er tatt inn i kode påvirkes ikke.
+            «{name}» slettes for hele teamet — utkastet sammen med alle delte
+            versjoner. Surveys som allerede er tatt inn i kode påvirkes ikke.
           </BodyLong>
           {showError ? (
             <Alert variant="error">
-              Utkastet kunne ikke slettes. Prøv igjen.
+              Surveyen kunne ikke slettes. Prøv igjen.
             </Alert>
           ) : null}
         </VStack>
@@ -79,7 +79,7 @@ export function DeleteDraftDialog({
               onConfirm();
             }}
           >
-            Slett utkastet
+            Slett surveyen
           </Button>
         </HStack>
       </Modal.Footer>

@@ -87,6 +87,27 @@ export interface SubmissionDefinition {
   fields: SubmissionFieldDefinition[];
 }
 
+export interface SubmissionFlowCondition {
+  source: "ANSWER" | "METADATA";
+  key: string;
+  operator: "EQ" | "NEQ" | "GT" | "LT" | "CONTAINS" | "EXISTS";
+  value?: string | number | boolean;
+}
+
+export interface SubmissionFlowField {
+  fieldId: string;
+  visibleIf?: {
+    combinator: "ALL" | "ANY";
+    conditions: SubmissionFlowCondition[];
+  };
+}
+
+export interface SubmissionFlowV1 {
+  schemaVersion: 1;
+  evaluatorVersion: "visible-if-v1";
+  fields: SubmissionFlowField[];
+}
+
 export interface FeedbackSubmissionV2 {
   schemaVersion: 2;
   surveyId: string;
@@ -96,6 +117,7 @@ export interface FeedbackSubmissionV2 {
   timeToCompleteMs?: number | null;
   deduplicationKey: string;
   definition: SubmissionDefinition;
+  flow?: SubmissionFlowV1;
   context?: SubmissionContextV1 | null;
   answers: Answer[];
 }
@@ -184,6 +206,8 @@ export type Answer =
 
 export interface RatingStats {
   type: "rating";
+  ratingVariant?: "emoji" | "thumbs" | "stars" | "nps" | null;
+  ratingScale?: number | null;
   average: number;
   /** JSON object keys are strings (e.g. "1", "2", ...). */
   distribution: Record<string, number>;
@@ -199,6 +223,8 @@ export interface TextStats {
   recentResponses: Array<{ text: string; submittedAt: string }>;
   /** Recurring content-word pairs extracted from text responses */
   topPhrases?: Array<{ text: string; count: number }>;
+  /** Number of responses included in text summaries when analysis is bounded. */
+  analysisSampleSize?: number | null;
 }
 
 export interface ChoiceStats {
@@ -274,6 +300,8 @@ export interface FeedbackPage {
 }
 
 export interface FeedbackStats {
+  /** Earliest whole Oslo calendar day within the API's retention window. */
+  retentionStartDate?: string;
   totalCount: number;
   countWithText: number;
   countWithoutText: number;
@@ -307,6 +335,40 @@ export interface FeedbackStats {
 
   // Privacy threshold info
   privacy?: PrivacyInfo;
+}
+
+export type QuestionTrendInterval = "day" | "week" | "month";
+
+export interface QuestionTrendOption {
+  id: string;
+  label: string;
+}
+
+export interface QuestionTrendChoiceValue {
+  count: number;
+  percentage: number;
+}
+
+export interface QuestionTrendBucket {
+  /** Calendar date for the start of this bucket in Europe/Oslo. */
+  startDate: string;
+  masked: boolean;
+  responseCount?: number | null;
+  average?: number | null;
+  ratingDistribution?: Record<string, number>;
+  distribution: Record<string, QuestionTrendChoiceValue>;
+}
+
+export interface QuestionTrendResponse {
+  fieldId: string;
+  fieldType: "RATING" | "SINGLE_CHOICE" | "MULTI_CHOICE";
+  label: string;
+  ratingVariant?: "emoji" | "thumbs" | "stars" | "nps" | null;
+  ratingScale?: number | null;
+  interval: QuestionTrendInterval;
+  privacyThreshold: number;
+  options: QuestionTrendOption[];
+  buckets: QuestionTrendBucket[];
 }
 
 /**

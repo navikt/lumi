@@ -650,50 +650,50 @@ class StatsDashboardRoutesTest : FunSpec({
         }
     }
 
-    test("GET /api/v1/intern/stats/dashboard masks analytics when below privacy threshold") {
-        testApplication {
-            application { testModule() }
+    for (count in 1..4) {
+        test("GET /api/v1/intern/stats/dashboard includes analytics for $count responses") {
+            testApplication {
+                application { testModule() }
 
-            val team = "flex"
-            val app = "spinnsyn"
-            val submittedAt = OffsetDateTime.parse("2026-01-21T10:00:00+01:00")
+                val team = "flex"
+                val app = "spinnsyn"
+                val submittedAt = OffsetDateTime.parse("2026-01-21T10:00:00+01:00")
 
-            // 4 responses => masked (threshold is 5)
-            repeat(4) { idx ->
-                val time = submittedAt.minusMinutes(idx.toLong())
-                insertTestFeedbackWithJson(
-                    team = team,
-                    app = app,
-                    feedbackJson = feedbackJson(
-                        surveyId = "survey-$idx",
-                        pathname = "/masked",
-                        deviceType = "desktop",
-                        rating = 5,
-                        text = "tekst$idx",
-                        startedAt = time.minusSeconds(30),
-                        submittedAt = time,
-                    ),
-                    opprettet = time,
-                )
+                repeat(count) { idx ->
+                    val time = submittedAt.minusMinutes(idx.toLong())
+                    insertTestFeedbackWithJson(
+                        team = team,
+                        app = app,
+                        feedbackJson = feedbackJson(
+                            surveyId = "small-sample",
+                            pathname = "/small-sample",
+                            deviceType = "desktop",
+                            rating = 1,
+                            text = "tekst$idx",
+                            startedAt = time.minusSeconds(30),
+                            submittedAt = time,
+                        ),
+                        opprettet = time,
+                    )
+                }
+
+                val response = createTestClient().get("/api/v1/intern/stats/dashboard?team=$team&app=$app&surveyId=small-sample") {
+                    header(HttpHeaders.Authorization, "Bearer test-token")
+                }
+
+                response.status shouldBe HttpStatusCode.OK
+
+                val stats = json.decodeFromString<FeedbackStats>(response.bodyAsText())
+                stats.totalCount shouldBe count
+                stats.privacy.shouldBeNull()
+                stats.averageRating shouldBe 1.0
+                stats.byRating["1"] shouldBe count
+                stats.ratingByDate.values.sumOf { it.count } shouldBe count
+                stats.byDevice["desktop"]?.count shouldBe count
+                stats.byPathname["/small-sample"]?.count shouldBe count
+                stats.lowestRatingPaths["/small-sample"]?.count shouldBe count
+                stats.fieldStats.isNotEmpty() shouldBe true
             }
-
-            val response = createTestClient().get("/api/v1/intern/stats/dashboard?team=$team&app=$app") {
-                header(HttpHeaders.Authorization, "Bearer test-token")
-            }
-
-            response.status shouldBe HttpStatusCode.OK
-
-            val stats = json.decodeFromString<FeedbackStats>(response.bodyAsText())
-            stats.totalCount shouldBe 4
-            stats.privacy?.masked shouldBe true
-
-            stats.averageRating.shouldBeNull()
-            stats.byRating shouldBe emptyMap()
-            stats.ratingByDate shouldBe emptyMap()
-            stats.byDevice shouldBe emptyMap()
-            stats.byPathname shouldBe emptyMap()
-            stats.lowestRatingPaths shouldBe emptyMap()
-            stats.fieldStats shouldBe emptyList()
         }
     }
 
@@ -846,9 +846,8 @@ class StatsDashboardRoutesTest : FunSpec({
             filteredResponse.status shouldBe HttpStatusCode.OK
             val filteredStats = json.decodeFromString<FeedbackStats>(filteredResponse.bodyAsText())
             filteredStats.totalCount shouldBe 3
-            // Below privacy threshold, distribution is masked
-            filteredStats.byRating.isEmpty() shouldBe true
-            filteredStats.privacy?.masked shouldBe true
+            filteredStats.byRating["2"] shouldBe 3
+            filteredStats.privacy.shouldBeNull()
         }
     }
 

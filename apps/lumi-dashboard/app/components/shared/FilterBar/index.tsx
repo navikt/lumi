@@ -14,10 +14,9 @@ import {
   VStack,
 } from "@navikt/ds-react";
 import dayjs from "dayjs";
-import { useCallback, useEffect } from "react";
+import { type ReactNode, useCallback, useEffect } from "react";
 import { PeriodSelector } from "~/components/dashboard/PeriodSelector";
 import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
-import { RefreshSurveyOverview } from "~/components/shared/RefreshSurveyOverview";
 import { getSurveyFeatures } from "~/config/surveyConfig";
 import { useActiveFilters } from "~/hooks/useActiveFilters";
 import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
@@ -39,11 +38,13 @@ import { Skeleton as FilterBarSkeleton } from "./Skeleton";
 import { useDebouncedSearchQuery } from "./useDebouncedSearchQuery";
 
 interface FilterBarProps {
+  periodControl?: ReactNode;
   showDetails?: boolean;
   filterResetVersion?: number;
 }
 
 export function FilterBar({
+  periodControl = null,
   showDetails = false,
   filterResetVersion = 0,
 }: FilterBarProps) {
@@ -53,26 +54,23 @@ export function FilterBar({
   // Stats failures must not hide the controls users need to narrow the query.
   // Bootstrap failures still hide the controls because their options are unknown.
   return (
-    <VStack gap="space-8">
-      <HStack justify="end">
-        <RefreshSurveyOverview />
-      </HStack>
-      <DataFetchBoundary
-        title="Kunne ikke hente filtre"
-        queries={[bootstrapQuery]}
-      >
-        <FilterBarContent
-          showDetails={showDetails}
-          filterResetVersion={filterResetVersion}
-          bootstrapQuery={bootstrapQuery}
-          statsQuery={statsQuery}
-        />
-      </DataFetchBoundary>
-    </VStack>
+    <DataFetchBoundary
+      title="Kunne ikke hente filtre"
+      queries={[bootstrapQuery]}
+    >
+      <FilterBarContent
+        periodControl={periodControl}
+        showDetails={showDetails}
+        filterResetVersion={filterResetVersion}
+        bootstrapQuery={bootstrapQuery}
+        statsQuery={statsQuery}
+      />
+    </DataFetchBoundary>
   );
 }
 
 function FilterBarContent({
+  periodControl,
   showDetails,
   filterResetVersion,
   bootstrapQuery,
@@ -503,7 +501,7 @@ function FilterBarContent({
 
             <HStack gap="space-8" align="end">
               {archiveToggle}
-              <PeriodSelector />
+              {!periodControl && <PeriodSelector />}
               {hasActiveFilters && (
                 <Tooltip content="Nullstill alle filtre til standard (siste 30 dager)">
                   <Button
@@ -579,7 +577,7 @@ function FilterBarContent({
             <HStack gap="space-8" justify="space-between" align="center">
               <HStack gap="space-8" align="center">
                 {archiveToggle}
-                <PeriodSelector />
+                {!periodControl && <PeriodSelector />}
                 {showDetails && (
                   <FilterMenu
                     params={params}
@@ -617,6 +615,15 @@ function FilterBarContent({
             )}
           </VStack>
         </Hide>
+        {periodControl && (
+          <Box
+            marginBlock="space-16 space-0"
+            paddingBlock="space-16 space-0"
+            className={styles.periodRow}
+          >
+            {periodControl}
+          </Box>
+        )}
       </Box>
 
       {selectedSurveyPeriod.dateMode === "fixed" &&

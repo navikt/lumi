@@ -47,7 +47,7 @@ del av widgetens registerbytte.
 4. **Førstegangspublisering er en kontrollert bootstrap.** npm krever at en
    pakke allerede finnes før trusted publisher kan konfigureres. En bruker som
    npm-administratorene har gitt publiseringstilgang, publiserer derfor den
-   eksisterende `2.1.0`-tarballen fra GitHub Packages én gang og konfigurerer
+   eksisterende `2.2.1`-tarballen fra GitHub Packages én gang og konfigurerer
    deretter `navikt/lumi`,
    `publish-lumi-survey.yaml` og `npm-publish` som trusted publisher. Tarballen
    bygges ikke på nytt, og digestene verifiseres i begge registre.

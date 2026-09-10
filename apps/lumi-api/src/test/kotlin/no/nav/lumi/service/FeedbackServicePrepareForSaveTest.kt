@@ -24,6 +24,11 @@ class FeedbackServicePrepareForSaveTest : FunSpec({
                         }
                     ]
                 },
+                "flow": {
+                    "schemaVersion": 1,
+                    "evaluatorVersion": "visible-if-v1",
+                    "fields": [{"fieldId": "feedback"}]
+                },
                 "answers": [
                     {
                         "fieldId": "feedback",
@@ -42,6 +47,7 @@ class FeedbackServicePrepareForSaveTest : FunSpec({
         )
 
         prepared.feedbackJson shouldNotContain "\"definition\""
+        prepared.feedbackJson shouldNotContain "\"flow\""
         prepared.feedbackJson shouldNotContain "deduplicationKey"
         prepared.feedbackJson shouldContain "\"surveyType\":\"rating\""
         (prepared.deduplicationKeyHash?.isNotBlank()) shouldBe true

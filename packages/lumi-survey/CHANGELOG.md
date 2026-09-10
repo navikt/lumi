@@ -4,9 +4,7 @@ All notable changes to `@navikt/lumi-survey` will be documented in this file.
 
 This project follows SemVer.
 
-## [Unreleased]
-
-## [2.1.1] - 2026-08-27
+## [2.2.2] - 2026-09-10
 
 ### Distribution
 
@@ -15,6 +13,33 @@ This project follows SemVer.
   longer need registry configuration or a GitHub token to install it.
 - Published metadata now declares the MIT license and the package's source
   directory in `navikt/lumi`.
+
+## [2.2.1] - 2026-09-07
+
+### Fixed
+
+- V1 survey documents now ignore answers from hidden source questions when
+  deciding which follow-ups to show, validate and submit. Closing a branch
+  hides all dependent follow-ups while retaining their answers locally for
+  returning to that branch. Alternative `any` conditions, metadata conditions
+  and the existing behavior of negative conditions on visible, unanswered
+  questions are preserved. Legacy flat survey visibility is unchanged.
+- Conditional page flows show the current step without an estimated percentage
+  or fixed total. Linear flows retain their exact progress indicator.
+
+## [2.2.0] - 2026-08-31
+
+Version 2.1.1 was prepared in the repository but never published. Its changes
+are included in 2.2.0 together with the later additions since 2.1.0.
+
+### Added
+
+- Schema V2 submissions now include a versioned, canonical `visibleIf` flow
+  contract. Surveys that still use deprecated imperative `logic` remain
+  submission-compatible but deliberately omit the flow contract so analytics
+  treats those rows as unpinned. Legacy `visibleIf` shapes that cannot be
+  represented exactly by `visible-if-v1` likewise keep submitting without a
+  flow contract instead of failing or recording false provenance.
 
 ### Fixed
 
@@ -28,6 +53,7 @@ This project follows SemVer.
   single-choice answers so existing code-authored V1 documents keep working;
   the workshop continues to offer exact equality for that type. METADATA
   conditions and legacy flat surveys are unaffected.
+
 - Focus now follows dock transitions: opening targets the active heading,
   closing targets the minimized trigger, and successful submission targets the
   receipt heading. The minimized trigger no longer references an unmounted
@@ -37,10 +63,10 @@ This project follows SemVer.
   grace period while a late persisted dismissal can still be applied.
 - Rating questions now expose exactly one named group to assistive
   technology. The prompt is the fieldset legend (a level 3 heading when
-  visible), the fieldset itself carries `role="radiogroup"`, and the visually
-  hidden legend copy no longer duplicates an external prompt heading. Screen
-  readers previously announced the question up to three times per rating
-  group.
+  visible), the fieldset itself carries `role="radiogroup"`, and the
+  visually hidden legend copy no longer duplicates an external prompt
+  heading. Screen readers previously announced the question up to three
+  times per rating group.
 - The published stylesheet now contains only `lumi-`-namespaced selectors.
   Unused CSS Module output previously leaked generic selectors such as
   `.container`, `.header`, `.panel` and `.active` into consumer applications.
@@ -51,6 +77,8 @@ This project follows SemVer.
 - Text answers that exceed the configured limit, or the API maximum of 2000
   characters, are now blocked in the widget with a field-level validation
   message instead of failing permanently as a generic transport error.
+  Consumers can customize the new validation summary and length message with
+  `labels.validationSummary` and `labels.textTooLong`.
 - Inline `events` objects no longer count parent re-renders as new dock views
   or restart the success auto-close timer.
 - Dismissal storage failures now invoke `onDismissalPersistFailed` with their

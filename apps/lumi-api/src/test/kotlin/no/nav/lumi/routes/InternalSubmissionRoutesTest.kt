@@ -148,7 +148,7 @@ class InternalSubmissionRoutesTest : FunSpec({
     test("should accept valid schemaVersion 2 payload on internal route") {
         val submissionService = mockk<SubmissionService>()
         coEvery {
-            submissionService.submit(any(), any(), any(), any(), any())
+            submissionService.submit(any(), any(), any(), any(), any(), any())
         } returns SubmissionOutcome(SaveResult.Created("created-v2"), "hash-v2")
 
         testApplication {
@@ -186,7 +186,8 @@ class InternalSubmissionRoutesTest : FunSpec({
                         it.surveyId == "modia-feedback-v2" &&
                             it.surveyType.name == "RATING" &&
                             it.fields.map { field -> field.fieldId } == listOf("feedback")
-                    }
+                    },
+                    null,
                 )
             }
         }
@@ -197,7 +198,7 @@ class InternalSubmissionRoutesTest : FunSpec({
         val submissionObservability = SubmissionObservability(meterRegistry)
         val submissionService = mockk<SubmissionService>()
         coEvery {
-            submissionService.submit(any(), any(), any(), any(), any())
+            submissionService.submit(any(), any(), any(), any(), any(), any())
         } returns SubmissionOutcome(SaveResult.Created("created-proxy"), "hash-proxy")
 
         testApplication {
@@ -234,7 +235,7 @@ class InternalSubmissionRoutesTest : FunSpec({
         val submissionObservability = SubmissionObservability(meterRegistry)
         val submissionService = mockk<SubmissionService>()
         coEvery {
-            submissionService.submit(any(), any(), any(), any(), any())
+            submissionService.submit(any(), any(), any(), any(), any(), any())
         } returns SubmissionOutcome(SaveResult.Created("created-proxy"), "hash-proxy")
 
         testApplication {

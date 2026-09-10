@@ -60,6 +60,7 @@ class FeedbackService(
             app = app,
             surveyId = surveyId,
             definitionHash = definitionHash,
+            flowHash = null,
             deduplicationKeyHash = prepared.deduplicationKeyHash
         )
     }
@@ -109,8 +110,9 @@ class FeedbackService(
      * 4. Context debug — recursive PII redaction of all string values and keys
      * 5. Root deduplicationKey — removed before persistence; only the scoped hash is retained
      *    in the dedicated database column when deduplication is requested.
-     * 6. Text answers — PII redacted, but HTML preserved (React escapes at render)
-     * 7. Metadata fields (question.label, options[].label etc.) — NOT sanitized
+     * 6. Definition and flow — removed from raw feedback JSON; validated private contracts are stored separately.
+     * 7. Text answers — PII redacted, but HTML preserved (React escapes at render)
+     * 8. Metadata fields (question.label, options[].label etc.) — NOT sanitized
      *    These are survey-defined by the team admin, not user-authored free text.
      *    SubmissionValidator enforces length limits on all metadata fields.
      *    React escapes all output, so stored HTML is inert in the dashboard.
@@ -123,6 +125,7 @@ class FeedbackService(
             val deduplicationKey = extractDeduplicationKey(jsonObj)
             jsonObj.remove("deduplicationKey")
             jsonObj.remove("definition")
+            jsonObj.remove("flow")
 
             val context = jsonObj["context"] as? JsonObject
             if (context != null) {
