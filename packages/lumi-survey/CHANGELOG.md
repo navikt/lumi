@@ -4,6 +4,16 @@ All notable changes to `@navikt/lumi-survey` will be documented in this file.
 
 This project follows SemVer.
 
+## [2.2.2] - 2026-09-10
+
+### Distribution
+
+- The package is now published to npmjs as the primary, anonymously readable
+  registry and to GitHub Packages as a compatibility mirror. Consumers no
+  longer need registry configuration or a GitHub token to install it.
+- Published metadata now declares the MIT license and the package's source
+  directory in `navikt/lumi`.
+
 ## [2.2.1] - 2026-09-07
 
 ### Fixed

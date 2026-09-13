@@ -53,6 +53,8 @@ jobs:
               - 'packages/**'
               - 'scripts/check-lumi-survey-release-drift.mjs'
               - 'scripts/check-lumi-survey-release-drift.test.mjs'
+              - 'scripts/publish-lumi-survey-registry.mjs'
+              - 'scripts/publish-lumi-survey-registry.test.mjs'
               - 'scripts/verify-deploy-api-trigger.test.mjs'
               - 'scripts/verify-deploy-dashboard-trigger.test.mjs'
               - 'scripts/verify-github-actions-pins.test.mjs'

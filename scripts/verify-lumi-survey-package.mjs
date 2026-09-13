@@ -121,6 +121,8 @@ async function scanDirRecursive(dirPath, predicate) {
 async function main() {
   const packageDir = path.join(repoRoot, "packages", "lumi-survey");
   const packageJsonPath = path.join(packageDir, "package.json");
+  const packageLicensePath = path.join(packageDir, "LICENSE");
+  const rootLicensePath = path.join(repoRoot, "LICENSE");
   const typecheckTsconfigPath = path.join(
     packageDir,
     "tsconfig.typecheck.json",
@@ -144,6 +146,34 @@ async function main() {
   }
   if ("zod" in deps) {
     fail("packages/lumi-survey/package.json must not depend on zod");
+  }
+  if (pkg.license !== "MIT") {
+    fail("packages/lumi-survey/package.json must declare license=MIT");
+  }
+  if (
+    pkg.repository?.type !== "git" ||
+    pkg.repository?.url !== "git+https://github.com/navikt/lumi.git" ||
+    pkg.repository?.directory !== "packages/lumi-survey"
+  ) {
+    fail(
+      "packages/lumi-survey/package.json must identify its source directory in navikt/lumi",
+    );
+  }
+  if (pkg.publishConfig?.registry) {
+    fail(
+      "packages/lumi-survey/package.json must not pin one registry; the release workflow dual-publishes explicitly",
+    );
+  }
+  if (pkg.publishConfig?.access !== "public") {
+    fail(
+      "packages/lumi-survey/package.json must publish the scoped package with public access",
+    );
+  }
+
+  const rootLicense = await readText(rootLicensePath);
+  const packageLicense = await readText(packageLicensePath);
+  if (packageLicense !== rootLicense) {
+    fail("packages/lumi-survey/LICENSE must match the repository LICENSE");
   }
 
   // 2) typecheck config must not map internal workspace paths.
