@@ -233,7 +233,7 @@ Se [Lagring](/guider/lagring) for detaljer om cooldown og dismissal-logikk.
 
 Før du deployer, verifiser at du har:
 
-- [ ] Bruker `@navikt/lumi-survey@^2.2.0` og `SurveyDocumentV1`
+- [ ] Installert `@navikt/lumi-survey` og lagt den delte surveyen i appen
 - [ ] Importert `@navikt/ds-css` og `@navikt/lumi-survey/styles.css`
 - [ ] Implementert `transport.submit` som sender `submission.transportPayload` til din backend
 - [ ] Token exchange i ditt endepunkt (TokenX eller AzureAD)

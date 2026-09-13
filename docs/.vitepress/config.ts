@@ -30,7 +30,7 @@ export default withMermaid({
               link: "/kom-i-gang/lag-survey",
             },
             {
-              text: "Installer widget",
+              text: "Installer widgeten",
               link: "/kom-i-gang/installer-widget",
             },
             {

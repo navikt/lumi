@@ -4,7 +4,7 @@ title: Tilgang
 
 # Tilgang
 
-Lumi-dashboardet er tilgjengelig for Nav-ansatte som er medlem av et NAIS-team som har data i Lumi.
+Surveyverksted og Lumi-dashboardet er tilgjengelig for Nav-ansatte som er medlem av et NAIS-team. Dere kan lage surveyer før teamet har samlet inn svar.
 
 <div style="display: flex; gap: 12px; flex-wrap: wrap; margin: 24px 0;">
   <a href="https://lumi-dashboard.ansatt.nav.no" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: #0067c5; color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">🚀 Prod</a>

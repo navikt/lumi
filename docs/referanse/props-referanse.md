@@ -11,7 +11,7 @@ Dette er den komplette referansen for `LumiSurveyDock`. For en praktisk innføri
 | Prop | Type | Påkrevd | Beskrivelse |
 | :--- | :--- | :---: | :--- |
 | `surveyId` | `string` | Ja | Stabil identifikator for analyseserien |
-| `survey` | `LumiSurveyDefinition` | Ja | Survey-dokumentet. Bruk `SurveyDocumentV1` for nye surveyer |
+| `survey` | `LumiSurveyDefinition` | Ja | Survey-dokumentet fra Surveyverksted eller kode |
 | `transport` | `LumiSurveyTransport` | Ja | Sender inn svarene |
 | `context` | `LumiSurveyContext` | Nei | Metadata for segmentering og feilsøking |
 | `behavior` | `LumiSurveyBehavior` | Nei | Styrer åpning, lukking, fremdrift og lagring |
@@ -23,7 +23,7 @@ Dette er den komplette referansen for `LumiSurveyDock`. For en praktisk innføri
 
 ## `survey`: `SurveyDocumentV1`
 
-Bruk `SurveyDocumentV1` som format for nye surveyer.
+`SurveyDocumentV1` beskriver innholdet i surveyen. Surveyverksted eksporterer dette formatet.
 
 ```typescript
 interface SurveyDocumentV1 {
