@@ -95,6 +95,24 @@ mekanisme. Et muntlig «det går nok» lukker ikke en gate.
     produktstatus? Hvilke kanaler og ansvarlige mottakere støttes for
     operasjonelle avvik og varsler om eierfornyelse?
 
+### Supplerende sikkerhetsavklaringer
+
+Disse spørsmålene presiserer sikkerhetskravene i ADR 0006. De er ikke nye
+bekreftede plattformegenskaper eller en åpning av Gate B/D:
+
+12. Kan Lumi være infrastrukturprodusent/GCP-prosjekteier mens fagteamet er
+    domeneeier og tilgangsgodkjenner, også ved programmatisk registrering og
+    offboarding? Hvordan bevises dette uten å registrere Lumi som feil faglig
+    eier?
+13. Hvordan kan alle produktressurser, direkte navn og deprecated ressurser
+    stenges ved innsnevring eller senest 36 timer uten bekreftet slettesynk,
+    selv når publiseringsjobben ikke kjører? Hvordan vises stengingen som feil
+    i stedet for null svar hos faktiske Metabase-/Quarto-konsumenter?
+14. Hvilke mekanismer og ansvar gjelder for eksisterende BigQuery-resultater,
+    Metabase-cache, notebook-tabeller og statiske datafortellinger etter
+    tilbakekalling eller kildesletting? Avtalt levetid og tømming/regenerering
+    må bevises separat fra at nye spørringer mot produktflaten er stengt.
+
 ## Beslutningsport etter svar
 
 Gate B kan bare åpnes når alle punktene under er dokumentert:

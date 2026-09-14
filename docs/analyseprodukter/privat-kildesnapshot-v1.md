@@ -25,7 +25,8 @@ Den private relasjonen er flat, typet og diskriminert med en lukket `row_kind`:
   og forventede tellinger.
 - `RELEASE_SCOPE`: effective produkt/release, lifecycle, cutoff, retensjon og
   senere pseudonymversjon.
-- `MEMBERSHIP`: kobling mellom ett effective scope og én privat kilderad.
+- `MEMBERSHIP`: kobling fra ett effective scope til kandidatens
+  `snapshot_row_ref`, med produktets allerede avledede `response_key`.
 - `SUBMISSION`: én minimert, source-global innsending.
 - `ANSWER_ATOM`: rating, enkeltvalg, valgt flervalgsoption eller eksplisitt
   tomt flervalg.
@@ -64,6 +65,11 @@ underordnede atomer bærer bare denne kandidat-lokale referansen. Hver
 slik at samme source-globale faktarad kan materialiseres med ulike nøkler i
 ulike produkter uten en delt, varig analyseidentitet.
 
+Den produktspesifikke nøkkelen må derfor finnes før membership-raden krysser
+eksportgrensen. Produktmaterialiseringen bruker denne nøkkelen; den avleder
+den ikke fra en stabil privat radnøkkel i staging. Dette bestemmer nødvendig
+rekkefølge, ikke en algoritme eller en ny nøkkelinfrastruktur.
+
 Lumi oppretter ikke en varig 1:1 analyseidentitet eller sidecar-tabell per
 feedbackrad. Intern feedback-ID kan bare brukes transient i den betrodde
 nøkkelavledningen; den kan aldri persisteres i privat staging, inngå i
@@ -78,6 +84,8 @@ nøkkelmateriale, kan ikke brukes.
 
 - `ENABLED` bruker aktiv V2-release. En nyere ønsket release reduserer straks
   den aktive allowlisten, men tillegg blir bare synlige i kandidaten.
+  Innsnevringen kan ikke bekreftes gjennomført før tidligere, bredere
+  konsumentlesing er stengt eller erstattet av verifisert smalere lesing.
 - `PAUSED` beholder aktiv release med immutable øvre `data_cutoff_at`. Nedre
   retensjonsgrense fortsetter å flytte seg, slik at slettinger og utløp
   propageres.
@@ -88,6 +96,13 @@ nøkkelmateriale, kan ikke brukes.
 
 En eldre release kan aldri være øvre allowlist. Rollback krever en ny,
 validert release med høyere releasenummer.
+
+Pause fryser inntaket, ikke nødvendigvis all lesing av det tillatte historiske
+vinduet. Pause og produktfeil må fortsatt videreføre sletting og utløp.
+36-timersgrensen og kravet om automatisk stengt lesing i ADR 0006 gjelder også
+disse produktene. En eldre kjøring kan ikke åpne lesing etter offboarding eller
+en nyere innsnevring. Mekanismen må bevises før konsumenttilgang; den følger
+ikke automatisk av en scope-digest eller et nytt snapshot-ID.
 
 ## Porter før database- og skyimplementasjon
 

@@ -552,6 +552,27 @@ LEFT JOIN responses_example_wide_v1 AS resource
 WHERE manifest.resource_name = 'responses_example_wide_v1'
 ```
 
+### Når produktet ikke kan leses
+
+Ved normal oppdatering kan siste komplette, tillatte snapshot leses til en ny
+kandidat er aktivert. Ved innsnevring må gammel, bredere lesing først stenges
+eller erstattes av verifisert smalere lesing. Senest 36 timer etter
+kildesnapshotets lesetidspunkt i siste aktiverte slettesynk stenges lesing hvis
+ingen ny gyldig slettesynk er aktivert, også ved pause eller produktfeil.
+En gammel jobb eller et pointerbytte uten fersk slettesynk fornyer ikke fristen.
+
+Stengingen gjelder manifest, wide, long og katalog, også deprecated ressurser
+og direkte ressursnavn. Konsumenten skal få en utilgjengelig-/feiltilstand,
+ikke null manifestrader eller `row_count=0` som erstatning for stengt tilgang.
+Et reelt tomt, tilgjengelig produkt følger derimot LEFT JOIN-kontrakten over.
+Eksakt plattformmekanisme og hvordan feilen vises i Metabase/Quarto må bevises
+før konsumenttilgang; ingen bestemt feilkode eller UI-integrasjon er lovet.
+
+Tidligere resultatkopier omfattes ikke automatisk av viewets stenging.
+Konsumentkontrakten må derfor beskrive cache/TTL, regenerering/tømming og eier
+for Metabase, notebooks og datafortellinger, jf. ADR 0006 og Gate D i
+trusselmodellen.
+
 ## Syntetisk semantikkeksempel
 
 En syntetisk innsending besvarer ratingfeltet `opplevelse` med `4` og

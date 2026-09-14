@@ -96,6 +96,15 @@ utkast og validering, men ikke aktivering før produktet gjenopptas.
 vedlikeholdte produktet, mens tillegg bare finnes i den nye kandidaten frem til
 aktivering.
 
+Dette er et krav til den konsumentlesbare flaten, ikke bare til beregnet
+scope. Før en innsnevring kan bekreftes som gjennomført, må tidligere, bredere
+lesing være stengt eller erstattet av en verifisert smalere flate, også for
+deprecated ressurser. Ved behov stenges lesing mens kandidaten bygges. En
+forsinket kjøring kan aldri åpne et bredere scope etter en nyere innsnevring.
+Krasj og retry må bevare denne grensen. Konkret aktiverings- og
+stengemekanisme velges og feilinjiseres i plattformspiken; dette innfører ikke
+en bestemt lagringsmodell, tilstandsmaskin eller API-protokoll.
+
 Lumi oppretter en lukket publiseringsflate, men gir aldri menneskelig
 lesetilgang. Personer og grupper søker om og får tilgang gjennom
 Datamarkedsplassen.
@@ -276,8 +285,29 @@ retensjon er alltid den korteste av produktvalget og kildens faktiske
 retensjon. Kildesletting og manuell sletting skal være borte fra alle aktive og
 deprecated eksportressurser ved neste vellykkede fullsnapshot. Mål-SLO er
 høyst 36 timer. Kjøringen skjer minst daglig og får automatiske retryforsøk
-innenfor de neste seks timene; 36 timer uten slettesynk er et SLO-brudd med
-operatørvarsel og runbook, ikke en påstand om at plattformutfall er umulige.
+innenfor de neste seks timene. Ved normal daglig kjøring er data omtrent
+0–24 timer gamle, i tillegg til kjøretiden. 36 timer er en yttergrense for
+konsumentlesbar slettesynk, ikke forventet forsinkelse i et dashboard.
+
+Fristen regnes fra kildesnapshotets lesetidspunkt i siste aktiverte snapshot
+som faktisk videreførte sletting og utløp for produktet. Jobbstart, heartbeat,
+validering uten aktivering eller gjenbruk av gammel staging nullstiller ikke
+fristen. En validert purge-only-oppdatering fra dagens kilde kan fornye den.
+Hvis slik slettesynk ikke er bekreftet innen 36 timer, skal produktlesing
+stenges automatisk til en tillatt, oppdatert kandidat er aktivert. Stengingen
+må fungere også når den ordinære publiseringsjobben ikke kjører. Brukeren skal
+få en tydelig utilgjengelig-/feiltilstand, aldri et gyldig tomt datasett som
+kan mistolkes som null svar. Dette er et verifikasjonskrav før konsumenttilgang,
+ikke en ferdig implementert garanti; et brudd krever operatørvarsel og runbook.
+
+Grensen gjelder lesing gjennom den forvaltede produktflaten, ikke fysisk
+sletting av alle byte i BigQuery sin time-travel/fail-safe. Konsumentene får
+ikke tilgang til backing-tabeller eller historiske snapshots som omgår
+produktflaten. Resultatkopier og cache i BigQuery, Metabase, notebooks og
+statiske datafortellinger krever en egen konsumentkontrakt: avtalt levetid,
+ansvarlig eier og verifisert regenerering eller tømming. Å stenge et view
+tilbakekaller ikke i seg selv tidligere kopier. Publiserte artefakter bruker
+bare godkjente aggregater, ikke varige radnivåkopier.
 
 Pause fryser en immutable `data_cutoff_at` og stopper nye svar i produktet,
 men stopper aldri innsamling i Lumi, retensjon eller slettesynk. Offboarding
@@ -294,6 +324,11 @@ aldri forlenge dataretensjonen.
 Før produksjon må NADA-/plattformkontrakten bekrefte prosjektarv, minste IAM,
 authorized views, programmatisk livsløp i Datamarkedsplassen, servicekontoer,
 region, credentialrotasjon og registrering av flere views som ett dataprodukt.
+NADA må også bekrefte at Lumi kan være infrastrukturprodusent/GCP-prosjekteier
+mens fagteamet er domeneeier og tilgangsgodkjenner. Dette må bevises i
+provisioning, registrering, tilgangsgodkjenning og offboarding; Lumi skal ikke
+registreres som faglig eier bare for å få piloten i gang. Avklaringen inngår i
+eksisterende Gate B/D og gir ingen ny tillatelse til dev- eller shadow-kobling.
 Hvis teammedlemmer arver lesetilgang, krever aktivering en eksisterende ekstern
 godkjenningsport. Lumi skal ikke bygge en egen IAM- eller godkjenningsmotor.
 
@@ -339,11 +374,20 @@ Modia, ingen tags, fritekst eller datosvar. Piloten må bevise:
 - at team B aldri kan se data eller operasjonell metadata fra team A, utenom
   eksplisitt godkjent katalogmetadata i Datamarkedsplassen
 
-Den brede `esyfo-analyse`-tilgangen fjernes kontrollert først etter bevist
-paritet og cutover. V1 lager ikke en antatt historisk flow for eksisterende
-rader. Eldre `UNPINNED` svarverdier er derfor ikke med i answer-pariteten.
-Cutover krever at dataeier aksepterer den pinnede perioden; et behov for eldre
-svarhistorikk krever en separat, sikkerhetsreviewet backfillbeslutning.
+Den brede `esyfo-analyse`-tilgangen beholdes midlertidig mens iSyfo trenger sin
+eksisterende V1-historikk. Den utvides ikke med nye konsumenter, grants eller
+analysebehov. Dette er en overgangsregel, ikke en påstand om at dagens brede
+databasegrant teknisk avgrenser nye surveys eller felt. Den gir heller ikke
+unntak fra kildens retensjon eller autorisasjon til endringer i andre teams
+apper. Nytt, pinnet V2-analysevindu tas over på den nye kontrakten.
+
+Tilgangen fjernes først når Quarto/Metabase er flyttet, minst to planlagte
+snapshots er konsumert uten avvik, dataeier har akseptert skillet i historikk,
+og gammel V1-historikk ikke lenger trengs eller har utløpt med kilderetensjon.
+V1 rekonstruerer ikke historisk flyt; eldre `UNPINNED` svarverdier inngår ikke
+i svarpariteten. Eventuell kopiering/backfill krever en separat,
+sikkerhetsreviewet beslutning. Kommunikasjon og avtale om cutover gjøres
+manuelt av produkteier.
 
 ## Konsekvenser
 
@@ -414,3 +458,5 @@ ADR 0005 sine kapasitets- og recoverygrenser gjelder også for analyseeksporten.
 - [Google Cloud: BigQuery authorized views](https://docs.cloud.google.com/bigquery/docs/authorized-views)
 - [Google Cloud: administrere BigQuery-views](https://docs.cloud.google.com/bigquery/docs/managing-views)
 - [Google Cloud: BigQuery quotas and limits](https://docs.cloud.google.com/bigquery/quotas)
+- [Google Cloud: time travel og fail-safe](https://docs.cloud.google.com/bigquery/docs/time-travel)
+- [Google Cloud: cached query results](https://docs.cloud.google.com/bigquery/docs/cached-results)
