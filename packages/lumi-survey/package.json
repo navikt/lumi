@@ -1,13 +1,19 @@
 {
   "name": "@navikt/lumi-survey",
-  "version": "2.1.1",
+  "version": "2.2.3",
   "private": false,
-  "description": "Aksel-based React widget for configurable NAV Lumi surveys.",
+  "description": "Aksel-based React surveys for Nav, created in Lumi Surveyverksted and connected to Lumi analytics.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/navikt/lumi.git",
+    "directory": "packages/lumi-survey"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public"
   },
   "exports": {
     ".": {
@@ -61,5 +67,17 @@
     "tsup": "^8.5.0",
     "typescript": "^6.0.2",
     "vitest": "^4.1.3"
-  }
+  },
+  "homepage": "https://navikt.github.io/lumi/",
+  "bugs": {
+    "url": "https://github.com/navikt/lumi/issues"
+  },
+  "keywords": [
+    "nav",
+    "lumi",
+    "survey",
+    "feedback",
+    "react",
+    "aksel"
+  ]
 }

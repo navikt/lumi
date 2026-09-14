@@ -31,6 +31,21 @@ export const StatsParamsSchema = z.object({
 
 export type StatsParams = z.infer<typeof StatsParamsSchema>;
 
+export const QuestionTrendParamsSchema = StatsParamsSchema.extend({
+  fieldId: z
+    .string()
+    .trim()
+    .min(1)
+    .max(200)
+    .regex(/^[\p{L}\p{N}_-]+$/u),
+  interval: z.enum(["day", "week", "month"]),
+}).refine((params) => Boolean(params.surveyId?.trim()), {
+  message: "surveyId is required",
+  path: ["surveyId"],
+});
+
+export type QuestionTrendParams = z.infer<typeof QuestionTrendParamsSchema>;
+
 /**
  * Frontend URL params schema.
  * Uses canonical parameter names.
@@ -205,14 +220,6 @@ export const FilterBootstrapParamsSchema = z.object({
 });
 
 export type FilterBootstrapParams = z.infer<typeof FilterBootstrapParamsSchema>;
-
-export const RefreshFilterBootstrapParamsSchema = z.object({
-  team: z.string().optional(),
-});
-
-export type RefreshFilterBootstrapParams = z.infer<
-  typeof RefreshFilterBootstrapParamsSchema
->;
 
 export const ArchiveSurveySchema = z.object({
   surveyId: z.string(),
@@ -1264,12 +1271,15 @@ export const FeedbackPageSchema = z.object({
 // Field stats schemas
 const RatingStatsSchema = z.object({
   type: z.literal("rating"),
+  ratingVariant: z.enum(["emoji", "thumbs", "stars", "nps"]).nullish(),
+  ratingScale: z.number().int().positive().nullish(),
   average: z.number(),
   distribution: z.record(z.string(), z.number()),
 });
 
 const TextStatsSchema = z.object({
   type: z.literal("text"),
+  analysisSampleSize: z.number().int().nonnegative().nullish(),
   responseCount: z.number(),
   responseRate: z.number(),
   topKeywords: z.array(z.object({ word: z.string(), count: z.number() })),
@@ -1316,6 +1326,7 @@ const PrivacyInfoSchema = z.object({
 });
 
 export const FeedbackStatsSchema = z.object({
+  retentionStartDate: z.string().date().optional(),
   totalCount: z.number(),
   countWithText: z.number(),
   countWithoutText: z.number(),
@@ -1342,13 +1353,75 @@ export const FeedbackStatsSchema = z.object({
     z.object({ count: z.number(), averageRating: z.number() }),
   ),
   fieldStats: z.array(FieldStatSchema),
-  surveyType: SurveyTypeSchema.optional(),
+  surveyType: SurveyTypeSchema.nullish().transform(
+    (value) => value ?? undefined,
+  ),
   period: z.object({
     fromDate: z.string().nullable(),
     toDate: z.string().nullable(),
     days: z.number(),
   }),
-  privacy: PrivacyInfoSchema.optional(),
+  privacy: PrivacyInfoSchema.nullish().transform((value) => value ?? undefined),
+});
+
+export const QuestionTrendResponseSchema = z.object({
+  fieldId: z.string(),
+  fieldType: z.enum(["RATING", "SINGLE_CHOICE", "MULTI_CHOICE"]),
+  label: z.string(),
+  ratingVariant: z.enum(["emoji", "thumbs", "stars", "nps"]).nullish(),
+  ratingScale: z.number().int().positive().nullish(),
+  interval: z.enum(["day", "week", "month"]),
+  privacyThreshold: z.number().int().positive(),
+  options: z.array(
+    z.object({
+      id: z.string(),
+      label: z.string(),
+    }),
+  ),
+  buckets: z.array(
+    z
+      .object({
+        startDate: z.string(),
+        masked: z.boolean(),
+        responseCount: z.number().int().nonnegative().nullable().optional(),
+        average: z.number().nullable().optional(),
+        ratingDistribution: z
+          .record(z.string(), z.number().int().nonnegative())
+          .optional(),
+        distribution: z.record(
+          z.string(),
+          z.object({
+            count: z.number().int().nonnegative(),
+            percentage: z.number().nonnegative(),
+          }),
+        ),
+      })
+      .superRefine((bucket, ctx) => {
+        if (bucket.masked) {
+          if (
+            bucket.responseCount != null ||
+            bucket.average != null ||
+            Object.keys(bucket.ratingDistribution ?? {}).length > 0
+          ) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "masked buckets cannot expose answer values",
+            });
+          }
+          if (Object.keys(bucket.distribution).length > 0) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "masked buckets cannot expose a distribution",
+            });
+          }
+        } else if (bucket.responseCount == null) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "unmasked buckets require responseCount",
+          });
+        }
+      }),
+  ),
 });
 
 export const TeamsAndAppsSchema = z.object({

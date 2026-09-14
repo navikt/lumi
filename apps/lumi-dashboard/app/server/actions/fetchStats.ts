@@ -15,7 +15,7 @@ import { handleApiResponse } from "../fetchUtils";
 
 export const STATS_DASHBOARD_PATH = "/api/v1/intern/stats/dashboard" as const;
 
-interface StatsActionParams {
+export interface StatsActionParams {
   team?: string;
   includeArchived?: string;
   app?: string;
@@ -29,7 +29,9 @@ interface StatsActionParams {
   choice?: string[];
 }
 
-function toMockSearchParams(data: StatsActionParams): URLSearchParams {
+export function toStatsMockSearchParams(
+  data: StatsActionParams,
+): URLSearchParams {
   const searchParams = new URLSearchParams();
   for (const [key, value] of Object.entries(data)) {
     if (Array.isArray(value)) {
@@ -81,7 +83,7 @@ export const fetchStatsServerFn = createServerFn({ method: "GET" })
 
     if (isMockMode()) {
       await mockDelay();
-      return getMockStats(toMockSearchParams(data));
+      return getMockStats(toStatsMockSearchParams(data));
     }
 
     const url = buildStatsDashboardUrl(backendUrl, data);

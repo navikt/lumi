@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { cloneAnswers, useAnswerState } from "./answers.js";
 import { generateDeduplicationKey } from "./deduplicationKey.js";
+import { resolveDocumentVisibility } from "./documentVisibility.js";
 import { getVisibleAnswers } from "./evaluateVisibility.js";
 import { buildTransportPayload } from "./transportPayload.js";
 import type {
@@ -51,6 +52,14 @@ export interface UseLumiSurveyReturn {
 export function useLumiSurvey(
   options: UseLumiSurveyOptions,
 ): UseLumiSurveyReturn {
+  return useLumiSurveyState(options);
+}
+
+/** Internal document-aware state hook; the public hook retains flat semantics. */
+export function useLumiSurveyState(
+  options: UseLumiSurveyOptions,
+  documentVisibility = false,
+): UseLumiSurveyReturn {
   const {
     surveyId,
     questions,
@@ -78,9 +87,22 @@ export function useLumiSurvey(
 
   const validate = useCallback(
     (questionsToValidate?: LumiSurveyQuestion[]): string[] => {
-      return validateAnswers(questionsToValidate ?? questions, answers);
+      const candidates = questionsToValidate ?? questions;
+      const visibleIds = documentVisibility
+        ? resolveDocumentVisibility(
+            questions,
+            answers,
+            getVisibilityMetadata(context),
+          ).visibleQuestionIds
+        : undefined;
+      return validateAnswers(
+        visibleIds
+          ? candidates.filter((question) => visibleIds.has(question.id))
+          : candidates,
+        answers,
+      );
     },
-    [answers, questions],
+    [answers, context, documentVisibility, questions],
   );
 
   const submit = useCallback(
@@ -105,11 +127,17 @@ export function useLumiSurvey(
 
       try {
         const answerSnapshot = cloneAnswers(answers);
-        const submittedAnswers = getVisibleAnswers(
-          questions,
-          answerSnapshot,
-          getVisibilityMetadata(context),
-        );
+        const submittedAnswers = documentVisibility
+          ? resolveDocumentVisibility(
+              questions,
+              answerSnapshot,
+              getVisibilityMetadata(context),
+            ).visibleAnswers
+          : getVisibleAnswers(
+              questions,
+              answerSnapshot,
+              getVisibilityMetadata(context),
+            );
         const submittedAtTimestamp = new Date().toISOString();
         const deduplicationKey = getDeduplicationKey();
         const submission: LumiSurveySubmission = {
@@ -149,6 +177,7 @@ export function useLumiSurvey(
     [
       answers,
       context,
+      documentVisibility,
       events,
       getDeduplicationKey,
       questions,

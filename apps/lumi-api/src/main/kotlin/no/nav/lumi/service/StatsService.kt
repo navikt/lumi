@@ -2,11 +2,13 @@ package no.nav.lumi.service
 
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.*
 import no.nav.lumi.integrations.valkey.StatsCache
 import no.nav.lumi.integrations.valkey.ValkeyStatsCache
 import no.nav.lumi.repository.FeedbackRepository
 import no.nav.lumi.repository.FeedbackStatsRepository
+import no.nav.lumi.repository.QuestionTrendRepository
 import no.nav.lumi.repository.TextThemeRepository
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -31,7 +33,8 @@ class StatsService(
     private val statsRepository: FeedbackStatsRepository = FeedbackStatsRepository(),
     private val themeRepository: TextThemeRepository = TextThemeRepository(),
     private val statsCache: StatsCache = ValkeyStatsCache.fromEnvOrFallback(),
-    private val cacheTtl: Duration = Duration.ofMinutes(3)
+    private val cacheTtl: Duration = Duration.ofMinutes(3),
+    private val questionTrendRepository: QuestionTrendRepository = QuestionTrendRepository(),
 ) {
     private val overviewCacheTtl: Duration = Duration.ofMinutes(2)
     private val ratingsCacheTtl: Duration = Duration.ofMinutes(2)
@@ -40,6 +43,7 @@ class StatsService(
     private val surveyTypesCacheTtl: Duration = Duration.ofMinutes(5)
     private val blockersCacheTtl: Duration = Duration.ofMinutes(3)
     private val taskPriorityCacheTtl: Duration = Duration.ofMinutes(3)
+    private val questionTrendCacheTtl: Duration = Duration.ofMinutes(2)
 
     internal fun statsCacheKey(prefix: String, query: StatsQuery): String =
         "$prefix:${query.toCacheKey()}"
@@ -76,7 +80,7 @@ class StatsService(
             "rating" to ratingValue,
             // Bump when the cached response semantics change. This prevents a
             // rolling deploy from serving values written by an older version.
-            "resultVersion" to "2",
+            "resultVersion" to "4",
         )
             .filter { (_, value) -> value != null }
             .map { (key, value) -> "${enc(key)}=${enc(value!!)}" }
@@ -108,7 +112,16 @@ class StatsService(
      * This is the primary stats endpoint used by lumi-dashboard.
      * Results are cached for 5 minutes.
      */
-    suspend fun getDashboardStats(query: StatsQuery): FeedbackStats {
+    suspend fun getDashboardStats(query: StatsQuery): FeedbackStats = getCachedDashboardStats(query).copy(
+        retentionStartDate = retentionStartDate(java.time.Instant.now()),
+    )
+
+    internal fun retentionStartDate(now: java.time.Instant): String = now.atZone(java.time.ZoneOffset.UTC)
+        .minusMonths(FeedbackRetentionService.RESPONSE_RETENTION_MONTHS.toLong())
+        .withZoneSameInstant(java.time.ZoneId.of("Europe/Oslo"))
+        .toLocalDate().plusDays(1).toString()
+
+    private suspend fun getCachedDashboardStats(query: StatsQuery): FeedbackStats {
         val cacheKey = statsCacheKey("dashboard", query)
         
         // Try cache first
@@ -256,6 +269,41 @@ class StatsService(
                     TimelineEntry(date = date, count = count)
                 }.sortedBy { it.date }
             )
+        }
+    }
+
+    suspend fun getQuestionTrend(
+        query: StatsQuery,
+        fieldId: String,
+        interval: QuestionTrendInterval,
+    ): QuestionTrendResponse {
+        if (query.surveyId.isNullOrBlank()) {
+            throw ApiErrorException.BadRequestException(
+                "Question trend requires exactly one survey",
+            )
+        }
+
+        val cacheKey = statsCacheKey("questionTrend", query) +
+            "&fieldId=${URLEncoder.encode(fieldId, StandardCharsets.UTF_8)}" +
+            "&interval=${interval.name.lowercase()}"
+
+        statsCache.get(cacheKey)?.let { cached ->
+            runCatching { json.decodeFromString<QuestionTrendResponse>(cached) }
+                .getOrNull()
+                ?.let { return it }
+        }
+
+        val result = questionTrendRepository.getQuestionTrend(query, fieldId, interval)
+            ?: throw ApiErrorException.NotFoundException("Structured question not found in selected data")
+
+        if (result.fieldTypeCount != 1) {
+            throw ApiErrorException.BadRequestException(
+                "Question trend is unavailable because the field has changed type",
+            )
+        }
+
+        return result.response.also {
+            statsCache.set(cacheKey, json.encodeToString(it), questionTrendCacheTtl)
         }
     }
 

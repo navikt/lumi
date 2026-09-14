@@ -174,8 +174,8 @@ const MATRIX_SCENARIOS: MatrixScenario[] = [
     id: "rating-emoji",
     facet: "emoji",
     ratingFieldId: "rating",
-    ratingAction: { kind: "radio", name: "4. Bra" },
-    rating: 4,
+    ratingAction: { kind: "radio", name: "2. Dårlig" },
+    rating: 2,
     textFieldId: "feedback",
     textPrompt: "Har du andre tilbakemeldinger?",
   }),
@@ -214,8 +214,8 @@ const MATRIX_SCENARIOS: MatrixScenario[] = [
     id: "rating-nps",
     facet: "nps",
     ratingFieldId: "nps",
-    ratingAction: { kind: "radio", name: "8 av 10" },
-    rating: 8,
+    ratingAction: { kind: "radio", name: "3 av 10" },
+    rating: 3,
     textFieldId: "reason",
     textPrompt: "Legg gjerne til en begrunnelse",
   }),
@@ -563,6 +563,7 @@ async function verifyMatrixScenario(
       values: scenario.dashboardValues(marker),
     });
     await assertDashboardType(page, scenario, surveyId);
+    await assertPeriodComparisonDashboard(page, scenario);
 
     return {
       scenarioId: scenario.id,
@@ -572,7 +573,10 @@ async function verifyMatrixScenario(
       facets: scenario.facets,
       status: "passed",
       receiptId,
-      detail: "Payload, lagring, feedbackrad og dashboardtype er verifisert",
+      detail:
+        scenario.surveyType === "rating" || scenario.surveyType === "custom"
+          ? "Payload, lagring, feedbackrad, dashboardtype og periodesammenligning er verifisert"
+          : "Payload, lagring, feedbackrad og dashboardtype er verifisert",
     };
   } catch (error) {
     throw new MatrixScenarioFailure(errorMessage(error), receiptId);
@@ -883,6 +887,117 @@ async function assertDashboardType(
       .getByText(scenario.dashboardType, { exact: true })
       .first(),
   ).toBeVisible();
+}
+
+async function assertPeriodComparisonDashboard(
+  page: Page,
+  scenario: MatrixScenario,
+): Promise<void> {
+  if (scenario.surveyType !== "rating" && scenario.surveyType !== "custom") {
+    return;
+  }
+
+  expect(new URL(page.url()).searchParams.has("variant")).toBe(false);
+  const comparisonSwitch = page.getByRole("checkbox", {
+    name: "Sammenlign med forrige periode",
+  });
+  await expect(comparisonSwitch).toBeChecked();
+  const metrics = page.getByTestId("comparison-key-metrics");
+  const fields = page.getByTestId("field-stats-section");
+  await expect(
+    metrics.getByText("Tilbakemeldinger", { exact: true }),
+  ).toBeVisible();
+  await expect(fields.getByRole("heading", { level: 3 })).toHaveCount(
+    scenario.fields.length,
+  );
+  await expect(
+    metrics.getByText(
+      "Ingen svar å sammenligne med i forrige periode. Tallene gjelder bare valgt periode.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(metrics.getByText("Endring", { exact: true })).toHaveCount(0);
+  await expect(
+    fields.getByRole("columnheader", { name: "Før", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    fields.getByRole("columnheader", { name: "Endring", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText("Inkluderer i dag · foreløpig sammenligning", {
+      exact: true,
+    }),
+  ).toBeVisible();
+
+  if (scenario.id === "rating-nps") {
+    await expect(metrics.getByText("NPS", { exact: true })).toBeVisible();
+    await expect(metrics.getByText("−100 NPS", { exact: true })).toBeVisible();
+    await expect(fields.getByText("−100 NPS", { exact: true })).toBeVisible();
+    await expect(
+      metrics.getByText("Snitt vurdering", { exact: true }),
+    ).toHaveCount(0);
+  } else if (scenario.id === "rating-thumbs") {
+    await expect(
+      metrics.getByText("Positiv rate", { exact: true }),
+    ).toBeVisible();
+    await expect(metrics.getByText("100 %", { exact: true })).toBeVisible();
+    await expect(
+      fields.getByText("100 % positive", { exact: true }),
+    ).toBeVisible();
+  } else if (scenario.id === "rating-emoji") {
+    await expect(
+      metrics.getByText("Snitt vurdering", { exact: true }),
+    ).toBeVisible();
+    await expect(fields.getByText("2,0 av 5", { exact: true })).toBeVisible();
+    await expect(
+      metrics.getByText("Positiv rate", { exact: true }),
+    ).toHaveCount(0);
+  }
+
+  if (scenario.id === "custom-field-matrix") {
+    const unselectedPhone = fields.getByRole("button", {
+      name: "Filtrer på Telefon. Valgt periode: 0 svar, 0 prosent.",
+      exact: true,
+    });
+    await expect(unselectedPhone).toBeVisible();
+    await expect(
+      fields.getByRole("button", {
+        name: "Filtrer på Rask. Valgt periode: 0 svar, 0 prosent.",
+        exact: true,
+      }),
+    ).toBeVisible();
+
+    await comparisonSwitch.uncheck();
+    await expect(page).toHaveURL(/compare=none/);
+    await expect(metrics.getByText(/Ingen svar å sammenligne/)).toHaveCount(0);
+    await comparisonSwitch.check();
+    await expect(page).toHaveURL(/compare=previous/);
+    await expect(metrics.getByText(/Ingen svar å sammenligne/)).toBeVisible();
+
+    await unselectedPhone.click();
+    await expect(
+      metrics.getByText(
+        "Ingen svar i den valgte perioden med disse filtrene.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(fields.getByRole("heading", { level: 3 })).toHaveCount(
+      scenario.fields.length,
+    );
+    await expect(
+      fields.getByRole("heading", { name: "Velg én kanal", exact: true }),
+    ).toBeVisible();
+    await expect(
+      fields.getByRole("button", {
+        name: "Filtrer på Telefon. Valgt periode: 0 svar, ingen prosent.",
+        exact: true,
+      }),
+    ).toBeVisible();
+    expect(new URL(page.url()).searchParams.get("app")).toBe("local-app");
+    expect(new URL(page.url()).searchParams.get("surveyId")).toBe(
+      surveyIdFor(scenario),
+    );
+  }
 }
 
 function surveyIdFor(scenario: MatrixScenario): string {

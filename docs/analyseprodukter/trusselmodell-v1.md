@@ -4,7 +4,9 @@ Denne modellen beskriver sikkerhetsgrensene for teamavgrensede
 analyseprodukter og bevisene som kreves før løsningen kan gå fra lokal
 utvikling til shadow-kjøring og produksjon. Den kompletterer
 [ADR 0006](../adr/0006-teamavgrensede-analyseprodukter.md) og
-[V1-datakontrakten](./datakontrakt-v1.md).
+[V1-datakontrakten](./datakontrakt-v1.md). Eksterne antakelser og den
+konkrete avklaringspakken er dokumentert i
+[plattformvalidering V1](./plattformvalidering-v1.md).
 
 Modellen gjelder også når dataene er pseudonymiserte. Pseudonymisering er ikke
 anonymisering, og lave volum, kombinasjoner av svar og teamkontekst kan gjøre
@@ -20,10 +22,10 @@ integriteten til aktiv release/snapshot.
 Lumi API / Cloud SQL
   |  read-only, minimert eksportkontrakt
   v
-Sentral reconciler + BigQuery connection + privat staging
+BigQuery connection + privat staging/canonical
   |  effective-spec-kompilert, kontrollert publisering
   v
-Fysisk minimert produktdatasett + offentlig read lease/views
+Isolert produktdatasett
   |  tilgang forvaltet av Datamarkedsplassen
   v
 Metabase / datafortelling / notebook
@@ -57,12 +59,14 @@ Disse invariantene er absolutte. En rød kontroll stopper publisering:
 9. Et betinget felt kan aldri releaseres når et svar-/metadatafelt i predicate
    ikke selv er eksplisitt valgt og godkjent i produktet. Historisk flyt uten
    en ingest-matchet revisjon rekonstrueres aldri.
-10. En subtraktiv endring, pause, offboarding eller sikkerhetsredaksjon kan
-    aldri erkjennes som effective før den gamle, bredere konsumentflaten er
-    verifisert stengt. Availability ofres ved behov.
-11. Etter 36 timer uten bekreftet deletion-capable refresh kan siste snapshot
-    ikke lenger leses av konsumenter. En feiltilstand må aldri fremstå som et
-    gyldig tomt datasett.
+10. En innsnevring eller offboarding kan ikke bekreftes gjennomført mens
+    tidligere, bredere konsumentlesing fortsatt er mulig. En forsinket kjøring
+    kan ikke gjenåpne den gamle flaten. Dette gjelder også direkte navn og
+    deprecated ressurser, ikke bare stabile aliases.
+11. Uten ny bekreftet slettesynk stenges produktlesing senest 36 timer etter
+    kildelesingen i siste aktiverte snapshot som videreførte sletting og utløp.
+    Brukeren får en feiltilstand, aldri et gyldig tomt datasett. Stengingen må
+    fungere selv om publiseringsjobben står stille.
 
 ## Trusler, kontroller og påkrevd evidens
 
@@ -70,9 +74,9 @@ Disse invariantene er absolutte. En rød kontroll stopper publisering:
 | --- | --- | --- | --- |
 | T01 | Cross-team IDOR eller metadatalekkasje | Team avledes server-side; alle produkt-, kilde- og preview-oppslag scopes med autorisert team; uautorisert og ikke-eksisterende ressurs har lik respons; bare godkjent Marketplace-metadata kan være synlig på tvers | API-/UI-tester med team A/B, inkludert tomtilstander, feil, counts, bytte av aktivt team og allowlist for katalogmetadata |
 | T02 | Rå, forbudt eller avledet uvalgt data havner i privat/offentlig lag | Versjonert allowlist-kontrakt; typed compiler; klientleverte etiketter eksporteres aldri; et betinget felt krever offentlig valgte predicate-avhengigheter før release; tilbakekalt metadata undertrykkes i alle majors; negative kontroller før pointerbytte | Inspeksjon av eksportview, query-resultat, staging, canonical og produktviews; tester for tekst-/datosvar, UUID, JSON, URL, user-agent, debug, manipulerte/tilbakekalte etiketter, PII, HTML, kontrolltegn og allowlistet-men-uvalgt predicate-input |
-| T03 | Samme kilderad kan kobles på tvers av produkter | Tilfeldig 256-bits privat `source_row_key`, run-scopet `snapshot_row_key` og sikkerhetsreviewet, domeneseparert produktavledning; KMS/HMAC bare ved dokumentert behov; ingen stabil privat nøkkel i eksport, og ingen privat joinnøkkel i produkt, offentlig output eller logger | Test som viser stabil nøkkel innen produkt, ulik nøkkel mellom produkt A/B, ulik `snapshot_row_key` mellom runs, sletting sammen med kilderaden og fravær av intern ID/private nøkler utenfor sine tillatte lag |
+| T03 | Samme kilderad kan kobles på tvers av produkter | Produktspesifikk keyed pseudonym; separat nøkkelmateriale/derivasjonskontekst; intern ID brukes bare transient i betrodd avledning; snapshot-lokal referanse er ikke stabil og ingen privat referanse eller nøkkel finnes i offentlig output eller logger | Test som viser stabil nøkkel innen produkt, ulik nøkkel mellom produkt A/B og fravær av intern ID, `snapshot_row_ref` og nøkkelmateriale |
 | T04 | Replay eller rollback gjenoppretter slettede rader | Replay leser alltid dagens kilde; ingen gammel snapshot kan aktiveres; alle ikke-aktive kopier slettes/utløper | Slett kilderad, kjør nyere snapshot og forsøk replay/eldre run; raden skal være fraværende overalt |
-| T05 | Delvis/eldre kjøring blir synlig, produkt A stopper B eller konsumenten blander snapshots | Unik source-staging, global `control_epoch`, immutable per-produkt generation/digest, generation-bundet aktiveringslease/CAS, atomiske monotone pointere, offentlig `product_snapshot_id`/manifest, produktlokal feilstatus og purge-only fallback | Feilinjeksjon, omvendt kjøringsrekkefølge, G→G+1-subtraksjon mens G bygger/aktiverer, pointerbytte mellom separate view-spørringer og kontraktsfeil i A mens B publiserer og begge fortsatt sletter |
+| T05 | Delvis/eldre kjøring blir synlig, produkt A stopper B eller konsumenten blander snapshots | Unik source-staging, atomiske monotone pointere, offentlig `product_snapshot_id`/manifest, produktlokal feilstatus og purge-only fallback | Feilinjeksjon, omvendt kjøringsrekkefølge, pointerbytte mellom separate view-spørringer og kontraktsfeil i A mens B publiserer og begge fortsatt sletter |
 | T06 | Feil metadatajoin, denominator, betinget relevans, malformed katalog eller kildeevolusjon viser feil betydning/survey | Full kildeidentitet; separat ingest-matchet `flow_hash` med normalisert flyt, avhengigheter og evaluatorversjoner; V1-rate bare for kanonisk `visibleIf`; eksplisitt felt-applicability og definition-spesifikk option-nevner; komplette kataloginvarianter og eksakt én match | Tester med samme `survey_id` i to apper, samme definition-hash med endret flow, manglende/ukjent/legacy flow, nytt felt, ny/duplisert option, sann/usann/ukjent `visibleIf`, labelendring og malformed/duplisert katalograd |
 | T07 | Pause/deprecated view bevarer data for lenge | Effektiv retensjon og source deletion anvendes ved hvert fullsnapshot og purge-only snapshot på alle majors; pause fryser bare øvre cutoff; deprecated schema er stabilt, men fjernede verdier er `NULL` | Klokke-/snapshot-tester for 30/90/180/source-max, pause, kortere release, fjernet survey/felt og deprecated major |
 | T08 | Arvet IAM, publisher/binder, alias eller post-bind viewmutasjon omgår produktgrensen | Dedikert prosjekt uten menneskelig/default arv; separate identiteter; immutable release-FQN; live SQL/digest-validering mot effective spec; alias kan bare målrette samme produkt/release/digest | IAM-inventar, binding-/aliasaudit, post-bind/TOCTOU-test, negativ A→B/revokert-alias-test og tilgangstester for alle identiteter |
@@ -83,8 +87,8 @@ Disse invariantene er absolutte. En rød kontroll stopper publisering:
 | T13 | Offboarding etterlater data, grants eller markedsplassressurs | Trinnvis, idempotent offboarding med verifisert tomhet før `Slettet` | Gjentatt feilinjisert offboarding og etterkontroll av data, views, bindings, grants, credentials og katalog |
 | T14 | Høy kardinalitet eller ukjent dimensjon omgår minimering | Sentralt klassifisert dimensjonsregister med type, scope og kardinalitetspolicy; fail closed | Negative tester for uregistrert nøkkel, nytt scope, typeendring og overskredet kardinalitet |
 | T15 | Authorized-resource-kvote eller for bred dataset-authorization bryter 50-team-målet | Publiseringstopologi velges etter kvote- og privilegieanalyse; eksplisitt budsjett for produkter, surveys og majors; ingen implicit future-view-tilgang uten review | Skalatest med 50 team, opptil 500 produkter, representative surveyantall og parallelle majors, inkludert reconcile og offboarding |
-| T16 | Metabase-cache, notebook-tabell eller statisk datafortelling bevarer data etter at Lumi-flaten er stengt | Konsumentkontrakt for ingen varige radnivåkopier, avtalt cache/TTL, godkjente aggregater i publiserte artefakter og regenerering/tømming; Lumi sitt 36-timers-SLO avgrenses eksplisitt til konsumentlesing gjennom den forvaltede produktflaten | NADA-/Metabase-avklaring, inspeksjon av cache og konkret iSyfo-runbook for Quarto/output |
-| T17 | Lumi produserer data i et sentralt prosjekt, men feil team eier eller godkjenner dataproduktet | Støttet skille mellom infrastrukturprodusent/GCP-eier og domeneeier/tilgangsgodkjenner; ingen produksjonspilot under feil faglig eier | Skriftlig NADA-bekreftelse og ende-til-ende test der fagteamet eier/godkjenner uten Lumi-operatør eller teamtoken |
+| T16 | Kopier eller cache bevarer data etter at Lumi-flaten er stengt | Eksplisitt konsumentkontrakt for BigQuery-resultater, Metabase, notebooks og statiske artefakter; avtalt TTL, eier og regenerering/tømming; ingen varige radnivåkopier utenfor produktflaten | Tilgangs- og cachetest med faktisk konsumentidentitet, inkludert allerede kjørte spørringer, tilbakekalling og konkret Quarto-runbook |
+| T17 | Feil team står som domeneeier eller godkjenner tilgang | NADA-støttet skille mellom Lumi som infrastrukturprodusent og fagteamet som domeneeier/tilgangsgodkjenner | Dokumentert plattformavklaring og ende-til-ende test av registrering, tilgangsgodkjenning og offboarding |
 
 ## Identiteter og minste privilegium
 
@@ -93,12 +97,11 @@ konfigurasjon:
 
 | Identitet | Skal kunne | Skal ikke kunne |
 | --- | --- | --- |
-| Cloud SQL export-bruker | `CONNECT`, `USAGE` på eksportskjema og `EXECUTE` på eksakt parameterfri `analytics_export_v1.full_snapshot()` | tabell-/view-`SELECT`, lese `public.*`, råtabeller, skrive eller arve default grants |
+| Cloud SQL export-bruker | `CONNECT`, `USAGE` på eksportskjema og enten `SELECT` på eksakte eksportviews eller `EXECUTE` på én eksakt eksportfunksjon, valgt i Gate B | lese `public.*`, råtabeller, andre eksportobjekter, skrive eller arve default grants |
 | BigQuery connection service agent | bruke avtalt Cloud SQL-connection | lese produktdatasett eller administrere IAM |
-| Sentral reconciler | starte BigQuery-jobb, bruke connection, skrive run-scoped staging og materialisere eksakt validert produktkandidat | direkte Cloud SQL-credential, caller-supplied scope, menneskelige grants eller ubetinget aktivering |
+| Scheduled-query servicekonto | starte jobb, bruke connection, skrive privat staging/canonical | lese råtabeller direkte, gi produkt-IAM eller skrive andre prosjekter |
 | Kontraktkompilator | produsere deterministisk viewdefinisjon, FQN og `schema_digest` fra immutable release minus auditerte tilbakekallinger | Cloud-, database-, data- eller IAM-tilgang |
-| Aktiveringskontroller | utstede og fullføre en kortlivet lease/CAS for eksakt produkt/generation/digest etter kontroll av read lease og trusted effective plan | utvide scope, aktivere eldre generation, lese respondentdata eller gi menneskelige grants |
-| View-publisher | opprette ny immutable release-FQN; lese privat schema/data bare i det minimum BigQuery krever; ingen generell jobbkjøring | mutere bundet view, databasecredential, dataset-ACL, vilkårlig query eller menneskelige grants |
+| View-publisher/reconciler | opprette ny immutable release-FQN; lese privat schema/data bare i det minimum BigQuery krever; ingen jobbkjøring | mutere bundet view, databasecredential, dataset-ACL, vilkårlig query eller menneskelige grants |
 | Cross-dataset-binder/NADA-port | lese faktisk view-SQL, validere digest/policy og autorisere immutable FQN mot source | generell produktpublisering; binding når publisher fortsatt kan mutere viewet; menneskegrant uten separat Marketplace-/sikkerhetsport |
 | Alias-publisher | peke stabilt offentlig navn til aktiv, bundet boundary-FQN med samme produkt/major/release/digest | canonical-tilgang, A→B-mål, gammel/revokert FQN, boundary-mutasjon eller IAM |
 | Lumi API | forvalte teamautoriserte drafts, releaser og ønsket tilstand | direkte datapublisering, databaseeksportcredential eller IAM-grants |
@@ -131,24 +134,23 @@ nøkkelversjon og eierskap skal være dokumentert før shadow.
       kategorisummer eller gjentatte previews ellers kan rekonstruere en
       undertrykt celle. `6/5/1` er et obligatorisk negativt testtilfelle.
 - [ ] Draft, validering og release har revisjonsvern og auditkrav.
-- [ ] Kotlin-resolveren er eneste implementasjon av effective scope, og output
-      persisteres append-only som normaliserte memberships med monoton
-      generation og digest. SQL/API-caller kan verken beregne eller utvide
-      scopet.
 
 ### Gate B – før dev-spike får bruke en ekte connection
 
+**Status 31. august 2026: stengt.** P01–P04 og P08–P10 i
+plattformvalideringen bekrefter retning og avgrensning, men P05–P07 og
+avklaringspakken mangler plattformbekreftelse. Syntetiske, lokale spiker kan
+fortsette; databasebruker, connection, IAM og scheduler kan ikke opprettes.
+
 - [ ] NADA har bekreftet region, connection-modell og minste servicekonto-IAM.
-- [ ] NADA har bekreftet at Lumi kan være infrastrukturprodusent/GCP-eier mens
-      fagteamet er domeneeier og tilgangsgodkjenner, eller har gitt et
-      dokumentert pilotunntak som tester samme ansvarsdeling.
+- [ ] Databaseflaten er valgt som eksakte, versjonerte views eller én eksakt,
+      versjonert funksjon; export-brukeren har bare privilegiet mekanismen
+      krever og kan ikke bruke andre objekter i eksportskjemaet.
 - [ ] Det er avklart om prosjekt/datasett arver menneskelig eller default
       lesetilgang.
 - [ ] Eksakt algoritme og forvaltning for produktspesifikke nøkler er
       sikkerhetsreviewet.
-- [ ] Cloud SQL export-rollen har bare `CONNECT`, schema-`USAGE` og `EXECUTE`
-      på én parameterfri, låst `full_snapshot()`; den kan ikke lese råtabeller,
-      views eller `public.*`.
+- [ ] Cloud SQL export-rollen kan ikke lese råtabeller eller `public.*`.
 - [ ] Syntetisk team A/B-datasett og negative forbudt-data-fixtures finnes.
 - [ ] Publiseringstopologien og skillet mellom compiler, publisher og
       binder/NADA-port er valgt ut fra dokumenterte IAM-capabilities.
@@ -161,14 +163,11 @@ nøkkelversjon og eierskap skal være dokumentert før shadow.
 
 - [ ] Én `EXTERNAL_QUERY` gir en konsistent kandidatsnapshot ved realistisk
       volum.
-- [ ] `full_snapshot()` returnerer global `control_epoch` og eksakt immutable
-      generation/digest per produkt; en caller kan ikke sende product/team,
-      cutoff, retention eller scope som parameter.
 - [ ] 1x- og 10x-måling er under stoppgrensene i ADR 0005.
 - [ ] Feilinjeksjon beviser atomisk og monoton aktivering.
-- [ ] Generation G kan aldri aktiveres etter at G+1 er ønsket/committet.
-      Subtraktiv G+1 stenger konsumentlesing først, og en krasj mellom freeze,
-      persist, materialisering og aktivering blir stående fail-closed.
+- [ ] Innsnevring under en pågående eldre kjøring stenger eller erstatter
+      bredere lesing før endringen bekreftes. Krasj og retry mellom stenging,
+      materialisering og aktivering kan ikke gjenåpne den gamle flaten.
 - [ ] Sletting/replay-test beviser at slettede data ikke gjenoppstår.
 - [ ] Ukjent definition/option i produkt A fryser bare A, delpubliserer ingen
       nye A-rader og hindrer verken publisering eller slettesynk for B; purge-
@@ -217,9 +216,12 @@ nøkkelversjon og eierskap skal være dokumentert før shadow.
       uten answer-referanse; tilbakekalt label forsvinner fra alle majors.
 - [ ] Pause, forkortet retensjon, fjernet felt/survey og deprecated major er
       verifisert mot samme source deletion.
-- [ ] Siste trygge snapshot er lesbart ved normal forsinkelse, men read lease
-      stenger senest etter 36 timer uten deletion-capable refresh. Metabase får
-      en eksplisitt utilgjengelig-/feiltilstand, aldri et gyldig tomt resultat.
+- [ ] Lesing stenges automatisk ved 36-timersgrensen fra siste aktiverte
+      slettesynks kildelesetidspunkt. Testen dekker stoppet publisher, feilet
+      refresh, gammel staging, direkte ressursnavn og deprecated ressurser.
+      Bare aktivert, fersk slettesynk kan fornye fristen. Stengt produkt gir
+      feil; et ekte tomt produkt gir fortsatt en gyldig manifestressurs med
+      `row_count=0`.
 - [ ] Schema-, referanse-, isolasjons-, retensjons- og canary-kontroller stopper
       publisering ved avvik.
 - [ ] Staging og ikke-aktive snapshots har verifisert opprydding og TTL.
@@ -233,9 +235,8 @@ nøkkelversjon og eierskap skal være dokumentert før shadow.
 
 ### Gate D – før første konsument får tilgang
 
-- [ ] NADA har bevist produsent/domeneeier-skillet i faktisk provisioning,
-      registrering, tilgangsgodkjenning og offboarding; Lumi står ikke som
-      feilaktig faglig eier av iSyfo-produktet.
+- [ ] NADA har bekreftet produsent/domeneeier-skillet, og faktisk registrering,
+      tilgangsgodkjenning og offboarding er prøvd med fagteamet som eier.
 - [ ] Datamarkedsplassen kan registrere, oppdatere og avvikle flere views som
       ett produkt uten Lumi-operatør eller deploy per team.
 - [ ] Produktdatasettets faktiske IAM viser ingen arvet menneskelig/default
@@ -248,9 +249,14 @@ nøkkelversjon og eierskap skal være dokumentert før shadow.
       ingest-matchet flow, svarmål for samme periode og filtre. `UNPINNED`
       historikk inngår ikke i svarpariteten eller en antatt backfill.
 - [ ] Metabase og datafortelling/notebook har lest samme kontrakt.
-- [ ] Metabase-cache og iSyfo sin Quarto-/datafortellingsoutput har eksplisitt
-      TTL/regenerering og inneholder ingen varig kopi av radnivådata som omgår
-      produktets tilgang eller retensjon.
+- [ ] Den faktiske konsumentopplevelsen ved stengt produkt er verifisert som
+      utilgjengelig/feil, ikke null svar. Backing-tabeller og historiske
+      snapshots kan ikke brukes til å omgå stengingen.
+- [ ] Tidligere BigQuery-resultater, Metabase-cache, notebook-tabeller og
+      statiske datafortellinger har avtalt levetid, eier og verifisert
+      regenerering/tømming. Publiserte artefakter bruker godkjente aggregater;
+      view-revokering hevdes ikke å slette eksisterende kopier eller fysiske
+      byte i BigQuery time-travel/fail-safe.
 - [ ] Pointerbytte mellom manifest, wide, long og katalog gir samme
       `product_snapshot_id` eller en oppdagbar mismatch. Manifestets
       resource-rad har schema-digest/radtall, og én-statements LEFT JOIN er
@@ -261,8 +267,12 @@ nøkkelversjon og eierskap skal være dokumentert før shadow.
 
 ### Gate E – før bred `esyfo-analyse`-tilgang fjernes
 
-- [ ] Legacy-tilgangen har vært frosset i eksisterende omfang under piloten;
-      ingen nye team, surveys, felt, grants eller analysebehov er koblet på.
+- [ ] Eksisterende legacy-bruk er ikke utvidet med nye konsumenter, grants
+      eller analysebehov. Dette er kontrollert som overgangspraksis, ikke
+      antatt som teknisk survey-/feltavgrensning i dagens brede grant.
+- [ ] Gammel V1-historikk trengs ikke lenger eller har utløpt med kildens
+      retensjon. Dataeier har akseptert historikkskillet; ingen eldre flyt er
+      rekonstruert eller svar backfillet uten separat beslutning.
 - [ ] Minst to planlagte snapshots er publisert og konsumert uten avvik.
 - [ ] Quarto/Metabase peker på ny kontrakt og ingen konsument leser `public`.
 - [ ] Dataeier har akseptert det pinnede analysevinduet før bred tilgang
@@ -292,39 +302,43 @@ published_at
 cleanup_completed_at
 ```
 
-Det varsles på mislykket kjøring, 24 timer uten forventet dataferskhet, 30
-timer uten vellykket slettesynk og stale
+Det varsles på mislykket kjøring, uteblitt daglig oppdatering, 30 timer uten
+bekreftet slettesynk og stale
 source- eller produktpointer, staging eldre enn 24 timer, volumavvik,
 kontrakts-/referansebrudd, dimensjonsbrudd, drift, mislykket
 slettesynk/offboarding og tenant-/forbudt-data-canary. En daglig feil får
-automatiske retryforsøk innen seks timer. Ved 36 timer uten bekreftet
-deletion-capable refresh stenges produktlesing automatisk; dette er et målbart
-SLO-brudd og skal ikke bare varsles. Statusen er utilgjengelig/feil, ikke et
-tomt datasett. Tenant- eller forbudt-data-avvik stopper alltid
-source-publisering.
+automatiske retryforsøk innen seks timer. Ved 36-timersgrensen stenges lesing
+automatisk og operatøren varsles; bare alarm er ikke tilstrekkelig. Fristen
+følger kildelesetidspunktet i siste aktiverte snapshot som videreførte sletting
+og utløp for produktet, ikke siste jobbstart eller heartbeat. Runbook og
+avtalt stengemekanisme må være verifisert før Gate D. Tenant- eller
+forbudt-data-avvik stopper alltid source-publisering.
 
 ## Eksterne beslutninger som fortsatt er åpne
 
-Følgende skal avklares med NADA og dokumenteres som evidens; implementasjonen
-skal ikke gjette:
+Den daterte statusen, kildene og spørsmålene som skal sendes til NADA ligger i
+[plattformvalidering V1](./plattformvalidering-v1.md). Implementasjonen skal
+ikke gjette. Gate B og D krever fortsatt svar på:
 
 - om et dedikert analyseprosjekt og produktdatasett kan være servicekonto-only
   uten arvet menneskelig tilgang
-- om Lumi kan være infrastrukturprodusent/GCP-prosjekteier mens fagteamet er
-  domeneeier og tilgangsgodkjenner, også programmatisk for 50 team
+- støttet skille mellom Lumi som infrastrukturprodusent/GCP-prosjekteier og
+  fagteamet som domeneeier og tilgangsgodkjenner
 - minste IAM, capability-separasjon, authorized-resource-kvoter og mekanisme
   for cross-dataset binding uten implicit future-view-tilgang
 - støttet programmatisk opprettelse, oppdatering og avvikling av datasett og
   Datamarkedsplassen-ressurser
 - fallback dersom registrering bare kan fullføres i et støttet selvbetjent UI
-- servicekonto, region, connection og credentialrotasjon for BigQuery-jobben
+- servicekonto, region, connection og credentialrotasjon for scheduled query
 - hvordan flere views og major-versjoner representeres som ett dataprodukt
-- krav til Behandlingskatalog/PVK, Metabase-grupper, query-cache og sletting av
-  downstream-kopier håndteres
+- krav til Behandlingskatalog/PVK og hvordan Metabase-grupper håndteres
 - støttet varsling for eierfornyelse og operasjonelle avvik
+- stenging av alle produktressurser uten avhengighet av en fungerende
+  publiseringsjobb, og håndtering av cache og tidligere resultatkopier
 
-Et ubesvart punkt kan gi en begrenset lokal/dev-spike når dataene er
-syntetiske, men kan ikke passere den relevante shadow- eller produksjonsgaten.
+Et ubesvart punkt kan bare gi en begrenset lokal/offline spike med syntetiske
+data og uten databasebruker, connection, IAM eller scheduler. Det kan ikke
+passere Gate B eller senere gater.
 
 ## Residualrisiko og revurdering
 

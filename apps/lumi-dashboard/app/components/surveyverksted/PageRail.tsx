@@ -105,6 +105,8 @@ const RailItem = memo(function RailItem({
   const conditionalCount = page.questions.filter(
     (question) => question.visibleIf,
   ).length;
+  const fullyConditional =
+    page.questions.length > 0 && conditionalCount === page.questions.length;
 
   return (
     <li
@@ -126,10 +128,19 @@ const RailItem = memo(function RailItem({
         </span>
         <span className={styles.railBody}>
           <BodyShort as="span" size="small" weight="semibold">
+            {fullyConditional ? (
+              <BranchingIcon
+                aria-hidden
+                className={styles.railConditionalIcon}
+              />
+            ) : null}
             {page.title?.trim() ||
               page.questions[0]?.prompt.trim() ||
               `Side ${index + 1}`}
           </BodyShort>
+          {fullyConditional ? (
+            <span className={styles.srOnly}>Hele siden er betinget.</span>
+          ) : null}
           {conditionalCount > 0 ? (
             <span className={styles.srOnly}>
               {conditionalCount === 1

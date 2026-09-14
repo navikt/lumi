@@ -4,129 +4,82 @@ title: Legg surveyen i appen
 
 # Legg surveyen i appen
 
-En survey består av én eller flere sider med spørsmål. Den kan også ha en velkomstside og eget innhold i bekreftelsen etter innsending. Definer alt som et `SurveyDocumentV1`.
+Bruk en delt versjon fra [Surveyverksted](https://lumi-dashboard.ansatt.nav.no/surveyverksted) som utgangspunkt for integrasjonen. Versjonen inneholder surveyen teamet har prøvd og er enige om å ta i bruk.
 
-```text
-SurveyDocumentV1
-├── intro?    Valgfri velkomstside
-├── pages     Én eller flere sider med spørsmål
-└── success?  Valgfritt eget innhold i bekreftelsen
-```
+## Kopier surveyen
 
-Dette er formatet vi anbefaler for alle nye surveyer. Widgeten støtter fortsatt eldre konfigurasjoner, men du trenger ikke lære den gamle modellen for å lage en ny survey.
+Åpne versjonen dere vil ta i bruk og velg **Kopier TypeScript**. Lim innholdet inn i `survey.ts` i appen.
 
-## Bruk versjonen fra Surveyverksted
+Filen eksporterer `survey` og inkluderer en typesjekk med `SurveyDocumentV1`. Spørsmål, sider, oppfølging og bekreftelse følger med. Surveyverksted setter også analysefeltene for oppsettet teamet valgte.
 
-Har dere laget surveyen i Surveyverksted, åpner du versjonen dere vil ta i bruk og velger **Kopier TypeScript**. Lim dokumentet inn i for eksempel `survey.ts`, og importer det der `LumiSurveyDock` rendres:
+## Vis surveyen og send inn svar
+
+Etter at du har [installert pakken og importert stilarkene](/kom-i-gang/installer-widget), kan du bruke filen i en komponent:
 
 ```tsx
+import {
+  LumiSurveyDock,
+  type LumiSurveyTransport,
+} from "@navikt/lumi-survey";
 import { survey } from "./survey";
 
+const transport: LumiSurveyTransport = {
+  async submit({ transportPayload }) {
+    const response = await fetch("/api/lumi/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(transportPayload),
+    });
+    if (!response.ok) {
+      throw new Error(`Innsending feilet med status ${response.status}`);
+    }
+  },
+};
+
+export function FeedbackWidget() {
+  return (
+    <LumiSurveyDock
+      surveyId="min-app-tilbakemelding"
+      survey={survey}
+      transport={transport}
+    />
+  );
+}
+```
+
+Legg `FeedbackWidget` på flaten der dere vil samle tilbakemeldinger. `survey` er innholdet brukeren møter, mens `transport` sender svarene til appens backend.
+
+`/api/lumi/feedback` er et endepunkt dere må opprette i egen app. Det gjør token exchange og sender svarene videre til Lumi API. Widgeten kan vises før dette er satt opp, men svar lagres først når [backendintegrasjonen](/kom-i-gang/koble-til-backend) er på plass.
+
+## Sett survey-ID
+
+Bytt `min-app-tilbakemelding` med en stabil ID for surveyen. Dere finner et forslag på versjonssiden i Surveyverksted. ID-en settes på `LumiSurveyDock` og følger ikke med i den kopierte TypeScript-filen.
+
+Behold ID-en så lenge svarene skal tilhøre samme analyseserie. Se [Survey-identitet og endringer](/guider/survey-identitet) før dere endrer hva surveyen måler eller hvilke svaralternativer den har.
+
+## Tilpass til flaten
+
+På nav.no bruker widgeten Nav-dekoratørens samtykkeløsning for å huske at brukeren har lukket surveyen. På interne flater uten dekoratøren, legg til:
+
+```tsx
 <LumiSurveyDock
-  surveyId="min-flate-tilbakemelding"
+  surveyId="min-app-tilbakemelding"
   survey={survey}
   transport={transport}
+  behavior={{ storageStrategy: "localStorage" }}
 />
 ```
 
-Eksporten inneholder `satisfies SurveyDocumentV1`, slik at appens TypeScript-oppsett sjekker dokumentet. Appen eier filen og ruller den ut på vanlig måte.
+Se [Lagring](/guider/lagring) for hvor lenge lukking huskes, og [Props-referansen](/referanse/props-referanse) for øvrige innstillinger.
 
-Surveyverksted setter `type` og analysefeltene fra oppsettet dere valgte da utkastet ble opprettet. Ikke endre disse for hånd i den eksporterte koden. Skal surveyen måle noe annet, lag et nytt utkast med riktig oppsett. Se [Velg hva dere vil måle](/guider/surveytyper).
+## Prøv surveyen i appen
 
-Skriver du surveyen direkte i kode, kan du starte med eksempelet under.
+- Gå gjennom hele flyten med tastatur og på liten skjerm.
+- Sjekk at oppfølgingsspørsmålene vises når de skal.
+- Kontroller at tekstene passer til flaten og tidspunktet surveyen vises på.
 
-## Lag et dokument
-
-Eksempelet under viser ett spørsmål om gangen. Hvert spørsmål ligger på sin egen side. Hver side blir et steg, og brukeren går videre med **Neste**.
-
-```typescript
-import type { SurveyDocumentV1 } from "@navikt/lumi-survey";
-
-export const mySurvey = {
-  authoringSchemaVersion: 1,
-  type: "rating",
-  intro: {
-    title: "Hjelp oss å gjøre tjenesten bedre",
-    body: "Du får to korte spørsmål om opplevelsen.",
-    startLabel: "Start",
-  },
-  pages: [
-    {
-      id: "vurdering",
-      questions: [
-        {
-          id: "inntrykk",
-          type: "rating",
-          variant: "emoji",
-          prompt: "Hvordan var opplevelsen din?",
-          required: true,
-        },
-      ],
-    },
-    {
-      id: "utdyping",
-      questions: [
-        {
-          id: "innspill",
-          type: "text",
-          prompt: "Hva kan vi gjøre bedre?",
-          maxLength: 1000,
-          visibleIf: {
-            questionId: "inntrykk",
-            operator: "LT",
-            value: 4,
-          },
-        },
-      ],
-    },
-  ],
-  success: {
-    title: "Takk for tilbakemeldingen",
-    body: "Vi bruker svaret til å gjøre tjenesten bedre.",
-  },
-} satisfies SurveyDocumentV1;
-```
-
-De viktigste delene er:
-
-- `authoringSchemaVersion` forteller hvilken versjon av dokumentformatet du bruker.
-- `type` forteller dashboardet hva surveyen måler.
-- `pages` bestemmer hva som vises sammen, og hva som blir neste steg.
-- `visibleIf` viser et spørsmål bare når det er relevant.
-- `intro` og `success` er valgfrie. De gir brukeren en tydelig start og avslutning.
-
-::: tip Bruk `satisfies`
-`satisfies SurveyDocumentV1` sjekker dokumentet uten å gjøre typene mer generelle enn nødvendig. Da får du gode TypeScript-feil på feil feltnavn, tomme sider og ugyldige spørsmål.
-:::
-
-## Velg hva som skal stå på samme side
-
-Bruk som hovedregel én side per spørsmål. Da får brukeren ett spørsmål om gangen uten ekstra konfigurasjon.
-
-Legg flere spørsmål på samme side når de hører tett sammen og bør besvares som en gruppe. En sidetittel er valgfri. Bruk den bare når den tilfører kontekst som spørsmålsteksten ikke allerede gir.
-
-Se [Sider og flyt](/guider/sider-og-flyt) for eksempler og anbefalinger.
-
-## Vis bare relevante spørsmål
-
-I eksempelet vises `innspill` bare når vurderingen er lavere enn 4. En side uten synlige spørsmål hoppes over automatisk.
-
-Se [Vis bare relevante spørsmål](/guider/betinget-synlighet) for operatorer og kombinasjoner med `any` og `all`.
-
-## Gi surveyen en stabil identitet
-
-`surveyId` settes på `LumiSurveyDock`, ikke i dokumentet. Behold samme ID så lenge surveyen måler det samme med samme betydning. Bytt ID når du endrer spørsmål eller svaralternativer slik at resultatene ikke lenger kan sammenlignes.
-
-Se [Survey-identitet og endringer](/guider/survey-identitet) for beslutningstabellen.
-
-## Sjekk før du går live
-
-- Prøv hele flyten med tastatur og på liten skjerm.
-- Sjekk at bare relevante spørsmål dukker opp.
-- Hold surveyen kort. Spør bare om det dere skal bruke svarene til.
-- Bruk konkrete spørsmål om opplevelsen brukeren nettopp hadde.
-- Unngå personopplysninger i spørsmål, `context` og fritekst der det er mulig.
+Når teamet endrer surveyen i Surveyverksted, deler dere en ny versjon og oppdaterer filen i appen. Endringen når brukerne når dere ruller ut appen.
 
 ## Neste steg
 
-Gå videre til [Koble til backend](/kom-i-gang/koble-til-backend) for å lagre svarene i Lumi.
+[Koble til backend](/kom-i-gang/koble-til-backend) for å lagre svarene og se dem i Lumi-dashboardet.

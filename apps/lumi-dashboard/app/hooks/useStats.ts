@@ -1,15 +1,18 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  queryOptions,
+  useQuery,
+} from "@tanstack/react-query";
 import { useSearchParams } from "~/hooks/useSearchParams";
+import type { SearchParams } from "~/schemas/searchSchema";
 import { fetchStatsServerFn } from "~/server/actions";
 import { splitChoiceParam } from "~/utils/choiceFilterUtils";
 import { splitRatingParam } from "~/utils/ratingFilterUtils";
 
 export type { FeedbackStats } from "~/types/api";
 
-export function useStats() {
-  const { params } = useSearchParams();
-
-  return useQuery({
+export function statsQueryOptions(params: Partial<SearchParams>) {
+  return queryOptions({
     queryKey: [
       "stats",
       params.team,
@@ -41,6 +44,13 @@ export function useStats() {
         },
       }),
     staleTime: 30000,
+  });
+}
+
+export function useStats() {
+  const { params } = useSearchParams();
+  return useQuery({
+    ...statsQueryOptions(params),
     placeholderData: keepPreviousData,
   });
 }

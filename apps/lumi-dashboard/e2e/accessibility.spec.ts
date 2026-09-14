@@ -172,7 +172,11 @@ test.describe("Screen Reader Announcements", () => {
 
 test.describe("Heading hierarchy", () => {
   const dashboardViews = [
-    ["aggregert dashboard", "/?fromDate=2000-01-01", "Vurderingsfordeling"],
+    [
+      "aggregert dashboard",
+      "/?fromDate=2000-01-01",
+      "Tilbakemeldinger per app",
+    ],
     [
       "vurderingsdashboard",
       "/?surveyId=survey-vurdering&fromDate=2000-01-01",
@@ -213,6 +217,20 @@ test.describe("Heading hierarchy", () => {
           exact: true,
         }),
       ).toBeVisible({ timeout: 15000 });
+
+      if (name === "aggregert dashboard") {
+        await expect(
+          page.getByRole("combobox", { name: "Survey", exact: true }),
+        ).toHaveValue("alle");
+        await expect(
+          page.getByRole("heading", { name: "Survey-typer", exact: true }),
+        ).toBeVisible();
+        await expect(
+          page.getByRole("checkbox", {
+            name: "Sammenlign med forrige periode",
+          }),
+        ).toHaveCount(0);
+      }
 
       const headings = page.locator(
         "main h1, main h2, main h3, main h4, main h5, main h6",

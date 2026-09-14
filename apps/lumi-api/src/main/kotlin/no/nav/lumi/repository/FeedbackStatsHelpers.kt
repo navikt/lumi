@@ -12,7 +12,7 @@ internal data class AnalyticsSnapshot(
     val deviceRows: List<AvgCountRow>,
     val screenResolutionRows: List<ScreenResolutionCountRow>,
     val pathnameRows: List<AvgCountRow>,
-    val fieldRecords: List<FeedbackDbRecord>
+    val fieldStats: List<FieldStat>
 )
 
 internal data class AvgCountRow(val key: String, val count: Int, val average: Double)

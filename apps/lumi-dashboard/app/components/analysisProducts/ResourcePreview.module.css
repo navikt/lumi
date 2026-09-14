@@ -1,0 +1,51 @@
+.preview,
+.name {
+  min-width: 0;
+}
+
+.name {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.preview code {
+  font-size: 0.875rem;
+}
+
+.scrollRegion {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.scrollRegion:focus-visible {
+  outline: 3px solid var(--ax-border-focus);
+  outline-offset: 3px;
+}
+
+/* Keep the actual schema readable; only this region, not the page, scrolls. */
+.rows {
+  width: max-content;
+  min-width: 100%;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.rows thead {
+  background: var(--ax-bg-neutral-soft);
+}
+
+.caption {
+  text-align: start;
+  padding: var(--ax-space-12);
+  color: var(--ax-text-neutral-subtle);
+}
+
+.column + .column {
+  border-top: 1px solid var(--ax-border-neutral-subtle);
+}
+
+.columnName {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}

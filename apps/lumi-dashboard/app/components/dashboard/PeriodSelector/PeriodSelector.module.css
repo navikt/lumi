@@ -2,6 +2,37 @@
   border: 1px solid var(--ax-border-neutral-subtle);
 }
 
+.completeTrigger {
+  border: 1px solid var(--ax-border-neutral);
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+.completeTrigger > :last-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.triggerLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ax-space-8);
+  text-align: left;
+}
+
+.triggerLabel > svg {
+  flex-shrink: 0;
+}
+
+.completePopover {
+  width: min(38rem, calc(100vw - 2rem));
+}
+
+.presetButton {
+  justify-content: flex-start;
+}
+
 .popoverContent {
   max-width: calc(100vw - 2rem);
   overflow: auto;

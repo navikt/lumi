@@ -30,13 +30,13 @@ val logbackVersion = "1.6.3"
 val logstashVersion = "9.0"
 val postgresVersion = "42.7.13"
 val hikariVersion = "7.1.0"
-val flywayVersion = "13.3.0"
+val flywayVersion = "13.4.0"
 val kotestVersion = "6.2.4"
 val mockkVersion = "1.14.11"
 val testcontainersVersion = "1.21.4"
 val tokenSupportVersion = "5.0.13"
-val exposedVersion = "1.4.0"
-val micrometerVersion = "1.17.0"
+val exposedVersion = "1.5.0"
+val micrometerVersion = "1.17.1"
 val log4jVersion = "2.26.1"
 val nettyVersion = "4.2.17.Final"
 
@@ -91,7 +91,7 @@ dependencies {
     implementation("org.apache.poi:poi-ooxml:5.5.1")
     
     // Valkey/Redis cache
-    implementation("redis.clients:jedis:8.0.0")
+    implementation("redis.clients:jedis:8.0.1")
     
     // Testing
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")

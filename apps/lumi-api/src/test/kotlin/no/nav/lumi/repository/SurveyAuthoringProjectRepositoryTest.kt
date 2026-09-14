@@ -44,4 +44,57 @@ class SurveyAuthoringProjectRepositoryTest : FunSpec({
             maxProjects = 1,
         )?.team shouldBe "team-b"
     }
+    test("the team list carries each project's newest revision") {
+        val repository = SurveyAuthoringProjectRepository()
+        val revisions = SurveyAuthoringRevisionRepository()
+        val document = buildJsonObject {
+            put("authoringSchemaVersion", 1)
+            put("type", "custom")
+            put("pages", kotlinx.serialization.json.buildJsonArray {
+                add(buildJsonObject {
+                    put("id", "side-1")
+                    put("questions", kotlinx.serialization.json.buildJsonArray {
+                        add(buildJsonObject {
+                            put("id", "sporsmal")
+                            put("type", "text")
+                            put("prompt", "Hva vil du fortelle oss?")
+                        })
+                    })
+                })
+            })
+        }
+
+        val shared = repository.create(
+            team = "team-a", name = "Delt", surveyId = "delt-v1", document = document,
+            principalIdentity = "A123456", maxProjects = 10,
+        )!!
+        val draftOnly = repository.create(
+            team = "team-a", name = "Bare utkast", surveyId = "utkast-v1", document = document,
+            principalIdentity = "A123456", maxProjects = 10,
+        )!!
+        // Two revisions: the list must expose the newest, not the first.
+        revisions.createFromDraft("team-a", java.util.UUID.fromString(shared.id), 1, "A123456", 10)
+        repository.updateDraft(
+            team = "team-a", id = java.util.UUID.fromString(shared.id), expectedVersion = 1,
+            name = "Delt", surveyId = "delt-v1", document = document, principalIdentity = "A123456",
+        )
+        revisions.createFromDraft("team-a", java.util.UUID.fromString(shared.id), 2, "A123456", 10)
+
+        // A third project with a single revision: the global ordering by
+        // revision number must still pick each project's own newest row.
+        val once = repository.create(
+            team = "team-a", name = "Delt en gang", surveyId = "en-gang-v1", document = document,
+            principalIdentity = "A123456", maxProjects = 10,
+        )!!
+        revisions.createFromDraft("team-a", java.util.UUID.fromString(once.id), 1, "A123456", 10)
+
+        val byId = repository.findByTeam("team-a").associateBy { it.id }
+        byId.getValue(draftOnly.id).latestRevision shouldBe null
+        val latest = byId.getValue(shared.id).latestRevision!!
+        latest.revisionNumber shouldBe 2
+        latest.draftVersion shouldBe 2
+        byId.getValue(once.id).latestRevision!!.revisionNumber shouldBe 1
+        // Team scoping: another team never sees the project at all.
+        repository.findByTeam("team-b").isEmpty() shouldBe true
+    }
 })

@@ -4,7 +4,42 @@ All notable changes to `@navikt/lumi-survey` will be documented in this file.
 
 This project follows SemVer.
 
-## [Unreleased]
+## [2.2.3] - 2026-09-13
+
+### Documentation
+
+- Start with Surveyverksted to create and share a survey, then integrate the
+  exported document in your app. The package README now follows this flow
+  through backend setup and checking responses in Lumi.
+- Add documentation, issue tracker and search keywords to the package metadata.
+
+## [2.2.2] - 2026-09-10
+
+### Distribution
+
+- The package is now published to npmjs as the primary, anonymously readable
+  registry and to GitHub Packages as a compatibility mirror. Consumers no
+  longer need registry configuration or a GitHub token to install it.
+- Published metadata now declares the MIT license and the package's source
+  directory in `navikt/lumi`.
+
+## [2.2.1] - 2026-09-07
+
+### Fixed
+
+- V1 survey documents now ignore answers from hidden source questions when
+  deciding which follow-ups to show, validate and submit. Closing a branch
+  hides all dependent follow-ups while retaining their answers locally for
+  returning to that branch. Alternative `any` conditions, metadata conditions
+  and the existing behavior of negative conditions on visible, unanswered
+  questions are preserved. Legacy flat survey visibility is unchanged.
+- Conditional page flows show the current step without an estimated percentage
+  or fixed total. Linear flows retain their exact progress indicator.
+
+## [2.2.0] - 2026-08-31
+
+Version 2.1.1 was prepared in the repository but never published. Its changes
+are included in 2.2.0 together with the later additions since 2.1.0.
 
 ### Added
 
@@ -41,11 +76,6 @@ This project follows SemVer.
   visually hidden legend copy no longer duplicates an external prompt
   heading. Screen readers previously announced the question up to three
   times per rating group.
-
-## [2.1.1] - 2026-08-22
-
-### Fixed
-
 - The published stylesheet now contains only `lumi-`-namespaced selectors.
   Unused CSS Module output previously leaked generic selectors such as
   `.container`, `.header`, `.panel` and `.active` into consumer applications.
@@ -56,6 +86,8 @@ This project follows SemVer.
 - Text answers that exceed the configured limit, or the API maximum of 2000
   characters, are now blocked in the widget with a field-level validation
   message instead of failing permanently as a generic transport error.
+  Consumers can customize the new validation summary and length message with
+  `labels.validationSummary` and `labels.textTooLong`.
 - Inline `events` objects no longer count parent re-renders as new dock views
   or restart the success auto-close timer.
 - Dismissal storage failures now invoke `onDismissalPersistFailed` with their

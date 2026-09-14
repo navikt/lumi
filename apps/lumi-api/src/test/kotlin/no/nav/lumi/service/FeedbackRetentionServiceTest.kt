@@ -11,14 +11,12 @@ import no.nav.lumi.repository.FeedbackRetentionBatchResult
 import no.nav.lumi.repository.FeedbackRetentionRepository
 import no.nav.lumi.repository.FeedbackRetentionResult
 import no.nav.lumi.repository.FeedbackRetentionSkipReason
-import java.time.Clock
 import java.time.Duration
 import java.time.Instant
-import java.time.ZoneOffset
 
 class FeedbackRetentionServiceTest : FunSpec({
     test("requests a 12 calendar month cutoff and records completion") {
-        val now = Instant.parse("2026-02-28T12:00:00Z")
+        val databaseCompletion = Instant.parse("2026-02-28T11:59:58Z")
         val expectedCutoff = Instant.parse("2025-02-28T12:00:00Z")
         val repository = mockk<FeedbackRetentionRepository>()
         val observability = mockk<RetentionObservability>()
@@ -29,7 +27,6 @@ class FeedbackRetentionServiceTest : FunSpec({
             observability = observability,
             statsCacheInvalidator = statsCacheInvalidator,
             bootstrapCacheInvalidator = bootstrapCacheInvalidator,
-            clock = Clock.fixed(now, ZoneOffset.UTC),
             batchSize = 25,
         )
         val expectedResult = FeedbackRetentionResult(
@@ -37,6 +34,7 @@ class FeedbackRetentionServiceTest : FunSpec({
             cutoff = expectedCutoff,
             deletedFeedback = 3,
             affectedTeams = setOf("team-b", "team-a"),
+            lastCompletedAt = databaseCompletion,
         )
 
         every {
@@ -50,7 +48,7 @@ class FeedbackRetentionServiceTest : FunSpec({
         every { statsCacheInvalidator.invalidateTeam(any()) } returns Unit
         every { bootstrapCacheInvalidator.invalidateTeam(any()) } returns Unit
         every { observability.recordDeletedFeedback(3) } returns Unit
-        every { observability.recordExecuted(now) } returns Unit
+        every { observability.recordExecuted(databaseCompletion) } returns Unit
 
         service.runOnce() shouldBe expectedResult
 
@@ -62,11 +60,10 @@ class FeedbackRetentionServiceTest : FunSpec({
         verify(exactly = 1) { bootstrapCacheInvalidator.invalidateTeam("team-a") }
         verify(exactly = 1) { bootstrapCacheInvalidator.invalidateTeam("team-b") }
         verify(exactly = 1) { observability.recordDeletedFeedback(3) }
-        verify(exactly = 1) { observability.recordExecuted(now) }
+        verify(exactly = 1) { observability.recordExecuted(databaseCompletion) }
     }
 
     test("publishes a committed batch before a later cleanup failure") {
-        val now = Instant.parse("2026-02-28T12:00:00Z")
         val repository = mockk<FeedbackRetentionRepository>()
         val observability = mockk<RetentionObservability>()
         val statsCacheInvalidator = mockk<StatsCacheInvalidator>()
@@ -76,7 +73,6 @@ class FeedbackRetentionServiceTest : FunSpec({
             observability = observability,
             statsCacheInvalidator = statsCacheInvalidator,
             bootstrapCacheInvalidator = bootstrapCacheInvalidator,
-            clock = Clock.fixed(now, ZoneOffset.UTC),
             batchSize = 25,
         )
         val failure = IllegalStateException("later batch failed")
@@ -104,7 +100,7 @@ class FeedbackRetentionServiceTest : FunSpec({
     }
 
     test("records a globally rate-limited attempt as skipped") {
-        val now = Instant.parse("2026-02-28T12:00:00Z")
+        val persistedCompletion = Instant.parse("2026-02-28T11:30:00Z")
         val repository = mockk<FeedbackRetentionRepository>()
         val observability = mockk<RetentionObservability>()
         val service = FeedbackRetentionService(
@@ -112,11 +108,11 @@ class FeedbackRetentionServiceTest : FunSpec({
             observability = observability,
             statsCacheInvalidator = mockk(),
             bootstrapCacheInvalidator = mockk(),
-            clock = Clock.fixed(now, ZoneOffset.UTC),
         )
         val expectedResult = FeedbackRetentionResult(
             executed = false,
             skipReason = FeedbackRetentionSkipReason.MINIMUM_INTERVAL_NOT_ELAPSED,
+            lastCompletedAt = persistedCompletion,
         )
 
         every {
@@ -128,10 +124,12 @@ class FeedbackRetentionServiceTest : FunSpec({
             )
         } returns expectedResult
         every { observability.recordSkipped() } returns Unit
+        every { observability.recordLastSuccess(persistedCompletion) } returns Unit
 
         service.runOnce() shouldBe expectedResult
 
         verify(exactly = 1) { observability.recordSkipped() }
+        verify(exactly = 1) { observability.recordLastSuccess(persistedCompletion) }
         verify(exactly = 0) { observability.recordExecuted(any()) }
         verify(exactly = 0) { observability.recordFailed() }
     }

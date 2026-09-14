@@ -16,6 +16,7 @@ COPY apps/lumi-dashboard apps/lumi-dashboard
 COPY packages/lumi-survey packages/lumi-survey
 COPY packages/lumi-types packages/lumi-types
 ENV LUMI_DASHBOARD_ASSET_BASE_URL=/
+ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN pnpm --filter @navikt/lumi-types run build && pnpm --filter lumi-dashboard run build
 
 FROM cgr.dev/chainguard/node:latest

@@ -471,14 +471,12 @@ describe("SurveyFormContent", () => {
     expect(visibleStatus).toHaveAttribute("aria-hidden", "true");
     expect(visibleStatus).not.toHaveClass("aksel-typo--visually-hidden");
 
-    const visualProgressBar = screen.getByRole("progressbar", {
-      hidden: true,
-    });
-    expect(visualProgressBar).toHaveAttribute("aria-hidden", "true");
-    expect(visibleStatus.parentElement).toBe(visualProgressBar.parentElement);
+    expect(
+      screen.queryByRole("progressbar", { hidden: true }),
+    ).not.toBeInTheDocument();
   });
 
-  it("shows visual branching progress based on currentStep + 1", () => {
+  it("shows the current branching step without promising a total or percentage", () => {
     render(
       <SurveyFormContent
         {...defaultProps({
@@ -497,10 +495,11 @@ describe("SurveyFormContent", () => {
       />,
     );
 
-    const progressBar = screen.getByRole("progressbar", { hidden: true });
-    // Value is always currentStep + 1, no isLastStep override
-    expect(progressBar).toHaveAttribute("aria-valuenow", "5");
-    expect(progressBar).toHaveAttribute("aria-valuemax", "5");
+    expect(screen.getByText("Steg 5")).toBeInTheDocument();
+    expect(screen.queryByText(/av 5/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("progressbar", { hidden: true }),
+    ).not.toBeInTheDocument();
   });
 
   it("does NOT show ProgressBar when showProgress is false", () => {

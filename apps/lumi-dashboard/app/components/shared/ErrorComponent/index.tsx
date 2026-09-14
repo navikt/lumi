@@ -1,4 +1,6 @@
 import { Alert, BodyShort, Heading } from "@navikt/ds-react";
+import { useEffect } from "react";
+import { reportDashboardRouteError } from "~/observability/errors";
 import { ApiErrorException, ErrorType } from "~/types/errors";
 
 export function safeHelpUrl(helpUrl: string | null | undefined): string | null {
@@ -12,6 +14,8 @@ export function safeHelpUrl(helpUrl: string | null | undefined): string | null {
 }
 
 export function ErrorComponent({ error }: { error: Error }) {
+  useEffect(() => reportDashboardRouteError(error), [error]);
+
   // Handle structured ApiErrors
   if (error instanceof ApiErrorException) {
     const { type, message, status } = error.error;

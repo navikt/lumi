@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { resolveDocumentVisibility } from "../../../core/documentVisibility.js";
 import type {
   LumiSurveyAnswerValue,
   LumiSurveyQuestion,
@@ -57,6 +58,19 @@ export function usePageNavigation({
   initialPageId,
   onStepChange,
 }: UsePageNavigationOptions): UsePageNavigationReturn {
+  const visiblePages = useMemo(() => {
+    const { visibleQuestionIds } = resolveDocumentVisibility(
+      pages.flatMap((page) => page.questions),
+      answers,
+      metadata,
+    );
+    return pages.map((page) => ({
+      ...page,
+      questions: page.questions.filter((question) =>
+        visibleQuestionIds.has(question.id),
+      ),
+    }));
+  }, [pages, answers, metadata]);
   const hasBranching = useMemo(() => surveyHasConditionalPages(pages), [pages]);
   const isStepMode = forceStepMode || autoStepMode;
   const resolveInitialStep = useCallback(() => {
@@ -64,13 +78,13 @@ export function usePageNavigation({
       const requested = pages.findIndex((page) => page.id === initialPageId);
       if (
         requested !== -1 &&
-        isPageVisible(pages[requested], answers, metadata)
+        isPageVisible(visiblePages[requested], answers, metadata)
       ) {
         return requested;
       }
     }
-    return findNextVisiblePageIndex(pages, answers, metadata, 0);
-  }, [answers, initialPageId, metadata, pages]);
+    return findNextVisiblePageIndex(visiblePages, answers, metadata, 0);
+  }, [answers, initialPageId, metadata, pages, visiblePages]);
 
   const [currentStep, setCurrentStep] = useState(resolveInitialStep);
   const [visitedSteps, setVisitedSteps] = useState<number[]>(() => {
@@ -80,8 +94,8 @@ export function usePageNavigation({
 
   const currentPage = pages[currentStep];
   const currentPageQuestions = useMemo(
-    () => getVisiblePageQuestions(currentPage, answers, metadata),
-    [currentPage, answers, metadata],
+    () => getVisiblePageQuestions(visiblePages[currentStep], answers, metadata),
+    [visiblePages, currentStep, answers, metadata],
   );
   const currentQuestion = currentPageQuestions[0];
   const canGoBack = visitedSteps.length > 1;
@@ -90,7 +104,12 @@ export function usePageNavigation({
     validateAnswers(currentPageQuestions, answers).length === 0;
   const isLastStep =
     currentStep >= 0 &&
-    findNextVisiblePageIndex(pages, answers, metadata, currentStep + 1) === -1;
+    findNextVisiblePageIndex(
+      visiblePages,
+      answers,
+      metadata,
+      currentStep + 1,
+    ) === -1;
 
   const reachablePages = useMemo(
     () => estimateReachablePages(pages, answers, metadata),
@@ -104,10 +123,11 @@ export function usePageNavigation({
     if (currentStep < 0) return -1;
     let visibleBefore = 0;
     for (let index = 0; index < currentStep; index++) {
-      if (isPageVisible(pages[index], answers, metadata)) visibleBefore++;
+      if (isPageVisible(visiblePages[index], answers, metadata))
+        visibleBefore++;
     }
     return visibleBefore;
-  }, [answers, currentStep, metadata, pages]);
+  }, [answers, currentStep, metadata, visiblePages]);
 
   const pageDefinitionKey = useMemo(() => JSON.stringify(pages), [pages]);
   const previousPageDefinitionKeyRef = useRef(pageDefinitionKey);
@@ -134,7 +154,7 @@ export function usePageNavigation({
   const goToNext = useCallback(() => {
     if (!currentPage || !canGoNext) return null;
     const next = findNextVisiblePageIndex(
-      pages,
+      visiblePages,
       answers,
       metadata,
       currentStep + 1,
@@ -145,13 +165,13 @@ export function usePageNavigation({
     setVisitedSteps((previous) => [...previous, next]);
     setDisplayedTotal(reachablePagesRef.current);
     return { nextIndex: next };
-  }, [answers, canGoNext, currentPage, currentStep, metadata, pages]);
+  }, [answers, canGoNext, currentPage, currentStep, metadata, visiblePages]);
 
   const goToPrevious = useCallback(() => {
     if (visitedSteps.length <= 1) return null;
     const result = findLastVisiblePageInHistory(
       visitedSteps.slice(0, -1),
-      pages,
+      visiblePages,
       answers,
       metadata,
     );
@@ -160,7 +180,7 @@ export function usePageNavigation({
     setCurrentStep(result.step);
     setDisplayedTotal(reachablePagesRef.current);
     return result.step;
-  }, [answers, metadata, pages, visitedSteps]);
+  }, [answers, metadata, visiblePages, visitedSteps]);
 
   const resetNavigation = useCallback(() => {
     const first = resolveInitialStep();
@@ -171,10 +191,10 @@ export function usePageNavigation({
 
   useEffect(() => {
     if (!isStepMode) return;
-    if (isPageVisible(currentPage, answers, metadata)) return;
+    if (isPageVisible(visiblePages[currentStep], answers, metadata)) return;
 
     const target = findPageRedirectTarget(
-      pages,
+      visiblePages,
       answers,
       metadata,
       currentStep,
@@ -194,15 +214,7 @@ export function usePageNavigation({
         : previous.slice(0, existing + 1);
     });
     setDisplayedTotal(reachablePagesRef.current);
-  }, [
-    answers,
-    currentPage,
-    currentStep,
-    isStepMode,
-    metadata,
-    pages,
-    visitedSteps,
-  ]);
+  }, [answers, currentStep, isStepMode, metadata, visiblePages, visitedSteps]);
 
   return {
     isStepMode,

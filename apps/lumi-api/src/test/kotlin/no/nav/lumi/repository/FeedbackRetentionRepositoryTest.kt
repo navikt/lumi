@@ -38,7 +38,8 @@ class FeedbackRetentionRepositoryTest : FunSpec({
             )
 
         firstResult.cutoff shouldNotBe null
-        firstResult.copy(cutoff = null) shouldBe FeedbackRetentionResult(
+        firstResult.lastCompletedAt shouldBe retentionJobLastCompletedAt()
+        firstResult.copy(cutoff = null, lastCompletedAt = null) shouldBe FeedbackRetentionResult(
             executed = true,
             deletedFeedback = 1,
             affectedTeams = setOf("team-a"),
@@ -46,7 +47,7 @@ class FeedbackRetentionRepositoryTest : FunSpec({
         remainingFeedbackIds() shouldContainExactlyInAnyOrder listOf("old-2", "inside-window", "new")
         remainingTagFeedbackIds() shouldContainExactlyInAnyOrder listOf("inside-window")
 
-        ageCleanupState(Duration.ofHours(23))
+        val persistedCompletion = ageCleanupState(Duration.ofHours(23))
 
         val restartResult = FeedbackRetentionRepository(TestDatabase.dataSource)
             .deleteExpiredFeedback(
@@ -58,6 +59,7 @@ class FeedbackRetentionRepositoryTest : FunSpec({
         restartResult shouldBe FeedbackRetentionResult(
             executed = false,
             skipReason = FeedbackRetentionSkipReason.MINIMUM_INTERVAL_NOT_ELAPSED,
+            lastCompletedAt = persistedCompletion,
         )
         remainingFeedbackIds() shouldContainExactlyInAnyOrder listOf("old-2", "inside-window", "new")
 
@@ -71,7 +73,8 @@ class FeedbackRetentionRepositoryTest : FunSpec({
             )
 
         secondResult.cutoff shouldNotBe null
-        secondResult.copy(cutoff = null) shouldBe FeedbackRetentionResult(
+        secondResult.lastCompletedAt shouldNotBe null
+        secondResult.copy(cutoff = null, lastCompletedAt = null) shouldBe FeedbackRetentionResult(
             executed = true,
             deletedFeedback = 1,
             affectedTeams = setOf("team-b"),
@@ -148,7 +151,7 @@ class FeedbackRetentionRepositoryTest : FunSpec({
             retentionMonths = 12,
             minimumInterval = Duration.ofDays(1),
             batchSize = 1,
-        ) shouldBe FeedbackRetentionResult(
+        ).copy(lastCompletedAt = null) shouldBe FeedbackRetentionResult(
             executed = false,
             skipReason = FeedbackRetentionSkipReason.MINIMUM_INTERVAL_NOT_ELAPSED,
         )
@@ -210,21 +213,41 @@ private fun insertFeedback(id: String, createdAt: Instant, team: String) {
     }
 }
 
-private fun ageCleanupState(age: Duration) {
+private fun ageCleanupState(age: Duration): Instant =
     TestDatabase.dataSource.connection.use { connection ->
-        connection.prepareStatement(
+        val completedAt = connection.prepareStatement(
             """
                 UPDATE feedback_retention_job_state
                 SET last_completed_at = clock_timestamp() - (? * INTERVAL '1 millisecond')
                 WHERE job_name = 'feedback-cleanup'
+                RETURNING last_completed_at
             """.trimIndent()
         ).use { statement ->
             statement.setLong(1, age.toMillis())
-            statement.executeUpdate() shouldBe 1
+            statement.executeQuery().use { result ->
+                check(result.next())
+                result.getTimestamp("last_completed_at").toInstant()
+            }
         }
         connection.commit()
+        completedAt
     }
-}
+
+private fun retentionJobLastCompletedAt(): Instant =
+    TestDatabase.dataSource.connection.use { connection ->
+        connection.prepareStatement(
+            """
+                SELECT last_completed_at
+                FROM feedback_retention_job_state
+                WHERE job_name = 'feedback-cleanup'
+            """.trimIndent()
+        ).use { statement ->
+            statement.executeQuery().use { result ->
+                check(result.next())
+                result.getTimestamp("last_completed_at").toInstant()
+            }
+        }
+    }
 
 private fun installRejectingStateTrigger() {
     TestDatabase.dataSource.connection.use { connection ->

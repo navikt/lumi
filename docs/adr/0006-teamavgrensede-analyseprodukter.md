@@ -86,24 +86,24 @@ Historiske V1-releaser forblir immutable og lesbare som provenance, men kan
 ikke bli eksportgrunnlag. Et V1-utkast må valideres og publiseres som en ny
 V2-release fra dagens kildekatalog.
 
-Kotlin-resolveren er eneste domenekomponent som beregner effective scope.
-Hver beregning lagres append-only som en normalisert, immutable projeksjon med
-monoton `product_generation`, `effective_spec_digest`, release, lifecycle,
-cutoff og eksakte memberships. SQL, publisher og caller kan bare konsumere
-denne projeksjonen; de kan aldri tolke draft/`PublicationSpecification` på
-nytt, sende inn scope eller utvide allowlisten.
+Den aktive releasen materialiseres gjennom et deterministisk effective scope.
+En nyere ønsket release blir straks en subtractiv øvre allowlist for det
+aktive produktet; nye surveys, felt og dimensjoner blir først synlige i den
+nye kandidaten ved aktivering. Rollback til en eldre release kan derfor ikke
+gjeninnføre bredere scope, men må publiseres som en ny release. Pause tillater
+utkast og validering, men ikke aktivering før produktet gjenopptas.
+`submitted_hour` følger samme regel: fjerning gir straks `NULL_ONLY` i det
+vedlikeholdte produktet, mens tillegg bare finnes i den nye kandidaten frem til
+aktivering.
 
-Nye surveys, felt og dimensjoner blir først synlige i kandidaten ved
-aktivering. En subtraktiv endring kan derimot ikke regnes som effective mens
-den gamle, bredere flaten fortsatt kan leses. Endringen går først til
-`FREEZE_REQUESTED`; publiseringsflaten stenges eller får en håndhevet read
-lease som gir `FROZEN`, og stengingen verifiseres før den smalere generasjonen
-committes. Deretter materialiseres og valideres den smalere kandidaten før
-lesing åpnes igjen. Kortvarig utilgjengelighet er akseptabelt; gammel, for bred
-data er det ikke. Rollback til en eldre release kan derfor ikke gjeninnføre
-bredere scope, men må publiseres som en ny release. Pause og offboarding følger
-samme fail-closed rekkefølge. `submitted_hour` følger samme regel: fjerning
-krever freeze, mens tillegg bare finnes i kandidaten frem til aktivering.
+Dette er et krav til den konsumentlesbare flaten, ikke bare til beregnet
+scope. Før en innsnevring kan bekreftes som gjennomført, må tidligere, bredere
+lesing være stengt eller erstattet av en verifisert smalere flate, også for
+deprecated ressurser. Ved behov stenges lesing mens kandidaten bygges. En
+forsinket kjøring kan aldri åpne et bredere scope etter en nyere innsnevring.
+Krasj og retry må bevare denne grensen. Konkret aktiverings- og
+stengemekanisme velges og feilinjiseres i plattformspiken; dette innfører ikke
+en bestemt lagringsmodell, tilstandsmaskin eller API-protokoll.
 
 Lumi oppretter en lukket publiseringsflate, men gir aldri menneskelig
 lesetilgang. Personer og grupper søker om og får tilgang gjennom
@@ -155,25 +155,23 @@ strukturelt fravær eller usann predicate.
 Offentlige `response_key` og `answer_key` er stabile, nøkkelbaserte og
 produktspesifikke pseudonymer. Samme kilderad får ulike nøkler i ulike
 produkter. Nøklene er ikke anonymisering, og nøkkelmateriale skal aldri være
-tilgjengelig for konsumenter. En tilfeldig 256-bits `source_row_key` lagres
-immutable med kilderaden og forlater aldri Cloud SQL. Eksakt domeneseparert
-avledning sikkerhetsreviewes; KMS/HMAC innføres bare dersom trusselmodell eller
-plattformpolicy viser et konkret behov, ikke som automatisk V1-infrastruktur.
+tilgjengelig for konsumenter.
+
+V1 oppretter ikke en egen varig analyseidentitet eller sidecar-tabell for hver
+feedbackrad. Intern feedback-ID kan bare brukes transient som input til den
+betrodde, produktspesifikke nøkkelavledningen og skal aldri persisteres i
+privat staging eller logges. Den source-globale atomstrømmen bruker i stedet en
+ugjennomsiktig `snapshot_row_ref` som bare kobler rader innen én kandidat og
+regenereres ved neste kjøring. Hver membership kobler denne referansen til det
+aktuelle produktets stabile `response_key`. En transport er ikke egnet dersom
+den ikke kan oppfylle dette uten å eksponere intern ID eller nøkkelmateriale.
 
 ### Eksporten bruker ett autoritativt fullsnapshot
 
-V1 bruker én sentral Lumi-eid publisher/reconciler til å orkestrere én
-federated query gjennom én Cloud SQL-connection. Reconciler-jobben kobler ikke
-direkte til Lumi-Postgres; den starter BigQuery-jobben og bruker et begrenset
-internt kontroll-API for immutable manifests, commands og status. Dette er én
-jobb for hele Lumi, ikke én jobb eller deploy per team eller produkt.
-
-Federeringen kaller nøyaktig én parameterfri, versjonert og read-only
-`analytics_export_v1.full_snapshot()` per kjøring. Funksjonen er den eneste
-databaseflaten for eksportbrukeren og returnerer én transportuavhengig,
-source-global atomstrøm: kildefakta eksporteres én gang, mens tynne memberships
-knytter dem til de persisterte effective scopes. Den returnerer også en global
-`control_epoch` og per-produkt generation/digest. Den er ikke et
+V1 starter med én Lumi-eid Cloud SQL-connection og én planlagt federated query
+til en versjonert, read-only `analytics_export_v1`-kontrakt. Kontrakten er én
+transportuavhengig, source-global atomstrøm: kildefakta eksporteres én gang,
+mens tynne memberships knytter dem til effective scopes. Den er ikke et
 analytikergrensesnitt; konsumenter får fortsatt bare wide-, long-, katalog- og
 manifestressursene. Hver kjøring leser kilden én gang til unik staging,
 validerer source-globale invarianter og flytter en monoton
@@ -187,14 +185,6 @@ kontraktsbrudd stopper dermed ikke andre produkter. Berørt produkt fryser
 inntaket ved siste trygge `data_cutoff_at`, går til `Må vurderes` og fortsetter
 å lage purge-only snapshots fra dagens kilde, slik at slettede og utløpte rader
 fortsatt forsvinner uten at nye, uvaliderte svar delpubliseres.
-
-Aktivering er en persistert, idempotent saga uten en åpen
-Postgres-transaksjon over BigQuery- eller NADA-kall. En aktiveringslease/CAS er
-bundet til eksakt `(product_id, product_generation, effective_spec_digest)`.
-Alle lifecycle-mutasjoner respekterer den samme fencingen, og én eldre kjøring
-kan aldri åpne eller flytte en pointer etter at en nyere, smalere generasjon er
-ønsket. Ved krasj blir produktet stående på siste tillatte tilstand eller
-`FROZEN`, aldri på et bredere mellomstadium.
 
 Maintenance-snapshots er monotont informasjonsreduserende fra forrige aktive
 produktsnapshot. `PURGE_ONLY` kan bare fjerne nøkler som ikke lenger finnes i
@@ -239,11 +229,9 @@ Utkast og ferdig avviklede releaser materialiseres aldri. Nyeste release er
 alltid øvre allowlist for produktet, slik at en gammel major ikke kan holde et
 fjernet felt eller en fjernet dimensjon i privatlaget.
 
-En sentral NAIS Job/reconciler er kontrollmekanismen rundt federeringen, ikke
-en alternativ databaseklient. Hvis spiken ikke beviser én konsistent
-eksternlesning, akseptabel Cloud SQL-last, atomisk aktivering, observability og
-slettesynk, stoppes designet for ny transportbeslutning. Jobben får aldri
-direkte Cloud SQL-credential. Datastream og Airflow innføres ikke i V1.
+En sentral NAIS Job er eksplisitt fallback dersom en spike ikke beviser én
+konsistent eksternlesning, akseptabel Cloud SQL-last, atomisk aktivering,
+observability og slettesynk. Datastream og Airflow innføres ikke i V1.
 
 ### Hvert produkt får en isolert publiseringsflate
 
@@ -252,17 +240,7 @@ default lesetilgang. Hvert analyseprodukt får et separat BigQuery-datasett
 eller en tilsvarende isolert publiseringsflate. Konsumenter kan aldri lese
 Lumi-Postgres, privat staging eller kanonisk snapshot.
 
-V1-spikens standardtopologi er ett fysisk, produktminimert datasett per
-produkt og ett separat, sentralt stagingområde uten konsumenttilgang.
-Produkttabellene inneholder allerede eksakt offentlig scope og aldri privat
-`source_row_key`, intern ID, rådata eller andre produkter. Konsumenter får bare
-resource-level tilgang til offentlige views. Ett datasett velges bare dersom
-spiken viser at metadataeksponeringen er akseptabel og at backing-tabeller og
-time-travel ikke kan leses. Ellers brukes to datasett per produkt med en
-støttet, automatiserbar binding; dette kan ikke antas før NADA har bekreftet
-mekanismen.
-
-Identitetene for Cloud SQL-eksport, BigQuery-connection, sentral reconciler,
+Identitetene for Cloud SQL-eksport, BigQuery-connection, scheduled query,
 kontraktkompilator, view-publisher, cross-dataset-binder, Lumi API og
 konsumenter holdes atskilt og får minste privilegium. Publisher får bare
 rettighetene BigQuery faktisk krever for å opprette eksakt
@@ -307,21 +285,29 @@ retensjon er alltid den korteste av produktvalget og kildens faktiske
 retensjon. Kildesletting og manuell sletting skal være borte fra alle aktive og
 deprecated eksportressurser ved neste vellykkede fullsnapshot. Mål-SLO er
 høyst 36 timer. Kjøringen skjer minst daglig og får automatiske retryforsøk
-innenfor de neste seks timene. Normal dataferskhet er derfor 0–24 timer; 36
-timer er ikke forventet dashboardlag, men yttergrensen for hvor lenge en
-kildesletting kan være konsumentlesbar. Siste trygge snapshot kan leses frem
-til grensen. Hvis en deletion-capable refresh ikke er bekreftet innen 36 timer,
-stenges produktlesing fail-closed til slettesynk lykkes. Brukerflaten skal vise
-`Midlertidig utilgjengelig`/feil, aldri et tomt datasett som kan mistolkes som
-null svar.
+innenfor de neste seks timene. Ved normal daglig kjøring er data omtrent
+0–24 timer gamle, i tillegg til kjøretiden. 36 timer er en yttergrense for
+konsumentlesbar slettesynk, ikke forventet forsinkelse i et dashboard.
 
-SLO-et betyr konsumentutilgjengelighet, ikke at alle fysiske byte er slettet
-fra BigQuery sin interne time-travel/fail-safe innen 36 timer. Konsumentene får
-derfor aldri backing-tabelltilgang. Lumi kan heller ikke tilbakekalle
-materialiserte kopier utenfor produktflaten: Metabase-cache, notebook-tabeller
-og statiske datafortellinger må ha avtalt levetid, bare bruke godkjente
-aggregater der de publiseres, og regenereres eller tømmes gjennom en eksplisitt
-konsumentkontrakt.
+Fristen regnes fra kildesnapshotets lesetidspunkt i siste aktiverte snapshot
+som faktisk videreførte sletting og utløp for produktet. Jobbstart, heartbeat,
+validering uten aktivering eller gjenbruk av gammel staging nullstiller ikke
+fristen. En validert purge-only-oppdatering fra dagens kilde kan fornye den.
+Hvis slik slettesynk ikke er bekreftet innen 36 timer, skal produktlesing
+stenges automatisk til en tillatt, oppdatert kandidat er aktivert. Stengingen
+må fungere også når den ordinære publiseringsjobben ikke kjører. Brukeren skal
+få en tydelig utilgjengelig-/feiltilstand, aldri et gyldig tomt datasett som
+kan mistolkes som null svar. Dette er et verifikasjonskrav før konsumenttilgang,
+ikke en ferdig implementert garanti; et brudd krever operatørvarsel og runbook.
+
+Grensen gjelder lesing gjennom den forvaltede produktflaten, ikke fysisk
+sletting av alle byte i BigQuery sin time-travel/fail-safe. Konsumentene får
+ikke tilgang til backing-tabeller eller historiske snapshots som omgår
+produktflaten. Resultatkopier og cache i BigQuery, Metabase, notebooks og
+statiske datafortellinger krever en egen konsumentkontrakt: avtalt levetid,
+ansvarlig eier og verifisert regenerering eller tømming. Å stenge et view
+tilbakekaller ikke i seg selv tidligere kopier. Publiserte artefakter bruker
+bare godkjente aggregater, ikke varige radnivåkopier.
 
 Pause fryser en immutable `data_cutoff_at` og stopper nye svar i produktet,
 men stopper aldri innsamling i Lumi, retensjon eller slettesynk. Offboarding
@@ -338,12 +324,11 @@ aldri forlenge dataretensjonen.
 Før produksjon må NADA-/plattformkontrakten bekrefte prosjektarv, minste IAM,
 authorized views, programmatisk livsløp i Datamarkedsplassen, servicekontoer,
 region, credentialrotasjon og registrering av flere views som ett dataprodukt.
-NADA må i tillegg eksplisitt støtte eller godkjenne skillet mellom Lumi som
-infrastrukturprodusent/GCP-prosjekteier og fagteamet som domeneeier og
-tilgangsgodkjenner. En manuell registrering med Lumi som faglig eier eller data
-i hvert konsumentteams prosjekt beviser ikke målarkitekturen. Produksjonspilot
-er blokkert til dette er avklart; syntetisk dev og shadow uten
-konsumenttilgang kan fortsette.
+NADA må også bekrefte at Lumi kan være infrastrukturprodusent/GCP-prosjekteier
+mens fagteamet er domeneeier og tilgangsgodkjenner. Dette må bevises i
+provisioning, registrering, tilgangsgodkjenning og offboarding; Lumi skal ikke
+registreres som faglig eier bare for å få piloten i gang. Avklaringen inngår i
+eksisterende Gate B/D og gir ingen ny tillatelse til dev- eller shadow-kobling.
 Hvis teammedlemmer arver lesetilgang, krever aktivering en eksisterende ekstern
 godkjenningsport. Lumi skal ikke bygge en egen IAM- eller godkjenningsmotor.
 
@@ -352,6 +337,24 @@ godkjent sett med navn, formål, eier og kontraktmetadata kan derimot være
 synlig på tvers av team i Datamarkedsplassen, fordi discovery er dens formål.
 Operasjonell metadata, preview-statistikk og ikke-publiserte navn er aldri del
 av dette unntaket.
+
+Offentlig plattformdokumentasjon låser tre ytterligere V1-grenser:
+
+- Hvert analyseprodukt får ett separat offentlig BigQuery-datasett. Tilgang
+  til én ressurs gir metadata-innsyn i resten av datasettet, så ulike produkter
+  eller team kan ikke dele datasett.
+- Produktdatasettene eies ikke av `spec.gcp.bigQueryDatasets` i Lumis
+  NAIS-manifest. Dagens dokumenterte NADA-tilgangsflyt kan ikke gjenbruke slike
+  datasett fordi NAIS overskriver senere tilgangsendringer.
+- Metabase-tilgjengelighet er en egen, svakere plattformstatus: grupper
+  synkroniseres ikke fra Datamarkedsplassen, og schemaendringer krever en
+  eksplisitt sync. Lumi kan derfor aldri utlede Metabase-tilgang fra et aktivt
+  datasnapshot.
+
+Offentlig dokumentasjon lukker ikke minste-IAM, servicekonto-only prosjekt,
+cross-dataset binding, programmatisk Marketplace-livsløp eller offboarding.
+Gate B forblir stengt til NADA har besvart den versjonerte
+[plattformvalideringen og avklaringspakken](../analyseprodukter/plattformvalidering-v1.md).
 
 Kravene og evidensen som må foreligge før dev, shadow og produksjon er
 spesifisert i
@@ -371,18 +374,20 @@ Modia, ingen tags, fritekst eller datosvar. Piloten må bevise:
 - at team B aldri kan se data eller operasjonell metadata fra team A, utenom
   eksplisitt godkjent katalogmetadata i Datamarkedsplassen
 
-Den brede `esyfo-analyse`-tilgangen beholdes som en eksplisitt, midlertidig
-legacy-kilde mens iSyfo fortsatt trenger historiske V1-rader. Den fryses i
-dagens omfang: ingen nye team, surveys, felt, grants eller analysebehov kobles
-på. Ny V2-kilde kjøres parallelt og blir eneste kilde for det nye, pinnede
-analysevinduet. V1 lager ikke en antatt historisk flow for eksisterende rader;
-eldre `UNPINNED` svarverdier er derfor ikke med i answer-pariteten.
+Den brede `esyfo-analyse`-tilgangen beholdes midlertidig mens iSyfo trenger sin
+eksisterende V1-historikk. Den utvides ikke med nye konsumenter, grants eller
+analysebehov. Dette er en overgangsregel, ikke en påstand om at dagens brede
+databasegrant teknisk avgrenser nye surveys eller felt. Den gir heller ikke
+unntak fra kildens retensjon eller autorisasjon til endringer i andre teams
+apper. Nytt, pinnet V2-analysevindu tas over på den nye kontrakten.
 
-Legacy-tilgangen fjernes først når Quarto/Metabase er flyttet, minst to
-planlagte snapshots er konsumert uten avvik, dataeier har akseptert skillet i
-historikk, og gamle V1-data enten ikke lenger trengs eller har falt ut gjennom
-kilderetensjon. Et ønske om å kopiere/backfille eldre svar til V2 krever en
-separat sikkerhetsreviewet beslutning; det følger ikke automatisk av piloten.
+Tilgangen fjernes først når Quarto/Metabase er flyttet, minst to planlagte
+snapshots er konsumert uten avvik, dataeier har akseptert skillet i historikk,
+og gammel V1-historikk ikke lenger trengs eller har utløpt med kilderetensjon.
+V1 rekonstruerer ikke historisk flyt; eldre `UNPINNED` svarverdier inngår ikke
+i svarpariteten. Eventuell kopiering/backfill krever en separat,
+sikkerhetsreviewet beslutning. Kommunikasjon og avtale om cutover gjøres
+manuelt av produkteier.
 
 ## Konsekvenser
 
@@ -449,8 +454,9 @@ ADR 0005 sine kapasitets- og recoverygrenser gjelder også for analyseeksporten.
 - [NADA: Metabase](https://docs.knada.io/analyse/metabase/)
 - [NADA: datafortellinger](https://docs.knada.io/analyse/datafortellinger/)
 - [NAIS: BigQuery](https://doc.nais.io/persistence/bigquery/)
-- [NAIS: Cloud SQL](https://doc.nais.io/persistence/cloudsql/reference/)
+- [Plattformvalidering V1](../analyseprodukter/plattformvalidering-v1.md)
 - [Google Cloud: BigQuery authorized views](https://docs.cloud.google.com/bigquery/docs/authorized-views)
 - [Google Cloud: administrere BigQuery-views](https://docs.cloud.google.com/bigquery/docs/managing-views)
-- [Google Cloud: BigQuery time travel](https://cloud.google.com/bigquery/docs/time-travel)
 - [Google Cloud: BigQuery quotas and limits](https://docs.cloud.google.com/bigquery/quotas)
+- [Google Cloud: time travel og fail-safe](https://docs.cloud.google.com/bigquery/docs/time-travel)
+- [Google Cloud: cached query results](https://docs.cloud.google.com/bigquery/docs/cached-results)

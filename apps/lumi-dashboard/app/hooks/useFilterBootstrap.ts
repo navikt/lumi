@@ -3,8 +3,34 @@ import { useSearchParams } from "~/hooks/useSearchParams";
 import { fetchFilterBootstrapServerFn } from "~/server/actions";
 import type { FilterBootstrapResponse } from "~/types/schemas";
 
+export const FILTER_BOOTSTRAP_CACHE_TTL_MS = 5 * 60 * 1000;
+const MIN_REFETCH_INTERVAL_MS = 60 * 1000;
+
 export const filterBootstrapQueryKey = (team?: string) =>
   ["filterBootstrap", { team }] as const;
+
+export function getFilterBootstrapRefetchInterval(
+  generatedAt: string | undefined,
+  dataUpdatedAt: number,
+) {
+  const generatedAtMs = generatedAt ? Date.parse(generatedAt) : Number.NaN;
+  if (!Number.isFinite(generatedAtMs) || dataUpdatedAt <= 0) {
+    return FILTER_BOOTSTRAP_CACHE_TTL_MS;
+  }
+
+  const apparentCacheAge = dataUpdatedAt - generatedAtMs;
+  if (apparentCacheAge <= 0) {
+    return FILTER_BOOTSTRAP_CACHE_TTL_MS;
+  }
+  if (apparentCacheAge >= FILTER_BOOTSTRAP_CACHE_TTL_MS) {
+    return MIN_REFETCH_INTERVAL_MS;
+  }
+
+  return Math.max(
+    FILTER_BOOTSTRAP_CACHE_TTL_MS - apparentCacheAge,
+    MIN_REFETCH_INTERVAL_MS,
+  );
+}
 
 /**
  * Hook to fetch filter bootstrap data.
@@ -39,7 +65,15 @@ export function useFilterBootstrap() {
     queryKey: filterBootstrapQueryKey(params.team),
     queryFn: () =>
       fetchFilterBootstrapServerFn({ data: { team: params.team } }),
-    staleTime: 5 * 60 * 1000, // 5 minutes - bootstrap data changes rarely
+    staleTime: FILTER_BOOTSTRAP_CACHE_TTL_MS,
     gcTime: 30 * 60 * 1000, // 30 minutes - keep in cache longer
+    refetchInterval: (query) =>
+      getFilterBootstrapRefetchInterval(
+        query.state.data?.generatedAt,
+        query.state.dataUpdatedAt,
+      ),
+    refetchIntervalInBackground: false,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
   });
 }

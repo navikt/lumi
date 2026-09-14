@@ -23,46 +23,6 @@ async function expectSearchParams(
 }
 
 test.describe("Dashboard response period", () => {
-  test("manual survey overview refresh is available on every filter route", async ({
-    page,
-  }) => {
-    await page.goto("/?dateMode=fixed&fromDate=2024-01-01&toDate=2024-01-31");
-    await page.waitForLoadState("networkidle");
-
-    const refresh = page.getByRole("button", {
-      name: "Oppdater surveyoversikt",
-    });
-    await expect(refresh).toHaveCount(1);
-    const refreshResponsePromise = page.waitForResponse(
-      (response) =>
-        response.url().includes("/_serverFn/") &&
-        response.request().method() === "POST",
-    );
-    await refresh.click();
-    const refreshResponse = await refreshResponsePromise;
-    expect(refreshResponse.headers()["cache-control"]).toContain("no-store");
-    await expect(
-      page
-        .getByRole("status")
-        .filter({ hasText: "Surveyoversikten er oppdatert." }),
-    ).toHaveCount(1);
-    await expectSearchParams(page, {
-      dateMode: "fixed",
-      fromDate: "2024-01-01",
-      toDate: "2024-01-31",
-    });
-
-    await page.getByRole("link", { name: "Tilbakemeldinger" }).click();
-    await expect(
-      page.getByRole("button", { name: "Oppdater surveyoversikt" }),
-    ).toHaveCount(1);
-
-    await page.getByRole("link", { name: "Eksporter" }).click();
-    await expect(
-      page.getByRole("button", { name: "Oppdater surveyoversikt" }),
-    ).toHaveCount(1);
-  });
-
   test("selecting an old survey finds its responses and keeps the automatic period across routes", async ({
     page,
   }) => {

@@ -1,4 +1,4 @@
-import { Skeleton } from "@navikt/ds-react";
+import { Alert, Skeleton } from "@navikt/ds-react";
 import { useNavigate } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import {
@@ -10,9 +10,19 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import {
+  getRatingMetric,
+  ratingResponseCount,
+} from "~/components/dashboard/sections/FieldStats/PeriodComparison/model";
+import {
+  fillQuestionTrendBuckets,
+  questionTrendRatingMetric,
+  questionTrendRatingValue,
+} from "~/components/dashboard/sections/QuestionTrend/questionTrendUtils";
 import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import { useTheme } from "~/context/ThemeContext";
 import { useBreakpoint } from "~/hooks/useBreakpoint";
+import { useQuestionTrend } from "~/hooks/useQuestionTrend";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import type { RatingMarker } from "~/types/api";
@@ -50,7 +60,12 @@ const CHART_COLORS_LIGHT = {
 };
 
 export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
-  const { data: stats, isPending } = useStats();
+  const { data: stats, isPending, isPlaceholderData } = useStats();
+  const fields =
+    stats?.fieldStats?.filter((field) => field.fieldType === "RATING") ?? [];
+  const field =
+    !isPlaceholderData && fields.length === 1 ? fields[0] : undefined;
+  const trendQuery = useQuestionTrend(Boolean(field), field?.fieldId, "day");
   const navigate = useNavigate();
   const { params } = useSearchParams();
   const { theme } = useTheme();
@@ -58,11 +73,30 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
 
   const colors = theme === "light" ? CHART_COLORS_LIGHT : CHART_COLORS;
 
-  if (isPending) {
+  if (isPending || isPlaceholderData || (field && trendQuery.isPending)) {
     return <Skeleton variant="rectangle" height={300} />;
   }
 
-  const ratingByDate = stats?.ratingByDate || {};
+  if (trendQuery.isError)
+    return (
+      <Alert variant="warning" size="small">
+        Kunne ikke hente utviklingen i vurderinger.
+      </Alert>
+    );
+  const trend = trendQuery.data;
+  const metric = questionTrendRatingMetric(trend ?? {});
+  const buckets = trend
+    ? fillQuestionTrendBuckets(trend, params.fromDate, params.toDate)
+    : [];
+  const ratingByDate = Object.fromEntries(
+    buckets.map((bucket) => [
+      bucket.startDate,
+      {
+        average: trend ? questionTrendRatingValue(trend, bucket) : null,
+        count: bucket.responseCount ?? 0,
+      },
+    ]),
+  );
   const markersByDate = groupMarkersByDate(markers);
 
   const allDates = Array.from(
@@ -94,7 +128,10 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
   const chartMargin = isMobile
     ? { top: chartMarginTop, right: 16, left: 8, bottom: 20 }
     : { top: chartMarginTop, right: 20, left: 12, bottom: 20 };
-  const overallAverage = stats?.averageRating;
+  const overallAverage =
+    field && ratingResponseCount(field)
+      ? getRatingMetric(field).value
+      : undefined;
 
   return (
     <ResponsiveContainerWithInitialSize
@@ -107,7 +144,7 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
         data={data}
         margin={chartMargin}
         role="img"
-        aria-label={`Linjediagram som viser gjennomsnittlig vurdering over tid${typeof overallAverage === "number" ? `. Totalt snitt: ${overallAverage.toFixed(1)}` : ""}`}
+        aria-label={`Linjediagram som viser ${metric.label.toLowerCase()} over tid${typeof overallAverage === "number" ? `. Valgt periode: ${overallAverage.toLocaleString("nb-NO")}` : ""}`}
         onClick={(state: {
           activeTooltipIndex?: number | TooltipIndex;
           activeIndex?: number | TooltipIndex;
@@ -139,7 +176,7 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
               fromDate: clickData.date,
               toDate: clickData.date,
               page: "1",
-              lowRating: clickData.average < 3 ? "true" : undefined,
+              lowRating: undefined,
             },
           });
         }}
@@ -155,8 +192,8 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
         />
 
         <YAxis
-          domain={[1, 5]}
-          ticks={[1, 2, 3, 4, 5]}
+          domain={metric.domain}
+          unit={metric.unit}
           axisLine={false}
           tickLine={false}
           tick={{ fill: colors.text, fontSize: 11 }}
@@ -217,11 +254,16 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
 
                 {average !== null && (
                   <div className={styles.tooltipRow}>
-                    <span className={styles.tooltipEmojiLarge}>
-                      {ratingToEmoji(Math.round(average))}
-                    </span>
+                    {metric.variant === "emoji" ? (
+                      <span className={styles.tooltipEmojiLarge}>
+                        {ratingToEmoji(Math.round(average))}
+                      </span>
+                    ) : null}
                     <span className={styles.tooltipStrong}>
-                      {average.toFixed(1)}
+                      {average.toLocaleString("nb-NO", {
+                        maximumFractionDigits: 1,
+                      })}
+                      {metric.unit}
                     </span>
                     <span className={styles.tooltipMuted}>
                       ({point.count} svar)

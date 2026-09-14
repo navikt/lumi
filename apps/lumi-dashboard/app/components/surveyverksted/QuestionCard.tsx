@@ -8,6 +8,7 @@ import {
   TrashIcon,
 } from "@navikt/aksel-icons";
 import {
+  ActionMenu,
   BodyShort,
   Button,
   Detail,
@@ -26,6 +27,8 @@ import {
 import { memo, useEffect, useRef } from "react";
 import {
   type ConditionValueSuggestion,
+  type FollowUpBranch,
+  followUpBranches,
   isSurveyTemplatePlaceholderValue,
   type MoveDirection,
   type QuestionTypeId,
@@ -34,6 +37,7 @@ import {
   visibleIfLeaves,
 } from "~/utils/surveyDocument";
 import { ConditionEditor } from "./ConditionEditor";
+import { LiveVisibilityChip } from "./LiveVisibilityChip";
 import { OptionsEditor, type OptionsEditorProps } from "./OptionsEditor";
 import { QuestionMiniPreview } from "./QuestionMiniPreview";
 import {
@@ -50,6 +54,8 @@ export interface QuestionCardProps {
   expanded: boolean;
   /** Focus the prompt right away, for cards born from "Legg til spørsmål" */
   focusOnMount?: boolean;
+  /** Re-triggers the focus for an already-mounted target (flow jumps) */
+  focusNonce?: number;
   canDelete: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
@@ -66,6 +72,13 @@ export interface QuestionCardProps {
   referenceable?: ReferenceableQuestion[];
   suggestionsFor?: (referencedId: string) => ConditionValueSuggestion[];
   onChangeVisibleIf?: (condition: VisibleIfConditionV1 | undefined) => void;
+  /** Plain-language reading of the question's own condition, if any */
+  conditionSummary?: string;
+  /** Page number the card lives on, for «på side N» in condition text */
+  pageNumber?: number;
+  /** Whether the condition holds with the preview's answers right now */
+  liveVisible?: boolean;
+  onAddFollowUp?: (branch: FollowUpBranch) => void;
 }
 
 export const QuestionCard = memo(function QuestionCard({
@@ -73,6 +86,7 @@ export const QuestionCard = memo(function QuestionCard({
   index,
   expanded,
   focusOnMount = false,
+  focusNonce = 0,
   canDelete,
   canMoveUp,
   canMoveDown,
@@ -89,6 +103,10 @@ export const QuestionCard = memo(function QuestionCard({
   referenceable,
   suggestionsFor,
   onChangeVisibleIf,
+  conditionSummary,
+  pageNumber,
+  liveVisible,
+  onAddFollowUp,
 }: QuestionCardProps) {
   const conditionCount = visibleIfLeaves(question.visibleIf).length;
   const collapsedButtonRef = useRef<HTMLButtonElement>(null);
@@ -107,10 +125,10 @@ export const QuestionCard = memo(function QuestionCard({
     previousExpanded.current = expanded;
   }, [expanded]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only by design — focusOnMount marks a freshly added question
+  // biome-ignore lint/correctness/useExhaustiveDependencies: focusOnMount marks the target; the user-initiated triggers are mounting (add question/page) and the nonce (flow jumps to a card already on screen)
   useEffect(() => {
     if (focusOnMount && expanded) promptRef.current?.focus();
-  }, []);
+  }, [focusNonce]);
 
   const meta = questionTypeMeta(question.type);
 
@@ -137,15 +155,21 @@ export const QuestionCard = memo(function QuestionCard({
             >
               {question.prompt.trim() || "Spørsmål uten tekst"}
             </BodyShort>
+            {question.visibleIf ? (
+              <Detail as="span" className={styles.cardBranchLine}>
+                <BranchingIcon aria-hidden />
+                <span className={styles.cardBranchText}>
+                  {conditionSummary ??
+                    (conditionCount > 1
+                      ? `Vises betinget · ${conditionCount}`
+                      : "Vises betinget")}
+                </span>
+              </Detail>
+            ) : null}
           </span>
           <span className={styles.cardTriggerMeta}>
-            {question.visibleIf ? (
-              <Detail as="span" className={styles.cardConditional}>
-                <BranchingIcon aria-hidden />
-                {conditionCount > 1
-                  ? `Vises betinget · ${conditionCount}`
-                  : "Vises betinget"}
-              </Detail>
+            {liveVisible !== undefined ? (
+              <LiveVisibilityChip visible={liveVisible} />
             ) : null}
             {question.required ? (
               <Detail as="span" className={styles.cardRequired}>
@@ -233,6 +257,7 @@ export const QuestionCard = memo(function QuestionCard({
           ref={promptRef}
           label="Spørsmålstekst"
           value={question.prompt}
+          placeholder="Skriv spørsmålet slik respondenten skal se det"
           onChange={(event) =>
             onChange((current) => ({ ...current, prompt: event.target.value }))
           }
@@ -296,7 +321,38 @@ export const QuestionCard = memo(function QuestionCard({
             referenceable={referenceable}
             suggestionsFor={suggestionsFor}
             onChange={onChangeVisibleIf}
+            ownPageNumber={pageNumber}
+            liveVisible={liveVisible}
           />
+        ) : null}
+
+        {onAddFollowUp ? (
+          <div>
+            <ActionMenu>
+              <ActionMenu.Trigger>
+                <Button
+                  type="button"
+                  variant="tertiary"
+                  size="small"
+                  icon={<BranchingIcon aria-hidden />}
+                >
+                  Legg til oppfølgingsspørsmål
+                </Button>
+              </ActionMenu.Trigger>
+              <ActionMenu.Content align="start">
+                <ActionMenu.Group label="Nytt spørsmål som bare vises …">
+                  {followUpBranches(question).map((branch) => (
+                    <ActionMenu.Item
+                      key={branch.key}
+                      onSelect={() => onAddFollowUp(branch)}
+                    >
+                      {branch.label}
+                    </ActionMenu.Item>
+                  ))}
+                </ActionMenu.Group>
+              </ActionMenu.Content>
+            </ActionMenu>
+          </div>
         ) : null}
       </VStack>
 

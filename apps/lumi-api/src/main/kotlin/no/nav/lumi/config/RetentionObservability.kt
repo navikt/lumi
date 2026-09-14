@@ -30,7 +30,7 @@ class RetentionObservability(
 
     init {
         Gauge.builder(LAST_SUCCESS_METRIC_NAME, lastSuccessTimestamp) { value -> value.get().toDouble() }
-            .description("Unix timestamp of the last successful automatic retention run")
+            .description("Unix timestamp of the latest committed automatic retention run")
             .baseUnit("seconds")
             .register(meterRegistry)
         Gauge.builder(ENABLED_METRIC_NAME, enabledState) { value -> value.get().toDouble() }
@@ -40,7 +40,13 @@ class RetentionObservability(
 
     fun recordExecuted(completedAt: Instant) {
         runCounters.getValue(RetentionRunOutcome.EXECUTED).increment()
-        lastSuccessTimestamp.set(completedAt.epochSecond)
+        recordLastSuccess(completedAt)
+    }
+
+    fun recordLastSuccess(completedAt: Instant) {
+        lastSuccessTimestamp.accumulateAndGet(completedAt.epochSecond) { current, persisted ->
+            maxOf(current, persisted)
+        }
     }
 
     fun recordDeletedFeedback(deletedFeedback: Int) {

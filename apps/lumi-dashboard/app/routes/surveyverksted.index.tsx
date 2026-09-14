@@ -1,4 +1,8 @@
-import { MenuElipsisVerticalIcon, TrashIcon } from "@navikt/aksel-icons";
+import {
+  MenuElipsisVerticalIcon,
+  PencilIcon,
+  TrashIcon,
+} from "@navikt/aksel-icons";
 import {
   ActionMenu,
   Alert,
@@ -32,7 +36,11 @@ import {
   fetchSurveyAuthoringProjectsServerFn,
   fetchTeamsServerFn,
 } from "~/server/actions";
-import type { SurveyAuthoringRevisionDetail } from "~/types/surveyAuthoring";
+import type {
+  SurveyAuthoringLatestRevision,
+  SurveyAuthoringProjectSummary,
+  SurveyAuthoringRevisionDetail,
+} from "~/types/surveyAuthoring";
 import {
   SURVEY_TEMPLATE_PLACEHOLDER_LABELS,
   SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE,
@@ -48,6 +56,82 @@ function formatProjectDate(value: string): string {
     month: "short",
     timeZone: "Europe/Oslo",
   }).format(new Date(value));
+}
+
+/**
+ * Where a survey is in its life: never shared, shared and unchanged since,
+ * or shared with newer edits waiting in the draft. The draft version the
+ * revision was frozen from is the only state needed to tell the last two
+ * apart.
+ */
+export type ProjectStatus =
+  | { kind: "draft" }
+  | {
+      kind: "shared" | "shared-with-changes";
+      revision: SurveyAuthoringLatestRevision;
+    };
+
+export function projectStatus(
+  project: SurveyAuthoringProjectSummary,
+): ProjectStatus {
+  const revision = project.latestRevision;
+  if (!revision) return { kind: "draft" };
+  return {
+    kind:
+      project.draftVersion > revision.draftVersion
+        ? "shared-with-changes"
+        : "shared",
+    revision,
+  };
+}
+
+function ProjectCardBody({
+  project,
+  status,
+}: {
+  project: SurveyAuthoringProjectSummary;
+  status: ProjectStatus;
+}) {
+  return (
+    <>
+      <div>
+        <Heading size="small" level="3">
+          {project.name}
+        </Heading>
+        <BodyShort size="small" textColor="subtle" className={styles.projectId}>
+          {project.surveyId}
+        </BodyShort>
+        <div className={styles.projectStatus}>
+          {status.kind === "draft" ? (
+            <Tag variant="neutral" size="xsmall">
+              Utkast
+            </Tag>
+          ) : (
+            <Tag variant="success" size="xsmall">
+              Delt · versjon {status.revision.revisionNumber}
+            </Tag>
+          )}
+          {status.kind === "shared-with-changes" ? (
+            <Tag variant="warning" size="xsmall">
+              Utkastet har nye endringer
+            </Tag>
+          ) : null}
+        </div>
+      </div>
+      <div className={styles.projectMetaColumn}>
+        <BodyShort size="small" textColor="subtle">
+          {status.kind === "draft"
+            ? `Sist endret ${formatProjectDate(project.updatedAt)}`
+            : `Delt ${formatProjectDate(status.revision.createdAt)}`}
+        </BodyShort>
+        {status.kind === "shared-with-changes" ? (
+          <BodyShort size="small" textColor="subtle">
+            Endret {formatProjectDate(project.updatedAt)}
+          </BodyShort>
+        ) : null}
+      </div>
+    </>
+  );
 }
 
 /*
@@ -391,7 +475,7 @@ function SurveyWorkshopIndex() {
                   (project) => project.surveyId === surveyId.trim(),
                 ) ? (
                   <Alert variant="warning" size="small">
-                    Et annet utkast i teamet bruker allerede denne survey-ID-en.
+                    En annen survey i teamet bruker allerede denne survey-ID-en.
                   </Alert>
                 ) : null}
                 {createMutation.isError ? (
@@ -419,80 +503,96 @@ function SurveyWorkshopIndex() {
                     ref={projectsHeadingRef}
                     tabIndex={-1}
                   >
-                    Teamets utkast
+                    Teamets surveys
                   </Heading>
                   <BodyShort textColor="subtle">{selectedTeam}</BodyShort>
                 </div>
                 <Tag variant="neutral" size="small">
-                  {projectsQuery.data?.length ?? 0} utkast
+                  {projectsQuery.data?.length ?? 0}{" "}
+                  {projectsQuery.data?.length === 1 ? "survey" : "surveys"}
                 </Tag>
               </HStack>
 
               {projectsQuery.isPending ? (
                 <Box padding="space-24" className={styles.emptyState}>
-                  <Loader title="Henter utkast" />
+                  <Loader title="Henter surveys" />
                 </Box>
               ) : projectsQuery.isError ? (
-                <Alert variant="error">Utkastene kunne ikke hentes.</Alert>
+                <Alert variant="error">Surveyene kunne ikke hentes.</Alert>
               ) : projectsQuery.data?.length ? (
                 <VStack gap="space-8" as="ul" className={styles.projectList}>
-                  {projectsQuery.data.map((project) => (
-                    <li key={project.id} className={styles.projectItem}>
-                      <Link
-                        to="/surveyverksted/$projectId"
-                        params={{ projectId: project.id }}
-                        search={{ team: selectedTeam }}
-                        className={styles.projectLink}
-                      >
-                        <div>
-                          <Heading size="small" level="3">
-                            {project.name}
-                          </Heading>
-                          <BodyShort
-                            size="small"
-                            textColor="subtle"
-                            className={styles.projectId}
-                          >
-                            {project.surveyId}
-                          </BodyShort>
-                        </div>
-                        <BodyShort
-                          size="small"
-                          textColor="subtle"
-                          className={styles.projectMeta}
+                  {projectsQuery.data.map((project) => {
+                    const status = projectStatus(project);
+                    // One row per survey: a shared survey opens on the
+                    // stable version the developer has; the draft stays a
+                    // click away in the menu and on the version page.
+                    const primaryLink =
+                      status.kind === "draft" ? (
+                        <Link
+                          to="/surveyverksted/$projectId"
+                          params={{ projectId: project.id }}
+                          search={{ team: selectedTeam }}
+                          className={styles.projectLink}
                         >
-                          Sist endret {formatProjectDate(project.updatedAt)}
-                        </BodyShort>
-                      </Link>
-                      <ActionMenu>
-                        <ActionMenu.Trigger>
-                          <Button
-                            type="button"
-                            variant="tertiary-neutral"
-                            size="small"
-                            className={styles.projectMenu}
-                            icon={<MenuElipsisVerticalIcon aria-hidden />}
-                            aria-label={`Handlinger for ${project.name} (${project.surveyId})`}
-                          />
-                        </ActionMenu.Trigger>
-                        <ActionMenu.Content align="end">
-                          <ActionMenu.Item
-                            variant="danger"
-                            icon={<TrashIcon aria-hidden />}
-                            onSelect={() => {
-                              deleteMutation.reset();
-                              setDeleteTarget({
-                                id: project.id,
-                                name: project.name,
-                              });
-                            }}
-                          >
-                            Slett utkast
-                          </ActionMenu.Item>
-                        </ActionMenu.Content>
-                      </ActionMenu>
-                    </li>
-                  ))}
+                          <ProjectCardBody project={project} status={status} />
+                        </Link>
+                      ) : (
+                        <Link
+                          to="/surveyverksted/revisions/$revisionId"
+                          params={{ revisionId: status.revision.id }}
+                          search={{ team: selectedTeam }}
+                          className={styles.projectLink}
+                        >
+                          <ProjectCardBody project={project} status={status} />
+                        </Link>
+                      );
+                    return (
+                      <li key={project.id} className={styles.projectItem}>
+                        {primaryLink}
+                        <ActionMenu>
+                          <ActionMenu.Trigger>
+                            <Button
+                              type="button"
+                              variant="tertiary-neutral"
+                              size="small"
+                              className={styles.projectMenu}
+                              icon={<MenuElipsisVerticalIcon aria-hidden />}
+                              aria-label={`Handlinger for ${project.name} (${project.surveyId})`}
+                            />
+                          </ActionMenu.Trigger>
+                          <ActionMenu.Content align="end">
+                            {status.kind !== "draft" ? (
+                              <ActionMenu.Item
+                                icon={<PencilIcon aria-hidden />}
+                                onSelect={() =>
+                                  navigate({
+                                    to: "/surveyverksted/$projectId",
+                                    params: { projectId: project.id },
+                                    search: { team: selectedTeam },
+                                  })
+                                }
+                              >
+                                Rediger utkastet
+                              </ActionMenu.Item>
+                            ) : null}
+                            <ActionMenu.Item
+                              variant="danger"
+                              icon={<TrashIcon aria-hidden />}
+                              onSelect={() => {
+                                deleteMutation.reset();
+                                setDeleteTarget({
+                                  id: project.id,
+                                  name: project.name,
+                                });
+                              }}
+                            >
+                              Slett survey
+                            </ActionMenu.Item>
+                          </ActionMenu.Content>
+                        </ActionMenu>
+                      </li>
+                    );
+                  })}
                 </VStack>
               ) : (
                 <Box
@@ -500,10 +600,10 @@ function SurveyWorkshopIndex() {
                   className={styles.emptyState}
                 >
                   <Heading size="small" level="3" spacing>
-                    Ingen utkast ennå
+                    Ingen surveys ennå
                   </Heading>
                   <BodyShort textColor="subtle">
-                    Opprett det første til venstre. Det blir tilgjengelig for
+                    Start den første til venstre. Den blir tilgjengelig for
                     teamet også neste gang dere fortsetter.
                   </BodyShort>
                 </Box>

@@ -1,0 +1,13 @@
+PostgreSQL: 17.11
+Migrations: V1-V26 plus R__grant_analysis_privileges.sql
+
+PASS repeatable-read snapshot remains internally consistent: reader kept epoch 1 / 2 rows while committed state advanced to epoch 2 / 0 readable rows
+PASS 1x representative overlap cardinality and source-scan shape: 139856 logical rows; 2 single-loop sequential feedback nodes
+PASS 10x representative overlap cardinality and source-scan shape: 1380551 logical rows; 2 single-loop sequential feedback nodes
+PASS 10x worst allowed overlap cardinality and source-scan shape: 3586231 logical rows; 2 single-loop sequential feedback nodes
+
+SCALE 1x representative overlap: source=27571, products=500, overlap=2, memberships=55142, logicalRows=139856, execution=116.2ms, feedbackScans=2, feedbackPlan=Seq Scan[-] loops=1 rowsPerLoop=27571 visited=27571;Seq Scan[-] loops=1 rowsPerLoop=27571 visited=27571, buffers(hit/read)=3091/0, temp(read/written)=0/0, feedbackTotal=23.0 MiB
+SCALE 10x representative overlap: source=275710, products=500, overlap=2, memberships=551420, logicalRows=1380551, execution=1063.6ms, feedbackScans=2, feedbackPlan=Seq Scan[-] loops=1 rowsPerLoop=275710 visited=275710;Seq Scan[-] loops=1 rowsPerLoop=275710 visited=275710, buffers(hit/read)=30663/0, temp(read/written)=18501/15515, feedbackTotal=181.4 MiB
+SCALE 10x worst allowed overlap: source=275710, products=500, overlap=10, memberships=2757100, logicalRows=3586231, execution=1745.0ms, feedbackScans=2, feedbackPlan=Seq Scan[-] loops=1 rowsPerLoop=275710 visited=275710;Seq Scan[-] loops=1 rowsPerLoop=275710 visited=275710, buffers(hit/read)=28591/2072, temp(read/written)=31457/28484, feedbackTotal=181.4 MiB
+
+Boundary: timings and buffers are from one disposable local container, not Cloud SQL or federation. The full raw EXPLAIN JSON was not retained. PASS denotes only the harness assertions and is not contract or deployment approval.

@@ -18,6 +18,7 @@ data class FeedbackRetentionResult(
     val deletedFeedback: Int = 0,
     val affectedTeams: Set<String> = emptySet(),
     val skipReason: FeedbackRetentionSkipReason? = null,
+    val lastCompletedAt: Instant? = null,
 )
 
 data class FeedbackRetentionBatchResult(
@@ -53,17 +54,19 @@ class FeedbackRetentionRepository(
             }
 
             try {
-                if (!connection.isCleanupDue(minimumInterval)) {
+                val schedule = connection.cleanupSchedule(minimumInterval)
+                if (!schedule.due) {
                     connection.rollback()
                     return@use FeedbackRetentionResult(
                         executed = false,
                         skipReason = FeedbackRetentionSkipReason.MINIMUM_INTERVAL_NOT_ELAPSED,
+                        lastCompletedAt = schedule.lastCompletedAt,
                     )
                 }
 
                 val cutoff = connection.retentionCutoff(retentionMonths)
                 val deletedBatch = connection.deleteExpiredBatch(cutoff, batchSize)
-                connection.recordCleanupCompleted()
+                val completedAt = connection.recordCleanupCompleted()
                 connection.commit()
                 if (deletedBatch.deletedFeedback > 0) {
                     onBatchCommitted(deletedBatch)
@@ -74,6 +77,7 @@ class FeedbackRetentionRepository(
                     cutoff = cutoff,
                     deletedFeedback = deletedBatch.deletedFeedback,
                     affectedTeams = deletedBatch.affectedTeams,
+                    lastCompletedAt = completedAt,
                 )
             } catch (cause: Throwable) {
                 connection.rollback()
@@ -99,11 +103,13 @@ class FeedbackRetentionRepository(
             }
         }
 
-    private fun Connection.isCleanupDue(minimumInterval: Duration): Boolean =
+    private fun Connection.cleanupSchedule(minimumInterval: Duration): CleanupSchedule =
         prepareStatement(
             """
-                SELECT last_completed_at <=
-                    clock_timestamp() - (? * INTERVAL '1 millisecond') AS due
+                SELECT
+                    last_completed_at,
+                    last_completed_at <=
+                        clock_timestamp() - (? * INTERVAL '1 millisecond') AS due
                 FROM feedback_retention_job_state
                 WHERE job_name = ?
             """.trimIndent()
@@ -111,11 +117,18 @@ class FeedbackRetentionRepository(
             statement.setLong(1, minimumInterval.toMillis())
             statement.setString(2, JOB_NAME)
             statement.executeQuery().use { result ->
-                !result.next() || result.getBoolean("due")
+                if (!result.next()) {
+                    CleanupSchedule(due = true)
+                } else {
+                    CleanupSchedule(
+                        due = result.getBoolean("due"),
+                        lastCompletedAt = result.getTimestamp("last_completed_at").toInstant(),
+                    )
+                }
             }
         }
 
-    private fun Connection.recordCleanupCompleted() {
+    private fun Connection.recordCleanupCompleted(): Instant =
         prepareStatement(
             """
                 INSERT INTO feedback_retention_job_state (job_name, last_completed_at)
@@ -125,12 +138,15 @@ class FeedbackRetentionRepository(
                     feedback_retention_job_state.last_completed_at,
                     EXCLUDED.last_completed_at
                 )
+                RETURNING last_completed_at
             """.trimIndent()
         ).use { statement ->
             statement.setString(1, JOB_NAME)
-            check(statement.executeUpdate() == 1) { "Retention job state was not updated" }
+            statement.executeQuery().use { result ->
+                check(result.next()) { "Retention job state was not updated" }
+                result.getTimestamp("last_completed_at").toInstant()
+            }
         }
-    }
 
     private fun Connection.tryAcquireCleanupLock(): Boolean =
         prepareStatement("SELECT pg_try_advisory_lock(?)").use { statement ->
@@ -190,3 +206,8 @@ class FeedbackRetentionRepository(
         const val MAX_DELETE_BATCH_SIZE = 500
     }
 }
+
+private data class CleanupSchedule(
+    val due: Boolean,
+    val lastCompletedAt: Instant? = null,
+)

@@ -1,5 +1,5 @@
 import { ChatExclamationmarkIcon } from "@navikt/aksel-icons";
-import { BodyShort, HStack, Tag, VStack } from "@navikt/ds-react";
+import { BodyShort, Detail, HStack, Tag, VStack } from "@navikt/ds-react";
 
 import { DashboardCard } from "~/components/dashboard";
 import { PhraseList } from "~/components/shared/PhraseList";
@@ -10,19 +10,30 @@ import { FieldCardHeader } from "./FieldCardHeader";
 import styles from "./TextFieldCard.module.css";
 import type { FieldCardProps } from "./types";
 
-export function TextFieldCard({ field, totalCount }: FieldCardProps) {
+export function TextFieldCard({
+  field,
+  semanticHeading = false,
+}: FieldCardProps & {
+  semanticHeading?: boolean;
+}) {
   const stats = field.stats as TextStats;
-  const responseRate =
-    totalCount > 0 ? Math.round((stats.responseCount / totalCount) * 100) : 0;
 
   const phrases = stats.topPhrases ?? [];
   const hasPhrases = phrases.length > 0;
   const hasKeywords = stats.topKeywords && stats.topKeywords.length > 0;
   const hasRecentResponses =
     stats.recentResponses && stats.recentResponses.length > 0;
+  const headingId = semanticHeading
+    ? `comparison-field-${field.fieldId}`
+    : undefined;
 
   return (
-    <DashboardCard padding="space-20" className={styles.cardContent}>
+    <DashboardCard
+      as={semanticHeading ? "section" : "div"}
+      aria-labelledby={headingId}
+      padding="space-20"
+      className={styles.cardContent}
+    >
       <FieldCardHeader
         icon={
           <ChatExclamationmarkIcon
@@ -32,8 +43,19 @@ export function TextFieldCard({ field, totalCount }: FieldCardProps) {
         }
         label={field.label}
         titleTestId={`field-stat-title-${field.fieldId}`}
-        subtitle={`${stats.responseCount} av ${totalCount} har svart (${responseRate}%)`}
+        headingId={headingId}
+        subtitle={`${stats.responseCount.toLocaleString("nb-NO")} tekstsvar i valgt periode`}
       />
+
+      {stats.analysisSampleSize !== undefined &&
+      stats.analysisSampleSize !== null &&
+      stats.analysisSampleSize < stats.responseCount ? (
+        <Detail>
+          Ord og uttrykk er basert på de{" "}
+          {stats.analysisSampleSize.toLocaleString("nb-NO")} siste tekstsvarene.
+          Antall svar gjelder hele perioden.
+        </Detail>
+      ) : null}
 
       {hasPhrases ? (
         <VStack gap="space-8" marginBlock="space-12 space-0">

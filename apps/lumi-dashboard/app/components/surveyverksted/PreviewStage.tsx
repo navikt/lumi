@@ -1,9 +1,22 @@
-import { ArrowCirclepathIcon, ExternalLinkIcon } from "@navikt/aksel-icons";
+import {
+  ArrowCirclepathIcon,
+  BranchingIcon,
+  ExternalLinkIcon,
+} from "@navikt/aksel-icons";
 import { BodyShort, Button, Detail, Tag, Tooltip } from "@navikt/ds-react";
-import type { SurveyDocumentV1 } from "@navikt/lumi-survey";
+import type {
+  LumiSurveyAnswerValue,
+  SurveyDocumentV1,
+} from "@navikt/lumi-survey";
 import { memo, useEffect, useState } from "react";
 import { StageSurface } from "./StageSurface";
 import styles from "./verksted.module.css";
+
+/**
+ * The stage dock's environment tag. Lifted into visibility metadata by the
+ * widget, so live evaluation in the editor mirrors it (see liveVisibility).
+ */
+export const STAGE_ENVIRONMENT_TAG = "survey-workshop-editor";
 
 export interface PreviewStageProps {
   document: SurveyDocumentV1;
@@ -12,6 +25,10 @@ export interface PreviewStageProps {
   initialPageId: string;
   fullPreviewHref: string | null;
   stats: { pages: number; questions: number };
+  onAnswersChange?: (answers: Record<string, LumiSurveyAnswerValue>) => void;
+  onOpenFlow?: () => void;
+  /** Unresolved handoff issues, badged on the flow button */
+  flowIssueCount?: number;
 }
 
 /**
@@ -26,6 +43,9 @@ export const PreviewStage = memo(function PreviewStage({
   initialPageId,
   fullPreviewHref,
   stats,
+  onAnswersChange,
+  onOpenFlow,
+  flowIssueCount = 0,
 }: PreviewStageProps) {
   // The revision counter is the dock's remount identity: bumped every time
   // a new document is accepted, so no respondent state survives an edit.
@@ -79,29 +99,52 @@ export const PreviewStage = memo(function PreviewStage({
             Ingen svar sendes
           </Tag>
         </div>
-        <Tooltip content="Start forhåndsvisningen på nytt">
-          <Button
-            type="button"
-            variant="tertiary-neutral"
-            size="small"
-            icon={<ArrowCirclepathIcon aria-hidden />}
-            aria-label="Start forhåndsvisningen på nytt"
-            onClick={() => {
-              const restartRevision =
-                isValid && stableDocument !== document
-                  ? stable.revision + 1
-                  : stable.revision;
-              if (restartRevision !== stable.revision) {
-                setStable({ document, revision: restartRevision });
-              }
-              setFromStart({
-                revision: restartRevision,
-                pageId: initialPageId,
-              });
-              setRestartNonce((nonce) => nonce + 1);
-            }}
-          />
-        </Tooltip>
+        <div className={styles.stageHeaderActions}>
+          {onOpenFlow ? (
+            <Button
+              type="button"
+              variant="tertiary-neutral"
+              size="small"
+              icon={<BranchingIcon aria-hidden />}
+              onClick={onOpenFlow}
+            >
+              Flyten
+              {flowIssueCount > 0 ? (
+                <span className={styles.flowWarnBadge}>
+                  {flowIssueCount}
+                  <span className={styles.srOnly}>
+                    {flowIssueCount === 1
+                      ? " uløst varsel i flyten"
+                      : " uløste varsler i flyten"}
+                  </span>
+                </span>
+              ) : null}
+            </Button>
+          ) : null}
+          <Tooltip content="Start forhåndsvisningen på nytt">
+            <Button
+              type="button"
+              variant="tertiary-neutral"
+              size="small"
+              icon={<ArrowCirclepathIcon aria-hidden />}
+              aria-label="Start forhåndsvisningen på nytt"
+              onClick={() => {
+                const restartRevision =
+                  isValid && stableDocument !== document
+                    ? stable.revision + 1
+                    : stable.revision;
+                if (restartRevision !== stable.revision) {
+                  setStable({ document, revision: restartRevision });
+                }
+                setFromStart({
+                  revision: restartRevision,
+                  pageId: initialPageId,
+                });
+                setRestartNonce((nonce) => nonce + 1);
+              }}
+            />
+          </Tooltip>
+        </div>
       </div>
 
       {!isValid ? (
@@ -115,9 +158,10 @@ export const PreviewStage = memo(function PreviewStage({
           document={stableDocument}
           instanceKey={stable.revision}
           surveyId={`verksted-preview-${surveyId || "utkast"}`}
-          environmentTag="survey-workshop-editor"
+          environmentTag={STAGE_ENVIRONMENT_TAG}
           initialPageId={previewFromStart ? undefined : initialPageId}
           nonce={restartNonce}
+          onAnswersChange={onAnswersChange}
           successTitle="Slik ser kvitteringen ut"
           successBody="Bare en forhåndsvisning — ingenting ble sendt."
         />

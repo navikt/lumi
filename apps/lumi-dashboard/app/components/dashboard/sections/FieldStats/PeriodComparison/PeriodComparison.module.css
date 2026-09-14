@@ -1,0 +1,219 @@
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.periodControls {
+  max-width: 42rem;
+}
+
+.periodControls > * {
+  min-width: 0;
+}
+
+.fieldCard {
+  display: flex;
+  flex-direction: column;
+  align-self: start;
+  min-width: 0;
+}
+
+.singleMetric {
+  width: 100%;
+  max-width: 36rem;
+}
+
+.summaryValue {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.microDeltaValue {
+  flex-shrink: 0;
+  min-width: max-content;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.fieldMatrix {
+  width: 100%;
+  margin-block: var(--ax-space-8) var(--ax-space-4);
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.fieldMatrix th,
+.fieldMatrix td {
+  padding: var(--ax-space-8) var(--ax-space-4);
+  border-top: 1px solid var(--ax-border-neutral-subtle);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.fieldMatrix thead th {
+  border-top: 0;
+  color: var(--ax-text-neutral-subtle);
+  font-size: var(--ax-font-size-small);
+  font-weight: 400;
+}
+
+.fieldMatrix th:first-child,
+.fieldMatrix td:first-child {
+  padding-left: 0;
+  text-align: left;
+}
+
+.fieldMatrix th:last-child,
+.fieldMatrix td:last-child {
+  padding-right: 0;
+}
+
+.fieldMatrix tbody th {
+  font-size: var(--ax-font-size-small);
+  font-weight: 400;
+}
+
+.fieldMatrix td {
+  font-size: var(--ax-font-size-small);
+}
+
+.fieldMatrixCurrent {
+  font-weight: 600;
+}
+
+.matrixChoiceGrid,
+.layerChoiceGrid {
+  display: grid;
+  width: 100%;
+  gap: var(--ax-space-12);
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+
+.matrixChoiceGrid {
+  grid-template-columns: minmax(6rem, 1fr) repeat(3, minmax(3rem, auto));
+}
+
+.layerChoiceGrid {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.matrixChoiceGrid > :not(:first-child),
+.layerChoiceGrid > :not(:first-child) {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.choiceColumnHeader {
+  padding-inline: var(--ax-space-2);
+  padding-bottom: var(--ax-space-4);
+  color: var(--ax-text-neutral-subtle);
+}
+
+.trendAction {
+  align-self: flex-start;
+  margin-top: var(--ax-space-8);
+}
+
+.comparisonChoiceButton {
+  padding: var(--ax-space-2);
+}
+
+.comparisonChoiceLabel {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+@media (max-width: 479px) {
+  .fieldMatrix th,
+  .fieldMatrix td {
+    padding-inline: var(--ax-space-2);
+  }
+
+  .fieldMatrix thead tr,
+  .fieldMatrix tbody tr {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .fieldMatrix thead th:first-child {
+    display: none;
+  }
+
+  .fieldMatrix tbody tr {
+    padding-block: var(--ax-space-8);
+    border-top: 1px solid var(--ax-border-neutral-subtle);
+  }
+
+  .fieldMatrix tbody th:first-child {
+    grid-column: 1 / -1;
+    padding-block: 0 var(--ax-space-4);
+    border-top: 0;
+  }
+
+  .fieldMatrix tbody td {
+    padding-block: 0;
+    border-top: 0;
+    border-bottom: 0;
+    white-space: normal;
+  }
+
+  .matrixChoiceGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .matrixChoiceGrid > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .choiceColumnHeader.matrixChoiceGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .choiceColumnHeader.matrixChoiceGrid > :first-child {
+    display: none;
+  }
+}
+
+@media (max-width: 359px) {
+  .fieldMatrix thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .fieldMatrix tbody tr {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fieldMatrix tbody td {
+    display: flex;
+    gap: var(--ax-space-12);
+    justify-content: space-between;
+    white-space: normal;
+  }
+
+  .fieldMatrix tbody td::before {
+    color: var(--ax-text-neutral-subtle);
+    content: attr(data-label);
+    font-weight: 400;
+  }
+}

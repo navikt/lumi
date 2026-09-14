@@ -1,0 +1,32 @@
+.controls {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1fr) auto auto;
+  align-items: end;
+  gap: var(--ax-space-16);
+}
+
+.chartViewport,
+.tableViewport {
+  overflow-x: auto;
+}
+
+.chart {
+  min-width: 38rem;
+  height: 20rem;
+}
+
+.table {
+  min-width: 38rem;
+}
+
+.maskedCell {
+  color: var(--ax-text-neutral-subtle);
+  font-style: italic;
+}
+
+@media (max-width: 48rem) {
+  .controls {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+}

@@ -91,6 +91,7 @@ enum class AnalysisCompilationIssueSeverity {
 enum class AnalysisCompilationIssueCode {
     TEAM_SCOPE_MISMATCH,
     SOURCE_UNAVAILABLE,
+    SOURCE_SELECTION_EMPTY,
     SOURCE_ID_MISMATCH,
     DEFINITION_NOT_REGISTERED,
     DEFINITION_HASH_UNRESOLVED,
@@ -107,6 +108,8 @@ enum class AnalysisCompilationIssueCode {
     WIDE_COLUMN_BUDGET_WARNING,
     WIDE_COLUMN_BUDGET_EXCEEDED,
     PHYSICAL_NAME_COLLISION,
+    SPECIFICATION_BYTE_BUDGET_EXCEEDED,
+    SPECIFICATION_ATOM_BUDGET_EXCEEDED,
 }
 
 @Serializable
@@ -213,6 +216,9 @@ data class AnalysisProductCompilationInput(
 class AnalysisContractCompiler {
     fun compilePreview(input: AnalysisProductCompilationInput): AnalysisProductContractPreviewV2 {
         val issues = mutableListOf<AnalysisCompilationIssue>()
+        if (input.document.sources.isEmpty()) {
+            issues += issue(AnalysisCompilationIssueCode.SOURCE_SELECTION_EMPTY)
+        }
         if (input.catalog.team != input.team) {
             issues += issue(AnalysisCompilationIssueCode.TEAM_SCOPE_MISMATCH)
         }
@@ -289,21 +295,10 @@ class AnalysisContractCompiler {
             includeSubmittedHour = input.document.includeSubmittedHour,
             issues = issues,
         )
-        val sortedIssues = issues.distinct().sortedWith(
-            compareBy<AnalysisCompilationIssue>(
-                { it.severity.name },
-                { it.code.name },
-                { it.sourceApp.orEmpty() },
-                { it.sourceSurveyId.orEmpty() },
-                { it.fieldId.orEmpty() },
-                { it.dimensionKey.orEmpty() },
-            ),
-        )
         val baseSchemaDigest = AnalysisPublicationSpecificationDigests.schema(resources)
         val exclusions = ANALYSIS_EXCLUDED_DATA_CATEGORIES_V1
-        val hasBlockers = sortedIssues.any { it.severity == AnalysisCompilationIssueSeverity.BLOCKER }
         val bareResources = resources.map { it.copy(syntheticRows = emptyList()) }
-        val specification = if (hasBlockers) {
+        val candidateSpecification = if (issues.any { it.severity == AnalysisCompilationIssueSeverity.BLOCKER }) {
             null
         } else {
             val sourcePins = resolvedSources.map(::compileSourcePin)
@@ -328,6 +323,21 @@ class AnalysisContractCompiler {
                 baseSchemaDigest = baseSchemaDigest,
             )
         }
+        candidateSpecification?.let { candidate ->
+            issues += AnalysisPublicationBudget.violations(candidate).map { issue(it) }
+        }
+        val sortedIssues = issues.distinct().sortedWith(
+            compareBy<AnalysisCompilationIssue>(
+                { it.severity.name },
+                { it.code.name },
+                { it.sourceApp.orEmpty() },
+                { it.sourceSurveyId.orEmpty() },
+                { it.fieldId.orEmpty() },
+                { it.dimensionKey.orEmpty() },
+            ),
+        )
+        val hasBlockers = sortedIssues.any { it.severity == AnalysisCompilationIssueSeverity.BLOCKER }
+        val specification = candidateSpecification.takeUnless { hasBlockers }
         val specificationDigest = specification?.let(AnalysisPublicationSpecificationDigests::specification)
 
         return AnalysisProductContractPreviewV2(

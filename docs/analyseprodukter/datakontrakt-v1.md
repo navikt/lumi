@@ -29,9 +29,9 @@ long, feltkatalog og manifest publiseres som én samlet kontrakt.
 
 `response_key` og `answer_key` er nøkkelbaserte, produktspesifikke
 pseudonymer. De er stabile gjennom releaser og major-visninger i samme produkt,
-men forskjellige mellom produkter. Intern Lumi-ID og privat `source_row_key`
-finnes aldri i kontrakten. Nøkkelrotasjon er en breaking endring og krever ny
-major-versjon og kontrollert parallellperiode.
+men forskjellige mellom produkter. Intern Lumi-ID og snapshot-lokal
+`snapshot_row_ref` finnes aldri i kontrakten. Nøkkelrotasjon er en breaking
+endring og krever ny major-versjon og kontrollert parallellperiode.
 
 ## Release-pinnet kildekontrakt
 
@@ -552,12 +552,26 @@ LEFT JOIN responses_example_wide_v1 AS resource
 WHERE manifest.resource_name = 'responses_example_wide_v1'
 ```
 
-Ved normal oppdatering forblir siste komplette snapshot lesbart frem til én ny
-komplett pointer aktiveres. `FROZEN`, subtraktiv endring eller 36 timer uten
-bekreftet deletion-capable refresh stenger derimot hele produktflaten. Dette
-skal gi en eksplisitt utilgjengelig-/feiltilstand i Metabase, Quarto og andre
-konsumenter; views skal aldri returnere et tilsynelatende gyldig tomt datasett
-som substitutt for en stengt read lease.
+### Når produktet ikke kan leses
+
+Ved normal oppdatering kan siste komplette, tillatte snapshot leses til en ny
+kandidat er aktivert. Ved innsnevring må gammel, bredere lesing først stenges
+eller erstattes av verifisert smalere lesing. Senest 36 timer etter
+kildesnapshotets lesetidspunkt i siste aktiverte slettesynk stenges lesing hvis
+ingen ny gyldig slettesynk er aktivert, også ved pause eller produktfeil.
+En gammel jobb eller et pointerbytte uten fersk slettesynk fornyer ikke fristen.
+
+Stengingen gjelder manifest, wide, long og katalog, også deprecated ressurser
+og direkte ressursnavn. Konsumenten skal få en utilgjengelig-/feiltilstand,
+ikke null manifestrader eller `row_count=0` som erstatning for stengt tilgang.
+Et reelt tomt, tilgjengelig produkt følger derimot LEFT JOIN-kontrakten over.
+Eksakt plattformmekanisme og hvordan feilen vises i Metabase/Quarto må bevises
+før konsumenttilgang; ingen bestemt feilkode eller UI-integrasjon er lovet.
+
+Tidligere resultatkopier omfattes ikke automatisk av viewets stenging.
+Konsumentkontrakten må derfor beskrive cache/TTL, regenerering/tømming og eier
+for Metabase, notebooks og datafortellinger, jf. ADR 0006 og Gate D i
+trusselmodellen.
 
 ## Syntetisk semantikkeksempel
 
