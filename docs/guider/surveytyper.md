@@ -4,58 +4,65 @@ title: Velg hva dere vil måle
 
 # Velg hva dere vil måle
 
-Feltet `type` forteller Lumi hvilken analyse surveyen tilhører. Start med det dere vil finne ut — Surveyverkstedet og de ferdige kodemalene setter riktig type og struktur for dere.
-
-`type` bestemmer ikke hvilke sider eller spørsmål dokumentet kan ha. Spørsmålene og ID-ene avgjør hvilke data dashboardet faktisk kan vise.
+Start med hva teamet trenger å lære, og hvordan dere vil bruke svarene. I [Surveyverksted](https://lumi-dashboard.ansatt.nav.no/surveyverksted) velger dere et oppsett under **Hva vil dere finne ut?** Dere kan deretter tilpasse spørsmålene til tjenesten deres.
 
 ## Velg et oppsett
 
-| Type | Bruk når | Hva dashboardet viser |
+| Valg i Surveyverksted | Bruk når | Hva dere får i dashboardet |
 | :--- | :--- | :--- |
-| `rating` | Dere vil måle opplevelsen etter en konkret oppgave | Utvikling i vurderinger over tid og fritekstsvar |
-| `discovery` | Dere vil forstå hva brukeren kom for å gjøre | Oppgaver i fritekst, om brukeren lyktes og hindringer |
-| `topTasks` | Dere kjenner oppgavene og vil måle om brukeren lyktes | Resultat og hindringer per oppgave |
-| `taskPriority` | Dere vil prioritere mellom en liste med oppgaver | Hvilke oppgaver som får flest stemmer |
-| `custom` | Dere trenger spørsmål eller analyse som ikke passer i rating | Generell oversikt over svarene |
+| Hvordan opplevde brukeren tjenesten? | Dere vil måle opplevelsen etter en konkret oppgave | Vurderinger over tid og eventuelle fritekstsvar |
+| Hva kom brukeren for å gjøre? | Dere vil oppdage hvilke oppgaver brukerne har | Oppgaver beskrevet med brukernes egne ord, om de lyktes og eventuelle hindringer |
+| Lyktes brukeren med en kjent oppgave? | Dere kjenner oppgavene og vil måle hvor godt brukerne får løst dem | Resultat og hindringer per oppgave |
+| Hvilke oppgaver er viktigst? | Dere vil vite hvilke oppgaver brukerne prioriterer | Hvilke oppgaver som får flest stemmer |
+| Noe annet | Dere har spørsmål som ikke passer i de andre oppsettene | En generell oversikt over svarene |
 
-### `rating`
+## Hvordan opplevde brukeren tjenesten?
 
-Bruk `rating` til en kort måling etter at brukeren har gjort noe konkret. Start med ett vurderingsspørsmål. Legg til et oppfølgingsspørsmål bare når dere vet hvordan svaret skal brukes.
+Still et kort vurderingsspørsmål etter at brukeren har gjort noe konkret, for eksempel «Hvordan var det å sende inn søknaden?». Det gjør det lettere å vite hvilken opplevelse svaret gjelder.
 
-```typescript
-import { createRatingSurveyDocument } from "@navikt/lumi-survey";
+Dere kan velge emoji, tommel opp eller ned, stjerner eller NPS-skala. Legg til et oppfølgingsspørsmål bare når dere vet hvordan dere skal bruke svaret.
 
-const survey = createRatingSurveyDocument({
-  ratingPrompt: "Hvordan var det å sende inn søknaden?",
-  variant: "emoji",
-});
-```
+## Hva kom brukeren for å gjøre?
 
-Velg `variant: "emoji"`, `"thumbs"`, `"stars"` eller `"nps"`. For NPS kan dere også sette `lowLabel` og `highLabel`, for eksempel «Lite sannsynlig» og «Svært sannsynlig».
+Velg dette når dere vil la brukerne beskrive oppgaven med egne ord. Det passer når dere ennå ikke kjenner de viktigste oppgavene godt nok til å lage en liste.
 
-### `custom`
+Brukeren beskriver hva hen kom for å gjøre, og svarer på om hen lyktes. Oppsettet spør om hindringer ved «Delvis» eller «Nei».
 
-Bruk `custom` når ingen av de spesialiserte analysetypene passer. Du kan bruke alle spørsmålstyper, sider og `visibleIf`.
+## Lyktes brukeren med en kjent oppgave?
 
-Velg `custom` hvis ingen av de ferdige oppsettene passer. Typeverdien alene gjør ikke et vilkårlig dokument om til en discovery-, top tasks- eller prioriteringsanalyse.
+Velg dette når dere allerede kjenner oppgavene. Brukeren velger fra listen deres og svarer på om hen lyktes. I dashboardet kan dere følge resultatet og se hindringer for hver oppgave.
 
-## Ferdige oppsett for oppgaver
+Hold listen kort nok til at brukeren raskt finner riktig oppgave. Bruk ord brukerne kjenner, og vurder et alternativ for oppgaver som mangler i listen.
 
-Dokumentbyggerne på denne siden krever `@navikt/lumi-survey` 2.1.0 eller nyere.
+## Hvilke oppgaver er viktigst?
 
-Velg samme oppsett i Surveyverkstedet, eller bruk en av funksjonene under i kode. Funksjonene returnerer ferdige `SurveyDocumentV1`-dokumenter med sidene og spørsmåls-ID-ene analysen trenger.
+Velg dette når dere vil vite hvilke oppgaver brukerne mener er viktigst. Dere lager en oppgaveliste og bestemmer hvor mange oppgaver hver bruker kan velge.
 
-### Forstå hva brukeren kom for å gjøre
+Bruk resultatene som ett av grunnlagene for å prioritere forbedringer. Arbeid grundig med listen før dere starter: oppgavene bør være forståelige, skille seg fra hverandre og dekke det dere vil undersøke.
 
-```typescript
-import { createDiscoverySurveyDocument } from "@navikt/lumi-survey";
+## Noe annet
 
-const survey = createDiscoverySurveyDocument();
-```
+Velg **Noe annet** når dere trenger en egen kombinasjon av spørsmål. Dere kan bruke alle spørsmålstypene, dele dem over flere sider og vise oppfølgingsspørsmål ut fra tidligere svar. Dashboardet gir en generell oversikt over svarene.
 
-Bruk discovery når dere ikke vil gi brukeren en oppgaveliste. Brukeren beskriver oppgaven med egne ord og svarer deretter på om hen lyktes. Spørsmålet om hindringer vises bare ved «Delvis» eller «Nei».
+## Tilpass og prøv surveyen
 
-### Måle om brukeren lyktes med en kjent oppgave
+Surveyverksted setter opp spørsmålene som analysen trenger, og beskytter feltene som må beholde en bestemt struktur. Dere kan endre teksten og legge til egne spørsmål. Verkstedet forklarer begrensningene underveis og sjekker oppsettet før dere deler en versjon.
+
+Prøv hele surveyen før dere deler den med utvikleren. Se [Lag surveyen](/kom-i-gang/lag-survey) for veien fra utkast til app.
+
+## For utviklere: analyse og dokumentformat
+
+I det eksporterte dokumentet angir `type` hvilken analyse dashboardet bruker. Spørsmålene og ID-ene må passe til analysen; å endre `type` alene er ikke nok til å bytte oppsett. `type` bestemmer ikke hvilke sider eller ekstra spørsmål dokumentet kan ha.
+
+| Oppsett | `type` | Funksjon for å opprette dokumentet i kode |
+| :--- | :--- | :--- |
+| Opplevelse | `rating` | `createRatingSurveyDocument` |
+| Oppdage oppgaver | `discovery` | `createDiscoverySurveyDocument` |
+| Kjente oppgaver | `topTasks` | `createTopTasksSurveyDocument` |
+| Oppgaveprioritering | `taskPriority` | `createTaskPrioritySurveyDocument` |
+| Egne spørsmål | `custom` | Skriv dokumentet direkte |
+
+Funksjonene eksporteres fra `@navikt/lumi-survey` og returnerer `SurveyDocumentV1`. [Props-referansen](/referanse/props-referanse#survey-surveydocumentv1) viser dokumentformatet. For en oppgaveliste kan dere for eksempel bruke:
 
 ```typescript
 import { createTopTasksSurveyDocument } from "@navikt/lumi-survey";
@@ -69,32 +76,9 @@ const survey = createTopTasksSurveyDocument({
 });
 ```
 
-Bruk top tasks når dere allerede kjenner de viktigste oppgavene. Hold listen kort nok til at brukeren raskt finner riktig oppgave.
+`value` er oppgavens stabile ID (`taskId`) i analyser, filtre og delbare lenker. `label` er teksten brukeren ser. Behold ID-en når dere bare retter teksten. Det samme gjelder oppgavelister for oppgaveprioritering. Se [Survey-identitet og endringer](/guider/survey-identitet) før dere endrer en survey som er tatt i bruk.
 
-`value` er oppgavens stabile ID (`taskId`) i analyse, filtre og delbare lenker. Behold den når dere bare retter teksten. `label` er teksten brukeren ser, og kan endres uten at historikken splittes. Se [survey-identitet](/guider/survey-identitet) før dere endrer en publisert oppgaveliste.
-
-### Prioritere mellom oppgaver
-
-```typescript
-import { createTaskPrioritySurveyDocument } from "@navikt/lumi-survey";
-
-const survey = createTaskPrioritySurveyDocument({
-  tasks: [
-    { value: "soke", label: "Søke om sykepenger" },
-    { value: "status", label: "Sjekke status på søknaden" },
-    { value: "ettersende", label: "Ettersende dokumentasjon" },
-  ],
-  maxSelections: 2,
-});
-```
-
-Bruk oppgaveprioritering når dere skal velge hva dere bør forbedre eller bygge først. En reell undersøkelse trenger vanligvis en større og gjennomarbeidet oppgaveliste enn det korte kodeeksemplet.
-
-Også her er `value` den stabile oppgave-ID-en, mens `label` er teksten som kan forbedres senere.
-
-::: warning Behold feltene analysen trenger
-Dere kan endre teksten og legge til egne spørsmål. Analysefeltene må være obligatoriske og alltid synlige. Ikke slett dem, bytt spørsmålstype eller endre svarverdiene som malen beskytter. Surveyverkstedet forklarer begrensningene i redigeringen og sjekker oppsettet før overlevering. Widgeten og API-et avviser også et ugyldig oppsett.
-:::
+De påkrevde analysefeltene må være obligatoriske og alltid synlige. Behold ID-er, spørsmålstyper og faste svarverdier fra oppsettet. Spørsmålet om hindringer er valgfritt og kan vises betinget. Widgeten og API-et avviser oppsett som ikke oppfyller analysekravene.
 
 ## Videre lesing
 

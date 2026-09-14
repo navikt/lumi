@@ -4,6 +4,15 @@ All notable changes to `@navikt/lumi-survey` will be documented in this file.
 
 This project follows SemVer.
 
+## [2.2.3] - 2026-09-13
+
+### Documentation
+
+- Start with Surveyverksted to create and share a survey, then integrate the
+  exported document in your app. The package README now follows this flow
+  through backend setup and checking responses in Lumi.
+- Add documentation, issue tracker and search keywords to the package metadata.
+
 ## [2.2.2] - 2026-09-10
 
 ### Distribution

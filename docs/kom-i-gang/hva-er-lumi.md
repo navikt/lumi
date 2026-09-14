@@ -4,63 +4,39 @@ title: Hva er Lumi?
 
 # Hva er Lumi?
 
-Lumi er et verktøy for å kjøre personvernvennlige surveys i Nav-apper. Du definerer spørsmålene i TypeScript, widgeten kjører i din app, og all data forblir i Nav-clusteret.
+Lumi hjelper Nav-team å forstå hvordan brukerne opplever tjenesten, hva de prøver å gjøre, og om de lykkes. Teamet lager surveyen i Surveyverksted, viser den i appen og følger svarene i Lumi-dashboardet.
 
-## Hvorfor Lumi?
+## Fra spørsmål til innsikt
 
-- **Survey som dokument** — bygg sider og spørsmål i Surveyverksted eller TypeScript. Appen eier produksjonsversjonen.
-- **Privacy by design** — all data blir i Nav-clusteret, og kjente personopplysningsmønstre maskeres i utvalgte felt som et sikkerhetsnett. Se [Sikkerhet & personvern](/referanse/sikkerhet#pii-maskering) for begrensningene.
-- **Aksel-basert** — widgeten bruker Navs designsystem og følger WCAG.
-- **Rask integrasjon** — installer en React-widget, koble til backend, ferdig.
-- **Dashboard** — filtrer, segmenter og eksporter survey-data med teambasert tilgangsstyring.
+### 1. Lag surveyen i Surveyverksted
 
-## Arkitektur
+Start med det dere vil finne ut. I [Surveyverksted](/kom-i-gang/lag-survey) kan designere, produktfolk og utviklere tilpasse spørsmålene og prøve hele flyten sammen. Utkastet lagres for teamet, og forhåndsvisningen sender ikke inn svar.
 
-Lumi består av tre deler: en frontend-widget som lever i *din* app, et API-lag som *du* eier (token exchange + videresending), og Lumi-plattformen som lagrer og visualiserer data.
+Når surveyen er klar, velger dere **Del med utvikler** og deler en versjon. Den gir utvikleren ferdig TypeScript og en lenke til akkurat det innholdet teamet har blitt enige om.
 
-```mermaid
-flowchart LR
-	subgraph Client["Klient"]
-		A["lumi-survey (i din app)"]
-	end
+### 2. Legg surveyen i appen
 
-	subgraph App["Din app"]
-		B["Ditt endepunkt"]
-		C["Token exchange (TokenX / AzureAD)"]
-	end
+Utvikleren [installerer `@navikt/lumi-survey`](/kom-i-gang/installer-widget), legger inn dokumentet fra Surveyverksted og [kobler appens backend til Lumi](/kom-i-gang/koble-til-backend). Widgeten bruker Aksel, Navs designsystem.
 
-	subgraph Platform["Lumi"]
-		D["lumi-api"]
-		E["Dashboard / analytics"]
-	end
+Surveyen blir tilgjengelig for brukerne når teamet ruller ut appen. Senere endringer i utkastet lagres i Surveyverksted frem til teamet tar en ny versjon inn i appen.
 
-	A --> B --> C --> D --> E
+### 3. Følg svarene i dashboardet
 
-	classDef client fill:#E8F2FF,stroke:#0B5FFF,stroke-width:1px,color:#0B2E66;
-	classDef app fill:#E9F8F0,stroke:#1C7C54,stroke-width:1px,color:#0F3D2E;
-	classDef platform fill:#FFF2E8,stroke:#CC4F00,stroke-width:1px,color:#6A2A00;
+I [Lumi-dashboardet](/dashboard/tilgang) kan dere lese tilbakemeldinger, se resultater og filtrere på blant annet flate og periode. Teamtilgangen hentes fra NAIS. Svarene lagres i Navs infrastruktur.
 
-	class A client;
-	class B,C app;
-	class D,E platform;
-```
-
-## Pakkeoversikt
-
-| Pakke | Beskrivelse | Tech Stack |
-| :--- | :--- | :--- |
-| [`@navikt/lumi-survey`](https://github.com/navikt/lumi/tree/main/packages/lumi-survey) | React-widget (Aksel) | React, CSS Modules |
-| [`lumi-api`](https://github.com/navikt/lumi/tree/main/apps/lumi-api) | Backend & Analyse API | Kotlin, Ktor, Postgres |
-| [`lumi-dashboard`](https://github.com/navikt/lumi/tree/main/apps/lumi-dashboard) | Admin-dashboard | TanStack Start, React |
-
-Designere og produktledere jobber i Surveyverksted. Utvikleren bruker `@navikt/lumi-survey` i appen. Team eSyfo drifter Surveyverksted, API-et og analysedashboardet.
+Vil dere se hvordan det fungerer før dere starter? [Prøv demoen med testdata](https://lumi-dashboard-demo.ekstern.dev.nav.no).
 
 ## Hvem er Lumi for?
 
-Lumi er laget for **Nav-team som vil samle brukerinnsikt** i sine flater — enten det er en sluttbrukerflate på nav.no eller en intern løsning som Modia. Du trenger:
+Lumi er laget for Nav-team som vil samle brukerinnsikt i egne flater, både på nav.no og i interne løsninger som Modia.
 
-- En React-app som kjører på NAIS
-- Mulighet til å gjøre token exchange (TokenX eller AzureAD) for å sende inn svar
+For å ta Lumi i bruk trenger dere:
+
+- en React-app som kjører på NAIS
+- en utvikler som kan koble appens backend til Lumi med TokenX eller Azure AD
+- medlemskap i riktig NAIS-team for å bruke Surveyverksted og se svarene
+
+Teamet eier spørsmålene, integrasjonen i appen og hvordan innsikten brukes. Team eSyfo drifter Surveyverksted, Lumi API og dashboardet.
 
 ## Før du starter
 
@@ -68,6 +44,8 @@ Lumi er laget for **Nav-team som vil samle brukerinnsikt** i sine flater — ent
 Før du setter opp din første survey, les [bruksvilkårene](/referanse/bruksvilkar). Du må blant annet fylle ut [etterlevelsesdokumentasjon](https://etterlevelse.ansatt.nav.no/dokumentasjon/201b8151-d312-4c76-bf44-2716d40a417a) og forstå hvordan personopplysninger håndteres.
 :::
 
+Lumi maskerer kjente personopplysningsmønstre i utvalgte felt som et sikkerhetsnett. Teamet må fortsatt vurdere hvilke opplysninger surveyen samler inn. Se [Sikkerhet og personvern](/referanse/sikkerhet#pii-maskering) for hva maskeringen dekker.
+
 ## Neste steg
 
-Klar til å komme i gang? [Lag surveyen i Surveyverksted eller direkte i kode](/kom-i-gang/lag-survey), og sett deretter opp pakken i appen.
+[Lag surveyen i Surveyverksted](/kom-i-gang/lag-survey).
