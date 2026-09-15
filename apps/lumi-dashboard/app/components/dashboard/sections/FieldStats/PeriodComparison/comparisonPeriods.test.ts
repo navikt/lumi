@@ -4,6 +4,22 @@ import { getComparisonPeriods } from "./comparisonPeriods";
 const today = "2026-09-07";
 
 describe("calendar-aware comparison periods", () => {
+  it.each([
+    undefined,
+    "rolling",
+    "yearToDate",
+    "custom",
+  ] as const)("defaults comparison to off for preset %s", (preset) => {
+    expect(
+      getComparisonPeriods(
+        "2026-01-01",
+        "2026-01-07",
+        undefined,
+        "2026-01-08",
+        preset,
+      )?.mode,
+    ).toBe("none");
+  });
   it("compares both rolling days and year-to-date to the preceding period", () => {
     const rolling = getComparisonPeriods(
       "2026-01-01",
@@ -92,7 +108,7 @@ describe("calendar-aware comparison periods", () => {
       "Foregående 1 dag",
     ],
   ])("resolves %s–%s without calendar drift", (from, to, previousFrom, previousTo, label) => {
-    const result = getComparisonPeriods(from, to, undefined, today);
+    const result = getComparisonPeriods(from, to, "previous", today);
     expect(result).toMatchObject({
       previous: { fromDate: previousFrom, toDate: previousTo },
       label,
@@ -102,11 +118,11 @@ describe("calendar-aware comparison periods", () => {
     expect(result?.previous.label).toContain(previousFrom.slice(0, 4));
   });
 
-  it("defaults year-to-date to the immediately preceding period", () => {
+  it("keeps year-to-date comparison off until explicitly enabled", () => {
     expect(
       getComparisonPeriods("2026-01-01", "2026-09-06", undefined, today),
     ).toMatchObject({
-      mode: "previous",
+      mode: "none",
       previous: { fromDate: "2025-04-27", toDate: "2025-12-31" },
       incomplete: false,
     });

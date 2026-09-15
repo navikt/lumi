@@ -21,16 +21,17 @@ describe("comparison availability", () => {
       surveyId: "survey-vurdering",
       fromDate: "2026-08-19",
       toDate: "2026-09-01",
-      compare: undefined,
+      compare: "previous",
     });
   });
   afterEach(() => vi.useRealTimers());
 
   it.each([
+    { compare: undefined },
     { compare: "none" as const },
     { toDate: "2026-09-08" },
     { fromDate: "2026-02-30" },
-  ])("does not fetch misleading comparisons for %j", (overrides) => {
+  ])("does not fetch disabled or invalid comparisons for %j", (overrides) => {
     Object.assign(params, overrides);
     const client = new QueryClient();
     const { result } = renderHook(() => usePreviousPeriodStats(true), {

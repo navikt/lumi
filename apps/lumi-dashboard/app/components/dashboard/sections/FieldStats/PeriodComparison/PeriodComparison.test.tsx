@@ -22,6 +22,7 @@ vi.mock("~/hooks/useSearchParams", () => ({
       team: "esyfo",
       app: "test-app",
       surveyId: "test-survey",
+      compare: "previous",
       fromDate: "2026-08-19",
       toDate: "2026-09-01",
       showArchived: "true",

@@ -41,7 +41,7 @@ export function ComparisonPeriodControl() {
           aria-describedby={
             periods && periods.mode !== "none" ? descriptionId : undefined
           }
-          checked={params.compare !== "none"}
+          checked={params.compare === "previous"}
           onChange={(event) =>
             void setParams({
               compare: event.target.checked ? "previous" : "none",
