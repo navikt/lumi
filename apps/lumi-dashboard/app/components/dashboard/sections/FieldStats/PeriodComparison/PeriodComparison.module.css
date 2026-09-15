@@ -11,11 +11,20 @@
 }
 
 .periodControls {
-  max-width: 42rem;
+  width: 100%;
+  align-items: start;
 }
 
 .periodControls > * {
   min-width: 0;
+}
+
+.periodPicker {
+  max-width: 24rem;
+}
+
+.comparisonControl {
+  max-width: 24rem;
 }
 
 .fieldCard {
