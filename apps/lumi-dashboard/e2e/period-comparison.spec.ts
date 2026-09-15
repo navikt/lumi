@@ -1,7 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-const period = "dateMode=fixed&fromDate=2026-08-19&toDate=2026-09-01";
+const period =
+  "dateMode=fixed&fromDate=2026-08-19&toDate=2026-09-01&compare=previous";
 
 // Data-driven checks follow the rolling mock fixtures; calendar-editor checks
 // below keep fixed dates so their boundary expectations remain explicit.
@@ -23,10 +24,50 @@ const dateLabel = new Intl.DateTimeFormat("nb-NO", {
 });
 const comparisonLabel = `Mot ${dateLabel.format(new Date(previousFrom))}–${dateLabel.format(new Date(shiftDate(today, -15)))}`;
 const dataPeriod = new URLSearchParams({
+  compare: "previous",
   dateMode: "fixed",
   fromDate: currentFrom,
   toDate: shiftDate(today, -1),
 }).toString();
+
+test("comparison starts off and preserves explicit choices across filters and reloads", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/?surveyId=survey-vurdering");
+  const comparison = page.getByRole("checkbox", {
+    name: "Sammenlign med forrige periode",
+  });
+  await expect(comparison).not.toBeChecked();
+  await expect(page.getByText("Endring", { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/^Mot /)).toHaveCount(0);
+  await expect(
+    page.getByText("Inkluderer i dag · foreløpig sammenligning"),
+  ).toHaveCount(0);
+  const periodButton = page.getByRole("button", { name: /^Periode:/ });
+  await periodButton.click();
+  await page.getByRole("button", { name: "Siste 7 hele dager" }).click();
+  await expect(comparison).not.toBeChecked();
+  await page.screenshot({ path: testInfo.outputPath("default-off.png") });
+
+  await comparison.check();
+  await expect(page).toHaveURL(/compare=previous/);
+  await page
+    .getByRole("combobox", { name: "Survey", exact: true })
+    .selectOption("survey-custom");
+  await expect(comparison).toBeChecked();
+  await expect(page).toHaveURL(/compare=previous/);
+  await page.reload();
+  await expect(comparison).toBeChecked();
+
+  await comparison.uncheck();
+  await page
+    .getByRole("combobox", { name: "Survey", exact: true })
+    .selectOption("survey-vurdering");
+  await expect(comparison).not.toBeChecked();
+  await expect(page).toHaveURL(/compare=none/);
+  await page.reload();
+  await expect(comparison).not.toBeChecked();
+});
 
 test("rolling and year-to-date presets both compare the preceding period", async ({
   page,
@@ -96,14 +137,16 @@ test("comparison controls show exact dates, preserve filters, and can be turned 
   ).toBeVisible();
 });
 
-test("legacy year-comparison links fall back to the preceding period", async ({
+test("unsupported comparison links fall back to comparison off", async ({
   page,
 }) => {
-  await page.goto(`/?${dataPeriod}&surveyId=survey-custom&compare=year`);
+  const legacyPeriod = new URLSearchParams(dataPeriod);
+  legacyPeriod.set("compare", "year");
+  await page.goto(`/?${legacyPeriod}&surveyId=survey-custom`);
   await expect(
     page.getByRole("checkbox", { name: "Sammenlign med forrige periode" }),
-  ).toBeChecked();
-  await expect(page.getByText(comparisonLabel, { exact: true })).toBeVisible();
+  ).not.toBeChecked();
+  await expect(page.getByText(comparisonLabel, { exact: true })).toHaveCount(0);
   await expect(
     page.getByText("Samme periode i fjor", { exact: true }),
   ).toHaveCount(0);
@@ -114,7 +157,7 @@ test("a full year compares calendar years and today's comparison is marked provi
 }, testInfo) => {
   await page.clock.setFixedTime(new Date("2026-09-07T12:00:00Z"));
   await page.goto(
-    "/?dateMode=fixed&fromDate=2025-01-01&toDate=2025-12-31&surveyId=survey-vurdering&variant=hybrid",
+    "/?dateMode=fixed&fromDate=2025-01-01&toDate=2025-12-31&surveyId=survey-vurdering&variant=hybrid&compare=previous",
   );
   const comparison = page.getByRole("checkbox", {
     name: "Sammenlign med forrige periode",
@@ -126,7 +169,7 @@ test("a full year compares calendar years and today's comparison is marked provi
       .filter({ visible: true }),
   ).toBeVisible();
   await page.goto(
-    "/?dateMode=fixed&fromDate=2026-01-01&toDate=2026-09-07&surveyId=survey-vurdering&variant=hybrid",
+    "/?dateMode=fixed&fromDate=2026-01-01&toDate=2026-09-07&surveyId=survey-vurdering&variant=hybrid&compare=previous",
   );
   await expect(comparison).toBeChecked();
   await expect(
@@ -145,7 +188,7 @@ test("a full year compares calendar years and today's comparison is marked provi
   ).toHaveCount(0);
   await page.clock.setFixedTime(new Date(`${today}T12:00:00Z`));
   await page.goto(
-    `/?dateMode=fixed&fromDate=${currentFrom}&toDate=${today}&surveyId=survey-vurdering`,
+    `/?dateMode=fixed&fromDate=${currentFrom}&toDate=${today}&surveyId=survey-vurdering&compare=previous`,
   );
   await expect(
     page
@@ -182,7 +225,7 @@ test("a full year compares calendar years and today's comparison is marked provi
     page.getByText("Inkluderer i dag · foreløpig sammenligning"),
   ).toHaveCount(0);
   await page.goto(
-    `/?dateMode=fixed&fromDate=${currentFrom}&toDate=${shiftDate(today, 1)}&surveyId=survey-vurdering`,
+    `/?dateMode=fixed&fromDate=${currentFrom}&toDate=${shiftDate(today, 1)}&surveyId=survey-vurdering&compare=previous`,
   );
   await expect(
     page.getByText("Velg en sluttdato senest i dag for å sammenligne."),

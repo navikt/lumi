@@ -41,7 +41,7 @@ export function getComparisonPeriods(
   const now = calendarDate(today);
   if (!from || !to || !now || to.isBefore(from, "day")) return undefined;
   const days = to.diff(from, "day") + 1;
-  const effectiveMode = mode ?? "previous";
+  const effectiveMode = mode ?? "none";
   let previousTo = from.subtract(1, "day");
   let previousFrom = previousTo.subtract(days - 1, "day");
   let previousLabel = `Foregående ${days} ${days === 1 ? "dag" : "dager"}`;
