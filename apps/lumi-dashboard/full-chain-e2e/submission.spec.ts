@@ -901,7 +901,7 @@ async function assertPeriodComparisonDashboard(
   const comparisonSwitch = page.getByRole("checkbox", {
     name: "Sammenlign med forrige periode",
   });
-  await expect(comparisonSwitch).toBeChecked();
+  await expect(comparisonSwitch).not.toBeChecked();
   const metrics = page.getByTestId("comparison-key-metrics");
   const fields = page.getByTestId("field-stats-section");
   await expect(
@@ -910,6 +910,16 @@ async function assertPeriodComparisonDashboard(
   await expect(fields.getByRole("heading", { level: 3 })).toHaveCount(
     scenario.fields.length,
   );
+  await expect(metrics.getByText(/Ingen svar å sammenligne/)).toHaveCount(0);
+  await expect(metrics.getByText("Endring", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByText("Inkluderer i dag · foreløpig sammenligning", {
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await comparisonSwitch.check();
+  await expect(comparisonSwitch).toBeChecked();
+  await expect(page).toHaveURL(/compare=previous/);
   await expect(
     metrics.getByText(
       "Ingen svar å sammenligne med i forrige periode. Tallene gjelder bare valgt periode.",
