@@ -18,13 +18,16 @@ repositories {
     mavenCentral()
 }
 
-val ktorVersion = "3.4.0"
+val ktorVersion = "3.5.2"
 val logbackVersion = "1.5.32"
 val logstashVersion = "9.0"
-val nettyVersion = "4.2.13.Final"
+val nettyVersion = "4.2.17.Final"
 
 dependencies {
-    implementation(platform("io.netty:netty-bom:$nettyVersion"))
+    implementationWithKtorVersionCheck(
+        dependencyNotation = "io.netty:netty-bom:$nettyVersion",
+        expectedKtorVersion = "3.5.2",
+    )
 
     // Ktor Server (minimal)
     implementation("io.ktor:ktor-server-core:$ktorVersion")
@@ -46,6 +49,16 @@ dependencies {
     implementation("net.logstash.logback:logstash-logback-encoder:$logstashVersion")
 
     testImplementation(kotlin("test"))
+}
+
+fun DependencyHandler.implementationWithKtorVersionCheck(
+    dependencyNotation: String,
+    expectedKtorVersion: String,
+) {
+    check(ktorVersion == expectedKtorVersion) {
+        "Review $dependencyNotation before changing Ktor from $expectedKtorVersion to $ktorVersion"
+    }
+    implementation(platform(dependencyNotation))
 }
 
 java {
