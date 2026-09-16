@@ -10,7 +10,10 @@ import {
 import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import type { QuestionTrendBucket, QuestionTrendResponse } from "~/types/api";
 import styles from "./QuestionTrendSection.module.css";
-import { formatQuestionTrendBucket } from "./questionTrendUtils";
+import {
+  questionTrendChartData,
+  questionTrendRatingMetric,
+} from "./questionTrendUtils";
 
 const SERIES_COLORS = [
   "#0067c5",
@@ -35,21 +38,10 @@ export function QuestionTrendChart({
   measure,
 }: QuestionTrendChartProps) {
   const isRating = trend.fieldType === "RATING";
-  const chartData = buckets.map((bucket) => ({
-    label: formatQuestionTrendBucket(bucket.startDate, trend.interval),
-    ...(isRating
-      ? { average: bucket.masked ? null : (bucket.average ?? null) }
-      : Object.fromEntries(
-          trend.options.map((option) => [
-            option.id,
-            bucket.masked
-              ? null
-              : (bucket.distribution[option.id]?.[measure] ?? 0),
-          ]),
-        )),
-  }));
+  const metric = questionTrendRatingMetric(trend);
+  const chartData = questionTrendChartData(trend, buckets, measure);
   const ariaLabel = isRating
-    ? `Linjediagram for ${trend.label}, med gjennomsnittlig vurdering per ${trend.interval}. Tabellen under viser de samme tallene.`
+    ? `Linjediagram for ${trend.label}, med ${metric.label.toLowerCase()} per periode. Tabellen under viser de samme tallene.`
     : `Linjediagram for ${trend.label}, med ${measure === "count" ? "antall" : "andel"} respondenter per svaralternativ. Tabellen under viser de samme tallene.`;
 
   return (
@@ -66,9 +58,15 @@ export function QuestionTrendChart({
             <XAxis dataKey="label" tickLine={false} minTickGap={24} />
             <YAxis
               allowDecimals={isRating}
-              domain={isRating ? ["auto", "auto"] : [0, "auto"]}
+              domain={isRating ? metric.domain : [0, "auto"]}
               tickLine={false}
-              unit={!isRating && measure === "percentage" ? "%" : undefined}
+              unit={
+                isRating
+                  ? metric.unit
+                  : measure === "percentage"
+                    ? "%"
+                    : undefined
+              }
               width={48}
             />
             <Tooltip />
@@ -77,17 +75,18 @@ export function QuestionTrendChart({
               <Line
                 type="monotone"
                 dataKey="average"
-                name="Gjennomsnitt"
+                name={metric.label}
                 stroke={SERIES_COLORS[0]}
                 strokeWidth={2}
                 connectNulls={false}
+                unit={metric.unit}
               />
             ) : (
               trend.options.map((option, index) => (
                 <Line
                   key={option.id}
                   type="monotone"
-                  dataKey={option.id}
+                  dataKey={`values.${index}`}
                   name={option.label}
                   stroke={SERIES_COLORS[index % SERIES_COLORS.length]}
                   strokeWidth={2}

@@ -24,7 +24,6 @@ sealed interface CreateSurveyAuthoringRevisionResult {
     data object NotFound : CreateSurveyAuthoringRevisionResult
     data object DraftChanged : CreateSurveyAuthoringRevisionResult
     data object LimitReached : CreateSurveyAuthoringRevisionResult
-    data class DefinitionConflict(val previousRevisionNumber: Long) : CreateSurveyAuthoringRevisionResult
 }
 
 class SurveyAuthoringRevisionRepository {
@@ -70,23 +69,6 @@ class SurveyAuthoringRevisionRepository {
             ?: 0L
         if (previousRevisionNumber >= maxRevisions) {
             return@dbQuery CreateSurveyAuthoringRevisionResult.LimitReached
-        }
-
-        val previousForSurvey = SurveyAuthoringRevisionTable.selectAll()
-            .where {
-                (SurveyAuthoringRevisionTable.projectId eq projectId) and
-                    (SurveyAuthoringRevisionTable.surveyId eq surveyId)
-            }
-            .orderBy(SurveyAuthoringRevisionTable.revisionNumber to SortOrder.DESC)
-            .limit(1)
-            .singleOrNull()
-        if (
-            previousForSurvey != null &&
-            previousForSurvey[SurveyAuthoringRevisionTable.definitionHash] != definitionHash
-        ) {
-            return@dbQuery CreateSurveyAuthoringRevisionResult.DefinitionConflict(
-                previousForSurvey[SurveyAuthoringRevisionTable.revisionNumber],
-            )
         }
 
         val inserted = SurveyAuthoringRevisionTable.insert {

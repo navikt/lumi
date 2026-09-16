@@ -2,9 +2,100 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  FeedbackStatsSchema,
   FeedbackSubmissionV2Schema,
   FilterBootstrapResponseSchema,
+  QuestionTrendResponseSchema,
 } from "./schemas.ts";
+
+test("question trend preserves rating semantics and distribution through runtime validation", () => {
+  const payload = {
+    fieldId: "rating",
+    fieldType: "RATING",
+    label: "Anbefale?",
+    interval: "day",
+    ratingVariant: "nps",
+    ratingScale: 11,
+    privacyThreshold: 1,
+    options: [],
+    buckets: [
+      {
+        startDate: "2026-09-01",
+        masked: false,
+        responseCount: 2,
+        average: 5,
+        distribution: {},
+        ratingDistribution: { 0: 1, 10: 1 },
+      },
+    ],
+  };
+  assert.deepEqual(QuestionTrendResponseSchema.parse(payload), payload);
+  assert.equal(
+    QuestionTrendResponseSchema.safeParse({
+      ...payload,
+      buckets: [
+        {
+          ...payload.buckets[0],
+          masked: true,
+          responseCount: null,
+          average: null,
+        },
+      ],
+    }).success,
+    false,
+  );
+  assert.equal(
+    QuestionTrendResponseSchema.parse({
+      ...payload,
+      ratingVariant: null,
+      ratingScale: null,
+    }).ratingVariant,
+    null,
+  );
+});
+
+test("dashboard runtime validation retains retention and field metadata", () => {
+  const schema = FeedbackStatsSchema.pick({
+    retentionStartDate: true,
+    fieldStats: true,
+  });
+  const payload = {
+    retentionStartDate: "2025-09-09",
+    fieldStats: [
+      {
+        fieldId: "rating",
+        fieldType: "RATING",
+        label: "Vurdering",
+        stats: {
+          type: "rating",
+          average: 1,
+          distribution: { 1: 1 },
+          ratingVariant: "emoji",
+          ratingScale: 5,
+        },
+      },
+      {
+        fieldId: "text",
+        fieldType: "TEXT",
+        label: "Kommentar",
+        stats: {
+          type: "text",
+          responseCount: 2000,
+          responseRate: 1,
+          analysisSampleSize: 1000,
+          topKeywords: [],
+          recentResponses: [],
+        },
+      },
+    ],
+  };
+  assert.deepEqual(schema.parse(payload), payload);
+  payload.fieldStats[1].stats.analysisSampleSize = null;
+  assert.equal(
+    schema.parse(payload).fieldStats[1].stats.analysisSampleSize,
+    null,
+  );
+});
 
 const v2Submission = {
   schemaVersion: 2,

@@ -14,8 +14,7 @@ test.describe("Field stats ordering", () => {
       section.getByRole("heading", { name: "Statistikk per felt" }),
     ).toBeVisible();
 
-    // Prefer stable test ids over CSS class selectors.
-    const fieldTitles = section.locator('[data-testid^="field-stat-title-"]');
+    const fieldTitles = section.getByRole("heading", { level: 3 });
 
     // Expect the dedicated mock survey to render fields in survey order,
     // even when question types are mixed.

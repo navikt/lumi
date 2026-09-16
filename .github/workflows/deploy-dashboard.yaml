@@ -164,7 +164,7 @@ jobs:
           cp -r .output/public .output/client
 
       - name: Upload static files to NAV CDN
-        uses: nais/deploy/actions/cdn-upload/v2@849e900e3cfa7faf7ad1532bb3a3e6499c932199
+        uses: nais/deploy/actions/cdn-upload/v2@027a91857992525139798892f2804b0ca21f4af6
         with:
           team: team-esyfo
           source: ./apps/lumi-dashboard/.output/client
@@ -173,7 +173,7 @@ jobs:
           identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Push to GAR
-        uses: nais/docker-build-push@8e41f1f58749b9248e376c25d33bfbdd2b1163c0
+        uses: nais/docker-build-push@0e73849f69ff260ee27597553c0a7848ca4e9795
         id: docker-build-push
         with:
           team: team-esyfo
@@ -230,7 +230,7 @@ jobs:
           cp -r .output/public .output/client
 
       - name: Upload static files to NAV CDN
-        uses: nais/deploy/actions/cdn-upload/v2@849e900e3cfa7faf7ad1532bb3a3e6499c932199
+        uses: nais/deploy/actions/cdn-upload/v2@027a91857992525139798892f2804b0ca21f4af6
         with:
           team: team-esyfo
           source: ./apps/lumi-dashboard/.output/client
@@ -239,7 +239,7 @@ jobs:
           identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Push to GAR
-        uses: nais/docker-build-push@8e41f1f58749b9248e376c25d33bfbdd2b1163c0
+        uses: nais/docker-build-push@0e73849f69ff260ee27597553c0a7848ca4e9795
         id: docker-build-push
         with:
           team: team-esyfo
@@ -268,7 +268,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.ref }}
-      - uses: nais/deploy/actions/deploy@849e900e3cfa7faf7ad1532bb3a3e6499c932199
+      - uses: nais/deploy/actions/deploy@027a91857992525139798892f2804b0ca21f4af6
         env:
           CLUSTER: dev-gcp
           RESOURCE: apps/lumi-dashboard/nais/demo.yaml
@@ -291,7 +291,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.ref }}
-      - uses: nais/deploy/actions/deploy@849e900e3cfa7faf7ad1532bb3a3e6499c932199
+      - uses: nais/deploy/actions/deploy@027a91857992525139798892f2804b0ca21f4af6
         env:
           CLUSTER: dev-gcp
           RESOURCE: apps/lumi-dashboard/nais/dev.yaml
@@ -317,7 +317,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.ref }}
-      - uses: nais/deploy/actions/deploy@849e900e3cfa7faf7ad1532bb3a3e6499c932199
+      - uses: nais/deploy/actions/deploy@027a91857992525139798892f2804b0ca21f4af6
         env:
           CLUSTER: prod-gcp
           RESOURCE: apps/lumi-dashboard/nais/prod.yaml

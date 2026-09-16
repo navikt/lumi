@@ -17,6 +17,8 @@ export function useArchiveSurvey(selectedSurveyId?: string) {
 
   const invalidateBootstrap = () => {
     queryClient.invalidateQueries({ queryKey: ["filterBootstrap"] });
+    queryClient.invalidateQueries({ queryKey: ["stats"] });
+    queryClient.invalidateQueries({ queryKey: ["question-trend"] });
   };
 
   const archiveMutation = useMutation({

@@ -17,8 +17,8 @@ class FeedbackStatsRepository {
     private val log = LoggerFactory.getLogger(FeedbackStatsRepository::class.java)
 
     companion object {
-        /** Minimum number of responses required to show aggregated statistics */
-        const val MIN_AGGREGATION_THRESHOLD = 5
+        /** Internal team analytics include every non-empty sample. Export thresholds are separate. */
+        const val MIN_AGGREGATION_THRESHOLD = 1
         
         const val MAX_PHRASE_SOURCE_RESPONSES_BLOCKER = 5
 
@@ -55,12 +55,21 @@ class FeedbackStatsRepository {
             val countWithText = textQuery.count()
             
             val typeQuery = FeedbackTable.selectAll()
-            applyStatsFilters(typeQuery, query)
+            applyStatsFilters(typeQuery, if (query.surveyId != null) {
+                StatsQuery(team = query.team, app = query.app, surveyId = query.surveyId, includeArchived = query.includeArchived)
+            } else query)
             typeQuery.orderBy(FeedbackTable.opprettet to SortOrder.DESC).limit(1)
-            val surveyType = typeQuery.firstOrNull()?.let { 
+            val observedSurveyType = typeQuery.firstOrNull()?.let {
                  val jsonStr = it[FeedbackTable.feedbackJson]
                  val jsonObj = json.parseToJsonElement(jsonStr).jsonObject
                  jsonObj["surveyType"]?.jsonPrimitive?.content ?: "custom"
+            }
+            val surveyType = observedSurveyType ?: query.surveyId?.takeIf { query.app == null }?.let { surveyId ->
+                // A retained runtime definition can outlive all of its responses.
+                if (StructuredFieldStatsRepository().catalog(query).isEmpty()) null else {
+                    SurveyDefinitionRepository().findByTeamAndSurveyIdInCurrentTransaction(query.team, surveyId)
+                        ?.definition?.surveyType?.name
+                }
             }
 
             val ratingExpr = JsonbPathQueryFirstText(
@@ -203,10 +212,8 @@ class FeedbackStatsRepository {
                     )
                 }
 
-            val fieldRecords = if (includeFieldStats) {
-                val fieldQuery = FeedbackTable.selectAll()
-                applyStatsFilters(fieldQuery, query)
-                fieldQuery.materializeFeedbackForAnalysis()
+            val fieldStats = if (includeFieldStats) {
+                StructuredFieldStatsRepository().getFieldStats(query)
             } else {
                 emptyList()
             }
@@ -216,7 +223,7 @@ class FeedbackStatsRepository {
                 deviceRows = deviceRows,
                 screenResolutionRows = screenResolutionRows,
                 pathnameRows = pathnameRows,
-                fieldRecords = fieldRecords
+                fieldStats = fieldStats
             )
         }
 
@@ -253,11 +260,7 @@ class FeedbackStatsRepository {
             .take(10)
             .associate { it.key to it.value }
 
-        val fieldStats = if (includeFieldStats) {
-            buildFieldStats(snapshot.fieldRecords.map { it.toDto() })
-        } else {
-            emptyList()
-        }
+        val fieldStats = snapshot.fieldStats
 
         return FeedbackAnalyticsStats(
             ratingByDate = ratingByDate,
@@ -599,7 +602,7 @@ class FeedbackStatsRepository {
         }
 
         // Filter by specific choice answers (multi-value)
-        criteria.choiceFilters.forEach { (fieldId, value) ->
+        (criteria.choiceFilters + listOfNotNull(criteria.task?.let { "task" to it })).forEach { (fieldId, value) ->
             val choiceJsonPaths = buildChoiceJsonPaths(fieldId, value, log)
             if (choiceJsonPaths != null) {
                 query.andWhere {

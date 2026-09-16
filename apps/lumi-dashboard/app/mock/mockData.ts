@@ -95,6 +95,7 @@ function generateFieldStatsOrderingSurveyData(count: number): FeedbackDto[] {
       surveyId: "survey-ordering",
       surveyType: "custom",
       context: createContext("/ordering", "desktop"),
+      metadata: { sampleGroup: i < 3 ? "small" : "other" },
       answers: [
         createRatingAnswer("svar", "Ordering Q1", 5),
         createSingleChoiceAnswer(

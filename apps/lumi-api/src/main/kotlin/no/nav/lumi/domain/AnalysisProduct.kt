@@ -198,6 +198,23 @@ data class AnalysisProductRelease(
     val publishedAt: String,
 )
 
+/** Confirmation of a server preview, never a caller-supplied publication specification. */
+@Serializable
+data class PublishAnalysisProductReleaseRequest(
+    val draftId: String,
+    val draftRevision: Long,
+    val documentHash: String,
+    val catalogRevision: String,
+    val publicationSpecificationDigest: String,
+)
+
+@Serializable
+data class UpdateAnalysisProductDraftRequest(
+    val draftId: String,
+    val draftRevision: Long,
+    val document: AnalysisProductDocumentV1,
+)
+
 @Serializable
 enum class AnalysisProductAuditEventType {
     PRODUCT_CREATED,

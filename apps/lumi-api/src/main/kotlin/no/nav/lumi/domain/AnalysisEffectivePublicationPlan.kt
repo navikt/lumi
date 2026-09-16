@@ -208,6 +208,9 @@ object AnalysisEffectivePublicationPlanResolver {
     }
 
     private fun validateSpecification(specification: AnalysisPublicationSpecificationV2) {
+        require(AnalysisPublicationBudget.violations(specification).isEmpty()) {
+            "publication specification exceeds release budget"
+        }
         require(specification.schemaVersion == 2) { "only publication specification V2 is exportable" }
         require(specification.compilerVersion == ANALYSIS_CONTRACT_COMPILER_VERSION) {
             "publication compiler version is unsupported"

@@ -6,7 +6,7 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PeriodSelector } from ".";
 
 const { mockParams, mockSetParams } = vi.hoisted(() => ({
@@ -31,6 +31,7 @@ vi.mock("~/hooks/useBreakpoint", () => ({
 }));
 
 describe("PeriodSelector", () => {
+  afterEach(() => vi.useRealTimers());
   beforeEach(() => {
     mockParams.dateMode = undefined;
     mockParams.surveyId = undefined;
@@ -39,34 +40,32 @@ describe("PeriodSelector", () => {
     mockSetParams.mockClear();
   });
 
-  it("lets a fixed survey period return to automatic mode without clearing the survey", async () => {
+  it.each([
+    false,
+    true,
+  ])("does not expose automatic mode in the period editor (completed days: %s)", async (completeDays) => {
     const user = userEvent.setup();
     mockParams.dateMode = "fixed";
     mockParams.surveyId = "survey-historisk";
     mockParams.fromDate = "2024-02-01";
     mockParams.toDate = "2024-02-18";
-    render(<PeriodSelector />);
+    render(<PeriodSelector completeDays={completeDays} />);
 
     await user.click(
       screen.getByRole("button", {
         name: "Periode: 01.02.2024 - 18.02.2024",
       }),
     );
-    await user.click(
-      screen.getByRole("button", { name: "Automatisk periode" }),
+    expect(
+      screen.queryByRole("button", { name: /automatisk periode/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByRole("textbox", { name: "Fra" })[0]).toHaveValue(
+      "01.02.2024",
     );
-
-    expect(mockSetParams).toHaveBeenCalledWith({
-      dateMode: "auto",
-      page: "1",
-    });
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", {
-          name: "Periode: 01.02.2024 - 18.02.2024",
-        }),
-      ).toHaveFocus(),
+    expect(screen.getAllByRole("textbox", { name: "Til" })[0]).toHaveValue(
+      "18.02.2024",
     );
+    expect(mockSetParams).not.toHaveBeenCalled();
   });
 
   it("labels a partial fixed period that only has a start date", () => {
@@ -103,6 +102,59 @@ describe("PeriodSelector", () => {
     expect(mockSetParams).toHaveBeenCalledWith(
       expect.objectContaining({ dateMode: "fixed", page: "1" }),
     );
+  });
+
+  it("uses completed Oslo days and preserves the explicit comparison choice", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-06T22:30:00Z"));
+    render(<PeriodSelector completeDays />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Periode: Velg periode" }),
+    );
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Siste 7 hele dager" })[0],
+    );
+    expect(mockSetParams).toHaveBeenCalledWith({
+      dateMode: "fixed",
+      fromDate: "2026-08-31",
+      toDate: "2026-09-06",
+      periodPreset: "rolling",
+      page: "1",
+    });
+  });
+
+  it("does not offer completed year-to-date on January 1", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-12-31T23:30:00Z"));
+    render(<PeriodSelector completeDays />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Periode: Velg periode" }),
+    );
+    expect(
+      screen.queryByRole("button", { name: "Hittil i år (t.o.m. i går)" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("prefills the selected dates and explains a reversed interval", async () => {
+    const user = userEvent.setup();
+    mockParams.fromDate = "2024-02-10";
+    mockParams.toDate = "2024-02-18";
+    render(<PeriodSelector completeDays />);
+    await user.click(
+      screen.getByRole("button", { name: "Periode: 10.02.2024 - 18.02.2024" }),
+    );
+    const from = screen.getAllByRole("textbox", { name: "Fra" })[0];
+    const to = screen.getAllByRole("textbox", { name: "Til" })[0];
+    expect(from).toHaveValue("10.02.2024");
+    expect(to).toHaveValue("18.02.2024");
+    await user.clear(to);
+    await user.type(to, "09.02.2024");
+    expect(
+      screen.getAllByRole("button", { name: "Velg periode" })[0],
+    ).toBeDisabled();
+    expect(
+      screen.getByText("Til-dato må være samme dag som eller etter fra-dato."),
+    ).toBeInTheDocument();
   });
 
   it("marks a custom date range as fixed", async () => {

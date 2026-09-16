@@ -37,6 +37,13 @@ API-et maskerer kjente mønstre for personlig identifiserbar informasjon (PII) i
 Dobbel maskering gjelder bare fritekstsvar. Kontekstfeltene som er markert i tabellen maskeres ved lagring, men får ingen ny PII-kontroll ved lesing.
 :::
 
+## Små utvalg i dashboardet
+
+Det interne, teamavgrensede dashboardet viser statistikk også når utvalget har
+1–4 svar. Antall svar er beregningsgrunnlaget; små utvalg kan gi store utslag
+fra ett enkelt svar og må tolkes med varsomhet. Dette endrer ikke teamtilgang,
+PII-maskering eller de separate tersklene for analyseprodukter og eksport.
+
 ## Rate limiting
 
 API-et håndhever rate limiting på flere nivåer for å beskytte mot misbruk:

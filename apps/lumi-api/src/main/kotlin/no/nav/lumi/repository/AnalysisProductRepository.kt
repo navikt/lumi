@@ -14,6 +14,13 @@ import no.nav.lumi.domain.AnalysisProductDraftValidation
 import no.nav.lumi.domain.AnalysisProductLifecycleState
 import no.nav.lumi.domain.AnalysisProductRelease
 import no.nav.lumi.domain.MAX_ANALYSIS_PRODUCT_DOCUMENT_BYTES
+import no.nav.lumi.domain.AnalysisContractCompiler
+import no.nav.lumi.domain.AnalysisContractJson
+import no.nav.lumi.domain.AnalysisDimensionRegistry
+import no.nav.lumi.domain.AnalysisProductCompilationInput
+import no.nav.lumi.domain.AnalysisProductContractPreviewV2
+import no.nav.lumi.domain.AnalysisCompilationIssue
+import no.nav.lumi.domain.PublishAnalysisProductReleaseRequest
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import java.security.MessageDigest
 import java.sql.Connection
@@ -35,6 +42,15 @@ sealed interface UpdateAnalysisProductDraftResult {
     data class Updated(val product: AnalysisProduct) : UpdateAnalysisProductDraftResult
     data object NotFound : UpdateAnalysisProductDraftResult
     data object VersionConflict : UpdateAnalysisProductDraftResult
+    data object InvalidLifecycle : UpdateAnalysisProductDraftResult
+}
+
+sealed interface PublishAnalysisProductReleaseResult {
+    data class Published(val release: AnalysisProductRelease, val created: Boolean) : PublishAnalysisProductReleaseResult
+    data class Blocked(val issues: List<AnalysisCompilationIssue>) : PublishAnalysisProductReleaseResult
+    data object NotFound : PublishAnalysisProductReleaseResult
+    data object PreviewConflict : PublishAnalysisProductReleaseResult
+    data object InvalidLifecycle : PublishAnalysisProductReleaseResult
 }
 
 enum class AnalysisProductTransitionRejection {
@@ -61,10 +77,8 @@ sealed interface ChangeAnalysisProductStateResult {
 /**
  * Team-scoped persistence for the analysis-product control plane.
  *
- * There is intentionally no release write method in this slice. A release may
- * only be created after the catalog/compiler slice can produce a
- * server-validated draft revision, catalog revision and schema digest in one
- * transaction.
+ * Releases are compiled from a locked draft and a server-read catalog in the
+ * same transaction. Sealing a release never changes desired/active delivery.
  */
 class AnalysisProductRepository(
     private val clock: Clock = Clock.systemUTC(),
@@ -184,6 +198,13 @@ class AnalysisProductRepository(
 
         return dbQuery {
             val connection = currentJdbcConnection()
+            // All draft/release commands lock product before draft, matching
+            // lifecycle commands and the release-insert database trigger.
+            val product = lockControlProduct(connection, normalizedTeam, productId)
+                ?: return@dbQuery UpdateAnalysisProductDraftResult.NotFound
+            if (product.lifecycleState in setOf(AnalysisProductLifecycleState.OFFBOARDING, AnalysisProductLifecycleState.DELETED)) {
+                return@dbQuery UpdateAnalysisProductDraftResult.InvalidLifecycle
+            }
             val nextRevision = connection.prepareStatement(
                 """
                     UPDATE analysis_control.analysis_product_drafts AS d
@@ -262,6 +283,182 @@ class AnalysisProductRepository(
                 checkNotNull(findByIdInCurrentTransaction(connection, normalizedTeam, productId)),
             )
         }
+    }
+
+    /** Seal exactly the preview the caller confirmed; no export or activation is performed. */
+    suspend fun publishRelease(
+        team: String,
+        productId: UUID,
+        request: PublishAnalysisProductReleaseRequest,
+        principalIdentity: String,
+    ): PublishAnalysisProductReleaseResult {
+        val normalizedTeam = requiredValue("team", team, 255)
+        val actor = requiredValue("principalIdentity", principalIdentity, 320)
+        val draftId = UUID.fromString(request.draftId)
+        require(request.draftRevision > 0) { "draftRevision must be positive" }
+        val hashPattern = Regex("^[0-9a-f]{64}$")
+        require(request.documentHash.matches(hashPattern)) { "documentHash is invalid" }
+        require(request.publicationSpecificationDigest.matches(hashPattern)) { "publicationSpecificationDigest is invalid" }
+        require(request.catalogRevision.isNotBlank() && request.catalogRevision.length <= 128) { "catalogRevision is invalid" }
+
+        return dbQuery {
+            val connection = currentJdbcConnection()
+            val control = lockControlProduct(connection, normalizedTeam, productId)
+                ?: return@dbQuery PublishAnalysisProductReleaseResult.NotFound
+
+            // An uncertain HTTP response can be retried even after the draft
+            // is removed. Replay only returns provenance; it cannot reactivate it.
+            val existing = findReleaseForDraft(connection, normalizedTeam, productId, draftId, request.draftRevision)
+            if (existing != null) {
+                return@dbQuery if (
+                    existing.sourceDocumentHash == request.documentHash &&
+                    existing.catalogRevision == request.catalogRevision &&
+                    existing.publicationSpecificationDigest == request.publicationSpecificationDigest
+                ) {
+                    PublishAnalysisProductReleaseResult.Published(existing, created = false)
+                } else PublishAnalysisProductReleaseResult.PreviewConflict
+            }
+            if (control.lifecycleState in setOf(AnalysisProductLifecycleState.OFFBOARDING, AnalysisProductLifecycleState.DELETED)) {
+                return@dbQuery PublishAnalysisProductReleaseResult.InvalidLifecycle
+            }
+            val product = checkNotNull(findByIdInCurrentTransaction(connection, normalizedTeam, productId))
+            val draft = product.draft ?: return@dbQuery PublishAnalysisProductReleaseResult.PreviewConflict
+            if (draft.id != draftId.toString() || draft.revision != request.draftRevision || draft.documentHash != request.documentHash) {
+                return@dbQuery PublishAnalysisProductReleaseResult.PreviewConflict
+            }
+            AnalysisProductDocumentValidator.validate(draft.document, LocalDate.now(clock))
+
+            // Catalog facts are read by one statement. The release pins that
+            // observation; subsequent source changes must be checked by delivery.
+            val preview = AnalysisContractCompiler().compilePreview(
+                AnalysisProductCompilationInput(
+                    productId = product.id,
+                    team = normalizedTeam,
+                    draftId = draft.id,
+                    draftRevision = draft.revision,
+                    documentHash = draft.documentHash,
+                    document = draft.document,
+                    catalog = AnalysisSourceCatalogRepository().findCatalog(connection, normalizedTeam),
+                    dimensions = AnalysisDimensionRegistry.snapshot(),
+                ),
+            )
+            if (preview.publicationSpecification == null) {
+                return@dbQuery PublishAnalysisProductReleaseResult.Blocked(preview.issues)
+            }
+            if (preview.catalogRevision != request.catalogRevision || preview.publicationSpecificationDigest != request.publicationSpecificationDigest) {
+                return@dbQuery PublishAnalysisProductReleaseResult.PreviewConflict
+            }
+            val specificationDigest = checkNotNull(preview.publicationSpecificationDigest)
+
+            markDraftValidated(connection, normalizedTeam, productId, preview, actor)
+            val validationVersion = advanceReleaseVersion(connection, normalizedTeam, productId, actor, product.lastReleaseNumber)
+            insertAuditEvent(
+                connection, normalizedTeam, productId, validationVersion, AnalysisProductAuditEventType.DRAFT_VALIDATED,
+                actor, validationVersion, draftId, draft.revision, subjectDigest = draft.documentHash,
+            )
+            val releaseNumber = product.lastReleaseNumber + 1
+            val release = insertCompiledRelease(connection, normalizedTeam, productId, releaseNumber, draft, preview, actor)
+            val publicationVersion = advanceReleaseVersion(connection, normalizedTeam, productId, actor, releaseNumber)
+            insertAuditEvent(
+                connection, normalizedTeam, productId, publicationVersion, AnalysisProductAuditEventType.RELEASE_PUBLISHED,
+                actor, publicationVersion, releaseNumber = releaseNumber, subjectDigest = specificationDigest,
+            )
+            connection.prepareStatement(
+                "DELETE FROM analysis_control.analysis_product_drafts WHERE team = ? AND product_id = ? AND id = ?",
+            ).use { statement ->
+                statement.setString(1, normalizedTeam)
+                statement.setObject(2, productId)
+                statement.setObject(3, draftId)
+                check(statement.executeUpdate() == 1) { "Published draft disappeared" }
+            }
+            PublishAnalysisProductReleaseResult.Published(release, created = true)
+        }
+    }
+
+    private fun findReleaseForDraft(
+        connection: Connection, team: String, productId: UUID, draftId: UUID, revision: Long,
+    ): AnalysisProductRelease? = connection.prepareStatement(
+        """
+            SELECT * FROM analysis_control.analysis_product_releases
+            WHERE team = ? AND product_id = ? AND source_draft_id = ? AND source_draft_revision = ?
+        """.trimIndent(),
+    ).use { statement ->
+        statement.setString(1, team)
+        statement.setObject(2, productId)
+        statement.setObject(3, draftId)
+        statement.setLong(4, revision)
+        statement.executeQuery().use { rows -> if (rows.next()) rows.toRelease() else null }
+    }
+
+    private fun markDraftValidated(
+        connection: Connection, team: String, productId: UUID, preview: AnalysisProductContractPreviewV2, actor: String,
+    ) {
+        connection.prepareStatement(
+            """
+                UPDATE analysis_control.analysis_product_drafts
+                SET validated_revision = revision, validated_catalog_revision = ?,
+                    validated_base_schema_digest = ?, validated_by = ?, validated_at = clock_timestamp()
+                WHERE team = ? AND product_id = ? AND id = ? AND revision = ?
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setString(1, preview.catalogRevision)
+            statement.setString(2, preview.baseSchemaDigest)
+            statement.setString(3, actor)
+            statement.setString(4, team)
+            statement.setObject(5, productId)
+            statement.setObject(6, UUID.fromString(preview.draftId))
+            statement.setLong(7, preview.draftRevision)
+            check(statement.executeUpdate() == 1) { "Locked draft changed during release validation" }
+        }
+    }
+
+    private fun insertCompiledRelease(
+        connection: Connection,
+        team: String,
+        productId: UUID,
+        releaseNumber: Long,
+        draft: AnalysisProductDraft,
+        preview: AnalysisProductContractPreviewV2,
+        actor: String,
+    ): AnalysisProductRelease = connection.prepareStatement(
+        """
+            INSERT INTO analysis_control.analysis_product_releases (
+                id, team, product_id, release_number, source_draft_id, source_draft_revision,
+                source_document, source_document_hash, publication_specification,
+                publication_specification_digest, catalog_revision, base_schema_digest, published_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?::jsonb, ?, ?, ?, ?) RETURNING *
+        """.trimIndent(),
+    ).use { statement ->
+        statement.setObject(1, UUID.randomUUID())
+        statement.setString(2, team)
+        statement.setObject(3, productId)
+        statement.setLong(4, releaseNumber)
+        statement.setObject(5, UUID.fromString(draft.id))
+        statement.setLong(6, draft.revision)
+        statement.setString(7, json.encodeToString(draft.document))
+        statement.setString(8, draft.documentHash)
+        statement.setString(9, AnalysisContractJson.encodeToString(checkNotNull(preview.publicationSpecification)))
+        statement.setString(10, checkNotNull(preview.publicationSpecificationDigest))
+        statement.setString(11, preview.catalogRevision)
+        statement.setString(12, preview.baseSchemaDigest)
+        statement.setString(13, actor)
+        statement.executeQuery().use { rows -> check(rows.next()); rows.toRelease() }
+    }
+
+    private fun advanceReleaseVersion(
+        connection: Connection, team: String, productId: UUID, actor: String, releaseNumber: Long,
+    ): Long = connection.prepareStatement(
+        """
+            UPDATE analysis_control.analysis_products
+            SET row_version = row_version + 1, last_release_number = ?, updated_by = ?, updated_at = clock_timestamp()
+            WHERE team = ? AND id = ? RETURNING row_version
+        """.trimIndent(),
+    ).use { statement ->
+        statement.setLong(1, releaseNumber)
+        statement.setString(2, actor)
+        statement.setString(3, team)
+        statement.setObject(4, productId)
+        statement.executeQuery().use { rows -> check(rows.next()); rows.getLong(1) }
     }
 
     suspend fun desireRelease(

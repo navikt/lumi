@@ -4,9 +4,14 @@ import { fetchQuestionTrendServerFn } from "~/server/actions";
 import { splitChoiceParam } from "~/utils/choiceFilterUtils";
 import { splitRatingParam } from "~/utils/ratingFilterUtils";
 
-export function useQuestionTrend(enabled = true) {
+export function useQuestionTrend(
+  enabled = true,
+  fieldOverride?: string,
+  intervalOverride?: "day" | "week" | "month",
+) {
   const { params } = useSearchParams();
-  const interval = params.trendInterval ?? "week";
+  const interval = intervalOverride ?? params.trendInterval ?? "week";
+  const fieldId = fieldOverride ?? params.trendField;
 
   return useQuery({
     queryKey: [
@@ -22,7 +27,7 @@ export function useQuestionTrend(enabled = true) {
       params.task,
       params.rating,
       params.choice,
-      params.trendField,
+      fieldId,
       interval,
     ],
     queryFn: () =>
@@ -39,11 +44,11 @@ export function useQuestionTrend(enabled = true) {
           task: params.task,
           rating: splitRatingParam(params.rating),
           choice: splitChoiceParam(params.choice),
-          fieldId: params.trendField as string,
+          fieldId: fieldId as string,
           interval,
         },
       }),
-    enabled: enabled && Boolean(params.surveyId && params.trendField),
+    enabled: enabled && Boolean(params.surveyId && fieldId),
     staleTime: 30000,
   });
 }

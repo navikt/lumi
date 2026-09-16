@@ -58,6 +58,8 @@ export function Header() {
 
   // Helper to determine button variant based on active path
   const getVariant = (path: string) => {
+    if (path === "/export" && currentPath === "/analyseprodukter")
+      return "primary";
     if (path === "/") {
       return currentPath === "/" ? "primary" : "tertiary";
     }

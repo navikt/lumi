@@ -3,9 +3,91 @@ import type {
   QuestionTrendInterval,
   QuestionTrendResponse,
 } from "~/types/api";
+import {
+  calculateNpsScore,
+  calculateThumbsPositiveRate,
+  normalizeRatingVariant,
+} from "~/utils/ratingDisplay";
+
+export function questionTrendRatingMetric(
+  trend: Pick<QuestionTrendResponse, "ratingVariant" | "ratingScale">,
+) {
+  const variant =
+    normalizeRatingVariant(trend.ratingVariant) ??
+    (trend.ratingScale === 11
+      ? "nps"
+      : trend.ratingScale === 2
+        ? "thumbs"
+        : trend.ratingScale === 5
+          ? "emoji"
+          : "unknown");
+  return {
+    variant,
+    label:
+      variant === "nps"
+        ? "NPS"
+        : variant === "thumbs"
+          ? "Andel positive"
+          : "Gjennomsnitt",
+    domain:
+      variant === "nps"
+        ? [-100, 100]
+        : variant === "thumbs"
+          ? [0, 100]
+          : variant === "unknown"
+            ? ["auto", "auto"]
+            : [1, 5],
+    unit: variant === "thumbs" ? "%" : undefined,
+  };
+}
+
+export function questionTrendRatingValue(
+  trend: Pick<QuestionTrendResponse, "ratingVariant" | "ratingScale">,
+  bucket: QuestionTrendBucket,
+): number | null {
+  if (bucket.masked || !bucket.responseCount) return null;
+  const { variant } = questionTrendRatingMetric(trend);
+  if (variant !== "nps" && variant !== "thumbs") return bucket.average ?? null;
+  const distribution = bucket.ratingDistribution;
+  if (
+    !distribution ||
+    Object.values(distribution).reduce((sum, count) => sum + count, 0) === 0
+  )
+    return null;
+  return variant === "nps"
+    ? calculateNpsScore(distribution)
+    : calculateThumbsPositiveRate(distribution);
+}
 
 function toUtcDate(date: string): Date {
   return new Date(`${date}T00:00:00Z`);
+}
+
+export function questionTrendChoiceValue(
+  bucket: QuestionTrendBucket,
+  optionId: string,
+  measure: "count" | "percentage",
+): number | null {
+  if (bucket.masked || (measure === "percentage" && !bucket.responseCount))
+    return null;
+  return bucket.distribution[optionId]?.[measure] ?? 0;
+}
+
+export function questionTrendChartData(
+  trend: QuestionTrendResponse,
+  buckets: QuestionTrendBucket[],
+  measure: "count" | "percentage",
+) {
+  return buckets.map((bucket) => ({
+    label: formatQuestionTrendBucket(bucket.startDate, trend.interval),
+    average:
+      trend.fieldType === "RATING"
+        ? questionTrendRatingValue(trend, bucket)
+        : undefined,
+    values: trend.options.map((option) =>
+      questionTrendChoiceValue(bucket, option.id, measure),
+    ),
+  }));
 }
 
 function toIsoDate(date: Date): string {

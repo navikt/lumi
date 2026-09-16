@@ -35,6 +35,19 @@ data class SurveyAuthoringProject(
     val updatedAt: String,
 )
 
+/**
+ * The newest frozen revision of a project, carried on the list so the
+ * overview can open a shared survey on its stable version and tell
+ * whether the draft has moved on since (draftVersion > revision's).
+ */
+@Serializable
+data class SurveyAuthoringLatestRevision(
+    val id: String,
+    val revisionNumber: Long,
+    val draftVersion: Long,
+    val createdAt: String,
+)
+
 @Serializable
 data class SurveyAuthoringProjectSummary(
     val id: String,
@@ -44,6 +57,7 @@ data class SurveyAuthoringProjectSummary(
     val draftVersion: Long,
     val createdAt: String,
     val updatedAt: String,
+    val latestRevision: SurveyAuthoringLatestRevision? = null,
 )
 
 @Serializable

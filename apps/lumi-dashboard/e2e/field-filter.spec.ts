@@ -14,13 +14,22 @@ test.describe("Field filters", () => {
   }) => {
     await gotoSurveyCustom(page);
 
-    await expect(page.getByTestId("field-stat-title-role")).toBeVisible();
-
-    await page.getByRole("button", { name: /Arbeidsgiver/ }).click();
+    const roleField = page.getByRole("region", { name: "Rolle", exact: true });
+    await expect(
+      roleField.getByRole("heading", { name: "Rolle", level: 3 }),
+    ).toBeVisible();
+    const employer = roleField.getByRole("button", {
+      name: /^Filtrer på Arbeidsgiver\./,
+    });
+    await employer.click();
 
     await expect
       .poll(() => new URL(page.url()).searchParams.get("choice"))
       .toBe("role:Arbeidsgiver");
+    await expect(employer).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      page.getByRole("button", { name: "Fjern filter Rolle: Arbeidsgiver" }),
+    ).toBeVisible();
   });
 
   test("navigating with a choice filter shows a chip that can be removed", async ({

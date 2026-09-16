@@ -4,7 +4,37 @@ All notable changes to `@navikt/lumi-survey` will be documented in this file.
 
 This project follows SemVer.
 
-## [Unreleased]
+## [2.2.3] - 2026-09-13
+
+### Documentation
+
+- Start with Surveyverksted to create and share a survey, then integrate the
+  exported document in your app. The package README now follows this flow
+  through backend setup and checking responses in Lumi.
+- Add documentation, issue tracker and search keywords to the package metadata.
+
+## [2.2.2] - 2026-09-10
+
+### Distribution
+
+- The package is now published to npmjs as the primary, anonymously readable
+  registry and to GitHub Packages as a compatibility mirror. Consumers no
+  longer need registry configuration or a GitHub token to install it.
+- Published metadata now declares the MIT license and the package's source
+  directory in `navikt/lumi`.
+
+## [2.2.1] - 2026-09-07
+
+### Fixed
+
+- V1 survey documents now ignore answers from hidden source questions when
+  deciding which follow-ups to show, validate and submit. Closing a branch
+  hides all dependent follow-ups while retaining their answers locally for
+  returning to that branch. Alternative `any` conditions, metadata conditions
+  and the existing behavior of negative conditions on visible, unanswered
+  questions are preserved. Legacy flat survey visibility is unchanged.
+- Conditional page flows show the current step without an estimated percentage
+  or fixed total. Linear flows retain their exact progress indicator.
 
 ## [2.2.0] - 2026-08-31
 

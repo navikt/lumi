@@ -36,6 +36,31 @@ vi.mock("~/components/dashboard/sections/StatsCards", () => ({
   StatsCards: () => <div>MOCK_STATS_CARDS</div>,
 }));
 
+vi.mock(
+  "~/components/dashboard/sections/FieldStats/PeriodComparison/ComparisonStatsCards",
+  () => ({
+    ComparisonStatsCards: () => <div>MOCK_STATS_CARDS</div>,
+  }),
+);
+vi.mock("~/hooks/useStats", () => ({
+  useStats: () => ({
+    data: {
+      fieldStats: [
+        {
+          fieldId: "rating",
+          fieldType: "RATING",
+          stats: {
+            type: "rating",
+            ratingVariant: "emoji",
+            average: 4,
+            distribution: { "4": 10 },
+          },
+        },
+      ],
+    },
+  }),
+}));
+
 vi.mock("~/components/dashboard/sections/Timeline", () => ({
   TimelineSection: () => <div>MOCK_TIMELINE</div>,
 }));

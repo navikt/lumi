@@ -59,6 +59,14 @@ Disse invariantene er absolutte. En rød kontroll stopper publisering:
 9. Et betinget felt kan aldri releaseres når et svar-/metadatafelt i predicate
    ikke selv er eksplisitt valgt og godkjent i produktet. Historisk flyt uten
    en ingest-matchet revisjon rekonstrueres aldri.
+10. En innsnevring eller offboarding kan ikke bekreftes gjennomført mens
+    tidligere, bredere konsumentlesing fortsatt er mulig. En forsinket kjøring
+    kan ikke gjenåpne den gamle flaten. Dette gjelder også direkte navn og
+    deprecated ressurser, ikke bare stabile aliases.
+11. Uten ny bekreftet slettesynk stenges produktlesing senest 36 timer etter
+    kildelesingen i siste aktiverte snapshot som videreførte sletting og utløp.
+    Brukeren får en feiltilstand, aldri et gyldig tomt datasett. Stengingen må
+    fungere selv om publiseringsjobben står stille.
 
 ## Trusler, kontroller og påkrevd evidens
 
@@ -79,6 +87,8 @@ Disse invariantene er absolutte. En rød kontroll stopper publisering:
 | T13 | Offboarding etterlater data, grants eller markedsplassressurs | Trinnvis, idempotent offboarding med verifisert tomhet før `Slettet` | Gjentatt feilinjisert offboarding og etterkontroll av data, views, bindings, grants, credentials og katalog |
 | T14 | Høy kardinalitet eller ukjent dimensjon omgår minimering | Sentralt klassifisert dimensjonsregister med type, scope og kardinalitetspolicy; fail closed | Negative tester for uregistrert nøkkel, nytt scope, typeendring og overskredet kardinalitet |
 | T15 | Authorized-resource-kvote eller for bred dataset-authorization bryter 50-team-målet | Publiseringstopologi velges etter kvote- og privilegieanalyse; eksplisitt budsjett for produkter, surveys og majors; ingen implicit future-view-tilgang uten review | Skalatest med 50 team, opptil 500 produkter, representative surveyantall og parallelle majors, inkludert reconcile og offboarding |
+| T16 | Kopier eller cache bevarer data etter at Lumi-flaten er stengt | Eksplisitt konsumentkontrakt for BigQuery-resultater, Metabase, notebooks og statiske artefakter; avtalt TTL, eier og regenerering/tømming; ingen varige radnivåkopier utenfor produktflaten | Tilgangs- og cachetest med faktisk konsumentidentitet, inkludert allerede kjørte spørringer, tilbakekalling og konkret Quarto-runbook |
+| T17 | Feil team står som domeneeier eller godkjenner tilgang | NADA-støttet skille mellom Lumi som infrastrukturprodusent og fagteamet som domeneeier/tilgangsgodkjenner | Dokumentert plattformavklaring og ende-til-ende test av registrering, tilgangsgodkjenning og offboarding |
 
 ## Identiteter og minste privilegium
 
@@ -155,6 +165,9 @@ fortsette; databasebruker, connection, IAM og scheduler kan ikke opprettes.
       volum.
 - [ ] 1x- og 10x-måling er under stoppgrensene i ADR 0005.
 - [ ] Feilinjeksjon beviser atomisk og monoton aktivering.
+- [ ] Innsnevring under en pågående eldre kjøring stenger eller erstatter
+      bredere lesing før endringen bekreftes. Krasj og retry mellom stenging,
+      materialisering og aktivering kan ikke gjenåpne den gamle flaten.
 - [ ] Sletting/replay-test beviser at slettede data ikke gjenoppstår.
 - [ ] Ukjent definition/option i produkt A fryser bare A, delpubliserer ingen
       nye A-rader og hindrer verken publisering eller slettesynk for B; purge-
@@ -203,6 +216,12 @@ fortsette; databasebruker, connection, IAM og scheduler kan ikke opprettes.
       uten answer-referanse; tilbakekalt label forsvinner fra alle majors.
 - [ ] Pause, forkortet retensjon, fjernet felt/survey og deprecated major er
       verifisert mot samme source deletion.
+- [ ] Lesing stenges automatisk ved 36-timersgrensen fra siste aktiverte
+      slettesynks kildelesetidspunkt. Testen dekker stoppet publisher, feilet
+      refresh, gammel staging, direkte ressursnavn og deprecated ressurser.
+      Bare aktivert, fersk slettesynk kan fornye fristen. Stengt produkt gir
+      feil; et ekte tomt produkt gir fortsatt en gyldig manifestressurs med
+      `row_count=0`.
 - [ ] Schema-, referanse-, isolasjons-, retensjons- og canary-kontroller stopper
       publisering ved avvik.
 - [ ] Staging og ikke-aktive snapshots har verifisert opprydding og TTL.
@@ -216,6 +235,8 @@ fortsette; databasebruker, connection, IAM og scheduler kan ikke opprettes.
 
 ### Gate D – før første konsument får tilgang
 
+- [ ] NADA har bekreftet produsent/domeneeier-skillet, og faktisk registrering,
+      tilgangsgodkjenning og offboarding er prøvd med fagteamet som eier.
 - [ ] Datamarkedsplassen kan registrere, oppdatere og avvikle flere views som
       ett produkt uten Lumi-operatør eller deploy per team.
 - [ ] Produktdatasettets faktiske IAM viser ingen arvet menneskelig/default
@@ -228,6 +249,14 @@ fortsette; databasebruker, connection, IAM og scheduler kan ikke opprettes.
       ingest-matchet flow, svarmål for samme periode og filtre. `UNPINNED`
       historikk inngår ikke i svarpariteten eller en antatt backfill.
 - [ ] Metabase og datafortelling/notebook har lest samme kontrakt.
+- [ ] Den faktiske konsumentopplevelsen ved stengt produkt er verifisert som
+      utilgjengelig/feil, ikke null svar. Backing-tabeller og historiske
+      snapshots kan ikke brukes til å omgå stengingen.
+- [ ] Tidligere BigQuery-resultater, Metabase-cache, notebook-tabeller og
+      statiske datafortellinger har avtalt levetid, eier og verifisert
+      regenerering/tømming. Publiserte artefakter bruker godkjente aggregater;
+      view-revokering hevdes ikke å slette eksisterende kopier eller fysiske
+      byte i BigQuery time-travel/fail-safe.
 - [ ] Pointerbytte mellom manifest, wide, long og katalog gir samme
       `product_snapshot_id` eller en oppdagbar mismatch. Manifestets
       resource-rad har schema-digest/radtall, og én-statements LEFT JOIN er
@@ -238,6 +267,12 @@ fortsette; databasebruker, connection, IAM og scheduler kan ikke opprettes.
 
 ### Gate E – før bred `esyfo-analyse`-tilgang fjernes
 
+- [ ] Eksisterende legacy-bruk er ikke utvidet med nye konsumenter, grants
+      eller analysebehov. Dette er kontrollert som overgangspraksis, ikke
+      antatt som teknisk survey-/feltavgrensning i dagens brede grant.
+- [ ] Gammel V1-historikk trengs ikke lenger eller har utløpt med kildens
+      retensjon. Dataeier har akseptert historikkskillet; ingen eldre flyt er
+      rekonstruert eller svar backfillet uten separat beslutning.
 - [ ] Minst to planlagte snapshots er publisert og konsumert uten avvik.
 - [ ] Quarto/Metabase peker på ny kontrakt og ingen konsument leser `public`.
 - [ ] Dataeier har akseptert det pinnede analysevinduet før bred tilgang
@@ -267,13 +302,17 @@ published_at
 cleanup_completed_at
 ```
 
-Det varsles på mislykket kjøring, 36 timer uten vellykket slettesynk, stale
+Det varsles på mislykket kjøring, uteblitt daglig oppdatering, 30 timer uten
+bekreftet slettesynk og stale
 source- eller produktpointer, staging eldre enn 24 timer, volumavvik,
 kontrakts-/referansebrudd, dimensjonsbrudd, drift, mislykket
 slettesynk/offboarding og tenant-/forbudt-data-canary. En daglig feil får
-automatiske retryforsøk innen seks timer. 36 timer er et målbart SLO; passering
-er et brudd med operatørvarsel og runbook. Tenant- eller forbudt-data-avvik
-stopper alltid source-publisering.
+automatiske retryforsøk innen seks timer. Ved 36-timersgrensen stenges lesing
+automatisk og operatøren varsles; bare alarm er ikke tilstrekkelig. Fristen
+følger kildelesetidspunktet i siste aktiverte snapshot som videreførte sletting
+og utløp for produktet, ikke siste jobbstart eller heartbeat. Runbook og
+avtalt stengemekanisme må være verifisert før Gate D. Tenant- eller
+forbudt-data-avvik stopper alltid source-publisering.
 
 ## Eksterne beslutninger som fortsatt er åpne
 
@@ -283,6 +322,8 @@ ikke gjette. Gate B og D krever fortsatt svar på:
 
 - om et dedikert analyseprosjekt og produktdatasett kan være servicekonto-only
   uten arvet menneskelig tilgang
+- støttet skille mellom Lumi som infrastrukturprodusent/GCP-prosjekteier og
+  fagteamet som domeneeier og tilgangsgodkjenner
 - minste IAM, capability-separasjon, authorized-resource-kvoter og mekanisme
   for cross-dataset binding uten implicit future-view-tilgang
 - støttet programmatisk opprettelse, oppdatering og avvikling av datasett og
@@ -292,6 +333,8 @@ ikke gjette. Gate B og D krever fortsatt svar på:
 - hvordan flere views og major-versjoner representeres som ett dataprodukt
 - krav til Behandlingskatalog/PVK og hvordan Metabase-grupper håndteres
 - støttet varsling for eierfornyelse og operasjonelle avvik
+- stenging av alle produktressurser uten avhengighet av en fungerende
+  publiseringsjobb, og håndtering av cache og tidligere resultatkopier
 
 Et ubesvart punkt kan bare gi en begrenset lokal/offline spike med syntetiske
 data og uten databasebruker, connection, IAM eller scheduler. Det kan ikke

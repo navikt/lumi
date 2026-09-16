@@ -7,6 +7,10 @@ dayjs.extend(timezone);
 
 const OSLO_TIME_ZONE = "Europe/Oslo";
 
+export function todayInOslo() {
+  return dayjs().tz(OSLO_TIME_ZONE).format("YYYY-MM-DD");
+}
+
 export type DashboardDateMode = "auto" | "fixed";
 
 export interface DashboardPeriod {

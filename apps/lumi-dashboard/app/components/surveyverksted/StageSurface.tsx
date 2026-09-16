@@ -40,6 +40,9 @@ export interface StageSurfaceProps {
   surveyId: string;
   environmentTag: string;
   initialPageId?: string;
+  /** Show the respondent view at normal text size, with room for longer pages. */
+  roomy?: boolean;
+  showProgress?: boolean;
   /** Bump to restart the respondent flow */
   nonce?: number;
   successTitle: string;
@@ -62,23 +65,33 @@ export const StageSurface = memo(function StageSurface({
   surveyId,
   environmentTag,
   initialPageId,
+  roomy = false,
+  showProgress = true,
   nonce = 0,
   successTitle,
   successBody,
   onAnswersChange,
 }: StageSurfaceProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
-  const [viewport, setViewport] = useState({ width: 480, height: 560 });
+  const [viewport, setViewport] = useState({
+    width: 480,
+    height: roomy ? 720 : 560,
+  });
   useEffect(() => {
     const element = viewportRef.current;
     if (!element) return;
     const observer = new ResizeObserver((entries) => {
       const rect = entries[0]?.contentRect;
-      if (rect) {
-        setViewport({
-          width: Math.round(rect.width),
-          height: Math.round(rect.height),
-        });
+      // A hidden tab/panel can briefly report zero. Keep the last usable size
+      // until it becomes visible rather than dividing by a zero scale.
+      if (rect && rect.width >= 1 && rect.height >= 1) {
+        const width = Math.round(rect.width);
+        const height = Math.round(rect.height);
+        setViewport((previous) =>
+          previous.width === width && previous.height === height
+            ? previous
+            : { width, height },
+        );
       }
     });
     observer.observe(element);
@@ -88,7 +101,7 @@ export const StageSurface = memo(function StageSurface({
   const requiredWidth =
     (documentNeedsWideDock(document) ? NPS_DOCK_WIDTH : DOCK_WIDTH) +
     DOCK_OFFSET * 2;
-  const scale = Math.min(1, viewport.width / requiredWidth);
+  const scale = roomy ? 1 : Math.min(1, viewport.width / requiredWidth);
   const innerWidth = Math.round(viewport.width / scale);
   const innerHeight = Math.round(viewport.height / scale);
   const panelMaxHeight = `${Math.max(280, innerHeight - DOCK_OFFSET * 2 - 8)}px`;
@@ -132,7 +145,11 @@ export const StageSurface = memo(function StageSurface({
   );
 
   return (
-    <div ref={viewportRef} className={styles.stageViewport}>
+    <div
+      ref={viewportRef}
+      className={styles.stageViewport}
+      data-roomy={roomy || undefined}
+    >
       <div
         className={styles.stageInner}
         style={{
@@ -165,7 +182,7 @@ export const StageSurface = memo(function StageSurface({
             initialOpen: true,
             hideAfterSubmit: false,
             questionLayout: "auto",
-            showProgress: true,
+            showProgress,
             storageStrategy: "none",
             initialPageId,
             simulatedViewport: { width: innerWidth, height: innerHeight },

@@ -8,11 +8,9 @@ import type {
   LumiSurveyTransport,
   RatingQuestion,
 } from "../../core";
-import {
-  getVisibleQuestions,
-  shouldShowSubmitButton,
-  useLumiSurvey,
-} from "../../core";
+import { getVisibleQuestions, shouldShowSubmitButton } from "../../core";
+import { resolveDocumentVisibility } from "../../core/documentVisibility.js";
+import { useLumiSurveyState } from "../../core/useLumiSurvey.js";
 import { validateAnswers } from "../../core/validation.js";
 import { getVisibilityMetadata } from "../../core/visibilityMetadata.js";
 
@@ -228,14 +226,26 @@ export const LumiSurveyDock = ({
     [enrichedContext],
   );
 
-  const { answers, status, error, setAnswer, submit, reset } = useLumiSurvey({
-    surveyId,
-    questions,
-    transport,
-    events,
-    context: enrichedContext,
-    surveyType,
-  });
+  const { answers, status, error, setAnswer, submit, reset } =
+    useLumiSurveyState(
+      {
+        surveyId,
+        questions,
+        transport,
+        events,
+        context: enrichedContext,
+        surveyType,
+      },
+      source === "document-v1",
+    );
+
+  const documentVisibility = useMemo(
+    () =>
+      source === "document-v1"
+        ? resolveDocumentVisibility(questions, answers, visibilityMetadata)
+        : undefined,
+    [source, questions, answers, visibilityMetadata],
+  );
 
   const forceStepMode = config.questionLayout === "steps";
   const forceSinglePage = config.questionLayout === "singlePage";
@@ -305,14 +315,14 @@ export const LumiSurveyDock = ({
       pages
         .map((page) => ({
           ...page,
-          questions: getVisibleQuestions(
-            page.questions,
-            answers,
-            visibilityMetadata,
-          ),
+          questions: documentVisibility
+            ? page.questions.filter((question) =>
+                documentVisibility.visibleQuestionIds.has(question.id),
+              )
+            : getVisibleQuestions(page.questions, answers, visibilityMetadata),
         }))
         .filter((page) => page.questions.length > 0),
-    [answers, pages, visibilityMetadata],
+    [answers, documentVisibility, pages, visibilityMetadata],
   );
 
   const headerPage =
@@ -363,8 +373,10 @@ export const LumiSurveyDock = ({
 
   // Filter questions based on visibleIf conditions (progressive disclosure)
   const visibleQuestions = useMemo(
-    () => getVisibleQuestions(questions, answers, visibilityMetadata),
-    [questions, answers, visibilityMetadata],
+    () =>
+      documentVisibility?.visibleQuestions ??
+      getVisibleQuestions(questions, answers, visibilityMetadata),
+    [documentVisibility, questions, answers, visibilityMetadata],
   );
 
   // Combined reset: clears survey answers, resets step navigation, and restores intro screen
@@ -421,8 +433,13 @@ export const LumiSurveyDock = ({
   // Progressive submit: hide the button until a currently visible question has
   // at least one meaningful answer. Required-answer validation happens on submit.
   const isSubmitBlocked = useMemo(
-    () => !shouldShowSubmitButton(questions, answers, visibilityMetadata),
-    [questions, answers, visibilityMetadata],
+    () =>
+      !shouldShowSubmitButton(
+        questions,
+        documentVisibility?.visibleAnswers ?? answers,
+        visibilityMetadata,
+      ),
+    [documentVisibility, questions, answers, visibilityMetadata],
   );
 
   // In step mode with branching, only validate questions the user actually visited
@@ -435,7 +452,11 @@ export const LumiSurveyDock = ({
         source === "document-v1"
           ? uniqueIndices.flatMap((index) => pages[index]?.questions ?? [])
           : uniqueIndices.map((index) => questions[index]).filter(Boolean);
-      return getVisibleQuestions(visited, answers, visibilityMetadata);
+      return documentVisibility
+        ? visited.filter((question) =>
+            documentVisibility.visibleQuestionIds.has(question.id),
+          )
+        : getVisibleQuestions(visited, answers, visibilityMetadata);
     }
     // Non-step mode: only validate visible questions (hidden questions are
     // excluded regardless of whether they were previously visible).
@@ -443,6 +464,7 @@ export const LumiSurveyDock = ({
   }, [
     isStepMode,
     visitedSteps,
+    documentVisibility,
     questions,
     visibleQuestions,
     answers,

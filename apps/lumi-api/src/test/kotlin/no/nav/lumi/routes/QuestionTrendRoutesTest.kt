@@ -153,7 +153,7 @@ class QuestionTrendRoutesTest : FunSpec({
         }
     }
 
-    test("question trend masks each interval independently") {
+    test("question trend includes intervals with fewer than five responses") {
         testApplication {
             application { testModule() }
             val january = OffsetDateTime.parse("2026-01-10T12:00:00+01:00")
@@ -192,9 +192,9 @@ class QuestionTrendRoutesTest : FunSpec({
             response.status shouldBe HttpStatusCode.OK
             val buckets = json.decodeFromString<QuestionTrendResponse>(response.bodyAsText()).buckets
             buckets.map { it.startDate } shouldBe listOf("2026-01-01", "2026-02-01")
-            buckets[0].masked shouldBe true
-            buckets[0].responseCount shouldBe null
-            buckets[0].average shouldBe null
+            buckets[0].masked shouldBe false
+            buckets[0].responseCount shouldBe 4
+            buckets[0].average shouldBe 1.0
             buckets[1].masked shouldBe false
             buckets[1].responseCount shouldBe 5
             buckets[1].average shouldBe 5.0

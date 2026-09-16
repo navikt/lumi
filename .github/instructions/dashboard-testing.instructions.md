@@ -52,26 +52,16 @@ describe("ErrorComponent", () => {
 - Prefer accessible selectors (`getByRole`) over brittle CSS selectors.
 - **Run E2E before marking work as done** — either locally (`pnpm run e2e` from repo root, or `pnpm run e2e` in `apps/lumi-dashboard`) or verify the CI run passes. If Playwright hangs locally, push and check CI, but do NOT skip verification entirely.
 
-### Mock data and privacy masking
+### Mock data and small samples
 
-The dashboard masks aggregated stats (fieldStats, etc.) when results fall below `MIN_AGGREGATION_THRESHOLD` (5 items). This affects E2E tests:
+Internal dashboard statistics include samples with 1–4 responses, including
+filtered results and individual trend buckets. Mock calculations must match
+this behavior. Keep tests for empty results, team isolation, and labels that
+may be absent when a field has no answers.
 
-- **Filter combinations** can reduce mock data below the threshold, causing fieldStats to be returned as `[]`.
-- **Label resolution** depends on stats data — when masked, filter chips show fallback labels (e.g. "Valg: optionId" instead of "Rolle: Arbeidsgiver").
-- **Never assert exact label text** when filters may trigger masking. Instead, assert on URL params, element presence, or ARIA attributes.
-
-```ts
-// ✅ Robust — tests state, not resolved labels
-await expect
-  .poll(() => new URL(page.url()).searchParams.get("choice"))
-  .toBe("role:Arbeidsgiver");
-await expect(
-  page.getByRole("button", { name: /Fjern filter/ }),
-).toBeVisible();
-
-// ❌ Brittle — depends on stats not being masked
-await expect(page.getByText("Rolle: Arbeidsgiver")).toBeVisible();
-```
+The frontend may still receive a masked response from an older backend during
+rollout. Preserve defensive rendering tests for that response contract.
+Analysis-product and export thresholds are separate from dashboard behavior.
 
 ## Boundaries
 

@@ -9,9 +9,16 @@ class StatsServiceTest {
     private val service = StatsService()
 
     @Test
+    fun `retention boundary excludes partially retained Oslo day and follows UTC calendar months`() {
+        assertEquals("2025-09-09", service.retentionStartDate(java.time.Instant.parse("2026-09-08T10:00:00Z")))
+        assertEquals("2025-09-10", service.retentionStartDate(java.time.Instant.parse("2026-09-08T22:30:00Z")))
+        assertEquals("2023-03-01", service.retentionStartDate(java.time.Instant.parse("2024-02-29T12:00:00Z")))
+    }
+
+    @Test
     fun `stats cache key includes the result contract version`() {
         assertEquals(
-            "dashboard:team=flex&includeArchived=false&resultVersion=2",
+            "dashboard:team=flex&includeArchived=false&resultVersion=4",
             service.statsCacheKey("dashboard", StatsQuery(team = "flex")),
         )
     }

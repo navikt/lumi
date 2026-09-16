@@ -13,6 +13,7 @@ export function useDeleteSurvey() {
       // Invalidate all related queries
       queryClient.invalidateQueries({ queryKey: ["feedback"] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
+      queryClient.invalidateQueries({ queryKey: ["question-trend"] });
       queryClient.invalidateQueries({ queryKey: ["surveysByApp"] });
       queryClient.invalidateQueries({ queryKey: ["filterOptions"] });
       queryClient.invalidateQueries({ queryKey: ["filterBootstrap"] });

@@ -101,6 +101,9 @@ export function generateSurveyData(
         "hovedsporsmal",
         config.questions.ratingLabel,
         poolItem.rating,
+        undefined,
+        "emoji",
+        5,
       ),
     ];
 
@@ -1015,7 +1018,14 @@ export function generateComplexSurveyData(): FeedbackDto[] {
       surveyType: "custom",
       context: createContext("/advanced-feedback", device),
       answers: [
-        createRatingAnswer("satisfaction", "Hvor fornøyd er du?", rating),
+        createRatingAnswer(
+          "satisfaction",
+          "Hvor fornøyd er du?",
+          rating,
+          undefined,
+          "emoji",
+          5,
+        ),
         createSingleChoiceAnswer("role", "Rolle", role, undefined, [
           { id: "Privatperson", label: "Privatperson" },
           { id: "Arbeidsgiver", label: "Arbeidsgiver" },

@@ -10,6 +10,62 @@ import kotlinx.serialization.json.jsonPrimitive
 class AnalysisContractCompilerTest : FunSpec({
     val compiler = AnalysisContractCompiler()
 
+    test("release budget counts expanded atoms and measures UTF-8 bytes") {
+        val source = catalogSource(fields = listOf(catalogField("score", FieldType.RATING, RatingVariant.NPS, 11))).withPinnedContracts()
+        val specification = compiler.compilePreview(
+            compilationInput(
+                productDocument(listOf(AnalysisProductSourceSelection("my-app", "survey-one", listOf("score")))),
+                catalogSnapshot(listOf(source)),
+            ),
+        ).publicationSpecification!!
+        AnalysisPublicationBudget.violations(specification) shouldBe emptyList()
+        // source, selected field, definition, definition field, flow
+        AnalysisPublicationBudget.effectiveAtomCount(specification) shouldBe 5L
+        val oversizedBytes = specification.copy(team = "ø".repeat(AnalysisPublicationBudget.MAX_SPECIFICATION_BYTES / 2))
+        AnalysisPublicationBudget.violations(oversizedBytes) shouldContain
+            AnalysisCompilationIssueCode.SPECIFICATION_BYTE_BUDGET_EXCEEDED
+        val availableBytes = AnalysisPublicationBudget.MAX_SPECIFICATION_BYTES -
+            AnalysisContractJson.encodeToString(AnalysisPublicationSpecificationV2.serializer(), specification).toByteArray(Charsets.UTF_8).size
+        val byteBoundary = specification.copy(team = specification.team + "a".repeat(availableBytes))
+        AnalysisPublicationBudget.violations(byteBoundary) shouldBe emptyList()
+        AnalysisPublicationBudget.violations(byteBoundary.copy(team = byteBoundary.team + "a")) shouldContain
+            AnalysisCompilationIssueCode.SPECIFICATION_BYTE_BUDGET_EXCEEDED
+        val atomBoundary = specification.copy(sources = List(2000) { specification.sources.single() })
+        AnalysisPublicationBudget.effectiveAtomCount(atomBoundary) shouldBe AnalysisPublicationBudget.MAX_EFFECTIVE_ATOMS
+        AnalysisPublicationBudget.violations(atomBoundary).contains(
+            AnalysisCompilationIssueCode.SPECIFICATION_ATOM_BUDGET_EXCEEDED,
+        ) shouldBe false
+        AnalysisPublicationBudget.violations(atomBoundary.copy(sources = atomBoundary.sources + specification.sources)) shouldContain
+            AnalysisCompilationIssueCode.SPECIFICATION_ATOM_BUDGET_EXCEEDED
+    }
+
+    test("compiler blocks a release whose pinned history exceeds the expansion budget") {
+        val fields = listOf(catalogField("score", FieldType.RATING, RatingVariant.NPS, 11))
+        val revisions = (1..50).map { revision ->
+            catalogContractRevision(definitionHash = revision.toString(16).padStart(64, '0'), fields = fields)
+        }
+        val sources = (1..70).map { index ->
+            catalogSource(app = "app-$index", fields = fields).withPinnedContracts(
+                definitionHash = revisions.first().definitionHash, revisions = revisions,
+            )
+        }
+        val preview = compiler.compilePreview(compilationInput(
+            productDocument(sources.map { AnalysisProductSourceSelection(it.app, it.surveyId, listOf("score")) }),
+            catalogSnapshot(sources),
+        ))
+        preview.status shouldBe AnalysisContractPreviewStatus.BLOCKED
+        preview.issues.map { it.code } shouldContain AnalysisCompilationIssueCode.SPECIFICATION_ATOM_BUDGET_EXCEEDED
+        preview.publicationSpecification shouldBe null
+        preview.publicationSpecificationDigest shouldBe null
+    }
+
+    test("empty source selection is an editable draft but never a ready release preview") {
+        val preview = compiler.compilePreview(compilationInput(productDocument(emptyList()), catalogSnapshot(emptyList())))
+        preview.status shouldBe AnalysisContractPreviewStatus.BLOCKED
+        preview.issues.map { it.code } shouldContain AnalysisCompilationIssueCode.SOURCE_SELECTION_EMPTY
+        preview.publicationSpecification shouldBe null
+    }
+
     test("produces deterministic schemas and synthetic preview without trusting client labels") {
         val source = catalogSource(
             fields = listOf(

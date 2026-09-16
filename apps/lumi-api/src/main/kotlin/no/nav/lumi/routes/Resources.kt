@@ -26,6 +26,14 @@ class ApiV1Intern {
             @Resource("preview")
             @Serializable
             class Preview(val parent: Id)
+
+            @Resource("releases")
+            @Serializable
+            class Releases(val parent: Id)
+
+            @Resource("draft")
+            @Serializable
+            class Draft(val parent: Id)
         }
     }
 

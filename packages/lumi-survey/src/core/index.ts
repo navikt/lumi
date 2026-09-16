@@ -26,4 +26,8 @@ export {
 export * from "./ratingLabels";
 export * from "./specializedSurveyContract.js";
 export * from "./types";
-export * from "./useLumiSurvey";
+export type {
+  UseLumiSurveyOptions,
+  UseLumiSurveyReturn,
+} from "./useLumiSurvey";
+export { useLumiSurvey } from "./useLumiSurvey";

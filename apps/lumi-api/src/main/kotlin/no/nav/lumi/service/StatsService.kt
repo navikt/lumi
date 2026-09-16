@@ -80,7 +80,7 @@ class StatsService(
             "rating" to ratingValue,
             // Bump when the cached response semantics change. This prevents a
             // rolling deploy from serving values written by an older version.
-            "resultVersion" to "2",
+            "resultVersion" to "4",
         )
             .filter { (_, value) -> value != null }
             .map { (key, value) -> "${enc(key)}=${enc(value!!)}" }
@@ -112,7 +112,16 @@ class StatsService(
      * This is the primary stats endpoint used by lumi-dashboard.
      * Results are cached for 5 minutes.
      */
-    suspend fun getDashboardStats(query: StatsQuery): FeedbackStats {
+    suspend fun getDashboardStats(query: StatsQuery): FeedbackStats = getCachedDashboardStats(query).copy(
+        retentionStartDate = retentionStartDate(java.time.Instant.now()),
+    )
+
+    internal fun retentionStartDate(now: java.time.Instant): String = now.atZone(java.time.ZoneOffset.UTC)
+        .minusMonths(FeedbackRetentionService.RESPONSE_RETENTION_MONTHS.toLong())
+        .withZoneSameInstant(java.time.ZoneId.of("Europe/Oslo"))
+        .toLocalDate().plusDays(1).toString()
+
+    private suspend fun getCachedDashboardStats(query: StatsQuery): FeedbackStats {
         val cacheKey = statsCacheKey("dashboard", query)
         
         // Try cache first

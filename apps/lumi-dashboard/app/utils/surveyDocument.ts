@@ -348,6 +348,9 @@ export function slugifyOptionValue(
  */
 export const MIN_WIDGET_VERSION_FOR_DOCUMENTS = "2.0.0";
 
+/** Includes document follow-up visibility and conditional progress fixes. */
+export const RECOMMENDED_WIDGET_VERSION_FOR_DOCUMENTS = "2.2.1";
+
 export function createQuestion(
   type: QuestionTypeId,
   idFactory: IdFactory = randomId,
@@ -1280,7 +1283,7 @@ export function conditionValueSuggestions(
   return [];
 }
 
-/* ---------- Follow-up branches («Legg til oppfølging») ---------- */
+/* ---------- Follow-up branches («Legg til oppfølgingsspørsmål») ---------- */
 
 export interface FollowUpBranch {
   key: string;
