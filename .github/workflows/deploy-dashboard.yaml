@@ -164,7 +164,7 @@ jobs:
           cp -r .output/public .output/client
 
       - name: Upload static files to NAV CDN
-        uses: nais/deploy/actions/cdn-upload/v2@027a91857992525139798892f2804b0ca21f4af6
+        uses: nais/deploy/actions/cdn-upload/v2@7ad7c2b833e1db74a80954e3ee6bb6ac060a8ae7
         with:
           team: team-esyfo
           source: ./apps/lumi-dashboard/.output/client
@@ -230,7 +230,7 @@ jobs:
           cp -r .output/public .output/client
 
       - name: Upload static files to NAV CDN
-        uses: nais/deploy/actions/cdn-upload/v2@027a91857992525139798892f2804b0ca21f4af6
+        uses: nais/deploy/actions/cdn-upload/v2@7ad7c2b833e1db74a80954e3ee6bb6ac060a8ae7
         with:
           team: team-esyfo
           source: ./apps/lumi-dashboard/.output/client
@@ -268,7 +268,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.ref }}
-      - uses: nais/deploy/actions/deploy@027a91857992525139798892f2804b0ca21f4af6
+      - uses: nais/deploy/actions/deploy@7ad7c2b833e1db74a80954e3ee6bb6ac060a8ae7
         env:
           CLUSTER: dev-gcp
           RESOURCE: apps/lumi-dashboard/nais/demo.yaml
@@ -291,7 +291,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.ref }}
-      - uses: nais/deploy/actions/deploy@027a91857992525139798892f2804b0ca21f4af6
+      - uses: nais/deploy/actions/deploy@7ad7c2b833e1db74a80954e3ee6bb6ac060a8ae7
         env:
           CLUSTER: dev-gcp
           RESOURCE: apps/lumi-dashboard/nais/dev.yaml
@@ -317,7 +317,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.ref }}
-      - uses: nais/deploy/actions/deploy@027a91857992525139798892f2804b0ca21f4af6
+      - uses: nais/deploy/actions/deploy@7ad7c2b833e1db74a80954e3ee6bb6ac060a8ae7
         env:
           CLUSTER: prod-gcp
           RESOURCE: apps/lumi-dashboard/nais/prod.yaml
