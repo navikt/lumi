@@ -23,5 +23,12 @@ overrides:
   browserslist@<=4.28.6: "^4.28.7"
   "js-yaml@>=4.0.0 <4.3.2": "4.3.2"
 
+# Temporary: braces has no patched release (GHSA-vfj7-8cjw-p6xm). It is only
+# reached via @tanstack/router-plugin>chokidar@3, the dev/build file watcher.
+# Remove when @tanstack/react-start is upgraded to a router-plugin on chokidar >=4.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-vfj7-8cjw-p6xm
+
 allowBuilds:
   esbuild: true
