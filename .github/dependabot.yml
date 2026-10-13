@@ -41,6 +41,10 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 10
+    ignore:
+      # vitepress-plugin-mermaid@2.0.17 peer-depends on mermaid "10 || 11".
+      - dependency-name: "mermaid"
+        versions: [">=12"]
   - package-ecosystem: "gradle"
     directory: "/apps/lumi-api"
     schedule:
