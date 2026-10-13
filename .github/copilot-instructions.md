@@ -63,7 +63,7 @@ specific to Lumi and is expected to remain true over time.
 - Routes live under `apps/lumi-dashboard/app/routes/*`.
 - Backend calls from server actions in `apps/lumi-dashboard/app/server/actions/*`.
 - Security headers/CSP are managed via TanStack Start request middleware in `apps/lumi-dashboard/app/start.ts`.
-- SRI for CDN-served SSR assets is managed in `apps/lumi-dashboard/app/server.ts` + `apps/lumi-dashboard/app/server/assetIntegrity.ts`.
+- CDN-served JS/CSS has no Subresource Integrity (SRI) today; working SRI is tracked in #637.
 
 ### API (`apps/lumi-api`)
 - Flyway migrations in `apps/lumi-api/src/main/resources/db/migration/*`.
