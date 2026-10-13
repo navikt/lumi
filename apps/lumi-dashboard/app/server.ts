@@ -5,15 +5,8 @@ import {
   type RequestHandler,
 } from "@tanstack/react-start/server";
 import { createServerEntry } from "@tanstack/react-start/server-entry";
-import { applySriToManifest } from "~/server/assetIntegrity";
 
-const fetch = createStartHandler(async (ctx) => {
-  if (process.env.NODE_ENV === "production") {
-    await applySriToManifest(ctx.router.ssr?.manifest);
-  }
-
-  return defaultStreamHandler(ctx);
-});
+const fetch = createStartHandler(defaultStreamHandler);
 
 export type ServerEntry = { fetch: RequestHandler<Register> };
 

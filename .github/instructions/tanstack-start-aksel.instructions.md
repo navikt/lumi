@@ -139,8 +139,8 @@ export const fetchStatsServerFn = createServerFn({ method: "GET" })
   - passed via start context in `app/router.tsx`
   - consumed in `app/routes/__root.tsx`
 - Keep CSRF checks for non-GET methods in `app/server/middleware/auth.ts` (Origin/Referer validation in prod).
-- Keep SRI runtime injection for manifest assets in `app/server.ts` + `app/server/assetIntegrity.ts`.
-- In root layout, import styles as CSS modules (`import "@navikt/ds-css"; import "~/styles/global.css";`) instead of `?url` links so SRI coverage is maintained.
+- The dashboard has no Subresource Integrity (SRI) for CDN-served JS/CSS today. Do not assume it exists; working SRI is tracked in #637.
+- In root layout, import styles as CSS modules (`import "@navikt/ds-css"; import "~/styles/global.css";`) instead of `?url` links, so TanStack Start/Vite manage the stylesheets (manifest, hashed file names, CDN prefix).
 
 ## Internal Endpoints (Health + Metrics)
 

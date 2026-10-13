@@ -9,43 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SurveyverkstedRouteImport } from './routes/surveyverksted'
-import { Route as SurveyPreviewRouteImport } from './routes/survey-preview'
-import { Route as ReleaseVerificationRouteImport } from './routes/release-verification'
-import { Route as FeedbackRouteImport } from './routes/feedback'
-import { Route as ExportRouteImport } from './routes/export'
-import { Route as AnalyseprodukterRouteImport } from './routes/analyseprodukter'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AnalyseprodukterRouteImport } from './routes/analyseprodukter'
+import { Route as ExportRouteImport } from './routes/export'
+import { Route as FeedbackRouteImport } from './routes/feedback'
+import { Route as ReleaseVerificationRouteImport } from './routes/release-verification'
+import { Route as SurveyPreviewRouteImport } from './routes/survey-preview'
+import { Route as SurveyverkstedRouteImport } from './routes/surveyverksted'
 import { Route as SurveyverkstedIndexRouteImport } from './routes/surveyverksted.index'
 import { Route as SurveyverkstedProjectIdRouteImport } from './routes/surveyverksted.$projectId'
-import { Route as SurveyverkstedRevisionsRevisionIdRouteImport } from './routes/surveyverksted.revisions.$revisionId'
-import { Route as ApiInternalMetricsRouteImport } from './routes/api/internal/metrics'
-import { Route as ApiInternalIsReadyRouteImport } from './routes/api/internal/isReady'
 import { Route as ApiInternalIsAliveRouteImport } from './routes/api/internal/isAlive'
+import { Route as ApiInternalIsReadyRouteImport } from './routes/api/internal/isReady'
+import { Route as ApiInternalMetricsRouteImport } from './routes/api/internal/metrics'
+import { Route as SurveyverkstedRevisionsRevisionIdRouteImport } from './routes/surveyverksted.revisions.$revisionId'
 
-const SurveyverkstedRoute = SurveyverkstedRouteImport.update({
-  id: '/surveyverksted',
-  path: '/surveyverksted',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SurveyPreviewRoute = SurveyPreviewRouteImport.update({
-  id: '/survey-preview',
-  path: '/survey-preview',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReleaseVerificationRoute = ReleaseVerificationRouteImport.update({
-  id: '/release-verification',
-  path: '/release-verification',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FeedbackRoute = FeedbackRouteImport.update({
-  id: '/feedback',
-  path: '/feedback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ExportRoute = ExportRouteImport.update({
-  id: '/export',
-  path: '/export',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnalyseprodukterRoute = AnalyseprodukterRouteImport.update({
@@ -53,9 +33,29 @@ const AnalyseprodukterRoute = AnalyseprodukterRouteImport.update({
   path: '/analyseprodukter',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ExportRoute = ExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedbackRoute = FeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReleaseVerificationRoute = ReleaseVerificationRouteImport.update({
+  id: '/release-verification',
+  path: '/release-verification',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SurveyPreviewRoute = SurveyPreviewRouteImport.update({
+  id: '/survey-preview',
+  path: '/survey-preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SurveyverkstedRoute = SurveyverkstedRouteImport.update({
+  id: '/surveyverksted',
+  path: '/surveyverksted',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SurveyverkstedIndexRoute = SurveyverkstedIndexRouteImport.update({
@@ -68,15 +68,9 @@ const SurveyverkstedProjectIdRoute = SurveyverkstedProjectIdRouteImport.update({
   path: '/$projectId',
   getParentRoute: () => SurveyverkstedRoute,
 } as any)
-const SurveyverkstedRevisionsRevisionIdRoute =
-  SurveyverkstedRevisionsRevisionIdRouteImport.update({
-    id: '/revisions/$revisionId',
-    path: '/revisions/$revisionId',
-    getParentRoute: () => SurveyverkstedRoute,
-  } as any)
-const ApiInternalMetricsRoute = ApiInternalMetricsRouteImport.update({
-  id: '/api/internal/metrics',
-  path: '/api/internal/metrics',
+const ApiInternalIsAliveRoute = ApiInternalIsAliveRouteImport.update({
+  id: '/api/internal/isAlive',
+  path: '/api/internal/isAlive',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiInternalIsReadyRoute = ApiInternalIsReadyRouteImport.update({
@@ -84,11 +78,17 @@ const ApiInternalIsReadyRoute = ApiInternalIsReadyRouteImport.update({
   path: '/api/internal/isReady',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiInternalIsAliveRoute = ApiInternalIsAliveRouteImport.update({
-  id: '/api/internal/isAlive',
-  path: '/api/internal/isAlive',
+const ApiInternalMetricsRoute = ApiInternalMetricsRouteImport.update({
+  id: '/api/internal/metrics',
+  path: '/api/internal/metrics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SurveyverkstedRevisionsRevisionIdRoute =
+  SurveyverkstedRevisionsRevisionIdRouteImport.update({
+    id: '/revisions/$revisionId',
+    path: '/revisions/$revisionId',
+    getParentRoute: () => SurveyverkstedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -197,39 +197,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/surveyverksted': {
-      id: '/surveyverksted'
-      path: '/surveyverksted'
-      fullPath: '/surveyverksted'
-      preLoaderRoute: typeof SurveyverkstedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/survey-preview': {
-      id: '/survey-preview'
-      path: '/survey-preview'
-      fullPath: '/survey-preview'
-      preLoaderRoute: typeof SurveyPreviewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/release-verification': {
-      id: '/release-verification'
-      path: '/release-verification'
-      fullPath: '/release-verification'
-      preLoaderRoute: typeof ReleaseVerificationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/feedback': {
-      id: '/feedback'
-      path: '/feedback'
-      fullPath: '/feedback'
-      preLoaderRoute: typeof FeedbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/export': {
-      id: '/export'
-      path: '/export'
-      fullPath: '/export'
-      preLoaderRoute: typeof ExportRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/analyseprodukter': {
@@ -239,11 +211,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyseprodukterRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/export': {
+      id: '/export'
+      path: '/export'
+      fullPath: '/export'
+      preLoaderRoute: typeof ExportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feedback': {
+      id: '/feedback'
+      path: '/feedback'
+      fullPath: '/feedback'
+      preLoaderRoute: typeof FeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/release-verification': {
+      id: '/release-verification'
+      path: '/release-verification'
+      fullPath: '/release-verification'
+      preLoaderRoute: typeof ReleaseVerificationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/survey-preview': {
+      id: '/survey-preview'
+      path: '/survey-preview'
+      fullPath: '/survey-preview'
+      preLoaderRoute: typeof SurveyPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/surveyverksted': {
+      id: '/surveyverksted'
+      path: '/surveyverksted'
+      fullPath: '/surveyverksted'
+      preLoaderRoute: typeof SurveyverkstedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/surveyverksted/': {
@@ -260,18 +260,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SurveyverkstedProjectIdRouteImport
       parentRoute: typeof SurveyverkstedRoute
     }
-    '/surveyverksted/revisions/$revisionId': {
-      id: '/surveyverksted/revisions/$revisionId'
-      path: '/revisions/$revisionId'
-      fullPath: '/surveyverksted/revisions/$revisionId'
-      preLoaderRoute: typeof SurveyverkstedRevisionsRevisionIdRouteImport
-      parentRoute: typeof SurveyverkstedRoute
-    }
-    '/api/internal/metrics': {
-      id: '/api/internal/metrics'
-      path: '/api/internal/metrics'
-      fullPath: '/api/internal/metrics'
-      preLoaderRoute: typeof ApiInternalMetricsRouteImport
+    '/api/internal/isAlive': {
+      id: '/api/internal/isAlive'
+      path: '/api/internal/isAlive'
+      fullPath: '/api/internal/isAlive'
+      preLoaderRoute: typeof ApiInternalIsAliveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/internal/isReady': {
@@ -281,12 +274,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInternalIsReadyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/internal/isAlive': {
-      id: '/api/internal/isAlive'
-      path: '/api/internal/isAlive'
-      fullPath: '/api/internal/isAlive'
-      preLoaderRoute: typeof ApiInternalIsAliveRouteImport
+    '/api/internal/metrics': {
+      id: '/api/internal/metrics'
+      path: '/api/internal/metrics'
+      fullPath: '/api/internal/metrics'
+      preLoaderRoute: typeof ApiInternalMetricsRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/surveyverksted/revisions/$revisionId': {
+      id: '/surveyverksted/revisions/$revisionId'
+      path: '/revisions/$revisionId'
+      fullPath: '/surveyverksted/revisions/$revisionId'
+      preLoaderRoute: typeof SurveyverkstedRevisionsRevisionIdRouteImport
+      parentRoute: typeof SurveyverkstedRoute
     }
   }
 }
