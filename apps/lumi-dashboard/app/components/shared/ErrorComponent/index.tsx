@@ -1,5 +1,5 @@
 import { Alert, BodyShort, Heading } from "@navikt/ds-react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { reportDashboardRouteError } from "~/observability/errors";
 import { ApiErrorException, ErrorType } from "~/types/errors";
 
@@ -13,8 +13,18 @@ export function safeHelpUrl(helpUrl: string | null | undefined): string | null {
   }
 }
 
-export function ErrorComponent({ error }: { error: Error }) {
-  useEffect(() => reportDashboardRouteError(error), [error]);
+export function ErrorComponent({ error }: { error: unknown }) {
+  const normalizedError = useMemo(
+    () =>
+      error instanceof Error
+        ? error
+        : new Error("Vennligst prøv igjen senere."),
+    [error],
+  );
+  useEffect(
+    () => reportDashboardRouteError(normalizedError),
+    [normalizedError],
+  );
 
   // Handle structured ApiErrors
   if (error instanceof ApiErrorException) {
@@ -115,7 +125,9 @@ export function ErrorComponent({ error }: { error: Error }) {
       <Heading spacing size="small" level="3">
         En uventet feil oppstod
       </Heading>
-      <BodyShort>{error.message || "Vennligst prøv igjen senere."}</BodyShort>
+      <BodyShort>
+        {normalizedError.message || "Vennligst prøv igjen senere."}
+      </BodyShort>
     </Alert>
   );
 }

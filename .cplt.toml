@@ -8,22 +8,8 @@
 #   packages/lumi-types (pnpm-workspace.yaml): Node.js
 
 [propose]
-# ⚠️  grants access to the Docker socket, effectively root on the host
-# Suggested by: (root)
 allow_docker = true
-# Suggested by: apps/lumi-dashboard, apps/lumi-local-demo
+allow_jvm_attach = true
 allow_localhost_any = true
-
-[propose.allow]
-localhost = [5173, 6006]
-
-## Machine-specific — these belong in ~/.config/cplt/config.toml, not here.
-## Copy the [section] headers too: keys pasted at the end of that file are
-## scoped by whichever header precedes them, which silently drops the grant.
-#
-# [allow]
-# read = ["~/.npmrc"]
-#
-# [sandbox]
-# allow_cache_exec = ["ms-playwright"]
+allow_tmp_exec = true
 
