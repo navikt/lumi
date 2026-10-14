@@ -5,14 +5,8 @@
   --vp-c-brand-3: #368dcf;
   --vp-c-brand-soft: rgba(0, 103, 197, 0.12);
 
-  /* Hero gradient */
-  --vp-home-hero-name-color: transparent;
-  --vp-home-hero-name-background: linear-gradient(
-    135deg,
-    #0067c5 0%,
-    #005aa4 50%,
-    #368dcf 100%
-  );
+  /* Hero name */
+  --vp-home-hero-name-color: var(--vp-c-brand-1);
 
   /* Brand buttons */
   --vp-button-brand-border: transparent;
@@ -24,4 +18,16 @@
   --vp-button-brand-active-border: transparent;
   --vp-button-brand-active-text: #ffffff;
   --vp-button-brand-active-bg: #004a80;
+}
+
+/* Skjermbilder */
+.vp-doc img.skjermbilde {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+}
+
+.vp-doc p.bildetekst {
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--vp-c-text-2);
 }

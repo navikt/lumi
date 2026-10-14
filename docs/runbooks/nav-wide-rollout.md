@@ -36,7 +36,7 @@ Lumi-teamet eier:
 Konsumentteamet eier:
 
 - beslutningen om hvilke surveys som skal beholdes eller stoppes
-- oppgradering til `@navikt/lumi-survey@^2.2.0` og bruk av
+- oppgradering til `@navikt/lumi-survey@^2.2.1` og bruk av
   `SurveyDocumentV1` for surveys som migreres
 - kode, outbound-policy, dev- og produksjonsdeploy i egen app
 - syntetiske canary-svar og kontroll av egne receipts i dashboardet
@@ -129,7 +129,7 @@ Konsumentteamet gjennomfører denne rekkefølgen i eget repository og miljø:
    eier og en fungerende dev-flate.
 2. Sammenlign gammel og ny definisjon: felt-ID, felttype, ratingvariant,
    option-ID og betydning.
-3. Oppgrader til `@navikt/lumi-survey@^2.2.0`, migrer surveyen til
+3. Oppgrader til `@navikt/lumi-survey@^2.2.1`, migrer surveyen til
    `SurveyDocumentV1` og deploy til dev uten auto-merge.
 4. Send ett gjenkjennelig testsvar gjennom den faktiske konsumenten. For en
    trygdeetaten-app skal dette gå gjennom `lumi-submission-proxy`.

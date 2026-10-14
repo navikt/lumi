@@ -4,58 +4,50 @@ title: Styling
 
 # Styling
 
-Lumi-widgeten er bygget med Aksel (Navs designsystem) og krever to CSS-importer for å fungere riktig.
+Widgeten er bygget med Aksel, Navs designsystem, og trenger to CSS-importer.
 
 ## CSS-import
 
-Begge importene er **påkrevd** — uten dem vil layouten se ødelagt ut:
+Begge importene må være med. Uten dem ser layouten ødelagt ut:
 
 ```tsx
-import "@navikt/ds-css";              // Aksel base-styles
-import "@navikt/lumi-survey/styles.css"; // Lumi widget-styles
+import "@navikt/ds-css";              // Grunnstilene fra Aksel
+import "@navikt/lumi-survey/styles.css"; // Stilene til widgeten
 ```
 
 ::: warning Mangler CSS?
-Hvis widgeten vises uten styling (ingen farger, rar layout), sjekk at begge CSS-importene er med. Se også [Feilsøking](/guider/feilsoking#layout-virker-tom).
+Hvis widgeten vises uten farger og med rar layout, sjekk at begge CSS-importene er med. Se også [Layout virker tom](/guider/feilsoking#layout-virker-tom) i feilsøkingen.
 :::
 
 ## `style`-prop
 
-Du kan justere posisjon, farger og legge til egne CSS-klasser via `style`-propen:
+Med `style` kan dere endre plassering og farger og legge til egne CSS-klasser:
 
 ```tsx
 <LumiSurveyDock
-  surveyId="min-flate"
+  surveyId="min-app-tilbakemelding"
   survey={survey}
   transport={transport}
   style={{
     position: "bottom-left",
     offset: 16,
-    panelBackground: "surface-subtle",
+    panelBackground: "neutral-soft",
     panelBorderColor: "neutral-subtle",
     containerClassName: "min-ekstra-klasse",
   }}
 />
 ```
 
-### Tilgjengelige style-properties
+### Alle feltene i `style`
 
-Se [Props-referanse → style](/referanse/props-referanse#style-lumisurveystyle) for komplett oversikt over alle style-properties.
+Alle feltene står i [`style` i props-referansen](/referanse/props-referanse#style-lumisurveystyle).
 
 ## Aksel-kompatibilitet
 
-Widgeten bruker Aksel-komponenter og tokens internt. Det betyr at den automatisk følger Aksels:
+Widgeten bruker Aksel-komponenter og -tokens og følger derfor Aksel automatisk: Fonter og tekststørrelser kommer fra `@navikt/ds-css`, avstander fra `space-*`-tokenene og farger fra tokens som `neutral-soft` og `neutral-subtle`.
 
-- **Typografi** — `@navikt/ds-css` gir riktige fonter og tekststørrelser
-- **Spacing** — `space-*`-tokens brukes for konsistent avstand
-- **Farger** — tokens som `surface-subtle`, `neutral-subtle` osv.
-
-Du kan bruke alle Aksel `Box`-kompatible background- og borderColor-tokens i `panelBackground` og `panelBorderColor`.
+I `panelBackground` og `panelBorderColor` kan dere bruke alle tokens som Aksel-komponenten `Box` godtar i `background` og `borderColor`.
 
 ## Storybook
 
-For å se widgeten i ulike konfigurasjoner, bruk Storybook:
-
-🔗 **[Lumi Storybook](https://navikt.github.io/lumi/storybook/)**
-
-Storybook inneholder eksempler med spørsmålstyper, visuell tilpasning og betinget visning.
+I [Lumi Storybook](https://navikt.github.io/lumi/storybook/) ser dere widgeten i ulike konfigurasjoner. Der finnes eksempler med spørsmålstyper, visuell tilpasning og betinget visning.

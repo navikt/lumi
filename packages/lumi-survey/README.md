@@ -1,16 +1,16 @@
 # Lumi Survey
 
-Samle tilbakemeldinger fra brukerne i Nav-appen din. Lag spørsmålene og prøv flyten i **Surveyverksted**, vis surveyen med denne Aksel-baserte React-widgeten, og følg svarene i Lumi-dashboardet.
+`@navikt/lumi-survey` er React-widgeten som viser en Lumi-survey i appen deres. Den er laget med Aksel. Teamet lager surveyen i **Surveyverksted** og leser svarene i Lumi-dashboardet.
 
 [Åpne Surveyverksted](https://lumi-dashboard.ansatt.nav.no/surveyverksted) · [Kom i gang](https://navikt.github.io/lumi/kom-i-gang/hva-er-lumi) · [Se demo](https://lumi-dashboard-demo.ekstern.dev.nav.no)
 
 ## 1. Lag surveyen
 
-I Surveyverksted velger teamet hva dere vil finne ut, tilpasser spørsmålene og prøver surveyen slik brukeren vil møte den.
+I Surveyverksted velger dere hva dere vil finne ut. Deretter kan dere endre spørsmålene og prøve surveyen slik brukeren vil se den.
 
-Når dere er klare, velg **Del med utvikler** og opprett en versjon. Åpne versjonen, velg **Kopier TypeScript**, og lagre innholdet som `survey.ts` i appen. Endringer i utkastet påvirker ikke den delte versjonen. Surveyen blir tilgjengelig for brukerne når dere legger den i appen og ruller ut appen.
+Når dere er klare, velg **Del med utvikler** og opprett en versjon. Åpne versjonen, velg **Kopier TypeScript**, og lagre innholdet som `survey.ts` i appen. Endringer i utkastet påvirker ikke den delte versjonen. Brukerne ser surveyen når appen med den nye koden er satt i produksjon.
 
-Surveyverksted krever Nav-innlogging og medlemskap i teamet i NAIS. Se [Lag surveyen](https://navikt.github.io/lumi/kom-i-gang/lag-survey) for hele flyten.
+Surveyverksted krever Nav-innlogging og medlemskap i teamet i Nais Console. Se [Lag surveyen](https://navikt.github.io/lumi/kom-i-gang/lag-survey) for hele flyten.
 
 ## 2. Installer widgeten
 
@@ -64,7 +64,7 @@ Widgeten bruker Nav-dekoratørens samtykkeløsning for å huske at brukeren har 
 
 ## 4. Koble til Lumi og se svarene
 
-`/api/lumi/feedback` i eksempelet er et endepunkt **dere oppretter i egen app**. Backend gjør token exchange med TokenX eller Azure AD (OBO) og sender svarene videre til Lumi API. Appen trenger også tilgang til API-et i NAIS.
+`/api/lumi/feedback` i eksempelet er et endepunkt **dere oppretter i egen app**. Backend gjør token exchange med TokenX eller Entra ID (OBO) og sender svarene videre til Lumi API. Appen trenger også tilgang til API-et i Nais.
 
 Følg [Koble til backend](https://navikt.github.io/lumi/kom-i-gang/koble-til-backend) for oppsett og tilgangsbestilling. Test innsending i dev og kontroller at svaret vises i [Lumi-dashboardet i dev](https://lumi-dashboard.ansatt.dev.nav.no) før dere ruller ut i produksjon.
 

@@ -1,48 +1,48 @@
 ---
-title: Context & tags
+title: Context og tags
 ---
 
-# Context & tags
+# Context og tags
 
-Kontekst gir metadata om *hvor* og i hvilken situasjon tilbakemeldingen kom fra. Bruk lavkardinalitetsverdier til segmentering i dashboardet, og ikke legg person- eller saksidentifikatorer i konteksten.
+Konteksten forteller hvor og i hvilken situasjon brukeren svarte. Bruk verdier med få varianter når dere vil segmentere svarene i dashboardet, og ikke legg person- eller saksidentifikatorer i konteksten.
 
 ## Automatisk innsamling
 
-Widgeten samler automatisk disse verdiene fra browseren:
+Widgeten henter disse verdiene fra nettleseren:
 
 | Felt | Type | Beskrivelse |
 | :--- | :--- | :--- |
-| `viewport` | `{ width, height }` | Nettleservinduets dimensjoner |
-| `screenResolution` | `{ width, height }` | Skjermens dimensjoner rapportert av nettleseren |
-| `deviceType` | `"mobile" \| "tablet" \| "desktop"` | Bruker nettleserens device hints og user agent først, med viewport-bredde som fallback |
-| `userAgent` | `string` | Nettleserens user agent-streng |
+| `viewport` | `{ width, height }` | Størrelsen på nettleservinduet |
+| `screenResolution` | `{ width, height }` | Skjermstørrelsen slik nettleseren oppgir den |
+| `deviceType` | `"mobile" \| "tablet" \| "desktop"` | Bestemmes først ut fra nettleserens device hints og user agent. Vindusbredden brukes hvis de ikke gir svar |
+| `userAgent` | `string` | User agent-strengen til nettleseren |
 
-::: info Hvordan deviceType bestemmes
-`deviceType` er en best-effort-klassifisering. Widgeten prioriterer kjente nettbrettsignaler, browserens Client Hints og mønstre i user agent før viewport-bredde brukes som fallback. I Surveyverkstedets innebygde preview klassifiseres `deviceType` bevisst fra `behavior.simulatedViewport`, slik at forhåndsvisningen følger den simulerte bredden i stedet for maskinen du bruker.
+::: info Slik bestemmes deviceType
+`deviceType` er et anslag. Widgeten ser først etter kjente tegn på nettbrett, deretter på nettleserens Client Hints og mønstre i user agent. Bredden på vinduet brukes bare når ingen av disse gir svar. I forhåndsvisningen i Surveyverksted bestemmes `deviceType` bare ut fra bredden i `behavior.simulatedViewport`.
 :::
 
-### Hva som *ikke* samles inn automatisk
+### Dette samles ikke inn automatisk
 
-`url` samles **aldri** automatisk. `pathname` samles ikke som standard, men kan velges inn med `collectLocation`. Dette er bevisst — dynamiske ruter kan inneholde identifikatorer (f.eks. `/sak/12345`).
+Widgeten samler aldri inn `url` av seg selv. `pathname` samles bare inn hvis dere slår på `collectLocation`. Grunnen er at dynamiske ruter kan inneholde identifikatorer, for eksempel `/sak/12345`.
 
-## Valgfri innsamling: `collectLocation`
+## Samle inn `pathname` med `collectLocation`
 
-Hvis rutene dine er statiske og ikke inneholder identifikatorer, kan du slå på automatisk location-collecting:
+Hvis rutene i appen er faste og ikke inneholder identifikatorer, kan dere la widgeten samle inn `pathname`:
 
 ```tsx
 <LumiSurveyDock
-  surveyId="min-flate"
+  surveyId="min-app-tilbakemelding"
   survey={survey}
   transport={transport}
   behavior={{ collectLocation: true }}
 />
 ```
 
-Hvis rutene *kan* inneholde ID-er, send heller en sanitert verdi via `context`:
+Hvis rutene kan inneholde ID-er, sender dere heller ruten med en plassholder i `context`:
 
 ```tsx
 <LumiSurveyDock
-  surveyId="min-flate"
+  surveyId="min-app-tilbakemelding"
   survey={survey}
   transport={transport}
   context={{ pathname: "/sak/:id" }}
@@ -51,11 +51,11 @@ Hvis rutene *kan* inneholde ID-er, send heller en sanitert verdi via `context`:
 
 ## Forskjellen mellom `tags` og `debug`
 
-Kontekst-objektet har to separate felt for tilleggsinformasjon:
+I tillegg til `url` og `pathname` har `context` to felt der dere kan legge inn egne verdier.
 
-### `context.tags` — lav kardinalitet
+### `context.tags`: lav kardinalitet
 
-Tags brukes til segmentering og grafer i dashboardet. Hold kardinaliteten lav — verdiene skal fungere som filtere.
+Tags brukes til segmentering og grafer i dashboardet. Verdiene skal fungere som filtre, så hold kardinaliteten lav.
 
 ```tsx
 <LumiSurveyDock
@@ -72,13 +72,11 @@ Tags brukes til segmentering og grafer i dashboardet. Hold kardinaliteten lav �
 />
 ```
 
-✅ **Gode tags**: `rolle: "arbeidsgiver"`, `abTest: "A"`, `steg: "kvittering"`
+Gode tags er for eksempel `rolle: "arbeidsgiver"`, `abTest: "A"` og `steg: "kvittering"`. `behandlingId: "abc-123"` og `timestamp: 1699000000` er dårlige tags, fordi nesten hver innsending får sin egen verdi.
 
-❌ **Dårlige tags**: `behandlingId: "abc-123"`, `timestamp: 1699000000`
+### `context.debug`: mange varianter, vises ikke i dashboardet
 
-### `context.debug` — høy kardinalitet, ikke synlig i dag
-
-Debug-verdier lagres med innsendingen, men inngår ikke i dagens lesemodell og vises derfor verken i dashboardet eller eksport. De brukes *ikke* til grafer eller segmentering. Ikke send person-, saks- eller andre identifikatorer i feltet.
+Verdiene i `debug` lagres med innsendingen, men vises verken i dashboardet eller i eksporten, og de brukes ikke til grafer eller segmentering. Ikke send person-, saks- eller andre identifikatorer i feltet.
 
 ```tsx
 <LumiSurveyDock
@@ -95,12 +93,12 @@ Debug-verdier lagres med innsendingen, men inngår ikke i dagens lesemodell og v
 />
 ```
 
-### Oppsummering
+### `tags` og `debug` side om side
 
 | Felt | Kardinalitet | Brukes til | Eksempel |
 | :--- | :--- | :--- | :--- |
-| `context.tags` | Lav | Segmentering, grafer i dashboard | `rolle`, `tjeneste`, `abTest` |
-| `context.debug` | Høy OK | Lagres, men er ikke tilgjengelig i dagens lesemodell | `buildVersion`, `featureVariant` |
+| `context.tags` | Lav | Segmentering og grafer i dashboardet | `rolle`, `tjeneste`, `abTest` |
+| `context.debug` | Mange varianter går fint | Lagres, men vises ikke i dashboardet eller eksporten | `buildVersion`, `featureVariant` |
 
 ## Komplett eksempel
 
@@ -120,13 +118,13 @@ Debug-verdier lagres med innsendingen, men inngår ikke i dagens lesemodell og v
 />
 ```
 
-## Personvernprinsipper
+## Personvern
 
-::: warning Ikke samle identifikatorer
-- Bruk aldri person-ID, fødselsnummer, eller behandlings-ID i `context`
-- Unngå `collectLocation: true` på dynamiske ruter med ID-er i URL-en
-- `tags` skal ha lav kardinalitet — ikke bruk unike verdier
-- Backend maskerer kjente PII-mønstre i URL, pathname, tags og debug-data ved lagring. Se [hvor og når maskering skjer](/referanse/sikkerhet#pii-feltdekning), og unngå å sende personopplysninger i utgangspunktet
+::: warning Ikke samle inn identifikatorer
+- Bruk aldri person-ID, fødselsnummer eller behandlings-ID i `context`.
+- Unngå `collectLocation: true` på dynamiske ruter med ID-er i URL-en.
+- `tags` skal ha lav kardinalitet. Ikke bruk unike verdier.
+- Lumi API maskerer kjente mønstre for personopplysninger i URL, pathname, tags og debug-data ved lagring. Se [hvor og når maskering skjer](/referanse/sikkerhet#pii-feltdekning). Unngå å sende personopplysninger i det hele tatt.
 :::
 
-Lumi har innebygde personvernmekanismer, men mønsterbasert maskering erstatter ikke dataminimering. Kontekstfeltet skal brukes til å forstå *mønstre*, ikke identifisere enkeltpersoner.
+Maskeringen er mønsterbasert og erstatter ikke dataminimering. Legg ikke inn noe i konteksten som kan identifisere enkeltpersoner.

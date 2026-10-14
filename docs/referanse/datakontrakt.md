@@ -4,32 +4,32 @@ title: Datakontrakt
 
 # Datakontrakt
 
-Datakontrakten definerer strukturen på payloaden som sendes fra Lumi Survey-widgeten til Lumi API.
+Payloaden er `submission.transportPayload` fra widgeten. Appen sender den som JSON til egen backend, og backenden sender den videre til Lumi API.
 
-## Transport payload
+## Felt i `transportPayload`
 
-Widgeten samler inn svar og sender en strukturert JSON-payload til backend. Payloaden har disse hoveddelene:
+Payloaden har disse hoveddelene:
 
 | Felt | Påkrevd | Beskrivelse |
 | :--- | :--- | :--- |
-| `schemaVersion` | ✅ | Nåværende widget sender alltid `2`. Backend godtar også `1` i en overgangsperiode mens eldre widget-versjoner fases ut |
-| `submittedAt` | ✅ | ISO 8601 tidsstempel for innsending |
-| `surveyId` | ✅ | Unik survey-identifikator |
-| `surveyType` | ✅ | En av: `"rating"`, `"topTasks"`, `"discovery"`, `"taskPriority"`, `"custom"` |
-| `deduplicationKey` | ✅ | Genereres av widgeten og gjør nytt forsøk etter transportfeil trygt |
-| `definition` | ✅ | Alle spørsmålene i surveyen, også de som ikke er besvart |
-| `answers` | ✅ | Strukturert array med svar på spørsmål som er synlige ved innsending (se under) |
-| `context` | Anbefalt | Nettleser-/brukerkontekst for segmentering |
+| `schemaVersion` | Ja | Dagens widget sender alltid `2`. Lumi API godtar også `1` i en overgangsperiode mens eldre widgetversjoner fases ut |
+| `submittedAt` | Ja | Tidspunkt for innsending i ISO 8601 |
+| `surveyId` | Ja | Unik ID for surveyen |
+| `surveyType` | Ja | En av: `"rating"`, `"topTasks"`, `"discovery"`, `"taskPriority"`, `"custom"` |
+| `deduplicationKey` | Ja | Genereres av widgeten. Samme nøkkel brukes ved nytt forsøk etter transportfeil, så svaret ikke lagres to ganger |
+| `definition` | Ja | Alle spørsmålene i surveyen, også de som ikke er besvart |
+| `answers` | Ja | Svar på spørsmålene som er synlige ved innsending, se [Answers-arrayet](#answers-arrayet) |
+| `context` | Anbefalt | Kontekst fra nettleseren og appen, brukes til segmentering |
 
-::: tip Når skal du endre `surveyId`?
+::: tip Når skal dere endre `surveyId`?
 Behold samme ID når surveyen fortsatt måler det samme med samme struktur. Bruk
-en ny ID ved strukturelle eller semantiske endringer. Se
-[Survey-identitet og endringer](/guider/survey-identitet) for en konkret
-beslutningstabell og forklaring av 409-feil.
+en ny ID når strukturen eller betydningen endres. Se
+[Survey-identitet og endringer](/guider/survey-identitet) for en
+beslutningstabell og forklaring på 409-feil.
 :::
 
-::: info Deduplication
-Du trenger ikke sette `deduplicationKey` selv når du bruker widgeten. Den samme nøkkelen brukes når en innsending feiler og brukeren prøver på nytt. Etter vellykket innsending, reset eller ny sidevisning får neste innsending en ny nøkkel.
+::: info Deduplisering
+Dere trenger ikke sette `deduplicationKey` selv når dere bruker widgeten. Den samme nøkkelen brukes når en innsending feiler og brukeren prøver på nytt. Etter vellykket innsending, nullstilling eller ny sidevisning får neste innsending en ny nøkkel.
 :::
 
 ## Answers-arrayet
@@ -71,48 +71,48 @@ interface TransportAnswer {
 
 ## Context-objektet {#context}
 
-Widgeten samler automatisk nettleserkontekst og slår sammen med bruker-definert segmenteringsdata:
+Widgeten samler inn kontekst fra nettleseren automatisk og slår den sammen med segmenteringsdataene dere setter selv:
 
 ```typescript
 interface LumiContext {
-  // Auto-samlet av widgeten
+  // Samles inn automatisk av widgeten
   deviceType?: DeviceType;   // "mobile" | "tablet" | "desktop"
   viewport?: { width: number; height: number };
   screenResolution?: { width: number; height: number };
   userAgent?: string;
 
-  // Kun eksplisitt context (samles aldri inn automatisk)
+  // Bare når dere setter den i context (samles aldri inn automatisk)
   url?: string;              // Gjeldende side-URL
 
-  // Eksplisitt context, eller automatisk med collectLocation: true
+  // Settes i context, eller samles inn automatisk med collectLocation: true
   pathname?: string;         // URL pathname
 
-  // Segmentering (LAV KARDINALITET → dashboard-grafer)
+  // Segmentering (lav kardinalitet, brukes i grafer i dashboardet)
   tags?: Record<string, string | number | boolean>;
 
-  // Valgfri debug-data (lagres, men finnes ikke i dagens lesemodell)
+  // Valgfri debug-data (lagres, men vises ikke i dashboardet eller eksporten)
   debug?: Record<string, unknown>;
 }
 ```
 
-`userAgent` og `debug` tas imot og lagres, men returneres ikke av dagens lesemodell og er derfor ikke tilgjengelige i dashboard eller eksport.
+`userAgent` og `debug` tas imot og lagres, men vises ikke i dashboardet eller eksporten.
 
-### Tags vs. debug
+### `tags` og `debug`
 
 | Felt | Kardinalitet | Bruksområde | Eksempel |
 | :--- | :--- | :--- | :--- |
 | `tags` | Lav (< 10 verdier) | Grafer, segmentering | `{ abTest: "A", rolle: "arbeidsgiver" }` |
-| `debug` | Høy (OK) | Lagres, men er ikke tilgjengelig i dagens lesemodell | `{ buildVersion: "2.4.1", featureVariant: "ny-kvittering" }` |
+| `debug` | Kan være høy | Lagres, men vises ikke i dashboardet eller eksporten | `{ buildVersion: "2.4.1", featureVariant: "ny-kvittering" }` |
 
 ::: warning Hold identifikatorer ute av context
-Tags med mange unike verdier gir ubrukelige grafer i dashboardet. Ikke flytt bruker-, person- eller saksidentifikatorer til `debug`; feltet lagres selv om det ikke kan leses i dagens dashboard eller eksport.
+Tags med mange unike verdier gir ubrukelige grafer i dashboardet. Ikke flytt bruker-, person- eller saksidentifikatorer til `debug`. Feltet lagres, selv om det ikke vises i dashboardet eller eksporten.
 :::
 
 Se [hvor og når PII-maskering skjer](/referanse/sikkerhet#pii-feltdekning) for nøyaktig feltdekning og begrensninger.
 
 ## Survey-typer
 
-Backend mapper `surveyType`-strenger til enums:
+Lumi API gjør om `surveyType` til disse enum-verdiene:
 
 | Widget-verdi | Backend-enum |
 | :--- | :--- |
@@ -124,22 +124,22 @@ Backend mapper `surveyType`-strenger til enums:
 
 ### Faste felt i spesialiserte analyser
 
-Bruk de ferdige oppsettene i Surveyverkstedet eller funksjonene som er beskrevet under [Velg hva dere vil måle](/guider/surveytyper). API-et avviser en spesialisert survey som mangler feltene analysen trenger.
+Bruk de ferdige oppsettene i Surveyverksted eller funksjonene som er beskrevet under [Velg hva dere vil måle](/guider/surveytyper). API-et avviser en spesialisert survey som mangler feltene analysen trenger.
 
 | Type | Felt | Spørsmålstype | Svar som har fast betydning |
 | :--- | :--- | :--- | :--- |
-| `discovery` | `task` | Fritekst | — |
+| `discovery` | `task` | Fritekst | – |
 | `discovery` | `success` | Enkeltvalg | `yes`, `partial`, `no` |
 | `topTasks` | `task` | Enkeltvalg | ID-ene til oppgavene dere oppgir |
 | `topTasks` | `success` | Enkeltvalg | `yes`, `partial`, `no` |
 | `taskPriority` | `priority` | Flervalg | ID-ene til oppgavene dere oppgir |
 
 `blocker` er et valgfritt fritekstfelt i discovery og top tasks. Dere kan legge til egne spørsmål utenom feltene i tabellen.
-`success` skal ha nøyaktig de tre svarverdiene i tabellen; ekstra utfall kan ikke klassifiseres av analysen og blir avvist.
+`success` skal ha nøyaktig de tre svarverdiene i tabellen. Analysen kan ikke klassifisere andre svarverdier, og de blir avvist.
 
 ## Komplett eksempel
 
-I eksempelet er `context.url` satt eksplisitt av konsumentappen; widgeten samler aldri inn full URL automatisk. `pathname` kan settes eksplisitt eller samles inn med `collectLocation: true`.
+I eksempelet har appen satt `context.url` selv. Widgeten samler aldri inn hele URL-en automatisk. `pathname` kan appen sette selv, eller widgeten kan samle den inn med `collectLocation: true`.
 
 ```json
 {
@@ -198,6 +198,6 @@ I eksempelet er `context.url` satt eksplisitt av konsumentappen; widgeten samler
 
 ## Se også
 
-- [Survey-identitet og endringer](/guider/survey-identitet) — når du kan beholde samme `surveyId`
-- [API-endepunkter](/referanse/api-endepunkter) — endepunktene som mottar denne payloaden
-- [Context & tags](/guider/context-og-tags) — hvordan du konfigurerer context i widgeten
+- [Survey-identitet og endringer](/guider/survey-identitet): når dere kan beholde samme `surveyId`
+- [API-endepunkter](/referanse/api-endepunkter): endepunktene som tar imot denne payloaden
+- [Context og tags](/guider/context-og-tags): slik setter dere context i widgeten

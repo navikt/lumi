@@ -4,65 +4,73 @@ title: Velg hva dere vil måle
 
 # Velg hva dere vil måle
 
-Start med hva teamet trenger å lære, og hvordan dere vil bruke svarene. I [Surveyverksted](https://lumi-dashboard.ansatt.nav.no/surveyverksted) velger dere et oppsett under **Hva vil dere finne ut?** Dere kan deretter tilpasse spørsmålene til tjenesten deres.
+Tenk gjennom hva teamet vil vite og hva dere skal gjøre med svarene. Så velger dere et oppsett under **Hva vil dere finne ut?** i [Surveyverksted](https://lumi-dashboard.ansatt.nav.no/surveyverksted) og tilpasser spørsmålene til tjenesten.
 
 ## Velg et oppsett
 
 | Valg i Surveyverksted | Bruk når | Hva dere får i dashboardet |
 | :--- | :--- | :--- |
-| Hvordan opplevde brukeren tjenesten? | Dere vil måle opplevelsen etter en konkret oppgave | Vurderinger over tid og eventuelle fritekstsvar |
-| Hva kom brukeren for å gjøre? | Dere vil oppdage hvilke oppgaver brukerne har | Oppgaver beskrevet med brukernes egne ord, om de lyktes og eventuelle hindringer |
-| Lyktes brukeren med en kjent oppgave? | Dere kjenner oppgavene og vil måle hvor godt brukerne får løst dem | Resultat og hindringer per oppgave |
-| Hvilke oppgaver er viktigst? | Dere vil vite hvilke oppgaver brukerne prioriterer | Hvilke oppgaver som får flest stemmer |
-| Noe annet | Dere har spørsmål som ikke passer i de andre oppsettene | En generell oversikt over svarene |
+| Hvordan opplevde brukeren tjenesten? | Dere vil måle opplevelsen etter en konkret oppgave | Vurderingen over tid, et kort per spørsmål og fritekstsvarene |
+| Hva kom brukeren for å gjøre? | Dere vil finne ut hvilke oppgaver brukerne har | Oppgavene som går igjen, med eksempler fra brukerne, om de fikk det til og hva som hindret dem |
+| Lyktes brukeren med en kjent oppgave? | Dere kjenner oppgavene og vil måle hvor godt brukerne får løst dem | Resultat og hindringer per oppgave, og suksessraten over tid |
+| Hvilke oppgaver er viktigst? | Dere vil vite hvilke oppgaver brukerne prioriterer | Hvilke oppgaver som får flest stemmer, og antall innsendinger over tid |
+| Noe annet | Dere har spørsmål som ikke passer i de andre oppsettene | Et kort per spørsmål med fordelingen av svarene og ord som går igjen i fritekstsvarene |
+
+Når dere har valgt én survey i dashboardet, kan dere se svarene på en vurdering eller et valgspørsmål per dag, uke eller måned. For **Hvordan opplevde brukeren tjenesten?** og **Noe annet** gjør dere det med **Se utvikling** på kortet til spørsmålet, og med **Sammenlign med forrige periode** ser dere hvert kort mot perioden rett før. For de tre andre oppsettene ligger visningen under **Utvikling over tid** nederst i dashboardet, og der kan dere ikke sammenligne perioder. Hvordan dere leser visningene, står i [Les resultatene](/dashboard/visninger).
 
 ## Hvordan opplevde brukeren tjenesten?
 
-Still et kort vurderingsspørsmål etter at brukeren har gjort noe konkret, for eksempel «Hvordan var det å sende inn søknaden?». Det gjør det lettere å vite hvilken opplevelse svaret gjelder.
+Oppsettet starter med vurderingen «Hvordan opplevde du tjenesten?» og det valgfrie spørsmålet «Hva kan vi gjøre bedre?», som vises når brukeren har gitt en vurdering. Still vurderingsspørsmålet etter at brukeren har gjort noe konkret, for eksempel «Hvordan var det å sende inn søknaden?». Da vet dere hvilken opplevelse svaret gjelder.
 
-Dere kan velge emoji, tommel opp eller ned, stjerner eller NPS-skala. Legg til et oppfølgingsspørsmål bare når dere vet hvordan dere skal bruke svaret.
+Under **Vurderingsskala** velger dere **Smilefjes**, **Stjerner**, **Tommel opp eller ned** eller **0 til 10**. Surveyverksted lar dere ikke bytte skala så lenge et annet spørsmål har en regel som bruker vurderingen, og i dette oppsettet gjelder det «Hva kan vi gjøre bedre?». Legg til flere oppfølgingsspørsmål bare når dere vet hva dere skal bruke svarene til. Hvordan dere gjør det, står i [Vis bare relevante spørsmål](/guider/betinget-synlighet).
 
 ## Hva kom brukeren for å gjøre?
 
-Velg dette når dere vil la brukerne beskrive oppgaven med egne ord. Det passer når dere ennå ikke kjenner de viktigste oppgavene godt nok til å lage en liste.
+Oppsettet har tre spørsmål, hvert på sin egen side:
 
-Brukeren beskriver hva hen kom for å gjøre, og svarer på om hen lyktes. Oppsettet spør om hindringer ved «Delvis» eller «Nei».
+1. «Hva kom du hit for å gjøre i dag?» Brukeren skriver svaret med egne ord. Spørsmålet er obligatorisk, så brukeren må skrive noe for å komme videre, og dere kan ikke gjøre det valgfritt.
+2. «Fikk du gjort det?» med svarene «Ja», «Delvis» og «Nei». Også dette spørsmålet må besvares.
+3. «Hva hindret deg?» Spørsmålet er valgfritt og vises bare når brukeren ikke har svart «Ja».
+
+Oppsettet passer når dere ennå ikke kjenner de viktigste oppgavene godt nok til å lage en liste. Vil dere ikke kreve fritekst fra alle, velger dere **Lyktes brukeren med en kjent oppgave?**, der brukeren velger oppgaven fra en liste, eller **Noe annet**, der dere setter sammen spørsmålene selv.
 
 ## Lyktes brukeren med en kjent oppgave?
 
-Velg dette når dere allerede kjenner oppgavene. Brukeren velger fra listen deres og svarer på om hen lyktes. I dashboardet kan dere følge resultatet og se hindringer for hver oppgave.
+Her kjenner dere oppgavene på forhånd og lager en liste over dem. Brukeren velger fra listen og svarer på om hen lyktes. I dashboardet kan dere følge resultatet og se hindringene for hver oppgave.
 
-Hold listen kort nok til at brukeren raskt finner riktig oppgave. Bruk ord brukerne kjenner, og vurder et alternativ for oppgaver som mangler i listen.
+Hold listen så kort at brukeren raskt finner riktig oppgave. Bruk ord brukerne kjenner, og vurder et eget alternativ for oppgaver som ikke står i listen.
 
 ## Hvilke oppgaver er viktigst?
 
-Velg dette når dere vil vite hvilke oppgaver brukerne mener er viktigst. Dere lager en oppgaveliste og bestemmer hvor mange oppgaver hver bruker kan velge.
+Dere lager en oppgaveliste og bestemmer hvor mange oppgaver hver bruker kan velge. Gå grundig gjennom listen før dere starter. Oppgavene bør være lette å forstå, skille seg fra hverandre og til sammen dekke det dere vil undersøke.
 
-Bruk resultatene som ett av grunnlagene for å prioritere forbedringer. Arbeid grundig med listen før dere starter: oppgavene bør være forståelige, skille seg fra hverandre og dekke det dere vil undersøke.
+Bruk resultatet som ett av flere grunnlag når dere prioriterer hva som skal forbedres.
 
 ## Noe annet
 
-Velg **Noe annet** når dere trenger en egen kombinasjon av spørsmål. Dere kan bruke alle spørsmålstypene, dele dem over flere sider og vise oppfølgingsspørsmål ut fra tidligere svar. Dashboardet gir en generell oversikt over svarene.
+Med **Noe annet** setter dere sammen spørsmålene selv. Dere kan bruke alle [spørsmålstypene](/guider/sporsmalstyper), fordele spørsmålene på [flere sider](/guider/sider-og-flyt) og [vise oppfølgingsspørsmål](/guider/betinget-synlighet) ut fra tidligere svar.
+
+Dashboardet viser ett kort per spørsmål. For vurderinger og valgspørsmål ser dere hvordan svarene fordeler seg, og med **Se utvikling** kan dere følge dem per dag, uke eller måned. For fritekst ser dere ord og uttrykk som går igjen, og de siste svarene. Det finnes ingen egen analyse av oppgaver eller hindringer, slik de andre oppsettene har.
 
 ## Tilpass og prøv surveyen
 
-Surveyverksted setter opp spørsmålene som analysen trenger, og beskytter feltene som må beholde en bestemt struktur. Dere kan endre teksten og legge til egne spørsmål. Verkstedet forklarer begrensningene underveis og sjekker oppsettet før dere deler en versjon.
+Surveyverksted legger inn spørsmålene som analysen trenger. I disse spørsmålene kan dere endre teksten, men ikke svartypen, om spørsmålet må besvares, eller når det vises. Der analysen bruker svaralternativene, kan dere heller ikke legge til eller fjerne alternativer. Egne spørsmål kan dere legge til fritt. Verkstedet forklarer begrensningene underveis og sjekker oppsettet før dere deler en versjon.
 
-Prøv hele surveyen før dere deler den med utvikleren. Se [Lag surveyen](/kom-i-gang/lag-survey) for veien fra utkast til app.
+Prøv hele surveyen før dere deler den med utvikleren. Hvordan dere deler en versjon, og hva utvikleren gjør med den, står i [Lag surveyen](/kom-i-gang/lag-survey).
 
 ## For utviklere: analyse og dokumentformat
 
-I det eksporterte dokumentet angir `type` hvilken analyse dashboardet bruker. Spørsmålene og ID-ene må passe til analysen; å endre `type` alene er ikke nok til å bytte oppsett. `type` bestemmer ikke hvilke sider eller ekstra spørsmål dokumentet kan ha.
+I det eksporterte dokumentet bestemmer `type` hvilken analyse dashboardet bruker. Spørsmålene og ID-ene må passe til analysen, så dere kan ikke bytte oppsett bare ved å endre `type`. `type` avgjør ikke hvilke sider eller ekstra spørsmål dokumentet kan ha.
 
-| Oppsett | `type` | Funksjon for å opprette dokumentet i kode |
+| Valg i Surveyverksted | `type` | Funksjon for å opprette dokumentet i kode |
 | :--- | :--- | :--- |
-| Opplevelse | `rating` | `createRatingSurveyDocument` |
-| Oppdage oppgaver | `discovery` | `createDiscoverySurveyDocument` |
-| Kjente oppgaver | `topTasks` | `createTopTasksSurveyDocument` |
-| Oppgaveprioritering | `taskPriority` | `createTaskPrioritySurveyDocument` |
-| Egne spørsmål | `custom` | Skriv dokumentet direkte |
+| Hvordan opplevde brukeren tjenesten? | `rating` | `createRatingSurveyDocument` |
+| Hva kom brukeren for å gjøre? | `discovery` | `createDiscoverySurveyDocument` |
+| Lyktes brukeren med en kjent oppgave? | `topTasks` | `createTopTasksSurveyDocument` |
+| Hvilke oppgaver er viktigst? | `taskPriority` | `createTaskPrioritySurveyDocument` |
+| Noe annet | `custom` | Skriv dokumentet direkte |
 
-Funksjonene eksporteres fra `@navikt/lumi-survey` og returnerer `SurveyDocumentV1`. [Props-referansen](/referanse/props-referanse#survey-surveydocumentv1) viser dokumentformatet. For en oppgaveliste kan dere for eksempel bruke:
+Funksjonene eksporteres fra `@navikt/lumi-survey` og returnerer `SurveyDocumentV1`. [Props-referansen](/referanse/props-referanse#survey-surveydocumentv1) viser dokumentformatet. Slik lager dere en survey med kjente oppgaver:
 
 ```typescript
 import { createTopTasksSurveyDocument } from "@navikt/lumi-survey";
@@ -76,12 +84,6 @@ const survey = createTopTasksSurveyDocument({
 });
 ```
 
-`value` er oppgavens stabile ID (`taskId`) i analyser, filtre og delbare lenker. `label` er teksten brukeren ser. Behold ID-en når dere bare retter teksten. Det samme gjelder oppgavelister for oppgaveprioritering. Se [Survey-identitet og endringer](/guider/survey-identitet) før dere endrer en survey som er tatt i bruk.
+`value` er oppgavens stabile ID (`taskId`) i analyser, filtre og delbare lenker. `label` er teksten brukeren ser. Behold ID-en når dere bare retter teksten. Oppgavelisten i **Hvilke oppgaver er viktigst?** følger samme regel. Les [Survey-identitet og endringer](/guider/survey-identitet) før dere endrer en survey som er tatt i bruk.
 
-De påkrevde analysefeltene må være obligatoriske og alltid synlige. Behold ID-er, spørsmålstyper og faste svarverdier fra oppsettet. Spørsmålet om hindringer er valgfritt og kan vises betinget. Widgeten og API-et avviser oppsett som ikke oppfyller analysekravene.
-
-## Videre lesing
-
-- [Sider og flyt](/guider/sider-og-flyt) for å velge hva som skal vises sammen
-- [Spørsmålstyper](/guider/sporsmalstyper) for alle feltene brukeren kan svare på
-- [Vis bare relevante spørsmål](/guider/betinget-synlighet) for oppfølginger med `visibleIf`
+De faste spørsmålene som analysen bygger på, må være obligatoriske og alltid synlige. Behold ID-ene, spørsmålstypene og de faste svarverdiene fra oppsettet. Spørsmålet om hindringer er valgfritt og kan vises betinget. Widgeten og API-et avviser oppsett som ikke oppfyller kravene til analysen.

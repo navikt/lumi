@@ -2,7 +2,7 @@ import { withMermaid } from "vitepress-plugin-mermaid";
 
 export default withMermaid({
   title: "Lumi",
-  description: "Personvernvennlige surveys for Nav",
+  description: "Dokumentasjon for Lumi, surveyverktøyet for team i Nav",
   base: "/lumi/",
   lang: "nb-NO",
   head: [["link", { rel: "icon", href: "/lumi/lumi.png" }]],
@@ -55,14 +55,14 @@ export default withMermaid({
             { text: "Sider og flyt", link: "/guider/sider-og-flyt" },
             { text: "Spørsmålstyper", link: "/guider/sporsmalstyper" },
             {
-              text: "Vis relevante spørsmål",
+              text: "Vis bare relevante spørsmål",
               link: "/guider/betinget-synlighet",
             },
             {
-              text: "Survey-identitet",
+              text: "Survey-identitet og endringer",
               link: "/guider/survey-identitet",
             },
-            { text: "Context & tags", link: "/guider/context-og-tags" },
+            { text: "Context og tags", link: "/guider/context-og-tags" },
             { text: "Lagring", link: "/guider/lagring" },
             { text: "Styling", link: "/guider/styling" },
             { text: "Feilsøking", link: "/guider/feilsoking" },
@@ -74,6 +74,7 @@ export default withMermaid({
           text: "Dashboard",
           items: [
             { text: "Tilgang", link: "/dashboard/tilgang" },
+            { text: "Les resultatene", link: "/dashboard/visninger" },
             { text: "Filtrering", link: "/dashboard/filtrering" },
             { text: "Eksport", link: "/dashboard/eksport" },
           ],
@@ -94,7 +95,11 @@ export default withMermaid({
             },
             { text: "Datakontrakt", link: "/referanse/datakontrakt" },
             {
-              text: "Sikkerhet & personvern",
+              text: "Migrer en eldre survey",
+              link: "/referanse/migrer-eldre-survey",
+            },
+            {
+              text: "Sikkerhet og personvern",
               link: "/referanse/sikkerhet",
             },
             {
@@ -102,7 +107,7 @@ export default withMermaid({
               link: "/referanse/bruksvilkar",
             },
             {
-              text: "Miljøer & lenker",
+              text: "Miljøer og lenker",
               link: "/referanse/miljoer",
             },
             { text: "Changelog", link: "/referanse/changelog" },
@@ -119,7 +124,7 @@ export default withMermaid({
     },
 
     footer: {
-      message: "Laget med ❤️ av Team eSyfo i Nav",
+      message: "Utviklet og driftet av Team eSyfo i Nav",
     },
 
     outline: {

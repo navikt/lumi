@@ -4,31 +4,31 @@ title: Tilgang
 
 # Tilgang
 
-Surveyverksted og Lumi-dashboardet er tilgjengelig for Nav-ansatte som er medlem av et NAIS-team. Dere kan lage surveyer før teamet har samlet inn svar.
+Surveyverksted og Lumi-dashboardet er tilgjengelige for Nav-ansatte som er medlem av et team i Nais Console.
 
-<div style="display: flex; gap: 12px; flex-wrap: wrap; margin: 24px 0;">
-  <a href="https://lumi-dashboard.ansatt.nav.no" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: #0067c5; color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">🚀 Prod</a>
-  <a href="https://lumi-dashboard.ansatt.dev.nav.no" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: #f1f1f1; color: #222; border-radius: 8px; text-decoration: none; font-weight: 500;">🧪 Dev</a>
-  <a href="https://lumi-dashboard-demo.ekstern.dev.nav.no" style="display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: #f1f1f1; color: #222; border-radius: 8px; text-decoration: none; font-weight: 500;">👀 Demo</a>
-</div>
+## Adresser
 
-Demo-miljøet er åpent for alle. Dev og prod krever Nav-innlogging.
+- [Prod](https://lumi-dashboard.ansatt.nav.no) krever Nav-innlogging.
+- [Dev](https://lumi-dashboard.ansatt.dev.nav.no) krever Nav-innlogging.
+- [Demo](https://lumi-dashboard-demo.ekstern.dev.nav.no) viser testdata og er åpen for alle.
 
 ## Innlogging
 
-Innlogging skjer automatisk via Microsoft Entra ID (Azure AD) første gang du åpner dashboardet — du trenger ikke sette opp noe selv.
+Dere blir logget inn automatisk med Entra ID første gang dere åpner dashboardet. Det er ingenting dere må sette opp selv.
 
-## Team-tilgang
+## Teamtilgang
 
-Dashboardet viser kun data fra teamene dine. Hvilke team du tilhører hentes automatisk fra NAIS Console.
+Dashboardet viser bare data fra team dere er medlem av. Lumi finner teamene i Nais ut fra e-postadressen dere logger inn med. Er dere medlem av flere team, bytter dere team i teamvelgeren, se [Team](/dashboard/filtrering#team).
 
-::: tip Mangler du tilgang?
-Sjekk at du er lagt til som medlem i riktig NAIS-team via [NAIS Console](https://console.nav.cloud.nais.io).
+Mangler et team, sjekk i [Nais Console](https://console.nav.cloud.nais.io) at dere er lagt til som medlem.
 
-Lumi cacher teamoppslag som gir minst ett team i opptil 10 minutter. Nye eller fjernede teamtilganger for en bruker som allerede har tilgang til andre team, kan derfor bruke opptil 10 minutter på å tre i kraft. Oppslag som ikke gir noen team, caches i 5 minutter. Fjerning fra et team kan gi fortsatt tilgang til teamets data frem til den positive cachen utløper, så lenge brukeren fortsatt kan logge inn.
-:::
+Det kan ta opptil ti minutter før en endring i teammedlemskapet virker i dashboardet. Det gjelder begge veier: Den som er fjernet fra et team, kan se teamets data i opptil ti minutter etterpå. Var dere ikke medlem av noe team fra før, tar det opptil fem minutter.
 
-## Se også
+## Feilmeldinger
 
-- [Filtrering](/dashboard/filtrering) — hvordan bruke filtrene i dashboardet
-- [Eksport](/dashboard/eksport) — eksporter data
+| Melding | Hva den betyr |
+| :--- | :--- |
+| **Du har ikke tilgang til noen team i Lumi** | Lumi fant ingen team for dere i Nais. Sørg for at dere er lagt til i et team i Nais Console, vent opptil fem minutter og last siden på nytt. |
+| **Du har ikke tilgang til team: …** | Adressen har `team=` med et team dere ikke er medlem av, for eksempel i en lenke noen har delt. Fjern `team=` fra adressen, eller be om å bli lagt til i teamet. |
+| **Midlertidig problem med teamtilgang** | Lumi fikk ikke hentet teamene fra Nais. Prøv igjen om litt. |
+| **Du er ikke logget inn** | Innloggingen har gått ut. Last siden på nytt. |
