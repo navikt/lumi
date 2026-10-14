@@ -199,7 +199,7 @@ Appen din må legges til som inbound i mottakeren du fant i tabellen:
 - **Vet du hvilken mottaker du skal ha?** [Send en PR selv](#send-pr-selv).
   Det er raskest.
 - **Usikker?** [**Opprett en issue**](https://github.com/navikt/lumi/issues/new?template=access-request.yml)
-  med app-navn, namespace, auth-type og miljø, så ordner vi resten.
+  med app-navn, namespace og auth-type, så ordner vi resten.
 
 Regelen ser slik ut:
 
