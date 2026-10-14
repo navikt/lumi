@@ -4,6 +4,13 @@ All notable changes to `@navikt/lumi-survey` will be documented in this file.
 
 This project follows SemVer.
 
+## [2.2.4] - 2026-10-14
+
+### Documentation
+
+- The package README uses clearer wording and current names: Nais, Nais
+  Console and Entra ID.
+
 ## [2.2.3] - 2026-09-13
 
 ### Documentation
