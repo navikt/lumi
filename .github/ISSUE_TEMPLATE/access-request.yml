@@ -7,7 +7,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Vi gir appen din inbound-tilgang, slik at den kan sende inn feedback. Resten av oppsettet står i [integrasjonsguiden](https://navikt.github.io/lumi/kom-i-gang/koble-til-backend).
+        Vi gir appen din inbound-tilgang i både dev og prod, slik at den kan sende inn feedback. Resten av oppsettet står i [integrasjonsguiden](https://navikt.github.io/lumi/kom-i-gang/koble-til-backend).
 
         Vet du hvilken mottaker du skal ha? Da går det raskere å [sende en PR selv](https://navikt.github.io/lumi/kom-i-gang/koble-til-backend#send-pr-selv).
   - type: input
@@ -29,17 +29,10 @@ body:
     attributes:
       label: Autentisering
       options:
-        - TokenX (sluttbrukerflater som nav.no)
+        - TokenX (sluttbrukerflater)
         - Entra ID (interne flater for ansatte)
     validations:
       required: true
-  - type: checkboxes
-    id: environments
-    attributes:
-      label: Miljø
-      options:
-        - label: dev-gcp
-        - label: prod-gcp
   - type: textarea
     id: context
     attributes:
