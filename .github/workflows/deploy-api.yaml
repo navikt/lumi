@@ -83,7 +83,7 @@ jobs:
 
       - name: Push docker image to GAR
         if: github.event_name == 'workflow_dispatch' || steps.what-changed.outputs.changed != 'non-inputs'
-        uses: nais/docker-build-push@bfe52e3ad6d0e96fd1056a03acb7b619aaffb39d
+        uses: nais/docker-build-push@dd7421d5068057a020ca46ead966c26190c516b1
         id: docker-build-push
         with:
           team: team-esyfo
@@ -108,7 +108,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ inputs.ref || github.ref }}
-      - uses: nais/deploy/actions/deploy@7ad7c2b833e1db74a80954e3ee6bb6ac060a8ae7
+      - uses: nais/deploy/actions/deploy@9850be311389ca754d9a9f2280615419d738c891
         env:
           CLUSTER: dev-gcp
           RESOURCE: apps/lumi-api/nais/app/dev.yaml
@@ -127,7 +127,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ inputs.ref || github.ref }}
-      - uses: nais/deploy/actions/deploy@7ad7c2b833e1db74a80954e3ee6bb6ac060a8ae7
+      - uses: nais/deploy/actions/deploy@9850be311389ca754d9a9f2280615419d738c891
         env:
           CLUSTER: prod-gcp
           RESOURCE: apps/lumi-api/nais/app/prod.yaml,apps/lumi-api/nais/alerts/prod.yaml
