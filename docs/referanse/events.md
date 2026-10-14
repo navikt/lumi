@@ -4,7 +4,7 @@ title: Events
 
 # Events
 
-Event-callbacks lar deg reagere på brukerinteraksjoner og livssyklushendelser i surveyen. Bruk dem til logging, analytics eller tilpasset oppførsel.
+Widgeten kaller funksjonene i `events` blant annet når brukeren ser surveyen, svarer, sender inn eller går til en ny side. Funksjonene kan for eksempel sende hendelser til Amplitude eller logge feil ved lagring.
 
 ## Alle events
 
@@ -12,7 +12,7 @@ Send et `events`-objekt til `LumiSurveyDock`:
 
 ```tsx
 <LumiSurveyDock
-  surveyId="min-flate"
+  surveyId="min-app-tilbakemelding"
   survey={survey}
   transport={transport}
   events={{
@@ -33,7 +33,7 @@ Send et `events`-objekt til `LumiSurveyDock`:
 
 ### `onViewDock`
 
-Fyres når docken vises for brukeren (åpnes eller rendres åpen).
+Kalles når widgeten vises for brukeren, enten den åpnes eller vises åpen fra start.
 
 ```ts
 onViewDock?: (surveyId: string) => void;
@@ -41,7 +41,7 @@ onViewDock?: (surveyId: string) => void;
 
 ### `onAnswer`
 
-Fyres hver gang brukeren svarer på eller endrer svar på et spørsmål.
+Kalles hver gang brukeren svarer på eller endrer svar på et spørsmål.
 
 ```ts
 onAnswer?: (questionId: string, value: unknown) => void;
@@ -49,7 +49,7 @@ onAnswer?: (questionId: string, value: unknown) => void;
 
 ### `onSubmitStart`
 
-Fyres når brukeren trykker «Send inn» og innsending starter.
+Kalles når brukeren trykker **Send** og innsendingen starter.
 
 ```ts
 onSubmitStart?: (submission: LumiSurveySubmission) => void;
@@ -57,7 +57,7 @@ onSubmitStart?: (submission: LumiSurveySubmission) => void;
 
 ### `onSubmitSuccess`
 
-Fyres etter at `transport.submit` returnerer uten feil.
+Kalles etter at `transport.submit` returnerer uten feil.
 
 ```ts
 onSubmitSuccess?: (submission: LumiSurveySubmission) => void;
@@ -65,7 +65,7 @@ onSubmitSuccess?: (submission: LumiSurveySubmission) => void;
 
 ### `onSubmitError`
 
-Fyres hvis `transport.submit` kaster en feil.
+Kalles hvis `transport.submit` kaster en feil.
 
 ```ts
 onSubmitError?: (cause: unknown) => void;
@@ -73,7 +73,7 @@ onSubmitError?: (cause: unknown) => void;
 
 ### `onValidationFailed`
 
-Fyres når brukeren prøver å sende inn uten å ha fylt ut alle påkrevde felt.
+Kalles når brukeren prøver å sende inn uten å ha fylt ut alle påkrevde felt.
 
 ```ts
 onValidationFailed?: (missingQuestionIds: string[]) => void;
@@ -81,7 +81,7 @@ onValidationFailed?: (missingQuestionIds: string[]) => void;
 
 ### `onReset`
 
-Fyres når skjemaet nullstilles (f.eks. når brukeren lukker og `resetOnClose` er `true`).
+Kalles når skjemaet nullstilles, for eksempel når brukeren lukker widgeten og `resetOnClose` er `true`.
 
 ```ts
 onReset?: () => void;
@@ -89,7 +89,7 @@ onReset?: () => void;
 
 ### `onDismissalPersistFailed`
 
-Fyres når widgeten ikke klarer å lagre dismissed-tilstand — typisk fordi consent er nektet eller localStorage er utilgjengelig.
+Kalles når widgeten ikke klarer å lagre at brukeren har lukket den. Det skjer typisk når brukeren ikke har gitt samtykke, eller når `localStorage` ikke er tilgjengelig.
 
 ```ts
 onDismissalPersistFailed?: (cause: unknown) => void;
@@ -140,7 +140,7 @@ import * as amplitude from "@amplitude/analytics-browser";
 
 ```tsx
 <LumiSurveyDock
-  surveyId="min-flate"
+  surveyId="min-app-tilbakemelding"
   survey={survey}
   transport={transport}
   events={{
@@ -152,7 +152,7 @@ import * as amplitude from "@amplitude/analytics-browser";
 />
 ```
 
-### Følg fremdriften
+### Følg framdriften
 
 ```tsx
 <LumiSurveyDock
@@ -171,8 +171,9 @@ import * as amplitude from "@amplitude/analytics-browser";
 />
 ```
 
-Eldre, flate konfigurasjoner sender én hendelse per spørsmål i stegvis visning.
-Etter migrering kan en side med flere spørsmål derfor gi færre hendelser.
+Eldre, flate konfigurasjoner kaller `onStepChange` én gang per spørsmål i
+stegvis visning. Etter migrering kan en side med flere spørsmål derfor gi færre
+kall.
 
 ## TypeScript-interface
 

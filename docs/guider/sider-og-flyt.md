@@ -4,21 +4,29 @@ title: Sider og flyt
 
 # Sider og flyt
 
-Du bygger surveyen med sider. Når Lumi viser én side om gangen, blir hver synlig side et steg. Rekkefølgen i `pages` blir rekkefølgen brukeren går gjennom.
+Surveyen består av sider, og brukeren går gjennom dem i samme rekkefølge som de står i Surveyverksted. Som standard viser widgeten én side om gangen.
 
-## Den anbefalte modellen
+## Sider i Surveyverksted
 
-- **Velkomstside (`intro`)** gir kort kontekst før surveyen begynner.
-- **Side (`pages[]`)** er det som vises og valideres sammen.
-- **Spørsmål (`questions[]`)** er det brukeren svarer på.
-- **Steg** er en synlig side i den aktuelle flyten.
-- **Bekreftelsen etter innsending** forteller at svaret er levert. Bruk `success` når du vil tilpasse teksten.
+Et nytt spørsmål får sin egen side. Under **Hvor skal det vises?** i redigeringen av et spørsmål velger dere **På en egen side**, eller for eksempel **Sammen med spørsmål 2** for å legge det på siden til spørsmålet før. Sidene flytter dere med pilene **Flytt side opp** og **Flytt side ned** i lista **Spørsmål**.
 
-Velkomstsiden og bekreftelsen etter innsending er ikke med i fremdriften.
+En felles overskrift for en side med flere spørsmål skriver dere under **Hjelpetekst og flere innstillinger**, i feltene **Felles overskrift på siden** og **Felles hjelpetekst på siden**.
+
+Kodeeksemplene under er for utviklere.
+
+## Delene i en survey
+
+- Velkomstsiden (`intro`) gir kort kontekst før surveyen begynner.
+- En side (`pages[]`) er spørsmålene som vises sammen.
+- Spørsmålene (`questions[]`) er det brukeren svarer på.
+- Når Lumi viser én side om gangen, er hver synlig side et steg.
+- Takkesiden etter innsending forteller at svaret er levert. Bruk `success` når dere vil tilpasse teksten.
+
+Velkomstsiden og takkesiden telles ikke med i framdriften.
 
 ## Ett spørsmål om gangen
 
-Legg hvert spørsmål på sin egen side. Når dokumentet har flere sider, viser `questionLayout: "auto"` dem som steg. `auto` er standard, så du trenger ikke sette det selv.
+Legg hvert spørsmål på sin egen side. Når dokumentet har flere sider, viser `questionLayout: "auto"` dem som steg. `auto` er standard, så dere trenger ikke sette det selv.
 
 ```typescript
 import type { SurveyDocumentV1 } from "@navikt/lumi-survey";
@@ -58,11 +66,13 @@ const survey = {
 } satisfies SurveyDocumentV1;
 ```
 
+Surveyverksted lager nesten den samme surveyen når dere velger **Hva kom brukeren for å gjøre?**, og da viser dashboardet også oppgavene som går igjen. Se [Velg hva dere vil måle](/guider/surveytyper).
+
 Ikke legg inn en sidetittel som bare gjentar spørsmålet. Spørsmålsteksten er allerede overskriften brukeren trenger.
 
 ## Flere spørsmål på samme side
 
-Samle spørsmål når de må forstås eller besvares som en helhet. Da kan en kort sidetittel og beskrivelse gi felles kontekst.
+Samle spørsmål på samme side når de må leses eller besvares i sammenheng. En kort sidetittel og beskrivelse kan da gi felles kontekst.
 
 ```typescript
 {
@@ -92,11 +102,11 @@ Samle spørsmål når de må forstås eller besvares som en helhet. Da kan en ko
 }
 ```
 
-Alle synlige, obligatoriske spørsmål på siden valideres før brukeren kan gå videre.
+Brukeren må svare på alle synlige, obligatoriske spørsmål på siden før hen kan gå videre.
 
 ## Hopp over sider som ikke er relevante
 
-Sett `visibleIf` på spørsmålene som skal være betinget. En side hoppes over når ingen av spørsmålene på siden er synlige.
+Sett `visibleIf` på spørsmålene som skal vises betinget. En side hoppes over når ingen av spørsmålene på den er synlige. Hvordan betingelsene skrives, står i [Vis bare relevante spørsmål](/guider/betinget-synlighet).
 
 ```typescript
 {
@@ -121,13 +131,13 @@ Sett `visibleIf` på spørsmålene som skal være betinget. En side hoppes over 
 }
 ```
 
-Flyten er alltid lineær: Widgeten går gjennom de synlige sidene i dokumentrekkefølge. `visibleIf` i dokumentformatet kan bare vise til tidligere spørsmål. Det gjør flyten forutsigbar i både kode, Surveyverksted og forhåndsvisning.
+Flyten går alltid framover: widgeten viser de synlige sidene i rekkefølgen i `pages`, og `visibleIf` kan bare vise til spørsmål som kommer før.
 
 ## Start og avslutt tydelig
 
-Bruk `intro` når brukeren trenger å vite hvorfor dere spør, omtrent hvor lang tid det tar eller hva svaret brukes til. Oppgi tidsbruk bare når dere har testet den.
+Bruk en velkomstside når brukeren trenger å vite hvorfor dere spør, omtrent hvor lang tid det tar eller hva svaret brukes til. Oppgi tidsbruk bare når dere har testet den. I Surveyverksted velger dere **Velkomstside** i lista og krysser av for **Vis velkomstside før spørsmålene**. I kode heter den `intro`.
 
-Bruk `success` når standardbekreftelsen ikke er presis nok. Skriv hva som har skjedd og eventuelt hva som skjer videre.
+Tilpass takkesiden når standardteksten ikke er presis nok. Skriv hva som har skjedd og eventuelt hva som skjer videre. I Surveyverksted velger dere **Takkeside** i lista og deretter **Tilpass takkesiden**. I kode heter den `success`.
 
 ```typescript
 {
@@ -145,11 +155,11 @@ Bruk `success` når standardbekreftelsen ikke er presis nok. Skriv hva som har s
 }
 ```
 
-Innholdet i dokumentet er standarden. Props på `LumiSurveyDock` kan overstyre enkeltfelt når appen trenger rik React-tekst, en annen knappetekst eller automatisk lukking. Se [props-referansen](/referanse/props-referanse).
+Appen kan overstyre enkeltfelt fra dokumentet med props på `LumiSurveyDock` når den trenger rik tekst i React, en annen knappetekst eller automatisk lukking. Se [props-referansen](/referanse/props-referanse).
 
-## Vis alle spørsmål på én flate
+## Vis alle spørsmål samtidig
 
-Bruk `behavior.questionLayout: "singlePage"` bare når alle sidene skal vises samtidig. Sidetitler og beskrivelser beholdes som struktur, men brukeren navigerer ikke mellom steg.
+Bruk `behavior.questionLayout: "singlePage"` bare når alle sidene skal vises på en gang. Sidetitler og beskrivelser beholdes som struktur, men brukeren navigerer ikke mellom steg.
 
 ```tsx
 <LumiSurveyDock
@@ -159,12 +169,4 @@ Bruk `behavior.questionLayout: "singlePage"` bare når alle sidene skal vises sa
 />
 ```
 
-For nye surveyer skal du ikke bruke `questionLayout: "steps"` for å få ett spørsmål om gangen. Lag én side per spørsmål og behold standardverdien `auto`.
-
-## Kort sjekkliste
-
-- Én side per spørsmål når du vil vise ett spørsmål om gangen.
-- Flere spørsmål på samme side bare når de hører tydelig sammen.
-- Ingen sidetittel når spørsmålsteksten gir nok kontekst.
-- `visibleIf` for oppfølginger og sider som skal hoppes over.
-- `auto` som standard. Bruk `singlePage` bare som et bevisst unntak.
+I nye surveyer skal dere ikke bruke `questionLayout: "steps"` for å vise ett spørsmål om gangen. Lag én side per spørsmål, og behold standardverdien `auto`.

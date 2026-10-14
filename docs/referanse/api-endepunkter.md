@@ -4,31 +4,31 @@ title: API-endepunkter
 
 # API-endepunkter
 
-Referanse for endepunktene du bruker når du integrerer Lumi. API-et kjører som intern NAIS-tjeneste (ingen offentlig ingress).
+Lumi API kjører som en intern Nais-tjeneste uten offentlig ingress.
 
 ## Innsending
 
-Disse endepunktene brukes av klientapplikasjoner som sender inn tilbakemeldinger. Kallet er backend-til-backend via token exchange.
+Appene kaller disse endepunktene fra sin egen backend.
 
-| Endepunkt | Auth | Bruk |
+| Endepunkt | Autentisering | Brukes av |
 | :--- | :--- | :--- |
-| `POST /api/tokenx/v1/feedback` | TokenX | Sluttbruker-flater (nav.no) |
-| `POST /api/azure/v1/feedback` | Azure AD | Veileder-/Modia-/fagsystem-flater |
+| `POST /api/tokenx/v1/feedback` | TokenX | Apper for sluttbrukere (nav.no) |
+| `POST /api/azure/v1/feedback` | Entra ID | Veilederapper, Modia og fagsystemer |
 
 ::: info Integrasjonsmønster
-Token exchange skjer server-side i din backend. Se [Koble til backend](/kom-i-gang/koble-til-backend) for oppsett.
+Backenden deres veksler token før kallet. Se [Koble til backend](/kom-i-gang/koble-til-backend) for oppsett.
 :::
 
 ## Autentisering
 
-| Flate | Token | Endepunkt | Caller identity |
+| App | Token | Endepunkt | Kalleren identifiseres med |
 | :--- | :--- | :--- | :--- |
-| Sluttbruker (nav.no) | TokenX | `/api/tokenx/v1/feedback` | `client_id` (`cluster:namespace:app`) |
-| Intern (Modia, fagsystemer) | Azure AD | `/api/azure/v1/feedback` | `azp_name` (`cluster:namespace:app`) |
+| For sluttbrukere (nav.no) | TokenX | `/api/tokenx/v1/feedback` | `client_id` (`cluster:namespace:app`) |
+| Intern (Modia, fagsystemer) | Entra ID | `/api/azure/v1/feedback` | `azp_name` (`cluster:namespace:app`) |
 
-Se [Koble til backend](/kom-i-gang/koble-til-backend) for oppsett av token exchange.
+Se [Koble til backend](/kom-i-gang/koble-til-backend) for oppsett av tokenvekslingen.
 
 ## Se også
 
-- [Datakontrakt](/referanse/datakontrakt) — payload-struktur for innsending
-- [Koble til backend](/kom-i-gang/koble-til-backend) — oppsett av token exchange og backend-integrasjon
+- [Datakontrakt](/referanse/datakontrakt): strukturen på dataene som sendes inn
+- [Koble til backend](/kom-i-gang/koble-til-backend): oppsett av tokenveksling og backend

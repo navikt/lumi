@@ -4,41 +4,59 @@ title: Lagring
 
 # Lagring
 
-Widgeten husker at brukeren har lukket (dismissed) surveyen, og kan vente en cooldown-periode før den vises igjen. Du velger *hvordan* den husker dette med `storageStrategy`.
+Widgeten husker at brukeren har lukket surveyen, og kan vente en stund før den viser surveyen igjen. Med `storageStrategy` velger dere hvordan widgeten husker dette.
 
 ## Strategier
 
-| Strategi | Flate | Avhengigheter | Merknad |
+| Strategi | App | Avhengigheter | Merknad |
 | :--- | :--- | :--- | :--- |
-| `consent` (default) | Sluttbruker (nav.no) | Nav-dekoratørens consent-API | Respekterer brukerens samtykke |
-| `localStorage` | Intern (Modia, fagsystemer) | Ingen | Lagrer direkte i localStorage |
-| `none` | Alle | Ingen | Ingen persistering — surveyen vises hver gang |
+| `consent` (standard) | Apper for sluttbrukere (nav.no) | Nav-dekoratøren og brukerens samtykke | Husker lukkingen bare når brukeren har samtykket |
+| `localStorage` | Interne apper (Modia, fagsystemer) | Ingen | Lagrer direkte i `localStorage` |
+| `none` | Alle | Ingen | Lagrer ingenting. Surveyen vises hver gang |
 
-## `consent` (default)
+## `consent` (standard) {#consent}
 
-Default-strategien for nav.no-flater. Widgeten leser fra `window.__DECORATOR_DATA__` og bruker `window.webStorageController` som settes av Nav-dekoratøren. Ingen ekstra npm-pakke er nødvendig.
+Dette er standardstrategien, og den er laget for apper på nav.no. Widgeten lagrer lukkingen i `localStorage` under nøkkelen `lumi-dismissed-<surveyId>`, men bare når alt dette stemmer:
+
+- Nav-dekoratøren er lastet, slik at `window.__DECORATOR_DATA__` og `window.webStorageController` finnes
+- brukeren har samtykket til `surveys` i samtykkeløsningen til dekoratøren
+- dekoratøren tillater nøkkelen `lumi-dismissed-<surveyId>`
+
+Dere trenger ingen ekstra npm-pakke.
 
 ```tsx
 <LumiSurveyDock
-  surveyId="min-flate"
+  surveyId="min-app-tilbakemelding"
   survey={survey}
   transport={transport}
-  // consent er default — trenger ikke spesifiseres
+  // consent er standard og trenger ikke settes
 />
 ```
 
-::: warning Krever Nav-dekoratøren
-`consent`-strategien fungerer kun på sider med Nav-dekoratøren (nav.no). Uten den kan ikke widgeten lagre dismissed-tilstand, og surveyen vil dukke opp igjen ved hver sidelast.
-:::
+### Uten samtykke {#uten-samtykke}
 
-Widgeten venter høyst 300 ms på den første consent-lesingen før den rendrer ut
-fra `initialOpen`. Consent-oppslaget fortsetter i bakgrunnen: Hvis dekoratøren
-blir klar senere, anvendes en lagret dismissal så lenge brukeren ikke allerede
-har interagert med surveyen.
+Mangler ett av punktene over, lagrer ikke widgeten noe. Den husker da ikke at brukeren har lukket surveyen, heller ikke etter at brukeren har sendt inn svar. Med `initialOpen: true`, som er standard, åpner surveyen seg igjen ved hver sidelast.
+
+Vil dere ikke at surveyen skal åpne seg av seg selv for disse brukerne, kan dere sette `initialOpen: false`. Da viser widgeten den minimerte knappen til alle brukere, og brukeren åpner surveyen selv.
+
+Slik sjekker dere samtykket i konsollen i DevTools på siden. Bytt ut `min-app-tilbakemelding` med `surveyId`-en deres:
+
+```js
+window.webStorageController.getCurrentConsent().consent.surveys;
+window.webStorageController.isStorageKeyAllowed("lumi-dismissed-min-app-tilbakemelding");
+```
+
+Begge må gi `true`. Gir den siste `false`, tillater ikke dekoratøren nøkkelen. Spør da i [#lumi på Slack](https://nav-it.slack.com/archives/C0AG2FKSSMD).
+
+Når appen kjører i utviklingsmodus, skriver widgeten også meldinger som begynner med `[Lumi]` i konsollen, for eksempel når samtykket mangler.
+
+### Når dekoratøren lastes etter widgeten
+
+Widgeten venter høyst 300 ms på å lese samtykket før den viser surveyen ut fra `initialOpen`. Oppslaget fortsetter i bakgrunnen i opptil fem sekunder. Blir dekoratøren klar i den tiden, bruker widgeten en lagret lukking så lenge brukeren ikke allerede har gjort noe i surveyen.
 
 ## `localStorage`
 
-For interne flater (Modia, fagsystemer) som ikke har Nav-dekoratøren:
+Bruk `localStorage` i interne apper uten Nav-dekoratøren, for eksempel Modia og fagsystemer:
 
 ```tsx
 <LumiSurveyDock
@@ -49,11 +67,11 @@ For interne flater (Modia, fagsystemer) som ikke har Nav-dekoratøren:
 />
 ```
 
-Dismissed-tilstanden lagres under en nøkkel basert på `surveyId` i `localStorage`.
+Widgeten lagrer at surveyen er lukket i `localStorage`, under nøkkelen `lumi-dismissed-<surveyId>`.
 
 ## `none`
 
-Ingen persistering — surveyen vises ved hver sidelast. Nyttig for utvikling eller one-shot-scenarioer:
+Widgeten lagrer ingenting, og surveyen vises ved hver sidelast. Det er nyttig under utvikling og i engangstilfeller:
 
 ```tsx
 <LumiSurveyDock
@@ -64,13 +82,13 @@ Ingen persistering — surveyen vises ved hver sidelast. Nyttig for utvikling el
 />
 ```
 
-## Cooldown
+## Ventetid
 
-Etter at brukeren lukker surveyen, venter widgeten en cooldown-periode før den vises igjen. Default er **30 dager**.
+Etter at brukeren har lukket surveyen, venter widgeten som standard 30 dager før den viser den igjen. Ventetiden setter dere med `dismissCooldownDays`:
 
 ```tsx
 <LumiSurveyDock
-  surveyId="min-flate"
+  surveyId="min-app-tilbakemelding"
   survey={survey}
   transport={transport}
   behavior={{
@@ -80,10 +98,10 @@ Etter at brukeren lukker surveyen, venter widgeten en cooldown-periode før den 
 />
 ```
 
-| Property | Type | Default | Beskrivelse |
+| Felt | Type | Standard | Beskrivelse |
 | :--- | :--- | :--- | :--- |
-| `storageStrategy` | `"consent" \| "localStorage" \| "none"` | `"consent"` | Hvordan dismissed-tilstand lagres |
-| `dismissCooldownDays` | `number` | `30` | Dager før surveyen vises igjen etter dismiss |
+| `storageStrategy` | `"consent" \| "localStorage" \| "none"` | `"consent"` | Hvordan widgeten husker at surveyen er lukket |
+| `dismissCooldownDays` | `number` | `30` | Antall dager før surveyen vises igjen etter at den er lukket. `0` betyr at lukkingen ikke utløper |
 | `hideAfterSubmit` | `boolean` | `true` | Skjul widgeten helt etter vellykket innsending |
 
 ## Velg riktig strategi
@@ -91,21 +109,16 @@ Etter at brukeren lukker surveyen, venter widgeten en cooldown-periode før den 
 ```mermaid
 flowchart TD
     A["Hvor kjører appen?"] --> B{"nav.no med dekoratør?"}
-    B -->|Ja| C["consent (default)"]
-    B -->|Nei| D{"Intern flate?"}
+    B -->|Ja| C["consent (standard)"]
+    B -->|Nei| D{"Intern app?"}
     D -->|Ja| E["localStorage"]
     D -->|Nei| F{"Utvikling/test?"}
     F -->|Ja| G["none"]
     F -->|Nei| E
 ```
 
-::: danger Vanlig feil på interne flater
-Default er `consent`, som krever Nav consent API (`window.webStorageController`). Uten consent-API-et vil widgeten ikke kunne huske at brukeren lukket surveyen — den dukker opp igjen og igjen.
-
-Fravær av consent-API blokkerer ikke widgeten i mer enn 300 ms, men det gir
-fortsatt ingen persistering.
-
-**Løsning:** Sett `storageStrategy: "localStorage"` for alle interne flater.
+::: danger Vanlig feil i interne apper
+Standard er `consent`. Uten Nav-dekoratøren kan ikke widgeten huske at brukeren lukket surveyen, og surveyen åpner seg igjen ved hver sidelast. Sett `storageStrategy: "localStorage"` i alle interne apper:
 
 ```tsx
 <LumiSurveyDock behavior={{ storageStrategy: "localStorage" }} />
@@ -114,13 +127,13 @@ fortsatt ingen persistering.
 
 ## Events ved lagringsfeil
 
-Hvis lagring feiler (f.eks. consent nektet), fyres `onDismissalPersistFailed`-eventet. Se [Events](/referanse/events) for detaljer.
+Hvis lagringen feiler, for eksempel fordi brukeren ikke har samtykket, kaller widgeten `onDismissalPersistFailed`. Se [Events](/referanse/events).
 
 ```tsx
 <LumiSurveyDock
   events={{
     onDismissalPersistFailed: (cause) => {
-      console.warn("Kunne ikke lagre dismissed-tilstand:", cause);
+      console.warn("Kunne ikke lagre at surveyen er lukket:", cause);
     },
   }}
 />

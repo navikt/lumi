@@ -4,64 +4,92 @@ title: Feilsøking
 
 # Feilsøking
 
-Vanlige problemer og løsninger for Lumi-widgeten.
+## Surveyen vises ikke
 
-## Survey dukker ikke opp
-
-**Symptom:** Komponenten er rendret, men ingenting vises på skjermen.
+Komponenten er rendret, men ingenting vises på skjermen.
 
 ::: details Sjekk 1: `initialOpen` er satt til `false`
-Widgeten starter som standard åpen (`initialOpen: true`). Hvis du har satt `initialOpen: false`, vises bare den minimerte knappen.
+Widgeten starter som standard åpen (`initialOpen: true`). Hvis dere har satt `initialOpen: false`, vises bare den minimerte knappen, og brukeren må åpne surveyen selv. Det kan være et bevisst valg, se [Lagring](/guider/lagring#uten-samtykke).
 
 ```tsx
-// ❌ Starter minimert
+// Starter minimert
 <LumiSurveyDock behavior={{ initialOpen: false }} />
 
-// ✅ Starter åpen (default)
+// Starter åpen (standard)
 <LumiSurveyDock behavior={{ initialOpen: true }} />
 ```
 :::
 
-::: details Sjekk 2: Dismissed-tilstand fra tidligere visning
-Widgeten husker at brukeren lukket den. Under utvikling kan dette persistere mellom sidelaster.
+::: details Sjekk 2: Surveyen er lukket tidligere
+Widgeten husker at brukeren har lukket surveyen, og under utvikling kan dette henge igjen fra én sidelast til den neste.
 
-**Løsning for utvikling:**
-- Bruk `storageStrategy: "none"` for å deaktivere persistering
-- Eller tøm localStorage/cookies og last siden på nytt
+Dere kan enten bruke `storageStrategy: "none"`, så widgeten ikke lagrer noe, eller tømme localStorage og informasjonskapsler og laste siden på nytt.
 
 ```tsx
-// For utvikling/testing
+// Under utvikling og testing
 <LumiSurveyDock behavior={{ storageStrategy: "none" }} />
 ```
 :::
 
-::: details Sjekk 3: Cooldown-perioden er aktiv
-Etter at brukeren lukker surveyen, er default cooldown **30 dager**. Under utvikling kan du sette den lavere:
+::: details Sjekk 3: Ventetiden er ikke over
+Etter at brukeren har lukket surveyen, venter widgeten som standard 30 dager før den viser den igjen. Under utvikling er det enklest å bruke `storageStrategy: "none"` fra sjekk 2, så husker ikke widgeten at surveyen er lukket.
 
-```tsx
-<LumiSurveyDock behavior={{ dismissCooldownDays: 0 }} />
-```
+Ikke sett `dismissCooldownDays: 0`. Da utløper lukkingen aldri, og surveyen åpner seg ikke av seg selv igjen for den brukeren. Bare den minimerte knappen vises.
 :::
 
 ::: details Sjekk 4: CSS mangler
-Uten CSS-import kan widgeten rendre med usynlige elementer. Se [Layout virker tom](#layout-virker-tom) under.
+Uten CSS-importene kan elementer i widgeten bli usynlige. Se [Layout virker tom](#layout-virker-tom) lenger ned.
 :::
 
-## 403 fra API
+## Widgeten virker ikke i Next.js App Router
 
-**Symptom:** `transport.submit` feiler med HTTP 403.
+Filen som bruker `LumiSurveyDock`, må starte med `"use client"`. Den bygde
+pakken har ikke direktivet selv. Uten det prøver Next.js å kjøre widgeten som
+serverkomponent, og siden feiler. Se
+[Next.js App Router](/kom-i-gang/konfigurer-survey#next-js).
 
-**Årsak:** NAIS access policies er ikke riktig konfigurert — enten utgående
-fra appen din, eller innkommende til Lumi-mottakeren.
+## Innsendingen feiler
 
-**Sjekk:**
+Widgeten viser en feilmelding når `transport.submit` kaster en feil. Se først i
+nettverksfanen i DevTools hvilken status kallet til appens backend får. Kallet
+videre til Lumi API vises ikke i nettleseren, så detaljene står i loggene til
+backenden. Ruten i
+[backend-eksempelet](/kom-i-gang/koble-til-backend#_3-send-inn-svar-til-lumi-api)
+sender statuskoden fra Lumi API videre til nettleseren.
 
-1. **Finn riktig mottaker.** Bruk `lumi-api` for TokenX, produksjon og
-   AzureAD-apper med `nav.no`-tenant. Bruk `lumi-submission-proxy` bare for
-   AzureAD i dev når appen har `trygdeetaten.no`-tenant. Se den komplette
-   [rutetabellen](/kom-i-gang/koble-til-backend#_4-konfigurer-access-policies).
+Mangler en access policy, ser dere det på en av to måter: Tokenvekslingen feiler, eller kallet til
+Lumi API får tidsavbrudd.
 
-2. **Din app** har outbound-regel mot denne mottakeren. For direkte kall til
+### Tokenvekslingen feiler
+
+Loggen i backenden viser at tokenvekslingen feilet. I backend-eksempelet står
+det `Tokenveksling feilet`, og ruten svarer med 500. Kallet til Lumi API blir
+ikke sendt.
+
+Sjekk dette:
+
+1. Mottakeren har appen deres som inbound. Uten regelen får ikke appen veksle
+   token til mottakeren. Tilgangen gjelder først når PR-en er merget og
+   mottakeren er deployet. Se
+   [Mottakeren (inbound)](/kom-i-gang/koble-til-backend#mottakeren-inbound).
+2. `LUMI_AUDIENCE` hører til samme mottaker som `LUMI_API_HOST`. Se
+   [miljøvariablene](/kom-i-gang/koble-til-backend#_2-sett-miljøvariabler-i-nais).
+3. Nais-manifestet har `tokenx.enabled: true` for TokenX eller
+   `azure.application.enabled: true` for Entra ID.
+4. Har appen både TokenX og Entra ID slått på, returnerer `requestOboToken`
+   alltid en feil. Bruk `requestTokenxOboToken` eller `requestAzureOboToken`.
+
+### Kallet til Lumi API får tidsavbrudd
+
+`fetch` mot Lumi API får ikke svar og feiler etter en stund, ofte med
+`fetch failed` i loggen. Da slipper ikke nettverket i Nais kallet gjennom,
+vanligvis fordi appen mangler outbound-regel mot mottakeren.
+
+Sjekk dette:
+
+1. Finn riktig mottaker i
+   [tabellen over mottakere](/kom-i-gang/koble-til-backend#_4-konfigurer-access-policies).
+2. Appen deres har en outbound-regel mot denne mottakeren. For direkte kall til
    `lumi-api`:
    ```yaml
    spec:
@@ -72,7 +100,7 @@ fra appen din, eller innkommende til Lumi-mottakeren.
              namespace: team-esyfo
    ```
 
-   For AzureAD i dev med `trygdeetaten.no`-tenant:
+   For Entra ID i dev med `trygdeetaten.no`-tenant:
    ```yaml
    spec:
      accessPolicy:
@@ -81,100 +109,71 @@ fra appen din, eller innkommende til Lumi-mottakeren.
            - application: lumi-submission-proxy
              namespace: team-esyfo
    ```
+3. `LUMI_API_HOST` peker på den samme mottakeren: `http://lumi-api.team-esyfo`
+   eller `http://lumi-submission-proxy.team-esyfo`.
 
-3. **Den samme mottakeren** har inbound-regel for appen din. Legg den til med en
-   [PR](/kom-i-gang/koble-til-backend#send-pr-selv), eller be Team eSyfo om det
-   i en
-   [tilgangsforespørsel](https://github.com/navikt/lumi/issues/new?template=access-request.yml):
-   ```yaml
-   spec:
-     accessPolicy:
-       inbound:
-         rules:
-           - application: din-app
-             namespace: ditt-team
-   ```
+### Statuskoder fra Lumi API
 
-4. **Token exchange** er korrekt konfigurert — sjekk at du bruker riktig endepunkt:
-   - Sluttbruker (TokenX): `POST /api/tokenx/v1/feedback`
-   - Intern (AzureAD): `POST /api/azure/v1/feedback`
+Kommer kallet fram, svarer Lumi API eller proxyen med en av disse kodene.
+Feilmeldingen i svaret står i loggen når backenden logger den, slik
+eksempelet gjør.
 
-5. **Host og audience peker på samme mottaker som access policy.** Direkte
-   kall bruker `http://lumi-api.team-esyfo`; AzureAD fra
-   `trygdeetaten.no` i dev bruker
-   `http://lumi-submission-proxy.team-esyfo`. Se
-   [miljøvariablene for alle kombinasjoner](/kom-i-gang/koble-til-backend#_2-sett-miljøvariabler-i-nais).
+| Status | Hva det betyr | Hva dere gjør |
+| :--- | :--- | :--- |
+| 400 | Payloaden er ugyldig, for eksempel fordi backenden sender hele `submission` og ikke `submission.transportPayload`. | Send `transportPayload` videre uendret. |
+| 401 | Tokenet mangler, er utløpt eller har feil utsteder. Ruten i eksempelet svarer selv 401 når brukerens token mangler eller er ugyldig, så sjekk loggen i backend for å se hvem som svarte. Et TokenX-token til `/api/azure/v1/feedback` gir 401, og det samme gjør et Entra ID-token til `/api/tokenx/v1/feedback`. | Bruk host, audience og sti fra samme [miljøblokk](/kom-i-gang/koble-til-backend#_2-sett-miljøvariabler-i-nais). |
+| 404 | Host og sti passer ikke sammen, for eksempel `/api/tokenx/v1/feedback` sendt til `lumi-submission-proxy`, som bare har endepunktet for Entra ID. | Bruk host, audience og sti fra samme miljøblokk. |
+| 409 | Surveyen er endret på en måte som ikke passer med definisjonen Lumi API har lagret for `surveyId`. Svaret er ikke lagret. | Se [Hvis API-et svarer med 409](/guider/survey-identitet#hvis-api-et-svarer-med-409). |
+| 413 | Payloaden er større enn 1 MB. Proxyen svarer også med 413 når headeren `Content-Length` mangler. | Send bare `transportPayload`. |
+| 429 | Appen har sendt mer enn 100 svar på ett minutt, eller samme bruker mer enn 15. I dev deler alle apper i `trygdeetaten.no` én grense gjennom proxyen. | Vent et minutt. Skjer det ofte, spør i [#lumi på Slack](https://nav-it.slack.com/archives/C0AG2FKSSMD). |
+| 500 | Feil i Lumi API eller proxyen. | Spør i #lumi. |
+| 502 | Proxyen fikk ikke sendt svaret videre til Lumi API. Gjelder bare `trygdeetaten.no` i dev. | Spør i #lumi. |
 
-## 401 eller 404 fra API
+## Ingen data i dashboardet
 
-**Symptom:** `transport.submit` feiler med HTTP 401 eller 404.
+Widgeten viser takkesiden, men svarene dukker ikke opp i dashboardet.
 
-- **401 Unauthorized** betyr vanligvis at tokenet ikke har issueren som
-  endepunktet forventer. TokenX-token skal sendes til
-  `/api/tokenx/v1/feedback`, mens AzureAD-token skal sendes til
-  `/api/azure/v1/feedback`.
-- **404 Not Found** betyr vanligvis at host og sti ikke passer sammen. Dette
-  skjer for eksempel hvis `/api/tokenx/v1/feedback` sendes til
-  `lumi-submission-proxy`, som bare eksponerer AzureAD-endepunktet.
+Sjekk dette:
 
-**Sjekk:**
+1. `transport.submit` kaster en feil når backenden svarer med feil. Widgeten
+   viser takkesiden så lenge `submit` ikke kaster, også når kallet feilet.
+   Sjekk `response.ok`, slik
+   [eksempelet](/kom-i-gang/konfigurer-survey#vis-surveyen-og-send-inn-svar)
+   gjør.
 
-1. Velg miljøblokken som passer auth-type, miljø og Azure-tenant i
-   [backend-guiden](/kom-i-gang/koble-til-backend#_2-sett-miljøvariabler-i-nais).
-2. Kopier `LUMI_API_HOST`, `LUMI_AUDIENCE` og `LUMI_FEEDBACK_PATH` fra den
-   samme blokken. Ikke bland verdier fra ulike blokker.
-3. Verifiser at token exchange bruker `LUMI_AUDIENCE`, og at requesten sendes
-   til `${LUMI_API_HOST}${LUMI_FEEDBACK_PATH}`.
+2. Backenden svarer med 2xx bare når Lumi API gjorde det. Se i nettverksfanen i
+   DevTools hvilken status kallet til appens backend får, og i loggene til
+   backenden hva Lumi API svarte.
 
-Hvis responsen er **403**, er token og rute normalt funnet, men access policy
-mangler. Følg [403-sjekklisten](#_403-fra-api).
+3. Sjekk at dere bruker riktig endepunkt i Lumi API:
+   - sluttbrukere: `POST /api/tokenx/v1/feedback`
+   - interne apper: `POST /api/azure/v1/feedback`
 
-## Ingen data i dashboard
+4. Sjekk at dere ser i riktig miljø. Svar sendt fra dev vises i
+   [dashboardet i dev](https://lumi-dashboard.ansatt.dev.nav.no).
 
-**Symptom:** Innsending ser ut til å fungere (ingen feil), men data dukker ikke opp i dashboardet.
-
-**Sjekk:**
-
-1. **Sender du riktig payload?** Backend skal videresende `submission.transportPayload` — ikke hele submission-objektet.
-
-   ```ts
-   // ✅ Riktig
-   body: JSON.stringify(submission.transportPayload)
-
-   // ❌ Feil
-   body: JSON.stringify(submission)
-   ```
-
-2. **Riktig endepunkt?** Sjekk at du treffer riktig Lumi API-endepunkt:
-   - Sluttbruker: `POST /api/tokenx/v1/feedback`
-   - Intern: `POST /api/azure/v1/feedback`
-
-3. **Sjekk nettverksfanen** i DevTools for å verifisere at requesten faktisk sendes og får 2xx-respons.
-
-4. **Verifiser `surveyId`** — dashboardet filtrerer på `surveyId`. Sjekk at du leter under riktig ID.
+5. Sjekk at dere ser på riktig `surveyId` i dashboardet. Dashboardet filtrerer
+   på `surveyId`.
 
 ## Layout virker tom {#layout-virker-tom}
 
-**Symptom:** Widgeten vises, men uten styling — ingen farger, rar layout, elementer overlapper.
-
-**Årsak:** Manglende CSS-import. Begge er påkrevd:
+Widgeten vises, men uten stiler: ingen farger, rar layout og elementer som overlapper. Da mangler minst én av CSS-importene. Begge må være med:
 
 ```tsx
-import "@navikt/ds-css";                 // Aksel base-styles
-import "@navikt/lumi-survey/styles.css"; // Lumi widget-styles
+import "@navikt/ds-css";                 // Grunnstilene fra Aksel
+import "@navikt/lumi-survey/styles.css"; // Stilene til widgeten
 ```
 
-::: tip Sjekk import-rekkefølge
-`@navikt/ds-css` bør importeres *før* `@navikt/lumi-survey/styles.css`. I de fleste bundlere spiller rekkefølgen i import-statements rolle for CSS-spesifisitet.
+::: tip Sjekk rekkefølgen på importene
+Importer `@navikt/ds-css` før `@navikt/lumi-survey/styles.css`.
 :::
 
-## Dismissed-tilstand persisteres ikke
+## Widgeten husker ikke at surveyen er lukket
 
-**Symptom:** Brukeren lukker surveyen, men den dukker opp igjen ved neste sidelast. Typisk på interne flater (Modia, fagsystemer).
+Brukeren lukker surveyen, men den åpner seg igjen ved neste sidelast.
 
-**Årsak:** Default storage-strategi er `consent`, som krever Nav-dekoratørens consent-API (`window.webStorageController`). Interne flater har vanligvis ikke denne.
-
-**Løsning:**
+I interne apper som Modia og fagsystemer mangler vanligvis Nav-dekoratøren, som
+standardstrategien `consent` trenger. Sett `storageStrategy` til `localStorage`:
 
 ```tsx
 <LumiSurveyDock
@@ -182,29 +181,19 @@ import "@navikt/lumi-survey/styles.css"; // Lumi widget-styles
 />
 ```
 
-Se [Lagring](/guider/lagring) for full oversikt over lagringsstrategier.
-
-::: info Feilsøk med events
-Du kan lytte på `onDismissalPersistFailed` for å oppdage dette:
-
-```tsx
-<LumiSurveyDock
-  events={{
-    onDismissalPersistFailed: (cause) => {
-      console.warn("Lagring feilet:", cause);
-    },
-  }}
-/>
-```
-:::
+På nav.no husker widgeten lukkingen bare når brukeren har samtykket til
+`surveys`, og dekoratøren tillater nøkkelen widgeten lagrer under.
+[Uten samtykke](/guider/lagring#uten-samtykke) i Lagring viser hvordan dere
+sjekker dette i nettleseren. Widgeten kaller `onDismissalPersistFailed` når den
+ikke får lagret lukkingen. Se [Events](/referanse/events).
 
 ## Validering feiler uventet
 
-**Symptom:** Brukeren får valideringsfeil selv om de har svart.
+Brukeren får valideringsfeil selv om spørsmålene er besvart.
 
-**Sjekk:**
-- Har du `required: true` på spørsmål som er skjult med `visibleIf`? Skjulte spørsmål hoppes over i validering, men dobbeltsjekk at betingelsen fungerer som forventet.
-- Bruk `onValidationFailed` for å se hvilke spørsmål som mangler svar:
+Har dere `required: true` på spørsmål som skjules med `visibleIf`? Skjulte spørsmål hoppes over i valideringen, men sjekk at betingelsen skjuler spørsmålet når dere forventer det.
+
+Med `onValidationFailed` ser dere hvilke spørsmål som mangler svar:
 
 ```tsx
 <LumiSurveyDock
@@ -216,13 +205,6 @@ Du kan lytte på `onDismissalPersistFailed` for å oppdage dette:
 />
 ```
 
-## Trenger du mer hjelp?
+## Mer hjelp
 
-Spør i **[#lumi](https://nav-it.slack.com/archives/C0AG2FKSSMD)** på Slack — vi hjelper gjerne!
-
-Du kan også sjekke disse sidene:
-- [Styling](/guider/styling) — styling-problemer
-- [Props-referanse](/referanse/props-referanse) — alle props
-- [Vis bare relevante spørsmål](/guider/betinget-synlighet) — betinget flyt
-- [Lagring](/guider/lagring) — lagring og cooldown
-- [Opprett en issue](https://github.com/navikt/lumi/issues) — rapporter feil
+Spør i [#lumi på Slack](https://nav-it.slack.com/archives/C0AG2FKSSMD). Feil i Lumi kan dere melde på [GitHub](https://github.com/navikt/lumi/issues). Alle props er beskrevet i [Props-referansen](/referanse/props-referanse). Problemer med utseendet er beskrevet i [Styling](/guider/styling), og problemer med flyten i [Vis bare relevante spørsmål](/guider/betinget-synlighet).

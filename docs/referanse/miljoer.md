@@ -1,10 +1,8 @@
 ---
-title: Miljøer & lenker
+title: Miljøer og lenker
 ---
 
-# Miljøer & lenker
-
-Oversikt over alle Lumi-URLer og ressurser.
+# Miljøer og lenker
 
 ## Dashboard
 
@@ -14,7 +12,9 @@ Oversikt over alle Lumi-URLer og ressurser.
 | Dev | https://lumi-dashboard.ansatt.dev.nav.no |
 | Prod | https://lumi-dashboard.ansatt.nav.no |
 
-Demo-miljøet er åpent for alle og viser testdata. Dev og prod krever Nav-innlogging — se [Tilgang](/dashboard/tilgang) for detaljer.
+Demo-miljøet er åpent for alle og viser testdata. Dev og prod krever Nav-innlogging, se [Tilgang](/dashboard/tilgang).
+
+Dev og prod har hver sin Lumi API og database. Svar og surveydefinisjoner fra dev vises ikke i prod, og omvendt.
 
 ## Widget
 
@@ -24,7 +24,7 @@ Demo-miljøet er åpent for alle og viser testdata. Dev og prod krever Nav-innlo
 | `@navikt/lumi-survey` (primær) | [npmjs](https://www.npmjs.com/package/@navikt/lumi-survey) |
 | `@navikt/lumi-survey` (speil) | [GitHub Packages](https://github.com/navikt/lumi/packages) |
 
-Storybook viser survey-widgeten med interaktive eksempler. Bruk den til å utforske spørsmålstyper og visuell tilpasning.
+I Storybook kan dere prøve spørsmålstypene i widgeten og se hvordan utseendet kan tilpasses.
 
 ## Kildekode
 
@@ -32,10 +32,10 @@ Storybook viser survey-widgeten med interaktive eksempler. Bruk den til å utfor
 | :--- | :--- |
 | GitHub-repo | https://github.com/navikt/lumi |
 
-## Fellesskap
+## Kontakt
 
 | Kanal | Lenke |
 | :--- | :--- |
 | Slack | [#lumi](https://nav-it.slack.com/archives/C0AG2FKSSMD) |
 
-Spørsmål, tilbakemeldinger eller forslag? Bli med i **#lumi** på Slack!
+I #lumi kan dere stille spørsmål og komme med forslag.

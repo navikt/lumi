@@ -4,48 +4,42 @@ title: Hva er Lumi?
 
 # Hva er Lumi?
 
-Lumi hjelper Nav-team å forstå hvordan brukerne opplever tjenesten, hva de prøver å gjøre, og om de lykkes. Teamet lager surveyen i Surveyverksted, viser den i appen og følger svarene i Lumi-dashboardet.
+Lumi består av fire deler: Surveyverksted, widgeten `@navikt/lumi-survey`, Lumi API og dashboardet. [Forsiden](/) viser hvordan en survey går gjennom dem, fra den lages til svarene kan leses.
 
-## Fra spørsmål til innsikt
+## Delene i Lumi
 
-### 1. Lag surveyen i Surveyverksted
+[Surveyverksted](https://lumi-dashboard.ansatt.nav.no/surveyverksted) er der teamet lager surveyen. Det ligger i Lumi-dashboardet, under **Surveyverksted** i menyen. Utkastet lagres for teamet, og forhåndsvisningen sender ikke inn svar. Når surveyen er klar, velger dere **Del med utvikler** og deler en versjon. Fra versjonen kopierer utvikleren TypeScript-koden som skal inn i appen.
 
-Start med det dere vil finne ut. I [Surveyverksted](/kom-i-gang/lag-survey) kan designere, produktfolk og utviklere tilpasse spørsmålene og prøve hele flyten sammen. Utkastet lagres for teamet, og forhåndsvisningen sender ikke inn svar.
+`@navikt/lumi-survey` er widgeten som viser surveyen i appen. Den er laget med Aksel, Navs designsystem, og krever React 18 og Aksel 8 eller nyere. Surveyen ligger i appens kode og hentes ikke fra Surveyverksted, så brukerne ser en ny versjon først når appen er satt i produksjon med den. Widgeten sender svarene til et endepunkt i appens egen backend.
 
-Når surveyen er klar, velger dere **Del med utvikler** og deler en versjon. Den gir utvikleren ferdig TypeScript og en lenke til akkurat det innholdet teamet har blitt enige om.
+Lumi API tar imot svarene fra appens backend og lagrer dem i Lumis database på Nais. Apper for sluttbrukere på nav.no veksler token med TokenX, interne apper som Modia med Entra ID. Appen må ha tilgang til Lumi API i access policy, og den tilgangen [ber dere om i navikt/lumi](/kom-i-gang/koble-til-backend#mottakeren-inbound).
 
-### 2. Legg surveyen i appen
+[Lumi-dashboardet](https://lumi-dashboard.ansatt.nav.no) viser svarene til teamene dere er medlem av i Nais Console. Under **Dashboard** ser dere resultatene ut fra hva dere valgte å finne ut. Under **Tilbakemeldinger** leser dere enkeltsvarene og kan slette dem, og under **Eksporter** laster dere dem ned som CSV, JSON eller Excel. [Demoen](https://lumi-dashboard-demo.ekstern.dev.nav.no) viser dashboardet med testdata og er åpen for alle.
 
-Utvikleren [installerer `@navikt/lumi-survey`](/kom-i-gang/installer-widget), legger inn dokumentet fra Surveyverksted og [kobler appens backend til Lumi](/kom-i-gang/koble-til-backend). Widgeten bruker Aksel, Navs designsystem.
+## Hvem gjør hva
 
-Surveyen blir tilgjengelig for brukerne når teamet ruller ut appen. Senere endringer i utkastet lagres i Surveyverksted frem til teamet tar en ny versjon inn i appen.
+Alle som er medlem av teamet deres i Nais Console, har tilgang til Surveyverksted og dashboardet. I Surveyverksted kan designere, produktfolk og utviklere jobbe i det samme utkastet og prøve surveyen før den deles.
 
-### 3. Følg svarene i dashboardet
+Det er utvikleren som [installerer widgeten](/kom-i-gang/installer-widget), [legger TypeScript-filen fra versjonen inn i appen](/kom-i-gang/konfigurer-survey) og [kobler appens backend til Lumi API](/kom-i-gang/koble-til-backend).
 
-I [Lumi-dashboardet](/dashboard/tilgang) kan dere lese tilbakemeldinger, se resultater og filtrere på blant annet flate og periode. Teamtilgangen hentes fra NAIS. Svarene lagres i Navs infrastruktur.
+## Hva teamet og Team eSyfo har ansvaret for
 
-Vil dere se hvordan det fungerer før dere starter? [Prøv demoen med testdata](https://lumi-dashboard-demo.ekstern.dev.nav.no).
+Teamet deres har ansvaret for surveyen og svarene: hva dere spør om, koden i appen og hvordan svarene brukes. Dere må opplyse brukerne om at Lumi brukes til innsiktsarbeid, og slette svar der noen har skrevet personopplysninger.
 
-## Hvem er Lumi for?
-
-Lumi er laget for Nav-team som vil samle brukerinnsikt i egne flater, både på nav.no og i interne løsninger som Modia.
-
-For å ta Lumi i bruk trenger dere:
-
-- en React-app som kjører på NAIS
-- en utvikler som kan koble appens backend til Lumi med TokenX eller Azure AD
-- medlemskap i riktig NAIS-team for å bruke Surveyverksted og se svarene
-
-Teamet eier spørsmålene, integrasjonen i appen og hvordan innsikten brukes. Team eSyfo drifter Surveyverksted, Lumi API og dashboardet.
-
-## Før du starter
-
-::: warning Påkrevd: Les bruksvilkårene
-Før du setter opp din første survey, les [bruksvilkårene](/referanse/bruksvilkar). Du må blant annet fylle ut [etterlevelsesdokumentasjon](https://etterlevelse.ansatt.nav.no/dokumentasjon/201b8151-d312-4c76-bf44-2716d40a417a) og forstå hvordan personopplysninger håndteres.
+::: warning Les bruksvilkårene først
+Før dere setter opp den første surveyen, må dere lese [bruksvilkårene](/referanse/bruksvilkar). Dere må blant annet fylle ut [etterlevelsesdokumentasjon](https://etterlevelse.ansatt.nav.no/dokumentasjon/201b8151-d312-4c76-bf44-2716d40a417a) og vite hvordan Lumi håndterer personopplysninger.
 :::
 
-Lumi maskerer kjente personopplysningsmønstre i utvalgte felt som et sikkerhetsnett. Teamet må fortsatt vurdere hvilke opplysninger surveyen samler inn. Se [Sikkerhet og personvern](/referanse/sikkerhet#pii-maskering) for hva maskeringen dekker.
+Lumi API maskerer kjente mønstre for personopplysninger i fritekstsvar og noen kontekstfelt, men teamet må fortsatt vurdere hvilke opplysninger surveyen samler inn. [Sikkerhet og personvern](/referanse/sikkerhet#pii-maskering) viser hva maskeringen dekker.
 
-## Neste steg
+Svarene slettes automatisk når de er eldre enn 12 måneder, se [Lagringstid og sletting](/referanse/sikkerhet#lagringstid).
 
-[Lag surveyen i Surveyverksted](/kom-i-gang/lag-survey).
+## Drift og støtte
+
+Team eSyfo utvikler Lumi og drifter Surveyverksted, Lumi API og dashboardet. Det er også Team eSyfo som godkjenner at en app får sende svar til Lumi API. Spørsmål kan dere stille i [#lumi på Slack](https://nav-it.slack.com/archives/C0AG2FKSSMD).
+
+Lumi API har én database uten høy tilgjengelighet. Er databasen nede, lagres ikke svar som sendes inn i mellomtiden, og widgeten viser brukeren meldingen «Kunne ikke sende tilbakemeldingen. Prøv igjen senere.»
+
+## Hvor dere starter
+
+Start med å [lage surveyen i Surveyverksted](/kom-i-gang/lag-survey). Sidene under Kom i gang står i den rekkefølgen arbeidet gjøres, og fra [Installer widgeten](/kom-i-gang/installer-widget) er det utvikleren som tar over. Utvikleren bør be om tilgang til Lumi API tidlig, fordi det er det eneste steget der dere må vente på andre, se [Koble til backend](/kom-i-gang/koble-til-backend#mottakeren-inbound).

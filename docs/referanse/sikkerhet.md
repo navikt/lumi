@@ -1,14 +1,14 @@
 ---
-title: Sikkerhet & personvern
+title: Sikkerhet og personvern
 ---
 
-# Sikkerhet & personvern
+# Sikkerhet og personvern
 
-Lumi har innebygde sikkerhets- og personvernmekanismer. De reduserer risiko, men erstatter ikke ansvaret for å unngå personopplysninger i surveyen og konteksten.
+Lumi har blant annet maskering av personopplysninger, grenser for hvor mange kall API-et tar imot, validering av inndata og tilgang i dashboardet avgrenset til team. Det reduserer risikoen, men dere har fortsatt ansvaret for å unngå personopplysninger i surveyen og konteksten. Hva det innebærer, står i [bruksvilkårene](/referanse/bruksvilkar).
 
 ## PII-maskering {#pii-maskering}
 
-API-et maskerer kjente mønstre for personlig identifiserbar informasjon (PII) i fritekstsvar og utvalgte kontekstfelt. Maskeringen er mønsterbasert og er et sikkerhetsnett, ikke en garanti for at alle personopplysninger fanges opp.
+API-et maskerer kjente mønstre for personlig identifiserbar informasjon (PII) i fritekstsvar og utvalgte kontekstfelt. Maskeringen er mønsterbasert og garanterer ikke at alle personopplysninger blir fanget opp. Navn og vanlige adresser maskeres ikke, og fødselsnummer maskeres bare når kontrollsifrene er gyldige.
 
 | Mønster | Eksempel | Erstatning |
 | :--- | :--- | :--- |
@@ -27,68 +27,72 @@ API-et maskerer kjente mønstre for personlig identifiserbar informasjon (PII) i
 | Fritekstsvar (`answers[].value.text`) | PII-mønstre maskeres | PII-mønstre maskeres på nytt | Det eneste feltet med dobbel maskering |
 | `context.url` | PII-mønstre maskeres i path, query-parametere og fragment | Ingen ekstra maskering | Maskeringen dekoder URL-verdier for å fange kodede mønstre |
 | `context.pathname` | PII-mønstre maskeres etter URL-dekoding | Ingen ekstra maskering | Samle helst en statisk eller allerede renset path |
-| `context.tags` | PII-mønstre maskeres i både nøkler og verdier | Ingen ekstra maskering | Bruk kun lavkardinalitetsverdier, aldri identifikatorer |
-| `context.debug` | PII-mønstre maskeres rekursivt i nøkler og verdier | Ingen ekstra maskering | Feltet finnes ikke i dagens lesemodell |
-| `context.userAgent` | HTML fjernes, men PII-mønstre maskeres ikke | Ingen ekstra maskering | Sendes automatisk av widgeten og finnes ikke i dagens lesemodell |
+| `context.tags` | PII-mønstre maskeres i både nøkler og verdier | Ingen ekstra maskering | Bruk bare verdier med få varianter, aldri identifikatorer |
+| `context.debug` | PII-mønstre maskeres rekursivt i nøkler og verdier | Ingen ekstra maskering | Vises ikke i dashboardet eller eksporten |
+| `context.userAgent` | HTML fjernes, men PII-mønstre maskeres ikke | Ingen ekstra maskering | Sendes automatisk av widgeten og vises ikke i dashboardet eller eksporten |
 | Surveydefinert metadata (`surveyId`, `fieldId`, spørsmålstekst/-beskrivelse og svaralternativenes ID/tekst) | PII-mønstre maskeres ikke | PII-mønstre maskeres ikke | Verdiene valideres, men må ikke inneholde personopplysninger |
 | Strukturerte svar (rating, valgte alternativ-ID-er og dato) | PII-mønstre maskeres ikke | PII-mønstre maskeres ikke | Bruk bare svarverdier som ikke identifiserer personen |
 
 ::: info Dobbel maskering
-Dobbel maskering gjelder bare fritekstsvar. Kontekstfeltene som er markert i tabellen maskeres ved lagring, men får ingen ny PII-kontroll ved lesing.
+Dobbel maskering gjelder bare fritekstsvar. Kontekstfeltene som er markert i tabellen, maskeres ved lagring, men får ingen ny PII-kontroll ved lesing.
 :::
+
+## Hvem som svarte
+
+Lumi API lagrer ikke hvem som svarte. Tokenet fra appens backend brukes til å sjekke at kallet kommer fra en app med tilgang. En hash av brukerens ID holdes bare i minnet, for å begrense hvor mange svar én bruker kan sende inn. Nav-identen i tokenet fra interne apper lagres ikke.
+
+Hvert svar lagres med team, app, tidspunkt og konteksten widgeten sender, som enhetstype, skjermstørrelse og user agent. I små brukergrupper kan dette til sammen gjøre det mulig å kjenne igjen hvem som har svart.
+
+## Lagringstid og sletting {#lagringstid}
+
+- Svar slettes automatisk når de er eldre enn 12 måneder. Jobben kjører én gang i døgnet og sletter opptil 500 svar. Kommer det over tid inn flere enn 500 svar i døgnet, kan svar bli liggende lenger enn 12 måneder.
+- Svar dere sletter i dashboardet, slettes fra databasen med en gang.
+- Surveydefinisjonen, altså spørsmålene og svaralternativene, slettes ikke automatisk.
+- Databasen sikkerhetskopieres hver natt etter Nais' standardoppsett, og sju sikkerhetskopier beholdes. Et slettet svar kan derfor finnes i sikkerhetskopiene i opptil sju døgn. I tillegg tar Nais en daglig katastrofekopi til et miljø utenfor Google Cloud.
 
 ## Små utvalg i dashboardet
 
-Det interne, teamavgrensede dashboardet viser statistikk også når utvalget har
-1–4 svar. Antall svar er beregningsgrunnlaget; små utvalg kan gi store utslag
-fra ett enkelt svar og må tolkes med varsomhet. Dette endrer ikke teamtilgang,
-PII-maskering eller de separate tersklene for analyseprodukter og eksport.
+Dashboardet viser statistikk også når utvalget har 1–4 svar. Med så få svar kan ett enkelt svar gi store utslag, så tolk små utvalg varsomt.
 
 ## Rate limiting
 
-API-et håndhever rate limiting på flere nivåer for å beskytte mot misbruk:
+API-et begrenser antall kall på flere nivåer for å hindre misbruk:
 
 | Kategori | Grense | Beskrivelse |
 | :--- | :--- | :--- |
 | Innsending | 100 req/min | Per kaller-app |
 | Innsending (per bruker) | 15 req/min | Per hashet sluttbruker innenfor samme kaller-app |
-| Analyse | 300 req/min | Per validert team, app og bruker |
-| Eksport | 30 req/min | Per validert team, app og bruker |
+| Analyse | 300 req/min | Per kallende klient og bruker |
+| Eksport | 30 req/min | Per kallende klient og bruker |
 | Avvist eksportautentisering/-autorisasjon | 30 forsøk/min | Per kilde-IP |
-| Global | 1000 req/min | Alle kall samlet |
+| Global | 10 000 req/min | Per kilde-IP |
 
-::: info Nøkling av analyse og eksport
-Ktor autentiserer analyse- og eksportkall før den beregner rate limit-nøkkelen. Gyldige kall nøkles derfor med validert klientidentitet og pseudonymisert brukeridentitet. Eksportkall reserverer i tillegg en tillatelse per kilde-IP før autentisering. Tillatelsen gis først tilbake når både klient- og teamautorisasjon lykkes, mens avviste kall beholder den. Dermed kan ikke en angriper omgå eksportgrensen ved å bytte ugyldig eller uautorisert token for hvert kall. På NAIS hentes kilde-IP fra første verdi i `X-Forwarded-For`.
+I dev går innsendinger fra apper i tenanten `trygdeetaten.no` via `lumi-submission-proxy`. Da gjelder grensen for innsending for proxyen samlet, og grensen per bruker brukes ikke.
+
+::: details Slik telles analyse- og eksportkall
+Gyldige kall telles per kallende klient og per pseudonymisert bruker. Eksportkall reserverer i tillegg en plass per kilde-IP før autentiseringen. Plassen gis tilbake når kallet er godkjent, mens avviste kall beholder den. Kilde-IP er socket-adressen til den som kaller. Forwarding-headere som `X-Forwarded-For` brukes ikke.
 :::
 
 ## Inndatavalidering
 
-Alle submissions valideres nå strengt i API-et før lagring. Dette inkluderer lengdegrenser og formatsjekker på alle relevante felter, URL-validering med krav om `https`, validering av pathname-format, og begrensninger på størrelse/dybde i `debug`-objektet.
+Alle innsendinger valideres strengt i API-et før lagring. API-et sjekker lengde og format på alle relevante felt, krever `https` i URL-er, validerer formatet på pathname og begrenser størrelsen og dybden på `debug`-objektet.
 
-For integratører betyr dette at ugyldig payload avvises tidlig med tydelig valideringsfeil, i stedet for å bli lagret med uforutsigbar struktur.
+Sender appens backend ugyldig payload, blir innsendingen avvist med en tydelig valideringsfeil før noe lagres. Oppsettet av backend står i [Koble til backend](/kom-i-gang/koble-til-backend).
 
 ## Penetrasjonstest
 
-Lumi har gjennomgått en penetrasjonstest utført av Team SåPe, Navs interne sikkerhetstest-team.
-
-Team SåPe gjennomførte testen i februar 2026. Testingen inkluderte kildekodegjennomgang av både backend og frontend (whitebox).
+Team SåPe, Navs interne team for sikkerhetstesting, gjorde en penetrasjonstest av Lumi i februar 2026. Det var en whitebox-test med gjennomgang av kildekoden i både backend og frontend.
 
 ::: tip Hovedresultat
-Ingen sårbarheter med høy eller kritisk alvorlighetsgrad ble funnet. Fundamentale sikkerhetsmekanismer som autentisering og autorisasjon fungerer etter hensikten.
+Testen fant ingen sårbarheter med høy eller kritisk alvorlighetsgrad. Grunnleggende sikkerhetsmekanismer som autentisering og autorisasjon fungerer etter hensikten.
 :::
 
-Rapporten fremhever at React sin innebygde auto-escaping gir god beskyttelse mot XSS, understøttet av tiltak mot CSV-injeksjon. Totalt ble 5 funn identifisert — 2 med middels alvorlighetsgrad og 3 informasjonelle. Alle funn er utbedret per mars 2026.
+Ifølge rapporten beskytter Reacts automatiske escaping mot XSS, og Lumi har i tillegg tiltak mot CSV-injeksjon. Testen ga til sammen 5 funn: 2 med middels alvorlighetsgrad og 3 informasjonelle. Alle funnene var utbedret i mars 2026.
 
-Oppfølgingen omfattet blant annet strengere inndatavalidering i API-et, HTML-sanitering av kontekstfelt før lagring, samt URL-hardening i dashboardet der kun gyldige `https://*.nav.no`-lenker vises som klikkbare.
+Etter testen ble blant annet inndatavalideringen i API-et strammet inn. Kontekstfelt blir nå HTML-sanert før lagring, og dashboardet viser bare gyldige `https://*.nav.no`-lenker som klikkbare.
 
 ## Risiko- og sårbarhetsanalyse (ROS)
 
-Det er gjennomført risiko- og sårbarhetsanalyse (ROS) for Lumi. Analysen holdes oppdatert ved vesentlige endringer.
+ROS-analysen for Lumi blir oppdatert ved vesentlige endringer.
 
 [Åpne ROS-analysen](https://apps.powerapps.com/play/e/default-62366534-1ec3-4962-8869-9b5535279d0b/a/f8517640-ea01-46e2-9c09-be6b05013566?tenantId=62366534-1ec3-4962-8869-9b5535279d0b) (krever Nav-innlogging).
-
-## Se også
-
-- [Bruksvilkår](/referanse/bruksvilkar) — vilkår, ansvar og sjekkliste for bruk av Lumi
-- [Koble til backend](/kom-i-gang/koble-til-backend) — token exchange og NAIS-oppsett
-- [Tilgang](/dashboard/tilgang) — hvem som har tilgang til dashboardet

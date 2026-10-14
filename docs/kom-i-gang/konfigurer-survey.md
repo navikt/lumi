@@ -4,19 +4,21 @@ title: Legg surveyen i appen
 
 # Legg surveyen i appen
 
-Bruk en delt versjon fra [Surveyverksted](https://lumi-dashboard.ansatt.nav.no/surveyverksted) som utgangspunkt for integrasjonen. Versjonen inneholder surveyen teamet har prøvd og er enige om å ta i bruk.
+Appen bruker en delt versjon fra [Surveyverksted](https://lumi-dashboard.ansatt.nav.no/surveyverksted). En delt versjon kan ikke endres, så appen viser den samme surveyen til dere tar i bruk en ny versjon.
 
 ## Kopier surveyen
 
-Åpne versjonen dere vil ta i bruk og velg **Kopier TypeScript**. Lim innholdet inn i `survey.ts` i appen.
+Åpne versjonen dere vil ta i bruk, og velg **Kopier TypeScript**. Lim innholdet inn i `survey.ts` i appen.
 
-Filen eksporterer `survey` og inkluderer en typesjekk med `SurveyDocumentV1`. Spørsmål, sider, oppfølging og bekreftelse følger med. Surveyverksted setter også analysefeltene for oppsettet teamet valgte.
+Filen eksporterer `survey` og har en typesjekk med `SurveyDocumentV1`. Spørsmål, sider, oppfølgingsspørsmål og takkeside følger med, i tillegg til spørsmålene oppsettet trenger for at dashboardet skal kunne analysere svarene.
 
 ## Vis surveyen og send inn svar
 
-Etter at du har [installert pakken og importert stilarkene](/kom-i-gang/installer-widget), kan du bruke filen i en komponent:
+Når dere har [installert pakken og importert stilarkene](/kom-i-gang/installer-widget), kan dere bruke filen i en komponent. Eksempelet er skrevet for Next.js App Router. I Vite og andre React-apper uten serverkomponenter trengs ikke første linje.
 
 ```tsx
+"use client";
+
 import {
   LumiSurveyDock,
   type LumiSurveyTransport,
@@ -47,39 +49,48 @@ export function FeedbackWidget() {
 }
 ```
 
-Legg `FeedbackWidget` på flaten der dere vil samle tilbakemeldinger. `survey` er innholdet brukeren møter, mens `transport` sender svarene til appens backend.
+Legg `FeedbackWidget` på siden der dere vil samle tilbakemeldinger. `survey` er innholdet brukeren møter, mens `transport` sender svarene til appens backend. Widgeten viser takkesiden når `submit` er ferdig uten feil, så `submit` må kaste en feil når backenden svarer med feil.
 
-`/api/lumi/feedback` er et endepunkt dere må opprette i egen app. Det gjør token exchange og sender svarene videre til Lumi API. Widgeten kan vises før dette er satt opp, men svar lagres først når [backendintegrasjonen](/kom-i-gang/koble-til-backend) er på plass.
+`/api/lumi/feedback` er et endepunkt dere lager selv i appens backend. Det bytter brukerens token mot et token for Lumi API (tokenveksling) og sender svarene videre. Widgeten kan vises før endepunktet finnes, men svarene lagres ikke før [backenden er koblet til](/kom-i-gang/koble-til-backend).
+
+### Next.js App Router {#next-js}
+
+`"use client"` på første linje gjør filen til en klientkomponent. Widgeten bruker React-hooks og må kjøre i nettleseren, men den bygde pakken har ikke direktivet selv. Uten linjen prøver Next.js å kjøre widgeten som serverkomponent, og siden feiler. I Vite og andre React-apper uten serverkomponenter trengs ikke linjen.
+
+Har appen `basePath` i `next.config`, legger ikke Next.js den til i `fetch`. Sett den foran stien selv, for eksempel med en variabel som også brukes som `basePath`:
+
+```ts
+fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/lumi/feedback`, {
+  // som over
+});
+```
+
+Next.js setter inn `NEXT_PUBLIC_`-variabler i klientkoden når appen bygges, så variabelen må være satt ved bygg.
+
+I Vite står base-stien i `import.meta.env.BASE_URL`, og den slutter alltid med `/`:
+
+```ts
+fetch(`${import.meta.env.BASE_URL}api/lumi/feedback`, {
+  // som over
+});
+```
 
 ## Sett survey-ID
 
-Bytt `min-app-tilbakemelding` med en stabil ID for surveyen. Dere finner et forslag på versjonssiden i Surveyverksted. ID-en settes på `LumiSurveyDock` og følger ikke med i den kopierte TypeScript-filen.
+Bytt ut `min-app-tilbakemelding` med en stabil ID for surveyen. Surveyverksted foreslår en ID, og den står som **Survey-ID** på versjonssiden. ID-en settes på `LumiSurveyDock` og følger ikke med i den kopierte TypeScript-filen.
 
 Behold ID-en så lenge svarene skal tilhøre samme analyseserie. Se [Survey-identitet og endringer](/guider/survey-identitet) før dere endrer hva surveyen måler eller hvilke svaralternativer den har.
 
-## Tilpass til flaten
+## Når brukeren lukker surveyen
 
-På nav.no bruker widgeten Nav-dekoratørens samtykkeløsning for å huske at brukeren har lukket surveyen. På interne flater uten dekoratøren, legg til:
-
-```tsx
-<LumiSurveyDock
-  surveyId="min-app-tilbakemelding"
-  survey={survey}
-  transport={transport}
-  behavior={{ storageStrategy: "localStorage" }}
-/>
-```
-
-Se [Lagring](/guider/lagring) for hvor lenge lukking huskes, og [Props-referansen](/referanse/props-referanse) for øvrige innstillinger.
+Widgeten husker at brukeren har lukket surveyen bare når den får lagre det. Standarden virker bare på sider med Nav-dekoratøren og når brukeren har samtykket. I apper uten dekoratøren setter dere `storageStrategy: "localStorage"` i `behavior`. Les [Lagring](/guider/lagring) før dere setter appen i produksjon, og se [Props-referansen](/referanse/props-referanse) for andre innstillinger.
 
 ## Prøv surveyen i appen
 
 - Gå gjennom hele flyten med tastatur og på liten skjerm.
 - Sjekk at oppfølgingsspørsmålene vises når de skal.
-- Kontroller at tekstene passer til flaten og tidspunktet surveyen vises på.
+- Kontroller at tekstene passer til siden og tidspunktet surveyen vises på.
 
-Når teamet endrer surveyen i Surveyverksted, deler dere en ny versjon og oppdaterer filen i appen. Endringen når brukerne når dere ruller ut appen.
+Når teamet endrer surveyen i Surveyverksted, deler dere en ny versjon og oppdaterer filen i appen. Brukerne ser endringen når appen er satt i produksjon.
 
-## Neste steg
-
-[Koble til backend](/kom-i-gang/koble-til-backend) for å lagre svarene og se dem i Lumi-dashboardet.
+Neste steg er å [koble til backend](/kom-i-gang/koble-til-backend), slik at svarene blir lagret og vises i Lumi-dashboardet.

@@ -24,6 +24,9 @@ Use repo-root `.github/` as the canonical source:
 - For `packages/lumi-survey/**`:
   - Use `.github/instructions/lumi-survey.instructions.md`
 
+- For `docs/**`:
+  - Use `.github/instructions/dokumentasjon.instructions.md`
+
 ## Validation before completion
 
 - Run `pnpm run lint`

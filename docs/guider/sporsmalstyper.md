@@ -4,18 +4,18 @@ title: Spørsmålstyper
 
 # Spørsmålstyper
 
-Lumi støtter fire spørsmålstyper: **rating**, **text**, **singleChoice** og **multiChoice**. Hver type har egne properties som styrer oppførselen.
+Lumi har fire spørsmålstyper: `rating`, `text`, `singleChoice` og `multiChoice`. Alle typene har [noen felles felt](#felles-felt), og hver type har i tillegg egne felt.
 
 ## Rating
 
-Rating lar brukeren gi en vurdering på en visuell skala. Du velger variant — skalaen følger automatisk.
+Brukeren gir en vurdering på en visuell skala. Dere velger variant, og varianten bestemmer skalaen.
 
 | Variant | Skala | Visuelt |
 | :--- | :--- | :--- |
 | `emoji` (standard) | 1–5 | 😡 🙁 😐 😀 😍 |
 | `thumbs` | 1–2 | 👎 👍 |
 | `stars` | 1–5 | ⭐⭐⭐⭐⭐ |
-| `nps` | 0–10 | Nummerte knapper med lav/høy-label |
+| `nps` | 0–10 | Nummererte knapper med valgfri tekst i hver ende |
 
 ### Emoji (standard)
 
@@ -23,7 +23,7 @@ Rating lar brukeren gi en vurdering på en visuell skala. Du velger variant — 
 {
   id: "rating",
   type: "rating",
-  variant: "emoji", // kan utelates — emoji er standard
+  variant: "emoji", // kan utelates, emoji er standard
   prompt: "Hvordan var opplevelsen din?",
   description: "Tenk på oppgaven du nettopp gjorde.",
   required: true,
@@ -32,7 +32,7 @@ Rating lar brukeren gi en vurdering på en visuell skala. Du velger variant — 
 
 ### Thumbs
 
-Passer for enkle spørsmål som «Var dette nyttig?».
+Passer til enkle spørsmål som «Var dette nyttig?».
 
 ```tsx
 {
@@ -46,7 +46,7 @@ Passer for enkle spørsmål som «Var dette nyttig?».
 
 ### Stars
 
-Klassisk femstjerners vurdering.
+Brukeren gir fra én til fem stjerner.
 
 ```tsx
 {
@@ -76,23 +76,23 @@ NPS bruker en skala fra 0 til 10 med valgfrie tekster i hver ende.
 
 ### Felt for rating
 
-| Property | Type | Påkrevd | Beskrivelse |
+| Felt | Type | Påkrevd | Beskrivelse |
 | :--- | :--- | :---: | :--- |
-| `id` | `string` | ✅ | Unik ID for spørsmålet |
-| `type` | `"rating"` | ✅ | Spørsmålstype |
-| `variant` | `"emoji" \| "thumbs" \| "stars" \| "nps"` | ❌ | Visuell variant (standard: `"emoji"`) |
-| `prompt` | `string` | ✅ | Spørsmålsteksten |
-| `description` | `string` | ❌ | Hjelpetekst under prompt |
-| `required` | `boolean` | ❌ | Om svaret er påkrevd |
-| `lowLabel` | `string` | ❌ | Label for lav verdi (kun `nps`) |
-| `highLabel` | `string` | ❌ | Label for høy verdi (kun `nps`) |
-| `labels` | `Array<{ value, label }>` | ❌ | Egne labels per verdi |
+| `id` | `string` | Ja | Unik ID for spørsmålet |
+| `type` | `"rating"` | Ja | Spørsmålstype |
+| `variant` | `"emoji" \| "thumbs" \| "stars" \| "nps"` | Nei | Visuell variant (standard: `"emoji"`) |
+| `prompt` | `string` | Ja | Spørsmålsteksten |
+| `description` | `string` | Nei | Hjelpetekst under spørsmålsteksten |
+| `required` | `boolean` | Nei | Om svaret er påkrevd |
+| `lowLabel` | `string` | Nei | Tekst ved laveste verdi (bare `nps`) |
+| `highLabel` | `string` | Nei | Tekst ved høyeste verdi (bare `nps`) |
+| `labels` | `Array<{ value, label }>` | Nei | Egen tekst for hver verdi |
 
 ## Text
 
-Fritekstfelt med valgfri maks-lengde. Bra for oppfølgingsspørsmål. Standardgrensen
-er 1000 tegn, og API-kontrakten tillater maksimalt 2000 tegn. `maxLength` må
-være et positivt heltall. Høyere verdier begrenses til 2000 i widgeten.
+Et fritekstfelt som passer godt til oppfølgingsspørsmål. Uten `maxLength` kan
+brukeren skrive 1000 tegn, og API-kontrakten tillater høyst 2000 tegn. `maxLength`
+må være et positivt heltall. Er verdien høyere, bruker widgeten 2000.
 
 ```tsx
 {
@@ -106,17 +106,17 @@ være et positivt heltall. Høyere verdier begrenses til 2000 i widgeten.
 
 ### Felt for text
 
-| Property | Type | Påkrevd | Beskrivelse |
+| Felt | Type | Påkrevd | Beskrivelse |
 | :--- | :--- | :---: | :--- |
-| `id` | `string` | ✅ | Unik ID for spørsmålet |
-| `type` | `"text"` | ✅ | Spørsmålstype |
-| `prompt` | `string` | ✅ | Spørsmålsteksten |
-| `description` | `string` | ❌ | Hjelpetekst under prompt |
-| `required` | `boolean` | ❌ | Om svaret er påkrevd |
-| `maxLength` | `number` | ❌ | Positivt heltall (standard 1000, øvre grense 2000) |
-| `minRows` | `number` | ❌ | Minimum antall rader i tekstfeltet |
-| `placeholder` | `string` | ❌ | Plassholdertekst |
-| `autoComplete` | `string` | ❌ | HTML autocomplete-attributt |
+| `id` | `string` | Ja | Unik ID for spørsmålet |
+| `type` | `"text"` | Ja | Spørsmålstype |
+| `prompt` | `string` | Ja | Spørsmålsteksten |
+| `description` | `string` | Nei | Hjelpetekst under spørsmålsteksten |
+| `required` | `boolean` | Nei | Om svaret er påkrevd |
+| `maxLength` | `number` | Nei | Positivt heltall (standard 1000, øvre grense 2000) |
+| `minRows` | `number` | Nei | Minste antall rader i tekstfeltet |
+| `placeholder` | `string` | Nei | Plassholdertekst |
+| `autoComplete` | `string` | Nei | `autocomplete`-attributtet i HTML |
 
 ## Single choice
 
@@ -138,10 +138,10 @@ Brukeren velger ett alternativ fra en liste.
 
 ## Multi choice
 
-Brukeren velger ett eller flere alternativer. Støtter to varianter:
+Brukeren velger ett eller flere alternativer. Det finnes to varianter:
 
-- `"checkbox"` (standard) — tradisjonell avkrysningsliste, best for få valg
-- `"combobox"` — søkbar dropdown med chips, anbefalt for 10+ alternativer
+- `"checkbox"` (standard): en vanlig liste med avkrysningsbokser, best når det er få alternativer
+- `"combobox"`: en nedtrekksliste med søk der valgene vises som chips, anbefalt fra ti alternativer og oppover
 
 ```tsx
 {
@@ -157,9 +157,9 @@ Brukeren velger ett eller flere alternativer. Støtter to varianter:
 }
 ```
 
-### Combobox-variant med maxSelections
+### Combobox med `maxSelections`
 
-For mange alternativer (f.eks. Task Priority-surveyer) er combobox-varianten bedre:
+Med mange alternativer passer `combobox` bedre. Et typisk eksempel er oppgavelisten i **Hvilke oppgaver er viktigst?**
 
 ```tsx
 {
@@ -180,33 +180,33 @@ For mange alternativer (f.eks. Task Priority-surveyer) er combobox-varianten bed
 
 ### Felt for valgspørsmål
 
-| Property | Type | Påkrevd | Beskrivelse |
+| Felt | Type | Påkrevd | Beskrivelse |
 | :--- | :--- | :---: | :--- |
-| `id` | `string` | ✅ | Unik ID for spørsmålet |
-| `type` | `"singleChoice" \| "multiChoice"` | ✅ | Spørsmålstype |
-| `prompt` | `string` | ✅ | Spørsmålsteksten |
-| `description` | `string` | ❌ | Hjelpetekst under prompt |
-| `options` | `Array<{ value, label, description? }>` | ✅ | Valgalternativer |
-| `required` | `boolean` | ❌ | Om svaret er påkrevd |
-| `randomize` | `boolean` | ❌ | Randomiser rekkefølgen på alternativer |
-| `variant` | `"checkbox" \| "combobox"` | ❌ | Visuell variant (kun multiChoice, standard: `"checkbox"`) |
-| `maxSelections` | `number` | ❌ | Maks antall valg (kun multiChoice) |
+| `id` | `string` | Ja | Unik ID for spørsmålet |
+| `type` | `"singleChoice" \| "multiChoice"` | Ja | Spørsmålstype |
+| `prompt` | `string` | Ja | Spørsmålsteksten |
+| `description` | `string` | Nei | Hjelpetekst under spørsmålsteksten |
+| `options` | `Array<{ value, label, description? }>` | Ja | Alternativene brukeren kan velge |
+| `required` | `boolean` | Nei | Om svaret er påkrevd |
+| `randomize` | `boolean` | Nei | Viser alternativene i tilfeldig rekkefølge |
+| `variant` | `"checkbox" \| "combobox"` | Nei | Visuell variant (bare `multiChoice`, standard: `"checkbox"`) |
+| `maxSelections` | `number` | Nei | Høyeste antall valg (bare `multiChoice`) |
 
 ## Felles felt
 
-Alle spørsmålstyper deler disse:
+Disse feltene finnes på alle spørsmålstyper:
 
-| Property | Type | Beskrivelse |
+| Felt | Type | Beskrivelse |
 | :--- | :--- | :--- |
-| `id` | `string` | Unik identifikator — brukes i svar-payloaden |
+| `id` | `string` | Unik ID, som også brukes i payloaden med svarene |
 | `prompt` | `string` | Spørsmålsteksten som vises til brukeren |
-| `description` | `string` | Valgfri hjelpetekst under spørsmålet |
-| `required` | `boolean` | Krever svar for å sende inn |
+| `description` | `string` | Valgfri hjelpetekst under spørsmålsteksten |
+| `required` | `boolean` | Brukeren må svare før surveyen kan sendes inn |
 | `visibleIf` | `VisibleIfCondition` | Se [Vis bare relevante spørsmål](/guider/betinget-synlighet) |
 
 ## Komplett eksempel
 
-Her er en survey med flere spørsmålstyper og relevante oppfølgingsspørsmål:
+Surveyen under har tre spørsmålstyper på hver sin side. Det andre og det tredje spørsmålet vises først når brukeren har svart på det forrige.
 
 ```tsx
 import "@navikt/ds-css";
@@ -287,7 +287,7 @@ const survey = {
 export function MyPage() {
   return (
     <LumiSurveyDock
-      surveyId="min-flate"
+      surveyId="min-app-tilbakemelding"
       survey={survey}
       transport={transport}
     />

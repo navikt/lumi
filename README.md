@@ -4,14 +4,13 @@
 ![Publish @navikt/lumi-survey](https://github.com/navikt/lumi/actions/workflows/publish-lumi-survey.yaml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-**Personvernvennlig survey-infrastruktur for NAV.**
-Lumi lar deg samle brukerinnsikt uten at data forlater clusteret, med full støtte for Zero Trust og universell utforming.
+Lumi er et surveyverktøy for team i Nav. Surveyen vises i teamets egen React-app med `@navikt/lumi-survey`, og svarene lagres i Lumis database på Nais.
 
-| Pakke | Beskrivelse | Tech Stack |
+| Pakke | Beskrivelse | Teknologi |
 | :--- | :--- | :--- |
-| [`@navikt/lumi-survey`](packages/lumi-survey) | React-widget (Aksel) | React, CSS Modules |
-| [`lumi-api`](apps/lumi-api) | Backend & Analyse API | Kotlin, Ktor, Postgres |
-| [`lumi-dashboard`](apps/lumi-dashboard) | Admin-dashboard | TanStack Start, React |
+| [`@navikt/lumi-survey`](packages/lumi-survey) | Widgeten som viser surveyen i appen (Aksel) | React, CSS Modules |
+| [`lumi-api`](apps/lumi-api) | API for innsending og analyse | Kotlin, Ktor, Postgres |
+| [`lumi-dashboard`](apps/lumi-dashboard) | Dashboardet og Surveyverksted | TanStack Start, React |
 
 ## Arkitektur
 
@@ -23,7 +22,7 @@ flowchart LR
 
 	subgraph App["Din app"]
 		B["API-route / server action"]
-		C["Token exchange (TokenX / AzureAD)"]
+		C["Token exchange (TokenX / Entra ID)"]
 	end
 
 	subgraph Platform["Lumi"]
@@ -44,7 +43,7 @@ flowchart LR
 
 ## Dokumentasjon
 
-📖 **[navikt.github.io/lumi/](https://navikt.github.io/lumi/)** — Fullstendig integrasjonsguide, widget-referanse og dashboard-dokumentasjon.
+Dokumentasjonen for team som vil ta Lumi i bruk, ligger på [navikt.github.io/lumi](https://navikt.github.io/lumi/).
 
 ### Hurtigstart
 
@@ -56,7 +55,7 @@ npm install @navikt/lumi-survey
 yarn add @navikt/lumi-survey
 ```
 
-Se [Kom i gang](https://navikt.github.io/lumi/kom-i-gang/hva-er-lumi) for komplett guide.
+Resten av oppsettet står i [Kom i gang](https://navikt.github.io/lumi/kom-i-gang/hva-er-lumi).
 
 ## Utvikling
 
