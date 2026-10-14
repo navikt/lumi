@@ -192,10 +192,16 @@ spec:
 
 ### Mottakeren (inbound)
 
-Team eSyfo må legge til appen din som inbound i mottakeren du fant i tabellen:
+Appen din må legges til som inbound i mottakeren du fant i tabellen:
 `lumi-api` for direkte kall, eller `lumi-submission-proxy` for
-`trygdeetaten.no` i dev. [**Opprett en issue**](https://github.com/navikt/lumi/issues/new?template=access-request.yml)
-med app-navn, namespace, auth-type, miljø og dev-tenant, så ordner vi resten:
+`trygdeetaten.no` i dev. Velg én av to veier:
+
+- **Vet du hvilken mottaker du skal ha?** [Send en PR selv](#send-pr-selv).
+  Det er raskest.
+- **Usikker?** [**Opprett en issue**](https://github.com/navikt/lumi/issues/new?template=access-request.yml)
+  med app-navn, namespace, auth-type, miljø og dev-tenant, så ordner vi resten.
+
+Regelen ser slik ut:
 
 ```yaml
 spec:
@@ -205,6 +211,24 @@ spec:
         - application: din-app
           namespace: ditt-team
 ```
+
+#### Send PR selv
+
+Legg regelen til under `spec.accessPolicy.inbound.rules` i filen for
+mottakeren og hvert miljø du trenger:
+
+| Mottaker | Miljø | Fil |
+| :--- | :--- | :--- |
+| `lumi-api` | dev-gcp | [`apps/lumi-api/nais/app/dev.yaml`](https://github.com/navikt/lumi/blob/main/apps/lumi-api/nais/app/dev.yaml) |
+| `lumi-api` | prod-gcp | [`apps/lumi-api/nais/app/prod.yaml`](https://github.com/navikt/lumi/blob/main/apps/lumi-api/nais/app/prod.yaml) |
+| `lumi-submission-proxy` | dev-gcp | [`apps/lumi-submission-proxy/nais/dev.yaml`](https://github.com/navikt/lumi/blob/main/apps/lumi-submission-proxy/nais/dev.yaml) |
+
+- Ta alltid med `namespace`. Uten den gjelder regelen en app i `team-esyfo`.
+- Skriv auth-type (TokenX eller AzureAD) og eventuell dev-tenant i
+  PR-beskrivelsen, slik at vi kan sjekke at mottakeren stemmer.
+- Inbound-listen er selve tilgangskontrollen. Team eSyfo reviewer derfor alle
+  endringer, og tilgangen gjelder først når PR-en er merget og mottakeren er
+  deployet.
 
 Når du går via proxyen, trenger appen din ikke i tillegg inbound i
 `lumi-api`; proxyen har allerede sin egen tilgang videre.
@@ -240,7 +264,7 @@ Før du deployer, verifiser at du har:
 - [ ] Riktig endepunkt (`/api/tokenx/v1/feedback` eller `/api/azure/v1/feedback`)
 - [ ] `LUMI_API_HOST`, `LUMI_AUDIENCE` og `LUMI_FEEDBACK_PATH` satt fra samme miljøblokk i NAIS-manifestet
 - [ ] Outbound access policy mot riktig mottaker (`lumi-api` eller `lumi-submission-proxy`) i `team-esyfo`
-- [ ] Inbound access policy i samme mottaker ([opprett issue](https://github.com/navikt/lumi/issues/new?template=access-request.yml))
+- [ ] Inbound access policy i samme mottaker ([send PR selv](#send-pr-selv) eller [opprett issue](https://github.com/navikt/lumi/issues/new?template=access-request.yml))
 - [ ] Riktig `storageStrategy` (`consent` / `localStorage` / `none`)
 - [ ] Testet i dev — innsending → data synlig i dashboardet
 

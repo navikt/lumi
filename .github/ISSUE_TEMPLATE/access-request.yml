@@ -10,6 +10,8 @@ body:
         Fyll ut skjemaet under for å be om tilgang til Lumi-innsending.
         Vi gir appen din inbound-tilgang i riktig mottaker, slik at den kan sende inn feedback.
         Se [integrasjonsguiden](https://navikt.github.io/lumi/kom-i-gang/koble-til-backend) for komplett oppsett.
+
+        Vet du allerede hvilken mottaker du skal ha? Da går det raskere å [sende en PR selv](https://navikt.github.io/lumi/kom-i-gang/koble-til-backend#send-pr-selv).
   - type: input
     id: app-name
     attributes:

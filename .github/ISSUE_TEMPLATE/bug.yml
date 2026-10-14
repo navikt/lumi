@@ -1,44 +1,51 @@
-name: Bug
-description: Rapporter en feil
+name: Meld fra om feil
+description: Meld fra om en feil i widgeten, dashboardet, Surveyverkstedet eller innsendingen
 type: Bug
 projects: ["navikt/157"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Takk for at du sier fra! Det holder med en kort beskrivelse – vi spør hvis vi trenger mer.
+
+        **Repoet er offentlig.** Ikke lim inn surveysvar, personopplysninger, fødselsnummer, tokens eller skjermbilder med slike data.
   - type: textarea
     id: description
     attributes:
-      label: Beskrivelse
-      description: Kort beskrivelse av feilen
+      label: Hva skjedde?
+      description: Beskriv hva som ikke virker
     validations:
       required: true
-  - type: textarea
-    id: reproduction-steps
+  - type: dropdown
+    id: area
     attributes:
-      label: Steg for å reprodusere
-      description: Hvordan kan feilen reproduseres?
-      placeholder: |
-        1. Gå til ...
-        2. Klikk på ...
-        3. Se feil ...
+      label: Hvor oppstod feilen?
+      options:
+        - Surveyen i en app (widgeten)
+        - Innsending av svar
+        - Dashboardet
+        - Surveyverkstedet
+        - Dokumentasjonen
+        - Vet ikke
     validations:
-      required: true
+      required: false
+  - type: input
+    id: app-and-environment
+    attributes:
+      label: App og miljø
+      placeholder: "f.eks. min-frontend i dev-gcp"
+    validations:
+      required: false
   - type: textarea
     id: expected-behavior
     attributes:
-      label: Forventet oppførsel
-      description: Hva burde skje?
+      label: Hva forventet du?
     validations:
-      required: true
-  - type: textarea
-    id: actual-behavior
-    attributes:
-      label: Faktisk oppførsel
-      description: Hva skjer i dag?
-    validations:
-      required: true
+      required: false
   - type: textarea
     id: technical-context
     attributes:
       label: Teknisk kontekst
-      description: Stacktrace, logger, relevante filer, miljø
+      description: Steg for å reprodusere, feilmelding, HTTP-status, pakkeversjon e.l.
     validations:
       required: false

@@ -1,5 +1,5 @@
-name: Story
-description: Brukerhistorie eller use case
+name: Story (Team eSyfo)
+description: "Internt for Team eSyfo: brukerhistorie eller use case"
 type: Story
 projects: ["navikt/157"]
 body:
