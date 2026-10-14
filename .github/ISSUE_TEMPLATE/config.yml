@@ -1,1 +1,8 @@
 blank_issues_enabled: true
+contact_links:
+  - name: Spørsmål og hjelp
+    url: https://nav-it.slack.com/archives/C0AG2FKSSMD
+    about: Spør i #lumi på Slack – raskeste vei til svar.
+  - name: Dokumentasjon
+    url: https://navikt.github.io/lumi/
+    about: Kom i gang, integrasjonsguide og feilsøking.

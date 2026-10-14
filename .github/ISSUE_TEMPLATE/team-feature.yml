@@ -1,5 +1,5 @@
-name: Feature
-description: Foreslå ny funksjonalitet eller forbedring
+name: Feature (Team eSyfo)
+description: "Internt for Team eSyfo: foreslå ny funksjonalitet eller forbedring"
 type: Feature
 projects: ["navikt/157"]
 body:

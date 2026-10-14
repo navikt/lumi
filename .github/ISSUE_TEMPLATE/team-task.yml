@@ -1,5 +1,5 @@
-name: Task
-description: Teknisk oppgave, vedlikehold eller chore
+name: Task (Team eSyfo)
+description: "Internt for Team eSyfo: teknisk oppgave, vedlikehold eller chore"
 type: Task
 projects: ["navikt/157"]
 body:

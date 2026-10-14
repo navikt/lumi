@@ -82,8 +82,9 @@ fra appen din, eller innkommende til Lumi-mottakeren.
              namespace: team-esyfo
    ```
 
-3. **Den samme mottakeren** har inbound-regel for appen din. Team eSyfo
-   vedlikeholder denne regelen etter en
+3. **Den samme mottakeren** har inbound-regel for appen din. Legg den til med en
+   [PR](/kom-i-gang/koble-til-backend#send-pr-selv), eller be Team eSyfo om det
+   i en
    [tilgangsforespørsel](https://github.com/navikt/lumi/issues/new?template=access-request.yml):
    ```yaml
    spec:
