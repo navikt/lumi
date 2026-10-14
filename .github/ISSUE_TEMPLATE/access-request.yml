@@ -7,16 +7,13 @@ body:
   - type: markdown
     attributes:
       value: |
-        Fyll ut skjemaet under for å be om tilgang til Lumi-innsending.
-        Vi gir appen din inbound-tilgang i riktig mottaker, slik at den kan sende inn feedback.
-        Se [integrasjonsguiden](https://navikt.github.io/lumi/kom-i-gang/koble-til-backend) for komplett oppsett.
+        Vi gir appen din inbound-tilgang, slik at den kan sende inn feedback. Resten av oppsettet står i [integrasjonsguiden](https://navikt.github.io/lumi/kom-i-gang/koble-til-backend).
 
-        Vet du allerede hvilken mottaker du skal ha? Da går det raskere å [sende en PR selv](https://navikt.github.io/lumi/kom-i-gang/koble-til-backend#send-pr-selv).
+        Vet du hvilken mottaker du skal ha? Da går det raskere å [sende en PR selv](https://navikt.github.io/lumi/kom-i-gang/koble-til-backend#send-pr-selv).
   - type: input
     id: app-name
     attributes:
       label: Applikasjonsnavn
-      description: Navnet på appen som trenger tilgang
       placeholder: "f.eks. min-frontend"
     validations:
       required: true
@@ -24,81 +21,28 @@ body:
     id: namespace
     attributes:
       label: Namespace (team)
-      description: NAIS-namespacet appen kjører i
       placeholder: "f.eks. mitt-team"
     validations:
       required: true
   - type: dropdown
     id: auth-type
     attributes:
-      label: Autentiseringstype
-      description: Hvilken autentiseringsmekanisme bruker appen?
+      label: Autentisering
       options:
-        - TokenX (sluttbrukerflater — nav.no, arbeidsgiver, privatperson)
-        - AzureAD (interne flater — Modia, veiledersystemer, fagsystemer)
+        - TokenX (sluttbrukerflater som nav.no)
+        - Entra ID (interne flater for ansatte)
     validations:
       required: true
   - type: checkboxes
     id: environments
     attributes:
       label: Miljø
-      description: Hvilke miljøer trenger tilgang?
       options:
         - label: dev-gcp
-          required: true
         - label: prod-gcp
-  - type: dropdown
-    id: dev-azure-tenant
-    attributes:
-      label: Azure-tenant i dev
-      description: Brukes til å velge riktig mottaker for AzureAD i dev. Finn verdien i spec.azure.application.tenant i NAIS-manifestet.
-      options:
-        - Ikke relevant (TokenX eller ingen AzureAD-integrasjon i dev)
-        - nav.no
-        - trygdeetaten.no
-    validations:
-      required: true
-  - type: markdown
-    attributes:
-      value: |
-        ### Husk før deploy
-
-        Velg samme mottaker for host, audience og access policy:
-
-        | Auth | Miljø / tenant | Mottaker |
-        | --- | --- | --- |
-        | TokenX | dev og prod | `lumi-api` |
-        | AzureAD | prod, eller dev med `nav.no` | `lumi-api` |
-        | AzureAD | dev med `trygdeetaten.no` | `lumi-submission-proxy` |
-
-        Legg mottakeren til som **outbound** i appens `nais.yaml` før du deployer.
-        For direkte kall til `lumi-api`:
-
-        ```yaml
-        spec:
-          accessPolicy:
-            outbound:
-              rules:
-                - application: lumi-api
-                  namespace: team-esyfo
-        ```
-
-        For AzureAD i dev med `trygdeetaten.no`-tenant:
-
-        ```yaml
-        spec:
-          accessPolicy:
-            outbound:
-              rules:
-                - application: lumi-submission-proxy
-                  namespace: team-esyfo
-        ```
-
-        Team eSyfo bruker svarene over til å legge appen din til som inbound i riktig mottaker. Proxyen finnes bare i dev-gcp.
   - type: textarea
     id: context
     attributes:
-      label: Tilleggsinformasjon
-      description: Eventuell ekstra kontekst om bruksområdet
+      label: Noe mer vi bør vite?
     validations:
       required: false

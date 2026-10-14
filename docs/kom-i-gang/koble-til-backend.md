@@ -199,7 +199,7 @@ Appen din må legges til som inbound i mottakeren du fant i tabellen:
 - **Vet du hvilken mottaker du skal ha?** [Send en PR selv](#send-pr-selv).
   Det er raskest.
 - **Usikker?** [**Opprett en issue**](https://github.com/navikt/lumi/issues/new?template=access-request.yml)
-  med app-navn, namespace, auth-type, miljø og dev-tenant, så ordner vi resten.
+  med app-navn, namespace, auth-type og miljø, så ordner vi resten.
 
 Regelen ser slik ut:
 
@@ -224,8 +224,8 @@ mottakeren og hvert miljø du trenger:
 | `lumi-submission-proxy` | dev-gcp | [`apps/lumi-submission-proxy/nais/dev.yaml`](https://github.com/navikt/lumi/blob/main/apps/lumi-submission-proxy/nais/dev.yaml) |
 
 - Ta alltid med `namespace`. Uten den gjelder regelen en app i `team-esyfo`.
-- Skriv auth-type (TokenX eller AzureAD) og eventuell dev-tenant i
-  PR-beskrivelsen, slik at vi kan sjekke at mottakeren stemmer.
+- Skriv auth-type (TokenX eller Entra ID) i PR-beskrivelsen. Vi sjekker
+  tenant i appens NAIS-manifest og at mottakeren stemmer.
 - Inbound-listen er selve tilgangskontrollen. Team eSyfo reviewer derfor alle
   endringer, og tilgangen gjelder først når PR-en er merget og mottakeren er
   deployet.
