@@ -1,4 +1,4 @@
-name: Noe virker ikke
+name: Meld fra om feil
 description: Meld fra om en feil i widgeten, dashboardet, Surveyverkstedet eller innsendingen
 type: Bug
 projects: ["navikt/157"]
