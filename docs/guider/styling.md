@@ -38,6 +38,10 @@ Med `style` kan dere endre plassering og farger og legge til egne CSS-klasser:
 />
 ```
 
+### Sider med Frida
+
+Widgeten ligger som standard nederst til høyre, over Frida-chatboten i Nav-dekoratøren. På sider med dekoratøren setter dere `position: "bottom-left"`, med mindre appen har slått av chatboten med `chatbot: false`. På smale skjermer er åpen widget nesten like bred som skjermen og kan dekke Frida uansett plassering.
+
 ### Alle feltene i `style`
 
 Alle feltene står i [`style` i props-referansen](/referanse/props-referanse#style-lumisurveystyle).

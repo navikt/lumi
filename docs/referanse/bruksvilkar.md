@@ -16,7 +16,7 @@ Dere kan bruke Lumi til å samle tilbakemeldinger i både interne og eksterne ap
 
 Før dere tar i bruk Lumi, må dere gjøre dette:
 
-1. Fyll ut etterlevelsesdokumentasjon. Gjenbruk [etterlevelsesmalen for Lumi (E726)](https://etterlevelse.ansatt.nav.no/dokumentasjon/201b8151-d312-4c76-bf44-2716d40a417a) og tilpass den til deres bruk.
+1. Fyll ut etterlevelsesdokumentasjon. Lag en kopi av [etterlevelsesmalen for Lumi (E726)](https://etterlevelse.ansatt.nav.no/dokumentasjon/201b8151-d312-4c76-bf44-2716d40a417a) for teamet deres, og tilpass den til deres bruk.
 2. Les denne siden og [Sikkerhet og personvern](/referanse/sikkerhet), så dere vet hvordan dataene blir behandlet.
 3. Vurder om dere trenger en personvernkonsekvensvurdering (PVK) for deres bruk av Lumi. Er dere i tvil, avklar med personvernombudet.
 
@@ -26,7 +26,7 @@ Dere installerer widgeten i appen med pakken `@navikt/lumi-survey`, se [Installe
 
 ## Personvern og ansvar
 
-Dere har ansvaret for hva surveyen spør om og hvordan svarene brukes.
+Nav er behandlingsansvarlig. På vegne av Nav har dere ansvaret for surveyen deres: hva den spør om, hvordan svarene brukes, etterlevelsesdokumentasjonen og eventuell PVK. Team eSyfo drifter Surveyverksted, Lumi API og dashboardet.
 
 ::: danger Ikke bruk Lumi til
 - rekruttering til brukerundersøkelser eller brukertesting
@@ -103,7 +103,8 @@ Lukkede spørsmål reduserer risikoen for at brukerne skriver personopplysninger
 
 Gå gjennom sjekklisten før dere lanserer en survey:
 
-- [ ] [Etterlevelsesdokumentasjon (E726)](https://etterlevelse.ansatt.nav.no/dokumentasjon/201b8151-d312-4c76-bf44-2716d40a417a) er fylt ut for deres bruk
+- [ ] Teamet har en egen kopi av [etterlevelsesmalen (E726)](https://etterlevelse.ansatt.nav.no/dokumentasjon/201b8151-d312-4c76-bf44-2716d40a417a), fylt ut for deres bruk
+- [ ] Dere har vurdert om dere trenger en PVK
 - [ ] Spørsmålene er ikke laget for å samle inn personopplysninger
 - [ ] Varselet om personopplysninger vises ved fritekstfeltene
 - [ ] URL-er og pathname dere samler inn, inneholder ikke sensitive parametere som fødselsnummer eller tokens

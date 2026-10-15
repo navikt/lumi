@@ -167,8 +167,11 @@ I tillegg til en grønn canary må disse varige gatene være lukket:
    avtalt og verifisert.
 3. Eventuell lesetilgang på tvers av team har navngitt eier, dokumentert formål
    og minste nødvendige databasetilganger.
-4. Ansvar og forventet behandlingstid for onboarding av nye konsumentapper er
-   dokumentert.
+4. Ansvaret for onboarding av nye konsumentapper er
+   [dokumentert](../referanse/bruksvilkar.md#personvern-og-ansvar).
+   Lumi-teamet behandler tilgangsforespørsler fortløpende, uten SLA eller
+   avtalt behandlingstid. Konsumentteamet har på vegne av Nav ansvaret for sin
+   egen survey.
 5. Surveylisten og målingskontinuiteten er avklart etter beslutningstabellen
    over.
 6. Kapasitets- og recovery-valget følger
