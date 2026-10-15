@@ -12,6 +12,12 @@ import no.nav.lumi.service.ExportService
 
 private val defaultExportService = ExportService()
 
+/** Number of records matching the export filters, before the export limit is applied. */
+const val EXPORT_TOTAL_HEADER = "X-Lumi-Export-Total"
+
+/** Number of records included in the exported file. */
+const val EXPORT_COUNT_HEADER = "X-Lumi-Export-Count"
+
 /**
  * Routes for exporting feedback data.
  * Delegates export logic to ExportService.
@@ -52,8 +58,11 @@ fun Route.exportRoutes(exportService: ExportService = defaultExportService) {
             phraseFilter = parsePhraseFilter(params.phrase),
         )
         
-        val feedbacks = exportService.getFeedbackForExport(query)
-        
+        val export = exportService.getFeedbackForExport(query)
+        val feedbacks = export.feedbacks
+        call.response.header(EXPORT_TOTAL_HEADER, export.total.toString())
+        call.response.header(EXPORT_COUNT_HEADER, feedbacks.size.toString())
+
         when (format) {
             ExportFormat.CSV -> {
                 val csv = exportService.exportToCsv(feedbacks)

@@ -1,21 +1,67 @@
 package no.nav.lumi.service
 
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldEndWith
 import io.kotest.matchers.string.shouldStartWith
+import no.nav.lumi.TestDatabase
+import no.nav.lumi.config.DatabaseHolder
 import no.nav.lumi.domain.*
+import no.nav.lumi.insertTestFeedback
+import no.nav.lumi.repository.FeedbackRepository
+import java.time.OffsetDateTime
 
 class ExportServiceTest : FunSpec({
 
     val service = ExportService()
 
-    test("exportToCsv generates correct header") {
+    beforeSpec {
+        DatabaseHolder.initializeForTesting(TestDatabase.dataSource)
+        TestDatabase.initialize()
+    }
+
+    beforeTest {
+        TestDatabase.clearAllData()
+    }
+
+    test("exportToCsv generates correct header after the byte order mark") {
         val csv = service.exportToCsv(emptyList())
         csv.shouldStartWith(
-            "id,submittedAt,app,surveyId,rating,feedback,sensitiveDataRedacted,screenWidth,screenHeight"
+            "\uFEFFid,submittedAt,app,surveyId,rating,feedback,sensitiveDataRedacted,screenWidth,screenHeight"
         )
+    }
+
+    test("exportToCsv starts with exactly one UTF-8 byte order mark") {
+        val bytes = service.exportToCsv(emptyList()).toByteArray(Charsets.UTF_8)
+
+        bytes.take(3) shouldBe listOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte())
+        bytes[3] shouldBe 'i'.code.toByte()
+    }
+
+    test("getFeedbackForExport returns the newest feedback and the total when the limit is reached") {
+        val now = OffsetDateTime.now()
+        insertTestFeedback(id = "oldest", team = "flex", opprettet = now.minusDays(3))
+        insertTestFeedback(id = "middle", team = "flex", opprettet = now.minusDays(2))
+        insertTestFeedback(id = "newest", team = "flex", opprettet = now.minusDays(1))
+
+        val limitedService = ExportService(FeedbackRepository(), maxExportSize = 2)
+        val export = limitedService.getFeedbackForExport(FeedbackQuery(team = "flex"))
+
+        export.feedbacks.map { it.id } shouldContainExactly listOf("newest", "middle")
+        export.total shouldBe 3L
+    }
+
+    test("getFeedbackForExport returns the filtered total when everything fits") {
+        insertTestFeedback(id = "flex-1", team = "flex")
+        insertTestFeedback(id = "flex-2", team = "flex")
+        insertTestFeedback(id = "other-team", team = "team-test")
+
+        val export = ExportService(FeedbackRepository()).getFeedbackForExport(FeedbackQuery(team = "flex"))
+
+        export.feedbacks.map { it.id }.toSet() shouldBe setOf("flex-1", "flex-2")
+        export.total shouldBe 2L
     }
 
     test("exportToCsv includes feedback data") {

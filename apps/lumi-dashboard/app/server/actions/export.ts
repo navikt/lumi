@@ -17,7 +17,25 @@ import {
 import { type ExportParams, ExportParamsSchema } from "~/types/schemas";
 import { handleApiResponse } from "../fetchUtils";
 
-interface ExportResult {
+/** Number of records matching the filters, before the export limit is applied. */
+export const EXPORT_TOTAL_HEADER = "X-Lumi-Export-Total";
+/** Number of records included in the exported file. */
+export const EXPORT_COUNT_HEADER = "X-Lumi-Export-Count";
+
+/** Maximum number of records in one export. Same as `ExportService.MAX_EXPORT_SIZE` in the API. */
+export const MAX_EXPORT_SIZE = 10_000;
+
+/** Byte order mark that makes Excel detect UTF-8 in CSV files (same as the API). */
+const UTF8_BOM = "\uFEFF";
+
+interface ExportCounts {
+  /** Matching records. `null` when the API does not send the header. */
+  total: number | null;
+  /** Records in the file. `null` when the API does not send the header. */
+  count: number | null;
+}
+
+export interface ExportResult extends ExportCounts {
   data: string;
   filename: string;
   contentType: string;
@@ -74,109 +92,108 @@ export function getFirstText(item: (typeof mockFeedbackItems)[number]): string {
   return textAnswer?.fieldType === "TEXT" ? textAnswer.value.text : "";
 }
 
+/** CSV and Excel columns, in the same order as `ExportService` in the API. */
+const EXPORT_COLUMNS = [
+  { csv: "id", excel: "ID", width: 38 },
+  { csv: "submittedAt", excel: "Tidspunkt", width: 26 },
+  { csv: "app", excel: "App", width: 16 },
+  { csv: "surveyId", excel: "Survey", width: 24 },
+  { csv: "rating", excel: "Vurdering", width: 11 },
+  { csv: "feedback", excel: "Tilbakemelding", width: 60 },
+  { csv: "sensitiveDataRedacted", excel: "Sensitiv data fjernet", width: 23 },
+  { csv: "screenWidth", excel: "Skjermbredde", width: 14 },
+  { csv: "screenHeight", excel: "Skjermhøyde", width: 13 },
+] as const;
+
+function toExportRow(
+  item: (typeof mockFeedbackItems)[number],
+  sensitiveDataRedacted: string,
+): string[] {
+  return [
+    item.id,
+    item.submittedAt,
+    item.app ?? "",
+    item.surveyId,
+    String(getFirstRating(item) ?? ""),
+    getFirstText(item),
+    sensitiveDataRedacted,
+    String(item.context?.screenWidth ?? ""),
+    String(item.context?.screenHeight ?? ""),
+  ];
+}
+
 export function toMockCsv(items: typeof mockFeedbackItems): string {
-  const header = [
-    "submittedAt",
-    "id",
-    "app",
-    "surveyId",
-    "deviceType",
-    "rating",
-    "text",
-    "tags",
-    "url",
-    "pathname",
-    "metadata",
-    "screenWidth",
-    "screenHeight",
-  ].join(",");
+  const header = EXPORT_COLUMNS.map((column) => column.csv).join(",");
+  const rows = items.map((item) =>
+    toExportRow(item, String(item.sensitiveDataRedacted))
+      .map(csvEscape)
+      .join(","),
+  );
 
-  const rows = items.map((item) => {
-    const rating = getFirstRating(item);
-    const text = getFirstText(item);
-    const tags = item.tags?.join("|") ?? "";
-    const url = item.context?.url ?? "";
-    const pathname = item.context?.pathname ?? "";
-    const metadata = item.metadata ? JSON.stringify(item.metadata) : "";
-
-    return [
-      csvEscape(item.submittedAt),
-      csvEscape(item.id),
-      csvEscape(item.app ?? ""),
-      csvEscape(item.surveyId),
-      csvEscape(item.context?.deviceType ?? ""),
-      csvEscape(rating ?? ""),
-      csvEscape(text),
-      csvEscape(tags),
-      csvEscape(url),
-      csvEscape(pathname),
-      csvEscape(metadata),
-      csvEscape(item.context?.screenWidth ?? ""),
-      csvEscape(item.context?.screenHeight ?? ""),
-    ].join(",");
-  });
-
-  return [header, ...rows].join("\n");
+  return `${UTF8_BOM}${[header, ...rows].map((line) => `${line}\n`).join("")}`;
 }
 
 export async function toMockExcelBase64(
   items: typeof mockFeedbackItems,
 ): Promise<string> {
   const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet("Export");
+  const sheet = workbook.addWorksheet("Feedback");
 
-  sheet.columns = [
-    { header: "submittedAt", key: "submittedAt", width: 22 },
-    { header: "id", key: "id", width: 18 },
-    { header: "app", key: "app", width: 16 },
-    { header: "surveyId", key: "surveyId", width: 18 },
-    { header: "deviceType", key: "deviceType", width: 12 },
-    { header: "rating", key: "rating", width: 8 },
-    { header: "text", key: "text", width: 40 },
-    { header: "tags", key: "tags", width: 24 },
-    { header: "url", key: "url", width: 40 },
-    { header: "pathname", key: "pathname", width: 28 },
-    { header: "metadata", key: "metadata", width: 40 },
-    { header: "screenWidth", key: "screenWidth", width: 14 },
-    { header: "screenHeight", key: "screenHeight", width: 14 },
-  ];
+  sheet.columns = EXPORT_COLUMNS.map((column) => ({
+    header: column.excel,
+    width: column.width,
+  }));
 
   const sanitize = (v: string) => (isPotentialCsvFormula(v) ? `'${v}` : v);
 
   for (const item of items) {
-    const submittedAt = item.submittedAt;
-    const id = item.id;
-    const app = item.app ?? "";
-    const surveyId = item.surveyId;
-    const deviceType = item.context?.deviceType ?? "";
-    const screenWidth = String(item.context?.screenWidth ?? "");
-    const screenHeight = String(item.context?.screenHeight ?? "");
-    const rating = String(getFirstRating(item) ?? "");
-    const text = getFirstText(item);
-    const tags = item.tags?.join("|") ?? "";
-    const url = item.context?.url ?? "";
-    const pathname = item.context?.pathname ?? "";
-    const metadata = item.metadata ? JSON.stringify(item.metadata) : "";
-
-    sheet.addRow({
-      submittedAt: sanitize(submittedAt),
-      id: sanitize(id),
-      app: sanitize(app),
-      surveyId: sanitize(surveyId),
-      deviceType: sanitize(deviceType),
-      screenWidth: sanitize(screenWidth),
-      screenHeight: sanitize(screenHeight),
-      rating: sanitize(rating),
-      text: sanitize(text),
-      tags: sanitize(tags),
-      url: sanitize(url),
-      pathname: sanitize(pathname),
-      metadata: sanitize(metadata),
-    });
+    const redacted = item.sensitiveDataRedacted ? "Ja" : "Nei";
+    sheet.addRow(toExportRow(item, redacted).map(sanitize));
   }
 
   const buffer = (await workbook.xlsx.writeBuffer()) as ArrayBuffer;
   return Buffer.from(buffer).toString("base64");
+}
+
+function parseCountHeader(value: string | null): number | null {
+  const trimmed = value?.trim();
+  if (!trimmed || !/^\d+$/.test(trimmed)) {
+    return null;
+  }
+  return Number(trimmed);
+}
+
+export function readExportCounts(headers: Headers): ExportCounts {
+  return {
+    total: parseCountHeader(headers.get(EXPORT_TOTAL_HEADER)),
+    count: parseCountHeader(headers.get(EXPORT_COUNT_HEADER)),
+  };
+}
+
+function fileExtension(format: ExportParams["format"]): string {
+  return format === "excel" ? "xlsx" : format;
+}
+
+/**
+ * Converts the API response to the server function result.
+ * Reads the body as raw bytes, so the CSV byte order mark reaches the downloaded file unchanged.
+ */
+export async function toExportResult(
+  response: Response,
+  format: ExportParams["format"],
+  today: Date = new Date(),
+): Promise<ExportResult> {
+  const arrayBuffer = await response.arrayBuffer();
+  const contentType =
+    response.headers.get("Content-Type") || "application/octet-stream";
+  const date = today.toISOString().split("T")[0];
+
+  return {
+    data: Buffer.from(arrayBuffer).toString("base64"),
+    filename: `lumi-export-${date}.${fileExtension(format)}`,
+    contentType,
+    ...readExportCounts(response.headers),
+  };
 }
 
 function transformToBackendParams(data: ExportParams) {
@@ -221,16 +238,17 @@ export const exportServerFn = createServerFn({ method: "POST" })
     if (isMockMode()) {
       await mockDelay();
 
-      const filtered = applyFeedbackFilters(
+      const matching = applyFeedbackFilters(
         filterMockArchiveVisibility(
           mockFeedbackItems,
           data.includeArchived === "true",
         ),
         toMockSearchParams(data),
-      ).slice(0, 10_000);
+      );
+      const filtered = matching.slice(0, MAX_EXPORT_SIZE);
+      const counts = { total: matching.length, count: filtered.length };
 
-      const extension = data.format === "excel" ? "xlsx" : data.format;
-      const filename = `lumi-export-mock.${extension}`;
+      const filename = `lumi-export-mock.${fileExtension(data.format)}`;
 
       if (data.format === "json") {
         const json = JSON.stringify(filtered, null, 2);
@@ -238,6 +256,7 @@ export const exportServerFn = createServerFn({ method: "POST" })
           data: Buffer.from(json, "utf-8").toString("base64"),
           filename,
           contentType: "application/json",
+          ...counts,
         };
       }
 
@@ -247,6 +266,7 @@ export const exportServerFn = createServerFn({ method: "POST" })
           filename,
           contentType:
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          ...counts,
         };
       }
 
@@ -255,6 +275,7 @@ export const exportServerFn = createServerFn({ method: "POST" })
         data: Buffer.from(csv, "utf-8").toString("base64"),
         filename,
         contentType: "text/csv; charset=utf-8",
+        ...counts,
       };
     }
 
@@ -266,13 +287,5 @@ export const exportServerFn = createServerFn({ method: "POST" })
 
     await handleApiResponse(response);
 
-    const arrayBuffer = await response.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString("base64");
-
-    const contentType =
-      response.headers.get("Content-Type") || "application/octet-stream";
-    const extension = data.format === "excel" ? "xlsx" : data.format;
-    const filename = `lumi-export-${new Date().toISOString().split("T")[0]}.${extension}`;
-
-    return { data: base64, filename, contentType };
+    return toExportResult(response, data.format);
   });
