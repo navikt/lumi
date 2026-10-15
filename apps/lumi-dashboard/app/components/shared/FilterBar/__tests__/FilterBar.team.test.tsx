@@ -228,14 +228,15 @@ function apiError(
 
 // Texts exactly as the API sends them (TeamAuthorizationPlugin.kt).
 const NO_TEAMS = {
-  message: "Du har ikke tilgang til noen team i Lumi",
-  details: "For å få tilgang må teamet ditt onboardes.",
-  helpUrl: "https://github.com/navikt/lumi#getting-access",
+  message: "Du må være medlem av et team i Nais Console for å bruke Lumi",
+  details:
+    "Lumi fant ingen team for deg i Nais. Be teamet ditt legge deg til som medlem i Nais Console, vent opptil fem minutter og last siden på nytt.",
+  helpUrl: "https://navikt.github.io/lumi/dashboard/tilgang#teamtilgang",
 };
 const LOOKUP_DOWN = {
   message: "Kunne ikke hente teamtilgang akkurat nå",
   details:
-    "Dette er ofte midlertidig (f.eks. NAIS API-nedetid). Prøv igjen om litt.",
+    "Dette er ofte midlertidig, for eksempel når Nais API er nede. Jobber du utenfor Nav-nettet, sjekk at Kolide kjører. Prøv igjen om litt.",
 };
 
 describe("FilterBar access errors", () => {
@@ -267,10 +268,15 @@ describe("FilterBar access errors", () => {
     expect(mockFetchBootstrap).toHaveBeenCalledOnce();
   });
 
-  // "team" and "noen" are words in the message about having no team.
-  for (const team of ["team-b", "team", "noen"]) {
+  // "Nais", "Lumi" and "team" are words in the message about having no team.
+  for (const team of ["team-b", "Nais", "Lumi", "team"]) {
     it(`offers no default team for team=${team} when the viewer has no team`, async () => {
-      mockFetchBootstrap.mockRejectedValue(apiError(403, NO_TEAMS.message));
+      mockFetchBootstrap.mockRejectedValue(
+        apiError(403, NO_TEAMS.message, {
+          details: NO_TEAMS.details,
+          helpUrl: NO_TEAMS.helpUrl,
+        }),
+      );
 
       await renderFilterBarAt(`/feedback?team=${team}`);
 

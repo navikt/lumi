@@ -324,7 +324,7 @@ describe("redirectToDashboardTeam paths and failures", () => {
       new ApiErrorException({
         status: 403,
         type: ErrorType.AUTHORIZATION_ERROR,
-        message: "Du har ikke tilgang til noen team i Lumi",
+        message: "Du må være medlem av et team i Nais Console for å bruke Lumi",
         timestamp: "2026-10-15T08:00:00Z",
       }),
     );
