@@ -1,5 +1,5 @@
 import type { SurveyDocumentV1 } from "@navikt/lumi-survey";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const document: SurveyDocumentV1 = {
   authoringSchemaVersion: 1,
@@ -14,6 +14,11 @@ const document: SurveyDocumentV1 = {
 };
 
 describe("mock survey authoring store", () => {
+  // Warm the transform cache so the first fresh load fits the test timeout.
+  beforeAll(async () => {
+    await import("../surveyAuthoring");
+  }, 30_000);
+
   beforeEach(() => {
     vi.resetModules();
   });

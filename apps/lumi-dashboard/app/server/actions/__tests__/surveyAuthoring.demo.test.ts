@@ -1,5 +1,5 @@
 import type { SurveyDocumentV1 } from "@navikt/lumi-survey";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PUBLIC_DEMO_READ_ONLY_MESSAGE } from "~/utils/publicDemo";
 
 const doubles = vi.hoisted(() => ({
@@ -71,6 +71,11 @@ async function seedExample(store: Awaited<ReturnType<typeof load>>["store"]) {
   });
   return { project, revision };
 }
+
+// Warm the transform cache so the first fresh load fits the test timeout.
+beforeAll(async () => {
+  await load();
+}, 30_000);
 
 beforeEach(() => {
   vi.resetModules();
