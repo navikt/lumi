@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { authMiddleware } from "~/server/middleware/auth";
+import { refuseWriteInPublicDemo } from "~/server/publicDemo";
 import {
   type AuthContext,
   buildUrl,
@@ -132,6 +133,7 @@ export const createThemeServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(CreateThemeSchema))
   .handler(async ({ data, context }): Promise<TextTheme> => {
+    refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
 
     if (isMockMode()) {
@@ -176,6 +178,7 @@ export const updateThemeServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(UpdateThemeSchema))
   .handler(async ({ data, context }): Promise<TextTheme> => {
+    refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
     const { themeId, team, ...updateData } = data;
 
@@ -223,6 +226,7 @@ export const deleteThemeServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(ThemeIdSchema))
   .handler(async ({ data, context }): Promise<void> => {
+    refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
 
     if (isMockMode()) {

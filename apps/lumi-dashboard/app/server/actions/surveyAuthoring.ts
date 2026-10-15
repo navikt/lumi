@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { authMiddleware } from "~/server/middleware/auth";
+import { isPublicDemo, refuseWriteInPublicDemo } from "~/server/publicDemo";
 import {
   type AuthContext,
   buildUrl,
@@ -9,6 +10,7 @@ import {
   mockDelay,
 } from "~/server/utils";
 import type {
+  SurveyAuthoringAccess,
   SurveyAuthoringProject,
   SurveyAuthoringProjectSummary,
   SurveyAuthoringRevision,
@@ -24,6 +26,20 @@ import {
   SurveyAuthoringTeamSchema,
 } from "~/types/surveyAuthoring";
 import { handleApiResponse } from "../fetchUtils";
+
+/**
+ * Whether this deployment accepts Surveyverksted writes. The write functions
+ * enforce the same rule; this lets the page explain it before anyone tries.
+ */
+export const fetchSurveyAuthoringAccessServerFn = createServerFn({
+  method: "GET",
+})
+  .middleware([authMiddleware])
+  .handler(
+    async (): Promise<SurveyAuthoringAccess> => ({
+      canSave: !isPublicDemo(),
+    }),
+  );
 
 export const fetchSurveyAuthoringProjectsServerFn = createServerFn({
   method: "GET",
@@ -85,6 +101,7 @@ export const deleteSurveyAuthoringProjectServerFn = createServerFn({
   .middleware([authMiddleware])
   .inputValidator(zodValidator(SurveyAuthoringProjectIdSchema))
   .handler(async ({ data, context }): Promise<void> => {
+    refuseWriteInPublicDemo();
     if (isMockMode()) {
       const { deleteMockSurveyProject } = await import(
         "~/mock/surveyAuthoring"
@@ -114,6 +131,7 @@ export const createSurveyAuthoringProjectServerFn = createServerFn({
   .middleware([authMiddleware])
   .inputValidator(zodValidator(CreateSurveyAuthoringProjectSchema))
   .handler(async ({ data, context }): Promise<SurveyAuthoringProject> => {
+    refuseWriteInPublicDemo();
     if (isMockMode()) {
       const { createMockSurveyProject } = await import(
         "~/mock/surveyAuthoring"
@@ -149,6 +167,7 @@ export const saveSurveyAuthoringDraftServerFn = createServerFn({
   .middleware([authMiddleware])
   .inputValidator(zodValidator(SaveSurveyAuthoringDraftSchema))
   .handler(async ({ data, context }): Promise<SurveyAuthoringProject> => {
+    refuseWriteInPublicDemo();
     if (isMockMode()) {
       const { saveMockSurveyProject } = await import("~/mock/surveyAuthoring");
       await mockDelay();
@@ -214,6 +233,7 @@ export const createSurveyAuthoringRevisionServerFn = createServerFn({
   .middleware([authMiddleware])
   .inputValidator(zodValidator(CreateSurveyAuthoringRevisionSchema))
   .handler(async ({ data, context }): Promise<SurveyAuthoringRevision> => {
+    refuseWriteInPublicDemo();
     if (isMockMode()) {
       const { createMockSurveyRevision } = await import(
         "~/mock/surveyAuthoring"
