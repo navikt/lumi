@@ -395,6 +395,7 @@ export const LumiSurveyDock = ({
     markUserInteraction,
     closeDock,
     reopenDock,
+    persistSubmission,
   } = usePersistedDismissal({
     surveyId,
     initialOpen: config.initialOpen,
@@ -575,10 +576,18 @@ export const LumiSurveyDock = ({
       previousStatusRef.current !== "success" && status === "success";
     previousStatusRef.current = status;
 
-    if (enteredSuccess && focusWithinDockRef.current) {
+    if (!enteredSuccess) {
+      return;
+    }
+
+    // Remember the answered survey right away. Users often leave the receipt
+    // without pressing close, and the survey must not reopen on the next page.
+    persistSubmission(config.hideAfterSubmit);
+
+    if (focusWithinDockRef.current) {
       document.getElementById(successHeadingId)?.focus();
     }
-  }, [status, successHeadingId]);
+  }, [config.hideAfterSubmit, persistSubmission, status, successHeadingId]);
 
   const handleCloseDock = useCallback(() => {
     const hideCompletely = isSuccess && config.hideAfterSubmit;

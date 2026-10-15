@@ -99,13 +99,21 @@ export interface LumiSurveyIntroConfig {
  * Behavior options for the dock.
  */
 export interface LumiSurveyBehavior {
-  /** Whether dock starts open. @default true */
+  /**
+   * Whether dock starts open. When the storage strategy cannot store a
+   * dismissal, for example without consent, the dock starts minimized.
+   * @default true
+   */
   initialOpen?: boolean;
   /** Reset form when closing. @default true */
   resetOnClose?: boolean;
   /** Days before dismissed dock reappears. @default 30 */
   dismissCooldownDays?: number;
-  /** Hide completely after successful submit. @default true */
+  /**
+   * Hide completely after successful submit. The successful submit is stored
+   * like a dismissal, also when the user leaves without closing the receipt.
+   * @default true
+   */
   hideAfterSubmit?: boolean;
   /**
    * Question layout mode.

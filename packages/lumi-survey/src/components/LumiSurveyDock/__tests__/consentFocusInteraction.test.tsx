@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRatingSurvey } from "../../../presets/index.js";
 import { LumiSurveyDock } from "../LumiSurveyDock.js";
@@ -44,6 +44,8 @@ describe("LumiSurveyDock late consent focus", () => {
       await vi.advanceTimersByTimeAsync(300);
     });
 
+    // The dock waits minimized while consent is unknown; the user opens it.
+    fireEvent.click(screen.getByRole("button", { name: "Gi tilbakemelding" }));
     const answer = screen.getAllByRole("radio")[0];
     answer.focus();
     expect(answer).toHaveFocus();

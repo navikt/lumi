@@ -14,13 +14,18 @@ describe("getStorageAdapter", () => {
     await expect(adapter.write("lumi-test", "dismissed")).resolves.toEqual({
       outcome: "applied",
     });
-    await expect(adapter.read("lumi-test")).resolves.toBe("dismissed");
+    await expect(adapter.read("lumi-test")).resolves.toEqual({
+      outcome: "found",
+      value: "dismissed",
+    });
 
     await expect(adapter.remove("lumi-test")).resolves.toEqual({
       outcome: "applied",
     });
 
-    await expect(adapter.read("lumi-test")).resolves.toBeNull();
+    await expect(adapter.read("lumi-test")).resolves.toEqual({
+      outcome: "empty",
+    });
   });
 
   it("accepts writes without persisting with the none strategy", async () => {
@@ -29,7 +34,9 @@ describe("getStorageAdapter", () => {
     await expect(adapter.write("lumi-test", "dismissed")).resolves.toEqual({
       outcome: "skipped",
     });
-    await expect(adapter.read("lumi-test")).resolves.toBeNull();
+    await expect(adapter.read("lumi-test")).resolves.toEqual({
+      outcome: "empty",
+    });
     await expect(adapter.remove("lumi-test")).resolves.toEqual({
       outcome: "skipped",
     });
@@ -41,20 +48,27 @@ describe("getStorageAdapter", () => {
     await expect(adapter.write("lumi-test", "dismissed")).resolves.toEqual({
       outcome: "applied",
     });
-    await expect(adapter.read("lumi-test")).resolves.toBe("dismissed");
+    await expect(adapter.read("lumi-test")).resolves.toEqual({
+      outcome: "found",
+      value: "dismissed",
+    });
 
     await expect(adapter.remove("lumi-test")).resolves.toEqual({
       outcome: "applied",
     });
 
-    await expect(adapter.read("lumi-test")).resolves.toBeNull();
+    await expect(adapter.read("lumi-test")).resolves.toEqual({
+      outcome: "empty",
+    });
   });
 
   it("does not access browser storage during server rendering", async () => {
     const adapter = getStorageAdapter("localStorage");
     vi.stubGlobal("window", undefined);
 
-    await expect(adapter.read("lumi-test")).resolves.toBeNull();
+    await expect(adapter.read("lumi-test")).resolves.toEqual({
+      outcome: "empty",
+    });
     await expect(adapter.write("lumi-test", "dismissed")).resolves.toEqual({
       outcome: "skipped",
     });
@@ -77,6 +91,48 @@ describe("getStorageAdapter", () => {
       outcome: "failed",
       error: quotaError,
     });
+  });
+
+  it("reports blocked localStorage reads as unavailable, not empty", async () => {
+    const adapter = getStorageAdapter("localStorage");
+    const securityError = new DOMException(
+      "Storage is blocked",
+      "SecurityError",
+    );
+    vi.spyOn(window.localStorage, "getItem").mockImplementation(() => {
+      throw securityError;
+    });
+
+    await expect(adapter.read("lumi-test")).resolves.toEqual({
+      outcome: "unavailable",
+      error: securityError,
+    });
+  });
+
+  it("reports missing survey consent as unavailable, not empty", async () => {
+    const controller = (
+      globalThis as unknown as {
+        webStorageController: {
+          getCurrentConsent: () => {
+            consent: { analytics: boolean; surveys: boolean };
+            userActionTaken: boolean;
+          };
+        };
+      }
+    ).webStorageController;
+    vi.spyOn(controller, "getCurrentConsent").mockReturnValue({
+      consent: { analytics: true, surveys: false },
+      userActionTaken: true,
+    });
+    localStorage.setItem("lumi-test", "dismissed");
+
+    const result = await getStorageAdapter("consent").read("lumi-test");
+
+    expect(result.outcome).toBe("unavailable");
+    expect(result).toHaveProperty(
+      "error.message",
+      expect.stringMatching(/consent/i),
+    );
   });
 
   it("reports localStorage removal errors without throwing", async () => {

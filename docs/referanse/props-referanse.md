@@ -133,10 +133,10 @@ Send `submission.transportPayload` til endepunktet i appen deres. Se [Koble til 
 
 | Felt | Type | Standard | Beskrivelse |
 | :--- | :--- | :--- | :--- |
-| `initialOpen` | `boolean` | `true` | Om widgeten starter åpen |
+| `initialOpen` | `boolean` | `true` | Om widgeten starter åpen. Får den ikke lagre, starter den minimert. Se [Uten samtykke](/guider/lagring#uten-samtykke) |
 | `resetOnClose` | `boolean` | `true` | Nullstill svar når brukeren lukker |
-| `dismissCooldownDays` | `number` | `30` | Dager før en lukket widget vises igjen. `0` betyr at lukkingen ikke utløper |
-| `hideAfterSubmit` | `boolean` | `true` | Skjul widgeten etter vellykket innsending |
+| `dismissCooldownDays` | `number` | `30` | Dager før widgeten vises igjen etter at surveyen er lukket eller besvart. `0` betyr at ventetiden aldri går ut |
+| `hideAfterSubmit` | `boolean` | `true` | Skjul widgeten etter vellykket innsending, til ventetiden er over |
 | `questionLayout` | `"auto" \| "singlePage" \| "steps"` | `"auto"` | Hvordan sidene vises |
 | `showPersonalDataNotice` | `boolean` | `true` | Vis informasjon om personopplysninger |
 | `personalDataNotice` | `ReactNode` | – | Egen informasjon om personopplysninger |
