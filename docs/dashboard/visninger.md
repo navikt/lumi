@@ -75,7 +75,9 @@ I en Top Tasks-survey velger brukeren en oppgave fra listen og svarer på om hen
 | :--- | :--- |
 | **Antall svar** | Alle innsendinger med en valgt oppgave |
 | **Suksessrate** | Andelen av alle svarene der brukeren svarte «Ja» |
-| **Feilrate** | 100 minus **Suksessrate**. Alt som ikke er «Ja», telles med, også «Delvis» |
+| **Ikke fullført** | Andelen av alle svarene der brukeren svarte «Delvis» eller «Nei». Tallet er 100 minus **Suksessrate** |
+
+Finnes det ingen svar, viser **Suksessrate** og **Ikke fullført** en strek (–).
 
 Grafen **Suksessrate over tid** viser andelen «Ja» per dag.
 
@@ -119,7 +121,7 @@ Under **Egne hindringstemaer** kan dere lage temaer med **Nytt tema**. Et tema s
 
 I en Discovery-survey skriver brukeren med egne ord hva hen kom for å gjøre, og svarer på om hen fikk det gjort.
 
-Visningen har kortene **Periode**, **Tilbakemeldinger** og **Tekstsvar**, og grafen **Antall svar over tid**. **Det brukerne prøver å gjøre** viser **Oppgaver som går igjen**: uttrykk som finnes i minst to svar, med lenke til svarene. **Eksempler fra brukerne** viser enkeltsvar. De kan vise om brukeren kom i mål (**Fullført**, **Delvis** eller **Ikke fullført**) og hva som hindret hen.
+Visningen har kortene **Periode**, **Tilbakemeldinger** og **Tekstsvar**, og grafen **Antall svar over tid**. **Det brukerne prøver å gjøre** viser **Oppgaver som går igjen**: uttrykk som finnes i minst to svar, med lenke til svarene. **Eksempler fra brukerne** viser enkeltsvar. De kan vise om brukeren kom i mål (**Ja**, **Delvis** eller **Nei**) og hva som hindret hen.
 
 Under **Egne oppgavetemaer** lager dere temaer med **Nytt tema**. Svar som ikke treffer noen av temaene, samles under **Uten tema**.
 

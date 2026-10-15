@@ -9,7 +9,9 @@ interface TopTasksStatsCardsProps {
 
 /**
  * Stats cards specifically for Top Tasks surveys.
- * Displays total submissions, success rate, and failure rate.
+ * Displays total submissions, success rate, and the share answering
+ * "Delvis" or "Nei" (100 minus the success rate). Without answers there is
+ * no rate to show, so both rate cards show "–".
  */
 export function TopTasksStatsCards({ data }: TopTasksStatsCardsProps) {
   const total = data.totalSubmissions;
@@ -17,7 +19,8 @@ export function TopTasksStatsCards({ data }: TopTasksStatsCardsProps) {
     (acc, task) => acc + task.successCount,
     0,
   );
-  const successRate = total > 0 ? Math.round((totalSuccess / total) * 100) : 0;
+  const successRate =
+    total > 0 ? Math.round((totalSuccess / total) * 100) : null;
 
   return (
     <DashboardGrid
@@ -34,15 +37,15 @@ export function TopTasksStatsCards({ data }: TopTasksStatsCardsProps) {
       <StatCard
         icon={<ThumbUpIcon fontSize="1.25rem" aria-hidden />}
         label="Suksessrate"
-        value={`${successRate}%`}
+        value={successRate === null ? "–" : `${successRate}%`}
         subtitle="Gjennomsnitt"
       />
 
       <StatCard
         icon={<ThumbDownIcon fontSize="1.25rem" aria-hidden />}
-        label="Feilrate"
-        value={`${100 - successRate}%`}
-        subtitle="Ikke fullført"
+        label="Ikke fullført"
+        value={successRate === null ? "–" : `${100 - successRate}%`}
+        subtitle="Andel som svarte Delvis eller Nei"
       />
     </DashboardGrid>
   );

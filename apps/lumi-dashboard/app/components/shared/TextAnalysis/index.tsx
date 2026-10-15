@@ -203,10 +203,10 @@ function ResponseExamples({
                   className={styles.recentStatusTag}
                 >
                   {response.success === "yes"
-                    ? "Fullført"
+                    ? "Ja"
                     : response.success === "partial"
                       ? "Delvis"
-                      : "Ikke fullført"}
+                      : "Nei"}
                 </Tag>
               )}
             </HStack>
