@@ -1,4 +1,5 @@
 import { SPECIALIZED_SURVEY_FIELD_IDS } from "@navikt/lumi-survey";
+import { serverEnv } from "~/serverEnv";
 import type {
   BlockerResponse,
   DiscoveryResponse,
@@ -518,10 +519,26 @@ export function getMockFeedback(params: URLSearchParams): FeedbackPage {
   return filterFeedback(getMockAnalyticsItems(params), params);
 }
 
+/**
+ * Mock team without any answers, for the onboarding empty state. Open the
+ * dashboard with `?team=team-ny` to see it.
+ */
+export const MOCK_EMPTY_TEAM = "team-ny";
+
+/**
+ * Only local mock mode (dev server and e2e) has the empty team. The public
+ * demo runs mock mode on Nais, where `NAIS_CLUSTER_NAME` is set, and keeps
+ * one team.
+ */
+export function hasMockEmptyTeam(): boolean {
+  return !serverEnv.NAIS_CLUSTER_NAME;
+}
+
 export function getMockTeams(): TeamsAndApps {
   return {
     teams: {
       "team-esyfo": ["syfo-oppfolgingsplan-frontend", "dialogmote-frontend"],
+      ...(hasMockEmptyTeam() ? { [MOCK_EMPTY_TEAM]: [] } : {}),
     },
   };
 }
@@ -698,9 +715,12 @@ export function getMockFilterBootstrap(team?: string): {
   surveyMeta: Record<string, MockSurveyMetaEntry>;
   surveyMetaByApp?: Record<string, Record<string, MockSurveyMetaEntry>>;
 } {
-  void team;
-  const availableTeams = ["team-esyfo"];
-  const selectedTeam = "team-esyfo";
+  const isEmptyTeam = team === MOCK_EMPTY_TEAM && hasMockEmptyTeam();
+  const selectedTeam = isEmptyTeam ? MOCK_EMPTY_TEAM : "team-esyfo";
+  // Like the backend, the selected team is always one of the available teams.
+  const availableTeams = isEmptyTeam
+    ? ["team-esyfo", MOCK_EMPTY_TEAM]
+    : ["team-esyfo"];
 
   const surveysByApp = getMockSurveysByApp(selectedTeam);
   const apps = Object.keys(surveysByApp).sort();
@@ -755,7 +775,10 @@ export function getMockFilterBootstrap(team?: string): {
       lastSubmissionAt,
     };
   }
-  for (const [surveyId, meta] of Object.entries(mockSurveyMeta)) {
+  // Archive metadata in mock mode belongs to the demo team's surveys.
+  for (const [surveyId, meta] of Object.entries(
+    isEmptyTeam ? {} : mockSurveyMeta,
+  )) {
     surveyMeta[surveyId] = {
       ...(surveyMeta[surveyId] ?? {}),
       archivedAt: meta.archivedAt,

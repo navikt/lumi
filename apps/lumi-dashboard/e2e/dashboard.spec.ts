@@ -88,6 +88,27 @@ test.describe("Dashboard", () => {
       page.getByRole("checkbox", { name: /Arkiverte \(\d+\)/ }),
     ).toBeChecked();
   });
+
+  test("shows getting started guidance for a team without answers", async ({
+    page,
+  }) => {
+    await page.goto("/?team=team-ny");
+
+    await expect(
+      page.getByRole("heading", { name: "Ingen svar ennå" }),
+    ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText("Valgt team:")).toContainText("team-ny");
+    await expect(
+      page.getByRole("link", { name: "Kom i gang med Lumi" }),
+    ).toHaveAttribute(
+      "href",
+      "https://navikt.github.io/lumi/kom-i-gang/hva-er-lumi",
+    );
+    await expect(
+      page.getByRole("link", { name: "Lag en survey i Surveyverksted" }),
+    ).toHaveAttribute("href", /\/surveyverksted\?team=team-ny$/);
+    await expect(page.getByText(/Ingen data for valgt periode/)).toHaveCount(0);
+  });
 });
 
 test.describe("Feedback", () => {

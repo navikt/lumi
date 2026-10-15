@@ -109,6 +109,11 @@ vi.mock("@tanstack/react-router", () => ({
       {children}
     </a>
   ),
+  createLink:
+    (Component: React.ElementType) =>
+    ({ to, search: _search, ...rest }: { to: string; search?: unknown }) => (
+      <Component href={to} {...rest} />
+    ),
 }));
 
 function bootstrapWithData() {
@@ -190,6 +195,9 @@ describe("FeedbackTable empty states", () => {
     render(<FeedbackTable />);
 
     expect(screen.getByText("Ingen tilbakemeldinger ennå")).toBeInTheDocument();
+    expect(screen.getByText("Valgt team:")).toHaveTextContent(
+      "Valgt team: team-test",
+    );
     expect(
       screen.getByRole("link", { name: /kom i gang/i }),
     ).toBeInTheDocument();

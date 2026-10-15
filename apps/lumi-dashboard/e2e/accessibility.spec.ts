@@ -8,17 +8,26 @@ import { expect, test } from "@playwright/test";
  */
 
 test.describe("Accessibility - WCAG Compliance", () => {
-  const routes = [
+  // The optional heading marks content that renders after its data loads.
+  const routes: ReadonlyArray<
+    readonly [name: string, route: string, readyHeading?: string]
+  > = [
     ["Dashboard", "/"],
+    ["Dashboard without answers", "/?team=team-ny", "Ingen svar ennå"],
     ["Feedback", "/feedback"],
     ["Export", "/export"],
     ["Surveyverksted", "/surveyverksted"],
-  ] as const;
+  ];
 
-  for (const [name, route] of routes) {
+  for (const [name, route, readyHeading] of routes) {
     test(`${name} page has no WCAG A/AA violations`, async ({ page }) => {
       await page.goto(route);
       await page.waitForLoadState("networkidle");
+      if (readyHeading) {
+        await expect(
+          page.getByRole("heading", { name: readyHeading }),
+        ).toBeVisible({ timeout: 15000 });
+      }
 
       const results = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])

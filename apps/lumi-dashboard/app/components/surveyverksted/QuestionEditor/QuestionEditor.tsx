@@ -43,7 +43,7 @@ import {
   placeQuestion,
   replaceQuestion,
   ruleLeaves,
-  sources,
+  valueRuleDependents,
 } from "~/utils/questionEditorModel";
 import {
   changeQuestionType,
@@ -250,11 +250,7 @@ export function QuestionEditor({
   }
   function setType(type: QuestionTypeId) {
     if (type === question.type) return;
-    const affected = questions.filter(
-      (q) =>
-        sources(q).includes(question.id) &&
-        ruleLeaves(q).some((leaf) => leaf.operator !== "EXISTS"),
-    );
+    const affected = valueRuleDependents(questions, question.id);
     if (affected.length) {
       setError(
         `Spørsmål ${affected.map((q) => questions.indexOf(q) + 1).join(", ")} følger opp svaralternativer eller verdier her. Endre hvem de skal vises til før du bytter svartype.`,
@@ -840,11 +836,13 @@ export function QuestionEditor({
             {question.type === "rating" && !locked && (
               <Select
                 label="Vurderingsskala"
+                description="Bytter du skala etter at surveyen er tatt i bruk, må appen bruke en ny survey-ID."
                 value={question.variant ?? "emoji"}
                 onChange={(e) => {
-                  if (questions.some((q) => sources(q).includes(question.id))) {
+                  const affected = valueRuleDependents(questions, question.id);
+                  if (affected.length) {
                     setError(
-                      "Andre spørsmål bruker denne vurderingen. Tilpass oppfølgingsspørsmålene før du endrer skalaen.",
+                      `Spørsmål ${affected.map((q) => questions.indexOf(q) + 1).join(", ")} følger opp verdier i denne vurderingen. Endre hvem de skal vises til før du bytter skala.`,
                     );
                     return;
                   }

@@ -9,6 +9,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { surveyTemplates } from "~/routes/surveyverksted.index";
 import {
   findHandoffIssues,
   SURVEY_TEMPLATE_PLACEHOLDER_LABELS,
@@ -400,6 +401,80 @@ describe("QuestionEditor condition and analysis safeguards", () => {
     expect(
       onChange.mock.calls.at(-1)?.[0].pages[1].questions[0].visibleIf,
     ).toEqual(answered.visibleIf);
+  });
+
+  it("allows type changes when a follow-up's value rule points to another question", async () => {
+    const role: SurveyQuestionV1 = {
+      id: "role",
+      type: "singleChoice",
+      prompt: "Hvilken rolle har du?",
+      options: [
+        { value: "leader", label: "Leder" },
+        { value: "employee", label: "Ansatt" },
+      ],
+    };
+    const mixed: SurveyQuestionV1 = {
+      ...followup,
+      visibleIf: {
+        all: [
+          { questionId: "role", operator: "EQ", value: "leader" },
+          { questionId: "choice", operator: "EXISTS" },
+        ],
+      },
+    };
+    const { onChange } = renderEditor(makeDocument(role, choice, mixed));
+    await selectQuestion(2, choice.prompt);
+    await userEvent.selectOptions(
+      editor().getByLabelText("Hvordan skal de svare?"),
+      "text",
+    );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    const next = onChange.mock.calls.at(-1)?.[0];
+    expect(next?.pages[1].questions[0].type).toBe("text");
+    expect(next?.pages[2].questions[0].visibleIf).toEqual(mixed.visibleIf);
+  });
+
+  it("allows changing the scale in the «Hvordan opplevde brukeren tjenesten?» template", async () => {
+    const template = surveyTemplates.rating.create();
+    const commentRule = template.pages[0].questions[1].visibleIf;
+    const { onChange } = renderEditor(template);
+    const scale = editor().getByLabelText("Vurderingsskala");
+    expect(scale).toHaveAccessibleDescription(
+      "Bytter du skala etter at surveyen er tatt i bruk, må appen bruke en ny survey-ID.",
+    );
+    await userEvent.selectOptions(scale, "thumbs");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(editor().getByLabelText("Vurderingsskala")).toHaveValue("thumbs");
+    const next = onChange.mock.calls.at(-1)?.[0];
+    expect(next?.type).toBe("rating");
+    expect(next?.pages[0].questions[0]).toMatchObject({
+      id: "rating",
+      variant: "thumbs",
+    });
+    expect(next?.pages[0].questions[1]).toMatchObject({
+      id: "kommentar",
+      visibleIf: commentRule,
+    });
+  });
+
+  it("blocks changing the scale while a follow-up depends on the rating value", async () => {
+    const template = surveyTemplates.rating.create();
+    template.pages[0].questions[1].visibleIf = {
+      any: [
+        { questionId: "rating", operator: "EXISTS" },
+        { questionId: "rating", operator: "LT", value: 3 },
+      ],
+    };
+    const { onChange } = renderEditor(template);
+    await userEvent.selectOptions(
+      editor().getByLabelText("Vurderingsskala"),
+      "nps",
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Spørsmål 2 følger opp verdier i denne vurderingen. Endre hvem de skal vises til før du bytter skala.",
+    );
+    expect(editor().getByLabelText("Vurderingsskala")).toHaveValue("emoji");
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it("blocks removing an option referenced by a follow-up", async () => {
