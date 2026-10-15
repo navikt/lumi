@@ -27,6 +27,7 @@ import { useFeedback } from "~/hooks/useFeedback";
 import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { getTeamSubmissionPeriod } from "~/utils/dashboardPeriod";
+import { writeErrorText } from "~/utils/publicDemo";
 import {
   formatRelativeSubmissionTime,
   isReceivingAfterArchive,
@@ -148,7 +149,14 @@ function FeedbackTableContent({
           onArchive={() => setArchiveDialogOpen(true)}
           onRestore={() => restoreMutation.mutate(selectedSurvey)}
           isRestoring={restoreMutation.isPending}
-          restoreFailed={restoreMutation.isError}
+          restoreError={
+            restoreMutation.isError
+              ? writeErrorText(
+                  restoreMutation.error,
+                  "Kunne ikke gjenopprette surveyen. Prøv igjen.",
+                )
+              : null
+          }
           onDelete={() => setDeleteDialogOpen(true)}
         />
       )}
@@ -266,7 +274,10 @@ function FeedbackTableContent({
       {/* Delete single feedback confirmation dialog */}
       <DeleteFeedbackDialog
         id={feedbackToDelete}
-        onClose={() => setFeedbackToDelete(null)}
+        onClose={() => {
+          deleteFeedbackMutation.reset();
+          setFeedbackToDelete(null);
+        }}
         onConfirm={() => {
           if (feedbackToDelete) {
             deleteFeedbackMutation.mutate(feedbackToDelete, {
@@ -275,6 +286,14 @@ function FeedbackTableContent({
           }
         }}
         isPending={deleteFeedbackMutation.isPending}
+        errorText={
+          deleteFeedbackMutation.isError
+            ? writeErrorText(
+                deleteFeedbackMutation.error,
+                "Tilbakemeldingen kunne ikke slettes. Prøv igjen.",
+              )
+            : null
+        }
       />
     </div>
   );
@@ -326,7 +345,7 @@ function SurveyToolbar({
   onArchive,
   onRestore,
   isRestoring,
-  restoreFailed,
+  restoreError,
   onDelete,
 }: {
   surveyId: string;
@@ -337,7 +356,7 @@ function SurveyToolbar({
   onArchive: () => void;
   onRestore: () => void;
   isRestoring: boolean;
-  restoreFailed: boolean;
+  restoreError: string | null;
   onDelete: () => void;
 }) {
   return (
@@ -360,10 +379,8 @@ function SurveyToolbar({
               </Tag>
             </Tooltip>
           )}
-          {restoreFailed && (
-            <ErrorMessage size="small">
-              Kunne ikke gjenopprette surveyen. Prøv igjen.
-            </ErrorMessage>
+          {restoreError && (
+            <ErrorMessage size="small">{restoreError}</ErrorMessage>
           )}
         </HStack>
         <HStack gap="space-8" align="center">

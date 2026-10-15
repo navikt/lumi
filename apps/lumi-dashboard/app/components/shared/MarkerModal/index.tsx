@@ -24,6 +24,7 @@ import {
   THEME_COLOR_ORANGE,
   THEME_COLORS,
 } from "~/utils/colors";
+import { writeErrorText } from "~/utils/publicDemo";
 import styles from "./MarkerModal.module.css";
 
 const DEFAULT_MARKER_COLOR = "#1C64F2";
@@ -363,7 +364,7 @@ export function MarkerModal({
 
           {error && (
             <Alert variant="error" size="small">
-              Noe gikk galt. Prøv igjen.
+              {writeErrorText(error, "Noe gikk galt. Prøv igjen.")}
             </Alert>
           )}
         </VStack>

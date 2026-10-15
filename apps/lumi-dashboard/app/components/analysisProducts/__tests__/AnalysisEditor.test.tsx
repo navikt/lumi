@@ -20,6 +20,10 @@ import {
   type AnalysisProduct,
   analysisConfirmation,
 } from "~/types/analysisProducts";
+import {
+  PUBLIC_DEMO_READ_ONLY_MESSAGE,
+  PUBLIC_DEMO_READ_ONLY_TEXT,
+} from "~/utils/publicDemo";
 import { AnalysisEditor } from "../AnalysisEditor";
 import {
   catalog,
@@ -263,6 +267,52 @@ describe("AnalysisEditor confirmation and recovery", () => {
     expect(
       screen.queryByText(/Uklart om produktet ble opprettet/),
     ).not.toBeInTheDocument();
+  });
+
+  it("explains the demo refusal on create and keeps the new form editable", async () => {
+    vi.mocked(createAnalysisProduct).mockRejectedValue(
+      new Error(PUBLIC_DEMO_READ_ONLY_MESSAGE),
+    );
+    setup(null);
+    fillNewDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Lagre utkast" }));
+    await screen.findByText(PUBLIC_DEMO_READ_ONLY_TEXT);
+    expect(screen.getByRole("textbox", { name: "Navn" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Lagre utkast" })).toBeEnabled();
+    expect(
+      screen.queryByText(/Uklart om produktet ble opprettet/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("explains the demo refusal on save without calling the result uncertain", async () => {
+    vi.mocked(saveAnalysisDraft).mockRejectedValue(
+      new Error(PUBLIC_DEMO_READ_ONLY_MESSAGE),
+    );
+    setup();
+    await screen.findByRole("button", { name: "Lås første release" });
+    changeName();
+    fireEvent.click(screen.getByRole("button", { name: "Lagre utkast" }));
+    await screen.findByText(PUBLIC_DEMO_READ_ONLY_TEXT);
+    expect(
+      screen.queryByText(/Uklart om utkastet ble lagret/),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Navn" })).toHaveValue(
+      "Mine lokale endringer",
+    );
+  });
+
+  it("explains the demo refusal on lock instead of offering a retry", async () => {
+    vi.mocked(lockAnalysisRelease).mockRejectedValue(
+      new Error(PUBLIC_DEMO_READ_ONLY_MESSAGE),
+    );
+    const { onLocked } = setup();
+    await openConfirmation();
+    fireEvent.click(screen.getByRole("button", { name: "Lås release" }));
+    await screen.findByText(PUBLIC_DEMO_READ_ONLY_TEXT);
+    expect(
+      screen.queryByRole("button", { name: "Prøv samme bekreftelse igjen" }),
+    ).not.toBeInTheDocument();
+    expect(onLocked).not.toHaveBeenCalled();
   });
 
   it("retries the exact canonical confirmation after an unknown release result", async () => {

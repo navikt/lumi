@@ -3,11 +3,13 @@ import {
   Button,
   Chips,
   UNSAFE_Combobox as Combobox,
+  ErrorMessage,
   HStack,
   Tooltip,
 } from "@navikt/ds-react";
 import { useState } from "react";
 import { useAddTag, useRemoveTag, useTags } from "~/hooks/useTags";
+import { writeErrorText } from "~/utils/publicDemo";
 import styles from "./TagEditor.module.css";
 
 interface TagEditorProps {
@@ -67,8 +69,22 @@ export function TagEditor({
     removeTagMutation.mutate({ id, tag });
   };
 
+  const failedMutation = addTagMutation.isError
+    ? addTagMutation
+    : removeTagMutation.isError
+      ? removeTagMutation
+      : null;
+  const tagError = failedMutation ? (
+    <ErrorMessage size="small">
+      {writeErrorText(
+        failedMutation.error,
+        "Taggen ble ikke lagret. Prøv igjen.",
+      )}
+    </ErrorMessage>
+  ) : null;
+
   if (compact && currentTags.length === 0 && !isAdding) {
-    return (
+    const addButton = (
       <Tooltip content="Legg til tag">
         <Button
           variant="tertiary"
@@ -77,6 +93,14 @@ export function TagEditor({
           onClick={() => setIsAdding(true)}
         />
       </Tooltip>
+    );
+    return tagError ? (
+      <HStack gap="space-8" align="center" wrap>
+        {addButton}
+        {tagError}
+      </HStack>
+    ) : (
+      addButton
     );
   }
 
@@ -137,6 +161,7 @@ export function TagEditor({
           </Button>
         </Tooltip>
       )}
+      {tagError}
     </HStack>
   );
 }
