@@ -138,3 +138,12 @@ export function getTextResponses(item: FeedbackDto): string[] {
 export function hasTextResponse(item: FeedbackDto): boolean {
   return getTextResponses(item).length > 0;
 }
+
+/**
+ * Same rule as the API's low score filter: thumbs up is stored as 2, so only
+ * thumbs down (1) counts for thumbs. Emoji, stars and NPS count 2 and lower.
+ */
+export function isLowRating(value: RatingAnswer["value"]): boolean {
+  const threshold = value.ratingVariant === "thumbs" ? 1 : 2;
+  return value.rating <= threshold;
+}

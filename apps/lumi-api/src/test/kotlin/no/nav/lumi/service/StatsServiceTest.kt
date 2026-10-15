@@ -18,7 +18,7 @@ class StatsServiceTest {
     @Test
     fun `stats cache key includes the result contract version`() {
         assertEquals(
-            "dashboard:team=flex&includeArchived=false&resultVersion=4",
+            "dashboard:team=flex&includeArchived=false&resultVersion=5",
             service.statsCacheKey("dashboard", StatsQuery(team = "flex")),
         )
     }

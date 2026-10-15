@@ -35,6 +35,27 @@ class FeedbackStatsRepositoryTest : FunSpec({
             allStats.bySurveyId.keys shouldBe setOf("survey-active", "survey-archived")
         }
 
+        test("counts low ratings per variant so thumbs up is not a low score") {
+            fun ratingJson(rating: Int, variant: String, scale: Int) = """
+                {
+                    "surveyId": "survey-low",
+                    "answers": [
+                        {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": $rating, "ratingVariant": "$variant", "ratingScale": $scale}}
+                    ]
+                }
+            """.trimIndent()
+            insertTestFeedbackWithJson(team = "flex", feedbackJson = ratingJson(1, "thumbs", 2))
+            insertTestFeedbackWithJson(team = "flex", feedbackJson = ratingJson(2, "thumbs", 2))
+            insertTestFeedbackWithJson(team = "flex", feedbackJson = ratingJson(2, "thumbs", 2))
+            insertTestFeedbackWithJson(team = "flex", feedbackJson = ratingJson(2, "emoji", 5))
+            insertTestFeedbackWithJson(team = "flex", feedbackJson = ratingJson(4, "emoji", 5))
+
+            val stats = repository.getStats(StatsQuery(team = "flex"))
+
+            stats.lowRatingCount shouldBe 2
+            stats.byRating shouldBe mapOf("1" to 1, "2" to 3, "4" to 1)
+        }
+
         test("returns correct statistics") {
             insertTestFeedback(team = "flex", rating = 4)
             insertTestFeedback(team = "flex", rating = 5)

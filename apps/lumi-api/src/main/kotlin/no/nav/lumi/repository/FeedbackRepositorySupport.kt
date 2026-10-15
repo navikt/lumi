@@ -137,12 +137,46 @@ internal fun applyContextTagAnalysisFilters(
     }
 
     if (lowRating) {
-        val ratingText = JsonbPathQueryFirstText(
-            FeedbackTable.feedbackJson,
-            "$.answers[*] ? (@.value.type == \"rating\").value.rating"
-        )
-        val ratingExpr = Cast(ratingText, IntegerColumnType())
-        query.andWhere { ratingExpr lessEq 2 }
+        query.andWhere { LowRatingOp(FeedbackTable.feedbackJson) }
+    }
+}
+
+/**
+ * Value object of the first rating answer in a submission: the one the low-score
+ * filter and stats look at. Read `rating` and `ratingVariant` from this one
+ * object so both come from the same answer.
+ */
+internal const val FIRST_RATING_JSON_PATH = "$.answers[*] ? (@.value.type == \"rating\").value"
+
+private const val THUMBS_RATING_VARIANT = "thumbs"
+
+/**
+ * Highest rating that counts as a low score. Thumbs up is stored as 2, so only
+ * thumbs down (1) counts for thumbs. Emoji and stars count 1-2. NPS keeps the
+ * same limit as before until its threshold has been decided.
+ */
+internal fun lowRatingThreshold(ratingVariant: String?): Int =
+    if (ratingVariant == THUMBS_RATING_VARIANT) 1 else 2
+
+internal fun isLowRating(rating: Int, ratingVariant: String?): Boolean =
+    rating <= lowRatingThreshold(ratingVariant)
+
+/**
+ * SQL version of [isLowRating] for the first rating answer in [jsonColumnSql].
+ * The JSONPath runs once per row; rating and variant are read from its result.
+ * Shared by the Exposed filters and the raw SQL in context-tag analysis.
+ */
+internal fun lowRatingSqlPredicate(jsonColumnSql: String): String =
+    "(SELECT (first_rating.rating_value ->> 'rating')::int <= " +
+        "CASE WHEN first_rating.rating_value ->> 'ratingVariant' = '$THUMBS_RATING_VARIANT' THEN 1 ELSE 2 END " +
+        "FROM (SELECT jsonb_path_query_first($jsonColumnSql::jsonb, '$FIRST_RATING_JSON_PATH') AS rating_value) AS first_rating)"
+
+internal class LowRatingOp(private val jsonColumn: Column<*>) : Op<Boolean>() {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) {
+        val column = QueryBuilder(false).append(jsonColumn).toString()
+        queryBuilder.append("(")
+        queryBuilder.append(lowRatingSqlPredicate(column))
+        queryBuilder.append(")")
     }
 }
 
@@ -201,14 +235,9 @@ internal fun applyCommonFilters(query: Query, criteria: FeedbackQuery, log: Logg
         }
     }
 
-    // Filter for low ratings (1-2)
+    // Filter for low ratings, see isLowRating
     if (criteria.lowRating) {
-        val ratingText = JsonbPathQueryFirstText(
-            FeedbackTable.feedbackJson,
-            "$.answers[*] ? (@.value.type == \"rating\").value.rating"
-        )
-        val ratingExpr = Cast(ratingText, IntegerColumnType())
-        query.andWhere { ratingExpr lessEq 2 }
+        query.andWhere { LowRatingOp(FeedbackTable.feedbackJson) }
     }
 
     // Device type filter
@@ -222,12 +251,12 @@ internal fun applyCommonFilters(query: Query, criteria: FeedbackQuery, log: Logg
         query.andWhere { HasTagOp(FeedbackTable.id, normalized) }
     }
 
-    // Full-text search query
+    // Full-text search query, case-insensitive
     criteria.query?.let { searchQuery ->
         val escaped = searchQuery.escapeLikePattern()
         val pattern = "%$escaped%"
         val jsonText = Cast(FeedbackTable.feedbackJson, TextColumnType())
-        query.andWhere { (jsonText like pattern) or HasTagLikeOp(FeedbackTable.id, pattern) }
+        query.andWhere { ILikeOp(jsonText, pattern) or HasTagLikeOp(FeedbackTable.id, pattern) }
     }
 
     // Segment filter (context.tags)
@@ -383,8 +412,20 @@ internal class HasTagLikeOp(
     override fun toQueryBuilder(queryBuilder: QueryBuilder) {
         queryBuilder.append("EXISTS (SELECT 1 FROM feedback_tag WHERE feedback_tag.feedback_id = ")
         queryBuilder.append(feedbackIdColumn)
-        queryBuilder.append(" AND feedback_tag.tag LIKE ")
+        queryBuilder.append(" AND feedback_tag.tag ILIKE ")
         queryBuilder.registerArgument(VarCharColumnType(), pattern)
         queryBuilder.append(")")
+    }
+}
+
+/** PostgreSQL `expression ILIKE pattern`. The pattern must already be escaped for LIKE. */
+internal class ILikeOp(
+    private val expression: Expression<*>,
+    private val pattern: String
+) : Op<Boolean>() {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) {
+        queryBuilder.append(expression)
+        queryBuilder.append(" ILIKE ")
+        queryBuilder.registerArgument(VarCharColumnType(), pattern)
     }
 }

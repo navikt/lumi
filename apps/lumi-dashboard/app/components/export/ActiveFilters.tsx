@@ -67,7 +67,7 @@ export function ActiveFilters({ params }: ActiveFiltersProps) {
       )}
       {params.lowRating === "true" && (
         <BodyShort size="small" spacing>
-          <strong>Filter:</strong> Kun lave vurderinger (1-2)
+          <strong>Vis kun:</strong> Lav score
         </BodyShort>
       )}
       {params.tag && (

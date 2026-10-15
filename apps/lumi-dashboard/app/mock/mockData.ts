@@ -300,7 +300,7 @@ export * from "./helpers"; // export helpers if needed by tests
 // Feedback filtering and pagination
 // ============================================
 
-import { hasTextResponse } from "./helpers";
+import { hasTextResponse, isLowRating } from "./helpers";
 
 function applyFilters(
   items: FeedbackDto[],
@@ -336,12 +336,12 @@ function applyFilters(
   if (hasText === "true") {
     filtered = filtered.filter((item) => hasTextResponse(item));
   }
-  // "Wall of Shame" - filter for low ratings (1-2)
+  // "Wall of Shame" - filter for low ratings, see isLowRating
   if (lowRating === "true") {
     filtered = filtered.filter((item) => {
       const ratingAnswer = item.answers.find((a) => a.fieldType === "RATING");
       if (ratingAnswer && ratingAnswer.value.type === "rating") {
-        return ratingAnswer.value.rating <= 2;
+        return isLowRating(ratingAnswer.value);
       }
       return false;
     });
@@ -872,12 +872,12 @@ export function getMockContextTags(
     surveyItems = surveyItems.filter((item) => hasTextResponse(item));
   }
 
-  // Low rating filter (1-2)
+  // Low rating filter, see isLowRating
   if (lowRating) {
     surveyItems = surveyItems.filter((item) => {
       const ratingAnswer = item.answers.find((a) => a.fieldType === "RATING");
       if (ratingAnswer && ratingAnswer.value.type === "rating") {
-        return ratingAnswer.value.rating <= 2;
+        return isLowRating(ratingAnswer.value);
       }
       return false;
     });

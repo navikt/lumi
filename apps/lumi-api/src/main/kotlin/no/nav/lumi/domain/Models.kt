@@ -527,6 +527,8 @@ data class FeedbackStatsResult(
     val countWithText: Long,
     val surveyType: String?,
     val byRating: Map<String, Int>,
+    /** Responses whose first rating is a low score, see isLowRating in FeedbackRepositorySupport */
+    val lowRatingCount: Int,
     val byApp: Map<String, Int>,
     val byDate: Map<String, Int>,
     val bySurveyId: Map<String, Int>,

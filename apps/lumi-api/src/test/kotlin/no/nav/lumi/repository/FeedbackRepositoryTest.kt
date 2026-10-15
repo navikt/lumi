@@ -544,6 +544,34 @@ class FeedbackRepositoryTest : FunSpec({
             content.first().id shouldBe "match"
         }
 
+        test("filters by query regardless of letter case") {
+            insertTestFeedback(id = "upper", team = "team-test", text = "Fant ikke SKJEMAET")
+            insertTestFeedback(id = "lower", team = "team-test", text = "fant ikke skjemaet")
+            insertTestFeedback(id = "other", team = "team-test", text = "Alt gikk fint")
+            insertTestFeedback(id = "tagged", team = "team-test", text = "Uten treff", tags = "skjema")
+
+            val (content, _, _) = repository.findPaginated(
+                FeedbackQuery(team = "team-test", query = "Skjema")
+            )
+
+            content.map { it.id }.toSet() shouldBe setOf("upper", "lower", "tagged")
+        }
+
+        test("query search folds Norwegian letters and matches % and _ literally") {
+            insertTestFeedback(id = "blabaer", team = "team-test", text = "Jeg liker blåbær")
+            insertTestFeedback(id = "percent", team = "team-test", text = "Rabatt på 50% i dag")
+            insertTestFeedback(id = "percent-decoy", team = "team-test", text = "Rabatt på 50 kroner i dag")
+            insertTestFeedback(id = "underscore", team = "team-test", text = "Feltet heter kort_navn")
+            insertTestFeedback(id = "underscore-decoy", team = "team-test", text = "Feltet heter kortXnavn")
+
+            suspend fun search(text: String): Set<String> =
+                repository.findPaginated(FeedbackQuery(team = "team-test", query = text)).first.map { it.id }.toSet()
+
+            search("BLÅBÆR") shouldBe setOf("blabaer")
+            search("50%") shouldBe setOf("percent")
+            search("kort_navn") shouldBe setOf("underscore")
+        }
+
         test("filters by deviceType") {
             insertTestFeedbackWithJson(
                 id = "mobile",
@@ -619,6 +647,29 @@ class FeedbackRepositoryTest : FunSpec({
 
             content shouldHaveSize 1
             content.first().id shouldBe "low"
+        }
+
+        test("lowRating counts only thumbs down for thumbs and keeps the NPS limit") {
+            fun ratingJson(rating: Int, variant: String, scale: Int) = """
+                {
+                    "surveyId": "survey-$variant",
+                    "answers": [
+                        {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": $rating, "ratingVariant": "$variant", "ratingScale": $scale}}
+                    ]
+                }
+            """.trimIndent()
+            insertTestFeedbackWithJson(id = "thumbs-down", team = "team-test", feedbackJson = ratingJson(1, "thumbs", 2))
+            insertTestFeedbackWithJson(id = "thumbs-up", team = "team-test", feedbackJson = ratingJson(2, "thumbs", 2))
+            insertTestFeedbackWithJson(id = "emoji-2", team = "team-test", feedbackJson = ratingJson(2, "emoji", 5))
+            insertTestFeedbackWithJson(id = "stars-3", team = "team-test", feedbackJson = ratingJson(3, "stars", 5))
+            insertTestFeedbackWithJson(id = "nps-2", team = "team-test", feedbackJson = ratingJson(2, "nps", 11))
+            insertTestFeedbackWithJson(id = "nps-3", team = "team-test", feedbackJson = ratingJson(3, "nps", 11))
+
+            val (content, _, _) = repository.findPaginated(
+                FeedbackQuery(team = "team-test", lowRating = true)
+            )
+
+            content.map { it.id }.toSet() shouldBe setOf("thumbs-down", "emoji-2", "nps-2")
         }
 
         test("filters by ratingFieldId and ratingValue") {
@@ -1384,6 +1435,29 @@ class FeedbackRepositoryTest : FunSpec({
                         values shouldHaveSize 1
                         values.first().value shouldBe "A"
                         values.first().count shouldBe 1
+                }
+
+                test("lowRating counts only thumbs down for thumbs") {
+                        val surveyId = "survey-ctx-thumbs"
+                        fun thumbsJson(rating: Int, group: String) = """
+                                {
+                                    "surveyId": "$surveyId",
+                                    "context": {"tags": {"gruppe": "$group"}},
+                                    "answers": [
+                                        {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Nyttig?"}, "value": {"type": "rating", "rating": $rating, "ratingVariant": "thumbs", "ratingScale": 2}}
+                                    ]
+                                }
+                        """.trimIndent()
+                        insertTestFeedbackWithJson(feedbackJson = thumbsJson(1, "ned"))
+                        insertTestFeedbackWithJson(feedbackJson = thumbsJson(2, "opp"))
+
+                        val result = repository.findContextTagsForSurvey(
+                                surveyId = surveyId,
+                                team = "team-test",
+                                lowRating = true,
+                        )
+
+                        result["gruppe"].shouldNotBeNull().map { it.value } shouldBe listOf("ned")
                 }
 
                 test("filters by task when task is set") {

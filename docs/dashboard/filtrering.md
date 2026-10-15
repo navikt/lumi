@@ -51,7 +51,7 @@ En periode dere har valgt selv, beholdes når dere bytter survey. Ligger periode
 
 ## Søk og Vis kun {#sok}
 
-På **Tilbakemeldinger** og **Eksporter** har filterlinjen søkefeltet **Søk i tekst...**. Søket leter i hele det lagrede svaret, også i spørsmålsteksten og i teknisk kontekst som adressen til siden, og i tagsene. Søker dere etter et ord som står i et spørsmål, kan dere derfor få treff på alle svarene på surveyen. Søket skiller mellom store og små bokstaver.
+På **Tilbakemeldinger** og **Eksporter** har filterlinjen søkefeltet **Søk i tekst...**. Søket leter i hele det lagrede svaret, også i spørsmålsteksten og i teknisk kontekst som adressen til siden, og i tagsene. Søker dere etter et ord som står i et spørsmål, kan dere derfor få treff på alle svarene på surveyen. Søket skiller ikke mellom store og små bokstaver.
 
 Fritekst som så ut som personopplysninger, er maskert før svaret ble lagret, så søket treffer den maskerte teksten. Hva som maskeres, står under [PII-maskering](/referanse/sikkerhet#pii-maskering).
 
@@ -60,11 +60,11 @@ Under **Vis kun** i **Filter** finnes to valg:
 | Valg | Viser |
 | :--- | :--- |
 | **Med tekstsvar** | Svar der brukeren har skrevet noe i et fritekstfelt |
-| **Lav score (1-2)** | Svar med vurdering 2 eller lavere på det første vurderingsspørsmålet |
+| **Lav score** | Svar med lav score på det første vurderingsspørsmålet: 1–2 for emoji og stjerner, 0–2 for NPS og tommel ned for tommel |
 
 Søkefeltet og **Med tekstsvar** vises ikke når den valgte surveyen er **Top Tasks** eller **Task Priority**. For å lese fritekstsvarene om hindringer i Top Tasks klikker dere på et uttrykk under **Det som hindrer brukerne** på **Dashboard**, eller på lenken **Se alle tilbakemeldinger** nederst i kortet. Begge åpner **Tilbakemeldinger** med fritekstsvarene. Lenkene setter på filteret for tekstsvar uten å vise det som et valgt filter. **Nullstill** fjerner det, men fjerner også valgt survey, app og periode, så dere må velge surveyen på nytt etterpå.
 
-**Lav score (1-2)** er for oversikten over flere surveyer. Når dere har valgt én survey med et vurderingsspørsmål, filtrerer dere i stedet på vurderingen under **Svar-filtre**. For **Top Tasks**, **Discovery** og **Task Priority** vises filteret ikke.
+**Lav score** er for oversikten over flere surveyer. Når dere har valgt én survey med et vurderingsspørsmål, filtrerer dere i stedet på vurderingen under **Svar-filtre**. For **Top Tasks**, **Discovery** og **Task Priority** vises filteret ikke.
 
 ## Tags {#tags}
 

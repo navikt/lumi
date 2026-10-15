@@ -173,7 +173,7 @@ export function FilterMenu({
                           })
                         }
                       >
-                        Lav score (1-2)
+                        Lav score
                       </ActionMenu.CheckboxItem>
                     ) : null}
                   </ActionMenu.Group>

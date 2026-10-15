@@ -10,6 +10,7 @@ import type { FeedbackDto } from "~/types/api";
 import { parseChoiceParam } from "~/utils/choiceFilterUtils";
 import { parsePhraseParam } from "~/utils/phraseFilterUtils";
 import { parseRatingParam } from "~/utils/ratingFilterUtils";
+import { isLowRating } from "../helpers";
 import { phraseStemKey, textMatchesPhrase } from "../stats/phrases";
 import { mockThemes } from "../themes";
 import { getDiscoveryTaskText, getTaskIdFromFeedback } from "./extractors";
@@ -124,12 +125,17 @@ export function applyFeedbackFilters(
   }
 
   if (filters.lowRating === "true") {
-    filtered = filtered.filter((item) =>
-      item.answers.some(
-        (answer) =>
-          answer.fieldType === "RATING" && (answer.value.rating ?? 3) <= 2,
-      ),
-    );
+    // Like the API: only the first rating answer counts.
+    filtered = filtered.filter((item) => {
+      const ratingAnswer = item.answers.find(
+        (answer) => answer.fieldType === "RATING",
+      );
+      return (
+        ratingAnswer?.fieldType === "RATING" &&
+        ratingAnswer.value.rating != null &&
+        isLowRating(ratingAnswer.value)
+      );
+    });
   }
 
   const ratingFilters = parseRatingParam(filters.rating);
