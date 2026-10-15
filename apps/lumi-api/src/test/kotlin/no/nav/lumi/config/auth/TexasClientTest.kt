@@ -13,6 +13,7 @@ import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldNotContain
@@ -265,9 +266,14 @@ class TexasClientTest : FunSpec({
 
             error.message.orEmpty() shouldNotContain "Z123456"
             error.cause shouldBe null
+            logs.messages.shouldNotBeEmpty()
             logs.messages.forEach { message ->
                 message shouldNotContain "Z123456"
                 message shouldNotContain "Kari Nordmann"
+            }
+            logs.throwableTexts.forEach { text ->
+                text shouldNotContain "Z123456"
+                text shouldNotContain "Kari Nordmann"
             }
         }
         meterRegistry.get("texas_introspection_errors_total").counter().count() shouldBe 1.0
