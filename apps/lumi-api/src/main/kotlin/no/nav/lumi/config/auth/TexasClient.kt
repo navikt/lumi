@@ -37,6 +37,16 @@ private const val ENGINE_CONNECT_ATTEMPTS = 1
 private const val ENGINE_KEEP_ALIVE_TIME_MS = 0L
 
 /**
+ * Texas could not give an answer about the token: the sidecar was unreachable,
+ * timed out, answered with a 5xx status or gave an answer that could not be read.
+ * Callers should answer 503, not 401, so the client can retry.
+ *
+ * It carries no cause: parser errors quote the Texas answer, which holds claims
+ * such as NAVident, name and e-mail.
+ */
+class TexasUnavailableException(message: String) : RuntimeException(message)
+
+/**
  * Client for NAIS Texas sidecar - Token Exchange as a Service.
  * Uses the introspection endpoint to validate tokens.
  * 
@@ -108,7 +118,10 @@ class TexasClient(
         .register(meterRegistry)
 
     private val errorCounter = Counter.builder("texas_introspection_errors_total")
-        .description("Number of Texas introspection errors")
+        .description(
+            "Number of Texas introspections that failed because Texas was unreachable, " +
+                "answered 5xx or gave an answer that could not be read"
+        )
         .register(meterRegistry)
 
     private val introspectionTimer = Timer.builder("texas_introspection_duration_seconds")
@@ -117,7 +130,10 @@ class TexasClient(
 
     /**
      * Introspect a token using the Texas sidecar.
-     * Returns the introspection result with claims if valid, or null if invalid.
+     * Returns the introspection result with claims if valid, or null if Texas rejected the token.
+     *
+     * @throws TexasUnavailableException when Texas could not be reached, answered 5xx
+     *   or gave an answer that could not be read
      */
     suspend fun introspect(token: String, identityProvider: String): TexasIntrospectionResult? {
         val cacheKey = cacheKey(token, identityProvider)
@@ -184,6 +200,11 @@ class TexasClient(
                         finalStatusTag = attemptStatusTag
                         finalOutcomeTag = attemptOutcomeTag
                         // Avoid logging response bodies; they may contain claims/PII.
+                        if (response.status.value >= 500) {
+                            errorCounter.increment()
+                            log.error("Texas introspection is unavailable, status: ${response.status}")
+                            throw TexasUnavailableException("Texas introspection answered ${response.status.value}")
+                        }
                         log.warn("Texas introspection failed with status: ${response.status}")
                         return null
                     }
@@ -212,6 +233,8 @@ class TexasClient(
                     finalOutcomeTag = attemptOutcomeTag
                     finalExceptionTag = attemptExceptionTag
                     throw e
+                } catch (e: TexasUnavailableException) {
+                    throw e
                 } catch (e: Exception) {
                     attemptStatusTag = "exception"
                     attemptOutcomeTag = "exception"
@@ -231,8 +254,9 @@ class TexasClient(
                         )
                     } else {
                         errorCounter.increment()
-                        log.error("Failed to introspect token", e)
-                        return null
+                        // Log only the type: a parser error quotes the Texas answer, which holds claims.
+                        log.error("Failed to introspect token: {}", attemptExceptionTag)
+                        throw TexasUnavailableException("Texas introspection failed: $attemptExceptionTag")
                     }
                 } finally {
                     recordIntrospectionHttpMetrics(
@@ -243,7 +267,7 @@ class TexasClient(
                     )
                 }
             }
-            return null
+            throw TexasUnavailableException("Texas introspection failed after $MAX_INTROSPECTION_ATTEMPTS attempts")
         } finally {
             val duration = Duration.ofNanos(System.nanoTime() - start)
             introspectionTimer.record(duration)

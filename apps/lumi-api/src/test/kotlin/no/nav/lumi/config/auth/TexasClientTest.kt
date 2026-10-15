@@ -15,6 +15,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.string.shouldNotContain
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.coroutines.async
@@ -22,6 +23,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
+import no.nav.lumi.CapturedLogs
 import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.time.Clock
@@ -212,10 +214,91 @@ class TexasClientTest : FunSpec({
             throw IllegalStateException("boom")
         }
 
-        client.introspect("token", identityProvider = "entra_id") shouldBe null
+        shouldThrow<TexasUnavailableException> {
+            client.introspect("token", identityProvider = "entra_id")
+        }
 
         calls.get() shouldBe 1
         meterRegistry.get("texas_introspection_errors_total").counter().count() shouldBe 1.0
+    }
+
+    test("reports texas as unavailable when transient transport failures persist after the retry") {
+        val calls = AtomicInteger()
+        val meterRegistry = SimpleMeterRegistry()
+        val client = texasClient(calls, fixedClock, meterRegistry) {
+            throw SocketTimeoutException("read timed out")
+        }
+
+        shouldThrow<TexasUnavailableException> {
+            client.introspect("token", identityProvider = "entra_id")
+        }
+
+        calls.get() shouldBe 2
+        meterRegistry.get("texas_introspection_errors_total").counter().count() shouldBe 1.0
+    }
+
+    test("reports texas as unavailable on a 5xx status and counts the error") {
+        val calls = AtomicInteger()
+        val meterRegistry = SimpleMeterRegistry()
+        val client = texasClient(calls, fixedClock, meterRegistry) {
+            statusReply(HttpStatusCode.BadGateway)
+        }
+
+        shouldThrow<TexasUnavailableException> {
+            client.introspect("token", identityProvider = "entra_id")
+        }
+
+        calls.get() shouldBe 1
+        meterRegistry.get("texas_introspection_errors_total").counter().count() shouldBe 1.0
+    }
+
+    test("reports texas as unavailable when a 200 answer cannot be read, without logging the answer") {
+        val meterRegistry = SimpleMeterRegistry()
+        val client = texasClient(AtomicInteger(), fixedClock, meterRegistry) {
+            jsonReply("""{"active":"ja","NAVident":"Z123456","name":"Kari Nordmann"}""")
+        }
+
+        CapturedLogs("TexasClient").use { logs ->
+            val error = shouldThrow<TexasUnavailableException> {
+                client.introspect("token", identityProvider = "entra_id")
+            }
+
+            error.message.orEmpty() shouldNotContain "Z123456"
+            error.cause shouldBe null
+            logs.messages.forEach { message ->
+                message shouldNotContain "Z123456"
+                message shouldNotContain "Kari Nordmann"
+            }
+        }
+        meterRegistry.get("texas_introspection_errors_total").counter().count() shouldBe 1.0
+    }
+
+    test("treats a 4xx status as a rejected token without counting an error") {
+        val meterRegistry = SimpleMeterRegistry()
+        val client = texasClient(AtomicInteger(), fixedClock, meterRegistry) {
+            statusReply(HttpStatusCode.BadRequest)
+        }
+
+        client.introspect("token", identityProvider = "entra_id") shouldBe null
+
+        meterRegistry.get("texas_introspection_errors_total").counter().count() shouldBe 0.0
+    }
+
+    test("reports texas as unavailable to concurrent callers waiting on the same token") {
+        val calls = AtomicInteger()
+        val client = texasClient(calls, fixedClock) {
+            delay(25)
+            statusReply(HttpStatusCode.InternalServerError)
+        }
+
+        coroutineScope {
+            val first = async { runCatching { client.introspect("token", identityProvider = "entra_id") } }
+            val second = async { runCatching { client.introspect("token", identityProvider = "entra_id") } }
+
+            (first.await().exceptionOrNull() is TexasUnavailableException) shouldBe true
+            (second.await().exceptionOrNull() is TexasUnavailableException) shouldBe true
+        }
+        calls.get() shouldBe 1
     }
 
     test("reuses http meters for repeated introspection with the same tags") {
