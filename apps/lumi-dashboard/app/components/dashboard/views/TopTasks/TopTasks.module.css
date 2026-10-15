@@ -26,69 +26,6 @@
   cursor: help;
 }
 
-.expandableContent {
-  padding: 1rem;
-  background-color: var(--ax-bg-neutral-soft);
-}
-
-.themeRowDimmed {
-  opacity: 0.7;
-}
-
-.themeDot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.themeBlue {
-  background-color: #3b82f6;
-}
-
-.themeEmerald {
-  background-color: #10b981;
-}
-
-.themeAmber {
-  background-color: #f59e0b;
-}
-
-.themeRed {
-  background-color: #ef4444;
-}
-
-.themeViolet {
-  background-color: #8b5cf6;
-}
-
-.themePink {
-  background-color: #ec4899;
-}
-
-.themeCyan {
-  background-color: #06b6d4;
-}
-
-.themeLime {
-  background-color: #84cc16;
-}
-
-.themeOrange {
-  background-color: #f97316;
-}
-
-.themeGray {
-  background-color: #9ca3af;
-}
-
-.themeExample {
-  margin-left: 18px;
-  margin-top: 0.25rem;
-  font-style: italic;
-}
-
 .successRate {
   font-weight: bold;
 }

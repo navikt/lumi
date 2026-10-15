@@ -401,11 +401,6 @@ export interface TopTaskStats {
   successRate: number;
   formattedSuccessRate: string;
   blockerCounts: Record<string, number>;
-  /** Blockers grouped by theme for expanded row display */
-  blockersByTheme?: Record<
-    string,
-    { themeName: string; color: string; count: number; examples: string[] }
-  >;
   // TPI (Task Performance Indicator) fields
   avgTimeMs?: number;
   targetTimeMs?: number;

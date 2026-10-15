@@ -1,30 +1,24 @@
 /**
  * Top Tasks stats calculation.
  *
- * Calculates task completion rates, TPI scores, and blocker themes.
+ * Calculates task completion rates, TPI scores, and blocker counts.
  */
 
 import type { FeedbackDto, TopTaskStats, TopTasksResponse } from "~/types/api";
-import { mockThemes } from "../themes";
 import { TopTasksFieldIds } from "../utils/extractors";
-import { matchesThemeKeywords } from "../utils/textAnalysis";
 import { applyFeedbackFilters } from "./common";
 
 // Internal type for aggregation with additional fields
 interface InternalTaskStats
-  extends Omit<
-    TopTaskStats,
-    "avgTimeMs" | "targetTimeMs" | "tpiScore" | "blockersByTheme"
-  > {
+  extends Omit<TopTaskStats, "avgTimeMs" | "targetTimeMs" | "tpiScore"> {
   totalDurationMs: number;
   durationCount: number;
-  blockerTexts: string[];
   latestSubmittedAt: string;
 }
 
 /**
  * Calculate Top Tasks stats from feedback items.
- * Includes task completion rates, TPI scores, and blocker theme analysis.
+ * Includes task completion rates, TPI scores, and blocker counts.
  */
 export function getMockTopTasksStats(
   items: FeedbackDto[],
@@ -87,7 +81,6 @@ export function getMockTopTasksStats(
         blockerCounts: {},
         totalDurationMs: 0,
         durationCount: 0,
-        blockerTexts: [],
         latestSubmittedAt: item.submittedAt,
       });
     }
@@ -109,7 +102,6 @@ export function getMockTopTasksStats(
 
       if (blocker) {
         stats.blockerCounts[blocker] = (stats.blockerCounts[blocker] || 0) + 1;
-        stats.blockerTexts.push(blocker);
       }
 
       // Aggregate duration
@@ -130,11 +122,6 @@ export function getMockTopTasksStats(
     }
   }
 
-  // Get blocker themes for categorization
-  const blockerThemes = mockThemes.filter(
-    (t) => t.analysisContext === "BLOCKER",
-  );
-
   const tasks: TopTaskStats[] = Array.from(taskMap.values()).map((stats) => {
     const rate =
       stats.totalCount > 0 ? stats.successCount / stats.totalCount : 0;
@@ -153,72 +140,10 @@ export function getMockTopTasksStats(
     const timeEfficiency = Math.min(1, targetTimeMs / (avgTimeMs || 1));
     const tpiScore = Math.round(rate * timeEfficiency * 100);
 
-    // Calculate blockersByTheme for this task
-    const blockersByTheme: Record<
-      string,
-      { themeName: string; color: string; count: number; examples: string[] }
-    > = {};
-
-    for (const theme of blockerThemes) {
-      blockersByTheme[theme.id] = {
-        themeName: theme.name,
-        color: theme.color ?? "#3b82f6",
-        count: 0,
-        examples: [],
-      };
-    }
-    blockersByTheme.annet = {
-      themeName: "Annet",
-      color: "#9ca3af",
-      count: 0,
-      examples: [],
-    };
-
-    for (const blockerText of stats.blockerTexts) {
-      let matchedAny = false;
-
-      for (const theme of blockerThemes) {
-        if (matchesThemeKeywords(blockerText, theme.keywords)) {
-          const themeEntry = blockersByTheme[theme.id];
-          if (themeEntry) {
-            themeEntry.count++;
-            if (
-              themeEntry.examples.length < 2 &&
-              !themeEntry.examples.includes(blockerText)
-            ) {
-              themeEntry.examples.push(blockerText);
-            }
-            matchedAny = true;
-          }
-        }
-      }
-
-      if (!matchedAny) {
-        const annetEntry = blockersByTheme.annet;
-        if (annetEntry) {
-          annetEntry.count++;
-          if (
-            annetEntry.examples.length < 2 &&
-            !annetEntry.examples.includes(blockerText)
-          ) {
-            annetEntry.examples.push(blockerText);
-          }
-        }
-      }
-    }
-
-    const filteredBlockersByTheme: typeof blockersByTheme = {};
-    for (const [key, value] of Object.entries(blockersByTheme)) {
-      if (value.count > 0) {
-        filteredBlockersByTheme[key] = value;
-      }
-    }
-
     const {
       totalDurationMs: _,
       durationCount: __,
-      blockerTexts: ___,
-      latestSubmittedAt: ____,
+      latestSubmittedAt: ___,
       ...rest
     } = stats;
 
@@ -229,10 +154,6 @@ export function getMockTopTasksStats(
       avgTimeMs,
       targetTimeMs,
       tpiScore,
-      blockersByTheme:
-        Object.keys(filteredBlockersByTheme).length > 0
-          ? filteredBlockersByTheme
-          : undefined,
     };
   });
 
