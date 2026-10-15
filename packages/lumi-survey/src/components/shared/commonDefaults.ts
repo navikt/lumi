@@ -11,6 +11,7 @@ export const DEFAULT_COPY = {
   successTitle: "Takk for tilbakemeldingen!",
   successBody: undefined,
   successPrimaryLabel: "Lukk",
+  minimizedButtonLabel: "Gi tilbakemelding",
 };
 
 export const DEFAULT_PERSONAL_DATA_NOTICE =

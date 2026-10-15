@@ -55,7 +55,7 @@ export interface LumiSurveyStyle {
   /**
    * Max height for the open panel as a CSS value.
    * Intended for embedded previews inside a constrained stage.
-   * @default "calc(100vh - 2rem)"
+   * @default "calc(100dvh - 2rem)", or "calc(100vh - 2rem)" without `dvh` support
    */
   panelMaxHeight?: string;
   /** Panel background color (Aksel token). @default "default" */

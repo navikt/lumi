@@ -1,7 +1,8 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import type React from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRatingSurvey } from "../../../presets";
 import type { SurveyDocumentV1 } from "../../surveyTypes.js";
 import { LumiSurveyDock } from "../LumiSurveyDock.js";
@@ -383,6 +384,338 @@ describe("LumiSurveyDock Accessibility", () => {
     expect(screen.getByRole("button", { name: /vertsside/i })).toHaveFocus();
   });
 
+  describe("when the receipt hides the dock completely", () => {
+    const hostNodes: HTMLElement[] = [];
+
+    const addHostElement = <K extends keyof HTMLElementTagNameMap>(
+      tagName: K,
+      setup: (element: HTMLElementTagNameMap[K]) => void,
+    ) => {
+      const element = document.createElement(tagName);
+      setup(element);
+      document.body.prepend(element);
+      hostNodes.push(element);
+      return element;
+    };
+
+    const renderDockAfterHost = (
+      success?: React.ComponentProps<typeof LumiSurveyDock>["success"],
+    ) =>
+      render(
+        <LumiSurveyDock
+          surveyId="focus-return-test"
+          survey={survey}
+          transport={mockTransport}
+          behavior={{ storageStrategy: "none" }}
+          success={success}
+        />,
+      );
+
+    const answerAndCloseReceipt = async (
+      user: ReturnType<typeof userEvent.setup>,
+    ) => {
+      await user.click(await screen.findByRole("radio", { name: /5\./i }));
+      await user.click(screen.getByRole("button", { name: /send/i }));
+      await screen.findByRole("heading", {
+        name: /takk for tilbakemeldingen/i,
+      });
+      // The receipt has two close controls; the primary one is last.
+      const closeButtons = screen.getAllByRole("button", { name: "Lukk" });
+      await user.click(closeButtons[closeButtons.length - 1]);
+    };
+
+    afterEach(() => {
+      for (const node of hostNodes.splice(0)) {
+        node.remove();
+      }
+      document.body.removeAttribute("tabindex");
+    });
+
+    it("returns focus to the element that had it before the dock", async () => {
+      const host = addHostElement("button", (button) => {
+        button.textContent = "Vertsside";
+      });
+      const user = userEvent.setup();
+      renderDockAfterHost();
+      await screen.findByRole("radio", { name: /5\./i });
+
+      host.focus();
+      await answerAndCloseReceipt(user);
+
+      expect(
+        document.querySelector('[data-feedback-id="focus-return-test"]'),
+      ).not.toBeInTheDocument();
+      expect(host).toHaveFocus();
+    });
+
+    it("returns focus after an automatic close as well", async () => {
+      const host = addHostElement("button", (button) => {
+        button.textContent = "Vertsside";
+      });
+      const user = userEvent.setup();
+      renderDockAfterHost({ autoClose: true, autoCloseDelayMs: 10 });
+      await screen.findByRole("radio", { name: /5\./i });
+
+      host.focus();
+      await user.click(screen.getByRole("radio", { name: /5\./i }));
+      await user.click(screen.getByRole("button", { name: /send/i }));
+
+      await waitFor(() => {
+        expect(host).toHaveFocus();
+      });
+    });
+
+    it("falls back to #maincontent when the earlier element is gone", async () => {
+      const main = addHostElement("main", (element) => {
+        element.id = "maincontent";
+      });
+      const host = addHostElement("button", (button) => {
+        button.textContent = "Vertsside";
+      });
+      const other = addHostElement("button", (button) => {
+        button.textContent = "Annen knapp";
+      });
+      const user = userEvent.setup();
+      renderDockAfterHost();
+      await screen.findByRole("radio", { name: /5\./i });
+
+      host.focus();
+      await user.click(screen.getByRole("radio", { name: /5\./i }));
+      host.remove();
+      await user.click(screen.getByRole("button", { name: /send/i }));
+      await screen.findByRole("heading", {
+        name: /takk for tilbakemeldingen/i,
+      });
+      const closeButtons = screen.getAllByRole("button", { name: "Lukk" });
+      await user.click(closeButtons[closeButtons.length - 1]);
+
+      expect(main).toHaveFocus();
+      expect(main).toHaveAttribute("tabindex", "-1");
+
+      // The temporary tabindex leaves with focus, so the host tab order stays.
+      other.focus();
+      expect(main).not.toHaveAttribute("tabindex");
+    });
+
+    it("keeps a tabindex the page has set on #maincontent", async () => {
+      const main = addHostElement("main", (element) => {
+        element.id = "maincontent";
+        element.setAttribute("tabindex", "-1");
+      });
+      const other = addHostElement("button", (button) => {
+        button.textContent = "Annen knapp";
+      });
+      const user = userEvent.setup();
+      renderDockAfterHost();
+
+      await answerAndCloseReceipt(user);
+
+      expect(main).toHaveFocus();
+      other.focus();
+      expect(main).toHaveAttribute("tabindex", "-1");
+    });
+
+    it("skips an earlier element that can no longer take focus", async () => {
+      const main = addHostElement("main", (element) => {
+        element.id = "maincontent";
+      });
+      const host = addHostElement("button", (button) => {
+        button.textContent = "Vertsside";
+      });
+      const user = userEvent.setup();
+      renderDockAfterHost();
+      await screen.findByRole("radio", { name: /5\./i });
+
+      host.focus();
+      await user.click(screen.getByRole("radio", { name: /5\./i }));
+      host.disabled = true;
+      await user.click(screen.getByRole("button", { name: /send/i }));
+      await screen.findByRole("heading", {
+        name: /takk for tilbakemeldingen/i,
+      });
+      const closeButtons = screen.getAllByRole("button", { name: "Lukk" });
+      await user.click(closeButtons[closeButtons.length - 1]);
+
+      expect(host).not.toHaveFocus();
+      expect(main).toHaveFocus();
+    });
+
+    it("falls back to the body when the page has no #maincontent", async () => {
+      const user = userEvent.setup();
+      renderDockAfterHost();
+
+      await answerAndCloseReceipt(user);
+
+      expect(document.activeElement).toBe(document.body);
+      expect(document.body).toHaveAttribute("tabindex", "-1");
+    });
+  });
+
+  describe("language marking", () => {
+    const englishSurvey: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      intro: { title: "Welcome", body: "Two short questions." },
+      pages: [
+        {
+          id: "first",
+          title: "About your visit",
+          description: "Answer both questions.",
+          questions: [
+            {
+              id: "task",
+              type: "singleChoice",
+              prompt: "What did you come to do?",
+              description: "Pick one.",
+              options: [
+                { value: "apply", label: "Apply" },
+                { value: "read", label: "Read" },
+              ],
+            },
+            { id: "comment", type: "text", prompt: "Anything else?" },
+          ],
+        },
+        {
+          id: "second",
+          questions: [{ id: "rating", type: "rating", prompt: "How was it?" }],
+        },
+      ],
+      success: { title: "Thank you!", body: "We read every answer." },
+    };
+
+    const renderEnglishDock = (
+      props: Partial<React.ComponentProps<typeof LumiSurveyDock>> = {},
+    ) =>
+      render(
+        <LumiSurveyDock
+          surveyId="lang-prop-test"
+          survey={englishSurvey}
+          transport={mockTransport}
+          behavior={{ storageStrategy: "none" }}
+          {...props}
+        />,
+      );
+
+    const langOf = (element: Element) =>
+      element.closest("[lang]")?.getAttribute("lang") ?? null;
+
+    const expectOptionalSuffixesInBokmal = () => {
+      const suffixes = screen.getAllByText("(valgfritt)");
+      expect(suffixes.length).toBeGreaterThan(0);
+      for (const suffix of suffixes) {
+        expect(langOf(suffix)).toBe("nb");
+      }
+    };
+
+    it("inherits the page language without lang, apart from built-in copy", async () => {
+      const user = userEvent.setup();
+      renderEnglishDock();
+
+      const aside = await screen.findByRole("complementary", {
+        name: "Tilbakemeldingspanel",
+      });
+      expect(aside).not.toHaveAttribute("lang");
+      expect(langOf(screen.getByText("Welcome"))).toBeNull();
+      expect(langOf(screen.getByText("Two short questions."))).toBeNull();
+      expect(langOf(screen.getByRole("button", { name: "Start" }))).toBe("nb");
+
+      await user.click(screen.getByRole("button", { name: "Start" }));
+
+      expect(langOf(screen.getByText("About your visit"))).toBeNull();
+      expect(langOf(screen.getByText("What did you come to do?"))).toBeNull();
+      expect(langOf(screen.getByText("Apply"))).toBeNull();
+      expect(langOf(screen.getByRole("button", { name: "Neste" }))).toBe("nb");
+      expectOptionalSuffixesInBokmal();
+
+      await user.click(screen.getByRole("button", { name: "Lukk" }));
+
+      expect(
+        langOf(screen.getByRole("button", { name: "Gi tilbakemelding" })),
+      ).toBe("nb");
+    });
+
+    it("marks text from the survey with lang", async () => {
+      const user = userEvent.setup();
+      renderEnglishDock({ lang: "en" });
+
+      expect(langOf(await screen.findByText("Welcome"))).toBe("en");
+      expect(langOf(screen.getByText("Two short questions."))).toBe("en");
+      expect(screen.getByRole("complementary")).not.toHaveAttribute("lang");
+
+      await user.click(screen.getByRole("button", { name: "Start" }));
+
+      expect(langOf(screen.getByText("About your visit"))).toBe("en");
+      expect(langOf(screen.getByText("Answer both questions."))).toBe("en");
+      expect(langOf(screen.getByText("What did you come to do?"))).toBe("en");
+      expect(langOf(screen.getByText("Pick one."))).toBe("en");
+      expect(langOf(screen.getByText("Apply"))).toBe("en");
+      expect(langOf(screen.getByText("Anything else?"))).toBe("en");
+      // Built-in copy keeps its own Bokmål marking.
+      expect(langOf(screen.getByRole("button", { name: "Neste" }))).toBe("nb");
+      expectOptionalSuffixesInBokmal();
+    });
+
+    it("leaves copy replaced through labels to the page language", async () => {
+      const user = userEvent.setup();
+      render(
+        <LumiSurveyDock
+          surveyId="lang-labels-test"
+          survey={survey}
+          transport={mockTransport}
+          behavior={{ storageStrategy: "none" }}
+          labels={{ submit: "Send feedback", minimizedButton: "Give feedback" }}
+          success={{ primaryLabel: "Close" }}
+        />,
+      );
+
+      await user.click(await screen.findByRole("radio", { name: /5\./i }));
+      expect(
+        langOf(screen.getByRole("button", { name: "Send feedback" })),
+      ).toBeNull();
+
+      await user.click(screen.getByRole("button", { name: "Send feedback" }));
+
+      // The default receipt title is still built-in copy.
+      expect(
+        langOf(
+          await screen.findByRole("heading", {
+            name: /takk for tilbakemeldingen/i,
+          }),
+        ),
+      ).toBe("nb");
+      expect(langOf(screen.getByRole("button", { name: "Close" }))).toBeNull();
+    });
+
+    it("marks the default minimized button and leaves a replaced one alone", async () => {
+      const { unmount } = render(
+        <LumiSurveyDock
+          surveyId="lang-minimized-test"
+          survey={survey}
+          transport={mockTransport}
+          behavior={{ storageStrategy: "none", initialOpen: false }}
+        />,
+      );
+      expect(
+        langOf(
+          await screen.findByRole("button", { name: "Gi tilbakemelding" }),
+        ),
+      ).toBe("nb");
+      unmount();
+
+      render(
+        <LumiSurveyDock
+          surveyId="lang-minimized-test"
+          survey={survey}
+          transport={mockTransport}
+          behavior={{ storageStrategy: "none", initialOpen: false }}
+          labels={{ minimizedButton: "Give feedback" }}
+        />,
+      );
+      expect(
+        langOf(await screen.findByRole("button", { name: "Give feedback" })),
+      ).toBeNull();
+    });
+  });
+
   it("moves focus to the new question heading after Next and Back", async () => {
     const user = userEvent.setup();
     render(
@@ -475,7 +808,9 @@ describe("LumiSurveyDock Accessibility", () => {
 
     await user.click(await screen.findByRole("button", { name: "Neste" }));
     expect(
-      await screen.findByText("Du må rette svarene før du kan fortsette:"),
+      await screen.findByRole("heading", {
+        name: "Du må rette svarene før du kan fortsette:",
+      }),
     ).toHaveFocus();
 
     const results = await axe.run(container);

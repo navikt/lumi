@@ -11,8 +11,21 @@ import {
 import React, { useCallback, useEffect, useRef } from "react";
 import type { LumiSurveyAnswerValue, LumiSurveyQuestion } from "../../../core";
 import { getAnswerValidationIssue } from "../../../core/validation.js";
-import { formatQuestionPrompt } from "../../questions/utils/formatQuestionPrompt.js";
 import type { CanonicalSurveyPage } from "../../shared/canonicalSurvey.js";
+import {
+  DEFAULT_COPY,
+  DEFAULT_PERSONAL_DATA_NOTICE,
+} from "../../shared/commonDefaults.js";
+import {
+  BuiltInText,
+  builtInCopyLang,
+  QuestionPrompt,
+  useSurveyLang,
+} from "../../shared/surveyLanguage.js";
+
+const DEFAULT_NEXT_LABEL = "Neste";
+const DEFAULT_BACK_LABEL = "Tilbake";
+
 import { CLASS_NAMES } from "../classNames.js";
 import type {
   ProgressProps,
@@ -85,6 +98,7 @@ export const SurveyFormContent = React.memo(
     transportErrorMessage,
     disabled,
   }: SurveyFormContentProps) => {
+    const surveyLang = useSurveyLang();
     // Destructure grouped props
     const {
       isStepMode = false,
@@ -97,8 +111,8 @@ export const SurveyFormContent = React.memo(
       disableWhenIncomplete = true,
       onNext,
       onBack,
-      nextLabel = "Neste",
-      backLabel = "Tilbake",
+      nextLabel = DEFAULT_NEXT_LABEL,
+      backLabel = DEFAULT_BACK_LABEL,
     } = stepNavigation;
 
     const {
@@ -121,6 +135,20 @@ export const SurveyFormContent = React.memo(
     const stepStatus = hasBranching
       ? `Steg ${currentStepNumber}`
       : `Steg ${currentStepNumber} av ${totalSteps}`;
+    // Built-in copy is marked as Bokmål; text the app replaced inherits the
+    // page language.
+    const submitText = isSubmitting ? submitPendingLabel : submitLabel;
+    const submitLang = builtInCopyLang(
+      isSubmitting
+        ? submitPendingLabel === DEFAULT_COPY.submitPendingLabel
+        : submitLabel === DEFAULT_COPY.submitLabel,
+    );
+    const noticeLang = builtInCopyLang(
+      personalDataNoticeBody === DEFAULT_PERSONAL_DATA_NOTICE,
+    );
+    const transportErrorLang = builtInCopyLang(
+      transportErrorMessage === DEFAULT_COPY.transportErrorMessage,
+    );
     // Stable onChange handlers per question-id so React.memo on
     // DockQuestionRenderer can skip re-renders when props haven't changed.
     const onQuestionChangeRef = useRef(onQuestionChange);
@@ -203,7 +231,15 @@ export const SurveyFormContent = React.memo(
       <ErrorSummary
         ref={errorSummaryRef}
         size="small"
-        heading={validationSummaryHeading}
+        heading={
+          <BuiltInText
+            isDefault={
+              validationSummaryHeading === DEFAULT_COPY.validationSummaryHeading
+            }
+          >
+            {validationSummaryHeading}
+          </BuiltInText>
+        }
       >
         {validationMissing.map((questionId) => {
           const question = orderedQuestions.find(
@@ -212,9 +248,17 @@ export const SurveyFormContent = React.memo(
           const issue = question
             ? getAnswerValidationIssue(question, answers[questionId])
             : undefined;
-          const questionLabel = question
-            ? formatQuestionPrompt(question)
-            : validationErrorMessage;
+          const questionLabel = question ? (
+            <QuestionPrompt question={question} />
+          ) : (
+            <BuiltInText
+              isDefault={
+                validationErrorMessage === DEFAULT_COPY.validationErrorMessage
+              }
+            >
+              {validationErrorMessage}
+            </BuiltInText>
+          );
           return (
             <ErrorSummary.Item
               key={questionId}
@@ -224,9 +268,20 @@ export const SurveyFormContent = React.memo(
                 focusQuestionField(questionAnchorPrefix, questionId);
               }}
             >
-              {issue?.type === "textTooLong"
-                ? `${questionLabel}: ${textTooLongErrorMessage(issue.maxLength)}`
-                : questionLabel}
+              {questionLabel}
+              {issue?.type === "textTooLong" && (
+                <>
+                  {": "}
+                  <BuiltInText
+                    isDefault={
+                      textTooLongErrorMessage ===
+                      DEFAULT_COPY.textTooLongErrorMessage
+                    }
+                  >
+                    {textTooLongErrorMessage(issue.maxLength)}
+                  </BuiltInText>
+                </>
+              )}
             </ErrorSummary.Item>
           );
         })}
@@ -239,7 +294,7 @@ export const SurveyFormContent = React.memo(
           isStepMode &&
           currentStep >= 0 &&
           (hasBranching || totalSteps > 1) && (
-            <VStack gap="space-4">
+            <VStack gap="space-4" lang={builtInCopyLang(true)}>
               <BodyShort size="small" aria-hidden>
                 {stepStatus}
               </BodyShort>
@@ -273,13 +328,13 @@ export const SurveyFormContent = React.memo(
 
                 {/* Show privacy notice when a text field is visible */}
                 {showPersonalDataNotice && (
-                  <Alert variant="warning" role="status">
+                  <Alert variant="warning" role="status" lang={noticeLang}>
                     {personalDataNoticeBody}
                   </Alert>
                 )}
 
                 {hasTransportError && (
-                  <Alert variant="error" role="alert">
+                  <Alert variant="error" role="alert" lang={transportErrorLang}>
                     {transportErrorMessage}
                   </Alert>
                 )}
@@ -291,6 +346,7 @@ export const SurveyFormContent = React.memo(
                       type="button"
                       onClick={onBack}
                       disabled={isSubmitting}
+                      lang={builtInCopyLang(backLabel === DEFAULT_BACK_LABEL)}
                     >
                       {backLabel}
                     </Button>
@@ -299,17 +355,19 @@ export const SurveyFormContent = React.memo(
                     <Button
                       key="submit-btn"
                       type="submit"
+                      lang={submitLang}
                       loading={isSubmitting}
                       disabled={
                         isSubmitting || (disableWhenIncomplete && !canGoNext)
                       }
                     >
-                      {isSubmitting ? submitPendingLabel : submitLabel}
+                      {submitText}
                     </Button>
                   ) : (
                     <Button
                       key="next-btn"
                       type="button"
+                      lang={builtInCopyLang(nextLabel === DEFAULT_NEXT_LABEL)}
                       onClick={onNext}
                       disabled={
                         isSubmitting || (disableWhenIncomplete && !canGoNext)
@@ -336,12 +394,12 @@ export const SurveyFormContent = React.memo(
                             className={CLASS_NAMES.groupHeader}
                           >
                             {page.title && (
-                              <Heading level="2" size="small">
+                              <Heading level="2" size="small" lang={surveyLang}>
                                 {page.title}
                               </Heading>
                             )}
                             {page.description && (
-                              <BodyShort size="small">
+                              <BodyShort size="small" lang={surveyLang}>
                                 {page.description}
                               </BodyShort>
                             )}
@@ -363,7 +421,7 @@ export const SurveyFormContent = React.memo(
                     )}
 
                 {showPersonalDataNotice && (
-                  <Alert variant="warning" role="status">
+                  <Alert variant="warning" role="status" lang={noticeLang}>
                     {personalDataNoticeBody}
                   </Alert>
                 )}
@@ -371,15 +429,16 @@ export const SurveyFormContent = React.memo(
                 <HStack gap="space-8" wrap>
                   <Button
                     type="submit"
+                    lang={submitLang}
                     loading={isSubmitting}
                     disabled={isSubmitBlocked || isSubmitting}
                   >
-                    {isSubmitting ? submitPendingLabel : submitLabel}
+                    {submitText}
                   </Button>
                 </HStack>
 
                 {hasTransportError && (
-                  <Alert variant="error" role="alert">
+                  <Alert variant="error" role="alert" lang={transportErrorLang}>
                     {transportErrorMessage}
                   </Alert>
                 )}

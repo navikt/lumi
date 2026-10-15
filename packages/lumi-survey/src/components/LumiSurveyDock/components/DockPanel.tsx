@@ -9,8 +9,13 @@ import {
 import type React from "react";
 import type { ComponentProps } from "react";
 import type { LumiSurveyAnswerValue, LumiSurveyQuestion } from "../../../core";
-import { formatQuestionPrompt } from "../../questions/utils/formatQuestionPrompt.js";
 import type { CanonicalSurveyPage } from "../../shared/canonicalSurvey.js";
+import { DEFAULT_COPY } from "../../shared/commonDefaults.js";
+import {
+  builtInCopyLang,
+  QuestionPrompt,
+  useSurveyLang,
+} from "../../shared/surveyLanguage.js";
 import { CLASS_NAMES, joinClassNames } from "../classNames.js";
 import type {
   IntroProps,
@@ -132,8 +137,16 @@ export const DockPanel = ({
    * made it resize mid-interaction as answers revealed follow-ups, and made
    * a page title indistinguishable from the question right beneath it.
    */
+  const surveyLang = useSurveyLang();
   const headerIsPageTitle = Boolean(headerTitle);
-  const activeHeading = headerTitle ?? formatQuestionPrompt(activeQuestion);
+  const activeHeading = headerTitle ?? (
+    <QuestionPrompt question={activeQuestion} />
+  );
+  // The default receipt title is built-in copy, not survey text.
+  const successTitleLang =
+    successTitle === DEFAULT_COPY.successTitle
+      ? builtInCopyLang(true)
+      : surveyLang;
   const activeDescription = headerTitle
     ? headerDescription
     : (headerDescription ?? activeQuestion.description);
@@ -176,6 +189,7 @@ export const DockPanel = ({
                   className={CLASS_NAMES.ratingHeading}
                   id={introHeadingId}
                   tabIndex={-1}
+                  lang={surveyLang}
                 >
                   {introTitle}
                 </Heading>
@@ -220,6 +234,7 @@ export const DockPanel = ({
                     className={CLASS_NAMES.ratingHeading}
                     id={successHeadingId}
                     tabIndex={-1}
+                    lang={successTitleLang}
                   >
                     {successTitle}
                   </Heading>
@@ -231,6 +246,7 @@ export const DockPanel = ({
                       className={CLASS_NAMES.ratingHeading}
                       id={promptHeadingId}
                       tabIndex={-1}
+                      lang={headerIsPageTitle ? surveyLang : undefined}
                     >
                       {activeHeading}
                     </Heading>
@@ -239,6 +255,7 @@ export const DockPanel = ({
                         size="small"
                         className={CLASS_NAMES.ratingDescription}
                         id={promptDescriptionId}
+                        lang={surveyLang}
                       >
                         {activeDescription}
                       </BodyShort>
@@ -258,7 +275,14 @@ export const DockPanel = ({
                   showTitle={false}
                   announce={Boolean(successBody)}
                 />
-                <Button onClick={onClose}>{successPrimaryLabel}</Button>
+                <Button
+                  onClick={onClose}
+                  lang={builtInCopyLang(
+                    successPrimaryLabel === DEFAULT_COPY.successPrimaryLabel,
+                  )}
+                >
+                  {successPrimaryLabel}
+                </Button>
               </VStack>
             ) : (
               <SurveyFormContent

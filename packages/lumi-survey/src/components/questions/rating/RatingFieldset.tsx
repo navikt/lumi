@@ -2,7 +2,7 @@ import { BodyShort, Box, Fieldset, Heading, VStack } from "@navikt/ds-react";
 import type { ComponentProps, ReactNode } from "react";
 import { useId } from "react";
 import type { RatingQuestion } from "../../../core/types.js";
-import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
+import { QuestionPrompt, useSurveyLang } from "../../shared/surveyLanguage.js";
 
 interface RatingFieldsetProps {
   question: RatingQuestion;
@@ -64,7 +64,8 @@ export function RatingFieldset({
     descriptionId,
     hasError ? errorId : undefined,
   );
-  const promptText = formatQuestionPrompt(question);
+  const surveyLang = useSurveyLang();
+  const promptText = <QuestionPrompt question={question} />;
 
   // Exactly one name source for the group:
   // - visible prompt: the heading inside the legend (named via Aksel's legend
@@ -98,7 +99,7 @@ export function RatingFieldset({
         aria-invalid={hasError || undefined}
       >
         {question.description && !hideDescription && (
-          <BodyShort id={fallbackDescriptionId}>
+          <BodyShort id={fallbackDescriptionId} lang={surveyLang}>
             {question.description}
           </BodyShort>
         )}

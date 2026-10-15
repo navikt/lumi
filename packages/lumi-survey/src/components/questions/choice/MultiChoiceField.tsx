@@ -4,7 +4,11 @@ import type {
   ChoiceQuestion,
   LumiSurveyAnswerValue,
 } from "../../../core/types.js";
-import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
+import {
+  BuiltInText,
+  QuestionPrompt,
+  SurveyText,
+} from "../../shared/surveyLanguage.js";
 import { useChoiceOptions } from "./useChoiceOptions.js";
 
 interface MultiChoiceFieldProps {
@@ -31,18 +35,23 @@ export const MultiChoiceField = ({
   const maxSelections = question.maxSelections;
   const selectionLimitReached =
     maxSelections !== undefined && selected.length >= maxSelections;
-  const description = [
-    question.description,
-    maxSelections ? `Velg opptil ${maxSelections}` : undefined,
-  ]
-    .filter(Boolean)
-    .join(" • ");
+  const limitText = maxSelections ? `Velg opptil ${maxSelections}` : undefined;
+  const description =
+    question.description || limitText ? (
+      <>
+        {question.description && (
+          <SurveyText>{question.description}</SurveyText>
+        )}
+        {question.description && limitText && " • "}
+        {limitText && <BuiltInText>{limitText}</BuiltInText>}
+      </>
+    ) : undefined;
 
   return (
     <CheckboxGroup
-      legend={formatQuestionPrompt(question)}
+      legend={<QuestionPrompt question={question} />}
       hideLegend={hideLabel}
-      description={description || undefined}
+      description={description}
       value={selected}
       onChange={(nextValues: string[]) => {
         if (maxSelections && nextValues.length > maxSelections) return;
@@ -55,13 +64,14 @@ export const MultiChoiceField = ({
         <Checkbox
           key={option.value}
           value={option.value}
+          // Aksel takes a plain string here, so it cannot carry `lang`.
           description={option.description}
           disabled={
             disabled ||
             (selectionLimitReached && !selected.includes(option.value))
           }
         >
-          {option.label}
+          <SurveyText>{option.label}</SurveyText>
         </Checkbox>
       ))}
     </CheckboxGroup>

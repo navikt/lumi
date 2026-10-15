@@ -5,7 +5,11 @@ import type {
   ChoiceQuestion,
   LumiSurveyAnswerValue,
 } from "../../../core/types.js";
-import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
+import {
+  BuiltInText,
+  QuestionPrompt,
+  SurveyText,
+} from "../../shared/surveyLanguage.js";
 import { useChoiceOptions } from "./useChoiceOptions.js";
 
 interface ComboboxMultiChoiceFieldProps {
@@ -79,25 +83,29 @@ export const ComboboxMultiChoiceField = ({
   };
 
   // Build description with selection limit
-  const description = useMemo(() => {
-    const parts: string[] = [];
-    if (question.description) {
-      parts.push(question.description);
+  const limitText = useMemo(() => {
+    if (!maxSelections) {
+      return undefined;
     }
-    if (maxSelections) {
-      const remaining = maxSelections - selected.length;
-      if (remaining > 0) {
-        parts.push(`Velg ${remaining} til`);
-      } else {
-        parts.push(`Maks ${maxSelections} valgt`);
-      }
-    }
-    return parts.join(" • ");
-  }, [question.description, maxSelections, selected.length]);
+    const remaining = maxSelections - selected.length;
+    return remaining > 0
+      ? `Velg ${remaining} til`
+      : `Maks ${maxSelections} valgt`;
+  }, [maxSelections, selected.length]);
+  const description =
+    question.description || limitText ? (
+      <>
+        {question.description && (
+          <SurveyText>{question.description}</SurveyText>
+        )}
+        {question.description && limitText && " • "}
+        {limitText && <BuiltInText>{limitText}</BuiltInText>}
+      </>
+    ) : undefined;
 
   return (
     <UNSAFE_Combobox
-      label={formatQuestionPrompt(question)}
+      label={<QuestionPrompt question={question} />}
       hideLabel={hideLabel}
       description={description}
       options={comboboxOptions}
