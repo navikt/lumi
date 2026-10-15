@@ -17,6 +17,7 @@ import {
   placeQuestion,
   replaceQuestion,
   sources,
+  valueRuleDependents,
 } from "../questionEditorModel";
 import { findHandoffIssues } from "../surveyDocument";
 
@@ -89,6 +90,40 @@ function assertUniqueIds(value: SurveyDocumentV1) {
   expect(new Set(questions.map((item) => item.id)).size).toBe(questions.length);
   expect(() => validateSurveyDocumentV1(value)).not.toThrow();
 }
+
+describe("value rule dependents", () => {
+  it("counts only rules that depend on the source's answer value", () => {
+    const answered = text("answered", {
+      questionId: "choice",
+      operator: "EXISTS",
+    });
+    const mixed = text("mixed", {
+      all: [
+        { questionId: "other", operator: "EQ", value: "x" },
+        { questionId: "choice", operator: "EXISTS" },
+      ],
+    });
+    const anyValue = text("anyValue", {
+      any: [
+        { questionId: "choice", operator: "EXISTS" },
+        { questionId: "choice", operator: "NEQ", value: "b" },
+      ],
+    });
+    const metadata = text("metadata", {
+      field: "METADATA",
+      key: "choice",
+      operator: "EQ",
+      value: "a",
+    });
+
+    expect(
+      valueRuleDependents(
+        [choice, followup, nested, answered, mixed, anyValue, metadata],
+        "choice",
+      ).map((question) => question.id),
+    ).toEqual(["followup", "anyValue"]);
+  });
+});
 
 describe("inserting and replacing questions", () => {
   it("inserts after the complete selected page without moving its grouped questions", () => {

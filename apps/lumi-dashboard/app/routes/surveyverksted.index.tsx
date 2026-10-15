@@ -148,7 +148,7 @@ type SurveyTemplateId =
   | "taskPriority"
   | "custom";
 
-const surveyTemplates: Record<
+export const surveyTemplates: Record<
   SurveyTemplateId,
   { label: string; description: string; create: () => SurveyDocumentV1 }
 > = {

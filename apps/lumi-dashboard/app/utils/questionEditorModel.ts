@@ -19,6 +19,25 @@ export function ruleLeaves(question: Question) {
         : [rule];
 }
 
+/**
+ * Questions with a rule that depends on the answer value of `sourceId`.
+ * A rule that only requires an answer (`EXISTS`) still holds when the source's
+ * answer type or scale changes, so it is not counted.
+ */
+export function valueRuleDependents(
+  questions: Question[],
+  sourceId: string,
+): Question[] {
+  return questions.filter((question) =>
+    ruleLeaves(question).some(
+      (leaf) =>
+        "questionId" in leaf &&
+        leaf.questionId === sourceId &&
+        leaf.operator !== "EXISTS",
+    ),
+  );
+}
+
 export function sources(question: Question): string[] {
   return [
     ...new Set(
