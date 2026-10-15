@@ -581,7 +581,9 @@ class TeamAuthorizationPluginTest {
 
         assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
         assertFalse(handlerInvoked.get())
-        val body = response.bodyAsText()
-        assertTrue(body.contains("Kunne ikke hente teamtilgang"))
+        val error = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+        assertEquals("Kunne ikke hente teamtilgang akkurat nå", error.getValue("message").jsonPrimitive.content)
+        // The dashboard shows the details as they are, so the Kolide tip has to be here.
+        assertTrue(error.getValue("details").jsonPrimitive.content.contains("Kolide"))
     }
 }

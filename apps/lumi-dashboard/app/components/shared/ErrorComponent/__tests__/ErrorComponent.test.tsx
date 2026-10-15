@@ -31,12 +31,14 @@ describe("ErrorComponent", () => {
     expect(reportDashboardRouteError).toHaveBeenCalledExactlyOnceWith(error);
   });
 
-  it("shows the Kolide and Nais tip when the team lookup is unavailable", () => {
+  it("shows the API's message and details when the team lookup is unavailable", () => {
+    const details =
+      "Dette er ofte midlertidig, for eksempel når Nais API er nede. Jobber du utenfor Nav-nettet, sjekk at Kolide kjører. Prøv igjen om litt.";
     const error = new ApiErrorException({
       status: 503,
       type: ErrorType.INTERNAL_SERVER_ERROR,
       message: "Kunne ikke hente teamtilgang akkurat nå",
-      details: "Dette er ofte midlertidig (f.eks. NAIS API-nedetid).",
+      details,
       timestamp: "2026-10-01T00:00:00Z",
     });
 
@@ -46,10 +48,10 @@ describe("ErrorComponent", () => {
       screen.getByRole("heading", { name: "Midlertidig problem" }),
     ).toBeInTheDocument();
     expect(screen.getByText(error.message)).toBeInTheDocument();
-    expect(screen.getByText(/Kolide/)).toBeInTheDocument();
+    expect(screen.getByText(details)).toBeInTheDocument();
   });
 
-  it("leaves out the team tip when the login could not be checked", () => {
+  it("adds no Kolide tip of its own when the login could not be checked", () => {
     const error = new ApiErrorException({
       status: 503,
       type: ErrorType.INTERNAL_SERVER_ERROR,

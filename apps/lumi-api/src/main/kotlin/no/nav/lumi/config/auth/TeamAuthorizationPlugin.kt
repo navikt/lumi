@@ -17,6 +17,11 @@ internal const val NO_TEAM_ACCESS_DETAILS =
         "vent opptil fem minutter og last siden på nytt."
 internal const val NO_TEAM_ACCESS_HELP_URL = "https://navikt.github.io/lumi/dashboard/tilgang#teamtilgang"
 
+/** Shown as is by the dashboard, which no longer adds its own tip. */
+internal const val TEAM_LOOKUP_UNAVAILABLE_DETAILS =
+    "Dette er ofte midlertidig, for eksempel når Nais API er nede. Jobber du utenfor Nav-nettet, " +
+        "sjekk at Kolide kjører. Prøv igjen om litt."
+
 /**
  * Minimal abstraction so TeamAuthorizationPlugin can be tested without calling the real NAIS API.
  */
@@ -110,7 +115,7 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
 
                     throw ApiErrorException.ServiceUnavailableException(
                         errorMessage = "Kunne ikke hente teamtilgang akkurat nå",
-                        details = "Dette er ofte midlertidig (f.eks. NAIS API-nedetid). Prøv igjen om litt.",
+                        details = TEAM_LOOKUP_UNAVAILABLE_DETAILS,
                     )
                 }
             }

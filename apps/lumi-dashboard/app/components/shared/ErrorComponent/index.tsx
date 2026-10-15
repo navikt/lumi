@@ -13,18 +13,6 @@ export function safeHelpUrl(helpUrl: string | null | undefined): string | null {
   }
 }
 
-/**
- * The API answers 503 both when the team lookup in Nais fails and when Texas
- * cannot check the login. Only the team lookup has a Kolide or Nais cause, and
- * the API names it in the message or the details.
- */
-export function isTeamAccessProblem(
-  message: string | null | undefined,
-  details: string | null | undefined,
-): boolean {
-  return /teamtilgang|team lookup/i.test(`${message ?? ""} ${details ?? ""}`);
-}
-
 export function ErrorComponent({ error }: { error: unknown }) {
   const normalizedError = useMemo(
     () =>
@@ -58,6 +46,9 @@ export function ErrorComponent({ error }: { error: unknown }) {
       );
     }
 
+    // The API answers 503 both when the team lookup in Nais fails and when
+    // Texas cannot check the login. Its details say what to try, so the
+    // dashboard adds no tip of its own.
     if (status === 503) {
       const { details } = error.error;
       return (
@@ -67,13 +58,6 @@ export function ErrorComponent({ error }: { error: unknown }) {
           </Heading>
           <BodyShort>{message || "Prøv igjen om litt."}</BodyShort>
           {details && <BodyShort className="mt-2">{details}</BodyShort>}
-          {isTeamAccessProblem(message, details) && (
-            <BodyShort className="mt-2">
-              Tips: Hvis du jobber utenfor NAV-nett, sjekk at Kolide kjører og
-              prøv å laste siden på nytt. Hvis NAIS API-er er nede, prøv igjen
-              litt senere.
-            </BodyShort>
-          )}
         </Alert>
       );
     }
