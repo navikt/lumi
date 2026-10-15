@@ -28,7 +28,8 @@ Det kan ta opptil ti minutter før en endring i teammedlemskapet virker i dashbo
 
 | Melding | Hva den betyr |
 | :--- | :--- |
-| **Du har ikke tilgang til noen team i Lumi** | Lumi fant ingen team for dere i Nais. Sørg for at dere er lagt til i et team i Nais Console, vent opptil fem minutter og last siden på nytt. |
+| **Du må være medlem av et team i Nais Console for å bruke Lumi** | Lumi fant ingen team for dere i Nais. Sørg for at dere er lagt til i et team i Nais Console, vent opptil fem minutter og last siden på nytt. |
 | **Du har ikke tilgang til team: …** | Adressen har `team=` med et team dere ikke er medlem av, for eksempel i en lenke noen har delt. Fjern `team=` fra adressen, eller be om å bli lagt til i teamet. |
-| **Midlertidig problem med teamtilgang** | Lumi fikk ikke hentet teamene fra Nais. Prøv igjen om litt. |
+| **Kunne ikke hente teamtilgang akkurat nå** | Lumi fikk ikke hentet teamene fra Nais. Prøv igjen om litt. |
+| **Kunne ikke kontrollere innloggingen akkurat nå** | Lumi fikk ikke kontrollert innloggingen, fordi Texas i Nais ikke svarte. Prøv igjen om litt. |
 | **Du er ikke logget inn** | Innloggingen har gått ut. Last siden på nytt. |

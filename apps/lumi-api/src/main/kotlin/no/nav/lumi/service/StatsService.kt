@@ -80,7 +80,7 @@ class StatsService(
             "rating" to ratingValue,
             // Bump when the cached response semantics change. This prevents a
             // rolling deploy from serving values written by an older version.
-            "resultVersion" to "4",
+            "resultVersion" to "5",
         )
             .filter { (_, value) -> value != null }
             .map { (key, value) -> "${enc(key)}=${enc(value!!)}" }
@@ -212,10 +212,8 @@ class StatsService(
                 )
             }
 
-            // Calculate low rating count (ratings 1-2)
-            val lowRatingCount = stats.byRating
-                .filter { (rating, _) -> rating.toIntOrNull()?.let { it <= 2 } ?: false }
-                .values.sum()
+            // Counted per rating variant in the repository, so thumbs up is not a low score
+            val lowRatingCount = stats.lowRatingCount
 
             StatsOverviewResponse(
                 generatedAt = java.time.Instant.now().toString(),

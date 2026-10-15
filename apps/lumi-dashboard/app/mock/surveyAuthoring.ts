@@ -137,6 +137,13 @@ export async function createMockSurveyRevision(input: {
   if (project.draftVersion !== input.expectedDraftVersion) {
     throw new Error("Draft changed since it was validated");
   }
+  // Mirror the API: an unchanged draft returns its latest revision as is.
+  const latest = [...revisions.values()]
+    .filter((revision) => revision.projectId === project.id)
+    .sort((a, b) => b.revisionNumber - a.revisionNumber)[0];
+  if (latest && latest.draftVersion === project.draftVersion) {
+    return structuredClone(latest);
+  }
   const document = validateSurveyDocumentV1(structuredClone(project.document));
   // Mirror the API's release gate: drafts may be incomplete, revisions not.
   const handoffIssue = findHandoffIssues(document)[0];

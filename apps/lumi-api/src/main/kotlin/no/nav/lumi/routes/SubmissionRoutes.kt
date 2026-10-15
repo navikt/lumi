@@ -130,7 +130,7 @@ private suspend fun respondWithSubmissionResult(
     when (val saveResult = submissionOutcome.saveResult) {
         is SaveResult.Created -> {
             log.info(
-                "Saved feedback id=${saveResult.id} team=${identity.team} app=${identity.app} surveyId=${submission.surveyId} definitionHash=${submissionOutcome.definitionHash} flowPinned=${submissionOutcome.flowHash != null}"
+                "Saved feedback team=${identity.team} app=${identity.app} surveyId=${submission.surveyId} definitionHash=${submissionOutcome.definitionHash} flowPinned=${submissionOutcome.flowHash != null}"
             )
             call.respond(HttpStatusCode.Created, mapOf("id" to saveResult.id))
             return SubmissionMetricOutcome.CREATED
@@ -138,7 +138,7 @@ private suspend fun respondWithSubmissionResult(
 
         is SaveResult.Duplicate -> {
             log.info(
-                "Deduplicated feedback id=${saveResult.id} team=${identity.team} app=${identity.app} surveyId=${submission.surveyId}"
+                "Deduplicated feedback team=${identity.team} app=${identity.app} surveyId=${submission.surveyId}"
             )
             call.respond(
                 HttpStatusCode.OK,

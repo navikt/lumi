@@ -8,6 +8,7 @@ import no.nav.lumi.domain.TopTaskStats
 import no.nav.lumi.domain.TopTasksResponse
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import kotlin.math.roundToInt
 
 internal fun processTopTasks(feedbacks: List<FeedbackDto>): TopTasksResponse {
     val taskStatsMap = mutableMapOf<String, MutableMap<String, Int>>()
@@ -89,7 +90,7 @@ internal fun processTopTasks(feedbacks: List<FeedbackDto>): TopTasksResponse {
         val partial = stats["partial"] ?: 0
         val failure = stats["failure"] ?: 0
         val successRate = if (total > 0) (success.toDouble() / total.toDouble()) else 0.0
-        val formattedRate = "${(successRate * 100).toInt()}%"
+        val formattedRate = "${(successRate * 100).roundToInt()}%"
         val blockers = stats.filterKeys { it.startsWith("blocker_") }.mapKeys { it.key.removePrefix("blocker_") }
 
         TopTaskStats(

@@ -1,6 +1,5 @@
 package no.nav.lumi.repository
 
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -23,7 +22,6 @@ class FeedbackRepository(
     private val contextTagsRepository: FeedbackContextTagsRepository = FeedbackContextTagsRepository()
 ) {
     private val log = LoggerFactory.getLogger(FeedbackRepository::class.java)
-    private val json = Json { ignoreUnknownKeys = true }
     private val sensitiveDataFilter = SensitiveDataFilter.DEFAULT
 
     suspend fun findById(id: String, team: String): FeedbackDto? {
@@ -379,12 +377,8 @@ class FeedbackRepository(
     }
 
     private fun recordMatchesPhraseFilter(record: FeedbackDbRecord, fieldId: String, expectedStemKey: String): Boolean {
-        val jsonObj = try {
-            json.parseToJsonElement(record.feedbackJson).jsonObject
-        } catch (e: Exception) {
-            log.debug("Failed to parse feedback JSON for phrase filter id=${record.id}", e)
-            null
-        } ?: return false
+        val jsonObj = parseStoredFeedbackJson(record.feedbackJson, record.id, purpose = "phrase filter")
+            as? JsonObject ?: return false
         val answers = jsonObj["answers"] as? JsonArray ?: return false
 
         val surveyType = SurveyType.fromWireName(jsonObj.stringValue("surveyType"))

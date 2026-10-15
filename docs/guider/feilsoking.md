@@ -124,10 +124,12 @@ eksempelet gjør.
 | 401 | Tokenet mangler, er utløpt eller har feil utsteder. Ruten i eksempelet svarer selv 401 når brukerens token mangler eller er ugyldig, så sjekk loggen i backend for å se hvem som svarte. Et TokenX-token til `/api/azure/v1/feedback` gir 401, og det samme gjør et Entra ID-token til `/api/tokenx/v1/feedback`. | Bruk host, audience og sti fra samme [miljøblokk](/kom-i-gang/koble-til-backend#_2-sett-miljøvariabler-i-nais). |
 | 404 | Host og sti passer ikke sammen, for eksempel `/api/tokenx/v1/feedback` sendt til `lumi-submission-proxy`, som bare har endepunktet for Entra ID. | Bruk host, audience og sti fra samme miljøblokk. |
 | 409 | Surveyen er endret på en måte som ikke passer med definisjonen Lumi API har lagret for `surveyId`. Svaret er ikke lagret. | Se [Hvis API-et svarer med 409](/guider/survey-identitet#hvis-api-et-svarer-med-409). |
-| 413 | Payloaden er større enn 1 MB. Proxyen svarer også med 413 når headeren `Content-Length` mangler. | Send bare `transportPayload`. |
+| 411 | Proxyen fikk et kall uten headeren `Content-Length`. Gjelder bare `trygdeetaten.no` i dev. | Send hele payloaden i ett kall med `Content-Length`, ikke som en strøm. |
+| 413 | Payloaden er større enn 1 MB. | Send bare `transportPayload`. |
 | 429 | Appen har sendt mer enn 100 svar på ett minutt, eller samme bruker mer enn 15. I dev deler alle apper i `trygdeetaten.no` én grense gjennom proxyen. | Vent et minutt. Skjer det ofte, spør i [#lumi på Slack](https://nav-it.slack.com/archives/C0AG2FKSSMD). |
 | 500 | Feil i Lumi API eller proxyen. | Spør i #lumi. |
 | 502 | Proxyen fikk ikke sendt svaret videre til Lumi API. Gjelder bare `trygdeetaten.no` i dev. | Spør i #lumi. |
+| 503 | Lumi API eller proxyen fikk ikke kontrollert tokenet, fordi Texas i Nais ikke svarte. Svaret er ikke lagret. | Prøv igjen litt senere. Skjer det ofte, spør i #lumi. |
 
 ## Ingen data i dashboardet
 

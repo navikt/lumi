@@ -26,7 +26,23 @@ private val log = LoggerFactory.getLogger("SubmissionAuthPlugin")
  *
  * Submission routes must not store end-user identifiers.
  */
-class SubmissionAuthPluginConfig
+class SubmissionAuthPluginConfig {
+    /**
+     * Provides the Texas client used to introspect submission tokens in NAIS.
+     * Tests can supply a client backed by a mock engine.
+     */
+    var texasClientProvider: () -> TexasClient? = {
+        val nais = ServerEnv.current.nais
+        val endpoint = nais.tokenIntrospectionEndpoint
+        if (nais.isNais && endpoint != null) TexasClient(endpoint) else null
+    }
+
+    /**
+     * Allows the mock identity outside NAIS. It can never be turned on inside
+     * NAIS; tests disable it to exercise the Texas path.
+     */
+    var localMockIdentityEnabled: Boolean = true
+}
 
 private fun createSubmissionAuthPlugin(
     pluginName: String,
@@ -39,17 +55,11 @@ private fun createSubmissionAuthPlugin(
     name = pluginName,
     createConfiguration = ::SubmissionAuthPluginConfig,
 ) {
-    val env = ServerEnv.current
-    val isNais = env.nais.isNais
-    
-    val texasClient = if (isNais && env.nais.tokenIntrospectionEndpoint != null) {
-        TexasClient(env.nais.tokenIntrospectionEndpoint)
-    } else {
-        null
-    }
-    
+    val useLocalMockIdentity = pluginConfig.localMockIdentityEnabled && !ServerEnv.current.nais.isNais
+    val texasClient = pluginConfig.texasClientProvider()
+
     onCall { call ->
-        if (!isNais) {
+        if (useLocalMockIdentity) {
             // Local dev/tests - create mock identity
             log.warn("$pluginName: Running in local mode, using mock identity")
             call.attributes.put(
@@ -83,8 +93,15 @@ private fun createSubmissionAuthPlugin(
                 )
             }
 
-        val introspectionResult = client.introspect(token, identityProvider = identityProvider)
-        
+        val introspectionResult = try {
+            client.introspect(token, identityProvider = identityProvider)
+        } catch (e: TexasUnavailableException) {
+            // No cause: StatusPages logs the cause chain, and the reason is already logged by TexasClient.
+            throw ApiErrorException.ServiceUnavailableException(
+                errorMessage = "Token validation is temporarily unavailable for issuer=$identityProvider. Retry the request.",
+            )
+        }
+
         if (introspectionResult == null || !introspectionResult.active) {
             log.warn("$pluginName: Token validation failed")
             throw ApiErrorException.UnauthorizedException(

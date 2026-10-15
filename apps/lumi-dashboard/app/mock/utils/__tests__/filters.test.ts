@@ -121,6 +121,33 @@ describe("applyFeedbackFilters", () => {
     expect(filtered.map((i) => i.id).sort()).toEqual(["a", "c"]);
   });
 
+  it("counts only thumbs down as a low rating for thumbs", () => {
+    const thumbs = (id: string, rating: number) =>
+      makeItem({
+        id,
+        answers: [
+          {
+            fieldId: "rating",
+            fieldType: "RATING",
+            question: { label: "Var dette nyttig?" },
+            value: {
+              type: "rating",
+              rating,
+              ratingVariant: "thumbs",
+              ratingScale: 2,
+            },
+          },
+        ],
+      });
+
+    const filtered = applyFeedbackFilters(
+      [thumbs("thumbs-down", 1), thumbs("thumbs-up", 2)],
+      { lowRating: "true" },
+    );
+
+    expect(filtered.map((i) => i.id)).toEqual(["thumbs-down"]);
+  });
+
   it("filters by segment key:value (requires metadata)", () => {
     const filtered = applyFeedbackFilters(items, { segment: "k:v" });
     expect(filtered.map((i) => i.id)).toEqual(["a"]);

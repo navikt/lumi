@@ -72,18 +72,31 @@ class FeedbackStatsRepository {
                 }
             }
 
-            val ratingExpr = JsonbPathQueryFirstText(
-                FeedbackTable.feedbackJson,
-                "$.answers[*] ? (@.value.type == \"rating\").value.rating"
-            )
-            val ratingQuery = FeedbackTable.select(ratingExpr, FeedbackTable.id.count())
+            // Group by the first rating answer's value object, so rating and variant
+            // come from the same answer and the JSONPath runs once per row.
+            val firstRatingExpr = JsonbPathQueryFirstText(FeedbackTable.feedbackJson, FIRST_RATING_JSON_PATH)
+            val ratingQuery = FeedbackTable.select(firstRatingExpr, FeedbackTable.id.count())
             applyStatsFilters(ratingQuery, query)
-            ratingQuery.andWhere { ratingExpr.isNotNull() }
-            val byRating = ratingQuery
-                .groupBy(ratingExpr)
-                .associate { row ->
-                    row[ratingExpr] to row[FeedbackTable.id.count()].toInt()
+            ratingQuery.andWhere { firstRatingExpr.isNotNull() }
+            val ratingCounts = ratingQuery
+                .groupBy(firstRatingExpr)
+                .mapNotNull { row ->
+                    val value = json.parseToJsonElement(row[firstRatingExpr]) as? JsonObject
+                        ?: return@mapNotNull null
+                    val rating = (value["rating"] as? JsonPrimitive)?.contentOrNull
+                        ?: return@mapNotNull null
+                    Triple(
+                        rating,
+                        (value["ratingVariant"] as? JsonPrimitive)?.contentOrNull,
+                        row[FeedbackTable.id.count()].toInt(),
+                    )
                 }
+            val byRating = ratingCounts
+                .groupingBy { (rating, _, _) -> rating }
+                .fold(0) { total, (_, _, count) -> total + count }
+            val lowRatingCount = ratingCounts
+                .filter { (rating, variant, _) -> rating.toIntOrNull()?.let { isLowRating(it, variant) } ?: false }
+                .sumOf { (_, _, count) -> count }
 
             val appQuery = FeedbackTable.select(FeedbackTable.app, FeedbackTable.id.count())
             applyStatsFilters(appQuery, query)
@@ -126,6 +139,7 @@ class FeedbackStatsRepository {
                 countWithText = countWithText,
                 surveyType = surveyType,
                 byRating = byRating,
+                lowRatingCount = lowRatingCount,
                 byApp = byApp,
                 byDate = byDate,
                 bySurveyId = bySurveyId,

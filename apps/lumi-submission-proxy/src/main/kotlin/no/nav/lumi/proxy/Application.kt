@@ -23,6 +23,7 @@ import io.ktor.utils.io.readRemaining
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlin.coroutines.cancellation.CancellationException
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 
@@ -34,7 +35,18 @@ fun main() {
 
 fun Application.module() {
     val config = ProxyConfig.fromEnvironment()
+    proxyModule(
+        config = config,
+        texasClient = config.tokenIntrospectionEndpoint?.let { TexasClient(it) },
+        httpClient = createForwardingClient(),
+    )
+}
 
+internal fun Application.proxyModule(
+    config: ProxyConfig,
+    texasClient: TexasClient?,
+    httpClient: HttpClient,
+) {
     install(CallLogging) { level = Level.INFO }
     install(ServerContentNegotiation) {
         json(Json { ignoreUnknownKeys = true })
@@ -43,6 +55,18 @@ fun Application.module() {
         exception<ProxyAuthException> { call, cause ->
             logger.warn("Authentication failed: ${cause.message}")
             call.respondText(cause.message ?: "Unauthorized", status = HttpStatusCode.Unauthorized)
+        }
+        exception<ProxyTexasUnavailableException> { call, cause ->
+            // The message holds only a status or an exception type, never the Texas answer.
+            logger.error("Texas introspection unavailable: ${cause.message}")
+            call.respondText(
+                "Token validation is temporarily unavailable. Retry the request.",
+                status = HttpStatusCode.ServiceUnavailable,
+            )
+        }
+        exception<ProxyLengthRequiredException> { call, cause ->
+            logger.warn("Payload error: ${cause.message}")
+            call.respondText(cause.message ?: "Length required", status = HttpStatusCode.LengthRequired)
         }
         exception<ProxyPayloadException> { call, cause ->
             logger.warn("Payload error: ${cause.message}")
@@ -53,9 +77,6 @@ fun Application.module() {
             call.respondText("Internal server error", status = HttpStatusCode.InternalServerError)
         }
     }
-
-    val texasClient = config.tokenIntrospectionEndpoint?.let { TexasClient(it) }
-    val httpClient = createForwardingClient()
 
     routing {
         get("/internal/isAlive") { call.respondText("OK") }
@@ -125,7 +146,7 @@ private const val MAX_BODY_BYTES = 1_048_576L
 private suspend fun receiveBody(call: ApplicationCall): String {
     val contentLength = call.request.headers[HttpHeaders.ContentLength]?.toLongOrNull()
     if (contentLength == null) {
-        throw ProxyPayloadException("Missing Content-Length header")
+        throw ProxyLengthRequiredException("Missing Content-Length header")
     }
     if (contentLength > MAX_BODY_BYTES) {
         throw ProxyPayloadException("Payload too large")
@@ -150,37 +171,65 @@ private fun createForwardingClient() = HttpClient(CIO) {
 
 class ProxyAuthException(message: String) : RuntimeException(message)
 class ProxyPayloadException(message: String) : RuntimeException(message)
+class ProxyLengthRequiredException(message: String) : RuntimeException(message)
+
+/**
+ * Texas could not be reached, answered 5xx or gave an answer that could not be read,
+ * so the token could not be checked. Carries no cause, since parser errors quote the answer.
+ */
+class ProxyTexasUnavailableException(message: String) : RuntimeException(message)
 
 /**
  * Minimal Texas introspection client for this proxy.
  */
-class TexasClient(private val introspectionEndpoint: String) {
-    private val client = HttpClient(CIO) {
-        install(HttpTimeout) {
-            connectTimeoutMillis = 2_000
-            requestTimeoutMillis = 5_000
-            socketTimeoutMillis = 5_000
-        }
-        install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true; isLenient = true })
-        }
-    }
-
+class TexasClient(
+    private val introspectionEndpoint: String,
+    private val client: HttpClient = defaultTexasHttpClient(),
+) {
+    /**
+     * Returns the introspection result, or null when Texas rejected the token.
+     *
+     * @throws ProxyTexasUnavailableException when Texas could not be reached, answered 5xx
+     *   or gave an answer that could not be read
+     */
     suspend fun introspect(token: String): IntrospectionResult? {
-        return try {
-            val response = client.post(introspectionEndpoint) {
+        val response = try {
+            client.post(introspectionEndpoint) {
                 contentType(ContentType.Application.Json)
                 setBody(IntrospectionRequest(identityProvider = "entra_id", token = token))
             }
-            if (response.status != HttpStatusCode.OK) {
-                logger.warn("Texas introspection failed: ${response.status}")
-                return null
-            }
-            response.body<IntrospectionResult>()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            logger.error("Texas introspection error", e)
-            null
+            throw ProxyTexasUnavailableException("Texas introspection request failed: ${e::class.simpleName}")
         }
+
+        if (response.status.value >= 500) {
+            throw ProxyTexasUnavailableException("Texas introspection answered ${response.status.value}")
+        }
+        if (response.status != HttpStatusCode.OK) {
+            logger.warn("Texas introspection failed: ${response.status}")
+            return null
+        }
+        return try {
+            response.body<IntrospectionResult>()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // The parser error quotes the answer, which holds claims, so keep only its type.
+            throw ProxyTexasUnavailableException("Texas introspection answer could not be read: ${e::class.simpleName}")
+        }
+    }
+}
+
+private fun defaultTexasHttpClient() = HttpClient(CIO) {
+    install(HttpTimeout) {
+        connectTimeoutMillis = 2_000
+        requestTimeoutMillis = 5_000
+        socketTimeoutMillis = 5_000
+    }
+    install(ContentNegotiation) {
+        json(Json { ignoreUnknownKeys = true; isLenient = true })
     }
 }
 

@@ -143,6 +143,8 @@ fun Route.surveyAuthoringRoutes(
         ) {
             is CreateSurveyAuthoringRevisionResult.Created ->
                 call.respond(HttpStatusCode.Created, result.revision)
+            is CreateSurveyAuthoringRevisionResult.Unchanged ->
+                call.respond(HttpStatusCode.OK, result.revision)
             CreateSurveyAuthoringRevisionResult.NotFound ->
                 throw ApiErrorException.NotFoundException("Survey project not found")
             CreateSurveyAuthoringRevisionResult.DraftChanged ->

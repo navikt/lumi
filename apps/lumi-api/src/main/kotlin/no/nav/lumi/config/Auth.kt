@@ -10,6 +10,8 @@ import no.nav.lumi.config.auth.CallerIdentity
 import no.nav.lumi.config.auth.parseCallerIdentity
 import no.nav.lumi.config.auth.pseudonymizeIdentifier
 import no.nav.lumi.config.auth.TexasClient
+import no.nav.lumi.config.auth.TexasUnavailableException
+import no.nav.lumi.config.exception.ApiErrorException
 import org.slf4j.LoggerFactory
 
 private val logger = LoggerFactory.getLogger("Auth")
@@ -31,12 +33,7 @@ fun Application.configureAuth() {
         logger.info("Authentication enabled using NAIS Texas sidecar")
         
         install(Authentication) {
-            bearer(AZURE_REALM) {
-                realm = "lumi-api"
-                authenticate { tokenCredential ->
-                    validateTokenWithTexas(tokenCredential.token)
-                }
-            }
+            texasBearer(texasClient)
         }
     } else {
         logger.warn("Authentication is DISABLED - running in local/test mode")
@@ -61,10 +58,32 @@ fun Application.configureAuth() {
 }
 
 /**
+ * Bearer realm for dashboard calls, validated by the NAIS Texas sidecar.
+ * A rejected token gives 401. Texas being unavailable gives 503, so the
+ * dashboard can retry instead of treating the user as logged out.
+ */
+internal fun AuthenticationConfig.texasBearer(texasClient: TexasClient) {
+    bearer(AZURE_REALM) {
+        realm = "lumi-api"
+        authenticate { tokenCredential ->
+            validateTokenWithTexas(texasClient, tokenCredential.token)
+        }
+    }
+}
+
+/**
  * Validate token using NAIS Texas sidecar introspection endpoint.
  */
-private suspend fun validateTokenWithTexas(token: String): BrukerPrincipal? {
-    val result = texasClient.introspect(token, identityProvider = "entra_id")
+private suspend fun validateTokenWithTexas(texasClient: TexasClient, token: String): BrukerPrincipal? {
+    val result = try {
+        texasClient.introspect(token, identityProvider = "entra_id")
+    } catch (e: TexasUnavailableException) {
+        // No cause: StatusPages logs the cause chain, and the reason is already logged by TexasClient.
+        throw ApiErrorException.ServiceUnavailableException(
+            errorMessage = "Kunne ikke kontrollere innloggingen akkurat nå",
+            details = "Dette er som regel midlertidig. Prøv igjen om litt.",
+        )
+    }
 
     if (result == null) {
         logger.warn("Token validation failed - introspection returned null")

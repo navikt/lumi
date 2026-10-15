@@ -406,6 +406,56 @@ class SurveyAuthoringRoutesTest : FunSpec({
         }
     }
 
+    test("sharing an unchanged draft returns the latest revision, a changed draft gets a new one") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+            val created = client.post("/api/v1/intern/authoring/projects?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(createBody())
+            }
+            val projectId = Json.parseToJsonElement(created.bodyAsText()).jsonObject
+                .getValue("id").jsonPrimitive.content
+            val revisionsPath = "/api/v1/intern/authoring/projects/$projectId/revisions?team=team-test"
+
+            suspend fun share(expectedDraftVersion: Long) = client.post(revisionsPath) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody("""{"expectedDraftVersion":$expectedDraftVersion}""")
+            }
+
+            val first = share(expectedDraftVersion = 1)
+            first.status shouldBe HttpStatusCode.Created
+            val firstJson = Json.parseToJsonElement(first.bodyAsText()).jsonObject
+
+            val unchanged = share(expectedDraftVersion = 1)
+            unchanged.status shouldBe HttpStatusCode.OK
+            val unchangedJson = Json.parseToJsonElement(unchanged.bodyAsText()).jsonObject
+            unchangedJson.getValue("id").jsonPrimitive.content shouldBe
+                firstJson.getValue("id").jsonPrimitive.content
+            unchangedJson.getValue("revisionNumber").jsonPrimitive.content shouldBe "1"
+
+            client.put("/api/v1/intern/authoring/projects/$projectId/draft?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(updateBody(expectedVersion = 1, name = "Endret utkast"))
+            }.status shouldBe HttpStatusCode.OK
+
+            val changed = share(expectedDraftVersion = 2)
+            changed.status shouldBe HttpStatusCode.Created
+            val changedJson = Json.parseToJsonElement(changed.bodyAsText()).jsonObject
+            changedJson.getValue("revisionNumber").jsonPrimitive.content shouldBe "2"
+            changedJson.getValue("id").jsonPrimitive.content shouldNotBe
+                firstJson.getValue("id").jsonPrimitive.content
+
+            val listed = client.get(revisionsPath) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+            Json.parseToJsonElement(listed.bodyAsText()).jsonArray.size shouldBe 2
+        }
+    }
+
     test("revision creation rejects invalid drafts and stale versions") {
         testApplication {
             application { testModule() }

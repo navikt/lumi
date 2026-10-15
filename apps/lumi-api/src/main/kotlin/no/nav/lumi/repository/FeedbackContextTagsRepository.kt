@@ -156,9 +156,9 @@ class FeedbackContextTagsRepository {
                     filterClauses.add("AND jsonb_path_exists(feedback_json::jsonb, '\$.answers[*] ? (@.value.type == \"text\" && @.value.text != \"\")')")
                 }
 
-                // Low rating filter (1-2)
+                // Low rating filter, see isLowRating
                 if (lowRating) {
-                    filterClauses.add("AND (jsonb_path_query_first(feedback_json::jsonb, '\$.answers[*] ? (@.value.type == \"rating\").value.rating')::text)::int <= 2")
+                    filterClauses.add("AND (${lowRatingSqlPredicate("feedback_json")})")
                 }
 
                 val sql = buildString {

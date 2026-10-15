@@ -35,6 +35,47 @@ class FeedbackStatsRepositoryTest : FunSpec({
             allStats.bySurveyId.keys shouldBe setOf("survey-active", "survey-archived")
         }
 
+        test("counts low ratings per variant so thumbs up is not a low score") {
+            fun ratingJson(rating: Int, variant: String, scale: Int) = """
+                {
+                    "surveyId": "survey-low",
+                    "answers": [
+                        {"fieldId": "rating", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": $rating, "ratingVariant": "$variant", "ratingScale": $scale}}
+                    ]
+                }
+            """.trimIndent()
+            insertTestFeedbackWithJson(team = "flex", feedbackJson = ratingJson(1, "thumbs", 2))
+            insertTestFeedbackWithJson(team = "flex", feedbackJson = ratingJson(2, "thumbs", 2))
+            insertTestFeedbackWithJson(team = "flex", feedbackJson = ratingJson(2, "thumbs", 2))
+            insertTestFeedbackWithJson(team = "flex", feedbackJson = ratingJson(2, "emoji", 5))
+            insertTestFeedbackWithJson(team = "flex", feedbackJson = ratingJson(4, "emoji", 5))
+
+            val stats = repository.getStats(StatsQuery(team = "flex"))
+
+            stats.lowRatingCount shouldBe 2
+            stats.byRating shouldBe mapOf("1" to 1, "2" to 3, "4" to 1)
+        }
+
+        test("reads rating and variant for the low score from the same, first rating answer") {
+            fun twoRatingsJson(first: Pair<Int, String>, second: Pair<Int, String>) = """
+                {
+                    "surveyId": "survey-mixed",
+                    "answers": [
+                        {"fieldId": "first", "fieldType": "RATING", "question": {"label": "Nyttig?"}, "value": {"type": "rating", "rating": ${first.first}, "ratingVariant": "${first.second}", "ratingScale": 5}},
+                        {"fieldId": "second", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": ${second.first}, "ratingVariant": "${second.second}", "ratingScale": 5}}
+                    ]
+                }
+            """.trimIndent()
+            // Thumbs up first: a variant from the emoji answer would make 2 a low score.
+            insertTestFeedbackWithJson(team = "flex", feedbackJson = twoRatingsJson(2 to "thumbs", 1 to "emoji"))
+            // Emoji 2 first: a variant from the thumbs answer would hide this low score.
+            insertTestFeedbackWithJson(team = "flex", feedbackJson = twoRatingsJson(2 to "emoji", 1 to "thumbs"))
+
+            val stats = repository.getStats(StatsQuery(team = "flex"))
+
+            stats.lowRatingCount shouldBe 1
+        }
+
         test("returns correct statistics") {
             insertTestFeedback(team = "flex", rating = 4)
             insertTestFeedback(team = "flex", rating = 5)

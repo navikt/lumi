@@ -31,6 +31,45 @@ describe("ErrorComponent", () => {
     expect(reportDashboardRouteError).toHaveBeenCalledExactlyOnceWith(error);
   });
 
+  it("shows the API's message and details when the team lookup is unavailable", () => {
+    const details =
+      "Dette er ofte midlertidig, for eksempel når Nais API er nede. Jobber du utenfor Nav-nettet, sjekk at Kolide kjører. Prøv igjen om litt.";
+    const error = new ApiErrorException({
+      status: 503,
+      type: ErrorType.INTERNAL_SERVER_ERROR,
+      message: "Kunne ikke hente teamtilgang akkurat nå",
+      details,
+      timestamp: "2026-10-01T00:00:00Z",
+    });
+
+    render(<ErrorComponent error={error} />);
+
+    expect(
+      screen.getByRole("heading", { name: "Midlertidig problem" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(error.message)).toBeInTheDocument();
+    expect(screen.getByText(details)).toBeInTheDocument();
+  });
+
+  it("adds no Kolide tip of its own when the login could not be checked", () => {
+    const error = new ApiErrorException({
+      status: 503,
+      type: ErrorType.INTERNAL_SERVER_ERROR,
+      message: "Kunne ikke kontrollere innloggingen akkurat nå",
+      details: "Dette er som regel midlertidig. Prøv igjen om litt.",
+      timestamp: "2026-10-01T00:00:00Z",
+    });
+
+    render(<ErrorComponent error={error} />);
+
+    expect(
+      screen.getByRole("heading", { name: "Midlertidig problem" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(error.message)).toBeInTheDocument();
+    expect(screen.queryByText(/teamtilgang/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Kolide/)).not.toBeInTheDocument();
+  });
+
   it("renders and reports a plain Error unchanged", () => {
     const error = new Error("Test error message");
 

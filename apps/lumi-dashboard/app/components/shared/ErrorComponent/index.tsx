@@ -46,22 +46,18 @@ export function ErrorComponent({ error }: { error: unknown }) {
       );
     }
 
+    // The API answers 503 both when the team lookup in Nais fails and when
+    // Texas cannot check the login. Its details say what to try, so the
+    // dashboard adds no tip of its own.
     if (status === 503) {
       const { details } = error.error;
       return (
         <Alert variant="warning" className="m-4">
           <Heading spacing size="small" level="3">
-            Midlertidig problem med teamtilgang
+            Midlertidig problem
           </Heading>
-          <BodyShort>
-            {message || "Kunne ikke hente teamtilgang akkurat nå."}
-          </BodyShort>
+          <BodyShort>{message || "Prøv igjen om litt."}</BodyShort>
           {details && <BodyShort className="mt-2">{details}</BodyShort>}
-          <BodyShort className="mt-2">
-            Tips: Hvis du jobber utenfor NAV-nett, sjekk at Kolide kjører og
-            prøv å laste siden på nytt. Hvis NAIS API-er er nede, prøv igjen
-            litt senere.
-          </BodyShort>
         </Alert>
       );
     }
