@@ -94,14 +94,14 @@ fun Route.internalSubmissionRoutes(
                     val metricOutcome = when (val saveResult = submissionOutcome.saveResult) {
                         is SaveResult.Created -> {
                             log.info(
-                                "Internal submission: saved feedback id=${saveResult.id} team=${identity.team} app=${identity.app} surveyId=${submission.surveyId} definitionHash=${submissionOutcome.definitionHash} flowPinned=${submissionOutcome.flowHash != null}"
+                                "Internal submission: saved feedback team=${identity.team} app=${identity.app} surveyId=${submission.surveyId} definitionHash=${submissionOutcome.definitionHash} flowPinned=${submissionOutcome.flowHash != null}"
                             )
                             call.respond(HttpStatusCode.Created, mapOf("id" to saveResult.id))
                             SubmissionMetricOutcome.CREATED
                         }
                         is SaveResult.Duplicate -> {
                             log.info(
-                                "Internal submission: deduplicated feedback id=${saveResult.id} team=${identity.team} app=${identity.app} surveyId=${submission.surveyId}"
+                                "Internal submission: deduplicated feedback team=${identity.team} app=${identity.app} surveyId=${submission.surveyId}"
                             )
                             call.respond(
                                 HttpStatusCode.OK,

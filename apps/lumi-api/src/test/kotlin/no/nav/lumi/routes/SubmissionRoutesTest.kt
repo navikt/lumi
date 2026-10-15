@@ -18,6 +18,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import no.nav.lumi.CapturedLogs
 import no.nav.lumi.TestDatabase
 import no.nav.lumi.config.DatabaseHolder
 import no.nav.lumi.config.configureRateLimiting
@@ -1271,6 +1272,32 @@ class SubmissionRoutesTest : FunSpec({
 
             val (_, total, _) = repository.findPaginated(FeedbackQuery(team = "local-dev"))
             total shouldBe 1
+        }
+    }
+
+    test("should not log the feedback id for saved or deduplicated submissions") {
+        CapturedLogs("SubmissionRoutes").use { logs ->
+            testApplication {
+                application { testModule() }
+                val client = createTestClient()
+
+                val created = client.post("/api/tokenx/v1/feedback") {
+                    contentType(ContentType.Application.Json)
+                    setBody(submissionPayloadWithDedup("client-key-log-test"))
+                }
+                created.status shouldBe HttpStatusCode.Created
+                val id = Json.parseToJsonElement(created.bodyAsText()).jsonObject["id"]?.jsonPrimitive?.content!!
+
+                val duplicate = client.post("/api/azure/v1/feedback") {
+                    contentType(ContentType.Application.Json)
+                    setBody(submissionPayloadWithDedup("client-key-log-test"))
+                }
+                duplicate.status shouldBe HttpStatusCode.OK
+
+                logs.messages.any { it.startsWith("Saved feedback") } shouldBe true
+                logs.messages.any { it.startsWith("Deduplicated feedback") } shouldBe true
+                logs.messages.forEach { it shouldNotContain id }
+            }
         }
     }
 

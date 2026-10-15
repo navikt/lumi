@@ -382,7 +382,11 @@ class FeedbackRepository(
         val jsonObj = try {
             json.parseToJsonElement(record.feedbackJson).jsonObject
         } catch (e: Exception) {
-            log.debug("Failed to parse feedback JSON for phrase filter id=${record.id}", e)
+            log.debug(
+                "Failed to parse feedback JSON for phrase filter id={} errorType={}",
+                record.id,
+                e::class.simpleName,
+            )
             null
         } ?: return false
         val answers = jsonObj["answers"] as? JsonArray ?: return false

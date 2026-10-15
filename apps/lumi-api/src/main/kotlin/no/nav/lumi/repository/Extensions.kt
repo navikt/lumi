@@ -42,7 +42,8 @@ fun FeedbackDbRecord.toDto(tags: List<String> = emptyList()): FeedbackDto {
     val jsonElement = try {
         json.parseToJsonElement(feedbackJson)
     } catch (e: Exception) {
-        log.warn("Failed to parse feedback JSON for id=$id", e)
+        // The exception message can quote the stored answers, so log only its type.
+        log.warn("Failed to parse feedback JSON for id={} errorType={}", id, e::class.simpleName)
         return createEmptyDto(tags)
     }
     

@@ -23,6 +23,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import no.nav.lumi.CapturedLogs
 import no.nav.lumi.TestDatabase
 import no.nav.lumi.config.DatabaseHolder
 import no.nav.lumi.config.SubmissionObservability
@@ -645,6 +646,44 @@ class InternalSubmissionRoutesTest : FunSpec({
 
             val (_, total, _) = repository.findPaginated(FeedbackQuery(team = "teamsykefravr"))
             total shouldBe 1
+        }
+    }
+
+    test("should not log the feedback id for saved or deduplicated proxy submissions") {
+        CapturedLogs("InternalSubmissionRoutes").use { logs ->
+            testApplication {
+                application {
+                    configureSerialization()
+                    configureStatusPages()
+                    routing {
+                        internalSubmissionRoutes(
+                            feedbackService = FeedbackService(),
+                            submissionKey = TEST_PSK
+                        )
+                    }
+                }
+
+                val created = client.post("/api/internal/v1/feedback") {
+                    contentType(ContentType.Application.Json)
+                    header("X-Lumi-Submission-Key", TEST_PSK)
+                    header("X-Lumi-Caller-Identity", VALID_IDENTITY)
+                    setBody(validPayloadWithDedup("client-key-log-test"))
+                }
+                created.status shouldBe HttpStatusCode.Created
+                val id = Json.parseToJsonElement(created.bodyAsText()).jsonObject["id"]?.jsonPrimitive?.content!!
+
+                val duplicate = client.post("/api/internal/v1/feedback") {
+                    contentType(ContentType.Application.Json)
+                    header("X-Lumi-Submission-Key", TEST_PSK)
+                    header("X-Lumi-Caller-Identity", VALID_IDENTITY)
+                    setBody(validPayloadWithDedup("client-key-log-test"))
+                }
+                duplicate.status shouldBe HttpStatusCode.OK
+
+                logs.messages.any { it.startsWith("Internal submission: saved feedback") } shouldBe true
+                logs.messages.any { it.startsWith("Internal submission: deduplicated feedback") } shouldBe true
+                logs.messages.forEach { it shouldNotContain id }
+            }
         }
     }
 
