@@ -38,14 +38,21 @@ fun FeedbackDbRecord.createEmptyDto(tags: List<String> = emptyList()): FeedbackD
     )
 }
 
-fun FeedbackDbRecord.toDto(tags: List<String> = emptyList()): FeedbackDto {
-    val jsonElement = try {
+/**
+ * Parses stored feedback JSON, or returns null. The parser's message can quote
+ * the stored answers, so a failure logs only the exception type.
+ */
+internal fun parseStoredFeedbackJson(feedbackJson: String, id: String, purpose: String): JsonElement? =
+    try {
         json.parseToJsonElement(feedbackJson)
     } catch (e: Exception) {
-        // The exception message can quote the stored answers, so log only its type.
-        log.warn("Failed to parse feedback JSON for id={} errorType={}", id, e::class.simpleName)
-        return createEmptyDto(tags)
+        log.warn("Failed to parse feedback JSON for {} id={} errorType={}", purpose, id, e::class.simpleName)
+        null
     }
+
+fun FeedbackDbRecord.toDto(tags: List<String> = emptyList()): FeedbackDto {
+    val jsonElement = parseStoredFeedbackJson(feedbackJson, id, purpose = "display")
+        ?: return createEmptyDto(tags)
     
     val jsonObj = jsonElement.jsonObject
     val storedRedactionFlag = jsonObj["sensitiveDataRedacted"]?.jsonPrimitive?.booleanOrNull
