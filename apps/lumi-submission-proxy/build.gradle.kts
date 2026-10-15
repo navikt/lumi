@@ -21,7 +21,7 @@ repositories {
 val ktorVersion = "3.5.2"
 val logbackVersion = "1.6.5"
 val logstashVersion = "9.0"
-val nettyVersion = "4.2.17.Final"
+val nettyVersion = "4.2.19.Final"
 
 dependencies {
     implementationWithKtorVersionCheck(
