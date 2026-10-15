@@ -26,6 +26,7 @@ import { useDeleteFeedback } from "~/hooks/useDeleteFeedback";
 import { useFeedback } from "~/hooks/useFeedback";
 import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
 import { useSearchParams } from "~/hooks/useSearchParams";
+import { useTeamAccessDenied } from "~/hooks/useTeamAccessDenied";
 import { getTeamSubmissionPeriod } from "~/utils/dashboardPeriod";
 import { writeErrorText } from "~/utils/publicDemo";
 import {
@@ -55,6 +56,9 @@ interface FeedbackTableProps {
 
 export function FeedbackTable({ onResetFilters }: FeedbackTableProps = {}) {
   const feedbackQuery = useFeedback();
+  // FilterBar explains why the team's feedback cannot be fetched.
+  const teamAccessDenied = useTeamAccessDenied();
+  if (teamAccessDenied) return null;
 
   return (
     <DataFetchBoundary

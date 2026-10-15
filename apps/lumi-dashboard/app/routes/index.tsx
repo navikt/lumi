@@ -19,6 +19,7 @@ import { PrivacyMaskedNotice } from "~/components/shared/PrivacyMaskedNotice";
 import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
+import { useTeamAccessDenied } from "~/hooks/useTeamAccessDenied";
 import { searchSchema } from "~/schemas/searchSchema";
 import type { SurveyType } from "~/types/api";
 import { applyDashboardSearchDefaults } from "~/utils/dashboardSearchDefaults";
@@ -112,6 +113,8 @@ export const Route = createFileRoute("/")({
 
 function DashboardPage() {
   const { params, setParams } = useSearchParams();
+  // FilterBar explains why the team's data cannot be fetched.
+  const teamAccessDenied = useTeamAccessDenied();
   const statsQuery = useStats();
   const { data: stats, isPending } = statsQuery;
   // Shares the FilterBar query.
@@ -213,7 +216,7 @@ function DashboardPage() {
           {/* Keep recovery controls available when a broad query exceeds the analysis budget. */}
           <ActiveFiltersChips />
 
-          {teamHasNoAnswers ? (
+          {teamAccessDenied ? null : teamHasNoAnswers ? (
             <GetStartedEmptyState
               heading="Ingen svar ennå"
               description="Når appene deres sender inn svar via survey-widgeten, vises grafene her."

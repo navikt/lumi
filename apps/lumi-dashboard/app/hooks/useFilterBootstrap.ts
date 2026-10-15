@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { fetchFilterBootstrapServerFn } from "~/server/actions";
+import { ApiErrorException } from "~/types/errors";
 import type { FilterBootstrapResponse } from "~/types/schemas";
 
 export const FILTER_BOOTSTRAP_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -8,6 +9,25 @@ const MIN_REFETCH_INTERVAL_MS = 60 * 1000;
 
 export const filterBootstrapQueryKey = (team?: string) =>
   ["filterBootstrap", { team }] as const;
+
+/**
+ * Retries once, like the other queries, but not a 4xx answer from the API:
+ * a missing login or team access does not change on retry, and FilterBar
+ * explains it at once.
+ */
+export function shouldRetryFilterBootstrap(
+  failureCount: number,
+  error: unknown,
+): boolean {
+  if (
+    error instanceof ApiErrorException &&
+    error.error.status >= 400 &&
+    error.error.status < 500
+  ) {
+    return false;
+  }
+  return failureCount < 1;
+}
 
 export function getFilterBootstrapRefetchInterval(
   generatedAt: string | undefined,
@@ -65,6 +85,14 @@ export function useFilterBootstrap() {
     queryKey: filterBootstrapQueryKey(params.team),
     queryFn: () =>
       fetchFilterBootstrapServerFn({ data: { team: params.team } }),
+    // FilterBar writes the default team into the URL, which changes the key.
+    // The previous response already belongs to that team, so keep showing it
+    // instead of the filter skeleton while the new key loads.
+    placeholderData: (previousData) =>
+      previousData && previousData.selectedTeam === params.team
+        ? previousData
+        : undefined,
+    retry: shouldRetryFilterBootstrap,
     staleTime: FILTER_BOOTSTRAP_CACHE_TTL_MS,
     gcTime: 30 * 60 * 1000, // 30 minutes - keep in cache longer
     refetchInterval: (query) =>

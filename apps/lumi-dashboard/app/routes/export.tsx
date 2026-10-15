@@ -4,6 +4,7 @@ import { zodValidator } from "@tanstack/zod-adapter";
 import { ExportPanel } from "~/components/export/Panel";
 import { FilterBar } from "~/components/shared/FilterBar";
 import { Header } from "~/components/shared/Header";
+import { useTeamAccessDenied } from "~/hooks/useTeamAccessDenied";
 import { searchSchema } from "~/schemas/searchSchema";
 import { applyDashboardSearchDefaults } from "~/utils/dashboardSearchDefaults";
 
@@ -26,6 +27,9 @@ export const Route = createFileRoute("/export")({
 });
 
 function ExportPage() {
+  // FilterBar explains why the team's data cannot be fetched.
+  const teamAccessDenied = useTeamAccessDenied();
+
   return (
     <>
       <Header />
@@ -70,7 +74,7 @@ function ExportPage() {
             (fødselsnummer, e-post, telefonnummer osv.)
           </Alert>
 
-          <ExportPanel />
+          {teamAccessDenied ? null : <ExportPanel />}
         </VStack>
       </Box>
     </>

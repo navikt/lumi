@@ -49,6 +49,14 @@ const ButtonAnchor = forwardRef<HTMLAnchorElement, ButtonAnchorProps>(
 
 const HeaderNavLink = createLink(ButtonAnchor);
 
+/**
+ * The logo and Surveyverksted start from a clean view, but the selected team
+ * follows along so users in several teams stay in the same team.
+ */
+function keepTeamOnly(previous: { team?: string }): { team?: string } {
+  return previous.team ? { team: previous.team } : {};
+}
+
 export function Header() {
   const logoHeight = 32;
   // `lumi.png` is 1920x1080 (16:9). Keep the correct intrinsic ratio to avoid layout shift.
@@ -83,7 +91,7 @@ export function Header() {
         {/* Logo and title */}
         <Link
           to="/"
-          search={{}}
+          search={keepTeamOnly}
           aria-label="Lumi Dashboard - gå til forsiden"
           className={styles.brandLink}
         >
@@ -143,7 +151,7 @@ export function Header() {
               </HeaderNavLink>
               <HeaderNavLink
                 to="/surveyverksted"
-                search={{}}
+                search={keepTeamOnly}
                 variant={getVariant("/surveyverksted")}
                 size="small"
                 aria-label="Surveyverksted"

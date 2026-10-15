@@ -3,23 +3,29 @@ import {
   QueryClient,
   QueryClientProvider,
 } from "@tanstack/react-query";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiErrorException, ErrorType } from "~/types/errors";
 import type { FilterBootstrapResponse } from "~/types/schemas";
 
 vi.mock("~/server/actions", () => ({
   fetchFilterBootstrapServerFn: vi.fn(),
 }));
 
+const searchState = vi.hoisted(() => ({
+  team: "team-test" as string | undefined,
+}));
+
 vi.mock("~/hooks/useSearchParams", () => ({
-  useSearchParams: () => ({ params: { team: "team-test" } }),
+  useSearchParams: () => ({ params: { team: searchState.team } }),
 }));
 
 import { fetchFilterBootstrapServerFn } from "~/server/actions";
 import {
   FILTER_BOOTSTRAP_CACHE_TTL_MS,
   getFilterBootstrapRefetchInterval,
+  shouldRetryFilterBootstrap,
   useFilterBootstrap,
 } from "../useFilterBootstrap";
 
@@ -59,6 +65,48 @@ describe("useFilterBootstrap", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    searchState.team = "team-test";
+  });
+
+  it("keeps the filters when the default team is written into the URL", async () => {
+    searchState.team = undefined;
+    mockFetchFilterBootstrap.mockResolvedValue(
+      bootstrapResponse("2026-09-01T08:00:00Z"),
+    );
+
+    const { result, rerender } = renderHook(() => useFilterBootstrap(), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    searchState.team = "team-test";
+    rerender();
+
+    expect(result.current.isPending).toBe(false);
+    expect(result.current.isPlaceholderData).toBe(true);
+    expect(result.current.data?.selectedTeam).toBe("team-test");
+    await waitFor(() => expect(result.current.isPlaceholderData).toBe(false));
+    expect(mockFetchFilterBootstrap).toHaveBeenLastCalledWith({
+      data: { team: "team-test" },
+    });
+  });
+
+  it("does not show another team's filters while a new team loads", async () => {
+    mockFetchFilterBootstrap.mockResolvedValueOnce(
+      bootstrapResponse("2026-09-01T08:00:00Z"),
+    );
+    mockFetchFilterBootstrap.mockReturnValueOnce(new Promise(() => undefined));
+
+    const { result, rerender } = renderHook(() => useFilterBootstrap(), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    searchState.team = "team-other";
+    rerender();
+
+    expect(result.current.isPending).toBe(true);
+    expect(result.current.data).toBeUndefined();
   });
 
   it("refetches when the server-generated cache window expires", async () => {
@@ -175,5 +223,21 @@ describe("useFilterBootstrap", () => {
         Date.parse("2026-09-01T08:02:00Z"),
       ),
     ).toBe(4.5 * 60 * 1000);
+  });
+
+  it("retries a failed bootstrap once, but not a 4xx answer from the API", () => {
+    const apiError = (status: number) =>
+      new ApiErrorException({
+        status,
+        type: ErrorType.AUTHORIZATION_ERROR,
+        message: "Melding fra API-et",
+        timestamp: "2026-09-01T08:00:00Z",
+      });
+
+    expect(shouldRetryFilterBootstrap(0, apiError(403))).toBe(false);
+    expect(shouldRetryFilterBootstrap(0, apiError(401))).toBe(false);
+    expect(shouldRetryFilterBootstrap(0, apiError(503))).toBe(true);
+    expect(shouldRetryFilterBootstrap(1, apiError(503))).toBe(false);
+    expect(shouldRetryFilterBootstrap(0, new Error("nettverk"))).toBe(true);
   });
 });

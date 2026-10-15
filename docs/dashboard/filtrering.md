@@ -4,7 +4,7 @@ title: Filtrering
 
 # Filtrering
 
-Filterlinjen øverst på **Dashboard**, **Tilbakemeldinger** og **Eksporter** har team, app, survey og periode. Filtrene følger med når dere bytter side i menyen. Søk, **Vis kun** og **Tags** finnes bare på **Tilbakemeldinger** og **Eksporter**, og de fjernes når dere går til **Dashboard**.
+Filterlinjen øverst på **Dashboard**, **Tilbakemeldinger** og **Eksporter** har team, app, survey og periode. Filtrene følger med når dere bytter mellom disse sidene i menyen. Til **Surveyverksted** følger bare teamet med. Søk, **Vis kun** og **Tags** finnes bare på **Tilbakemeldinger** og **Eksporter**, og de fjernes når dere går til **Dashboard**.
 
 ## Hvor filtrene ligger {#hvor}
 
@@ -27,7 +27,9 @@ På **Dashboard** og **Tilbakemeldinger** står de aktive filtrene som merkelapp
 
 Teamvelgeren vises når dere er medlem av mer enn ett team. Standardteamet er det første av teamene deres i alfabetisk rekkefølge. Lumi henter teamene fra Nais, se [Tilgang](/dashboard/tilgang).
 
-Bytter dere team, fjernes valgt app, survey og de andre filtrene. En periode dere har valgt selv, beholdes. Adressen til siden får `team=` først når dere bytter team, se [Dele en filtrert visning](#dele).
+Bytter dere team, fjernes valgt app, survey og de andre filtrene. En periode dere har valgt selv, beholdes. Teamet står i adressen til siden som `team=`, også når det er standardteamet, se [Dele en filtrert visning](#dele).
+
+Teamet følger med når dere går mellom dashboardet og **Surveyverksted**, og når dere klikker på logoen. Logoen åpner **Dashboard** med standardperioden og uten de andre filtrene.
 
 ## App og survey {#app-og-survey}
 
@@ -102,13 +104,13 @@ Når dere endrer et filter, erstatter dashboardet adressen i nettleserhistorikke
 
 Slik lager dere en lenke som viser det samme for mottakeren:
 
-1. Velg team i teamvelgeren. Adressen får `team=` bare når dere bytter team, så står dere allerede på riktig team, bytter dere til et annet og tilbake. Uten `team=` åpner mottakeren sitt eget standardteam.
+1. Velg team i teamvelgeren hvis dere er med i flere team. Adressen har alltid `team=`, så mottakeren åpner det samme teamet. Mottakeren må være medlem av teamet, se [Tilgang](/dashboard/tilgang#feilmeldinger).
 2. Sett de andre filtrene. Gjør det etter teamvalget, fordi teambytte fjerner dem.
 3. Velg periode, for eksempel med et hurtigvalg. Har dere ikke valgt periode selv, regner dashboardet ut standardperioden på nytt når mottakeren åpner lenken.
 4. Kopier adressen.
 
 ::: details Parametere i adressen
-Teamvelgeren vises bare for dem som er med i flere team. Da kan dere legge til `team=` med teamnavnet slik det står i Nais Console, i adressen selv.
+`team` er teamnavnet slik det står i Nais Console. Mangler det, legger dashboardet til standardteamet deres.
 
 `size` bestemmer hvor mange svar **Tilbakemeldinger** viser per side, fra 1 til 200. `page` er sidenummeret og starter på 1.
 :::

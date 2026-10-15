@@ -20,8 +20,12 @@ import { ThemeProvider, useTheme } from "~/context/ThemeContext";
 import { BrowserRouteTracker } from "~/observability/BrowserRouteTracker";
 import { fetchBrowserObservabilityMetaServerFn } from "~/server/browserObservabilityConfig";
 import "~/styles/global.css";
+import { redirectToDashboardTeam } from "~/utils/dashboardTeam";
 
 export const Route = createRootRoute({
+  // Runs before the dashboard routes' own beforeLoad, so their data queries
+  // start with the team already in the address.
+  beforeLoad: ({ location }) => redirectToDashboardTeam(location),
   loader: () => fetchBrowserObservabilityMetaServerFn(),
   staleTime: Number.POSITIVE_INFINITY,
   head: ({ loaderData }) => ({
