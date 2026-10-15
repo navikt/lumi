@@ -41,6 +41,11 @@ vi.mock("~/hooks/useThemes", () => ({
   useThemes: vi.fn(),
 }));
 
+const access = vi.hoisted(() => ({ denied: false }));
+vi.mock("~/hooks/useTeamAccessDenied", () => ({
+  useTeamAccessDenied: () => access.denied,
+}));
+
 vi.mock("@navikt/ds-react", async () => {
   interface SimpleProps {
     children?: ReactNode;
@@ -167,6 +172,8 @@ beforeEach(() => {
     isPending: false,
   } as never);
 
+  access.denied = false;
+
   mockUseThemes.mockReturnValue({
     themes: [{ id: "theme-1", name: "Navigasjon" }],
     isLoading: false,
@@ -181,6 +188,18 @@ beforeEach(() => {
 });
 
 describe("ActiveFiltersChips", () => {
+  it("renders no chips while FilterBar explains missing team access", () => {
+    access.denied = true;
+    const { container } = renderActiveFiltersChips({
+      hasText: "true",
+      lowRating: "true",
+      deviceType: "mobile",
+    });
+
+    expect(container.firstChild).toBeNull();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
   it("renders no chips when there are no active filters", () => {
     const { container } = renderActiveFiltersChips();
 

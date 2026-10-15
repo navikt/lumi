@@ -89,4 +89,16 @@ test.describe("Link to a team without access", () => {
       await expect(page.getByText("Ingen svar ennå")).toHaveCount(0);
     });
   }
+
+  test("hides filter chips from a shared link", async ({ page }) => {
+    await page.goto(
+      "/feedback?team=team-x&hasText=true&lowRating=true&deviceType=mobile",
+    );
+    await expectOnlyTheTeamAlert(page);
+
+    await expect(page.getByText(/^Vis kun: /)).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: /^Fjern filter/ }),
+    ).toHaveCount(0);
+  });
 });

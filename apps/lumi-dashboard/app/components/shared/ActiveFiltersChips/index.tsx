@@ -6,6 +6,7 @@ import { useRatingFilter } from "~/hooks/useRatingFilter";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
 import { useStats } from "~/hooks/useStats";
+import { useTeamAccessDenied } from "~/hooks/useTeamAccessDenied";
 import { useThemes } from "~/hooks/useThemes";
 import { getFilterLabels } from "~/utils/filterLabels";
 import { formatMetadataLabel } from "~/utils/segmentUtils";
@@ -32,6 +33,11 @@ export function ActiveFiltersChips() {
   const { activeFilter: phraseFilter, removePhrase } = usePhraseFilter();
   const statsQuery = useStats();
   const { themes } = useThemes();
+  // FilterBar explains why the team's data cannot be fetched. Removing a
+  // filter would not help, so the chips stay hidden until access is back.
+  const teamAccessDenied = useTeamAccessDenied();
+  if (teamAccessDenied) return null;
+
   const { choiceFilters, ratingFilters, taskLabel, themeLabel } =
     getFilterLabels({
       params,
