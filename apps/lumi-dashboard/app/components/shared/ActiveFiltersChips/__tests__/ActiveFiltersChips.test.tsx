@@ -227,6 +227,106 @@ describe("ActiveFiltersChips", () => {
     expect(screen.getByText("Oppgave: Søknad")).toBeInTheDocument();
   });
 
+  it("shows the task text instead of the task id", () => {
+    mockUseStats.mockReturnValue({
+      data: {
+        fieldStats: [
+          ...stats.fieldStats,
+          {
+            fieldId: "task",
+            fieldType: "SINGLE_CHOICE",
+            label: "Hva kom du for å gjøre?",
+            stats: {
+              type: "choice",
+              distribution: {
+                "lage-oppfolgingsplan": {
+                  label: "Lage oppfølgingsplan",
+                  count: 6,
+                  percentage: 100,
+                },
+              },
+            },
+          },
+        ],
+      },
+      isPending: false,
+    } as never);
+
+    renderActiveFiltersChips({
+      task: "lage-oppfolgingsplan",
+    });
+
+    expect(
+      screen.getByText("Oppgave: Lage oppfølgingsplan"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Oppgave: lage-oppfolgingsplan"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a placeholder for the task while stats load", () => {
+    mockUseStats.mockReturnValue({
+      data: undefined,
+      isPending: true,
+    } as never);
+
+    renderActiveFiltersChips({ task: "lage-oppfolgingsplan" });
+
+    expect(screen.getByText("Oppgave: …")).toBeInTheDocument();
+  });
+
+  it("shows the task id when stats could not be fetched", () => {
+    mockUseStats.mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: true,
+    } as never);
+
+    renderActiveFiltersChips({ task: "lage-oppfolgingsplan" });
+
+    expect(
+      screen.getByText("Oppgave: lage-oppfolgingsplan"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the low score filter and removes it", async () => {
+    const user = userEvent.setup();
+    renderActiveFiltersChips({
+      lowRating: "true",
+    });
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Fjern filter Vis kun: Lav score",
+      }),
+    );
+
+    expect(setParams).toHaveBeenCalledWith({
+      lowRating: undefined,
+      page: "1",
+    });
+  });
+
+  it("shows the text answer filter set by phrase links and removes it", async () => {
+    const user = userEvent.setup();
+    renderActiveFiltersChips({
+      hasText: "true",
+    });
+
+    expect(screen.getByText("Vis kun: Med tekstsvar")).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Fjern filter Vis kun: Med tekstsvar",
+      }),
+    );
+
+    expect(setParams).toHaveBeenCalledWith({
+      hasText: undefined,
+      page: "1",
+    });
+  });
+
   it("renders a segment filter chip", () => {
     mockUseSegmentFilter.mockReturnValue({
       activeFilters: { userType: "Arbeidsgiver" },

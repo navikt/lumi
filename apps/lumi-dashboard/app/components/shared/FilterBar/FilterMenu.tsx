@@ -18,6 +18,7 @@ import { useRatingFilter } from "~/hooks/useRatingFilter";
 import type { SearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import type { ChoiceStats, FieldStat, RatingStats } from "~/types/api";
+import { getTaskLabel } from "~/utils/filterLabels";
 import {
   inferRatingVariantFromDistribution,
   type RatingVariant,
@@ -41,7 +42,7 @@ export function FilterMenu({
   selectedTags,
   themeLabel,
 }: FilterMenuProps) {
-  const { data: stats } = useStats();
+  const { data: stats, isPending: isStatsPending } = useStats();
   const {
     activeFilters: activeChoiceFilters,
     toggleChoice,
@@ -94,6 +95,7 @@ export function FilterMenu({
   const themeValueLabel =
     themeLabel ??
     (params.theme === "uncategorized" ? "Annet" : (params.theme ?? ""));
+  const taskLabel = getTaskLabel({ params, stats, isStatsPending });
 
   return (
     <ActionMenu>
@@ -272,7 +274,7 @@ export function FilterMenu({
             {hasActiveChartFilters ? (
               <>
                 <div className={styles.menuDivider} />
-                <ActionMenu.Group label="Aktive grafer-filtre">
+                <ActionMenu.Group label="Aktive filtre fra grafene">
                   <Chips size="small">
                     {params.theme ? (
                       <Chips.Removable
@@ -288,7 +290,7 @@ export function FilterMenu({
                       </Chips.Removable>
                     ) : null}
 
-                    {params.task ? (
+                    {taskLabel ? (
                       <Chips.Removable
                         variant="neutral"
                         onDelete={() =>
@@ -298,7 +300,7 @@ export function FilterMenu({
                           })
                         }
                       >
-                        {`Oppgave: ${params.task}`}
+                        {`Oppgave: ${taskLabel}`}
                       </Chips.Removable>
                     ) : null}
                   </Chips>

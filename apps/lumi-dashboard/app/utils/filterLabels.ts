@@ -14,6 +14,8 @@ export interface ActiveFilterLabel {
 interface FilterLabelInput {
   params: SearchParams;
   stats?: FeedbackStats;
+  /** True while stats have not loaded yet. False after a failed request. */
+  isStatsPending?: boolean;
   themes?: TextTheme[];
 }
 
@@ -27,6 +29,30 @@ export function getThemeLabel({
       ? (themes?.find((theme) => theme.id === params.theme)?.name ??
         params.theme)
       : undefined;
+}
+
+/**
+ * The URL stores the Top Tasks `taskId`, which stays stable when the team
+ * rewrites the task text. Show the text when stats include it, a placeholder
+ * while they load, and the id when they fail or lack the task.
+ */
+export function getTaskLabel({
+  params,
+  stats,
+  isStatsPending = false,
+}: Pick<FilterLabelInput, "params" | "stats" | "isStatsPending">):
+  | string
+  | undefined {
+  if (!params.task) return undefined;
+
+  const taskField = stats?.fieldStats?.find(
+    (field) => field.fieldId === "task",
+  );
+  const label = (taskField?.stats as ChoiceStats | undefined)?.distribution?.[
+    params.task
+  ]?.label;
+
+  return label ?? (isStatsPending ? "…" : params.task);
 }
 
 export function getActiveRatingFilterLabels({
@@ -100,14 +126,21 @@ export function getActiveChoiceFilterLabels({
   );
 }
 
-export function getFilterLabels({ params, stats, themes }: FilterLabelInput): {
+export function getFilterLabels({
+  params,
+  stats,
+  isStatsPending,
+  themes,
+}: FilterLabelInput): {
   choiceFilters: ActiveFilterLabel[];
   ratingFilters: ActiveFilterLabel[];
+  taskLabel?: string;
   themeLabel?: string;
 } {
   return {
     choiceFilters: getActiveChoiceFilterLabels({ params, stats }),
     ratingFilters: getActiveRatingFilterLabels({ params, stats }),
+    taskLabel: getTaskLabel({ params, stats, isStatsPending }),
     themeLabel: getThemeLabel({ params, themes }),
   };
 }

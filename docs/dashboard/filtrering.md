@@ -62,7 +62,7 @@ Under **Vis kun** i **Filter** finnes to valg:
 | **Med tekstsvar** | Svar der brukeren har skrevet noe i et fritekstfelt |
 | **Lav score** | Svar med lav score på det første vurderingsspørsmålet: 1–2 for emoji og stjerner, 0–2 for NPS og tommel ned for tommel |
 
-Søkefeltet og **Med tekstsvar** vises ikke når den valgte surveyen er **Top Tasks** eller **Task Priority**. For å lese fritekstsvarene om hindringer i Top Tasks klikker dere på et uttrykk under **Det som hindrer brukerne** på **Dashboard**, eller på lenken **Se alle tilbakemeldinger** nederst i kortet. Begge åpner **Tilbakemeldinger** med fritekstsvarene. Lenkene setter på filteret for tekstsvar uten å vise det som et valgt filter. **Nullstill** fjerner det, men fjerner også valgt survey, app og periode, så dere må velge surveyen på nytt etterpå.
+Søkefeltet og **Med tekstsvar** vises ikke når den valgte surveyen er **Top Tasks** eller **Task Priority**. For å lese fritekstsvarene om hindringer i Top Tasks klikker dere på et uttrykk under **Det som hindrer brukerne** på **Dashboard**, eller på lenken **Se alle tilbakemeldinger** nederst i kortet. Begge åpner **Tilbakemeldinger** med fritekstsvarene. Lenkene setter på filteret **Med tekstsvar**, og over resultatene står merkelappen **Vis kun: Med tekstsvar**. Krysset på merkelappen fjerner filteret, og valgt survey, app og periode blir stående.
 
 **Lav score** er for oversikten over flere surveyer. Når dere har valgt én survey med et vurderingsspørsmål, filtrerer dere i stedet på vurderingen under **Svar-filtre**. For **Top Tasks**, **Discovery** og **Task Priority** vises filteret ikke.
 
@@ -88,7 +88,7 @@ Dere kan velge ett alternativ per spørsmål. Filtrerer dere på flere spørsmå
 
 Klikk på et punkt i **Oppgavekvadrant** for å filtrere på én oppgave. Filteret gjelder hele **Dashboard** og følger med til **Tilbakemeldinger** og **Eksporter**.
 
-Adressen lagrer oppgavens ID (`taskId`). ID-en endres ikke når teamet skriver om oppgaveteksten, så filteret og lenker med filteret virker fortsatt. Merkelappen over resultatene viser oppgaveteksten når den er tilgjengelig. I **Filter** og under **Aktive filtre** på **Eksporter** står ID-en.
+Adressen lagrer oppgavens ID (`taskId`). ID-en endres ikke når teamet skriver om oppgaveteksten, så filteret og lenker med filteret virker fortsatt. Merkelappen over resultatene, **Aktive filtre fra grafene** i **Filter** og **Aktive filtre** på **Eksporter** viser oppgaveteksten. Mens dataene lastes, står det «…». Kan ikke dashboardet hente dataene, eller har oppgaven ingen svar i perioden, står ID-en.
 
 ## Sider på Tilbakemeldinger {#sider}
 

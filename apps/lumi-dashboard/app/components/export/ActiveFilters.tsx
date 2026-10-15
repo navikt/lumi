@@ -18,14 +18,16 @@ interface ActiveFiltersProps {
 export function ActiveFilters({ params }: ActiveFiltersProps) {
   const segments = parseSegmentParam(params.segment);
   const segmentEntries = Object.entries(segments);
-  const { data: stats } = useStats();
+  const { data: stats, isPending: isStatsPending } = useStats();
   const { themes } = useThemes();
 
-  const { choiceFilters, ratingFilters, themeLabel } = getFilterLabels({
-    params,
-    stats,
-    themes,
-  });
+  const { choiceFilters, ratingFilters, taskLabel, themeLabel } =
+    getFilterLabels({
+      params,
+      stats,
+      isStatsPending,
+      themes,
+    });
 
   const phraseFilter = parsePhraseParam(params.phrase);
   const phraseLabel = phraseFilter
@@ -62,7 +64,7 @@ export function ActiveFilters({ params }: ActiveFiltersProps) {
       )}
       {params.hasText === "true" && (
         <BodyShort size="small" spacing>
-          <strong>Filter:</strong> Kun med tekst
+          <strong>Vis kun:</strong> Med tekstsvar
         </BodyShort>
       )}
       {params.lowRating === "true" && (
@@ -92,9 +94,9 @@ export function ActiveFilters({ params }: ActiveFiltersProps) {
           <strong>Tema:</strong> {themeLabel}
         </BodyShort>
       )}
-      {params.task && (
+      {taskLabel && (
         <BodyShort size="small" spacing>
-          <strong>Oppgave:</strong> {params.task}
+          <strong>Oppgave:</strong> {taskLabel}
         </BodyShort>
       )}
       {ratingFilters.map((filter) => (
