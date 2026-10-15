@@ -12,6 +12,7 @@ import {
 import type { BlockerResponse } from "~/types/api";
 import { BlockerParamsSchema } from "~/types/schemas";
 import { handleApiResponse } from "../fetchUtils";
+import { assertMockTeamAccess } from "./fetchFilterBootstrap";
 
 interface BlockerActionParams {
   team?: string;
@@ -51,6 +52,7 @@ export const fetchBlockerServerFn = createServerFn({ method: "GET" })
 
     if (isMockMode()) {
       await mockDelay();
+      assertMockTeamAccess(data.team);
       return getMockBlockerStats(toMockSearchParams(data));
     }
 

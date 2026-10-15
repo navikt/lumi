@@ -12,6 +12,7 @@ import {
 import type { FeedbackStats } from "~/types/api";
 import { StatsParamsSchema } from "~/types/schemas";
 import { handleApiResponse } from "../fetchUtils";
+import { assertMockTeamAccess } from "./fetchFilterBootstrap";
 
 export const STATS_DASHBOARD_PATH = "/api/v1/intern/stats/dashboard" as const;
 
@@ -83,6 +84,7 @@ export const fetchStatsServerFn = createServerFn({ method: "GET" })
 
     if (isMockMode()) {
       await mockDelay();
+      assertMockTeamAccess(data.team);
       return getMockStats(toStatsMockSearchParams(data));
     }
 

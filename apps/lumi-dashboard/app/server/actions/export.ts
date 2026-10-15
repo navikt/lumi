@@ -16,6 +16,7 @@ import {
 } from "~/server/utils";
 import { type ExportParams, ExportParamsSchema } from "~/types/schemas";
 import { handleApiResponse } from "../fetchUtils";
+import { assertMockTeamAccess } from "./fetchFilterBootstrap";
 
 /** Number of records matching the filters, before the export limit is applied. */
 export const EXPORT_TOTAL_HEADER = "X-Lumi-Export-Total";
@@ -237,6 +238,7 @@ export const exportServerFn = createServerFn({ method: "POST" })
 
     if (isMockMode()) {
       await mockDelay();
+      assertMockTeamAccess(data.team);
 
       const matching = applyFeedbackFilters(
         filterMockArchiveVisibility(

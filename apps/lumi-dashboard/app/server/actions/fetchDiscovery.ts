@@ -12,6 +12,7 @@ import {
 import type { DiscoveryResponse } from "~/types/api";
 import { DiscoveryParamsSchema } from "~/types/schemas";
 import { handleApiResponse } from "../fetchUtils";
+import { assertMockTeamAccess } from "./fetchFilterBootstrap";
 
 interface DiscoveryActionParams {
   team?: string;
@@ -50,6 +51,7 @@ export const fetchDiscoveryServerFn = createServerFn({ method: "GET" })
 
     if (isMockMode()) {
       await mockDelay();
+      assertMockTeamAccess(data.team);
       return getMockDiscoveryStats(toMockSearchParams(data));
     }
 

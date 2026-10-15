@@ -12,6 +12,7 @@ import {
 import type { FeedbackPage } from "~/types/api";
 import { FeedbackParamsSchema } from "~/types/schemas";
 import { handleApiResponse } from "../fetchUtils";
+import { assertMockTeamAccess } from "./fetchFilterBootstrap";
 
 interface FeedbackActionParams {
   team?: string;
@@ -98,6 +99,7 @@ export const fetchFeedbackServerFn = createServerFn({ method: "GET" })
 
     if (isMockMode()) {
       await mockDelay();
+      assertMockTeamAccess(data.team);
       return getMockFeedback(toMockSearchParams(data));
     }
 
