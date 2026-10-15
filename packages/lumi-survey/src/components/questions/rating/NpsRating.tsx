@@ -5,6 +5,7 @@ import type {
   LumiSurveyAnswerValue,
   NpsRatingQuestion,
 } from "../../../core/types.js";
+import { builtInCopyLang, useSurveyLang } from "../../shared/surveyLanguage.js";
 import { RatingFieldset } from "./RatingFieldset.js";
 import { useRatingRadioGroup } from "./useRatingRadioGroup.js";
 import "./emo.fallback.css";
@@ -71,6 +72,9 @@ export function NpsRating({
   const activeState = typeof value === "number" ? value : null;
   const lowLabel = question.lowLabel ?? "Lite sannsynlig";
   const highLabel = question.highLabel ?? "Svært sannsynlig";
+  // Authored end labels are survey text; the defaults are built-in copy.
+  const surveyLang = useSurveyLang();
+  const builtInLang = builtInCopyLang(true);
 
   const handleSelect = (nextValue: number) => {
     if (!disabled) {
@@ -100,16 +104,11 @@ export function NpsRating({
       fieldsetPaddingInline={fieldsetPaddingInline ?? "space-12"}
     >
       <VStack gap="space-8">
+        {/* nps.fallback.css wraps the scale into rows in narrow layouts. */}
         <Box
           as="div"
           onKeyDown={radioGroup.onKeyDown}
-          style={{
-            width: "100%",
-            display: "grid",
-            gridTemplateColumns: "repeat(11, minmax(0, 1fr))",
-            gap: "var(--ax-space-2)",
-            overflow: "hidden",
-          }}
+          className="lumi-survey-rating__nps-scale"
         >
           {NPS_VALUES.map((value) => {
             const isActive = activeState === value;
@@ -147,6 +146,7 @@ export function NpsRating({
         <HStack justify="space-between" style={{ width: "100%" }}>
           <BodyShort
             id={lowLabelId}
+            lang={question.lowLabel ? surveyLang : builtInLang}
             size="small"
             style={{ color: "var(--ax-text-neutral-subtle)" }}
           >
@@ -154,6 +154,7 @@ export function NpsRating({
           </BodyShort>
           <BodyShort
             id={highLabelId}
+            lang={question.highLabel ? surveyLang : builtInLang}
             size="small"
             style={{ color: "var(--ax-text-neutral-subtle)" }}
           >

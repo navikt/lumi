@@ -4,7 +4,96 @@ All notable changes to `@navikt/lumi-survey` will be documented in this file.
 
 This project follows SemVer.
 
-## [2.2.4] - 2026-10-14
+## [2.3.0] - 2026-10-14
+
+Version 2.2.4 was prepared in the repository but never published. Its changes
+are included in 2.3.0.
+
+### Changed
+
+- **Apps without the Nav decorator that do not set `storageStrategy` now
+  start minimized.** The default `consent` strategy cannot store anything
+  there, so users see the **Gi tilbakemelding** button and open the survey
+  themselves. Set `behavior.storageStrategy: "localStorage"` to have the
+  survey open by itself and remember that it was closed. The widget never
+  falls back to `localStorage` on its own, since that would bypass consent.
+- The dock now starts minimized whenever it cannot store a dismissal,
+  whatever `initialOpen` says: without survey consent, when the decorator
+  does not allow the storage key, without the decorator, and when the browser
+  blocks `localStorage`. These users previously saw the survey open by itself
+  on every page load. `storageStrategy: "none"` still follows `initialOpen`.
+- While the consent lookup is pending after the 300 ms grace period, the dock
+  shows the minimized button. It opens later only when consent turns out to
+  be given and nothing is stored, and only if the user has not interacted
+  with the dock. Previously it opened after 300 ms and could minimize or
+  disappear when a late lookup found a stored dismissal.
+- A successful submit is now stored right away, with the same
+  `hideAfterSubmit` and `dismissCooldownDays` handling as closing the
+  receipt. Users who leave the receipt without pressing close no longer get
+  the survey again on the next page load. A failed write after the submit
+  calls `onDismissalPersistFailed`. Closing the receipt afterwards does not
+  write the same dismissal again.
+- Reopening the minimized dock clears storage only when the read found a
+  stored value or this session has written one, also when the user opens the
+  dock before the consent lookup has answered. Users without consent
+  therefore no longer trigger `onDismissalPersistFailed` just by opening the
+  survey.
+- The widget writes one `console.warn` per page load, also in production,
+  when the consent setup is wrong. Without the Nav decorator it advises
+  `storageStrategy: "localStorage"`. When the decorator refuses the storage
+  key although the user has consented, it advises asking in #lumi. Both link
+  to the storage guide. A user who declines consent causes no warning.
+- **`onViewDock` now fires once per actual opening** of the panel, whether
+  it is shown open from the start or opened from the minimized button. It
+  previously fired on mount, before the stored state was read, also for users
+  who only ever saw the minimized button or nothing. Users on nav.no without
+  survey consent, and all users in apps without the Nav decorator that do not
+  set `storageStrategy: "localStorage"`, no longer count until they open the
+  survey themselves. Teams that compare responses with views get a break in
+  that series at 2.3.0.
+
+### Added
+
+- `lang` on `LumiSurveyDock` sets the language of the text that comes from
+  the survey: titles, questions, options, descriptions, the intro and receipt
+  text and authored NPS end labels. Without `lang` that text inherits the
+  page language, as in 2.2.3. Set for example `lang="nb"` for a Bokmål survey
+  on an English page. Option descriptions, combobox options and rating labels
+  are passed to Aksel or read through `aria-label` as plain strings and
+  cannot carry their own `lang`.
+
+### Fixed
+
+- Built-in copy shown as text is now marked `lang="nb"`, so screen readers
+  read it in Norwegian Bokmål on pages in other languages. This covers for
+  example "Neste", "Tilbake", "(valgfritt)", "Steg X av Y", the default
+  receipt title, the default buttons, the default NPS end labels and the
+  default error and privacy messages. Copy replaced through `labels`,
+  `success.primaryLabel` or `behavior.personalDataNotice` gets no `lang` and
+  inherits the page language. The dock itself sets no `lang`. Attribute
+  values such as `aria-label` cannot be marked and inherit the page language
+  as before.
+- When closing the receipt hides the dock through `hideAfterSubmit`, also
+  after `success.autoClose`, focus returns to the element that had it before
+  the dock. If that element is gone or can no longer take focus, focus moves
+  to `#maincontent`, or to `<body>` as a last resort, with a temporary
+  `tabindex="-1"`. A `tabindex` the page has set itself is kept. Focus was
+  previously lost.
+- Emoji and NPS rating buttons now show focus in forced colors mode, such as
+  Windows high contrast. A transparent outline accompanies the focus shadow
+  that forced colors remove.
+- The NPS scale wraps into rows of 0–5 and 6–10 when it is narrower than
+  26rem, and into rows of four below 11rem. A wrapped last row ends at the
+  right edge, so 10 stays above the high label. The buttons keep room for
+  their numbers on small screens and with enlarged text, and the scale no
+  longer clips their focus ring. The layout needs no container query, so
+  `RatingQuestionField` also works in shrink-to-fit layouts.
+- The default `panelMaxHeight` is now `calc(100dvh - 2rem)`, with
+  `calc(100vh - 2rem)` in browsers without `dvh`, so mobile browser toolbars
+  cannot push the close button off screen.
+- The `@default` values in the `LumiSurveyLabels` JSDoc now match the copy
+  the dock shows, for example `"Send"` and
+  `"Kunne ikke sende tilbakemeldingen. Prøv igjen senere."`.
 
 ### Documentation
 

@@ -6,19 +6,25 @@ import type { ReactNode } from "react";
  * All have sensible Norwegian defaults.
  */
 export interface LumiSurveyLabels {
-  /** Label for the submit button. @default "Send inn" */
+  /** Label for the submit button. @default "Send" */
   submit?: string;
-  /** Label for submit button while submitting. @default "Sender inn..." */
+  /** Label for submit button while submitting. @default "Sender…" */
   submitPending?: string;
   /** Label for the cancel button. @default "Lukk" */
   cancel?: string;
-  /** Error message for validation failures. @default "Vennligst fyll ut alle påkrevde felt" */
+  /** Error message for validation failures. @default "Du må svare på spørsmålet." */
   validationError?: string;
-  /** Heading shown when multiple answers need correction. */
+  /**
+   * Heading shown when multiple answers need correction.
+   * @default "Du må rette svarene før du kan fortsette:"
+   */
   validationSummary?: string;
-  /** Error formatter for a text answer above its effective character limit. */
+  /**
+   * Error formatter for a text answer above its effective character limit.
+   * @default (maxLength) => `Svaret kan ikke være lengre enn ${maxLength} tegn.`
+   */
   textTooLong?: (maxLength: number) => string;
-  /** Error message for transport failures. @default "Noe gikk galt ved innsending. Prøv igjen senere." */
+  /** Error message for transport failures. @default "Kunne ikke sende tilbakemeldingen. Prøv igjen senere." */
   transportError?: string;
   /** Label for the minimized button. @default "Gi tilbakemelding" */
   minimizedButton?: string;
@@ -55,7 +61,7 @@ export interface LumiSurveyStyle {
   /**
    * Max height for the open panel as a CSS value.
    * Intended for embedded previews inside a constrained stage.
-   * @default "calc(100vh - 2rem)"
+   * @default "calc(100dvh - 2rem)", or "calc(100vh - 2rem)" without `dvh` support
    */
   panelMaxHeight?: string;
   /** Panel background color (Aksel token). @default "default" */
@@ -99,13 +105,21 @@ export interface LumiSurveyIntroConfig {
  * Behavior options for the dock.
  */
 export interface LumiSurveyBehavior {
-  /** Whether dock starts open. @default true */
+  /**
+   * Whether dock starts open. When the storage strategy cannot store a
+   * dismissal, for example without consent, the dock starts minimized.
+   * @default true
+   */
   initialOpen?: boolean;
   /** Reset form when closing. @default true */
   resetOnClose?: boolean;
   /** Days before dismissed dock reappears. @default 30 */
   dismissCooldownDays?: number;
-  /** Hide completely after successful submit. @default true */
+  /**
+   * Hide completely after successful submit. The successful submit is stored
+   * like a dismissal, also when the user leaves without closing the receipt.
+   * @default true
+   */
   hideAfterSubmit?: boolean;
   /**
    * Question layout mode.

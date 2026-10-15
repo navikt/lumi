@@ -1,6 +1,8 @@
 import { ChatIcon } from "@navikt/aksel-icons";
 import { Button } from "@navikt/ds-react";
 import type { Ref } from "react";
+import { DEFAULT_COPY } from "../../shared/commonDefaults.js";
+import { builtInCopyLang } from "../../shared/surveyLanguage.js";
 
 interface MinimizedDockProps {
   label: string;
@@ -24,6 +26,8 @@ export const MinimizedDock = ({
       icon={<ChatIcon aria-hidden />}
       onClick={onReopen}
       className={className}
+      // A label replaced through `labels` inherits the page language.
+      lang={builtInCopyLang(label === DEFAULT_COPY.minimizedButtonLabel)}
     >
       {label}
     </Button>

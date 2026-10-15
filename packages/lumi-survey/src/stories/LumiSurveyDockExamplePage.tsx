@@ -216,8 +216,8 @@ export const ExamplePage = ({ sourceCode, ...props }: ExamplePageProps) => {
               Bruk "Nullstill docken" for å vise den igjen etter innsending
             </li>
             <li>
-              Uten samtykke: localStorage fungerer ikke, men docken vises
-              fortsatt
+              Uten samtykke: widgeten får ikke lagre og starter minimert ved
+              hver lasting
             </li>
           </ul>
         </div>

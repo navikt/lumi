@@ -1,5 +1,6 @@
 import { BodyLong, Heading, VStack } from "@navikt/ds-react";
 import React from "react";
+import { useSurveyLang } from "../../shared/surveyLanguage.js";
 
 interface SuccessContentProps {
   title: string;
@@ -10,6 +11,7 @@ interface SuccessContentProps {
 
 export const SuccessContent = React.memo(
   ({ title, body, showTitle = true, announce = true }: SuccessContentProps) => {
+    const surveyLang = useSurveyLang();
     const accessibilityProps = announce
       ? { role: "status" as const, "aria-live": "polite" as const }
       : {};
@@ -21,7 +23,7 @@ export const SuccessContent = React.memo(
             {title}
           </Heading>
         )}
-        {body && <BodyLong>{body}</BodyLong>}
+        {body && <BodyLong lang={surveyLang}>{body}</BodyLong>}
       </VStack>
     );
   },

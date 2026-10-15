@@ -9,7 +9,7 @@ title: Feilsøking
 Komponenten er rendret, men ingenting vises på skjermen.
 
 ::: details Sjekk 1: `initialOpen` er satt til `false`
-Widgeten starter som standard åpen (`initialOpen: true`). Hvis dere har satt `initialOpen: false`, vises bare den minimerte knappen, og brukeren må åpne surveyen selv. Det kan være et bevisst valg, se [Lagring](/guider/lagring#uten-samtykke).
+Widgeten starter som standard åpen (`initialOpen: true`). Hvis dere har satt `initialOpen: false`, vises bare den minimerte knappen, og brukeren må åpne surveyen selv. Widgeten starter også minimert når den ikke får lagre, for eksempel når brukeren ikke har samtykket. Se [Uten samtykke](/guider/lagring#uten-samtykke).
 
 ```tsx
 // Starter minimert
@@ -20,8 +20,8 @@ Widgeten starter som standard åpen (`initialOpen: true`). Hvis dere har satt `i
 ```
 :::
 
-::: details Sjekk 2: Surveyen er lukket tidligere
-Widgeten husker at brukeren har lukket surveyen, og under utvikling kan dette henge igjen fra én sidelast til den neste.
+::: details Sjekk 2: Surveyen er lukket eller besvart tidligere
+Widgeten husker at brukeren har lukket eller svart på surveyen, og under utvikling kan dette henge igjen fra én sidelast til den neste.
 
 Dere kan enten bruke `storageStrategy: "none"`, så widgeten ikke lagrer noe, eller tømme localStorage og informasjonskapsler og laste siden på nytt.
 
@@ -32,9 +32,9 @@ Dere kan enten bruke `storageStrategy: "none"`, så widgeten ikke lagrer noe, el
 :::
 
 ::: details Sjekk 3: Ventetiden er ikke over
-Etter at brukeren har lukket surveyen, venter widgeten som standard 30 dager før den viser den igjen. Under utvikling er det enklest å bruke `storageStrategy: "none"` fra sjekk 2, så husker ikke widgeten at surveyen er lukket.
+Etter at brukeren har lukket eller svart på surveyen, venter widgeten som standard 30 dager før den viser den igjen. Under utvikling er det enklest å bruke `storageStrategy: "none"` fra sjekk 2, så husker ikke widgeten at surveyen er lukket.
 
-Ikke sett `dismissCooldownDays: 0`. Da utløper lukkingen aldri, og surveyen åpner seg ikke av seg selv igjen for den brukeren. Bare den minimerte knappen vises.
+Ikke sett `dismissCooldownDays: 0`. Da går ventetiden aldri ut, og surveyen åpner seg ikke av seg selv igjen for den brukeren. Har brukeren lukket surveyen, vises bare den minimerte knappen. Har brukeren svart, er widgeten skjult for godt med `hideAfterSubmit: true`, som er standard.
 :::
 
 ::: details Sjekk 4: CSS mangler
@@ -170,10 +170,12 @@ Importer `@navikt/ds-css` før `@navikt/lumi-survey/styles.css`.
 
 ## Widgeten husker ikke at surveyen er lukket
 
-Brukeren lukker surveyen, men den åpner seg igjen ved neste sidelast.
+Widgeten starter minimert ved hver sidelast, også før brukeren har lukket surveyen. Det betyr at widgeten ikke får lagre at surveyen er lukket eller besvart. I versjoner før 2.3.0 åpner surveyen seg ved hver sidelast.
 
 I interne apper som Modia og fagsystemer mangler vanligvis Nav-dekoratøren, som
-standardstrategien `consent` trenger. Sett `storageStrategy` til `localStorage`:
+standardstrategien `consent` trenger. Widgeten skriver da en advarsel som
+begynner med `[Lumi]` i konsollen. Sett `storageStrategy` til `localStorage`, så
+åpner surveyen seg av seg selv og widgeten husker lukkingen:
 
 ```tsx
 <LumiSurveyDock

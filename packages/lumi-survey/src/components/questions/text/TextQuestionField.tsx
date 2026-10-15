@@ -3,7 +3,7 @@ import type React from "react";
 import type { LumiSurveyAnswerValue, TextQuestion } from "../../../core";
 import { getTextAnswerMaxLength } from "../../../core/textAnswerLimits.js";
 import { DEFAULT_COPY } from "../../shared/commonDefaults.js";
-import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
+import { QuestionPrompt, SurveyText } from "../../shared/surveyLanguage.js";
 
 interface TextQuestionFieldProps {
   question: TextQuestion;
@@ -35,9 +35,13 @@ export const TextQuestionField = ({
 
   return (
     <Textarea
-      label={formatQuestionPrompt(question)}
+      label={<QuestionPrompt question={question} />}
       hideLabel={hideLabel}
-      description={question.description}
+      description={
+        question.description ? (
+          <SurveyText>{question.description}</SurveyText>
+        ) : undefined
+      }
       value={textValue}
       onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
         onChange(event.target.value)

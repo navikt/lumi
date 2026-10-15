@@ -145,9 +145,9 @@ describe("LumiSurveyDock", () => {
 
     await user.click(screen.getByRole("button", { name: "Neste" }));
 
-    const errorSummary = await screen.findByText(
-      "Du må rette svarene før du kan fortsette:",
-    );
+    const errorSummary = await screen.findByRole("heading", {
+      name: "Du må rette svarene før du kan fortsette:",
+    });
     expect(errorSummary).toHaveFocus();
     expect(
       screen.getByRole("link", { name: "Hva prøvde du å gjøre?" }),
@@ -1363,17 +1363,48 @@ describe("LumiSurveyDock", () => {
     ).toBeInTheDocument();
   });
 
-  it("calls onViewDock when the dock mounts", () => {
+  it("calls onViewDock once the open dock is shown", async () => {
     const events: LumiSurveyEvents = {
       onViewDock: vi.fn(),
     };
 
     renderDock({ events });
 
-    expect(events.onViewDock).toHaveBeenCalledWith("dock-feedback");
+    await waitFor(() => {
+      expect(events.onViewDock).toHaveBeenCalledWith("dock-feedback");
+    });
   });
 
-  it("counts a StrictMode mount as one dock view", () => {
+  it("does not count a view for a dock a stored dismissal keeps hidden", async () => {
+    localStorage.setItem(
+      "lumi-dismissed-dock-feedback",
+      JSON.stringify({
+        version: 1,
+        state: "dismissed",
+        dismissedAt: new Date().toISOString(),
+        resumeAt: null,
+        hideCompletely: true,
+      }),
+    );
+    const onViewDock = vi.fn();
+
+    renderDock({
+      events: { onViewDock },
+      behavior: { storageStrategy: "localStorage" },
+    });
+
+    await waitFor(() => {
+      expect(
+        document.querySelector('[data-feedback-id="dock-feedback"]'),
+      ).not.toBeInTheDocument();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(onViewDock).not.toHaveBeenCalled();
+  });
+
+  it("counts a StrictMode mount as one dock view", async () => {
     const onViewDock = vi.fn();
 
     render(
@@ -1387,6 +1418,7 @@ describe("LumiSurveyDock", () => {
       </StrictMode>,
     );
 
+    await screen.findByRole("heading", { name: /hvor fornøyd er du/i });
     expect(onViewDock).toHaveBeenCalledOnce();
   });
 
@@ -1399,7 +1431,9 @@ describe("LumiSurveyDock", () => {
       behavior: { storageStrategy: "none" },
     });
 
-    expect(onViewDock).toHaveBeenCalledOnce();
+    await waitFor(() => {
+      expect(onViewDock).toHaveBeenCalledOnce();
+    });
 
     await user.click(await screen.findByRole("button", { name: "Lukk" }));
     await user.click(
@@ -1409,7 +1443,7 @@ describe("LumiSurveyDock", () => {
     expect(onViewDock).toHaveBeenCalledTimes(2);
   });
 
-  it("does not count parent rerenders as new dock views", () => {
+  it("does not count parent rerenders as new dock views", async () => {
     const initialOnViewDock = vi.fn();
     const latestOnViewDock = vi.fn();
     const survey = createSurvey();
@@ -1426,7 +1460,9 @@ describe("LumiSurveyDock", () => {
     );
     const { rerender } = render(dock("dock-feedback", initialOnViewDock));
 
-    expect(initialOnViewDock).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(initialOnViewDock).toHaveBeenCalledTimes(1);
+    });
 
     for (let index = 0; index < 5; index++) {
       rerender(dock("dock-feedback", latestOnViewDock));
@@ -1437,7 +1473,9 @@ describe("LumiSurveyDock", () => {
 
     rerender(dock("another-survey", latestOnViewDock));
 
-    expect(latestOnViewDock).toHaveBeenCalledOnce();
+    await waitFor(() => {
+      expect(latestOnViewDock).toHaveBeenCalledOnce();
+    });
     expect(latestOnViewDock).toHaveBeenCalledWith("another-survey");
   });
 
@@ -1609,6 +1647,12 @@ describe("LumiSurveyDock", () => {
 
       renderDock({ events: { onDismissalPersistFailed } });
 
+      // Without consent the dock starts minimized. Reopening has nothing to
+      // clear, so the first failure comes from closing.
+      await user.click(
+        await screen.findByRole("button", { name: "Gi tilbakemelding" }),
+      );
+      expect(onDismissalPersistFailed).not.toHaveBeenCalled();
       await user.click(await screen.findByRole("button", { name: "Lukk" }));
 
       await waitFor(() => {
@@ -1638,12 +1682,18 @@ describe("LumiSurveyDock", () => {
 
       renderDock({ events: { onDismissalPersistFailed } });
 
+      await user.click(
+        await screen.findByRole("button", { name: "Gi tilbakemelding" }),
+      );
       await user.click(await screen.findByRole("button", { name: "Lukk" }));
 
       await waitFor(() => {
         expect(onDismissalPersistFailed).toHaveBeenCalledOnce();
       });
       expect(onDismissalPersistFailed).toHaveBeenCalledWith(controllerError);
+      expect(
+        document.querySelector('[data-feedback-id="dock-feedback"]'),
+      ).toHaveAttribute("data-state", "dismissed");
     });
 
     it("keeps the intentional none strategy silent", async () => {

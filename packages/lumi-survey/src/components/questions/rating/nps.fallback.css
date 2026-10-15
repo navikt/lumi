@@ -1,8 +1,38 @@
+.lumi-survey-rating__nps-scale {
+  --lumi-nps-gap: var(--ax-space-2);
+  display: flex;
+  flex-wrap: wrap;
+  /* A wrapped last row ends at the right edge, so 10 stays above the high label. */
+  justify-content: flex-end;
+  gap: var(--lumi-nps-gap);
+  width: 100%;
+}
+
 .lumi-survey-rating__nps-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
+  /*
+   * Eleven buttons in one row get too narrow for their numbers on small
+   * screens and with enlarged text. Below a 26rem scale the rows hold 0–5 and
+   * 6–10, and below 11rem four buttons each. Each `(threshold - 100%) * 999`
+   * term is huge below its threshold and negative above it, which picks the
+   * width without a container query. Size containment would collapse the
+   * scale where RatingQuestionField sits in a shrink-to-fit layout. The 0.1px
+   * keeps rounding from pushing the last button of a full row down.
+   */
+  flex: 0 0 auto;
+  width: max(
+    calc((100% - 10 * var(--lumi-nps-gap)) / 11 - 0.1px),
+    min(
+      calc((100% - 5 * var(--lumi-nps-gap)) / 6 - 0.1px),
+      calc((26rem - 100%) * 999)
+    ),
+    min(
+      calc((100% - 3 * var(--lumi-nps-gap)) / 4 - 0.1px),
+      calc((11rem - 100%) * 999)
+    )
+  );
   min-width: 0;
   height: 2.25rem;
   border: 2px solid var(--lumi-nps-border, transparent);
@@ -27,7 +57,8 @@
 }
 
 .lumi-survey-rating__nps-button:focus-visible {
-  outline: none;
+  /* Forced colors remove box-shadow but paint this outline visibly. */
+  outline: 3px solid transparent;
   box-shadow: 0 0 0 3px var(--ax-border-focus);
   z-index: 1;
 }

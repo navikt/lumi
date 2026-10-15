@@ -44,6 +44,8 @@ describe("LumiSurveyDock late consent interaction", () => {
       await vi.advanceTimersByTimeAsync(300);
     });
 
+    // The dock waits minimized while consent is unknown; the user opens it.
+    fireEvent.click(screen.getByRole("button", { name: "Gi tilbakemelding" }));
     const answer = screen.getAllByRole("radio")[0];
     fireEvent.click(answer);
     expect(answer).toBeChecked();

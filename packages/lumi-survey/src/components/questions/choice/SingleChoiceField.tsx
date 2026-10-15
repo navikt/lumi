@@ -4,7 +4,7 @@ import type {
   ChoiceQuestion,
   LumiSurveyAnswerValue,
 } from "../../../core/types.js";
-import { formatQuestionPrompt } from "../utils/formatQuestionPrompt.js";
+import { QuestionPrompt, SurveyText } from "../../shared/surveyLanguage.js";
 import { useChoiceOptions } from "./useChoiceOptions.js";
 
 interface SingleChoiceFieldProps {
@@ -31,9 +31,13 @@ export const SingleChoiceField = ({
 
   return (
     <RadioGroup
-      legend={formatQuestionPrompt(question)}
+      legend={<QuestionPrompt question={question} />}
       hideLegend={hideLabel}
-      description={question.description}
+      description={
+        question.description ? (
+          <SurveyText>{question.description}</SurveyText>
+        ) : undefined
+      }
       value={selected}
       onChange={(nextValue: string) => onChange(nextValue ?? null)}
       disabled={disabled}
@@ -43,9 +47,10 @@ export const SingleChoiceField = ({
         <Radio
           key={option.value}
           value={option.value}
+          // Aksel takes a plain string here, so it cannot carry `lang`.
           description={option.description}
         >
-          {option.label}
+          <SurveyText>{option.label}</SurveyText>
         </Radio>
       ))}
     </RadioGroup>

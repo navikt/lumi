@@ -2,24 +2,28 @@ import {
   readConsentValue,
   removeConsentValue,
   type StorageMutationResult,
+  type StorageReadResult,
   writeConsentValue,
 } from "../../shared/consentStorage.js";
 import type { StorageStrategy } from "../propTypes.js";
 
 export interface StorageAdapter {
-  read(key: string): Promise<string | null>;
+  read(key: string): Promise<StorageReadResult>;
   write(key: string, value: string): Promise<StorageMutationResult>;
   remove(key: string): Promise<StorageMutationResult>;
 }
 
 // Simple localStorage wrapper
 const localStorageAdapter: StorageAdapter = {
-  async read(key: string): Promise<string | null> {
-    if (typeof window === "undefined") return null;
+  async read(key: string): Promise<StorageReadResult> {
+    if (typeof window === "undefined") return { outcome: "empty" };
     try {
-      return window.localStorage.getItem(key);
-    } catch {
-      return null;
+      const value = window.localStorage.getItem(key);
+      return value === null
+        ? { outcome: "empty" }
+        : { outcome: "found", value };
+    } catch (error) {
+      return { outcome: "unavailable", error };
     }
   },
   async write(key: string, value: string): Promise<StorageMutationResult> {
@@ -42,10 +46,11 @@ const localStorageAdapter: StorageAdapter = {
   },
 };
 
-// No-op storage for "none" strategy
+// No-op storage for "none" strategy. Persistence is intentionally off, so a
+// read is empty rather than unavailable and the dock follows `initialOpen`.
 const noopStorageAdapter: StorageAdapter = {
-  async read(): Promise<string | null> {
-    return null;
+  async read(): Promise<StorageReadResult> {
+    return { outcome: "empty" };
   },
   async write(): Promise<StorageMutationResult> {
     return { outcome: "skipped" };

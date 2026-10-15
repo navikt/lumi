@@ -20,6 +20,7 @@ Setter dere opp widgeten for første gang, start med [Legg surveyen i appen](/ko
 | `intro` | `LumiSurveyIntroConfig` | Nei | Overstyrer innhold på velkomstsiden per felt |
 | `success` | `LumiSurveySuccessConfig` | Nei | Overstyrer takkesiden etter innsending per felt |
 | `style` | `LumiSurveyStyle` | Nei | Visuell tilpasning av widgeten |
+| `lang` | `string` | Nei | Språket i teksten fra surveyen. Uten `lang` arver widgeten sidens språk. Sett for eksempel `lang="nb"` når surveyen er på bokmål og siden på engelsk. Faste tekster i widgeten, som **Neste** og **Tilbake**, er merket som bokmål når dere ikke har endret dem med `labels`. |
 
 ## `survey`: `SurveyDocumentV1`
 
@@ -133,10 +134,10 @@ Send `submission.transportPayload` til endepunktet i appen deres. Se [Koble til 
 
 | Felt | Type | Standard | Beskrivelse |
 | :--- | :--- | :--- | :--- |
-| `initialOpen` | `boolean` | `true` | Om widgeten starter åpen |
+| `initialOpen` | `boolean` | `true` | Om widgeten starter åpen. Får den ikke lagre, starter den minimert. Se [Uten samtykke](/guider/lagring#uten-samtykke) |
 | `resetOnClose` | `boolean` | `true` | Nullstill svar når brukeren lukker |
-| `dismissCooldownDays` | `number` | `30` | Dager før en lukket widget vises igjen. `0` betyr at lukkingen ikke utløper |
-| `hideAfterSubmit` | `boolean` | `true` | Skjul widgeten etter vellykket innsending |
+| `dismissCooldownDays` | `number` | `30` | Dager før widgeten vises igjen etter at surveyen er lukket eller besvart. `0` betyr at ventetiden aldri går ut |
+| `hideAfterSubmit` | `boolean` | `true` | Skjul widgeten etter vellykket innsending, til ventetiden er over |
 | `questionLayout` | `"auto" \| "singlePage" \| "steps"` | `"auto"` | Hvordan sidene vises |
 | `showPersonalDataNotice` | `boolean` | `true` | Vis informasjon om personopplysninger |
 | `personalDataNotice` | `ReactNode` | – | Egen informasjon om personopplysninger |
@@ -236,7 +237,7 @@ Hvis `success.title` i dokumentet er tom, bruker widgeten standardteksten på ta
 | `panelClassName` | `string` | – | Ekstra CSS-klasse for panelet |
 | `panelBackground` | Aksel `Box`-token | `"default"` | Bakgrunnsfarge |
 | `panelBorderColor` | Aksel `Box`-token | `"neutral-subtle"` | Kantfarge |
-| `panelMaxHeight` | `string` | `"calc(100vh - 2rem)"` | Største høyde for panelet |
+| `panelMaxHeight` | `string` | `"calc(100dvh - 2rem)"` | Største høyde for panelet. Nettlesere uten `dvh` får `"calc(100vh - 2rem)"` |
 
 Se [Styling](/guider/styling).
 

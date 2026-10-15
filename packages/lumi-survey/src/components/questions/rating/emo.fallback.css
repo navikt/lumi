@@ -35,7 +35,8 @@
 }
 
 .lumi-survey-rating__emoji-button:focus-visible {
-  outline: none;
+  /* Forced colors remove box-shadow but paint this outline visibly. */
+  outline: 3px solid transparent;
   border-radius: var(--ax-radius-8);
   box-shadow: 0 0 0 3px var(--ax-border-focus);
   z-index: 1;

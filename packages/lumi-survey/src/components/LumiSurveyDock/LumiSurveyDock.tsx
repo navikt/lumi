@@ -15,10 +15,12 @@ import { validateAnswers } from "../../core/validation.js";
 import { getVisibilityMetadata } from "../../core/visibilityMetadata.js";
 
 import { buildCanonicalSurvey } from "../shared/canonicalSurvey.js";
+import { SurveyLanguageProvider } from "../shared/surveyLanguage.js";
 import type { LumiSurveyDefinition, SurveyDocumentV1 } from "../surveyTypes.js";
 import { CLASS_NAMES, joinClassNames } from "./classNames.js";
 import { DockPanel } from "./components/DockPanel.js";
 import { MinimizedDock } from "./components/MinimizedDock.js";
+import { returnFocusToPage } from "./focusReturn.js";
 import { useAutoCloseOnSuccess } from "./hooks/useAutoCloseOnSuccess.js";
 import { useEnrichedContext } from "./hooks/useEnrichedContext.js";
 import { usePageNavigation } from "./hooks/usePageNavigation.js";
@@ -113,6 +115,15 @@ export interface LumiSurveyDockProps {
    * contain identifiers; otherwise pass a sanitized route key/template instead.
    */
   context?: LumiSurveyContext;
+
+  /**
+   * Language of the text that comes from the survey: titles, questions,
+   * options and the intro and receipt text. Without `lang` the widget
+   * inherits the page language. Set for example `"nb"` when the survey is in
+   * Bokmål on an English page. Built-in copy such as "Neste" and "Tilbake" is
+   * marked as Bokmål unless it is replaced through `labels`.
+   */
+  lang?: string;
 }
 
 export const LumiSurveyDock = ({
@@ -126,6 +137,7 @@ export const LumiSurveyDock = ({
   style,
   behavior,
   intro,
+  lang,
 }: LumiSurveyDockProps) => {
   // Resolve all config with defaults
 
@@ -197,7 +209,11 @@ export const LumiSurveyDock = ({
   const dockRef = useRef<HTMLElement>(null);
   const minimizedButtonRef = useRef<HTMLButtonElement>(null);
   const focusWithinDockRef = useRef(false);
-  const pendingDockFocusRef = useRef<"open-heading" | "minimized" | null>(null);
+  // The host page element that had focus before focus entered the dock.
+  const focusReturnTargetRef = useRef<HTMLElement | null>(null);
+  const pendingDockFocusRef = useRef<
+    "open-heading" | "minimized" | "return" | null
+  >(null);
   const [stepValidationMissing, setStepValidationMissing] = useState<string[]>(
     [],
   );
@@ -395,6 +411,7 @@ export const LumiSurveyDock = ({
     markUserInteraction,
     closeDock,
     reopenDock,
+    persistSubmission,
   } = usePersistedDismissal({
     surveyId,
     initialOpen: config.initialOpen,
@@ -412,10 +429,20 @@ export const LumiSurveyDock = ({
     setShowIntro(false);
   }, [markUserInteraction]);
 
-  const handleDockFocusCapture = useCallback(() => {
-    focusWithinDockRef.current = true;
-    markUserInteraction();
-  }, [markUserInteraction]);
+  const handleDockFocusCapture = useCallback(
+    (event: React.FocusEvent<HTMLElement>) => {
+      const previousTarget = event.relatedTarget;
+      if (
+        previousTarget instanceof HTMLElement &&
+        !event.currentTarget.contains(previousTarget)
+      ) {
+        focusReturnTargetRef.current = previousTarget;
+      }
+      focusWithinDockRef.current = true;
+      markUserInteraction();
+    },
+    [markUserInteraction],
+  );
 
   const handleDockBlurCapture = useCallback(
     (event: React.FocusEvent<HTMLElement>) => {
@@ -575,16 +602,27 @@ export const LumiSurveyDock = ({
       previousStatusRef.current !== "success" && status === "success";
     previousStatusRef.current = status;
 
-    if (enteredSuccess && focusWithinDockRef.current) {
+    if (!enteredSuccess) {
+      return;
+    }
+
+    // Remember the answered survey right away. Users often leave the receipt
+    // without pressing close, and the survey must not reopen on the next page.
+    persistSubmission(config.hideAfterSubmit);
+
+    if (focusWithinDockRef.current) {
       document.getElementById(successHeadingId)?.focus();
     }
-  }, [status, successHeadingId]);
+  }, [config.hideAfterSubmit, persistSubmission, status, successHeadingId]);
 
   const handleCloseDock = useCallback(() => {
     const hideCompletely = isSuccess && config.hideAfterSubmit;
     const focusIsWithinDock = dockRef.current?.contains(document.activeElement);
-    pendingDockFocusRef.current =
-      focusIsWithinDock && !hideCompletely ? "minimized" : null;
+    pendingDockFocusRef.current = focusIsWithinDock
+      ? hideCompletely
+        ? "return"
+        : "minimized"
+      : null;
     closeDock(hideCompletely);
   }, [closeDock, isSuccess, config.hideAfterSubmit]);
 
@@ -597,6 +635,15 @@ export const LumiSurveyDock = ({
     if (pendingDockFocusRef.current === "minimized" && dismissed) {
       minimizedButtonRef.current?.focus();
       pendingDockFocusRef.current = null;
+      return;
+    }
+
+    // The dock has unmounted, so focus would otherwise fall back to <body>.
+    if (pendingDockFocusRef.current === "return" && dismissed) {
+      pendingDockFocusRef.current = null;
+      focusWithinDockRef.current = false;
+      returnFocusToPage(focusReturnTargetRef.current);
+      focusReturnTargetRef.current = null;
       return;
     }
 
@@ -709,90 +756,95 @@ export const LumiSurveyDock = ({
       style={containerStyle}
       data-feedback-id={surveyId}
       data-state={dismissed ? "dismissed" : "open"}
+      // No lang here: replaced labels inherit the page language. Built-in copy
+      // marks itself as Bokmål, and survey text gets the `lang` prop through
+      // SurveyLanguageProvider.
       aria-label="Tilbakemeldingspanel"
       onFocusCapture={handleDockFocusCapture}
       onBlurCapture={handleDockBlurCapture}
       onPointerDownCapture={markUserInteraction}
     >
-      {dismissed ? (
-        <MinimizedDock
-          label={config.minimizedButtonLabel}
-          onReopen={handleReopenDock}
-          className={CLASS_NAMES.minimizedButton}
-          buttonRef={minimizedButtonRef}
-        />
-      ) : (
-        <DockPanel
-          panelId={panelId}
-          panelLabel="Gi tilbakemelding"
-          panelClassName={config.panelClassName}
-          panelStyle={panelStyle}
-          panelBackground={config.panelBackground}
-          panelBorderColor={config.panelBorderColor}
-          promptQuestion={headerQuestion}
-          headerTitle={headerPage?.title}
-          headerDescription={promptDescription}
-          successHeadingId={successHeadingId}
-          introHeadingId={introHeadingId}
-          onClose={handleCloseDock}
-          onSubmit={handleSubmit}
-          orderedQuestions={visibleQuestions}
-          orderedPages={source === "document-v1" ? visiblePages : undefined}
-          answers={answers}
-          validationMissing={validationMissing}
-          validationAttempt={validationAttempt}
-          isSubmitting={isSubmitting}
-          submitLabel={config.submitLabel}
-          submitPendingLabel={config.submitPendingLabel}
-          cancelLabel={config.cancelLabel}
-          showPersonalDataNotice={showPersonalDataNotice}
-          personalDataNotice={noticeContent}
-          isSubmitBlocked={isSubmitBlocked}
-          hasTransportError={Boolean(hasTransportError)}
-          transportErrorMessage={config.transportErrorMessage}
-          onQuestionChange={handleQuestionChange}
-          stepNavigation={{
-            isStepMode,
-            currentStep: visibleStepIndex,
-            currentStepQuestion,
-            currentStepQuestions: currentPageQuestions,
-            canGoBack,
-            canGoNext,
-            isLastStep,
-            disableWhenIncomplete: source === "legacy",
-            onNext: handleNext,
-            onBack: handleBack,
-          }}
-          progress={{
-            showProgress: config.showProgress,
-            totalSteps: totalVisibleSteps,
-            hasBranching,
-          }}
-          questionContext={{
-            promptQuestionId,
-            promptHeadingId,
-            promptDescriptionId,
-            promptDescriptionIsQuestionDescription,
-            questionAnchorPrefix: `${surveyId}-question`,
-            validationErrorMessage: config.validationErrorMessage,
-            validationSummaryHeading: config.validationSummaryHeading,
-            textTooLongErrorMessage: config.textTooLongErrorMessage,
-          }}
-          intro={{
-            isIntro: showIntro,
-            introTitle: config.introTitle,
-            introBody: config.introBody,
-            introStartLabel: config.introStartLabel,
-            onIntroStart: handleIntroStart,
-          }}
-          success={{
-            isSuccess,
-            successTitle: config.successTitle,
-            successBody: config.successBody,
-            successPrimaryLabel: config.successPrimaryLabel,
-          }}
-        />
-      )}
+      <SurveyLanguageProvider value={lang}>
+        {dismissed ? (
+          <MinimizedDock
+            label={config.minimizedButtonLabel}
+            onReopen={handleReopenDock}
+            className={CLASS_NAMES.minimizedButton}
+            buttonRef={minimizedButtonRef}
+          />
+        ) : (
+          <DockPanel
+            panelId={panelId}
+            panelLabel="Gi tilbakemelding"
+            panelClassName={config.panelClassName}
+            panelStyle={panelStyle}
+            panelBackground={config.panelBackground}
+            panelBorderColor={config.panelBorderColor}
+            promptQuestion={headerQuestion}
+            headerTitle={headerPage?.title}
+            headerDescription={promptDescription}
+            successHeadingId={successHeadingId}
+            introHeadingId={introHeadingId}
+            onClose={handleCloseDock}
+            onSubmit={handleSubmit}
+            orderedQuestions={visibleQuestions}
+            orderedPages={source === "document-v1" ? visiblePages : undefined}
+            answers={answers}
+            validationMissing={validationMissing}
+            validationAttempt={validationAttempt}
+            isSubmitting={isSubmitting}
+            submitLabel={config.submitLabel}
+            submitPendingLabel={config.submitPendingLabel}
+            cancelLabel={config.cancelLabel}
+            showPersonalDataNotice={showPersonalDataNotice}
+            personalDataNotice={noticeContent}
+            isSubmitBlocked={isSubmitBlocked}
+            hasTransportError={Boolean(hasTransportError)}
+            transportErrorMessage={config.transportErrorMessage}
+            onQuestionChange={handleQuestionChange}
+            stepNavigation={{
+              isStepMode,
+              currentStep: visibleStepIndex,
+              currentStepQuestion,
+              currentStepQuestions: currentPageQuestions,
+              canGoBack,
+              canGoNext,
+              isLastStep,
+              disableWhenIncomplete: source === "legacy",
+              onNext: handleNext,
+              onBack: handleBack,
+            }}
+            progress={{
+              showProgress: config.showProgress,
+              totalSteps: totalVisibleSteps,
+              hasBranching,
+            }}
+            questionContext={{
+              promptQuestionId,
+              promptHeadingId,
+              promptDescriptionId,
+              promptDescriptionIsQuestionDescription,
+              questionAnchorPrefix: `${surveyId}-question`,
+              validationErrorMessage: config.validationErrorMessage,
+              validationSummaryHeading: config.validationSummaryHeading,
+              textTooLongErrorMessage: config.textTooLongErrorMessage,
+            }}
+            intro={{
+              isIntro: showIntro,
+              introTitle: config.introTitle,
+              introBody: config.introBody,
+              introStartLabel: config.introStartLabel,
+              onIntroStart: handleIntroStart,
+            }}
+            success={{
+              isSuccess,
+              successTitle: config.successTitle,
+              successBody: config.successBody,
+              successPrimaryLabel: config.successPrimaryLabel,
+            }}
+          />
+        )}
+      </SurveyLanguageProvider>
     </aside>
   );
 };

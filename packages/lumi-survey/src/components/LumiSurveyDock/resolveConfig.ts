@@ -63,6 +63,20 @@ export interface ResolvedConfig {
 }
 
 /**
+ * Default max height for the open panel. `dvh` follows the visible viewport,
+ * so mobile browser toolbars cannot push the close button off screen. An
+ * inline style holds one value, so browsers without `dvh` get `vh`.
+ */
+export const resolveDefaultPanelMaxHeight = (): string => {
+  const supportsDynamicViewport =
+    typeof CSS !== "undefined" &&
+    typeof CSS.supports === "function" &&
+    CSS.supports("max-height", "100dvh");
+
+  return supportsDynamicViewport ? "calc(100dvh - 2rem)" : "calc(100vh - 2rem)";
+};
+
+/**
  * Resolves LumiSurveyDock configuration by applying defaults to optional props.
  */
 export function resolveConfig(
@@ -86,7 +100,8 @@ export function resolveConfig(
       labels?.textTooLong ?? DEFAULT_COPY.textTooLongErrorMessage,
     transportErrorMessage:
       labels?.transportError ?? DEFAULT_COPY.transportErrorMessage,
-    minimizedButtonLabel: labels?.minimizedButton ?? "Gi tilbakemelding",
+    minimizedButtonLabel:
+      labels?.minimizedButton ?? DEFAULT_COPY.minimizedButtonLabel,
 
     // Success
     successTitle: success?.title ?? DEFAULT_COPY.successTitle,
@@ -103,7 +118,7 @@ export function resolveConfig(
     panelClassName: style?.panelClassName,
     panelBackground: style?.panelBackground ?? "default",
     panelBorderColor: style?.panelBorderColor ?? "neutral-subtle",
-    panelMaxHeight: style?.panelMaxHeight ?? "calc(100vh - 2rem)",
+    panelMaxHeight: style?.panelMaxHeight ?? resolveDefaultPanelMaxHeight(),
 
     // Behavior
     initialOpen: behavior?.initialOpen ?? true,
