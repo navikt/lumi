@@ -1,4 +1,10 @@
-import { Link as AkselLink, Alert, BodyShort, VStack } from "@navikt/ds-react";
+import {
+  Link as AkselLink,
+  Alert,
+  BodyShort,
+  HStack,
+  VStack,
+} from "@navikt/ds-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createLink } from "@tanstack/react-router";
 import type { ReactNode } from "react";
@@ -8,6 +14,9 @@ import { filterBootstrapQueryKey } from "~/hooks/useFilterBootstrap";
 import type { ApiErrorException } from "~/types/errors";
 
 const RouterLink = createLink(AkselLink);
+
+const TEAM_ACCESS_HELP_URL =
+  "https://navikt.github.io/lumi/dashboard/tilgang#teamtilgang";
 
 interface AccessErrorProps {
   error: ApiErrorException;
@@ -32,10 +41,18 @@ export function AccessError({ error, team, query }: AccessErrorProps) {
           <BodyShort weight="semibold">
             Du har ikke tilgang til team «{team}».
           </BodyShort>
-          {/* Without search params the root route adds the default team. */}
-          <RouterLink to="." search={{}}>
-            Gå til standardteamet
-          </RouterLink>
+          <BodyShort size="small">
+            Du må være medlem av teamet i Nais Console for å se dataene.
+          </BodyShort>
+          <HStack gap="space-16" wrap>
+            {/* Without search params the root route adds the default team. */}
+            <RouterLink to="." search={{}}>
+              Gå til standardteamet
+            </RouterLink>
+            <AkselLink href={TEAM_ACCESS_HELP_URL}>
+              Les mer om tilgang
+            </AkselLink>
+          </HStack>
         </VStack>
       </Alert>
     );

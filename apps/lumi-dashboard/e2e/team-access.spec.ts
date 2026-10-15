@@ -57,6 +57,12 @@ test.describe("Link to a team without access", () => {
     }) => {
       await page.goto(`${path}?team=team-x`);
       await expectOnlyTheTeamAlert(page);
+      await expect(
+        page.getByRole("link", { name: "Les mer om tilgang" }),
+      ).toHaveAttribute(
+        "href",
+        "https://navikt.github.io/lumi/dashboard/tilgang#teamtilgang",
+      );
 
       await page.getByRole("link", { name: "Gå til standardteamet" }).click();
 

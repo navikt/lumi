@@ -203,6 +203,17 @@ describe("FilterBar team in the address", () => {
     expect(
       await screen.findByText("Du har ikke tilgang til team «team-x»."),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Du må være medlem av teamet i Nais Console for å se dataene.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Les mer om tilgang" }),
+    ).toHaveAttribute(
+      "href",
+      "https://navikt.github.io/lumi/dashboard/tilgang#teamtilgang",
+    );
     expect(screen.queryByText("Prøv igjen")).not.toBeInTheDocument();
 
     await user.click(
