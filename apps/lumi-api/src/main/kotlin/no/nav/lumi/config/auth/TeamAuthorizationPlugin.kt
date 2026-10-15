@@ -11,6 +11,12 @@ import org.slf4j.LoggerFactory
 
 private val log = LoggerFactory.getLogger("no.nav.lumi.config.auth.TeamAuthorizationPlugin")
 
+internal const val NO_TEAM_ACCESS_MESSAGE = "Du må være medlem av et team i Nais Console for å bruke Lumi"
+internal const val NO_TEAM_ACCESS_DETAILS =
+    "Lumi fant ingen team for deg i Nais. Be teamet ditt legge deg til som medlem i Nais Console, " +
+        "vent opptil fem minutter og last siden på nytt."
+internal const val NO_TEAM_ACCESS_HELP_URL = "https://navikt.github.io/lumi/dashboard/tilgang#teamtilgang"
+
 /**
  * Minimal abstraction so TeamAuthorizationPlugin can be tested without calling the real NAIS API.
  */
@@ -113,9 +119,9 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
         if (authorizedTeams.isEmpty()) {
             log.warn("TeamAuthorization: User {} has no authorized teams", pseudonymizeIdentifier(principal.navIdent))
             throw ApiErrorException.ForbiddenException(
-                errorMessage = "Du har ikke tilgang til noen team i Lumi",
-                details = "For å få tilgang må teamet ditt onboardes.",
-                helpUrl = "https://github.com/navikt/lumi#getting-access",
+                errorMessage = NO_TEAM_ACCESS_MESSAGE,
+                details = NO_TEAM_ACCESS_DETAILS,
+                helpUrl = NO_TEAM_ACCESS_HELP_URL,
             )
         }
         

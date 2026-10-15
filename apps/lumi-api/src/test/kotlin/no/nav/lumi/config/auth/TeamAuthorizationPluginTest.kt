@@ -245,7 +245,7 @@ class TeamAuthorizationPluginTest {
 
         assertEquals(HttpStatusCode.Forbidden, response.status)
         val body = response.bodyAsText()
-        assertTrue(body.contains("ikke tilgang til noen team", ignoreCase = true))
+        assertTrue(body.contains("Du må være medlem av et team i Nais Console for å bruke Lumi"))
         assertFalse(handlerInvoked.get())
     }
 
@@ -524,8 +524,18 @@ class TeamAuthorizationPluginTest {
         }
 
         assertEquals(HttpStatusCode.Forbidden, response.status)
-        val body = response.bodyAsText()
-        assertTrue(body.contains("ikke tilgang til noen team", ignoreCase = true))
+        val error = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+        assertEquals(
+            "Du må være medlem av et team i Nais Console for å bruke Lumi",
+            error.getValue("message").jsonPrimitive.content,
+        )
+        val details = error.getValue("details").jsonPrimitive.content
+        assertTrue(details.contains("Nais Console"))
+        assertFalse(details.contains("onboard", ignoreCase = true))
+        assertEquals(
+            "https://navikt.github.io/lumi/dashboard/tilgang#teamtilgang",
+            error.getValue("helpUrl").jsonPrimitive.content,
+        )
     }
 
     @Test
