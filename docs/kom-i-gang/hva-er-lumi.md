@@ -24,10 +24,10 @@ Det er utvikleren som [installerer widgeten](/kom-i-gang/installer-widget), [leg
 
 ## Hva teamet og Team eSyfo har ansvaret for
 
-Teamet deres har ansvaret for surveyen og svarene: hva dere spør om, koden i appen og hvordan svarene brukes. Dere må opplyse brukerne om at Lumi brukes til innsiktsarbeid, og slette svar der noen har skrevet personopplysninger.
+Nav er behandlingsansvarlig, og på vegne av Nav har teamet deres ansvaret for surveyen og svarene: hva dere spør om, koden i appen og hvordan svarene brukes. Dere må opplyse brukerne om at Lumi brukes til innsiktsarbeid, og slette svar der noen har skrevet personopplysninger.
 
 ::: warning Les bruksvilkårene først
-Før dere setter opp den første surveyen, må dere lese [bruksvilkårene](/referanse/bruksvilkar). Dere må blant annet fylle ut [etterlevelsesdokumentasjon](https://etterlevelse.ansatt.nav.no/dokumentasjon/201b8151-d312-4c76-bf44-2716d40a417a) og vite hvordan Lumi håndterer personopplysninger.
+Før dere setter opp den første surveyen, må dere lese [bruksvilkårene](/referanse/bruksvilkar). Dere må blant annet lage en egen kopi av [etterlevelsesmalen (E726)](https://etterlevelse.ansatt.nav.no/dokumentasjon/201b8151-d312-4c76-bf44-2716d40a417a) og fylle den ut, vurdere om dere trenger en PVK og vite hvordan Lumi håndterer personopplysninger.
 :::
 
 Lumi API maskerer kjente mønstre for personopplysninger i fritekstsvar og noen kontekstfelt, men teamet må fortsatt vurdere hvilke opplysninger surveyen samler inn. [Sikkerhet og personvern](/referanse/sikkerhet#pii-maskering) viser hva maskeringen dekker.
