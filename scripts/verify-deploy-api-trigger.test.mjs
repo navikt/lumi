@@ -19,7 +19,8 @@ const prodManifest = readYaml("apps", "lumi-api", "nais", "app", "prod.yaml");
 
 const normalizeExpression = (expression) =>
   expression.replace(/\s+/g, " ").trim();
-const selectedRefExpression = "$" + "{{ inputs.ref || github.ref }}";
+// Push runs deploy the exact commit that triggered them, not the branch tip.
+const selectedRefExpression = "$" + "{{ inputs.ref || github.sha }}";
 const buildImageExpression = normalizeExpression(
   "github.event_name == 'workflow_dispatch' || steps.what-changed.outputs.changed != 'non-inputs'",
 );
@@ -105,6 +106,51 @@ test("automatic and manual deploys follow the intended environment sequence", ()
     workflow.jobs["deploy-prod"].steps[0].with.ref,
     selectedRefExpression,
   );
+});
+
+test("API deploys are serialized per environment and prod uses the prod environment", () => {
+  for (const [jobName, environment] of [
+    ["deploy-dev", "dev"],
+    ["deploy-prod", "prod"],
+  ]) {
+    assert.deepEqual(workflow.jobs[jobName].concurrency, {
+      group: `deploy-api-${environment}`,
+      "cancel-in-progress": false,
+    });
+    // A hanging deploy must not block the concurrency group indefinitely.
+    assert.equal(workflow.jobs[jobName]["timeout-minutes"], 15);
+  }
+  assert.equal(workflow.concurrency, undefined);
+  assert.equal(workflow.jobs.build.concurrency, undefined);
+  assert.equal(workflow.jobs["deploy-prod"].environment, "prod");
+});
+
+test("API prod deploy applies the alert rules with the app manifest", () => {
+  const deployStep = findStep(workflow.jobs["deploy-prod"], (step) =>
+    step.uses?.startsWith("nais/deploy/actions/deploy@"),
+  );
+  assert.deepEqual(deployStep.env.RESOURCE.split(","), [
+    "apps/lumi-api/nais/app/prod.yaml",
+    "apps/lumi-api/nais/alerts/prod.yaml",
+  ]);
+
+  const alertRules = readYaml(
+    "apps",
+    "lumi-api",
+    "nais",
+    "alerts",
+    "prod.yaml",
+  );
+  const rule = alertRules.spec.groups
+    .flatMap((group) => group.rules)
+    .find((candidate) => candidate.alert === "LumiApiNoAvailableReplicas");
+  assert.ok(rule);
+  assert.equal(
+    rule.expr,
+    'kube_deployment_status_replicas_available{namespace="team-esyfo",deployment="lumi-api"} == 0',
+  );
+  assert.equal(rule.for, "5m");
+  assert.equal(rule.labels.namespace, "team-esyfo");
 });
 
 test("API image builds use the pinned monorepo-aware change detector", () => {
