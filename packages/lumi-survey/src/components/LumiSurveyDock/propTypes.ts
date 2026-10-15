@@ -6,19 +6,25 @@ import type { ReactNode } from "react";
  * All have sensible Norwegian defaults.
  */
 export interface LumiSurveyLabels {
-  /** Label for the submit button. @default "Send inn" */
+  /** Label for the submit button. @default "Send" */
   submit?: string;
-  /** Label for submit button while submitting. @default "Sender inn..." */
+  /** Label for submit button while submitting. @default "Sender…" */
   submitPending?: string;
   /** Label for the cancel button. @default "Lukk" */
   cancel?: string;
-  /** Error message for validation failures. @default "Vennligst fyll ut alle påkrevde felt" */
+  /** Error message for validation failures. @default "Du må svare på spørsmålet." */
   validationError?: string;
-  /** Heading shown when multiple answers need correction. */
+  /**
+   * Heading shown when multiple answers need correction.
+   * @default "Du må rette svarene før du kan fortsette:"
+   */
   validationSummary?: string;
-  /** Error formatter for a text answer above its effective character limit. */
+  /**
+   * Error formatter for a text answer above its effective character limit.
+   * @default (maxLength) => `Svaret kan ikke være lengre enn ${maxLength} tegn.`
+   */
   textTooLong?: (maxLength: number) => string;
-  /** Error message for transport failures. @default "Noe gikk galt ved innsending. Prøv igjen senere." */
+  /** Error message for transport failures. @default "Kunne ikke sende tilbakemeldingen. Prøv igjen senere." */
   transportError?: string;
   /** Label for the minimized button. @default "Gi tilbakemelding" */
   minimizedButton?: string;
