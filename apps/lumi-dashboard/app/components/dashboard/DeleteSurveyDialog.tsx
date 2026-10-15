@@ -12,6 +12,7 @@ import {
 import { useEffect, useState } from "react";
 import { useDeleteSurvey } from "~/hooks/useDeleteSurvey";
 import { useSurveyTotalCount } from "~/hooks/useSurveyTotalCount";
+import { writeErrorText } from "~/utils/publicDemo";
 
 interface DeleteSurveyDialogProps {
   surveyId: string;
@@ -132,8 +133,10 @@ export function DeleteSurveyDialog({
 
           {deleteMutation.isError && (
             <Alert variant="error">
-              Kunne ikke slette svar og fjerne surveyen fra dashboardet. Prøv
-              igjen senere.
+              {writeErrorText(
+                deleteMutation.error,
+                "Kunne ikke slette svar og fjerne surveyen fra dashboardet. Prøv igjen senere.",
+              )}
             </Alert>
           )}
         </VStack>

@@ -1,11 +1,19 @@
 import { TrashIcon } from "@navikt/aksel-icons";
-import { BodyLong, Button, HStack, Modal } from "@navikt/ds-react";
+import {
+  Alert,
+  BodyLong,
+  Button,
+  HStack,
+  Modal,
+  VStack,
+} from "@navikt/ds-react";
 
 interface DeleteFeedbackDialogProps {
   id: string | null;
   onClose: () => void;
   onConfirm: () => void;
   isPending: boolean;
+  errorText?: string | null;
 }
 
 export function DeleteFeedbackDialog({
@@ -13,6 +21,7 @@ export function DeleteFeedbackDialog({
   onClose,
   onConfirm,
   isPending,
+  errorText = null,
 }: DeleteFeedbackDialogProps) {
   return (
     <Modal
@@ -24,10 +33,17 @@ export function DeleteFeedbackDialog({
       }}
     >
       <Modal.Body>
-        <BodyLong>
-          Er du sikker på at du vil slette denne tilbakemeldingen? Handlingen
-          kan ikke angres.
-        </BodyLong>
+        <VStack gap="space-16">
+          <BodyLong>
+            Er du sikker på at du vil slette denne tilbakemeldingen? Handlingen
+            kan ikke angres.
+          </BodyLong>
+          {errorText ? (
+            <Alert variant="error" size="small">
+              {errorText}
+            </Alert>
+          ) : null}
+        </VStack>
       </Modal.Body>
       <Modal.Footer>
         <HStack gap="space-12" justify="end">

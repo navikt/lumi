@@ -6,6 +6,7 @@ import {
   readAnalysis,
 } from "~/server/analysisProductApi";
 import { authMiddleware } from "~/server/middleware/auth";
+import { refuseWriteInPublicDemo } from "~/server/publicDemo";
 import { type AuthContext, isMockMode } from "~/server/utils";
 import {
   AnalysisCatalogSchema,
@@ -110,8 +111,9 @@ export const getAnalysisReleases = createServerFn({ method: "GET" })
 export const createAnalysisProduct = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(AnalysisCreateSchema))
-  .handler(async ({ data, context }) =>
-    mutateAnalysis(
+  .handler(async ({ data, context }) => {
+    refuseWriteInPublicDemo();
+    return mutateAnalysis(
       await analysisRequest(
         context as AuthContext,
         data.team,
@@ -120,14 +122,15 @@ export const createAnalysisProduct = createServerFn({ method: "POST" })
         data.document,
       ),
       AnalysisProductSchema.refine((product) => product.team === data.team),
-    ),
-  );
+    );
+  });
 
 export const saveAnalysisDraft = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(AnalysisSaveSchema))
-  .handler(async ({ data, context }) =>
-    mutateAnalysis(
+  .handler(async ({ data, context }) => {
+    refuseWriteInPublicDemo();
+    return mutateAnalysis(
       await analysisRequest(
         context as AuthContext,
         data.team,
@@ -143,14 +146,15 @@ export const saveAnalysisDraft = createServerFn({ method: "POST" })
         (product) =>
           product.team === data.team && product.id === data.productId,
       ),
-    ),
-  );
+    );
+  });
 
 export const lockAnalysisRelease = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(AnalysisLockSchema))
-  .handler(async ({ data, context }) =>
-    mutateAnalysis(
+  .handler(async ({ data, context }) => {
+    refuseWriteInPublicDemo();
+    return mutateAnalysis(
       await analysisRequest(
         context as AuthContext,
         data.team,
@@ -161,5 +165,5 @@ export const lockAnalysisRelease = createServerFn({ method: "POST" })
       AnalysisReleaseSchema.refine(
         (release) => release.productId === data.productId,
       ),
-    ),
-  );
+    );
+  });

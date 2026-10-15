@@ -10,7 +10,7 @@ Surveyverksted og Lumi-dashboardet er tilgjengelige for Nav-ansatte som er medle
 
 - [Prod](https://lumi-dashboard.ansatt.nav.no) krever Nav-innlogging.
 - [Dev](https://lumi-dashboard.ansatt.dev.nav.no) krever Nav-innlogging.
-- [Demo](https://lumi-dashboard-demo.ekstern.dev.nav.no) viser testdata og er åpen for alle.
+- [Demo](https://lumi-dashboard-demo.ekstern.dev.nav.no) viser testdata og er åpen for alle. Demoen lagrer ingen endringer, så dere kan ikke lage utkast i Surveyverksted der.
 
 ## Innlogging
 

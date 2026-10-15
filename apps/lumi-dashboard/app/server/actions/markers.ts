@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { authMiddleware } from "~/server/middleware/auth";
+import { refuseWriteInPublicDemo } from "~/server/publicDemo";
 import {
   type AuthContext,
   buildUrl,
@@ -82,6 +83,7 @@ export const createMarkerServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(CreateMarkerSchema))
   .handler(async ({ data, context }): Promise<RatingMarker> => {
+    refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
     const { surveyId, team, ...payload } = data;
 
@@ -130,6 +132,7 @@ export const updateMarkerServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(UpdateMarkerSchema))
   .handler(async ({ data, context }): Promise<RatingMarker> => {
+    refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
     const { id, surveyId, team, ...payload } = data;
 
@@ -209,6 +212,7 @@ export const deleteMarkerServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(DeleteMarkerSchema))
   .handler(async ({ data, context }): Promise<void> => {
+    refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
 
     if (isMockMode()) {

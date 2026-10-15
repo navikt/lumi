@@ -50,6 +50,11 @@ export type SurveyAuthoringRevisionSummary = Omit<
   "document"
 >;
 
+/** False in the public demo, where Surveyverksted refuses every write. */
+export interface SurveyAuthoringAccess {
+  canSave: boolean;
+}
+
 export interface SurveyAuthoringRevisionDetail {
   revision: SurveyAuthoringRevision;
   previousRevision: SurveyAuthoringRevision | null;

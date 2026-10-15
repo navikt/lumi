@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { getMockTags } from "~/mock/mockData";
 import { authMiddleware } from "~/server/middleware/auth";
+import { refuseWriteInPublicDemo } from "~/server/publicDemo";
 import {
   type AuthContext,
   buildUrl,
@@ -45,6 +46,7 @@ export const addTagServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(TagActionSchema))
   .handler(async ({ data, context }): Promise<{ success: boolean }> => {
+    refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
 
     if (isMockMode()) {
@@ -77,6 +79,7 @@ export const removeTagServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(TagActionSchema))
   .handler(async ({ data, context }): Promise<{ success: boolean }> => {
+    refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
 
     if (isMockMode()) {

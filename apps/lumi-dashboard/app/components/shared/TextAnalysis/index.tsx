@@ -48,6 +48,7 @@ import {
   THEME_COLOR_RED,
   THEME_COLOR_VIOLET,
 } from "~/utils/colors";
+import { writeErrorText } from "~/utils/publicDemo";
 import { formatRelativeTime } from "~/utils/wordAnalysis";
 import styles from "./TextAnalysis.module.css";
 
@@ -329,7 +330,7 @@ export function TextAnalysis({
           );
           return;
         }
-        setThemeMutationError(fallback);
+        setThemeMutationError(writeErrorText(error, fallback));
       };
       if ("themeId" in data) {
         updateTheme(data, {
@@ -360,8 +361,10 @@ export function TextAnalysis({
       setThemeMutationError(undefined);
       deleteTheme(themeId, {
         onSuccess: () => setIsModalOpen(false),
-        onError: () =>
-          setThemeMutationError("Kunne ikke slette temaet. Prøv igjen."),
+        onError: (error) =>
+          setThemeMutationError(
+            writeErrorText(error, "Kunne ikke slette temaet. Prøv igjen."),
+          ),
       });
     },
     [deleteTheme],

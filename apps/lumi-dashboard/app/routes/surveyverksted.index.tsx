@@ -30,9 +30,11 @@ import { zodValidator } from "@tanstack/zod-adapter";
 import { useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { DeleteDraftDialog } from "~/components/surveyverksted/DeleteDraftDialog";
+import { DemoReadOnlyNotice } from "~/components/surveyverksted/DemoReadOnlyNotice";
 import {
   createSurveyAuthoringProjectServerFn,
   deleteSurveyAuthoringProjectServerFn,
+  fetchSurveyAuthoringAccessServerFn,
   fetchSurveyAuthoringProjectsServerFn,
   fetchTeamsServerFn,
 } from "~/server/actions";
@@ -41,6 +43,7 @@ import type {
   SurveyAuthoringProjectSummary,
   SurveyAuthoringRevisionDetail,
 } from "~/types/surveyAuthoring";
+import { isPublicDemoReadOnlyError } from "~/utils/publicDemo";
 import {
   SURVEY_TEMPLATE_PLACEHOLDER_LABELS,
   SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE,
@@ -262,6 +265,13 @@ function SurveyWorkshopIndex() {
     queryKey: ["teams"],
     queryFn: () => fetchTeamsServerFn(),
   });
+  const accessQuery = useQuery({
+    queryKey: ["survey-authoring-access"],
+    queryFn: () => fetchSurveyAuthoringAccessServerFn(),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+  // Unknown access counts as writable: the server refuses demo writes anyway.
+  const readOnly = accessQuery.data?.canSave === false;
   const availableTeams = useMemo(
     () => Object.keys(teamsQuery.data?.teams ?? {}).sort(),
     [teamsQuery.data],
@@ -375,9 +385,9 @@ function SurveyWorkshopIndex() {
               Surveyverksted
             </Heading>
             <BodyLong size="large">
-              Formuler og prøv ut en survey sammen. Utkastet lagres for teamet,
-              men blir ikke produksjonskonfigurasjon før koden senere tas inn i
-              en app.
+              {readOnly
+                ? "Formuler og prøv ut en survey sammen. Utkastet blir ikke produksjonskonfigurasjon før koden senere tas inn i en app."
+                : "Formuler og prøv ut en survey sammen. Utkastet lagres for teamet, men blir ikke produksjonskonfigurasjon før koden senere tas inn i en app."}
             </BodyLong>
           </VStack>
           <div
@@ -447,50 +457,61 @@ function SurveyWorkshopIndex() {
                     </option>
                   ))}
                 </Select>
-                <TextField
-                  label="Navn på utkastet"
-                  value={name}
-                  maxLength={120}
-                  onChange={(event) => {
-                    setName(event.target.value);
-                    if (!surveyIdTouched) {
-                      setSurveyId(suggestSurveyId(event.target.value));
-                    }
-                  }}
-                  placeholder="For eksempel: Kvitteringsside høst 2026"
-                />
-                <TextField
-                  label="Foreslått survey-ID"
-                  description="Identiteten utvikleren senere tar stilling til i kode. Foreslås fra navnet."
-                  value={surveyId}
-                  maxLength={200}
-                  onChange={(event) => {
-                    setSurveyIdTouched(true);
-                    setSurveyId(event.target.value);
-                  }}
-                  placeholder="min-app-kvittering-v1"
-                />
-                {surveyId.trim() &&
-                projectsQuery.data?.some(
-                  (project) => project.surveyId === surveyId.trim(),
-                ) ? (
-                  <Alert variant="warning" size="small">
-                    En annen survey i teamet bruker allerede denne survey-ID-en.
-                  </Alert>
-                ) : null}
-                {createMutation.isError ? (
-                  <Alert variant="error">
-                    Utkastet kunne ikke opprettes. Prøv igjen.
-                  </Alert>
-                ) : null}
-                <Button
-                  type="button"
-                  disabled={!canCreate}
-                  loading={createMutation.isPending}
-                  onClick={() => createMutation.mutate()}
-                >
-                  Opprett utkast
-                </Button>
+                {readOnly ? (
+                  <DemoReadOnlyNotice />
+                ) : (
+                  <>
+                    <TextField
+                      label="Navn på utkastet"
+                      value={name}
+                      maxLength={120}
+                      onChange={(event) => {
+                        setName(event.target.value);
+                        if (!surveyIdTouched) {
+                          setSurveyId(suggestSurveyId(event.target.value));
+                        }
+                      }}
+                      placeholder="For eksempel: Kvitteringsside høst 2026"
+                    />
+                    <TextField
+                      label="Foreslått survey-ID"
+                      description="Identiteten utvikleren senere tar stilling til i kode. Foreslås fra navnet."
+                      value={surveyId}
+                      maxLength={200}
+                      onChange={(event) => {
+                        setSurveyIdTouched(true);
+                        setSurveyId(event.target.value);
+                      }}
+                      placeholder="min-app-kvittering-v1"
+                    />
+                    {surveyId.trim() &&
+                    projectsQuery.data?.some(
+                      (project) => project.surveyId === surveyId.trim(),
+                    ) ? (
+                      <Alert variant="warning" size="small">
+                        En annen survey i teamet bruker allerede denne
+                        survey-ID-en.
+                      </Alert>
+                    ) : null}
+                    {createMutation.isError ? (
+                      isPublicDemoReadOnlyError(createMutation.error) ? (
+                        <DemoReadOnlyNotice />
+                      ) : (
+                        <Alert variant="error">
+                          Utkastet kunne ikke opprettes. Prøv igjen.
+                        </Alert>
+                      )
+                    ) : null}
+                    <Button
+                      type="button"
+                      disabled={!canCreate}
+                      loading={createMutation.isPending}
+                      onClick={() => createMutation.mutate()}
+                    >
+                      Opprett utkast
+                    </Button>
+                  </>
+                )}
               </VStack>
             </Box>
 
@@ -603,8 +624,9 @@ function SurveyWorkshopIndex() {
                     Ingen surveys ennå
                   </Heading>
                   <BodyShort textColor="subtle">
-                    Start den første til venstre. Den blir tilgjengelig for
-                    teamet også neste gang dere fortsetter.
+                    {readOnly
+                      ? "Demoen har ingen utkast. Teamets surveyer vises her i Lumi-dashboardet."
+                      : "Start den første til venstre. Den blir tilgjengelig for teamet også neste gang dere fortsetter."}
                   </BodyShort>
                 </Box>
               )}

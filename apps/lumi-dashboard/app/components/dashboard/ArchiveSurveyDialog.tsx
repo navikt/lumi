@@ -8,6 +8,7 @@ import {
   VStack,
 } from "@navikt/ds-react";
 import { useArchiveSurvey } from "~/hooks/useArchiveSurvey";
+import { writeErrorText } from "~/utils/publicDemo";
 
 interface ArchiveSurveyDialogProps {
   surveyId: string;
@@ -66,7 +67,10 @@ export function ArchiveSurveyDialog({
 
           {archiveMutation.isError && (
             <InlineMessage status="error">
-              Kunne ikke arkivere survey. Prøv igjen senere.
+              {writeErrorText(
+                archiveMutation.error,
+                "Kunne ikke arkivere survey. Prøv igjen senere.",
+              )}
             </InlineMessage>
           )}
         </VStack>

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { authMiddleware } from "~/server/middleware/auth";
+import { refuseWriteInPublicDemo } from "~/server/publicDemo";
 import {
   type AuthContext,
   buildUrl,
@@ -19,11 +20,13 @@ export const deleteSurveyServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(DeleteSurveySchema))
   .handler(async ({ data, context }): Promise<DeleteSurveyResult> => {
+    refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
 
     if (isMockMode()) {
+      const { deleteMockSurvey } = await import("~/mock/mockData");
       await mockDelay();
-      return { deletedCount: 42, surveyId: data.surveyId };
+      return deleteMockSurvey(data.surveyId);
     }
 
     const url = buildUrl(
@@ -48,6 +51,7 @@ export const deleteFeedbackServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(zodValidator(DeleteFeedbackSchema))
   .handler(async ({ data, context }): Promise<{ success: boolean }> => {
+    refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
 
     if (isMockMode()) {

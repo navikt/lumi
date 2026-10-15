@@ -36,6 +36,10 @@ import {
   analysisConfirmation,
   emptyAnalysisDocument,
 } from "~/types/analysisProducts";
+import {
+  isPublicDemoReadOnlyError,
+  PUBLIC_DEMO_READ_ONLY_TEXT,
+} from "~/utils/publicDemo";
 import { ContractPreview } from "./ContractPreview";
 import { DataSelection } from "./DataSelection";
 import { ReviewDateInput } from "./ReviewDateInput";
@@ -180,8 +184,13 @@ export function AnalysisEditor({
         navigatingAfterSave.current = false;
       }
     },
-    onError: () => {
+    onError: (saveError) => {
       if (!mounted.current) return;
+      // The demo refuses before anything is stored, so nothing is uncertain.
+      if (isPublicDemoReadOnlyError(saveError)) {
+        fail(PUBLIC_DEMO_READ_ONLY_TEXT);
+        return;
+      }
       setInvalidPreview(true);
       if (!product) setUncertainCreate(true);
       fail(
@@ -220,8 +229,13 @@ export function AnalysisEditor({
         navigatingAfterSave.current = false;
       }
     },
-    onError: () => {
+    onError: (lockError) => {
       if (!mounted.current) return;
+      if (isPublicDemoReadOnlyError(lockError)) {
+        setConfirmation(null);
+        fail(PUBLIC_DEMO_READ_ONLY_TEXT);
+        return;
+      }
       setUncertainLock(true);
     },
     onSettled: () => {
