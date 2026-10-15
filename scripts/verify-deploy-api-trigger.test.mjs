@@ -220,3 +220,120 @@ test("API deploys use WORKLOAD_IMAGE and manifests do not template an image", ()
     assert.equal(deployStep.env.VAR, undefined);
   }
 });
+
+test("pull requests that only change app manifests skip Kotlin tests and full-chain", () => {
+  const ciWorkflow = readYaml(".github", "workflows", "ci.yaml");
+  const changesJob = ciWorkflow.jobs.changes;
+  const filterStep = findStep(changesJob, (step) => step.id === "filter");
+  const manifestStep = findStep(
+    changesJob,
+    (step) => step.id === "app-manifests",
+  );
+
+  assert.equal(manifestStep.if, "github.event_name == 'pull_request'");
+  assert.equal(manifestStep.uses, filterStep.uses);
+  assert.equal(manifestStep.with["predicate-quantifier"], "every");
+  assert.equal(filterStep.with["predicate-quantifier"], undefined);
+  const manifestPatterns = load(manifestStep.with.filters).outside;
+  assert.deepEqual(manifestPatterns, [
+    "!apps/lumi-api/nais/app/**",
+    "!apps/lumi-submission-proxy/nais/**",
+  ]);
+  assert.equal(
+    changesJob.outputs.app_manifests_only,
+    "$" + "{{ steps.app-manifests.outputs.outside == 'false' }}",
+  );
+
+  for (const [jobName, output] of [
+    ["api", "api"],
+    ["full-chain", "full_chain"],
+  ]) {
+    assert.equal(
+      normalizeExpression(ciWorkflow.jobs[jobName].if),
+      normalizeExpression(`
+        always() && (
+          github.event_name == 'merge_group' ||
+          (needs.changes.outputs.${output} == 'true' &&
+            needs.changes.outputs.app_manifests_only != 'true')
+        )
+      `),
+    );
+  }
+
+  // With predicate-quantifier every, a changed file counts only when it
+  // matches every negated pattern, that is, when it is outside both folders.
+  const touchesMoreThanAppManifests = (files) =>
+    files.some((file) =>
+      manifestPatterns.every(
+        (pattern) => !path.matchesGlob(file, pattern.slice(1)),
+      ),
+    );
+  assert.equal(
+    touchesMoreThanAppManifests(["apps/lumi-api/nais/app/prod.yaml"]),
+    false,
+  );
+  assert.equal(
+    touchesMoreThanAppManifests([
+      "apps/lumi-api/nais/app/dev.yaml",
+      "apps/lumi-submission-proxy/nais/dev.yaml",
+    ]),
+    false,
+  );
+  // RetentionAlertRulesTest reads the alert rules, so they keep the tests.
+  assert.equal(
+    touchesMoreThanAppManifests(["apps/lumi-api/nais/alerts/prod.yaml"]),
+    true,
+  );
+  assert.equal(
+    touchesMoreThanAppManifests([
+      "apps/lumi-api/nais/app/prod.yaml",
+      "apps/lumi-api/src/main/kotlin/no/nav/lumi/Application.kt",
+    ]),
+    true,
+  );
+});
+
+test("Nais files read by these guards run the release guards in CI", () => {
+  const ciWorkflow = readYaml(".github", "workflows", "ci.yaml");
+  const filters = load(
+    findStep(ciWorkflow.jobs.changes, (step) => step.id === "filter").with
+      .filters,
+  );
+  const coversFile = (patterns, file) =>
+    patterns.some((pattern) => path.matchesGlob(file, pattern));
+
+  // The node job does not run for API or proxy changes, so these files rely
+  // on the lighter release-guards job.
+  for (const file of [
+    "apps/lumi-api/nais/app/dev.yaml",
+    "apps/lumi-api/nais/app/prod.yaml",
+    "apps/lumi-api/nais/alerts/prod.yaml",
+    "apps/lumi-submission-proxy/nais/dev.yaml",
+  ]) {
+    assert.equal(coversFile(filters.node, file), false, file);
+    assert.equal(coversFile(filters.release_guards, file), true, file);
+  }
+  assert.equal(
+    ciWorkflow.jobs.changes.outputs.release_guards,
+    "$" + "{{ steps.filter.outputs.release_guards }}",
+  );
+
+  const guardsJob = ciWorkflow.jobs["release-guards"];
+  assert.equal(guardsJob.needs, "changes");
+  assert.equal(
+    normalizeExpression(guardsJob.if),
+    normalizeExpression(`
+      always() &&
+      needs.changes.outputs.release_guards == 'true' &&
+      needs.changes.outputs.node != 'true'
+    `),
+  );
+  assert.ok(
+    guardsJob.steps.some((step) => step.run === "pnpm run test:release-guards"),
+  );
+  assert.ok(ciWorkflow.jobs.required.needs.includes("release-guards"));
+  assert.match(
+    ciWorkflow.jobs.required.steps[0].run,
+    /"release-guards=\$\{\{ needs\.release-guards\.result \}\}"/,
+  );
+});
