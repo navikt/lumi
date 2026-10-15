@@ -1,5 +1,9 @@
 import { createMemoryHistory } from "@tanstack/history";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from "@tanstack/react-query";
 import {
   createRootRoute,
   createRoute,
@@ -9,9 +13,11 @@ import {
 } from "@tanstack/react-router";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createElement, StrictMode } from "react";
+import { type ComponentType, createElement, StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
+import { useTeamAccessDenied } from "~/hooks/useTeamAccessDenied";
 import { fetchFilterBootstrapServerFn } from "~/server/actions";
 import { ApiErrorException, ErrorType } from "~/types/errors";
 import { redirectToDashboardTeam } from "~/utils/dashboardTeam";
@@ -76,7 +82,15 @@ function bootstrapFor({ data }: { data: { team?: string } }) {
 
 async function renderFilterBarAt(
   url: string,
-  { withTeamRedirect = false, strict = false } = {},
+  {
+    withTeamRedirect = false,
+    strict = false,
+    page,
+  }: {
+    withTeamRedirect?: boolean;
+    strict?: boolean;
+    page?: ComponentType;
+  } = {},
 ) {
   const rootRoute = createRootRoute({
     beforeLoad: withTeamRedirect
@@ -87,7 +101,13 @@ async function renderFilterBarAt(
   const feedbackRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/feedback",
-    component: () => createElement(FilterBar),
+    component: () =>
+      createElement(
+        "div",
+        null,
+        createElement(FilterBar),
+        page ? createElement(page) : null,
+      ),
   });
   const history = createMemoryHistory({ initialEntries: ["/start", url] });
   const router = createRouter({
@@ -343,6 +363,48 @@ describe("FilterBar access errors", () => {
     expect(
       await screen.findAllByRole("combobox", { name: "Team" }),
     ).not.toHaveLength(0);
+  });
+
+  it("retries the page's own failed queries in the same click after a 503", async () => {
+    const user = userEvent.setup();
+    const fetchPageData = vi.fn();
+    // Like the pages: its own query, hidden while FilterBar explains the error.
+    function Page() {
+      const teamAccessDenied = useTeamAccessDenied();
+      const pageQuery = useQuery({
+        queryKey: ["feedback", "page"],
+        queryFn: () => fetchPageData(),
+      });
+      if (teamAccessDenied) return null;
+      return createElement(
+        DataFetchBoundary,
+        { title: "Kunne ikke hente tilbakemeldinger", queries: [pageQuery] },
+        createElement("p", null, "Sidens data"),
+      );
+    }
+    const lookupDown = apiError(503, LOOKUP_DOWN.message, {
+      details: LOOKUP_DOWN.details,
+    });
+    mockFetchBootstrap.mockRejectedValue(lookupDown);
+    fetchPageData.mockRejectedValue(lookupDown);
+
+    await renderFilterBarAt("/feedback?team=team-a", { page: Page });
+
+    expect(
+      await screen.findByText(LOOKUP_DOWN.message, {}, { timeout: 4000 }),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(fetchPageData).toHaveBeenCalled());
+
+    mockFetchBootstrap.mockImplementation(bootstrapFor as never);
+    fetchPageData.mockResolvedValue({ items: [] });
+    await user.click(screen.getByRole("button", { name: "Prøv igjen" }));
+
+    expect(await screen.findByText("Sidens data")).toBeInTheDocument();
+    expect(screen.queryByText(LOOKUP_DOWN.message)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Kunne ikke hente tilbakemeldinger"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("keeps the generic alert for errors that are not about access", async () => {

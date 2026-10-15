@@ -1,8 +1,10 @@
 import { Link as AkselLink, Alert, BodyShort, VStack } from "@navikt/ds-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { createLink } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { safeHelpUrl } from "~/components/shared/ErrorComponent";
+import { filterBootstrapQueryKey } from "~/hooks/useFilterBootstrap";
 import type { ApiErrorException } from "~/types/errors";
 
 const RouterLink = createLink(AkselLink);
@@ -20,6 +22,7 @@ interface AccessErrorProps {
  * expired login get the dashboard's own text.
  */
 export function AccessError({ error, team, query }: AccessErrorProps) {
+  const queryClient = useQueryClient();
   const { status, message, details, helpUrl } = error.error;
 
   if (team && status === 403 && message === refusedTeamMessage(team)) {
@@ -52,11 +55,31 @@ export function AccessError({ error, team, query }: AccessErrorProps) {
 
   // The team lookup can come back, so keep the retry button.
   if (status === 503) {
+    // The page's own queries failed with the same lookup while it was hidden.
+    // Retry them in the same click, so the page does not show its own error
+    // once the team access is back.
+    const bootstrapKey = filterBootstrapQueryKey()[0];
+    const retryAll = {
+      isError: query.isError,
+      isFetching: query.isFetching,
+      refetch: async () => {
+        const [result] = await Promise.all([
+          query.refetch(),
+          queryClient.refetchQueries({
+            type: "active",
+            predicate: (other) =>
+              other.state.status === "error" &&
+              other.queryKey[0] !== bootstrapKey,
+          }),
+        ]);
+        return result;
+      },
+    };
     return (
       <DataFetchBoundary
         title={message}
         description={description}
-        queries={[query]}
+        queries={[retryAll]}
       />
     );
   }
