@@ -87,13 +87,15 @@ Widgeten husker at brukeren har lukket surveyen bare når den får lagre det. St
 
 ## Språk
 
-Spørsmålene, velkomstsiden og takkesiden kan dere skrive på nynorsk eller engelsk i Surveyverksted. Noen faste tekster i widgeten finnes bare på bokmål, for eksempel «Neste», «Tilbake», «(valgfritt)» og «Steg 1 av 3». Disse kan dere endre selv:
+Spørsmålene, velkomstsiden og takkesiden kan dere skrive på nynorsk eller engelsk i Surveyverksted. De faste tekstene i widgeten finnes bare på bokmål. Noen av dem kan dere endre selv:
 
 - knappene, feilmeldingene og knappen i minimert widget med `labels`, se [`labels` i props-referansen](/referanse/props-referanse#labels-lumisurveylabels)
 - knappen på takkesiden med `success.primaryLabel`
 - varselet om personopplysninger med `behavior.personalDataNotice`. Varselet skal fortsatt vises, se [bruksvilkårene](/referanse/bruksvilkar).
 
-Er surveyen på et annet språk enn siden, setter dere `lang` på widgeten, for eksempel `lang="en"`. Da leser skjermleseren teksten fra surveyen med riktig uttale. Faste tekster dere ikke har endret, som «Neste» og «Tilbake», er merket som bokmål. `lang` finnes fra versjon 2.3.0 av `@navikt/lumi-survey`.
+Resten kan dere ikke endre, for eksempel «Neste», «Tilbake», «(valgfritt)» og «Steg 1 av 3».
+
+Er surveyen på et annet språk enn siden, setter dere `lang` på widgeten, for eksempel `lang="en"`. Da leser skjermleseren teksten fra surveyen med riktig uttale. Faste tekster dere ikke har endret, er merket som bokmål. `lang` finnes fra versjon 2.3.0 av `@navikt/lumi-survey`.
 
 ## Prøv surveyen i appen
 
