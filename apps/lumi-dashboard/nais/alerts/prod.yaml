@@ -1,0 +1,25 @@
+# Deployed together with nais/prod.yaml by deploy-dashboard.yaml. That deploy
+# renders every resource as a template (VAR), so avoid double curly braces in
+# this file, including Prometheus label templates in annotations.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: lumi-dashboard-availability
+  namespace: team-esyfo
+  labels:
+    team: team-esyfo
+spec:
+  groups:
+    - name: lumi-dashboard-availability
+      rules:
+        - alert: LumiDashboardNoAvailableReplicas
+          expr: kube_deployment_status_replicas_available{namespace="team-esyfo",deployment="lumi-dashboard"} == 0
+          for: 5m
+          annotations:
+            summary: "lumi-dashboard har ingen tilgjengelige replikaer"
+            consequence: "Teamene kommer ikke inn i dashboardet. Innsendinger går direkte til lumi-api og påvirkes ikke."
+            action: "Stans videre utrulling, finn årsaken i podstatus og logger, og følg runbooken."
+            runbook_url: "https://github.com/navikt/lumi/blob/main/apps/lumi-api/docs/runbooks/submission-health.md#ingen-tilgjengelige-replikaer"
+          labels:
+            severity: warning
+            namespace: team-esyfo

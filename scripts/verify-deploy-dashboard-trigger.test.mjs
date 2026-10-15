@@ -373,8 +373,10 @@ test("manual and demo deployments follow the complete routes with one exact ref"
     `),
   );
 
+  // Demo pushes and manual runs without a ref deploy the exact triggering
+  // commit, not the branch tip at checkout time.
   const selectedRef = expression(
-    "inputs.ref || github.event.workflow_run.head_sha || github.ref",
+    "inputs.ref || github.event.workflow_run.head_sha || github.sha",
   );
   for (const jobName of [
     "build-demo",
@@ -385,4 +387,52 @@ test("manual and demo deployments follow the complete routes with one exact ref"
   ]) {
     assert.equal(workflow.jobs[jobName].steps[0].with.ref, selectedRef);
   }
+  assert.equal(
+    workflow.jobs.checks.steps[0].with.ref,
+    expression("inputs.ref || github.sha"),
+  );
+});
+
+test("dashboard deploys are serialized per environment without cancelling a running deploy", () => {
+  for (const [jobName, environment] of [
+    ["deploy-demo", "demo"],
+    ["deploy-dev", "dev"],
+    ["deploy-prod", "prod"],
+  ]) {
+    assert.equal(workflow.jobs[jobName].environment.name, environment);
+    assert.deepEqual(workflow.jobs[jobName].concurrency, {
+      group: `deploy-dashboard-${environment}`,
+      "cancel-in-progress": false,
+    });
+    assert.equal(workflow.jobs[jobName]["timeout-minutes"], 15);
+  }
+  assert.equal(workflow.concurrency, undefined);
+});
+
+test("dashboard prod deploy applies the alert rules with the app manifest", () => {
+  const deployStep = workflow.jobs["deploy-prod"].steps.find((step) =>
+    step.uses?.startsWith("nais/deploy/actions/deploy@"),
+  );
+  const resources = deployStep.env.RESOURCE.split(",");
+  assert.deepEqual(resources, [
+    "apps/lumi-dashboard/nais/prod.yaml",
+    "apps/lumi-dashboard/nais/alerts/prod.yaml",
+  ]);
+
+  // The deploy renders every resource as a template, so alert annotations
+  // must not contain template braces.
+  const alertRules = readFileSync(
+    path.join(repositoryRoot, resources[1]),
+    "utf8",
+  );
+  assert.equal(alertRules.includes("{{"), false);
+
+  const rule = load(alertRules).spec.groups[0].rules[0];
+  assert.equal(rule.alert, "LumiDashboardNoAvailableReplicas");
+  assert.equal(
+    rule.expr,
+    'kube_deployment_status_replicas_available{namespace="team-esyfo",deployment="lumi-dashboard"} == 0',
+  );
+  assert.equal(rule.for, "5m");
+  assert.equal(rule.labels.namespace, "team-esyfo");
 });

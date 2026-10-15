@@ -72,3 +72,16 @@ spec:
           labels:
             severity: warning
             namespace: team-esyfo
+    - name: lumi-api-availability
+      rules:
+        - alert: LumiApiNoAvailableReplicas
+          expr: kube_deployment_status_replicas_available{namespace="team-esyfo",deployment="lumi-api"} == 0
+          for: 5m
+          annotations:
+            summary: "lumi-api har ingen tilgjengelige replikaer"
+            consequence: "Ingen pod tar imot kall. Survey-svar som sendes nå, blir ikke lagret, og appens egne alarmer gir ikke utslag."
+            action: "Stans videre utrulling, finn årsaken i podstatus og logger, og følg runbooken. Feiler readiness mot databasen, følg også runbooken for database recovery."
+            runbook_url: "https://github.com/navikt/lumi/blob/main/apps/lumi-api/docs/runbooks/submission-health.md#ingen-tilgjengelige-replikaer"
+          labels:
+            severity: critical
+            namespace: team-esyfo

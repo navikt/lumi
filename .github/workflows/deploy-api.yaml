@@ -41,7 +41,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
-          ref: ${{ inputs.ref || github.ref }}
+          ref: ${{ inputs.ref || github.sha }}
 
       - name: Determine whether the workload image changed
         if: github.event_name != 'workflow_dispatch'
@@ -101,13 +101,22 @@ jobs:
         (inputs.target == 'dev' || inputs.target == 'prod'))
     needs: build
     runs-on: ubuntu-latest
+    # One deploy per environment at a time, so merges in the same second do not
+    # race on the same Nais objects. A running deploy is never cancelled. The
+    # group holds at most one pending deploy: the one queued last replaces it,
+    # whether or not it has the newest commit. A manual rollback that is waiting
+    # can therefore be replaced by a push deploy.
+    timeout-minutes: 15
+    concurrency:
+      group: deploy-api-dev
+      cancel-in-progress: false
     permissions:
       contents: read
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          ref: ${{ inputs.ref || github.sha }}
       - uses: nais/deploy/actions/deploy@9850be311389ca754d9a9f2280615419d738c891
         env:
           CLUSTER: dev-gcp
@@ -120,13 +129,18 @@ jobs:
       (github.event_name == 'workflow_dispatch' && inputs.target == 'prod')
     needs: [build, deploy-dev]
     runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 15
+    concurrency:
+      group: deploy-api-prod
+      cancel-in-progress: false
     permissions:
       contents: read
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          ref: ${{ inputs.ref || github.sha }}
       - uses: nais/deploy/actions/deploy@9850be311389ca754d9a9f2280615419d738c891
         env:
           CLUSTER: prod-gcp

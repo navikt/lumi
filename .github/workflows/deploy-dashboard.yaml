@@ -90,7 +90,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          ref: ${{ inputs.ref || github.sha }}
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
@@ -139,7 +139,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.ref }}
+          ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.sha }}
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
@@ -201,7 +201,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.ref }}
+          ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.sha }}
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
@@ -264,10 +264,16 @@ jobs:
     environment:
       name: demo
       url: https://lumi-dashboard-demo.ekstern.dev.nav.no
+    # One deploy per environment at a time; see deploy-api.yaml for how
+    # GitHub replaces a pending deploy in the group.
+    timeout-minutes: 15
+    concurrency:
+      group: deploy-dashboard-demo
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.ref }}
+          ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.sha }}
       - uses: nais/deploy/actions/deploy@9850be311389ca754d9a9f2280615419d738c891
         env:
           CLUSTER: dev-gcp
@@ -287,10 +293,14 @@ jobs:
     environment:
       name: dev
       url: https://lumi-dashboard.ansatt.dev.nav.no
+    timeout-minutes: 15
+    concurrency:
+      group: deploy-dashboard-dev
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.ref }}
+          ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.sha }}
       - uses: nais/deploy/actions/deploy@9850be311389ca754d9a9f2280615419d738c891
         env:
           CLUSTER: dev-gcp
@@ -313,12 +323,16 @@ jobs:
     environment:
       name: prod
       url: https://lumi-dashboard.ansatt.nav.no
+    timeout-minutes: 15
+    concurrency:
+      group: deploy-dashboard-prod
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.ref }}
+          ref: ${{ inputs.ref || github.event.workflow_run.head_sha || github.sha }}
       - uses: nais/deploy/actions/deploy@9850be311389ca754d9a9f2280615419d738c891
         env:
           CLUSTER: prod-gcp
-          RESOURCE: apps/lumi-dashboard/nais/prod.yaml
+          RESOURCE: apps/lumi-dashboard/nais/prod.yaml,apps/lumi-dashboard/nais/alerts/prod.yaml
           VAR: image=${{ needs.build-production.outputs.image }}

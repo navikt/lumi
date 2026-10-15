@@ -74,4 +74,4 @@ Se [den lokale testguiden](scripts/README.md#full-chain-demo-med-ekte-widget) fo
 
 ## For Nav-ansatte
 
-Spørsmål om utvikling og drift kan tas i [#esyfo på Slack](https://nav-it.slack.com/archives/C012X796B4L).
+Spørsmål om utvikling og drift kan tas i [#lumi på Slack](https://nav-it.slack.com/archives/C0AG2FKSSMD).
