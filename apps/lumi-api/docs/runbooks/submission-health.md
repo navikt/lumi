@@ -1,7 +1,9 @@
 # Submission health
 
 Denne runbooken brukes for feil og avvisninger på Lumi sine tre
-innsendingskanaler: `tokenx`, `azure` og `internal_proxy` (dev-proxyen).
+innsendingskanaler: `tokenx`, `azure` og `internal_proxy` (dev-proxyen). Den
+brukes også når `lumi-api` eller `lumi-dashboard` ikke har tilgjengelige
+replikaer.
 
 ## Metrikken
 
@@ -41,6 +43,46 @@ logger for å finne den konkrete konsumenten etter at kanalen er identifisert.
 
 Ved `409 DefinitionConflict` følger du også
 [runbooken for survey-definisjonskonflikter](./survey-definition-conflicts.md).
+
+## Ingen tilgjengelige replikaer
+
+`LumiApiNoAvailableReplicas` og `LumiDashboardNoAvailableReplicas` går når
+`kube_deployment_status_replicas_available` har vært 0 i fem minutter.
+Metrikken kommer fra Kubernetes, så alarmen går også når ingen kall kommer
+fram til appen og `LumiSubmissionFailure` ikke kan gå.
+
+- `lumi-api`: Innsendinger bufres ikke, så svar som sendes mens alarmen står,
+  blir ikke lagret. `/internal/isReady` krever en databasetilkobling, så et
+  databaseutfall gjør alle podene utilgjengelige samtidig.
+- `lumi-dashboard`: Teamene kommer ikke inn i dashboardet. Innsendinger går
+  direkte til `lumi-api` og påvirkes ikke.
+
+Databasen har vedlikeholdsvindu søndag kl. 01–02 UTC, det vil si kl. 03 om
+sommeren og kl. 02 om vinteren norsk tid. Vinduet er satt med `maintenance` i
+`apps/lumi-api/nais/app/prod.yaml`. Databasen har ikke HA, så vedlikeholdet kan
+gi et kort utfall der readiness feiler for alle podene i `lumi-api`. Alarmen går
+bare hvis utfallet varer i fem minutter.
+
+1. Stans videre utrulling og nye migreringer.
+2. Se på podene i Nais Console eller med
+   `kubectl get pods -n team-esyfo -l app=<app>` og `kubectl describe pod <pod>`.
+   Se etter `CrashLoopBackOff`, `ImagePullBackOff`, `OOMKilled` og feilende
+   readiness.
+3. Står det `Readiness check failed: database not reachable` i loggene til
+   `lumi-api`, sjekker du om utfallet startet i vedlikeholdsvinduet. Varer det
+   lenger enn vinduet, eller startet det utenfor, følger du
+   [runbooken for database recovery](./database-recovery.md).
+4. Startet utfallet med en deploy, kjører du `deploy-api.yaml` eller
+   `deploy-dashboard.yaml` manuelt mot `prod` med forrige fungerende commit som
+   `ref`. Flyway-migreringer rulles ikke tilbake. Hver app har én deploykø per
+   miljø med plass til én ventende deploy, og den som havner i køen sist,
+   erstatter den som venter. En tilbakerulling som venter, kan derfor bli erstattet av et nytt
+   push-deploy. Stans merging til `main` til tilbakerullingen er ferdig, og
+   kontroller i GitHub Actions at prod-jobben i den manuelle kjøringen er
+   fullført.
+5. Når replikaene er tilbake, kontrollerer du `LumiSubmissionFailure` og
+   `LumiSubmissionRejectionSpike`. Gjaldt alarmen `lumi-api`, noterer du når
+   utfallet startet og sluttet, siden svar fra perioden mangler.
 
 ## Verifikasjon etter retting
 
