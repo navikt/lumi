@@ -3,6 +3,7 @@ package no.nav.lumi.routes
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -45,6 +46,43 @@ class ExportRoutesTest : FunSpec({
             response.status shouldBe HttpStatusCode.OK
             response.contentType()?.match(ContentType.Text.CSV) shouldBe true
             response.bodyAsText() shouldContain "id,submittedAt"
+        }
+    }
+
+    test("GET /api/v1/intern/export CSV starts with a UTF-8 byte order mark and keeps Norwegian characters") {
+        testApplication {
+            application { testModule() }
+
+            insertTestFeedback(team = "flex", text = "Blåbær og grøt")
+
+            val response = createTestClient().get("/api/v1/intern/export?team=flex&format=csv") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+
+            response.status shouldBe HttpStatusCode.OK
+            val bytes = response.body<ByteArray>()
+            bytes.take(3) shouldBe listOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte())
+            String(bytes, Charsets.UTF_8) shouldContain "Blåbær og grøt"
+        }
+    }
+
+    test("GET /api/v1/intern/export sends total and included count headers") {
+        testApplication {
+            application { testModule() }
+
+            insertTestFeedback(team = "flex", text = "first")
+            insertTestFeedback(team = "flex", text = "second")
+            insertTestFeedback(team = "team-test", text = "other team")
+
+            listOf("csv", "json", "excel").forEach { format ->
+                val response = createTestClient().get("/api/v1/intern/export?team=flex&format=$format") {
+                    header(HttpHeaders.Authorization, "Bearer test-token")
+                }
+
+                response.status shouldBe HttpStatusCode.OK
+                response.headers[EXPORT_TOTAL_HEADER] shouldBe "2"
+                response.headers[EXPORT_COUNT_HEADER] shouldBe "2"
+            }
         }
     }
 
@@ -92,6 +130,8 @@ class ExportRoutesTest : FunSpec({
             }
 
             response.status shouldBe HttpStatusCode.OK
+            response.headers[EXPORT_TOTAL_HEADER] shouldBe "1"
+            response.headers[EXPORT_COUNT_HEADER] shouldBe "1"
             val body = response.bodyAsText()
             body shouldContain "rating-two"
             body.contains("rating-four") shouldBe false

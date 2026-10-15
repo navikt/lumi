@@ -11,29 +11,45 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.ByteArrayOutputStream
 
 /**
+ * Feedback selected for export.
+ *
+ * [total] is the number of records matching the query. It is larger than
+ * `feedbacks.size` when the export was truncated at the export limit.
+ */
+data class FeedbackExport(
+    val feedbacks: List<FeedbackDto>,
+    val total: Long,
+)
+
+/**
  * Service layer for exporting feedback data.
  * Supports CSV, JSON, and Excel formats.
  */
 class ExportService(
-    private val feedbackRepository: FeedbackRepository = FeedbackRepository()
+    private val feedbackRepository: FeedbackRepository = FeedbackRepository(),
+    private val maxExportSize: Int = MAX_EXPORT_SIZE,
 ) {
     private val json = Json { prettyPrint = true }
 
     /**
-     * Get feedback data for export based on query.
-     * Returns up to MAX_EXPORT_SIZE records.
+     * Get the newest feedback matching the query, up to [maxExportSize] records,
+     * together with the total number of matching records.
      */
-    suspend fun getFeedbackForExport(query: FeedbackQuery): List<FeedbackDto> {
-        val exportQuery = query.copy(size = MAX_EXPORT_SIZE)
-        val (content, _, _) = feedbackRepository.findPaginated(exportQuery)
-        return content
+    suspend fun getFeedbackForExport(query: FeedbackQuery): FeedbackExport {
+        // page = 0 keeps the newest records even if a caller leaves the page unset.
+        val exportQuery = query.copy(page = 0, size = maxExportSize)
+        val (content, total, _) = feedbackRepository.findPaginated(exportQuery)
+        return FeedbackExport(feedbacks = content, total = total)
     }
 
     /**
      * Export feedback list to CSV format.
+     * Starts with a UTF-8 BOM so Excel reads æ, ø and å correctly when the file is opened directly.
      */
     fun exportToCsv(feedbacks: List<FeedbackDto>): String {
         return buildString {
+            append(UTF8_BOM)
+
             // Header
             appendLine(
                 "id,submittedAt,app,surveyId,rating,feedback,sensitiveDataRedacted,screenWidth,screenHeight"
@@ -152,6 +168,9 @@ class ExportService(
     companion object {
         /** Maximum number of records to export */
         const val MAX_EXPORT_SIZE = 10000
+
+        /** Byte order mark that makes Excel detect UTF-8 in CSV files */
+        const val UTF8_BOM = "\uFEFF"
     }
 }
 
