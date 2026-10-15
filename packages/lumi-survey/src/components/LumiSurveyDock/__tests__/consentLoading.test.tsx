@@ -94,6 +94,40 @@ describe("LumiSurveyDock consent loading", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("keeps an answered survey hidden when the user opens it before a late lookup", async () => {
+    const key = "lumi-dismissed-consent-answered";
+    const stored = JSON.stringify({
+      version: 1,
+      state: "dismissed",
+      dismissedAt: new Date().toISOString(),
+      resumeAt: null,
+      hideCompletely: true,
+    });
+    localStorage.setItem(key, stored);
+
+    const LumiSurveyDock = await loadDock();
+    render(
+      <LumiSurveyDock
+        surveyId="consent-answered"
+        survey={survey}
+        transport={{ submit: vi.fn().mockResolvedValue(undefined) }}
+      />,
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Gi tilbakemelding" }));
+
+    provideDecoratorWithConsent();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50);
+    });
+
+    expect(dockState("consent-answered")).toBe("open");
+    expect(localStorage.getItem(key)).toBe(stored);
+  });
+
   it("opens when a late decorator shows consent and nothing is stored", async () => {
     const onViewDock = vi.fn();
     const LumiSurveyDock = await loadDock();

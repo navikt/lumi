@@ -184,12 +184,22 @@ export const usePersistedDismissal = (
       // Once the rendered survey has been touched, this load is stale. It must
       // neither replace UI state nor remove a newer dismissal written by that
       // interaction. A reopen before the read answered still clears an older
-      // stored dismissal, as a reopen after it would have.
+      // stored dismissal, as a reopen after it would have. An answered survey
+      // that is hidden completely is kept: after the read the user could not
+      // have reopened it.
       if (userInteractedRef.current) {
+        const storedHidden =
+          foundValue && readResult.outcome === "found"
+            ? parsePersistedDismissal(readResult.value)
+            : null;
+        const keepsAnsweredSurveyHidden =
+          storedHidden?.hideCompletely === true &&
+          !isResumeExpired(storedHidden.resumeAt ?? null);
         if (
           foundValue &&
           clearWhenFoundRef.current &&
-          !writeAttemptedRef.current
+          !writeAttemptedRef.current &&
+          !keepsAnsweredSurveyHidden
         ) {
           void removeStoredValue();
         }
