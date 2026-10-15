@@ -1,5 +1,13 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { createRatingSurvey } from "../../../presets/index.js";
 
 // Consent readiness and the setup warning are remembered per page load, so
@@ -28,6 +36,11 @@ const provideDecoratorWithConsent = () => {
 };
 
 describe("LumiSurveyDock consent loading", () => {
+  // Warm the transform cache so the first fresh load fits the test timeout.
+  beforeAll(async () => {
+    await loadDock();
+  }, 30_000);
+
   beforeEach(() => {
     vi.resetModules();
     vi.useFakeTimers();
