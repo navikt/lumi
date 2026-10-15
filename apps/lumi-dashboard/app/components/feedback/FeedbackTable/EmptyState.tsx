@@ -1,13 +1,6 @@
-import {
-  Link as AkselLink,
-  Alert,
-  BodyShort,
-  Button,
-  Heading,
-  VStack,
-} from "@navikt/ds-react";
-import { Link } from "@tanstack/react-router";
+import { Alert, BodyShort, Button, VStack } from "@navikt/ds-react";
 import dayjs from "dayjs";
+import { GetStartedEmptyState } from "~/components/shared/GetStartedEmptyState";
 
 interface FeedbackEmptyStateProps {
   /** Whether the team has any submissions at all; undefined while unknown. */
@@ -19,6 +12,8 @@ interface FeedbackEmptyStateProps {
   /** First-to-last submission span across the team's surveys. */
   fullPeriod?: { fromDate: string; toDate: string };
   onShowFullPeriod: (period: { fromDate: string; toDate: string }) => void;
+  /** Selected team, shown in the onboarding state. */
+  team?: string;
 }
 
 const formatDate = (date: string) => dayjs(date).format("DD.MM.YYYY");
@@ -50,6 +45,7 @@ export function FeedbackEmptyState({
   periodToDate,
   fullPeriod,
   onShowFullPeriod,
+  team,
 }: FeedbackEmptyStateProps) {
   const emptyPeriodDescription = describeEmptyPeriod(
     periodFromDate,
@@ -58,26 +54,11 @@ export function FeedbackEmptyState({
 
   if (hasAnyData === false) {
     return (
-      <Alert variant="info">
-        <VStack gap="space-8" align="start">
-          <Heading size="xsmall" level="2">
-            Ingen tilbakemeldinger ennå
-          </Heading>
-          <BodyShort>
-            Når en app sender inn svar via survey-widgeten, dukker de opp her.
-          </BodyShort>
-          <BodyShort>
-            <AkselLink href="https://navikt.github.io/lumi/kom-i-gang/hva-er-lumi">
-              Kom i gang med Lumi
-            </AkselLink>
-          </BodyShort>
-          <BodyShort>
-            <AkselLink as={Link} to="/surveyverksted">
-              Lag en survey i Surveyverksted
-            </AkselLink>
-          </BodyShort>
-        </VStack>
-      </Alert>
+      <GetStartedEmptyState
+        heading="Ingen tilbakemeldinger ennå"
+        description="Når en app sender inn svar via survey-widgeten, dukker de opp her."
+        team={team}
+      />
     );
   }
 

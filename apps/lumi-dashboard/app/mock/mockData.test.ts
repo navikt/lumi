@@ -1,13 +1,71 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   generateSurveyData,
   getMockBlockerStats,
   getMockDiscoveryStats,
   getMockFeedback,
+  getMockFilterBootstrap,
   getMockStats,
   getMockTaskPriorityStats,
+  getMockTeams,
   getMockTopTasksStats,
+  MOCK_EMPTY_TEAM,
 } from "~/mock/mockData";
+
+const { mockServerEnv } = vi.hoisted(() => ({
+  mockServerEnv: { NAIS_CLUSTER_NAME: undefined as string | undefined },
+}));
+
+vi.mock("~/serverEnv", () => ({ serverEnv: mockServerEnv }));
+
+describe("Mock empty team", () => {
+  beforeEach(() => {
+    mockServerEnv.NAIS_CLUSTER_NAME = undefined;
+  });
+
+  it("returns a bootstrap without apps or survey metadata for the empty team", () => {
+    const bootstrap = getMockFilterBootstrap(MOCK_EMPTY_TEAM);
+
+    expect(bootstrap.selectedTeam).toBe(MOCK_EMPTY_TEAM);
+    expect(bootstrap.availableTeams).toContain(MOCK_EMPTY_TEAM);
+    expect(bootstrap.apps).toEqual([]);
+    expect(bootstrap.surveysByApp).toEqual({});
+    expect(bootstrap.tags).toEqual([]);
+    expect(bootstrap.surveyMeta).toEqual({});
+    expect(bootstrap.surveyMetaByApp).toEqual({});
+    // Surveyverksted keeps the empty team instead of switching to the demo team.
+    expect(getMockTeams().teams[MOCK_EMPTY_TEAM]).toEqual([]);
+  });
+
+  it("returns no answers for the empty team, including archived surveys", () => {
+    const params = new URLSearchParams({
+      team: MOCK_EMPTY_TEAM,
+      includeArchived: "true",
+    });
+
+    expect(getMockFeedback(params).totalElements).toBe(0);
+    expect(getMockStats(params).totalCount).toBe(0);
+  });
+
+  it("keeps the default demo on one team with data", () => {
+    const bootstrap = getMockFilterBootstrap();
+
+    expect(bootstrap.selectedTeam).toBe("team-esyfo");
+    expect(bootstrap.availableTeams).toEqual(["team-esyfo"]);
+    expect(bootstrap.apps.length).toBeGreaterThan(0);
+    expect(bootstrap.surveyMeta["survey-thumbs"]?.archivedAt).not.toBeNull();
+  });
+
+  it("leaves the empty team out of the public demo on Nais", () => {
+    mockServerEnv.NAIS_CLUSTER_NAME = "prod-gcp";
+
+    expect(Object.keys(getMockTeams().teams)).toEqual(["team-esyfo"]);
+    const bootstrap = getMockFilterBootstrap(MOCK_EMPTY_TEAM);
+    expect(bootstrap.selectedTeam).toBe("team-esyfo");
+    expect(bootstrap.availableTeams).toEqual(["team-esyfo"]);
+    expect(bootstrap.apps.length).toBeGreaterThan(0);
+  });
+});
 
 describe("Mock Data Generation", () => {
   it("excludes archived survey data unless includeArchived is enabled", () => {

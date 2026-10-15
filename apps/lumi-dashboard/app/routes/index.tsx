@@ -13,8 +13,10 @@ import { TopTasksOverview } from "~/components/dashboard/views/TopTasks/Overview
 import { ActiveFiltersChips } from "~/components/shared/ActiveFiltersChips";
 import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { FilterBar } from "~/components/shared/FilterBar";
+import { GetStartedEmptyState } from "~/components/shared/GetStartedEmptyState";
 import { Header } from "~/components/shared/Header";
 import { PrivacyMaskedNotice } from "~/components/shared/PrivacyMaskedNotice";
+import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import { searchSchema } from "~/schemas/searchSchema";
@@ -112,9 +114,21 @@ function DashboardPage() {
   const { params, setParams } = useSearchParams();
   const statsQuery = useStats();
   const { data: stats, isPending } = statsQuery;
+  // Shares the FilterBar query.
+  const bootstrapQuery = useFilterBootstrap();
+  const bootstrap = bootstrapQuery.data;
   const hasSurveyFilter = !!params.surveyId;
   const surveyType = stats?.surveyType;
   const isPrivacyMasked = stats?.privacy?.masked;
+  // A masked response from an older backend may hide the count.
+  const statsHasAnswers = (stats?.totalCount ?? 0) > 0 || !!isPrivacyMasked;
+  // Apps come from the team's answers, but the backend caches them for five
+  // minutes and stats for two. Trust stats when it already has answers.
+  const teamHasNoAnswers = bootstrap?.apps.length === 0 && !statsHasAnswers;
+  // Empty stats would show "Ingen data" cards before the empty state replaces
+  // them. Wait for the team's apps before showing those cards.
+  const awaitingTeamApps =
+    !!stats && !statsHasAnswers && bootstrapQuery.isPending;
   const supportsComparison =
     hasSurveyFilter && (surveyType === "rating" || surveyType === "custom");
 
@@ -145,7 +159,7 @@ function DashboardPage() {
 
   // Render dashboard content based on privacy and survey type
   const renderDashboardContent = () => {
-    if (showInitialSkeleton) return null;
+    if (showInitialSkeleton || awaitingTeamApps) return null;
 
     // Show privacy notice if data is masked
     if (isPrivacyMasked && stats?.privacy) {
@@ -199,20 +213,29 @@ function DashboardPage() {
           {/* Keep recovery controls available when a broad query exceeds the analysis budget. */}
           <ActiveFiltersChips />
 
-          <DataFetchBoundary
-            title="Kunne ikke hente dashboarddata"
-            description={getDashboardStatsErrorDescription(statsQuery.error)}
-            queries={[statsQuery]}
-          >
-            {/* Type-specific dashboard view */}
-            {renderDashboardContent()}
-            {hasSurveyFilter &&
-            !isPrivacyMasked &&
-            !showInitialSkeleton &&
-            !supportsComparison ? (
-              <QuestionTrendSection />
-            ) : null}
-          </DataFetchBoundary>
+          {teamHasNoAnswers ? (
+            <GetStartedEmptyState
+              heading="Ingen svar ennå"
+              description="Når appene deres sender inn svar via survey-widgeten, vises grafene her."
+              team={bootstrap?.selectedTeam}
+            />
+          ) : (
+            <DataFetchBoundary
+              title="Kunne ikke hente dashboarddata"
+              description={getDashboardStatsErrorDescription(statsQuery.error)}
+              queries={[statsQuery]}
+            >
+              {/* Type-specific dashboard view */}
+              {renderDashboardContent()}
+              {hasSurveyFilter &&
+              !isPrivacyMasked &&
+              !showInitialSkeleton &&
+              !awaitingTeamApps &&
+              !supportsComparison ? (
+                <QuestionTrendSection />
+              ) : null}
+            </DataFetchBoundary>
+          )}
         </VStack>
       </Box>
     </>

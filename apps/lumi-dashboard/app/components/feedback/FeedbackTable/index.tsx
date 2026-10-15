@@ -179,6 +179,7 @@ function FeedbackTableContent({
               page: "1",
             })
           }
+          team={bootstrap?.selectedTeam}
         />
       ) : (
         <>
