@@ -330,7 +330,7 @@ describe("FilterMenu", () => {
 
     expect(screen.getByText("Svar-filtre")).toBeInTheDocument();
     expect(screen.queryByText("Valgt fra grafer")).not.toBeInTheDocument();
-    expect(screen.getByText("Aktive grafer-filtre")).toBeInTheDocument();
+    expect(screen.getByText("Aktive filtre fra grafene")).toBeInTheDocument();
 
     // Choice chips
     expect(
@@ -354,6 +354,40 @@ describe("FilterMenu", () => {
     // Chart filters
     expect(screen.getByText("Tema: Annet")).toBeInTheDocument();
     expect(screen.getByText("Oppgave: Søknad")).toBeInTheDocument();
+  });
+
+  it("shows the task text in the chart filter chip and removes the task", async () => {
+    const user = userEvent.setup();
+    mockUseStats.mockReturnValue({
+      data: {
+        fieldStats: [
+          {
+            fieldId: "task",
+            fieldType: "SINGLE_CHOICE",
+            label: "Hva kom du for å gjøre?",
+            stats: {
+              type: "choice",
+              distribution: {
+                "lage-oppfolgingsplan": {
+                  label: "Lage oppfølgingsplan",
+                  count: 6,
+                  percentage: 100,
+                },
+              },
+            },
+          },
+        ],
+      },
+      isPending: false,
+    } as never);
+
+    renderFilterMenu({ task: "lage-oppfolgingsplan" });
+
+    expect(screen.getByText("Aktive filtre fra grafene")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Oppgave: Lage oppfølgingsplan" }),
+    );
+    expect(setParams).toHaveBeenCalledWith({ task: undefined, page: "1" });
   });
 
   it("updates choice and rating filters from the answer filter section", async () => {

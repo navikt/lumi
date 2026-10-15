@@ -54,7 +54,9 @@ wait_for() {
 "${COMPOSE[@]}" up --detach --build
 wait_for "lumi-api" "http://127.0.0.1:$API_HOST_PORT/internal/isAlive"
 wait_for "lumi-submission-proxy" "http://127.0.0.1:$SUBMISSION_PROXY_HOST_PORT/internal/isReady"
-wait_for "lumi-dashboard" "$LUMI_DASHBOARD_URL"
+# Same probe as Nais. "/" looks up the default team, and the API would cache
+# a bootstrap without apps before the first test submission.
+wait_for "lumi-dashboard" "$LUMI_DASHBOARD_URL/api/internal/isReady"
 wait_for "lumi-local-demo" "$LUMI_DEMO_URL/healthz"
 
 cd "$ROOT"

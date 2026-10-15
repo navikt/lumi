@@ -559,8 +559,9 @@ test("deletes a draft from the index after confirmation", async ({ page }) => {
 
   // SPA-navigate back to the index (same QueryClient!) so the revision
   // detail stays cached — the deletion must evict it, not a full reload.
+  // The header link keeps the team the draft belongs to.
   await page.getByRole("link", { name: "Surveyverksted" }).first().click();
-  await page.waitForURL(/\/surveyverksted$/);
+  await page.waitForURL(/\/surveyverksted\?team=team-esyfo$/);
 
   // A shared survey is one row with its state, and opens on the stable
   // version — the draft is reached from the menu, not by the main click.

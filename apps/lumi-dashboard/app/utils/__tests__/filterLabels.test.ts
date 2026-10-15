@@ -6,6 +6,7 @@ import {
   getActiveChoiceFilterLabels,
   getActiveRatingFilterLabels,
   getFilterLabels,
+  getTaskLabel,
   getThemeLabel,
 } from "~/utils/filterLabels";
 
@@ -83,6 +84,74 @@ describe("filterLabels", () => {
           themes: [],
         }),
       ).toBe("missing-theme");
+    });
+  });
+
+  describe("getTaskLabel", () => {
+    const topTasksStats = makeStats([
+      {
+        fieldId: "task",
+        fieldType: "SINGLE_CHOICE",
+        label: "Hva kom du for å gjøre?",
+        stats: {
+          type: "choice",
+          distribution: {
+            "lage-oppfolgingsplan": {
+              label: "Lage oppfølgingsplan",
+              count: 6,
+              percentage: 100,
+            },
+          },
+        },
+      },
+    ]);
+
+    it("returns undefined when no task is selected", () => {
+      expect(
+        getTaskLabel({ params: makeParams({}), stats: topTasksStats }),
+      ).toBeUndefined();
+    });
+
+    it("resolves the task text from the task field in stats", () => {
+      expect(
+        getTaskLabel({
+          params: makeParams({ task: "lage-oppfolgingsplan" }),
+          stats: topTasksStats,
+        }),
+      ).toBe("Lage oppfølgingsplan");
+    });
+
+    it("falls back to the task id when stats have no text for it", () => {
+      expect(
+        getTaskLabel({
+          params: makeParams({ task: "slettet-oppgave" }),
+          stats: topTasksStats,
+        }),
+      ).toBe("slettet-oppgave");
+      expect(
+        getTaskLabel({
+          params: makeParams({ task: "lage-oppfolgingsplan" }),
+          stats: makeStats([]),
+        }),
+      ).toBe("lage-oppfolgingsplan");
+    });
+
+    it("uses a placeholder while stats are loading", () => {
+      expect(
+        getTaskLabel({
+          params: makeParams({ task: "lage-oppfolgingsplan" }),
+          isStatsPending: true,
+        }),
+      ).toBe("…");
+    });
+
+    it("falls back to the task id when stats could not be fetched", () => {
+      expect(
+        getTaskLabel({
+          params: makeParams({ task: "lage-oppfolgingsplan" }),
+          isStatsPending: false,
+        }),
+      ).toBe("lage-oppfolgingsplan");
     });
   });
 
@@ -417,6 +486,7 @@ describe("filterLabels", () => {
           params: makeParams({
             choice: "task:application",
             rating: "helpful:2",
+            task: "application",
             theme: "login",
           }),
           stats,
@@ -439,6 +509,7 @@ describe("filterLabels", () => {
             value: "Ja",
           },
         ],
+        taskLabel: "Søknad",
         themeLabel: "Innlogging",
       });
     });

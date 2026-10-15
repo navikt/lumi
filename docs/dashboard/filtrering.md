@@ -4,7 +4,7 @@ title: Filtrering
 
 # Filtrering
 
-Filterlinjen øverst på **Dashboard**, **Tilbakemeldinger** og **Eksporter** har team, app, survey og periode. Filtrene følger med når dere bytter side i menyen. Søk, **Vis kun** og **Tags** finnes bare på **Tilbakemeldinger** og **Eksporter**, og de fjernes når dere går til **Dashboard**.
+Filterlinjen øverst på **Dashboard**, **Tilbakemeldinger** og **Eksporter** har team, app, survey og periode. Filtrene følger med når dere bytter mellom disse sidene i menyen. Til **Surveyverksted** følger bare teamet med. Søk, **Vis kun** og **Tags** finnes bare på **Tilbakemeldinger** og **Eksporter**, og de fjernes når dere går til **Dashboard**.
 
 ## Hvor filtrene ligger {#hvor}
 
@@ -27,7 +27,9 @@ På **Dashboard** og **Tilbakemeldinger** står de aktive filtrene som merkelapp
 
 Teamvelgeren vises når dere er medlem av mer enn ett team. Standardteamet er det første av teamene deres i alfabetisk rekkefølge. Lumi henter teamene fra Nais, se [Tilgang](/dashboard/tilgang).
 
-Bytter dere team, fjernes valgt app, survey og de andre filtrene. En periode dere har valgt selv, beholdes. Adressen til siden får `team=` først når dere bytter team, se [Dele en filtrert visning](#dele).
+Bytter dere team, fjernes valgt app, survey og de andre filtrene. En periode dere har valgt selv, beholdes. Teamet står i adressen til siden som `team=`, også når det er standardteamet, se [Dele en filtrert visning](#dele).
+
+Teamet følger med når dere går mellom dashboardet og **Surveyverksted**, og når dere klikker på logoen. Logoen åpner **Dashboard** med standardperioden og uten de andre filtrene.
 
 ## App og survey {#app-og-survey}
 
@@ -62,9 +64,9 @@ Under **Vis kun** i **Filter** finnes to valg:
 | **Med tekstsvar** | Svar der brukeren har skrevet noe i et fritekstfelt |
 | **Lav score** | Svar med lav score på det første vurderingsspørsmålet: 1–2 for emoji og stjerner, 0–2 for NPS og tommel ned for tommel |
 
-Søkefeltet og **Med tekstsvar** vises ikke når den valgte surveyen er **Top Tasks** eller **Task Priority**. For å lese fritekstsvarene om hindringer i Top Tasks klikker dere på et uttrykk under **Det som hindrer brukerne** på **Dashboard**, eller på lenken **Se alle tilbakemeldinger** nederst i kortet. Begge åpner **Tilbakemeldinger** med fritekstsvarene. Lenkene setter på filteret for tekstsvar uten å vise det som et valgt filter. **Nullstill** fjerner det, men fjerner også valgt survey, app og periode, så dere må velge surveyen på nytt etterpå.
+Søkefeltet og **Med tekstsvar** vises ikke når den valgte surveyen er **Top Tasks** eller **Task Priority**. For å lese fritekstsvarene om hindringer i Top Tasks klikker dere på et uttrykk under **Det som hindrer brukerne** på **Dashboard**, eller på lenken **Se alle tilbakemeldinger** nederst i kortet. Begge åpner **Tilbakemeldinger** med fritekstsvarene. Lenkene setter på filteret **Med tekstsvar**, og over resultatene står merkelappen **Vis kun: Med tekstsvar**. Krysset på merkelappen fjerner filteret, og valgt survey, app og periode blir stående.
 
-**Lav score** er for oversikten over flere surveyer. Når dere har valgt én survey med et vurderingsspørsmål, filtrerer dere i stedet på vurderingen under **Svar-filtre**. For **Top Tasks**, **Discovery** og **Task Priority** vises filteret ikke.
+**Lav score** er for oversikten over flere surveyer. Når dere har valgt én survey med et vurderingsspørsmål, filtrerer dere i stedet på vurderingen under **Svar-filtre**. For **Top Tasks**, **Discovery** og **Task Priority** vises filteret ikke. Er filteret på, står merkelappen **Vis kun: Lav score** over resultatene, også når valget ikke vises i **Filter**. Krysset på merkelappen fjerner filteret.
 
 ## Tags {#tags}
 
@@ -88,7 +90,7 @@ Dere kan velge ett alternativ per spørsmål. Filtrerer dere på flere spørsmå
 
 Klikk på et punkt i **Oppgavekvadrant** for å filtrere på én oppgave. Filteret gjelder hele **Dashboard** og følger med til **Tilbakemeldinger** og **Eksporter**.
 
-Adressen lagrer oppgavens ID (`taskId`). ID-en endres ikke når teamet skriver om oppgaveteksten, så filteret og lenker med filteret virker fortsatt. Merkelappen over resultatene viser oppgaveteksten når den er tilgjengelig. I **Filter** og under **Aktive filtre** på **Eksporter** står ID-en.
+Adressen lagrer oppgavens ID (`taskId`). ID-en endres ikke når teamet skriver om oppgaveteksten, så filteret og lenker med filteret virker fortsatt. Merkelappen over resultatene, **Aktive filtre fra grafene** i **Filter** og **Aktive filtre** på **Eksporter** viser oppgaveteksten. Mens dataene lastes, står det «…». Kan ikke dashboardet hente dataene, har oppgaven ingen svar i perioden, eller er ingen Top Tasks-survey valgt, står ID-en. Oppgavefilteret blir stående når dere bytter survey.
 
 ## Sider på Tilbakemeldinger {#sider}
 
@@ -102,13 +104,13 @@ Når dere endrer et filter, erstatter dashboardet adressen i nettleserhistorikke
 
 Slik lager dere en lenke som viser det samme for mottakeren:
 
-1. Velg team i teamvelgeren. Adressen får `team=` bare når dere bytter team, så står dere allerede på riktig team, bytter dere til et annet og tilbake. Uten `team=` åpner mottakeren sitt eget standardteam.
+1. Velg team i teamvelgeren hvis dere er med i flere team. Adressen har alltid `team=`, så mottakeren åpner det samme teamet. Mottakeren må være medlem av teamet, se [Tilgang](/dashboard/tilgang#feilmeldinger).
 2. Sett de andre filtrene. Gjør det etter teamvalget, fordi teambytte fjerner dem.
 3. Velg periode, for eksempel med et hurtigvalg. Har dere ikke valgt periode selv, regner dashboardet ut standardperioden på nytt når mottakeren åpner lenken.
 4. Kopier adressen.
 
 ::: details Parametere i adressen
-Teamvelgeren vises bare for dem som er med i flere team. Da kan dere legge til `team=` med teamnavnet slik det står i Nais Console, i adressen selv.
+`team` er teamnavnet slik det står i Nais Console. Mangler det, legger dashboardet til standardteamet deres.
 
 `size` bestemmer hvor mange svar **Tilbakemeldinger** viser per side, fra 1 til 200. `page` er sidenummeret og starter på 1.
 :::

@@ -136,6 +136,8 @@ val TeamAuthorizationPlugin = createRouteScopedPlugin("TeamAuthorization", ::Tea
         } else if (requestedTeam != null && requestedTeam !in authorizedTeams) {
             log.warn("TeamAuthorization: User {} requested unauthorized team", pseudonymizeIdentifier(principal.navIdent))
             throw ApiErrorException.ForbiddenException(
+                // apps/lumi-dashboard/app/components/shared/FilterBar/AccessError.tsx compares with this
+                // exact text to offer "Gå til standardteamet". Change both together.
                 errorMessage = "Du har ikke tilgang til team: $requestedTeam",
             )
         } else {

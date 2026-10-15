@@ -13,7 +13,7 @@ import { SEARCH_QUERY_DEBOUNCE_MS } from "../useDebouncedSearchQuery";
 const { mockParams, mockSetParams, mockResetParams, mockBootstrap, mockStats } =
   vi.hoisted(() => ({
     mockParams: {
-      team: "team-test",
+      team: "team-test" as string | undefined,
       app: undefined as string | undefined,
       surveyId: "survey-archived" as string | undefined,
       showArchived: undefined as string | undefined,
@@ -547,6 +547,68 @@ describe("FilterBar archive state", () => {
         page: "1",
       }),
     );
+  });
+});
+
+describe("FilterBar team in the URL", () => {
+  beforeEach(() => {
+    mockParams.team = undefined;
+    mockParams.app = undefined;
+    mockParams.surveyId = undefined;
+    mockParams.showArchived = undefined;
+    mockParams.dateMode = "auto";
+    mockParams.fromDate = "2026-07-23";
+    mockParams.toDate = "2026-08-21";
+    mockParams.query = undefined;
+    mockBootstrap.data = {
+      ...loadedBootstrapData(),
+      availableTeams: ["team-other", "team-test"],
+    };
+    mockBootstrap.isPending = false;
+    mockBootstrap.isError = false;
+    mockStats.isError = false;
+    mockSetParams.mockClear();
+  });
+
+  afterEach(() => {
+    mockParams.team = "team-test";
+  });
+
+  it("writes the default team into the URL for users in several teams", async () => {
+    render(<FilterBar />);
+
+    await waitFor(() =>
+      expect(mockSetParams).toHaveBeenCalledWith({ team: "team-test" }),
+    );
+    expect(mockSetParams).toHaveBeenCalledOnce();
+  });
+
+  it("writes the team for users in one team as well", async () => {
+    mockBootstrap.data = loadedBootstrapData();
+
+    render(<FilterBar />);
+
+    // A recipient in several teams would otherwise open their own default team.
+    await waitFor(() =>
+      expect(mockSetParams).toHaveBeenCalledWith({ team: "team-test" }),
+    );
+  });
+
+  it("keeps a team that is already in the URL", () => {
+    mockParams.team = "team-other";
+
+    render(<FilterBar />);
+
+    expect(mockSetParams).not.toHaveBeenCalled();
+  });
+
+  it("waits for bootstrap before choosing a team", () => {
+    mockBootstrap.data = undefined;
+    mockBootstrap.isPending = true;
+
+    render(<FilterBar />);
+
+    expect(mockSetParams).not.toHaveBeenCalled();
   });
 });
 

@@ -203,6 +203,50 @@ class TeamAuthorizationPluginTest {
     }
 
     @Test
+    fun `refuses a team in the address with the exact text the dashboard compares with`() = testApplication {
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureStatusPages()
+            install(Authentication) {
+                bearer(AZURE_REALM) {
+                    authenticate { _ ->
+                        BrukerPrincipal(
+                            navIdent = "Z123456",
+                            name = "Test User",
+                            email = "test@nav.no",
+                            clientId = "client",
+                            groups = emptyList(),
+                        )
+                    }
+                }
+            }
+
+            routing {
+                authenticate(AZURE_REALM) {
+                    install(TeamAuthorizationPlugin) {
+                        naisTeamLookupProvider = { FakeNaisTeamLookup(teamsByEmail = setOf("team-esyfo")) }
+                    }
+
+                    get("/team") {
+                        call.respondText("ok")
+                    }
+                }
+            }
+        }
+
+        val response = client.get("/team?team=team-x") {
+            header(HttpHeaders.Authorization, "Bearer token")
+        }
+
+        assertEquals(HttpStatusCode.Forbidden, response.status)
+        val error = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+        // FilterBar/AccessError.tsx in the dashboard offers "Gå til standardteamet" only for this text.
+        assertEquals("Du har ikke tilgang til team: team-x", error.getValue("message").jsonPrimitive.content)
+    }
+
+    @Test
     fun `stops pipeline when user has no team access`() = testApplication {
         val handlerInvoked = AtomicBoolean(false)
 

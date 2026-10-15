@@ -12,6 +12,7 @@ import {
 import type { TopTasksResponse } from "~/types/api";
 import { TopTasksParamsSchema } from "~/types/schemas";
 import { handleApiResponse } from "../fetchUtils";
+import { assertMockTeamAccess } from "./fetchFilterBootstrap";
 
 interface TopTasksActionParams {
   team?: string;
@@ -51,6 +52,7 @@ export const fetchTopTasksServerFn = createServerFn({ method: "GET" })
 
     if (isMockMode()) {
       await mockDelay();
+      assertMockTeamAccess(data.team);
       return getMockTopTasksStats(toMockSearchParams(data));
     }
 

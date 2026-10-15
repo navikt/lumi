@@ -6,8 +6,8 @@ import { useRatingFilter } from "~/hooks/useRatingFilter";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
 import { useStats } from "~/hooks/useStats";
+import { useTeamAccessDenied } from "~/hooks/useTeamAccessDenied";
 import { useThemes } from "~/hooks/useThemes";
-import type { ChoiceStats } from "~/types/api";
 import { getFilterLabels } from "~/utils/filterLabels";
 import { formatMetadataLabel } from "~/utils/segmentUtils";
 import styles from "./ActiveFiltersChips.module.css";
@@ -33,18 +33,20 @@ export function ActiveFiltersChips() {
   const { activeFilter: phraseFilter, removePhrase } = usePhraseFilter();
   const statsQuery = useStats();
   const { themes } = useThemes();
-  const { choiceFilters, ratingFilters, themeLabel } = getFilterLabels({
-    params,
-    stats: statsQuery.data,
-    themes,
-  });
+  // FilterBar explains why the team's data cannot be fetched. Removing a
+  // filter would not help, so the chips stay hidden until access is back.
+  const teamAccessDenied = useTeamAccessDenied();
+  if (teamAccessDenied) return null;
+
+  const { choiceFilters, ratingFilters, taskLabel, themeLabel } =
+    getFilterLabels({
+      params,
+      stats: statsQuery.data,
+      isStatsPending: statsQuery.isPending,
+      themes,
+    });
 
   const chips: FilterChip[] = [];
-  const taskField = statsQuery.data?.fieldStats?.find(
-    (field) => field.fieldId === "task",
-  );
-  const taskLabel = (taskField?.stats as ChoiceStats | undefined)
-    ?.distribution?.[params.task ?? ""]?.label;
 
   if (params.deviceType && params.deviceType !== "alle") {
     chips.push({
@@ -59,11 +61,42 @@ export function ActiveFiltersChips() {
     });
   }
 
-  if (params.task) {
+  // Links from the text analysis set this filter even for Top Tasks and Task
+  // Priority, where the filter menu hides the checkbox. The chip is then the
+  // only place the filter shows.
+  if (params.hasText === "true") {
+    chips.push({
+      key: "hasText",
+      label: "Vis kun",
+      value: "Med tekstsvar",
+      onRemove: () =>
+        setParams({
+          hasText: undefined,
+          page: "1",
+        }),
+    });
+  }
+
+  // Selecting a survey with a rating question hides this checkbox in the
+  // filter menu but keeps the filter, so the chip is where it can be removed.
+  if (params.lowRating === "true") {
+    chips.push({
+      key: "lowRating",
+      label: "Vis kun",
+      value: "Lav score",
+      onRemove: () =>
+        setParams({
+          lowRating: undefined,
+          page: "1",
+        }),
+    });
+  }
+
+  if (taskLabel) {
     chips.push({
       key: "task",
       label: "Oppgave",
-      value: taskLabel ?? (statsQuery.data ? params.task : "…"),
+      value: taskLabel,
       onRemove: () =>
         setParams({
           task: undefined,

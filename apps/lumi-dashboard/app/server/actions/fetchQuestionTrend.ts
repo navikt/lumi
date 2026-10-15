@@ -15,6 +15,7 @@ import {
   QuestionTrendResponseSchema,
 } from "~/types/schemas";
 import { handleApiResponse } from "../fetchUtils";
+import { assertMockTeamAccess } from "./fetchFilterBootstrap";
 import {
   type StatsActionParams,
   toStatsMockSearchParams,
@@ -48,6 +49,7 @@ export const fetchQuestionTrendServerFn = createServerFn({ method: "GET" })
 
     if (isMockMode()) {
       await mockDelay();
+      assertMockTeamAccess(data.team);
       const response = getMockQuestionTrend(
         toStatsMockSearchParams(data),
         data.fieldId,

@@ -22,6 +22,7 @@ import { useActiveFilters } from "~/hooks/useActiveFilters";
 import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
+import { getTeamAccessError } from "~/hooks/useTeamAccessDenied";
 import { useThemes } from "~/hooks/useThemes";
 import {
   resolveDashboardPeriod,
@@ -32,6 +33,7 @@ import {
   isSurveyArchived,
   partitionSurveyOptions,
 } from "~/utils/surveyArchiveUtils";
+import { AccessError } from "./AccessError";
 import styles from "./FilterBar.module.css";
 import { FilterMenu } from "./FilterMenu";
 import { Skeleton as FilterBarSkeleton } from "./Skeleton";
@@ -48,8 +50,22 @@ export function FilterBar({
   showDetails = false,
   filterResetVersion = 0,
 }: FilterBarProps) {
+  const { params } = useSearchParams();
   const bootstrapQuery = useFilterBootstrap();
   const statsQuery = useStats();
+
+  // Login and team access errors get the API's explanation instead of the
+  // generic alert. The pages then hide their own errors.
+  const accessError = getTeamAccessError(bootstrapQuery.error);
+  if (accessError) {
+    return (
+      <AccessError
+        error={accessError}
+        team={params.team}
+        query={bootstrapQuery}
+      />
+    );
+  }
 
   // Stats failures must not hide the controls users need to narrow the query.
   // Bootstrap failures still hide the controls because their options are unknown.
@@ -370,6 +386,14 @@ function FilterBarContent({
     setParams,
     showArchived,
   ]);
+
+  // The root route normally writes the team before the page loads. This
+  // covers a page that loaded while the default team could not be fetched.
+  const defaultTeam = bootstrap?.selectedTeam;
+  useEffect(() => {
+    if (params.team || !defaultTeam) return;
+    setParams({ team: defaultTeam });
+  }, [defaultTeam, params.team, setParams]);
 
   const handleTeamChange = (newTeam: string) => {
     clearQueryDraft();
