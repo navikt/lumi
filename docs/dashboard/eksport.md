@@ -11,13 +11,13 @@ Under **Eksporter** i menyen laster dere ned svarene som CSV, Excel eller JSON. 
 1. Velg **Eksporter** i menyen. Filtrene fra **Dashboard** eller **Tilbakemeldinger** følger med.
 2. Juster team, app, survey, periode og de andre [filtrene](/dashboard/filtrering). Kortet **Aktive filtre** viser hva som blir med.
 3. Velg format under **Velg format**: **CSV**, **Excel (XLSX)** eller **JSON**.
-4. Velg knappen **Last ned**, for eksempel **Last ned CSV**.
+4. Velg knappen **Last ned**, for eksempel **Last ned CSV** eller **Last ned Excel**.
 
 Filen får navnet `lumi-export-` med dagens dato. Svar fra arkiverte surveyer er bare med når bryteren **Arkiverte** er på, se [Arkiverte surveyer](/dashboard/visninger#arkiverte).
 
 ## Hvor mange svar som blir med {#maks}
 
-En eksport har opptil 10 000 svar. Når filtrene treffer flere svar, får dere de 10 000 nyeste, uten beskjed om at resten er utelatt. Sjekk derfor antallet under **Tilbakemeldinger** før dere eksporterer, og del opp perioden hvis det er over 10 000.
+En eksport har opptil 10 000 svar. Når filtrene treffer flere svar, får dere de 10 000 nyeste, og eksportsiden viser et varsel med antallet filtrene traff, for eksempel «Eksporten har de 10 000 nyeste svarene av 12 345». Del opp perioden og eksporter hver del for seg for å få med alle.
 
 Sidene under **Tilbakemeldinger** påvirker ikke eksporten.
 
@@ -43,6 +43,8 @@ Filene har bare ett vurderingssvar og ett fritekstsvar per innsending. Svar på 
 
 Begynner en verdi med `=`, `+`, `-` eller `@`, står det en apostrof foran den. Da leser ikke regnearket verdien som en formel.
 
+Skal dere åpne filen i Excel, velg **Excel (XLSX)**. CSV-filen er kommaseparert og passer for videre behandling i skript og andre verktøy. Excel med norske regionale innstillinger venter semikolon som skilletegn, og da kan hele raden i CSV-filen havne i den første kolonnen.
+
 ### JSON
 
 JSON-filen har én oppføring per innsending med alle svarene. For hvert svar står spørsmålsteksten og svaralternativene. I tillegg har hver oppføring survey-ID, surveytype og surveyversjon, konteksten fra appen (side, adresse, enhet, skjerm- og vindusstørrelse og segmenteringstags), tagsene teamet har lagt til, og om tekst er maskert.
@@ -57,4 +59,8 @@ Hver bruker kan eksportere 30 ganger per minutt. Går dere over grensen, viser e
 
 ::: details For utviklere: endepunktet
 Dashboardet henter filen fra `GET /api/v1/intern/export`. `format` er `csv`, `json` eller `excel`, og et ukjent format gir CSV. De andre parameterne er de samme filtrene som dashboardet bruker: `team`, `includeArchived`, `app`, `surveyId`, `fromDate`, `toDate`, `hasText`, `lowRating`, `query`, `tag`, `deviceType`, `segment`, `theme`, `task`, `choice`, `rating` og `phrase`. `tag`, `segment`, `choice` og `rating` kan gjentas. `choice` har formatet `fieldId:optionId`, og `rating` har formatet `fieldId:verdi`.
+
+Svaret har headerne `X-Lumi-Export-Total` med antall svar som passer med filtrene, og `X-Lumi-Export-Count` med antall svar i filen. Er `X-Lumi-Export-Total` større enn `X-Lumi-Export-Count`, er eksporten avkortet.
+
+CSV-filen er UTF-8 og begynner med en BOM (byte order mark). Les den med `encoding="utf-8-sig"` i Python. Med `encoding="utf-8"` kan BOM-en bli stående foran det første kolonnenavnet, `id`.
 :::
