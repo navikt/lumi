@@ -672,6 +672,28 @@ class FeedbackRepositoryTest : FunSpec({
             content.map { it.id }.toSet() shouldBe setOf("thumbs-down", "emoji-2", "nps-2")
         }
 
+        test("lowRating reads rating and variant from the same, first rating answer") {
+            fun twoRatingsJson(first: Pair<Int, String>, second: Pair<Int, String>) = """
+                {
+                    "surveyId": "survey-mixed",
+                    "answers": [
+                        {"fieldId": "first", "fieldType": "RATING", "question": {"label": "Nyttig?"}, "value": {"type": "rating", "rating": ${first.first}, "ratingVariant": "${first.second}", "ratingScale": 5}},
+                        {"fieldId": "second", "fieldType": "RATING", "question": {"label": "Hvordan?"}, "value": {"type": "rating", "rating": ${second.first}, "ratingVariant": "${second.second}", "ratingScale": 5}}
+                    ]
+                }
+            """.trimIndent()
+            // Thumbs up first: a variant from the emoji answer would make 2 a low score.
+            insertTestFeedbackWithJson(id = "thumbs-up-then-emoji-1", team = "team-test", feedbackJson = twoRatingsJson(2 to "thumbs", 1 to "emoji"))
+            // Emoji 2 first: a variant from the thumbs answer would hide this low score.
+            insertTestFeedbackWithJson(id = "emoji-2-then-thumbs-1", team = "team-test", feedbackJson = twoRatingsJson(2 to "emoji", 1 to "thumbs"))
+
+            val (content, _, _) = repository.findPaginated(
+                FeedbackQuery(team = "team-test", lowRating = true)
+            )
+
+            content.map { it.id }.toSet() shouldBe setOf("emoji-2-then-thumbs-1")
+        }
+
         test("filters by ratingFieldId and ratingValue") {
             insertTestFeedbackWithJson(
                 id = "rating-3",
