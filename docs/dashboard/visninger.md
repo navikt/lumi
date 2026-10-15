@@ -139,7 +139,7 @@ I en Task Priority-survey velger brukeren de oppgavene som er viktigst for hen. 
 
 Listen **Task Priority - "Long Neck"** viser de 15 oppgavene med flest stemmer, med antall stemmer og andel av alle stemmene. En linje i listen viser hvor Long Neck slutter. Under listen står det hvor mange oppgaver til som har fått stemmer, hvis det er flere enn 15.
 
-Grafen **Stemmer over tid** viser antall innsendinger per dag. En bruker som velger tre oppgaver, telles én gang.
+Grafen **Antall svar over tid** viser antall svar per dag. Et svar med tre valgte oppgaver telles én gang.
 
 ## Små utvalg {#sma-utvalg}
 

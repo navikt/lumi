@@ -182,7 +182,11 @@ test.describe("Survey Views", () => {
       // Should display main content
       await expect(page.locator("main")).toBeVisible({ timeout: 15000 });
 
-      // TaskPriority shows vote distribution with Long Neck cutoff
+      // The timeline counts answers, not votes
+      await expect(
+        page.getByRole("heading", { name: "Antall svar over tid" }),
+      ).toBeVisible();
+      await expect(page.getByText("Stemmer over tid")).toHaveCount(0);
     });
   });
 
