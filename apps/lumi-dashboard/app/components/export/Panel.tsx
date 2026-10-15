@@ -14,16 +14,28 @@ import {
   RadioGroup,
   VStack,
 } from "@navikt/ds-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DashboardCard, DashboardGrid } from "~/components/dashboard";
 import { ActiveFilters } from "~/components/export/ActiveFilters";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { exportServerFn } from "~/server/actions";
+import { MAX_EXPORT_SIZE } from "~/server/actions/export";
 import { splitChoiceParam } from "~/utils/choiceFilterUtils";
 import { splitRatingParam } from "~/utils/ratingFilterUtils";
 import styles from "./Panel.module.css";
 
 type ExportFormat = "csv" | "json" | "excel";
+
+const FORMAT_LABELS: Record<ExportFormat, string> = {
+  csv: "CSV",
+  excel: "Excel",
+  json: "JSON",
+};
+
+interface Truncation {
+  total: number;
+  count: number;
+}
 
 export function ExportPanel() {
   const { params } = useSearchParams();
@@ -31,11 +43,19 @@ export function ExportPanel() {
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [truncation, setTruncation] = useState<Truncation | null>(null);
+  const filterKey = JSON.stringify(params);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filterKey is the trigger, since the warning only applies to the filters the file was exported with
+  useEffect(() => {
+    setTruncation(null);
+  }, [filterKey]);
 
   const handleExport = async () => {
     setIsExporting(true);
     setError(null);
     setSuccess(false);
+    setTruncation(null);
 
     try {
       const result = await exportServerFn({
@@ -77,6 +97,14 @@ export function ExportPanel() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
+      if (
+        result.total !== null &&
+        result.count !== null &&
+        result.total > result.count
+      ) {
+        setTruncation({ total: result.total, count: result.count });
+      }
+
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
@@ -113,6 +141,19 @@ export function ExportPanel() {
           Eksport fullført! Filen er lastet ned.
         </Alert>
       )}
+      {truncation && (
+        <Alert
+          variant="warning"
+          role="status"
+          className="export-alert"
+          closeButton
+          onClose={() => setTruncation(null)}
+        >
+          Eksporten har de {truncation.count.toLocaleString("no-NO")} nyeste
+          svarene av {truncation.total.toLocaleString("no-NO")}. Del opp
+          perioden og eksporter hver del for seg for å få med alle.
+        </Alert>
+      )}
       <DashboardCard padding="space-24">
         <VStack gap="space-16">
           <Heading size="small" level="2">
@@ -131,7 +172,8 @@ export function ExportPanel() {
                 <VStack gap="space-0">
                   <BodyShort weight="semibold">CSV</BodyShort>
                   <BodyShort size="small">
-                    Kommaseparert fil, fungerer med Excel og andre verktøy
+                    Kommaseparert fil for videre behandling i skript og andre
+                    verktøy
                   </BodyShort>
                 </VStack>
               </HStack>
@@ -142,7 +184,7 @@ export function ExportPanel() {
                 <VStack gap="space-0">
                   <BodyShort weight="semibold">Excel (XLSX)</BodyShort>
                   <BodyShort size="small">
-                    Native Excel-format med formatering
+                    Regneark som åpnes direkte i Excel
                   </BodyShort>
                 </VStack>
               </HStack>
@@ -165,7 +207,7 @@ export function ExportPanel() {
             loading={isExporting}
             icon={<DownloadIcon aria-hidden />}
           >
-            Last ned {format.toUpperCase()}
+            Last ned {FORMAT_LABELS[format]}
           </Button>
         </VStack>
       </DashboardCard>
@@ -176,8 +218,12 @@ export function ExportPanel() {
           </Heading>
           <ActiveFilters params={params} />
           <BodyShort size="small" textColor="subtle">
-            Eksporten inkluderer alle svar med metadata (enhet, side, tidspunkt)
-            som matcher filtrene (maks 10 000).
+            CSV og Excel har én rad per innsending med ID, tidspunkt, app,
+            survey, første vurdering, første fritekstsvar, skjermstørrelse og om
+            tekst er maskert. JSON har alle svarene og konteksten fra appen,
+            blant annet enhet og side. Eksporten har opptil{" "}
+            {MAX_EXPORT_SIZE.toLocaleString("no-NO")} svar som passer med
+            filtrene.
           </BodyShort>
         </VStack>
       </DashboardCard>
