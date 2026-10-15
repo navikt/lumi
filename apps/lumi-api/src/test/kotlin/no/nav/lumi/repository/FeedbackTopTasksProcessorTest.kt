@@ -100,6 +100,47 @@ class FeedbackTopTasksProcessorTest : FunSpec({
         result.tasks.single().totalCount shouldBe 2
     }
 
+    test("rounds the formatted success rate like the dashboard quadrant") {
+        fun feedback(id: String, success: String) = FeedbackDto(
+            id = id,
+            submittedAt = "2026-08-20T12:00:00Z",
+            app = "test-app",
+            surveyId = "top-tasks-test",
+            surveyType = SurveyType.TOP_TASKS,
+            answers = listOf(
+                Answer(
+                    fieldId = "task",
+                    fieldType = FieldType.SINGLE_CHOICE,
+                    question = Question("Hva prøvde du å gjøre?", options = listOf(ChoiceOption("apply", "Søke"))),
+                    value = AnswerValue.SingleChoice("apply")
+                ),
+                Answer(
+                    fieldId = "success",
+                    fieldType = FieldType.SINGLE_CHOICE,
+                    question = Question(
+                        "Klarte du det?",
+                        options = listOf(
+                            ChoiceOption("yes", "Ja"),
+                            ChoiceOption("partial", "Delvis"),
+                            ChoiceOption("no", "Nei")
+                        )
+                    ),
+                    value = AnswerValue.SingleChoice(success)
+                )
+            )
+        )
+
+        val result = processTopTasks(
+            listOf(
+                feedback("first", "yes"),
+                feedback("second", "yes"),
+                feedback("third", "no"),
+            )
+        )
+
+        result.tasks.single().formattedSuccessRate shouldBe "67%"
+    }
+
     test("ignores the discovery-only legacy task alias in Top Tasks") {
         val successOptions = listOf(
             ChoiceOption("yes", "Ja"),
