@@ -228,6 +228,43 @@ describe("mock survey authoring store", () => {
       }),
     ).rejects.toThrow(/bare brukes på flervalg/i);
   });
+  it("returns the latest revision when the draft is unchanged, and a new one after a change", async () => {
+    const store = await import("../surveyAuthoring");
+    const project = store.createMockSurveyProject({
+      team: "team-a",
+      name: "Utkast",
+      surveyId: "survey-unchanged",
+      document,
+    });
+    const share = (expectedDraftVersion: number) =>
+      store.createMockSurveyRevision({
+        team: "team-a",
+        projectId: project.id,
+        expectedDraftVersion,
+      });
+
+    const first = await share(1);
+    const unchanged = await share(1);
+
+    expect(unchanged.id).toBe(first.id);
+    expect(unchanged.revisionNumber).toBe(1);
+    expect(store.listMockSurveyRevisions("team-a", project.id)).toHaveLength(1);
+
+    store.saveMockSurveyProject({
+      team: "team-a",
+      projectId: project.id,
+      expectedVersion: 1,
+      name: "Endret utkast",
+      surveyId: "survey-unchanged",
+      document,
+    });
+    const changed = await share(2);
+
+    expect(changed.id).not.toBe(first.id);
+    expect(changed.revisionNumber).toBe(2);
+    expect(store.listMockSurveyRevisions("team-a", project.id)).toHaveLength(2);
+  });
+
   it("lists each project's newest shared version alongside the draft", async () => {
     const store = await import("../surveyAuthoring");
     const shared = store.createMockSurveyProject({

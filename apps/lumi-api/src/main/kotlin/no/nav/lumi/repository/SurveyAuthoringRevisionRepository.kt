@@ -21,6 +21,10 @@ import java.util.UUID
 
 sealed interface CreateSurveyAuthoringRevisionResult {
     data class Created(val revision: SurveyAuthoringRevision) : CreateSurveyAuthoringRevisionResult
+
+    /** The draft is unchanged since the latest revision, which is returned as is. */
+    data class Unchanged(val revision: SurveyAuthoringRevision) : CreateSurveyAuthoringRevisionResult
+
     data object NotFound : CreateSurveyAuthoringRevisionResult
     data object DraftChanged : CreateSurveyAuthoringRevisionResult
     data object LimitReached : CreateSurveyAuthoringRevisionResult
@@ -55,18 +59,22 @@ class SurveyAuthoringRevisionRepository {
             return@dbQuery CreateSurveyAuthoringRevisionResult.DraftChanged
         }
 
+        val latestRevision = SurveyAuthoringRevisionTable.selectAll()
+            .where { SurveyAuthoringRevisionTable.projectId eq projectId }
+            .orderBy(SurveyAuthoringRevisionTable.revisionNumber to SortOrder.DESC)
+            .limit(1)
+            .singleOrNull()
+        // Every draft save bumps draftVersion, so the same version means the same draft.
+        if (latestRevision != null && latestRevision[SurveyAuthoringRevisionTable.draftVersion] == draftVersion) {
+            return@dbQuery CreateSurveyAuthoringRevisionResult.Unchanged(toRevision(latestRevision))
+        }
+
         val document = json.parseToJsonElement(projectRow[SurveyAuthoringProjectTable.draft]) as JsonObject
         val surveyId = projectRow[SurveyAuthoringProjectTable.surveyId]
         val validated = SurveyAuthoringDocumentValidator.validate(document, surveyId, releaseGate = true)
         val definitionHash = validated.definition.computeHash()
 
-        val previousRevisionNumber = SurveyAuthoringRevisionTable.selectAll()
-            .where { SurveyAuthoringRevisionTable.projectId eq projectId }
-            .orderBy(SurveyAuthoringRevisionTable.revisionNumber to SortOrder.DESC)
-            .limit(1)
-            .singleOrNull()
-            ?.get(SurveyAuthoringRevisionTable.revisionNumber)
-            ?: 0L
+        val previousRevisionNumber = latestRevision?.get(SurveyAuthoringRevisionTable.revisionNumber) ?: 0L
         if (previousRevisionNumber >= maxRevisions) {
             return@dbQuery CreateSurveyAuthoringRevisionResult.LimitReached
         }
