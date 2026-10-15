@@ -13,7 +13,7 @@ Tenk gjennom hva teamet vil vite og hva dere skal gjøre med svarene. Så velger
 | Hvordan opplevde brukeren tjenesten? | Dere vil måle opplevelsen etter en konkret oppgave | Vurderingen over tid, et kort per spørsmål og fritekstsvarene |
 | Hva kom brukeren for å gjøre? | Dere vil finne ut hvilke oppgaver brukerne har | Oppgavene som går igjen, med eksempler fra brukerne, om de fikk det til og hva som hindret dem |
 | Lyktes brukeren med en kjent oppgave? | Dere kjenner oppgavene og vil måle hvor godt brukerne får løst dem | Resultat og hindringer per oppgave, og suksessraten over tid |
-| Hvilke oppgaver er viktigst? | Dere vil vite hvilke oppgaver brukerne prioriterer | Hvilke oppgaver som får flest stemmer, og antall innsendinger over tid |
+| Hvilke oppgaver er viktigst? | Dere vil vite hvilke oppgaver brukerne prioriterer | Hvilke oppgaver som får flest stemmer, og antall svar over tid |
 | Noe annet | Dere har spørsmål som ikke passer i de andre oppsettene | Et kort per spørsmål med fordelingen av svarene og ord som går igjen i fritekstsvarene |
 
 Når dere har valgt én survey i dashboardet, kan dere se svarene på en vurdering eller et valgspørsmål per dag, uke eller måned. For **Hvordan opplevde brukeren tjenesten?** og **Noe annet** gjør dere det med **Se utvikling** på kortet til spørsmålet, og med **Sammenlign med forrige periode** ser dere hvert kort mot perioden rett før. For de tre andre oppsettene ligger visningen under **Utvikling over tid** nederst i dashboardet, og der kan dere ikke sammenligne perioder. Hvordan dere leser visningene, står i [Les resultatene](/dashboard/visninger).

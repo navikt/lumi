@@ -31,7 +31,7 @@ export function TaskPriorityDashboard() {
       )}
 
       {/* Timeline */}
-      <TimelineSection title="Stemmer over tid" />
+      <TimelineSection title="Antall svar over tid" />
 
       {/* Segment breakdown */}
       {surveyId && (

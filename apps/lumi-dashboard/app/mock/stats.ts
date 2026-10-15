@@ -951,13 +951,9 @@ export function getMockTaskPriorityStats(
 
 // Internal type for aggregation with additional fields
 interface InternalTaskStats
-  extends Omit<
-    TopTaskStats,
-    "avgTimeMs" | "targetTimeMs" | "tpiScore" | "blockersByTheme"
-  > {
+  extends Omit<TopTaskStats, "avgTimeMs" | "targetTimeMs" | "tpiScore"> {
   totalDurationMs: number;
   durationCount: number;
-  blockerTexts: string[]; // Raw blocker texts for theme matching
   latestSubmittedAt: string;
 }
 
@@ -1016,7 +1012,6 @@ export function getMockTopTasksStats(
         blockerCounts: {},
         totalDurationMs: 0,
         durationCount: 0,
-        blockerTexts: [],
         latestSubmittedAt: item.submittedAt,
       });
     }
@@ -1038,7 +1033,6 @@ export function getMockTopTasksStats(
 
       if (blocker) {
         stats.blockerCounts[blocker] = (stats.blockerCounts[blocker] || 0) + 1;
-        stats.blockerTexts.push(blocker);
       }
 
       // Aggregate duration
@@ -1058,11 +1052,6 @@ export function getMockTopTasksStats(
       dailyStats[date].success++;
     }
   }
-
-  // Get blocker themes for categorization
-  const blockerThemes = mockThemes.filter(
-    (t) => t.analysisContext === "BLOCKER",
-  );
 
   const tasks: TopTaskStats[] = Array.from(taskMap.values()).map((stats) => {
     const rate =
@@ -1089,78 +1078,10 @@ export function getMockTopTasksStats(
     const timeEfficiency = Math.min(1, targetTimeMs / (avgTimeMs || 1));
     const tpiScore = Math.round(rate * timeEfficiency * 100);
 
-    // Calculate blockersByTheme for this task
-    const blockersByTheme: Record<
-      string,
-      { themeName: string; color: string; count: number; examples: string[] }
-    > = {};
-
-    // Initialize theme stats
-    for (const theme of blockerThemes) {
-      blockersByTheme[theme.id] = {
-        themeName: theme.name,
-        color: theme.color ?? "#3b82f6",
-        count: 0,
-        examples: [],
-      };
-    }
-    // Add "Annet" category
-    blockersByTheme.annet = {
-      themeName: "Annet",
-      color: "#9ca3af",
-      count: 0,
-      examples: [],
-    };
-
-    // Categorize each blocker
-    for (const blockerText of stats.blockerTexts) {
-      let matchedAny = false;
-
-      for (const theme of blockerThemes) {
-        if (matchesThemeKeywords(blockerText, theme.keywords)) {
-          const themeEntry = blockersByTheme[theme.id];
-          if (themeEntry) {
-            themeEntry.count++;
-            if (
-              themeEntry.examples.length < 2 &&
-              !themeEntry.examples.includes(blockerText)
-            ) {
-              themeEntry.examples.push(blockerText);
-            }
-            matchedAny = true;
-            // NO BREAK - continue for inclusive matching
-          }
-        }
-      }
-
-      // Add to "Annet" if no theme matched
-      if (!matchedAny) {
-        const annetEntry = blockersByTheme.annet;
-        if (annetEntry) {
-          annetEntry.count++;
-          if (
-            annetEntry.examples.length < 2 &&
-            !annetEntry.examples.includes(blockerText)
-          ) {
-            annetEntry.examples.push(blockerText);
-          }
-        }
-      }
-    }
-
-    // Filter out themes with no matches and remove internal fields
-    const filteredBlockersByTheme: typeof blockersByTheme = {};
-    for (const [key, value] of Object.entries(blockersByTheme)) {
-      if (value.count > 0) {
-        filteredBlockersByTheme[key] = value;
-      }
-    }
-
     // Remove internal aggregation fields before returning
     const {
       totalDurationMs,
       durationCount: dc,
-      blockerTexts,
       latestSubmittedAt,
       ...rest
     } = stats;
@@ -1172,10 +1093,6 @@ export function getMockTopTasksStats(
       avgTimeMs,
       targetTimeMs,
       tpiScore,
-      blockersByTheme:
-        Object.keys(filteredBlockersByTheme).length > 0
-          ? filteredBlockersByTheme
-          : undefined,
     };
   });
 

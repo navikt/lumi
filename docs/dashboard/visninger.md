@@ -75,7 +75,9 @@ I en Top Tasks-survey velger brukeren en oppgave fra listen og svarer på om hen
 | :--- | :--- |
 | **Antall svar** | Alle innsendinger med en valgt oppgave |
 | **Suksessrate** | Andelen av alle svarene der brukeren svarte «Ja» |
-| **Feilrate** | 100 minus **Suksessrate**. Alt som ikke er «Ja», telles med, også «Delvis» |
+| **Ikke fullført** | Andelen av alle svarene der brukeren svarte «Delvis» eller «Nei». Tallet er 100 minus **Suksessrate** |
+
+Finnes det ingen svar, viser **Suksessrate** og **Ikke fullført** en strek (–).
 
 Grafen **Suksessrate over tid** viser andelen «Ja» per dag.
 
@@ -98,20 +100,20 @@ Tabellen har én rad per oppgave. Oppgavene med mange svar og lav suksessrate st
 
 | Kolonne | Innhold |
 | :--- | :--- |
-| **Svaralternativer** | Oppgaven slik den står i surveyen |
+| **Oppgave** | Oppgaven slik den står i surveyen |
 | **Suksessrate** | Andelen «Ja» for oppgaven |
 | **Svar** | Alle svarene på oppgaven |
-| **Suksess** | Antall «Ja» |
+| **Ja** | Antall «Ja» |
 | **Delvis** | Antall «Delvis» |
-| **Feil** | Antall «Nei» |
+| **Nei** | Antall «Nei» |
 
-Kolonnen **Feil** teller bare «Nei», mens kortet **Feilrate** også tar med «Delvis». **Delvis** og Feil vises ikke på smale skjermer.
+Kolonnene **Delvis** og **Nei** vises ikke på smale skjermer.
 
 Har teamet skrevet om teksten på en oppgave, viser tabellen den nyeste teksten. Svarene telles på oppgavens ID, se [Survey-identitet og endringer](/guider/survey-identitet).
 
 ### Hindringene
 
-**Det som hindrer brukerne** bygger på fritekstsvarene om hva som hindret brukeren. Under **Hindringer som går igjen** står uttrykk som finnes i minst to svar. Hvert uttrykk lenker til svarene det kommer fra under **Tilbakemeldinger**. **Eksempler fra brukerne** viser noen av svarene.
+**Det som hindrer brukerne** bygger på fritekstsvarene om hva som hindret brukeren. Under **Hindringer som går igjen** står uttrykk som finnes i minst to svar. Hvert uttrykk lenker til svarene det kommer fra under **Tilbakemeldinger**. **Eksempler fra brukerne** viser noen av svarene. Har dere valgt en oppgave i oppgavekvadranten, viser seksjonen bare hindringene for den oppgaven.
 
 Under **Egne hindringstemaer** kan dere lage temaer med **Nytt tema**. Et tema samler svarene som inneholder nøkkelordene dere velger, og ett svar kan høre til flere temaer. Svar som ikke passer i noe tema, står under **Uten tema**.
 
@@ -119,7 +121,7 @@ Under **Egne hindringstemaer** kan dere lage temaer med **Nytt tema**. Et tema s
 
 I en Discovery-survey skriver brukeren med egne ord hva hen kom for å gjøre, og svarer på om hen fikk det gjort.
 
-Visningen har kortene **Periode**, **Tilbakemeldinger** og **Tekstsvar**, og grafen **Antall svar over tid**. **Det brukerne prøver å gjøre** viser **Oppgaver som går igjen**: uttrykk som finnes i minst to svar, med lenke til svarene. **Eksempler fra brukerne** viser enkeltsvar. De kan vise om brukeren kom i mål (**Fullført**, **Delvis** eller **Ikke fullført**) og hva som hindret hen.
+Visningen har kortene **Periode**, **Tilbakemeldinger** og **Tekstsvar**, og grafen **Antall svar over tid**. **Det brukerne prøver å gjøre** viser **Oppgaver som går igjen**: uttrykk som finnes i minst to svar, med lenke til svarene. **Eksempler fra brukerne** viser enkeltsvar. De kan vise om brukeren kom i mål (**Ja**, **Delvis** eller **Nei**) og hva som hindret hen.
 
 Under **Egne oppgavetemaer** lager dere temaer med **Nytt tema**. Svar som ikke treffer noen av temaene, samles under **Uten tema**.
 
@@ -137,7 +139,7 @@ I en Task Priority-survey velger brukeren de oppgavene som er viktigst for hen. 
 
 Listen **Task Priority - "Long Neck"** viser de 15 oppgavene med flest stemmer, med antall stemmer og andel av alle stemmene. En linje i listen viser hvor Long Neck slutter. Under listen står det hvor mange oppgaver til som har fått stemmer, hvis det er flere enn 15.
 
-Grafen **Stemmer over tid** viser antall innsendinger per dag. En bruker som velger tre oppgaver, telles én gang.
+Grafen **Antall svar over tid** viser antall svar per dag. Et svar med tre valgte oppgaver telles én gang.
 
 ## Små utvalg {#sma-utvalg}
 
