@@ -65,6 +65,11 @@ spec:
         tier: db-custom-1-3840
         diskAutoresize: true
         highAvailability: false
+        # Cloud SQL maintenance window in UTC: Sunday 01:00-02:00, which is
+        # 03:00 Oslo time in summer and 02:00 in winter.
+        maintenance:
+          day: 7
+          hour: 1
         flags:
           - name: "cloudsql.enable_pgaudit"
             value: "on"
