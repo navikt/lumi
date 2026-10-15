@@ -100,20 +100,20 @@ Tabellen har én rad per oppgave. Oppgavene med mange svar og lav suksessrate st
 
 | Kolonne | Innhold |
 | :--- | :--- |
-| **Svaralternativer** | Oppgaven slik den står i surveyen |
+| **Oppgave** | Oppgaven slik den står i surveyen |
 | **Suksessrate** | Andelen «Ja» for oppgaven |
 | **Svar** | Alle svarene på oppgaven |
-| **Suksess** | Antall «Ja» |
+| **Ja** | Antall «Ja» |
 | **Delvis** | Antall «Delvis» |
-| **Feil** | Antall «Nei» |
+| **Nei** | Antall «Nei» |
 
-Kolonnen **Feil** teller bare «Nei», mens kortet **Feilrate** også tar med «Delvis». **Delvis** og Feil vises ikke på smale skjermer.
+Kolonnene **Delvis** og **Nei** vises ikke på smale skjermer.
 
 Har teamet skrevet om teksten på en oppgave, viser tabellen den nyeste teksten. Svarene telles på oppgavens ID, se [Survey-identitet og endringer](/guider/survey-identitet).
 
 ### Hindringene
 
-**Det som hindrer brukerne** bygger på fritekstsvarene om hva som hindret brukeren. Under **Hindringer som går igjen** står uttrykk som finnes i minst to svar. Hvert uttrykk lenker til svarene det kommer fra under **Tilbakemeldinger**. **Eksempler fra brukerne** viser noen av svarene.
+**Det som hindrer brukerne** bygger på fritekstsvarene om hva som hindret brukeren. Under **Hindringer som går igjen** står uttrykk som finnes i minst to svar. Hvert uttrykk lenker til svarene det kommer fra under **Tilbakemeldinger**. **Eksempler fra brukerne** viser noen av svarene. Har dere valgt en oppgave i oppgavekvadranten, viser seksjonen bare hindringene for den oppgaven.
 
 Under **Egne hindringstemaer** kan dere lage temaer med **Nytt tema**. Et tema samler svarene som inneholder nøkkelordene dere velger, og ett svar kan høre til flere temaer. Svar som ikke passer i noe tema, står under **Uten tema**.
 

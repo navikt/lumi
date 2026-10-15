@@ -3,10 +3,8 @@ import {
   Box,
   Heading,
   Hide,
-  HStack,
   Table,
   Tooltip,
-  VStack,
 } from "@navikt/ds-react";
 import { DashboardCard } from "~/components/dashboard";
 import { SegmentBreakdown } from "~/components/dashboard/SegmentBreakdown";
@@ -18,33 +16,8 @@ import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
 import { useTopTasksStats } from "~/hooks/useTopTasksStats";
-import {
-  THEME_COLOR_AMBER,
-  THEME_COLOR_BLUE,
-  THEME_COLOR_CYAN,
-  THEME_COLOR_EMERALD,
-  THEME_COLOR_GRAY,
-  THEME_COLOR_LIME,
-  THEME_COLOR_ORANGE,
-  THEME_COLOR_PINK,
-  THEME_COLOR_RED,
-  THEME_COLOR_VIOLET,
-} from "~/utils/colors";
 import { TopTasksStatsCards } from "./StatsCards";
 import styles from "./TopTasks.module.css";
-
-const THEME_DOT_CLASS_BY_HEX: Record<string, string> = {
-  [THEME_COLOR_BLUE]: styles.themeBlue,
-  [THEME_COLOR_EMERALD]: styles.themeEmerald,
-  [THEME_COLOR_AMBER]: styles.themeAmber,
-  [THEME_COLOR_RED]: styles.themeRed,
-  [THEME_COLOR_VIOLET]: styles.themeViolet,
-  [THEME_COLOR_PINK]: styles.themePink,
-  [THEME_COLOR_CYAN]: styles.themeCyan,
-  [THEME_COLOR_LIME]: styles.themeLime,
-  [THEME_COLOR_ORANGE]: styles.themeOrange,
-  [THEME_COLOR_GRAY]: styles.themeGray,
-};
 
 export function TopTasksOverview() {
   const topTasksQuery = useTopTasksStats();
@@ -129,136 +102,66 @@ function TopTasksOverviewContent({
           <Table>
             <Table.Header>
               <Table.Row>
-                <Table.HeaderCell>Svaralternativer</Table.HeaderCell>
+                <Table.HeaderCell>Oppgave</Table.HeaderCell>
                 <Table.HeaderCell>Suksessrate</Table.HeaderCell>
                 <Table.HeaderCell align="right">Svar</Table.HeaderCell>
-                <Table.HeaderCell align="right">Suksess</Table.HeaderCell>
-                {/* Extra columns hidden on mobile */}
+                <Table.HeaderCell align="right">Ja</Table.HeaderCell>
+                {/* Extra columns hidden on mobile. Hide must wrap the cell
+                    itself so its classes land on the <th>. describesChild
+                    keeps "Delvis" as the column name for screen readers. */}
                 <Hide below="md" asChild>
-                  <Tooltip content="Brukeren kom delvis i mål med oppgaven">
-                    <Table.HeaderCell
-                      align="right"
-                      className={styles.cursorHelp}
+                  <Table.HeaderCell align="right">
+                    <Tooltip
+                      content="Brukeren kom delvis i mål med oppgaven"
+                      describesChild
                     >
-                      Delvis
-                    </Table.HeaderCell>
-                  </Tooltip>
+                      <span className={styles.cursorHelp}>Delvis</span>
+                    </Tooltip>
+                  </Table.HeaderCell>
                 </Hide>
                 <Hide below="md" asChild>
-                  <Table.HeaderCell align="right">Feil</Table.HeaderCell>
+                  <Table.HeaderCell align="right">Nei</Table.HeaderCell>
                 </Hide>
-                {/* For expand button on right */}
-                <Table.HeaderCell />
               </Table.Row>
             </Table.Header>
             <Table.Body>
-              {displayTasks.map((task) => {
-                const hasBlockers =
-                  task.blockersByTheme &&
-                  Object.keys(task.blockersByTheme).length > 0;
-
-                // Sort themed blockers: regular themes first by count, "Annet" last
-                const sortedThemes =
-                  hasBlockers && task.blockersByTheme
-                    ? Object.entries(task.blockersByTheme).sort(
-                        ([keyA, a], [keyB, b]) => {
-                          // "Annet" always last
-                          if (keyA === "annet") return 1;
-                          if (keyB === "annet") return -1;
-                          return b.count - a.count;
-                        },
-                      )
-                    : [];
-
-                return (
-                  <Table.ExpandableRow
-                    key={task.taskId}
-                    togglePlacement="right"
-                    expansionDisabled={!hasBlockers}
-                    content={
-                      hasBlockers ? (
-                        <div className={styles.expandableContent}>
-                          <Heading size="xsmall" level="3" spacing>
-                            Årsaker til at oppgaven stoppet
-                          </Heading>
-                          <VStack gap="space-12">
-                            {sortedThemes.map(([themeId, theme]) => {
-                              const isAnnet = themeId === "annet";
-                              return (
-                                <div
-                                  key={themeId}
-                                  className={
-                                    isAnnet ? styles.themeRowDimmed : undefined
-                                  }
-                                >
-                                  <HStack gap="space-8" align="center">
-                                    {/* Color dot */}
-                                    <span
-                                      className={[
-                                        styles.themeDot,
-                                        THEME_DOT_CLASS_BY_HEX[
-                                          theme.color.toLowerCase()
-                                        ] ?? styles.themeGray,
-                                      ].join(" ")}
-                                    />
-                                    <BodyShort weight="semibold">
-                                      {theme.themeName} ({theme.count})
-                                    </BodyShort>
-                                  </HStack>
-                                  {/* Example quote */}
-                                  {theme.examples.length > 0 && (
-                                    <BodyShort
-                                      size="small"
-                                      textColor="subtle"
-                                      className={styles.themeExample}
-                                    >
-                                      "{theme.examples[0]}"
-                                    </BodyShort>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </VStack>
-                        </div>
-                      ) : null
-                    }
-                  >
-                    <Table.DataCell>
-                      <strong>{task.task}</strong>
-                    </Table.DataCell>
-                    <Table.DataCell>
-                      <span
-                        className={[
-                          styles.successRate,
-                          task.successRate >= 0.8
-                            ? styles.successRateGood
-                            : task.successRate >= 0.5
-                              ? styles.successRateMedium
-                              : styles.successRateLow,
-                        ].join(" ")}
-                      >
-                        {task.formattedSuccessRate}
-                      </span>
-                    </Table.DataCell>
+              {displayTasks.map((task) => (
+                <Table.Row key={task.taskId}>
+                  <Table.DataCell>
+                    <strong>{task.task}</strong>
+                  </Table.DataCell>
+                  <Table.DataCell>
+                    <span
+                      className={[
+                        styles.successRate,
+                        task.successRate >= 0.8
+                          ? styles.successRateGood
+                          : task.successRate >= 0.5
+                            ? styles.successRateMedium
+                            : styles.successRateLow,
+                      ].join(" ")}
+                    >
+                      {task.formattedSuccessRate}
+                    </span>
+                  </Table.DataCell>
+                  <Table.DataCell align="right">
+                    {task.totalCount}
+                  </Table.DataCell>
+                  <Table.DataCell align="right">
+                    {task.successCount}
+                  </Table.DataCell>
+                  <Hide below="md" asChild>
                     <Table.DataCell align="right">
-                      {task.totalCount}
+                      {task.partialCount}
                     </Table.DataCell>
+                  </Hide>
+                  <Hide below="md" asChild>
                     <Table.DataCell align="right">
-                      {task.successCount}
+                      {task.failureCount}
                     </Table.DataCell>
-                    <Hide below="md" asChild>
-                      <Table.DataCell align="right">
-                        {task.partialCount}
-                      </Table.DataCell>
-                    </Hide>
-                    <Hide below="md" asChild>
-                      <Table.DataCell align="right">
-                        {task.failureCount}
-                      </Table.DataCell>
-                    </Hide>
-                  </Table.ExpandableRow>
-                );
-              })}
+                  </Hide>
+                </Table.Row>
+              ))}
             </Table.Body>
           </Table>
         </Box>

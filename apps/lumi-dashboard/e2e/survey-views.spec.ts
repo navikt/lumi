@@ -30,13 +30,48 @@ test.describe("Survey Views", () => {
       await expect(blockerPhrase).toHaveAttribute("href", /phrase=blocker/);
     });
 
-    test("allows drilling down from task to feedback", async ({ page }) => {
-      // Navigate to dashboard with Top Tasks survey
-      await page.goto("/?surveyId=survey-top-tasks");
+    test("names cards and columns after the answers Ja, Delvis and Nei", async ({
+      page,
+    }) => {
+      await page.goto("/?surveyId=survey-top-tasks&fromDate=2000-01-01");
       await page.waitForLoadState("networkidle");
 
-      // The task table should have clickable rows
-      // This test verifies the navigation works when clicking a task
+      await expect(page.locator("main")).toBeVisible({ timeout: 15000 });
+      await expect(
+        page.getByText("Ikke fullført", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByText("Andel som svarte Delvis eller Nei"),
+      ).toBeVisible();
+      await expect(page.getByText("Feilrate")).toHaveCount(0);
+
+      const table = page.getByRole("table");
+      for (const name of ["Oppgave", "Ja", "Delvis", "Nei"]) {
+        await expect(
+          table.getByRole("columnheader", { name, exact: true }),
+        ).toBeVisible();
+      }
+      await expect(
+        table.getByRole("columnheader", { name: "Feil", exact: true }),
+      ).toHaveCount(0);
+    });
+
+    test("hides the Delvis and Nei columns on a narrow screen", async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 375, height: 812 });
+      await page.goto("/?surveyId=survey-top-tasks&fromDate=2000-01-01");
+      await page.waitForLoadState("networkidle");
+
+      const table = page.getByRole("table");
+      await expect(
+        table.getByRole("columnheader", { name: "Ja", exact: true }),
+      ).toBeVisible({ timeout: 15000 });
+      for (const name of ["Delvis", "Nei"]) {
+        await expect(
+          table.getByRole("columnheader", { name, exact: true }),
+        ).toBeHidden();
+      }
     });
   });
 
