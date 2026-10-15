@@ -66,7 +66,7 @@ Under **Vis kun** i **Filter** finnes to valg:
 
 Søkefeltet og **Med tekstsvar** vises ikke når den valgte surveyen er **Top Tasks** eller **Task Priority**. For å lese fritekstsvarene om hindringer i Top Tasks klikker dere på et uttrykk under **Det som hindrer brukerne** på **Dashboard**, eller på lenken **Se alle tilbakemeldinger** nederst i kortet. Begge åpner **Tilbakemeldinger** med fritekstsvarene. Lenkene setter på filteret **Med tekstsvar**, og over resultatene står merkelappen **Vis kun: Med tekstsvar**. Krysset på merkelappen fjerner filteret, og valgt survey, app og periode blir stående.
 
-**Lav score** er for oversikten over flere surveyer. Når dere har valgt én survey med et vurderingsspørsmål, filtrerer dere i stedet på vurderingen under **Svar-filtre**. For **Top Tasks**, **Discovery** og **Task Priority** vises filteret ikke.
+**Lav score** er for oversikten over flere surveyer. Når dere har valgt én survey med et vurderingsspørsmål, filtrerer dere i stedet på vurderingen under **Svar-filtre**. For **Top Tasks**, **Discovery** og **Task Priority** vises filteret ikke. Er filteret på, står merkelappen **Vis kun: Lav score** over resultatene, også når valget ikke vises i **Filter**. Krysset på merkelappen fjerner filteret.
 
 ## Tags {#tags}
 
