@@ -4,7 +4,7 @@ All notable changes to `@navikt/lumi-survey` will be documented in this file.
 
 This project follows SemVer.
 
-## [2.3.0] - 2026-10-14
+## [2.3.0] - 2026-10-15
 
 Version 2.2.4 was prepared in the repository but never published. Its changes
 are included in 2.3.0.
