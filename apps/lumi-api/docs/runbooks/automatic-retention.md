@@ -13,9 +13,8 @@ commit in the same database transaction. This bounds deletion to 500 rows in any
 rolling 24-hour period and must not be increased without checking production volume
 and query performance first.
 
-Production is initially deployed with cleanup disabled. Enable it in a separate,
-controlled manifest change after verifying the migration, metrics, eligible-row
-count, query plan, and database recovery readiness.
+Cleanup has been enabled in production since #559 (27 August 2026). Follow the
+activation checklist below when enabling it again after an emergency stop.
 
 ## Production activation
 
