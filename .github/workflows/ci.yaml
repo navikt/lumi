@@ -23,7 +23,7 @@ env:
 jobs:
   changes:
     name: Detect changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     if: github.event_name != 'merge_group'
     outputs:
       node: ${{ steps.dashboard-scope.outputs.node || steps.filter.outputs.node }}
@@ -183,7 +183,7 @@ jobs:
   required:
     name: Merge gate
     needs: [changes, node, release-guards, api, docs, full-chain]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     if: always()
     permissions:
       contents: read
@@ -226,7 +226,7 @@ jobs:
     name: Lint / Typecheck / Test (Node)
     needs: changes
     if: always() && (github.event_name == 'merge_group' || needs.changes.outputs.node == 'true')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       packages: read
@@ -280,7 +280,7 @@ jobs:
       always() &&
       needs.changes.outputs.release_guards == 'true' &&
       needs.changes.outputs.node != 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -308,7 +308,7 @@ jobs:
         (needs.changes.outputs.api == 'true' &&
           needs.changes.outputs.app_manifests_only != 'true')
       )
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -339,7 +339,7 @@ jobs:
         (needs.changes.outputs.full_chain == 'true' &&
           needs.changes.outputs.app_manifests_only != 'true')
       )
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 25
     permissions:
       contents: read
@@ -375,7 +375,7 @@ jobs:
     name: Build docs
     needs: changes
     if: always() && (github.event_name == 'merge_group' || needs.changes.outputs.docs == 'true')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       packages: read
