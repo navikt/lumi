@@ -46,7 +46,7 @@ function toMockSearchParams(data: TaskPriorityActionParams): URLSearchParams {
 
 export const fetchTaskPriorityServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(TaskPriorityParamsSchema))
+  .validator(zodValidator(TaskPriorityParamsSchema))
   .handler(async ({ data, context }): Promise<TaskPriorityResponse> => {
     const { backendUrl, oboToken } = context as AuthContext;
 

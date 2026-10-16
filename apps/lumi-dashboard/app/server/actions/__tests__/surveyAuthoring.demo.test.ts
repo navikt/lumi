@@ -22,7 +22,7 @@ vi.mock("@tanstack/react-start", () => {
       fn({ ...input, context: doubles.context });
   return {
     createServerFn: () => ({
-      middleware: () => ({ handler, inputValidator: () => ({ handler }) }),
+      middleware: () => ({ handler, validator: () => ({ handler }) }),
     }),
   };
 });

@@ -43,7 +43,7 @@ export function buildQuestionTrendUrl(
 
 export const fetchQuestionTrendServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(QuestionTrendParamsSchema))
+  .validator(zodValidator(QuestionTrendParamsSchema))
   .handler(async ({ data, context }): Promise<QuestionTrendResponse> => {
     const { backendUrl, oboToken } = context as AuthContext;
 

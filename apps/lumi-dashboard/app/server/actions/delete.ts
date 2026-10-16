@@ -18,7 +18,7 @@ import { handleApiResponse } from "../fetchUtils";
  */
 export const deleteSurveyServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(DeleteSurveySchema))
+  .validator(zodValidator(DeleteSurveySchema))
   .handler(async ({ data, context }): Promise<DeleteSurveyResult> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
@@ -49,7 +49,7 @@ export const deleteSurveyServerFn = createServerFn({ method: "POST" })
  */
 export const deleteFeedbackServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(DeleteFeedbackSchema))
+  .validator(zodValidator(DeleteFeedbackSchema))
   .handler(async ({ data, context }): Promise<{ success: boolean }> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
