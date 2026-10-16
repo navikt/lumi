@@ -283,17 +283,16 @@ export const mockFeedbackItems: FeedbackDto[] = [
   ...generateNpsSurveyData(60),
 
   // ===========================================
-  // 10. HISTORICAL RATING SURVEY
-  // Stable old responses used to verify automatic response-period selection
+  // 10–11. E2E-ONLY FIXTURES
+  // Historical and shared-app surveys used to verify response-period
+  // selection. Kept out of the public demo because they are not realistic.
   // ===========================================
-  ...generateHistoricalSurveyData(),
-
-  // ===========================================
-  // 11. SHARED SURVEY ID ACROSS TWO APPS
-  // Stable periods used to verify app-scoped survey metadata
-  // ===========================================
-  ...generateSharedSurveyData(),
+  ...(serverEnv.LUMI_E2E_FIXTURES === "true" ? generateE2eFixtureData() : []),
 ];
+
+function generateE2eFixtureData(): FeedbackDto[] {
+  return [...generateHistoricalSurveyData(), ...generateSharedSurveyData()];
+}
 
 export * from "./helpers"; // export helpers if needed by tests
 

@@ -44,6 +44,7 @@ export default defineConfig({
     timeout: 120000,
     env: {
       USE_MOCK_DATA: "true",
+      LUMI_E2E_FIXTURES: "true",
       PORT: String(E2E_PORT),
       LUMI_DASHBOARD_ASSET_BASE_URL: "/",
     },
