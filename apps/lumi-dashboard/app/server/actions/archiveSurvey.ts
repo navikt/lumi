@@ -19,7 +19,7 @@ import { handleApiResponse } from "../fetchUtils";
  */
 export const archiveSurveyServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(ArchiveSurveySchema))
+  .validator(zodValidator(ArchiveSurveySchema))
   .handler(async ({ data, context }): Promise<SurveyArchiveState> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
@@ -50,7 +50,7 @@ export const archiveSurveyServerFn = createServerFn({ method: "POST" })
  */
 export const unarchiveSurveyServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(ArchiveSurveySchema))
+  .validator(zodValidator(ArchiveSurveySchema))
   .handler(async ({ data, context }): Promise<void> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;

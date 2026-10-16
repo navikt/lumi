@@ -45,7 +45,7 @@ function toMockSearchParams(data: DiscoveryActionParams): URLSearchParams {
 
 export const fetchDiscoveryServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(DiscoveryParamsSchema))
+  .validator(zodValidator(DiscoveryParamsSchema))
   .handler(async ({ data, context }): Promise<DiscoveryResponse> => {
     const { backendUrl, oboToken } = context as AuthContext;
 

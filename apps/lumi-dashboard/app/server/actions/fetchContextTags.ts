@@ -18,7 +18,7 @@ import { handleApiResponse } from "../fetchUtils";
  */
 export const fetchContextTagsServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(ContextTagsParamsSchema))
+  .validator(zodValidator(ContextTagsParamsSchema))
   .handler(async ({ data, context }): Promise<ContextTagsResponse> => {
     const { backendUrl, oboToken } = context as AuthContext;
 

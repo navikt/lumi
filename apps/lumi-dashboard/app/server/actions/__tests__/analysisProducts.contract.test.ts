@@ -19,7 +19,7 @@ const doubles = vi.hoisted(() => ({
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => ({
     middleware: () => ({
-      inputValidator: () => ({
+      validator: () => ({
         handler:
           (
             handler: (input: {
