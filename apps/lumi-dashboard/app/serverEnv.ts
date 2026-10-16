@@ -11,6 +11,8 @@ const serverSchema = z.object({
 
   NAIS_CLUSTER_NAME: z.string().optional(),
   USE_MOCK_DATA: z.string().optional(),
+  // Adds deterministic mock surveys that only the Playwright suite relies on.
+  LUMI_E2E_FIXTURES: z.enum(["true", "false"]).optional(),
   LUMI_LOCAL_AUTH_BYPASS: z.enum(["true", "false"]).optional(),
   NODE_ENV: z
     .enum(["development", "production", "test"])
