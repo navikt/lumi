@@ -31,7 +31,7 @@ export const fetchSurveyTypeDistributionServerFn = createServerFn({
   method: "GET",
 })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(TeamParamsSchema))
+  .validator(zodValidator(TeamParamsSchema))
   .handler(
     async ({ data, context }): Promise<SurveyTypeDistributionResponse> => {
       const { backendUrl, oboToken } = context as AuthContext;

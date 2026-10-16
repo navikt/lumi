@@ -78,7 +78,7 @@ export function buildStatsDashboardUrl(
 
 export const fetchStatsServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(StatsParamsSchema))
+  .validator(zodValidator(StatsParamsSchema))
   .handler(async ({ data, context }): Promise<FeedbackStats> => {
     const { backendUrl, oboToken } = context as AuthContext;
 

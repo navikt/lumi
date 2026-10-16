@@ -46,7 +46,7 @@ function toMockSearchParams(data: BlockerActionParams): URLSearchParams {
 
 export const fetchBlockerServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(BlockerParamsSchema))
+  .validator(zodValidator(BlockerParamsSchema))
   .handler(async ({ data, context }): Promise<BlockerResponse> => {
     const { backendUrl, oboToken } = context as AuthContext;
 

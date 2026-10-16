@@ -76,7 +76,7 @@ async function requestFilterBootstrap(
  */
 export const fetchFilterBootstrapServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(FilterBootstrapParamsSchema))
+  .validator(zodValidator(FilterBootstrapParamsSchema))
   .handler(async ({ data, context }): Promise<FilterBootstrapResponse> => {
     return requestFilterBootstrap(data, context as AuthContext);
   });

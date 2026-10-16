@@ -93,7 +93,7 @@ export { transformToBackendParams };
 
 export const fetchFeedbackServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(FeedbackParamsSchema))
+  .validator(zodValidator(FeedbackParamsSchema))
   .handler(async ({ data, context }): Promise<FeedbackPage> => {
     const { backendUrl, oboToken } = context as AuthContext;
 
