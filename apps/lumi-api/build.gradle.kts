@@ -136,9 +136,10 @@ tasks.withType<Test>().configureEach {
 
 tasks {
     shadowJar {
-        // mergeServiceFiles() needs INCLUDE on service descriptors so Shadow
-        // concatenates all copies (e.g. Flyway 12's SPI plugin registry).
-        filesMatching("META-INF/services/**") {
+        // Shadow's transformers only see duplicates that are INCLUDEd, so
+        // service descriptors (e.g. Flyway 12's SPI plugin registry) and Kotlin
+        // module metadata are merged instead of silently dropped.
+        filesMatching(listOf("META-INF/services/**", "META-INF/*.kotlin_module")) {
             duplicatesStrategy = DuplicatesStrategy.INCLUDE
         }
         mergeServiceFiles()
