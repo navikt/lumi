@@ -18,7 +18,7 @@ import { handleApiResponse } from "../fetchUtils";
  */
 export const fetchTagsServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(TeamParamsSchema))
+  .validator(zodValidator(TeamParamsSchema))
   .handler(async ({ data, context }): Promise<string[]> => {
     const { backendUrl, oboToken } = context as AuthContext;
 
@@ -44,7 +44,7 @@ export const fetchTagsServerFn = createServerFn({ method: "GET" })
  */
 export const addTagServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(TagActionSchema))
+  .validator(zodValidator(TagActionSchema))
   .handler(async ({ data, context }): Promise<{ success: boolean }> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
@@ -77,7 +77,7 @@ export const addTagServerFn = createServerFn({ method: "POST" })
  */
 export const removeTagServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(TagActionSchema))
+  .validator(zodValidator(TagActionSchema))
   .handler(async ({ data, context }): Promise<{ success: boolean }> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;

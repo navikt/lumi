@@ -17,7 +17,7 @@ import { handleApiResponse } from "../fetchUtils";
  */
 export const fetchSurveysByAppServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(TeamParamsSchema))
+  .validator(zodValidator(TeamParamsSchema))
   .handler(async ({ data, context }): Promise<Record<string, string[]>> => {
     const { backendUrl, oboToken } = context as AuthContext;
 

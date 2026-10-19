@@ -89,7 +89,7 @@ export function themeNameExists(
  */
 export const fetchThemesServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(FetchThemesParamsSchema))
+  .validator(zodValidator(FetchThemesParamsSchema))
   .handler(async ({ data, context: authContext }): Promise<TextTheme[]> => {
     const { backendUrl, oboToken } = authContext as AuthContext;
     const filterContext = data?.context;
@@ -131,7 +131,7 @@ export const fetchThemesServerFn = createServerFn({ method: "GET" })
  */
 export const createThemeServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(CreateThemeSchema))
+  .validator(zodValidator(CreateThemeSchema))
   .handler(async ({ data, context }): Promise<TextTheme> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
@@ -176,7 +176,7 @@ export const createThemeServerFn = createServerFn({ method: "POST" })
  */
 export const updateThemeServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(UpdateThemeSchema))
+  .validator(zodValidator(UpdateThemeSchema))
   .handler(async ({ data, context }): Promise<TextTheme> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
@@ -224,7 +224,7 @@ export const updateThemeServerFn = createServerFn({ method: "POST" })
  */
 export const deleteThemeServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(ThemeIdSchema))
+  .validator(zodValidator(ThemeIdSchema))
   .handler(async ({ data, context }): Promise<void> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;

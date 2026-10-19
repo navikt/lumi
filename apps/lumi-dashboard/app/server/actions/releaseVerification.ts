@@ -259,7 +259,7 @@ export const submitReleaseVerificationServerFn = createServerFn({
   method: "POST",
 })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(transportPayloadSchema))
+  .validator(zodValidator(transportPayloadSchema))
   .handler(
     async ({ data, context }): Promise<ReleaseVerificationProbeEvidence> => {
       assertReleaseVerificationEnabled();
@@ -299,7 +299,7 @@ export const fetchReleaseVerificationRunServerFn = createServerFn({
   method: "GET",
 })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(readRunSchema))
+  .validator(zodValidator(readRunSchema))
   .handler(
     async ({ data, context }): Promise<ReleaseVerificationRunReadback> => {
       assertReleaseVerificationEnabled();

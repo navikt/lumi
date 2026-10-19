@@ -13,7 +13,7 @@ vi.mock("@tanstack/react-start", () => ({
     const method = options?.method ?? "GET";
     const builder = {
       middleware: () => builder,
-      inputValidator: () => builder,
+      validator: () => builder,
       handler: (
         fn: (input: {
           data: unknown;

@@ -45,7 +45,7 @@ export const fetchSurveyAuthoringProjectsServerFn = createServerFn({
   method: "GET",
 })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(SurveyAuthoringTeamSchema))
+  .validator(zodValidator(SurveyAuthoringTeamSchema))
   .handler(
     async ({ data, context }): Promise<SurveyAuthoringProjectSummary[]> => {
       if (isMockMode()) {
@@ -72,7 +72,7 @@ export const fetchSurveyAuthoringProjectServerFn = createServerFn({
   method: "GET",
 })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(SurveyAuthoringProjectIdSchema))
+  .validator(zodValidator(SurveyAuthoringProjectIdSchema))
   .handler(async ({ data, context }): Promise<SurveyAuthoringProject> => {
     if (isMockMode()) {
       const { getMockSurveyProject } = await import("~/mock/surveyAuthoring");
@@ -99,7 +99,7 @@ export const deleteSurveyAuthoringProjectServerFn = createServerFn({
   method: "POST",
 })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(SurveyAuthoringProjectIdSchema))
+  .validator(zodValidator(SurveyAuthoringProjectIdSchema))
   .handler(async ({ data, context }): Promise<void> => {
     refuseWriteInPublicDemo();
     if (isMockMode()) {
@@ -129,7 +129,7 @@ export const createSurveyAuthoringProjectServerFn = createServerFn({
   method: "POST",
 })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(CreateSurveyAuthoringProjectSchema))
+  .validator(zodValidator(CreateSurveyAuthoringProjectSchema))
   .handler(async ({ data, context }): Promise<SurveyAuthoringProject> => {
     refuseWriteInPublicDemo();
     if (isMockMode()) {
@@ -165,7 +165,7 @@ export const saveSurveyAuthoringDraftServerFn = createServerFn({
   method: "POST",
 })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(SaveSurveyAuthoringDraftSchema))
+  .validator(zodValidator(SaveSurveyAuthoringDraftSchema))
   .handler(async ({ data, context }): Promise<SurveyAuthoringProject> => {
     refuseWriteInPublicDemo();
     if (isMockMode()) {
@@ -202,7 +202,7 @@ export const fetchSurveyAuthoringRevisionsServerFn = createServerFn({
   method: "GET",
 })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(SurveyAuthoringProjectIdSchema))
+  .validator(zodValidator(SurveyAuthoringProjectIdSchema))
   .handler(
     async ({ data, context }): Promise<SurveyAuthoringRevisionSummary[]> => {
       if (isMockMode()) {
@@ -231,7 +231,7 @@ export const createSurveyAuthoringRevisionServerFn = createServerFn({
   method: "POST",
 })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(CreateSurveyAuthoringRevisionSchema))
+  .validator(zodValidator(CreateSurveyAuthoringRevisionSchema))
   .handler(async ({ data, context }): Promise<SurveyAuthoringRevision> => {
     refuseWriteInPublicDemo();
     if (isMockMode()) {
@@ -265,7 +265,7 @@ export const fetchSurveyAuthoringRevisionServerFn = createServerFn({
   method: "GET",
 })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(SurveyAuthoringRevisionIdSchema))
+  .validator(zodValidator(SurveyAuthoringRevisionIdSchema))
   .handler(
     async ({ data, context }): Promise<SurveyAuthoringRevisionDetail> => {
       if (isMockMode()) {

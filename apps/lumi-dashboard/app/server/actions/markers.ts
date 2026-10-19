@@ -50,7 +50,7 @@ function filterMockMarkers(
  */
 export const fetchMarkersServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(FetchMarkersParamsSchema))
+  .validator(zodValidator(FetchMarkersParamsSchema))
   .handler(async ({ data, context }): Promise<RatingMarker[]> => {
     const { backendUrl, oboToken } = context as AuthContext;
 
@@ -81,7 +81,7 @@ export const fetchMarkersServerFn = createServerFn({ method: "GET" })
  */
 export const createMarkerServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(CreateMarkerSchema))
+  .validator(zodValidator(CreateMarkerSchema))
   .handler(async ({ data, context }): Promise<RatingMarker> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
@@ -130,7 +130,7 @@ export const createMarkerServerFn = createServerFn({ method: "POST" })
  */
 export const updateMarkerServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(UpdateMarkerSchema))
+  .validator(zodValidator(UpdateMarkerSchema))
   .handler(async ({ data, context }): Promise<RatingMarker> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
@@ -210,7 +210,7 @@ export const updateMarkerServerFn = createServerFn({ method: "POST" })
  */
 export const deleteMarkerServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(DeleteMarkerSchema))
+  .validator(zodValidator(DeleteMarkerSchema))
   .handler(async ({ data, context }): Promise<void> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;

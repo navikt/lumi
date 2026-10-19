@@ -232,7 +232,7 @@ export { transformToBackendParams };
 
 export const exportServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(ExportParamsSchema))
+  .validator(zodValidator(ExportParamsSchema))
   .handler(async ({ data, context }): Promise<ExportResult> => {
     const { backendUrl, oboToken } = context as AuthContext;
 
