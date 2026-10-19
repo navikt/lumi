@@ -81,6 +81,11 @@ tasks {
     }
 
     shadowJar {
+        // Shadow's transformers only see duplicates that are INCLUDEd: service
+        // descriptors and Kotlin module metadata must be merged, not dropped.
+        filesMatching(listOf("META-INF/services/**", "META-INF/*.kotlin_module")) {
+            duplicatesStrategy = DuplicatesStrategy.INCLUDE
+        }
         mergeServiceFiles()
         archiveFileName.set("app.jar")
         archiveClassifier.set("")
