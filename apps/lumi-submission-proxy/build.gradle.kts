@@ -26,7 +26,7 @@ val nettyVersion = "4.2.19.Final"
 dependencies {
     implementationWithKtorVersionCheck(
         dependencyNotation = "io.netty:netty-bom:$nettyVersion",
-        expectedKtorVersion = "3.5.2",
+        expectedKtorVersion = "3.6.0",
     )
 
     // Ktor Server (minimal)
