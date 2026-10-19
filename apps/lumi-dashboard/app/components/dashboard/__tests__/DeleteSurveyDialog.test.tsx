@@ -55,7 +55,7 @@ describe("DeleteSurveyDialog", () => {
     expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 
-  it("describes a failed deletion without claiming the definition was deleted", async () => {
+  it("describes a failed deletion without claiming the definition was deleted", () => {
     mockUseDeleteSurvey.mockReturnValue({
       mutateAsync: mockMutateAsync,
       isError: true,
@@ -78,7 +78,7 @@ describe("DeleteSurveyDialog", () => {
     );
 
     expect(
-      await screen.findByText(
+      screen.getByText(
         /Kunne ikke slette svar og fjerne surveyen fra dashboardet/i,
       ),
     ).toBeVisible();
