@@ -12,6 +12,7 @@ import no.nav.lumi.repository.StoredSurveyDefinition
 import no.nav.lumi.repository.SurveyDefinitionRepository
 import no.nav.lumi.repository.SurveyDefinitionSource
 import no.nav.lumi.validation.SurveyDefinitionValidator
+import java.time.Instant
 
 data class RegistrationResult(
     val surveyId: String,
@@ -234,7 +235,11 @@ class SurveyDefinitionService(
 
         if (!allowDefinitionExpansion) {
             val enrichedStoredDefinition =
-                storedDefinition.withMissingMaxSelectionsFrom(incomingDefinition)
+                if (stored.mayFillMissingMaxSelections()) {
+                    storedDefinition.withMissingMaxSelectionsFrom(incomingDefinition)
+                } else {
+                    storedDefinition
+                }
             val definitionDiff = diff(enrichedStoredDefinition, incomingDefinition)
             if (stored.source == SurveyDefinitionSource.AUTO && incomingSource == SurveyDefinitionSource.API) {
                 if (definitionDiff.changedFields.isNotEmpty() || definitionDiff.removedFields.isNotEmpty()) {
@@ -343,6 +348,15 @@ class SurveyDefinitionService(
         )
     }
 
+    /**
+     * Automatically registered definitions come from v1 submissions, which never
+     * carry maxSelections. An api definition only lacks a limit by accident if it
+     * was last written before maxSelections became part of the V2 contract. After
+     * that, a missing limit is deliberate, and adding one is a structural change.
+     */
+    private fun StoredSurveyDefinition.mayFillMissingMaxSelections(): Boolean =
+        source == SurveyDefinitionSource.AUTO || updatedAt < MAX_SELECTIONS_CONTRACT_DEPLOYED_AT
+
     private sealed interface ExistingDefinitionResult {
         data class Resolved(val registrationResult: RegistrationResult) : ExistingDefinitionResult
         data object Retry : ExistingDefinitionResult
@@ -351,5 +365,8 @@ class SurveyDefinitionService(
     private companion object {
         const val MAX_DEFINITIONS_PER_TEAM = 500
         const val MAX_REGISTRATION_ATTEMPTS = 5
+
+        // When the production deploy that added maxSelections to the V2 contract finished.
+        val MAX_SELECTIONS_CONTRACT_DEPLOYED_AT: Instant = Instant.parse("2026-08-20T18:36:26Z")
     }
 }
