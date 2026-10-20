@@ -3,6 +3,7 @@ import "@navikt/lumi-survey/styles.css";
 
 import {
   LumiSurveyDock,
+  LumiSurveyHttpError,
   type LumiSurveyTransport,
   type SurveyDocumentV1,
   validateSurveyDocumentV1,
@@ -38,9 +39,12 @@ const survey = {
 validateSurveyDocumentV1(survey);
 
 const transport: LumiSurveyTransport = {
-  submit: async ({ transportPayload }) => {
+  submit: async ({ transportPayload }, options) => {
     if (transportPayload.schemaVersion !== 2) {
       throw new Error("Forventet submission schema v2");
+    }
+    if (options?.signal.aborted) {
+      throw new LumiSurveyHttpError(503, { retryAfter: "1" });
     }
   },
 };

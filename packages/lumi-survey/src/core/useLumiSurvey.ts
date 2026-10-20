@@ -3,6 +3,7 @@ import { cloneAnswers, useAnswerState } from "./answers.js";
 import { generateDeduplicationKey } from "./deduplicationKey.js";
 import { resolveDocumentVisibility } from "./documentVisibility.js";
 import { getVisibleAnswers } from "./evaluateVisibility.js";
+import { submitWithRetry } from "./submitWithRetry.js";
 import { buildTransportPayload } from "./transportPayload.js";
 import type {
   LumiSurveyAnswerValue,
@@ -159,7 +160,7 @@ export function useLumiSurveyState(
         };
 
         events?.onSubmitStart?.(submission);
-        await transport.submit(submission);
+        await submitWithRetry(transport, submission);
         setStatus("success");
         setError(null);
         // Rotate deduplication key after successful submit

@@ -124,11 +124,24 @@ Se [Sider og flyt](/guider/sider-og-flyt) og [Spørsmålstyper](/guider/sporsmal
 
 ```typescript
 interface LumiSurveyTransport {
-  submit: (submission: LumiSurveySubmission) => Promise<void>;
+  submit: (
+    submission: LumiSurveySubmission,
+    options?: { signal: AbortSignal },
+  ) => Promise<void>;
 }
 ```
 
-Send `submission.transportPayload` til endepunktet i appen deres. Se [Koble til backend](/kom-i-gang/koble-til-backend#_3-send-inn-svar-til-lumi-api).
+Send `submission.transportPayload` til endepunktet i appen deres, og send `options.signal` videre til `fetch`. Kast `LumiSurveyHttpError.fromResponse(response)` når backenden svarer med feil. Se [eksempelet](/kom-i-gang/konfigurer-survey#vis-surveyen-og-send-inn-svar) og [Koble til backend](/kom-i-gang/koble-til-backend#_3-send-inn-svar-til-lumi-api).
+
+Widgeten venter i høyst ti sekunder på hvert forsøk og avbryter da `options.signal`. Ved 429 og 503 prøver den én gang til med det samme svaret når `Retry-After` er fem sekunder eller mindre. Uten `Retry-After` venter den ett sekund.
+
+| `LumiSurveyHttpError` | Beskrivelse |
+| :--- | :--- |
+| `status` | HTTP-statusen backenden svarte med |
+| `retryAfterSeconds` | Sekunder fra `Retry-After`, hvis svaret hadde en gyldig verdi |
+| `LumiSurveyHttpError.fromResponse(response)` | Lager feilen fra et `Response` fra `fetch` |
+
+Kaster transporten sin egen feiltype, prøver widgeten også på nytt når feilen har `status` 429 eller 503 som tall.
 
 ## `behavior`: `LumiSurveyBehavior`
 

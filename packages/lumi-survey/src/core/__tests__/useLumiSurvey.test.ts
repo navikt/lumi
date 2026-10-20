@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { LumiSurveyHttpError } from "../httpError.js";
 import type {
   LumiSurveyAnswerValue,
   LumiSurveyEvents,
@@ -475,6 +476,48 @@ describe("useLumiSurvey", () => {
     expect(events.onValidationFailed).not.toHaveBeenCalled();
     expect(events.onAnswer).toHaveBeenCalledWith("rating", 3);
     expect(events.onAnswer).toHaveBeenCalledWith("feedback", "Hei");
+  });
+
+  it("tries once more with the same deduplication key when the API answers 503", async () => {
+    const submit = vi
+      .fn<LumiSurveyTransport["submit"]>()
+      .mockRejectedValueOnce(new LumiSurveyHttpError(503))
+      .mockResolvedValueOnce(undefined);
+    const transport: LumiSurveyTransport = { submit };
+    const events = createEventSpies();
+
+    const { result } = renderHook(() =>
+      useLumiSurvey({
+        surveyId: SURVEY_ID,
+        questions: requiredQuestions,
+        transport,
+        events,
+      }),
+    );
+
+    await act(() => {
+      result.current.setAnswer("rating", 3);
+      result.current.setAnswer("feedback", "Hei");
+    });
+
+    let submission: LumiSurveySubmitResult | undefined;
+    await act(async () => {
+      const pending = result.current.submit();
+      await vi.advanceTimersByTimeAsync(1_000);
+      submission = await pending;
+    });
+
+    expect(submission?.ok).toBe(true);
+    expect(submit).toHaveBeenCalledTimes(2);
+    const [first, second] = submit.mock.calls.map(([sent]) => sent);
+    expect(second?.transportPayload.deduplicationKey).toBe(
+      first?.transportPayload.deduplicationKey,
+    );
+    expect(second?.submittedAt).toBe(first?.submittedAt);
+    expect(events.onSubmitStart).toHaveBeenCalledTimes(1);
+    expect(events.onSubmitError).not.toHaveBeenCalled();
+    expect(events.onSubmitSuccess).toHaveBeenCalledTimes(1);
+    expect(result.current.status).toBe("success");
   });
 
   it("turns payload contract errors into a settled transport error", async () => {
