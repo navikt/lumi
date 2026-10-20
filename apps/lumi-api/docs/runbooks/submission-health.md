@@ -44,6 +44,22 @@ logger for å finne den konkrete konsumenten etter at kanalen er identifisert.
 Ved `409 DefinitionConflict` følger du også
 [runbooken for survey-definisjonskonflikter](./survey-definition-conflicts.md).
 
+### 503 «Databasen er travel akkurat nå»
+
+API-et svarer 503 når et kall ikke fikk en databasetilkobling i tide, eller når
+en spørring brukte lengre tid enn grensen. Ved innsending telles det som
+`failed`.
+
+| Pool | Brukes av | Tilkoblinger per pod | Venter på tilkobling | Grense per spørring |
+| --- | --- | --- | --- | --- |
+| `lumi-api-submission-pool` | Innsending og readiness | 4 | 3 s | 3 s |
+| `lumi-api-pool` | Dashboard, Surveyverksted og analyse | 8 | 5 s | 15 s |
+
+Innsendingene har sitt eget pool, så tunge spørringer fra dashboardet stopper
+dem ikke. Kommer 503 ved innsending, er databasen selv presset. Sjekk CPU og
+antall tilkoblinger for instansen i Cloud SQL, og se etter tunge spørringer i
+Query Insights.
+
 ## Ingen tilgjengelige replikaer
 
 `LumiApiNoAvailableReplicas` og `LumiDashboardNoAvailableReplicas` går når

@@ -13,7 +13,7 @@ fun Route.internalRoutes() {
         }
 
         get("/isReady") {
-            if (isDatabaseReady(DatabaseHolder.dataSource)) {
+            if (isDatabaseReady(DatabaseHolder.submissionDataSource)) {
                 call.respondText("OK", ContentType.Text.Plain)
             } else {
                 call.respondText(
