@@ -74,9 +74,12 @@ function AnalysisProductsPage() {
               formatet og lås en kontrakt for senere levering.
             </BodyLong>
           </div>
-          <Alert variant="info" size="small">
-            Du kan klargjøre kontrakter her. Ingen data leveres til Metabase
-            eller Datafortelling ennå.
+          <Alert variant="warning" size="small">
+            Analyseprodukter er erstattet av BigQuery-eksport, og siden blir
+            fjernet. Ingen data leveres herfra.{" "}
+            <Link to="/bigquery" search={{ team }}>
+              Gå til BigQuery-eksport
+            </Link>
           </Alert>
           {teams.isPending ? (
             <Loader title="Henter team" />

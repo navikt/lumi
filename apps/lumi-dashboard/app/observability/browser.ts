@@ -89,6 +89,8 @@ const routes: Array<[RegExp, string]> = [
   [/^\/$/, "/"],
   [/^\/feedback\/?$/, "/feedback"],
   [/^\/export\/?$/, "/export"],
+  [/^\/bigquery\/?$/, "/bigquery"],
+  [/^\/analyseprodukter\/?$/, "/analyseprodukter"],
   [/^\/survey-preview\/?$/, "/survey-preview"],
   [/^\/release-verification\/?$/, "/release-verification"],
   [/^\/surveyverksted\/?$/, "/surveyverksted"],
