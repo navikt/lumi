@@ -7,7 +7,7 @@ title: BigQuery og Metabase
 Lumi kan legge en kopi av teamets svar i et BigQuery-datasett i teamets eget GCP-prosjekt. Et datasett i BigQuery er en mappe med tabeller. Lumi oppdaterer kopien hver natt, og derfra kan dere dele dataene på Datamarkedsplassen og bruke dem i Metabase og datafortellinger.
 
 ::: info Pilot
-I produksjon er eksporten foreløpig åpen for team eSyfo og iSyfo. Skriv i [#lumi på Slack](https://nav-it.slack.com/archives/C0AG2FKSSMD) hvis teamet vil være med.
+I produksjon blir eksporten først åpnet for team eSyfo og iSyfo. Skriv i [#lumi på Slack](https://nav-it.slack.com/archives/C0AG2FKSSMD) hvis teamet vil være med.
 :::
 
 ## Før dere begynner

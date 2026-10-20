@@ -168,6 +168,9 @@ WHERE option_name = 'labels' AND option_value LIKE '%lumi-eksport%'
 
 ## Checking a new environment
 
+Production stays off (`LUMI_BIGQUERY_EXPORT_ENABLED=false` in `nais/app/prod.yaml`) until
+these steps pass in dev. Turning it on in production is a one-line change to `"true"`.
+
 1. Deploy to dev and open **Eksporter → BigQuery-eksport** in the dev dashboard. The page
    shows Lumi's service account. It comes from the metadata server; if it is missing,
    workload identity does not work for the pod. Also check that the page suggests your

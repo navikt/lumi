@@ -104,9 +104,11 @@ spec:
     - name: LUMI_RETENTION_ENABLED
       value: "true"
     # BigQuery export to the teams' own datasets, see docs/adr/0007-teameid-bigquery-eksport.md.
+    # Off until the export works in dev, see "Checking a new environment" in
+    # apps/lumi-api/docs/runbooks/bigquery-export.md. Then set it to "true".
     # The pilot list limits who can set it up. Remove it to open the export for every team.
     - name: LUMI_BIGQUERY_EXPORT_ENABLED
-      value: "true"
+      value: "false"
     - name: LUMI_BIGQUERY_EXPORT_PILOT_TEAMS
       value: "team-esyfo,teamsykefravr"
     # Free text stays closed in production until a team's PVK covers it. Open it per team with

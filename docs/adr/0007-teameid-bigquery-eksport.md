@@ -196,9 +196,10 @@ datasett. Tilgang kan gis til en bruker, en gruppe eller en service account.
 
 ### Pilot
 
-I produksjon er eksporten først åpen for team eSyfo og iSyfo
-(`LUMI_BIGQUERY_EXPORT_PILOT_TEAMS`). Andre team ser at eksporten er i pilot.
-Fritekst er ikke åpnet for noen av dem.
+Eksporten prøves først i dev mot ekte BigQuery, slik runbooken beskriver.
+Deretter slås den på i produksjon (`LUMI_BIGQUERY_EXPORT_ENABLED`), først for
+team eSyfo og iSyfo (`LUMI_BIGQUERY_EXPORT_PILOT_TEAMS`). Andre team ser at
+eksporten er i pilot. Fritekst er ikke åpnet for noen av dem.
 
 1. eSyfo setter opp eksporten i sitt prosjekt og deler et view med bare
    `bro-frontend` på Datamarkedsplassen.
@@ -214,7 +215,16 @@ Fritekst er ikke åpnet for noen av dem.
 4. Når iSyfo har flyttet, slettes BigQuery-tilkoblingen `lumi`, og rollen
    `esyfo-analyse` fjernes med en egen migrering.
 
-Pilotlisten fjernes når piloten er godkjent.
+Pilotlisten fjernes når piloten er godkjent. Før det tas disse avgjørelsene på
+nytt:
+
+- om tabellene fortsatt skal utløpe sju dager etter at Lumi sist skrev dem,
+  siden Datamarkedsplassen fjerner et datasett når tabellen har manglet i sju
+  dager
+- om eksporten skal flyttes til en egen workload uten ingress, så skrivetilgangen
+  til teamenes datasett ikke ligger i podden som tar imot svar
+- om `feedback` trenger en indeks på `(team, opprettet, id)`, og om Lumi skal
+  lagre hvem som har slått fritekst av og på
 
 ### Analyseproduktene fra ADR 0006
 
