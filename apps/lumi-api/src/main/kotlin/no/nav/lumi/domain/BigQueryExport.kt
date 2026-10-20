@@ -103,7 +103,7 @@ enum class BigQueryExportTable(
             ),
             BigQueryColumn(
                 "varighet_sekunder", "INTEGER", false,
-                "Sekunder fra surveyen ble åpnet til svaret ble sendt, rundet ned. Tom når widgeten ikke målte tiden.",
+                "Sekunder fra surveyen ble vist til svaret ble sendt, rundet ned. Tom når widgeten ikke sendte tiden.",
             ),
             BigQueryExportColumns.enhetstype,
             BigQueryExportColumns.kontekst,
