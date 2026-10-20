@@ -53,6 +53,8 @@ function pollInterval(
 export function BigQueryExportView({ team }: { team: string }) {
   const [stopped, setStopped] = useState<BigQueryExportStop | null>(null);
   const [started, setStarted] = useState(false);
+  // Only a retry the user starts shows a spinner, not the background polling.
+  const [retrying, setRetrying] = useState(false);
   const query = useQuery({
     queryKey: bigQueryExportQueryKey(team),
     queryFn: () => getBigQueryExport({ data: { team } }),
@@ -88,6 +90,14 @@ export function BigQueryExportView({ team }: { team: string }) {
 
   const status = query.data;
   const stoppedNotice = stopped && <StoppedNotice result={stopped} />;
+  const retry = async () => {
+    setRetrying(true);
+    try {
+      await query.refetch();
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   let content: ReactNode;
   if (status.availability === "DISABLED")
@@ -163,8 +173,8 @@ export function BigQueryExportView({ team }: { team: string }) {
                   type="button"
                   size="xsmall"
                   variant="tertiary"
-                  onClick={() => void query.refetch()}
-                  loading={query.isFetching}
+                  onClick={() => void retry()}
+                  loading={retrying}
                   disabled={false}
                 >
                   Prøv igjen
@@ -238,10 +248,11 @@ function Introduction() {
           Teamets ansvar
         </Heading>
         <BodyLong size="small" spacing>
-          Teamet har ansvaret for kopien. Du godkjenner tilgang på
-          Datamarkedsplassen. Oppdater teamets kopi av etterlevelsesmalen E726
-          og behandlingen i Behandlingskatalogen: at svarene lagres i BigQuery,
-          deles på Datamarkedsplassen, og hva de brukes til.
+          Nav er behandlingsansvarlig, og teamet har ansvaret for kopien på
+          vegne av Nav. Teamet godkjenner tilgang på Datamarkedsplassen.
+          Oppdater teamets kopi av etterlevelsesmalen E726 og behandlingen i
+          Behandlingskatalogen. Skriv at svarene lagres i BigQuery og deles på
+          Datamarkedsplassen, og hva de skal brukes til.
         </BodyLong>
         <ExternalLink href={`${BIGQUERY_GUIDE_URL}#ansvar`}>
           Les guiden før du starter
@@ -266,6 +277,9 @@ function ActiveExport({
 }) {
   const queryClient = useQueryClient();
   const [stopOpen, setStopOpen] = useState(false);
+  // The stored setting can say free text is on after Lumi has closed it for
+  // the team. The next run deletes the table, so the page shows it as off.
+  const freeTextOn = destination.includeFreeText && status.freeTextAvailable;
   const run = useMutation({
     mutationFn: () => runBigQueryExport({ data: { team } }),
     retry: false,
@@ -291,14 +305,16 @@ function ActiveExport({
         team={team}
         status={status}
         destination={destination}
-        onRun={() => run.mutate()}
+        onRun={() => {
+          if (!run.isPending) run.mutate();
+        }}
         runPending={run.isPending}
         runError={runError}
         focusHeading={focusStatus}
       />
       {destination.lastSuccessAt && <NextSteps team={team} />}
       <Tables
-        includeFreeText={destination.includeFreeText}
+        includeFreeText={freeTextOn}
         freeTextAvailable={status.freeTextAvailable}
       />
       <ExpansionCard
@@ -323,7 +339,7 @@ function ActiveExport({
             initial={{
               projectId: destination.projectId,
               datasetId: destination.datasetId,
-              includeFreeText: destination.includeFreeText,
+              includeFreeText: freeTextOn,
             }}
           />
         </ExpansionCard.Content>
@@ -384,7 +400,7 @@ function Tables({
             ? "Fritekstsvar med kjente mønstre for personopplysninger maskert."
             : freeTextAvailable
               ? "Ikke med. Slå det på under Innstillinger hvis teamet trenger fritekst."
-              : "Ikke med. Fritekst kan ikke eksporteres for teamet ennå."}
+              : "Ikke med. Fritekst er ikke åpnet for teamet."}
         </List.Item>
       </List>
       <ExternalLink href={`${BIGQUERY_GUIDE_URL}#kolonner`}>

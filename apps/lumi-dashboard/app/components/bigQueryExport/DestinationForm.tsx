@@ -47,7 +47,7 @@ const FAILURE_TEXTS: Record<BigQueryExportFailureReason, string> = {
   "not-configured": "Teamet har ikke satt opp BigQuery-eksport.",
   "invalid-input": "Sjekk at prosjekt og datasett er skrevet riktig.",
   limit: RATE_LIMIT_TEXT,
-  problems: "Lumi kan ikke bruke datasettet ennå.",
+  problems: "Datasettet må ordnes før Lumi kan bruke det.",
 };
 
 export interface DestinationValues {
@@ -100,6 +100,7 @@ export function DestinationForm({
   });
   const [submitted, setSubmitted] = useState(false);
   const [copiedFor, setCopiedFor] = useState<string | null>(null);
+  const [sqlOpen, setSqlOpen] = useState(false);
   const projectRef = useRef<HTMLInputElement>(null);
   const datasetRef = useRef<HTMLInputElement>(null);
   const savedMessageRef = useRef<HTMLDivElement>(null);
@@ -108,6 +109,9 @@ export function DestinationForm({
   const warningId = useId();
 
   const target = `${values.projectId}|${values.datasetId}`;
+  const datasetChanged =
+    values.projectId !== initial.projectId ||
+    values.datasetId !== initial.datasetId;
   const projectError = GCP_PROJECT_ID_PATTERN.test(values.projectId)
     ? undefined
     : "Skriv ID-en til GCP-prosjektet, for eksempel team-esyfo-prod-1a2b.";
@@ -161,6 +165,11 @@ export function DestinationForm({
       ? save
       : undefined;
 
+  // A new dataset must be created before it is saved, so the SQL opens.
+  useEffect(() => {
+    if (mode === "edit" && datasetChanged) setSqlOpen(true);
+  }, [mode, datasetChanged]);
+
   // The save button turns disabled when nothing is left to save. Move focus
   // to the confirmation so it is not lost.
   useEffect(() => {
@@ -181,12 +190,14 @@ export function DestinationForm({
     setSubmitted(true);
     if (!inputsValid) return focusFirstInvalidField();
     if (verify.isPending) return;
+    save.reset();
     verify.mutate({ projectId: values.projectId, datasetId: values.datasetId });
   };
   const submit = () => {
     setSubmitted(true);
     if (!inputsValid) return focusFirstInvalidField();
     if (save.isPending) return;
+    verify.reset();
     save.mutate(next);
   };
 
@@ -245,8 +256,8 @@ export function DestinationForm({
       <LiveRegion gap="space-8">
         {values.includeFreeText && (
           <InlineMessage status="warning" size="small">
-            Oppdater teamets PVK og behandlingen i Behandlingskatalogen før du
-            deler tabellen fritekst med noen.
+            Tabellen fritekst skal ikke deles utenfor teamet. Sjekk at PVK-en og
+            behandlingen i Behandlingskatalogen dekker fritekst.
           </InlineMessage>
         )}
       </LiveRegion>
@@ -267,13 +278,10 @@ export function DestinationForm({
   });
 
   if (mode === "edit") {
-    const datasetChanged =
-      values.projectId !== initial.projectId ||
-      values.datasetId !== initial.datasetId;
     const changed =
       datasetChanged || includeFreeText !== initial.includeFreeText;
     const deleteWarning = datasetChanged
-      ? `Når du lagrer, sletter Lumi tabellene i ${initial.projectId}.${initial.datasetId}. Dataprodukter, Metabase-spørsmål og datafortellinger som bruker dem, slutter å virke.`
+      ? `Når du lagrer, sletter Lumi tabellene i ${initial.projectId}.${initial.datasetId}. Views, dataprodukter, Metabase-spørsmål og datafortellinger som bruker dem, slutter å virke.`
       : initial.includeFreeText && !includeFreeText
         ? "Når du lagrer, sletter Lumi tabellen fritekst."
         : null;
@@ -281,7 +289,17 @@ export function DestinationForm({
     return (
       <VStack gap="space-16">
         {fields}
-        <ReadMore header="Vis SQL-en" size="small">
+        {datasetChanged && (
+          <BodyShort size="small">
+            Kjør SQL-en for det nye datasettet i BigQuery før du lagrer.
+          </BodyShort>
+        )}
+        <ReadMore
+          header="Vis SQL-en"
+          size="small"
+          open={sqlOpen}
+          onOpenChange={setSqlOpen}
+        >
           {sql}
         </ReadMore>
         {freeText}
@@ -302,7 +320,12 @@ export function DestinationForm({
           >
             Lagre endringer
           </Button>
-          <ActionFeedback {...saveFeedback} />
+          <ActionFeedback
+            result={saveFeedback.result}
+            error={saveFeedback.error}
+          />
+          {/* Focused when it appears, so it is not also put in a live region. */}
+          {saveFeedback.focused}
         </div>
       </VStack>
     );
@@ -330,9 +353,9 @@ export function DestinationForm({
                 resten av prosjektet.
               </BodyLong>
               <BodyLong size="small">
-                Noen i teamet som kan kjøre SQL i BigQuery i prosjektet, må
-                gjøre dette steget. Send gjerne lenken til denne siden til en
-                utvikler i teamet.
+                Den som kjører SQL-en, må kunne lage datasett og gi tilgang i
+                teamets GCP-prosjekt. Send gjerne lenken til denne siden til en
+                i teamet som kan det.
               </BodyLong>
             </VStack>
             {fields}
@@ -388,10 +411,13 @@ export function DestinationForm({
                   Start eksporten
                 </Button>
                 <BodyShort size="small" textColor="subtle">
-                  Start eksporten gjør den samme sjekken.
+                  Lumi sjekker tilkoblingen på nytt når du starter.
                 </BodyShort>
               </HStack>
-              <ActionFeedback {...saveFeedback} />
+              <ActionFeedback
+                result={saveFeedback.result}
+                error={saveFeedback.error}
+              />
             </div>
           </VStack>
         </Process.Event>
@@ -410,6 +436,8 @@ interface MutationView<T> {
 interface Feedback {
   result?: ReactNode;
   error?: ReactNode;
+  /** A result that gets focus when it appears, outside any live region. */
+  focused?: ReactNode;
 }
 
 function feedbackForVerification(
@@ -473,7 +501,7 @@ function feedbackForSave(
   if (result.ok)
     return mode === "edit"
       ? {
-          result: (
+          focused: (
             <InlineMessage
               ref={savedMessageRef}
               tabIndex={-1}
@@ -492,7 +520,7 @@ function feedbackForSave(
         <ProblemList
           problems={result.problems}
           target={target}
-          heading="Lumi kan ikke bruke datasettet ennå"
+          heading="Dette må ordnes først"
         />
       ),
     };

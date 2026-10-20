@@ -70,12 +70,12 @@ export function StopExportDialog({
         <VStack gap="space-16">
           <BodyLong>
             Lumi slutter å oppdatere tabellene og sletter svar, innsendinger og
-            fritekst fra <code>{datasetName}</code>. Datasettet, andre tabeller
-            og kopier teamet har laget, blir stående.
+            fritekst fra <code>{datasetName}</code>. Datasettet og kopier teamet
+            har laget, blir stående.
           </BodyLong>
           <BodyLong>
-            Dataprodukter, Metabase-spørsmål og datafortellinger som bruker
-            tabellene, slutter å virke.
+            Views, dataprodukter, Metabase-spørsmål og datafortellinger som
+            bruker tabellene, slutter å virke.
           </BodyLong>
           <ConfirmationPanel
             checked={confirmed}
@@ -111,7 +111,9 @@ export function StopExportDialog({
             type="button"
             data-color="danger"
             variant="primary"
-            onClick={() => stop.mutate()}
+            onClick={() => {
+              if (!stop.isPending) stop.mutate();
+            }}
             disabled={!confirmed}
             loading={stop.isPending}
           >

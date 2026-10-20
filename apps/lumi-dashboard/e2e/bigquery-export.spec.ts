@@ -71,7 +71,7 @@ test("sets up, changes, runs and stops a BigQuery export from the export page", 
   await freeText.check();
   await expect(
     page.getByText(
-      "Oppdater teamets PVK og behandlingen i Behandlingskatalogen før du deler tabellen fritekst med noen.",
+      "Tabellen fritekst skal ikke deles utenfor teamet. Sjekk at PVK-en og behandlingen i Behandlingskatalogen dekker fritekst.",
     ),
   ).toBeVisible();
   await freeText.uncheck();
@@ -111,7 +111,7 @@ test("sets up, changes, runs and stops a BigQuery export from the export page", 
   // The previous run started a moment ago, so the new one waits its turn.
   await expect(
     page.getByRole("heading", {
-      name: /^I kø\. Starter rundt kl\. \d{2}:\d{2}\.$/,
+      name: /^Kjøringen starter rundt kl\. \d{2}:\d{2}$/,
     }),
   ).toBeVisible();
   await expectAccessibleAtBothWidths(page);

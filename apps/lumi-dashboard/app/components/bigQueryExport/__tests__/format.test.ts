@@ -66,7 +66,7 @@ describe("BigQuery export formatting", () => {
   it("says when a queued run starts if it waits more than a minute", () => {
     const now = Date.parse("2026-10-20T12:00:00Z");
     expect(queuedText("2026-10-20T12:04:30Z", now)).toBe(
-      "I kø. Starter rundt kl. 14:04.",
+      "Kjøringen starter rundt kl. 14:04",
     );
     expect(queuedText("2026-10-20T12:00:50Z", now)).toBeNull();
     expect(queuedText(null, now)).toBeNull();

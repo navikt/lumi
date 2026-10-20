@@ -353,10 +353,10 @@ describe("BigQueryExportView", () => {
     const checkbox = await screen.findByRole("checkbox", {
       name: "Ta med fritekstsvar",
     });
-    expect(screen.queryByText(/Oppdater teamets PVK/)).toBeNull();
+    expect(screen.queryByText(/skal ikke deles utenfor teamet/)).toBeNull();
     fireEvent.click(checkbox);
 
-    const warning = screen.getByText(/Oppdater teamets PVK og behandlingen/);
+    const warning = screen.getByText(/skal ikke deles utenfor teamet/);
     expect(warning.closest("[aria-live='polite']")).not.toBeNull();
   });
 
@@ -500,7 +500,7 @@ describe("BigQueryExportView", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: `I kø. Starter rundt kl. ${formatClock(startsAt)}.`,
+        name: `Kjøringen starter rundt kl. ${formatClock(startsAt)}`,
       }),
     ).toBeInTheDocument();
   });
@@ -529,7 +529,8 @@ describe("BigQueryExportView", () => {
     const confirmation = await screen.findByText(
       "Endringene er lagret. Lumi oppdaterer tabellene i løpet av noen minutter.",
     );
-    expect(confirmation.closest("[aria-live='polite']")).not.toBeNull();
+    // It gets focus, which announces it, so it is not also in a live region.
+    expect(confirmation.closest("[aria-live='polite']")).toBeNull();
     await waitFor(() =>
       expect(confirmation.closest("[tabindex='-1']")).toHaveFocus(),
     );
@@ -570,7 +571,7 @@ describe("BigQueryExportView", () => {
     ).toHaveAccessibleDescription(/sletter Lumi tabellen fritekst/);
   });
 
-  it("turns free text off when the team may no longer export it", async () => {
+  it("shows free text as off when Lumi has closed it for the team", async () => {
     const closed = withDestination(
       { includeFreeText: true },
       { freeTextAvailable: false },
@@ -581,8 +582,17 @@ describe("BigQueryExportView", () => {
       value: closed,
     });
     renderView();
-    await openSettings();
 
+    expect(
+      await screen.findByText(
+        "Lumi har stengt fritekst for teamet. Tabellen fritekst blir slettet ved neste kjøring.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Ikke med. Fritekst er ikke åpnet for teamet."),
+    ).toBeInTheDocument();
+
+    await openSettings();
     expect(screen.getByText("Bytt datasett.")).toBeInTheDocument();
     expect(
       screen.queryByRole("checkbox", { name: "Ta med fritekstsvar" }),
@@ -590,17 +600,27 @@ describe("BigQueryExportView", () => {
     expect(
       screen.getByText(/Fritekst kan ikke eksporteres for teamet ennå/),
     ).toBeInTheDocument();
+    // Nothing to save until the user changes something.
+    expect(screen.queryByText(/Når du lagrer/)).toBeNull();
     expect(
-      screen.getByText("Når du lagrer, sletter Lumi tabellen fritekst."),
-    ).toBeInTheDocument();
+      screen.getByRole("button", { name: "Lagre endringer" }),
+    ).toBeDisabled();
 
+    fireEvent.change(screen.getByRole("textbox", { name: /Datasett/ }), {
+      target: { value: "lumi_ny" },
+    });
+    expect(
+      screen.getByText(
+        "Kjør SQL-en for det nye datasettet i BigQuery før du lagrer.",
+      ),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Lagre endringer" }));
     await waitFor(() =>
       expect(saveBigQueryExport).toHaveBeenCalledWith({
         data: {
           team,
           projectId: project,
-          datasetId: "lumi",
+          datasetId: "lumi_ny",
           includeFreeText: false,
         },
       }),

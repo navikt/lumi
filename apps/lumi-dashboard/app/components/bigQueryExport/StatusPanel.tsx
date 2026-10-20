@@ -21,6 +21,7 @@ import { ExternalLinkButton } from "./ExternalLink";
 import { ActionError } from "./Feedback";
 import {
   bigQueryConsoleUrl,
+  fixedBySql,
   formatTimestamp,
   nextRunText,
   queuedText,
@@ -122,6 +123,14 @@ export function StatusPanel({
   const view = runView(destination);
   const busy =
     destination.runState === "RUNNING" || destination.runState === "QUEUED";
+  // «Oppdater tabellene nå» is disabled once the run is queued. Focus then
+  // moves to the status the user asked for, so it is not lost.
+  const runRequested = useRef(false);
+  useEffect(() => {
+    if (!busy || !runRequested.current) return;
+    runRequested.current = false;
+    headingRef.current?.focus();
+  }, [busy]);
   const datasetName = `${destination.projectId}.${destination.datasetId}`;
   const failedCode =
     destination.lastRun?.status === "FAILED"
@@ -162,6 +171,11 @@ export function StatusPanel({
             heading="Dette stoppet siste kjøring"
           />
         )}
+        {failedCode && fixedBySql(failedCode) && (
+          <BodyShort size="small">
+            Velg Oppdater tabellene nå når du har kjørt SQL-en.
+          </BodyShort>
+        )}
 
         <HGrid columns={{ xs: 1, md: 2 }} gap="space-16">
           <Fact label="Datasett">
@@ -195,7 +209,10 @@ export function StatusPanel({
               size="small"
               variant="secondary"
               icon={<ArrowsCirclepathIcon aria-hidden />}
-              onClick={onRun}
+              onClick={() => {
+                runRequested.current = true;
+                onRun();
+              }}
               loading={runPending}
               disabled={busy}
             >
@@ -213,12 +230,18 @@ export function StatusPanel({
           </HStack>
           <ActionError>{runError}</ActionError>
         </div>
-        {destination.includeFreeText && (
-          <Alert variant="info" size="small">
-            Fritekstsvar er med i tabellen fritekst. Del den bare med personer
-            som trenger å lese tekstene.
-          </Alert>
-        )}
+        {destination.includeFreeText &&
+          (status.freeTextAvailable ? (
+            <Alert variant="info" size="small">
+              Fritekstsvar er med i tabellen fritekst. Ikke del den utenfor
+              teamet.
+            </Alert>
+          ) : (
+            <Alert variant="info" size="small">
+              Lumi har stengt fritekst for teamet. Tabellen fritekst blir
+              slettet ved neste kjøring.
+            </Alert>
+          ))}
       </VStack>
     </Box>
   );

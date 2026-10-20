@@ -94,7 +94,7 @@ export function NextSteps({ team }: { team: string }) {
         </Step>
         <Step step="03" title="Lag grafer og dashboard i Metabase">
           <BodyShort size="small">
-            Tabellen svar har spørsmålstekst og svartekst på hver rad, så den
+            Et view av svar har spørsmålstekst og svartekst på hver rad, så det
             fungerer i Metabase uten SQL. Lumi-dokumentasjonen har ferdige
             spørringer for fordeling, snitt og NPS.
           </BodyShort>

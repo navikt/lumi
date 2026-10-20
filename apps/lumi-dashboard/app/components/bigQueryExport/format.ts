@@ -85,7 +85,7 @@ export function queuedText(
   if (!iso) return null;
   const at = Date.parse(iso);
   if (Number.isNaN(at) || at - now <= 60_000) return null;
-  return `I kø. Starter rundt kl. ${formatClock(iso)}.`;
+  return `Kjøringen starter rundt kl. ${formatClock(iso)}`;
 }
 
 export interface SetupSqlTarget {
@@ -237,7 +237,7 @@ export function problemText(
     case "EXPORT_JOB_DENIED":
       return {
         title: "Lumi fikk ikke kjøre eksporten",
-        hint: "Lumi mangler tilgang til å kjøre jobber i BigQuery. Feilen er hos Lumi, og team eSyfo får varsel om den.",
+        hint: "Lumi mangler tilgang til å kjøre jobber i BigQuery. Feilen er hos Lumi. Skriv i #lumi hvis den ikke går over.",
       };
     case "BIGQUERY_UNAVAILABLE":
       return {
