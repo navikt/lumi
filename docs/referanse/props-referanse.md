@@ -150,7 +150,7 @@ Se [Tidsgrense og nytt forsøk](/kom-i-gang/konfigurer-survey#tidsgrense-og-nytt
 | `resetOnClose` | `boolean` | `true` | Nullstill svar når brukeren lukker |
 | `dismissCooldownDays` | `number` | `30` | Dager før widgeten vises igjen etter at surveyen er lukket eller besvart. `0` betyr at ventetiden aldri går ut |
 | `hideAfterSubmit` | `boolean` | `true` | Skjul widgeten etter vellykket innsending, til ventetiden er over |
-| `hideMinimizedButton` | `boolean` | `false` | Vis ingenting når widgeten er minimert, i stedet for knappen **Gi tilbakemelding**. Surveyen vises da bare når den åpner seg selv. Fra 2.4.0 |
+| `hideMinimizedButton` | `boolean` | `false` | Skjul knappen **Gi tilbakemelding** når widgeten er minimert. Surveyen vises da bare når den åpner seg selv, og aldri sammen med `initialOpen: false`. Sett verdien én gang. Fra 2.4.0 |
 | `questionLayout` | `"auto" \| "singlePage" \| "steps"` | `"auto"` | Hvordan sidene vises |
 | `showPersonalDataNotice` | `boolean` | `true` | Vis informasjon om personopplysninger |
 | `personalDataNotice` | `ReactNode` | – | Egen informasjon om personopplysninger |
@@ -246,7 +246,7 @@ Hvis `success.title` i dokumentet er tom, bruker widgeten standardteksten på ta
 | :--- | :--- | :--- | :--- |
 | `position` | `"bottom-right" \| "bottom-left"` | `"bottom-right"` | Plassering på skjermen |
 | `offset` | `number` | `24` | Avstand fra kanten, i piksler |
-| `zIndex` | `number` | `1000` | Stablingsrekkefølge. Sett et lavere tall for å legge widgeten under andre faste elementer i appen. Fra 2.4.0 |
+| `zIndex` | `number` | `1000` | Stablingsrekkefølge, som heltall. Sett et lavere tall for å legge widgeten under andre faste elementer i appen. Fra 2.4.0 |
 | `containerClassName` | `string` | – | Ekstra CSS-klasse for beholderen |
 | `panelClassName` | `string` | – | Ekstra CSS-klasse for panelet |
 | `panelBackground` | Aksel `Box`-token | `"default"` | Bakgrunnsfarge |

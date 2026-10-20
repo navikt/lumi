@@ -116,7 +116,8 @@ export function resolveConfig(
     // Style
     position: style?.position ?? "bottom-right",
     offset: style?.offset ?? 24,
-    zIndex: style?.zIndex ?? 1000,
+    // A value that is not an integer would be dropped by the browser.
+    zIndex: Number.isInteger(style?.zIndex) ? (style?.zIndex as number) : 1000,
     containerClassName: style?.containerClassName,
     panelClassName: style?.panelClassName,
     panelBackground: style?.panelBackground ?? "default",

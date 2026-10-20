@@ -11,6 +11,8 @@ Komponenten er rendret, men ingenting vises på skjermen.
 ::: details Sjekk 1: `initialOpen` er satt til `false`
 Widgeten starter som standard åpen (`initialOpen: true`). Hvis dere har satt `initialOpen: false`, vises bare den minimerte knappen, og brukeren må åpne surveyen selv. Widgeten starter også minimert når den ikke får lagre, for eksempel når brukeren ikke har samtykket. Se [Uten samtykke](/guider/lagring#uten-samtykke).
 
+Med `hideMinimizedButton: true` vises heller ikke den minimerte knappen. Da ser ingen surveyen så lenge widgeten er minimert, og med `initialOpen: false` vises den aldri.
+
 ```tsx
 // Starter minimert
 <LumiSurveyDock behavior={{ initialOpen: false }} />

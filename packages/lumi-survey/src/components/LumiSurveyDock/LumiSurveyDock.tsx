@@ -189,6 +189,14 @@ export const LumiSurveyDock = ({
     [labels, effectiveSuccess, style, behavior, effectiveIntro],
   );
 
+  useEffect(() => {
+    if (!config.initialOpen && config.hideMinimizedButton) {
+      console.warn(
+        "[Lumi] initialOpen: false and hideMinimizedButton: true together mean the survey never shows.",
+      );
+    }
+  }, [config.initialOpen, config.hideMinimizedButton]);
+
   // IMPORTANT: Call all hooks before any conditional returns to comply with Rules of Hooks
 
   const canonicalSurvey = useMemo(() => buildCanonicalSurvey(survey), [survey]);

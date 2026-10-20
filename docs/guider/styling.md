@@ -42,10 +42,10 @@ Med `style` kan dere endre plassering og farger og legge til egne CSS-klasser:
 
 Widgeten ligger som standard nederst til høyre, over Frida-chatboten i Nav-dekoratøren. På sider med dekoratøren setter dere `position: "bottom-left"`, med mindre appen har slått av chatboten med `chatbot: false`. På smale skjermer er åpen widget nesten like bred som skjermen og kan dekke Frida uansett plassering.
 
-Fra versjon 2.4.0 finnes to valg til:
+`position: "bottom-left"` er førstevalget. Fra versjon 2.4.0 finnes to valg til for sider der det ikke er nok:
 
-- `style.zIndex` styrer om widgeten ligger over eller under andre faste elementer. Standard er `1000`.
-- `behavior.hideMinimizedButton: true` viser ingenting når widgeten er minimert. Da ligger det ingen knapp i hjørnet når brukeren har lukket surveyen. Brukere som widgeten ikke får lagre for, for eksempel uten samtykke, starter minimert og ser da aldri surveyen. Se [Uten samtykke](/guider/lagring#uten-samtykke).
+- `style.zIndex` styrer om widgeten ligger over eller under andre faste elementer. Standard er `1000`, og verdien må være et heltall. Legger dere widgeten under Frida nederst til høyre, dekker Frida en del av det åpne panelet.
+- `behavior.hideMinimizedButton: true` viser ingenting når widgeten er minimert. Da ligger det ingen knapp i hjørnet etter at brukeren har lukket surveyen. Får widgeten ikke lagre, for eksempel fordi brukeren ikke har samtykket, starter den minimert, og da ser brukeren aldri surveyen. Se [Uten samtykke](/guider/lagring#uten-samtykke).
 
 ### Alle feltene i `style`
 

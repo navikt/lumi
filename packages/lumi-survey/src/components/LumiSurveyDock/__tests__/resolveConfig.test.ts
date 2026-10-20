@@ -34,3 +34,25 @@ describe("resolveConfig panel height", () => {
     ).toBe("420px");
   });
 });
+
+describe("resolveConfig placement", () => {
+  it("keeps the minimized button and the default stacking order by default", () => {
+    const config = resolveConfig();
+
+    expect(config.zIndex).toBe(1000);
+    expect(config.hideMinimizedButton).toBe(false);
+  });
+
+  it("uses an integer zIndex and ignores other values", () => {
+    expect(resolveConfig(undefined, undefined, { zIndex: 997 }).zIndex).toBe(
+      997,
+    );
+    expect(resolveConfig(undefined, undefined, { zIndex: 0 }).zIndex).toBe(0);
+    expect(resolveConfig(undefined, undefined, { zIndex: 1.5 }).zIndex).toBe(
+      1000,
+    );
+    expect(
+      resolveConfig(undefined, undefined, { zIndex: Number.NaN }).zIndex,
+    ).toBe(1000);
+  });
+});
