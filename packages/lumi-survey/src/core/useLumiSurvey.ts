@@ -78,6 +78,9 @@ export function useLumiSurveyState(
   const [status, setStatus] = useState<LumiSurveyStatus>("idle");
   const [error, setError] = useState<LumiSurveyError | null>(null);
   const deduplicationKeyRef = useRef<string | null>(null);
+  // Bumped by reset(). A submit that settles after a reset still reports its
+  // outcome through events, but must not change the fresh survey's state.
+  const generationRef = useRef(0);
 
   const getDeduplicationKey = useCallback(() => {
     if (deduplicationKeyRef.current === null) {
@@ -125,6 +128,7 @@ export function useLumiSurveyState(
 
       setStatus("submitting");
       setError(null);
+      const generation = generationRef.current;
 
       try {
         const answerSnapshot = cloneAnswers(answers);
@@ -161,16 +165,20 @@ export function useLumiSurveyState(
 
         events?.onSubmitStart?.(submission);
         await submitWithRetry(transport, submission);
-        setStatus("success");
-        setError(null);
-        // Rotate deduplication key after successful submit
-        deduplicationKeyRef.current = generateDeduplicationKey();
+        if (generation === generationRef.current) {
+          setStatus("success");
+          setError(null);
+          // Rotate deduplication key after successful submit
+          deduplicationKeyRef.current = generateDeduplicationKey();
+        }
         events?.onSubmitSuccess?.(submission);
         return { ok: true, submission };
       } catch (cause) {
         const transportError: LumiSurveyError = { type: "transport", cause };
-        setStatus("error");
-        setError(transportError);
+        if (generation === generationRef.current) {
+          setStatus("error");
+          setError(transportError);
+        }
         events?.onSubmitError?.(cause);
         return { ok: false, error: transportError };
       }
@@ -191,6 +199,7 @@ export function useLumiSurveyState(
   );
 
   const reset = useCallback(() => {
+    generationRef.current += 1;
     resetAnswers();
     setStatus("idle");
     setError(null);

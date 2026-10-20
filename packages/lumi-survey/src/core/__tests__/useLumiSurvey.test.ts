@@ -500,12 +500,16 @@ describe("useLumiSurvey", () => {
       result.current.setAnswer("feedback", "Hei");
     });
 
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
     let submission: LumiSurveySubmitResult | undefined;
     await act(async () => {
       const pending = result.current.submit();
-      await vi.advanceTimersByTimeAsync(1_000);
+      await vi.advanceTimersByTimeAsync(999);
+      expect(submit).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
       submission = await pending;
     });
+    vi.mocked(Math.random).mockRestore();
 
     expect(submission?.ok).toBe(true);
     expect(submit).toHaveBeenCalledTimes(2);
@@ -518,6 +522,81 @@ describe("useLumiSurvey", () => {
     expect(events.onSubmitError).not.toHaveBeenCalled();
     expect(events.onSubmitSuccess).toHaveBeenCalledTimes(1);
     expect(result.current.status).toBe("success");
+  });
+
+  it("reports the error from the last attempt once", async () => {
+    const timeout = new DOMException("for sent", "TimeoutError");
+    const submit = vi
+      .fn<LumiSurveyTransport["submit"]>()
+      .mockRejectedValueOnce(new LumiSurveyHttpError(503, { retryAfter: "0" }))
+      .mockRejectedValueOnce(timeout);
+    const events = createEventSpies();
+
+    const { result } = renderHook(() =>
+      useLumiSurvey({
+        surveyId: SURVEY_ID,
+        questions: requiredQuestions,
+        transport: { submit },
+        events,
+      }),
+    );
+    await act(() => {
+      result.current.setAnswer("rating", 3);
+      result.current.setAnswer("feedback", "Hei");
+    });
+
+    await act(async () => {
+      const pending = result.current.submit();
+      await vi.advanceTimersByTimeAsync(0);
+      await pending;
+    });
+
+    expect(submit).toHaveBeenCalledTimes(2);
+    expect(events.onSubmitError).toHaveBeenCalledTimes(1);
+    expect(events.onSubmitError).toHaveBeenCalledWith(timeout);
+    expect(result.current.status).toBe("error");
+  });
+
+  it("leaves a reset survey alone when an earlier submit settles late", async () => {
+    let finish: () => void = () => {};
+    const submit = vi.fn<LumiSurveyTransport["submit"]>(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const events = createEventSpies();
+
+    const { result } = renderHook(() =>
+      useLumiSurvey({
+        surveyId: SURVEY_ID,
+        questions: requiredQuestions,
+        transport: { submit },
+        events,
+      }),
+    );
+    await act(() => {
+      result.current.setAnswer("rating", 3);
+      result.current.setAnswer("feedback", "Hei");
+    });
+
+    let pending: Promise<LumiSurveySubmitResult> | undefined;
+    await act(async () => {
+      pending = result.current.submit();
+    });
+    await act(() => {
+      result.current.reset();
+    });
+    await act(async () => {
+      finish();
+      await pending;
+    });
+
+    expect(result.current.status).toBe("idle");
+    expect(result.current.error).toBeNull();
+    expect(result.current.answers).toEqual({});
+    // The answer did arrive, so the app still hears about it.
+    expect(events.onSubmitSuccess).toHaveBeenCalledTimes(1);
   });
 
   it("turns payload contract errors into a settled transport error", async () => {

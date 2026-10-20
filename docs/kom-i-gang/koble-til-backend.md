@@ -192,6 +192,7 @@ export async function POST(request: Request) {
   const body = await request.text();
 
   let response: Response;
+  let errorText = "";
   try {
     response = await fetch(`${host}${feedbackPath}`, {
       method: "POST",
@@ -203,22 +204,25 @@ export async function POST(request: Request) {
       // Gi opp før widgeten, som venter i ti sekunder
       signal: AbortSignal.timeout(8_000),
     });
+    if (!response.ok) {
+      errorText = await response.text();
+    }
   } catch (error) {
+    const timedOut = error instanceof Error && error.name === "TimeoutError";
     console.error("Lumi API svarte ikke:", error);
-    return new Response(null, { status: 504 });
+    return new Response(null, { status: timedOut ? 504 : 502 });
   }
 
   if (!response.ok) {
-    console.error(
-      `Lumi API svarte med ${response.status}: ${await response.text()}`,
-    );
+    console.error(`Lumi API svarte med ${response.status}: ${errorText}`);
   }
 
+  const headers = new Headers();
   const retryAfter = response.headers.get("Retry-After");
-  return new Response(null, {
-    status: response.status,
-    headers: retryAfter ? { "Retry-After": retryAfter } : undefined,
-  });
+  if (retryAfter) {
+    headers.set("Retry-After", retryAfter);
+  }
+  return new Response(null, { status: response.status, headers });
 }
 ```
 
@@ -233,10 +237,13 @@ Slik virker ruten:
   `tokenx.enabled: true` i Nais-manifestet.
 - Ruten sender statuskoden fra Lumi API videre til nettleseren, så dere ser den
   i nettverksfanen. Feilmeldingen fra Lumi API står i loggen.
-- `Retry-After` sendes videre, så widgeten vet hvor lenge den skal vente før
-  den prøver igjen etter 429 eller 503.
-- Svarer ikke Lumi API innen åtte sekunder, gir ruten opp og svarer 504.
-  Widgeten venter i ti sekunder, så den får 504-svaret og viser feilmeldingen.
+- `Retry-After` sendes videre, så widgeten kan vente så lenge Lumi API ber om
+  før den prøver igjen. Se
+  [Tidsgrense og nytt forsøk](/kom-i-gang/konfigurer-survey#tidsgrense-og-nytt-forsok).
+- Svarer ikke Lumi API innen åtte sekunder, gir ruten opp, logger
+  `Lumi API svarte ikke` og svarer 504. Widgeten venter i ti sekunder på hele
+  kallet til backenden. Bruker tokenvekslingen mer enn to sekunder, gir
+  widgeten opp først.
 
 Har appen `basePath` i `next.config`, ligger ruten under den stien. Se
 [Next.js App Router](/kom-i-gang/konfigurer-survey#next-js) for hvordan
@@ -318,8 +325,11 @@ app.post(
       }
       res.sendStatus(response.status);
     } catch (error) {
-      console.error("Innsending til Lumi feilet:", error);
       const timedOut = error instanceof Error && error.name === "TimeoutError";
+      console.error(
+        timedOut ? "Lumi API svarte ikke:" : "Innsending til Lumi feilet:",
+        error,
+      );
       res.sendStatus(timedOut ? 504 : 500);
     }
   },

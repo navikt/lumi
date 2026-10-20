@@ -30,6 +30,19 @@ function transportWith(
   return { submit };
 }
 
+function signalOf(
+  transport: { submit: ReturnType<typeof vi.fn> },
+  call: number,
+): AbortSignal {
+  const options = transport.submit.mock.calls[call]?.[1] as
+    | LumiSurveyTransportOptions
+    | undefined;
+  if (!options) throw new Error(`No options for call ${call}`);
+  return options.signal;
+}
+
+const middleOfSpread = () => 0.5;
+
 describe("submitWithRetry", () => {
   const wait = vi.fn(async (_ms: number) => {});
 
@@ -47,24 +60,40 @@ describe("submitWithRetry", () => {
     await submitWithRetry(transport, submission, { wait });
 
     expect(transport.submit).toHaveBeenCalledTimes(1);
-    const [sent, options] = transport.submit.mock.calls[0] as [
-      LumiSurveySubmission,
-      LumiSurveyTransportOptions,
-    ];
-    expect(sent).toBe(submission);
-    expect(options.signal).toBeInstanceOf(AbortSignal);
-    expect(options.signal.aborted).toBe(false);
+    expect(transport.submit.mock.calls[0]?.[0]).toBe(submission);
+    expect(signalOf(transport, 0)).toBeInstanceOf(AbortSignal);
+    expect(signalOf(transport, 0).aborted).toBe(false);
     expect(wait).not.toHaveBeenCalled();
   });
 
-  it("tries once more with the same submission after a 503", async () => {
+  it("tries once more with the same submission and a fresh signal after a 503", async () => {
     const transport = transportWith(new LumiSurveyHttpError(503), "ok");
 
-    await submitWithRetry(transport, submission, { wait });
+    await submitWithRetry(transport, submission, {
+      wait,
+      random: middleOfSpread,
+    });
 
     expect(wait).toHaveBeenCalledWith(1_000);
     expect(transport.submit).toHaveBeenCalledTimes(2);
     expect(transport.submit.mock.calls[1]?.[0]).toBe(submission);
+    expect(signalOf(transport, 1)).not.toBe(signalOf(transport, 0));
+    expect(signalOf(transport, 1).aborted).toBe(false);
+  });
+
+  it("spreads the retry after a 503 between half a second and one and a half", async () => {
+    await submitWithRetry(
+      transportWith(new LumiSurveyHttpError(503), "ok"),
+      submission,
+      { wait, random: () => 0 },
+    );
+    await submitWithRetry(
+      transportWith(new LumiSurveyHttpError(503), "ok"),
+      submission,
+      { wait, random: () => 0.999 },
+    );
+
+    expect(wait.mock.calls.map(([ms]) => ms)).toEqual([500, 1_499]);
   });
 
   it("waits as long as Retry-After asks on a 429", async () => {
@@ -79,12 +108,24 @@ describe("submitWithRetry", () => {
     expect(transport.submit).toHaveBeenCalledTimes(2);
   });
 
-  it("gives up at once when Retry-After asks for more than five seconds", async () => {
-    const rateLimited = new LumiSurveyHttpError(429, { retryAfter: "30" });
-    const transport = transportWith(rateLimited);
+  it.each([
+    ["a 429 without Retry-After", new LumiSurveyHttpError(429)],
+    [
+      "a 429 that asks for more than five seconds",
+      new LumiSurveyHttpError(429, { retryAfter: "30" }),
+    ],
+    [
+      "a 503 that asks for more than five seconds",
+      new LumiSurveyHttpError(503, { retryAfter: "6" }),
+    ],
+    ["a 400", new LumiSurveyHttpError(400)],
+    ["a 500", new LumiSurveyHttpError(500)],
+    ["an error without status", new Error("Innsending feilet med status 503")],
+  ])("shows the error at once after %s", async (_name, error) => {
+    const transport = transportWith(error);
 
     await expect(submitWithRetry(transport, submission, { wait })).rejects.toBe(
-      rateLimited,
+      error,
     );
     expect(transport.submit).toHaveBeenCalledTimes(1);
     expect(wait).not.toHaveBeenCalled();
@@ -100,20 +141,7 @@ describe("submitWithRetry", () => {
     expect(transport.submit).toHaveBeenCalledTimes(2);
   });
 
-  it.each([
-    ["a 400", new LumiSurveyHttpError(400)],
-    ["a 500", new LumiSurveyHttpError(500)],
-    ["an error without status", new Error("Innsending feilet med status 503")],
-  ])("does not retry %s", async (_name, error) => {
-    const transport = transportWith(error);
-
-    await expect(submitWithRetry(transport, submission, { wait })).rejects.toBe(
-      error,
-    );
-    expect(transport.submit).toHaveBeenCalledTimes(1);
-  });
-
-  it("stops waiting after the timeout and aborts the signal", async () => {
+  it("stops waiting after the timeout, aborts the signal and leaves no timers", async () => {
     vi.useFakeTimers();
     let signal: AbortSignal | undefined;
     const transport: LumiSurveyTransport = {
@@ -133,6 +161,46 @@ describe("submitWithRetry", () => {
     expect(signal?.aborted).toBe(true);
     expect(signal?.reason).toMatchObject({ name: "TimeoutError" });
     expect(wait).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("gives the retry its own timeout", async () => {
+    vi.useFakeTimers();
+    const submit = vi
+      .fn<LumiSurveyTransport["submit"]>()
+      .mockRejectedValueOnce(new LumiSurveyHttpError(503))
+      .mockReturnValueOnce(new Promise<void>(() => {}));
+
+    const result = submitWithRetry({ submit }, submission, {
+      random: middleOfSpread,
+    });
+    const settled = expect(result).rejects.toMatchObject({
+      name: "TimeoutError",
+    });
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(submit).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(SUBMIT_TIMEOUT_MS);
+    await settled;
+
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("does not retry before the delay has passed", async () => {
+    vi.useFakeTimers();
+    const submit = vi
+      .fn<LumiSurveyTransport["submit"]>()
+      .mockRejectedValueOnce(new LumiSurveyHttpError(503))
+      .mockResolvedValueOnce(undefined);
+
+    const result = submitWithRetry({ submit }, submission, {
+      random: middleOfSpread,
+    });
+    await vi.advanceTimersByTimeAsync(999);
+    expect(submit).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    await result;
+
+    expect(submit).toHaveBeenCalledTimes(2);
   });
 
   it("turns a transport that throws synchronously into a rejection", async () => {
@@ -151,7 +219,7 @@ describe("submitWithRetry", () => {
 
 describe("getRetryDelayMs", () => {
   it("reads status and Retry-After from any thrown object", () => {
-    expect(getRetryDelayMs({ status: 503 })).toBe(1_000);
+    expect(getRetryDelayMs({ status: 503 }, middleOfSpread)).toBe(1_000);
     expect(getRetryDelayMs({ status: 429, retryAfterSeconds: 0 })).toBe(0);
     expect(getRetryDelayMs({ status: 503, retryAfterSeconds: 5 })).toBe(5_000);
   });
@@ -159,14 +227,23 @@ describe("getRetryDelayMs", () => {
   it("does not retry other statuses or values without a numeric status", () => {
     expect(getRetryDelayMs({ status: 504 })).toBeUndefined();
     expect(getRetryDelayMs({ status: "503" })).toBeUndefined();
+    expect(getRetryDelayMs({ status: 429 })).toBeUndefined();
     expect(getRetryDelayMs(undefined)).toBeUndefined();
     expect(getRetryDelayMs("503")).toBeUndefined();
   });
 
-  it("falls back to one second for an unusable Retry-After", () => {
-    expect(getRetryDelayMs({ status: 503, retryAfterSeconds: -1 })).toBe(1_000);
+  it("ignores an unusable Retry-After", () => {
     expect(
-      getRetryDelayMs({ status: 503, retryAfterSeconds: Number.NaN }),
+      getRetryDelayMs({ status: 503, retryAfterSeconds: -1 }, middleOfSpread),
     ).toBe(1_000);
+    expect(
+      getRetryDelayMs(
+        { status: 503, retryAfterSeconds: Number.NaN },
+        middleOfSpread,
+      ),
+    ).toBe(1_000);
+    expect(
+      getRetryDelayMs({ status: 429, retryAfterSeconds: Number.NaN }),
+    ).toBeUndefined();
   });
 });

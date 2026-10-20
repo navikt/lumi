@@ -32,7 +32,7 @@ const transport: LumiSurveyTransport = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(transportPayload),
-      signal: options?.signal,
+      signal: options?.signal ?? null,
     });
     if (!response.ok) {
       throw LumiSurveyHttpError.fromResponse(response);
@@ -53,7 +53,18 @@ export function FeedbackWidget() {
 
 Legg `FeedbackWidget` på siden der dere vil samle tilbakemeldinger. `survey` er innholdet brukeren møter, mens `transport` sender svarene til appens backend. Widgeten viser takkesiden når `submit` er ferdig uten feil, så `submit` må kaste en feil når backenden svarer med feil.
 
-Widgeten venter i høyst ti sekunder på hvert forsøk. Da avbryter `options.signal` kallet til `fetch`, og brukeren ser feilmeldingen. `LumiSurveyHttpError` forteller widgeten hvilken status backenden svarte med. Ved 429 og 503 prøver widgeten én gang til med det samme svaret, etter tiden i `Retry-After` eller etter ett sekund. Ber `Retry-After` om mer enn fem sekunder, viser widgeten feilmeldingen med en gang. Lumi API lagrer et svar bare én gang selv om det sendes to ganger, så et nytt forsøk gir ikke doble svar. Tidsgrensen, `options.signal` og `LumiSurveyHttpError` finnes fra versjon 2.4.0 av `@navikt/lumi-survey`.
+### Tidsgrense og nytt forsøk {#tidsgrense-og-nytt-forsok}
+
+Widgeten venter i høyst ti sekunder på hvert forsøk. Da avbryter `options.signal` kallet til `fetch`, og brukeren ser feilmeldingen.
+
+`LumiSurveyHttpError` forteller widgeten hvilken status backenden svarte med. Slik prøver widgeten én gang til med det samme svaret:
+
+- 503: etter tiden i `Retry-After`, eller etter et halvt til halvannet sekund når `Retry-After` mangler
+- 429: bare når `Retry-After` ber om å vente i fem sekunder eller mindre
+
+Ber `Retry-After` om mer enn fem sekunder, viser widgeten feilmeldingen med en gang. Kaster transporten en annen feiltype med `status` som tall, gjelder det samme. Lumi API lagrer et svar bare én gang selv om det sendes to ganger, så et nytt forsøk gir ikke doble svar.
+
+Tidsgrensen, `options.signal` og `LumiSurveyHttpError` finnes fra versjon 2.4.0 av `@navikt/lumi-survey`.
 
 `/api/lumi/feedback` er et endepunkt dere lager selv i appens backend. Det bytter brukerens token mot et token for Lumi API (tokenveksling) og sender svarene videre. Widgeten kan vises før endepunktet finnes, men svarene lagres ikke før [backenden er koblet til](/kom-i-gang/koble-til-backend).
 

@@ -43,8 +43,14 @@ const transport: LumiSurveyTransport = {
     if (transportPayload.schemaVersion !== 2) {
       throw new Error("Forventet submission schema v2");
     }
-    if (options?.signal.aborted) {
-      throw new LumiSurveyHttpError(503, { retryAfter: "1" });
+    const response = await fetch("/api/lumi/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(transportPayload),
+      signal: options?.signal ?? null,
+    });
+    if (!response.ok) {
+      throw LumiSurveyHttpError.fromResponse(response);
     }
   },
 };

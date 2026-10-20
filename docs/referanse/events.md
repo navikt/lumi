@@ -68,7 +68,7 @@ onSubmitSuccess?: (submission: LumiSurveySubmission) => void;
 
 ### `onSubmitError`
 
-Kalles når innsendingen har feilet, også etter et eventuelt nytt forsøk.
+Kalles én gang når innsendingen har feilet, etter et eventuelt nytt forsøk.
 `cause` er feilen fra siste forsøk. Brukte forsøket mer enn ti sekunder, er
 `cause` en `DOMException` med navnet `TimeoutError`.
 
