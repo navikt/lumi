@@ -154,6 +154,54 @@ async function scanDirRecursive(dirPath, predicate) {
   }
 }
 
+/**
+ * Problems with the "use client" entry for React Server Components.
+ * dist/client.js must start with the directive and only re-export from the
+ * built main entry, so there is one copy of the widget. The main entry must
+ * stay without the directive, so its helpers are not client references.
+ */
+export function findClientEntryProblems({ clientJs, indexJs, clientExport }) {
+  const problems = [];
+  if (!/^["']use client["'];/.test(clientJs.trimStart())) {
+    problems.push('dist/client.js must start with "use client";');
+  }
+  if (/export\s*\*/.test(clientJs)) {
+    problems.push(
+      "dist/client.js must use named exports; webpack in Next.js rejects export * in a client boundary",
+    );
+  }
+  const specifiers = [...clientJs.matchAll(/from\s+["']([^"']+)["']/g)].map(
+    (match) => match[1],
+  );
+  if (
+    specifiers.length === 0 ||
+    specifiers.some((specifier) => specifier !== "./index.js")
+  ) {
+    problems.push(
+      `dist/client.js must only re-export from ./index.js (found: ${specifiers.join(", ") || "none"})`,
+    );
+  }
+  if (/^["']use client["'];/.test(indexJs.trimStart())) {
+    problems.push('dist/index.js must not start with "use client";');
+  }
+  if (/from\s+["']\.\/index\.js["']/.test(indexJs)) {
+    problems.push(
+      'dist/index.js must not import "./index.js"; only src/client.ts may import it',
+    );
+  }
+  if (
+    !clientExport ||
+    Object.keys(clientExport)[0] !== "types" ||
+    clientExport.types !== "./dist/client.d.ts" ||
+    clientExport.default !== "./dist/client.js"
+  ) {
+    problems.push(
+      'package.json exports["./client"] must list types first: { "types": "./dist/client.d.ts", "default": "./dist/client.js" }',
+    );
+  }
+  return problems;
+}
+
 async function main() {
   const packageDir = path.join(repoRoot, "packages", "lumi-survey");
   const packageJsonPath = path.join(packageDir, "package.json");
@@ -259,6 +307,23 @@ async function main() {
         `packages/lumi-survey/dist/${entry} imports packages that are not dependencies or peerDependencies: ${undeclared.join(", ")}`,
       );
     }
+  }
+
+  // 6) the client entry only re-exports the main entry, with "use client".
+  const distClientJs = path.join(distDir, "client.js");
+  const distClientDts = path.join(distDir, "client.d.ts");
+  if (!(await fileExists(distClientJs)) || !(await fileExists(distClientDts))) {
+    fail(
+      "packages/lumi-survey/dist is missing client.js or client.d.ts. Run: pnpm --filter @navikt/lumi-survey run build",
+    );
+  }
+  const clientEntryProblems = findClientEntryProblems({
+    clientJs: await readText(distClientJs),
+    indexJs: await readText(distIndexJs),
+    clientExport: pkg.exports?.["./client"],
+  });
+  if (clientEntryProblems.length > 0) {
+    fail(clientEntryProblems.join("\n"));
   }
 
   const distCss = await readText(distIndexCss);

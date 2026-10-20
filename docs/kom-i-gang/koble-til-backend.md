@@ -457,9 +457,9 @@ Før dere setter appen i produksjon, sjekk at dere har:
 
 - [ ] bedt om inbound-tilgang hos mottakeren ([send PR selv](#send-pr-selv) eller [opprett issue](https://github.com/navikt/lumi/issues/new?template=access-request.yml)), helst først
 - [ ] installert `@navikt/lumi-survey` og lagt den delte surveyen i appen
-- [ ] lagt `"use client"` øverst i filen med widgeten hvis appen bruker Next.js App Router
+- [ ] importert widgeten fra `@navikt/lumi-survey/client`, eller lagt `"use client"` øverst i filen med widgeten, hvis appen bruker Next.js App Router
 - [ ] importert `@navikt/ds-css` og `@navikt/lumi-survey/styles.css`
-- [ ] implementert `transport.submit`, som sender `submission.transportPayload` til backenden og kaster en feil når svaret ikke er `ok`
+- [ ] satt `transport` til `{ endpoint: "/api/lumi/feedback" }`, eller laget en egen `transport.submit` som sender `submission.transportPayload` og kaster en feil når svaret ikke er `ok`
 - [ ] installert `@navikt/oasis` og laget endepunktet i backenden med validering og tokenveksling (TokenX eller Entra ID)
 - [ ] riktig endepunkt (`/api/tokenx/v1/feedback` eller `/api/azure/v1/feedback`)
 - [ ] `LUMI_API_HOST`, `LUMI_AUDIENCE` og `LUMI_FEEDBACK_PATH` satt i Nais-manifestet

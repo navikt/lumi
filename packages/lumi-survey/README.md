@@ -28,33 +28,15 @@ Importer Aksel-stilarket før Lumi-stilarket, og bruk `survey` fra filen du kopi
 import "@navikt/ds-css";
 import "@navikt/lumi-survey/styles.css";
 
-import {
-  LumiSurveyDock,
-  LumiSurveyHttpError,
-  type LumiSurveyTransport,
-} from "@navikt/lumi-survey";
+import { LumiSurveyDock } from "@navikt/lumi-survey";
 import { survey } from "./survey";
-
-const transport: LumiSurveyTransport = {
-  async submit({ transportPayload }, options) {
-    const response = await fetch("/api/lumi/feedback", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(transportPayload),
-      signal: options?.signal ?? null,
-    });
-    if (!response.ok) {
-      throw LumiSurveyHttpError.fromResponse(response);
-    }
-  },
-};
 
 export function FeedbackWidget() {
   return (
     <LumiSurveyDock
       surveyId="min-app-tilbakemelding"
       survey={survey}
-      transport={transport}
+      transport={{ endpoint: "/api/lumi/feedback" }}
     />
   );
 }
@@ -62,7 +44,7 @@ export function FeedbackWidget() {
 
 Bytt eksempelverdien i `surveyId` med en stabil ID for surveyen i appen. Dere finner et forslag på versjonssiden i Surveyverksted.
 
-Widgeten venter i høyst ti sekunder på hvert forsøk, og med `LumiSurveyHttpError` kan den prøve én gang til. Se [Tidsgrense og nytt forsøk](https://navikt.github.io/lumi/kom-i-gang/konfigurer-survey#tidsgrense-og-nytt-forsok).
+Med `{ endpoint }` sender widgeten svarene selv til appens backend, med tidsgrense og ett nytt forsøk ved 429 og 503. Trenger backenden mer, kan dere lage en egen transport. Se [Send svarene](https://navikt.github.io/lumi/kom-i-gang/konfigurer-survey#send-svarene). I Next.js App Router importerer dere widgeten fra `@navikt/lumi-survey/client`.
 
 Widgeten bruker Nav-dekoratørens samtykkeløsning for å huske at brukeren har lukket surveyen. På interne flater uten dekoratøren, sett `behavior={{ storageStrategy: "localStorage" }}` på `LumiSurveyDock`. Se [Lagring](https://navikt.github.io/lumi/guider/lagring) for innstillinger.
 

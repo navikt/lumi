@@ -4,12 +4,19 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   LumiSurveyContext,
+  LumiSurveyEndpoint,
   LumiSurveyEvents,
   LumiSurveyTransport,
   RatingQuestion,
 } from "../../core";
 import { getVisibleQuestions, shouldShowSubmitButton } from "../../core";
 import { resolveDocumentVisibility } from "../../core/documentVisibility.js";
+import {
+  createEndpointTransport,
+  describeMissingTransport,
+  isEndpointTransport,
+  resolveEndpoint,
+} from "../../core/endpointTransport.js";
 import { useLumiSurveyState } from "../../core/useLumiSurvey.js";
 import { validateAnswers } from "../../core/validation.js";
 import { getVisibilityMetadata } from "../../core/visibilityMetadata.js";
@@ -66,10 +73,15 @@ export interface LumiSurveyDockProps {
   survey: LumiSurveyDefinition;
 
   /**
-   * Transport implementation for submitting feedback data.
-   * Receives the formatted submission payload and returns a promise.
+   * Sends the answers to the app's backend:
+   * - `{ endpoint: "/api/lumi/feedback" }`: the widget sends them itself. This
+   *   is the only form a React Server Component can pass.
+   * - A `LumiSurveyTransport` with `submit`: send them your own way. A `submit`
+   *   function always wins over `endpoint`.
+   *
+   * Without a usable transport the dock renders nothing and logs an error.
    */
-  transport: LumiSurveyTransport;
+  transport: LumiSurveyTransport | LumiSurveyEndpoint;
 
   /**
    * Labels for UI elements (submit button, error messages, etc.).
@@ -125,6 +137,11 @@ export interface LumiSurveyDockProps {
    */
   lang?: string;
 }
+
+// Never called: the dock renders nothing without a usable transport.
+const MISSING_TRANSPORT: LumiSurveyTransport = {
+  submit: () => Promise.reject(new Error("Lumi: No usable transport")),
+};
 
 export const LumiSurveyDock = ({
   surveyId,
@@ -250,12 +267,48 @@ export const LumiSurveyDock = ({
     [enrichedContext],
   );
 
+  // `{ endpoint }` is often written inline, so key the built-in transport on
+  // the string and not on the object.
+  const endpoint = isEndpointTransport(transport)
+    ? transport.endpoint
+    : undefined;
+  const customTransport = isEndpointTransport(transport)
+    ? undefined
+    : (transport as LumiSurveyTransport | undefined);
+  const transportMissing = transport == null;
+  const endpointResolution = useMemo(
+    () =>
+      customTransport
+        ? undefined
+        : transportMissing
+          ? ({ ok: false, problem: "transport is missing" } as const)
+          : resolveEndpoint(endpoint),
+    [customTransport, endpoint, transportMissing],
+  );
+  const activeTransport = useMemo<LumiSurveyTransport | undefined>(
+    () =>
+      customTransport ??
+      (endpointResolution?.ok
+        ? createEndpointTransport(endpointResolution.url)
+        : undefined),
+    [customTransport, endpointResolution],
+  );
+  const transportProblem =
+    endpointResolution && !endpointResolution.ok
+      ? endpointResolution.problem
+      : undefined;
+  useEffect(() => {
+    if (transportProblem) {
+      console.error(describeMissingTransport(transportProblem));
+    }
+  }, [transportProblem]);
+
   const { answers, status, error, setAnswer, submit, reset } =
     useLumiSurveyState(
       {
         surveyId,
         questions,
-        transport,
+        transport: activeTransport ?? MISSING_TRANSPORT,
         events,
         context: enrichedContext,
         surveyType,
@@ -743,6 +796,11 @@ export const LumiSurveyDock = ({
 
   // Don't render anything while loading persisted state
   if (isLoading) {
+    return null;
+  }
+
+  // A survey that cannot be sent must not ask users to fill it in.
+  if (!activeTransport) {
     return null;
   }
 
