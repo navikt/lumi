@@ -47,6 +47,8 @@ This project follows SemVer.
 - A submit that settles after `reset()`, for example after the user closed the
   dock, no longer sets the status or error of the reset survey. The events
   still fire.
+- Returning focus to the page after the dock hides no longer scrolls the page
+  to the element that had focus before.
 
 ## [2.3.0] - 2026-10-15
 
