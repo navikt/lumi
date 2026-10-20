@@ -44,6 +44,7 @@ class DatabaseUnavailableTest : FunSpec({
 
             response.status shouldBe HttpStatusCode.ServiceUnavailable
             response.bodyAsText() shouldContain "Databasen svarer ikke akkurat nå"
+            response.bodyAsText() shouldContain "\"type\":\"DATABASE_UNAVAILABLE\""
         }
     }
 })

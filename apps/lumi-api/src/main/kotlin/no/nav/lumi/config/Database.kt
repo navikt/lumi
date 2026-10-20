@@ -4,6 +4,7 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.ktor.server.application.*
 import no.nav.lumi.config.exception.ApiErrorException
+import no.nav.lumi.config.exception.ErrorType
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.slf4j.LoggerFactory
@@ -235,10 +236,13 @@ internal fun Throwable.isDatabaseUnavailable(): Boolean =
     generateSequence(this) { current -> current.cause?.takeIf { it !== current } }
         .any { it is SQLTransientConnectionException || (it is SQLException && it.sqlState == PG_QUERY_CANCELED) }
 
+// The dashboard does not retry DATABASE_UNAVAILABLE automatically, since a new
+// attempt would run the same heavy query against a busy database.
 internal fun databaseUnavailableException(cause: Throwable? = null) = ApiErrorException.ServiceUnavailableException(
     errorMessage = "Databasen svarer ikke akkurat nå",
     details = "Dette er som regel midlertidig. Prøv igjen om litt.",
     cause = cause,
+    type = ErrorType.DATABASE_UNAVAILABLE,
 )
 
 /**

@@ -12,7 +12,8 @@ enum class ErrorType {
     BAD_REQUEST,
     ANALYSIS_BUDGET_EXCEEDED,
     CONFLICT,
-    RATE_LIMITED
+    RATE_LIMITED,
+    DATABASE_UNAVAILABLE
 }
 
 @Serializable

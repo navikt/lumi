@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import no.nav.lumi.TestDatabase
 import no.nav.lumi.config.DatabaseHolder
 import no.nav.lumi.config.exception.ApiErrorException
+import no.nav.lumi.config.exception.ErrorType
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
@@ -50,6 +51,7 @@ class DbQueryTest : FunSpec({
 
         attempts shouldBe 1
         exception.errorMessage shouldBe "Databasen svarer ikke akkurat nå"
+        exception.type shouldBe ErrorType.DATABASE_UNAVAILABLE
     }
 
     test("a pool without a free connection gives 503") {
