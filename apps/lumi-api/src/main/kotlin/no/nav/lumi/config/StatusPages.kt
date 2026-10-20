@@ -93,7 +93,8 @@ private fun determineApiError(cause: Throwable, path: String?): ApiError {
         is IllegalStateException -> ApiError.badRequest(safeBadRequestMessage(cause.message), path)
 
         // dbQuery turns these into 503 itself. This covers code that takes a
-        // connection straight from a DataSource.
+        // connection straight from a DataSource, and the first transaction on
+        // a Database, which reads connection metadata before its block runs.
         else -> if (cause.isDatabaseUnavailable()) {
             databaseUnavailableException().toApiError(path)
         } else {

@@ -69,6 +69,10 @@ class DbQueryTest : FunSpec({
         ).use { singleConnectionPool ->
             val database = Database.connect(singleConnectionPool)
             try {
+                // The first transaction on a new Database reads metadata such as
+                // the default isolation level before the block runs. Do that
+                // while the pool is free, so the test covers a running pod.
+                transactionWithStatementTimeout(database, SUBMISSION_STATEMENT_TIMEOUT, Dispatchers.IO) { }
                 singleConnectionPool.connection.use {
                     shouldThrow<ApiErrorException.ServiceUnavailableException> {
                         transactionWithStatementTimeout(
