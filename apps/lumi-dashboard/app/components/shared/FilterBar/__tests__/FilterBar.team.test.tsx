@@ -376,7 +376,22 @@ describe("FilterBar access errors", () => {
     ).not.toHaveLength(0);
   });
 
-  it("does not retry when the database is unavailable", async () => {
+  it("keeps the page visible and does not retry when the database is unavailable", async () => {
+    const fetchPageData = vi.fn().mockResolvedValue({ items: [] });
+    // Like the pages: its own query, hidden only while team access is denied.
+    function Page() {
+      const teamAccessDenied = useTeamAccessDenied();
+      const pageQuery = useQuery({
+        queryKey: ["feedback", "page"],
+        queryFn: () => fetchPageData(),
+      });
+      if (teamAccessDenied) return null;
+      return createElement(
+        DataFetchBoundary,
+        { title: "Kunne ikke hente tilbakemeldinger", queries: [pageQuery] },
+        createElement("p", null, "Sidens data"),
+      );
+    }
     mockFetchBootstrap.mockRejectedValue(
       new ApiErrorException({
         status: 503,
@@ -387,11 +402,19 @@ describe("FilterBar access errors", () => {
       }),
     );
 
-    await renderFilterBarAt("/feedback?team=team-a");
+    await renderFilterBarAt("/feedback?team=team-a", { page: Page });
 
     expect(
-      await screen.findByText("Databasen svarer ikke akkurat nå"),
+      await screen.findByText("Kunne ikke hente filtre"),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Databasen svarer ikke akkurat nå. Dette er som regel midlertidig. Prøv igjen om litt.",
+      ),
+    ).toBeInTheDocument();
+    // A busy database says nothing about team access, so the page's own data
+    // stays visible.
+    expect(await screen.findByText("Sidens data")).toBeInTheDocument();
     // A new attempt would run the same heavy query against a busy database.
     expect(mockFetchBootstrap).toHaveBeenCalledTimes(1);
     expect(
