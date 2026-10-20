@@ -1,9 +1,10 @@
 packages:
   - "."
 
-# The verification step deliberately receives no package token. Keep scoped
-# transitive packages aligned with the authenticated root install so pnpm can
-# reuse them from its store; missing public packages may still be downloaded.
+# The verification step installs like an external consumer, without a package
+# token or registry configuration, so every package comes from npmjs. Keep
+# scoped transitive packages aligned with the root install so pnpm can reuse
+# them from its store when the temp directory shares it.
 overrides:
   "@navikt/aksel-icons": 8.9.0
   "@navikt/ds-tokens": 8.9.0
