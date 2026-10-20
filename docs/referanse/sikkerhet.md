@@ -49,7 +49,7 @@ Hvert svar lagres med team, app, tidspunkt og konteksten widgeten sender, som en
 - Svar dere sletter i dashboardet, slettes fra databasen med en gang.
 - Surveydefinisjonen, altså spørsmålene og svaralternativene, slettes ikke automatisk.
 - Databasen sikkerhetskopieres hver natt etter Nais' standardoppsett, og sju sikkerhetskopier beholdes. Et slettet svar kan derfor finnes i sikkerhetskopiene i opptil sju døgn. I tillegg tar Nais en daglig katastrofekopi til et miljø utenfor Google Cloud.
-- Har dere satt opp [BigQuery-eksport](/dashboard/bigquery), erstatter Lumi tabellene i teamets datasett hver natt. Sletter dere et svar i dashboardet, starter Lumi en ny kjøring med en gang, og svaret forsvinner fra BigQuery når kjøringen lykkes. Svar eldre enn tolv måneder forsvinner ved neste vellykkede kjøring. BigQuery tar vare på slettede rader i 48 timer, og Google i sju dager til. Tabellene forsvinner sju dager etter siste vellykkede kjøring. Kopier dere lager selv, har dere ansvaret for, se [Teamets ansvar](/dashboard/bigquery#ansvar).
+- Har dere satt opp [BigQuery-eksport](/dashboard/bigquery), har Lumi en kopi av svarene i teamets datasett. Sletter dere et svar i dashboardet, forsvinner det fra kopien innen noen minutter når kjøringen lykkes. Hvordan sletting, time travel og utløp virker der, står i [Teamets ansvar](/dashboard/bigquery#ansvar).
 
 ## Små utvalg i dashboardet
 

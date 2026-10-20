@@ -61,7 +61,7 @@ GRANT `roles/bigquery.dataEditor`
 
 - `SET @@location` kjører SQL-en i `europe-north1`. Lumi skriver bare til datasett i den regionen.
 - `CREATE SCHEMA IF NOT EXISTS` lager datasettet hvis det ikke finnes fra før.
-- `ALTER SCHEMA` setter labelen `lumi-team` til teamnavnet, time travel til 48 timer og en beskrivelse av datasettet. Time travel er hvor lenge BigQuery tar vare på rader som er slettet eller erstattet. Lumi skriver ikke til et datasett der labelen mangler eller viser et annet team, og godtar ikke time travel på mer enn 48 timer.
+- `ALTER SCHEMA` setter labelen `lumi-team` til teamnavnet, time travel til 48 timer og en beskrivelse av datasettet. Time travel er hvor lenge BigQuery tar vare på rader som er slettet eller erstattet. Lumi skriver ikke til et datasett der labelen mangler eller viser et annet team, eller der time travel er mer enn 48 timer.
 - `GRANT` gir Lumis tjenestekonto rollen BigQuery Data Editor på datasettet. Lumi får ingen tilgang til resten av prosjektet, og rollen gir ikke Lumi rett til å gi andre tilgang.
 
 Dere kan kjøre SQL-en på nytt. Da retter den tilgangen, labelen og time travel hvis noen har endret dem. Når eksporten er startet, finner dere SQL-en under **Innstillinger** og **Vis SQL-en**.
@@ -81,7 +81,7 @@ Lumi kjører høyst én gang per fem minutter for hvert team. Feiler en kjøring
 
 Tabellene oppdateres én om gangen, den mest følsomme først: `fritekst`, `innsendinger` og `svar`. Feiler en kjøring underveis, kan tabellene komme fra ulike kjøringer. Kolonnen `oppdatert_tidspunkt` viser når Lumi skrev tabellen. Sjekk den før dere bruker tallene, se [Sjekk at tabellene er oppdatert](#ferskhet).
 
-Er det ingen svar til en tabell, tømmer Lumi den. Tabellen og tilgangene på den blir stående. Lumi sletter aldri tabeller ved vanlige kjøringer.
+Er det ingen svar til en tabell, tømmer Lumi den. Tabellen og tilgangene på den blir stående. Lumi sletter ikke `svar` og `innsendinger` ved vanlige kjøringer. `fritekst` slettes når fritekst er slått av eller ikke er åpnet for teamet.
 
 Velg **Åpne datasettet i BigQuery** for å se tabellene i Google Cloud-konsollen.
 
@@ -92,8 +92,8 @@ Nav er behandlingsansvarlig. På vegne av Nav har dere ansvaret for kopien i tea
 - Sletter dere et svar i dashboardet, starter Lumi en ny kjøring. Svaret forsvinner fra BigQuery etter noen minutter når kjøringen lykkes. Feiler den, forsvinner svaret når Lumi har prøvd igjen og lykkes, se [Når Lumi oppdaterer tabellene](#oppdatering).
 - Svar som blir eldre enn tolv måneder, forsvinner ved neste vellykkede kjøring.
 - BigQuery tar vare på slettede rader i 48 timer (time travel). Google tar vare på dem i sju dager til (fail-safe), uten at dere kan lese dem.
-- Lumi oppdaterer ikke kopier dere lager selv, for eksempel lagrede resultater i Metabase, tabeller i notebooks og statiske datafortellinger. Sletter dere et svar, må dere slette det der også og si fra til dem dere har delt tabellene med.
-- Tabellene forsvinner sju dager etter siste vellykkede kjøring, for eksempel hvis dere fjerner Lumis tilgang eller kjøringene feiler.
+- Lumi oppdaterer ikke kopier dere lager selv, for eksempel lagrede resultater i Metabase, tabeller i notebooks og statiske datafortellinger. Sletter dere et svar, må dere slette det der også og si fra til dem dere har delt dataene med.
+- Hver tabell forsvinner sju dager etter at Lumi sist skrev den, for eksempel hvis dere fjerner Lumis tilgang eller kjøringene feiler.
 
 `svar` og `innsendinger` har ingen kolonner for navn eller fødselsnummer, men `fritekst` kan inneholde det. Når få har svart, kan tidspunkt, app, kontekst og svar likevel avsløre hvem som svarte. Registrer derfor tabellene som personopplysninger. Ikke koble tabellene med andre data om brukerne, for eksempel på tidspunkt, uten at PVK-en dekker det.
 
@@ -267,20 +267,20 @@ NADA beskriver hvordan dere publiserer og oppdaterer fortellingen med en Naisjob
 Kjør fortellingen etter at nattens kjøring er ferdig, og sjekk `oppdatert_tidspunkt`. Gjør det samme i Airflow-jobber som leser tabellene:
 
 ```sql
-SELECT 'svar' AS tabell, MAX(oppdatert_tidspunkt) AS oppdatert
+SELECT 'svar' AS tabell, DATETIME(MAX(oppdatert_tidspunkt), 'Europe/Oslo') AS oppdatert
 FROM `PROSJEKT.lumi.svar`
 UNION ALL
-SELECT 'innsendinger', MAX(oppdatert_tidspunkt)
+SELECT 'innsendinger', DATETIME(MAX(oppdatert_tidspunkt), 'Europe/Oslo')
 FROM `PROSJEKT.lumi.innsendinger`
 ```
 
-Er tidspunktene ulike, kommer tabellene fra ulike kjøringer. Er de fra før i dag, har nattens kjøring ikke lyktes ennå. La fortellingen eller jobben stoppe eller vise et varsel i begge tilfellene.
+Tidspunktene er i norsk tid. Er de ulike, kommer tabellene fra ulike kjøringer. Er de fra før kl. 01 i natt, har nattens kjøring ikke lyktes ennå. La fortellingen eller jobben stoppe eller vise et varsel i begge tilfellene.
 
 ## Endre eller stoppe eksporten {#stopp}
 
 Under **Innstillinger** kan dere bytte prosjekt eller datasett og slå fritekst av eller på. Når dere velger **Lagre endringer**, sjekker Lumi det nye datasettet før endringen lagres, og sletter Lumis tabeller i det gamle. Bytter dere prosjekt eller datasett, forsvinner tilgangene til de gamle tabellene, og `innsending_id` får nye verdier.
 
-**Stopp eksporten** sletter Lumis tabeller og innstillingene. Datasettet og viewene i det blir stående. Tilgangene til Lumis tabeller forsvinner, og dataprodukter, Metabase-spørsmål og datafortellinger som bruker tabellene, slutter å virke. Setter dere opp eksporten igjen senere, får `innsending_id` nye verdier.
+**Stopp eksporten** sletter Lumis tabeller og innstillingene. Datasettet og viewene i det blir stående. Tilgangene til Lumis tabeller forsvinner, og views, dataprodukter, Metabase-spørsmål og datafortellinger som bruker tabellene, slutter å virke. Får ikke Lumi slettet tabellene, forsvinner de innen sju dager. Setter dere opp eksporten igjen senere, får `innsending_id` nye verdier.
 
 ## Når noe feiler {#feil}
 
@@ -300,7 +300,7 @@ Feil ved oppsettet står under **Dette må ordnes først**, og feil i en kjørin
 | **Lumi får ikke lage tabeller i datasettet** | Kjør SQL-en på nytt. |
 | **Lumi fikk ikke sjekket prosjektet** | Prøv igjen om litt. Lumi fikk ikke slått opp prosjektet i Nais. |
 | **BigQuery svarte ikke** | Prøv igjen om litt. |
-| **Lumi fikk ikke kjøre eksporten** | Dere trenger ikke gjøre noe. Feilen er hos Lumi, og team eSyfo får varsel. |
+| **Lumi fikk ikke kjøre eksporten** | Feilen er hos Lumi. Skjer den i en kjøring, får team eSyfo varsel. Skjer den ved oppsettet, skriv i #lumi. |
 | **Lumi fikk ikke skrevet tabellene** | Dere trenger ikke gjøre noe. Feilen er hos Lumi, og team eSyfo får varsel. |
 | **Noe gikk galt i Lumi** | Dere trenger ikke gjøre noe. Feilen er hos Lumi, og team eSyfo får varsel. |
 
@@ -384,6 +384,6 @@ Dette er aldri med i tabellene:
 - `innsending_id` får nye verdier når dere bytter prosjekt eller datasett, og når dere stopper eksporten og setter den opp igjen. ID-er dere har lagret andre steder, kan da ikke kobles til de nye.
 - Gamle svar på vurderingsspørsmål kan mangle `rating_variant` og `rating_skala`.
 - Med standardtekstene i widgeten er 1 «Veldig dårlig» og 5 «Veldig bra» på emoji-skalaen. Team kan bytte tekstene, så sjekk hva surveyen viser.
-- `kontekst` har bare tagger med enkle verdier, høyst 20 per svar. Tagger med mange ulike verdier er ikke med: mer enn 50 ulike verdier, eller mer enn ti ulike verdier når hver verdi i snitt finnes i færre enn fem svar, regnet over de siste tolv månedene. Se [Context og tags](/guider/context-og-tags).
+- `kontekst` har bare tagger med enkle verdier, høyst 20 per svar. Tagger som kan skille enkeltsvar fra hverandre, er ikke med: tagger med mer enn 50 ulike verdier, og tagger der hver verdi i snitt finnes i færre enn fem svar, regnet over de siste tolv månedene. En ny tagg kommer derfor med først når den har nok svar. Se [Context og tags](/guider/context-og-tags).
 - JSON i `kontekst` kan ikke brukes i spørringsbyggeren i Metabase. Bruk SQL med `JSON_VALUE`, se [Spørringer](#sporringer).
-- Spørsmålstekst, svartekst og ID-ene i `survey_id`, `sporsmal_id` og `valg_id` er maskert med de samme mønstrene som fritekst. Et valgt alternativ er bare med når det finnes blant alternativene til spørsmålet.
+- Spørsmålstekst, svartekst og ID-ene i `survey_id`, `sporsmal_id` og `valg_id` er maskert med de samme mønstrene som fritekst. Et valgt alternativ er bare med når det står i listen over alternativer som fulgte med svaret. Mangler listen, for eksempel i svar fra eldre versjoner av widgeten, er ID-en med slik den ble sendt, maskert.

@@ -67,8 +67,8 @@ sjekker Lumi at
 - `max_time_travel_hours` er høyst 48
 - datasettet ikke har andre tabeller enn Lumis egne, bortsett fra views
 
-Før hver kjøring sjekker Lumi prosjektet, jobbtilgangen, regionen og labelen
-igjen, og at tabellene Lumi skal skrive, enten ikke finnes eller har labelene
+Før hver kjøring sjekker Lumi prosjektet, jobbtilgangen, regionen, labelen og
+time travel igjen, og at tabellene Lumi skal skrive, enten ikke finnes eller har labelene
 `lumi-eksport` og `lumi-team` for teamet. Kan Lumi ikke gjøre en sjekk, for
 eksempel fordi Nais API ikke svarer, skriver Lumi ingenting.
 
@@ -108,13 +108,14 @@ i Lumi. Det er pseudonymisering, ikke anonymisering.
 
 Taggene appen sender, er med som et JSON-objekt i kolonnen `kontekst`, og
 enhetstypen har en egen kolonne. Bare tagger med enkle verdier er med, høyst 20
-per svar. Tagger med mange ulike verdier er ikke med: mer enn 50 ulike verdier,
-eller mer enn ti ulike verdier når hver verdi i snitt finnes i færre enn fem
+per svar. Tagger som kan skille enkeltsvar fra hverandre, er ikke med: tagger med
+mer enn 50 ulike verdier, og tagger der hver verdi i snitt finnes i færre enn fem
 svar, regnet over de siste tolv månedene.
 
 `survey_id`, `sporsmal_id` og `valg_id` maskeres med de samme mønstrene som
-fritekst, og et valgt alternativ er bare med når det finnes blant alternativene
-til spørsmålet. Dette er aldri med: URL, pathname, nettleser (user agent),
+fritekst. Et valgt alternativ er bare med når det står i listen over
+alternativer som fulgte med svaret. Mangler listen, er ID-en med slik den ble
+sendt, maskert. Dette er aldri med: URL, pathname, nettleser (user agent),
 skjerm- og vindusstørrelse, feilsøkingsdata (debug), tagger teamet har satt i
 dashboardet og svar på datospørsmål.
 
@@ -132,8 +133,8 @@ fritekst for et team igjen, sletter neste kjøring tabellen `fritekst`.
 Fritekst er av som standard også for team som har fått det åpnet. Slår teamet
 det på, havner tekstene i tabellen `fritekst`, med de samme maskeringsreglene
 som dashboardet bruker når det leser tekst. Maskeringen fanger ikke navn.
-Tabellen er egen, slik at teamet kan dele `svar` uten å dele tekstene, og den
-skal ikke deles utenfor teamet. Slår teamet fritekst av, sletter Lumi tabellen.
+Tabellen er egen, slik at teamet kan dele views av `svar` uten å dele tekstene,
+og den skal ikke deles utenfor teamet. Slår teamet fritekst av, sletter Lumi tabellen.
 
 ### Kjøring
 
@@ -159,10 +160,11 @@ er ferdig, men kjøringen som helhet er ikke atomisk. Feiler den underveis, kan
 tabellene komme fra ulike kjøringer. Kolonnen `oppdatert_tidspunkt` viser når
 Lumi skrev tabellen, og guiden ber konsumentene sjekke den. Er det ingen rader
 til en tabell, tømmer Lumi den på stedet med `TRUNCATE TABLE`. Tabellen og
-tilgangene på den blir stående, og Lumi sletter aldri tabeller ved vanlige
-kjøringer.
+tilgangene på den blir stående. Lumi sletter ikke `svar` og `innsendinger` ved
+vanlige kjøringer, bare `fritekst` når fritekst er av eller ikke åpnet for
+teamet.
 
-Hver vellykket kjøring setter utløpstid på tabellene sju dager fram. Stopper
+Hver gang Lumi skriver en tabell, settes utløpstiden sju dager fram. Stopper
 eksporten av en eller annen grunn, forsvinner kopiene av seg selv.
 
 Lumi kaller BigQuerys REST-API med Ktor og henter token fra metadataserveren i
@@ -242,7 +244,10 @@ spørsmål. Hva som skal fjernes, avgjøres etter piloten.
   teamene kobler til, også views teamet har lagt der. Lumi rører bare tabeller
   med Lumis labeler, men et angrep på Lumi API kan nå alle tabellene i disse
   datasettene. Derfor skal datasettet bare brukes til Lumi. Lumi kan ikke gi
-  noen tilgang eller endre noe annet i prosjektet.
+  noen tilgang eller endre noe annet i prosjektet. Lumi kan også endre SQL-en i
+  views i datasettet. Et angrep på Lumi API kan derfor få et delt view til å vise
+  alle tabellene i datasettet, også `fritekst`, til alle som har tilgang til
+  viewet.
 - Tabellene oppdateres én om gangen. Feiler en kjøring underveis, kan tabellene
   komme fra ulike kjøringer, og konsumentene må sjekke `oppdatert_tidspunkt`.
 - Tilganger gitt på Datamarkedsplassen ligger på tabellen eller viewet. De
