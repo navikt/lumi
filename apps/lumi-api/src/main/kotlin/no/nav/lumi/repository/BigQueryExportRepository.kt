@@ -265,6 +265,7 @@ class BigQueryExportRepository(
                     object : BigQueryExportSnapshot {
                         override suspend fun contextTagStats(): Map<String, ContextTagStats> =
                             connection.prepareStatement(CONTEXT_TAG_STATS_SQL).use { statement ->
+                                statement.queryTimeout = QUERY_TIMEOUT_SECONDS
                                 statement.setString(1, team)
                                 statement.setTimestamp(2, cutoff)
                                 statement.executeQuery().use { result ->
@@ -285,6 +286,7 @@ class BigQueryExportRepository(
                         override suspend fun forEachRow(consumer: suspend (BigQueryExportSourceRow) -> Unit) {
                             connection.prepareStatement(SOURCE_ROWS_SQL).use { statement ->
                                 statement.fetchSize = SOURCE_FETCH_SIZE
+                                statement.queryTimeout = QUERY_TIMEOUT_SECONDS
                                 statement.setString(1, team)
                                 statement.setTimestamp(2, cutoff)
                                 statement.executeQuery().use { result ->
@@ -358,6 +360,9 @@ class BigQueryExportRepository(
         const val PSEUDONYM_KEY_BYTES = 32
         const val EXPORT_LOCK_ID = 7_316_244_190_552L
         private const val SOURCE_FETCH_SIZE = 500
+
+        /** The export's own deadline cannot stop a blocking query, so the database does. */
+        private const val QUERY_TIMEOUT_SECONDS = 300
         private val log = LoggerFactory.getLogger(BigQueryExportRepository::class.java)
         private val json = Json { ignoreUnknownKeys = true }
 

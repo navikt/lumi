@@ -113,8 +113,8 @@ enum class BigQueryExportTable(
     ),
     FRITEKST(
         tableId = "fritekst",
-        description = "Fritekstsvar fra Lumi, med kjente mønstre for personopplysninger maskert. " +
-            "Teamet har slått på denne tabellen selv. Lumi erstatter innholdet hver natt.",
+        description = "Fritekstsvar fra Lumi, med kjente mønstre for personopplysninger maskert. Tekstene kan " +
+            "inneholde navn og helseopplysninger. Ikke del tabellen utenfor teamet. Lumi erstatter innholdet hver natt.",
         columns = listOf(
             BigQueryExportColumns.innsendingId,
             BigQueryExportColumns.innsendtTidspunkt,
@@ -162,7 +162,10 @@ private object BigQueryExportColumns {
         "survey_arkivert", "BOOLEAN", true,
         "Om surveyen er arkivert i dashboardet. Dashboardet skjuler arkiverte surveyer som standard.",
     )
-    val sporsmalId = BigQueryColumn("sporsmal_id", "STRING", true, "Spørsmålets ID (fieldId).")
+    val sporsmalId = BigQueryColumn(
+        "sporsmal_id", "STRING", true,
+        "Spørsmålets ID (fieldId). Den er bare unik innenfor én app og én survey.",
+    )
     val sporsmalTekst = BigQueryColumn(
         "sporsmal_tekst", "STRING", true,
         "Nyeste spørsmålstekst for spørsmålets ID. Endres teksten i surveyen, endres den for alle rader.",

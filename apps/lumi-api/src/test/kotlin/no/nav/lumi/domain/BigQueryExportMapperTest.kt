@@ -282,9 +282,10 @@ class BigQueryExportMapperTest : FunSpec({
             """{"aktiv":true,"antall":3,"rolle":"sykmeldt"}"""
     }
 
-    test("treats tags with many values or nearly unique values as identifiers") {
-        ContextTagStats(distinctValues = 2, occurrences = 3).isSegment shouldBe true
-        ContextTagStats(distinctValues = 10, occurrences = 10).isSegment shouldBe true
+    test("treats tags with many values or few responses per value as identifiers") {
+        ContextTagStats(distinctValues = 2, occurrences = 10).isSegment shouldBe true
+        ContextTagStats(distinctValues = 2, occurrences = 9).isSegment shouldBe false
+        ContextTagStats(distinctValues = 1, occurrences = 1).isSegment shouldBe false
         ContextTagStats(distinctValues = 11, occurrences = 55).isSegment shouldBe true
         ContextTagStats(distinctValues = 11, occurrences = 54).isSegment shouldBe false
         ContextTagStats(distinctValues = 50, occurrences = 10_000).isSegment shouldBe true

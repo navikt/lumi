@@ -31,12 +31,13 @@ creates the dataset, labels it `lumi-team=<team>` and grants Lumi's service acco
   hour, then after twice as long each time, up to 24 hours.
 - A run still marked as running when a replica takes the lock was cut off, for example
   by a pod restart. It is counted as a failed run with `INTERNAL_ERROR`, so the backoff
-  applies instead of an immediate retry.
+  applies instead of an immediate retry. A run someone requested in the meantime still
+  starts, at most once per five minutes.
 - Before every run, Lumi checks that the project is the team's own in Nais API
   (cached for an hour), that Lumi may run jobs in its own project (a dry-run query), and
-  that the dataset label, the location (`europe-north1`) and the tables match. When a
-  check cannot be made, for example because Nais API does not answer, nothing is
-  written.
+  that the dataset label, the location (`europe-north1`), the time travel window and the
+  tables match. When a check cannot be made, for example because Nais API does not
+  answer, nothing is written.
 - A run reads the team's responses inside the 12-month window in one `REPEATABLE READ`
   snapshot and streams them to BigQuery with resumable uploads. Missing tables are
   created first, with labels and an expiry. Each load job then replaces the rows of one
@@ -45,13 +46,15 @@ creates the dataset, labels it `lumi-team=<team>` and grants Lumi's service acco
 - Tables are replaced one at a time: `fritekst`, `innsendinger`, `svar`. A run that fails
   halfway leaves tables from different runs until the next run. `oppdatert_tidspunkt`
   shows which run wrote each table.
-- Every successful run sets the tables to expire seven days later. If exports stop for
-  any reason, the copies disappear on their own. When a table is deleted or expires, the
-  access granted on it on Datamarkedsplassen goes with it. If a table stays missing for
-  seven days, Datamarkedsplassen removes the dataset and its Metabase database.
+- Every time Lumi writes a table, it sets the table to expire seven days later. If
+  exports stop for any reason, the copies disappear on their own. When a table is
+  deleted or expires, the access granted on it on Datamarkedsplassen goes with it. If a
+  table stays missing for seven days, Datamarkedsplassen removes the dataset and its
+  Metabase database.
 - Lumi only overwrites or deletes tables labelled `lumi-eksport` and `lumi-team=<team>`.
-  When a team saves a destination, the dataset must hold only Lumi's tables (views are
-  allowed) and keep deleted rows for at most 48 hours.
+  When a team saves a new destination, the dataset must hold only Lumi's tables (views
+  are allowed). Turning free text off needs no checks, so it works even when BigQuery or
+  Nais API has problems.
 
 ## Problem codes
 
@@ -69,7 +72,7 @@ team acts.
 | `TABLE_WRITE_DENIED` | Lumi cannot create, load or empty tables in the dataset | Team |
 | `TABLE_NOT_CREATED_BY_LUMI` | A table with one of Lumi's names exists without Lumi's labels | Team |
 | `DATASET_NOT_DEDICATED` | The dataset holds tables Lumi did not create (checked when saving) | Team |
-| `DATASET_TIME_TRAVEL_TOO_LONG` | The dataset keeps deleted rows for more than 48 hours (checked when saving) | Team |
+| `DATASET_TIME_TRAVEL_TOO_LONG` | The dataset keeps deleted rows for more than 48 hours | Team |
 | `TEAM_PROJECT_UNKNOWN` | Nais API did not answer, so the project could not be checked | Lumi |
 | `EXPORT_JOB_DENIED` | Lumi may not run jobs in its own project | Lumi |
 | `BIGQUERY_UNAVAILABLE` | BigQuery or the metadata server did not answer | Lumi |
@@ -82,7 +85,7 @@ team acts.
   with a code marked *Lumi* above.
 - `LumiBigQueryExportStale` fires when a team's tables are more than 30 hours old,
   unless the team's latest run failed on something the team has to fix. The alert names
-  the team.
+  the team in the label `lumi_team`, because Nais sets `team` on every series.
 - `LumiBigQueryExportSchedulerStopped` fires when no replica has polled for ten minutes
   while the export is enabled.
 
@@ -149,13 +152,14 @@ WHERE option_name = 'labels' AND option_value LIKE '%lumi-eksport%'
 
 - `lumi_bigquery_export_runs_total{outcome,reason}` counts succeeded and failed runs.
 - `lumi_bigquery_export_rows_total{table}` counts rows written per table.
-- `lumi_bigquery_export_destination_last_success_timestamp_seconds{team}` is the team's
-  latest successful run, or when the team set up the export if no run has succeeded. It is
-  read from the database on every poll, so it survives restarts.
-- `lumi_bigquery_export_destination_consecutive_failures{team}` counts failed runs in a
-  row.
-- `lumi_bigquery_export_destination_team_action_needed{team}` is 1 when the team's latest
-  run failed on something the team has to fix.
+- `lumi_bigquery_export_destination_last_success_timestamp_seconds{lumi_team}` is the
+  team's latest successful run, or the latest change of its settings if no run has
+  succeeded since. It is read from the database on every poll, so it survives restarts.
+  Only teams the export is open for are reported.
+- `lumi_bigquery_export_destination_consecutive_failures{lumi_team}` counts failed runs in
+  a row.
+- `lumi_bigquery_export_destination_team_action_needed{lumi_team}` is 1 when the team's
+  latest run failed on something the team has to fix.
 - `lumi_bigquery_export_scheduler_heartbeat_timestamp_seconds` is the latest poll on the
   instance.
 - `lumi_bigquery_export_last_success_timestamp_seconds` is the latest successful run on

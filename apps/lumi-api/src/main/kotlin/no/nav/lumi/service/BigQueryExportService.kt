@@ -121,12 +121,20 @@ class BigQueryExportService(
         val gateway = gatewayFor(team) ?: return BigQueryExportCommandResult.Unavailable
         validateIds(request.projectId, request.datasetId)
         require(!request.includeFreeText || env.allowsFreeText(team)) { "Free text is not available for the team" }
-        val problems = checkNewDestination(gateway, team, request.projectId, request.datasetId, request.includeFreeText)
-        if (problems.isNotEmpty()) {
-            return BigQueryExportCommandResult.Done(BigQueryExportSaveResult.Rejected(problems.toResponse()))
+        val previous = repository.find(team)
+        // Keeping the dataset without adding free text writes nothing new, and the next run checks
+        // the dataset anyway. Turning free text off must then work even if a check would fail.
+        val sameDataset = previous != null &&
+            previous.projectId == request.projectId &&
+            previous.datasetId == request.datasetId
+        val addsFreeText = request.includeFreeText && previous?.includeFreeText != true
+        if (!sameDataset || addsFreeText) {
+            val problems = checkNewDestination(gateway, team, request.projectId, request.datasetId, request.includeFreeText)
+            if (problems.isNotEmpty()) {
+                return BigQueryExportCommandResult.Done(BigQueryExportSaveResult.Rejected(problems.toResponse()))
+            }
         }
 
-        val previous = repository.find(team)
         repository.upsert(
             team = team,
             projectId = request.projectId,
@@ -178,7 +186,7 @@ class BigQueryExportService(
     /** Runs every due export once. Returns the number of runs, or null when another replica is exporting. */
     suspend fun runDueExports(): Int? {
         val gateway = enabledGateway() ?: return 0
-        observability.recordPoll(clock.instant(), repository.findAll())
+        observability.recordPoll(clock.instant(), repository.findAll().filter { env.isOpenFor(it.team) })
         return repository.withExportLock {
             val now = clock.instant()
             failInterruptedRuns(now)
@@ -270,7 +278,7 @@ class BigQueryExportService(
         val createdNow = mutableSetOf<BigQueryExportTable>()
         for ((table, spec) in specs) {
             when (val existing = gateway.getTable(spec.ref)) {
-                is BigQueryResult.Success -> Unit
+                is BigQueryResult.Success -> notLumiTable(existing.value, team)?.let { return ExportOutcome.Failed(it) }
                 BigQueryResult.NotFound -> {
                     problemFor(gateway.createTable(spec, expiresAt), team, spec)?.let { return ExportOutcome.Failed(it) }
                     createdNow += table
@@ -309,6 +317,12 @@ class BigQueryExportService(
         // has already removed deleted free text.
         for ((table, upload) in uploads) {
             val spec = specs.getValue(table)
+            // The table can have changed while Lumi read the responses. Lumi never writes to a table it did not create.
+            when (val current = gateway.getTable(spec.ref)) {
+                is BigQueryResult.Success -> notLumiTable(current.value, team)?.let { return ExportOutcome.Failed(it) }
+                BigQueryResult.NotFound -> return ExportOutcome.Failed(BigQueryExportProblemCode.LOAD_FAILED)
+                else -> problemFor(current, team, spec)?.let { return ExportOutcome.Failed(it) }
+            }
             val loaded = when {
                 upload.rows > 0 -> upload.finish()
                 table in createdNow -> BigQueryResult.Success(Unit)
@@ -326,6 +340,9 @@ class BigQueryExportService(
         )
     }
 
+    private fun notLumiTable(table: BigQueryTableInfo, team: String): BigQueryExportProblemCode? =
+        if (table.isLumiTableFor(team)) null else BigQueryExportProblemCode.TABLE_NOT_CREATED_BY_LUMI
+
     /** Maps a failed write to a problem code, and logs what the team cannot see. */
     private fun problemFor(result: BigQueryResult<*>, team: String, spec: BigQueryTableSpec): BigQueryExportProblemCode? =
         when (result) {
@@ -341,7 +358,7 @@ class BigQueryExportService(
 
     /**
      * Checks a destination before it is saved. Besides the checks before every run, the dataset
-     * must be used for Lumi only, keep deleted rows for at most 48 hours, and accept a new table.
+     * must be used for Lumi only and accept a new table.
      */
     private suspend fun checkNewDestination(
         gateway: BigQueryGateway,
@@ -364,19 +381,19 @@ class BigQueryExportService(
             is DatasetCheck.Problem -> return listOf(result.problem)
             is DatasetCheck.Found -> result
         }
-        val problems = datasetProblems(team, dataset).toMutableList()
-        val timeTravelHours = dataset.info.maxTimeTravelHours ?: DEFAULT_TIME_TRAVEL_HOURS
-        if (timeTravelHours > BIGQUERY_MAX_TIME_TRAVEL_HOURS) {
-            problems += BigQueryExportProblem(BigQueryExportProblemCode.DATASET_TIME_TRAVEL_TOO_LONG, timeTravelHours.toString())
-        }
-        if (problems.isNotEmpty()) return problems
+        datasetProblems(team, dataset).takeIf { it.isNotEmpty() }?.let { return it }
 
         // Lumi can write to every table in the dataset, so the dataset must hold Lumi's tables only.
         // Views are fine: teams share filtered views of Lumi's tables.
         when (val listed = gateway.listTables(projectId, datasetId)) {
-            is BigQueryResult.Success -> listed.value
-                .firstOrNull { it.type != "VIEW" && !BigQueryTableInfo(it.labels).isLumiTableFor(team) }
-                ?.let { return listOf(BigQueryExportProblem(BigQueryExportProblemCode.DATASET_NOT_DEDICATED, it.tableId)) }
+            is BigQueryResult.Success -> {
+                listed.value.tables
+                    .firstOrNull { it.type != "VIEW" && !BigQueryTableInfo(it.labels).isLumiTableFor(team) }
+                    ?.let { return listOf(BigQueryExportProblem(BigQueryExportProblemCode.DATASET_NOT_DEDICATED, it.tableId)) }
+                if (!listed.value.complete) {
+                    return listOf(BigQueryExportProblem(BigQueryExportProblemCode.DATASET_NOT_DEDICATED))
+                }
+            }
             BigQueryResult.AccessDenied, BigQueryResult.JobDenied ->
                 return listOf(BigQueryExportProblem(BigQueryExportProblemCode.DATASET_ACCESS_DENIED))
             BigQueryResult.NotFound -> return listOf(BigQueryExportProblem(BigQueryExportProblemCode.DATASET_NOT_FOUND))
@@ -389,7 +406,7 @@ class BigQueryExportService(
         return probeWrite(gateway, team, projectId, datasetId)
     }
 
-    /** The checks before every run: project, dataset, label, location and Lumi's own tables. */
+    /** The checks before every run: project, dataset, label, location, time travel and Lumi's own tables. */
     private suspend fun checkExistingDestination(
         gateway: BigQueryGateway,
         destination: BigQueryExportDestination,
@@ -414,6 +431,11 @@ class BigQueryExportService(
         return when (val expected = lookup.projectFor(team)) {
             is NaisApiResult.Success -> when (expected.value) {
                 projectId -> null
+                // No project for this environment points at Lumi's setup, such as the cluster name.
+                null -> {
+                    log.warn("Nais API has no GCP project for team {} in this environment", team)
+                    BigQueryExportProblem(BigQueryExportProblemCode.TEAM_PROJECT_UNKNOWN)
+                }
                 else -> BigQueryExportProblem(BigQueryExportProblemCode.PROJECT_NOT_TEAM_PROJECT, expected.value)
             }
             is NaisApiResult.Error -> {
@@ -444,6 +466,11 @@ class BigQueryExportService(
             null -> add(BigQueryExportProblem(BigQueryExportProblemCode.DATASET_TEAM_LABEL_MISSING))
             team -> Unit
             else -> add(BigQueryExportProblem(BigQueryExportProblemCode.DATASET_TEAM_LABEL_MISMATCH, label))
+        }
+        // The guide promises that deleted rows are gone from BigQuery 48 hours after a run.
+        val timeTravelHours = dataset.info.maxTimeTravelHours ?: DEFAULT_TIME_TRAVEL_HOURS
+        if (timeTravelHours > BIGQUERY_MAX_TIME_TRAVEL_HOURS) {
+            add(BigQueryExportProblem(BigQueryExportProblemCode.DATASET_TIME_TRAVEL_TOO_LONG, timeTravelHours.toString()))
         }
     }
 

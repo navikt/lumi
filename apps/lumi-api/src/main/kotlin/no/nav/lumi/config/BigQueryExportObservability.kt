@@ -46,7 +46,7 @@ class BigQueryExportObservability(
     private val enabledState = AtomicLong(if (enabled) 1 else 0)
     private val schedulerHeartbeat = AtomicLong(0)
     private val destinationLastSuccess = MultiGauge.builder(DESTINATION_LAST_SUCCESS_METRIC_NAME)
-        .description("Unix timestamp of the team's latest successful export, or when the team set it up")
+        .description("Unix timestamp of the team's latest successful export, or of the latest settings change before it")
         .baseUnit("seconds")
         .register(meterRegistry)
     private val destinationFailures = MultiGauge.builder(DESTINATION_FAILURES_METRIC_NAME)
@@ -73,7 +73,7 @@ class BigQueryExportObservability(
     fun recordPoll(now: Instant, destinations: List<BigQueryExportDestination>) {
         schedulerHeartbeat.set(now.epochSecond)
         destinationLastSuccess.register(
-            destinations.map { row(it.team, (it.lastSuccessAt ?: it.createdAt).epochSecond) },
+            destinations.map { row(it.team, (it.lastSuccessAt ?: it.updatedAt).epochSecond) },
             true,
         )
         destinationFailures.register(destinations.map { row(it.team, it.consecutiveFailures.toLong()) }, true)
@@ -87,7 +87,8 @@ class BigQueryExportObservability(
         )
     }
 
-    private fun row(team: String, value: Long): MultiGauge.Row<*> = MultiGauge.Row.of(Tags.of("team", team), value)
+    // Nais adds its own `team` label to every scraped series, so the Lumi team gets another name.
+    private fun row(team: String, value: Long): MultiGauge.Row<*> = MultiGauge.Row.of(Tags.of(TEAM_TAG, team), value)
 
     fun recordSucceeded(finishedAt: Instant, rows: BigQueryExportRowCounts) {
         succeededRuns.increment()
@@ -106,6 +107,7 @@ class BigQueryExportObservability(
         const val ROWS_METRIC_NAME = "lumi_bigquery_export_rows_total"
         const val LAST_SUCCESS_METRIC_NAME = "lumi_bigquery_export_last_success_timestamp_seconds"
         const val ENABLED_METRIC_NAME = "lumi_bigquery_export_enabled"
+        const val TEAM_TAG = "lumi_team"
         const val SCHEDULER_HEARTBEAT_METRIC_NAME = "lumi_bigquery_export_scheduler_heartbeat_timestamp_seconds"
         const val DESTINATION_LAST_SUCCESS_METRIC_NAME = "lumi_bigquery_export_destination_last_success_timestamp_seconds"
         const val DESTINATION_FAILURES_METRIC_NAME = "lumi_bigquery_export_destination_consecutive_failures"

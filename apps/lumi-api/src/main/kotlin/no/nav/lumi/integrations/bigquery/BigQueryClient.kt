@@ -22,7 +22,9 @@ import io.ktor.http.content.TextContent
 import io.ktor.http.encodeURLPathPart
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -71,6 +73,12 @@ data class BigQueryTableListing(
     val labels: Map<String, String>,
 )
 
+data class BigQueryTableList(
+    val tables: List<BigQueryTableListing>,
+    /** False when the dataset has more tables than one page holds. */
+    val complete: Boolean,
+)
+
 data class BigQueryTableRef(
     val projectId: String,
     val datasetId: String,
@@ -102,7 +110,7 @@ interface BigQueryGateway {
     suspend fun getDataset(projectId: String, datasetId: String): BigQueryResult<BigQueryDatasetInfo>
 
     /** Lists up to the first thousand tables and views in a dataset. */
-    suspend fun listTables(projectId: String, datasetId: String): BigQueryResult<List<BigQueryTableListing>>
+    suspend fun listTables(projectId: String, datasetId: String): BigQueryResult<BigQueryTableList>
     suspend fun getTable(ref: BigQueryTableRef): BigQueryResult<BigQueryTableInfo>
 
     /** Creates an empty table that expires at [expiresAt]. A table that already exists counts as created. */
@@ -147,6 +155,7 @@ class RestBigQueryGateway(
     }
 
     private val uploadHost = Url(uploadBaseUrl).host
+    private val uploadProtocol = Url(uploadBaseUrl).protocol
 
     override suspend fun serviceAccountEmail(): String? = credentials.serviceAccountEmail()
 
@@ -188,18 +197,21 @@ class RestBigQueryGateway(
             )
         }
 
-    override suspend fun listTables(projectId: String, datasetId: String): BigQueryResult<List<BigQueryTableListing>> =
+    override suspend fun listTables(projectId: String, datasetId: String): BigQueryResult<BigQueryTableList> =
         call({
             client.get("${datasetUrl(projectId, datasetId)}/tables") {
                 authorize()
                 url.parameters.append("maxResults", MAX_LISTED_TABLES.toString())
             }
         }) { body ->
-            (body["tables"] as? JsonArray).orEmpty().mapNotNull { element ->
-                val table = element as? JsonObject ?: return@mapNotNull null
-                val tableId = (table["tableReference"] as? JsonObject)?.string("tableId") ?: return@mapNotNull null
-                BigQueryTableListing(tableId = tableId, type = table.string("type") ?: "TABLE", labels = table.labels())
-            }
+            BigQueryTableList(
+                tables = (body["tables"] as? JsonArray).orEmpty().mapNotNull { element ->
+                    val table = element as? JsonObject ?: return@mapNotNull null
+                    val tableId = (table["tableReference"] as? JsonObject)?.string("tableId") ?: return@mapNotNull null
+                    BigQueryTableListing(tableId = tableId, type = table.string("type") ?: "TABLE", labels = table.labels())
+                },
+                complete = body.string("nextPageToken") == null,
+            )
         }
 
     override suspend fun getTable(ref: BigQueryTableRef): BigQueryResult<BigQueryTableInfo> =
@@ -227,7 +239,8 @@ class RestBigQueryGateway(
             "Unsafe BigQuery identifier"
         }
         val jobId = newJobId("truncate", ref.tableId)
-        val inserted = call({
+        // A retry after a lost response finds the job the first attempt created; Lumi then waits for it.
+        val inserted = call(conflictIsSuccess = true, request = {
             client.post(jobsUrl()) {
                 authorize()
                 setBody(
@@ -397,8 +410,9 @@ class RestBigQueryGateway(
                 }
                 val location = response.headers[HttpHeaders.Location]
                     ?: throw BigQueryCallException(BigQueryResult.Failure("BigQuery returned no upload session"))
-                // The session URL gets Lumi's token, so it must point to Google's upload host.
-                if (runCatching { Url(location).host }.getOrNull() != uploadHost) {
+                // The session URL gets Lumi's token, so it must point to Google's upload host over HTTPS.
+                val sessionUrl = runCatching { Url(location) }.getOrNull()
+                if (sessionUrl?.host != uploadHost || sessionUrl.protocol != uploadProtocol) {
                     throw BigQueryCallException(BigQueryResult.Failure("BigQuery returned an upload session on another host"))
                 }
                 return location
@@ -410,7 +424,15 @@ class RestBigQueryGateway(
      * Polls a job until it is done. A job that runs past [jobTimeout] is cancelled, so it cannot replace
      * a table after the run has been marked as failed.
      */
-    private suspend fun waitForJob(jobId: String, initial: JsonObject): BigQueryResult<JsonObject> {
+    private suspend fun waitForJob(jobId: String, initial: JsonObject): BigQueryResult<JsonObject> = try {
+        pollJob(jobId, initial)
+    } catch (cause: CancellationException) {
+        // The run was stopped, for example by its deadline. The job must not replace a table later.
+        withContext(NonCancellable) { cancelJob(jobId) }
+        throw cause
+    }
+
+    private suspend fun pollJob(jobId: String, initial: JsonObject): BigQueryResult<JsonObject> {
         val deadline = Instant.now(clock).plus(jobTimeout)
         var job = initial
         while (true) {

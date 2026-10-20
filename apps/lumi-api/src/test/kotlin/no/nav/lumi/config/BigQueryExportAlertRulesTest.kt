@@ -23,6 +23,7 @@ class BigQueryExportAlertRulesTest : FunSpec({
         rules shouldContain "alert: LumiBigQueryExportStale"
         rules shouldContain "${BigQueryExportObservability.DESTINATION_LAST_SUCCESS_METRIC_NAME}{app=\"lumi-api\"}"
         rules shouldContain "${BigQueryExportObservability.DESTINATION_TEAM_ACTION_METRIC_NAME}{app=\"lumi-api\"}"
+        rules shouldContain "by (${BigQueryExportObservability.TEAM_TAG})"
         rules shouldContain "alert: LumiBigQueryExportSchedulerStopped"
         rules shouldContain "${BigQueryExportObservability.SCHEDULER_HEARTBEAT_METRIC_NAME}{app=\"lumi-api\"}"
         rules shouldContain "${BigQueryExportObservability.ENABLED_METRIC_NAME}{app=\"lumi-api\"}"

@@ -80,7 +80,7 @@ spec:
             sum(increase(lumi_bigquery_export_runs_total{app="lumi-api",outcome="failed",reason=~"TEAM_PROJECT_UNKNOWN|EXPORT_JOB_DENIED|BIGQUERY_UNAVAILABLE|LOAD_FAILED|INTERNAL_ERROR"}[3h])) >= 2
           annotations:
             summary: "BigQuery-eksporten feiler på Lumis side"
-            consequence: "Minst ett team har ikke fått oppdatert BigQuery-tabellene sine. Tabellene forsvinner sju dager etter siste vellykkede kjøring."
+            consequence: "Minst ett team har ikke fått oppdatert BigQuery-tabellene sine. Tabellene forsvinner sju dager etter at Lumi sist skrev dem."
             action: "Finn team og feilkode i loggene og følg runbooken. Feil teamet selv må rette, vises i dashboardet og gir ikke denne alarmen."
             runbook_url: "https://github.com/navikt/lumi/blob/main/apps/lumi-api/docs/runbooks/bigquery-export.md"
           labels:
@@ -88,14 +88,15 @@ spec:
             namespace: team-esyfo
         - alert: LumiBigQueryExportStale
           # 30 hours: a team that missed one night and its retries. Teams that must fix something
-          # themselves see it in the dashboard and are left out.
+          # themselves see it in the dashboard and are left out. The Lumi team is in lumi_team,
+          # because Nais sets team on every series. min picks the replica that polled last.
           expr: >-
-            (max by (team) (time() - lumi_bigquery_export_destination_last_success_timestamp_seconds{app="lumi-api"}) > 108000)
-            unless on (team) (max by (team) (lumi_bigquery_export_destination_team_action_needed{app="lumi-api"}) == 1)
+            (min by (lumi_team) (time() - lumi_bigquery_export_destination_last_success_timestamp_seconds{app="lumi-api"}) > 108000)
+            unless on (lumi_team) (max by (lumi_team) (lumi_bigquery_export_destination_team_action_needed{app="lumi-api"}) == 1)
           for: 30m
           annotations:
-            summary: "BigQuery-tabellene til {{ $labels.team }} er over 30 timer gamle"
-            consequence: "Teamet ser gamle tall. Tabellene forsvinner sju dager etter siste vellykkede kjøring, og da forsvinner også tilgangene som er gitt på Datamarkedsplassen."
+            summary: "BigQuery-tabellene til {{ $labels.lumi_team }} er over 30 timer gamle"
+            consequence: "Teamet ser gamle tall. Tabellene forsvinner sju dager etter at Lumi sist skrev dem, og da forsvinner også tilgangene som er gitt på Datamarkedsplassen."
             action: "Finn siste feil for teamet i loggene og følg runbooken."
             runbook_url: "https://github.com/navikt/lumi/blob/main/apps/lumi-api/docs/runbooks/bigquery-export.md"
           labels:

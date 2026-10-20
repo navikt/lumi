@@ -33,16 +33,15 @@ data class BigQueryExportSourceRow(
 /** How often a context tag key occurs in the export window, and with how many different values. */
 data class ContextTagStats(val distinctValues: Long, val occurrences: Long) {
     /**
-     * Tags are meant for segments with few values. A key with many values, or with values that are
-     * nearly unique per response, works as an identifier and is left out of the export.
+     * Tags are meant for segments with few values. A key with many values, or with fewer than five
+     * responses per value on average, works as an identifier and is left out of the export. A new
+     * key is left out until it has enough responses.
      */
     val isSegment: Boolean
-        get() = distinctValues <= MAX_DISTINCT_VALUES &&
-            (distinctValues <= ALWAYS_ALLOWED_VALUES || distinctValues * MIN_RESPONSES_PER_VALUE <= occurrences)
+        get() = distinctValues <= MAX_DISTINCT_VALUES && distinctValues * MIN_RESPONSES_PER_VALUE <= occurrences
 
     companion object {
         const val MAX_DISTINCT_VALUES = 50L
-        const val ALWAYS_ALLOWED_VALUES = 10L
         const val MIN_RESPONSES_PER_VALUE = 5L
     }
 }
@@ -151,7 +150,7 @@ class BigQueryExportMapper(
                     ratingSkala = parsed.scale,
                 )
                 is ParsedAnswer.Choice -> parsed.optionIds.forEach { optionId ->
-                    val exportedId = cleanId(optionId) ?: optionId
+                    val exportedId = cleanId(optionId) ?: return@forEach
                     svar += submission.svar(key, questionLabel(key), parsed.fieldType).copy(
                         valgId = exportedId,
                         valgTekst = optionLabels[OptionKey(key, optionId)] ?: exportedId,

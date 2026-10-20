@@ -163,13 +163,18 @@ class RestBigQueryGatewayTest : FunSpec({
         }.listTables("teamsykefravr-prod-1234", "lumi")
 
         listed shouldBe BigQueryResult.Success(
-            listOf(
-                BigQueryTableListing("svar", "TABLE", mapOf("lumi-eksport" to "v1")),
-                BigQueryTableListing("svar_bro", "VIEW", emptyMap()),
+            BigQueryTableList(
+                tables = listOf(
+                    BigQueryTableListing("svar", "TABLE", mapOf("lumi-eksport" to "v1")),
+                    BigQueryTableListing("svar_bro", "VIEW", emptyMap()),
+                ),
+                complete = true,
             ),
         )
         gateway { respond("{}", HttpStatusCode.OK, jsonHeaders()) }.listTables("p-roject1", "lumi") shouldBe
-            BigQueryResult.Success(emptyList())
+            BigQueryResult.Success(BigQueryTableList(emptyList(), complete = true))
+        gateway { respond("""{"tables":[],"nextPageToken":"x"}""", HttpStatusCode.OK, jsonHeaders()) }
+            .listTables("p-roject1", "lumi") shouldBe BigQueryResult.Success(BigQueryTableList(emptyList(), complete = false))
     }
 
     test("creates a table with schema, labels, description and expiry, and accepts one that exists") {
@@ -301,16 +306,37 @@ class RestBigQueryGatewayTest : FunSpec({
         upload.finish().shouldBeInstanceOf<BigQueryResult.Failure>()
     }
 
-    test("never sends the token to an upload session on another host") {
-        val requests = mutableListOf<HttpRequestData>()
-        val upload = gateway { request ->
-            requests += request
-            respond("", HttpStatusCode.OK, headersOf(HttpHeaders.Location, "https://evil.example/session"))
-        }.startUpload(spec, emptyMap())
+    test("never sends the token to an upload session on another host or without HTTPS") {
+        listOf("https://evil.example/session", "http://bigquery.googleapis.com/upload/session").forEach { location ->
+            val requests = mutableListOf<HttpRequestData>()
+            val upload = gateway { request ->
+                requests += request
+                respond("", HttpStatusCode.OK, headersOf(HttpHeaders.Location, location))
+            }.startUpload(spec, emptyMap())
 
-        upload.writeLine("""{"innsending_id":"a"}""")
-        upload.finish().shouldBeInstanceOf<BigQueryResult.Failure>()
-        requests shouldHaveSize 1
+            upload.writeLine("""{"innsending_id":"a"}""")
+            upload.finish().shouldBeInstanceOf<BigQueryResult.Failure>()
+            requests shouldHaveSize 1
+        }
+    }
+
+    test("waits for a TRUNCATE job that a lost response already created") {
+        var inserts = 0
+        val result = gateway { request ->
+            if (request.method == HttpMethod.Post) {
+                inserts += 1
+                if (inserts == 1) {
+                    respond("{}", HttpStatusCode.ServiceUnavailable, jsonHeaders())
+                } else {
+                    respond("""{"error":{"code":409,"errors":[{"reason":"duplicate"}]}}""", HttpStatusCode.Conflict, jsonHeaders())
+                }
+            } else {
+                respond("""{"status":{"state":"DONE"}}""", HttpStatusCode.OK, jsonHeaders())
+            }
+        }.truncateTable(spec.ref, emptyMap())
+
+        result shouldBe BigQueryResult.Success(Unit)
+        inserts shouldBe 2
     }
 
     test("reports a failed load job by reason, without the message that can quote values") {

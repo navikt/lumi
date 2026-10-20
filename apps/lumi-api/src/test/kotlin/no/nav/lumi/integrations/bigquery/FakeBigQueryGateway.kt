@@ -55,13 +55,16 @@ class FakeBigQueryGateway(
     override suspend fun getDataset(projectId: String, datasetId: String): BigQueryResult<BigQueryDatasetInfo> =
         datasets["$projectId.$datasetId"] ?: BigQueryResult.NotFound
 
-    override suspend fun listTables(projectId: String, datasetId: String): BigQueryResult<List<BigQueryTableListing>> {
+    override suspend fun listTables(projectId: String, datasetId: String): BigQueryResult<BigQueryTableList> {
         if (datasets["$projectId.$datasetId"] == null) return BigQueryResult.NotFound
         val prefix = "$projectId.$datasetId."
         return BigQueryResult.Success(
-            tables.filterKeys { it.startsWith(prefix) }.map { (key, table) ->
-                BigQueryTableListing(key.removePrefix(prefix), table.type, table.labels)
-            },
+            BigQueryTableList(
+                tables = tables.filterKeys { it.startsWith(prefix) }.map { (key, table) ->
+                    BigQueryTableListing(key.removePrefix(prefix), table.type, table.labels)
+                },
+                complete = true,
+            ),
         )
     }
 

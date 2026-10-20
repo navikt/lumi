@@ -256,7 +256,11 @@ class BigQueryExportServiceTest : FunSpec({
         fritekst["tekst"]!!.jsonPrimitive.content shouldNotContain "ola.nordmann@example.com"
         fritekst["maskert"]!!.jsonPrimitive.content shouldBe "true"
 
+        // Turning free text off needs no new checks, so it works even when Lumi cannot run jobs.
+        gateway.jobAccess = BigQueryResult.JobDenied
         export.save(team, "A123456", request(includeFreeText = false))
+            .shouldBeInstanceOf<BigQueryExportCommandResult.Done<*>>()
+            .value.shouldBeInstanceOf<BigQueryExportSaveResult.Saved>()
         gateway.tables shouldNotContainKey "$project.lumi.fritekst"
     }
 
@@ -295,7 +299,6 @@ class BigQueryExportServiceTest : FunSpec({
         gateway.grant(project, "lumi", "svar", "user:analytiker@nav.no")
         TestDatabase.clearAllData()
         export.save(team, "A123456", request())
-        repository.requestRun(team, Instant.now())
 
         export.runDueExports() shouldBe 1
 
@@ -436,23 +439,39 @@ class BigQueryExportServiceTest : FunSpec({
 
     test("the run checks the team's project and tables again before writing") {
         val gateway = readyGateway()
+        val clock = TestClock()
         feedback("f-1", team, "syfomodiaperson", rating = 3)
-        service(gateway).save(team, "A123456", request())
+        service(gateway, clock = clock).save(team, "A123456", request())
 
-        service(gateway, projects = mapOf(team to "teamsykefravr-prod-9999")).runDueExports()
+        service(gateway, projects = mapOf(team to "teamsykefravr-prod-9999"), clock = clock).runDueExports()
         gateway.tables.keys.shouldBeEmpty()
-        lastRunCode(service(gateway)) shouldBe BigQueryExportProblemCode.PROJECT_NOT_TEAM_PROJECT
+        lastRunCode(service(gateway, clock = clock)) shouldBe BigQueryExportProblemCode.PROJECT_NOT_TEAM_PROJECT
 
-        repository.requestRun(team, Instant.now())
-        service(gateway, lookup = { NaisApiResult.Error("unavailable") }, clock = TestClock(Instant.now().plus(Duration.ofHours(2)))).runDueExports()
+        clock.now = clock.now.plus(Duration.ofHours(2))
+        repository.requestRun(team, clock.now)
+        service(gateway, lookup = { NaisApiResult.Error("unavailable") }, clock = clock).runDueExports()
         gateway.tables.keys.shouldBeEmpty()
-        lastRunCode(service(gateway)) shouldBe BigQueryExportProblemCode.TEAM_PROJECT_UNKNOWN
+        lastRunCode(service(gateway, clock = clock)) shouldBe BigQueryExportProblemCode.TEAM_PROJECT_UNKNOWN
+
+        // A missing project for the environment is Lumi's setup to look into, not the team's.
+        clock.now = clock.now.plus(Duration.ofHours(2))
+        repository.requestRun(team, clock.now)
+        service(gateway, projects = emptyMap(), clock = clock).runDueExports()
+        lastRunCode(service(gateway, clock = clock)) shouldBe BigQueryExportProblemCode.TEAM_PROJECT_UNKNOWN
 
         gateway.tables["$project.lumi.svar"] = FakeBigQueryGateway.Table(labels = emptyMap())
-        repository.requestRun(team, Instant.now())
-        service(gateway, clock = TestClock(Instant.now().plus(Duration.ofHours(4)))).runDueExports()
-        lastRunCode(service(gateway)) shouldBe BigQueryExportProblemCode.TABLE_NOT_CREATED_BY_LUMI
+        clock.now = clock.now.plus(Duration.ofHours(2))
+        repository.requestRun(team, clock.now)
+        service(gateway, clock = clock).runDueExports()
+        lastRunCode(service(gateway, clock = clock)) shouldBe BigQueryExportProblemCode.TABLE_NOT_CREATED_BY_LUMI
         gateway.tables.getValue("$project.lumi.svar").lines.shouldBeEmpty()
+
+        gateway.tables.remove("$project.lumi.svar")
+        gateway.addDataset(project, "lumi", mapOf("lumi-team" to team), maxTimeTravelHours = 168)
+        clock.now = clock.now.plus(Duration.ofHours(2))
+        repository.requestRun(team, clock.now)
+        service(gateway, clock = clock).runDueExports()
+        lastRunCode(service(gateway, clock = clock)) shouldBe BigQueryExportProblemCode.DATASET_TIME_TRAVEL_TOO_LONG
     }
 
     test("pseudonyms are stable between runs and never equal the internal id") {
