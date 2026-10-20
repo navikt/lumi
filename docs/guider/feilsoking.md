@@ -131,7 +131,7 @@ eksempelet gjør.
 | 429 | Appen har sendt mer enn 100 svar på ett minutt, eller samme bruker mer enn 15. I dev deler alle apper i `trygdeetaten.no` én grense gjennom proxyen. Grensen gjelder et helt minutt, så widgeten prøver ikke på nytt av seg selv. | Vent et minutt. Skjer det ofte, spør i [#lumi på Slack](https://nav-it.slack.com/archives/C0AG2FKSSMD). |
 | 500 | Feil i Lumi API eller proxyen. | Spør i #lumi. |
 | 502 | Proxyen fikk ikke sendt svaret videre til Lumi API. Gjelder bare `trygdeetaten.no` i dev. | Spør i #lumi. |
-| 503 | Lumi API eller proxyen fikk ikke kontrollert tokenet, fordi Texas i Nais ikke svarte. Svaret er ikke lagret. Widgeten prøver én gang til av seg selv, se [Tidsgrense og nytt forsøk](/kom-i-gang/konfigurer-survey#tidsgrense-og-nytt-forsok). | Prøv igjen litt senere. Skjer det ofte, spør i #lumi. |
+| 503 | Lumi API eller proxyen fikk ikke kontrollert tokenet, fordi Texas i Nais ikke svarte. Eller databasen svarte ikke i tide, og meldingen er «Databasen svarer ikke akkurat nå». Svaret er ikke lagret. Widgeten prøver én gang til av seg selv, se [Tidsgrense og nytt forsøk](/kom-i-gang/konfigurer-survey#tidsgrense-og-nytt-forsok). | Prøv igjen litt senere. Skjer det ofte, spør i #lumi. |
 
 ## Ingen data i dashboardet
 
