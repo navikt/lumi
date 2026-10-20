@@ -31,6 +31,10 @@ export const BigQueryExportProblemCodeSchema = z.enum([
   "DATASET_TEAM_LABEL_MISMATCH",
   "TABLE_WRITE_DENIED",
   "TABLE_NOT_CREATED_BY_LUMI",
+  "DATASET_NOT_DEDICATED",
+  "DATASET_TIME_TRAVEL_TOO_LONG",
+  "TEAM_PROJECT_UNKNOWN",
+  "EXPORT_JOB_DENIED",
   "BIGQUERY_UNAVAILABLE",
   "LOAD_FAILED",
   "INTERNAL_ERROR",
@@ -79,6 +83,8 @@ export const BigQueryExportStatusSchema = z.object({
   location: z.string().min(1).max(64),
   serviceAccount: z.string().max(320).nullish(),
   suggestedProjectId: z.string().regex(GCP_PROJECT_ID_PATTERN).nullish(),
+  /** Whether the team may export free text. Missing means no. */
+  freeTextAvailable: z.boolean().default(false),
   destination: BigQueryExportDestinationSchema.nullish(),
 });
 

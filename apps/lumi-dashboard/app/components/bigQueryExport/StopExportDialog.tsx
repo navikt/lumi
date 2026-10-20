@@ -13,6 +13,7 @@ import { useState } from "react";
 import { stopBigQueryExport } from "~/server/actions/bigQueryExport";
 import type { BigQueryExportStop } from "~/types/bigQueryExport";
 import { writeErrorText } from "~/utils/publicDemo";
+import { bigQueryExportQueryKey } from "./queryKey";
 
 export function StopExportDialog({
   team,
@@ -35,7 +36,7 @@ export function StopExportDialog({
     onSuccess: async (result) => {
       if (!result.ok) return;
       await queryClient.invalidateQueries({
-        queryKey: ["bigquery-export", team],
+        queryKey: bigQueryExportQueryKey(team),
       });
       setConfirmed(false);
       onStopped(result.value);
@@ -68,9 +69,9 @@ export function StopExportDialog({
       <Modal.Body>
         <VStack gap="space-16">
           <BodyLong>
-            Lumi sletter tabellene svar, innsendinger og fritekst fra{" "}
-            <code>{datasetName}</code> og slutter å oppdatere dem. Datasettet,
-            andre tabeller og kopier teamet har laget, blir stående.
+            Lumi slutter å oppdatere tabellene og sletter svar, innsendinger og
+            fritekst fra <code>{datasetName}</code>. Datasettet, andre tabeller
+            og kopier teamet har laget, blir stående.
           </BodyLong>
           <BodyLong>
             Dataprodukter, Metabase-spørsmål og datafortellinger som bruker
@@ -82,7 +83,7 @@ export function StopExportDialog({
             label="Ja, stopp eksporten og slett Lumis tabeller"
           />
           {stop.isError && (
-            <Alert variant="error" size="small">
+            <Alert variant="error" size="small" role="alert">
               {writeErrorText(
                 stop.error,
                 "Lumi fikk ikke stoppet eksporten. Prøv igjen.",
@@ -90,7 +91,7 @@ export function StopExportDialog({
             </Alert>
           )}
           {failure && (
-            <Alert variant="error" size="small">
+            <Alert variant="error" size="small" role="alert">
               {failure}
             </Alert>
           )}

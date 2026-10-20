@@ -46,6 +46,7 @@ const status = {
   location: "europe-north1",
   serviceAccount: "lumi-api@nais-dev.iam.gserviceaccount.com",
   suggestedProjectId: "team-test-dev-1234",
+  freeTextAvailable: false,
   destination: null,
 };
 
@@ -69,6 +70,44 @@ describe("BigQuery export server action contracts", () => {
     await expect(
       getBigQueryExport({ data: { team: "team-test" } }),
     ).rejects.toThrow("Uventet svar");
+  });
+
+  it("treats a status without freeTextAvailable as closed for free text", async () => {
+    const withoutFreeText = Object.fromEntries(
+      Object.entries(status).filter(([key]) => key !== "freeTextAvailable"),
+    );
+    doubles.request.mockResolvedValueOnce(Response.json(withoutFreeText));
+    await expect(
+      getBigQueryExport({ data: { team: "team-test" } }),
+    ).resolves.toMatchObject({ freeTextAvailable: false });
+
+    doubles.request.mockResolvedValueOnce(
+      Response.json({ ...status, freeTextAvailable: true }),
+    );
+    await expect(
+      getBigQueryExport({ data: { team: "team-test" } }),
+    ).resolves.toMatchObject({ freeTextAvailable: true });
+  });
+
+  it("reads the dataset checks and Lumi-side problems the API reports", async () => {
+    const problems = [
+      { code: "DATASET_NOT_DEDICATED", detail: "rapport" },
+      { code: "DATASET_TIME_TRAVEL_TOO_LONG", detail: "168" },
+      { code: "TEAM_PROJECT_UNKNOWN" },
+      { code: "EXPORT_JOB_DENIED" },
+    ];
+    doubles.request.mockResolvedValueOnce(
+      Response.json({ ok: false, problems }),
+    );
+    await expect(
+      verifyBigQueryExport({
+        data: {
+          team: "team-test",
+          projectId: "team-test-dev-1234",
+          datasetId: "lumi",
+        },
+      }),
+    ).resolves.toEqual({ ok: true, value: { ok: false, problems } });
   });
 
   it("sends only the destination fields when saving", async () => {

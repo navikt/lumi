@@ -53,18 +53,18 @@ function ExportPage() {
             padding="space-20"
           >
             <Heading size="small" level="2" spacing>
-              BigQuery og Metabase
+              BigQuery-eksport
             </Heading>
             <BodyShort spacing>
               Få en kopi av svarene i teamets eget BigQuery-datasett, oppdatert
-              hver natt. Derfra kan dere dele dataene på Datamarkedsplassen og
+              hver natt. Derfra kan du dele dataene på Datamarkedsplassen og
               bruke dem i Metabase og datafortellinger.
             </BodyShort>
             <Link
               to="/bigquery"
               search={(previous) => ({ team: previous.team })}
             >
-              Sett opp BigQuery-eksport
+              Gå til BigQuery-eksport
             </Link>
           </Box>
 

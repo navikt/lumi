@@ -1,4 +1,4 @@
-import { ArrowsCirclepathIcon, ExternalLinkIcon } from "@navikt/aksel-icons";
+import { ArrowsCirclepathIcon } from "@navikt/aksel-icons";
 import {
   Alert,
   BodyShort,
@@ -12,15 +12,18 @@ import {
   Tag,
   VStack,
 } from "@navikt/ds-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import type {
   BigQueryExportDestination,
   BigQueryExportStatus,
 } from "~/types/bigQueryExport";
+import { ExternalLinkButton } from "./ExternalLink";
+import { ActionError } from "./Feedback";
 import {
   bigQueryConsoleUrl,
   formatTimestamp,
   nextRunText,
+  queuedText,
   rowSummary,
 } from "./format";
 import { ProblemList } from "./ProblemList";
@@ -30,15 +33,24 @@ type RunView = {
   tag: ReactNode;
 };
 
-function runView(destination: BigQueryExportDestination): RunView {
+function runView(
+  destination: BigQueryExportDestination,
+  now: number = Date.now(),
+): RunView {
   if (destination.runState === "RUNNING")
     return {
       label: "Lumi oppdaterer tabellene nå",
-      tag: <Tag variant="info">Oppdaterer</Tag>,
+      tag: (
+        <Tag data-color="info" variant="moderate">
+          Oppdaterer
+        </Tag>
+      ),
     };
   if (destination.runState === "QUEUED")
     return {
-      label: "Kjøringen starter om litt",
+      label:
+        queuedText(destination.nextScheduledRunAt, now) ??
+        "Kjøringen starter om litt",
       tag: (
         <Tag data-color="neutral" variant="outline">
           I kø
@@ -48,12 +60,20 @@ function runView(destination: BigQueryExportDestination): RunView {
   if (destination.lastRun?.status === "FAILED")
     return {
       label: "Siste kjøring feilet",
-      tag: <Tag variant="error">Feilet</Tag>,
+      tag: (
+        <Tag data-color="danger" variant="moderate">
+          Feilet
+        </Tag>
+      ),
     };
   if (destination.lastSuccessAt)
     return {
       label: "Tabellene er oppdatert",
-      tag: <Tag variant="success">Aktiv</Tag>,
+      tag: (
+        <Tag data-color="success" variant="moderate">
+          Aktiv
+        </Tag>
+      ),
     };
   return {
     label: "Venter på første kjøring",
@@ -80,15 +100,25 @@ export function StatusPanel({
   destination,
   onRun,
   runPending,
-  runMessage,
+  runError,
+  focusHeading = false,
 }: {
   team: string;
   status: BigQueryExportStatus;
   destination: BigQueryExportDestination;
   onRun: () => void;
   runPending: boolean;
-  runMessage: ReactNode;
+  runError: string | null;
+  /** Move focus to the heading when the panel appears, after setup. */
+  focusHeading?: boolean;
 }) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  // Only when the panel appears: it replaces the setup form the user left.
+  const focusOnMount = useRef(focusHeading);
+  useEffect(() => {
+    if (focusOnMount.current) headingRef.current?.focus();
+  }, []);
+
   const view = runView(destination);
   const busy =
     destination.runState === "RUNNING" || destination.runState === "QUEUED";
@@ -108,11 +138,13 @@ export function StatusPanel({
     >
       <VStack gap="space-20">
         <HStack justify="space-between" align="center" wrap gap="space-12">
-          <VStack gap="space-4" role="status" aria-live="polite">
-            <Detail>BIGQUERY-EKSPORT</Detail>
-            <Heading level="2" size="medium">
-              {view.label}
-            </Heading>
+          <VStack gap="space-4">
+            <Detail>BigQuery-eksport</Detail>
+            <div role="status" aria-live="polite">
+              <Heading level="2" size="medium" ref={headingRef} tabIndex={-1}>
+                {view.label}
+              </Heading>
+            </div>
           </VStack>
           {view.tag}
         </HStack>
@@ -120,8 +152,13 @@ export function StatusPanel({
         {failedCode && (
           <ProblemList
             problems={[{ code: failedCode }]}
-            team={team}
-            location={status.location}
+            target={{
+              projectId: destination.projectId,
+              datasetId: destination.datasetId,
+              team,
+              serviceAccount: status.serviceAccount,
+              location: status.location,
+            }}
             heading="Dette stoppet siste kjøring"
           />
         )}
@@ -151,35 +188,31 @@ export function StatusPanel({
           </Fact>
         </HGrid>
 
-        <HStack gap="space-8" wrap>
-          <Button
-            type="button"
-            size="small"
-            variant="secondary"
-            icon={<ArrowsCirclepathIcon aria-hidden />}
-            onClick={onRun}
-            loading={runPending}
-            disabled={busy}
-          >
-            Oppdater nå
-          </Button>
-          <Button
-            as="a"
-            href={bigQueryConsoleUrl(
-              destination.projectId,
-              destination.datasetId,
-            )}
-            target="_blank"
-            rel="noreferrer"
-            size="small"
-            variant="tertiary"
-            icon={<ExternalLinkIcon aria-hidden />}
-            iconPosition="right"
-          >
-            Åpne datasettet i BigQuery
-          </Button>
-        </HStack>
-        {runMessage}
+        <div>
+          <HStack gap="space-8" wrap>
+            <Button
+              type="button"
+              size="small"
+              variant="secondary"
+              icon={<ArrowsCirclepathIcon aria-hidden />}
+              onClick={onRun}
+              loading={runPending}
+              disabled={busy}
+            >
+              Oppdater tabellene nå
+            </Button>
+            <ExternalLinkButton
+              href={bigQueryConsoleUrl(
+                destination.projectId,
+                destination.datasetId,
+              )}
+              variant="tertiary"
+            >
+              Åpne datasettet i BigQuery
+            </ExternalLinkButton>
+          </HStack>
+          <ActionError>{runError}</ActionError>
+        </div>
         {destination.includeFreeText && (
           <Alert variant="info" size="small">
             Fritekstsvar er med i tabellen fritekst. Del den bare med personer

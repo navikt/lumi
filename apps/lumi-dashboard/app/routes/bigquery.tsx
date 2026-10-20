@@ -48,12 +48,12 @@ function BigQueryExportPage() {
           </Link>
           <div>
             <Heading level="1" size="xlarge" spacing>
-              BigQuery og Metabase
+              BigQuery-eksport
             </Heading>
             <BodyLong>
               Lumi legger en kopi av teamets svar i et BigQuery-datasett i
               teamets eget GCP-prosjekt og oppdaterer den hver natt. Derfra kan
-              dere dele dataene på Datamarkedsplassen og bruke dem i Metabase og
+              du dele dataene på Datamarkedsplassen og bruke dem i Metabase og
               datafortellinger.
             </BodyLong>
           </div>

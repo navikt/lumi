@@ -1,47 +1,37 @@
-import { ExternalLinkIcon } from "@navikt/aksel-icons";
 import {
   Alert,
   BodyShort,
   Box,
-  Button,
   CopyButton,
   HStack,
+  Label,
+  ReadMore,
   VStack,
 } from "@navikt/ds-react";
-import { bigQueryConsoleUrl, setupSql } from "./format";
+import { useId } from "react";
+import { ExternalLinkButton } from "./ExternalLink";
+import { bigQueryConsoleUrl, type SetupSqlTarget, setupSql } from "./format";
 
-export function SetupSql({
-  projectId,
-  datasetId,
-  team,
-  serviceAccount,
-  location,
-  inputsValid,
-}: {
-  projectId: string;
-  datasetId: string;
-  team: string;
+export type SqlTarget = Omit<SetupSqlTarget, "serviceAccount"> & {
   serviceAccount: string | null | undefined;
-  location: string;
-  inputsValid: boolean;
-}) {
-  if (!serviceAccount) {
-    return (
-      <Alert variant="warning" size="small">
-        Lumi fant ikke tjenestekontoen sin, så SQL-en kan ikke lages akkurat nå.
-        Last siden på nytt om litt.
-      </Alert>
-    );
-  }
-  const sql = setupSql({
-    projectId: projectId || "teamets-prosjekt",
-    datasetId: datasetId || "lumi",
-    team,
-    serviceAccount,
-    location,
-  });
+};
+
+const MISSING_SERVICE_ACCOUNT =
+  "Lumi fant ikke tjenestekontoen sin, så SQL-en kan ikke lages akkurat nå. Last siden på nytt om litt.";
+
+/** The SQL as text that wraps, so it never scrolls sideways on a phone. */
+function SqlBlock({ sql }: { sql: string }) {
+  const captionId = useId();
   return (
-    <VStack gap="space-12">
+    <VStack
+      as="figure"
+      gap="space-8"
+      aria-labelledby={captionId}
+      style={{ margin: 0 }}
+    >
+      <Label as="figcaption" size="small" id={captionId}>
+        SQL for BigQuery
+      </Label>
       <Box
         as="pre"
         background="neutral-soft"
@@ -49,39 +39,115 @@ export function SetupSql({
         borderColor="neutral-subtle"
         borderRadius="8"
         padding="space-16"
-        overflow="auto"
-        aria-label="SQL for å opprette datasettet"
+        style={{ margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
       >
         <BodyShort as="code" size="small">
           {sql}
         </BodyShort>
       </Box>
-      <HStack gap="space-8" wrap>
-        <CopyButton
-          copyText={sql}
-          text="Kopier SQL"
-          activeText="SQL kopiert"
-          size="small"
-          variant="action"
+    </VStack>
+  );
+}
+
+function CopySqlButton({
+  sql,
+  disabled = false,
+  describedBy,
+  onCopied,
+}: {
+  sql: string;
+  disabled?: boolean;
+  describedBy?: string;
+  onCopied?: () => void;
+}) {
+  return (
+    <CopyButton
+      copyText={sql}
+      text="Kopier SQL"
+      activeText="SQL kopiert"
+      size="small"
+      data-color="accent"
+      disabled={disabled}
+      aria-describedby={describedBy}
+      onActiveChange={(active) => {
+        if (active) onCopied?.();
+      }}
+    />
+  );
+}
+
+/** The setup SQL with buttons to copy it and open BigQuery. */
+export function SetupSql({
+  target,
+  inputsValid,
+  onCopied,
+}: {
+  target: SqlTarget;
+  inputsValid: boolean;
+  onCopied?: () => void;
+}) {
+  const hintId = useId();
+  if (!target.serviceAccount) {
+    return (
+      <Alert variant="warning" size="small">
+        {MISSING_SERVICE_ACCOUNT}
+      </Alert>
+    );
+  }
+  const sql = setupSql({
+    ...target,
+    projectId: target.projectId || "teamets-prosjekt",
+    datasetId: target.datasetId || "lumi",
+    serviceAccount: target.serviceAccount,
+  });
+  return (
+    <VStack gap="space-12">
+      <SqlBlock sql={sql} />
+      <HStack gap="space-8" align="center" wrap>
+        <CopySqlButton
+          sql={sql}
           disabled={!inputsValid}
+          describedBy={inputsValid ? undefined : hintId}
+          onCopied={onCopied}
         />
-        <Button
-          as="a"
+        <ExternalLinkButton
           href={
             inputsValid
-              ? bigQueryConsoleUrl(projectId)
+              ? bigQueryConsoleUrl(target.projectId)
               : "https://console.cloud.google.com/bigquery"
           }
-          target="_blank"
-          rel="noreferrer"
-          variant="secondary"
-          size="small"
-          icon={<ExternalLinkIcon aria-hidden />}
-          iconPosition="right"
         >
           Åpne BigQuery
-        </Button>
+        </ExternalLinkButton>
       </HStack>
+      {!inputsValid && (
+        <BodyShort size="small" textColor="subtle" id={hintId}>
+          Fyll inn GCP-prosjekt og datasett for å kopiere SQL-en.
+        </BodyShort>
+      )}
+    </VStack>
+  );
+}
+
+/**
+ * The same SQL for a problem it fixes: buttons first, the text behind
+ * «Vis SQL-en» so the problem list stays short.
+ */
+export function CompactSetupSql({ target }: { target: SqlTarget }) {
+  if (!target.serviceAccount)
+    return <BodyShort size="small">{MISSING_SERVICE_ACCOUNT}</BodyShort>;
+  const sql = setupSql({ ...target, serviceAccount: target.serviceAccount });
+  return (
+    <VStack gap="space-8">
+      <HStack gap="space-8" align="center" wrap>
+        <CopySqlButton sql={sql} />
+        <ExternalLinkButton href={bigQueryConsoleUrl(target.projectId)}>
+          Åpne BigQuery
+        </ExternalLinkButton>
+      </HStack>
+      <ReadMore header="Vis SQL-en" size="small">
+        <SqlBlock sql={sql} />
+      </ReadMore>
     </VStack>
   );
 }

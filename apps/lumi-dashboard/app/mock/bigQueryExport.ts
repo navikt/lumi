@@ -10,17 +10,23 @@ import {
 /**
  * In-memory BigQuery export for local development, tests and the public demo.
  *
- * `team-esyfo` can set up an export. The local empty team shows the pilot
- * state. A queued run starts after about a second and finishes a few seconds
- * later, so the page's polling can be seen working.
+ * `team-esyfo` can set up an export and may export free text. The local empty
+ * team shows the pilot state. Tests can close free text for a team with
+ * `setMockBigQueryFreeText`.
  *
- * Datasets named `mangler_tilgang` or `annet_team` give the problems a team
- * meets most often.
+ * A queued run starts after about a second and finishes a few seconds later,
+ * so the page's polling can be seen working. Like the API, a new run waits
+ * until five minutes after the previous run started.
+ *
+ * Datasets named `mangler_tilgang`, `annet_team`, `andre_tabeller`,
+ * `lang_tidsreise` and `nais_nede` give the problems a team meets most often.
  */
 const SERVICE_ACCOUNT =
   "lumi-api-team-esyfo-1a2b3c4d@nais-dev-2e7b.iam.gserviceaccount.com";
 const QUEUE_DELAY_MS = 1_000;
 const RUN_DURATION_MS = 3_000;
+const COOLDOWN_MS = 5 * 60_000;
+const DEFAULT_FREE_TEXT_TEAMS = ["team-esyfo"];
 
 interface MockDestination {
   projectId: string;
@@ -29,13 +35,23 @@ interface MockDestination {
   createdAt: string;
   updatedAt: string;
   queuedAt: number | null;
+  lastStartedAt: number | null;
   lastSuccessAt: string | null;
 }
 
 const destinations = new Map<string, MockDestination>();
+const freeTextTeams = new Set(DEFAULT_FREE_TEXT_TEAMS);
 
 export function resetMockBigQueryExport(): void {
   destinations.clear();
+  freeTextTeams.clear();
+  for (const team of DEFAULT_FREE_TEXT_TEAMS) freeTextTeams.add(team);
+}
+
+/** Opens or closes free text for a team, as Lumi does per team. */
+export function setMockBigQueryFreeText(team: string, available: boolean) {
+  if (available) freeTextTeams.add(team);
+  else freeTextTeams.delete(team);
 }
 
 function projectFor(team: string): string {
@@ -47,6 +63,14 @@ function availability(team: string): BigQueryExportStatus["availability"] {
   if (team === MOCK_EMPTY_TEAM) return "PILOT_ONLY";
   return "DISABLED";
 }
+
+const DATASET_PROBLEMS: Record<string, BigQueryExportProblem[]> = {
+  mangler_tilgang: [{ code: "DATASET_ACCESS_DENIED" }],
+  annet_team: [{ code: "DATASET_TEAM_LABEL_MISMATCH", detail: "team-annet" }],
+  andre_tabeller: [{ code: "DATASET_NOT_DEDICATED", detail: "rapport" }],
+  lang_tidsreise: [{ code: "DATASET_TIME_TRAVEL_TOO_LONG", detail: "168" }],
+  nais_nede: [{ code: "TEAM_PROJECT_UNKNOWN" }],
+};
 
 function problemsFor(
   team: string,
@@ -62,21 +86,24 @@ function problemsFor(
     return null;
   if (projectId !== projectFor(team))
     return [{ code: "PROJECT_NOT_TEAM_PROJECT", detail: projectFor(team) }];
-  if (datasetId === "mangler_tilgang")
-    return [{ code: "DATASET_ACCESS_DENIED" }];
-  if (datasetId === "annet_team")
-    return [{ code: "DATASET_TEAM_LABEL_MISMATCH", detail: "team-annet" }];
-  return [];
+  return DATASET_PROBLEMS[datasetId] ?? [];
+}
+
+/** When the queued run starts: after the queue delay and the cooldown. */
+function startOf(destination: MockDestination): number | null {
+  if (destination.queuedAt === null) return null;
+  const queued = destination.queuedAt + QUEUE_DELAY_MS;
+  return destination.lastStartedAt === null
+    ? queued
+    : Math.max(queued, destination.lastStartedAt + COOLDOWN_MS);
 }
 
 function advance(destination: MockDestination, now: number): void {
-  if (destination.queuedAt === null) return;
-  if (now - destination.queuedAt >= QUEUE_DELAY_MS + RUN_DURATION_MS) {
-    destination.lastSuccessAt = new Date(
-      destination.queuedAt + QUEUE_DELAY_MS,
-    ).toISOString();
-    destination.queuedAt = null;
-  }
+  const start = startOf(destination);
+  if (start === null || now < start + RUN_DURATION_MS) return;
+  destination.lastStartedAt = start;
+  destination.lastSuccessAt = new Date(start).toISOString();
+  destination.queuedAt = null;
 }
 
 function toDto(
@@ -84,13 +111,8 @@ function toDto(
   now: number,
 ): BigQueryExportDestination {
   advance(destination, now);
-  const running =
-    destination.queuedAt !== null &&
-    now - destination.queuedAt >= QUEUE_DELAY_MS;
-  const startedAt =
-    destination.queuedAt !== null
-      ? new Date(destination.queuedAt + QUEUE_DELAY_MS).toISOString()
-      : destination.lastSuccessAt;
+  const start = startOf(destination);
+  const running = start !== null && now >= start;
   // 01:00 Norwegian summer time, close enough for a mock.
   const nextNight = new Date(now);
   nextNight.setUTCHours(23, 0, 0, 0);
@@ -102,9 +124,9 @@ function toDto(
     includeFreeText: destination.includeFreeText,
     createdAt: destination.createdAt,
     updatedAt: destination.updatedAt,
-    runState: running ? "RUNNING" : destination.queuedAt ? "QUEUED" : "IDLE",
+    runState: running ? "RUNNING" : start !== null ? "QUEUED" : "IDLE",
     lastRun: running
-      ? { status: "RUNNING", startedAt: startedAt ?? destination.createdAt }
+      ? { status: "RUNNING", startedAt: new Date(start).toISOString() }
       : destination.lastSuccessAt
         ? {
             status: "SUCCEEDED",
@@ -122,9 +144,10 @@ function toDto(
           fritekst: destination.includeFreeText ? 197 : null,
         }
       : null,
-    nextScheduledRunAt: destination.queuedAt
-      ? new Date(now).toISOString()
-      : nextNight.toISOString(),
+    nextScheduledRunAt:
+      start !== null && !running
+        ? new Date(start).toISOString()
+        : nextNight.toISOString(),
   };
 }
 
@@ -139,6 +162,7 @@ function status(team: string, now: number): BigQueryExportStatus {
     location: "europe-north1",
     serviceAccount: available ? SERVICE_ACCOUNT : null,
     suggestedProjectId: available ? projectFor(team) : null,
+    freeTextAvailable: freeTextTeams.has(team),
     destination: destination ? toDto(destination, now) : null,
   };
 }
@@ -167,10 +191,15 @@ export function mockBigQueryExportRequest(
   }
   if (path === "" && method === "PUT") {
     const problems = problemsFor(team, input.projectId, input.datasetId);
-    if (problems === null || typeof input.includeFreeText !== "boolean")
+    if (
+      problems === null ||
+      typeof input.includeFreeText !== "boolean" ||
+      (input.includeFreeText && !freeTextTeams.has(team))
+    )
       return json({ message: "Bad request" }, 400);
     if (problems.length > 0) return json({ ok: false, problems }, 422);
     const existing = destinations.get(team);
+    if (existing) advance(existing, now);
     const timestamp = new Date(now).toISOString();
     const changed =
       !existing ||
@@ -183,7 +212,10 @@ export function mockBigQueryExportRequest(
       includeFreeText: input.includeFreeText,
       createdAt: existing?.createdAt ?? timestamp,
       updatedAt: timestamp,
-      queuedAt: changed ? now : (existing?.queuedAt ?? null),
+      queuedAt: changed
+        ? (existing?.queuedAt ?? now)
+        : (existing?.queuedAt ?? null),
+      lastStartedAt: existing?.lastStartedAt ?? null,
       lastSuccessAt: existing?.lastSuccessAt ?? null,
     });
     return json(status(team, now));

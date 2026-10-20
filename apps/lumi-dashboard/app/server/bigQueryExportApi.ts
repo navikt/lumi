@@ -35,9 +35,12 @@ export async function bigQueryExportRequest(
   );
 }
 
+/** The API may leave out fields that have a default, so the input can differ from T. */
+type ResponseSchema<T> = z.ZodType<T, z.ZodTypeDef, unknown>;
+
 export async function readBigQueryExport<T>(
   response: Response,
-  schema: z.ZodType<T>,
+  schema: ResponseSchema<T>,
 ): Promise<T> {
   if (!response.ok)
     throw new Error(
@@ -55,7 +58,7 @@ export async function readBigQueryExport<T>(
  */
 export async function mutateBigQueryExport<T>(
   response: Response,
-  schema: z.ZodType<T>,
+  schema: ResponseSchema<T>,
 ): Promise<BigQueryExportResult<T>> {
   if (response.status === 422) {
     const parsed = BigQueryExportVerificationSchema.safeParse(
