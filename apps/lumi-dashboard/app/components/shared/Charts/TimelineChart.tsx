@@ -59,7 +59,7 @@ export function TimelineChartTable() {
       rows={data.map((point) => ({
         key: point.date,
         header: dayjs(point.date).format("DD.MM.YYYY"),
-        cells: [point.count.toLocaleString("nb-NO")],
+        cells: [point.count.toLocaleString("no-NO")],
       }))}
     />
   );

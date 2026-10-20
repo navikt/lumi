@@ -1,6 +1,7 @@
 import { Alert, Skeleton } from "@navikt/ds-react";
 import { useNavigate } from "@tanstack/react-router";
 import dayjs from "dayjs";
+import { useRef } from "react";
 import {
   Line,
   LineChart,
@@ -42,6 +43,8 @@ interface TrendPoint {
   date: string;
   average: number | null;
   count: number;
+  /** Too few answers to show, for privacy. */
+  masked: boolean;
   markers: RatingMarker[];
 }
 
@@ -96,6 +99,7 @@ function useRatingTrend(markers: RatingMarker[]): RatingTrendState {
       {
         average: trend ? questionTrendRatingValue(trend, bucket) : null,
         count: bucket.responseCount ?? 0,
+        masked: bucket.masked,
       },
     ]),
   );
@@ -111,6 +115,7 @@ function useRatingTrend(markers: RatingMarker[]): RatingTrendState {
       date,
       average: rating?.average ?? null,
       count: rating?.count ?? 0,
+      masked: rating?.masked ?? false,
       markers: markersByDate[date] ?? [],
     };
   });
@@ -122,15 +127,38 @@ function useRatingTrend(markers: RatingMarker[]): RatingTrendState {
   return { status: "ready", data, metric, overallAverage };
 }
 
-/** The chart's numbers and markers, under the chart. */
+/**
+ * The chart's numbers and markers, under the chart. Days without answers are
+ * left out unless they have a marker, as the chart shows no point for them.
+ */
 export function RatingTrendChartTable({ markers = [] }: RatingTrendChartProps) {
   const trend = useRatingTrend(markers);
-  if (trend.status !== "ready") return null;
+  // The trend has no placeholder data, so it is pending after each filter
+  // change. Keep an opened table open meanwhile.
+  const hadRows = useRef(false);
+
+  if (trend.status === "pending") {
+    return hadRows.current ? (
+      <ChartDataTable
+        label="Vurdering per dag"
+        rowHeader="Dato"
+        columns={[]}
+        rows={[]}
+        loading
+      />
+    ) : null;
+  }
+  if (trend.status === "error") {
+    hadRows.current = false;
+    return null;
+  }
 
   const { metric } = trend;
   const rows = trend.data.filter(
-    (point) => point.average !== null || point.markers.length > 0,
+    (point) =>
+      point.average !== null || point.masked || point.markers.length > 0,
   );
+  hadRows.current = rows.length > 0;
   if (rows.length === 0) return null;
 
   return (
@@ -146,12 +174,14 @@ export function RatingTrendChartTable({ markers = [] }: RatingTrendChartProps) {
         key: point.date,
         header: dayjs(point.date).format("DD.MM.YYYY"),
         cells: [
-          point.average === null
-            ? "–"
-            : `${point.average.toLocaleString("nb-NO", {
-                maximumFractionDigits: 1,
-              })}${metric.unit ? ` ${metric.unit}` : ""}`,
-          point.count.toLocaleString("nb-NO"),
+          point.masked
+            ? "Skjult"
+            : point.average === null
+              ? "–"
+              : `${point.average.toLocaleString("no-NO", {
+                  maximumFractionDigits: 1,
+                })}${metric.unit ?? ""}`,
+          point.masked ? "Skjult" : point.count.toLocaleString("no-NO"),
           point.markers.map((marker) => marker.label).join(", ") || "–",
         ],
       }))}

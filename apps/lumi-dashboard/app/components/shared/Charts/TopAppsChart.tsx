@@ -39,13 +39,13 @@ export function TopAppsChartTable() {
 
   return (
     <ChartDataTable
-      label="Antall tilbakemeldinger per app"
+      label="De ti appene med flest tilbakemeldinger"
       rowHeader="App"
       columns={[{ label: "Tilbakemeldinger" }]}
       rows={data.map((point) => ({
         key: point.app,
         header: point.app,
-        cells: [point.count.toLocaleString("nb-NO")],
+        cells: [point.count.toLocaleString("no-NO")],
       }))}
     />
   );
