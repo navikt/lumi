@@ -1,10 +1,10 @@
 ---
-title: "ADR 0007: Teameid BigQuery-eksport"
+title: "ADR 0007: BigQuery-eksport til teamets eget prosjekt"
 status: Akseptert
 date: 2026-10-20
 ---
 
-# ADR 0007: Teameid BigQuery-eksport
+# ADR 0007: BigQuery-eksport til teamets eget prosjekt
 
 - **Status:** Akseptert
 - **Dato:** 2026-10-20
@@ -18,28 +18,31 @@ Datamarkedsplassen og bruke dem i Metabase og datafortellinger. Team iSyfo gjør
 det allerede: en Airflow-jobb i Knada leser Lumis produksjonsdatabase hver natt
 med `EXTERNAL_QUERY`, via rollen `esyfo-analyse`, og publiserer fortellingen
 «syfo – kartleggingsspørsmål». Rollen kan lese alle tabellene i `public`, også
-fritekst, URL og debug. Spørringene finner svarene etter posisjon i JSON-en, så de
-gir feil tall når en survey endres.
+fritekst, URL og feilsøkingsdata (debug). Spørringene finner svarene etter
+posisjon i JSON-en, så de gir feil tall når en survey endres.
 
-ADR 0006 valgte analyseprodukter som Lumi eier: et kontrollplan med utkast,
-låste releaser, flythasher og et eget BigQuery-datasett per produkt i et
-Lumi-prosjekt. Etter to måneder er kontrollplanet bygget, men ingen data er
-levert. Gate B venter på 14 avklaringer med NADA, og flere av dem gjelder ting
-plattformen ikke tilbyr: livsløp på Datamarkedsplassen som kan styres
-programmatisk, en binder som NADA eier, og at Lumi eier prosjektet mens et annet
-team er dataeier. Modellen ville også ha skjult svarverdier uten pinnet flyt, som
-er alle svar fra før slutten av august 2026. iSyfo kunne derfor ikke ha erstattet
+ADR 0006 valgte analyseprodukter som Lumi skulle styre: hvert produkt skulle ha
+utkast og godkjente versjoner, og dataene skulle ligge i et eget
+BigQuery-datasett per produkt i et Lumi-prosjekt. Etter to måneder er denne
+styringen bygget i Lumi, men ingen data er levert. Arbeidet venter på svar fra
+NADA på 14 spørsmål, og flere av dem gjelder ting plattformen ikke tilbyr: å
+styre dataprodukter på Datamarkedsplassen programmatisk, at NADA autoriserer
+views på tvers av datasett, og at prosjektet hører til Lumi mens et annet team
+er dataeier. Modellen ville også ha skjult alle svar fra før slutten av august
+2026, fordi de ble lagret uten flythash. iSyfo kunne derfor ikke ha erstattet
 fortellingen sin.
 
 Plattformen har i mellomtiden vist seg å passe en enklere modell:
 
-- Et dataprodukt består av tabeller i eierteamets eget GCP-prosjekt. Eieren
-  godkjenner tilgang, og produsenten beskriver delingen i Behandlingskatalogen.
+- Et dataprodukt består av tabeller eller views i GCP-prosjektet til teamet som
+  har ansvaret for dataene. Teamet godkjenner tilgang og beskriver delingen i
+  Behandlingskatalogen.
 - Metabase gir bare tilgang til personer som har fått tilgang hver for seg.
-  Hvert tilgangsbegrenset datasett blir en egen database, og join mellom slike
-  datasett går ikke.
-- Teamene har det juridiske ansvaret for egne surveyer. De bruker sin egen kopi
-  av etterlevelsesmalen E726 og lager PVK ved behov.
+  Hvert tilgangsbegrenset datasett blir en egen database, og Metabase kan ikke
+  koble sammen slike datasett.
+- Nav er behandlingsansvarlig, og på vegne av Nav har teamene ansvaret for egne
+  surveyer. De bruker sin egen kopi av etterlevelsesmalen E726 og lager PVK ved
+  behov.
 
 ## Beslutning
 
@@ -47,20 +50,32 @@ Plattformen har i mellomtiden vist seg å passe en enklere modell:
 
 Teamet lager et datasett i sitt eget GCP-prosjekt og gir Lumis tjenestekonto
 rollen BigQuery Data Editor på dette datasettet. Datasettet må ligge i
-`europe-north1` og ha labelen `lumi-team` med teamets navn. Dashboardet lager
-SQL-en som gjør dette.
+`europe-north1`, ha labelen `lumi-team` med teamets navn og ha
+`max_time_travel_hours` på høyst 48. Dashboardet lager SQL-en som gjør dette.
+SQL-en kan kjøres på nytt og retter da tilgangen, labelen og time travel.
 
-Før Lumi lagrer et eksportmål og før hver kjøring sjekker Lumi at
+Rollen gjelder hele datasettet, så datasettet skal bare brukes til Lumi. Lumi
+godtar ikke et datasett med tabeller som Lumi ikke har laget, men views går
+fint.
+
+Før Lumi lagrer eksportmålet, altså prosjektet og datasettet teamet har valgt,
+sjekker Lumi at
 
 - prosjektet er teamets prosjekt i Nais, slått opp i Nais API
+- Lumi kan kjøre jobber i sitt eget prosjekt
 - datasettet finnes, ligger i `europe-north1` og har teamets label
-- tabellene Lumi skal skrive, enten ikke finnes eller har Lumis egen label
-  `lumi-eksport`
+- `max_time_travel_hours` er høyst 48
+- datasettet ikke har andre tabeller enn Lumis egne, bortsett fra views
+
+Før hver kjøring sjekker Lumi prosjektet, jobbtilgangen, regionen og labelen
+igjen, og at tabellene Lumi skal skrive, enten ikke finnes eller har labelene
+`lumi-eksport` og `lumi-team` for teamet. Kan Lumi ikke gjøre en sjekk, for
+eksempel fordi Nais API ikke svarer, skriver Lumi ingenting.
 
 Ved lagring lager og sletter Lumi i tillegg en kortlivet tabell for å bekrefte
 skrivetilgangen. Bare teamet selv kan sette labelen på sitt datasett. Et team kan
 derfor ikke få Lumi til å skrive inn i et annet teams datasett. Data Editor gir
-ikke rett til å endre tilgang, så Lumi kan aldri gi personer tilgang til dataene.
+ikke rett til å endre tilgang, så Lumi kan ikke gi noen tilgang til dataene.
 
 Hvert team har ett eksportmål. Lumi har ingen tilgang til resten av prosjektet.
 
@@ -70,81 +85,130 @@ Lumi skriver tre tabeller:
 
 - `svar`: én rad per svarverdi på vurderings- og valgspørsmål. Flervalg gir én
   rad per valgt alternativ.
-- `innsendinger`: én rad per innsending, til totaler og nevnere.
-- `fritekst`: fritekstsvar, bare når teamet har slått det på.
+- `innsendinger`: én rad per innsending, til å telle svar og regne ut andeler.
+- `fritekst`: fritekstsvar, bare når fritekst er åpnet for teamet og teamet har
+  slått det på.
 
-Hver rad har spørsmålsteksten og svarteksten, fordi Metabase ikke kan joine
-tilgangsbegrensede datasett. Teksten er den nyeste for spørsmålet eller
-alternativet, slik dashboardet viser. Tidspunktet er Lumis mottakstid, og datoen
-er norsk tid, som i dashboardet. Kolonnene er beskrevet i
-[BigQuery og Metabase](../dashboard/bigquery.md#kolonner) og i skjemaet i BigQuery.
+Hver rad har spørsmålsteksten og svarteksten, fordi Metabase ikke kan koble
+sammen tilgangsbegrensede datasett. Teksten er den nyeste for spørsmålet eller
+alternativet, slik dashboardet viser den, så en tekstendring endrer også eldre
+rader. Tidspunktet er Lumis mottakstid i UTC, rundet ned til hele minutter. Det
+holder for analyse og gjør det vanskeligere å koble svarene med andre logger.
+Datoen er i norsk tid, som i dashboardet. Kolonnene er beskrevet i
+[BigQuery og Metabase](../dashboard/bigquery.md#kolonner) og i skjemaet i
+BigQuery.
 
-`innsending_id` er en HMAC av Lumis interne ID med en nøkkel per eksportmål.
-Den er lik i alle tabellene og mellom kjøringer, men intern ID forlater ikke
-Lumi. Nøkkelen ligger i Lumis database og slettes når eksporten stoppes.
+`innsending_id` er en HMAC av Lumis interne ID med en nøkkel per eksportmål. Den
+er lik i alle tabellene og mellom kjøringer, og den interne ID-en forlater ikke
+Lumi. Nøkkelen ligger i Lumis database og slettes når eksporten stoppes. Teamet
+får en ny nøkkel når det bytter prosjekt eller datasett, og når det setter opp
+eksporten igjen. Da får `innsending_id` nye verdier. Team eSyfo, som drifter
+Lumi, har nøkkelen og kan i prinsippet koble `innsending_id` tilbake til svaret
+i Lumi. Det er pseudonymisering, ikke anonymisering.
 
-Segmenteringstagsene appen sender, er med som et JSON-objekt i kolonnen
-`kontekst`, sammen med enhetstypen. Følgende er aldri med: URL, pathname, user
-agent, skjerm- og vindusstørrelse, debug, tags teamet har satt i dashboardet og
-datospørsmål. Kolonner kan bare legges til. En endring
-som ville ødelagt eksisterende spørringer, får et nytt tabellnavn.
+Taggene appen sender, er med som et JSON-objekt i kolonnen `kontekst`, og
+enhetstypen har en egen kolonne. Bare tagger med enkle verdier er med, høyst 20
+per svar. Tagger med mange ulike verdier er ikke med: mer enn 50 ulike verdier,
+eller mer enn ti ulike verdier når hver verdi i snitt finnes i færre enn fem
+svar, regnet over de siste tolv månedene.
 
-### Fritekst er et valg teamet tar
+`survey_id`, `sporsmal_id` og `valg_id` maskeres med de samme mønstrene som
+fritekst, og et valgt alternativ er bare med når det finnes blant alternativene
+til spørsmålet. Dette er aldri med: URL, pathname, nettleser (user agent),
+skjerm- og vindusstørrelse, feilsøkingsdata (debug), tagger teamet har satt i
+dashboardet og svar på datospørsmål.
 
-Fritekst er av som standard. Slår teamet det på, havner tekstene i tabellen
-`fritekst`, med de samme maskeringsreglene som dashboardet bruker når det leser
-tekst. Maskeringen fanger ikke navn. Tabellen er egen, slik at teamet kan dele
-`svar` uten å dele tekstene. Slår teamet fritekst av, sletter Lumi tabellen.
+Lumi kan legge til kolonner, men endrer eller fjerner dem ikke. En endring som
+ville ødelagt spørringer, får et nytt tabellnavn.
+
+### Fritekst åpnes per team
+
+Fritekst kan inneholde navn og helseopplysninger. Lumi åpner fritekst for ett og
+ett team (`LUMI_BIGQUERY_EXPORT_FREE_TEXT_TEAMS`), og teamet må ha en PVK som
+dekker fritekst i BigQuery. I produksjon har ingen team fått det åpnet ennå.
+Dashboardet viser ikke valget for team som ikke har fått det åpnet. Stenger Lumi
+fritekst for et team igjen, sletter neste kjøring tabellen `fritekst`.
+
+Fritekst er av som standard også for team som har fått det åpnet. Slår teamet
+det på, havner tekstene i tabellen `fritekst`, med de samme maskeringsreglene
+som dashboardet bruker når det leser tekst. Maskeringen fanger ikke navn.
+Tabellen er egen, slik at teamet kan dele `svar` uten å dele tekstene, og den
+skal ikke deles utenfor teamet. Slår teamet fritekst av, sletter Lumi tabellen.
 
 ### Kjøring
 
 Lumi API kjører eksporten. Hver replika sjekker hvert 30. sekund om noe skal
 kjøres, og en advisory lock i Postgres sørger for at bare én replika eksporterer
 om gangen. Hvert eksportmål kjøres hver natt etter kl. 01 norsk tid, som er
-utenfor vedlikeholdsvinduet til Cloud SQL, og når teamet velger
-**Oppdater nå**. En feilet kjøring prøves igjen etter én time, og ventetiden
-dobles for hver ny feil, opp til ett døgn.
+utenfor vedlikeholdsvinduet til Cloud SQL. Lumi starter også en kjøring når
+teamet velger **Oppdater tabellene nå** eller lagrer endringer, og når noen
+sletter svar i dashboardet. Lumi kjører høyst én gang per fem minutter per team.
+En feilet kjøring prøves igjen etter én time, og ventetiden dobles for hver ny
+feil, opp til ett døgn.
 
-En kjøring leser teamets svar fra de siste 12 månedene i ett konsistent
+En kjøring leser teamets svar fra de siste tolv månedene i ett konsistent
 øyeblikksbilde. Lumi bruker samme grense som slettejobben, og tar ikke med svar
 slettejobben ennå ikke har rukket å slette. Radene strømmes til BigQuery med
-resumable upload, og hver tabell erstattes med `WRITE_TRUNCATE` når lastejobben er
-ferdig. Feiler en kjøring, står forrige versjon av tabellene urørt.
+resumable upload.
+
+Manglende tabeller lages først, med labeler og utløpstid. Tabellene oppdateres
+deretter én om gangen, den mest følsomme først: `fritekst`, `innsendinger` og
+`svar`. En kjøring som feiler halvveis, har da allerede fjernet slettet
+fritekst. Hver tabell erstattes i ett steg med `WRITE_TRUNCATE` når lastejobben
+er ferdig, men kjøringen som helhet er ikke atomisk. Feiler den underveis, kan
+tabellene komme fra ulike kjøringer. Kolonnen `oppdatert_tidspunkt` viser når
+Lumi skrev tabellen, og guiden ber konsumentene sjekke den. Er det ingen rader
+til en tabell, tømmer Lumi den på stedet med `TRUNCATE TABLE`. Tabellen og
+tilgangene på den blir stående, og Lumi sletter aldri tabeller ved vanlige
+kjøringer.
 
 Hver vellykket kjøring setter utløpstid på tabellene sju dager fram. Stopper
 eksporten av en eller annen grunn, forsvinner kopiene av seg selv.
 
-Lumi kaller BigQuery sitt REST-API med Ktor og henter token fra metadataserveren
-i GKE, slik workload identity i Nais er satt opp. Lastejobbene kjører i Lumis eget
+Lumi kaller BigQuerys REST-API med Ktor og henter token fra metadataserveren i
+GKE, slik workload identity i Nais er satt opp. Lastejobbene kjører i Lumis eget
 teamprosjekt, der manifestet gir rollen `roles/bigquery.jobUser`.
 
 ### Sletting
 
-Svar som slettes i dashboardet eller blir eldre enn 12 måneder, forsvinner fra
-BigQuery ved neste kjøring, senest neste natt. Teamet kan velge **Oppdater nå**
-for å fjerne dem med en gang. BigQuery tar vare på slettede rader i 48 timer i
-datasett laget med SQL-en fra dashboardet, og Google i sju dager til. Kopier
+Når noen sletter svar i dashboardet, starter Lumi en ny kjøring automatisk.
+Svaret forsvinner fra BigQuery etter noen minutter når kjøringen lykkes. Feiler
+kjøringen, prøver Lumi igjen som beskrevet over. Svar som blir eldre enn tolv
+måneder, forsvinner ved neste vellykkede kjøring. BigQuery tar vare på slettede
+rader i 48 timer (time travel), og Google i sju dager til (fail-safe). Kopier
 teamet lager selv, har teamet ansvaret for.
 
 ### Ansvar og tilgang
 
-Teamet har ansvaret for kopien i sitt prosjekt: hvem som får tilgang på
-Datamarkedsplassen, hva dataene brukes til, og at behandlingen i
-Behandlingskatalogen dekker delingen. Lumi har ansvaret for at kopien er riktig
-og blir oppdatert. Dette følger ansvarsmodellen der teamene har det juridiske
-ansvaret for egne surveyer.
+Nav er behandlingsansvarlig. På vegne av Nav har teamet ansvaret for kopien i
+sitt prosjekt: hvem som får tilgang på Datamarkedsplassen, hva dataene brukes
+til, og at behandlingen i Behandlingskatalogen dekker delingen. Lumi oppdaterer
+kopien etter beste evne. Team eSyfo drifter Lumi uten avtalt tjenestenivå
+(SLA). Dette følger ansvarsmodellen der teamene har det juridiske ansvaret for
+egne surveyer.
+
+Teamet deler views som er filtrert på app og survey, ikke Lumis tabeller
+direkte. Tilgang på Datamarkedsplassen gis per tabell eller view, og
+Datamarkedsplassen autoriserer automatisk et view som bygger på tabeller i samme
+datasett. Tilgang kan gis til en bruker, en gruppe eller en service account.
 
 ### Pilot
 
 I produksjon er eksporten først åpen for team eSyfo og iSyfo
 (`LUMI_BIGQUERY_EXPORT_PILOT_TEAMS`). Andre team ser at eksporten er i pilot.
+Fritekst er ikke åpnet for noen av dem.
 
-1. eSyfo setter opp eksporten for `bro-frontend` i sitt prosjekt.
+1. eSyfo setter opp eksporten i sitt prosjekt og deler et view med bare
+   `bro-frontend` på Datamarkedsplassen.
 2. iSyfo setter opp eksporten for `syfomodiaperson` i sitt prosjekt og søker om
-   tilgang til eSyfos tabell `svar` på Datamarkedsplassen.
-3. iSyfo bytter spørringene i `isyfo-analyse` til tabellene og kjører gammel og ny
-   versjon side om side i to uker. Antall svar per uke, fordeling og snitt skal
-   være like.
+   tilgang til eSyfos view.
+3. iSyfo bytter spørringene i `isyfo-analyse` til tabellene og viewet og kjører
+   gammel og ny versjon side om side i to uker. Tallene sammenlignes uke for
+   uke, og alle forskjeller skal være forklart. Noen forskjeller er ventet.
+   Dagens spørringer finner svarene etter posisjon (`answers->0`), og
+   posisjonen forskyves når et spørsmål hoppes over. Den gamle spørringen for
+   `bro-frontend` filtrerer ikke på survey, og eksporten kutter ved nøyaktig
+   tolv måneder.
 4. Når iSyfo har flyttet, slettes BigQuery-tilkoblingen `lumi`, og rollen
    `esyfo-analyse` fjernes med en egen migrering.
 
@@ -165,49 +229,62 @@ spørsmål. Hva som skal fjernes, avgjøres etter piloten.
   plattformfunksjonalitet fra NADA.
 - Dataproduktet ligger hos teamet som har ansvaret for dataene, og teamet
   godkjenner tilgang selv.
-- iSyfo beholder historikken og kan erstatte spørringene mot prod-databasen.
-- Tabellene kan brukes i Metabase uten SQL og uten join.
+- iSyfo beholder historikken og kan erstatte spørringene mot
+  produksjonsdatabasen.
+- Tabellene kan brukes i Metabase uten SQL og uten å koble sammen tabeller.
 - Den brede databaserollen `esyfo-analyse` kan fjernes.
 
 ### Negativt og residualrisiko
 
-- Hvert team må kjøre én SQL-setning i sitt prosjekt og registrere dataproduktet
-  på Datamarkedsplassen selv.
-- Lumis tjenestekonto får skrivetilgang til et datasett i mange prosjekter. En
-  feil i Lumi kan overskrive Lumis tabeller der, men ikke andre tabeller eller
-  tilganger.
-- Sletting i BigQuery skjer ved neste kjøring, ikke umiddelbart.
-- Tidspunkt, app og svar kan sammen gjøre det mulig å kjenne igjen hvem som
-  svarte i små grupper. Tabellene skal derfor registreres som personopplysninger.
-- Lumi skriver mot BigQuery sitt REST-API selv. Protokollen for resumable upload
-  og lastejobber er dekket av tester mot et simulert API, men må verifiseres i dev.
+- Hvert team må kjøre SQL-en fra dashboardet i sitt prosjekt og registrere
+  dataproduktet på Datamarkedsplassen selv.
+- Lumis tjenestekonto kan lese, endre og slette alle tabeller i datasettene
+  teamene kobler til, også views teamet har lagt der. Lumi rører bare tabeller
+  med Lumis labeler, men et angrep på Lumi API kan nå alle tabellene i disse
+  datasettene. Derfor skal datasettet bare brukes til Lumi. Lumi kan ikke gi
+  noen tilgang eller endre noe annet i prosjektet.
+- Tabellene oppdateres én om gangen. Feiler en kjøring underveis, kan tabellene
+  komme fra ulike kjøringer, og konsumentene må sjekke `oppdatert_tidspunkt`.
+- Tilganger gitt på Datamarkedsplassen ligger på tabellen eller viewet. De
+  forsvinner når en tabell slettes eller utløper, også ved **Stopp eksporten**
+  og når teamet bytter datasett. Mangler en tabell eller et view i sju dager,
+  fjerner Datamarkedsplassen datasettet fra dataproduktet og databasen fra
+  Metabase.
+- Fritekst er stengt i produksjon til et team har en PVK som dekker fritekst i
+  BigQuery.
+- Sletting i BigQuery skjer når neste kjøring lykkes, ikke umiddelbart.
+- Tidspunkt, app, kontekst og svar kan sammen gjøre det mulig å kjenne igjen
+  hvem som svarte i små grupper. Tabellene skal derfor registreres som
+  personopplysninger.
+- Lumi skriver mot BigQuerys REST-API selv. Protokollen for resumable upload og
+  lastejobber er dekket av tester mot et simulert API, men må verifiseres i dev.
 
 ## Vurderte alternativer
 
 ### Fortsette med ADR 0006
 
-Forkastet. Modellen er avhengig av plattformfunksjoner som ikke finnes, plasserer
-dataene i et prosjekt teamet ikke eier og skjuler historikken.
+Forkastet. Modellen er avhengig av plattformfunksjoner som ikke finnes, legger
+dataene i et prosjekt som ikke hører til teamet, og skjuler historikken.
 
 ### Datastream fra Lumis database
 
-Forkastet. Datastream kopierer rådata med fritekst til BigQuery, krever logisk
-replikering i prod-databasen og views per team. Det er mer enn noen titusen rader
-trenger.
+Forkastet. Datastream kopierer rådata med fritekst til BigQuery og krever logisk
+replikering i produksjonsdatabasen og views per team. Det er mer infrastruktur
+enn datamengden trenger.
 
 ### Planlagt federated query
 
 Forkastet. JSON-parsingen måtte skrives på nytt i SQL, og spørringene ville
-ligget i GCP-konsollet uten code review.
+ligget i GCP-konsollen uten kodegjennomgang.
 
 ### API som teamene henter fra
 
 Forkastet. Hvert team måtte skrevet og driftet sin egen jobb.
 
-### Google sitt klientbibliotek for BigQuery
+### Googles klientbibliotek for BigQuery
 
 Forkastet. Biblioteket drar med seg gRPC, Arrow og Storage API, som eksporten
-ikke bruker. Fire REST-kall dekker behovet.
+ikke bruker. Noen få REST-kall mot datasett, tabeller og jobber dekker behovet.
 
 ## Kilder
 
@@ -216,7 +293,9 @@ ikke bruker. Fire REST-kall dekker behovet.
 - [NADA: Metabase](https://docs.knada.io/analyse/metabase/)
 - [NADA: datafortellinger](https://docs.knada.io/analyse/datafortellinger/)
 - [NADA: spilleregler](https://docs.knada.io/juridisk/spilleregler/)
+- [NADA: jobben som fjerner datasett når tabellen mangler](https://github.com/navikt/nada-markedsplassen/blob/main/pkg/syncers/bigquery_datasource_missing/bigquery_datasource_missing.go)
 - [Nais: tilganger til GCP-ressurser](https://doc.nais.io/workloads/application/reference/application-spec/#gcppermissions)
 - [Google Cloud: tilgang til datasett med GRANT](https://cloud.google.com/bigquery/docs/control-access-to-resources-iam)
+- [Google Cloud: time travel og fail-safe](https://cloud.google.com/bigquery/docs/time-travel)
 - [Google Cloud: laste JSON-data](https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-json)
 - [Runbook for BigQuery-eksporten](https://github.com/navikt/lumi/blob/main/apps/lumi-api/docs/runbooks/bigquery-export.md)
