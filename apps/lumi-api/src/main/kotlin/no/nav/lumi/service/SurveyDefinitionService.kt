@@ -350,9 +350,12 @@ class SurveyDefinitionService(
 
     /**
      * Automatically registered definitions come from v1 submissions, which never
-     * carry maxSelections. An api definition only lacks a limit by accident if it
-     * was last written before maxSelections became part of the V2 contract. After
-     * that, a missing limit is deliberate, and adding one is a structural change.
+     * carry maxSelections. Widget 2.1.0 and the V2 contract with maxSelections
+     * shipped together, so an api definition last written before the contract
+     * deploy lacks a limit by accident and is filled in once. After that, a
+     * missing limit counts as deliberate, and adding one is a structural change.
+     * Widgets 1.0.0–2.0.x also omit the limit; an app that registered a survey
+     * with them after the deploy gets 409 when it upgrades.
      */
     private fun StoredSurveyDefinition.mayFillMissingMaxSelections(): Boolean =
         source == SurveyDefinitionSource.AUTO || updatedAt < MAX_SELECTIONS_CONTRACT_DEPLOYED_AT
