@@ -35,6 +35,7 @@ export interface ResolvedConfig {
   // Style
   position: "bottom-right" | "bottom-left";
   offset: number;
+  zIndex: number;
   containerClassName?: string;
   panelClassName?: string;
   panelBackground?: LumiSurveyStyle["panelBackground"];
@@ -46,6 +47,7 @@ export interface ResolvedConfig {
   resetOnClose: boolean;
   dismissCooldownDays: number;
   hideAfterSubmit: boolean;
+  hideMinimizedButton: boolean;
   questionLayout: "auto" | "singlePage" | "steps";
   showPersonalDataNotice: boolean;
   personalDataNotice: ReactNode;
@@ -114,6 +116,7 @@ export function resolveConfig(
     // Style
     position: style?.position ?? "bottom-right",
     offset: style?.offset ?? 24,
+    zIndex: style?.zIndex ?? 1000,
     containerClassName: style?.containerClassName,
     panelClassName: style?.panelClassName,
     panelBackground: style?.panelBackground ?? "default",
@@ -125,6 +128,7 @@ export function resolveConfig(
     resetOnClose: behavior?.resetOnClose ?? true,
     dismissCooldownDays: behavior?.dismissCooldownDays ?? 30,
     hideAfterSubmit: behavior?.hideAfterSubmit ?? true,
+    hideMinimizedButton: behavior?.hideMinimizedButton ?? false,
     questionLayout: behavior?.questionLayout ?? "auto",
     showPersonalDataNotice: behavior?.showPersonalDataNotice ?? true,
     personalDataNotice:

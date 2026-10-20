@@ -16,6 +16,12 @@ This project follows SemVer.
   request is cancelled when the widget stops waiting. A function that already
   takes another optional second parameter now receives this object, and
   TypeScript rejects assigning it as `submit`.
+- `style.zIndex` sets the stacking order of the dock. The default is still
+  1000. Lower it to place the dock under the app's own fixed elements.
+- `behavior.hideMinimizedButton` shows nothing while the dock is minimized,
+  instead of the «Gi tilbakemelding» button. Closing the survey then returns
+  focus to the page. Users the dock cannot store a dismissal for, for example
+  without consent, start minimized and never see the survey.
 - `LumiApiErrorType.DATABASE_UNAVAILABLE`, which Lumi API returns with 503
   when the database does not answer in time. Code with an exhaustive `switch`
   or a `Record` over `LumiApiErrorType` must handle it.

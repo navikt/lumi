@@ -42,6 +42,11 @@ Med `style` kan dere endre plassering og farger og legge til egne CSS-klasser:
 
 Widgeten ligger som standard nederst til høyre, over Frida-chatboten i Nav-dekoratøren. På sider med dekoratøren setter dere `position: "bottom-left"`, med mindre appen har slått av chatboten med `chatbot: false`. På smale skjermer er åpen widget nesten like bred som skjermen og kan dekke Frida uansett plassering.
 
+Fra versjon 2.4.0 finnes to valg til:
+
+- `style.zIndex` styrer om widgeten ligger over eller under andre faste elementer. Standard er `1000`.
+- `behavior.hideMinimizedButton: true` viser ingenting når widgeten er minimert. Da ligger det ingen knapp i hjørnet når brukeren har lukket surveyen. Brukere som widgeten ikke får lagre for, for eksempel uten samtykke, starter minimert og ser da aldri surveyen. Se [Uten samtykke](/guider/lagring#uten-samtykke).
+
 ### Alle feltene i `style`
 
 Alle feltene står i [`style` i props-referansen](/referanse/props-referanse#style-lumisurveystyle).
