@@ -6,7 +6,6 @@ import {
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiErrorException, ErrorType } from "~/types/errors";
 import type { FilterBootstrapResponse } from "~/types/schemas";
 
 vi.mock("~/server/actions", () => ({
@@ -25,7 +24,6 @@ import { fetchFilterBootstrapServerFn } from "~/server/actions";
 import {
   FILTER_BOOTSTRAP_CACHE_TTL_MS,
   getFilterBootstrapRefetchInterval,
-  shouldRetryFilterBootstrap,
   useFilterBootstrap,
 } from "../useFilterBootstrap";
 
@@ -223,21 +221,5 @@ describe("useFilterBootstrap", () => {
         Date.parse("2026-09-01T08:02:00Z"),
       ),
     ).toBe(4.5 * 60 * 1000);
-  });
-
-  it("retries a failed bootstrap once, but not a 4xx answer from the API", () => {
-    const apiError = (status: number) =>
-      new ApiErrorException({
-        status,
-        type: ErrorType.AUTHORIZATION_ERROR,
-        message: "Melding fra API-et",
-        timestamp: "2026-09-01T08:00:00Z",
-      });
-
-    expect(shouldRetryFilterBootstrap(0, apiError(403))).toBe(false);
-    expect(shouldRetryFilterBootstrap(0, apiError(401))).toBe(false);
-    expect(shouldRetryFilterBootstrap(0, apiError(503))).toBe(true);
-    expect(shouldRetryFilterBootstrap(1, apiError(503))).toBe(false);
-    expect(shouldRetryFilterBootstrap(0, new Error("nettverk"))).toBe(true);
   });
 });

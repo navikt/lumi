@@ -376,6 +376,29 @@ describe("FilterBar access errors", () => {
     ).not.toHaveLength(0);
   });
 
+  it("does not retry when the database is unavailable", async () => {
+    mockFetchBootstrap.mockRejectedValue(
+      new ApiErrorException({
+        status: 503,
+        type: ErrorType.DATABASE_UNAVAILABLE,
+        message: "Databasen svarer ikke akkurat nå",
+        details: "Dette er som regel midlertidig. Prøv igjen om litt.",
+        timestamp: "2026-10-20T08:00:00Z",
+      }),
+    );
+
+    await renderFilterBarAt("/feedback?team=team-a");
+
+    expect(
+      await screen.findByText("Databasen svarer ikke akkurat nå"),
+    ).toBeInTheDocument();
+    // A new attempt would run the same heavy query against a busy database.
+    expect(mockFetchBootstrap).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByRole("button", { name: "Prøv igjen" }),
+    ).toBeInTheDocument();
+  });
+
   it("retries the page's own failed queries in the same click after a 503", async () => {
     const user = userEvent.setup();
     const fetchPageData = vi.fn();

@@ -21,6 +21,7 @@ import { BrowserRouteTracker } from "~/observability/BrowserRouteTracker";
 import { fetchBrowserObservabilityMetaServerFn } from "~/server/browserObservabilityConfig";
 import "~/styles/global.css";
 import { redirectToDashboardTeam } from "~/utils/dashboardTeam";
+import { shouldRetryQuery } from "~/utils/queryRetry";
 
 export const Route = createRootRoute({
   // Runs before the dashboard routes' own beforeLoad, so their data queries
@@ -71,7 +72,7 @@ function RootComponent() {
         defaultOptions: {
           queries: {
             staleTime: 1000 * 60, // 1 minute
-            retry: 1,
+            retry: shouldRetryQuery,
           },
         },
       }),
