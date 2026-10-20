@@ -92,10 +92,10 @@ private fun determineApiError(cause: Throwable, path: String?): ApiError {
         is IllegalArgumentException -> ApiError.badRequest(safeBadRequestMessage(cause.message), path)
         is IllegalStateException -> ApiError.badRequest(safeBadRequestMessage(cause.message), path)
 
-        // dbQuery turns these into 503 itself. This covers a full pool when the
-        // connection is taken before the transaction block runs.
-        else -> if (cause.isDatabaseBusy()) {
-            databaseBusyException().toApiError(path)
+        // dbQuery turns these into 503 itself. This covers code that takes a
+        // connection straight from a DataSource.
+        else -> if (cause.isDatabaseUnavailable()) {
+            databaseUnavailableException().toApiError(path)
         } else {
             // Catch-all for unknown exceptions
             ApiError.internalServerError(

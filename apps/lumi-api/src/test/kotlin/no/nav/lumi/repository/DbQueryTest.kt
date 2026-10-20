@@ -1,11 +1,15 @@
 package no.nav.lumi.repository
 
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.Dispatchers
 import no.nav.lumi.TestDatabase
 import no.nav.lumi.config.DatabaseHolder
 import no.nav.lumi.config.exception.ApiErrorException
+import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import java.sql.Connection
@@ -45,7 +49,46 @@ class DbQueryTest : FunSpec({
         }
 
         attempts shouldBe 1
-        exception.errorMessage shouldBe "Databasen er travel akkurat nå"
+        exception.errorMessage shouldBe "Databasen svarer ikke akkurat nå"
+    }
+
+    test("a pool without a free connection gives 503") {
+        val testPool = TestDatabase.dataSource as HikariDataSource
+        HikariDataSource(
+            HikariConfig().apply {
+                jdbcUrl = testPool.jdbcUrl
+                username = testPool.username
+                password = testPool.password
+                maximumPoolSize = 1
+                connectionTimeout = 250
+                isAutoCommit = false
+                poolName = "lumi-test-single-connection-pool"
+            }
+        ).use { singleConnectionPool ->
+            val database = Database.connect(singleConnectionPool)
+            try {
+                singleConnectionPool.connection.use {
+                    shouldThrow<ApiErrorException.ServiceUnavailableException> {
+                        transactionWithStatementTimeout(
+                            database,
+                            SUBMISSION_STATEMENT_TIMEOUT,
+                            Dispatchers.IO,
+                        ) { }
+                    }
+                }
+            } finally {
+                TransactionManager.closeAndUnregister(database)
+            }
+        }
+    }
+
+    test("a transaction on one pool cannot open a transaction on the other pool") {
+        shouldThrow<ApiErrorException.InternalServerErrorException> {
+            submissionDbQuery { dbQuery { } }
+        }
+        shouldThrow<ApiErrorException.InternalServerErrorException> {
+            dbQuery { submissionDbQuery { } }
+        }
     }
 })
 

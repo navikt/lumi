@@ -11,24 +11,24 @@ import io.ktor.server.testing.*
 import java.sql.SQLException
 import java.sql.SQLTransientConnectionException
 
-class DatabaseBusyTest : FunSpec({
-    test("a full pool counts as a busy database") {
-        SQLTransientConnectionException("lumi-api-pool - Connection is not available").isDatabaseBusy() shouldBe true
+class DatabaseUnavailableTest : FunSpec({
+    test("a pool that cannot hand out a connection counts as unavailable") {
+        SQLTransientConnectionException("lumi-api-pool - Connection is not available").isDatabaseUnavailable() shouldBe true
     }
 
-    test("a statement cancelled by statement_timeout counts as busy, also when wrapped") {
+    test("a statement cancelled by statement_timeout counts as unavailable, also when wrapped") {
         val cancelled = SQLException("canceling statement due to statement timeout", "57014")
 
-        cancelled.isDatabaseBusy() shouldBe true
-        RuntimeException(SQLException(cancelled)).isDatabaseBusy() shouldBe true
+        cancelled.isDatabaseUnavailable() shouldBe true
+        RuntimeException(SQLException(cancelled)).isDatabaseUnavailable() shouldBe true
     }
 
-    test("other errors do not count as busy") {
-        SQLException("duplicate key value violates unique constraint", "23505").isDatabaseBusy() shouldBe false
-        IllegalArgumentException("bad input").isDatabaseBusy() shouldBe false
+    test("other errors do not count as unavailable") {
+        SQLException("duplicate key value violates unique constraint", "23505").isDatabaseUnavailable() shouldBe false
+        IllegalArgumentException("bad input").isDatabaseUnavailable() shouldBe false
     }
 
-    test("a busy database outside dbQuery gives 503 with a message for the dashboard") {
+    test("an unavailable database outside dbQuery gives 503 with a message for the dashboard") {
         testApplication {
             application {
                 configureSerialization()
@@ -43,7 +43,7 @@ class DatabaseBusyTest : FunSpec({
             val response = client.get("/busy")
 
             response.status shouldBe HttpStatusCode.ServiceUnavailable
-            response.bodyAsText() shouldContain "Databasen er travel akkurat nå"
+            response.bodyAsText() shouldContain "Databasen svarer ikke akkurat nå"
         }
     }
 })

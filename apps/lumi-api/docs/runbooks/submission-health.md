@@ -44,21 +44,32 @@ logger for å finne den konkrete konsumenten etter at kanalen er identifisert.
 Ved `409 DefinitionConflict` følger du også
 [runbooken for survey-definisjonskonflikter](./survey-definition-conflicts.md).
 
-### 503 «Databasen er travel akkurat nå»
+### 503 «Databasen svarer ikke akkurat nå»
 
 API-et svarer 503 når et kall ikke fikk en databasetilkobling i tide, eller når
-en spørring brukte lengre tid enn grensen. Ved innsending telles det som
-`failed`.
+én spørring brukte lengre tid enn grensen. Ved innsending telles det som
+`failed`. Får poolet ikke tilkobling fordi databasen er nede, gir det samme
+svar.
 
 | Pool | Brukes av | Tilkoblinger per pod | Venter på tilkobling | Grense per spørring |
 | --- | --- | --- | --- | --- |
-| `lumi-api-submission-pool` | Innsending og readiness | 4 | 3 s | 3 s |
+| `lumi-api-submission-pool` | Innsending | 4 | 3 s | 3 s |
+| `lumi-api-readiness-pool` | `/internal/isReady` | 1 | 0,5 s | Ingen |
 | `lumi-api-pool` | Dashboard, Surveyverksted og analyse | 8 | 5 s | 15 s |
 
-Innsendingene har sitt eget pool, så tunge spørringer fra dashboardet stopper
-dem ikke. Kommer 503 ved innsending, er databasen selv presset. Sjekk CPU og
-antall tilkoblinger for instansen i Cloud SQL, og se etter tunge spørringer i
-Query Insights.
+Flyway og slettejobben bruker også `lumi-api-pool`, men uten grense per
+spørring. Grensen gjelder hver spørring for seg, så et kall med flere
+spørringer kan holde en tilkobling lenger enn grensen.
+
+Poolene hindrer at tunge kall fra dashboardet tar alle tilkoblingene, men de
+deler fortsatt databasens CPU. Innsendinger til samme survey venter dessuten
+på hverandre, fordi de oppdaterer samme rad i `survey_definitions`. Kommer
+503 ved innsending:
+
+1. Står det `Readiness check failed: database not reachable` i loggene til
+   `lumi-api`, er databasen nede. Følg da avsnittet under.
+2. Ellers er databasen presset. Sjekk CPU og antall tilkoblinger for
+   instansen i Cloud SQL, og se etter tunge spørringer i Query Insights.
 
 ## Ingen tilgjengelige replikaer
 

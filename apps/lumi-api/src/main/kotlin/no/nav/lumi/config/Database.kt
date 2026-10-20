@@ -17,15 +17,17 @@ private val log = LoggerFactory.getLogger("Database")
  * Application-level database holder.
  * Initialized during application startup.
  *
- * Submissions and readiness use their own small pool. Heavy dashboard queries
- * can then fill the main pool without stopping submissions or taking the pod
- * out of traffic.
+ * Submissions use their own small pool, and readiness has a pool of one
+ * connection. Heavy dashboard queries can then fill the main pool without
+ * stopping submissions, and busy submissions cannot take the pod out of traffic.
  */
 object DatabaseHolder {
     @Volatile
     private var _dataSource: DataSource? = null
     @Volatile
     private var _submissionDataSource: DataSource? = null
+    @Volatile
+    private var _readinessDataSource: DataSource? = null
     @Volatile
     private var _database: Database? = null
     @Volatile
@@ -38,6 +40,11 @@ object DatabaseHolder {
 
     val submissionDataSource: DataSource
         get() = _submissionDataSource ?: throw IllegalStateException(
+            "Database not initialized. Call configureDatabase() first."
+        )
+
+    val readinessDataSource: DataSource
+        get() = _readinessDataSource ?: throw IllegalStateException(
             "Database not initialized. Call configureDatabase() first."
         )
 
@@ -57,13 +64,14 @@ object DatabaseHolder {
         }
         _dataSource = createDataSource(env, MAIN_POOL)
         _submissionDataSource = createDataSource(env, SUBMISSION_POOL)
+        _readinessDataSource = createDataSource(env, READINESS_POOL)
         _database = null
         _submissionDatabase = null
         log.info("Database initialized with production configuration")
     }
     
     /**
-     * Initialize for testing with a pre-configured DataSource, shared by both pools.
+     * Initialize for testing with a pre-configured DataSource, shared by all pools.
      */
     @Synchronized
     fun initializeForTesting(dataSource: DataSource) {
@@ -71,19 +79,24 @@ object DatabaseHolder {
             closeDataSources()
             _dataSource = dataSource
             _submissionDataSource = dataSource
+            _readinessDataSource = dataSource
             _database = null
             _submissionDatabase = null
         }
         log.info("Database initialized with test configuration")
     }
 
+    /**
+     * Connects one Exposed Database per pool, also when tests share one DataSource.
+     * Exposed only joins an outer transaction on the same Database, so tests then
+     * see the same separate transactions as production. The main Database is
+     * connected last and becomes Exposed's default.
+     */
     @Synchronized
     fun connect() {
         if (_database != null) return
-        val database = Database.connect(dataSource)
-        _submissionDatabase =
-            if (submissionDataSource === dataSource) database else Database.connect(submissionDataSource)
-        _database = database
+        _submissionDatabase = Database.connect(submissionDataSource)
+        _database = Database.connect(dataSource)
     }
 
     fun requireConnected(): Database {
@@ -106,15 +119,15 @@ object DatabaseHolder {
         closeDataSources()
         _dataSource = null
         _submissionDataSource = null
+        _readinessDataSource = null
         _database = null
         _submissionDatabase = null
     }
 
     private fun closeDataSources() {
-        (_dataSource as? HikariDataSource)?.close()
-        if (_submissionDataSource !== _dataSource) {
-            (_submissionDataSource as? HikariDataSource)?.close()
-        }
+        listOfNotNull(_dataSource, _submissionDataSource, _readinessDataSource)
+            .distinctBy { System.identityHashCode(it) }
+            .forEach { (it as? HikariDataSource)?.close() }
     }
 }
 
@@ -141,8 +154,9 @@ internal data class PoolSettings(
     val connectionTimeoutMillis: Long,
 )
 
-// Dashboard, Surveyverksted, analysis and jobs. A short connectionTimeout fails a
-// request quickly instead of letting it queue for 30 s when the pool is full.
+// Dashboard, Surveyverksted, analysis, Flyway and the retention job. A short
+// connectionTimeout fails a request quickly instead of letting it queue for 30 s
+// when the pool is full.
 internal val MAIN_POOL = PoolSettings(
     name = "lumi-api-pool",
     maximumPoolSize = 8,
@@ -157,6 +171,15 @@ internal val SUBMISSION_POOL = PoolSettings(
     maximumPoolSize = 4,
     minimumIdle = 2,
     connectionTimeoutMillis = 3_000,
+)
+
+// Readiness only. The NAIS readiness probe times out after one second, so the
+// probe must never queue behind submissions for a connection.
+internal val READINESS_POOL = PoolSettings(
+    name = "lumi-api-readiness-pool",
+    maximumPoolSize = 1,
+    minimumIdle = 1,
+    connectionTimeoutMillis = 500,
 )
 
 /**
@@ -178,7 +201,7 @@ internal fun createDataSource(config: ServerEnv.DatabaseEnv, pool: PoolSettings)
         
         // Validation
         connectionTestQuery = "SELECT 1"
-        validationTimeout = 2000
+        validationTimeout = minOf(2_000L, pool.connectionTimeoutMillis)
     }
     
     return HikariDataSource(hikariConfig)
@@ -189,11 +212,12 @@ internal fun createDataSource(config: ServerEnv.DatabaseEnv, pool: PoolSettings)
  * Backs GET /internal/isReady so NAIS pulls the pod from the load balancer when the
  * database is unreachable. Flyway has already run by the time the server serves
  * requests, so a live connection is a sufficient readiness signal. The route uses
- * the submission pool, so a full main pool does not take the pod out of traffic.
+ * its own pool, so busy dashboard queries or submissions do not take the pod out
+ * of traffic.
  */
 fun isDatabaseReady(dataSource: DataSource): Boolean =
     try {
-        dataSource.connection.use { it.isValid(2) }
+        dataSource.connection.use { it.isValid(1) }
     } catch (e: Exception) {
         log.warn("Readiness check failed: database not reachable", e)
         false
@@ -202,16 +226,17 @@ fun isDatabaseReady(dataSource: DataSource): Boolean =
 private const val PG_QUERY_CANCELED = "57014"
 
 /**
- * True when the database could not serve the request in time: no pooled
- * connection was free within connectionTimeout, or PostgreSQL cancelled a
- * statement that exceeded statement_timeout.
+ * True when the database could not serve the request in time: the pool could not
+ * hand out a connection within connectionTimeout (all busy, or the database is
+ * unreachable), or PostgreSQL cancelled a statement that exceeded
+ * statement_timeout.
  */
-internal fun Throwable.isDatabaseBusy(): Boolean =
+internal fun Throwable.isDatabaseUnavailable(): Boolean =
     generateSequence(this) { current -> current.cause?.takeIf { it !== current } }
         .any { it is SQLTransientConnectionException || (it is SQLException && it.sqlState == PG_QUERY_CANCELED) }
 
-internal fun databaseBusyException(cause: Throwable? = null) = ApiErrorException.ServiceUnavailableException(
-    errorMessage = "Databasen er travel akkurat nå",
+internal fun databaseUnavailableException(cause: Throwable? = null) = ApiErrorException.ServiceUnavailableException(
+    errorMessage = "Databasen svarer ikke akkurat nå",
     details = "Dette er som regel midlertidig. Prøv igjen om litt.",
     cause = cause,
 )
