@@ -1,7 +1,9 @@
 package no.nav.lumi.service
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
@@ -9,6 +11,7 @@ import io.kotest.matchers.maps.shouldNotContainKey
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.micrometer.prometheusmetrics.PrometheusConfig
@@ -27,15 +30,26 @@ import no.nav.lumi.domain.BigQueryExportProblemDto
 import no.nav.lumi.domain.BigQueryExportRowCounts
 import no.nav.lumi.domain.BigQueryExportRunState
 import no.nav.lumi.domain.BigQueryExportRunStatus
+import no.nav.lumi.domain.BigQueryExportSchedule
 import no.nav.lumi.insertTestFeedbackWithJson
 import no.nav.lumi.integrations.bigquery.BigQueryResult
 import no.nav.lumi.integrations.bigquery.FakeBigQueryGateway
 import no.nav.lumi.integrations.nais.NaisApiResult
 import no.nav.lumi.repository.BigQueryExportRepository
 import java.time.Clock
+import java.time.Duration
+import java.time.Instant
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
+
+/** A clock the tests move by hand. It starts at noon UTC, far from the nightly run at 01:00 Oslo time. */
+private class TestClock(var now: Instant = Instant.now().truncatedTo(ChronoUnit.DAYS).plus(Duration.ofHours(12))) : Clock() {
+    override fun getZone(): ZoneId = ZoneOffset.UTC
+    override fun withZone(zone: ZoneId?): Clock = this
+    override fun instant(): Instant = now
+}
 
 class BigQueryExportServiceTest : FunSpec({
     beforeSpec { TestDatabase.initialize() }
@@ -43,20 +57,25 @@ class BigQueryExportServiceTest : FunSpec({
 
     val team = "teamsykefravr"
     val project = "teamsykefravr-prod-1234"
-    val env = BigQueryExportEnv(enabled = true, jobProjectId = "team-esyfo-prod-bbe6")
+    val env = BigQueryExportEnv(enabled = true, jobProjectId = "team-esyfo-prod-bbe6", freeTextTeams = null)
     val json = Json { ignoreUnknownKeys = true }
+    val repository = BigQueryExportRepository(dataSourceProvider = { TestDatabase.dataSource })
 
     fun service(
         gateway: FakeBigQueryGateway?,
         projects: Map<String, String?> = mapOf(team to project, "team-esyfo" to "team-esyfo-prod-bbe6"),
-        enabled: Boolean = true,
+        exportEnv: BigQueryExportEnv = env,
+        clock: Clock = TestClock(),
+        lookup: TeamProjectLookup = TeamProjectLookup { requested -> NaisApiResult.Success(projects[requested]) },
+        minRunInterval: Duration = Duration.ZERO,
     ) = BigQueryExportService(
-        env = if (enabled) env else BigQueryExportEnv.disabled(),
-        repository = BigQueryExportRepository(dataSourceProvider = { TestDatabase.dataSource }),
+        env = exportEnv,
+        repository = repository,
         gateway = gateway,
-        teamProjects = TeamProjectLookup { requested -> NaisApiResult.Success(projects[requested]) },
+        teamProjects = lookup,
         observability = BigQueryExportObservability(PrometheusMeterRegistry(PrometheusConfig.DEFAULT)),
-        clock = Clock.systemUTC(),
+        clock = clock,
+        schedule = BigQueryExportSchedule(minRunInterval = minRunInterval),
     )
 
     fun readyGateway() = FakeBigQueryGateway().apply {
@@ -92,11 +111,17 @@ class BigQueryExportServiceTest : FunSpec({
         """.trimIndent(),
     )
 
-    fun lines(gateway: FakeBigQueryGateway, table: String): List<JsonObject> =
-        gateway.lines(project, "lumi", table).map { json.parseToJsonElement(it).jsonObject }
+    fun lines(gateway: FakeBigQueryGateway, table: String, datasetId: String = "lumi"): List<JsonObject> =
+        gateway.lines(project, datasetId, table).map { json.parseToJsonElement(it).jsonObject }
+
+    suspend fun verifyProblems(export: BigQueryExportService, projectId: String = project) =
+        (export.verify(team, projectId, "lumi") as BigQueryExportCommandResult.Done).value.problems
+
+    suspend fun lastRunCode(export: BigQueryExportService) =
+        export.status(team).destination.shouldNotBeNull().lastRun.shouldNotBeNull().errorCode
 
     test("reports that the export is off when the environment has not enabled it") {
-        val disabled = service(gateway = null, enabled = false)
+        val disabled = service(gateway = null, exportEnv = BigQueryExportEnv.disabled())
         disabled.status(team).available shouldBe false
         disabled.verify(team, project, "lumi") shouldBe BigQueryExportCommandResult.Unavailable
         disabled.requestRun(team) shouldBe BigQueryExportCommandResult.Unavailable
@@ -105,13 +130,7 @@ class BigQueryExportServiceTest : FunSpec({
     test("a pilot list keeps other teams out without stopping their cleanup") {
         val gateway = readyGateway()
         service(gateway).save(team, "A123456", request())
-        val pilot = BigQueryExportService(
-            env = env.copy(pilotTeams = setOf("team-esyfo")),
-            repository = BigQueryExportRepository(dataSourceProvider = { TestDatabase.dataSource }),
-            gateway = gateway,
-            teamProjects = TeamProjectLookup { NaisApiResult.Success(project) },
-            observability = BigQueryExportObservability(PrometheusMeterRegistry(PrometheusConfig.DEFAULT)),
-        )
+        val pilot = service(gateway, exportEnv = env.copy(pilotTeams = setOf("team-esyfo")))
 
         pilot.status(team).availability shouldBe BigQueryExportAvailability.PILOT_ONLY
         pilot.status(team).available shouldBe false
@@ -127,45 +146,61 @@ class BigQueryExportServiceTest : FunSpec({
         status.suggestedProjectId shouldBe project
         status.serviceAccount shouldBe "lumi-api-team-esyfo-1@nais-test.iam.gserviceaccount.com"
         status.location shouldBe "europe-north1"
+        status.freeTextAvailable shouldBe true
         status.destination.shouldBeNull()
     }
 
     test("verification explains each problem the team can fix") {
         val gateway = FakeBigQueryGateway()
-        suspend fun verify(projectId: String) =
-            (service(gateway).verify(team, projectId, "lumi") as BigQueryExportCommandResult.Done).value
+        val export = service(gateway)
 
-        verify("team-esyfo-prod-bbe6").problems shouldContainExactly listOf(
+        verifyProblems(export, "team-esyfo-prod-bbe6") shouldContainExactly listOf(
             BigQueryExportProblemDto(BigQueryExportProblemCode.PROJECT_NOT_TEAM_PROJECT, project),
         )
-        verify(project).problems.map { it.code } shouldContainExactly listOf(BigQueryExportProblemCode.DATASET_NOT_FOUND)
+        verifyProblems(export).map { it.code } shouldContainExactly listOf(BigQueryExportProblemCode.DATASET_NOT_FOUND)
 
         gateway.datasets["$project.lumi"] = BigQueryResult.AccessDenied
-        verify(project).problems.map { it.code } shouldContainExactly listOf(BigQueryExportProblemCode.DATASET_ACCESS_DENIED)
+        verifyProblems(export).map { it.code } shouldContainExactly listOf(BigQueryExportProblemCode.DATASET_ACCESS_DENIED)
 
         gateway.addDataset(project, "lumi", emptyMap(), location = "EU")
-        verify(project).problems shouldContainExactly listOf(
+        verifyProblems(export) shouldContainExactly listOf(
             BigQueryExportProblemDto(BigQueryExportProblemCode.DATASET_WRONG_LOCATION, "EU"),
             BigQueryExportProblemDto(BigQueryExportProblemCode.DATASET_TEAM_LABEL_MISSING),
         )
 
         gateway.addDataset(project, "lumi", mapOf("lumi-team" to "team-esyfo"))
-        verify(project).problems shouldContainExactly listOf(
+        verifyProblems(export) shouldContainExactly listOf(
             BigQueryExportProblemDto(BigQueryExportProblemCode.DATASET_TEAM_LABEL_MISMATCH, "team-esyfo"),
+        )
+
+        gateway.addDataset(project, "lumi", mapOf("lumi-team" to team), maxTimeTravelHours = null)
+        verifyProblems(export) shouldContainExactly listOf(
+            BigQueryExportProblemDto(BigQueryExportProblemCode.DATASET_TIME_TRAVEL_TOO_LONG, "168"),
         )
 
         gateway.addDataset(project, "lumi", mapOf("lumi-team" to team))
         gateway.tables["$project.lumi.svar"] = FakeBigQueryGateway.Table(labels = emptyMap())
-        verify(project).problems shouldContainExactly listOf(
-            BigQueryExportProblemDto(BigQueryExportProblemCode.TABLE_NOT_CREATED_BY_LUMI, "svar"),
+        verifyProblems(export) shouldContainExactly listOf(
+            BigQueryExportProblemDto(BigQueryExportProblemCode.DATASET_NOT_DEDICATED, "svar"),
         )
 
         gateway.tables.clear()
         gateway.createTableOverride = BigQueryResult.AccessDenied
-        verify(project).problems.map { it.code } shouldContainExactly listOf(BigQueryExportProblemCode.TABLE_WRITE_DENIED)
+        verifyProblems(export).map { it.code } shouldContainExactly listOf(BigQueryExportProblemCode.TABLE_WRITE_DENIED)
 
         gateway.createTableOverride = null
-        verify(project).ok shouldBe true
+        gateway.tables["$project.lumi.svar_bro_frontend"] = FakeBigQueryGateway.Table(labels = emptyMap(), type = "VIEW")
+        (export.verify(team, project, "lumi") as BigQueryExportCommandResult.Done).value.ok shouldBe true
+        gateway.tables.keys shouldContainExactly setOf("$project.lumi.svar_bro_frontend")
+    }
+
+    test("problems on Lumi's side are reported as such, and nothing is written") {
+        val gateway = readyGateway()
+        verifyProblems(service(gateway, lookup = { NaisApiResult.Error("unavailable") })).map { it.code } shouldContainExactly
+            listOf(BigQueryExportProblemCode.TEAM_PROJECT_UNKNOWN)
+
+        gateway.jobAccess = BigQueryResult.JobDenied
+        verifyProblems(service(gateway)).map { it.code } shouldContainExactly listOf(BigQueryExportProblemCode.EXPORT_JOB_DENIED)
         gateway.tables.keys.shouldBeEmpty()
     }
 
@@ -195,6 +230,7 @@ class BigQueryExportServiceTest : FunSpec({
         svar.filter { it["sporsmal_id"]!!.jsonPrimitive.content == "identifisering" }
             .map { it["valg_tekst"]!!.jsonPrimitive.content } shouldContainExactly listOf("Ja", "Ja")
         svar.map { it["app"]!!.jsonPrimitive.content }.toSet() shouldBe setOf("syfomodiaperson")
+        svar.map { it["innsendt_tidspunkt"]!!.jsonPrimitive.content }.forEach { it.substring(17, 26) shouldBe "00.000000" }
         lines(gateway, "innsendinger") shouldHaveSize 2
         gateway.tables shouldNotContainKey "$project.lumi.fritekst"
         gateway.tables.getValue("$project.lumi.svar").labels shouldBe mapOf("lumi-eksport" to "v1", "lumi-team" to team)
@@ -224,6 +260,20 @@ class BigQueryExportServiceTest : FunSpec({
         gateway.tables shouldNotContainKey "$project.lumi.fritekst"
     }
 
+    test("free text stays closed for teams Lumi has not opened it for") {
+        val gateway = readyGateway()
+        feedback("f-1", team, "syfomodiaperson", rating = 4)
+        service(gateway).save(team, "A123456", request(includeFreeText = true))
+        val closed = service(gateway, exportEnv = env.copy(freeTextTeams = emptySet()))
+
+        closed.status(team).freeTextAvailable shouldBe false
+        shouldThrow<IllegalArgumentException> { closed.save(team, "A123456", request(includeFreeText = true)) }
+
+        closed.runDueExports() shouldBe 1
+        gateway.tables shouldNotContainKey "$project.lumi.fritekst"
+        lines(gateway, "svar") shouldHaveSize 2
+    }
+
     test("a team without responses gets empty tables with the full schema") {
         val gateway = readyGateway()
         val export = service(gateway)
@@ -234,6 +284,25 @@ class BigQueryExportServiceTest : FunSpec({
         gateway.tables.getValue("$project.lumi.svar").lines.shouldBeEmpty()
         gateway.tables.getValue("$project.lumi.innsendinger").lines.shouldBeEmpty()
         export.status(team).destination.shouldNotBeNull().lastSuccessRows shouldBe BigQueryExportRowCounts(0, 0, null)
+    }
+
+    test("emptying a table keeps it and the access granted on it") {
+        val gateway = readyGateway()
+        val export = service(gateway)
+        feedback("f-1", team, "syfomodiaperson", rating = 3)
+        export.save(team, "A123456", request())
+        export.runDueExports()
+        gateway.grant(project, "lumi", "svar", "user:analytiker@nav.no")
+        TestDatabase.clearAllData()
+        export.save(team, "A123456", request())
+        repository.requestRun(team, Instant.now())
+
+        export.runDueExports() shouldBe 1
+
+        gateway.truncated shouldContain "$project.lumi.svar"
+        gateway.deleted.filterNot { it.contains("lumi_tilkoblingstest_") }.shouldBeEmpty()
+        gateway.tables.getValue("$project.lumi.svar").lines.shouldBeEmpty()
+        gateway.tables.getValue("$project.lumi.svar").grants shouldBe setOf("user:analytiker@nav.no")
     }
 
     test("a run that loses access is marked failed with a code the team can act on") {
@@ -259,7 +328,20 @@ class BigQueryExportServiceTest : FunSpec({
 
         export.runDueExports()
 
-        export.status(team).destination.shouldNotBeNull().lastRun.shouldNotBeNull().errorCode shouldBe BigQueryExportProblemCode.LOAD_FAILED
+        lastRunCode(export) shouldBe BigQueryExportProblemCode.LOAD_FAILED
+    }
+
+    test("a run without access to run jobs in Lumi's project is Lumi's problem") {
+        val gateway = readyGateway()
+        val export = service(gateway)
+        feedback("f-1", team, "syfomodiaperson", rating = 3)
+        export.save(team, "A123456", request())
+        gateway.jobAccess = BigQueryResult.JobDenied
+
+        export.runDueExports()
+
+        lastRunCode(export) shouldBe BigQueryExportProblemCode.EXPORT_JOB_DENIED
+        BigQueryExportProblemCode.EXPORT_JOB_DENIED.isTeamActionable shouldBe false
     }
 
     test("a requested run is queued and picked up") {
@@ -274,17 +356,65 @@ class BigQueryExportServiceTest : FunSpec({
         service(gateway).requestRun("team-esyfo") shouldBe BigQueryExportCommandResult.NotConfigured
     }
 
-    test("moving the export to another dataset removes Lumi's tables from the old one") {
-        val gateway = readyGateway().apply { addDataset(project, "lumi_ny", mapOf("lumi-team" to team)) }
+    test("requested runs wait until five minutes after the previous start") {
+        val gateway = readyGateway()
+        val clock = TestClock()
+        val export = service(gateway, clock = clock, minRunInterval = Duration.ofMinutes(5))
+        export.save(team, "A123456", request())
+        export.runDueExports() shouldBe 1
+
+        export.requestRun(team)
+        export.runDueExports() shouldBe 0
+        export.status(team).destination.shouldNotBeNull().nextScheduledRunAt shouldBe clock.now.plus(Duration.ofMinutes(5)).toString()
+
+        clock.now = clock.now.plus(Duration.ofMinutes(5))
+        export.runDueExports() shouldBe 1
+    }
+
+    test("deleting responses queues a run for a team with an export") {
+        val gateway = readyGateway()
         val export = service(gateway)
+        export.requestRunAfterDeletion(team)
+        export.status(team).destination.shouldBeNull()
+
         export.save(team, "A123456", request())
         export.runDueExports()
+        export.requestRunAfterDeletion(team)
+
+        export.status(team).destination.shouldNotBeNull().runState shouldBe BigQueryExportRunState.QUEUED
+    }
+
+    test("an interrupted run counts as failed and waits for the backoff") {
+        val gateway = readyGateway()
+        val clock = TestClock()
+        val export = service(gateway, clock = clock)
+        export.save(team, "A123456", request())
+        repository.markStarted(team, clock.now).shouldNotBeNull()
+
+        export.runDueExports() shouldBe 0
+
+        val destination = export.status(team).destination.shouldNotBeNull()
+        destination.lastRun.shouldNotBeNull().status shouldBe BigQueryExportRunStatus.FAILED
+        destination.lastRun.shouldNotBeNull().errorCode shouldBe BigQueryExportProblemCode.INTERNAL_ERROR
+        clock.now = clock.now.plus(Duration.ofHours(1))
+        export.runDueExports() shouldBe 1
+    }
+
+    test("moving the export to another dataset removes Lumi's tables from the old one and gives new pseudonyms") {
+        val gateway = readyGateway().apply { addDataset(project, "lumi_ny", mapOf("lumi-team" to team)) }
+        val export = service(gateway)
+        feedback("f-1", team, "syfomodiaperson", rating = 3)
+        export.save(team, "A123456", request())
+        export.runDueExports()
+        val before = lines(gateway, "innsendinger").single()["innsending_id"]!!.jsonPrimitive.content
 
         export.save(team, "A123456", request(datasetId = "lumi_ny"))
 
         gateway.tables.keys.filter { it.startsWith("$project.lumi.") }.shouldBeEmpty()
+        export.status(team).destination.shouldNotBeNull().lastSuccessAt.shouldBeNull()
         export.runDueExports() shouldBe 1
         gateway.tables.keys shouldContainExactlyInAnyOrder listOf("$project.lumi_ny.svar", "$project.lumi_ny.innsendinger")
+        lines(gateway, "innsendinger", "lumi_ny").single()["innsending_id"]!!.jsonPrimitive.content shouldNotBe before
     }
 
     test("stopping removes Lumi's tables and the settings, and leaves other tables alone") {
@@ -293,25 +423,36 @@ class BigQueryExportServiceTest : FunSpec({
         export.save(team, "A123456", request())
         export.runDueExports()
         gateway.tables["$project.lumi.teamets_egen_tabell"] = FakeBigQueryGateway.Table(labels = mapOf("eier" to "teamet"))
+        // Another team's Lumi label is not enough: Lumi only deletes tables it wrote for this team.
+        gateway.tables["$project.lumi.fritekst"] = FakeBigQueryGateway.Table(labels = mapOf("lumi-eksport" to "v1", "lumi-team" to "team-esyfo"))
 
         val stopped = (export.stop(team) as BigQueryExportCommandResult.Done).value
 
-        stopped.tablesRemoved shouldBe true
-        gateway.tables.keys shouldContainExactly setOf("$project.lumi.teamets_egen_tabell")
+        stopped.tablesRemoved shouldBe false
+        gateway.tables.keys shouldContainExactlyInAnyOrder setOf("$project.lumi.teamets_egen_tabell", "$project.lumi.fritekst")
         export.status(team).destination.shouldBeNull()
         export.stop(team) shouldBe BigQueryExportCommandResult.NotConfigured
     }
 
-    test("the run checks the team's project again before writing") {
+    test("the run checks the team's project and tables again before writing") {
         val gateway = readyGateway()
         feedback("f-1", team, "syfomodiaperson", rating = 3)
         service(gateway).save(team, "A123456", request())
 
         service(gateway, projects = mapOf(team to "teamsykefravr-prod-9999")).runDueExports()
-
         gateway.tables.keys.shouldBeEmpty()
-        service(gateway).status(team).destination.shouldNotBeNull().lastRun.shouldNotBeNull().errorCode shouldBe
-            BigQueryExportProblemCode.PROJECT_NOT_TEAM_PROJECT
+        lastRunCode(service(gateway)) shouldBe BigQueryExportProblemCode.PROJECT_NOT_TEAM_PROJECT
+
+        repository.requestRun(team, Instant.now())
+        service(gateway, lookup = { NaisApiResult.Error("unavailable") }, clock = TestClock(Instant.now().plus(Duration.ofHours(2)))).runDueExports()
+        gateway.tables.keys.shouldBeEmpty()
+        lastRunCode(service(gateway)) shouldBe BigQueryExportProblemCode.TEAM_PROJECT_UNKNOWN
+
+        gateway.tables["$project.lumi.svar"] = FakeBigQueryGateway.Table(labels = emptyMap())
+        repository.requestRun(team, Instant.now())
+        service(gateway, clock = TestClock(Instant.now().plus(Duration.ofHours(4)))).runDueExports()
+        lastRunCode(service(gateway)) shouldBe BigQueryExportProblemCode.TABLE_NOT_CREATED_BY_LUMI
+        gateway.tables.getValue("$project.lumi.svar").lines.shouldBeEmpty()
     }
 
     test("pseudonyms are stable between runs and never equal the internal id") {

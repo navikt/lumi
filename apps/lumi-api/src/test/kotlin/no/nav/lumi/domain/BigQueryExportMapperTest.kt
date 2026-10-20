@@ -17,8 +17,8 @@ class BigQueryExportMapperTest : FunSpec({
     val key = ByteArray(32) { it.toByte() }
     val exportedAt = Instant.parse("2026-10-20T02:00:00Z")
 
-    fun mapper(includeFreeText: Boolean = false, pseudonymKey: ByteArray = key) =
-        BigQueryExportMapper(pseudonymKey, includeFreeText, exportedAt)
+    fun mapper(includeFreeText: Boolean = false, pseudonymKey: ByteArray = key, allowedTagKeys: Set<String>? = null) =
+        BigQueryExportMapper(pseudonymKey, includeFreeText, exportedAt, allowedTagKeys)
 
     fun row(
         json: String,
@@ -225,6 +225,70 @@ class BigQueryExportMapperTest : FunSpec({
         mapped.svar.single().sporsmalTekst shouldNotContain "kari.nordmann@example.com"
         mapped.svar.single().surveyArkivert shouldBe true
         mapped.innsending.surveyArkivert shouldBe true
+    }
+
+    test("cuts the receive time to whole minutes and keeps the Norwegian date") {
+        val mapped = mapper().map(row(submission(), receivedAt = Instant.parse("2026-10-19T21:59:59.987654Z"))).shouldNotBeNull()
+
+        mapped.innsending.innsendtTidspunkt shouldBe "2026-10-19 21:59:00.000000+00:00"
+        mapped.innsending.innsendtDato shouldBe "2026-10-19"
+    }
+
+    test("drops selected options the question does not list") {
+        val m = mapper()
+        fun choice(vararg selected: String) = submission(
+            """
+            {"fieldId":"hjelp","fieldType":"MULTI_CHOICE",
+             "question":{"label":"Hva hjalp?","options":[{"id":"a","label":"A"},{"id":"b","label":"B"}]},
+             "value":{"type":"multiChoice","selectedOptionIds":[${selected.joinToString(",") { "\"$it\"" }}]}}
+            """.trimIndent(),
+        )
+
+        m.map(row(choice("a", "ola.nordmann@example.com"), id = "x")).shouldNotBeNull().svar.map { it.valgId } shouldContainExactly
+            listOf("a")
+        val onlyUnknown = m.map(row(choice("ukjent"), id = "y")).shouldNotBeNull()
+        onlyUnknown.svar.shouldBeEmpty()
+        onlyUnknown.innsending.antallSvar shouldBe 0
+        m.skippedAnswers shouldBe 1
+    }
+
+    test("masks personal data in IDs from the payload") {
+        val mapped = mapper().map(
+            row(
+                submission(
+                    """
+                    {"fieldId":"spør kari.nordmann@example.com","fieldType":"SINGLE_CHOICE","question":{"label":"Valg"},
+                     "value":{"type":"singleChoice","selectedOptionId":"ola.nordmann@example.com"}}
+                    """.trimIndent(),
+                ),
+                surveyId = "survey per.hansen@example.com",
+            ),
+        ).shouldNotBeNull()
+
+        val svar = mapped.svar.single()
+        svar.sporsmalId shouldNotContain "kari.nordmann@example.com"
+        svar.valgId.shouldNotBeNull() shouldNotContain "ola.nordmann@example.com"
+        svar.valgTekst.shouldNotBeNull() shouldNotContain "ola.nordmann@example.com"
+        svar.surveyId shouldNotContain "per.hansen@example.com"
+    }
+
+    test("exports only the context tags that are allowed, and never null values") {
+        val withNull = submission(extra = "").replace(""""aktiv":true""", """"aktiv":true,"tom":null""")
+
+        mapper(allowedTagKeys = setOf("rolle")).map(row(withNull)).shouldNotBeNull().innsending.kontekst shouldBe
+            """{"rolle":"sykmeldt"}"""
+        mapper(allowedTagKeys = emptySet()).map(row(withNull)).shouldNotBeNull().innsending.kontekst.shouldBeNull()
+        mapper().map(row(withNull)).shouldNotBeNull().innsending.kontekst shouldBe
+            """{"aktiv":true,"antall":3,"rolle":"sykmeldt"}"""
+    }
+
+    test("treats tags with many values or nearly unique values as identifiers") {
+        ContextTagStats(distinctValues = 2, occurrences = 3).isSegment shouldBe true
+        ContextTagStats(distinctValues = 10, occurrences = 10).isSegment shouldBe true
+        ContextTagStats(distinctValues = 11, occurrences = 55).isSegment shouldBe true
+        ContextTagStats(distinctValues = 11, occurrences = 54).isSegment shouldBe false
+        ContextTagStats(distinctValues = 50, occurrences = 10_000).isSegment shouldBe true
+        ContextTagStats(distinctValues = 51, occurrences = 10_000).isSegment shouldBe false
     }
 
     test("refuses rows that are not ordered newest first") {

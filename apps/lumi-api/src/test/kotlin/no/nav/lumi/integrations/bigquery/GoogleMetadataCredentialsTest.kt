@@ -36,6 +36,9 @@ class GoogleMetadataCredentialsTest : FunSpec({
         clock.now = clock.now.plusSeconds(3600 - 30)
         credentials.accessToken() shouldBe "token-2"
         calls shouldBe 2
+
+        credentials.invalidate()
+        credentials.accessToken() shouldBe "token-3"
     }
 
     test("fails clearly without a token and returns no email outside Google Cloud") {

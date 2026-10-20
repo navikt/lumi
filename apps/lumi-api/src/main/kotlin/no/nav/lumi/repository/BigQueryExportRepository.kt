@@ -1,5 +1,6 @@
 package no.nav.lumi.repository
 
+import com.zaxxer.hikari.HikariDataSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -9,13 +10,24 @@ import no.nav.lumi.domain.BigQueryExportProblemCode
 import no.nav.lumi.domain.BigQueryExportRowCounts
 import no.nav.lumi.domain.BigQueryExportRunStatus
 import no.nav.lumi.domain.BigQueryExportSourceRow
+import no.nav.lumi.domain.ContextTagStats
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
+import org.slf4j.LoggerFactory
 import java.security.SecureRandom
 import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.Timestamp
 import java.time.Instant
 import javax.sql.DataSource
+
+/** The team's stored responses for one export run, read from one consistent snapshot. */
+interface BigQueryExportSnapshot {
+    /** How often each context tag key occurs, and with how many different values. */
+    suspend fun contextTagStats(): Map<String, ContextTagStats>
+
+    /** Streams the responses newest first. */
+    suspend fun forEachRow(consumer: suspend (BigQueryExportSourceRow) -> Unit)
+}
 
 /**
  * Stores one BigQuery export destination per team and reads the team's responses for an export.
@@ -43,7 +55,9 @@ class BigQueryExportRepository(
 
     /**
      * Creates or updates the team's destination. A new destination gets a new pseudonym key and a
-     * queued first run. Changing project or dataset queues a new run, so the new dataset is filled.
+     * queued first run. Changing project or dataset counts as a new destination: it gets a new key,
+     * the run history is reset, and a run is queued so the new dataset is filled. Changing free text
+     * also queues a run.
      */
     suspend fun upsert(
         team: String,
@@ -66,10 +80,16 @@ class BigQueryExportRepository(
                     include_free_text = EXCLUDED.include_free_text,
                     updated_by = EXCLUDED.updated_by,
                     updated_at = EXCLUDED.updated_at,
+                    pseudonym_key = CASE WHEN $MOVED THEN EXCLUDED.pseudonym_key ELSE d.pseudonym_key END,
+                    last_run_started_at = CASE WHEN $MOVED THEN NULL ELSE d.last_run_started_at END,
+                    last_run_finished_at = CASE WHEN $MOVED THEN NULL ELSE d.last_run_finished_at END,
+                    last_run_status = CASE WHEN $MOVED THEN NULL ELSE d.last_run_status END,
+                    last_run_error_code = CASE WHEN $MOVED THEN NULL ELSE d.last_run_error_code END,
+                    consecutive_failures = CASE WHEN $MOVED THEN 0 ELSE d.consecutive_failures END,
+                    last_success_at = CASE WHEN $MOVED THEN NULL ELSE d.last_success_at END,
+                    last_success_rows = CASE WHEN $MOVED THEN NULL ELSE d.last_success_rows END,
                     run_requested_at = CASE
-                        WHEN d.project_id <> EXCLUDED.project_id
-                            OR d.dataset_id <> EXCLUDED.dataset_id
-                            OR d.include_free_text <> EXCLUDED.include_free_text
+                        WHEN $MOVED OR d.include_free_text <> EXCLUDED.include_free_text
                         THEN COALESCE(d.run_requested_at, EXCLUDED.run_requested_at)
                         ELSE d.run_requested_at
                     END
@@ -117,8 +137,12 @@ class BigQueryExportRepository(
         }
     }
 
-    /** Marks a run as started. A request made after [startedAt] stays queued for the next run. */
-    suspend fun markStarted(team: String, startedAt: Instant): Boolean = dbQuery {
+    /**
+     * Marks a run as started and returns the destination as it is now, so the run uses the latest
+     * settings. A request made after [startedAt] stays queued for the next run. Returns null when
+     * the team has stopped the export.
+     */
+    suspend fun markStarted(team: String, startedAt: Instant): BigQueryExportDestination? = dbQuery {
         currentJdbcConnection().prepareStatement(
             """
                 UPDATE bigquery_export.destinations SET
@@ -128,13 +152,14 @@ class BigQueryExportRepository(
                     last_run_error_code = NULL,
                     run_requested_at = CASE WHEN run_requested_at <= ? THEN NULL ELSE run_requested_at END
                 WHERE team = ?
+                RETURNING $DESTINATION_COLUMNS
             """.trimIndent(),
         ).use { statement ->
             val timestamp = Timestamp.from(startedAt)
             statement.setTimestamp(1, timestamp)
             statement.setTimestamp(2, timestamp)
             statement.setString(3, team)
-            statement.executeUpdate() == 1
+            statement.executeQuery().use { result -> if (result.next()) result.toDestination() else null }
         }
     }
 
@@ -194,7 +219,8 @@ class BigQueryExportRepository(
      * Returns null without running [block] when another replica holds the lock.
      */
     suspend fun <T> withExportLock(block: suspend () -> T): T? = withContext(Dispatchers.IO) {
-        dataSourceProvider().connection.use { connection ->
+        val dataSource = dataSourceProvider()
+        dataSource.connection.use { connection ->
             connection.autoCommit = true
             val acquired = connection.prepareStatement("SELECT pg_try_advisory_lock(?)").use { statement ->
                 statement.setLong(1, EXPORT_LOCK_ID)
@@ -204,49 +230,82 @@ class BigQueryExportRepository(
             try {
                 block()
             } finally {
-                connection.prepareStatement("SELECT pg_advisory_unlock(?)").use { statement ->
-                    statement.setLong(1, EXPORT_LOCK_ID)
-                    statement.execute()
+                val released = runCatching {
+                    connection.prepareStatement("SELECT pg_advisory_unlock(?)").use { statement ->
+                        statement.setLong(1, EXPORT_LOCK_ID)
+                        statement.executeQuery().use { result -> result.next() && result.getBoolean(1) }
+                    }
+                }.getOrDefault(false)
+                if (!released) {
+                    // A pooled connection that still holds the lock would block every later export.
+                    log.warn("Could not release the BigQuery export lock; evicting the connection")
+                    (dataSource as? HikariDataSource)?.evictConnection(connection)
                 }
             }
         }
     }
 
     /**
-     * Streams the team's stored responses inside the retention window, newest first, from one
-     * consistent snapshot. The cutoff uses the same expression as the retention job, so rows the
-     * job has not deleted yet are still left out.
+     * Reads the team's stored responses inside the retention window from one consistent snapshot.
+     * The cutoff is computed once, with the same expression as the retention job, so rows the job
+     * has not deleted yet are still left out.
      */
-    suspend fun streamSourceRows(
+    suspend fun <T> readExportSnapshot(
         team: String,
         retentionMonths: Int,
-        consumer: suspend (BigQueryExportSourceRow) -> Unit,
-    ): Unit = withContext(Dispatchers.IO) {
+        block: suspend (BigQueryExportSnapshot) -> T,
+    ): T = withContext(Dispatchers.IO) {
         dataSourceProvider().connection.use { connection ->
             connection.autoCommit = false
             connection.transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ
             connection.isReadOnly = true
             try {
-                connection.prepareStatement(SOURCE_ROWS_SQL).use { statement ->
-                    statement.fetchSize = SOURCE_FETCH_SIZE
-                    statement.setString(1, team)
-                    statement.setInt(2, retentionMonths)
-                    statement.executeQuery().use { result ->
-                        while (result.next()) {
-                            consumer(
-                                BigQueryExportSourceRow(
-                                    feedbackId = result.getString("id"),
-                                    receivedAt = result.getTimestamp("opprettet").toInstant(),
-                                    app = result.getString("app"),
-                                    surveyId = result.getString("survey_id"),
-                                    definitionHash = result.getString("definition_hash"),
-                                    surveyArchived = result.getBoolean("survey_archived"),
-                                    feedbackJson = result.getString("feedback_json"),
-                                ),
-                            )
+                val cutoff = Timestamp.from(connection.retentionCutoff(retentionMonths))
+                block(
+                    object : BigQueryExportSnapshot {
+                        override suspend fun contextTagStats(): Map<String, ContextTagStats> =
+                            connection.prepareStatement(CONTEXT_TAG_STATS_SQL).use { statement ->
+                                statement.setString(1, team)
+                                statement.setTimestamp(2, cutoff)
+                                statement.executeQuery().use { result ->
+                                    buildMap {
+                                        while (result.next()) {
+                                            put(
+                                                result.getString("tag_key"),
+                                                ContextTagStats(
+                                                    distinctValues = result.getLong("distinct_values"),
+                                                    occurrences = result.getLong("occurrences"),
+                                                ),
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                        override suspend fun forEachRow(consumer: suspend (BigQueryExportSourceRow) -> Unit) {
+                            connection.prepareStatement(SOURCE_ROWS_SQL).use { statement ->
+                                statement.fetchSize = SOURCE_FETCH_SIZE
+                                statement.setString(1, team)
+                                statement.setTimestamp(2, cutoff)
+                                statement.executeQuery().use { result ->
+                                    while (result.next()) {
+                                        consumer(
+                                            BigQueryExportSourceRow(
+                                                feedbackId = result.getString("id"),
+                                                receivedAt = result.getTimestamp("opprettet").toInstant(),
+                                                app = result.getString("app"),
+                                                surveyId = result.getString("survey_id"),
+                                                definitionHash = result.getString("definition_hash"),
+                                                surveyArchived = result.getBoolean("survey_archived"),
+                                                feedbackJson = result.getString("feedback_json"),
+                                            ),
+                                        )
+                                    }
+                                }
+                            }
                         }
-                    }
-                }
+                    },
+                )
             } finally {
                 connection.rollback()
                 connection.isReadOnly = false
@@ -254,6 +313,21 @@ class BigQueryExportRepository(
             }
         }
     }
+
+    private fun Connection.retentionCutoff(retentionMonths: Int): Instant =
+        prepareStatement(
+            """
+                SELECT (
+                    clock_timestamp() AT TIME ZONE 'UTC' - make_interval(months => ?)
+                ) AT TIME ZONE 'UTC' AS cutoff
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setInt(1, retentionMonths)
+            statement.executeQuery().use { result ->
+                check(result.next()) { "Retention cutoff query returned no result" }
+                result.getTimestamp("cutoff").toInstant()
+            }
+        }
 
     private fun ResultSet.toDestination(): BigQueryExportDestination = BigQueryExportDestination(
         team = getString("team"),
@@ -284,13 +358,34 @@ class BigQueryExportRepository(
         const val PSEUDONYM_KEY_BYTES = 32
         const val EXPORT_LOCK_ID = 7_316_244_190_552L
         private const val SOURCE_FETCH_SIZE = 500
+        private val log = LoggerFactory.getLogger(BigQueryExportRepository::class.java)
         private val json = Json { ignoreUnknownKeys = true }
 
-        private val SELECT_DESTINATION = """
-            SELECT team, project_id, dataset_id, include_free_text, pseudonym_key, created_at, updated_at,
-                   run_requested_at, last_run_started_at, last_run_finished_at, last_run_status,
-                   last_run_error_code, consecutive_failures, last_success_at, last_success_rows::text
-            FROM bigquery_export.destinations
+        /** True in the upsert when the team points the export at another project or dataset. */
+        private const val MOVED = "(d.project_id <> EXCLUDED.project_id OR d.dataset_id <> EXCLUDED.dataset_id)"
+
+        private const val DESTINATION_COLUMNS =
+            "team, project_id, dataset_id, include_free_text, pseudonym_key, created_at, updated_at, " +
+                "run_requested_at, last_run_started_at, last_run_finished_at, last_run_status, " +
+                "last_run_error_code, consecutive_failures, last_success_at, last_success_rows::text AS last_success_rows"
+
+        private const val SELECT_DESTINATION = "SELECT $DESTINATION_COLUMNS FROM bigquery_export.destinations"
+
+        private val CONTEXT_TAG_STATS_SQL = """
+            SELECT t.key AS tag_key,
+                   COUNT(DISTINCT t.value) AS distinct_values,
+                   COUNT(*) AS occurrences
+            FROM feedback f
+            CROSS JOIN LATERAL jsonb_each(
+                CASE WHEN jsonb_typeof(f.feedback_json -> 'context' -> 'tags') = 'object'
+                     THEN f.feedback_json -> 'context' -> 'tags'
+                     ELSE '{}'::jsonb
+                END
+            ) AS t(key, value)
+            WHERE f.team = ?
+              AND f.opprettet >= ?
+              AND jsonb_typeof(t.value) IN ('string', 'number', 'boolean')
+            GROUP BY t.key
         """.trimIndent()
 
         private val SOURCE_ROWS_SQL = """
@@ -306,7 +401,7 @@ class BigQueryExportRepository(
                    ON sm.team = f.team
                   AND sm.survey_id = COALESCE(NULLIF(f.feedback_json ->> 'surveyId', ''), f.survey_id)
             WHERE f.team = ?
-              AND f.opprettet >= (clock_timestamp() AT TIME ZONE 'UTC' - make_interval(months => ?)) AT TIME ZONE 'UTC'
+              AND f.opprettet >= ?
             ORDER BY f.opprettet DESC, f.id DESC
         """.trimIndent()
     }

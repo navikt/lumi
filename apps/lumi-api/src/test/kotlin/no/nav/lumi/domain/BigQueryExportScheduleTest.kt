@@ -65,8 +65,22 @@ class BigQueryExportScheduleTest : FunSpec({
         ) shouldBe true
     }
 
-    test("a run left as running by a stopped replica is due again under the lock") {
-        schedule.isDue(destination(lastRunStatus = BigQueryExportRunStatus.RUNNING), Instant.parse("2026-10-20T12:00:00Z")) shouldBe true
+    test("a requested run waits until five minutes after the previous start") {
+        val previousStart = Instant.parse("2026-10-20T11:58:00Z")
+        val requested = destination(
+            lastRunStatus = BigQueryExportRunStatus.SUCCEEDED,
+            lastSuccessAt = previousStart,
+            lastRunFinishedAt = previousStart.plusSeconds(30),
+            runRequestedAt = Instant.parse("2026-10-20T11:59:00Z"),
+        )
+
+        schedule.isDue(requested, Instant.parse("2026-10-20T12:02:59Z")) shouldBe false
+        schedule.isDue(requested, Instant.parse("2026-10-20T12:03:00Z")) shouldBe true
+        schedule.nextRunAt(requested, Instant.parse("2026-10-20T12:00:00Z")) shouldBe Instant.parse("2026-10-20T12:03:00Z")
+    }
+
+    test("a run marked as running is not due, because the service fails an interrupted run first") {
+        schedule.isDue(destination(lastRunStatus = BigQueryExportRunStatus.RUNNING), Instant.parse("2026-10-20T12:00:00Z")) shouldBe false
     }
 
     test("failed runs wait one hour, then twice as long each time, up to a day") {

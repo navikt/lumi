@@ -28,6 +28,20 @@ class BigQueryExportEnvTest : FunSpec({
         BigQueryExportEnv.disabled().isOpenFor("flex") shouldBe false
     }
 
+    test("keeps free text closed unless teams are listed, and opens it for all with a star") {
+        BigQueryExportEnv.fromEnvironment("true", "p-roject", null, null, null).allowsFreeText("team-esyfo") shouldBe false
+        BigQueryExportEnv.fromEnvironment("true", "p-roject", null, null, " ").allowsFreeText("team-esyfo") shouldBe false
+
+        val listed = BigQueryExportEnv.fromEnvironment("true", "p-roject", null, "team-esyfo,teamsykefravr", "team-esyfo")
+        listed.allowsFreeText("team-esyfo") shouldBe true
+        listed.allowsFreeText("teamsykefravr") shouldBe false
+
+        val all = BigQueryExportEnv.fromEnvironment("true", "p-roject", null, "team-esyfo", "*")
+        all.allowsFreeText("team-esyfo") shouldBe true
+        all.allowsFreeText("flex") shouldBe false
+        BigQueryExportEnv.disabled().allowsFreeText("team-esyfo") shouldBe false
+    }
+
     test("fails fast on an invalid flag or a missing project") {
         shouldThrow<IllegalStateException> { BigQueryExportEnv.fromEnvironment("yes", "p", "p") }
         shouldThrow<IllegalStateException> { BigQueryExportEnv.fromEnvironment("true", null, null) }

@@ -109,3 +109,5 @@ spec:
       value: "true"
     - name: LUMI_BIGQUERY_EXPORT_PILOT_TEAMS
       value: "team-esyfo,teamsykefravr"
+    # Free text stays closed in production until a team's PVK covers it. Open it per team with
+    # LUMI_BIGQUERY_EXPORT_FREE_TEXT_TEAMS, a comma-separated list of teams.

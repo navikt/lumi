@@ -95,3 +95,6 @@ spec:
       value: "true"
     - name: LUMI_BIGQUERY_EXPORT_ENABLED
       value: "true"
+    # Free text is open for every team in dev, which only has test data.
+    - name: LUMI_BIGQUERY_EXPORT_FREE_TEXT_TEAMS
+      value: "*"

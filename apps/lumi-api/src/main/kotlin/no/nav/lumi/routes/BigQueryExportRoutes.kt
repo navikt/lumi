@@ -11,7 +11,7 @@ import io.ktor.server.resources.put
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.utils.io.core.readText
-import io.ktor.utils.io.readBuffer
+import io.ktor.utils.io.readRemaining
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import no.nav.lumi.config.BigQueryExportComponents
@@ -88,7 +88,7 @@ private fun <T> BigQueryExportCommandResult<T>.orThrow(): T = when (this) {
 }
 
 private suspend inline fun <reified T> ApplicationCall.receiveBigQueryExportRequest(): T {
-    val text = receiveChannel().readBuffer(MAX_BIGQUERY_EXPORT_REQUEST_BYTES + 1).readText()
+    val text = receiveChannel().readRemaining(MAX_BIGQUERY_EXPORT_REQUEST_BYTES + 1).readText()
     if (text.toByteArray(Charsets.UTF_8).size > MAX_BIGQUERY_EXPORT_REQUEST_BYTES) {
         throw ApiErrorException.PayloadTooLargeException("BigQuery export request is too large")
     }

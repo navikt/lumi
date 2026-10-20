@@ -15,6 +15,7 @@ import no.nav.lumi.domain.BigQueryExportProblemCode
 import no.nav.lumi.domain.BigQueryExportRowCounts
 import no.nav.lumi.domain.BigQueryExportRunStatus
 import no.nav.lumi.domain.BigQueryExportSourceRow
+import no.nav.lumi.domain.ContextTagStats
 import no.nav.lumi.insertTestFeedbackWithJson
 import java.sql.SQLException
 import java.time.Instant
@@ -89,7 +90,7 @@ class BigQueryExportRepositoryTest : FunSpec({
 
     test("keeps the key when settings change and only queues a run when something changed") {
         val created = repository.upsert("team-a", "team-a-prod-1234", "lumi", false, "A123456", now)
-        repository.markStarted("team-a", now.plusSeconds(1)) shouldBe true
+        repository.markStarted("team-a", now.plusSeconds(1)).shouldNotBeNull()
         repository.markSucceeded("team-a", now.plusSeconds(1), now.plusSeconds(2), BigQueryExportRowCounts(3, 1))
 
         val unchanged = repository.upsert("team-a", "team-a-prod-1234", "lumi", false, "B234567", now.plusSeconds(10))
@@ -102,14 +103,32 @@ class BigQueryExportRepositoryTest : FunSpec({
         withText.pseudonymKey.contentEquals(created.pseudonymKey) shouldBe true
     }
 
+    test("moving to another dataset gives a new key and a fresh run history") {
+        val created = repository.upsert("team-a", "team-a-prod-1234", "lumi", false, "A123456", now)
+        repository.markStarted("team-a", now.plusSeconds(1)).shouldNotBeNull()
+        repository.markSucceeded("team-a", now.plusSeconds(1), now.plusSeconds(2), BigQueryExportRowCounts(3, 1))
+
+        val moved = repository.upsert("team-a", "team-a-prod-1234", "lumi_ny", false, "A123456", now.plusSeconds(10))
+
+        moved.pseudonymKey.contentEquals(created.pseudonymKey) shouldBe false
+        moved.lastSuccessAt.shouldBeNull()
+        moved.lastRunStatus.shouldBeNull()
+        moved.lastRunStartedAt.shouldBeNull()
+        moved.consecutiveFailures shouldBe 0
+        moved.runRequestedAt shouldBe now.plusSeconds(10)
+        // A run that started before the move can no longer mark the new destination as done.
+        repository.markSucceeded("team-a", now.plusSeconds(1), now.plusSeconds(11), BigQueryExportRowCounts(1, 1)) shouldBe false
+    }
+
     test("tracks a run from start to success and from start to failure") {
         repository.upsert("team-a", "team-a-prod-1234", "lumi", false, "A123456", now)
         val started = now.plusSeconds(5)
-        repository.markStarted("team-a", started) shouldBe true
-        repository.find("team-a").shouldNotBeNull().let {
+        repository.markStarted("team-a", started).shouldNotBeNull().let {
             it.lastRunStatus shouldBe BigQueryExportRunStatus.RUNNING
+            it.lastRunStartedAt shouldBe started
             it.runRequestedAt.shouldBeNull()
         }
+        repository.markStarted("team-b", started).shouldBeNull()
 
         repository.markSucceeded("team-a", started, started.plusSeconds(9), BigQueryExportRowCounts(10, 4, 2)) shouldBe true
         repository.find("team-a").shouldNotBeNull().let {
@@ -159,12 +178,35 @@ class BigQueryExportRepositoryTest : FunSpec({
         }
 
         val rows = mutableListOf<BigQueryExportSourceRow>()
-        repository.streamSourceRows("team-a", 12) { rows += it }
+        repository.readExportSnapshot("team-a", 12) { snapshot -> snapshot.forEachRow { rows += it } }
 
         rows.map { it.feedbackId } shouldContainExactly listOf("a-new", "a-old")
         rows.map { it.surveyId }.distinct() shouldContainExactly listOf("s1")
         rows.all { it.surveyArchived } shouldBe true
         rows.first().receivedAt shouldBe fresh.minusDays(1).toInstant()
+    }
+
+    test("counts the values of each context tag in the export window") {
+        val fresh = OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS)
+        fun tags(id: String, json: String, opprettet: OffsetDateTime = fresh.minusDays(1)) = insertTestFeedbackWithJson(
+            id = id,
+            team = "team-a",
+            feedbackJson = """{"surveyId":"s1","answers":[],"context":{"tags":$json}}""",
+            opprettet = opprettet,
+        )
+        tags("t1", """{"rolle":"veileder","bruker":"u1","nested":{"a":1}}""")
+        tags("t2", """{"rolle":"veileder","bruker":"u2","tom":null}""")
+        tags("t3", """{"rolle":"leder","bruker":"u3"}""")
+        tags("t4", "[1,2]")
+        tags("t-old", """{"rolle":"gammel"}""", opprettet = fresh.minusMonths(12).minusDays(1))
+        insertTestFeedbackWithJson(id = "other", team = "team-b", feedbackJson = """{"surveyId":"s1","answers":[],"context":{"tags":{"rolle":"x"}}}""")
+
+        val stats = repository.readExportSnapshot("team-a", 12) { it.contextTagStats() }
+
+        stats shouldBe mapOf(
+            "rolle" to ContextTagStats(distinctValues = 2, occurrences = 3),
+            "bruker" to ContextTagStats(distinctValues = 3, occurrences = 3),
+        )
     }
 
     test("only one caller at a time gets the export lock") {

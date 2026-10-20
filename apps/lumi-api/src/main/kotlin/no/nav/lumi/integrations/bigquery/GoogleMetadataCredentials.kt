@@ -1,10 +1,13 @@
 package no.nav.lumi.integrations.bigquery
 
 import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
@@ -23,6 +26,9 @@ interface GoogleCredentials {
 
     /** The email of the service account teams grant access to, or null when unknown. */
     suspend fun serviceAccountEmail(): String?
+
+    /** Drops a cached token, for example after Google answered 401. */
+    suspend fun invalidate()
 }
 
 /**
@@ -30,7 +36,7 @@ interface GoogleCredentials {
  * account with workload identity, and `metadata.google.internal` is open for every workload.
  */
 class GoogleMetadataCredentials(
-    private val client: HttpClient,
+    private val client: HttpClient = metadataHttpClient(),
     private val clock: Clock = Clock.systemUTC(),
     private val baseUrl: String = DEFAULT_BASE_URL,
 ) : GoogleCredentials {
@@ -56,14 +62,22 @@ class GoogleMetadataCredentials(
 
     override suspend fun serviceAccountEmail(): String? = mutex.withLock {
         cachedEmail?.let { return@withLock it }
-        val email = runCatching {
+        val email = try {
             val response = client.get("$baseUrl/instance/service-accounts/default/email") {
                 header(METADATA_FLAVOR_HEADER, METADATA_FLAVOR)
             }
             if (response.status.isSuccess()) response.bodyAsText().trim().takeIf { it.contains('@') } else null
-        }.getOrNull()
+        } catch (cause: CancellationException) {
+            throw cause
+        } catch (_: Exception) {
+            null
+        }
         cachedEmail = email
         email
+    }
+
+    override suspend fun invalidate() = mutex.withLock {
+        cachedToken = null
     }
 
     private data class CachedToken(val value: String, val expiresAt: Instant)
@@ -75,5 +89,14 @@ class GoogleMetadataCredentials(
         private const val DEFAULT_TOKEN_LIFETIME_SECONDS = 300L
         private val REFRESH_MARGIN: Duration = Duration.ofMinutes(1)
         private val json = Json { ignoreUnknownKeys = true }
+
+        /** The metadata server answers locally, so a slow answer means it is unavailable. */
+        fun metadataHttpClient(): HttpClient = HttpClient(CIO) {
+            install(HttpTimeout) {
+                connectTimeoutMillis = 2_000
+                requestTimeoutMillis = 5_000
+                socketTimeoutMillis = 5_000
+            }
+        }
     }
 }

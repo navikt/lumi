@@ -29,6 +29,7 @@ import java.nio.file.Path
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -101,7 +102,7 @@ class NaisGraphQlClient private constructor(
     private val lastThrottledLog = AtomicReference<ThrottledLog?>(null)
 
     // GCP projects per team and environment, for BigQuery export destinations
-    private val teamProjectCache = java.util.concurrent.ConcurrentHashMap<String, CachedTeamProject>()
+    private val teamProjectCache = ConcurrentHashMap<String, CachedTeamProject>()
     
     // Metrics
     private val apiCallTimer = Timer.builder("nais_api_call_duration_seconds")

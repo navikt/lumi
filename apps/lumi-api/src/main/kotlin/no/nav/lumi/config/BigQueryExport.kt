@@ -13,6 +13,7 @@ import no.nav.lumi.integrations.nais.NaisGraphQlClient
 import no.nav.lumi.integrations.valkey.InMemoryTeamCache
 import no.nav.lumi.repository.BigQueryExportRepository
 import no.nav.lumi.service.BigQueryExportService
+import no.nav.lumi.service.FeedbackDeletionListener
 import no.nav.lumi.service.TeamProjectLookup
 import org.slf4j.LoggerFactory
 import java.time.Duration
@@ -26,12 +27,10 @@ object BigQueryExportComponents {
     fun create(env: ServerEnv): BigQueryExportService {
         val config = env.bigQueryExport
         val gateway = config.jobProjectId?.takeIf { config.enabled }?.let { jobProjectId ->
-            val client = RestBigQueryGateway.defaultHttpClient()
             RestBigQueryGateway(
-                credentials = GoogleMetadataCredentials(client),
+                credentials = GoogleMetadataCredentials(),
                 jobProjectId = jobProjectId,
                 location = config.location,
-                client = client,
             )
         }
         val clusterName = env.nais.clusterName
@@ -60,6 +59,22 @@ object BigQueryExportComponents {
 }
 
 /**
+ * Queues a BigQuery export run when a team deletes responses, so the copy follows within minutes.
+ * A failure here never stops the deletion.
+ */
+val bigQueryExportDeletionListener = FeedbackDeletionListener { team ->
+    if (ServerEnv.current.bigQueryExport.enabled) {
+        try {
+            BigQueryExportComponents.service.requestRunAfterDeletion(team)
+        } catch (cause: CancellationException) {
+            throw cause
+        } catch (cause: Exception) {
+            bigQueryExportLog.warn("Could not queue a BigQuery export run after deletion for team {}", team, cause)
+        }
+    }
+}
+
+/**
  * Starts the BigQuery export scheduler. Every replica polls, and the export lock in the database
  * makes sure only one of them exports at a time.
  */
@@ -84,7 +99,8 @@ fun Application.configureBigQueryExport(
                 withContext(Dispatchers.IO) { exportService.runDueExports() }
             } catch (cause: CancellationException) {
                 throw cause
-            } catch (cause: Exception) {
+            } catch (cause: Throwable) {
+                // Errors are caught too, so one bad run cannot stop the scheduler on this replica.
                 bigQueryExportLog.error("BigQuery export scheduler run failed", cause)
             }
             delay(pollInterval.toMillis())

@@ -9,8 +9,10 @@ import java.time.ZoneId
  * When a destination should be exported.
  *
  * Every destination is exported once a night after [dailyAt] Norwegian time, and when someone
- * requests a run. After a failed run, Lumi waits one hour, then doubles the wait for each new
- * failure, up to a day. Saving the settings or choosing **Oppdater nå** starts a run at once.
+ * requests a run: by saving the settings, by choosing **Oppdater tabellene nå**, or by deleting
+ * responses. A requested run starts at once, but at most once per [minRunInterval], so repeated
+ * requests cannot keep the database busy. After a failed run, Lumi waits one hour, then doubles the
+ * wait for each new failure, up to a day.
  *
  * 01:00 Norwegian time is outside the Cloud SQL maintenance window (Sunday 01:00–02:00 UTC) both
  * in summer and in winter, and yesterday's responses are complete by then.
@@ -20,14 +22,15 @@ class BigQueryExportSchedule(
     private val zone: ZoneId = ZoneId.of("Europe/Oslo"),
     private val firstRetryDelay: Duration = Duration.ofHours(1),
     private val maxRetryDelay: Duration = Duration.ofHours(24),
+    private val minRunInterval: Duration = Duration.ofMinutes(5),
 ) {
     /**
-     * Whether a run should start now. Only call this while holding the export lock: a destination
-     * that is still marked as running is then left over from a stopped replica and is due again.
+     * Whether a run should start now. A destination that is still marked as running is not due: the
+     * export service marks an interrupted run as failed first, so the backoff applies to it.
      */
     fun isDue(destination: BigQueryExportDestination, now: Instant): Boolean {
-        if (destination.lastRunStatus == BigQueryExportRunStatus.RUNNING) return true
-        if (destination.runRequestedAt != null) return true
+        if (destination.lastRunStatus == BigQueryExportRunStatus.RUNNING) return false
+        if (destination.runRequestedAt != null) return !now.isBefore(requestedRunAt(destination))
         if (destination.lastRunStatus == BigQueryExportRunStatus.FAILED) {
             return !now.isBefore(retryAt(destination))
         }
@@ -37,9 +40,8 @@ class BigQueryExportSchedule(
 
     /** When the next run is expected to start, for display. */
     fun nextRunAt(destination: BigQueryExportDestination, now: Instant): Instant {
-        if (destination.runRequestedAt != null || destination.lastRunStatus == BigQueryExportRunStatus.RUNNING) {
-            return now
-        }
+        if (destination.lastRunStatus == BigQueryExportRunStatus.RUNNING) return now
+        if (destination.runRequestedAt != null) return maxOf(requestedRunAt(destination), now)
         val next = when {
             destination.lastRunStatus == BigQueryExportRunStatus.FAILED -> retryAt(destination)
             destination.lastSuccessAt == null -> now
@@ -67,6 +69,9 @@ class BigQueryExportSchedule(
             local.toLocalDate().plusDays(1).atTime(dailyAt).atZone(zone).toInstant()
         }
     }
+
+    private fun requestedRunAt(destination: BigQueryExportDestination): Instant =
+        destination.lastRunStartedAt?.plus(minRunInterval) ?: Instant.EPOCH
 
     private fun retryAt(destination: BigQueryExportDestination): Instant {
         val finishedAt = destination.lastRunFinishedAt ?: destination.lastRunStartedAt ?: return Instant.EPOCH

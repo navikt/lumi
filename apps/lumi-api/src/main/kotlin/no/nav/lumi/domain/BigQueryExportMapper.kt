@@ -2,6 +2,7 @@ package no.nav.lumi.domain
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -13,6 +14,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
@@ -27,6 +29,23 @@ data class BigQueryExportSourceRow(
     val surveyArchived: Boolean,
     val feedbackJson: String,
 )
+
+/** How often a context tag key occurs in the export window, and with how many different values. */
+data class ContextTagStats(val distinctValues: Long, val occurrences: Long) {
+    /**
+     * Tags are meant for segments with few values. A key with many values, or with values that are
+     * nearly unique per response, works as an identifier and is left out of the export.
+     */
+    val isSegment: Boolean
+        get() = distinctValues <= MAX_DISTINCT_VALUES &&
+            (distinctValues <= ALWAYS_ALLOWED_VALUES || distinctValues * MIN_RESPONSES_PER_VALUE <= occurrences)
+
+    companion object {
+        const val MAX_DISTINCT_VALUES = 50L
+        const val ALWAYS_ALLOWED_VALUES = 10L
+        const val MIN_RESPONSES_PER_VALUE = 5L
+    }
+}
 
 data class BigQueryExportMappedSubmission(
     val innsending: InnsendingExportRow,
@@ -44,12 +63,18 @@ data class BigQueryExportMappedSubmission(
  * Rows must be mapped newest first. The first label seen for a question or an option is then the
  * newest one, and every older row gets the same label. The dashboard also shows the newest label.
  *
+ * IDs come from the widget payload like the labels, so they are masked with the same patterns. A
+ * selected option is only exported when the question lists it. The receive time is cut to whole
+ * minutes, which is enough for analysis and harder to match against other logs.
+ *
  * Not thread-safe. Use one instance per export run.
  */
 class BigQueryExportMapper(
     pseudonymKey: ByteArray,
     private val includeFreeText: Boolean,
     exportedAt: Instant,
+    /** Context tag keys that may be exported. Null exports every key. */
+    private val allowedTagKeys: Set<String>? = null,
     private val sensitiveDataFilter: SensitiveDataFilter = SensitiveDataFilter.DEFAULT,
 ) {
     private val mac: Mac = Mac.getInstance(HMAC_ALGORITHM).apply {
@@ -71,7 +96,7 @@ class BigQueryExportMapper(
         }
         previousReceivedAt = row.receivedAt
 
-        val surveyId = row.surveyId?.trim()?.takeIf { it.isNotEmpty() }
+        val surveyId = row.surveyId?.let(::cleanId)
         val root = parseObject(row.feedbackJson)
         if (surveyId == null || root == null) {
             skippedSubmissions += 1
@@ -81,14 +106,14 @@ class BigQueryExportMapper(
         val context = root["context"] as? JsonObject
         val submission = SubmissionFacts(
             innsendingId = pseudonym(row.feedbackId),
-            receivedAt = formatBigQueryTimestamp(row.receivedAt),
+            receivedAt = formatBigQueryTimestamp(row.receivedAt.truncatedTo(ChronoUnit.MINUTES)),
             receivedDate = row.receivedAt.atZone(OSLO).toLocalDate().toString(),
             app = row.app,
             surveyId = surveyId,
             surveyType = root.string("surveyType")?.let(::normalizeSurveyType),
             archived = row.surveyArchived,
             deviceType = context?.string("deviceType")?.lowercase()?.takeIf { it in DEVICE_TYPES },
-            kontekst = (context?.get("tags") as? JsonObject)?.let(::kontekstJson),
+            kontekst = (context?.get("tags") as? JsonObject)?.let { kontekstJson(it, allowedTagKeys) },
             definitionHash = row.definitionHash?.takeIf { it.isNotBlank() },
         )
 
@@ -102,16 +127,18 @@ class BigQueryExportMapper(
 
         for (element in root["answers"] as? JsonArray ?: JsonArray(emptyList())) {
             val answer = element as? JsonObject
-            val fieldId = answer?.string("fieldId")?.trim()?.takeIf { it.isNotEmpty() }
+            val fieldId = answer?.string("fieldId")?.let(::cleanId)
             if (answer == null || fieldId == null || !seenFields.add(fieldId)) {
                 skippedAnswers += 1
                 continue
             }
             val key = FieldKey(row.app, surveyId, fieldId)
-            observeLabels(key, answer["question"] as? JsonObject)
+            val question = answer["question"] as? JsonObject
+            observeLabels(key, question)
 
             val value = answer["value"] as? JsonObject
             val parsed = value?.let { parseAnswer(answer.string("fieldType"), it) }
+                ?.let { restrictToListedOptions(it, question) }
             if (parsed == null) {
                 skippedAnswers += 1
                 continue
@@ -124,9 +151,10 @@ class BigQueryExportMapper(
                     ratingSkala = parsed.scale,
                 )
                 is ParsedAnswer.Choice -> parsed.optionIds.forEach { optionId ->
+                    val exportedId = cleanId(optionId) ?: optionId
                     svar += submission.svar(key, questionLabel(key), parsed.fieldType).copy(
-                        valgId = optionId,
-                        valgTekst = optionLabels[OptionKey(key, optionId)] ?: optionId,
+                        valgId = exportedId,
+                        valgTekst = optionLabels[OptionKey(key, optionId)] ?: exportedId,
                     )
                 }
                 is ParsedAnswer.Text -> {
@@ -215,6 +243,25 @@ class BigQueryExportMapper(
 
     private fun questionLabel(key: FieldKey): String = questionLabels[key] ?: key.fieldId
 
+    /** Keeps only selected options the question lists. Questions without a list are kept as sent. */
+    private fun restrictToListedOptions(answer: ParsedAnswer, question: JsonObject?): ParsedAnswer? {
+        if (answer !is ParsedAnswer.Choice) return answer
+        val listed = (question?.get("options") as? JsonArray)
+            ?.mapNotNull { (it as? JsonObject)?.string("id") }
+            ?.toSet()
+            ?: return answer
+        return answer.optionIds.filter { it in listed }
+            .takeIf { it.isNotEmpty() }
+            ?.let { answer.copy(optionIds = it) }
+    }
+
+    /** IDs are free strings from the payload. Control characters go, and personal data is masked. */
+    private fun cleanId(raw: String): String? {
+        val cleaned = raw.filterNot { it.isISOControl() }.trim()
+        if (cleaned.isEmpty()) return null
+        return sensitiveDataFilter.redact(cleaned).redactedText.take(MAX_ID_LENGTH)
+    }
+
     private fun cleanLabel(raw: String): String? {
         val withoutControlCharacters = raw.filterNot { it.isISOControl() && it != '\n' }.trim()
         if (withoutControlCharacters.isEmpty()) return null
@@ -294,6 +341,7 @@ class BigQueryExportMapper(
         const val PSEUDONYM_BYTES = 16
         private const val HMAC_ALGORITHM = "HmacSHA256"
         private const val MAX_LABEL_LENGTH = 1000
+        private const val MAX_ID_LENGTH = 200
         private const val MAX_CONTEXT_TAGS = 20
         private val OSLO: ZoneId = ZoneId.of("Europe/Oslo")
         private val DEVICE_TYPES = setOf("mobile", "tablet", "desktop")
@@ -317,10 +365,11 @@ class BigQueryExportMapper(
         private fun parseObject(text: String): JsonObject? =
             runCatching { parser.parseToJsonElement(text) as? JsonObject }.getOrNull()
 
-        private fun kontekstJson(tags: JsonObject): String? {
+        private fun kontekstJson(tags: JsonObject, allowedKeys: Set<String>?): String? {
             val primitives = tags.entries
                 .asSequence()
-                .filter { (key, value) -> key.isNotBlank() && value is JsonPrimitive }
+                .filter { (key, value) -> key.isNotBlank() && value is JsonPrimitive && value !is JsonNull }
+                .filter { (key, _) -> allowedKeys == null || key in allowedKeys }
                 .sortedBy { it.key }
                 .take(MAX_CONTEXT_TAGS)
                 .associate { (key, value) -> key to value }

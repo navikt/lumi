@@ -107,6 +107,10 @@ class BigQueryExportRoutesTest : FunSpec({
             put(body(extra = ""","team":"another-team"""")) shouldBe HttpStatusCode.BadRequest
             put("{not json") shouldBe HttpStatusCode.BadRequest
             put(body(extra = ""","x":"${"a".repeat(5000)}"""")) shouldBe HttpStatusCode.PayloadTooLarge
+            // Free text is closed for teams Lumi has not opened it for.
+            put("""{"projectId":"$project","datasetId":"lumi","includeFreeText":true}""") shouldBe HttpStatusCode.BadRequest
+            client.get("$path?team=team-test") { header(HttpHeaders.Authorization, "Bearer token") }
+                .bodyAsText() shouldContain "\"freeTextAvailable\":false"
         }
     }
 

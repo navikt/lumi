@@ -21,6 +21,9 @@ const val BIGQUERY_TEAM_LABEL = "lumi-team"
 const val BIGQUERY_EXPORT_TABLE_LABEL = "lumi-eksport"
 const val BIGQUERY_EXPORT_TABLE_LABEL_VALUE = "v1"
 
+/** How long BigQuery may keep deleted rows. The SQL from the dashboard sets this. */
+const val BIGQUERY_MAX_TIME_TRAVEL_HOURS = 48
+
 data class BigQueryColumn(
     val name: String,
     val type: String,
@@ -92,7 +95,7 @@ enum class BigQueryExportTable(
             BigQueryExportColumns.surveyArkivert,
             BigQueryColumn(
                 "antall_svar", "INTEGER", true,
-                "Antall spørsmål som ble besvart i innsendingen, også fritekst.",
+                "Antall spørsmål som ble besvart i innsendingen, også fritekst og dato.",
             ),
             BigQueryColumn(
                 "har_fritekst", "BOOLEAN", true,
@@ -100,7 +103,7 @@ enum class BigQueryExportTable(
             ),
             BigQueryColumn(
                 "varighet_sekunder", "INTEGER", false,
-                "Hvor mange sekunder brukeren brukte fra surveyen åpnet til svaret ble sendt.",
+                "Sekunder fra surveyen ble åpnet til svaret ble sendt, rundet ned. Tom når widgeten ikke målte tiden.",
             ),
             BigQueryExportColumns.enhetstype,
             BigQueryExportColumns.kontekst,
@@ -138,11 +141,12 @@ enum class BigQueryExportTable(
 private object BigQueryExportColumns {
     val innsendingId = BigQueryColumn(
         "innsending_id", "STRING", true,
-        "Pseudonym ID for innsendingen. Den er lik i alle tabellene og endrer seg ikke mellom kjøringer.",
+        "Pseudonym ID for innsendingen. Den er lik i alle tabellene og mellom kjøringer, men blir ny når " +
+            "teamet bytter datasett eller setter opp eksporten på nytt.",
     )
     val innsendtTidspunkt = BigQueryColumn(
         "innsendt_tidspunkt", "TIMESTAMP", true,
-        "Når Lumi tok imot svaret.",
+        "Når Lumi tok imot svaret, rundet ned til hele minutter.",
     )
     val innsendtDato = BigQueryColumn(
         "innsendt_dato", "DATE", true,
@@ -161,7 +165,7 @@ private object BigQueryExportColumns {
     val sporsmalId = BigQueryColumn("sporsmal_id", "STRING", true, "Spørsmålets ID (fieldId).")
     val sporsmalTekst = BigQueryColumn(
         "sporsmal_tekst", "STRING", true,
-        "Nyeste spørsmålstekst for spørsmålets ID.",
+        "Nyeste spørsmålstekst for spørsmålets ID. Endres teksten i surveyen, endres den for alle rader.",
     )
     val enhetstype = BigQueryColumn(
         "enhetstype", "STRING", false,
@@ -169,11 +173,13 @@ private object BigQueryExportColumns {
     )
     val kontekst = BigQueryColumn(
         "kontekst", "STRING", false,
-        "Segmenteringstagsene appen sendte med, som et JSON-objekt. Les en verdi med JSON_VALUE(kontekst, '$.navn').",
+        "Segmenteringstaggene appen sendte med, som et JSON-objekt. Tagger med mange ulike verdier er ikke med. " +
+            "Les en verdi med JSON_VALUE(kontekst, '$.navn').",
     )
     val skjemaversjon = BigQueryColumn(
         "skjemaversjon", "STRING", false,
-        "Fingeravtrykk av surveydefinisjonen. Endres når spørsmål eller alternativer endres.",
+        "Fingeravtrykk av strukturen i surveyen. Endres når spørsmål eller alternativer legges til, fjernes " +
+            "eller får ny type, men ikke når teksten endres. Tom for svar fra før Lumi lagret strukturen.",
     )
     val oppdatertTidspunkt = BigQueryColumn(
         "oppdatert_tidspunkt", "TIMESTAMP", true,
@@ -254,6 +260,10 @@ enum class BigQueryExportProblemCode(val isTeamActionable: Boolean) {
     DATASET_TEAM_LABEL_MISMATCH(true),
     TABLE_WRITE_DENIED(true),
     TABLE_NOT_CREATED_BY_LUMI(true),
+    DATASET_NOT_DEDICATED(true),
+    DATASET_TIME_TRAVEL_TOO_LONG(true),
+    TEAM_PROJECT_UNKNOWN(false),
+    EXPORT_JOB_DENIED(false),
     BIGQUERY_UNAVAILABLE(false),
     LOAD_FAILED(false),
     INTERNAL_ERROR(false),
@@ -378,6 +388,8 @@ data class BigQueryExportStatusResponse(
     val location: String,
     val serviceAccount: String? = null,
     val suggestedProjectId: String? = null,
+    /** Whether the team may export free text. Lumi opens it per team once a PVK covers it. */
+    val freeTextAvailable: Boolean = false,
     val destination: BigQueryExportDestinationDto? = null,
 )
 
