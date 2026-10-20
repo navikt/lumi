@@ -19,6 +19,7 @@ import {
   questionTrendRatingMetric,
   questionTrendRatingValue,
 } from "~/components/dashboard/sections/QuestionTrend/questionTrendUtils";
+import { ChartDataTable } from "~/components/shared/Charts/ChartDataTable";
 import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import { useTheme } from "~/context/ThemeContext";
 import { useBreakpoint } from "~/hooks/useBreakpoint";
@@ -59,30 +60,31 @@ const CHART_COLORS_LIGHT = {
   text: "#262626", // Nav Gray 90
 };
 
-export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
+type RatingTrendState =
+  | { status: "pending" }
+  | { status: "error" }
+  | {
+      status: "ready";
+      data: TrendPoint[];
+      metric: ReturnType<typeof questionTrendRatingMetric>;
+      overallAverage: number | undefined;
+    };
+
+/** The daily rating trend and markers shown by the chart and its table. */
+function useRatingTrend(markers: RatingMarker[]): RatingTrendState {
   const { data: stats, isPending, isPlaceholderData } = useStats();
   const fields =
     stats?.fieldStats?.filter((field) => field.fieldType === "RATING") ?? [];
   const field =
     !isPlaceholderData && fields.length === 1 ? fields[0] : undefined;
   const trendQuery = useQuestionTrend(Boolean(field), field?.fieldId, "day");
-  const navigate = useNavigate();
   const { params } = useSearchParams();
-  const { theme } = useTheme();
-  const { isMobile } = useBreakpoint();
-
-  const colors = theme === "light" ? CHART_COLORS_LIGHT : CHART_COLORS;
 
   if (isPending || isPlaceholderData || (field && trendQuery.isPending)) {
-    return <Skeleton variant="rectangle" height={300} />;
+    return { status: "pending" };
   }
+  if (trendQuery.isError) return { status: "error" };
 
-  if (trendQuery.isError)
-    return (
-      <Alert variant="warning" size="small">
-        Kunne ikke hente utviklingen i vurderinger.
-      </Alert>
-    );
   const trend = trendQuery.data;
   const metric = questionTrendRatingMetric(trend ?? {});
   const buckets = trend
@@ -112,6 +114,72 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
       markers: markersByDate[date] ?? [],
     };
   });
+  const overallAverage =
+    field && ratingResponseCount(field)
+      ? getRatingMetric(field).value
+      : undefined;
+
+  return { status: "ready", data, metric, overallAverage };
+}
+
+/** The chart's numbers and markers, under the chart. */
+export function RatingTrendChartTable({ markers = [] }: RatingTrendChartProps) {
+  const trend = useRatingTrend(markers);
+  if (trend.status !== "ready") return null;
+
+  const { metric } = trend;
+  const rows = trend.data.filter(
+    (point) => point.average !== null || point.markers.length > 0,
+  );
+  if (rows.length === 0) return null;
+
+  return (
+    <ChartDataTable
+      label={`${metric.label} per dag`}
+      rowHeader="Dato"
+      columns={[
+        { label: metric.label },
+        { label: "Svar" },
+        { label: "Markører", align: "left" },
+      ]}
+      rows={rows.map((point) => ({
+        key: point.date,
+        header: dayjs(point.date).format("DD.MM.YYYY"),
+        cells: [
+          point.average === null
+            ? "–"
+            : `${point.average.toLocaleString("nb-NO", {
+                maximumFractionDigits: 1,
+              })}${metric.unit ? ` ${metric.unit}` : ""}`,
+          point.count.toLocaleString("nb-NO"),
+          point.markers.map((marker) => marker.label).join(", ") || "–",
+        ],
+      }))}
+    />
+  );
+}
+
+export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
+  const trend = useRatingTrend(markers);
+  const navigate = useNavigate();
+  const { params } = useSearchParams();
+  const { theme } = useTheme();
+  const { isMobile } = useBreakpoint();
+
+  const colors = theme === "light" ? CHART_COLORS_LIGHT : CHART_COLORS;
+
+  if (trend.status === "pending") {
+    return <Skeleton variant="rectangle" height={300} />;
+  }
+
+  if (trend.status === "error")
+    return (
+      <Alert variant="warning" size="small">
+        Kunne ikke hente utviklingen i vurderinger.
+      </Alert>
+    );
+
+  const { data, metric, overallAverage } = trend;
 
   if (data.length === 0) {
     return (
@@ -128,10 +196,6 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
   const chartMargin = isMobile
     ? { top: chartMarginTop, right: 16, left: 8, bottom: 20 }
     : { top: chartMarginTop, right: 20, left: 12, bottom: 20 };
-  const overallAverage =
-    field && ratingResponseCount(field)
-      ? getRatingMetric(field).value
-      : undefined;
 
   return (
     <ResponsiveContainerWithInitialSize

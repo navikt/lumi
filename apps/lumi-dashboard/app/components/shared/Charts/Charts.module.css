@@ -294,3 +294,7 @@
   border-radius: 4px;
   transition: width 0.3s ease;
 }
+
+.dataTableViewport {
+  overflow-x: auto;
+}
