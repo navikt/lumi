@@ -1,5 +1,9 @@
 # Datakontrakt V1 for analyseprodukter
 
+::: warning Erstattet
+Denne siden hører til analyseproduktene i ADR 0006, som er erstattet av [ADR 0007](../adr/0007-teameid-bigquery-eksport.md). Lumi leverer data til BigQuery som beskrevet i [BigQuery og Metabase](../dashboard/bigquery.md).
+:::
+
 Denne kontrakten er den normative grensen mellom Lumi og konsumenter av et
 publisert analyseprodukt. Den beskriver hva kolonnene betyr og hvilke
 invarianter som må være sanne. Fysiske prosjekt- og datasettnavn fastsettes av

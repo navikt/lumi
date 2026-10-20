@@ -61,6 +61,8 @@ Lumi setter ingen cookies. På nav.no lagres det at brukeren har lukket surveyen
 
 Svar slettes automatisk når de er eldre enn 12 måneder. Svar dere sletter i dashboardet, slettes med en gang. Databasen sikkerhetskopieres, så et slettet svar kan finnes i sikkerhetskopiene en tid etterpå. Detaljene står i [Sikkerhet og personvern](/referanse/sikkerhet#lagringstid).
 
+Slår dere på BigQuery-eksport, har dere ansvaret for kopien i teamets prosjekt og for hvem som får tilgang til den, se [Teamets ansvar](/dashboard/bigquery#ansvar).
+
 ## Hvordan personopplysninger kan komme inn
 
 Lumi ber ikke om personopplysninger, men de kan likevel komme inn, blant annet slik:

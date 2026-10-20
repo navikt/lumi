@@ -1,5 +1,9 @@
 # Privat kildesnapshot V1
 
+::: warning Erstattet
+Denne siden hører til analyseproduktene i ADR 0006, som er erstattet av [ADR 0007](../adr/0007-teameid-bigquery-eksport.md). Lumi leverer data til BigQuery som beskrevet i [BigQuery og Metabase](../dashboard/bigquery.md).
+:::
+
 Dette dokumentet beskriver den planlagte, transportuavhengige grensen mellom
 Lumi Postgres og privat analyse-staging. Grensen er ikke deployet, har ingen
 ny eksportbruker eller eksportgrants og inneholder ingen kobling til dev eller

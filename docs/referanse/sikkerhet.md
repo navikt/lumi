@@ -49,6 +49,7 @@ Hvert svar lagres med team, app, tidspunkt og konteksten widgeten sender, som en
 - Svar dere sletter i dashboardet, slettes fra databasen med en gang.
 - Surveydefinisjonen, altså spørsmålene og svaralternativene, slettes ikke automatisk.
 - Databasen sikkerhetskopieres hver natt etter Nais' standardoppsett, og sju sikkerhetskopier beholdes. Et slettet svar kan derfor finnes i sikkerhetskopiene i opptil sju døgn. I tillegg tar Nais en daglig katastrofekopi til et miljø utenfor Google Cloud.
+- Har teamet slått på [BigQuery-eksport](/dashboard/bigquery), erstatter Lumi tabellene i teamets datasett hver natt. Slettede svar og svar eldre enn 12 måneder forsvinner fra BigQuery ved neste kjøring, og tabellene forsvinner sju dager etter siste kjøring. Kopier teamet lager selv, har teamet ansvaret for.
 
 ## Små utvalg i dashboardet
 
@@ -64,6 +65,7 @@ API-et begrenser antall kall på flere nivåer for å hindre misbruk:
 | Innsending (per bruker) | 15 req/min | Per hashet sluttbruker innenfor samme kaller-app |
 | Analyse | 300 req/min | Per kallende klient og bruker |
 | Eksport | 30 req/min | Per kallende klient og bruker |
+| Endringer i BigQuery-eksport | 20 req/min | Per kallende klient og bruker, i tillegg til grensen for analyse |
 | Avvist eksportautentisering/-autorisasjon | 30 forsøk/min | Per kilde-IP |
 | Global | 10 000 req/min | Per kilde-IP |
 
