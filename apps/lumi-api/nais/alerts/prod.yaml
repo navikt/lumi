@@ -72,6 +72,19 @@ spec:
           labels:
             severity: warning
             namespace: team-esyfo
+    - name: lumi-api-bigquery-export
+      rules:
+        - alert: LumiBigQueryExportFailure
+          expr: >-
+            sum(increase(lumi_bigquery_export_runs_total{app="lumi-api",outcome="failed",reason=~"BIGQUERY_UNAVAILABLE|LOAD_FAILED|INTERNAL_ERROR"}[1h])) > 0
+          annotations:
+            summary: "BigQuery-eksporten feiler på Lumis side"
+            consequence: "Minst ett team har ikke fått oppdatert BigQuery-tabellene sine. Tabellene forsvinner sju dager etter siste vellykkede kjøring."
+            action: "Finn team og feilkode i loggene og følg runbooken. Feil teamet selv må rette, vises i dashboardet og gir ikke denne alarmen."
+            runbook_url: "https://github.com/navikt/lumi/blob/main/apps/lumi-api/docs/runbooks/bigquery-export.md"
+          labels:
+            severity: warning
+            namespace: team-esyfo
     - name: lumi-api-availability
       rules:
         - alert: LumiApiNoAvailableReplicas
