@@ -14,6 +14,8 @@ import { resolveDocumentVisibility } from "../../core/documentVisibility.js";
 import {
   createEndpointTransport,
   describeMissingTransport,
+  describeTransportShape,
+  isCustomTransport,
   isEndpointTransport,
   resolveEndpoint,
 } from "../../core/endpointTransport.js";
@@ -272,18 +274,16 @@ export const LumiSurveyDock = ({
   const endpoint = isEndpointTransport(transport)
     ? transport.endpoint
     : undefined;
-  const customTransport = isEndpointTransport(transport)
-    ? undefined
-    : (transport as LumiSurveyTransport | undefined);
-  const transportMissing = transport == null;
+  const customTransport = isCustomTransport(transport) ? transport : undefined;
+  const shapeProblem = describeTransportShape(transport);
   const endpointResolution = useMemo(
     () =>
       customTransport
         ? undefined
-        : transportMissing
-          ? ({ ok: false, problem: "transport is missing" } as const)
+        : shapeProblem
+          ? ({ ok: false, problem: shapeProblem } as const)
           : resolveEndpoint(endpoint),
-    [customTransport, endpoint, transportMissing],
+    [customTransport, endpoint, shapeProblem],
   );
   const activeTransport = useMemo<LumiSurveyTransport | undefined>(
     () =>
@@ -297,7 +297,14 @@ export const LumiSurveyDock = ({
     endpointResolution && !endpointResolution.ok
       ? endpointResolution.problem
       : undefined;
+  // The ref keeps StrictMode's second effect run from logging the same
+  // problem twice.
+  const loggedTransportProblemRef = useRef<string | undefined>(undefined);
   useEffect(() => {
+    if (transportProblem === loggedTransportProblemRef.current) {
+      return;
+    }
+    loggedTransportProblemRef.current = transportProblem;
     if (transportProblem) {
       console.error(describeMissingTransport(transportProblem));
     }
@@ -482,7 +489,8 @@ export const LumiSurveyDock = ({
     onReset: handleFullReset,
     storageStrategy: config.storageStrategy,
     viewEnabled:
-      source === "legacy" || visibleQuestions.length > 0 || showIntro,
+      activeTransport !== undefined &&
+      (source === "legacy" || visibleQuestions.length > 0 || showIntro),
   });
 
   const handleIntroStart = useCallback(() => {

@@ -54,7 +54,8 @@ serverkomponenten en funksjon, for eksempel `events` eller en transport med
 
 ## Konsollen viser «[Lumi] The survey is not shown»
 
-Widgeten vises ikke fordi `transport` mangler eller `endpoint` er ugyldig.
+Widgeten vises ikke fordi `transport` mangler, har feil form eller `endpoint`
+er ugyldig.
 Meldingen sier hva som er feil. `endpoint` må starte med `/` og ligge på samme
 domene som siden, se [Send svarene](/kom-i-gang/konfigurer-survey#send-svarene).
 En vanlig årsak er en miljøvariabel som mangler når appen bygges, slik at
@@ -62,8 +63,10 @@ stien blir `undefined/api/lumi/feedback`.
 
 ## Innsendingen feiler
 
-Widgeten viser en feilmelding når `transport.submit` kaster en feil. Se først i
-nettverksfanen i DevTools hvilken status kallet til appens backend får. Kallet
+Widgeten viser en feilmelding når innsendingen feiler. Med `{ endpoint }`
+skriver widgeten også en melding som starter med
+`[Lumi] Sending the survey to` i konsollen, med status og årsak. Se ellers først
+i nettverksfanen i DevTools hvilken status kallet til appens backend får. Kallet
 videre til Lumi API vises ikke i nettleseren, så detaljene står i loggene til
 backenden. Ruten i
 [backend-eksempelet](/kom-i-gang/koble-til-backend#_3-send-inn-svar-til-lumi-api)

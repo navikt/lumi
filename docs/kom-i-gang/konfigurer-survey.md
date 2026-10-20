@@ -41,8 +41,9 @@ Med `{ endpoint }` som `transport` sender widgeten svarene selv. Den sender `sub
 
 - Stien starter med `/` og ligger på samme domene som siden. Lumi API kan ikke stå her, fordi svarene skal gjennom appens backend.
 - Har appen en base-sti, må den være med, for eksempel `/min-app/api/lumi/feedback`. Se [Base-sti](#base-sti).
+- Stien må være nøyaktig den samme som ruten. Widgeten følger ikke videresendinger, heller ikke en som bare legger til `/` på slutten, for eksempel med `trailingSlash: true` i `next.config`. Skriv da stien med `/` på slutten.
 
-Er `endpoint` ugyldig, viser widgeten ingenting og skriver en melding som starter med `[Lumi]` i konsollen.
+Er `endpoint` ugyldig, viser widgeten ingenting og skriver en melding som starter med `[Lumi]` i konsollen. Svarer backenden med en feil, skriver widgeten en `[Lumi]`-melding med status og årsak, men ikke svarene.
 
 `/api/lumi/feedback` er et endepunkt dere lager selv i appens backend. Det bytter brukerens token mot et token for Lumi API (tokenveksling) og sender svarene videre. Widgeten kan vises før endepunktet finnes, men svarene lagres ikke før [backenden er koblet til](/kom-i-gang/koble-til-backend).
 

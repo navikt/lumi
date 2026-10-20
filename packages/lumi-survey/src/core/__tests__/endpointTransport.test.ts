@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createEndpointTransport,
+  describeTransportShape,
   isEndpointTransport,
   resolveEndpoint,
 } from "../endpointTransport.js";
@@ -29,6 +30,21 @@ describe("isEndpointTransport", () => {
   });
 });
 
+describe("describeTransportShape", () => {
+  it("accepts both forms", () => {
+    expect(describeTransportShape({ endpoint: "/api" })).toBeUndefined();
+    expect(describeTransportShape({ submit: async () => {} })).toBeUndefined();
+  });
+
+  it.each([
+    ["a missing transport", undefined, "transport is missing"],
+    ["a string", "/api/lumi/feedback", "got a string"],
+    ["a function", async () => {}, "got a function"],
+  ])("rejects %s", (_name, transport, problem) => {
+    expect(describeTransportShape(transport)).toContain(problem);
+  });
+});
+
 describe("resolveEndpoint", () => {
   it("accepts a path or a URL on the page's own origin", () => {
     expect(resolveEndpoint("/api/lumi/feedback")).toEqual({
@@ -47,6 +63,10 @@ describe("resolveEndpoint", () => {
     ["a value from a missing environment variable", "undefined/api/lumi"],
     ["a path relative to the page", "api/lumi/feedback"],
     ["a protocol-relative URL", "//evil.example/api"],
+    // These pass the form check, and the URL parser turns them into
+    // protocol-relative URLs, so only the origin check stops them.
+    ["a backslash after the slash", "/\\evil.example/api"],
+    ["a tab between the slashes", "/\t/evil.example/api"],
     ["another origin", "https://lumi-api.example/api/v1/feedback"],
     ["a cluster-internal address", "http://lumi-api.team-esyfo/api"],
   ])("rejects %s", (_name, endpoint) => {
@@ -124,6 +144,32 @@ describe("createEndpointTransport", () => {
     await expect(
       createEndpointTransport("/api").submit(submission),
     ).rejects.toMatchObject({ status: 200 });
+  });
+
+  it("reads the content type without regard to case", async () => {
+    fetchMock.mockResolvedValue(
+      new Response("<!doctype html>", {
+        status: 200,
+        headers: { "Content-Type": "Text/HTML" },
+      }),
+    );
+
+    await expect(
+      createEndpointTransport("/api").submit(submission),
+    ).rejects.toMatchObject({ status: 200 });
+  });
+
+  it("accepts a JSON answer", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ id: "submission-1" }), {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await expect(
+      createEndpointTransport("/api").submit(submission),
+    ).resolves.toBeUndefined();
   });
 
   it("never logs the payload", async () => {

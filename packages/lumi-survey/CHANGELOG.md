@@ -16,7 +16,9 @@ This project follows SemVer.
   login page, and a web page answered with 200 count as failures, so the
   receipt never shows while the answers are lost. Error answers throw
   `LumiSurveyHttpError`, so the time limit and the automatic retry from 2.4.0
-  apply. Each failed attempt logs one `[Lumi]` line without the payload.
+  apply. The widget does not follow redirects, not even one that only adds a
+  trailing slash, so `endpoint` must be the exact path of the route. Each
+  error answer logs one `[Lumi]` line without the payload.
   `LumiSurveyEndpoint` is the type of this form. A transport with a `submit`
   function always wins over `endpoint`.
 - `@navikt/lumi-survey/client` is an entry point with `"use client"` for React
@@ -32,9 +34,10 @@ This project follows SemVer.
 - The type of `transport` is now `LumiSurveyTransport | LumiSurveyEndpoint`.
   Code that reads `props.transport.submit` must check for `submit` first.
   Wrappers that extend `LumiSurveyDockProps` can still narrow `transport`.
-- Without a usable transport, for example when `endpoint` is empty, relative
-  to the page or on another origin, the dock renders nothing and logs one
-  `[Lumi]` error. Previously it rendered and failed when the user submitted.
+- Without a usable transport, for example when `transport` is a string or
+  `endpoint` is empty, relative to the page or on another origin, the dock
+  renders nothing, counts no view and logs one `[Lumi]` error. Previously it
+  rendered and failed when the user submitted.
 
 ## [2.4.0] - 2026-10-21
 

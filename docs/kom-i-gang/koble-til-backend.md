@@ -246,8 +246,8 @@ Slik virker ruten:
   widgeten opp først.
 
 Har appen `basePath` i `next.config`, ligger ruten under den stien. Se
-[Next.js App Router](/kom-i-gang/konfigurer-survey#next-js) for hvordan
-`transport` kaller den.
+[Base-sti](/kom-i-gang/konfigurer-survey#base-sti) for hvordan `endpoint` får
+den med.
 
 ::: warning `requestOboToken` med både TokenX og Entra ID
 `@navikt/oasis` har også `requestOboToken`, som velger TokenX eller Entra ID ut

@@ -73,7 +73,8 @@ onSubmitSuccess?: (submission: LumiSurveySubmission) => void;
 Kalles én gang når innsendingen har feilet, etter et eventuelt nytt forsøk.
 `cause` er feilen fra siste forsøk. Brukte forsøket mer enn ti sekunder, er
 `cause` en `DOMException` med navnet `TimeoutError`. Med `{ endpoint }` er
-`cause` ellers en `LumiSurveyHttpError` med `status`.
+`cause` en `LumiSurveyHttpError` med `status` når backenden svarte med en feil,
+og en `TypeError` fra `fetch` når nettverket feilet.
 
 ```ts
 onSubmitError?: (cause: unknown) => void;

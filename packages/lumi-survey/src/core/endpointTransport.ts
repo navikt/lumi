@@ -8,18 +8,43 @@ export type EndpointResolution =
   | { ok: true; url: string }
   | { ok: false; problem: string };
 
+/** True when `transport` is an object with its own `submit` function. */
+export function isCustomTransport(
+  transport: unknown,
+): transport is LumiSurveyTransport {
+  return (
+    typeof transport === "object" &&
+    transport !== null &&
+    typeof (transport as Partial<LumiSurveyTransport>).submit === "function"
+  );
+}
+
 /**
  * True when `transport` is the plain `{ endpoint }` form rather than an object
  * with its own `submit`. A `submit` function always wins.
  */
 export function isEndpointTransport(
-  transport: LumiSurveyTransport | LumiSurveyEndpoint | undefined | null,
+  transport: unknown,
 ): transport is LumiSurveyEndpoint {
   return (
     typeof transport === "object" &&
     transport !== null &&
-    typeof (transport as Partial<LumiSurveyTransport>).submit !== "function"
+    !isCustomTransport(transport)
   );
+}
+
+/**
+ * Why `transport` has neither form, or undefined when it has one. A string or
+ * a function is an easy mistake that would otherwise only fail on submit.
+ */
+export function describeTransportShape(transport: unknown): string | undefined {
+  if (transport == null) {
+    return "transport is missing";
+  }
+  if (isCustomTransport(transport) || isEndpointTransport(transport)) {
+    return undefined;
+  }
+  return `transport must be { endpoint: "/path" } or an object with a submit function, got a ${typeof transport}`;
 }
 
 /**
@@ -87,7 +112,9 @@ export function createEndpointTransport(url: string): LumiSurveyTransport {
         credentials: "same-origin",
         mode: "same-origin",
         // A followed redirect, for example to a login page, could end in a
-        // 200 page and show the receipt while the answers are lost.
+        // 200 page and show the receipt while the answers are lost. A
+        // redirect that only adds a trailing slash fails too, so the endpoint
+        // must be the exact path of the route.
         redirect: "manual",
       });
 
@@ -95,7 +122,7 @@ export function createEndpointTransport(url: string): LumiSurveyTransport {
         throw failure(
           new LumiSurveyHttpError(0, {
             message:
-              "Lumi: The endpoint redirected instead of answering. The login may have expired, or the path is missing the app's base path.",
+              "Lumi: The endpoint redirected instead of answering. The login may have expired, or the path differs from the route, for example in the base path or a trailing slash.",
           }),
           url,
         );
@@ -103,7 +130,8 @@ export function createEndpointTransport(url: string): LumiSurveyTransport {
       if (!response.ok) {
         throw failure(LumiSurveyHttpError.fromResponse(response), url);
       }
-      if ((response.headers.get("Content-Type") ?? "").includes("text/html")) {
+      const contentType = response.headers.get("Content-Type") ?? "";
+      if (contentType.toLowerCase().includes("text/html")) {
         throw failure(
           new LumiSurveyHttpError(response.status, {
             message:
@@ -117,8 +145,9 @@ export function createEndpointTransport(url: string): LumiSurveyTransport {
 }
 
 function failure(error: LumiSurveyHttpError, url: string): LumiSurveyHttpError {
-  // One line per failed attempt helps teams find the cause without the
-  // payload, which may contain personal data, ever reaching the console.
+  // One line per error answer helps teams find the cause without the payload,
+  // which may contain personal data, ever reaching the console. Network
+  // errors and timeouts already show in DevTools.
   console.error(
     `[Lumi] Sending the survey to ${url} failed with status ${error.status}: ${error.message}`,
   );
