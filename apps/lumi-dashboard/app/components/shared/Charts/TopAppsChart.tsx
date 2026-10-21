@@ -1,4 +1,5 @@
 import { Bar, BarChart, Tooltip, XAxis, YAxis } from "recharts";
+import { ChartDataTable } from "~/components/shared/Charts/ChartDataTable";
 import { ChartEmptyState } from "~/components/shared/Charts/ChartEmptyState";
 import { ChartLoadingState } from "~/components/shared/Charts/ChartLoadingState";
 import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
@@ -20,6 +21,36 @@ const CHART_COLORS_LIGHT = {
   textMuted: "#545454", // Nav Gray 60
 };
 
+/** The ten apps with most feedback, as in the chart. */
+export function topAppsChartData(byApp: Record<string, number>) {
+  return Object.entries(byApp)
+    .map(([app, count]) => ({ app, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+}
+
+/** The chart's numbers, under the chart. */
+export function TopAppsChartTable() {
+  const { data: stats, isPending } = useStats();
+  if (isPending) return null;
+
+  const data = topAppsChartData(stats?.byApp ?? {});
+  if (data.length === 0) return null;
+
+  return (
+    <ChartDataTable
+      label="De ti appene med flest tilbakemeldinger"
+      rowHeader="App"
+      columns={[{ label: "Tilbakemeldinger" }]}
+      rows={data.map((point) => ({
+        key: point.app,
+        header: point.app,
+        cells: [point.count.toLocaleString("no-NO")],
+      }))}
+    />
+  );
+}
+
 export function TopAppsChart() {
   const { data: stats, isPending } = useStats();
   const { theme } = useTheme();
@@ -31,13 +62,7 @@ export function TopAppsChart() {
     return <ChartLoadingState />;
   }
 
-  const byApp = stats?.byApp || {};
-
-  // Transform and sort by count, take top 10
-  const data = Object.entries(byApp)
-    .map(([app, count]) => ({ app, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 10);
+  const data = topAppsChartData(stats?.byApp ?? {});
 
   if (data.length === 0) {
     return <ChartEmptyState message="Ingen app-data tilgjengelig" />;
