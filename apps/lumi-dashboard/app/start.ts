@@ -4,6 +4,7 @@ import {
   applyBaselineSecurityHeaders,
   buildCspHeaderValue,
 } from "~/server/securityHeaders";
+import { logServerFnError } from "~/server/serverFnErrors";
 import { apiErrorSerializationAdapter } from "~/utils/apiErrorSerialization";
 
 const securityHeadersMiddleware = createMiddleware().server(
@@ -32,7 +33,19 @@ const securityHeadersMiddleware = createMiddleware().server(
   },
 );
 
+const serverFnErrorLoggingMiddleware = createMiddleware({
+  type: "function",
+}).server(async ({ next, serverFnMeta }) => {
+  try {
+    return await next();
+  } catch (error) {
+    logServerFnError(error, serverFnMeta.name);
+    throw error;
+  }
+});
+
 export const startInstance = createStart(() => ({
   serializationAdapters: [apiErrorSerializationAdapter],
   requestMiddleware: [securityHeadersMiddleware],
+  functionMiddleware: [serverFnErrorLoggingMiddleware],
 }));
