@@ -47,10 +47,13 @@ export function PhraseList({
               hasText: "true",
             })}
             className={styles.phraseLink}
-            aria-label={`Vis ${phrase.count} tilbakemeldinger med uttrykket «${phrase.text}»`}
           >
+            {/* The link is named by its visible text, so people who use speech
+                input can say what they see. The list already gives the rank. */}
             <HStack align="center" gap="space-8" wrap={false}>
-              <span className={styles.phraseRank}>{index + 1}</span>
+              <span className={styles.phraseRank} aria-hidden>
+                {index + 1}
+              </span>
               <span className={styles.phraseBar}>
                 <span
                   className={styles.phraseBarFill}
@@ -79,6 +82,7 @@ export function PhraseList({
                   >
                     <Detail className={styles.phraseCount}>
                       {phrase.count} svar
+                      <span className={styles.srOnly}>{" – åpne svarene"}</span>
                     </Detail>
                     <ArrowRightIcon
                       fontSize="var(--ax-font-size-medium)"

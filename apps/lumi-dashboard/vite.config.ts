@@ -11,7 +11,7 @@ const serverOnlyModules = [
   "@navikt/oasis",
   "@navikt/pino-logger",
   "pino",
-  "prom-client",
+  "@prometheus-io/client",
 ];
 export default defineConfig(({ command, mode }) => {
   const isProductionBuild = command === "build" && mode === "production";

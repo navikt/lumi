@@ -46,7 +46,7 @@ async function saved(page: Page) {
 
 async function noAxeViolations(page: Page) {
   const result = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();
   expect(result.violations).toEqual([]);
 }

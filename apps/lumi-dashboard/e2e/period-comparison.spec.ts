@@ -262,7 +262,7 @@ test("revised rating overview keeps detail discoverable and passes accessibility
     .boundingBox();
   expect(fieldHeading?.y).toBeLessThan(trendHeading?.y ?? 0);
   const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();
   expect(results.violations).toEqual([]);
   await page.screenshot({
@@ -323,7 +323,7 @@ for (const width of [1280, 768, 390, 320]) {
     expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(width);
     const accessibility = await new AxeBuilder({ page })
       .include('dialog[open], [role="dialog"]')
-      .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
       .analyze();
     expect(accessibility.violations).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath("period-editor.png") });
