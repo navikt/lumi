@@ -104,6 +104,103 @@ test("fails when the package manifest changes without a version bump", () => {
   assert.match(result.stderr, /packages\/lumi-survey\/package\.json/);
 });
 
+test("does not require a release when only devDependencies change", () => {
+  const { cwd, packageDir } = createTaggedPackage();
+  writeFileSync(
+    path.join(packageDir, "package.json"),
+    `${JSON.stringify(
+      { version: "2.0.0", devDependencies: { vitest: "^5.0.0" } },
+      null,
+      2,
+    )}\n`,
+  );
+  git(cwd, "add", "packages/lumi-survey/package.json");
+  git(cwd, "commit", "-m", "Bump a dev dependency");
+
+  const result = spawnSync(process.execPath, [scriptPath], {
+    cwd,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /no published package changes/i);
+});
+
+test("fails when dependencies change without a version bump", () => {
+  const { cwd, packageDir } = createTaggedPackage();
+  writeFileSync(
+    path.join(packageDir, "package.json"),
+    `${JSON.stringify(
+      {
+        version: "2.0.0",
+        devDependencies: { vitest: "^5.0.0" },
+        peerDependencies: { react: ">=19" },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  git(cwd, "add", "packages/lumi-survey/package.json");
+  git(cwd, "commit", "-m", "Change a peer dependency");
+
+  const result = spawnSync(process.execPath, [scriptPath], {
+    cwd,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /packages\/lumi-survey\/package\.json/);
+});
+
+test("fails when the order of export conditions changes without a version bump", () => {
+  const { cwd, packageDir } = createTaggedPackage();
+  const writeManifest = (version, exportsEntry) =>
+    writeFileSync(
+      path.join(packageDir, "package.json"),
+      `${JSON.stringify({ version, exports: { ".": exportsEntry } }, null, 2)}\n`,
+    );
+  writeManifest("2.0.1", {
+    types: "./dist/index.d.ts",
+    default: "./dist/index.js",
+  });
+  git(cwd, "add", "packages/lumi-survey/package.json");
+  git(cwd, "commit", "-m", "Release 2.0.1");
+  git(cwd, "tag", "lumi-survey-v2.0.1");
+  // Conditions are matched in order, so this changes how the package resolves.
+  writeManifest("2.0.1", {
+    default: "./dist/index.js",
+    types: "./dist/index.d.ts",
+  });
+  git(cwd, "add", "packages/lumi-survey/package.json");
+  git(cwd, "commit", "-m", "Reorder export conditions");
+
+  const result = spawnSync(process.execPath, [scriptPath], {
+    cwd,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /packages\/lumi-survey\/package\.json/);
+});
+
+test("rejects a lower version even when nothing else changed", () => {
+  const { cwd, packageDir } = createTaggedPackage();
+  writeFileSync(
+    path.join(packageDir, "package.json"),
+    `${JSON.stringify({ version: "1.9.1" }, null, 2)}\n`,
+  );
+  git(cwd, "add", "packages/lumi-survey/package.json");
+  git(cwd, "commit", "-m", "Lower the version");
+
+  const result = spawnSync(process.execPath, [scriptPath], {
+    cwd,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /must be newer than 2\.0\.0/i);
+});
+
 test("fails when the package build config changes without a version bump", () => {
   const { cwd, packageDir } = createTaggedPackage();
   writeFileSync(
@@ -267,6 +364,29 @@ test("publish mode accepts a manifest-only release", () => {
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /package\.json/);
+});
+
+test("publish mode rejects a release with only devDependencies changed", () => {
+  const { cwd, packageDir } = createTaggedPackage();
+  writeFileSync(
+    path.join(packageDir, "package.json"),
+    `${JSON.stringify(
+      { version: "2.0.1", devDependencies: { vitest: "^5.0.0" } },
+      null,
+      2,
+    )}\n`,
+  );
+  git(cwd, "add", "packages/lumi-survey/package.json");
+  git(cwd, "commit", "-m", "Bump a dev dependency and the version");
+
+  const result = spawnSync(
+    process.execPath,
+    [scriptPath, "--require-meaningful-change"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /no meaningful published package changes/i);
 });
 
 test("publish mode accepts a license-only release", () => {

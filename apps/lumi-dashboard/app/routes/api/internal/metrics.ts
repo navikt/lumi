@@ -1,5 +1,8 @@
+import { collectDefaultMetrics, register } from "@prometheus-io/client";
 import { createFileRoute } from "@tanstack/react-router";
-import { collectDefaultMetrics, register } from "prom-client";
+
+// @navikt/oasis counts token exchanges in this registry too, so it must be the
+// same package and version as the one oasis depends on.
 
 // Collect default Node.js metrics (event loop, heap, etc.)
 collectDefaultMetrics();

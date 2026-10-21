@@ -378,7 +378,10 @@ function SurveyToolbar({
             </BodyShort>
           )}
           {receivingAfterArchive && (
-            <Tooltip content="Surveyen er arkivert, men frontenden sender fortsatt inn svar. Fjern widgeten fra frontend-koden for å stoppe datainnsamling.">
+            <Tooltip
+              content="Surveyen er arkivert, men frontenden sender fortsatt inn svar. Fjern widgeten fra frontend-koden for å stoppe datainnsamling."
+              describesChild
+            >
               <Tag size="small" variant="warning">
                 Mottar fortsatt innsendinger
               </Tag>
@@ -390,7 +393,7 @@ function SurveyToolbar({
         </HStack>
         <HStack gap="space-8" align="center">
           {isArchived ? (
-            <Tooltip content="Gjenopprett surveyen fra arkivet">
+            <Tooltip content="Gjenopprett surveyen fra arkivet" describesChild>
               <Button
                 variant="secondary"
                 size="small"
@@ -402,7 +405,10 @@ function SurveyToolbar({
               </Button>
             </Tooltip>
           ) : (
-            <Tooltip content="Skjul surveyen i dashboardet — innsendinger stoppes ikke">
+            <Tooltip
+              content="Skjul surveyen i dashboardet — innsendinger stoppes ikke"
+              describesChild
+            >
               <Button
                 variant="secondary"
                 size="small"
@@ -413,7 +419,10 @@ function SurveyToolbar({
               </Button>
             </Tooltip>
           )}
-          <Tooltip content="Slett alle svar og fjern surveyen fra dashboardet — nye innsendinger stoppes ikke">
+          <Tooltip
+            content="Slett alle svar og fjern surveyen fra dashboardet — nye innsendinger stoppes ikke"
+            describesChild
+          >
             <Button
               data-color="danger"
               variant="primary"

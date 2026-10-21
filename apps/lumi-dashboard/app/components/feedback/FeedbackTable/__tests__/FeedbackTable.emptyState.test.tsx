@@ -348,10 +348,13 @@ describe("FeedbackTable empty states", () => {
 
     render(<FeedbackTable />);
 
-    expect(
-      screen.getByRole("button", {
-        name: /slett alle svar og fjern surveyen fra dashboardet.*nye innsendinger stoppes ikke/i,
-      }),
-    ).toBeVisible();
+    // The tooltip describes the button, which is named by its visible text.
+    const deleteButton = screen.getByRole("button", {
+      name: /^slett alle svar/i,
+    });
+    expect(deleteButton).toBeVisible();
+    expect(deleteButton).toHaveAccessibleDescription(
+      /slett alle svar og fjern surveyen fra dashboardet.*nye innsendinger stoppes ikke/i,
+    );
   });
 });

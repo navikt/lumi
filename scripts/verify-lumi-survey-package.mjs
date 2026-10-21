@@ -104,6 +104,42 @@ function assertCssSelectorsAreNamespaced(css) {
   }
 }
 
+/**
+ * Packages that built code imports but package.json does not declare in
+ * dependencies or peerDependencies. The release drift check ignores
+ * devDependencies because they never ship, so a devDependency that ends up
+ * imported from dist would change consumers' code without a release.
+ */
+export function findUndeclaredImports(code, manifest) {
+  const declared = new Set([
+    manifest.name,
+    ...Object.keys(manifest.dependencies ?? {}),
+    ...Object.keys(manifest.peerDependencies ?? {}),
+  ]);
+  // JSDoc examples show imports that are not part of the code.
+  const withoutComments = code
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+  const specifiers = [
+    ...withoutComments.matchAll(
+      /(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*)["']([^"']+)["']/g,
+    ),
+  ].map((match) => match[1]);
+  const packages = specifiers
+    .filter(
+      (specifier) =>
+        !specifier.startsWith(".") &&
+        !specifier.startsWith("/") &&
+        !specifier.startsWith("node:"),
+    )
+    .map((specifier) =>
+      specifier.startsWith("@")
+        ? specifier.split("/").slice(0, 2).join("/")
+        : specifier.split("/")[0],
+    );
+  return [...new Set(packages)].filter((name) => !declared.has(name)).sort();
+}
+
 async function scanDirRecursive(dirPath, predicate) {
   const entries = await readdir(dirPath, { withFileTypes: true });
   for (const entry of entries) {
@@ -210,6 +246,20 @@ async function main() {
 
   await scanFileForForbiddenStrings(distIndexJs);
   await scanFileForForbiddenStrings(distIndexDts);
+
+  // 5) built code may only import declared dependencies and peers.
+  for (const entry of await readdir(distDir)) {
+    if (!/\.(?:[cm]?js|d\.[cm]?ts)$/.test(entry)) continue;
+    const undeclared = findUndeclaredImports(
+      await readText(path.join(distDir, entry)),
+      pkg,
+    );
+    if (undeclared.length > 0) {
+      fail(
+        `packages/lumi-survey/dist/${entry} imports packages that are not dependencies or peerDependencies: ${undeclared.join(", ")}`,
+      );
+    }
+  }
 
   const distCss = await readText(distIndexCss);
   assertCssSelectorsAreNamespaced(distCss);

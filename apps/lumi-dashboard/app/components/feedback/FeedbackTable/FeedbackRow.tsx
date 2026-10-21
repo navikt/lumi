@@ -107,7 +107,7 @@ export function FeedbackRow({
             <Detail textColor="subtle">{feedback.surveyId}</Detail>
             <TagsPreview tags={feedback.tags} />
             {feedback.sensitiveDataRedacted && (
-              <Tooltip content="Sensitiv data har blitt fjernet">
+              <Tooltip content="Sensitiv data har blitt fjernet" describesChild>
                 <Tag data-color="warning" variant="outline" size="small">
                   <ShieldLockIcon aria-hidden /> Redigert
                 </Tag>
