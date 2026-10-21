@@ -44,6 +44,40 @@ logger for å finne den konkrete konsumenten etter at kanalen er identifisert.
 Ved `409 DefinitionConflict` følger du også
 [runbooken for survey-definisjonskonflikter](./survey-definition-conflicts.md).
 
+### 503 «Databasen svarer ikke akkurat nå»
+
+API-et svarer 503 når et kall ikke fikk en databasetilkobling i tide, eller når
+én spørring brukte lengre tid enn grensen. Ved innsending telles det som
+`failed`. Får poolet ikke tilkobling fordi databasen er nede, gir det samme
+svar.
+
+| Pool | Brukes av | Tilkoblinger per pod | Venter på tilkobling | Grense per spørring |
+| --- | --- | --- | --- | --- |
+| `lumi-api-submission-pool` | Innsending | 4 (dev: 2) | 3 s | 3 s |
+| `lumi-api-readiness-pool` | `/internal/isReady` | 1 | 0,5 s | Ingen |
+| `lumi-api-pool` | Dashboard, Surveyverksted og analyse | 8 (dev: 4) | 5 s | 15 s |
+
+Dev har den minste Cloud SQL-instansen, som tillater 25 tilkoblinger, og
+setter mindre pooler med `LUMI_DB_MAIN_POOL_SIZE` og
+`LUMI_DB_SUBMISSION_POOL_SIZE`. `DatabasePoolEnvTest` sjekker at alle poolene
+i maks antall podder pluss én ekstra pod under utrulling holder seg under
+grensen i både dev og prod. Øker dere antall replikaer eller poolstørrelsen,
+eller bytter dere tier, må testen fortsatt passere.
+
+Flyway og slettejobben bruker også `lumi-api-pool`, men uten grense per
+spørring. Grensen gjelder hver spørring for seg, så et kall med flere
+spørringer kan holde en tilkobling lenger enn grensen.
+
+Poolene hindrer at tunge kall fra dashboardet tar alle tilkoblingene, men de
+deler fortsatt databasens CPU. Innsendinger til samme survey venter dessuten
+på hverandre, fordi de oppdaterer samme rad i `survey_definitions`. Kommer
+503 ved innsending:
+
+1. Står det `Readiness check failed: database not reachable` i loggene til
+   `lumi-api`, er databasen nede. Følg da avsnittet under.
+2. Ellers er databasen presset. Sjekk CPU og antall tilkoblinger for
+   instansen i Cloud SQL, og se etter tunge spørringer i Query Insights.
+
 ## Ingen tilgjengelige replikaer
 
 `LumiApiNoAvailableReplicas` og `LumiDashboardNoAvailableReplicas` går når
