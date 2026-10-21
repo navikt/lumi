@@ -184,7 +184,7 @@ export const EditorTopbar = memo(function EditorTopbar({
             Prøv i egen fane
           </Button>
         ) : (
-          <Tooltip content="Tilgjengelig når utkastet er lagret">
+          <Tooltip content="Tilgjengelig når utkastet er lagret" describesChild>
             <Button
               type="button"
               variant="secondary"

@@ -147,7 +147,7 @@ describe("TextAnalysis", () => {
     ).toBeTruthy();
 
     const phraseLink = screen.getByRole("link", {
-      name: /12 tilbakemeldinger.*søke sykepenger/i,
+      name: /søke sykepenger.*12 svar/i,
     });
     expect(phraseLink).toHaveAttribute(
       "href",

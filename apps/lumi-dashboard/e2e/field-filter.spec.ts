@@ -19,7 +19,7 @@ test.describe("Field filters", () => {
       roleField.getByRole("heading", { name: "Rolle", level: 3 }),
     ).toBeVisible();
     const employer = roleField.getByRole("button", {
-      name: /^Filtrer på Arbeidsgiver\./,
+      name: /^Arbeidsgiver\s*\./,
     });
     await employer.click();
 

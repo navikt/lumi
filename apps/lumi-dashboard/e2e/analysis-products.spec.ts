@@ -98,7 +98,7 @@ test("selects, saves, reviews and locks an analysis contract without publishing 
       })
       .toBeLessThanOrEqual(viewport.width);
     const accessibility = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
       .analyze();
     expect(accessibility.violations).toEqual([]);
   }
@@ -222,7 +222,7 @@ test("keeps selected sources usable in a large catalog on desktop and mobile", a
       .toBeLessThanOrEqual(viewport.width);
     await expect(longSource).toBeVisible();
     const accessibility = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
       .analyze();
     expect(accessibility.violations).toEqual([]);
     await search.scrollIntoViewIfNeeded();

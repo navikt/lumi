@@ -145,11 +145,7 @@ test.describe("Feedback", () => {
   }) => {
     await page.goto("/feedback?surveyId=archive-focus-test");
 
-    await page
-      .getByRole("button", {
-        name: "Skjul surveyen i dashboardet — innsendinger stoppes ikke",
-      })
-      .click();
+    await page.getByRole("button", { name: "Arkiver", exact: true }).click();
     await page
       .getByRole("button", { name: "Arkiver survey", exact: true })
       .click();
@@ -157,7 +153,8 @@ test.describe("Feedback", () => {
     await expect(page).toHaveURL(/surveyId=archive-focus-test/);
     await expect(page).toHaveURL(/showArchived=true/);
     const restoreButton = page.getByRole("button", {
-      name: "Gjenopprett surveyen fra arkivet",
+      name: "Gjenopprett",
+      exact: true,
     });
     await expect(restoreButton).toBeVisible();
     await expect(restoreButton).toBeFocused();

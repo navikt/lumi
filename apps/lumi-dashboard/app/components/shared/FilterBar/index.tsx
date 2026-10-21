@@ -531,7 +531,10 @@ function FilterBarContent({
               {archiveToggle}
               {!periodControl && <PeriodSelector />}
               {hasActiveFilters && (
-                <Tooltip content="Nullstill alle filtre til standard (siste 30 dager)">
+                <Tooltip
+                  content="Nullstill alle filtre til standard (siste 30 dager)"
+                  describesChild
+                >
                   <Button
                     variant="tertiary"
                     size="small"

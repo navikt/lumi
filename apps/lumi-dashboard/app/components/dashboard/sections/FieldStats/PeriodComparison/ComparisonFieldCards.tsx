@@ -390,7 +390,6 @@ export function ComparisonChoiceFieldCard({
               className={`${choiceStyles.choiceButton} ${styles.comparisonChoiceButton} ${activeChoiceValue && !isActive ? choiceStyles.choiceButtonInactive : ""}`}
               onClick={() => onChoiceSelect(choice.id)}
               aria-pressed={isActive}
-              aria-label={`Filtrer på ${choice.label}. Valgt periode: ${choice.count} svar, ${count ? choice.percentage : "ingen"} prosent.${accessibleComparison}`}
             >
               <VStack gap="space-4" width="100%">
                 <div
@@ -400,23 +399,29 @@ export function ComparisonChoiceFieldCard({
                       : styles.layerChoiceGrid
                   }
                 >
+                  {/* The name starts with the visible answer, so people who
+                      use speech input can say what they see. Screen readers
+                      get the numbers as sentences instead of the grid. */}
                   <BodyShort
                     size="small"
                     className={styles.comparisonChoiceLabel}
                   >
                     {choice.label}
+                    <span className={styles.srOnly}>
+                      {`. Valgt periode: ${choice.count} svar, ${count ? choice.percentage : "ingen"} prosent.${accessibleComparison} Filtrer på svaret.`}
+                    </span>
                   </BodyShort>
-                  <BodyShort size="small" weight="semibold">
+                  <BodyShort size="small" weight="semibold" aria-hidden>
                     {count ? `${choice.percentage} %` : "—"}
                   </BodyShort>
                   {comparisonEnabled ? (
                     <>
-                      <BodyShort size="small" textColor="subtle">
+                      <BodyShort size="small" textColor="subtle" aria-hidden>
                         <PendingValue pending={comparisonPending}>
                           {previous ? `${previous.percentage} %` : "—"}
                         </PendingValue>
                       </BodyShort>
-                      <BodyShort size="small">
+                      <BodyShort size="small" aria-hidden>
                         <PendingValue pending={comparisonPending}>
                           {delta}
                         </PendingValue>

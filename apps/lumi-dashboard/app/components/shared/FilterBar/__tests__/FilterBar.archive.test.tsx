@@ -427,11 +427,18 @@ describe("FilterBar archive state", () => {
 
     render(<FilterBar />);
 
+    // The icon-only button on small screens is named by its label, and the
+    // text button is named "Nullstill" and described by its tooltip.
     expect(
-      screen.getAllByRole("button", {
+      screen.getByRole("button", {
         name: "Nullstill alle filtre til standard (siste 30 dager)",
       }),
-    ).toHaveLength(2);
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Nullstill" }),
+    ).toHaveAccessibleDescription(
+      "Nullstill alle filtre til standard (siste 30 dager)",
+    );
   });
 
   it("anchors a shared survey to the selected app's response period", async () => {
