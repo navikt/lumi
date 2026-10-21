@@ -49,6 +49,11 @@ Disse endringene i 2.x kan påvirke en survey som virker i 1.x:
   Sett samme `type` som før.
 - De anbefalte builderne bruker ikke alltid de samme spørsmåls-ID-ene som de
   eldre. Se [Behold eller bytt `surveyId`](#behold-eller-bytt-surveyid).
+- Versjon 1.x og 2.0.x sender ikke `maxSelections` til Lumi API, det gjør 2.1.0
+  og nyere. Ble surveyen registrert før 20. august 2026, fyller Lumi inn
+  grensen én gang. Ble den registrert senere med 1.x eller 2.0.x, gir et
+  flervalgsspørsmål med `maxSelections` 409 etter oppgraderingen. Da trenger
+  surveyen ny `surveyId`.
 
 ## Eldre bruk og ny modell
 
