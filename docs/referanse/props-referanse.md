@@ -124,11 +124,23 @@ Se [Sider og flyt](/guider/sider-og-flyt) og [Spørsmålstyper](/guider/sporsmal
 
 ```typescript
 interface LumiSurveyTransport {
-  submit: (submission: LumiSurveySubmission) => Promise<void>;
+  submit: (
+    submission: LumiSurveySubmission,
+    options?: { signal: AbortSignal },
+  ) => Promise<void>;
 }
 ```
 
-Send `submission.transportPayload` til endepunktet i appen deres. Se [Koble til backend](/kom-i-gang/koble-til-backend#_3-send-inn-svar-til-lumi-api).
+Send `submission.transportPayload` til endepunktet i appen deres, og send `options.signal` videre til `fetch`. Kast `LumiSurveyHttpError.fromResponse(response)` når backenden svarer med feil. Se [eksempelet](/kom-i-gang/konfigurer-survey#vis-surveyen-og-send-inn-svar) og [Koble til backend](/kom-i-gang/koble-til-backend#_3-send-inn-svar-til-lumi-api).
+
+Se [Tidsgrense og nytt forsøk](/kom-i-gang/konfigurer-survey#tidsgrense-og-nytt-forsok) for hvordan widgeten bruker signalet og statusen.
+
+| `LumiSurveyHttpError` | Beskrivelse |
+| :--- | :--- |
+| `status` | HTTP-statusen backenden svarte med |
+| `retryAfterSeconds` | Sekunder fra `Retry-After`, hvis svaret hadde en gyldig verdi |
+| `LumiSurveyHttpError.fromResponse(response)` | Lager feilen fra et `Response` fra `fetch` |
+
 
 ## `behavior`: `LumiSurveyBehavior`
 

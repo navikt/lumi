@@ -4,6 +4,44 @@ All notable changes to `@navikt/lumi-survey` will be documented in this file.
 
 This project follows SemVer.
 
+## [2.4.0] - 2026-10-20
+
+### Added
+
+- `LumiSurveyHttpError` lets a transport report the HTTP status from the app's
+  backend: `throw LumiSurveyHttpError.fromResponse(response)`. It keeps
+  `status` and the seconds from a valid `Retry-After` header.
+- `transport.submit` gets a second, optional argument with an `AbortSignal`:
+  `submit(submission, options?)`. Pass `options.signal` on to `fetch`, so the
+  request is cancelled when the widget stops waiting. A function that already
+  takes another optional second parameter now receives this object, and
+  TypeScript rejects assigning it as `submit`.
+- `LumiApiErrorType.DATABASE_UNAVAILABLE`, which Lumi API returns with 503
+  when the database does not answer in time. Code with an exhaustive `switch`
+  or a `Record` over `LumiApiErrorType` must handle it.
+
+### Changed
+
+- The widget waits at most 10 seconds for each attempt. It then aborts the
+  signal and shows the error message. `onSubmitError` receives a
+  `DOMException` named `TimeoutError`. Previously the widget waited for as
+  long as the browser kept the request open.
+- The widget tries once more with the same submission and deduplication key
+  when the transport throws an error with a numeric `status`:
+  - 503: after `Retry-After`, or after 0.5–1.5 seconds without it. The spread
+    keeps widgets that failed together from retrying in the same instant.
+  - 429: only when `Retry-After` asks for at most 5 seconds. Lumi API's rate
+    limits last a minute, so a retry without it would be rejected again.
+
+  When `Retry-After` asks for more than 5 seconds, the error is shown at once.
+  Lumi API stores a repeated deduplication key only once. `onSubmitStart` and
+  `onSubmitError` are still called once per submit. Transports that throw a
+  plain `Error` behave as before. Transports whose own error type has a
+  numeric `status` now get the retry too.
+- A submit that settles after `reset()`, for example after the user closed the
+  dock, no longer sets the status or error of the reset survey. The events
+  still fire.
+
 ## [2.3.0] - 2026-10-15
 
 Version 2.2.4 was prepared in the repository but never published. Its changes

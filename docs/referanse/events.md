@@ -51,7 +51,8 @@ onAnswer?: (questionId: string, value: unknown) => void;
 
 ### `onSubmitStart`
 
-Kalles når brukeren trykker **Send** og innsendingen starter.
+Kalles når brukeren trykker **Send** og innsendingen starter. Prøver widgeten
+én gang til etter 429 eller 503, kalles den ikke på nytt.
 
 ```ts
 onSubmitStart?: (submission: LumiSurveySubmission) => void;
@@ -67,7 +68,9 @@ onSubmitSuccess?: (submission: LumiSurveySubmission) => void;
 
 ### `onSubmitError`
 
-Kalles hvis `transport.submit` kaster en feil.
+Kalles én gang når innsendingen har feilet, etter et eventuelt nytt forsøk.
+`cause` er feilen fra siste forsøk. Brukte forsøket mer enn ti sekunder, er
+`cause` en `DOMException` med navnet `TimeoutError`.
 
 ```ts
 onSubmitError?: (cause: unknown) => void;

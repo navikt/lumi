@@ -7,6 +7,7 @@ export enum ErrorType {
   BAD_REQUEST = "BAD_REQUEST",
   CONFLICT = "CONFLICT",
   RATE_LIMITED = "RATE_LIMITED",
+  DATABASE_UNAVAILABLE = "DATABASE_UNAVAILABLE",
 }
 
 export interface ApiError {

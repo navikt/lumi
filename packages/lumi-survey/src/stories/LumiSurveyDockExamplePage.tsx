@@ -70,8 +70,8 @@ export const ExamplePage = ({ sourceCode, ...props }: ExamplePageProps) => {
 
   const previewTransport = useMemo<LumiSurveyDockProps["transport"]>(
     () => ({
-      async submit(submission) {
-        await props.transport.submit(submission);
+      async submit(submission, options) {
+        await props.transport.submit(submission, options);
         setLastSubmission(submission);
       },
     }),
