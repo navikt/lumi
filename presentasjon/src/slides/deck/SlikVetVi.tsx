@@ -67,7 +67,7 @@ function SlikVetVi() {
           r={MAIN_R}
           size={44}
           label="Team SåPe, februar 2026"
-          note="Fem funn, alle utbedret"
+          note="Fem funn, alle utbedret. Før Surveyverksted."
         />
         <Stop
           x={XS[1]}
@@ -100,6 +100,8 @@ Fra start: Team SåPe, Navs interne team for sikkerhetstesting, testet Lumi i fe
 
 Klikk 1: Rundt 2 600 automatiske tester. axe kjører i widgeten og i e2e-testene for dashboardet.
 
-Klikk 2: Pakken publiseres på npm med provenance, så dere kan se at den er bygd fra koden i navikt/lumi.`,
+Klikk 2: Pakken publiseres på npm med provenance, så dere kan se at den er bygd fra koden i navikt/lumi.
+
+Ut mot kartet: «Da svarer jeg på spørsmålet fra starten. Kartet viser hvor svaret går. Det rangerer ingen.»`,
   Component: SlikVetVi,
 };

@@ -54,15 +54,14 @@ function Wall() {
           className="wall__gap"
         />
       </g>
-      <g data-from={2}>
-        <rect
-          x={right - 18}
-          y={LUMI_GATE.y}
-          width={36}
-          height={LUMI_GATE.height}
-          className="wall__gap"
-        />
-      </g>
+      {/* The app's own door: there from the start, it is not new. */}
+      <rect
+        x={right - 18}
+        y={LUMI_GATE.y}
+        width={36}
+        height={LUMI_GATE.height}
+        className="wall__gap"
+      />
     </g>
   );
 }
@@ -70,7 +69,7 @@ function Wall() {
 function Fagsystemsonen() {
   return (
     <div className="slide">
-      <LineMap label="Saksbehandlerens nettleser ligger bak en vegg, fagsystemsonen. En app med et skript fra en leverandør trenger en egen åpning ut av sonen, og svaret lagres hos leverandøren. En app med Lumi sender svaret gjennom døra appen alt har, til appens backend og Lumi API på Nais.">
+      <LineMap label="Saksbehandlerens nettleser ligger bak en vegg, fagsystemsonen. Appen snakker alt med sin egen backend på Nais, gjennom døra den har. En app med et skript fra en leverandør trenger en egen åpning ut av sonen til leverandørens server, og svaret lagres der. Leverandøren er databehandler for Nav. Med Lumi følger svaret linja som alt finnes, gjennom døra, til appens backend, Lumi API og databasen på Nais.">
         <Zone
           x={BROWSER_X}
           y={TOP}
@@ -115,6 +114,29 @@ function Fagsystemsonen() {
           partWidth={220}
         />
 
+        {/* From the start: the app already talks to its backend, through its door. */}
+        <Line
+          points={[
+            [APP_X + APP_WIDTH, BACKEND[1]],
+            [BACKEND[0] - RING_EDGE, BACKEND[1]],
+          ]}
+          dim
+        />
+        <Station
+          x={BACKEND[0]}
+          y={BACKEND[1]}
+          label="Appens backend"
+          note="samme adresse som appen"
+        />
+        <text
+          x={NAIS_X - 40}
+          y={LUMI_APP_Y - 28}
+          textAnchor="end"
+          className="map-label wall__label"
+        >
+          døra appen alt har
+        </text>
+
         <g data-from={1}>
           <Line
             points={[
@@ -156,6 +178,7 @@ function Fagsystemsonen() {
           </text>
         </g>
 
+        {/* The answer follows the line that is already there. */}
         <g data-from={2}>
           <Line
             points={[
@@ -170,12 +193,7 @@ function Fagsystemsonen() {
               [BACKEND[0], 768],
             ]}
           />
-          <Station
-            x={BACKEND[0]}
-            y={BACKEND[1]}
-            label="Appens backend"
-            note="samme adresse som appen"
-          />
+          <Station x={BACKEND[0]} y={BACKEND[1]} />
           <Station x={760} y={668} label="Lumi API" />
           <Answer x={760} y={768} r={36} />
           <Station
@@ -185,21 +203,13 @@ function Fagsystemsonen() {
             label="Databasen"
             className="map-station--label-only"
           />
-          <text
-            x={NAIS_X - 40}
-            y={LUMI_APP_Y - 28}
-            textAnchor="end"
-            className="map-label wall__label"
-          >
-            døra appen alt har
-          </text>
         </g>
       </LineMap>
 
       <h2 className="slide-maptitle hvor__title">
-        I fagsystemsonen trenger Lumi
+        I fagsystemsonen bruker Lumi
         <br />
-        ingen ny åpning
+        døra appen alt har
       </h2>
     </div>
   );
@@ -207,16 +217,18 @@ function Fagsystemsonen() {
 
 export const fagsystemsonen: Slide = {
   id: "fagsystemsonen",
-  title: "I fagsystemsonen trenger Lumi ingen ny åpning",
+  title: "I fagsystemsonen bruker Lumi døra appen alt har",
   steps: 2,
   notes: `Samme kart, nå er nettleseren saksbehandlerens, bak veggen rundt fagsystemsonen.
 
-Klikk 1: et skript fra en leverandør trenger en egen åpning ut av sonen. Skyra brukes i fagsystemer i dag, med en slik åpning.
+Fra start: appen snakker alt med sin egen backend, gjennom døra den har.
 
-Klikk 2: Lumi går gjennom døra appen alt har, til appens egen backend på Nais.
+Klikk 1: et skript fra en leverandør trenger en egen åpning ut av sonen. «Skyra brukes i flere fagsystemer i dag, gjennom en åpning som er på plass.»
 
-Ordrett: «Skyra brukes i flere fagsystemer i dag. Skal noen publisere surveyer uten utvikler, er Skyra laget for det, og ResearchOps hjelper team med det.»
+Klikk 2: svaret følger linja som alt finnes, gjennom døra, til appens backend og Lumi API på Nais. FlexJar trenger heller ingen ny åpning.
 
-Spør noen om Skyra i fagsystemer: «Skyra brukes der i dag. Poenget er at Lumi ikke trenger en egen åpning.»`,
+Ordrett: «Skal noen publisere surveyer uten utvikler, er Skyra laget for det, og ResearchOps hjelper team med det.»
+
+Det gjelder apper med backend i prod-gcp. Fagsystemer med backend i prod-fss må avklare med oss først.`,
   Component: Fagsystemsonen,
 };

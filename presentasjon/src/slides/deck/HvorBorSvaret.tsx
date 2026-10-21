@@ -1,5 +1,13 @@
 import type { Slide, SlideProps } from "../../engine";
-import { Answer, AppBox, Line, LineMap, Station, Zone } from "../../map";
+import {
+  Answer,
+  AppBox,
+  Line,
+  LineMap,
+  MapText,
+  Station,
+  Zone,
+} from "../../map";
 import "./deck.css";
 
 const TOP = 196;
@@ -49,7 +57,7 @@ function ConsentSwitch({ x, y }: { x: number; y: number }) {
 function HvorBorSvaret({ step }: SlideProps) {
   return (
     <div className="slide">
-      <LineMap label="Tre soner: brukerens nettleser, Navs plattform Nais og Skyra AS. Med Skyra hentes et skript fra survey.skyra.no etter samtykke, og svaret går fra nettleseren til Skyras server og lagres hos Skyra AS i EU. Med Lumi går svaret fra nettleseren til appens backend, videre til Lumi API og databasen på Nais.">
+      <LineMap label="Tre soner: brukerens nettleser, Navs plattform Nais og Skyra AS. Linja fra survey.skyra.no er skriptet som hentes, linja til Skyras server er svaret. Med Skyra hentes et skript fra survey.skyra.no etter samtykke, og svaret går fra nettleseren til Skyras server og lagres hos Skyra AS i EU. Med Lumi går svaret fra nettleseren til appens backend, videre til Lumi API og databasen på Nais.">
         <Zone
           x={BROWSER_X}
           y={TOP}
@@ -106,6 +114,13 @@ function HvorBorSvaret({ step }: SlideProps) {
             arrow
           />
           <ConsentSwitch x={SCRIPT_X} y={250} />
+          {/* Which line is which: the script comes in, the answer goes out. */}
+          <MapText x={920} y={64} anchor="middle" size={32} weight={600} muted>
+            skriptet hentes
+          </MapText>
+          <MapText x={548} y={250} size={32} weight={600} muted>
+            svaret
+          </MapText>
           <Station x={1440} y={330} label="survey.skyra.no" mono side="right" />
           <Line
             points={[
@@ -189,14 +204,18 @@ export const hvorBorSvaret: Slide = {
   steps: 3,
   notes: `Bare veiene, ingen vurdering.
 
+Først, beskriv kartet: «Tre soner: til venstre brukerens nettleser, i midten Navs plattform Nais, til høyre Skyra AS. Den gule prikken er der svaret lagres.»
+
+Faggruppa, inn: «Flere av dere kjenner Skyra, som brukes på nav.no og i flere fagsystemer. Begge brukes i Nav. Her er hvor svaret går i hver av dem.»
+
 Frontend forum, ordrett: «Da svarer jeg på spørsmålet fra starten. Nei, vi sammenlignet ikke funksjonene. Vi startet med et annet spørsmål: hvor skal svarene ligge?»
 
-Klikk 1, Skyra: skriptet hentes fra Skyra etter samtykke. Svaret går rett fra nettleseren til Skyra AS og lagres i EU.
+Klikk 1, Skyra: «Skriptet er Skyras kode. Nettleseren henter det fra Skyra etter samtykke.» Svaret går rett fra nettleseren til Skyra AS og lagres i EU. Skyra AS er databehandler for Nav, og Skyra kan også blokkere fødselsnummer, telefonnummer og e-post i fritekst.
 
 Klikk 2, Lumi: svaret går via appens backend til Lumi API og databasen. Lumi legger ikke til en ny leverandør.
 
-Klikk 3: «Begge brukes i Nav. Forskjellen er hvor svaret bor.»
+Klikk 3: «Begge brukes i Nav. Forskjellen er hvor svaret bor.» Så: «For oss i eSyfo ble svaret Nais, ved siden av appens egne data. Andre team har valgt Skyra.» FlexJar bor på samme sted som Lumi.
 
-Google Cloud-spørsmålet: «Nais kjører i Google Cloud, og det gjelder alle Nais-appene. Lumi ligger der resten av Nav ligger, med samme sikkerhetsmodell.»`,
+Google Cloud-spørsmålet: «Lumi kjører i prod-gcp, Nais-klyngen i Google Cloud, med samme sikkerhetsmodell som appene der. Google er alt leverandør for Nais.»`,
   Component: HvorBorSvaret,
 };

@@ -168,7 +168,7 @@ Telleren teller fetch, XHR og sendBeacon fra sliden ble åpnet.
 
 Lumi trenger ingen ny kilde i CSP.
 
-Lumi krever innlogget bruker, fordi backenden veksler brukerens token. Åpne sider uten innlogging er ikke dekket.
+Oppsettet vi dokumenterer, krever innlogget bruker, fordi backenden veksler brukerens token. Lumi API sjekker hvilken app som sender.
 
 Er Lumi API nede, vises surveyen likevel. Send gir «Kunne ikke sende tilbakemeldingen. Prøv igjen senere.»`,
   Component: UnderPanseret,

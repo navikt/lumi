@@ -22,7 +22,7 @@ const CHOICE_X = MENU_X + STOP_R + 28;
  */
 const ROUTES = [
   {
-    question: "«Ble den nye innsendingen bedre?»",
+    question: "«Ble den nye saksoversikten bedre?»",
     width: 588,
     choice: "Hvordan opplevde brukeren tjenesten?",
   },
@@ -56,7 +56,7 @@ function HvaVilDereVite() {
     <div className="slide">
       <h2 className="slide-title">Teamet velger først hva det vil finne ut</h2>
 
-      <LineMap label="Fem spørsmål teamet kan ha, hvert koblet med en linje til ett av de fem valgene under «Hva vil dere finne ut?» i Surveyverksted: Ble den nye innsendingen bedre? går til Hvordan opplevde brukeren tjenesten? Lager vi det folk kommer for? går til Hva kom brukeren for å gjøre? Hvilken oppgave fikser vi først? går til Lyktes brukeren med en kjent oppgave? Hva skal stå øverst? går til Hvilke oppgaver er viktigst? Vi har et annet spørsmål går til Noe annet.">
+      <LineMap label="Fem spørsmål teamet kan ha, hvert koblet med en linje til ett av de fem valgene under «Hva vil dere finne ut?» i Surveyverksted: Ble den nye saksoversikten bedre? går til Hvordan opplevde brukeren tjenesten? Lager vi det folk kommer for? går til Hva kom brukeren for å gjøre? Hvilken oppgave fikser vi først? går til Lyktes brukeren med en kjent oppgave? Hva skal stå øverst? går til Hvilke oppgaver er viktigst? Vi har et annet spørsmål går til Noe annet.">
         {/*
          * The menu: a line from its name down through the five choices. It
          * comes with the questions, so no heading stands over an empty column.

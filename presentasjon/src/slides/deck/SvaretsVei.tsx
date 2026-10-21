@@ -128,6 +128,8 @@ export const svaretsVei: Slide = {
   steps: 2,
   notes: `Ordrett inn: «Nå følger vi ett svar hele veien, fra teamet lager surveyen til teamet leser svaret.»
 
-Fire stasjoner er teamets, én er brukerens, én er vår.`,
+Fire stasjoner er teamets, én er brukerens, én er vår. I et fagsystem er det saksbehandleren som svarer.
+
+Ut: «Første stasjon er teamet. Tenk på én oppgave i tjenesten deres som dere vet lite om.»`,
   Component: SvaretsVei,
 };

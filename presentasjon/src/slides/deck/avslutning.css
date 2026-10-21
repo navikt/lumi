@@ -176,14 +176,53 @@
   stroke-dasharray: 20 14;
 }
 
+/* When the station lights, its name moves clear of the crystal. */
+.slutt__yours-label {
+  transition: transform var(--deck-duration-travel) var(--deck-easing);
+}
+
+.slide:has(.slutt__crystal[data-revealed]) .slutt__yours-label {
+  transform: translateX(96px);
+}
+
+/* The crystal: ice in the map's own line, drawn in round the gold core. */
+.slutt__branch,
+.slutt__facet {
+  stroke: var(--map-ink);
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  transition:
+    stroke-dashoffset 900ms var(--deck-easing),
+    fill-opacity 600ms 500ms var(--deck-easing);
+}
+
+.slutt__branch {
+  fill: var(--map-zone-nais);
+  fill-opacity: 0.85;
+  stroke-width: 6px;
+}
+
+.slutt__facet {
+  fill: none;
+  stroke-width: 3px;
+  opacity: 0.7;
+}
+
+.slutt__crystal:not([data-revealed]) :is(.slutt__branch, .slutt__facet) {
+  stroke-dashoffset: 1;
+  fill-opacity: 0;
+}
+
 .slutt__action {
   left: var(--deck-space-page);
-  top: 800px;
+  top: 780px;
 }
 
 .slutt__open {
   margin: 0 0 12px;
-  font-size: var(--deck-size-label);
+  font-size: var(--deck-size-body);
   font-weight: 700;
 }
 
@@ -195,10 +234,24 @@
 
 .slutt__links {
   display: flex;
+  align-items: baseline;
   gap: 64px;
   margin: 20px 0 0;
-  font-size: var(--deck-size-label);
+  font-size: var(--deck-size-body);
   font-weight: 700;
+}
+
+.slutt__link {
+  color: inherit;
+  font-size: var(--deck-size-lead);
+  text-decoration-thickness: 4px;
+  text-underline-offset: 10px;
+}
+
+.slutt__link:focus-visible {
+  outline: 6px solid var(--deck-focus);
+  outline-offset: 8px;
+  border-radius: 4px;
 }
 
 /* grupper: four questions, in the order the groups answer them */
@@ -246,4 +299,85 @@
   top: 924px;
   max-width: none;
   color: var(--deck-muted);
+}
+
+/* ansvar: two lines through the answer's life, the duties at their stations */
+
+.ansvar__nav {
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-body);
+  font-weight: 700;
+}
+
+.ansvar__duty {
+  width: 270px;
+  transform: translateX(-50%);
+  font-size: var(--deck-size-small);
+  font-weight: 500;
+  line-height: 1.22;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.ansvar__bottom {
+  left: var(--deck-space-page);
+  top: 880px;
+  max-width: 1420px;
+  font-size: var(--deck-size-label);
+  font-weight: 700;
+}
+
+.ansvar__bottom p {
+  margin: 0;
+}
+
+.ansvar__bottom .ansvar__ask {
+  margin-top: 8px;
+  color: var(--deck-muted);
+}
+
+/* personvern: what Lumi stores, as one fixed label */
+
+.personvern__label {
+  display: grid;
+  gap: 10px;
+  max-width: 1440px;
+  margin: 0;
+  padding: 26px 40px;
+  border: var(--deck-border-width) solid var(--deck-border);
+  border-radius: 10px;
+}
+
+.personvern__row {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 32px;
+  align-items: baseline;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--map-zone-edge);
+}
+
+.personvern__row:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.personvern__row dt {
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 700;
+}
+
+.personvern__row dd {
+  margin: 0;
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.personvern__obs {
+  margin: 0;
+  font-size: var(--deck-size-label);
+  font-weight: 700;
 }

@@ -27,6 +27,12 @@ const trial = new URLSearchParams(search).has("prov");
 const view = readViewMode(search);
 const room = readRoom(search);
 document.documentElement.dataset.deckView = trial ? "trial" : view;
+// The night map on the stage. Paper for the PDF, the phone page and `?stil=papir`.
+const paper =
+  trial ||
+  view === "print" ||
+  new URLSearchParams(search).get("stil") === "papir";
+document.documentElement.dataset.stil = paper ? "papir" : "natt";
 if (room) document.documentElement.dataset.deckRoom = room;
 
 createRoot(root).render(

@@ -96,6 +96,9 @@ function SurveyenSomKode() {
         </Mark>
         .
       </p>
+      <p className="som-kode__krav" data-from={2}>
+        Appen må ha React 18 og Aksel 8.
+      </p>
       <RouteProgress at={1} />
     </div>
   );

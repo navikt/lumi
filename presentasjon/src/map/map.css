@@ -89,8 +89,9 @@
 
 .map-answer {
   fill: var(--map-answer);
-  stroke: var(--map-ink);
+  stroke: var(--map-answer-edge);
   stroke-width: 8px;
+  filter: var(--map-answer-glow);
   transition:
     transform var(--deck-duration-travel) var(--deck-easing),
     opacity var(--deck-duration-reveal) var(--deck-easing),
@@ -98,7 +99,7 @@
 }
 
 .map-zone__area {
-  stroke: var(--map-ink);
+  stroke: var(--map-zone-edge);
   stroke-width: var(--map-zone-border);
 }
 

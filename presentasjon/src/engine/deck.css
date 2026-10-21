@@ -103,6 +103,22 @@ html[data-deck-view="print"] body {
   pointer-events: none;
 }
 
+/*
+ * On the night map a slide change is a short camera move: the old slide
+ * slips past, the new one settles into place. Short, so a slow stream
+ * still lands on a still frame.
+ */
+:root[data-stil="natt"] .deck-slide {
+  transition:
+    opacity 520ms var(--deck-easing),
+    transform 640ms var(--deck-easing),
+    visibility 520ms;
+}
+
+:root[data-stil="natt"] .deck-slide[data-hidden] {
+  transform: scale(1.04);
+}
+
 /* Build steps: <Reveal at={n}> and data-from="n" */
 
 [data-reveal],

@@ -122,6 +122,17 @@
   line-height: 1.2;
 }
 
+/* What the app needs, under the component, before anyone asks. */
+.som-kode__krav {
+  position: absolute;
+  top: 728px;
+  left: 930px;
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-label);
+  font-weight: 700;
+}
+
 /* Marks on slide 9: the deck's one frame and underline, 6 px ink. */
 
 .som-kode__mark {

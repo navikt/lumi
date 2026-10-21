@@ -99,4 +99,43 @@
   --deck-duration-travel: 700ms;
   --deck-easing: cubic-bezier(0.2, 0.7, 0.2, 1);
   --deck-reveal-offset: 0px;
+
+  /* The edge of a zone, and the glow of the answer (none on paper). */
+  --map-zone-edge: var(--map-ink);
+  --map-answer-edge: var(--map-ink);
+  --map-answer-glow: none;
+}
+
+/*
+ * The night map, the default on the stage. The map is dark and exact, and
+ * the answer is the only thing that glows. The app areas, the widget and
+ * the screenshots stay light, as lit windows in the dark. `?stil=papir`
+ * and the PDF use the paper map above.
+ */
+:root[data-stil="natt"] {
+  --deck-bg: #0b1b29;
+  --deck-fg: #eaf0f5;
+  --deck-muted: #a3b3c2;
+  --deck-surface: #0b1b29;
+  --deck-border: #dce6ee;
+  --deck-letterbox: #050c13;
+  --deck-focus: #8cc8ff;
+
+  --map-ink: #dce6ee;
+  --map-paper: #0b1b29;
+  --map-zone-nais: #12384f;
+  --map-zone-neutral: #142331;
+  --map-zone-edge: #2d4d64;
+  --map-dim: #6c8093;
+  --map-answer-edge: #b8862a;
+  --map-answer-glow: drop-shadow(0 0 22px rgb(242 194 79 / 55%))
+    drop-shadow(0 0 70px rgb(242 194 79 / 22%));
+
+  --deck-code-bg: #0f2335;
+  --deck-code-fg: #eaf0f5;
+  --deck-code-punctuation: #8ea2b4;
+  --deck-code-key: #eaf0f5;
+  --deck-code-string: #9fd0ff;
+  --deck-code-number: #eaf0f5;
+  --deck-code-literal: #9fd0ff;
 }

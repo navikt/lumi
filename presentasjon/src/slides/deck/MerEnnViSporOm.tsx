@@ -46,10 +46,12 @@ export const merEnnViSporOm: Slide = {
   steps: 2,
   notes: `Ordrett inn: «Det jeg skrev, var laget for anledningen, men vi ser det samme i ekte svar.»
 
-Ordrett: «Vi ber ikke om personopplysninger, men de kommer inn i fritekst likevel. Da skal de ligge der Nav kan finne og slette dem.»
+Ordrett: «Vi ber ikke om personopplysninger, men de kommer inn i fritekst likevel. Da må teamet kunne finne og slette dem. I Lumi gjør dere det i dashboardet.»
 
 Klikk 1: pek på navnet. Klikk 2: pek på e-postadressen.
 
-Svaret er et laget eksempel.`,
+Svaret er et laget eksempel. Navn i fritekst maskeres ikke.
+
+Ut mot FlexJar: «Derfor var det første spørsmålet vårt: hvor bor svaret?»`,
   Component: MerEnnViSporOm,
 };

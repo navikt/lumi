@@ -1,8 +1,14 @@
 import type { LumiSurveyTransportPayload } from "@navikt/lumi-survey";
+import { useEffect, useState } from "react";
 import { useAnswer } from "../../components/answerStore";
 import { Tag } from "../../components/Tag";
 import { maskLikeLumiApi } from "../../content/masking";
-import { Reveal, type Slide, type SlideProps } from "../../engine";
+import {
+  Reveal,
+  type Slide,
+  type SlideProps,
+  useRenderMode,
+} from "../../engine";
 import { Answer, Line, LineMap, MapText, Station, Zone } from "../../map";
 import "./svar.css";
 
@@ -44,12 +50,37 @@ function stopFor(step: number): number {
   return STOP_FOR_STEP[Math.min(Math.max(step, 0), STOP_FOR_STEP.length - 1)];
 }
 
-function SammeVei({ step }: SlideProps) {
+/** How long the room sees the text as it was written, before Lumi API masks it. */
+const AS_WRITTEN_MS = 1100;
+
+/**
+ * True once the mask is shown. On the step where the stored text appears,
+ * the text first shows as written and then dissolves into the mask. Every
+ * other time, and with reduced motion, the mask shows at once.
+ */
+function useMasked(run: boolean): boolean {
+  const [masked, setMasked] = useState(true);
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (!run || reduce.matches) {
+      setMasked(true);
+      return;
+    }
+    setMasked(false);
+    const timer = window.setTimeout(() => setMasked(true), AS_WRITTEN_MS);
+    return () => window.clearTimeout(timer);
+  }, [run]);
+  return masked;
+}
+
+function SammeVei({ step, active }: SlideProps) {
   const { payload } = useAnswer();
+  const masked = useMasked(useRenderMode() === "stage" && active && step === 3);
   const fromRoom = payload !== null;
   const text = answerText(payload) ?? (fromRoom ? null : EXAMPLE_TEXT);
   const stored = text ? maskLikeLumiApi(text) : [];
   const at = STOPS[stopFor(step)];
+  const storedNow = step >= 3;
   const shift = at.x - STOPS[0].x;
 
   return (
@@ -116,30 +147,45 @@ function SammeVei({ step }: SlideProps) {
           )}
           <span className="vei__rating">dagen: {ratingText(payload)}</span>
         </div>
+        {/*
+          One row for the text. Until it reaches Lumi API it is the text as
+          written. Then it shows what Lumi API stores: on the step it gets
+          there, the text dissolves into the mask while the room watches.
+        */}
         {text && (
           <p className="vei__text">
-            <span className="vei__label">Fra nettleseren</span>
-            <span className="vei__value">{text}</span>
+            <span className="vei__label">
+              {storedNow ? "Lumi API lagrer" : "Fra nettleseren"}
+            </span>
+            <span className="vei__value">
+              {storedNow
+                ? stored.map((part, i) =>
+                    part.masked && masked ? (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: the parts are a fixed split of one string
+                      <mark key={i} className="vei__masked">
+                        {part.text}
+                      </mark>
+                    ) : part.masked ? (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: the parts are a fixed split of one string
+                      <span key={i} className="vei__leaving">
+                        {part.original}
+                      </span>
+                    ) : (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: the parts are a fixed split of one string
+                      <span key={i}>{part.text}</span>
+                    ),
+                  )
+                : text}
+            </span>
           </p>
         )}
-        {text && (
-          <Reveal at={3} as="p" className="vei__text">
-            <span className="vei__label">Lumi API lagrer</span>
-            <span className="vei__value">
-              {stored.map((part, i) =>
-                part.masked ? (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: the parts are a fixed split of one string
-                  <mark key={i} className="vei__masked">
-                    {part.text}
-                  </mark>
-                ) : (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: the parts are a fixed split of one string
-                  <span key={i}>{part.text}</span>
-                ),
-              )}
-            </span>
-          </Reveal>
-        )}
+        <Reveal at={3} as="p" className="vei__text">
+          <span className="vei__label">Hvem som svarte</span>
+          <span className="vei__value">lagres ikke</span>
+        </Reveal>
+        <Reveal at={3} as="p" className="vei__note">
+          Kjente mønstre maskeres. Navn gjør ikke det.
+        </Reveal>
       </div>
     </div>
   );
@@ -149,13 +195,16 @@ export const sammeVei: Slide = {
   id: "samme-vei",
   title: "Svaret går samme vei som appens egne data",
   steps: 4,
-  notes: `Svaret fra «Svar meg» reiser. Har ingen svart, står et eksempel.
+  notes: `Inn: «Husker dere svaret fra i stad, med e-postadressen? Nå følger vi det.»
 
-Klikk 1: til appens backend. Den veksler token, TokenX eller Entra ID.
+Svaret fra «Svar meg» reiser. Har ingen svart, står et eksempel.
+
+Klikk 1: til appens backend. «Appens backend bytter brukerens innlogging mot en adgang til Lumi API.» TokenX eller Entra ID.
 Klikk 2: til Lumi API. Bare apper på lista slipper inn.
-Klikk 3: det Lumi API lagrer. E-postadressen er maskert. Navn maskeres ikke.
-Klikk 4: i databasen.
+Før klikk 3: «Hva tror dere Lumi lagrer av denne teksten? Skriv i chatten.» Vent noen sekunder.
+Klikk 3: teksten står først som den ble skrevet, så løses e-postadressen opp. «E-postadressen er borte. Navn fjernes ikke, derfor har teamet en sletteknapp. Hvem som svarte, lagres ikke.»
+Klikk 4: i databasen. «Der bor svaret. På Nais, der resten av Navs apper og data er. Lumi legger ikke til en ny leverandør.» Databasen er felles, og Team eSyfo drifter den.
 
-«Svarene blir på Nais, der resten av Navs apper og data er.»`,
+Ut: «Hvem får lese svaret i dashboardet? Bare teamet deres.»`,
   Component: SammeVei,
 };

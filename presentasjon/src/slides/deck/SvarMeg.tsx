@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import { useAnswer } from "../../components/answerStore";
 import { LiveSurvey } from "../../components/LiveSurvey";
 import { PayloadSummary } from "../../components/PayloadSummary";
@@ -24,10 +25,44 @@ function clockTime(iso: string): string | null {
   return `${pad(date.getHours())}.${pad(date.getMinutes())}`;
 }
 
-function SvarMeg({ active }: SlideProps) {
+/**
+ * Where the kept answer lifts off from: the Send button, low in the widget,
+ * measured on the stage so the flight starts there at any window size.
+ * Written as custom properties that the lift-off animation reads. Measured
+ * when the kept answer shows, on step 1.
+ */
+function useLiftOff(
+  app: React.RefObject<HTMLDivElement | null>,
+  dot: React.RefObject<SVGSVGElement | null>,
+  step: number,
+) {
+  useLayoutEffect(() => {
+    if (step < 1) return;
+    const appBox = app.current?.getBoundingClientRect();
+    const dotEl = dot.current;
+    // The row the dot sits in, not the dot: the dot may be mid-flight.
+    const rowBox = dotEl?.parentElement?.getBoundingClientRect();
+    const stage = dotEl?.closest(".slide")?.getBoundingClientRect();
+    if (!appBox || !dotEl || !rowBox || !stage || stage.width === 0) return;
+    const scale = stage.width / 1920;
+    const fromX = appBox.left + appBox.width * 0.62;
+    const fromY = appBox.top + appBox.height * 0.86;
+    const dotX = rowBox.left + (dotEl.width.baseVal.value / 2) * scale;
+    const dotY = rowBox.top + rowBox.height / 2;
+    const dx = (fromX - dotX) / scale;
+    const dy = (fromY - dotY) / scale;
+    dotEl.style.setProperty("--lift-x", `${Math.round(dx)}px`);
+    dotEl.style.setProperty("--lift-y", `${Math.round(dy)}px`);
+  }, [app, dot, step]);
+}
+
+function SvarMeg({ active, step }: SlideProps) {
   const { payload, setPayload } = useAnswer();
   const calls = useNetworkCalls(active);
   const sentAt = payload ? clockTime(payload.submittedAt) : null;
+  const appRef = useRef<HTMLDivElement>(null);
+  const dotRef = useRef<SVGSVGElement>(null);
+  useLiftOff(appRef, dotRef, step);
 
   return (
     <div className="slide svar">
@@ -35,7 +70,7 @@ function SvarMeg({ active }: SlideProps) {
       <p className="svar__meter">
         Nettverkskall fra siden <strong>{calls}</strong>
       </p>
-      <div className="svar__app">
+      <div ref={appRef} className="svar__app">
         <LiveSurvey
           survey={SALEN_SURVEY}
           surveyId="hvor-bor-svaret"
@@ -65,7 +100,13 @@ function SvarMeg({ active }: SlideProps) {
           </p>
         )}
         <Reveal at={1} className="svar__kept">
-          <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
+          <svg
+            ref={dotRef}
+            width="72"
+            height="72"
+            viewBox="0 0 72 72"
+            aria-hidden="true"
+          >
             <circle cx="36" cy="36" r="30" className="map-answer" />
           </svg>
           <span>

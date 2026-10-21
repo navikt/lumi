@@ -1,128 +1,138 @@
 import type { CSSProperties } from "react";
 import type { Slide } from "../../engine";
-import { Line, LineMap, Station } from "../../map";
+import { Line, LineMap, MapText, Station } from "../../map";
 import "./avslutning.css";
 
-/** The seam, where the team's part meets Team eSyfo's. */
-const SEAM_Y = 600;
-const COLUMNS = [460, 920, 1380] as const;
-const RING = 22;
-const GAP = 28;
+/*
+ * Two lines side by side through the answer's life, as two routes in one
+ * corridor: the team's above, Team eSyfo's below. A station on a line is
+ * a duty; the phases run between the lines.
+ */
+const TEAM_Y = 470;
+const ESYFO_Y = 700;
+const PHASE_Y = (TEAM_Y + ESYFO_Y) / 2;
+const LINE_START = 430;
+const LINE_END = 1820;
+const PHASES = [
+  { x: 560, name: "lage" },
+  { x: 850, name: "bygge inn" },
+  { x: 1140, name: "svare" },
+  { x: 1430, name: "lagre" },
+  { x: 1720, name: "lese" },
+] as const;
 
-// Stage pixels from the bottom edge, so labels above the seam can sit on it.
-const STAGE_HEIGHT = 1080;
-const ABOVE_SEAM = STAGE_HEIGHT - (SEAM_Y - RING - GAP);
-const FAR_ROW = ABOVE_SEAM + 128;
-const BELOW_SEAM = SEAM_Y + RING + GAP;
+/** One duty per phase and line, or none. */
+const TEAM: readonly (string | null)[] = [
+  "Hva dere spør om, ikke navn eller fødselsnummer",
+  "Koden i appen og backenden som veksler token",
+  "Informere brukerne",
+  "Egen kopi av E726, og vurdere PVK",
+  "Lese og slette svar med personopplysninger",
+];
 
-function above(column: number, bottom: number): CSSProperties {
-  return { left: COLUMNS[column], bottom };
-}
+const ESYFO: readonly (string | null)[] = [
+  "Drifter Surveyverksted",
+  "Gir appen tilgang til Lumi API",
+  null,
+  "Maskerer og sletter etter 12 måneder",
+  "Drifter dashboardet",
+];
 
-function below(column: number): CSSProperties {
-  return { left: COLUMNS[column], top: BELOW_SEAM };
+function at(x: number, y: number, below: boolean): CSSProperties {
+  return below ? { left: x, top: y } : { left: x, bottom: 1080 - y };
 }
 
 function Ansvar() {
   return (
     <div className="slide">
       <h2 className="slide-title">Dette gjør dere, dette gjør vi</h2>
-      <LineMap label="En linje deler sliden i to. Over linja står det teamet deres gjør: hva dere spør om, koden i appen, fylle ut egen E726 og vurdere om dere trenger PVK, informere brukerne, og lese og slette svar med personopplysninger. Under linja står det Team eSyfo gjør: drifter Surveyverksted, Lumi API og dashboardet, godkjenner appene som sender svar og sletter svar etter 12 måneder.">
+      <p className="ansvar__nav">Nav er behandlingsansvarlig.</p>
+      <LineMap label="To linjer gjennom svarets liv: lage, bygge inn, svare, lagre og lese. Teamet deres: hva dere spør om, ikke navn eller fødselsnummer. Koden i appen og backenden som veksler token. Informere brukerne. Egen kopi av E726, og vurdere PVK. Lese og slette svar med personopplysninger. Team eSyfo: drifter Surveyverksted, gir appen tilgang til Lumi API, maskerer og sletter svar etter 12 måneder, og drifter dashboardet. Ingen SLA.">
+        <MapText x={112} y={TEAM_Y} size={44} weight={800}>
+          Teamet deres
+        </MapText>
+        <MapText x={112} y={ESYFO_Y} size={44} weight={800}>
+          Team eSyfo
+        </MapText>
         <Line
           points={[
-            [-20, SEAM_Y],
-            [1940, SEAM_Y],
+            [LINE_START, TEAM_Y],
+            [LINE_END, TEAM_Y],
           ]}
         />
-        {COLUMNS.map((x) => (
-          <Station key={x} x={x + RING} y={SEAM_Y} />
+        <Line
+          points={[
+            [LINE_START, ESYFO_Y],
+            [LINE_END, ESYFO_Y],
+          ]}
+        />
+        {PHASES.map((phase) => (
+          <MapText
+            key={phase.name}
+            x={phase.x}
+            y={PHASE_Y}
+            anchor="middle"
+            size={32}
+            weight={600}
+            muted
+          >
+            {phase.name}
+          </MapText>
         ))}
+        {PHASES.map((phase, i) =>
+          TEAM[i] ? (
+            <Station
+              key={`team-${phase.name}`}
+              x={phase.x}
+              y={TEAM_Y}
+              from={1}
+            />
+          ) : null,
+        )}
+        {PHASES.map((phase, i) =>
+          ESYFO[i] ? (
+            <Station
+              key={`esyfo-${phase.name}`}
+              x={phase.x}
+              y={ESYFO_Y}
+              from={2}
+            />
+          ) : null,
+        )}
       </LineMap>
 
-      <p
-        className="end-at ansvar__side"
-        style={{ left: 112, bottom: ABOVE_SEAM }}
-      >
-        Teamet deres
-      </p>
-      <p className="end-at ansvar__side" style={{ left: 112, top: BELOW_SEAM }}>
-        Team eSyfo
-      </p>
+      {PHASES.map((phase, i) =>
+        TEAM[i] ? (
+          <p
+            key={`team-${phase.name}`}
+            className="end-at ansvar__duty"
+            data-from={1}
+            style={at(phase.x, TEAM_Y - 44, false)}
+          >
+            {TEAM[i]}
+          </p>
+        ) : null,
+      )}
+      {PHASES.map((phase, i) =>
+        ESYFO[i] ? (
+          <p
+            key={`esyfo-${phase.name}`}
+            className="end-at ansvar__duty"
+            data-from={2}
+            style={at(phase.x, ESYFO_Y + 44, true)}
+          >
+            {ESYFO[i]}
+          </p>
+        ) : null,
+      )}
 
-      {/* The team's part. The row on the seam pairs with Team eSyfo's. */}
-      <p
-        className="end-at end-label ansvar__part"
-        data-from={1}
-        style={above(0, FAR_ROW)}
-      >
-        Fylle ut egen E726
-        <br />
-        og vurdere om dere
-        <br />
-        trenger PVK
-      </p>
-      <p
-        className="end-at end-label ansvar__part"
-        data-from={1}
-        style={above(1, FAR_ROW)}
-      >
-        Informere brukerne
-      </p>
-      <p
-        className="end-at end-label ansvar__part"
-        data-from={1}
-        style={above(0, ABOVE_SEAM)}
-      >
-        Hva dere spør om
-      </p>
-      <p
-        className="end-at end-label ansvar__part"
-        data-from={1}
-        style={above(1, ABOVE_SEAM)}
-      >
-        Koden i appen
-      </p>
-      <p
-        className="end-at end-label ansvar__part"
-        data-from={1}
-        style={above(2, ABOVE_SEAM)}
-      >
-        Lese og slette svar
-        <br />
-        med personopplysninger
-      </p>
-
-      {/* Team eSyfo's part. */}
-      <p
-        className="end-at end-label ansvar__part"
-        data-from={2}
-        style={below(0)}
-      >
-        Drifter Surveyverksted,
-        <br />
-        Lumi API og dashboardet
-      </p>
-      <p
-        className="end-at end-label ansvar__part"
-        data-from={2}
-        style={below(1)}
-      >
-        Godkjenner appene
-        <br />
-        som sender svar
-      </p>
-      <p
-        className="end-at end-label ansvar__part"
-        data-from={2}
-        style={below(2)}
-      >
-        Sletter svar etter
-        <br />
-        12 måneder
-      </p>
-      <p className="end-at slide-lead ansvar__sla" data-from={2}>
-        Ingen SLA. Spør i #lumi på Slack.
-      </p>
+      <div className="end-at ansvar__bottom" data-from={2}>
+        <p>
+          Ingen SLA. Er Lumi nede, får brukeren en feilmelding, og appen virker
+          som før.
+        </p>
+        <p className="ansvar__ask">Spør i #lumi på Slack.</p>
+      </div>
     </div>
   );
 }
@@ -133,12 +143,16 @@ export const ansvar: Slide = {
   steps: 2,
   notes: `Ordrett inn: «Hvis teamet deres vil prøve, er arbeidet delt slik: noe gjør dere, og noe gjør vi.»
 
-Klikk 1, over linja: Nav er behandlingsansvarlig, og teamet har ansvaret for surveyen og svarene på vegne av Nav.
+Nav er behandlingsansvarlig, og teamet har ansvaret for surveyen og svarene på vegne av Nav.
 
-Klikk 2, under linja: Team eSyfo drifter Lumi og godkjenner appene som får sende svar.
+Klikk 1, teamet deres: hva dere spør om. Ikke be om navn eller fødselsnummer, og ikke rekrutter til brukertester. Koden i appen og en backend som veksler token. Informer brukerne. I fagsystemer er brukerne kolleger: si fra før dere spør. Egen kopi av etterlevelsesmalen E726, og vurder om dere trenger en personvernkonsekvensvurdering (PVK). Les og slett svar med personopplysninger.
 
-Si ulempene selv: endringer krever ny appversjon, appen trenger en backend som veksler token, og det er ingen SLA.
+Klikk 2, Team eSyfo: drifter Surveyverksted, Lumi API og dashboardet, og gir appen tilgang til Lumi API. Vi går ikke gjennom E726 eller PVK-en deres. Lumi API maskerer kjente mønstre og sletter svar automatisk etter 12 måneder. Slettingen gjelder Lumis database. Filer dere har lastet ned, sletter dere selv.
 
-Krav: appen må bruke React og Aksel og ha en backend som veksler token.`,
+SLA er en avtale om oppetid. Den finnes ikke. Er Lumi nede, får brukeren en feilmelding, og appen virker som før.
+
+Vil dere slutte med Lumi: surveyen ligger i koden deres, og svarene kan lastes ned.
+
+Si ulempene selv: endringer krever ny versjon av appen, og appen trenger en backend som veksler token.`,
   Component: Ansvar,
 };

@@ -85,3 +85,35 @@
 .sporsmal__grid .sporsmal__kind--others .sporsmal__frame {
   height: 280px;
 }
+
+/* «Dere bestemmer innholdet …»: the real widget, with the map's lines on it. */
+.styrer__frame {
+  position: absolute;
+}
+
+.styrer__frame .styrer__survey {
+  position: absolute;
+  inset: 0;
+}
+
+.styrer__casing,
+.styrer__line {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.styrer__casing {
+  stroke: var(--map-paper);
+  stroke-width: 16px;
+}
+
+.styrer__line {
+  stroke: var(--map-ink);
+  stroke-width: 6px;
+}
+
+.styrer__ring {
+  fill: var(--map-paper);
+  stroke: var(--map-ink);
+  stroke-width: 6px;
+}

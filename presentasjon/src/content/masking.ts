@@ -116,6 +116,8 @@ export interface MaskedPart {
   text: string;
   /** True for a replacement such as «[E-POST FJERNET]». */
   masked: boolean;
+  /** For a replacement: the text it replaced. */
+  original?: string;
 }
 
 /** The text as Lumi API would store it, split so the masked parts can be marked. */
@@ -126,7 +128,11 @@ export function maskLikeLumiApi(text: string): MaskedPart[] {
     if (match.start > position) {
       parts.push({ text: text.slice(position, match.start), masked: false });
     }
-    parts.push({ text: PATTERNS[match.priority].replacement, masked: true });
+    parts.push({
+      text: PATTERNS[match.priority].replacement,
+      masked: true,
+      original: text.slice(match.start, match.end),
+    });
     position = match.end;
   }
   if (position < text.length) {

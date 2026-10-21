@@ -85,6 +85,50 @@
   overflow: visible;
 }
 
+/*
+ * On the night map the answer lifts off from the widget and lands by its
+ * station when it is kept: from the Send button, in an arc.
+ */
+:root[data-stil="natt"] .svar__kept[data-revealed] svg {
+  animation: svar-lift 1100ms var(--deck-easing) both;
+}
+
+@keyframes svar-lift {
+  from {
+    transform: translate(var(--lift-x, -560px), var(--lift-y, 400px))
+      scale(0.45);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  55% {
+    transform: translate(
+        calc(var(--lift-x, -560px) * 0.45),
+        calc(var(--lift-y, 400px) * 0.2 - 140px)
+      )
+      scale(0.85);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes vei-arrive {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vei__leaving,
+  .vei__masked,
+  :root[data-stil="natt"] .svar__kept[data-revealed] svg {
+    animation: none;
+  }
+}
+
 /* The plain app page behind the widget: a top bar and nothing else. */
 .app-page {
   position: absolute;
@@ -141,8 +185,33 @@
   font-size: var(--deck-size-code);
 }
 
+/* Under the stored text, in the value column. */
+.vei__note {
+  margin: 0 0 0 328px;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+}
+
+/*
+ * The text as written, for a moment, before Lumi API masks it: it dissolves,
+ * and the mask takes its place.
+ */
+.vei__leaving {
+  animation: vei-dissolve 700ms 350ms var(--deck-easing) both;
+}
+
+@keyframes vei-dissolve {
+  to {
+    opacity: 0.15;
+    filter: blur(6px);
+    letter-spacing: 0.12em;
+  }
+}
+
 /* The deck's one mark: 6 px ink, radius 10. */
 .vei__masked {
+  animation: vei-arrive 420ms var(--deck-easing) both;
   white-space: nowrap;
   padding: 0 8px;
   border: 6px solid var(--map-ink);

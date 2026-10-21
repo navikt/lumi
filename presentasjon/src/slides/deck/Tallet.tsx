@@ -73,14 +73,14 @@ function Tallet() {
     <div className="slide">
       <h2 className="slide-title tallet__title">30&#8239;945 svar</h2>
       <p className="slide-text tallet__period">
-        1. januar – 21. oktober 2026. Sju apper i to team.
+        Fra 1. januar til 21. oktober 2026. Sju apper i to team.
       </p>
       <LineMap label="Rutediagram der hver prikk er 100 svar. Team eSyfo: 299 prikker, 29 853 svar i seks apper. iSyfo i Modia: 11 prikker, 1 092 svar fra veiledere i Modia.">
         <g data-from={1}>
           <MapText x={LEFT} y={LABEL_Y} size={36} weight={800}>
             Team eSyfo
           </MapText>
-          <MapText x={LEFT} y={NOTE_Y} size={30} weight={500} muted>
+          <MapText x={LEFT} y={NOTE_Y} size={32} weight={500} muted>
             29 853 svar i seks apper
           </MapText>
           <Dots dots={TEAM_ESYFO_DOTS} />
@@ -105,7 +105,7 @@ function Tallet() {
           <MapText x={MODIA_X} y={LABEL_Y} size={36} weight={800}>
             iSyfo i Modia
           </MapText>
-          <MapText x={MODIA_X} y={NOTE_Y} size={30} weight={500} muted>
+          <MapText x={MODIA_X} y={NOTE_Y} size={32} weight={500} muted>
             1 092 svar fra veiledere i Modia
           </MapText>
           <Dots dots={MODIA_DOTS} />
@@ -123,7 +123,7 @@ export const tallet: Slide = {
 
 Tallene er fra prod-dashboardet 21. oktober 2026. Hver prikk er 100 svar.
 
-Elleve prikker: veiledere i Modia. Detaljer: spør iSyfo.
+Nesten alle svarene kommer fra vårt eget team. De elleve prikkene til høyre er nærmest dere: veiledere som svarer inne i Modia. Detaljer: spør iSyfo.
 
 Spør noen om appene i team-esyfo: bro-frontend, dialogmote-frontend, dinesykmeldte, narmesteleder-frontend, oppfolgingsplan-frontend og syfo-oppfolgingsplan-frontend.
 

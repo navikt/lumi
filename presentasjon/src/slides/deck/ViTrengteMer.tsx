@@ -36,7 +36,7 @@ const END_X = stationX(NEEDS.length - 1);
 /** The four needs on a line that Lumi builds. Also used on the short version. */
 export function NeedsLine() {
   return (
-    <LineMap label="Linjekart. En stiplet linje med fire stasjoner som ikke er bygget: lik widget i alle apper, ulike surveytyper, analyse i dashboardet og tilgang per team. Så kommer Lumi, januar 2026, og linja blir heltrukket.">
+    <LineMap label="Linjekart. En stiplet linje, behovene våre i eSyfo, med fire stasjoner som ikke er bygget: lik widget i alle apper, ulike surveytyper, analyse i dashboardet og tilgang per team. Så kommer Lumi, januar 2026, og linja blir heltrukket.">
       {/* The needs: a line that is not built yet. */}
       <Line
         points={[
@@ -46,6 +46,9 @@ export function NeedsLine() {
         dashed
         from={1}
       />
+      <MapText x={MARGIN} y={Y - 130} size={32} weight={600} muted from={1}>
+        Behovene våre i eSyfo
+      </MapText>
       {/* Lumi builds it. The line draws itself under the stations. */}
       <Line
         points={[
@@ -105,7 +108,7 @@ export const viTrengteMer: Slide = {
   notes: `Ordrett: «Det vi manglet, lagde vi selv, først som tillegg: en widget og et dashboard for analyse. I januar 2026 ble det et eget verktøy, med egen datamodell og tilgang per team.»
 
 Dette var behovene våre i eSyfo.
-Klikk 1: de fire behovene. Hullene på linja er behovene våre.
+Klikk 1: de fire behovene. Stasjonene er behovene våre i eSyfo.
 Klikk 2: Lumi, januar 2026. Eget verktøy.`,
   Component: ViTrengteMer,
 };

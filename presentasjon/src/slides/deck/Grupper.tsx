@@ -41,6 +41,8 @@ export const grupper: Slide = {
 
 Avtal med verten hvor lenge gruppene varer.
 
+Lumi samordner ikke surveyer mellom team. Spør flere team de samme folkene, må teamene snakke sammen.
+
 Til chatten:
 1. ${QUESTIONS[0]}
 2. ${QUESTIONS[1]}

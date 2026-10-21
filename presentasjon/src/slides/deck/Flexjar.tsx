@@ -59,7 +59,7 @@ function Flexjar() {
         </g>
 
         <MapText x={APP_X} y={840} size={52} weight={800} from={3}>
-          Takk til Team Flex
+          Takk til Team Flex, som tok imot svarene våre fra 2024
         </MapText>
       </LineMap>
     </div>
@@ -75,6 +75,6 @@ export const flexjar: Slide = {
 
 Klikk 1: surveyen i koden. Klikk 2: svarene blir på Nais. Klikk 3: takk til Team Flex.
 
-Team Flex har laget og driftet FlexJar siden 2023.`,
+Team Flex har laget og driftet FlexJar siden 2023. FlexJar har tatt imot svar for flere team siden 2023, og brukes fortsatt.`,
   Component: Flexjar,
 };

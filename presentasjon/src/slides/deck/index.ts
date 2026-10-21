@@ -10,6 +10,7 @@ import { hvaVilDereVite } from "./HvaVilDereVite";
 import { hvorBorSvaret } from "./HvorBorSvaret";
 import { merEnnViSporOm } from "./MerEnnViSporOm";
 import { oppfolgingsplanen } from "./Oppfolgingsplanen";
+import { personvern } from "./Personvern";
 import { provSelv } from "./ProvSelv";
 import { sammeUtkast } from "./SammeUtkast";
 import { sammeVei } from "./SammeVei";
@@ -65,4 +66,6 @@ export const deckSlides: readonly Slide[] = [
   // After the last sentence, so the QR code stays up while people ask.
   provSelv,
   { ...grupper, roomOnly: true },
+  // A spare, for questions about privacy. Last, so it never interrupts.
+  personvern,
 ];

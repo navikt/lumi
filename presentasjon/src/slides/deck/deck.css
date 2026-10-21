@@ -29,6 +29,73 @@
   font-size: var(--deck-size-body);
 }
 
+/*
+ * The opening on the stage: the line draws in (1.4 s), the answer lights
+ * as it arrives, and the title and the rest of the line follow. The end
+ * state is the slide as printed, so a slow stream still lands on it.
+ */
+.tittel[data-intro] .tittel__line {
+  animation: tittel-draw 1400ms var(--deck-easing) both;
+}
+
+.tittel[data-intro] .tittel__answer {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tittel-light 900ms 1100ms var(--deck-easing) both;
+}
+
+/* The text keeps the slide's own spacing: the wrapper has no box. */
+.tittel__text {
+  display: contents;
+}
+
+.tittel[data-intro] .tittel__after,
+.tittel[data-intro] .tittel__text > * {
+  animation: tittel-fade 700ms 1700ms var(--deck-easing) both;
+}
+
+@keyframes tittel-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes tittel-light {
+  from {
+    opacity: 0;
+    transform: scale(0.35);
+    filter: none;
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    transform: scale(1);
+    filter: var(--map-answer-glow);
+  }
+}
+
+@keyframes tittel-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tittel[data-intro] .tittel__line,
+  .tittel[data-intro] .tittel__answer,
+  .tittel[data-intro] .tittel__after,
+  .tittel[data-intro] .tittel__text > * {
+    animation: none;
+  }
+}
+
 /* Slide 14: the double wall around the case worker's browser. */
 .wall__outer,
 .wall__inner {
