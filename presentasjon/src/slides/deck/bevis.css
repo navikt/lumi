@@ -1,0 +1,66 @@
+/*
+ * The question and the evidence: var-skyra-vurdert and sporsmalet (the
+ * question from Frontend forum), ulike-behov, tallet and brukes-videre.
+ */
+
+/* The question, set as a quote and nothing else */
+
+.skyra-quote {
+  justify-content: center;
+}
+
+/* A little above the middle, where the eye lands. */
+.skyra-quote__figure {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  margin: 0 0 48px;
+}
+
+.skyra-quote__text {
+  margin: 0;
+}
+
+.skyra-quote__text p {
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-title);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1.1;
+}
+
+/* Hanging punctuation: the letters of every line start at the margin. */
+.skyra-quote__open {
+  margin-left: -0.57em;
+}
+
+.skyra-quote__source {
+  color: var(--deck-muted);
+  font-size: var(--deck-size-label);
+  font-weight: 700;
+}
+
+/* The number */
+
+/*
+ * The key figure. The digits start at the top margin, like any title, and
+ * the line box is tight so the period sits close under them.
+ */
+.tallet__title {
+  margin-top: 14px;
+  margin-bottom: -24px;
+  font-size: 240px;
+  font-variant-numeric: proportional-nums;
+  line-height: 0.84;
+}
+
+.tallet__period {
+  max-width: none;
+  color: var(--deck-muted);
+}
+
+/* One dot is a hundred answers: a small answer disc. */
+.tallet__dot {
+  stroke-width: 4px;
+}

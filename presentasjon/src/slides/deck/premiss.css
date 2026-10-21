@@ -1,0 +1,84 @@
+/*
+ * Slides 3–5, the premise: people write personal data in free text, the
+ * idea behind FlexJar, and the needs that became Lumi.
+ */
+
+/* Slide 3: the answer as the user wrote it, personal data framed in ink. */
+
+/* Centred in the space under the title, a little above the middle. */
+.mer__example {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  margin: auto 0;
+  padding-bottom: 96px;
+}
+
+.mer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mer__question {
+  margin: 0;
+  font-size: var(--deck-size-lead);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.2;
+}
+
+/* A lighter edge than the frames, so the field stays in the background. */
+.mer__field {
+  margin: 0;
+  padding: 40px 56px 48px;
+  border: 4px solid var(--deck-border);
+  border-radius: var(--deck-radius);
+  background: var(--deck-surface);
+  font-size: 72px;
+  font-weight: 400;
+  line-height: 1.6;
+  /* Room for the frames, so they never touch the next word. */
+  word-spacing: 0.1em;
+}
+
+/* The words stay as they were typed. Only the frame comes and goes. */
+.mer__personal {
+  position: relative;
+  background: none;
+  color: inherit;
+}
+
+.mer__frame {
+  position: absolute;
+  inset: -3px -14px;
+  border: 8px solid var(--deck-fg);
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+/*
+ * A comma right after a framed word: pushed clear of the frame, which
+ * reaches 14 px past the word. The space before a framed word is wide
+ * enough already.
+ */
+.mer__after {
+  margin-left: 18px;
+}
+
+/* Slide 4: the survey is code the app carries. */
+
+.map .flexjar__app .map-app__part-label {
+  font-family: var(--deck-font-mono);
+  font-weight: 600;
+}
+
+/* Slide 5: needs on a line that is not built yet. */
+
+.trengte__gap .map-station__ring {
+  stroke-dasharray: var(--trengte-dash);
+}
+
+/* The short FlexJar slide: the thanks sits under the title. */
+.flexjar-kort__thanks {
+  max-width: none;
+}

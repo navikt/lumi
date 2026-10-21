@@ -1,0 +1,54 @@
+/* Slide-specific styles for the talk. Shared primitives live in slides.css. */
+
+.tittel__title {
+  margin-top: 64px;
+}
+
+.tittel__lead {
+  max-width: none;
+  color: var(--deck-fg);
+  font-weight: 700;
+}
+
+/* The map's title block sits under the map, clear of the Teams corner. */
+.hvor__title {
+  top: auto;
+  bottom: 40px;
+  max-width: 1360px;
+  font-size: 80px;
+}
+
+/* A station that only labels an answer disc: no ring of its own. */
+.map-station--label-only .map-station__ring {
+  display: none;
+}
+
+.tittel__byline {
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-body);
+}
+
+/* Slide 14: the double wall around the case worker's browser. */
+.wall__outer,
+.wall__inner {
+  fill: none;
+}
+
+.wall__outer {
+  stroke: var(--map-ink);
+  stroke-width: 30px;
+}
+
+.wall__inner {
+  stroke: var(--map-paper);
+  stroke-width: 12px;
+}
+
+.wall__gap {
+  fill: var(--map-paper);
+}
+
+.map .wall__label {
+  font-weight: 800;
+}

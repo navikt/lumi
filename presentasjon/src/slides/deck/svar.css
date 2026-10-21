@@ -1,0 +1,172 @@
+/* Slide 2 and 10: the answer from the room, and its way through Lumi. */
+
+.svar__meter {
+  position: absolute;
+  top: 118px;
+  right: var(--deck-space-page);
+  margin: 0;
+  font-size: var(--deck-size-label);
+  font-weight: 600;
+}
+
+.svar__meter strong {
+  display: inline-block;
+  min-width: 1.4em;
+  margin-left: 16px;
+  padding: 4px 18px 0;
+  border: 6px solid var(--deck-fg);
+  border-radius: 12px;
+  font-family: var(--deck-font-mono);
+  font-size: 56px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/*
+ * The app is narrow enough that the summary beside it shows the whole text
+ * answer, with the e-mail address on one line, and still ends above the
+ * Teams corner.
+ */
+.svar__app {
+  position: absolute;
+  top: 232px;
+  left: var(--deck-space-page);
+  width: 856px;
+  height: 760px;
+}
+
+.svar__app .svar__frame {
+  position: absolute;
+  inset: 0;
+}
+
+.svar__tag {
+  position: absolute;
+  top: -26px;
+  left: 32px;
+}
+
+.svar__side {
+  position: absolute;
+  top: 232px;
+  left: 1028px;
+  width: 780px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.svar__empty {
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-body);
+  line-height: var(--deck-line-height);
+}
+
+.svar__kept {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: var(--deck-size-label);
+  font-weight: 600;
+}
+
+.svar__kept svg {
+  flex: none;
+  overflow: visible;
+}
+
+/* The plain app page behind the widget. */
+.app-page {
+  position: absolute;
+  inset: 0;
+  padding: 0 56px;
+}
+
+.app-page__bar {
+  height: 72px;
+  margin: 0 -56px 56px;
+  background: var(--map-zone-neutral);
+}
+
+.app-page__heading,
+.app-page__line,
+.app-page__button {
+  border-radius: 8px;
+  background: var(--map-zone-neutral);
+}
+
+.app-page__heading {
+  width: 46%;
+  height: 40px;
+  margin-bottom: 40px;
+}
+
+.app-page__line {
+  width: 72%;
+  height: 20px;
+  margin-bottom: 20px;
+}
+
+.app-page__line--short {
+  width: 40%;
+}
+
+.app-page__button {
+  width: 200px;
+  height: 56px;
+  margin-top: 40px;
+}
+
+/* Slide 10: the answer card under the map. */
+.vei__card {
+  position: absolute;
+  left: var(--deck-space-page);
+  bottom: 64px;
+  width: 1360px;
+  display: grid;
+  gap: 18px;
+}
+
+.vei__card-head {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  font-size: var(--deck-size-label);
+  font-weight: 700;
+}
+
+.vei__rating {
+  font-family: var(--deck-font-mono);
+  font-size: var(--deck-size-code);
+  font-weight: 500;
+}
+
+.vei__text {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 28px;
+  margin: 0;
+  font-size: var(--deck-size-label);
+  line-height: 1.25;
+}
+
+.vei__label {
+  color: var(--deck-muted);
+  font-weight: 600;
+}
+
+.vei__value {
+  font-family: var(--deck-font-mono);
+  font-size: var(--deck-size-code);
+}
+
+.vei__masked {
+  white-space: nowrap;
+  padding: 0 8px;
+  border: 4px solid var(--deck-fg);
+  border-radius: 6px;
+  background: var(--deck-bg);
+  color: var(--deck-fg);
+  font-weight: 700;
+}

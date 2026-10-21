@@ -1,0 +1,245 @@
+/*
+ * The closing slides and the room modules: under-panseret, slik-vet-vi,
+ * caset, ansvar, prov-selv, slutt and grupper. Positions are stage pixels.
+ * The lower right corner (x > 1560, y > 840) stays free for Teams.
+ */
+
+/* Text placed on the stage at a fixed point, next to a map. */
+.end-at {
+  position: absolute;
+  margin: 0;
+}
+
+.end-label {
+  margin: 0;
+  font-size: var(--deck-size-label);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.2;
+}
+
+.end-note {
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.end-mono,
+.end-label code,
+.end-note code {
+  font-family: var(--deck-font-mono);
+  font-weight: 600;
+}
+
+/* Code inside a label: the code size, so it does not outgrow the words. */
+.end-label code {
+  font-size: 0.9em;
+}
+
+/* under-panseret: the transport, as the app writes it */
+
+.under-panseret__code {
+  position: absolute;
+  top: 328px;
+  left: var(--deck-space-page);
+  box-sizing: border-box;
+  height: 460px;
+  margin: 0;
+  padding: 24px;
+  border: var(--deck-border-width) solid var(--deck-border);
+  border-radius: var(--deck-radius);
+  background: var(--deck-code-bg);
+  color: var(--deck-code-fg);
+  font-family: var(--deck-font-mono);
+  font-size: var(--deck-size-code);
+  line-height: 40px;
+  white-space: pre;
+}
+
+.under-panseret__code code {
+  font: inherit;
+}
+
+.code-string {
+  color: var(--deck-code-string);
+}
+
+.code-punctuation {
+  color: var(--deck-code-punctuation);
+}
+
+/* Margin notes to the right of the code. */
+.under-panseret__aside {
+  left: 1530px;
+  width: 278px;
+}
+
+.under-panseret__size {
+  margin-top: 32px;
+}
+
+/* The one call in the code, marked when the map shows where it goes. */
+.under-panseret__call {
+  position: absolute;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--map-ink);
+}
+
+/* Endpoints are code: the code size, not the bigger label size. */
+.under-panseret__endpoint .map-label {
+  font-size: var(--deck-size-code);
+}
+
+/* caset: three stations, one per click. Placeholders are drawn dashed. */
+
+.caset__title--placeholder {
+  color: var(--deck-muted);
+}
+
+.caset__step {
+  top: 440px;
+  width: 525px;
+}
+
+.caset__label {
+  height: 60px;
+}
+
+.caset__text {
+  margin: 88px 0 0;
+  font-size: var(--deck-size-body);
+  line-height: var(--deck-line-height);
+  text-wrap: pretty;
+}
+
+.caset__text--placeholder {
+  padding: 16px 20px;
+  border: 4px dashed var(--map-dim);
+  color: var(--deck-muted);
+}
+
+/* ansvar: the seam, with the team above and Team eSyfo below */
+
+/* Whose part it is: bigger than the parts themselves. */
+.ansvar__side {
+  margin: 0;
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-display);
+  line-height: 1.2;
+}
+
+.ansvar__sla {
+  left: var(--deck-space-page);
+  top: 856px;
+  max-width: none;
+  color: var(--deck-fg);
+  font-weight: 700;
+}
+
+/* prov-selv: the code is the slide */
+
+.prov-selv__qr {
+  line-height: 0;
+}
+
+.prov-selv__text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 40px;
+}
+
+.prov-selv__lead {
+  max-width: 16ch;
+  color: var(--deck-fg);
+  font-weight: 700;
+}
+
+.prov-selv__link {
+  margin: 0;
+  font-family: var(--deck-font-mono);
+  font-size: var(--deck-size-label);
+  font-weight: 600;
+}
+
+/* slutt: the line with a planned station for the audience's app */
+
+/* Planned, like a dashed line: not on the line yet. */
+.slutt__yours .map-station__ring {
+  stroke-dasharray: 20 14;
+}
+
+.slutt__action {
+  left: var(--deck-space-page);
+  top: 800px;
+}
+
+.slutt__open {
+  margin: 0 0 12px;
+  font-size: var(--deck-size-label);
+  font-weight: 700;
+}
+
+.slutt__lead {
+  max-width: none;
+  color: var(--deck-fg);
+  font-weight: 700;
+}
+
+.slutt__links {
+  display: flex;
+  gap: 64px;
+  margin: 20px 0 0;
+  font-size: var(--deck-size-label);
+  font-weight: 700;
+}
+
+/* grupper: four questions, in the order the groups answer them */
+
+.grupper__list {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.grupper__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 40px;
+}
+
+/* Numbered like the line badges on the map. */
+.grupper__number {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  background: var(--map-ink);
+  color: var(--map-paper);
+  font-size: var(--deck-size-body);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.grupper__question {
+  max-width: 1440px;
+  padding-top: 4px;
+  font-size: var(--deck-size-lead);
+  line-height: 1.22;
+  text-wrap: balance;
+}
+
+.grupper__chat {
+  left: var(--deck-space-page);
+  top: 924px;
+  max-width: none;
+  color: var(--deck-muted);
+}

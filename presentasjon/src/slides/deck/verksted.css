@@ -1,0 +1,268 @@
+/*
+ * The workshop chapter: slides 7, 8, 9 and 11, and the «you are here» line
+ * (RouteProgress) that slides 7 to 11 share.
+ */
+
+/* RouteProgress: lower left corner, the first ring on the page margin. */
+
+.route-progress {
+  position: absolute;
+  left: calc(var(--deck-space-page) - 10px);
+  bottom: 40px;
+  overflow: visible;
+}
+
+.route-progress__line {
+  fill: none;
+  stroke: var(--map-ink);
+  stroke-width: 8px;
+  stroke-linecap: round;
+}
+
+.route-progress__stop {
+  fill: var(--map-paper);
+  stroke: var(--map-ink);
+  stroke-width: 6px;
+}
+
+.route-progress__here {
+  fill: var(--map-ink);
+}
+
+.route-progress__label {
+  fill: var(--map-ink);
+  font-family: var(--deck-font-body);
+  font-size: var(--deck-size-small);
+  font-weight: var(--deck-weight-strong);
+}
+
+/* Slide 7: hva-vil-dere-vite */
+
+.finne-ut__header {
+  position: absolute;
+  top: 357px;
+  left: var(--deck-space-page);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin: 0;
+  font-size: var(--deck-size-label);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.2;
+}
+
+.finne-ut__text {
+  position: absolute;
+  top: 840px;
+  left: var(--deck-space-page);
+  max-width: none;
+}
+
+/* Slide 9: surveyen-som-kode */
+
+.som-kode__block {
+  position: absolute;
+  top: 336px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+}
+
+.som-kode__block--file {
+  left: var(--deck-space-page);
+}
+
+.som-kode__block--app {
+  left: 928px;
+}
+
+.som-kode__label {
+  font-size: var(--deck-size-label);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.2;
+}
+
+.som-kode__label code {
+  font-family: var(--deck-font-mono);
+  font-variant-ligatures: none;
+  font-weight: 600;
+}
+
+.som-kode__code {
+  margin: 0;
+  padding: 32px 36px;
+  border: var(--deck-border-width) solid var(--deck-border);
+  border-radius: var(--deck-radius);
+  background: var(--deck-code-bg);
+  color: var(--deck-code-fg);
+  font-family: var(--deck-font-mono);
+  font-size: var(--deck-size-code);
+  font-variant-ligatures: none;
+  line-height: 1.45;
+  white-space: pre;
+}
+
+.som-kode__code code {
+  font: inherit;
+}
+
+.som-kode__kw {
+  font-weight: var(--deck-weight-strong);
+}
+
+.som-kode__str {
+  color: var(--deck-code-string);
+}
+
+.som-kode__punct {
+  color: var(--deck-code-punctuation);
+}
+
+.som-kode__price {
+  position: absolute;
+  top: 846px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-size: var(--deck-size-lead);
+  font-weight: var(--deck-weight-display);
+  line-height: 1.2;
+}
+
+/* Pen marks: drawn by hand round or under the important part. */
+
+.pen {
+  position: relative;
+  display: inline-block;
+}
+
+.pen__mark {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.pen__mark path {
+  fill: none;
+  stroke: var(--map-ink);
+  stroke-width: 5px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pen--ring .pen__mark {
+  top: -4px;
+  left: -15px;
+  width: calc(100% + 30px);
+  height: calc(100% + 8px);
+}
+
+.pen--underline .pen__mark {
+  bottom: -7px;
+  left: -6px;
+  width: calc(100% + 12px);
+  height: 18px;
+}
+
+/* Screenshot slides 8 and 11: one frame, with the tag and names beside it. */
+
+.shot {
+  position: absolute;
+}
+
+.shot__layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: var(--deck-radius);
+  background: var(--deck-embed-bg);
+}
+
+.shot__layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: var(--deck-border-width) solid var(--deck-border);
+  border-radius: var(--deck-radius);
+  pointer-events: none;
+}
+
+.shot__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* The ink frame round the control the step is about. */
+.shot__mark {
+  position: absolute;
+  box-sizing: border-box;
+  border: 6px solid var(--map-ink);
+  border-radius: 14px;
+  outline: 4px solid var(--map-paper);
+  pointer-events: none;
+}
+
+.shot-side {
+  position: absolute;
+  top: 336px;
+  left: 1160px;
+  width: 648px;
+  height: 500px;
+}
+
+.shot-callout {
+  position: absolute;
+  top: 104px;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shot-callout__note {
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-label);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.shot-callout__name {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  margin: 0;
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.15;
+}
+
+/* A small copy of the mark, so the name and the frame read as one. */
+.shot-callout__key {
+  flex: none;
+  box-sizing: border-box;
+  width: 52px;
+  height: 36px;
+  margin-top: 7px;
+  border: 6px solid var(--map-ink);
+  border-radius: 10px;
+}
+
+.shot-text {
+  position: absolute;
+  top: 650px;
+  left: 1160px;
+  max-width: 600px;
+}
+
+/* Slide 11: bare-teamet. Nais Console, the text and the delete button stack. */
+
+.bare-teamet__text {
+  top: 540px;
+}
+
+.bare-teamet__callout {
+  top: 384px;
+}

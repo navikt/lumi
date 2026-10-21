@@ -1,0 +1,58 @@
+/* «Spørsmålene dere kan bruke»: seven real widgets in a grid. */
+
+.sporsmal__grid {
+  position: absolute;
+  top: 236px;
+  left: var(--deck-space-page);
+  right: var(--deck-space-page);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  column-gap: 40px;
+  row-gap: 36px;
+}
+
+.sporsmal__kind {
+  margin: 0;
+}
+
+.sporsmal__frame {
+  position: relative;
+  height: 290px;
+}
+
+.sporsmal__frame .sporsmal__survey {
+  position: absolute;
+  inset: 0;
+  border-width: 4px;
+}
+
+/* A note too long for the line goes whole onto the next one. */
+.sporsmal__caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 18px;
+  margin-top: 16px;
+}
+
+.sporsmal__label {
+  font-size: var(--deck-size-label);
+  font-weight: 800;
+}
+
+.sporsmal__note {
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+}
+
+/* The eighth cell is text, and stops above the Teams corner. */
+.sporsmal__visible-if {
+  align-self: start;
+  max-width: 13em;
+  margin: 0;
+  padding-top: 8px;
+  font-size: var(--deck-size-label);
+  font-weight: 700;
+  line-height: 1.25;
+  text-wrap: balance;
+}

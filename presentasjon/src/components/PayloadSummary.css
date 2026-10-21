@@ -1,0 +1,36 @@
+.payload-summary {
+  margin: 0;
+  padding: 36px 40px;
+  border: var(--deck-border-width) solid var(--deck-border);
+  border-radius: var(--deck-radius);
+  background: var(--deck-code-bg);
+}
+
+.payload-summary__caption {
+  margin: 0 0 24px;
+  font-size: var(--deck-size-label);
+  font-weight: 700;
+}
+
+.payload-summary__rows {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  font-family: var(--deck-font-mono);
+  font-size: 30px;
+}
+
+.payload-summary__row {
+  display: grid;
+  grid-template-columns: 6.4em 1fr;
+  gap: 24px;
+}
+
+.payload-summary__row dt {
+  color: var(--deck-code-punctuation);
+}
+
+.payload-summary__row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

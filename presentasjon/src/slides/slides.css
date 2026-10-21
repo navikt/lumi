@@ -1,0 +1,112 @@
+/*
+ * Layout primitives for slides. Text is left aligned, like signage.
+ * The lower right corner (about 360×240) stays free: Teams can put the
+ * speaker's video there.
+ */
+
+.slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  padding: 96px var(--deck-space-page);
+  background: var(--deck-bg);
+  color: var(--deck-fg);
+  font-family: var(--deck-font-body);
+}
+
+.slide--center {
+  justify-content: center;
+}
+
+.slide-kicker {
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-kicker);
+  font-weight: var(--deck-weight-strong);
+}
+
+.slide-display,
+.slide-title {
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: var(--deck-line-height-tight);
+  text-wrap: balance;
+}
+
+.slide-display {
+  font-size: var(--deck-size-display);
+}
+
+.slide-title {
+  max-width: 1560px;
+  font-size: var(--deck-size-title);
+}
+
+.slide-lead {
+  max-width: 30ch;
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-lead);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.slide-text {
+  max-width: 34ch;
+  margin: 0;
+  font-size: var(--deck-size-body);
+  line-height: var(--deck-line-height);
+}
+
+/* Title over a full-stage map: the map's title block, as on a printed map. */
+.slide-maptitle {
+  position: absolute;
+  left: var(--deck-space-page);
+  top: 80px;
+  z-index: 1;
+  margin: 0;
+  max-width: 1500px;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-title);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: var(--deck-line-height-tight);
+  text-wrap: balance;
+}
+
+.slide-source {
+  position: absolute;
+  left: var(--deck-space-page);
+  bottom: 48px;
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: 28px;
+}
+
+/* Marks what a thing on the slide is: live, a screenshot or an example. */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  width: max-content;
+  padding: 6px 22px 4px;
+  border: 4px solid var(--deck-fg);
+  border-radius: 999px;
+  background: var(--deck-bg);
+  color: var(--deck-fg);
+  font-size: var(--deck-size-small);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.tag--live::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--deck-fg);
+}

@@ -1,0 +1,45 @@
+.live-survey {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: var(--deck-border-width) solid var(--deck-border);
+  border-radius: var(--deck-radius);
+  background: var(--deck-embed-bg);
+}
+
+.live-survey__page {
+  position: absolute;
+  inset: 0;
+}
+
+/*
+ * The transform makes this box the containing block for the dock's
+ * position: fixed. The text settings repeat Aksel's page baseline, so the
+ * widget does not inherit the slide's large type.
+ */
+.live-survey__inner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  transform-origin: top left;
+  color: var(--deck-widget-fg);
+  font-family: var(--deck-font-widget);
+  font-size: 1.125rem;
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 1.333;
+  text-align: start;
+  text-transform: none;
+}
+
+.live-survey__still {
+  position: absolute;
+  right: 32px;
+  bottom: 24px;
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+}

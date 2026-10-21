@@ -1,0 +1,101 @@
+/*
+ * Deck theme: a line map. Every colour and font in the deck comes from
+ * these tokens. The colours are Aksel's light palette, except the answer,
+ * which is the gold core of the Lumi logo. Sizes are pixels on the
+ * 1920×1080 stage.
+ */
+:root {
+  /* Slides */
+  --deck-bg: #ffffff; /* --ax-bg-default */
+  --deck-fg: #202733; /* --ax-neutral-1000, Aksel's text colour */
+  --deck-muted: #49515e; /* --ax-neutral-900 */
+  --deck-accent: #f2c24f; /* the answer, from the logo */
+  --deck-accent-fg: #202733;
+  --deck-surface: #ffffff;
+  --deck-border: #202733;
+  --deck-letterbox: #000000;
+  --deck-blackout: #000000;
+  --deck-focus: #00557d; /* --ax-brand-blue-900 */
+
+  /* Map: zones, lines, stations and the answer */
+  --map-ink: #202733;
+  --map-paper: #ffffff;
+  --map-zone-nais: #d7e6f0; /* --ax-brand-blue-300 */
+  --map-zone-neutral: #e1e3e7; /* --ax-neutral-300 */
+  --map-dim: #818997; /* --ax-neutral-500 */
+  --map-answer: #f2c24f;
+  --map-line-width: 14px;
+  --map-ring-width: 10px;
+  --map-zone-border: 8px;
+
+  /* Embedded app areas (live widget, Storybook, screenshots) */
+  --deck-embed-bg: #f5f6f7; /* --ax-neutral-100 */
+  --deck-font-widget: var(
+    --ax-font-family,
+    "Source Sans 3",
+    "Source Sans Pro",
+    Arial,
+    sans-serif
+  );
+  --deck-widget-fg: var(--ax-text-neutral, #202733);
+
+  /* Code */
+  --deck-code-bg: #f5f6f7;
+  --deck-code-fg: #202733;
+  --deck-code-punctuation: #5d6573; /* --ax-neutral-700 */
+  --deck-code-key: #202733;
+  --deck-code-string: #00557d; /* --ax-brand-blue-900 */
+  --deck-code-number: #202733;
+  --deck-code-literal: #00557d;
+
+  /* Error box */
+  --deck-error-bg: #fff4f2;
+  --deck-error-fg: #6b1a12;
+  --deck-error-border: #c23b2a;
+
+  /* Deck chrome: presenter view, overview, dialogs, print toolbar */
+  --deck-ui-bg: #161d28; /* Aksel dark neutral-100 */
+  --deck-ui-surface: #1c232f;
+  --deck-ui-raised: #2e3641;
+  --deck-ui-fg: #dfe1e5;
+  --deck-ui-muted: #a5acb6;
+  --deck-ui-border: #49515e;
+  --deck-ui-accent: #f2c24f;
+  --deck-ui-backdrop: rgb(0 0 0 / 72%);
+  --deck-ui-color-scheme: dark;
+  --deck-color-scheme: light;
+
+  /* Fonts: Overpass is drawn after the US highway signage typeface */
+  --deck-font-display: "Overpass", system-ui, sans-serif;
+  --deck-font-body: "Overpass", system-ui, sans-serif;
+  --deck-font-mono: "Overpass Mono", ui-monospace, Menlo, monospace;
+
+  /* Type */
+  --deck-size-display: 168px;
+  --deck-size-title: 96px;
+  --deck-size-lead: 52px;
+  --deck-size-body: 44px;
+  --deck-size-label: 36px;
+  --deck-size-small: 30px;
+  --deck-size-kicker: 30px;
+  --deck-size-code: 32px;
+  --deck-line-height: 1.3;
+  --deck-line-height-tight: 1.04;
+  --deck-weight-display: 800;
+  --deck-weight-strong: 700;
+  --deck-tracking-display: -0.01em;
+  --deck-tracking-kicker: 0;
+
+  /* Layout */
+  --deck-space-page: 112px;
+  --deck-space-gap: 48px;
+  --deck-radius: 12px;
+  --deck-border-width: 6px;
+
+  /* Motion */
+  --deck-duration-reveal: 400ms;
+  --deck-duration-slide: 250ms;
+  --deck-duration-travel: 700ms;
+  --deck-easing: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --deck-reveal-offset: 0px;
+}

@@ -1,0 +1,83 @@
+/* The phone page uses the real viewport, so normal page sizes apply here. */
+html[data-deck-view="trial"],
+html[data-deck-view="trial"] body {
+  overflow: auto;
+  height: auto;
+  background: var(--deck-bg);
+  color: var(--deck-fg);
+}
+
+.trial {
+  box-sizing: border-box;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 30rem;
+  font-family: var(--deck-font-body);
+  font-size: 1.125rem;
+  line-height: 1.45;
+}
+
+.trial__title {
+  margin: 0 0 1rem;
+  font-family: var(--deck-font-display);
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.trial__lead,
+.trial__meter,
+.trial__empty,
+.trial__more {
+  margin: 0 0 1rem;
+}
+
+.trial__meter strong {
+  font-family: var(--deck-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.trial__more a {
+  color: inherit;
+}
+
+/* The summary and the full payload, sized for a phone. */
+.trial .payload-summary {
+  margin: 0 0 1rem;
+  padding: 1rem;
+  border-width: 3px;
+}
+
+.trial .payload-summary__caption {
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+}
+
+.trial .payload-summary__rows {
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.trial .payload-summary__row {
+  gap: 0.75rem;
+}
+
+.trial__details {
+  margin: 0 0 1rem;
+}
+
+.trial__details summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.trial__details .payload-view__code {
+  font-size: 0.75rem;
+}
+
+/* The widget keeps Aksel's type, as it would in a real app. */
+.trial__widget {
+  font-family: var(--deck-font-widget);
+  font-size: 1rem;
+  line-height: 1.5;
+}
