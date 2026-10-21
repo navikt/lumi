@@ -1,6 +1,7 @@
 import type { SurveyDocumentV1, SurveyQuestionV1 } from "@navikt/lumi-survey";
 import { LiveSurvey } from "../../components/LiveSurvey";
-import type { Slide } from "../../engine";
+import { type Slide, type SlideProps, useRenderMode } from "../../engine";
+import { cx } from "../../engine/css";
 import "./sporsmal.css";
 
 /** One question per widget, so each type is seen on its own. */
@@ -16,11 +17,16 @@ interface Kind {
   id: string;
   label: string;
   note?: string;
+  /** The NPS panel is wider than the others, so it gets two columns. */
+  wide?: boolean;
   survey: SurveyDocumentV1;
 }
 
+/** The ratings come first, the other types on the next step. */
+type Group = "ratings" | "others";
+
 // Defined once, outside the component: a new object restarts the widget.
-const KINDS: readonly Kind[] = [
+const RATINGS: readonly Kind[] = [
   {
     id: "emoji",
     label: "Emoji",
@@ -40,7 +46,7 @@ const KINDS: readonly Kind[] = [
       id: "tommel",
       type: "rating",
       variant: "thumbs",
-      prompt: "Fant du det du lette etter?",
+      prompt: "Fant du det du trengte i saken?",
     }),
   },
   {
@@ -58,6 +64,7 @@ const KINDS: readonly Kind[] = [
     id: "nps",
     label: "NPS",
     note: "0–10",
+    wide: true,
     survey: single({
       id: "nps",
       type: "rating",
@@ -67,17 +74,20 @@ const KINDS: readonly Kind[] = [
       highLabel: "Svært sannsynlig",
     }),
   },
+];
+
+const OTHERS: readonly Kind[] = [
   {
     id: "ett-valg",
     label: "Enkeltvalg",
     survey: single({
       id: "ett-valg",
       type: "singleChoice",
-      prompt: "Hva kom du for å gjøre?",
+      prompt: "Hva skulle du gjøre?",
       required: true,
       options: [
-        { value: "status", label: "Sjekke status" },
-        { value: "sende", label: "Sende dokumentasjon" },
+        { value: "referat", label: "Skrive referat" },
+        { value: "oppfolging", label: "Planlegge videre oppfølging" },
         { value: "annet", label: "Noe annet" },
       ],
     }),
@@ -102,7 +112,8 @@ const KINDS: readonly Kind[] = [
   {
     id: "fritekst",
     label: "Fritekst",
-    note: "opptil 2000 tegn",
+    // «opptil 2000» stays together when the note wraps.
+    note: "1000 tegn som standard, opptil\u00a02000",
     survey: single({
       id: "fritekst",
       type: "text",
@@ -111,48 +122,123 @@ const KINDS: readonly Kind[] = [
   },
 ];
 
-function Sporsmalstyper() {
+const VIEWPORT = { width: 1280, height: 800 };
+/** On the stage: the question text is about 22 px. */
+const STAGE_SCALE = 1.1;
+/** In print, all seven share the page, so the widgets are smaller. */
+const PRINT_SCALE = 0.66;
+
+function KindFigure({
+  kind,
+  group,
+  scale,
+}: {
+  kind: Kind;
+  group: Group;
+  scale: number;
+}) {
+  return (
+    <figure
+      className={cx(
+        "sporsmal__kind",
+        `sporsmal__kind--${group}`,
+        kind.wide && "sporsmal__kind--wide",
+      )}
+    >
+      <div className="sporsmal__frame" inert>
+        <LiveSurvey
+          survey={kind.survey}
+          surveyId={`sporsmal-${kind.id}`}
+          scale={scale}
+          viewport={VIEWPORT}
+          label={`Widgeten med et spørsmål av typen ${kind.label}`}
+          className="sporsmal__survey"
+        />
+      </div>
+      <figcaption className="sporsmal__caption">
+        <span className="sporsmal__label">{kind.label}</span>
+        {kind.note && <span className="sporsmal__note">{kind.note}</span>}
+      </figcaption>
+    </figure>
+  );
+}
+
+/** One group on the stage. It fades in on its own step and out on the next. */
+function KindGroup({
+  kinds,
+  group,
+  shown,
+}: {
+  kinds: readonly Kind[];
+  group: Group;
+  shown: boolean;
+}) {
+  return (
+    <div
+      className="sporsmal__group"
+      data-reveal=""
+      data-revealed={shown ? "" : undefined}
+    >
+      {kinds.map((kind) => (
+        <KindFigure
+          key={kind.id}
+          kind={kind}
+          group={group}
+          scale={STAGE_SCALE}
+        />
+      ))}
+    </div>
+  );
+}
+
+function Sporsmalstyper({ step }: SlideProps) {
+  const mode = useRenderMode();
   return (
     <div className="slide">
-      <h2 className="slide-title">Spørsmålene dere kan bruke</h2>
-      <div className="sporsmal__grid">
-        {KINDS.map((kind) => (
-          <figure key={kind.id} className="sporsmal__kind">
-            <div className="sporsmal__frame" inert>
-              <LiveSurvey
-                survey={kind.survey}
-                surveyId={`sporsmal-${kind.id}`}
-                scale={0.75}
-                viewport={{ width: 1280, height: 800 }}
-                label={`Widgeten med et spørsmål av typen ${kind.label}`}
-                className="sporsmal__survey"
-              />
-            </div>
-            <figcaption className="sporsmal__caption">
-              <span className="sporsmal__label">{kind.label}</span>
-              {kind.note && <span className="sporsmal__note">{kind.note}</span>}
-            </figcaption>
-          </figure>
-        ))}
-        <p className="sporsmal__visible-if">
-          Et spørsmål kan vises bare etter et bestemt svar.
-        </p>
-      </div>
+      <h2 className="slide-title">Spørsmålstypene dere kan bruke</h2>
+      {mode === "print" ? (
+        <div className="sporsmal__grid">
+          {RATINGS.map((kind) => (
+            <KindFigure
+              key={kind.id}
+              kind={kind}
+              group="ratings"
+              scale={PRINT_SCALE}
+            />
+          ))}
+          {OTHERS.map((kind) => (
+            <KindFigure
+              key={kind.id}
+              kind={kind}
+              group="others"
+              scale={PRINT_SCALE}
+            />
+          ))}
+        </div>
+      ) : (
+        <>
+          <KindGroup kinds={RATINGS} group="ratings" shown={step === 0} />
+          <KindGroup kinds={OTHERS} group="others" shown={step >= 1} />
+        </>
+      )}
     </div>
   );
 }
 
 export const sporsmalstyper: Slide = {
   id: "sporsmalstyper",
-  title: "Spørsmålene dere kan bruke",
-  notes: `Alle sju er den ekte widgeten, med ett spørsmål hver.
+  title: "Spørsmålstypene dere kan bruke",
+  steps: 1,
+  notes: `Alle sju er den ekte widgeten, med ett spørsmål hver. Spørsmålene er bare eksempler: teksten, alternativene og etikettene skriver dere selv.
 
-Vurdering i fire varianter: emoji 1–5, tommel, stjerner, NPS 0–10. Fritekst, enkeltvalg og flervalg, med avkryssing eller søkbar liste når det er mange alternativer.
+Fra start: vurdering i fire varianter. Emoji 1–5, tommel, stjerner og NPS 0–10.
+
+Klikk 1: enkeltvalg, flervalg og fritekst. Flervalg med avkryssing, eller som søkbar liste når det er mange alternativer. Fritekst har 1000 tegn som standard, og opptil 2000.
 
 Sider: ett spørsmål per side, eller flere sammen. Valgfri velkomstside og takkeside.
 
-Betinget visning: et spørsmål vises bare når et annet svar passer, for eksempel «Hva manglet?» etter «Nei».
+Betinget visning, ordrett: «Et spørsmål kan vises bare etter et bestemt svar.» For eksempel «Hva manglet?» etter «Nei».
 
-Fagsystemer: tommel eller enkeltvalg rett etter en fullført oppgave er ofte nok.`,
+Fagsystemer: tommel eller enkeltvalg rett etter en fullført oppgave er ofte nok. Spør om løsningen, ikke om saksbehandlerens arbeid.`,
   Component: Sporsmalstyper,
 };

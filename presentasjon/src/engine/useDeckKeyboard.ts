@@ -23,11 +23,14 @@ const JUMP_MAX_DIGITS = 3;
 
 /**
  * Global deck shortcuts. Returns the slide number being typed for a jump
- * (digits, then Enter), or an empty string.
+ * (digits, then Enter), or an empty string. The arrow keys, Space, Enter,
+ * Page Up/Down, Home, End and Esc always work. Digits and the letter and
+ * symbol keys only work with `singleKeys`.
  */
 export function useDeckKeyboard(
   actions: DeckKeyboardActions,
   enabled: boolean,
+  singleKeys: boolean,
 ): string {
   const [pendingNumber, setPendingNumber] = useState("");
   const actionsRef = useRef(actions);
@@ -52,7 +55,7 @@ export function useDeckKeyboard(
       act: DeckKeyboardActions,
     ): boolean => {
       const { key } = event;
-      if (/^\d$/.test(key)) {
+      if (singleKeys && /^\d$/.test(key)) {
         if (!event.repeat)
           setPending(`${pending}${key}`.slice(0, JUMP_MAX_DIGITS));
         return true;
@@ -89,7 +92,7 @@ export function useDeckKeyboard(
           return true;
       }
 
-      if (event.repeat) return false;
+      if (event.repeat || !singleKeys) return false;
       switch (key.toLowerCase()) {
         case "g":
         case "o":
@@ -154,7 +157,7 @@ export function useDeckKeyboard(
       window.clearTimeout(timer);
       setPendingNumber("");
     };
-  }, [enabled]);
+  }, [enabled, singleKeys]);
 
   return pendingNumber;
 }

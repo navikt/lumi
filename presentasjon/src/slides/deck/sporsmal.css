@@ -1,14 +1,27 @@
-/* «Spørsmålene dere kan bruke»: seven real widgets in a grid. */
+/* «Spørsmålstypene dere kan bruke»: the real widget, one question type per frame. */
 
+/*
+ * On the stage, two groups share one grid and take turns: first the four
+ * ratings, then the three other types. In print, all seven share the page.
+ */
+.sporsmal__group,
 .sporsmal__grid {
   position: absolute;
   top: 236px;
   left: var(--deck-space-page);
   right: var(--deck-space-page);
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  column-gap: 40px;
-  row-gap: 36px;
+  align-items: start;
+}
+
+.sporsmal__group {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px 48px;
+}
+
+/* NPS spans two columns, so its row ends well left of the Teams corner. */
+.sporsmal__group .sporsmal__kind--wide {
+  grid-column: span 2;
 }
 
 .sporsmal__kind {
@@ -17,13 +30,24 @@
 
 .sporsmal__frame {
   position: relative;
-  height: 290px;
 }
 
 .sporsmal__frame .sporsmal__survey {
   position: absolute;
   inset: 0;
-  border-width: 4px;
+}
+
+/* Room for each panel at full height, with air above and to the left. */
+.sporsmal__kind--ratings .sporsmal__frame {
+  height: 316px;
+}
+
+.sporsmal__kind--wide .sporsmal__frame {
+  height: 300px;
+}
+
+.sporsmal__kind--others .sporsmal__frame {
+  height: 470px;
 }
 
 /* A note too long for the line goes whole onto the next one. */
@@ -31,28 +55,33 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 4px 18px;
-  margin-top: 16px;
+  gap: 0 20px;
+  margin-top: 12px;
 }
 
 .sporsmal__label {
-  font-size: var(--deck-size-label);
+  font-size: var(--deck-size-body);
   font-weight: 800;
+  line-height: 1.2;
 }
 
 .sporsmal__note {
   color: var(--deck-muted);
-  font-size: var(--deck-size-small);
+  font-size: var(--deck-size-label);
+  font-weight: 600;
+  line-height: 1.2;
 }
 
-/* The eighth cell is text, and stops above the Teams corner. */
-.sporsmal__visible-if {
-  align-self: start;
-  max-width: 13em;
-  margin: 0;
-  padding-top: 8px;
-  font-size: var(--deck-size-label);
-  font-weight: 700;
-  line-height: 1.25;
-  text-wrap: balance;
+/* Print: four columns, and the eighth cell, in the Teams corner, stays empty. */
+.sporsmal__grid {
+  grid-template-columns: repeat(4, 1fr);
+  gap: 36px 40px;
+}
+
+.sporsmal__grid .sporsmal__kind--ratings .sporsmal__frame {
+  height: 200px;
+}
+
+.sporsmal__grid .sporsmal__kind--others .sporsmal__frame {
+  height: 280px;
 }

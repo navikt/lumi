@@ -1,7 +1,6 @@
-import delMedUtvikler from "../../assets/skjermbilder/verksted-del-med-utvikler.webp";
 import forhandsvisning from "../../assets/skjermbilder/verksted-forhandsvisning.webp";
 import provHele from "../../assets/skjermbilder/verksted-prov-hele.webp";
-import start from "../../assets/skjermbilder/verksted-start.webp";
+import rediger from "../../assets/skjermbilder/verksted-rediger.webp";
 import versjon from "../../assets/skjermbilder/verksted-versjon.webp";
 import { Tag } from "../../components/Tag";
 import type { Slide, SlideProps } from "../../engine";
@@ -58,9 +57,19 @@ function markBox(mark: Box, crop: Box) {
 /**
  * Screenshots stacked in one frame, tagged on its upper left edge. Each one
  * fades in over the one before, with its own mark, so a mark never shows on
- * the wrong screenshot.
+ * the wrong screenshot. A covered screenshot is hidden from screen readers,
+ * so only the one on top is read.
  */
-export function ShotFrame({ shots }: { shots: readonly Shot[] }) {
+export function ShotFrame({
+  shots,
+  step,
+}: {
+  shots: readonly Shot[];
+  step: number;
+}) {
+  const top = Math.max(
+    ...shots.filter((shot) => shot.from <= step).map((shot) => shot.from),
+  );
   return (
     <div
       className="shot"
@@ -72,7 +81,12 @@ export function ShotFrame({ shots }: { shots: readonly Shot[] }) {
       }}
     >
       {shots.map((shot) => (
-        <div key={shot.src} className="shot__layer" data-from={shot.from}>
+        <div
+          key={`${shot.src}-${shot.from}`}
+          className="shot__layer"
+          data-from={shot.from}
+          aria-hidden={shot.from < top ? true : undefined}
+        >
           <img className="shot__image" src={shot.src} alt={shot.alt} />
           {shot.mark && (
             <span
@@ -153,12 +167,12 @@ const STEPS: readonly Step[] = [
   {
     shot: {
       from: 0,
-      src: start,
-      alt: "Start et utkast i Surveyverksted: Navn på utkastet, Foreslått survey-ID og knappen Opprett utkast.",
-      crop: { x: 172, y: 1300, width: 1190, height: 682 },
-      mark: { x: 282, y: 1846, width: 968, height: 96 },
+      src: rediger,
+      alt: "Et spørsmål redigeres i Surveyverksted: spørsmålsteksten Hva manglet?, svarformen Skriv et svar, og Hvem skal få spørsmålet: vises når svaret på Hadde du alt klart før møtet? er Nei.",
+      crop: { x: 732, y: 336, width: 1455, height: 834 },
+      mark: { x: 816, y: 955, width: 800, height: 130 },
     },
-    name: "Opprett utkast",
+    name: "Hvem skal få spørsmålet?",
   },
   {
     shot: {
@@ -181,22 +195,12 @@ const STEPS: readonly Step[] = [
   {
     shot: {
       from: 3,
-      src: delMedUtvikler,
-      alt: "Dialogen Del med utvikler: Klar til å dele versjon 1, med knappen Del versjon 1.",
-      crop: { x: 1124, y: 681, width: 1087, height: 623 },
-      mark: { x: 1760, y: 1176, width: 278, height: 96 },
-    },
-    note: "Del med utvikler",
-    name: "Del versjon 1",
-  },
-  {
-    shot: {
-      from: 4,
       src: versjon,
-      alt: "Versjonssiden: TypeScript, anbefalt, limes inn som en modul i appen. Med knappen Kopier TypeScript.",
+      alt: "Versjonen utvikleren får etter Del med utvikler: TypeScript, anbefalt, limes inn som en modul i appen. Med knappen Kopier TypeScript.",
       crop: { x: 252, y: 412, width: 1000, height: 573 },
       mark: { x: 405, y: 800, width: 388, height: 96 },
     },
+    note: "Del med utvikler",
     name: "Kopier TypeScript",
   },
 ];
@@ -205,10 +209,7 @@ function SammeUtkast({ step }: SlideProps) {
   return (
     <div className="slide">
       <h2 className="slide-title">Hele teamet jobber i samme utkast</h2>
-      <ShotFrame shots={STEPS.map((s) => s.shot)} />
-      <p className="slide-text shot-text" data-from={1}>
-        Utkastet lagres for teamet. Forhåndsvisningen sender ingen svar.
-      </p>
+      <ShotFrame shots={STEPS.map((s) => s.shot)} step={step} />
       {STEPS.map(
         ({ shot, name, note }) =>
           name &&
@@ -234,15 +235,13 @@ export const sammeUtkast: Slide = {
   steps: STEPS.length - 1,
   notes: `Alle i Nais-teamet jobber i samme utkast: designere, produktfolk og utviklere.
 
-Fra start: navnet på utkastet, survey-ID-en Surveyverksted foreslår, og Opprett utkast.
+Fra start: et spørsmål redigeres. Dere skriver teksten, velger hvordan de skal svare, og bestemmer hvem som får spørsmålet. Her vises «Hva manglet?» bare for dem som svarer «Nei».
 
-Klikk 1: utkastet, med forhåndsvisningen i den ekte widgeten. Den sender ingenting. Utkastet lagres for teamet.
+Klikk 1: forhåndsvisningen i den ekte widgeten. Utkastet lagres for teamet, og forhåndsvisningen sender ingen svar.
 
 Klikk 2: Prøv hele undersøkelsen.
 
-Klikk 3: Del med utvikler, så Del versjon 1.
-
-Klikk 4: versjonssiden med Kopier TypeScript.
+Klikk 3: Del med utvikler gir en versjon med egen lenke. Utvikleren kopierer TypeScript-koden derfra.
 
 Når man spør: teamet velger siden i appen. Widgeten kan starte som en liten knapp, og teamet bestemmer hvor lenge den blir borte etter at noen har svart eller lukket den.
 

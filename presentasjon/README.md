@@ -40,18 +40,31 @@ det på lenken uten `?rom`.
 
 ## Hurtigtaster
 
+Disse virker alltid:
+
 | Tast | Handling |
 | --- | --- |
-| → · Mellomrom · Page Down · Enter | Neste steg eller lysbilde |
-| ← · Page Up · Backspace | Forrige steg eller lysbilde |
-| Home · End | Første og siste lysbilde |
+| →, Mellomrom, Page Down eller Enter | Neste steg eller lysbilde |
+| ←, Page Up eller Backspace | Forrige steg eller lysbilde |
+| Home eller End | Første og siste lysbilde |
+| Esc | Lukk, eller flytt fokus ut av widgeten |
+
+Hurtigtaster med én tast:
+
+| Tast | Handling |
+| --- | --- |
 | Tall, så Enter | Gå til lysbilde nummer |
-| G · O | Oversikt |
+| G eller O | Oversikt |
 | F | Fullskjerm |
-| B · . | Svart skjerm av og på |
+| B eller punktum | Svart skjerm av og på |
 | P | Presentatørvisning |
 | ? | Hurtigtaster |
-| Esc | Lukk, eller flytt fokus ut av widgeten |
+
+Talestyring kan trykke hurtigtaster med én tast ved et uhell (WCAG 2.1.4). De
+er derfor av på lenken uten `?rom` og på med `?rom`, der presentasjonen holdes.
+Bryteren «Hurtigtaster med én tast» i hjelpedialogen slår dem av og på. Valget
+lagres i nettleseren, hver for seg for lenkene med og uten `?rom`, så den som
+presenterer, ikke mister tastene fordi de ble slått av på den delte lenken.
 
 Når fokus står i widgeten på et lysbilde, virker bare Page Up og Page Down,
 som er tastene en presentasjonsklikker sender. Mens du skriver i et
@@ -59,6 +72,21 @@ tekstfelt, virker ingen hurtigtaster. Trykk Esc for å styre lysbildene igjen.
 
 Adressen viser hvor du er, for eksempel `#/hvor-bor-svaret/2`. Laster du siden
 på nytt, står du på samme sted.
+
+## Uten tastatur
+
+Når du flytter musa eller trykker på skjermen, kommer en stripe nederst på
+midten med Forrige, Neste, hvilket lysbilde du er på, og Hurtigtaster. Den
+forsvinner etter tre sekunder, men aldri mens den har fokus, og den vises ikke
+i fullskjerm. Knappene kan alltid nås med Tab. På berøringsskjerm kan du også
+sveipe til venstre og høyre. Stripa og sveipingen finnes bare i
+publikumsvisningen.
+
+## Høy kontrast
+
+Med tvungne farger, som kontrasttemaene i Windows, følger kartene
+systemfargene. Svaret beholder gull. Reglene står i
+`src/engine/forced-colors.css`.
 
 ## Svaret fra salen
 
@@ -73,21 +101,25 @@ et eksempel.
 
 `?prov` er en egen side for telefonen med den samme widgeten. QR-koden på
 lysbildet «Prøv selv» leder dit. Svaret blir på telefonen, og siden viser hva
-appen ville fått.
+appen ville fått, og hva Lumi API ville lagret av fritekstsvaret, med samme
+maskering som på lysbildet. Siden holder av plass under widgeten, så det den
+viser, aldri blir liggende skjult bak den.
 
 ## Presentatørvisning
 
-Trykk P. Presentatørvisningen åpnes i et nytt vindu, på samme adresse med
-`?presenter`. Den viser lysbildet som vises nå, neste steg eller lysbilde,
-notater, tidtaker og klokke. Begge vinduene kan styre presentasjonen, og de
-følger hverandre. Legg publikumsvinduet på projektoren og presentatørvisningen
-på din egen skjerm. Tidtakeren starter når du trykker Start.
+Trykk P, med hurtigtaster med én tast på. Presentatørvisningen åpnes i et nytt
+vindu, på samme adresse med `?presenter`. Den viser lysbildet som vises nå,
+neste steg eller lysbilde, notater, tidtaker og klokke. Begge vinduene kan
+styre presentasjonen, og de følger hverandre. Legg publikumsvinduet på
+projektoren og presentatørvisningen på din egen skjerm. Tidtakeren starter når
+du trykker Start.
 
 ## PDF
 
 Åpne adressen med `?print`, gjerne sammen med `rom`, for eksempel
 `?print&rom=faggruppa`. Alle lysbildene vises med alle byggesteg, ett per side
-på 1920 × 1080 piksler. Velg Skriv ut og Lagre som PDF.
+på 1920 × 1080 piksler. Velg Skriv ut og Lagre som PDF. Widgetene er med slik
+de ser ut når de åpnes, men de kan ikke brukes, og merket «Live» er borte.
 
 ## Lage lysbilder
 

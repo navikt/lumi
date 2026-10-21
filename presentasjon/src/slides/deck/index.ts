@@ -9,6 +9,7 @@ import { grupper } from "./Grupper";
 import { hvaVilDereVite } from "./HvaVilDereVite";
 import { hvorBorSvaret } from "./HvorBorSvaret";
 import { merEnnViSporOm } from "./MerEnnViSporOm";
+import { oppfolgingsplanen } from "./Oppfolgingsplanen";
 import { provSelv } from "./ProvSelv";
 import { sammeUtkast } from "./SammeUtkast";
 import { sammeVei } from "./SammeVei";
@@ -57,10 +58,11 @@ export const deckSlides: readonly Slide[] = [
   fagsystemsonen,
   ulikeBehov,
   tallet,
-  // caset kommer inn igjen når caset fra iSyfo er klart (Caset.tsx).
+  oppfolgingsplanen,
   brukesVidere,
   ansvar,
-  provSelv,
   slutt,
+  // After the last sentence, so the QR code stays up while people ask.
+  provSelv,
   { ...grupper, roomOnly: true },
 ];

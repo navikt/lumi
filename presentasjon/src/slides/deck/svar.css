@@ -63,6 +63,15 @@
   line-height: var(--deck-line-height);
 }
 
+/* Under the payload after Send: the time and the count, in ink, no fade. */
+.svar__sent {
+  margin: 0;
+  color: var(--deck-fg);
+  font-size: var(--deck-size-label);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
 .svar__kept {
   display: flex;
   align-items: center;
@@ -84,7 +93,7 @@
 
 .app-page__bar {
   height: 72px;
-  background: var(--map-zone-neutral);
+  background: var(--deck-embed-bar);
 }
 
 /* Slide 10: the answer card under the map. */

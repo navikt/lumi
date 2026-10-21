@@ -11,7 +11,8 @@ const NON_TEXT_INPUT_TYPES = new Set([
   "submit",
 ]);
 
-const INTERACTIVE_SELECTOR = [
+/** Controls that own the keys and touches that start on them. */
+export const INTERACTIVE_SELECTOR = [
   "input",
   "textarea",
   "select",

@@ -21,7 +21,7 @@
   --map-ink: #202733;
   --map-paper: #ffffff;
   --map-zone-nais: #d7e6f0; /* --ax-brand-blue-300 */
-  --map-zone-neutral: #e1e3e7; /* --ax-neutral-300 */
+  --map-zone-neutral: #f5f6f7; /* --ax-neutral-100 */
   --map-dim: #818997; /* --ax-neutral-500 */
   --map-answer: #f2c24f;
   --map-line-width: 14px;
@@ -30,6 +30,7 @@
 
   /* Embedded app areas (live widget, Storybook, screenshots) */
   --deck-embed-bg: #f5f6f7; /* --ax-neutral-100 */
+  --deck-embed-bar: #e1e3e7; /* --ax-neutral-300, the top bar of an app page */
   --deck-font-widget: var(
     --ax-font-family,
     "Source Sans 3",
@@ -76,7 +77,7 @@
   --deck-size-lead: 52px;
   --deck-size-body: 44px;
   --deck-size-label: 36px;
-  --deck-size-small: 30px;
+  --deck-size-small: 32px;
   --deck-size-kicker: 30px;
   --deck-size-code: 32px;
   --deck-line-height: 1.3;

@@ -40,7 +40,7 @@ const COLUMNS: readonly Column[] = [
     ],
   },
   {
-    x: 790,
+    x: 774,
     title: "Lumi bestemmer",
     from: 1,
     stops: [

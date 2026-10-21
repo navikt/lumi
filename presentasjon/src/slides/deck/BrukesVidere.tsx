@@ -18,7 +18,7 @@ const LEGEND_Y = 936;
 function BrukesVidere() {
   return (
     <div className="slide">
-      <h2 className="slide-title">Svarene kan brukes videre</h2>
+      <h2 className="slide-title">Svarene kan tas ut til analyse</h2>
       <LineMap label="Linjekart med stasjonen «Svarene i Lumi». To heltrukne linjer, som finnes i dag, går til eksport som CSV, Excel og JSON og til iSyfos datafortelling. En stiplet linje, som er på vei, går til BigQuery i teamets eget prosjekt: en pilot i eSyfo og iSyfo, uten fritekst.">
         {/* What exists today */}
         <g data-from={1}>
@@ -86,7 +86,7 @@ function BrukesVidere() {
             [243, LEGEND_Y],
           ]}
         />
-        <MapText x={278} y={LEGEND_Y + 2} size={30} weight={600}>
+        <MapText x={278} y={LEGEND_Y + 2} size={32} weight={600}>
           finnes
         </MapText>
         <Line
@@ -96,7 +96,7 @@ function BrukesVidere() {
           ]}
           dashed
         />
-        <MapText x={606} y={LEGEND_Y + 2} size={30} weight={600}>
+        <MapText x={606} y={LEGEND_Y + 2} size={32} weight={600}>
           på vei
         </MapText>
       </LineMap>
@@ -106,13 +106,17 @@ function BrukesVidere() {
 
 export const brukesVidere: Slide = {
   id: "brukes-videre",
-  title: "Svarene kan brukes videre",
+  title: "Svarene kan tas ut til analyse",
   steps: 2,
-  notes: `Eksport finnes: CSV, Excel og JSON fra dashboardet.
+  // In faggruppa the export is one sentence on «Dere ser bare svarene …».
+  rooms: ["frontend", "produktledere"],
+  notes: `Eksport finnes: CSV, Excel og JSON fra dashboardet. Til samme formål som surveyen.
 
-iSyfo publiserer en datafortelling med svarene i dag.
+iSyfo bruker svarene sine i en datafortelling.
 
 Stiplet, på vei: eksport til BigQuery i teamets eget prosjekt. Pilot i eSyfo og iSyfo, og fritekst er stengt.
+
+Sletting i Lumi gjelder ikke filer dere har lastet ned. Dem sletter dere selv.
 
 Før kjøring: sjekk status på BigQuery-eksporten.`,
   Component: BrukesVidere,

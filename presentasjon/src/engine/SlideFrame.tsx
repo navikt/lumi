@@ -52,7 +52,7 @@ export function SlideFrame({
     <section
       ref={sectionRef}
       className="deck-slide"
-      aria-roledescription="slide"
+      aria-roledescription="lysbilde"
       aria-label={`${index + 1} av ${total}: ${slide.title}`}
       data-slide-id={slide.id}
       data-hidden={hidden ? "" : undefined}

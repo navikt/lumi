@@ -13,6 +13,8 @@ const SKYRA_APP_Y = 330;
 const LUMI_APP_Y = 520;
 const APP_X = 112;
 const APP_WIDTH = 512;
+/** The script line, far enough in for «etter samtykke» to start at the zone label. */
+const SCRIPT_X = 400;
 /** Appens backend, on the Lumi line. */
 const BACKEND: readonly [number, number] = [760, LUMI_APP_Y + 48];
 /** Arrows stop at the edge of the station ring, as on the Skyra line. */
@@ -97,13 +99,13 @@ function HvorBorSvaret({ step }: SlideProps) {
             points={[
               [1440, 330],
               [1440, 96],
-              [380, 96],
-              [380, SKYRA_APP_Y],
+              [SCRIPT_X, 96],
+              [SCRIPT_X, SKYRA_APP_Y],
             ]}
             radius={56}
             arrow
           />
-          <ConsentSwitch x={380} y={250} />
+          <ConsentSwitch x={SCRIPT_X} y={250} />
           <Station x={1440} y={330} label="survey.skyra.no" mono side="right" />
           <Line
             points={[

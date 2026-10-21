@@ -44,7 +44,8 @@ export interface LiveSurveyProps {
  * the scaled inner box is the containing block for the dock's fixed
  * position, so the dock sits in the corner of the frame, not the window.
  * Thumbnails and presenter previews get a still frame instead, so there is
- * never more than one live widget in a window.
+ * never more than one live widget in a window. The print view shows the
+ * widget as it opens, inert, so the PDF has it and nothing can be sent.
  */
 export function LiveSurvey({
   survey,
@@ -58,6 +59,7 @@ export function LiveSurvey({
 }: LiveSurveyProps) {
   const mode = useRenderMode();
   const live = mode === "stage";
+  const printed = mode === "print";
   const boxRef = useRef<HTMLElement>(null);
   const box = useElementSize(boxRef);
 
@@ -104,7 +106,7 @@ export function LiveSurvey({
       aria-label={label}
     >
       {children && <div className="live-survey__page">{children}</div>}
-      {box && live && (
+      {box && (live || printed) && (
         <div
           className="live-survey__inner"
           style={{
@@ -112,6 +114,7 @@ export function LiveSurvey({
             height: innerHeight,
             transform: `scale(${zoom})`,
           }}
+          inert={printed}
         >
           <LumiSurveyDock
             surveyId={surveyId}
@@ -122,7 +125,7 @@ export function LiveSurvey({
           />
         </div>
       )}
-      {!live && (
+      {!live && !printed && (
         <p className="live-survey__still">Widgeten kjører live på scenen</p>
       )}
     </section>

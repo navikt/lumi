@@ -15,11 +15,11 @@ const TOOLS = [
 const BADGE_WIDTH = 220;
 /*
  * Spread over the whole width: the widest label on each side, «Team Flex,
- * siden 2023» (306 px) and «innloggede brukere» (264 px), ends at the page
+ * siden 2023» (332 px) and «innloggede brukere» (286 px), ends at the page
  * margin. The labels stop above the Teams corner.
  */
-const FIRST_X = 268;
-const COLUMN_GAP = 702;
+const FIRST_X = 280;
+const COLUMN_GAP = 692;
 const BADGE_Y = 430;
 const STATION_Y = 640;
 

@@ -37,6 +37,7 @@ html[data-deck-view="print"] body {
 /* Dark scrollbars and controls in the deck chrome, light on the slides. */
 .presenter,
 .deck-dialog,
+.deck-nav,
 .deck-print {
   color-scheme: var(--deck-ui-color-scheme);
 }
@@ -192,6 +193,64 @@ html[data-deck-view="print"] body {
   font-size: 1.125rem;
 }
 
+/*
+ * The strip in the audience view: bottom centre, clear of the Teams
+ * corner. It stays in the tab order while faded, and pointer input goes
+ * through it until it shows.
+ */
+.deck-nav {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 8px;
+  transform: translateX(-50%);
+  border: 1px solid var(--deck-ui-border);
+  border-radius: 12px;
+  background: var(--deck-ui-surface);
+  color: var(--deck-ui-fg);
+  font-size: 1.125rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.deck-nav[data-shown] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.deck-nav__button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.deck-nav__position {
+  margin: 0;
+  padding: 0 8px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* A badge moves up while the strip shows. */
+.deck-nav[data-shown] ~ .deck-badge {
+  bottom: 96px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deck-nav {
+    transition: none;
+  }
+}
+
 /* Deck chrome */
 
 .deck-button {
@@ -275,9 +334,11 @@ html[data-deck-view="print"] body {
   width: 640px;
 }
 
+/* Fixed columns, so the two tables line up. */
 .deck-help__table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .deck-help__table th,
@@ -288,14 +349,95 @@ html[data-deck-view="print"] body {
   vertical-align: top;
 }
 
-.deck-help__table th {
+.deck-help__table tr > :first-child {
+  width: 54%;
+}
+
+.deck-help__table thead th {
   color: var(--deck-ui-muted);
   font-weight: 600;
+}
+
+.deck-help__table tbody th {
+  font-weight: inherit;
 }
 
 .deck-help__note {
   margin: 16px 0 0;
   color: var(--deck-ui-muted);
+}
+
+/* The switch for the single keys, above the keys it turns on. */
+.deck-help__single {
+  margin: 24px 0 8px;
+}
+
+.deck-help__hint {
+  margin: 4px 0 0 60px;
+  color: var(--deck-ui-muted);
+}
+
+.deck-switch {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 44px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* The real checkbox stays for keyboard and screen readers, under the track. */
+.deck-switch__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+
+.deck-switch__track {
+  position: relative;
+  flex: none;
+  box-sizing: border-box;
+  width: 44px;
+  height: 26px;
+  border: 2px solid var(--deck-ui-muted);
+  border-radius: 999px;
+  background: var(--deck-ui-raised);
+}
+
+/* The knob is drawn with a border, so it survives forced colours. */
+.deck-switch__track::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 0;
+  height: 0;
+  border: 8px solid var(--deck-ui-muted);
+  border-radius: 50%;
+  transition: transform 150ms ease;
+}
+
+.deck-switch__input:checked + .deck-switch__track {
+  border-color: var(--deck-ui-accent);
+  background: var(--deck-ui-accent);
+}
+
+.deck-switch__input:checked + .deck-switch__track::before {
+  transform: translateX(18px);
+  border-color: var(--deck-ui-bg);
+}
+
+.deck-switch__input:focus-visible + .deck-switch__track {
+  outline: 3px solid var(--deck-ui-accent);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deck-switch__track::before {
+    transition: none;
+  }
 }
 
 .deck-overview {

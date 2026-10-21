@@ -2,6 +2,7 @@ import "@navikt/ds-css";
 import "@navikt/lumi-survey/styles.css";
 import "./assets/fonts/fonts.css";
 import "./theme.css";
+import "./engine/forced-colors.css";
 import "./engine/deck.css";
 
 import { StrictMode } from "react";

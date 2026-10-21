@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { DeckNav } from "./DeckNav";
 import { FittedStage } from "./FittedStage";
 import { toggleFullscreen } from "./fullscreen";
 import { HelpDialog } from "./HelpDialog";
@@ -8,6 +9,8 @@ import { SlideFrame } from "./SlideFrame";
 import type { Slide } from "./types";
 import { useDeckController } from "./useDeckController";
 import { useDeckKeyboard } from "./useDeckKeyboard";
+import { useSingleKeyShortcuts } from "./useSingleKeyShortcuts";
+import { useSwipe } from "./useSwipe";
 import { PRESENTER_WINDOW_NAME, presenterUrl } from "./viewMode";
 
 const NOTICE_MS = 5000;
@@ -25,6 +28,8 @@ export function Deck({ slides }: DeckProps) {
   const [announcement, setAnnouncement] = useState("");
   const [notice, setNotice] = useState("");
   const stageRef = useRef<HTMLDivElement>(null);
+  const singleKeys = useSingleKeyShortcuts();
+  const noDialog = !overviewOpen && !helpOpen;
 
   const releaseFocus = useCallback(() => {
     stageRef.current?.focus({ preventScroll: true });
@@ -65,21 +70,26 @@ export function Deck({ slides }: DeckProps) {
       openPresenter,
       releaseFocus,
     },
-    !overviewOpen && !helpOpen,
+    noDialog,
+    singleKeys.enabled,
   );
+  useSwipe({ next: deck.next, previous: deck.previous }, noDialog);
 
-  const announcedRef = useRef({ index, black });
+  // A new slide is announced with its title, a build step on its own.
+  const announcedRef = useRef({ index, step, black });
   useEffect(() => {
     const previous = announcedRef.current;
-    announcedRef.current = { index, black };
+    announcedRef.current = { index, step, black };
     if (previous.index !== index) {
       setAnnouncement(
         `Lysbilde ${index + 1} av ${slides.length}: ${slides[index]?.title ?? ""}`,
       );
+    } else if (previous.step !== step) {
+      setAnnouncement(`Steg ${step + 1} av ${lastStepOf(slides[index]) + 1}`);
     } else if (previous.black !== black) {
       setAnnouncement(black ? "Svart skjerm" : "Svart skjerm av");
     }
-  }, [index, black, slides]);
+  }, [index, step, black, slides]);
 
   // The presented slide and its neighbours stay mounted, so stepping and
   // going back and forth keeps live state such as the widget's answers.
@@ -114,6 +124,13 @@ export function Deck({ slides }: DeckProps) {
       <div className="deck-sr-only" aria-live="polite" aria-atomic="true">
         {announcement}
       </div>
+      <DeckNav
+        index={index}
+        total={slides.length}
+        onPrevious={deck.previous}
+        onNext={deck.next}
+        onHelp={() => setHelpOpen(true)}
+      />
       {pendingNumber && (
         <div className="deck-badge" aria-hidden="true">
           Gå til lysbilde {pendingNumber}
@@ -134,7 +151,13 @@ export function Deck({ slides }: DeckProps) {
         }}
         onClose={() => setOverviewOpen(false)}
       />
-      <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <HelpDialog
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        singleKeys={singleKeys.enabled}
+        onSingleKeysChange={singleKeys.setEnabled}
+        swipe
+      />
     </main>
   );
 }

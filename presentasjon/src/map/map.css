@@ -64,7 +64,7 @@
 }
 
 .map-station--dim text {
-  fill: var(--map-dim);
+  fill: var(--deck-muted);
 }
 
 .map-label {
@@ -84,7 +84,7 @@
 .map .map-note {
   fill: var(--deck-muted);
   font-size: var(--deck-size-small);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .map-answer {
@@ -117,7 +117,7 @@
 
 .map-zone__note {
   font-size: var(--deck-size-small);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .map-app__frame {

@@ -237,17 +237,3 @@
   font-weight: var(--deck-weight-strong);
   white-space: nowrap;
 }
-
-/* Clear of the callouts: they sit level with the controls they name. */
-.shot-text {
-  position: absolute;
-  top: 520px;
-  left: 1160px;
-  max-width: 600px;
-}
-
-/* Slide 11: bare-teamet. Nais Console, the text and the delete button stack. */
-
-.bare-teamet__text {
-  top: 540px;
-}

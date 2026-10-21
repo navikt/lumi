@@ -8,6 +8,7 @@ import type { Slide } from "./types";
 import { useDeckController } from "./useDeckController";
 import { useDeckKeyboard } from "./useDeckKeyboard";
 import { useNow } from "./useNow";
+import { useSingleKeyShortcuts } from "./useSingleKeyShortcuts";
 import { formatDuration, useTimer } from "./useTimer";
 
 const clockFormat = new Intl.DateTimeFormat("nb-NO", {
@@ -33,6 +34,7 @@ export function PresenterView({ slides }: PresenterViewProps) {
   const [helpOpen, setHelpOpen] = useState(false);
   const now = useNow(500);
   const timer = useTimer(now);
+  const singleKeys = useSingleKeyShortcuts();
 
   const releaseFocus = useCallback(() => {
     if (document.activeElement instanceof HTMLElement) {
@@ -55,6 +57,7 @@ export function PresenterView({ slides }: PresenterViewProps) {
       releaseFocus,
     },
     !overviewOpen && !helpOpen,
+    singleKeys.enabled,
   );
 
   const upcomingLabel = (() => {
@@ -140,6 +143,14 @@ export function PresenterView({ slides }: PresenterViewProps) {
           >
             Svart skjerm
           </button>
+          {/* With the single keys off, ? cannot open the dialog. */}
+          <button
+            type="button"
+            className="deck-button"
+            onClick={() => setHelpOpen(true)}
+          >
+            Hurtigtaster
+          </button>
         </div>
 
         <div className="presenter__timer">
@@ -180,7 +191,12 @@ export function PresenterView({ slides }: PresenterViewProps) {
         }}
         onClose={() => setOverviewOpen(false)}
       />
-      <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <HelpDialog
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        singleKeys={singleKeys.enabled}
+        onSingleKeysChange={singleKeys.setEnabled}
+      />
     </div>
   );
 }
