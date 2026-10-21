@@ -3,7 +3,7 @@ import "@navikt/ds-css";
 import "@navikt/lumi-survey/styles.css";
 import { Alert, BodyShort, Heading } from "@navikt/ds-react";
 import { Theme } from "@navikt/ds-react/Theme";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import {
   createRootRoute,
   HeadContent,
@@ -21,6 +21,7 @@ import { BrowserRouteTracker } from "~/observability/BrowserRouteTracker";
 import { fetchBrowserObservabilityMetaServerFn } from "~/server/browserObservabilityConfig";
 import "~/styles/global.css";
 import { redirectToDashboardTeam } from "~/utils/dashboardTeam";
+import { createDashboardQueryClient } from "~/utils/queryClient";
 
 export const Route = createRootRoute({
   // Runs before the dashboard routes' own beforeLoad, so their data queries
@@ -65,17 +66,7 @@ function RootNotFoundComponent() {
 }
 
 function RootComponent() {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: 1000 * 60, // 1 minute
-            retry: 1,
-          },
-        },
-      }),
-  );
+  const [queryClient] = useState(createDashboardQueryClient);
 
   return (
     <ThemeProvider>

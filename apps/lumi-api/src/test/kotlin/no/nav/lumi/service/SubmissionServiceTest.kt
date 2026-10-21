@@ -35,7 +35,7 @@ class SubmissionServiceTest : FunSpec({
         val prepared = FeedbackService.PreparedFeedbackSave("redacted-json", null)
         every { feedbackService.prepareForSave("{}", "team-a", "survey-1") } returns prepared
         coEvery {
-            feedbackRepository.withTransaction(any<suspend () -> SubmissionOutcome>())
+            feedbackRepository.withSubmissionTransaction(any<suspend () -> SubmissionOutcome>())
         } coAnswers {
             arg<suspend () -> SubmissionOutcome>(0).invoke()
         }

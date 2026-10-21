@@ -1,15 +1,27 @@
 version: 2
 registries:
-  github-npm:
+  # One entry per scope. Without `scope`, Dependabot infers scopes from where
+  # it found each package. GitHub Packages also serves public packages such as
+  # @types/*, so Dependabot sent those scopes there too, got stale metadata and
+  # failed every root npm update after the move to pnpm.
+  github-npm-navikt:
     type: npm-registry
     url: https://npm.pkg.github.com
+    scope: "@navikt"
+    token: ${{ secrets.READER_TOKEN }}
+  github-npm-nais:
+    type: npm-registry
+    url: https://npm.pkg.github.com
+    scope: "@nais"
     token: ${{ secrets.READER_TOKEN }}
 updates:
-  # Root workspace packages are managed by pnpm from the repository root.
+  # Root workspace packages, docs included, are managed by pnpm from the
+  # repository root.
   - package-ecosystem: "npm"
     directory: "/"
     registries:
-      - github-npm
+      - github-npm-navikt
+      - github-npm-nais
     schedule:
       interval: "weekly"
     cooldown:
@@ -18,7 +30,32 @@ updates:
     ignore:
       - dependency-name: "zod"
         versions: [">=4"]
+      # tsup builds the type declarations with rollup-plugin-dts, which reads
+      # ts.sys from the TypeScript API. TypeScript 7 does not have it, so both
+      # package builds fail.
+      - dependency-name: "typescript"
+        versions: [">=7"]
     groups:
+      # react-dom refuses to run with another react version ("Incompatible
+      # React versions"), and the dashboard then answers 500 on every page.
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      # @tanstack/react-start pins exact router versions. Updating the router
+      # alone installs a second router-core and breaks the route types. Start
+      # 1.169 and the routers released with it require Vite 8, so the group
+      # update needs that migration before it can pass.
+      tanstack-router:
+        patterns:
+          - "@tanstack/react-router"
+          - "@tanstack/react-start"
+          - "@tanstack/router-*"
+          - "@tanstack/start-*"
+          - "@tanstack/history"
+          - "@tanstack/zod-adapter"
       vitest:
         patterns:
           - "vitest"
@@ -33,18 +70,6 @@ updates:
       navikt:
         patterns:
           - "@navikt/*"
-  # Docs stay outside the root workspace and keep their own pnpm lockfile.
-  - package-ecosystem: "npm"
-    directory: "/docs"
-    schedule:
-      interval: "weekly"
-    cooldown:
-      default-days: 7
-    open-pull-requests-limit: 10
-    ignore:
-      # vitepress-plugin-mermaid@2.0.17 peer-depends on mermaid "10 || 11".
-      - dependency-name: "mermaid"
-        versions: [">=12"]
   - package-ecosystem: "gradle"
     directory: "/apps/lumi-api"
     schedule:

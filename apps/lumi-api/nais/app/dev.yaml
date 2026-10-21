@@ -83,6 +83,12 @@ spec:
   env:
     - name: NAIS_CLUSTER_NAME
       value: dev-gcp
+    # db-f1-micro allows 25 connections. With three pods during a deploy,
+    # 4 + 2 + readiness 1 per pod stays below the limit. Prod uses the defaults.
+    - name: LUMI_DB_MAIN_POOL_SIZE
+      value: "4"
+    - name: LUMI_DB_SUBMISSION_POOL_SIZE
+      value: "2"
     - name: LUMI_DASHBOARD_CLIENT_ID
       value: dev-gcp:team-esyfo:lumi-dashboard
     - name: NAIS_API_GRAPHQL_URL

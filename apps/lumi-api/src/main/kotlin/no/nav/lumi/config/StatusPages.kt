@@ -91,12 +91,19 @@ private fun determineApiError(cause: Throwable, path: String?): ApiError {
         // Standard library exceptions
         is IllegalArgumentException -> ApiError.badRequest(safeBadRequestMessage(cause.message), path)
         is IllegalStateException -> ApiError.badRequest(safeBadRequestMessage(cause.message), path)
-        
-        // Catch-all for unknown exceptions
-        else -> ApiError.internalServerError(
-            if (isDev()) cause.message ?: "Internal server error" else "Internal server error",
-            path
-        )
+
+        // dbQuery turns these into 503 itself. This covers code that takes a
+        // connection straight from a DataSource, and the first transaction on
+        // a Database, which reads connection metadata before its block runs.
+        else -> if (cause.isDatabaseUnavailable()) {
+            databaseUnavailableException().toApiError(path)
+        } else {
+            // Catch-all for unknown exceptions
+            ApiError.internalServerError(
+                if (isDev()) cause.message ?: "Internal server error" else "Internal server error",
+                path
+            )
+        }
     }
 }
 

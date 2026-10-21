@@ -3,9 +3,13 @@ package no.nav.lumi.config
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.ktor.server.application.*
+import no.nav.lumi.config.exception.ApiErrorException
+import no.nav.lumi.config.exception.ErrorType
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.slf4j.LoggerFactory
+import java.sql.SQLException
+import java.sql.SQLTransientConnectionException
 import javax.sql.DataSource
 
 private val log = LoggerFactory.getLogger("Database")
@@ -13,15 +17,35 @@ private val log = LoggerFactory.getLogger("Database")
 /**
  * Application-level database holder.
  * Initialized during application startup.
+ *
+ * Submissions use their own small pool, and readiness has a pool of one
+ * connection. Heavy dashboard queries can then fill the main pool without
+ * stopping submissions, and busy submissions cannot take the pod out of traffic.
  */
 object DatabaseHolder {
     @Volatile
     private var _dataSource: DataSource? = null
     @Volatile
+    private var _submissionDataSource: DataSource? = null
+    @Volatile
+    private var _readinessDataSource: DataSource? = null
+    @Volatile
     private var _database: Database? = null
+    @Volatile
+    private var _submissionDatabase: Database? = null
     
     val dataSource: DataSource
         get() = _dataSource ?: throw IllegalStateException(
+            "Database not initialized. Call configureDatabase() first."
+        )
+
+    val submissionDataSource: DataSource
+        get() = _submissionDataSource ?: throw IllegalStateException(
+            "Database not initialized. Call configureDatabase() first."
+        )
+
+    val readinessDataSource: DataSource
+        get() = _readinessDataSource ?: throw IllegalStateException(
             "Database not initialized. Call configureDatabase() first."
         )
 
@@ -34,32 +58,57 @@ object DatabaseHolder {
      * Initialize for production use with ServerEnv configuration.
      */
     @Synchronized
-    fun initialize(env: ServerEnv.DatabaseEnv) {
+    fun initialize(
+        env: ServerEnv.DatabaseEnv,
+        pools: DatabasePoolEnv = DatabasePoolEnv.fromEnvironment(),
+    ) {
         if (_dataSource != null) {
             log.warn("Database already initialized, skipping")
             return
         }
-        _dataSource = createDataSource(env)
+        _dataSource = createDataSource(env, MAIN_POOL.copy(maximumPoolSize = pools.mainPoolSize))
+        _submissionDataSource = createDataSource(
+            env,
+            SUBMISSION_POOL.copy(maximumPoolSize = pools.submissionPoolSize),
+        )
+        _readinessDataSource = createDataSource(env, READINESS_POOL)
+        log.info(
+            "Database pools: main {}, submission {}, readiness {} connections per pod",
+            pools.mainPoolSize,
+            pools.submissionPoolSize,
+            DatabasePoolEnv.READINESS_POOL_SIZE,
+        )
         _database = null
+        _submissionDatabase = null
         log.info("Database initialized with production configuration")
     }
     
     /**
-     * Initialize for testing with a pre-configured DataSource.
+     * Initialize for testing with a pre-configured DataSource, shared by all pools.
      */
     @Synchronized
     fun initializeForTesting(dataSource: DataSource) {
         if (_dataSource !== dataSource) {
-            (_dataSource as? HikariDataSource)?.close()
+            closeDataSources()
             _dataSource = dataSource
+            _submissionDataSource = dataSource
+            _readinessDataSource = dataSource
             _database = null
+            _submissionDatabase = null
         }
         log.info("Database initialized with test configuration")
     }
 
+    /**
+     * Connects one Exposed Database per pool, also when tests share one DataSource.
+     * Exposed only joins an outer transaction on the same Database, so tests then
+     * see the same separate transactions as production. The main Database is
+     * connected last and becomes Exposed's default.
+     */
     @Synchronized
     fun connect() {
         if (_database != null) return
+        _submissionDatabase = Database.connect(submissionDataSource)
         _database = Database.connect(dataSource)
     }
 
@@ -68,15 +117,30 @@ object DatabaseHolder {
             "Database not connected. Call configureDatabase() or DatabaseHolder.connect() before dbQuery."
         )
     }
+
+    fun requireSubmissionDatabase(): Database {
+        return _submissionDatabase ?: throw IllegalStateException(
+            "Database not connected. Call configureDatabase() or DatabaseHolder.connect() before submissionDbQuery."
+        )
+    }
     
     /**
      * Reset the database holder (for testing purposes only).
      */
     @Synchronized
     fun reset() {
-        (_dataSource as? HikariDataSource)?.close()
+        closeDataSources()
         _dataSource = null
+        _submissionDataSource = null
+        _readinessDataSource = null
         _database = null
+        _submissionDatabase = null
+    }
+
+    private fun closeDataSources() {
+        listOfNotNull(_dataSource, _submissionDataSource, _readinessDataSource)
+            .distinctBy { System.identityHashCode(it) }
+            .forEach { (it as? HikariDataSource)?.close() }
     }
 }
 
@@ -96,26 +160,61 @@ fun Application.configureDatabase() {
     log.info("Database configured successfully")
 }
 
+internal data class PoolSettings(
+    val name: String,
+    val maximumPoolSize: Int,
+    val minimumIdle: Int,
+    val connectionTimeoutMillis: Long,
+)
+
+// Dashboard, Surveyverksted, analysis, Flyway and the retention job. A short
+// connectionTimeout fails a request quickly instead of letting it queue for 30 s
+// when the pool is full. The size comes from DatabasePoolEnv.
+internal val MAIN_POOL = PoolSettings(
+    name = "lumi-api-pool",
+    maximumPoolSize = DatabasePoolEnv.DEFAULT_MAIN_POOL_SIZE,
+    minimumIdle = 2,
+    connectionTimeoutMillis = 5_000,
+)
+
+// Submissions only. Submission transactions are short, so four connections per
+// pod leave plenty of headroom. The size comes from DatabasePoolEnv.
+internal val SUBMISSION_POOL = PoolSettings(
+    name = "lumi-api-submission-pool",
+    maximumPoolSize = DatabasePoolEnv.DEFAULT_SUBMISSION_POOL_SIZE,
+    minimumIdle = 2,
+    connectionTimeoutMillis = 3_000,
+)
+
+// Readiness only. The NAIS readiness probe times out after one second, so the
+// probe must never queue behind submissions for a connection.
+internal val READINESS_POOL = PoolSettings(
+    name = "lumi-api-readiness-pool",
+    maximumPoolSize = DatabasePoolEnv.READINESS_POOL_SIZE,
+    minimumIdle = 1,
+    connectionTimeoutMillis = 500,
+)
+
 /**
  * Create a HikariCP DataSource from environment configuration.
  */
-fun createDataSource(config: ServerEnv.DatabaseEnv): HikariDataSource {
+internal fun createDataSource(config: ServerEnv.DatabaseEnv, pool: PoolSettings): HikariDataSource {
     val hikariConfig = HikariConfig().apply {
         jdbcUrl = config.getConnectionUrl()
         username = config.username
         password = config.password
-        maximumPoolSize = 10
-        minimumIdle = 2
+        maximumPoolSize = pool.maximumPoolSize
+        minimumIdle = pool.minimumIdle
         idleTimeout = 30000
-        connectionTimeout = 30000
+        connectionTimeout = pool.connectionTimeoutMillis
         maxLifetime = 1800000
         isAutoCommit = false
         transactionIsolation = "TRANSACTION_READ_COMMITTED"
-        poolName = "lumi-api-pool"
+        poolName = pool.name
         
         // Validation
         connectionTestQuery = "SELECT 1"
-        validationTimeout = 5000
+        validationTimeout = minOf(2_000L, pool.connectionTimeoutMillis)
     }
     
     return HikariDataSource(hikariConfig)
@@ -125,15 +224,38 @@ fun createDataSource(config: ServerEnv.DatabaseEnv): HikariDataSource {
  * Readiness probe helper: true if a valid connection can be obtained from the pool.
  * Backs GET /internal/isReady so NAIS pulls the pod from the load balancer when the
  * database is unreachable. Flyway has already run by the time the server serves
- * requests, so a live connection is a sufficient readiness signal.
+ * requests, so a live connection is a sufficient readiness signal. The route uses
+ * its own pool, so busy dashboard queries or submissions do not take the pod out
+ * of traffic.
  */
 fun isDatabaseReady(dataSource: DataSource): Boolean =
     try {
-        dataSource.connection.use { it.isValid(2) }
+        dataSource.connection.use { it.isValid(1) }
     } catch (e: Exception) {
         log.warn("Readiness check failed: database not reachable", e)
         false
     }
+
+private const val PG_QUERY_CANCELED = "57014"
+
+/**
+ * True when the database could not serve the request in time: the pool could not
+ * hand out a connection within connectionTimeout (all busy, or the database is
+ * unreachable), or PostgreSQL cancelled a statement that exceeded
+ * statement_timeout.
+ */
+internal fun Throwable.isDatabaseUnavailable(): Boolean =
+    generateSequence(this) { current -> current.cause?.takeIf { it !== current } }
+        .any { it is SQLTransientConnectionException || (it is SQLException && it.sqlState == PG_QUERY_CANCELED) }
+
+// The dashboard does not retry DATABASE_UNAVAILABLE automatically, since a new
+// attempt would run the same heavy query against a busy database.
+internal fun databaseUnavailableException(cause: Throwable? = null) = ApiErrorException.ServiceUnavailableException(
+    errorMessage = "Databasen svarer ikke akkurat nå",
+    details = "Dette er som regel midlertidig. Prøv igjen om litt.",
+    cause = cause,
+    type = ErrorType.DATABASE_UNAVAILABLE,
+)
 
 /**
  * Run Flyway database migrations.

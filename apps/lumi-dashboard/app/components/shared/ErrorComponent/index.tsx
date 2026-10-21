@@ -46,9 +46,9 @@ export function ErrorComponent({ error }: { error: unknown }) {
       );
     }
 
-    // The API answers 503 both when the team lookup in Nais fails and when
-    // Texas cannot check the login. Its details say what to try, so the
-    // dashboard adds no tip of its own.
+    // The API answers 503 when the team lookup in Nais fails, when Texas
+    // cannot check the login and when the database does not answer. Its
+    // details say what to try, so the dashboard adds no tip of its own.
     if (status === 503) {
       const { details } = error.error;
       return (

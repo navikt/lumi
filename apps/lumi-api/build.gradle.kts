@@ -7,7 +7,7 @@ plugins {
     kotlin("plugin.serialization")
     id("io.ktor.plugin") version "3.6.0"
     id("com.gradleup.shadow") version "9.6.1"
-    id("com.github.ben-manes.versions") version "0.65.0"
+    id("com.github.ben-manes.versions") version "0.66.0"
     application
 }
 
@@ -30,12 +30,12 @@ val logbackVersion = "1.6.5"
 val logstashVersion = "9.0"
 val postgresVersion = "42.7.14"
 val hikariVersion = "7.1.0"
-val flywayVersion = "13.9.0"
+val flywayVersion = "13.10.0"
 val kotestVersion = "6.2.5"
 val mockkVersion = "1.14.11"
 val testcontainersVersion = "1.21.4"
 val tokenSupportVersion = "5.0.13"
-val exposedVersion = "1.5.0"
+val exposedVersion = "1.5.1"
 val micrometerVersion = "1.17.1"
 val log4jVersion = "2.26.1"
 val nettyVersion = "4.2.19.Final"
@@ -129,6 +129,8 @@ tasks.withType<Test>().configureEach {
     // Tests run outside NAIS (no NAIS_CLUSTER_NAME), so explicitly opt in to the
     // local-mode auth bypass — ServerEnv.requireValidLocalAuthPolicy is fail-closed.
     environment("LUMI_LOCAL_AUTH_BYPASS", "true")
+    // Some tests read the Nais manifests and alert rules, so a change there must rerun them.
+    inputs.dir("nais").withPropertyName("naisManifests").withPathSensitivity(PathSensitivity.RELATIVE)
     System.getProperties()
         .filterKeys { it.toString().startsWith("lumi.perf.") }
         .forEach { (key, value) -> systemProperty(key.toString(), value) }

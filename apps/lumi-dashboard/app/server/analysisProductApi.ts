@@ -6,6 +6,7 @@ import {
   isMockMode,
 } from "~/server/utils";
 import type { AnalysisMutationResult } from "~/types/analysisProducts";
+import { ApiErrorException, ApiErrorSchema, ErrorType } from "~/types/errors";
 
 export async function analysisRequest(
   context: AuthContext,
@@ -34,10 +35,22 @@ export async function readAnalysis<T>(
   response: Response,
   schema: z.ZodType<T>,
 ): Promise<T> {
-  if (!response.ok)
+  if (!response.ok) {
+    // Keep a database that does not answer as an ApiErrorException, so the
+    // query is not retried against the same busy database.
+    const apiError = ApiErrorSchema.safeParse(
+      await response.json().catch(() => null),
+    );
+    if (
+      apiError.success &&
+      apiError.data.type === ErrorType.DATABASE_UNAVAILABLE
+    ) {
+      throw new ApiErrorException(apiError.data);
+    }
     throw new Error(
       "Analyseproduktet kunne ikke hentes. Kontroller team og prøv igjen.",
     );
+  }
   const parsed = schema.safeParse(await response.json());
   if (!parsed.success)
     throw new Error("Uventet svar fra analyseprodukt-API-et.");
