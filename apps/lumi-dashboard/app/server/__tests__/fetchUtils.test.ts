@@ -25,6 +25,19 @@ describe("handleApiResponse", () => {
     expect(error).toMatchObject({ message: payload.message, error: payload });
   });
 
+  it("keeps the type when the database does not answer", async () => {
+    const payload = {
+      status: 503,
+      type: "DATABASE_UNAVAILABLE",
+      message: "Databasen svarer ikke akkurat nå",
+      timestamp: "2026-10-20T08:00:00Z",
+      details: "Dette er som regel midlertidig. Prøv igjen om litt.",
+    };
+    await expect(
+      handleApiResponse(Response.json(payload, { status: 503 })),
+    ).rejects.toMatchObject({ error: payload });
+  });
+
   it("accepts absent optional fields and a null path", async () => {
     const payload = {
       status: 409,

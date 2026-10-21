@@ -45,7 +45,7 @@ class FeedbackRepository(
     }
 
     suspend fun findIdByDeduplicationKeyHash(team: String, surveyId: String, deduplicationKeyHash: String): String? {
-        return dbQuery {
+        return submissionDbQuery {
             findIdByDeduplicationKeyHashInCurrentTransaction(team, surveyId, deduplicationKeyHash)
         }
     }
@@ -56,7 +56,7 @@ class FeedbackRepository(
         deduplicationKeyHash: String,
         block: suspend () -> T
     ): T {
-        return dbQuery {
+        return submissionDbQuery {
             val conn = TransactionManager.current().connection.connection as java.sql.Connection
             conn.prepareStatement("SELECT pg_advisory_xact_lock(hashtext(?), hashtext(?))").use { stmt ->
                 stmt.setString(1, "$team:$surveyId")
@@ -68,7 +68,7 @@ class FeedbackRepository(
         }
     }
 
-    suspend fun <T> withTransaction(block: suspend () -> T): T = dbQuery { block() }
+    suspend fun <T> withSubmissionTransaction(block: suspend () -> T): T = submissionDbQuery { block() }
 
     suspend fun save(
         feedbackJson: String,
