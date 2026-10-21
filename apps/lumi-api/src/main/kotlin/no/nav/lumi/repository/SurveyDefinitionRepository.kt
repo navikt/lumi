@@ -16,6 +16,10 @@ data class StoredSurveyDefinition(
     val lastSubmissionAt: Instant = Instant.EPOCH,
     val definitionRetentionAt: Instant = Instant.MAX,
     val retiredAt: Instant? = null,
+    // Changes only when the definition itself is written. Submission bookkeeping
+    // must not touch it: SurveyDefinitionService uses it to decide whether a
+    // missing maxSelections may be filled in.
+    val updatedAt: Instant = Instant.EPOCH,
 )
 
 data class SurveyRetentionCandidate(
@@ -155,6 +159,7 @@ class SurveyDefinitionRepository {
                     lastSubmissionAt = row[SurveyDefinitionTable.lastSubmissionAt],
                     definitionRetentionAt = row[SurveyDefinitionTable.definitionRetentionAt],
                     retiredAt = row[SurveyDefinitionTable.retiredAt],
+                    updatedAt = row[SurveyDefinitionTable.updatedAt],
                 )
             }
     }

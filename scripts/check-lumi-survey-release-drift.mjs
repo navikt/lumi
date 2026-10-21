@@ -36,31 +36,33 @@ function isPublishedInput(file) {
   );
 }
 
-function stableJson(value) {
-  if (Array.isArray(value)) {
-    return value.map(stableJson);
-  }
-  if (value !== null && typeof value === "object") {
-    return Object.fromEntries(
-      Object.keys(value)
+// The manifest as consumers see it. devDependencies only build and test the
+// package, and consumers never install them, so changing them alone needs no
+// release. The next release picks them up. Only the top-level keys are sorted:
+// the order of conditions in exports decides how Node and TypeScript resolve
+// the package.
+function manifestForConsumers({
+  version: _version,
+  devDependencies: _devDependencies,
+  ...manifest
+}) {
+  return JSON.stringify(
+    Object.fromEntries(
+      Object.keys(manifest)
         .sort()
-        .map((key) => [key, stableJson(value[key])]),
-    );
-  }
-  return value;
+        .map((key) => [key, manifest[key]]),
+    ),
+  );
 }
 
-function manifestChangedBeyondVersion(latestTag, currentPackageJson) {
+function manifestChangedForConsumers(latestTag, currentPackageJson) {
   const releasedPackageJson = JSON.parse(
     git(["show", `${latestTag}:${PACKAGE_JSON}`]),
   );
-  const { version: _releasedVersion, ...releasedManifest } =
-    releasedPackageJson;
-  const { version: _currentVersion, ...currentManifest } = currentPackageJson;
 
   return (
-    JSON.stringify(stableJson(releasedManifest)) !==
-    JSON.stringify(stableJson(currentManifest))
+    manifestForConsumers(releasedPackageJson) !==
+    manifestForConsumers(currentPackageJson)
   );
 }
 
@@ -113,6 +115,15 @@ function main() {
     fail(`Release tag ${latestTag} does not contain a valid SemVer version.`);
   }
 
+  if (
+    currentVersion !== releasedVersion &&
+    !semver.gt(currentVersion, releasedVersion)
+  ) {
+    fail(
+      `Package version ${currentVersion} must be newer than ${releasedVersion}.`,
+    );
+  }
+
   const changedPublishedFiles = git([
     "diff",
     "--name-only",
@@ -122,7 +133,12 @@ function main() {
   ])
     .split("\n")
     .filter(Boolean)
-    .filter(isPublishedInput);
+    .filter(isPublishedInput)
+    .filter(
+      (file) =>
+        file !== PACKAGE_JSON ||
+        manifestChangedForConsumers(latestTag, packageJson),
+    );
 
   if (changedPublishedFiles.length === 0) {
     if (requireMeaningfulChange) {
@@ -145,31 +161,11 @@ function main() {
     );
   }
 
-  if (!semver.gt(currentVersion, releasedVersion)) {
-    fail(
-      `Package version ${currentVersion} must be newer than ${releasedVersion}.`,
-    );
-  }
-
   if (requireMeaningfulChange) {
-    const meaningfulFiles = changedPublishedFiles.filter(
-      (file) => file !== PACKAGE_JSON,
-    );
-    if (
-      changedPublishedFiles.includes(PACKAGE_JSON) &&
-      manifestChangedBeyondVersion(latestTag, packageJson)
-    ) {
-      meaningfulFiles.push(PACKAGE_JSON);
-    }
-
-    if (meaningfulFiles.length === 0) {
-      fail(`No meaningful published package changes since ${latestTag}.`);
-    }
-
     console.log(
       [
         `[lumi-survey release drift] Meaningful published package changes since ${latestTag}:`,
-        ...meaningfulFiles.map((file) => `- ${file}`),
+        ...changedPublishedFiles.map((file) => `- ${file}`),
       ].join("\n"),
     );
     return;

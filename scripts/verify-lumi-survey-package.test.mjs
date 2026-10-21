@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { findNonNamespacedCssSelectors } from "./verify-lumi-survey-package.mjs";
+import {
+  findNonNamespacedCssSelectors,
+  findUndeclaredImports,
+} from "./verify-lumi-survey-package.mjs";
 
 test("rejects global selectors at the root and in rule-list at-rules", () => {
   const css = `
@@ -142,4 +145,54 @@ test("ignores keyframe steps and declaration-only at-rules", () => {
   `;
 
   assert.deepEqual(findNonNamespacedCssSelectors(css), []);
+});
+
+const manifest = {
+  name: "@navikt/lumi-survey",
+  dependencies: { "@navikt/aksel-icons": "^8.7.0" },
+  peerDependencies: { "@navikt/ds-react": ">=8", react: ">=18" },
+  devDependencies: { dayjs: "^1.11.0" },
+};
+
+test("accepts imports of dependencies and peers, also through subpaths", () => {
+  const code = [
+    'import { jsx } from "react/jsx-runtime";',
+    'import { Button } from "@navikt/ds-react";',
+    'import { XMarkIcon } from "@navikt/aksel-icons";',
+    "import react__default from 'react';",
+    'export * from "./types.js";',
+    'import { readFile } from "node:fs/promises";',
+  ].join("\n");
+
+  assert.deepEqual(findUndeclaredImports(code, manifest), []);
+});
+
+test("reports a bundled devDependency once, from static, dynamic and type imports", () => {
+  const code = [
+    'import dayjs from "dayjs";',
+    'const locale = await import("dayjs/locale/nb");',
+    'type Day = import("dayjs").Dayjs;',
+    'const legacy = require("left-pad");',
+    'import "@scope/side-effect/styles.css";',
+  ].join("\n");
+
+  assert.deepEqual(findUndeclaredImports(code, manifest), [
+    "@scope/side-effect",
+    "dayjs",
+    "left-pad",
+  ]);
+});
+
+test("ignores imports in comments and the package's own name", () => {
+  const code = [
+    "/**",
+    " * @example",
+    ' * import { LumiSurveyDock } from "@navikt/lumi-survey";',
+    ' * import dayjs from "dayjs";',
+    " */",
+    '// import { other } from "left-pad";',
+    'export { LumiSurveyDock } from "@navikt/lumi-survey";',
+  ].join("\n");
+
+  assert.deepEqual(findUndeclaredImports(code, manifest), []);
 });

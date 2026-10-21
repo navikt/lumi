@@ -966,14 +966,12 @@ async function assertPeriodComparisonDashboard(
 
   if (scenario.id === "custom-field-matrix") {
     const unselectedPhone = fields.getByRole("button", {
-      name: "Filtrer på Telefon. Valgt periode: 0 svar, 0 prosent.",
-      exact: true,
+      name: /^Telefon\s*– valgt periode: 0 svar, 0 prosent\. Filtrer på svaret\.$/,
     });
     await expect(unselectedPhone).toBeVisible();
     await expect(
       fields.getByRole("button", {
-        name: "Filtrer på Rask. Valgt periode: 0 svar, 0 prosent.",
-        exact: true,
+        name: /^Rask\s*– valgt periode: 0 svar, 0 prosent\. Filtrer på svaret\.$/,
       }),
     ).toBeVisible();
 
@@ -999,8 +997,7 @@ async function assertPeriodComparisonDashboard(
     ).toBeVisible();
     await expect(
       fields.getByRole("button", {
-        name: "Filtrer på Telefon. Valgt periode: 0 svar, ingen prosent.",
-        exact: true,
+        name: /^Telefon\s*– valgt periode: 0 svar, ingen prosent\. Filtrer på svaret\.$/,
       }),
     ).toBeVisible();
     expect(new URL(page.url()).searchParams.get("app")).toBe("local-app");

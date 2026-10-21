@@ -17,6 +17,12 @@ test.describe("Accessibility - WCAG Compliance", () => {
     ["Feedback", "/feedback"],
     ["Export", "/export"],
     ["Surveyverksted", "/surveyverksted"],
+    // Choice cards are buttons whose names must start with the visible answer.
+    [
+      "Dashboard with choice cards",
+      "/?surveyId=survey-custom&fromDate=2000-01-01",
+      "Rolle",
+    ],
   ];
 
   for (const [name, route, readyHeading] of routes) {
@@ -25,7 +31,7 @@ test.describe("Accessibility - WCAG Compliance", () => {
       await page.waitForLoadState("networkidle");
       if (readyHeading) {
         await expect(
-          page.getByRole("heading", { name: readyHeading }),
+          page.getByRole("heading", { name: readyHeading, exact: true }),
         ).toBeVisible({ timeout: 15000 });
       }
 
