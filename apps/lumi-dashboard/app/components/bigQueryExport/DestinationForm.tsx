@@ -40,6 +40,7 @@ import { LUMI_SLACK_URL, RATE_LIMIT_TEXT } from "./format";
 import { ProblemList } from "./ProblemList";
 import { bigQueryExportQueryKey } from "./queryKey";
 import { SetupSql, type SqlTarget } from "./SetupSql";
+import { useFocusAfterLoading } from "./useFocusAfterLoading";
 
 const FAILURE_TEXTS: Record<BigQueryExportFailureReason, string> = {
   unavailable:
@@ -153,6 +154,9 @@ export function DestinationForm({
       });
     },
   });
+
+  const checkButton = useFocusAfterLoading(verify.isPending);
+  const saveButton = useFocusAfterLoading(save.isPending);
 
   const verifiedFor =
     verify.variables &&
@@ -310,11 +314,14 @@ export function DestinationForm({
         )}
         <div>
           <Button
+            ref={saveButton.ref}
             type="button"
             size="small"
-            onClick={submit}
+            onClick={() => {
+              saveButton.remember();
+              submit();
+            }}
             loading={save.isPending}
-            // Stays focusable while it saves; disabled only with nothing to save.
             disabled={!changed}
             aria-describedby={deleteWarning ? warningId : undefined}
           >
@@ -374,13 +381,15 @@ export function DestinationForm({
             </BodyShort>
             <div>
               <Button
+                ref={checkButton.ref}
                 type="button"
                 variant="secondary"
                 size="small"
-                onClick={runCheck}
+                onClick={() => {
+                  checkButton.remember();
+                  runCheck();
+                }}
                 loading={verify.isPending}
-                // Keep focus on the button while Lumi checks.
-                disabled={false}
               >
                 Sjekk tilkoblingen
               </Button>
@@ -403,11 +412,13 @@ export function DestinationForm({
             <div>
               <HStack gap="space-12" align="center" wrap>
                 <Button
+                  ref={saveButton.ref}
                   type="button"
-                  onClick={submit}
+                  onClick={() => {
+                    saveButton.remember();
+                    submit();
+                  }}
                   loading={save.isPending}
-                  // Keep focus on the button while Lumi saves.
-                  disabled={false}
                 >
                   Start eksporten
                 </Button>

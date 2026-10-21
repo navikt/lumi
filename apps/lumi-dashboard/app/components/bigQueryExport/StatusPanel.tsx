@@ -28,6 +28,7 @@ import {
   rowSummary,
 } from "./format";
 import { ProblemList } from "./ProblemList";
+import { useFocusAfterLoading } from "./useFocusAfterLoading";
 
 type RunView = {
   label: string;
@@ -126,6 +127,7 @@ export function StatusPanel({
   // «Oppdater tabellene nå» is disabled once the run is queued. Focus then
   // moves to the status the user asked for, so it is not lost.
   const runRequested = useRef(false);
+  const runButton = useFocusAfterLoading(runPending);
   useEffect(() => {
     if (!busy || !runRequested.current) return;
     runRequested.current = false;
@@ -205,12 +207,14 @@ export function StatusPanel({
         <div>
           <HStack gap="space-8" wrap>
             <Button
+              ref={runButton.ref}
               type="button"
               size="small"
               variant="secondary"
               icon={<ArrowsCirclepathIcon aria-hidden />}
               onClick={() => {
                 runRequested.current = true;
+                runButton.remember();
                 onRun();
               }}
               loading={runPending}

@@ -15,7 +15,7 @@ async function expectAccessibleAtBothWidths(page: Page) {
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
       .toBeLessThanOrEqual(viewport.width);
     const accessibility = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
       .analyze();
     expect(accessibility.violations).toEqual([]);
   }
@@ -62,10 +62,14 @@ test("sets up, changes, runs and stops a BigQuery export from the export page", 
   await expectAccessibleAtBothWidths(page);
 
   await page.getByRole("textbox", { name: /Datasett/ }).fill("lumi");
-  await page.getByRole("button", { name: "Sjekk tilkoblingen" }).click();
+  const check = page.getByRole("button", { name: "Sjekk tilkoblingen" });
+  await check.focus();
+  await page.keyboard.press("Enter");
   await expect(
     page.getByText("Datasettet er klart. Lumi kan lage tabeller i det."),
   ).toBeVisible();
+  // Aksel disables the button while it loads; focus comes back afterwards.
+  await expect(check).toBeFocused();
 
   const freeText = page.getByRole("checkbox", { name: "Ta med fritekstsvar" });
   await freeText.check();

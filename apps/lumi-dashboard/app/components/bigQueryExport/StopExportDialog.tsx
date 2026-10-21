@@ -14,6 +14,7 @@ import { stopBigQueryExport } from "~/server/actions/bigQueryExport";
 import type { BigQueryExportStop } from "~/types/bigQueryExport";
 import { writeErrorText } from "~/utils/publicDemo";
 import { bigQueryExportQueryKey } from "./queryKey";
+import { useFocusAfterLoading } from "./useFocusAfterLoading";
 
 export function StopExportDialog({
   team,
@@ -42,6 +43,7 @@ export function StopExportDialog({
       onStopped(result.value);
     },
   });
+  const stopButton = useFocusAfterLoading(stop.isPending);
   const close = () => {
     if (stop.isPending) return;
     setConfirmed(false);
@@ -108,11 +110,14 @@ export function StopExportDialog({
             Avbryt
           </Button>
           <Button
+            ref={stopButton.ref}
             type="button"
             data-color="danger"
             variant="primary"
             onClick={() => {
-              if (!stop.isPending) stop.mutate();
+              if (stop.isPending) return;
+              stopButton.remember();
+              stop.mutate();
             }}
             disabled={!confirmed}
             loading={stop.isPending}

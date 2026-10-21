@@ -31,6 +31,7 @@ import { NextSteps } from "./NextSteps";
 import { bigQueryExportQueryKey } from "./queryKey";
 import { StatusPanel } from "./StatusPanel";
 import { StopExportDialog } from "./StopExportDialog";
+import { useFocusAfterLoading } from "./useFocusAfterLoading";
 
 const POLL_WHILE_BUSY_MS = 3_000;
 const POLL_WHILE_WAITING_MS = 15_000;
@@ -62,6 +63,8 @@ export function BigQueryExportView({ team }: { team: string }) {
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
+  const loadRetryButton = useFocusAfterLoading(query.isFetching);
+  const refreshRetryButton = useFocusAfterLoading(retrying);
   if (query.isPending)
     return (
       <HStack gap="space-12" align="center">
@@ -75,12 +78,15 @@ export function BigQueryExportView({ team }: { team: string }) {
         <VStack gap="space-8" align="start">
           Lumi fikk ikke hentet BigQuery-eksporten for teamet.
           <Button
+            ref={loadRetryButton.ref}
             type="button"
             size="small"
             variant="tertiary"
-            onClick={() => void query.refetch()}
+            onClick={() => {
+              loadRetryButton.remember();
+              void query.refetch();
+            }}
             loading={query.isFetching}
-            disabled={false}
           >
             Prøv igjen
           </Button>
@@ -170,12 +176,15 @@ export function BigQueryExportView({ team }: { team: string }) {
               <HStack gap="space-8" align="center" wrap>
                 Lumi fikk ikke oppdatert statusen.
                 <Button
+                  ref={refreshRetryButton.ref}
                   type="button"
                   size="xsmall"
                   variant="tertiary"
-                  onClick={() => void retry()}
+                  onClick={() => {
+                    refreshRetryButton.remember();
+                    void retry();
+                  }}
                   loading={retrying}
-                  disabled={false}
                 >
                   Prøv igjen
                 </Button>
