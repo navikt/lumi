@@ -31,7 +31,7 @@ class SubmissionService(
     ): SubmissionOutcome {
         if (submission.deduplicationKey == null) {
             val prepared = feedbackService.prepareForSave(feedbackJson, team, submission.surveyId)
-            return feedbackRepository.withTransaction {
+            return feedbackRepository.withSubmissionTransaction {
                 val definitionResult = registerDefinition(
                     team = team,
                     submission = submission,

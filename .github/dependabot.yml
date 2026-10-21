@@ -1,15 +1,26 @@
 version: 2
 registries:
-  github-npm:
+  # One entry per scope. Without `scope`, Dependabot infers scopes from where
+  # it found each package. GitHub Packages also serves public packages such as
+  # @types/*, so Dependabot sent those scopes there too, got stale metadata and
+  # failed every root npm update after the move to pnpm.
+  github-npm-navikt:
     type: npm-registry
     url: https://npm.pkg.github.com
+    scope: "@navikt"
+    token: ${{ secrets.READER_TOKEN }}
+  github-npm-nais:
+    type: npm-registry
+    url: https://npm.pkg.github.com
+    scope: "@nais"
     token: ${{ secrets.READER_TOKEN }}
 updates:
   # Root workspace packages are managed by pnpm from the repository root.
   - package-ecosystem: "npm"
     directory: "/"
     registries:
-      - github-npm
+      - github-npm-navikt
+      - github-npm-nais
     schedule:
       interval: "weekly"
     cooldown:
