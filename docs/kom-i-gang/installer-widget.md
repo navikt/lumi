@@ -25,4 +25,4 @@ import "@navikt/ds-css";
 import "@navikt/lumi-survey/styles.css";
 ```
 
-Deretter [legger dere surveyen inn i appen](/kom-i-gang/konfigurer-survey) med TypeScript-filen fra Surveyverksted. Bruker appen Next.js App Router, må filen med widgeten starte med `"use client"`. Se [Next.js App Router](/kom-i-gang/konfigurer-survey#next-js).
+Deretter [legger dere surveyen inn i appen](/kom-i-gang/konfigurer-survey) med TypeScript-filen fra Surveyverksted. Bruker appen Next.js App Router, importerer dere widgeten fra `@navikt/lumi-survey/client`, eller starter filen med widgeten med `"use client"`. Se [Next.js App Router](/kom-i-gang/konfigurer-survey#next-js).

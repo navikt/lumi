@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  findClientEntryProblems,
   findNonNamespacedCssSelectors,
   findUndeclaredImports,
 } from "./verify-lumi-survey-package.mjs";
@@ -195,4 +196,43 @@ test("ignores imports in comments and the package's own name", () => {
   ].join("\n");
 
   assert.deepEqual(findUndeclaredImports(code, manifest), []);
+});
+
+const validClientEntry = {
+  clientJs:
+    '"use client";\n\n// src/client.ts\nimport { LumiSurveyDock } from "./index.js";\nexport {\n  LumiSurveyDock\n};\n',
+  indexJs: 'import { useState } from "react";\nexport { LumiSurveyDock };\n',
+  clientExport: {
+    types: "./dist/client.d.ts",
+    default: "./dist/client.js",
+  },
+};
+
+test("accepts a client entry that only re-exports the main entry", () => {
+  assert.deepEqual(findClientEntryProblems(validClientEntry), []);
+});
+
+test("rejects a client entry without the directive or with a bundled copy", () => {
+  const problems = findClientEntryProblems({
+    ...validClientEntry,
+    clientJs:
+      'import { useState } from "react";\nexport * from "./index.js";\n',
+  });
+  assert.equal(problems.length, 3);
+});
+
+test("rejects the directive or a self-import in the main entry", () => {
+  const problems = findClientEntryProblems({
+    ...validClientEntry,
+    indexJs: '"use client";\nimport { x } from "./index.js";\n',
+  });
+  assert.equal(problems.length, 2);
+});
+
+test("requires the client export with types first", () => {
+  const problems = findClientEntryProblems({
+    ...validClientEntry,
+    clientExport: { default: "./dist/client.js", types: "./dist/client.d.ts" },
+  });
+  assert.equal(problems.length, 1);
 });

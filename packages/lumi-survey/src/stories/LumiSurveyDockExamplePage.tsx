@@ -12,7 +12,10 @@ import {
   type LumiSurveyDockProps,
 } from "../components/LumiSurveyDock";
 import { removeConsentValue } from "../components/shared/consentStorage.js";
-import type { LumiSurveySubmission } from "../core/types.js";
+import type {
+  LumiSurveySubmission,
+  LumiSurveyTransport,
+} from "../core/types.js";
 import "./LumiSurveyDockExamplePage.css";
 import { CodePreview, SurveyCodePreview } from "./SurveyCodePreview";
 
@@ -30,7 +33,7 @@ declare global {
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export const SUCCESS_TRANSPORT: LumiSurveyDockProps["transport"] = {
+export const SUCCESS_TRANSPORT: LumiSurveyTransport = {
   async submit(submission) {
     await delay(800);
     console.info("Simulert innsending", submission);
@@ -68,10 +71,15 @@ export const ExamplePage = ({ sourceCode, ...props }: ExamplePageProps) => {
     })();
   }, [props.surveyId]);
 
-  const previewTransport = useMemo<LumiSurveyDockProps["transport"]>(
+  const previewTransport = useMemo<LumiSurveyTransport>(
     () => ({
       async submit(submission, options) {
-        await props.transport.submit(submission, options);
+        // The preview shows the payload. An `{ endpoint }` transport has no
+        // backend in Storybook, so it is not called.
+        const inner = props.transport;
+        if ("submit" in inner && typeof inner.submit === "function") {
+          await inner.submit(submission, options);
+        }
         setLastSubmission(submission);
       },
     }),

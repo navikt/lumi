@@ -85,7 +85,7 @@ registrert for teamet og `surveyId`-en. Innsendingen er avvist og ikke lagret,
 så den vises heller ikke i dashboardet.
 
 Backenden deres får HTTP 409 fra Lumi API. Sender backenden feilen videre slik
-at `transport.submit` feiler, viser widgeten feilmeldingen for innsending og
+at innsendingen feiler, viser widgeten feilmeldingen for innsending og
 kaller `events.onSubmitError`. Standardteksten er «Kunne ikke sende
 tilbakemeldingen. Prøv igjen senere.»
 

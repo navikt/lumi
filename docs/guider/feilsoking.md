@@ -45,15 +45,28 @@ Uten CSS-importene kan elementer i widgeten bli usynlige. Se [Layout virker tom]
 
 ## Widgeten virker ikke i Next.js App Router
 
-Filen som bruker `LumiSurveyDock`, må starte med `"use client"`. Den bygde
-pakken har ikke direktivet selv. Uten det prøver Next.js å kjøre widgeten som
-serverkomponent, og siden feiler. Se
+Importer `LumiSurveyDock` fra `@navikt/lumi-survey/client` i en serverkomponent,
+eller start filen som bruker `@navikt/lumi-survey`, med `"use client"`. Får dere
+feilen «Functions cannot be passed directly to Client Components», sender
+serverkomponenten en funksjon, for eksempel `events` eller en transport med
+`submit`. Flytt da widgeten til en egen fil med `"use client"`. Se
 [Next.js App Router](/kom-i-gang/konfigurer-survey#next-js).
+
+## Konsollen viser «[Lumi] The survey is not shown»
+
+Widgeten vises ikke fordi `transport` mangler, har feil form eller `endpoint`
+er ugyldig.
+Meldingen sier hva som er feil. `endpoint` må starte med `/` og ligge på samme
+domene som siden, se [Send svarene](/kom-i-gang/konfigurer-survey#send-svarene).
+En vanlig årsak er en miljøvariabel som mangler når appen bygges, slik at
+stien blir `undefined/api/lumi/feedback`.
 
 ## Innsendingen feiler
 
-Widgeten viser en feilmelding når `transport.submit` kaster en feil. Se først i
-nettverksfanen i DevTools hvilken status kallet til appens backend får. Kallet
+Widgeten viser en feilmelding når innsendingen feiler. Med `{ endpoint }`
+skriver widgeten også en melding som starter med
+`[Lumi] Sending the survey to` i konsollen, med status og årsak. Se ellers først
+i nettverksfanen i DevTools hvilken status kallet til appens backend får. Kallet
 videre til Lumi API vises ikke i nettleseren, så detaljene står i loggene til
 backenden. Ruten i
 [backend-eksempelet](/kom-i-gang/koble-til-backend#_3-send-inn-svar-til-lumi-api)
@@ -141,11 +154,11 @@ Widgeten viser takkesiden, men svarene dukker ikke opp i dashboardet.
 
 Sjekk dette:
 
-1. `transport.submit` kaster en feil når backenden svarer med feil. Widgeten
-   viser takkesiden så lenge `submit` ikke kaster, også når kallet feilet.
-   Sjekk `response.ok`, slik
-   [eksempelet](/kom-i-gang/konfigurer-survey#vis-surveyen-og-send-inn-svar)
-   gjør.
+1. Med egen transport kaster `transport.submit` en feil når backenden svarer
+   med feil. Widgeten viser takkesiden så lenge `submit` ikke kaster, også når
+   kallet feilet. Sjekk `response.ok`, slik
+   [eksempelet](/kom-i-gang/konfigurer-survey#egen-transport) gjør, eller bruk
+   `{ endpoint }`, som gjør det selv.
 
 2. Backenden svarer med 2xx bare når Lumi API gjorde det. Se i nettverksfanen i
    DevTools hvilken status kallet til appens backend får, og i loggene til

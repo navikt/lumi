@@ -8,6 +8,7 @@ import {
   type SurveyDocumentV1,
   validateSurveyDocumentV1,
 } from "@navikt/lumi-survey";
+import { LumiSurveyDock as ClientEntryDock } from "@navikt/lumi-survey/client";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -65,6 +66,13 @@ createRoot(root).render(
       survey={survey}
       transport={transport}
       behavior={{ initialOpen: true, storageStrategy: "none" }}
+    />
+    {/* The "use client" entry for React Server Components resolves too. */}
+    <ClientEntryDock
+      surveyId="packed-consumer-endpoint"
+      survey={survey}
+      transport={{ endpoint: "/api/lumi/feedback" }}
+      behavior={{ initialOpen: false, storageStrategy: "none" }}
     />
   </StrictMode>,
 );

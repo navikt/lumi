@@ -1,6 +1,6 @@
 {
   "name": "@navikt/lumi-survey",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "private": false,
   "description": "Aksel-based React surveys for Nav, created in Lumi Surveyverksted and connected to Lumi analytics.",
   "license": "MIT",
@@ -19,6 +19,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
     },
     "./styles.css": "./dist/index.css"
   },

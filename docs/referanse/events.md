@@ -6,6 +6,8 @@ title: Events
 
 Widgeten kaller funksjonene i `events` blant annet når brukeren ser surveyen, svarer, sender inn eller går til en ny side. Funksjonene kan for eksempel sende hendelser til Amplitude eller logge feil ved lagring.
 
+`events` er funksjoner og kan ikke sendes fra en serverkomponent i Next.js App Router. Bruk en egen fil med `"use client"`, se [Next.js App Router](/kom-i-gang/konfigurer-survey#next-js).
+
 ## Alle events
 
 Send et `events`-objekt til `LumiSurveyDock`:
@@ -60,7 +62,7 @@ onSubmitStart?: (submission: LumiSurveySubmission) => void;
 
 ### `onSubmitSuccess`
 
-Kalles etter at `transport.submit` returnerer uten feil.
+Kalles etter at innsendingen er ferdig uten feil.
 
 ```ts
 onSubmitSuccess?: (submission: LumiSurveySubmission) => void;
@@ -70,7 +72,9 @@ onSubmitSuccess?: (submission: LumiSurveySubmission) => void;
 
 Kalles én gang når innsendingen har feilet, etter et eventuelt nytt forsøk.
 `cause` er feilen fra siste forsøk. Brukte forsøket mer enn ti sekunder, er
-`cause` en `DOMException` med navnet `TimeoutError`.
+`cause` en `DOMException` med navnet `TimeoutError`. Med `{ endpoint }` er
+`cause` en `LumiSurveyHttpError` med `status` når backenden svarte med en feil,
+og en `TypeError` fra `fetch` når nettverket feilet.
 
 ```ts
 onSubmitError?: (cause: unknown) => void;
