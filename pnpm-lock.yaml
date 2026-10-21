@@ -96,7 +96,7 @@ importers:
         version: 4.4.0
       nitro:
         specifier: 3.0.1-alpha.2
-        version: 3.0.1-alpha.2(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(chokidar@5.0.0)(lru-cache@11.3.2)(rollup@4.60.1)(vite@7.3.7(@types/node@25.5.2)(jiti@2.7.0)(lightningcss@1.33.0))
+        version: 3.0.1-alpha.2(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(chokidar@5.0.0)(lru-cache@11.5.3)(rollup@4.60.1)(vite@7.3.7(@types/node@25.5.2)(jiti@2.7.0)(lightningcss@1.33.0))
       pino:
         specifier: ^10.4.0
         version: 10.4.0
@@ -156,8 +156,8 @@ importers:
         specifier: ^29.0.2
         version: 29.0.2
       lru-cache:
-        specifier: ^11.2.7
-        version: 11.3.2
+        specifier: ^11.5.3
+        version: 11.5.3
       pino-pretty:
         specifier: ^13.1.3
         version: 13.1.3
@@ -3218,10 +3218,6 @@ packages:
 
   loupe@3.2.1:
     resolution: {integrity: sha512-CdzqowRJCeLU72bHvWqwRBBlLcMEtIvGrlvef74kMnV2AolS9Y8xUv1I0U/MNAWMhBlKIoyuEgoJ0t/bbwHbLQ==}
-
-  lru-cache@11.3.2:
-    resolution: {integrity: sha512-wgWa6FWQ3QRRJbIjbsldRJZxdxYngT/dO0I5Ynmlnin8qy7tC6xYzbcJjtN4wHLXtkbVwHzk0C+OejVw1XM+DQ==}
-    engines: {node: 20 || >=22}
 
   lru-cache@11.5.3:
     resolution: {integrity: sha512-U4N8FgzmWxc8k1VH8Kr6lQg18U7Fjvby6wXHVRX/ZZ7IwWbRMgrRbP0Wrb5q5NVinryp4SQampHKdvtecItxUg==}
@@ -7182,7 +7178,7 @@ snapshots:
       decimal.js: 10.6.0
       html-encoding-sniffer: 6.0.0
       is-potential-custom-element-name: 1.0.1
-      lru-cache: 11.3.2
+      lru-cache: 11.5.3
       parse5: 8.0.0
       saxes: 6.0.0
       symbol-tree: 3.2.4
@@ -7311,8 +7307,6 @@ snapshots:
   lodash.uniq@4.5.0: {}
 
   loupe@3.2.1: {}
-
-  lru-cache@11.3.2: {}
 
   lru-cache@11.5.3: {}
 
@@ -7446,7 +7440,7 @@ snapshots:
 
   nf3@0.3.16: {}
 
-  nitro@3.0.1-alpha.2(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(chokidar@5.0.0)(lru-cache@11.3.2)(rollup@4.60.1)(vite@7.3.7(@types/node@25.5.2)(jiti@2.7.0)(lightningcss@1.33.0)):
+  nitro@3.0.1-alpha.2(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(chokidar@5.0.0)(lru-cache@11.5.3)(rollup@4.60.1)(vite@7.3.7(@types/node@25.5.2)(jiti@2.7.0)(lightningcss@1.33.0)):
     dependencies:
       consola: 3.4.2
       crossws: 0.4.4(srvx@0.10.1)
@@ -7461,7 +7455,7 @@ snapshots:
       srvx: 0.10.1
       undici: 7.30.0
       unenv: 2.0.0-rc.24
-      unstorage: 2.0.0-alpha.7(chokidar@5.0.0)(db0@0.3.4)(lru-cache@11.3.2)(ofetch@2.0.0-alpha.3)
+      unstorage: 2.0.0-alpha.7(chokidar@5.0.0)(db0@0.3.4)(lru-cache@11.5.3)(ofetch@2.0.0-alpha.3)
     optionalDependencies:
       rollup: 4.60.1
       vite: 7.3.7(@types/node@25.5.2)(jiti@2.7.0)(lightningcss@1.33.0)
@@ -8273,11 +8267,11 @@ snapshots:
       rollup: 4.60.1
       vite: 7.3.7(@types/node@25.5.2)(jiti@2.7.0)(lightningcss@1.33.0)
 
-  unstorage@2.0.0-alpha.7(chokidar@5.0.0)(db0@0.3.4)(lru-cache@11.3.2)(ofetch@2.0.0-alpha.3):
+  unstorage@2.0.0-alpha.7(chokidar@5.0.0)(db0@0.3.4)(lru-cache@11.5.3)(ofetch@2.0.0-alpha.3):
     optionalDependencies:
       chokidar: 5.0.0
       db0: 0.3.4
-      lru-cache: 11.3.2
+      lru-cache: 11.5.3
       ofetch: 2.0.0-alpha.3
 
   unzipper@0.10.14:
