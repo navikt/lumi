@@ -56,6 +56,8 @@ const TOKENX_Y = BACKEND[1];
 const AZURE_Y = BACKEND[1] + 100;
 /** Where the station labels start: the ring and the label gap. */
 const ENDPOINT_TEXT_X = END_X + 22 + 28;
+/** The margin notes start level with the top of the code block. */
+const ASIDE_TOP = 330;
 
 function UnderPanseret() {
   return (
@@ -116,15 +118,6 @@ function UnderPanseret() {
         }}
       />
 
-      <p
-        className="end-at end-label under-panseret__aside"
-        style={{ top: CODE_TOP + 4 }}
-      >
-        Appen skriver
-        <br />
-        <code>transport</code> selv.
-      </p>
-
       <div
         className="end-at"
         data-from={1}
@@ -134,24 +127,27 @@ function UnderPanseret() {
         <p className="end-note">veksler token og sender til Lumi API</p>
       </div>
 
-      {/* Ends level with the code block, above the Teams corner. */}
-      <div
-        className="end-at under-panseret__aside"
-        data-from={2}
-        style={{ bottom: 1080 - CODE_BOTTOM }}
-      >
+      {/* Margin notes right of the code, stacked from its top edge. */}
+      <div className="end-at under-panseret__aside" style={{ top: ASIDE_TOP }}>
         <p className="end-label">
+          Appen skriver
+          <br />
+          <code>transport</code> selv.
+        </p>
+        <p className="end-label" data-from={2}>
           <code>"use client"</code>
           <br />i Next.js
         </p>
-        <p className="end-label under-panseret__size">ca. 32 KB</p>
-        <p className="end-note">
-          minifisert og
-          <br />
-          gzippet, uten
-          <br />
-          React og Aksel
-        </p>
+        <div data-from={2}>
+          <p className="end-label">ca. 32 KB</p>
+          <p className="end-note">
+            minifisert og
+            <br />
+            gzippet, uten
+            <br />
+            React og Aksel
+          </p>
+        </div>
       </div>
     </div>
   );

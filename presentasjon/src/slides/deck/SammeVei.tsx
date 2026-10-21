@@ -3,10 +3,16 @@ import { useAnswer } from "../../components/answerStore";
 import { Tag } from "../../components/Tag";
 import { maskLikeLumiApi } from "../../content/masking";
 import { Reveal, type Slide, type SlideProps } from "../../engine";
-import { Answer, Line, LineMap, Station, Zone } from "../../map";
+import { Answer, Line, LineMap, MapText, Station, Zone } from "../../map";
 import "./svar.css";
 
 const Y = 570;
+/**
+ * The app's own data, on a dimmed line 48 px clear above the answer's, so
+ * the answer disc passes under it without touching.
+ */
+const LINE_WIDTH = 14;
+const OWN_DATA_Y = Y - LINE_WIDTH - 48;
 const STOPS = [
   { x: 250, label: "Nettleseren" },
   { x: 760, label: "Appens backend", note: "veksler token" },
@@ -49,7 +55,7 @@ function SammeVei({ step }: SlideProps) {
   return (
     <div className="slide">
       <h2 className="slide-title">Svaret går samme vei som appens egne data</h2>
-      <LineMap label="Svaret går fra nettleseren til appens backend, som veksler token, videre til Lumi API, som bare tar imot fra apper på lista, og lagres i databasen. Alt etter nettleseren ligger på Nais, samme plattform som resten av Navs apper.">
+      <LineMap label="Svaret går fra nettleseren til appens backend, samme vei som appens egne data. Backenden veksler token og sender svaret til Lumi API, som bare tar imot fra apper på lista. Svaret lagres i databasen. Alt etter nettleseren ligger på Nais, samme plattform som resten av Navs apper.">
         <Zone
           x={540}
           y={330}
@@ -61,6 +67,22 @@ function SammeVei({ step }: SlideProps) {
           labelAt="top"
           from={1}
         />
+        <Line
+          points={[
+            [STOPS[0].x, OWN_DATA_Y],
+            [STOPS[1].x, OWN_DATA_Y],
+          ]}
+          dim
+        />
+        <MapText
+          x={STOPS[0].x}
+          y={OWN_DATA_Y - 34}
+          size={30}
+          weight={500}
+          muted
+        >
+          appens egne data
+        </MapText>
         <Line
           points={[
             [STOPS[0].x, Y],

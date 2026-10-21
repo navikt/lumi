@@ -50,32 +50,40 @@ function Ansvar() {
       </p>
 
       {/* The team's part. The row on the seam pairs with Team eSyfo's. */}
-      <p className="end-at end-label" data-from={1} style={above(0, FAR_ROW)}>
+      <p
+        className="end-at end-label ansvar__part"
+        data-from={1}
+        style={above(0, FAR_ROW)}
+      >
         Fylle ut egen E726
         <br />
         og vurdere om dere
         <br />
         trenger PVK
       </p>
-      <p className="end-at end-label" data-from={1} style={above(1, FAR_ROW)}>
+      <p
+        className="end-at end-label ansvar__part"
+        data-from={1}
+        style={above(1, FAR_ROW)}
+      >
         Informere brukerne
       </p>
       <p
-        className="end-at end-label"
+        className="end-at end-label ansvar__part"
         data-from={1}
         style={above(0, ABOVE_SEAM)}
       >
         Hva dere spør om
       </p>
       <p
-        className="end-at end-label"
+        className="end-at end-label ansvar__part"
         data-from={1}
         style={above(1, ABOVE_SEAM)}
       >
         Koden i appen
       </p>
       <p
-        className="end-at end-label"
+        className="end-at end-label ansvar__part"
         data-from={1}
         style={above(2, ABOVE_SEAM)}
       >
@@ -85,17 +93,29 @@ function Ansvar() {
       </p>
 
       {/* Team eSyfo's part. */}
-      <p className="end-at end-label" data-from={2} style={below(0)}>
+      <p
+        className="end-at end-label ansvar__part"
+        data-from={2}
+        style={below(0)}
+      >
         Drifter Surveyverksted,
         <br />
         Lumi API og dashboardet
       </p>
-      <p className="end-at end-label" data-from={2} style={below(1)}>
+      <p
+        className="end-at end-label ansvar__part"
+        data-from={2}
+        style={below(1)}
+      >
         Godkjenner appene
         <br />
         som sender svar
       </p>
-      <p className="end-at end-label" data-from={2} style={below(2)}>
+      <p
+        className="end-at end-label ansvar__part"
+        data-from={2}
+        style={below(2)}
+      >
         Sletter svar etter
         <br />
         12 måneder

@@ -7,15 +7,19 @@ import "./bevis.css";
  * order they came into use in Nav.
  */
 const TOOLS = [
-  { name: "FlexJar", label: "Team Flex", note: "siden 2023" },
+  { name: "FlexJar", label: "I appens kode", note: "Team Flex, siden 2023" },
   { name: "Skyra", label: "Uten utvikler", note: "hele nav.no" },
   { name: "Lumi", label: "I appens kode", note: "innloggede brukere" },
 ] as const;
 
 const BADGE_WIDTH = 220;
-/** The first badge starts at the margin, under the title. */
-const FIRST_X = 112 + BADGE_WIDTH / 2;
-const COLUMN_GAP = 565;
+/*
+ * Spread over the whole width: the widest label on each side, «Team Flex,
+ * siden 2023» (306 px) and «innloggede brukere» (264 px), ends at the page
+ * margin. The labels stop above the Teams corner.
+ */
+const FIRST_X = 268;
+const COLUMN_GAP = 702;
 const BADGE_Y = 430;
 const STATION_Y = 640;
 
@@ -23,7 +27,7 @@ function UlikeBehov() {
   return (
     <div className="slide">
       <h2 className="slide-title">Tre surveyverktøy i Nav</h2>
-      <LineMap label="Tre verktøy med lik vekt, i den rekkefølgen de kom i bruk i Nav. FlexJar: Team Flex, siden 2023. Skyra: uten utvikler, hele nav.no. Lumi: i appens kode, innloggede brukere.">
+      <LineMap label="Tre verktøy med lik vekt, i den rekkefølgen de kom i bruk i Nav. FlexJar: i appens kode, Team Flex, siden 2023. Skyra: uten utvikler, hele nav.no. Lumi: i appens kode, innloggede brukere.">
         {TOOLS.map((tool, i) => {
           const x = FIRST_X + COLUMN_GAP * i;
           return (

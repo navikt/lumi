@@ -1,9 +1,48 @@
 import type { Slide } from "../../engine";
-import { Answer, Line, LineMap, Station } from "../../map";
+import { Answer, Line, LineMap, MapText, Station } from "../../map";
 import "./deck.css";
 
 const Y = 600;
-const XS = [180, 500, 820, 1140, 1460, 1780] as const;
+const XS = [240, 532, 824, 1116, 1408, 1700] as const;
+/** The answer disc at «Brukeren svarer». */
+const DISC_R = 44;
+/*
+ * Every label above the line hangs at the same height, clear of the answer
+ * disc, as Station places labels round a ring of that size.
+ */
+const ABOVE_Y = Y - DISC_R - 28 - 18;
+const NOTE_GAP = 42;
+
+/** A label and its note above the line. */
+function Above({
+  x,
+  label,
+  note,
+  from,
+}: {
+  x: number;
+  label: string;
+  note: string;
+  from: number;
+}) {
+  return (
+    <g data-from={from}>
+      <MapText
+        x={x}
+        y={ABOVE_Y - NOTE_GAP}
+        anchor="middle"
+        size={30}
+        weight={500}
+        muted
+      >
+        {note}
+      </MapText>
+      <MapText x={x} y={ABOVE_Y} anchor="middle" weight={700}>
+        {label}
+      </MapText>
+    </g>
+  );
+}
 
 function SvaretsVei() {
   return (
@@ -16,14 +55,8 @@ function SvaretsVei() {
             [XS[5], Y],
           ]}
         />
-        <Station
-          x={XS[0]}
-          y={Y}
-          side="above"
-          label="Teamet lager"
-          note="Surveyverksted"
-          from={1}
-        />
+        <Station x={XS[0]} y={Y} from={1} />
+        <Above x={XS[0]} label="Teamet lager" note="Surveyverksted" from={1} />
         <Station
           x={XS[1]}
           y={Y}
@@ -33,18 +66,9 @@ function SvaretsVei() {
           from={1}
         />
         <g data-from={1}>
-          <Answer x={XS[2]} y={Y} r={44} />
+          <Answer x={XS[2]} y={Y} r={DISC_R} />
         </g>
-        <Station
-          x={XS[2]}
-          y={Y}
-          r={44}
-          side="above"
-          label="Brukeren svarer"
-          note="widgeten"
-          from={1}
-          className="map-station--label-only"
-        />
+        <Above x={XS[2]} label="Brukeren svarer" note="widgeten" from={1} />
         <Station
           x={XS[3]}
           y={Y}
@@ -53,14 +77,8 @@ function SvaretsVei() {
           note="veksler token"
           from={2}
         />
-        <Station
-          x={XS[4]}
-          y={Y}
-          side="above"
-          label="Lumi API"
-          note="lagrer på Nais"
-          from={2}
-        />
+        <Station x={XS[4]} y={Y} from={2} />
+        <Above x={XS[4]} label="Lumi API" note="lagrer på Nais" from={2} />
         <Station
           x={XS[5]}
           y={Y}

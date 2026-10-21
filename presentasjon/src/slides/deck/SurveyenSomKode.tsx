@@ -3,39 +3,26 @@ import type { Slide } from "../../engine";
 import { RouteProgress } from "./RouteProgress";
 import "./verksted.css";
 
-type Mark = "ring" | "underline";
+type MarkKind = "frame" | "underline";
 
 /**
- * A pen mark drawn round or under its text, as if by hand. The path is drawn
- * in a 100×40 box that stretches to the text, with a stroke that keeps its
- * width.
+ * The deck's one mark, as on «Widgeten gjør ingen nettverkskall selv»: a
+ * 6 px ink frame round the text, or a straight 6 px line under it. Only the
+ * ink comes and goes; the text stays.
  */
-const PATHS: Record<Mark, string> = {
-  ring: "M14 9 C 34 1, 78 0, 93 10 C 103 17, 99 31, 80 36 C 58 41, 18 40, 6 30 C -2 22, 5 11, 22 6 C 34 3, 46 3, 54 4",
-  underline: "M2 22 C 18 17, 34 25, 50 20 S 82 17, 98 21",
-};
-
-function Pen({
-  mark,
+function Mark({
+  kind,
   from,
   children,
 }: {
-  mark: Mark;
+  kind: MarkKind;
   from: number;
   children: ReactNode;
 }) {
   return (
-    <span className={`pen pen--${mark}`}>
+    <span className={`som-kode__mark som-kode__mark--${kind}`}>
       {children}
-      <svg
-        className="pen__mark"
-        viewBox="0 0 100 40"
-        preserveAspectRatio="none"
-        aria-hidden="true"
-        data-from={from}
-      >
-        <path d={PATHS[mark]} vectorEffect="non-scaling-stroke" />
-      </svg>
+      <span className="som-kode__ink" data-from={from} aria-hidden="true" />
     </span>
   );
 }
@@ -67,9 +54,9 @@ function SurveyenSomKode() {
             <P>;</P>
             {"\n\n"}
             <Kw>export const</Kw>{" "}
-            <Pen mark="ring" from={1}>
+            <Mark kind="frame" from={1}>
               survey
-            </Pen>{" "}
+            </Mark>{" "}
             <P>= {"{"}</P>
             {"\n  "}
             <Str>"pages"</Str>
@@ -92,9 +79,9 @@ function SurveyenSomKode() {
             {"\n  "}surveyId<P>=</P>
             <Str>"min-app-tilbakemelding"</Str>
             {"\n  "}
-            <Pen mark="underline" from={1}>
+            <Mark kind="underline" from={1}>
               survey<P>={"{"}</P>survey<P>{"}"}</P>
-            </Pen>
+            </Mark>
             {"\n  "}transport<P>={"{"}</P>transport<P>{"}"}</P>
             {"\n"}
             <P>{"/>"}</P>
@@ -104,9 +91,9 @@ function SurveyenSomKode() {
 
       <p className="som-kode__price" data-from={2}>
         Prisen: endringer krever{" "}
-        <Pen mark="underline" from={2}>
+        <Mark kind="underline" from={2}>
           ny versjon av appen
-        </Pen>
+        </Mark>
         .
       </p>
       <RouteProgress at={1} />

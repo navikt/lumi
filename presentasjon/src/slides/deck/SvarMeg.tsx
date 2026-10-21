@@ -7,16 +7,11 @@ import { SALEN_SURVEY } from "../../content/salen";
 import { Reveal, type Slide, type SlideProps } from "../../engine";
 import "./svar.css";
 
-/** A plain app page behind the widget, so the widget sits where it lives. */
+/** A plain app page behind the widget: only its top bar, nothing that loads. */
 function AppPage() {
   return (
     <div className="app-page" aria-hidden="true">
       <div className="app-page__bar" />
-      <div className="app-page__heading" />
-      <div className="app-page__line" />
-      <div className="app-page__line" />
-      <div className="app-page__line app-page__line--short" />
-      <div className="app-page__button" />
     </div>
   );
 }

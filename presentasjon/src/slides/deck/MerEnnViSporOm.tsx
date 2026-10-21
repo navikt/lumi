@@ -24,17 +24,17 @@ function MerEnnViSporOm() {
     <div className="slide">
       <h2 className="slide-title">Folk skriver mer enn vi spør om</h2>
       <figure className="mer__example">
-        <div className="mer__head">
-          <p className="mer__question">Hva kan vi gjøre bedre?</p>
-          <Tag kind="example" />
+        <p className="mer__question">Hva kan vi gjøre bedre?</p>
+        <div className="mer__answer">
+          <Tag kind="example" className="mer__tag" />
+          <p className="mer__field">
+            Lederen min, <Personal from={1}>Kari Nordmann</Personal>
+            <span className="mer__after">,</span> svarer ikke.
+            <br />
+            Kontakt henne på{" "}
+            <Personal from={2}>kari.nordmann@example.com</Personal>
+          </p>
         </div>
-        <p className="mer__field">
-          Lederen min, <Personal from={1}>Kari Nordmann</Personal>
-          <span className="mer__after">,</span> svarer ikke.
-          <br />
-          Kontakt henne på{" "}
-          <Personal from={2}>kari.nordmann@example.com</Personal>
-        </p>
       </figure>
     </div>
   );

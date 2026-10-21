@@ -76,46 +76,15 @@
   overflow: visible;
 }
 
-/* The plain app page behind the widget. */
+/* The plain app page behind the widget: a top bar and nothing else. */
 .app-page {
   position: absolute;
   inset: 0;
-  padding: 0 56px;
 }
 
 .app-page__bar {
   height: 72px;
-  margin: 0 -56px 56px;
   background: var(--map-zone-neutral);
-}
-
-.app-page__heading,
-.app-page__line,
-.app-page__button {
-  border-radius: 8px;
-  background: var(--map-zone-neutral);
-}
-
-.app-page__heading {
-  width: 46%;
-  height: 40px;
-  margin-bottom: 40px;
-}
-
-.app-page__line {
-  width: 72%;
-  height: 20px;
-  margin-bottom: 20px;
-}
-
-.app-page__line--short {
-  width: 40%;
-}
-
-.app-page__button {
-  width: 200px;
-  height: 56px;
-  margin-top: 40px;
 }
 
 /* Slide 10: the answer card under the map. */
@@ -128,8 +97,10 @@
   gap: 18px;
 }
 
+/* The same columns as the rows under it. */
 .vei__card-head {
-  display: flex;
+  display: grid;
+  grid-template-columns: 300px 1fr;
   align-items: center;
   gap: 28px;
   font-size: var(--deck-size-label);
@@ -161,11 +132,12 @@
   font-size: var(--deck-size-code);
 }
 
+/* The deck's one mark: 6 px ink, radius 10. */
 .vei__masked {
   white-space: nowrap;
   padding: 0 8px;
-  border: 4px solid var(--deck-fg);
-  border-radius: 6px;
+  border: 6px solid var(--map-ink);
+  border-radius: 10px;
   background: var(--deck-bg);
   color: var(--deck-fg);
   font-weight: 700;

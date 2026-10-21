@@ -77,7 +77,7 @@ function Tallet() {
       </p>
       <LineMap label="Rutediagram der hver prikk er 100 svar. Team eSyfo: 299 prikker, 29 853 svar i seks apper. iSyfo i Modia: 11 prikker, 1 092 svar fra veiledere i Modia.">
         <g data-from={1}>
-          <MapText x={LEFT} y={LABEL_Y} weight={700}>
+          <MapText x={LEFT} y={LABEL_Y} size={36} weight={800}>
             Team eSyfo
           </MapText>
           <MapText x={LEFT} y={NOTE_Y} size={30} weight={500} muted>
@@ -102,7 +102,7 @@ function Tallet() {
           </MapText>
         </g>
         <g data-from={2}>
-          <MapText x={MODIA_X} y={LABEL_Y} weight={700}>
+          <MapText x={MODIA_X} y={LABEL_Y} size={36} weight={800}>
             iSyfo i Modia
           </MapText>
           <MapText x={MODIA_X} y={NOTE_Y} size={30} weight={500} muted>

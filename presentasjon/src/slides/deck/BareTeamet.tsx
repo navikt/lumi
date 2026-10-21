@@ -1,25 +1,29 @@
 import oversikt from "../../assets/skjermbilder/dashboard-oversikt.webp";
 import tilbakemeldinger from "../../assets/skjermbilder/dashboard-tilbakemeldinger.webp";
-import { Tag } from "../../components/Tag";
 import type { Slide, SlideProps } from "../../engine";
 import { Line, LineMap, Station } from "../../map";
 import { RouteProgress } from "./RouteProgress";
-import { Callout, FRAME, type Shot, ShotFrame } from "./SammeUtkast";
+import { type Box, Callout, FRAME, type Shot, ShotFrame } from "./SammeUtkast";
 import "./verksted.css";
 
+/** Three answers in the list, and the delete button on the third. */
+const LIST: Box = { x: 1913, y: 802, width: 1113, height: 638 };
+const DELETE: Box = { x: 2889, y: 1289, width: 26, height: 34 };
+
+/* Cut close, so the UI text is at least 22 px on the stage. */
 const SHOTS: readonly Shot[] = [
   {
     from: 0,
     src: oversikt,
-    alt: "Dashboardet for en vurderingssurvey: antall tilbakemeldinger, snittvurderingen, fordelingen av vurderingene og uttrykk som går igjen i fritekstsvarene.",
-    crop: { x: 128, y: 0, width: 2944, height: 1687 },
+    alt: "Dashboardet for en vurderingssurvey: valg av app, survey og periode, og 62 tilbakemeldinger.",
+    crop: { x: 160, y: 124, width: 1302, height: 746 },
   },
   {
     from: 2,
     src: tilbakemeldinger,
-    alt: "Tilbakemeldinger: en tabell med dato, tilbakemelding og app. Hvert svar har en knapp for å kopiere og en for å slette.",
-    crop: { x: 130, y: 0, width: 2850, height: 1633 },
-    marks: [{ x: 2889, y: 888, width: 26, height: 28 }],
+    alt: "Tilbakemeldinger: tre svar fra appen syfo-oppfolgingsplan-frontend. Hvert svar har en knapp for å kopiere og en for å slette.",
+    crop: LIST,
+    mark: DELETE,
   },
 ];
 
@@ -48,14 +52,12 @@ function BareTeamet({ step }: SlideProps) {
           />
         </g>
       </LineMap>
-      <div className="shot-side">
-        <Tag kind="screenshot" />
-        <Callout
-          shown={step >= 2}
-          name="Slett tilbakemelding"
-          className="bare-teamet__callout"
-        />
-      </div>
+      <Callout
+        shown={step >= 2}
+        crop={LIST}
+        mark={DELETE}
+        name="Slett tilbakemelding"
+      />
       <p className="slide-text shot-text bare-teamet__text" data-from={1}>
         Lumi spør Nais Console hvilke team dere er medlem av.
       </p>

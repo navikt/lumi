@@ -17,6 +17,11 @@ const APP_WIDTH = 512;
 
 const VENDOR_GATE = { x: 420, width: 120 };
 const LUMI_GATE = { y: LUMI_APP_Y + 8, height: 80 };
+/** Appens backend, and the vendor's server. */
+const BACKEND: readonly [number, number] = [760, LUMI_APP_Y + 48];
+const VENDOR_SERVER: readonly [number, number] = [1400, 420];
+/** Arrows stop at the edge of the station ring, as on «Hvor bor svaret?». */
+const RING_EDGE = 26;
 
 /** A double wall around the zone, with gaps where something gets through. */
 function Wall() {
@@ -115,23 +120,36 @@ function Fagsystemsonen() {
             points={[
               [480, VENDOR_APP_Y],
               [480, 120],
-              [1400, 120],
-              [1400, 640],
+              [VENDOR_SERVER[0], 120],
+              [VENDOR_SERVER[0], VENDOR_SERVER[1] - RING_EDGE],
             ]}
             radius={56}
+            arrow
           />
-          <Station x={1400} y={420} label="leverandørens server" />
+          <Line
+            points={[
+              [VENDOR_SERVER[0], VENDOR_SERVER[1]],
+              [VENDOR_SERVER[0], 640],
+            ]}
+          />
+          <Station
+            x={VENDOR_SERVER[0]}
+            y={VENDOR_SERVER[1]}
+            label="Leverandørens server"
+          />
           <Answer x={1400} y={640} r={36} />
           <Station
             x={1400}
             y={640}
             r={36}
-            label="lagres der"
+            label="Lagres der"
             className="map-station--label-only"
           />
+          {/* Left of the line and above the wall, clear of the bend. */}
           <text
-            x={VENDOR_GATE.x + VENDOR_GATE.width + 28}
-            y={TOP - 34}
+            x={450}
+            y={150}
+            textAnchor="end"
             className="map-label wall__label"
           >
             egen åpning ut
@@ -141,16 +159,21 @@ function Fagsystemsonen() {
         <g data-from={2}>
           <Line
             points={[
-              [APP_X + APP_WIDTH, LUMI_APP_Y + 48],
-              [760, LUMI_APP_Y + 48],
-              [760, 768],
+              [APP_X + APP_WIDTH, BACKEND[1]],
+              [BACKEND[0] - RING_EDGE, BACKEND[1]],
             ]}
-            radius={40}
+            arrow
+          />
+          <Line
+            points={[
+              [BACKEND[0], BACKEND[1]],
+              [BACKEND[0], 768],
+            ]}
           />
           <Station
-            x={760}
-            y={LUMI_APP_Y + 48}
-            label="appens backend"
+            x={BACKEND[0]}
+            y={BACKEND[1]}
+            label="Appens backend"
             note="samme adresse som appen"
           />
           <Station x={760} y={668} label="Lumi API" />
@@ -159,7 +182,7 @@ function Fagsystemsonen() {
             x={760}
             y={768}
             r={36}
-            label="databasen"
+            label="Databasen"
             className="map-station--label-only"
           />
           <text

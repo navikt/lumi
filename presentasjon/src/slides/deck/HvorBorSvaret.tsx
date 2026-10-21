@@ -13,6 +13,10 @@ const SKYRA_APP_Y = 330;
 const LUMI_APP_Y = 520;
 const APP_X = 112;
 const APP_WIDTH = 512;
+/** Appens backend, on the Lumi line. */
+const BACKEND: readonly [number, number] = [760, LUMI_APP_Y + 48];
+/** Arrows stop at the edge of the station ring, as on the Skyra line. */
+const RING_EDGE = 26;
 
 /** The consent switch on the line that loads the vendor's script. */
 function ConsentSwitch({ x, y }: { x: number; y: number }) {
@@ -123,7 +127,7 @@ function HvorBorSvaret({ step }: SlideProps) {
             x={1360}
             y={640}
             r={36}
-            label="lagres hos Skyra AS"
+            label="Lagres hos Skyra AS"
             note="Scaleway i EU"
             className="map-station--label-only"
           />
@@ -133,16 +137,21 @@ function HvorBorSvaret({ step }: SlideProps) {
         <g data-from={2}>
           <Line
             points={[
-              [APP_X + APP_WIDTH, LUMI_APP_Y + 48],
-              [760, LUMI_APP_Y + 48],
-              [760, 768],
+              [APP_X + APP_WIDTH, BACKEND[1]],
+              [BACKEND[0] - RING_EDGE, BACKEND[1]],
             ]}
-            radius={40}
+            arrow
+          />
+          <Line
+            points={[
+              [BACKEND[0], BACKEND[1]],
+              [BACKEND[0], 768],
+            ]}
           />
           <Station
-            x={760}
-            y={LUMI_APP_Y + 48}
-            label="appens backend"
+            x={BACKEND[0]}
+            y={BACKEND[1]}
+            label="Appens backend"
             note="samme adresse som appen"
           />
           <Station x={760} y={668} label="Lumi API" />
@@ -151,7 +160,7 @@ function HvorBorSvaret({ step }: SlideProps) {
             x={760}
             y={768}
             r={36}
-            label="databasen"
+            label="Databasen"
             className="map-station--label-only"
           />
         </g>

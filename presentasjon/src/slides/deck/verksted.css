@@ -51,13 +51,6 @@
   line-height: 1.2;
 }
 
-.finne-ut__text {
-  position: absolute;
-  top: 840px;
-  left: var(--deck-space-page);
-  max-width: none;
-}
-
 /* Slide 9: surveyen-som-kode */
 
 .som-kode__block {
@@ -129,42 +122,40 @@
   line-height: 1.2;
 }
 
-/* Pen marks: drawn by hand round or under the important part. */
+/* Marks on slide 9: the deck's one frame and underline, 6 px ink. */
 
-.pen {
+.som-kode__mark {
   position: relative;
   display: inline-block;
 }
 
-.pen__mark {
+.som-kode__ink {
   position: absolute;
-  overflow: visible;
   pointer-events: none;
 }
 
-.pen__mark path {
-  fill: none;
-  stroke: var(--map-ink);
-  stroke-width: 5px;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.som-kode__mark--frame .som-kode__ink {
+  inset: -2px -12px;
+  border: 6px solid var(--map-ink);
+  border-radius: 10px;
 }
 
-.pen--ring .pen__mark {
-  top: -4px;
-  left: -15px;
-  width: calc(100% + 30px);
-  height: calc(100% + 8px);
+/* Midway between the descenders and the next line of code. */
+.som-kode__mark--underline .som-kode__ink {
+  right: 0;
+  bottom: -2px;
+  left: 0;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--map-ink);
 }
 
-.pen--underline .pen__mark {
-  bottom: -7px;
-  left: -6px;
-  width: calc(100% + 12px);
-  height: 18px;
+/* The price is set larger, so its line sits a little lower. */
+.som-kode__price .som-kode__ink {
+  bottom: -8px;
 }
 
-/* Screenshot slides 8 and 11: one frame, with the tag and names beside it. */
+/* Screenshot slides 8 and 11: one frame with the tag on its edge, names beside it. */
 
 .shot {
   position: absolute;
@@ -194,31 +185,42 @@
   object-fit: cover;
 }
 
-/* The ink frame round the control the step is about. */
+/* The ink frame round the control the step is about: the deck's one mark. */
 .shot__mark {
   position: absolute;
   box-sizing: border-box;
   border: 6px solid var(--map-ink);
-  border-radius: 14px;
-  outline: 4px solid var(--map-paper);
+  border-radius: 10px;
   pointer-events: none;
 }
 
-.shot-side {
+/* «Skjermbilde med testdata» on the upper left edge, like the live tag. */
+.shot__tag {
   position: absolute;
-  top: 336px;
-  left: 1160px;
-  width: 648px;
-  height: 500px;
+  top: -26px;
+  left: 32px;
 }
 
+/* The name of the marked control, joined to the mark by an ink line. */
 .shot-callout {
   position: absolute;
-  top: 104px;
-  left: 0;
+  inset: 0;
+  pointer-events: none;
+}
+
+.shot-callout__line {
+  position: absolute;
+  border-radius: 3px;
+  background: var(--map-ink);
+}
+
+/* Hangs from the line: the name's middle sits on it, the note above. */
+.shot-callout__label {
+  position: absolute;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  transform: translateY(-100%);
 }
 
 .shot-callout__note {
@@ -230,29 +232,16 @@
 }
 
 .shot-callout__name {
-  display: flex;
-  align-items: flex-start;
-  gap: 20px;
   margin: 0;
   font-size: var(--deck-size-body);
   font-weight: var(--deck-weight-strong);
-  line-height: 1.15;
+  white-space: nowrap;
 }
 
-/* A small copy of the mark, so the name and the frame read as one. */
-.shot-callout__key {
-  flex: none;
-  box-sizing: border-box;
-  width: 52px;
-  height: 36px;
-  margin-top: 7px;
-  border: 6px solid var(--map-ink);
-  border-radius: 10px;
-}
-
+/* Clear of the callouts: they sit level with the controls they name. */
 .shot-text {
   position: absolute;
-  top: 650px;
+  top: 520px;
   left: 1160px;
   max-width: 600px;
 }
@@ -261,8 +250,4 @@
 
 .bare-teamet__text {
   top: 540px;
-}
-
-.bare-teamet__callout {
-  top: 384px;
 }

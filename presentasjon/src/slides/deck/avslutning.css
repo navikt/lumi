@@ -69,14 +69,13 @@
   color: var(--deck-code-punctuation);
 }
 
-/* Margin notes to the right of the code. */
+/* Margin notes to the right of the code, 40 px apart. */
 .under-panseret__aside {
   left: 1530px;
   width: 278px;
-}
-
-.under-panseret__size {
-  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
 }
 
 /* The one call in the code, marked when the map shows where it goes. */
@@ -128,6 +127,11 @@
   font-size: var(--deck-size-body);
   font-weight: var(--deck-weight-display);
   line-height: 1.2;
+}
+
+/* The parts themselves: lighter, so only the two sides carry weight 800. */
+.ansvar__part {
+  font-weight: 500;
 }
 
 .ansvar__sla {

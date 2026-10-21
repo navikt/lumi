@@ -57,25 +57,30 @@ function HvaVilDereVite() {
       <h2 className="slide-title">Teamet velger først hva det vil finne ut</h2>
 
       <LineMap label="Fem spørsmål teamet kan ha, hvert koblet med en linje til ett av de fem valgene under «Hva vil dere finne ut?» i Surveyverksted: Ble den nye innsendingen bedre? går til Hvordan opplevde brukeren tjenesten? Lager vi det folk kommer for? går til Hva kom brukeren for å gjøre? Hvilken oppgave fikser vi først? går til Lyktes brukeren med en kjent oppgave? Hva skal stå øverst? går til Hvilke oppgaver er viktigst? Vi har et annet spørsmål går til Noe annet.">
-        {/* The menu: a line from its name down through the five choices. */}
-        <Line
-          points={[
-            [MENU_X, HEADER_Y],
-            [MENU_X, LAST_Y],
-          ]}
-        />
-        <Line
-          points={[
-            [MENU_X - 26, HEADER_Y],
-            [MENU_X + 26, HEADER_Y],
-          ]}
-        />
-        <MapText x={CHOICE_X} y={HEADER_Y - 44} size={30} weight={500} muted>
-          Surveyverksted
-        </MapText>
-        <MapText x={CHOICE_X} y={HEADER_Y} weight={800}>
-          Hva vil dere finne ut?
-        </MapText>
+        {/*
+         * The menu: a line from its name down through the five choices. It
+         * comes with the questions, so no heading stands over an empty column.
+         */}
+        <g data-from={1}>
+          <Line
+            points={[
+              [MENU_X, HEADER_Y],
+              [MENU_X, LAST_Y],
+            ]}
+          />
+          <Line
+            points={[
+              [MENU_X - 26, HEADER_Y],
+              [MENU_X + 26, HEADER_Y],
+            ]}
+          />
+          <MapText x={CHOICE_X} y={HEADER_Y - 44} size={30} weight={500} muted>
+            Surveyverksted
+          </MapText>
+          <MapText x={CHOICE_X} y={HEADER_Y} weight={800}>
+            Hva vil dere finne ut?
+          </MapText>
+        </g>
 
         {ROUTES.map((route, index) => (
           <g key={route.choice} data-from={1}>
@@ -92,7 +97,13 @@ function HvaVilDereVite() {
         ))}
 
         {ROUTES.map((route, index) => (
-          <Station key={route.choice} x={MENU_X} y={rowY(index)} r={STOP_R} />
+          <Station
+            key={route.choice}
+            x={MENU_X}
+            y={rowY(index)}
+            r={STOP_R}
+            from={1}
+          />
         ))}
 
         {ROUTES.map((route, index) => (
@@ -108,11 +119,8 @@ function HvaVilDereVite() {
         ))}
       </LineMap>
 
-      <p className="finne-ut__header">
+      <p className="finne-ut__header" data-from={1}>
         Teamet spør <Tag kind="example" />
-      </p>
-      <p className="slide-text finne-ut__text" data-from={3}>
-        Valget bestemmer spørsmålene og hva dashboardet viser.
       </p>
       <RouteProgress at={0} />
     </div>
@@ -122,14 +130,14 @@ function HvaVilDereVite() {
 export const hvaVilDereVite: Slide = {
   id: "hva-vil-dere-vite",
   title: "Teamet velger først hva det vil finne ut",
-  steps: 3,
+  steps: 2,
   notes: `Start med spørsmålet. Først velger teamet under «Hva vil dere finne ut?» i Surveyverksted. Det er fem valg.
 
 Klikk 1: spørsmål teamet kan ha. Eksempler.
 
 Klikk 2: valget i Surveyverksted, ordrett fra menyen.
 
-Klikk 3: valget gir spørsmålene og dashboardvisningen.
+Valget bestemmer spørsmålene og hva dashboardet viser.
 
 Dette viser dashboardet for hvert valg:
 «Hvordan opplevde brukeren tjenesten?»: vurderingen over tid, et kort per spørsmål og fritekstsvarene. Dere kan sammenligne med forrige periode.

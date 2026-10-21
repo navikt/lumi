@@ -60,7 +60,7 @@
   color: var(--deck-muted);
 }
 
-/* One dot is a hundred answers: a small answer disc. */
+/* One dot is a hundred answers: a small answer disc with a 2 px edge. */
 .tallet__dot {
-  stroke-width: 4px;
+  stroke-width: 2px;
 }

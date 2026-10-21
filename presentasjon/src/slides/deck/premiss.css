@@ -5,19 +5,27 @@
 
 /* Slide 3: the answer as the user wrote it, personal data framed in ink. */
 
-/* Centred in the space under the title, a little above the middle. */
+/*
+ * Centred in the space under the title, a little above the middle. The gap
+ * leaves room for the tag, which reaches above the field.
+ */
 .mer__example {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 52px;
   margin: auto 0;
   padding-bottom: 96px;
 }
 
-.mer__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+/* «Eksempel» on the field's upper left edge, like the live tag. */
+.mer__answer {
+  position: relative;
+}
+
+.mer__tag {
+  position: absolute;
+  top: -26px;
+  left: 32px;
 }
 
 .mer__question {
@@ -48,11 +56,12 @@
   color: inherit;
 }
 
+/* The deck's one mark: 6 px ink, radius 10. */
 .mer__frame {
   position: absolute;
   inset: -3px -14px;
-  border: 8px solid var(--deck-fg);
-  border-radius: 12px;
+  border: 6px solid var(--map-ink);
+  border-radius: 10px;
   pointer-events: none;
 }
 
