@@ -292,6 +292,8 @@ data class BigQueryExportDestination(
     val consecutiveFailures: Int,
     val lastSuccessAt: Instant?,
     val lastSuccessRows: BigQueryExportRowCounts?,
+    /** Jobs Lumi has started but not seen finish. A new run waits for them. */
+    val pendingJobIds: List<String> = emptyList(),
 ) {
     override fun equals(other: Any?): Boolean =
         other is BigQueryExportDestination &&
@@ -309,7 +311,8 @@ data class BigQueryExportDestination(
             lastRunErrorCode == other.lastRunErrorCode &&
             consecutiveFailures == other.consecutiveFailures &&
             lastSuccessAt == other.lastSuccessAt &&
-            lastSuccessRows == other.lastSuccessRows
+            lastSuccessRows == other.lastSuccessRows &&
+            pendingJobIds == other.pendingJobIds
 
     override fun hashCode(): Int = team.hashCode()
 

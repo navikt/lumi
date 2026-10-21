@@ -27,6 +27,9 @@ class FakeBigQueryGateway(
     val deleted = mutableListOf<String>()
     val truncated = mutableListOf<String>()
     var jobAccess: BigQueryResult<Unit> = BigQueryResult.Success(Unit)
+
+    /** Jobs BigQuery knows about. Tests can leave one running to act as a job Lumi gave up on. */
+    val jobStates = mutableMapOf<String, BigQueryJobState>()
     var createTableOverride: BigQueryResult<Unit>? = null
     var loadOverride: BigQueryResult<Long>? = null
 
@@ -85,13 +88,17 @@ class FakeBigQueryGateway(
         return BigQueryResult.Success(Unit)
     }
 
-    override suspend fun truncateTable(ref: BigQueryTableRef, jobLabels: Map<String, String>): BigQueryResult<Unit> {
+    override suspend fun truncateTable(ref: BigQueryTableRef, jobLabels: Map<String, String>, jobId: String): BigQueryResult<Unit> {
         if (jobAccess !is BigQueryResult.Success) return BigQueryResult.JobDenied
         val table = tables[ref.toString()] ?: return BigQueryResult.NotFound
         tables[ref.toString()] = table.copy(lines = emptyList())
         truncated += ref.toString()
+        jobStates[jobId] = BigQueryJobState.DONE
         return BigQueryResult.Success(Unit)
     }
+
+    override suspend fun jobState(jobId: String): BigQueryResult<BigQueryJobState> =
+        jobStates[jobId]?.let { BigQueryResult.Success(it) } ?: BigQueryResult.NotFound
 
     override suspend fun updateTableMetadata(spec: BigQueryTableSpec, expiresAt: Instant): BigQueryResult<Unit> {
         val table = tables[spec.ref.toString()] ?: return BigQueryResult.NotFound
@@ -105,6 +112,7 @@ class FakeBigQueryGateway(
 
     override fun startUpload(spec: BigQueryTableSpec, jobLabels: Map<String, String>): BigQueryTableUpload =
         object : BigQueryTableUpload {
+            override val jobId = newBigQueryJobId("export", spec.ref.tableId)
             private val written = mutableListOf<String>()
 
             override suspend fun writeLine(line: String) {
@@ -117,6 +125,7 @@ class FakeBigQueryGateway(
                 // CREATE_NEVER: the export creates the table first. WRITE_TRUNCATE keeps metadata and access.
                 val table = tables[spec.ref.toString()] ?: return BigQueryResult.NotFound
                 tables[spec.ref.toString()] = table.copy(lines = written.toList())
+                jobStates[jobId] = BigQueryJobState.DONE
                 return BigQueryResult.Success(written.size.toLong())
             }
         }

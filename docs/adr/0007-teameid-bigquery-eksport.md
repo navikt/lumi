@@ -164,6 +164,13 @@ tilgangene på den blir stående. Lumi sletter ikke `svar` og `innsendinger` ved
 vanlige kjøringer, bare `fritekst` når fritekst er av eller ikke åpnet for
 teamet.
 
+En jobb i BigQuery kan fullføre etter at Lumi har gitt den opp, for eksempel
+når svaret fra BigQuery forsvinner. Lumi lagrer derfor ID-en til hver jobb som
+kan erstatte en tabell, før jobben startes, og fjerner den når Lumi har sett
+jobben bli ferdig. Neste kjøring venter til BigQuery sier at de lagrede jobbene
+er ferdige, så en gammel jobb ikke kan overskrive nyere data eller hente tilbake
+slettede svar.
+
 Hver gang Lumi skriver en tabell, settes utløpstiden sju dager fram. Stopper
 eksporten av en eller annen grunn, forsvinner kopiene av seg selv.
 

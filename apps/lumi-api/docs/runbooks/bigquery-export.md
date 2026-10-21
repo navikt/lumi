@@ -46,6 +46,14 @@ creates the dataset, labels it `lumi-team=<team>` and grants Lumi's service acco
   created first, with labels and an expiry. Each load job then replaces the rows of one
   table with `WRITE_TRUNCATE`, and an empty table is emptied with `TRUNCATE TABLE`.
   Neither deletes the table, so the access teams have granted on it stays.
+- Lumi stores the id of every load and TRUNCATE job in `pending_job_ids` before it
+  starts the job, and removes it once it has seen the job finish. If an answer is lost,
+  a status lookup fails or a run gives up at its deadline, the id stays. The next run for
+  the team asks BigQuery about each stored job before it writes anything: a job that is
+  done, or that BigQuery never created, is forgotten, and a job that still runs makes the
+  run fail with `LOAD_FAILED` and try again later. An old job can therefore not overwrite
+  newer data or bring back deleted rows. To see the stored jobs:
+  `SELECT team, pending_job_ids FROM bigquery_export.destinations;`
 - Tables are replaced one at a time: `fritekst`, `innsendinger`, `svar`. A run that fails
   halfway leaves tables from different runs until the next run. `oppdatert_tidspunkt`
   shows which run wrote each table.

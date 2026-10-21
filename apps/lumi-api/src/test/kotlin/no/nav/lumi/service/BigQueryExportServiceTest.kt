@@ -7,6 +7,7 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.maps.shouldNotContainKey
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -33,6 +34,7 @@ import no.nav.lumi.domain.BigQueryExportRunStatus
 import no.nav.lumi.domain.BigQueryExportSchedule
 import no.nav.lumi.insertTestFeedbackWithJson
 import no.nav.lumi.integrations.bigquery.BigQueryResult
+import no.nav.lumi.integrations.bigquery.BigQueryJobState
 import no.nav.lumi.integrations.bigquery.FakeBigQueryGateway
 import no.nav.lumi.integrations.nais.NaisApiResult
 import no.nav.lumi.repository.BigQueryExportRepository
@@ -345,6 +347,51 @@ class BigQueryExportServiceTest : FunSpec({
 
         lastRunCode(export) shouldBe BigQueryExportProblemCode.EXPORT_JOB_DENIED
         BigQueryExportProblemCode.EXPORT_JOB_DENIED.isTeamActionable shouldBe false
+    }
+
+    test("a run waits for a job an earlier run did not see finish") {
+        val gateway = readyGateway()
+        val clock = TestClock()
+        val export = service(gateway, clock = clock)
+        feedback("f-1", team, "syfomodiaperson", rating = 3)
+        export.save(team, "A123456", request())
+        export.runDueExports() shouldBe 1
+        repository.addPendingJob(team, "lumi_export_svar_gammel")
+        gateway.jobStates["lumi_export_svar_gammel"] = BigQueryJobState.RUNNING
+        feedback("f-2", team, "syfomodiaperson", rating = 4)
+
+        clock.now = clock.now.plus(Duration.ofMinutes(10))
+        repository.requestRun(team, clock.now)
+        export.runDueExports() shouldBe 1
+        lastRunCode(export) shouldBe BigQueryExportProblemCode.LOAD_FAILED
+        lines(gateway, "innsendinger") shouldHaveSize 1
+
+        gateway.jobStates["lumi_export_svar_gammel"] = BigQueryJobState.DONE
+        clock.now = clock.now.plus(Duration.ofMinutes(10))
+        repository.requestRun(team, clock.now)
+        export.runDueExports() shouldBe 1
+        lines(gateway, "innsendinger") shouldHaveSize 2
+        repository.find(team).shouldNotBeNull().pendingJobIds.shouldBeEmpty()
+    }
+
+    test("a lost answer leaves the job pending until BigQuery says how it went") {
+        val gateway = readyGateway()
+        val clock = TestClock()
+        val export = service(gateway, clock = clock)
+        feedback("f-1", team, "syfomodiaperson", rating = 3)
+        export.save(team, "A123456", request())
+        gateway.loadOverride = BigQueryResult.Failure("connection reset")
+
+        export.runDueExports() shouldBe 1
+        repository.find(team).shouldNotBeNull().pendingJobIds.shouldNotBeEmpty()
+
+        // BigQuery never created the job, so the next run forgets it and writes.
+        gateway.loadOverride = null
+        clock.now = clock.now.plus(Duration.ofMinutes(10))
+        repository.requestRun(team, clock.now)
+        export.runDueExports() shouldBe 1
+        lastRunCode(export).shouldBeNull()
+        repository.find(team).shouldNotBeNull().pendingJobIds.shouldBeEmpty()
     }
 
     test("a requested run is queued and picked up") {

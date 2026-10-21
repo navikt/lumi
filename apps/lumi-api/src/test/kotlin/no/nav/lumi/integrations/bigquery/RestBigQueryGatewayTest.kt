@@ -208,7 +208,7 @@ class RestBigQueryGatewayTest : FunSpec({
             } else {
                 respond("""{"status":{"state":"DONE"}}""", HttpStatusCode.OK, jsonHeaders())
             }
-        }.truncateTable(spec.ref, mapOf("lumi-team" to "teamsykefravr"))
+        }.truncateTable(spec.ref, mapOf("lumi-team" to "teamsykefravr"), "lumi_truncate_svar_1")
 
         result shouldBe BigQueryResult.Success(Unit)
         val job = bodyOf(requests.first())
@@ -218,7 +218,7 @@ class RestBigQueryGatewayTest : FunSpec({
         requests.last().url.parameters["location"] shouldBe "europe-north1"
 
         shouldThrow<IllegalArgumentException> {
-            gateway { respond("{}") }.truncateTable(BigQueryTableRef("p-roject1", "lumi`; DROP", "svar"), emptyMap())
+            gateway { respond("{}") }.truncateTable(BigQueryTableRef("p-roject1", "lumi`; DROP", "svar"), emptyMap(), "lumi_truncate_svar_2")
         }
     }
 
@@ -333,7 +333,7 @@ class RestBigQueryGatewayTest : FunSpec({
             } else {
                 respond("""{"status":{"state":"DONE"}}""", HttpStatusCode.OK, jsonHeaders())
             }
-        }.truncateTable(spec.ref, emptyMap())
+        }.truncateTable(spec.ref, emptyMap(), "lumi_truncate_svar_3")
 
         result shouldBe BigQueryResult.Success(Unit)
         inserts shouldBe 2
@@ -400,11 +400,25 @@ class RestBigQueryGatewayTest : FunSpec({
         val result = gateway(jobTimeout = Duration.ofSeconds(-1)) { request ->
             requests += request
             respond("""{"status":{"state":"RUNNING"}}""", HttpStatusCode.OK, jsonHeaders())
-        }.truncateTable(spec.ref, emptyMap())
+        }.truncateTable(spec.ref, emptyMap(), "lumi_truncate_svar_4")
 
         result.shouldBeInstanceOf<BigQueryResult.Failure>()
         requests.last().url.encodedPath shouldContain "/cancel"
         requests.last().url.parameters["location"] shouldBe "europe-north1"
+    }
+
+    test("looks up a job Lumi started by its id") {
+        var path: String? = null
+        gateway { request ->
+            path = request.url.encodedPath
+            respond("""{"status":{"state":"RUNNING"}}""", HttpStatusCode.OK, jsonHeaders())
+        }.jobState("lumi_export_svar_1") shouldBe BigQueryResult.Success(BigQueryJobState.RUNNING)
+        path shouldBe "/bigquery/v2/projects/team-esyfo-prod-bbe6/jobs/lumi_export_svar_1"
+
+        gateway { respond("""{"status":{"state":"DONE","errorResult":{"reason":"invalid"}}}""", HttpStatusCode.OK, jsonHeaders()) }
+            .jobState("lumi_export_svar_1") shouldBe BigQueryResult.Success(BigQueryJobState.DONE)
+        gateway { respond("{}", HttpStatusCode.NotFound, jsonHeaders()) }.jobState("lumi_export_svar_1") shouldBe
+            BigQueryResult.NotFound
     }
 
     test("treats a deleted table as success and a missing one as not found") {

@@ -223,6 +223,33 @@ class BigQueryExportRepository(
         }
     }
 
+    /** Remembers a job that may replace a table, before Lumi starts it. */
+    suspend fun addPendingJob(team: String, jobId: String): Unit = dbQuery {
+        currentJdbcConnection().prepareStatement(
+            """
+                UPDATE bigquery_export.destinations
+                SET pending_job_ids = array_append(array_remove(pending_job_ids, ?), ?)
+                WHERE team = ?
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setString(1, jobId)
+            statement.setString(2, jobId)
+            statement.setString(3, team)
+            statement.executeUpdate()
+        }
+    }
+
+    /** Forgets a job Lumi has seen finish, or that BigQuery never started. */
+    suspend fun removePendingJob(team: String, jobId: String): Unit = dbQuery {
+        currentJdbcConnection().prepareStatement(
+            "UPDATE bigquery_export.destinations SET pending_job_ids = array_remove(pending_job_ids, ?) WHERE team = ?",
+        ).use { statement ->
+            statement.setString(1, jobId)
+            statement.setString(2, team)
+            statement.executeUpdate()
+        }
+    }
+
     /**
      * Runs [block] while holding the global export lock, so only one replica exports at a time.
      * Returns null without running [block] when another replica holds the lock.
@@ -347,6 +374,7 @@ class BigQueryExportRepository(
         lastSuccessRows = getString("last_success_rows")?.let {
             json.decodeFromString(BigQueryExportRowCounts.serializer(), it)
         },
+        pendingJobIds = getArray("pending_job_ids")?.let { (it.array as Array<*>).map { id -> id.toString() } }.orEmpty(),
     )
 
     private fun currentJdbcConnection(): Connection =
@@ -368,7 +396,8 @@ class BigQueryExportRepository(
         private const val DESTINATION_COLUMNS =
             "team, project_id, dataset_id, include_free_text, pseudonym_key, created_at, updated_at, " +
                 "run_requested_at, last_run_started_at, last_run_finished_at, last_run_status, " +
-                "last_run_error_code, consecutive_failures, last_success_at, last_success_rows::text AS last_success_rows"
+                "last_run_error_code, consecutive_failures, last_success_at, last_success_rows::text AS last_success_rows, " +
+                "pending_job_ids"
 
         private const val SELECT_DESTINATION = "SELECT $DESTINATION_COLUMNS FROM bigquery_export.destinations"
 

@@ -34,11 +34,13 @@ import no.nav.lumi.domain.InnsendingExportRow
 import no.nav.lumi.domain.SvarExportRow
 import no.nav.lumi.integrations.bigquery.BigQueryDatasetInfo
 import no.nav.lumi.integrations.bigquery.BigQueryGateway
+import no.nav.lumi.integrations.bigquery.BigQueryJobState
 import no.nav.lumi.integrations.bigquery.BigQueryResult
 import no.nav.lumi.integrations.bigquery.BigQueryTableInfo
 import no.nav.lumi.integrations.bigquery.BigQueryTableRef
 import no.nav.lumi.integrations.bigquery.BigQueryTableSpec
 import no.nav.lumi.integrations.bigquery.BigQueryTableUpload
+import no.nav.lumi.integrations.bigquery.newBigQueryJobId
 import no.nav.lumi.integrations.nais.NaisApiResult
 import no.nav.lumi.repository.BigQueryExportLock
 import no.nav.lumi.repository.BigQueryExportRepository
@@ -270,6 +272,7 @@ class BigQueryExportService(
             removeLumiTables(gateway, team, destination.projectId, destination.datasetId, listOf(BigQueryExportTable.FRITEKST))
         }
         checkExistingDestination(gateway, destination, tables).firstOrNull()?.let { return ExportOutcome.Failed(it.code) }
+        earlierJobProblem(gateway, destination)?.let { return ExportOutcome.Failed(it) }
 
         val expiresAt = startedAt.plus(TABLE_LIFETIME)
         val specs = tables.associateWith { tableSpec(destination, it) }
@@ -324,9 +327,11 @@ class BigQueryExportService(
                 else -> problemFor(current, team, spec)?.let { return ExportOutcome.Failed(it) }
             }
             val loaded = when {
-                upload.rows > 0 -> upload.finish()
+                upload.rows > 0 -> tracked(team, upload.jobId) { upload.finish() }
                 table in createdNow -> BigQueryResult.Success(Unit)
-                else -> gateway.truncateTable(spec.ref, jobLabels)
+                else -> newBigQueryJobId("truncate", table.tableId).let { jobId ->
+                    tracked(team, jobId) { gateway.truncateTable(spec.ref, jobLabels, jobId) }
+                }
             }
             problemFor(loaded, team, spec)?.let { return ExportOutcome.Failed(it) }
             problemFor(gateway.updateTableMetadata(spec, expiresAt), team, spec)?.let { return ExportOutcome.Failed(it) }
@@ -338,6 +343,38 @@ class BigQueryExportService(
                 fritekst = uploads[BigQueryExportTable.FRITEKST]?.rows,
             ),
         )
+    }
+
+    /**
+     * Runs a job that can replace a table. Its id is stored first and only removed once Lumi has
+     * seen the job finish. If the answer is lost or Lumi gives up, the next run finds the id and
+     * waits for the job, so an old job cannot overwrite newer data or bring back deleted rows.
+     */
+    private suspend fun <T> tracked(team: String, jobId: String, job: suspend () -> BigQueryResult<T>): BigQueryResult<T> {
+        repository.addPendingJob(team, jobId)
+        return job().also { result -> if (result is BigQueryResult.Success) repository.removePendingJob(team, jobId) }
+    }
+
+    /** Waits for jobs from earlier runs that Lumi did not see finish. Null when all are done. */
+    private suspend fun earlierJobProblem(gateway: BigQueryGateway, destination: BigQueryExportDestination): BigQueryExportProblemCode? {
+        for (jobId in destination.pendingJobIds) {
+            when (val state = gateway.jobState(jobId)) {
+                is BigQueryResult.Success -> if (state.value == BigQueryJobState.DONE) {
+                    repository.removePendingJob(destination.team, jobId)
+                } else {
+                    log.warn("BigQuery export for team {} waits for job {}, which is {}", destination.team, jobId, state.value)
+                    return BigQueryExportProblemCode.LOAD_FAILED
+                }
+                // BigQuery never started it, for example when the upload did not finish.
+                BigQueryResult.NotFound -> repository.removePendingJob(destination.team, jobId)
+                BigQueryResult.JobDenied, BigQueryResult.AccessDenied -> return BigQueryExportProblemCode.EXPORT_JOB_DENIED
+                is BigQueryResult.Failure -> {
+                    log.warn("BigQuery export for team {} could not look up job {}: {}", destination.team, jobId, state.message)
+                    return BigQueryExportProblemCode.BIGQUERY_UNAVAILABLE
+                }
+            }
+        }
+        return null
     }
 
     private fun notLumiTable(table: BigQueryTableInfo, team: String): BigQueryExportProblemCode? =
@@ -639,6 +676,7 @@ class BigQueryExportService(
     }
 
     private class CountingUpload(private val upload: BigQueryTableUpload) {
+        val jobId: String get() = upload.jobId
         var rows = 0L
             private set
 

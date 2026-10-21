@@ -94,8 +94,18 @@ data class BigQueryTableSpec(
     val labels: Map<String, String>,
 )
 
+/** Where a job Lumi started stands. A job that is not done can still replace a table. */
+enum class BigQueryJobState { PENDING, RUNNING, DONE }
+
+/** A new job id. Lumi chooses it, so it can look the job up even when an answer is lost. */
+fun newBigQueryJobId(kind: String, tableId: String): String =
+    "lumi_${kind}_${tableId}_${UUID.randomUUID().toString().replace("-", "")}"
+
 /** Streams newline-delimited JSON into one BigQuery load job. */
 interface BigQueryTableUpload {
+    /** The id the load job gets when [finish] sends the last bytes. */
+    val jobId: String
+
     suspend fun writeLine(line: String)
 
     /** Uploads the rest, waits for the load job and returns the number of rows BigQuery loaded. */
@@ -117,8 +127,11 @@ interface BigQueryGateway {
     suspend fun createTable(spec: BigQueryTableSpec, expiresAt: Instant): BigQueryResult<Unit>
     suspend fun deleteTable(ref: BigQueryTableRef): BigQueryResult<Unit>
 
-    /** Removes every row, but keeps the table, its metadata and the access granted on it. */
-    suspend fun truncateTable(ref: BigQueryTableRef, jobLabels: Map<String, String>): BigQueryResult<Unit>
+    /** Removes every row with a TRUNCATE job, but keeps the table, its metadata and the access granted on it. */
+    suspend fun truncateTable(ref: BigQueryTableRef, jobLabels: Map<String, String>, jobId: String): BigQueryResult<Unit>
+
+    /** Looks up a job Lumi started. NotFound means BigQuery never created it. */
+    suspend fun jobState(jobId: String): BigQueryResult<BigQueryJobState>
 
     /** Sets expiry, description, labels and column descriptions. Other labels on the table are kept. */
     suspend fun updateTableMetadata(spec: BigQueryTableSpec, expiresAt: Instant): BigQueryResult<Unit>
@@ -234,11 +247,11 @@ class RestBigQueryGateway(
     override suspend fun deleteTable(ref: BigQueryTableRef): BigQueryResult<Unit> =
         call({ client.delete(tableUrl(ref)) { authorize() } }, parseBody = false) { }
 
-    override suspend fun truncateTable(ref: BigQueryTableRef, jobLabels: Map<String, String>): BigQueryResult<Unit> {
+    override suspend fun truncateTable(ref: BigQueryTableRef, jobLabels: Map<String, String>, jobId: String): BigQueryResult<Unit> {
         require(listOf(ref.projectId, ref.datasetId, ref.tableId).all(SAFE_IDENTIFIER::matches)) {
             "Unsafe BigQuery identifier"
         }
-        val jobId = newJobId("truncate", ref.tableId)
+        require(SAFE_IDENTIFIER.matches(jobId)) { "Unsafe BigQuery job id" }
         // A retry after a lost response finds the job the first attempt created; Lumi then waits for it.
         val inserted = call(conflictIsSuccess = true, request = {
             client.post(jobsUrl()) {
@@ -293,7 +306,7 @@ class RestBigQueryGateway(
         private val spec: BigQueryTableSpec,
         private val jobLabels: Map<String, String>,
     ) : BigQueryTableUpload {
-        private val jobId = newJobId("export", spec.ref.tableId)
+        override val jobId = newBigQueryJobId("export", spec.ref.tableId)
         private val buffer = UploadBuffer()
         private var sessionUrl: String? = null
         private var uploadedBytes = 0L
@@ -466,6 +479,25 @@ class RestBigQueryGateway(
             }
         }
     }
+
+    override suspend fun jobState(jobId: String): BigQueryResult<BigQueryJobState> =
+        when (
+            val job = call({
+                client.get("${jobsUrl()}/${jobId.path()}") {
+                    authorize()
+                    url.parameters.append("location", location)
+                }
+            }) { it }
+        ) {
+            is BigQueryResult.Success -> when ((job.value["status"] as? JsonObject)?.string("state")) {
+                "DONE" -> BigQueryResult.Success(BigQueryJobState.DONE)
+                "RUNNING" -> BigQueryResult.Success(BigQueryJobState.RUNNING)
+                else -> BigQueryResult.Success(BigQueryJobState.PENDING)
+            }
+            BigQueryResult.NotFound -> BigQueryResult.NotFound
+            BigQueryResult.AccessDenied, BigQueryResult.JobDenied -> BigQueryResult.JobDenied
+            is BigQueryResult.Failure -> job
+        }
 
     private suspend fun cancelJob(jobId: String) {
         val cancelled = call({
@@ -651,9 +683,6 @@ class RestBigQueryGateway(
                 socketTimeoutMillis = 60_000
             }
         }
-
-        private fun newJobId(kind: String, tableId: String): String =
-            "lumi_${kind}_${tableId}_${UUID.randomUUID().toString().replace("-", "")}"
 
         private fun parseObject(text: String): JsonObject? =
             runCatching { json.parseToJsonElement(text) as? JsonObject }.getOrNull()

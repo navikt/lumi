@@ -159,6 +159,19 @@ class BigQueryExportRepositoryTest : FunSpec({
         repository.markSucceeded("team-a", started.minusSeconds(100), started.plusSeconds(2), BigQueryExportRowCounts(1, 1)) shouldBe false
     }
 
+    test("remembers jobs that may still replace a table until they are removed") {
+        repository.upsert("team-a", "team-a-prod-1234", "lumi", false, "A123456", now)
+
+        repository.addPendingJob("team-a", "lumi_export_svar_1")
+        repository.addPendingJob("team-a", "lumi_truncate_innsendinger_2")
+        repository.addPendingJob("team-a", "lumi_export_svar_1")
+        repository.markStarted("team-a", now.plusSeconds(1)).shouldNotBeNull().pendingJobIds shouldContainExactly
+            listOf("lumi_truncate_innsendinger_2", "lumi_export_svar_1")
+
+        repository.removePendingJob("team-a", "lumi_export_svar_1")
+        repository.find("team-a").shouldNotBeNull().pendingJobIds shouldContainExactly listOf("lumi_truncate_innsendinger_2")
+    }
+
     test("requesting a run without a destination reports that nothing was queued") {
         repository.requestRun("team-a", now) shouldBe false
         repository.delete("team-a") shouldBe false

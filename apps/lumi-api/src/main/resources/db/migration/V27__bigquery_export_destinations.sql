@@ -26,6 +26,9 @@ CREATE TABLE bigquery_export.destinations
     consecutive_failures INTEGER      NOT NULL DEFAULT 0,
     last_success_at      TIMESTAMPTZ  NULL,
     last_success_rows    JSONB        NULL,
+    -- Load and TRUNCATE jobs Lumi has started but not seen finish. A new run waits for
+    -- them, so a late job cannot replace newer data.
+    pending_job_ids      TEXT[]       NOT NULL DEFAULT '{}',
     CONSTRAINT bigquery_export_destinations_project_id_format
         CHECK (project_id ~ '^[a-z][a-z0-9-]{4,28}[a-z0-9]$'),
     CONSTRAINT bigquery_export_destinations_dataset_id_format
