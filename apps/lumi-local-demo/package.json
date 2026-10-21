@@ -8,8 +8,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@navikt/ds-css": "^8.7.0",
-    "@navikt/ds-react": "^8.7.0",
+    "@navikt/ds-css": "^8.19.2",
+    "@navikt/ds-react": "^8.19.2",
     "@navikt/lumi-survey": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.2.4"
