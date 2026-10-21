@@ -16,7 +16,7 @@ API-et maskerer kjente mønstre for personlig identifiserbar informasjon (PII) i
 | Nav-ident | `A123456` | `[NAVIDENT FJERNET]` |
 | E-post | `test@nav.no` | `[E-POST FJERNET]` |
 | Telefonnummer | `987 65 432` | `[TELEFON FJERNET]` |
-| Kortnummer | `1234 5678 9012 3456` | `[KORTNUMMER FJERNET]` |
+| Kortnummer | `1234-5678-9012-3456` | `[KORTNUMMER FJERNET]` |
 | Kontonummer | `1234.56.12345` | `[KONTONUMMER FJERNET]` |
 | Hemmelig adresse | «hemmelig adresse» | `[HEMMELIG ADRESSE]` |
 
