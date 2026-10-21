@@ -31,7 +31,7 @@ export function serverOnlyPlugin(modules: string[]): Plugin {
           export const getToken = () => null;
           export const validateAzureToken = async () => ({ ok: false });
           export const requestAzureOboToken = async () => ({ ok: false, token: null });
-          // prom-client stubs
+          // @prometheus-io/client stubs
           export const register = { metrics: async () => '', contentType: 'text/plain' };
           export const collectDefaultMetrics = () => {};
           // @navikt/pino-logger stubs
