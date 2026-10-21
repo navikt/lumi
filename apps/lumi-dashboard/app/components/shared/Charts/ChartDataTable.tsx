@@ -54,8 +54,8 @@ export function ChartDataTable({
       {loading ? (
         <BodyShort size="small">Laster tallene …</BodyShort>
       ) : (
-        // Narrow cards may scroll sideways. The region can take focus, so
-        // keyboard users can scroll it too.
+        // The table scrolls inside a fixed height, and sideways on narrow
+        // cards. The region can take focus, so keyboard users can scroll it.
         <Box
           className={styles.dataTableViewport}
           tabIndex={0}

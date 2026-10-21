@@ -69,6 +69,17 @@ test.describe("Chart tables", () => {
         page.getByRole("table", { name: "Antall tilbakemeldinger per dag" }),
       ).toBeVisible();
 
+      // 30 days do not fit, so the table scrolls inside its fixed height.
+      const timelineRegion = page.getByRole("region", {
+        name: "Antall tilbakemeldinger per dag",
+      });
+      const size = await timelineRegion.evaluate((element) => ({
+        height: element.clientHeight,
+        scrollHeight: element.scrollHeight,
+      }));
+      expect(size.height).toBeLessThanOrEqual(400);
+      expect(size.scrollHeight).toBeGreaterThan(size.height);
+
       const results = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
         .analyze();

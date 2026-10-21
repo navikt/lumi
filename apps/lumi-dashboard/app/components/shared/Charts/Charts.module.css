@@ -295,8 +295,19 @@
   transition: width 0.3s ease;
 }
 
+/* A long period gives one row per day. The fixed height keeps an open table
+   from pushing the rest of the page far down, and the header row stays in
+   view while the table scrolls. */
 .dataTableViewport {
-  overflow-x: auto;
+  max-height: 25rem;
+  overflow: auto;
+}
+
+.dataTableViewport thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--ax-bg-raised);
 }
 
 .srOnly {
