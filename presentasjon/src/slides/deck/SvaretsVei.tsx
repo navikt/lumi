@@ -1,4 +1,4 @@
-import type { Slide } from "../../engine";
+import type { Slide, SlideProps } from "../../engine";
 import { Answer, Line, LineMap, MapText, Station } from "../../map";
 import "./deck.css";
 
@@ -59,11 +59,15 @@ function StationText({
   );
 }
 
-function SvaretsVei() {
+/** On the last step the answer travels on, from the user to the team. */
+const TRAVEL_MS = 1400;
+
+function SvaretsVei({ step }: SlideProps) {
+  const travelled = step >= 3;
   return (
     <div className="slide">
       <h2 className="slide-title">Svarets vei</h2>
-      <LineMap label="Linjekart med seks stasjoner, fra venstre mot høyre. Teamet lager: Surveyverksted. Utvikleren legger inn: koden i appen. Brukeren svarer: widgeten. Appens backend: veksler token. Lumi API: lagrer på Nais. Teamet leser: dashboardet.">
+      <LineMap label="Linjekart med seks stasjoner, fra venstre mot høyre. Svaret starter hos brukeren og reiser til teamet som leser det. Teamet lager: Surveyverksted. Utvikleren legger inn: koden i appen. Brukeren svarer: widgeten. Appens backend: veksler token. Lumi API: lagrer på Nais. Teamet leser: dashboardet.">
         <Line
           points={[
             [XS[0], Y],
@@ -85,8 +89,17 @@ function SvaretsVei() {
           note="koden i appen"
           from={1}
         />
+        <Station x={XS[2]} y={Y} from={1} />
         <g data-from={1}>
-          <Answer x={XS[2]} y={Y} r={DISC_R} />
+          <Answer
+            x={XS[2]}
+            y={Y}
+            r={DISC_R}
+            style={{
+              transform: travelled ? `translateX(${XS[5] - XS[2]}px)` : "none",
+              transitionDuration: `${TRAVEL_MS}ms`,
+            }}
+          />
         </g>
         <StationText
           x={XS[2]}
@@ -125,10 +138,12 @@ function SvaretsVei() {
 export const svaretsVei: Slide = {
   id: "svarets-vei",
   title: "Svarets vei",
-  steps: 2,
+  steps: 3,
   notes: `Ordrett inn: «Nå følger vi ett svar hele veien, fra teamet lager surveyen til teamet leser svaret.»
 
 Fire stasjoner er teamets, én er brukerens, én er vår. I et fagsystem er det saksbehandleren som svarer.
+
+Klikk 3: svaret reiser videre, gjennom appens backend og Lumi API, til teamet som leser det.
 
 Ut: «Første stasjon er teamet. Tenk på én oppgave i tjenesten deres som dere vet lite om.»`,
   Component: SvaretsVei,

@@ -112,6 +112,8 @@ function HvorBorSvaret({ step }: SlideProps) {
             ]}
             radius={56}
             arrow
+            draw
+            from={1}
           />
           <ConsentSwitch x={SCRIPT_X} y={250} />
           {/* Which line is which: the script comes in, the answer goes out. */}
@@ -137,6 +139,8 @@ function HvorBorSvaret({ step }: SlideProps) {
             ]}
             radius={56}
             arrow
+            draw
+            from={1}
           />
           <Station x={1360} y={500} label="Skyras server" side="right" />
           <Answer x={1360} y={640} r={36} />
@@ -158,12 +162,16 @@ function HvorBorSvaret({ step }: SlideProps) {
               [BACKEND[0] - RING_EDGE, BACKEND[1]],
             ]}
             arrow
+            draw
+            from={2}
           />
           <Line
             points={[
               [BACKEND[0], BACKEND[1]],
               [BACKEND[0], 768],
             ]}
+            draw
+            from={2}
           />
           <Station
             x={BACKEND[0]}

@@ -94,7 +94,9 @@ export function Line({
         className,
       )}
       style={width ? { strokeWidth: width } : undefined}
-      {...(shape ? {} : reveal(from))}
+      // A drawn line keeps its own step, also under an arrowhead, so it
+      // can draw itself in toward the head.
+      {...(shape && !draw ? {} : reveal(from))}
     />
   );
   if (!shape) return path;
