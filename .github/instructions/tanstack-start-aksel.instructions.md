@@ -125,7 +125,7 @@ import { StatsParamsSchema } from "~/types/schemas";
 
 export const fetchStatsServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(zodValidator(StatsParamsSchema))
+  .validator(zodValidator(StatsParamsSchema))
   .handler(async ({ data, context }) => {
     // fetch from backend with OBO token from context
   });
