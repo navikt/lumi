@@ -134,7 +134,6 @@ export const fetchStatsServerFn = createServerFn({ method: "GET" })
 ## Security Baseline (Dashboard)
 
 - Keep global security headers/CSP in `apps/lumi-dashboard/app/start.ts` with helpers from `app/server/securityHeaders.ts`.
-- Keep the global function middleware in `start.ts` that logs server function errors (`app/server/serverFnErrors.ts`). TanStack Start 1.169 no longer logs them itself.
 - Keep nonce propagation flow intact:
   - nonce created in `start.ts`
   - passed via start context in `app/router.tsx`
