@@ -212,21 +212,22 @@ Surveyen under har tre spørsmålstyper på hver sin side. Det andre og det tred
 import "@navikt/ds-css";
 import "@navikt/lumi-survey/styles.css";
 
-import { LumiSurveyDock } from "@navikt/lumi-survey";
+import { LumiSurveyDock, LumiSurveyHttpError } from "@navikt/lumi-survey";
 import type {
   SurveyDocumentV1,
   LumiSurveyTransport,
 } from "@navikt/lumi-survey";
 
 const transport: LumiSurveyTransport = {
-  submit: async (submission) => {
+  submit: async (submission, options) => {
     const response = await fetch("/api/lumi/feedback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(submission.transportPayload),
+      signal: options?.signal ?? null,
     });
     if (!response.ok) {
-      throw new Error(`Innsending feilet med status ${response.status}`);
+      throw LumiSurveyHttpError.fromResponse(response);
     }
   },
 };

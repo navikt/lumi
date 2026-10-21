@@ -70,6 +70,7 @@ fun SurveyDefinition.mergeWith(incoming: SurveyDefinition): SurveyDefinition {
  * One-time enrichment for definitions stored before maxSelections was part of
  * the V2 contract. It only fills a missing limit when every previously known
  * structural property is unchanged; subsequent limit changes remain conflicts.
+ * Callers decide which stored definitions predate the contract.
  */
 fun SurveyDefinition.withMissingMaxSelectionsFrom(incoming: SurveyDefinition): SurveyDefinition {
     val incomingById = incoming.fields.associateBy { it.fieldId }

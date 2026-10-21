@@ -23,8 +23,14 @@ import { StatsCards } from "~/components/dashboard/sections/StatsCards";
 import { TimelineSection } from "~/components/dashboard/sections/Timeline";
 import { UrgentUrls } from "~/components/dashboard/sections/UrgentUrls";
 import { RatingChart } from "~/components/shared/Charts/RatingChart";
-import { RatingTrendChart } from "~/components/shared/Charts/RatingTrendChart";
-import { TopAppsChart } from "~/components/shared/Charts/TopAppsChart";
+import {
+  RatingTrendChart,
+  RatingTrendChartTable,
+} from "~/components/shared/Charts/RatingTrendChart";
+import {
+  TopAppsChart,
+  TopAppsChartTable,
+} from "~/components/shared/Charts/TopAppsChart";
 import { MarkerModal } from "~/components/shared/MarkerModal";
 import { useMarkers } from "~/hooks/useMarkers";
 import { useSearchParams } from "~/hooks/useSearchParams";
@@ -134,7 +140,11 @@ export function RatingDashboard({
             <ChartCard title="Vurderingsfordeling" size="compact">
               <RatingChart />
             </ChartCard>
-            <ChartCard title="Topp apper" size="compact">
+            <ChartCard
+              title="Topp apper"
+              size="compact"
+              table={<TopAppsChartTable />}
+            >
               <TopAppsChart />
             </ChartCard>
           </DashboardGrid>
@@ -173,6 +183,7 @@ export function RatingDashboard({
               <div className={styles.trendContainer}>
                 <RatingTrendChart markers={markerState.markers} />
               </div>
+              <RatingTrendChartTable markers={markerState.markers} />
 
               <VStack gap="space-8" className={styles.markerSection}>
                 <Heading size="small" level="3">

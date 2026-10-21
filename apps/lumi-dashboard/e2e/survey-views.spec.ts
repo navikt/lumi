@@ -24,7 +24,7 @@ test.describe("Survey Views", () => {
         }),
       ).toBeVisible();
       const blockerPhrase = page
-        .getByRole("link", { name: /tilbakemeldinger med uttrykket/i })
+        .getByRole("link", { name: /\d+ svar\s*–\s*åpne svarene/i })
         .first();
       await expect(blockerPhrase).toBeVisible();
       await expect(blockerPhrase).toHaveAttribute("href", /phrase=blocker/);
@@ -91,7 +91,7 @@ test.describe("Survey Views", () => {
       await expect(page.getByText(/^(Noen|Mange) svar$/)).toBeVisible();
       await expect(
         page
-          .getByRole("link", { name: /tilbakemeldinger med uttrykket/i })
+          .getByRole("link", { name: /\d+ svar\s*–\s*åpne svarene/i })
           .first(),
       ).toBeVisible();
       await expect(page.getByText("Ordfrekvens")).toHaveCount(0);
@@ -111,12 +111,16 @@ test.describe("Survey Views", () => {
       await page.waitForLoadState("networkidle");
 
       const phraseLink = page
-        .getByRole("link", { name: /tilbakemeldinger med uttrykket/i })
+        .getByRole("link", { name: /\d+ svar\s*–\s*åpne svarene/i })
         .first();
       await expect(phraseLink).toBeVisible();
-      const phraseLabel = await phraseLink.getAttribute("aria-label");
-      const expectedCount = phraseLabel?.match(/Vis (\d+)/)?.[1];
-      const phraseText = phraseLabel?.match(/uttrykket «(.+?)»/)?.[1];
+      // The phrase and the count are the link's two paragraphs
+      const phraseText = (
+        await phraseLink.locator("p").nth(0).textContent()
+      )?.trim();
+      const expectedCount = (
+        await phraseLink.locator("p").nth(1).textContent()
+      )?.match(/(\d+) svar/)?.[1];
       expect(expectedCount).toBeTruthy();
       expect(phraseText).toBeTruthy();
       expect(

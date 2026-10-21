@@ -194,7 +194,9 @@ describe("QuestionCard expanded", () => {
     const onChange = vi.fn();
     renderCard({ expanded: true, onChange });
 
-    expect(screen.getByRole("group", { name: "Skala" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("radiogroup", { name: "Skala" }),
+    ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("radio", { name: "NPS" }));
 
     const updater = onChange.mock.calls[0]?.[0];
@@ -291,7 +293,7 @@ describe("QuestionCard expanded", () => {
     expect(updater).toBeTypeOf("function");
     expect(updater(question)).toMatchObject({ variant: "combobox" });
     expect(
-      screen.getByRole("group", {
+      screen.getByRole("radiogroup", {
         name: /^Slik vises svaralternativene/,
       }),
     ).toHaveAccessibleName(/opptil 6 alternativer/i);

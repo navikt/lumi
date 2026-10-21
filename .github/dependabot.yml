@@ -27,6 +27,11 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 10
+    # Keep version ranges that already allow the update and move only the
+    # lockfile. Otherwise every Aksel release raises the widget's published
+    # dependency on @navikt/aksel-icons, the release drift check stops the
+    # weekly pull request, and every other update waits with it.
+    versioning-strategy: increase-if-necessary
     ignore:
       - dependency-name: "zod"
         versions: [">=4"]
@@ -35,19 +40,23 @@ updates:
       # package builds fail.
       - dependency-name: "typescript"
         versions: [">=7"]
+      # The Node types follow the Node version the apps run on (engines and
+      # the Docker images), not the newest Node.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # Vitest 5 changed Assertion<T> to Assertion<R, T>. @testing-library/jest-dom
+      # still extends Assertion<T>, so its matchers disappear from the types.
+      # Remove these when jest-dom supports Vitest 5.
+      - dependency-name: "vitest"
+        versions: [">=5"]
+      - dependency-name: "@vitest/*"
+        versions: [">=5"]
+    # A dependency goes in the first group it matches, so the order matters.
     groups:
-      # react-dom refuses to run with another react version ("Incompatible
-      # React versions"), and the dashboard then answers 500 on every page.
-      react:
-        patterns:
-          - "react"
-          - "react-dom"
-          - "@types/react"
-          - "@types/react-dom"
       # @tanstack/react-start pins exact router versions. Updating the router
-      # alone installs a second router-core and breaks the route types. Start
-      # 1.169 and the routers released with it require Vite 8, so the group
-      # update needs that migration before it can pass.
+      # alone installs a second router-core and breaks the route types. A
+      # minor Start release can need a migration (1.169 required Vite 8), so
+      # these stay out of the weekly group.
       tanstack-router:
         patterns:
           - "@tanstack/react-router"
@@ -56,6 +65,30 @@ updates:
           - "@tanstack/start-*"
           - "@tanstack/history"
           - "@tanstack/zod-adapter"
+      # New Biome versions add lint rules and change formatting, so they need
+      # their own pull request with the code changes.
+      biome:
+        patterns:
+          - "@biomejs/biome"
+      # Every other minor and patch update in one weekly pull request.
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+        patterns:
+          - "*"
+      # Security updates in one pull request instead of one per package.
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      # The groups below get the major updates.
+      # react-dom refuses to run with another react version ("Incompatible
+      # React versions"), and the dashboard then answers 500 on every page.
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
       vitest:
         patterns:
           - "vitest"
@@ -83,6 +116,11 @@ updates:
         versions: [">=2.2.30"]
       - dependency-name: "org.jetbrains.kotlin.plugin.serialization"
         versions: [">=2.2.30"]
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+        patterns:
+          - "*"
   - package-ecosystem: "gradle"
     directory: "/apps/lumi-submission-proxy"
     schedule:
@@ -96,6 +134,11 @@ updates:
         versions: [">=2.2.30"]
       - dependency-name: "org.jetbrains.kotlin.plugin.serialization"
         versions: [">=2.2.30"]
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+        patterns:
+          - "*"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

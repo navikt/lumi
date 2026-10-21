@@ -54,6 +54,13 @@ export interface LumiSurveyStyle {
   position?: "bottom-right" | "bottom-left";
   /** Offset from viewport edges in px. @default 24 */
   offset?: number;
+  /**
+   * Stacking order of the dock, as an integer. Lower it to place the dock
+   * under the app's own fixed elements, such as a chat button in the same
+   * corner. Other values fall back to the default.
+   * @default 1000
+   */
+  zIndex?: number;
   /** Additional CSS class for container. */
   containerClassName?: string;
   /** Additional CSS class for panel. */
@@ -121,6 +128,16 @@ export interface LumiSurveyBehavior {
    * @default true
    */
   hideAfterSubmit?: boolean;
+  /**
+   * Show nothing while the dock is minimized, instead of the
+   * «Gi tilbakemelding» button. The survey then only shows when the dock
+   * opens by itself, and never with `initialOpen: false`. Users the dock cannot
+   * store a dismissal for, for example without consent, start minimized and
+   * never see the survey. Set it once; it is not meant to change while the
+   * dock is shown.
+   * @default false
+   */
+  hideMinimizedButton?: boolean;
   /**
    * Question layout mode.
    * @default "auto"

@@ -12,6 +12,7 @@ import no.nav.lumi.repository.StoredSurveyDefinition
 import no.nav.lumi.repository.SurveyDefinitionRepository
 import no.nav.lumi.repository.SurveyDefinitionSource
 import no.nav.lumi.validation.SurveyDefinitionValidator
+import java.time.Instant
 
 data class RegistrationResult(
     val surveyId: String,
@@ -234,7 +235,11 @@ class SurveyDefinitionService(
 
         if (!allowDefinitionExpansion) {
             val enrichedStoredDefinition =
-                storedDefinition.withMissingMaxSelectionsFrom(incomingDefinition)
+                if (stored.mayFillMissingMaxSelections()) {
+                    storedDefinition.withMissingMaxSelectionsFrom(incomingDefinition)
+                } else {
+                    storedDefinition
+                }
             val definitionDiff = diff(enrichedStoredDefinition, incomingDefinition)
             if (stored.source == SurveyDefinitionSource.AUTO && incomingSource == SurveyDefinitionSource.API) {
                 if (definitionDiff.changedFields.isNotEmpty() || definitionDiff.removedFields.isNotEmpty()) {
@@ -343,6 +348,18 @@ class SurveyDefinitionService(
         )
     }
 
+    /**
+     * Automatically registered definitions come from v1 submissions, which never
+     * carry maxSelections. Widget 2.1.0 and the V2 contract with maxSelections
+     * shipped together, so an api definition last written before the contract
+     * deploy lacks a limit by accident and is filled in once. After that, a
+     * missing limit counts as deliberate, and adding one is a structural change.
+     * Widgets 1.0.0–2.0.x also omit the limit; an app that registered a survey
+     * with them after the deploy gets 409 when it upgrades.
+     */
+    private fun StoredSurveyDefinition.mayFillMissingMaxSelections(): Boolean =
+        source == SurveyDefinitionSource.AUTO || updatedAt < MAX_SELECTIONS_CONTRACT_DEPLOYED_AT
+
     private sealed interface ExistingDefinitionResult {
         data class Resolved(val registrationResult: RegistrationResult) : ExistingDefinitionResult
         data object Retry : ExistingDefinitionResult
@@ -351,5 +368,8 @@ class SurveyDefinitionService(
     private companion object {
         const val MAX_DEFINITIONS_PER_TEAM = 500
         const val MAX_REGISTRATION_ATTEMPTS = 5
+
+        // When the production deploy that added maxSelections to the V2 contract finished.
+        val MAX_SELECTIONS_CONTRACT_DEPLOYED_AT: Instant = Instant.parse("2026-08-20T18:36:26Z")
     }
 }

@@ -4,7 +4,10 @@ import { StatsCards } from "~/components/dashboard/sections/StatsCards";
 import { TimelineSection } from "~/components/dashboard/sections/Timeline";
 import { DeviceBreakdownChart } from "~/components/shared/Charts/DeviceBreakdownChart";
 import { SurveyTypeDistribution } from "~/components/shared/Charts/SurveyTypeDistribution";
-import { TopAppsChart } from "~/components/shared/Charts/TopAppsChart";
+import {
+  TopAppsChart,
+  TopAppsChartTable,
+} from "~/components/shared/Charts/TopAppsChart";
 import styles from "./Overview.module.css";
 
 /**
@@ -29,6 +32,7 @@ export function OverviewDashboard() {
             <div className={styles.chartContainer}>
               <TopAppsChart />
             </div>
+            <TopAppsChartTable />
           </VStack>
         </DashboardCard>
 

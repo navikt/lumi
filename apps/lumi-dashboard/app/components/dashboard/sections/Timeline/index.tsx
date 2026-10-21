@@ -1,7 +1,10 @@
 import { Heading, VStack } from "@navikt/ds-react";
 import { DashboardCard } from "~/components/dashboard";
 import { TopTasksTimelineChart } from "~/components/dashboard/views/TopTasks/TimelineChart";
-import { TimelineChart } from "~/components/shared/Charts/TimelineChart";
+import {
+  TimelineChart,
+  TimelineChartTable,
+} from "~/components/shared/Charts/TimelineChart";
 import styles from "./TimelineSection.module.css";
 
 interface TimelineSectionProps {
@@ -39,6 +42,7 @@ export function TimelineSection({
             <TimelineChart />
           )}
         </div>
+        {variant === "topTasks" ? null : <TimelineChartTable />}
       </VStack>
     </DashboardCard>
   );

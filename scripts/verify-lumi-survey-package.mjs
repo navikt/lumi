@@ -104,6 +104,42 @@ function assertCssSelectorsAreNamespaced(css) {
   }
 }
 
+/**
+ * Packages that built code imports but package.json does not declare in
+ * dependencies or peerDependencies. The release drift check ignores
+ * devDependencies because they never ship, so a devDependency that ends up
+ * imported from dist would change consumers' code without a release.
+ */
+export function findUndeclaredImports(code, manifest) {
+  const declared = new Set([
+    manifest.name,
+    ...Object.keys(manifest.dependencies ?? {}),
+    ...Object.keys(manifest.peerDependencies ?? {}),
+  ]);
+  // JSDoc examples show imports that are not part of the code.
+  const withoutComments = code
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+  const specifiers = [
+    ...withoutComments.matchAll(
+      /(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*)["']([^"']+)["']/g,
+    ),
+  ].map((match) => match[1]);
+  const packages = specifiers
+    .filter(
+      (specifier) =>
+        !specifier.startsWith(".") &&
+        !specifier.startsWith("/") &&
+        !specifier.startsWith("node:"),
+    )
+    .map((specifier) =>
+      specifier.startsWith("@")
+        ? specifier.split("/").slice(0, 2).join("/")
+        : specifier.split("/")[0],
+    );
+  return [...new Set(packages)].filter((name) => !declared.has(name)).sort();
+}
+
 async function scanDirRecursive(dirPath, predicate) {
   const entries = await readdir(dirPath, { withFileTypes: true });
   for (const entry of entries) {
@@ -116,6 +152,54 @@ async function scanDirRecursive(dirPath, predicate) {
       await scanFileForForbiddenStrings(entryPath);
     }
   }
+}
+
+/**
+ * Problems with the "use client" entry for React Server Components.
+ * dist/client.js must start with the directive and only re-export from the
+ * built main entry, so there is one copy of the widget. The main entry must
+ * stay without the directive, so its helpers are not client references.
+ */
+export function findClientEntryProblems({ clientJs, indexJs, clientExport }) {
+  const problems = [];
+  if (!/^["']use client["'];/.test(clientJs.trimStart())) {
+    problems.push('dist/client.js must start with "use client";');
+  }
+  if (/export\s*\*/.test(clientJs)) {
+    problems.push(
+      "dist/client.js must use named exports; webpack in Next.js rejects export * in a client boundary",
+    );
+  }
+  const specifiers = [...clientJs.matchAll(/from\s+["']([^"']+)["']/g)].map(
+    (match) => match[1],
+  );
+  if (
+    specifiers.length === 0 ||
+    specifiers.some((specifier) => specifier !== "./index.js")
+  ) {
+    problems.push(
+      `dist/client.js must only re-export from ./index.js (found: ${specifiers.join(", ") || "none"})`,
+    );
+  }
+  if (/^["']use client["'];/.test(indexJs.trimStart())) {
+    problems.push('dist/index.js must not start with "use client";');
+  }
+  if (/from\s+["']\.\/index\.js["']/.test(indexJs)) {
+    problems.push(
+      'dist/index.js must not import "./index.js"; only src/client.ts may import it',
+    );
+  }
+  if (
+    !clientExport ||
+    Object.keys(clientExport)[0] !== "types" ||
+    clientExport.types !== "./dist/client.d.ts" ||
+    clientExport.default !== "./dist/client.js"
+  ) {
+    problems.push(
+      'package.json exports["./client"] must list types first: { "types": "./dist/client.d.ts", "default": "./dist/client.js" }',
+    );
+  }
+  return problems;
 }
 
 async function main() {
@@ -210,6 +294,37 @@ async function main() {
 
   await scanFileForForbiddenStrings(distIndexJs);
   await scanFileForForbiddenStrings(distIndexDts);
+
+  // 5) built code may only import declared dependencies and peers.
+  for (const entry of await readdir(distDir)) {
+    if (!/\.(?:[cm]?js|d\.[cm]?ts)$/.test(entry)) continue;
+    const undeclared = findUndeclaredImports(
+      await readText(path.join(distDir, entry)),
+      pkg,
+    );
+    if (undeclared.length > 0) {
+      fail(
+        `packages/lumi-survey/dist/${entry} imports packages that are not dependencies or peerDependencies: ${undeclared.join(", ")}`,
+      );
+    }
+  }
+
+  // 6) the client entry only re-exports the main entry, with "use client".
+  const distClientJs = path.join(distDir, "client.js");
+  const distClientDts = path.join(distDir, "client.d.ts");
+  if (!(await fileExists(distClientJs)) || !(await fileExists(distClientDts))) {
+    fail(
+      "packages/lumi-survey/dist is missing client.js or client.d.ts. Run: pnpm --filter @navikt/lumi-survey run build",
+    );
+  }
+  const clientEntryProblems = findClientEntryProblems({
+    clientJs: await readText(distClientJs),
+    indexJs: await readText(distIndexJs),
+    clientExport: pkg.exports?.["./client"],
+  });
+  if (clientEntryProblems.length > 0) {
+    fail(clientEntryProblems.join("\n"));
+  }
 
   const distCss = await readText(distIndexCss);
   assertCssSelectorsAreNamespaced(distCss);
