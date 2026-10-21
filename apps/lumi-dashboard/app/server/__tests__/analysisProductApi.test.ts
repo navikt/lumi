@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+import { ApiErrorException } from "~/types/errors";
 import {
   analysisRequest,
   mutateAnalysis,
@@ -97,6 +98,31 @@ describe("analysis API transport", () => {
         z.object({ id: z.string() }),
       ),
     ).rejects.toThrow("Uventet svar fra analyseprodukt-API-et.");
+  });
+
+  it("keeps a database that does not answer as an API error", async () => {
+    const payload = {
+      status: 503,
+      type: "DATABASE_UNAVAILABLE",
+      message: "Databasen svarer ikke akkurat nå",
+      timestamp: "2026-10-20T08:00:00Z",
+    };
+
+    const error = await readAnalysis(
+      Response.json(payload, { status: 503 }),
+      z.object({}),
+    ).catch((cause: unknown) => cause);
+
+    expect(error).toBeInstanceOf(ApiErrorException);
+    expect(error).toMatchObject({ error: payload });
+  });
+
+  it("gives other failed reads the general message", async () => {
+    await expect(
+      readAnalysis(new Response("boom", { status: 500 }), z.object({})),
+    ).rejects.toThrow(
+      "Analyseproduktet kunne ikke hentes. Kontroller team og prøv igjen.",
+    );
   });
 
   it("validates responses and strips fields not used by the dashboard", async () => {

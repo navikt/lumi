@@ -22,7 +22,10 @@ import { useActiveFilters } from "~/hooks/useActiveFilters";
 import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
-import { getTeamAccessError } from "~/hooks/useTeamAccessDenied";
+import {
+  databaseUnavailableDescription,
+  getTeamAccessError,
+} from "~/hooks/useTeamAccessDenied";
 import { useThemes } from "~/hooks/useThemes";
 import {
   resolveDashboardPeriod,
@@ -72,6 +75,7 @@ export function FilterBar({
   return (
     <DataFetchBoundary
       title="Kunne ikke hente filtre"
+      description={databaseUnavailableDescription(bootstrapQuery.error)}
       queries={[bootstrapQuery]}
     >
       <FilterBarContent
