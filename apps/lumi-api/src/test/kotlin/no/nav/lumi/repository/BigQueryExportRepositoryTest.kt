@@ -15,7 +15,6 @@ import no.nav.lumi.domain.BigQueryExportProblemCode
 import no.nav.lumi.domain.BigQueryExportRowCounts
 import no.nav.lumi.domain.BigQueryExportRunStatus
 import no.nav.lumi.domain.BigQueryExportSourceRow
-import no.nav.lumi.domain.ContextTagStats
 import no.nav.lumi.insertTestFeedbackWithJson
 import java.sql.SQLException
 import java.time.Instant
@@ -184,29 +183,6 @@ class BigQueryExportRepositoryTest : FunSpec({
         rows.map { it.surveyId }.distinct() shouldContainExactly listOf("s1")
         rows.all { it.surveyArchived } shouldBe true
         rows.first().receivedAt shouldBe fresh.minusDays(1).toInstant()
-    }
-
-    test("counts the values of each context tag in the export window") {
-        val fresh = OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS)
-        fun tags(id: String, json: String, opprettet: OffsetDateTime = fresh.minusDays(1)) = insertTestFeedbackWithJson(
-            id = id,
-            team = "team-a",
-            feedbackJson = """{"surveyId":"s1","answers":[],"context":{"tags":$json}}""",
-            opprettet = opprettet,
-        )
-        tags("t1", """{"rolle":"veileder","bruker":"u1","nested":{"a":1}}""")
-        tags("t2", """{"rolle":"veileder","bruker":"u2","tom":null}""")
-        tags("t3", """{"rolle":"leder","bruker":"u3"}""")
-        tags("t4", "[1,2]")
-        tags("t-old", """{"rolle":"gammel"}""", opprettet = fresh.minusMonths(12).minusDays(1))
-        insertTestFeedbackWithJson(id = "other", team = "team-b", feedbackJson = """{"surveyId":"s1","answers":[],"context":{"tags":{"rolle":"x"}}}""")
-
-        val stats = repository.readExportSnapshot("team-a", 12) { it.contextTagStats() }
-
-        stats shouldBe mapOf(
-            "rolle" to ContextTagStats(distinctValues = 2, occurrences = 3),
-            "bruker" to ContextTagStats(distinctValues = 3, occurrences = 3),
-        )
     }
 
     test("only one caller at a time gets the export lock") {

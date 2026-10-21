@@ -396,7 +396,8 @@ export function DestinationForm({
           <VStack gap="space-16">
             <BodyShort size="small">
               Svar på vurderings- og valgspørsmål er alltid med. URL, nettleser,
-              skjermstørrelse og Lumis interne ID-er er aldri med.
+              skjermstørrelse, tagger fra appen og Lumis interne ID-er er aldri
+              med.
             </BodyShort>
             {freeText}
             <div>

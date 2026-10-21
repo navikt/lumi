@@ -289,12 +289,10 @@ class BigQueryExportService(
 
         val uploads = specs.mapValues { (_, spec) -> CountingUpload(gateway.startUpload(spec, jobLabels)) }
         val skipped = repository.readExportSnapshot(team, retentionMonths) { snapshot ->
-            val tagStats = snapshot.contextTagStats()
             val mapper = BigQueryExportMapper(
                 pseudonymKey = destination.pseudonymKey,
                 includeFreeText = includeFreeText,
                 exportedAt = startedAt,
-                allowedTagKeys = tagStats.filterValues { it.isSegment }.keys,
             )
             snapshot.forEachRow { row ->
                 val mapped = mapper.map(row) ?: return@forEachRow
@@ -304,12 +302,12 @@ class BigQueryExportService(
                     mapped.fritekst.forEach { upload.write(json.encodeToString(FritekstExportRow.serializer(), it)) }
                 }
             }
-            Skipped(mapper.skippedSubmissions, mapper.skippedAnswers, tagStats.count { !it.value.isSegment })
+            Skipped(mapper.skippedSubmissions, mapper.skippedAnswers)
         }
-        if (skipped.submissions > 0 || skipped.answers > 0 || skipped.tagKeys > 0) {
+        if (skipped.submissions > 0 || skipped.answers > 0) {
             log.info(
-                "BigQuery export for team {} skipped {} malformed submissions, {} malformed answers and {} context tag keys with many values",
-                team, skipped.submissions, skipped.answers, skipped.tagKeys,
+                "BigQuery export for team {} skipped {} malformed submissions and {} malformed answers",
+                team, skipped.submissions, skipped.answers,
             )
         }
 
@@ -631,7 +629,7 @@ class BigQueryExportService(
         data class Problem(val problem: BigQueryExportProblem) : DatasetCheck
     }
 
-    private data class Skipped(val submissions: Long, val answers: Long, val tagKeys: Int)
+    private data class Skipped(val submissions: Long, val answers: Long)
 
     private sealed interface ExportOutcome {
         data class Succeeded(val rows: BigQueryExportRowCounts) : ExportOutcome

@@ -76,7 +76,6 @@ enum class BigQueryExportTable(
                 "Nyeste tekst for alternativet.",
             ),
             BigQueryExportColumns.enhetstype,
-            BigQueryExportColumns.kontekst,
             BigQueryExportColumns.skjemaversjon,
             BigQueryExportColumns.oppdatertTidspunkt,
         ),
@@ -106,7 +105,6 @@ enum class BigQueryExportTable(
                 "Sekunder fra surveyen ble vist til svaret ble sendt, rundet ned. Tom når widgeten ikke sendte tiden.",
             ),
             BigQueryExportColumns.enhetstype,
-            BigQueryExportColumns.kontekst,
             BigQueryExportColumns.skjemaversjon,
             BigQueryExportColumns.oppdatertTidspunkt,
         ),
@@ -131,7 +129,6 @@ enum class BigQueryExportTable(
                 "Om Lumi har maskert tekst som så ut som personopplysninger i innsendingen.",
             ),
             BigQueryExportColumns.enhetstype,
-            BigQueryExportColumns.kontekst,
             BigQueryExportColumns.skjemaversjon,
             BigQueryExportColumns.oppdatertTidspunkt,
         ),
@@ -146,7 +143,7 @@ private object BigQueryExportColumns {
     )
     val innsendtTidspunkt = BigQueryColumn(
         "innsendt_tidspunkt", "TIMESTAMP", true,
-        "Når Lumi tok imot svaret, rundet ned til hele minutter.",
+        "Når Lumi tok imot svaret, rundet ned til hel time.",
     )
     val innsendtDato = BigQueryColumn(
         "innsendt_dato", "DATE", true,
@@ -173,11 +170,6 @@ private object BigQueryExportColumns {
     val enhetstype = BigQueryColumn(
         "enhetstype", "STRING", false,
         "Enheten svaret ble sendt fra: mobile, tablet eller desktop.",
-    )
-    val kontekst = BigQueryColumn(
-        "kontekst", "STRING", false,
-        "Segmenteringstaggene appen sendte med, som et JSON-objekt. Tagger med mange ulike verdier er ikke med. " +
-            "Les en verdi med JSON_VALUE(kontekst, '$.navn').",
     )
     val skjemaversjon = BigQueryColumn(
         "skjemaversjon", "STRING", false,
@@ -208,7 +200,6 @@ data class SvarExportRow(
     @SerialName("valg_id") val valgId: String? = null,
     @SerialName("valg_tekst") val valgTekst: String? = null,
     val enhetstype: String? = null,
-    val kontekst: String? = null,
     val skjemaversjon: String? = null,
     @SerialName("oppdatert_tidspunkt") val oppdatertTidspunkt: String,
 )
@@ -226,7 +217,6 @@ data class InnsendingExportRow(
     @SerialName("har_fritekst") val harFritekst: Boolean,
     @SerialName("varighet_sekunder") val varighetSekunder: Long? = null,
     val enhetstype: String? = null,
-    val kontekst: String? = null,
     val skjemaversjon: String? = null,
     @SerialName("oppdatert_tidspunkt") val oppdatertTidspunkt: String,
 )
@@ -245,7 +235,6 @@ data class FritekstExportRow(
     val tekst: String,
     val maskert: Boolean,
     val enhetstype: String? = null,
-    val kontekst: String? = null,
     val skjemaversjon: String? = null,
     @SerialName("oppdatert_tidspunkt") val oppdatertTidspunkt: String,
 )

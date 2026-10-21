@@ -10,7 +10,6 @@ import no.nav.lumi.domain.BigQueryExportProblemCode
 import no.nav.lumi.domain.BigQueryExportRowCounts
 import no.nav.lumi.domain.BigQueryExportRunStatus
 import no.nav.lumi.domain.BigQueryExportSourceRow
-import no.nav.lumi.domain.ContextTagStats
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.slf4j.LoggerFactory
 import java.security.SecureRandom
@@ -22,9 +21,6 @@ import javax.sql.DataSource
 
 /** The team's stored responses for one export run, read from one consistent snapshot. */
 interface BigQueryExportSnapshot {
-    /** How often each context tag key occurs, and with how many different values. */
-    suspend fun contextTagStats(): Map<String, ContextTagStats>
-
     /** Streams the responses newest first. */
     suspend fun forEachRow(consumer: suspend (BigQueryExportSourceRow) -> Unit)
 }
@@ -263,26 +259,6 @@ class BigQueryExportRepository(
                 val cutoff = Timestamp.from(connection.retentionCutoff(retentionMonths))
                 block(
                     object : BigQueryExportSnapshot {
-                        override suspend fun contextTagStats(): Map<String, ContextTagStats> =
-                            connection.prepareStatement(CONTEXT_TAG_STATS_SQL).use { statement ->
-                                statement.queryTimeout = QUERY_TIMEOUT_SECONDS
-                                statement.setString(1, team)
-                                statement.setTimestamp(2, cutoff)
-                                statement.executeQuery().use { result ->
-                                    buildMap {
-                                        while (result.next()) {
-                                            put(
-                                                result.getString("tag_key"),
-                                                ContextTagStats(
-                                                    distinctValues = result.getLong("distinct_values"),
-                                                    occurrences = result.getLong("occurrences"),
-                                                ),
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
                         override suspend fun forEachRow(consumer: suspend (BigQueryExportSourceRow) -> Unit) {
                             connection.prepareStatement(SOURCE_ROWS_SQL).use { statement ->
                                 statement.fetchSize = SOURCE_FETCH_SIZE
@@ -375,23 +351,6 @@ class BigQueryExportRepository(
                 "last_run_error_code, consecutive_failures, last_success_at, last_success_rows::text AS last_success_rows"
 
         private const val SELECT_DESTINATION = "SELECT $DESTINATION_COLUMNS FROM bigquery_export.destinations"
-
-        private val CONTEXT_TAG_STATS_SQL = """
-            SELECT t.key AS tag_key,
-                   COUNT(DISTINCT t.value) AS distinct_values,
-                   COUNT(*) AS occurrences
-            FROM feedback f
-            CROSS JOIN LATERAL jsonb_each(
-                CASE WHEN jsonb_typeof(f.feedback_json -> 'context' -> 'tags') = 'object'
-                     THEN f.feedback_json -> 'context' -> 'tags'
-                     ELSE '{}'::jsonb
-                END
-            ) AS t(key, value)
-            WHERE f.team = ?
-              AND f.opprettet >= ?
-              AND jsonb_typeof(t.value) IN ('string', 'number', 'boolean')
-            GROUP BY t.key
-        """.trimIndent()
 
         private val SOURCE_ROWS_SQL = """
             SELECT f.id,

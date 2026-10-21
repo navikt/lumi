@@ -11,14 +11,15 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldMatch
 import io.kotest.matchers.string.shouldNotContain
+import kotlinx.serialization.json.Json
 import java.time.Instant
 
 class BigQueryExportMapperTest : FunSpec({
     val key = ByteArray(32) { it.toByte() }
     val exportedAt = Instant.parse("2026-10-20T02:00:00Z")
 
-    fun mapper(includeFreeText: Boolean = false, pseudonymKey: ByteArray = key, allowedTagKeys: Set<String>? = null) =
-        BigQueryExportMapper(pseudonymKey, includeFreeText, exportedAt, allowedTagKeys)
+    fun mapper(includeFreeText: Boolean = false, pseudonymKey: ByteArray = key) =
+        BigQueryExportMapper(pseudonymKey, includeFreeText, exportedAt)
 
     fun row(
         json: String,
@@ -58,7 +59,7 @@ class BigQueryExportMapperTest : FunSpec({
         svar.ratingVerdi shouldBe 4
         svar.ratingVariant shouldBe "emoji"
         svar.ratingSkala shouldBe 5
-        svar.innsendtTidspunkt shouldBe "2026-10-19 22:30:00.000000+00:00"
+        svar.innsendtTidspunkt shouldBe "2026-10-19 22:00:00.000000+00:00"
         svar.innsendtDato shouldBe "2026-10-20"
         svar.enhetstype shouldBe "mobile"
         svar.surveyType shouldBe "custom"
@@ -143,11 +144,12 @@ class BigQueryExportMapperTest : FunSpec({
         fritekst.sporsmalTekst shouldBe "Innspill"
     }
 
-    test("writes context tags as sorted compact JSON") {
-        val mapped = mapper().map(row(submission(rating("opplevelse", 5, "emoji", 5)))).shouldNotBeNull()
+    test("never exports context tags from the app") {
+        val mapped = mapper(includeFreeText = true).map(row(submission(rating("opplevelse", 5, "emoji", 5)))).shouldNotBeNull()
+        val json = Json { explicitNulls = false }
 
-        mapped.innsending.kontekst shouldBe """{"aktiv":true,"antall":3,"rolle":"sykmeldt"}"""
-        mapped.svar.single().kontekst shouldBe mapped.innsending.kontekst
+        json.encodeToString(InnsendingExportRow.serializer(), mapped.innsending) shouldNotContain "sykmeldt"
+        json.encodeToString(SvarExportRow.serializer(), mapped.svar.single()) shouldNotContain "sykmeldt"
     }
 
     test("gives a stable pseudonym per key that never contains the internal id") {
@@ -207,7 +209,6 @@ class BigQueryExportMapperTest : FunSpec({
 
         mapped.innsending.surveyType shouldBe "custom"
         mapped.innsending.enhetstype.shouldBeNull()
-        mapped.innsending.kontekst.shouldBeNull()
     }
 
     test("survives explicit JSON null in context and answers") {
@@ -227,11 +228,11 @@ class BigQueryExportMapperTest : FunSpec({
         mapped.innsending.surveyArkivert shouldBe true
     }
 
-    test("cuts the receive time to whole minutes and keeps the Norwegian date") {
-        val mapped = mapper().map(row(submission(), receivedAt = Instant.parse("2026-10-19T21:59:59.987654Z"))).shouldNotBeNull()
+    test("cuts the receive time to whole hours and keeps the Norwegian date") {
+        val mapped = mapper().map(row(submission(), receivedAt = Instant.parse("2026-10-19T22:59:59.987654Z"))).shouldNotBeNull()
 
-        mapped.innsending.innsendtTidspunkt shouldBe "2026-10-19 21:59:00.000000+00:00"
-        mapped.innsending.innsendtDato shouldBe "2026-10-19"
+        mapped.innsending.innsendtTidspunkt shouldBe "2026-10-19 22:00:00.000000+00:00"
+        mapped.innsending.innsendtDato shouldBe "2026-10-20"
     }
 
     test("drops selected options the question does not list") {
@@ -270,26 +271,6 @@ class BigQueryExportMapperTest : FunSpec({
         svar.valgId.shouldNotBeNull() shouldNotContain "ola.nordmann@example.com"
         svar.valgTekst.shouldNotBeNull() shouldNotContain "ola.nordmann@example.com"
         svar.surveyId shouldNotContain "per.hansen@example.com"
-    }
-
-    test("exports only the context tags that are allowed, and never null values") {
-        val withNull = submission(extra = "").replace(""""aktiv":true""", """"aktiv":true,"tom":null""")
-
-        mapper(allowedTagKeys = setOf("rolle")).map(row(withNull)).shouldNotBeNull().innsending.kontekst shouldBe
-            """{"rolle":"sykmeldt"}"""
-        mapper(allowedTagKeys = emptySet()).map(row(withNull)).shouldNotBeNull().innsending.kontekst.shouldBeNull()
-        mapper().map(row(withNull)).shouldNotBeNull().innsending.kontekst shouldBe
-            """{"aktiv":true,"antall":3,"rolle":"sykmeldt"}"""
-    }
-
-    test("treats tags with many values or few responses per value as identifiers") {
-        ContextTagStats(distinctValues = 2, occurrences = 10).isSegment shouldBe true
-        ContextTagStats(distinctValues = 2, occurrences = 9).isSegment shouldBe false
-        ContextTagStats(distinctValues = 1, occurrences = 1).isSegment shouldBe false
-        ContextTagStats(distinctValues = 11, occurrences = 55).isSegment shouldBe true
-        ContextTagStats(distinctValues = 11, occurrences = 54).isSegment shouldBe false
-        ContextTagStats(distinctValues = 50, occurrences = 10_000).isSegment shouldBe true
-        ContextTagStats(distinctValues = 51, occurrences = 10_000).isSegment shouldBe false
     }
 
     test("refuses rows that are not ordered newest first") {

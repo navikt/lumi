@@ -230,7 +230,7 @@ class BigQueryExportServiceTest : FunSpec({
         svar.filter { it["sporsmal_id"]!!.jsonPrimitive.content == "identifisering" }
             .map { it["valg_tekst"]!!.jsonPrimitive.content } shouldContainExactly listOf("Ja", "Ja")
         svar.map { it["app"]!!.jsonPrimitive.content }.toSet() shouldBe setOf("syfomodiaperson")
-        svar.map { it["innsendt_tidspunkt"]!!.jsonPrimitive.content }.forEach { it.substring(17, 26) shouldBe "00.000000" }
+        svar.map { it["innsendt_tidspunkt"]!!.jsonPrimitive.content }.forEach { it.substring(14, 26) shouldBe "00:00.000000" }
         lines(gateway, "innsendinger") shouldHaveSize 2
         gateway.tables shouldNotContainKey "$project.lumi.fritekst"
         gateway.tables.getValue("$project.lumi.svar").labels shouldBe mapOf("lumi-eksport" to "v1", "lumi-team" to team)

@@ -92,8 +92,9 @@ Lumi skriver tre tabeller:
 Hver rad har spørsmålsteksten og svarteksten, fordi Metabase ikke kan koble
 sammen tilgangsbegrensede datasett. Teksten er den nyeste for spørsmålet eller
 alternativet, slik dashboardet viser den, så en tekstendring endrer også eldre
-rader. Tidspunktet er Lumis mottakstid i UTC, rundet ned til hele minutter. Det
-holder for analyse og gjør det vanskeligere å koble svarene med andre logger.
+rader. Tidspunktet er Lumis mottakstid i UTC, rundet ned til hel time, som i
+#482. Det holder for analyse og gjør det vanskeligere å koble svarene med andre
+logger.
 Datoen er i norsk tid, som i dashboardet. Kolonnene er beskrevet i
 [BigQuery og Metabase](../dashboard/bigquery.md#kolonner) og i skjemaet i
 BigQuery.
@@ -106,11 +107,10 @@ eksporten igjen. Da får `innsending_id` nye verdier. Team eSyfo, som drifter
 Lumi, har nøkkelen og kan i prinsippet koble `innsending_id` tilbake til svaret
 i Lumi. Det er pseudonymisering, ikke anonymisering.
 
-Taggene appen sender, er med som et JSON-objekt i kolonnen `kontekst`, og
-enhetstypen har en egen kolonne. Bare tagger med enkle verdier er med, høyst 20
-per svar. Tagger som kan skille enkeltsvar fra hverandre, er ikke med: tagger med
-mer enn 50 ulike verdier, og tagger der hver verdi i snitt finnes i færre enn fem
-svar, regnet over de siste tolv månedene.
+Enhetstypen har en egen kolonne med tre faste verdier. Taggene appen sender med,
+er ikke med. Slik #482 slo fast, er en tagg ikke trygg bare fordi den har få
+verdier, og en tagg kan bare bli en kolonne gjennom et register der noen har
+vurdert den. Kolonner kan legges til senere uten å ødelegge spørringer.
 
 `survey_id`, `sporsmal_id` og `valg_id` maskeres med de samme mønstrene som
 fritekst. Et valgt alternativ er bare med når det står i listen over
@@ -202,7 +202,7 @@ team eSyfo og iSyfo (`LUMI_BIGQUERY_EXPORT_PILOT_TEAMS`). Andre team ser at
 eksporten er i pilot. Fritekst er ikke åpnet for noen av dem.
 
 1. eSyfo setter opp eksporten i sitt prosjekt og deler et view med bare
-   `bro-frontend` på Datamarkedsplassen.
+   `bro-frontend` og surveyen `bro-kartleggingssporsmal` på Datamarkedsplassen.
 2. iSyfo setter opp eksporten for `syfomodiaperson` i sitt prosjekt og søker om
    tilgang til eSyfos view.
 3. iSyfo bytter spørringene i `isyfo-analyse` til tabellene og viewet og kjører
@@ -225,6 +225,44 @@ nytt:
   til teamenes datasett ikke ligger i podden som tar imot svar
 - om `feedback` trenger en indeks på `(team, opprettet, id)`, og om Lumi skal
   lagre hvem som har slått fritekst av og på
+
+### Forholdet til #482
+
+#482 beskrev analyseproduktene fra ADR 0006 i detalj. Disse beslutningene
+derfra gjelder fortsatt:
+
+- Lumis interne ID forlater aldri Lumi, og `innsending_id` er en pseudonym ID
+  med egen nøkkel.
+- Rå `feedback_json`, JSON-kolonner, tagger fra appen, URL, pathname,
+  nettleser, skjermstørrelse og feilsøkingsdata er aldri med.
+- Tidspunktet er rundet ned til hel time, og datoen er i norsk tid.
+- Datamarkedsplassen forvalter tilgangen. Lumi gir ingen tilgang og bygger
+  ingen godkjenning.
+- Fritekst og datosvar er ikke med i produksjon. Fritekst kan åpnes for ett
+  team når en PVK dekker det.
+- `esyfo-analyse` fjernes etter en kontrollert overgang.
+
+Dette er endret:
+
+- Dataene ligger i teamets eget prosjekt, ikke i et datasett per produkt i et
+  Lumi-prosjekt. Hvert team har ett eksportmål med alle surveyene sine, og
+  teamet deler views.
+- Det finnes ingen utkast, releaser, forhåndsvisning eller manifest. Tabellene
+  har en fast kontrakt der kolonner bare legges til.
+- Lumi lager ingen brede views per survey. `svar` har én rad per svarverdi, og
+  `innsendinger` én rad per innsending.
+- Spørsmåls- og svartekst er den nyeste teksten i innsendingene, maskert, slik
+  dashboardet viser den. #482 ville bare bruke tekst fra registrert metadata,
+  fordi tekstene i innsendingen kommer fra klienten. Lumi har ennå ikke et slikt
+  register for surveyer som er definert i appens kode. En innsending med
+  manipulerte tekster kan derfor endre teksten i tabellene, til neste ekte
+  innsending kommer.
+- Enhetstypen er alltid med, siden den bare har tre faste verdier.
+- Lumi API skriver selv til teamenes datasett, i stedet for egne identiteter for
+  hvert steg. Det er vurdert under negative konsekvenser.
+- Lumi bruker lastejobber via REST, ikke planlagt federated query, og hver
+  tabell erstattes for seg.
+- Tabellene viser ikke om respondenten fikk se spørsmålet.
 
 ### Analyseproduktene fra ADR 0006
 
@@ -268,7 +306,7 @@ spørsmål. Hva som skal fjernes, avgjøres etter piloten.
 - Fritekst er stengt i produksjon til et team har en PVK som dekker fritekst i
   BigQuery.
 - Sletting i BigQuery skjer når neste kjøring lykkes, ikke umiddelbart.
-- Tidspunkt, app, kontekst og svar kan sammen gjøre det mulig å kjenne igjen
+- Tidspunkt, app, enhetstype og svar kan sammen gjøre det mulig å kjenne igjen
   hvem som svarte i små grupper. Tabellene skal derfor registreres som
   personopplysninger.
 - Lumi skriver mot BigQuerys REST-API selv. Protokollen for resumable upload og

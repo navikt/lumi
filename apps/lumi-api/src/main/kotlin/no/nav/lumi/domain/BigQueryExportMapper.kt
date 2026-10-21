@@ -2,7 +2,6 @@ package no.nav.lumi.domain
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -30,22 +29,6 @@ data class BigQueryExportSourceRow(
     val feedbackJson: String,
 )
 
-/** How often a context tag key occurs in the export window, and with how many different values. */
-data class ContextTagStats(val distinctValues: Long, val occurrences: Long) {
-    /**
-     * Tags are meant for segments with few values. A key with many values, or with fewer than five
-     * responses per value on average, works as an identifier and is left out of the export. A new
-     * key is left out until it has enough responses.
-     */
-    val isSegment: Boolean
-        get() = distinctValues <= MAX_DISTINCT_VALUES && distinctValues * MIN_RESPONSES_PER_VALUE <= occurrences
-
-    companion object {
-        const val MAX_DISTINCT_VALUES = 50L
-        const val MIN_RESPONSES_PER_VALUE = 5L
-    }
-}
-
 data class BigQueryExportMappedSubmission(
     val innsending: InnsendingExportRow,
     val svar: List<SvarExportRow>,
@@ -64,7 +47,8 @@ data class BigQueryExportMappedSubmission(
  *
  * IDs come from the widget payload like the labels, so they are masked with the same patterns. A
  * selected option is only exported when the question lists it. The receive time is cut to whole
- * minutes, which is enough for analysis and harder to match against other logs.
+ * hours, which is enough for analysis and harder to match against other logs. Context tags from the
+ * app are never exported: a tag is not safe just because it has few values (issue #482).
  *
  * Not thread-safe. Use one instance per export run.
  */
@@ -72,8 +56,6 @@ class BigQueryExportMapper(
     pseudonymKey: ByteArray,
     private val includeFreeText: Boolean,
     exportedAt: Instant,
-    /** Context tag keys that may be exported. Null exports every key. */
-    private val allowedTagKeys: Set<String>? = null,
     private val sensitiveDataFilter: SensitiveDataFilter = SensitiveDataFilter.DEFAULT,
 ) {
     private val mac: Mac = Mac.getInstance(HMAC_ALGORITHM).apply {
@@ -105,14 +87,13 @@ class BigQueryExportMapper(
         val context = root["context"] as? JsonObject
         val submission = SubmissionFacts(
             innsendingId = pseudonym(row.feedbackId),
-            receivedAt = formatBigQueryTimestamp(row.receivedAt.truncatedTo(ChronoUnit.MINUTES)),
+            receivedAt = formatBigQueryTimestamp(row.receivedAt.truncatedTo(ChronoUnit.HOURS)),
             receivedDate = row.receivedAt.atZone(OSLO).toLocalDate().toString(),
             app = row.app,
             surveyId = surveyId,
             surveyType = root.string("surveyType")?.let(::normalizeSurveyType),
             archived = row.surveyArchived,
             deviceType = context?.string("deviceType")?.lowercase()?.takeIf { it in DEVICE_TYPES },
-            kontekst = (context?.get("tags") as? JsonObject)?.let { kontekstJson(it, allowedTagKeys) },
             definitionHash = row.definitionHash?.takeIf { it.isNotBlank() },
         )
 
@@ -181,7 +162,6 @@ class BigQueryExportMapper(
                 harFritekst = hasText,
                 varighetSekunder = root.long("timeToCompleteMs")?.takeIf { it > 0 }?.let { it / 1000 },
                 enhetstype = submission.deviceType,
-                kontekst = submission.kontekst,
                 skjemaversjon = submission.definitionHash,
                 oppdatertTidspunkt = exportedAtText,
             ),
@@ -200,7 +180,6 @@ class BigQueryExportMapper(
                     tekst = text,
                     maskert = textRedacted,
                     enhetstype = submission.deviceType,
-                    kontekst = submission.kontekst,
                     skjemaversjon = submission.definitionHash,
                     oppdatertTidspunkt = exportedAtText,
                 )
@@ -220,7 +199,6 @@ class BigQueryExportMapper(
         sporsmalTekst = label,
         sporsmalType = fieldType,
         enhetstype = deviceType,
-        kontekst = kontekst,
         skjemaversjon = definitionHash,
         oppdatertTidspunkt = exportedAtText,
     )
@@ -281,7 +259,6 @@ class BigQueryExportMapper(
         val surveyType: String?,
         val archived: Boolean,
         val deviceType: String?,
-        val kontekst: String?,
         val definitionHash: String?,
     )
 
@@ -341,7 +318,6 @@ class BigQueryExportMapper(
         private const val HMAC_ALGORITHM = "HmacSHA256"
         private const val MAX_LABEL_LENGTH = 1000
         private const val MAX_ID_LENGTH = 200
-        private const val MAX_CONTEXT_TAGS = 20
         private val OSLO: ZoneId = ZoneId.of("Europe/Oslo")
         private val DEVICE_TYPES = setOf("mobile", "tablet", "desktop")
         private val SURVEY_TYPES = setOf("rating", "topTasks", "discovery", "taskPriority", "custom")
@@ -354,7 +330,6 @@ class BigQueryExportMapper(
         private val TIMESTAMP_FORMAT: DateTimeFormatter =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS").withZone(ZoneOffset.UTC)
         private val parser = Json { ignoreUnknownKeys = true }
-        private val compactJson = Json { prettyPrint = false }
 
         /** BigQuery accepts `YYYY-MM-DD HH:MM:SS.ffffff+00:00` in JSON loads. */
         fun formatBigQueryTimestamp(instant: Instant): String = TIMESTAMP_FORMAT.format(instant) + "+00:00"
@@ -363,17 +338,6 @@ class BigQueryExportMapper(
 
         private fun parseObject(text: String): JsonObject? =
             runCatching { parser.parseToJsonElement(text) as? JsonObject }.getOrNull()
-
-        private fun kontekstJson(tags: JsonObject, allowedKeys: Set<String>?): String? {
-            val primitives = tags.entries
-                .asSequence()
-                .filter { (key, value) -> key.isNotBlank() && value is JsonPrimitive && value !is JsonNull }
-                .filter { (key, _) -> allowedKeys == null || key in allowedKeys }
-                .sortedBy { it.key }
-                .take(MAX_CONTEXT_TAGS)
-                .associate { (key, value) -> key to value }
-            return primitives.takeIf { it.isNotEmpty() }?.let { compactJson.encodeToString(JsonObject.serializer(), JsonObject(it)) }
-        }
 
         private fun JsonObject.string(key: String): String? =
             (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull

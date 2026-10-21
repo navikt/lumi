@@ -95,7 +95,7 @@ Nav er behandlingsansvarlig. På vegne av Nav har dere ansvaret for kopien i tea
 - Lumi oppdaterer ikke kopier dere lager selv, for eksempel lagrede resultater i Metabase, tabeller i notebooks og statiske datafortellinger. Sletter dere et svar, må dere slette det der også og si fra til dem dere har delt dataene med.
 - Hver tabell forsvinner sju dager etter at Lumi sist skrev den, for eksempel hvis dere fjerner Lumis tilgang eller kjøringene feiler.
 
-`svar` og `innsendinger` har ingen kolonner for navn eller fødselsnummer, men `fritekst` kan inneholde det. Når få har svart, kan tidspunkt, app, kontekst og svar likevel avsløre hvem som svarte. Registrer derfor tabellene som personopplysninger. Ikke koble tabellene med andre data om brukerne, for eksempel på tidspunkt, uten at PVK-en dekker det.
+`svar` og `innsendinger` har ingen kolonner for navn eller fødselsnummer, men `fritekst` kan inneholde det. Når få har svart, kan tidspunkt, app, enhetstype og svar likevel avsløre hvem som svarte. Registrer derfor tabellene som personopplysninger. Ikke koble tabellene med andre data om brukerne, for eksempel på tidspunkt, uten at PVK-en dekker det.
 
 `innsending_id` er pseudonymisert, ikke anonymisert. Team eSyfo, som drifter Lumi, har nøkkelen og kan i prinsippet koble ID-en tilbake til svaret i Lumi.
 
@@ -129,7 +129,7 @@ Tilganger gitt på Datamarkedsplassen ligger på tabellen eller viewet. Når en 
 
 Velg **Legg til i Metabase** på datasettet på Datamarkedsplassen. Metabase lager en samling med samme tilgang som datasettet. Lagre Metabase-spørsmål og -dashboard i den samlingen, ikke i en åpen samling.
 
-Metabase kan ikke koble sammen tabeller som er tilgangsbegrenset. Bruk derfor `svar` til det meste. Den har spørsmålstekst og svartekst på hver rad, så dere kan lage grafer i spørringsbyggeren uten SQL. Filtrer på `app`, `survey_id` og `sporsmal_id`, og tell rader per `rating_verdi` eller `valg_tekst` for å få fordelingen. Utviklingen over tid får dere med snittet av `rating_verdi` per uke på `innsendt_dato`. `kontekst` er JSON, og den kan ikke brukes i spørringsbyggeren. Bruk SQL med `JSON_VALUE`, som i spørringen for tagger under.
+Metabase kan ikke koble sammen tabeller som er tilgangsbegrenset. Bruk derfor `svar` til det meste. Den har spørsmålstekst og svartekst på hver rad, så dere kan lage grafer i spørringsbyggeren uten SQL. Filtrer på `app`, `survey_id` og `sporsmal_id`, og tell rader per `rating_verdi` eller `valg_tekst` for å få fordelingen. Utviklingen over tid får dere med snittet av `rating_verdi` per uke på `innsendt_dato`.
 
 ### Spørringer {#sporringer}
 
@@ -202,18 +202,6 @@ SELECT valg_id,
        ROUND(100 * COUNT(*) / (SELECT COUNT(DISTINCT innsending_id) FROM sporsmal), 1) AS prosent
 FROM sporsmal
 GROUP BY valg_id
-ORDER BY antall DESC
-```
-
-Snitt for hver verdi av en tagg i `kontekst`, her `rolle`:
-
-```sql
-SELECT JSON_VALUE(kontekst, '$.rolle') AS rolle,
-       ROUND(AVG(rating_verdi), 2) AS snitt,
-       COUNT(*) AS antall
-FROM `PROSJEKT.lumi.svar`
-WHERE app = 'APP' AND survey_id = 'SURVEY' AND sporsmal_id = 'SPORSMAL'
-GROUP BY rolle
 ORDER BY antall DESC
 ```
 
@@ -317,14 +305,13 @@ Kolonnene som er felles for alle tabellene:
 | Kolonne | Type | Innhold |
 | :--- | :--- | :--- |
 | `innsending_id` | STRING | Pseudonym ID for innsendingen. Den er lik i alle tabellene og mellom kjøringer, men blir ny når dere bytter prosjekt eller datasett, eller stopper eksporten og setter den opp igjen. Den er en annen enn ID-en i filene fra **Eksporter**. |
-| `innsendt_tidspunkt` | TIMESTAMP | Når Lumi tok imot svaret, i UTC og rundet ned til hele minutter. |
+| `innsendt_tidspunkt` | TIMESTAMP | Når Lumi tok imot svaret, i UTC og rundet ned til hel time. |
 | `innsendt_dato` | DATE | Datoen Lumi tok imot svaret, i norsk tid. Samme dag som dashboardet bruker. |
 | `app` | STRING | Appen som sendte svaret. |
 | `survey_id` | STRING | Survey-ID-en. |
 | `survey_type` | STRING | `rating`, `topTasks`, `taskPriority`, `discovery` eller `custom`. |
 | `survey_arkivert` | BOOLEAN | Om surveyen er arkivert i dashboardet nå. Dashboardet skjuler arkiverte surveyer som standard. |
 | `enhetstype` | STRING | `mobile`, `tablet` eller `desktop`. |
-| `kontekst` | STRING | Taggene appen sendte med, som JSON. Les en verdi med `JSON_VALUE(kontekst, '$.rolle')`. |
 | `skjemaversjon` | STRING | Fingeravtrykk av strukturen i surveyen. |
 | `oppdatert_tidspunkt` | TIMESTAMP | Når Lumi skrev tabellen. Alle rader i tabellen fra samme kjøring har samme tidspunkt. |
 
@@ -371,6 +358,7 @@ Dette er aldri med i tabellene:
 - skjerm- og vindusstørrelse
 - feilsøkingsdata (debug)
 - Lumis interne ID-er
+- tagger appen sender med (`tags` i konteksten)
 - tagger dere har satt i dashboardet
 - svar på datospørsmål
 
@@ -384,6 +372,4 @@ Dette er aldri med i tabellene:
 - `innsending_id` får nye verdier når dere bytter prosjekt eller datasett, og når dere stopper eksporten og setter den opp igjen. ID-er dere har lagret andre steder, kan da ikke kobles til de nye.
 - Gamle svar på vurderingsspørsmål kan mangle `rating_variant` og `rating_skala`.
 - Med standardtekstene i widgeten er 1 «Veldig dårlig» og 5 «Veldig bra» på emoji-skalaen. Team kan bytte tekstene, så sjekk hva surveyen viser.
-- `kontekst` har bare tagger med enkle verdier, høyst 20 per svar. Tagger som kan skille enkeltsvar fra hverandre, er ikke med: tagger med mer enn 50 ulike verdier, og tagger der hver verdi i snitt finnes i færre enn fem svar, regnet over de siste tolv månedene. En ny tagg kommer derfor med først når den har nok svar. Se [Context og tags](/guider/context-og-tags).
-- JSON i `kontekst` kan ikke brukes i spørringsbyggeren i Metabase. Bruk SQL med `JSON_VALUE`, se [Spørringer](#sporringer).
 - Spørsmålstekst, svartekst og ID-ene i `survey_id`, `sporsmal_id` og `valg_id` er maskert med de samme mønstrene som fritekst. Et valgt alternativ er bare med når det står i listen over alternativer som fulgte med svaret. Mangler listen, for eksempel i svar fra eldre versjoner av widgeten, er ID-en med slik den ble sendt, maskert.
