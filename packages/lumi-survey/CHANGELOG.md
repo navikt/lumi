@@ -4,7 +4,7 @@ All notable changes to `@navikt/lumi-survey` will be documented in this file.
 
 This project follows SemVer.
 
-## [2.4.0] - 2026-10-20
+## [2.4.0] - 2026-10-21
 
 ### Added
 
@@ -16,6 +16,12 @@ This project follows SemVer.
   request is cancelled when the widget stops waiting. A function that already
   takes another optional second parameter now receives this object, and
   TypeScript rejects assigning it as `submit`.
+- `style.zIndex` sets the stacking order of the dock. The default is still
+  1000. Lower it to place the dock under the app's own fixed elements.
+- `behavior.hideMinimizedButton` shows nothing while the dock is minimized,
+  instead of the «Gi tilbakemelding» button. Closing the survey then returns
+  focus to the page. Users the dock cannot store a dismissal for, for example
+  without consent, start minimized and never see the survey.
 - `LumiApiErrorType.DATABASE_UNAVAILABLE`, which Lumi API returns with 503
   when the database does not answer in time. Code with an exhaustive `switch`
   or a `Record` over `LumiApiErrorType` must handle it.
@@ -41,6 +47,8 @@ This project follows SemVer.
 - A submit that settles after `reset()`, for example after the user closed the
   dock, no longer sets the status or error of the reset survey. The events
   still fire.
+- Returning focus to the page after the dock hides no longer scrolls the page
+  to the element that had focus before.
 
 ## [2.3.0] - 2026-10-15
 

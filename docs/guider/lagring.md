@@ -35,7 +35,7 @@ Dere trenger ingen ekstra npm-pakke.
 
 ### Uten samtykke {#uten-samtykke}
 
-Mangler ett av punktene over, får ikke widgeten lagre noe. Da starter den minimert, også med `initialOpen: true`, som er standard. Brukeren ser knappen **Gi tilbakemelding** og åpner surveyen selv. Widgeten husker ikke at brukeren har lukket eller svart på surveyen, så knappen vises igjen ved neste sidelast.
+Mangler ett av punktene over, får ikke widgeten lagre noe. Da starter den minimert, også med `initialOpen: true`, som er standard. Brukeren ser knappen **Gi tilbakemelding** og åpner surveyen selv. Widgeten husker ikke at brukeren har lukket eller svart på surveyen, så knappen vises igjen ved neste sidelast. Med `hideMinimizedButton: true` ser disse brukerne ingenting.
 
 Det samme gjelder interne apper uten Nav-dekoratøren. Sett `storageStrategy: "localStorage"` der, så åpner surveyen seg av seg selv og widgeten husker lukkingen. Se [`localStorage`](#localstorage).
 
@@ -59,7 +59,7 @@ Har brukeren bare takket nei, kommer det ingen advarsel. I utviklingsmodus skriv
 
 ### Når dekoratøren lastes etter widgeten
 
-Widgeten venter høyst 300 ms på å lese samtykket. Har den ikke fått svar da, vises den minimerte knappen **Gi tilbakemelding**. Oppslaget fortsetter i bakgrunnen i opptil fem sekunder. Så lenge brukeren ikke har gjort noe i widgeten, bruker den svaret når det kommer:
+Widgeten venter høyst 300 ms på å lese samtykket. Har den ikke fått svar da, vises den minimerte knappen **Gi tilbakemelding**, eller ingenting med `hideMinimizedButton: true`. Oppslaget fortsetter i bakgrunnen i opptil fem sekunder. Så lenge brukeren ikke har gjort noe i widgeten, bruker den svaret når det kommer:
 
 - Har brukeren samtykket og ingenting er lagret, åpner surveyen seg ut fra `initialOpen`.
 - Finnes det en lagret lukking eller et lagret svar, blir surveyen skjult eller værende minimert.
@@ -95,7 +95,7 @@ Widgeten lagrer ingenting, og surveyen vises ved hver sidelast. Det er nyttig un
 
 ## Ventetid
 
-Etter at brukeren har lukket eller svart på surveyen, venter widgeten som standard 30 dager før den viser den igjen. Svaret lagres så snart innsendingen er vellykket, også når brukeren går videre uten å trykke **Lukk** på kvitteringen. Med `hideAfterSubmit: true`, som er standard, er widgeten helt skjult i ventetiden etter et svar. Med `hideAfterSubmit: false` vises den minimerte knappen.
+Etter at brukeren har lukket eller svart på surveyen, venter widgeten som standard 30 dager før den viser den igjen. Svaret lagres så snart innsendingen er vellykket, også når brukeren går videre uten å trykke **Lukk** på kvitteringen. Med `hideAfterSubmit: true`, som er standard, er widgeten helt skjult i ventetiden etter et svar. Med `hideAfterSubmit: false` vises den minimerte knappen, eller ingenting med `hideMinimizedButton: true`.
 
 Ventetiden setter dere med `dismissCooldownDays`:
 

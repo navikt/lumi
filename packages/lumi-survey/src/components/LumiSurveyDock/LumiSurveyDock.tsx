@@ -189,6 +189,14 @@ export const LumiSurveyDock = ({
     [labels, effectiveSuccess, style, behavior, effectiveIntro],
   );
 
+  useEffect(() => {
+    if (!config.initialOpen && config.hideMinimizedButton) {
+      console.warn(
+        "[Lumi] initialOpen: false and hideMinimizedButton: true together mean the survey never shows.",
+      );
+    }
+  }, [config.initialOpen, config.hideMinimizedButton]);
+
   // IMPORTANT: Call all hooks before any conditional returns to comply with Rules of Hooks
 
   const canonicalSurvey = useMemo(() => buildCanonicalSurvey(survey), [survey]);
@@ -618,13 +626,19 @@ export const LumiSurveyDock = ({
   const handleCloseDock = useCallback(() => {
     const hideCompletely = isSuccess && config.hideAfterSubmit;
     const focusIsWithinDock = dockRef.current?.contains(document.activeElement);
+    // Without a minimized button to land on, focus goes back to the page.
     pendingDockFocusRef.current = focusIsWithinDock
-      ? hideCompletely
+      ? hideCompletely || config.hideMinimizedButton
         ? "return"
         : "minimized"
       : null;
     closeDock(hideCompletely);
-  }, [closeDock, isSuccess, config.hideAfterSubmit]);
+  }, [
+    closeDock,
+    isSuccess,
+    config.hideAfterSubmit,
+    config.hideMinimizedButton,
+  ]);
 
   const handleReopenDock = useCallback(() => {
     pendingDockFocusRef.current = "open-heading";
@@ -698,7 +712,7 @@ export const LumiSurveyDock = ({
     bottom: config.offset,
     right: config.position === "bottom-right" ? config.offset : undefined,
     left: config.position === "bottom-left" ? config.offset : undefined,
-    zIndex: 1000,
+    zIndex: config.zIndex,
   };
 
   const isNpsDock =
@@ -732,8 +746,9 @@ export const LumiSurveyDock = ({
     return null;
   }
 
-  // Don't render anything when dismissed with hideCompletely flag
-  if (dismissed && shouldHideCompletely) {
+  // Don't render anything when dismissed with hideCompletely flag, or when
+  // the app has asked not to show the minimized button.
+  if (dismissed && (shouldHideCompletely || config.hideMinimizedButton)) {
     return null;
   }
 
