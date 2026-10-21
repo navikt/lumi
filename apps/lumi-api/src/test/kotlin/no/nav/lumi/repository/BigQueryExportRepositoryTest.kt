@@ -1,5 +1,6 @@
 package no.nav.lumi.repository
 
+import com.zaxxer.hikari.HikariDataSource
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
@@ -177,12 +178,28 @@ class BigQueryExportRepositoryTest : FunSpec({
         }
 
         val rows = mutableListOf<BigQueryExportSourceRow>()
-        repository.readExportSnapshot("team-a", 12) { snapshot -> snapshot.forEachRow { rows += it } }
+        repository.withExportLock { lock ->
+            lock.readExportSnapshot("team-a", 12) { snapshot -> snapshot.forEachRow { rows += it } }
+        }.shouldNotBeNull()
 
         rows.map { it.feedbackId } shouldContainExactly listOf("a-new", "a-old")
         rows.map { it.surveyId }.distinct() shouldContainExactly listOf("s1")
         rows.all { it.surveyArchived } shouldBe true
         rows.first().receivedAt shouldBe fresh.minusDays(1).toInstant()
+    }
+
+    test("a run holds one connection: the snapshot runs on the lock's connection, and the lock stays after it") {
+        insertTestFeedbackWithJson(id = "a-1", team = "team-a", feedbackJson = """{"surveyId":"s1","answers":[]}""")
+        val pool = (TestDatabase.dataSource as HikariDataSource).hikariPoolMXBean
+
+        repository.withExportLock { lock ->
+            lock.readExportSnapshot("team-a", 12) { snapshot ->
+                snapshot.forEachRow { }
+                pool.activeConnections shouldBe 1
+            }
+            // A second caller still cannot take the lock after the snapshot transaction ended.
+            repository.withExportLock { "second" }.shouldBeNull()
+        }.shouldNotBeNull()
     }
 
     test("only one caller at a time gets the export lock") {

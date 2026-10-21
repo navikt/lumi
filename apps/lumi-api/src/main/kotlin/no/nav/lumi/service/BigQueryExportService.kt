@@ -40,6 +40,7 @@ import no.nav.lumi.integrations.bigquery.BigQueryTableRef
 import no.nav.lumi.integrations.bigquery.BigQueryTableSpec
 import no.nav.lumi.integrations.bigquery.BigQueryTableUpload
 import no.nav.lumi.integrations.nais.NaisApiResult
+import no.nav.lumi.repository.BigQueryExportLock
 import no.nav.lumi.repository.BigQueryExportRepository
 import org.slf4j.LoggerFactory
 import java.time.Clock
@@ -187,13 +188,13 @@ class BigQueryExportService(
     suspend fun runDueExports(): Int? {
         val gateway = enabledGateway() ?: return 0
         observability.recordPoll(clock.instant(), repository.findAll().filter { env.isOpenFor(it.team) })
-        return repository.withExportLock {
+        return repository.withExportLock { lock ->
             val now = clock.instant()
             failInterruptedRuns(now)
             val due = repository.findAll().filter { env.isOpenFor(it.team) && schedule.isDue(it, now) }
             due.forEach { destination ->
                 try {
-                    runExport(gateway, destination.team)
+                    runExport(gateway, destination.team, lock)
                 } catch (cause: CancellationException) {
                     throw cause
                 } catch (cause: Exception) {
@@ -221,13 +222,13 @@ class BigQueryExportService(
             }
     }
 
-    private suspend fun runExport(gateway: BigQueryGateway, team: String) {
+    private suspend fun runExport(gateway: BigQueryGateway, team: String, lock: BigQueryExportLock) {
         val startedAt = clock.instant().truncatedTo(ChronoUnit.MICROS)
         // The row returned here has the settings as they are now, also if they changed since the poll.
         val destination = repository.markStarted(team, startedAt) ?: return
 
         val outcome = try {
-            withTimeoutOrNull(runTimeout.toMillis()) { export(gateway, destination, startedAt) }
+            withTimeoutOrNull(runTimeout.toMillis()) { export(gateway, destination, startedAt, lock) }
                 ?: ExportOutcome.Failed(BigQueryExportProblemCode.INTERNAL_ERROR).also {
                     log.warn("BigQuery export for team {} did not finish within {} minutes", team, runTimeout.toMinutes())
                 }
@@ -260,6 +261,7 @@ class BigQueryExportService(
         gateway: BigQueryGateway,
         destination: BigQueryExportDestination,
         startedAt: Instant,
+        lock: BigQueryExportLock,
     ): ExportOutcome {
         val team = destination.team
         val includeFreeText = destination.includeFreeText && env.allowsFreeText(team)
@@ -288,7 +290,7 @@ class BigQueryExportService(
         }
 
         val uploads = specs.mapValues { (_, spec) -> CountingUpload(gateway.startUpload(spec, jobLabels)) }
-        val skipped = repository.readExportSnapshot(team, retentionMonths) { snapshot ->
+        val skipped = lock.readExportSnapshot(team, retentionMonths) { snapshot ->
             val mapper = BigQueryExportMapper(
                 pseudonymKey = destination.pseudonymKey,
                 includeFreeText = includeFreeText,

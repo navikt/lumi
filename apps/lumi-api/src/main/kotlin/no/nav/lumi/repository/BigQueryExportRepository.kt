@@ -19,6 +19,19 @@ import java.sql.Timestamp
 import java.time.Instant
 import javax.sql.DataSource
 
+/**
+ * The global export lock, held by this replica. The snapshot runs on the connection that holds the
+ * lock, so a run keeps a single connection from the pool for as long as it lasts.
+ */
+interface BigQueryExportLock {
+    /**
+     * Reads the team's stored responses inside the retention window from one consistent snapshot.
+     * The cutoff is computed once, with the same expression as the retention job, so rows the job
+     * has not deleted yet are still left out.
+     */
+    suspend fun <T> readExportSnapshot(team: String, retentionMonths: Int, block: suspend (BigQueryExportSnapshot) -> T): T
+}
+
 /** The team's stored responses for one export run, read from one consistent snapshot. */
 interface BigQueryExportSnapshot {
     /** Streams the responses newest first. */
@@ -214,7 +227,7 @@ class BigQueryExportRepository(
      * Runs [block] while holding the global export lock, so only one replica exports at a time.
      * Returns null without running [block] when another replica holds the lock.
      */
-    suspend fun <T> withExportLock(block: suspend () -> T): T? = withContext(Dispatchers.IO) {
+    suspend fun <T> withExportLock(block: suspend (BigQueryExportLock) -> T): T? = withContext(Dispatchers.IO) {
         val dataSource = dataSourceProvider()
         dataSource.connection.use { connection ->
             connection.autoCommit = true
@@ -224,7 +237,15 @@ class BigQueryExportRepository(
             }
             if (!acquired) return@withContext null
             try {
-                block()
+                block(
+                    object : BigQueryExportLock {
+                        override suspend fun <T> readExportSnapshot(
+                            team: String,
+                            retentionMonths: Int,
+                            block: suspend (BigQueryExportSnapshot) -> T,
+                        ): T = connection.readExportSnapshot(team, retentionMonths, block)
+                    },
+                )
             } finally {
                 val released = runCatching {
                     connection.prepareStatement("SELECT pg_advisory_unlock(?)").use { statement ->
@@ -242,53 +263,52 @@ class BigQueryExportRepository(
     }
 
     /**
-     * Reads the team's stored responses inside the retention window from one consistent snapshot.
-     * The cutoff is computed once, with the same expression as the retention job, so rows the job
-     * has not deleted yet are still left out.
+     * Reads in a read-only REPEATABLE READ transaction on the lock's connection. The advisory lock is
+     * held by the session, so it stays when the transaction is rolled back.
      */
-    suspend fun <T> readExportSnapshot(
+    private suspend fun <T> Connection.readExportSnapshot(
         team: String,
         retentionMonths: Int,
         block: suspend (BigQueryExportSnapshot) -> T,
-    ): T = withContext(Dispatchers.IO) {
-        dataSourceProvider().connection.use { connection ->
-            connection.autoCommit = false
-            connection.transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ
-            connection.isReadOnly = true
-            try {
-                val cutoff = Timestamp.from(connection.retentionCutoff(retentionMonths))
-                block(
-                    object : BigQueryExportSnapshot {
-                        override suspend fun forEachRow(consumer: suspend (BigQueryExportSourceRow) -> Unit) {
-                            connection.prepareStatement(SOURCE_ROWS_SQL).use { statement ->
-                                statement.fetchSize = SOURCE_FETCH_SIZE
-                                statement.queryTimeout = QUERY_TIMEOUT_SECONDS
-                                statement.setString(1, team)
-                                statement.setTimestamp(2, cutoff)
-                                statement.executeQuery().use { result ->
-                                    while (result.next()) {
-                                        consumer(
-                                            BigQueryExportSourceRow(
-                                                feedbackId = result.getString("id"),
-                                                receivedAt = result.getTimestamp("opprettet").toInstant(),
-                                                app = result.getString("app"),
-                                                surveyId = result.getString("survey_id"),
-                                                definitionHash = result.getString("definition_hash"),
-                                                surveyArchived = result.getBoolean("survey_archived"),
-                                                feedbackJson = result.getString("feedback_json"),
-                                            ),
-                                        )
-                                    }
+    ): T {
+        val connection = this
+        connection.autoCommit = false
+        connection.transactionIsolation = Connection.TRANSACTION_REPEATABLE_READ
+        connection.isReadOnly = true
+        try {
+            val cutoff = Timestamp.from(connection.retentionCutoff(retentionMonths))
+            return block(
+                object : BigQueryExportSnapshot {
+                    override suspend fun forEachRow(consumer: suspend (BigQueryExportSourceRow) -> Unit) {
+                        connection.prepareStatement(SOURCE_ROWS_SQL).use { statement ->
+                            statement.fetchSize = SOURCE_FETCH_SIZE
+                            statement.queryTimeout = QUERY_TIMEOUT_SECONDS
+                            statement.setString(1, team)
+                            statement.setTimestamp(2, cutoff)
+                            statement.executeQuery().use { result ->
+                                while (result.next()) {
+                                    consumer(
+                                        BigQueryExportSourceRow(
+                                            feedbackId = result.getString("id"),
+                                            receivedAt = result.getTimestamp("opprettet").toInstant(),
+                                            app = result.getString("app"),
+                                            surveyId = result.getString("survey_id"),
+                                            definitionHash = result.getString("definition_hash"),
+                                            surveyArchived = result.getBoolean("survey_archived"),
+                                            feedbackJson = result.getString("feedback_json"),
+                                        ),
+                                    )
                                 }
                             }
                         }
-                    },
-                )
-            } finally {
-                connection.rollback()
-                connection.isReadOnly = false
-                connection.transactionIsolation = Connection.TRANSACTION_READ_COMMITTED
-            }
+                    }
+                },
+            )
+        } finally {
+            connection.rollback()
+            connection.isReadOnly = false
+            connection.transactionIsolation = Connection.TRANSACTION_READ_COMMITTED
+            connection.autoCommit = true
         }
     }
 

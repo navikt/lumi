@@ -24,6 +24,9 @@ creates the dataset, labels it `lumi-team=<team>` and grants Lumi's service acco
 - Every replica polls every 30 seconds. The PostgreSQL advisory lock `7316244190552`
   lets only one replica export at a time. Teams run one after another, and a run that
   takes more than 30 minutes is stopped and counted as failed.
+- A run holds one connection from the main pool: the snapshot runs on the connection
+  that holds the lock. Status updates borrow a second connection for a moment. With the
+  small pool in dev, the dashboard can still wait for a connection while a run reads.
 - Each destination is exported once a night after 01:00 Norwegian time, which is
   outside the Cloud SQL maintenance window. Saving settings, choosing
   **Oppdater tabellene nå** or deleting responses in the dashboard queues a run. A queued
