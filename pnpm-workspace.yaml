@@ -15,6 +15,9 @@ blockExoticSubdeps: true
 # nanoid <3.3.18: custom generators can loop indefinitely for size=0, via postcss
 # browserslist <=4.28.6: OOM + prototype write/crash, via lumi-dashboard>@tanstack/react-start>...>browserslist
 # js-yaml 4.x <4.3.2: unbounded empty merge sources (GHSA-2883-xcg3-v3hh), via xmlbuilder2
+# ws 8.x <8.21.0: memory exhaustion DoS from tiny fragments (GHSA-96hv-2xvq-fx4p), via storybook
+# brace-expansion 4.x-5.x <5.0.12: DoS via nested brace groups (GHSA-qhr7-859c-m2p7, GHSA-6j4f-fj2g-mc7p), via storybook>...>minimatch
+# vue <3.5.42: XSS in @vue/server-renderer attribute names (GHSA-g2v6-rqmx-r4w6), via vitepress
 overrides:
   tmp: "^0.2.6"
   vite: "^7.3.7"
@@ -22,6 +25,9 @@ overrides:
   nanoid: "^3.3.18"
   browserslist@<=4.28.6: "^4.28.7"
   "js-yaml@>=4.0.0 <4.3.2": "4.3.2"
+  "ws@>=8.0.0 <8.21.0": "^8.21.0"
+  "brace-expansion@>=4.0.0 <5.0.12": "^5.0.12"
+  "vue@<3.5.42": "^3.5.42"
 
 allowBuilds:
   esbuild: true
