@@ -408,7 +408,7 @@ export function ComparisonChoiceFieldCard({
                   >
                     {choice.label}
                     <span className={styles.srOnly}>
-                      {`. Valgt periode: ${choice.count} svar, ${count ? choice.percentage : "ingen"} prosent.${accessibleComparison} Filtrer på svaret.`}
+                      {` – valgt periode: ${choice.count} svar, ${count ? choice.percentage : "ingen"} prosent.${accessibleComparison} Filtrer på svaret.`}
                     </span>
                   </BodyShort>
                   <BodyShort size="small" weight="semibold" aria-hidden>
