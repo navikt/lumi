@@ -38,7 +38,7 @@
     "@tanstack/router-core": "^1.171.34",
     "@tanstack/start-storage-context": "^1.167.36",
     "@tanstack/zod-adapter": "^1.167.0",
-    "dayjs": "^1.11.20",
+    "dayjs": "^1.11.23",
     "exceljs": "^4.4.0",
     "nitro": "3.0.1-alpha.2",
     "pino": "^10.4.0",
