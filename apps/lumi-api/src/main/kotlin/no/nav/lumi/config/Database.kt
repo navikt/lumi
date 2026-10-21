@@ -58,14 +58,26 @@ object DatabaseHolder {
      * Initialize for production use with ServerEnv configuration.
      */
     @Synchronized
-    fun initialize(env: ServerEnv.DatabaseEnv) {
+    fun initialize(
+        env: ServerEnv.DatabaseEnv,
+        pools: DatabasePoolEnv = DatabasePoolEnv.fromEnvironment(),
+    ) {
         if (_dataSource != null) {
             log.warn("Database already initialized, skipping")
             return
         }
-        _dataSource = createDataSource(env, MAIN_POOL)
-        _submissionDataSource = createDataSource(env, SUBMISSION_POOL)
+        _dataSource = createDataSource(env, MAIN_POOL.copy(maximumPoolSize = pools.mainPoolSize))
+        _submissionDataSource = createDataSource(
+            env,
+            SUBMISSION_POOL.copy(maximumPoolSize = pools.submissionPoolSize),
+        )
         _readinessDataSource = createDataSource(env, READINESS_POOL)
+        log.info(
+            "Database pools: main {}, submission {}, readiness {} connections per pod",
+            pools.mainPoolSize,
+            pools.submissionPoolSize,
+            DatabasePoolEnv.READINESS_POOL_SIZE,
+        )
         _database = null
         _submissionDatabase = null
         log.info("Database initialized with production configuration")
@@ -157,19 +169,19 @@ internal data class PoolSettings(
 
 // Dashboard, Surveyverksted, analysis, Flyway and the retention job. A short
 // connectionTimeout fails a request quickly instead of letting it queue for 30 s
-// when the pool is full.
+// when the pool is full. The size comes from DatabasePoolEnv.
 internal val MAIN_POOL = PoolSettings(
     name = "lumi-api-pool",
-    maximumPoolSize = 8,
+    maximumPoolSize = DatabasePoolEnv.DEFAULT_MAIN_POOL_SIZE,
     minimumIdle = 2,
     connectionTimeoutMillis = 5_000,
 )
 
-// Submissions and readiness only. Submission transactions are short, so four
-// connections per pod leave plenty of headroom.
+// Submissions only. Submission transactions are short, so four connections per
+// pod leave plenty of headroom. The size comes from DatabasePoolEnv.
 internal val SUBMISSION_POOL = PoolSettings(
     name = "lumi-api-submission-pool",
-    maximumPoolSize = 4,
+    maximumPoolSize = DatabasePoolEnv.DEFAULT_SUBMISSION_POOL_SIZE,
     minimumIdle = 2,
     connectionTimeoutMillis = 3_000,
 )
@@ -178,7 +190,7 @@ internal val SUBMISSION_POOL = PoolSettings(
 // probe must never queue behind submissions for a connection.
 internal val READINESS_POOL = PoolSettings(
     name = "lumi-api-readiness-pool",
-    maximumPoolSize = 1,
+    maximumPoolSize = DatabasePoolEnv.READINESS_POOL_SIZE,
     minimumIdle = 1,
     connectionTimeoutMillis = 500,
 )

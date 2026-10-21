@@ -53,9 +53,16 @@ svar.
 
 | Pool | Brukes av | Tilkoblinger per pod | Venter på tilkobling | Grense per spørring |
 | --- | --- | --- | --- | --- |
-| `lumi-api-submission-pool` | Innsending | 4 | 3 s | 3 s |
+| `lumi-api-submission-pool` | Innsending | 4 (dev: 2) | 3 s | 3 s |
 | `lumi-api-readiness-pool` | `/internal/isReady` | 1 | 0,5 s | Ingen |
-| `lumi-api-pool` | Dashboard, Surveyverksted og analyse | 8 | 5 s | 15 s |
+| `lumi-api-pool` | Dashboard, Surveyverksted og analyse | 8 (dev: 4) | 5 s | 15 s |
+
+Dev har den minste Cloud SQL-instansen, som tillater 25 tilkoblinger, og
+setter mindre pooler med `LUMI_DB_MAIN_POOL_SIZE` og
+`LUMI_DB_SUBMISSION_POOL_SIZE`. `DatabasePoolEnvTest` sjekker at alle poolene
+i maks antall podder pluss én ekstra pod under utrulling holder seg under
+grensen i både dev og prod. Øker dere antall replikaer eller poolstørrelsen,
+eller bytter dere tier, må testen fortsatt passere.
 
 Flyway og slettejobben bruker også `lumi-api-pool`, men uten grense per
 spørring. Grensen gjelder hver spørring for seg, så et kall med flere

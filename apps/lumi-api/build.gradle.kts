@@ -129,6 +129,8 @@ tasks.withType<Test>().configureEach {
     // Tests run outside NAIS (no NAIS_CLUSTER_NAME), so explicitly opt in to the
     // local-mode auth bypass — ServerEnv.requireValidLocalAuthPolicy is fail-closed.
     environment("LUMI_LOCAL_AUTH_BYPASS", "true")
+    // Some tests read the Nais manifests and alert rules, so a change there must rerun them.
+    inputs.dir("nais").withPropertyName("naisManifests").withPathSensitivity(PathSensitivity.RELATIVE)
     System.getProperties()
         .filterKeys { it.toString().startsWith("lumi.perf.") }
         .forEach { (key, value) -> systemProperty(key.toString(), value) }
