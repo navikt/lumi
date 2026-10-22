@@ -32,26 +32,30 @@ class BigQueryExportRepositoryTest : FunSpec({
 
     test("the legacy analysis role and PUBLIC cannot read the export schema") {
         TestDatabase.dataSource.connection.use { connection ->
-            connection.prepareStatement(
-                """
-                    SELECT has_schema_privilege('esyfo-analyse', 'bigquery_export', 'USAGE'),
-                           has_table_privilege('esyfo-analyse', 'bigquery_export.destinations', 'SELECT'),
-                           EXISTS (
-                               SELECT 1 FROM pg_class c, aclexplode(c.relacl) acl
-                               WHERE c.oid = 'bigquery_export.destinations'::regclass AND acl.grantee = 0
-                           ),
-                           EXISTS (
-                               SELECT 1 FROM pg_namespace n, aclexplode(n.nspacl) acl
-                               WHERE n.nspname = 'bigquery_export' AND acl.grantee = 0
-                           )
-                """.trimIndent(),
-            ).use { statement ->
-                statement.executeQuery().use { result ->
-                    result.next() shouldBe true
-                    result.getBoolean(1) shouldBe false
-                    result.getBoolean(2) shouldBe false
-                    result.getBoolean(3) shouldBe false
-                    result.getBoolean(4) shouldBe false
+            listOf("bigquery_export.destinations", "bigquery_export.team_runs").forEach { table ->
+                connection.prepareStatement(
+                    """
+                        SELECT has_schema_privilege('esyfo-analyse', 'bigquery_export', 'USAGE'),
+                               has_table_privilege('esyfo-analyse', ?, 'SELECT'),
+                               EXISTS (
+                                   SELECT 1 FROM pg_class c, aclexplode(c.relacl) acl
+                                   WHERE c.oid = ?::regclass AND acl.grantee = 0
+                               ),
+                               EXISTS (
+                                   SELECT 1 FROM pg_namespace n, aclexplode(n.nspacl) acl
+                                   WHERE n.nspname = 'bigquery_export' AND acl.grantee = 0
+                               )
+                    """.trimIndent(),
+                ).use { statement ->
+                    statement.setString(1, table)
+                    statement.setString(2, table)
+                    statement.executeQuery().use { result ->
+                        result.next() shouldBe true
+                        result.getBoolean(1) shouldBe false
+                        result.getBoolean(2) shouldBe false
+                        result.getBoolean(3) shouldBe false
+                        result.getBoolean(4) shouldBe false
+                    }
                 }
             }
         }
@@ -162,7 +166,9 @@ class BigQueryExportRepositoryTest : FunSpec({
     test("remembers jobs that may still replace a table until they are removed") {
         repository.upsert("team-a", "team-a-prod-1234", "lumi", false, "A123456", now)
 
-        repository.addPendingJob("team-a", "lumi_export_svar_1")
+        // Without an export there is nowhere to remember a job, so it must not be started.
+        repository.addPendingJob("team-b", "lumi_export_svar_1") shouldBe false
+        repository.addPendingJob("team-a", "lumi_export_svar_1") shouldBe true
         repository.addPendingJob("team-a", "lumi_truncate_innsendinger_2")
         repository.addPendingJob("team-a", "lumi_export_svar_1")
         repository.markStarted("team-a", now.plusSeconds(1)).shouldNotBeNull().pendingJobIds shouldContainExactly
@@ -170,6 +176,43 @@ class BigQueryExportRepositoryTest : FunSpec({
 
         repository.removePendingJob("team-a", "lumi_export_svar_1")
         repository.find("team-a").shouldNotBeNull().pendingJobIds shouldContainExactly listOf("lumi_truncate_innsendinger_2")
+    }
+
+    test("a stopping export queues and starts nothing, and keeps its settings until it is deleted") {
+        repository.upsert("team-a", "team-a-prod-1234", "lumi", false, "A123456", now)
+        repository.markStopping("team-a", now.plusSeconds(1)) shouldBe true
+        repository.markStopping("team-a", now.plusSeconds(2)) shouldBe true
+        repository.markStopping("team-b", now) shouldBe false
+
+        val stopping = repository.find("team-a").shouldNotBeNull()
+        stopping.stopRequestedAt shouldBe now.plusSeconds(1)
+        stopping.runRequestedAt.shouldBeNull()
+        repository.requestRun("team-a", now.plusSeconds(3)) shouldBe false
+        repository.markStarted("team-a", now.plusSeconds(3)).shouldBeNull()
+        // A save that comes after the stop changes nothing, and gets the stopping export back.
+        repository.upsert("team-a", "team-a-prod-1234", "lumi_ny", true, "B234567", now.plusSeconds(4)) shouldBe stopping
+
+        repository.markStopAttemptFailed("team-a", now.plusSeconds(5))
+        repository.find("team-a").shouldNotBeNull().stopAttemptedAt shouldBe now.plusSeconds(5)
+        repository.delete("team-a") shouldBe true
+    }
+
+    test("the latest run start per team stays when the export is moved, stopped and set up again") {
+        repository.upsert("team-a", "team-a-prod-1234", "lumi", false, "A123456", now)
+        repository.markStarted("team-a", now.plusSeconds(5)).shouldNotBeNull().teamLastRunStartedAt shouldBe now.plusSeconds(5)
+
+        repository.upsert("team-a", "team-a-prod-1234", "lumi_ny", false, "A123456", now.plusSeconds(10)).let { moved ->
+            moved.lastRunStartedAt.shouldBeNull()
+            moved.teamLastRunStartedAt shouldBe now.plusSeconds(5)
+        }
+        repository.delete("team-a") shouldBe true
+        repository.upsert("team-a", "team-a-prod-1234", "lumi", false, "A123456", now.plusSeconds(20))
+            .teamLastRunStartedAt shouldBe now.plusSeconds(5)
+
+        // An older start never replaces a newer one.
+        repository.markStarted("team-a", now.plusSeconds(1)).shouldNotBeNull().teamLastRunStartedAt shouldBe now.plusSeconds(5)
+        repository.find("team-a").shouldNotBeNull().teamLastRunStartedAt shouldBe now.plusSeconds(5)
+        repository.upsert("team-b", "team-b-prod-1234", "lumi", false, "A123456", now).teamLastRunStartedAt.shouldBeNull()
     }
 
     test("requesting a run without a destination reports that nothing was queued") {

@@ -239,6 +239,11 @@ export function problemText(
         title: "Lumi fikk ikke kjøre eksporten",
         hint: "Lumi mangler tilgang til å kjøre jobber i BigQuery. Feilen er hos Lumi. Skriv i #lumi hvis den ikke går over.",
       };
+    case "FREE_TEXT_NOT_REMOVED":
+      return {
+        title: "Lumi fikk ikke slettet tabellen fritekst",
+        hint: "Fritekst er ikke lenger med i eksporten, men tabellen ligger fortsatt i datasettet. Lumi prøver igjen automatisk, og team eSyfo får varsel om feilen. Teamet kan også slette tabellen selv.",
+      };
     case "BIGQUERY_UNAVAILABLE":
       return {
         title: "BigQuery svarte ikke",

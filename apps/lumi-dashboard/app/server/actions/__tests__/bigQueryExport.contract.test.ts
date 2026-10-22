@@ -95,6 +95,7 @@ describe("BigQuery export server action contracts", () => {
       { code: "DATASET_TIME_TRAVEL_TOO_LONG", detail: "168" },
       { code: "TEAM_PROJECT_UNKNOWN" },
       { code: "EXPORT_JOB_DENIED" },
+      { code: "FREE_TEXT_NOT_REMOVED" },
     ];
     doubles.request.mockResolvedValueOnce(
       Response.json({ ok: false, problems }),
@@ -196,16 +197,30 @@ describe("BigQuery export server action contracts", () => {
       Response.json(status, { status: 202 }),
     );
     await runBigQueryExport({ data: { team: "team-test" } });
+    // An older API leaves out stopping, which then means the stop is done.
     doubles.request.mockResolvedValueOnce(
       Response.json({ tablesRemoved: true }),
     );
     await expect(
       stopBigQueryExport({ data: { team: "team-test" } }),
-    ).resolves.toEqual({ ok: true, value: { tablesRemoved: true } });
+    ).resolves.toEqual({
+      ok: true,
+      value: { tablesRemoved: true, stopping: false },
+    });
+    doubles.request.mockResolvedValueOnce(
+      Response.json({ tablesRemoved: false, stopping: true }),
+    );
+    await expect(
+      stopBigQueryExport({ data: { team: "team-test" } }),
+    ).resolves.toEqual({
+      ok: true,
+      value: { tablesRemoved: false, stopping: true },
+    });
 
     expect(doubles.request.mock.calls.map((call) => call.slice(2, 4))).toEqual([
       ["/verify", "POST"],
       ["/run", "POST"],
+      ["", "DELETE"],
       ["", "DELETE"],
     ]);
   });

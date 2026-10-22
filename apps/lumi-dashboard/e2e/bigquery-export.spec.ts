@@ -192,6 +192,76 @@ test("explains that free text is closed for the team", async ({ page }) => {
   await expectAccessibleAtBothWidths(page);
 });
 
+test("shows a stop that waits for a run, and says when it is done", async ({
+  page,
+}) => {
+  const destination = {
+    projectId: "team-esyfo-dev-1a2b",
+    datasetId: "lumi",
+    includeFreeText: false,
+    createdAt: "2026-10-20T10:00:00Z",
+    updatedAt: "2026-10-20T10:00:00Z",
+    runState: "RUNNING",
+    lastRun: { status: "RUNNING", startedAt: "2026-10-20T10:00:00Z" },
+    stopping: true,
+  };
+  let stopping = true;
+  // Lumi finishes the stop when the run is done, so the page polls until the
+  // export is gone.
+  await page.route("**/*", async (route) => {
+    const request = route.request();
+    if (
+      request.method() !== "GET" ||
+      !["fetch", "xhr"].includes(request.resourceType())
+    ) {
+      await route.continue();
+      return;
+    }
+    const response = await route.fetch();
+    const body = await response.text();
+    if (!body.includes("freeTextAvailable")) {
+      await route.fulfill({ response });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        result: {
+          team: "team-esyfo",
+          available: true,
+          availability: "AVAILABLE",
+          location: "europe-north1",
+          serviceAccount:
+            "lumi-api-team-esyfo-1a2b3c4d@nais-dev-2e7b.iam.gserviceaccount.com",
+          suggestedProjectId: "team-esyfo-dev-1a2b",
+          freeTextAvailable: true,
+          destination: stopping ? destination : null,
+        },
+        context: {},
+      }),
+    });
+  });
+
+  await page.goto("/bigquery?team=team-esyfo");
+  await expect(
+    page.getByRole("heading", { name: "Eksporten stoppes", level: 2 }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Stopp eksporten" }),
+  ).toHaveCount(0);
+  await expectAccessibleAtBothWidths(page);
+
+  stopping = false;
+  await expect(
+    page.getByText("Eksporten er stoppet.", { exact: true }),
+  ).toBeVisible({ timeout: 10_000 });
+  await expect(
+    page.getByRole("button", { name: "Start eksporten" }),
+  ).toBeVisible();
+  await expectAccessibleAtBothWidths(page);
+});
+
 test("keeps teams outside the pilot out and explains why", async ({ page }) => {
   await page.goto("/bigquery?team=team-ny");
   await expect(

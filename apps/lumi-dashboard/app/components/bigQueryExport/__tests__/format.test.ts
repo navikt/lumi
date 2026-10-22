@@ -133,6 +133,13 @@ describe("BigQuery export formatting", () => {
     );
   });
 
+  it("says that free text is still in the dataset when Lumi could not delete it", () => {
+    const text = problemText({ code: "FREE_TEXT_NOT_REMOVED" }, context);
+    expect(text.title).toBe("Lumi fikk ikke slettet tabellen fritekst");
+    expect(text.hint).toContain("tabellen ligger fortsatt i datasettet");
+    expect(text.hint).toContain("Teamet kan også slette tabellen selv.");
+  });
+
   it("offers the SQL for the problems it fixes", () => {
     const fixed = BigQueryExportProblemCodeSchema.options.filter(fixedBySql);
     expect(fixed).toEqual([

@@ -256,6 +256,7 @@ enum class BigQueryExportProblemCode(val isTeamActionable: Boolean) {
     DATASET_TIME_TRAVEL_TOO_LONG(true),
     TEAM_PROJECT_UNKNOWN(false),
     EXPORT_JOB_DENIED(false),
+    FREE_TEXT_NOT_REMOVED(false),
     BIGQUERY_UNAVAILABLE(false),
     LOAD_FAILED(false),
     INTERNAL_ERROR(false),
@@ -294,6 +295,12 @@ data class BigQueryExportDestination(
     val lastSuccessRows: BigQueryExportRowCounts?,
     /** Jobs Lumi has started but not seen finish. A new run waits for them. */
     val pendingJobIds: List<String> = emptyList(),
+    /** When the team stopped the export. Nothing runs, and Lumi removes the tables and the row. */
+    val stopRequestedAt: Instant? = null,
+    /** The latest attempt to finish a stop that could not finish yet. */
+    val stopAttemptedAt: Instant? = null,
+    /** The latest run start for the team, kept across moves and stops. Limits requested runs. */
+    val teamLastRunStartedAt: Instant? = null,
 ) {
     override fun equals(other: Any?): Boolean =
         other is BigQueryExportDestination &&
@@ -312,7 +319,10 @@ data class BigQueryExportDestination(
             consecutiveFailures == other.consecutiveFailures &&
             lastSuccessAt == other.lastSuccessAt &&
             lastSuccessRows == other.lastSuccessRows &&
-            pendingJobIds == other.pendingJobIds
+            pendingJobIds == other.pendingJobIds &&
+            stopRequestedAt == other.stopRequestedAt &&
+            stopAttemptedAt == other.stopAttemptedAt &&
+            teamLastRunStartedAt == other.teamLastRunStartedAt
 
     override fun hashCode(): Int = team.hashCode()
 
@@ -369,6 +379,8 @@ data class BigQueryExportDestinationDto(
     val lastSuccessAt: String? = null,
     val lastSuccessRows: BigQueryExportRowCounts? = null,
     val nextScheduledRunAt: String? = null,
+    /** The team has stopped the export, and Lumi is still removing the tables. */
+    val stopping: Boolean = false,
 )
 
 /** Why the export can or cannot be used by a team in this environment. */
@@ -391,4 +403,6 @@ data class BigQueryExportStatusResponse(
 @Serializable
 data class BigQueryExportStopResponse(
     val tablesRemoved: Boolean,
+    /** True when Lumi could not finish yet, for example during a run. It finishes on its own. */
+    val stopping: Boolean = false,
 )

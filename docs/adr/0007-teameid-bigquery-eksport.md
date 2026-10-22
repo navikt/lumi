@@ -143,7 +143,8 @@ kjøres, og en advisory lock i Postgres sørger for at bare én replika eksporte
 om gangen. Hvert eksportmål kjøres hver natt etter kl. 01 norsk tid, som er
 utenfor vedlikeholdsvinduet til Cloud SQL. Lumi starter også en kjøring når
 teamet velger **Oppdater tabellene nå** eller lagrer endringer, og når noen
-sletter svar i dashboardet. Lumi kjører høyst én gang per fem minutter per team.
+sletter svar i dashboardet. Lumi kjører høyst én gang per fem minutter per team,
+også når teamet bytter datasett eller stopper eksporten og setter den opp igjen.
 En feilet kjøring prøves igjen etter én time, og ventetiden dobles for hver ny
 feil, opp til ett døgn.
 
@@ -162,7 +163,7 @@ Lumi skrev tabellen, og guiden ber konsumentene sjekke den. Er det ingen rader
 til en tabell, tømmer Lumi den på stedet med `TRUNCATE TABLE`. Tabellen og
 tilgangene på den blir stående. Lumi sletter ikke `svar` og `innsendinger` ved
 vanlige kjøringer, bare `fritekst` når fritekst er av eller ikke åpnet for
-teamet.
+teamet. Får ikke Lumi slettet `fritekst`, feiler kjøringen.
 
 En jobb i BigQuery kan fullføre etter at Lumi har gitt den opp, for eksempel
 når svaret fra BigQuery forsvinner. Lumi lagrer derfor ID-en til hver jobb som
@@ -170,6 +171,14 @@ kan erstatte en tabell, før jobben startes, og fjerner den når Lumi har sett
 jobben bli ferdig. Neste kjøring venter til BigQuery sier at de lagrede jobbene
 er ferdige, så en gammel jobb ikke kan overskrive nyere data eller hente tilbake
 slettede svar.
+
+Når teamet stopper eksporten, starter ingen nye kjøringer, og innstillingene kan
+ikke endres. Lumi sletter tabellene og innstillingene mens Lumi holder låsen, og
+først når de lagrede jobbene er ferdige. Pågår en kjøring, gjør Lumi det når
+kjøringen er ferdig. Slik kan verken en kjøring eller en sen jobb skrive
+tabellene tilbake etter at teamet har stoppet. Har ikke Lumi lenger tilgang til
+datasettet, eller svarer ikke BigQuery på to døgn, gir Lumi opp å slette
+tabellene. De forsvinner da av seg selv innen sju dager.
 
 Hver gang Lumi skriver en tabell, settes utløpstiden sju dager fram. Stopper
 eksporten av en eller annen grunn, forsvinner kopiene av seg selv.

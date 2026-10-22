@@ -77,7 +77,7 @@ spec:
         - alert: LumiBigQueryExportFailure
           # Two failures within three hours: a single brief error at Google does not alert.
           expr: >-
-            sum(increase(lumi_bigquery_export_runs_total{app="lumi-api",outcome="failed",reason=~"TEAM_PROJECT_UNKNOWN|EXPORT_JOB_DENIED|BIGQUERY_UNAVAILABLE|LOAD_FAILED|INTERNAL_ERROR"}[3h])) >= 2
+            sum(increase(lumi_bigquery_export_runs_total{app="lumi-api",outcome="failed",reason=~"TEAM_PROJECT_UNKNOWN|EXPORT_JOB_DENIED|FREE_TEXT_NOT_REMOVED|BIGQUERY_UNAVAILABLE|LOAD_FAILED|INTERNAL_ERROR"}[3h])) >= 2
           annotations:
             summary: "BigQuery-eksporten feiler på Lumis side"
             consequence: "Minst ett team har ikke fått oppdatert BigQuery-tabellene sine. Tabellene forsvinner sju dager etter at Lumi sist skrev dem."

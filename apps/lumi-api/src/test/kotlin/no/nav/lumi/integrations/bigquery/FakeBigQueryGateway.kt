@@ -31,7 +31,15 @@ class FakeBigQueryGateway(
     /** Jobs BigQuery knows about. Tests can leave one running to act as a job Lumi gave up on. */
     val jobStates = mutableMapOf<String, BigQueryJobState>()
     var createTableOverride: BigQueryResult<Unit>? = null
+    var deleteOverride: BigQueryResult<Unit>? = null
+    val cancelled = mutableListOf<String>()
     var loadOverride: BigQueryResult<Long>? = null
+
+    /** Runs before a table is created, so tests can act in the middle of a run or a check. */
+    var beforeCreateTable: (suspend (BigQueryTableSpec) -> Unit)? = null
+
+    /** Runs before a load job, with the job's id. */
+    var beforeLoad: (suspend (String) -> Unit)? = null
 
     fun addDataset(
         projectId: String,
@@ -75,6 +83,7 @@ class FakeBigQueryGateway(
         tables[ref.toString()]?.let { BigQueryResult.Success(BigQueryTableInfo(it.labels)) } ?: BigQueryResult.NotFound
 
     override suspend fun createTable(spec: BigQueryTableSpec, expiresAt: Instant): BigQueryResult<Unit> {
+        beforeCreateTable?.invoke(spec)
         createTableOverride?.let { return it }
         if (spec.ref.toString() in tables) return BigQueryResult.Success(Unit)
         tables[spec.ref.toString()] = Table(spec.labels, expiresAt = expiresAt, description = spec.description)
@@ -82,6 +91,7 @@ class FakeBigQueryGateway(
     }
 
     override suspend fun deleteTable(ref: BigQueryTableRef): BigQueryResult<Unit> {
+        deleteOverride?.let { if (!ref.tableId.startsWith("lumi_tilkoblingstest_")) return it }
         val removed = tables.remove(ref.toString()) ?: return BigQueryResult.NotFound
         deleted += ref.toString()
         check(removed.labels.isNotEmpty()) { "Tables without labels must never be deleted" }
@@ -99,6 +109,11 @@ class FakeBigQueryGateway(
 
     override suspend fun jobState(jobId: String): BigQueryResult<BigQueryJobState> =
         jobStates[jobId]?.let { BigQueryResult.Success(it) } ?: BigQueryResult.NotFound
+
+    override suspend fun cancelJob(jobId: String): BigQueryResult<Unit> {
+        cancelled += jobId
+        return BigQueryResult.Success(Unit)
+    }
 
     override suspend fun updateTableMetadata(spec: BigQueryTableSpec, expiresAt: Instant): BigQueryResult<Unit> {
         val table = tables[spec.ref.toString()] ?: return BigQueryResult.NotFound
@@ -120,6 +135,7 @@ class FakeBigQueryGateway(
             }
 
             override suspend fun finish(): BigQueryResult<Long> {
+                beforeLoad?.invoke(jobId)
                 loadOverride?.let { return it }
                 if (jobAccess !is BigQueryResult.Success) return BigQueryResult.JobDenied
                 // CREATE_NEVER: the export creates the table first. WRITE_TRUNCATE keeps metadata and access.

@@ -35,6 +35,7 @@ export const BigQueryExportProblemCodeSchema = z.enum([
   "DATASET_TIME_TRAVEL_TOO_LONG",
   "TEAM_PROJECT_UNKNOWN",
   "EXPORT_JOB_DENIED",
+  "FREE_TEXT_NOT_REMOVED",
   "BIGQUERY_UNAVAILABLE",
   "LOAD_FAILED",
   "INTERNAL_ERROR",
@@ -74,6 +75,8 @@ export const BigQueryExportDestinationSchema = z.object({
   lastSuccessAt: instant.nullish(),
   lastSuccessRows: BigQueryExportRowCountsSchema.nullish(),
   nextScheduledRunAt: instant.nullish(),
+  /** The team has stopped the export, and Lumi is still deleting the tables. */
+  stopping: z.boolean().default(false),
 });
 
 export const BigQueryExportStatusSchema = z.object({
@@ -90,6 +93,8 @@ export const BigQueryExportStatusSchema = z.object({
 
 export const BigQueryExportStopSchema = z.object({
   tablesRemoved: z.boolean(),
+  /** Lumi finishes the stop later, for example when a run is going on. */
+  stopping: z.boolean().default(false),
 });
 
 export type BigQueryExportProblemCode = z.infer<

@@ -37,22 +37,35 @@ const POLL_WHILE_BUSY_MS = 3_000;
 const POLL_WHILE_WAITING_MS = 15_000;
 
 /**
- * Polls while a run is busy. A queued run that waits for the previous run's
- * cooldown is polled less often until it is about to start.
+ * Polls while a run or a stop is busy. A queued run that waits for the
+ * previous run's cooldown is polled less often until it is about to start.
  */
 function pollInterval(
   status: BigQueryExportStatus | undefined,
   now: number = Date.now(),
 ): number | false {
   const destination = status?.destination;
-  if (destination?.runState === "RUNNING") return POLL_WHILE_BUSY_MS;
+  if (destination?.stopping || destination?.runState === "RUNNING")
+    return POLL_WHILE_BUSY_MS;
   if (destination?.runState !== "QUEUED") return false;
   const startsAt = Date.parse(destination.nextScheduledRunAt ?? "");
   return startsAt - now > 60_000 ? POLL_WHILE_WAITING_MS : POLL_WHILE_BUSY_MS;
 }
 
+/**
+ * Where a stop is. A stop Lumi finishes later, for example after a run, is
+ * stopping until the export is gone. The page can then say that it is done,
+ * also when it was opened while the stop was going on.
+ */
+type StopState =
+  | { phase: "none" }
+  | { phase: "stopping"; byUser: boolean }
+  | { phase: "stopped"; tablesRemoved: boolean };
+
+const NO_STOP: StopState = { phase: "none" };
+
 export function BigQueryExportView({ team }: { team: string }) {
-  const [stopped, setStopped] = useState<BigQueryExportStop | null>(null);
+  const [stop, setStop] = useState<StopState>(NO_STOP);
   const [started, setStarted] = useState(false);
   // Only a retry the user starts shows a spinner, not the background polling.
   const [retrying, setRetrying] = useState(false);
@@ -65,6 +78,15 @@ export function BigQueryExportView({ team }: { team: string }) {
   });
   const loadRetryButton = useFocusAfterLoading(query.isFetching);
   const refreshRetryButton = useFocusAfterLoading(retrying);
+  const stoppingNow = query.data?.destination?.stopping === true;
+  useEffect(() => {
+    if (stoppingNow)
+      setStop((current) =>
+        current.phase === "stopping"
+          ? current
+          : { phase: "stopping", byUser: false },
+      );
+  }, [stoppingNow]);
   if (query.isPending)
     return (
       <HStack gap="space-12" align="center">
@@ -95,7 +117,25 @@ export function BigQueryExportView({ team }: { team: string }) {
     );
 
   const status = query.data;
-  const stoppedNotice = stopped && <StoppedNotice result={stopped} />;
+  const stoppedNotice =
+    !status.destination &&
+    (stop.phase === "stopped" ? (
+      <StoppedNotice tablesRemoved={stop.tablesRemoved} />
+    ) : stop.phase === "stopping" ? (
+      <StoppedNotice tablesRemoved={null} />
+    ) : null);
+  const onStopped = (result: BigQueryExportStop) =>
+    setStop(
+      result.stopping
+        ? { phase: "stopping", byUser: true }
+        : { phase: "stopped", tablesRemoved: result.tablesRemoved },
+    );
+  const stopping = status.destination?.stopping ? (
+    <StoppingNotice
+      datasetName={`${status.destination.projectId}.${status.destination.datasetId}`}
+      focus={stop.phase === "stopping" && stop.byUser}
+    />
+  ) : null;
   const retry = async () => {
     setRetrying(true);
     try {
@@ -124,9 +164,10 @@ export function BigQueryExportView({ team }: { team: string }) {
           <ExternalLink href={LUMI_SLACK_URL}>#lumi på Slack</ExternalLink> hvis
           teamet vil være med.
         </Alert>
-        {status.destination && (
-          <StopOnly status={status} team={team} onStopped={setStopped} />
-        )}
+        {stopping ??
+          (status.destination && (
+            <StopOnly status={status} team={team} onStopped={onStopped} />
+          ))}
       </VStack>
     );
   else if (!status.destination)
@@ -145,12 +186,13 @@ export function BigQueryExportView({ team }: { team: string }) {
             includeFreeText: false,
           }}
           onStarted={() => {
-            setStopped(null);
+            setStop(NO_STOP);
             setStarted(true);
           }}
         />
       </VStack>
     );
+  else if (stopping) content = stopping;
   else
     content = (
       <ActiveExport
@@ -161,7 +203,7 @@ export function BigQueryExportView({ team }: { team: string }) {
         focusStatus={started}
         onStopped={(result) => {
           setStarted(false);
-          setStopped(result);
+          onStopped(result);
         }}
       />
     );
@@ -198,23 +240,58 @@ export function BigQueryExportView({ team }: { team: string }) {
   );
 }
 
-function StoppedNotice({ result }: { result: BigQueryExportStop }) {
+/** Null when Lumi finished the stop later and the page did not see the result. */
+function StoppedNotice({ tablesRemoved }: { tablesRemoved: boolean | null }) {
   const ref = useRef<HTMLDivElement>(null);
-  // The stop dialog and the button that opened it are gone, so focus moves
-  // to the notice that says what happened.
+  const finishedLater = useRef(tablesRemoved === null);
+  // The stop dialog and the button that opened it, or the notice about the
+  // stop, are gone, so focus moves to the notice that says what happened. A
+  // stop Lumi finished later does not take focus from somewhere else.
   useEffect(() => {
-    ref.current?.focus();
+    const active = document.activeElement;
+    if (!finishedLater.current || !active || active === document.body)
+      ref.current?.focus();
   }, []);
   return (
     <Alert
       ref={ref}
       tabIndex={-1}
-      variant={result.tablesRemoved ? "success" : "warning"}
+      variant={tablesRemoved === false ? "warning" : "success"}
       size="small"
     >
-      {result.tablesRemoved
-        ? "Eksporten er stoppet, og Lumis tabeller er slettet."
-        : "Eksporten er stoppet. Lumi fikk ikke slettet alle tabellene, men de forsvinner av seg selv innen sju dager."}
+      {tablesRemoved === null
+        ? "Eksporten er stoppet."
+        : tablesRemoved
+          ? "Eksporten er stoppet, og Lumis tabeller er slettet."
+          : "Eksporten er stoppet. Lumi fikk ikke slettet alle tabellene, men de forsvinner av seg selv innen sju dager."}
+    </Alert>
+  );
+}
+
+/** Shown until Lumi has finished a stop, for example after a run. */
+function StoppingNotice({
+  datasetName,
+  focus,
+}: {
+  datasetName: string;
+  focus: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const focusOnMount = useRef(focus);
+  // Right after a stop, the dialog and the button that opened it are gone.
+  useEffect(() => {
+    if (focusOnMount.current) ref.current?.focus();
+  }, []);
+  return (
+    <Alert ref={ref} tabIndex={-1} variant="info">
+      <Heading level="2" size="small" spacing>
+        Eksporten stoppes
+      </Heading>
+      <BodyLong>
+        Lumi oppdaterer ikke lenger tabellene i <code>{datasetName}</code> og
+        sletter dem så snart det går. Det tar som regel noen minutter. Du kan
+        lukke siden.
+      </BodyLong>
     </Alert>
   );
 }
@@ -295,6 +372,11 @@ function ActiveExport({
     onSuccess: (result) => {
       if (result.ok)
         queryClient.setQueryData(bigQueryExportQueryKey(team), result.value);
+      // Someone may have stopped the export. The status then shows the stop.
+      else if (result.reason === "unavailable")
+        void queryClient.invalidateQueries({
+          queryKey: bigQueryExportQueryKey(team),
+        });
     },
   });
   const runError = run.isError

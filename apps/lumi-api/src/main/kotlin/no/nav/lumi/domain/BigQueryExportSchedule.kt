@@ -29,6 +29,7 @@ class BigQueryExportSchedule(
      * export service marks an interrupted run as failed first, so the backoff applies to it.
      */
     fun isDue(destination: BigQueryExportDestination, now: Instant): Boolean {
+        if (destination.stopRequestedAt != null) return false
         if (destination.lastRunStatus == BigQueryExportRunStatus.RUNNING) return false
         if (destination.runRequestedAt != null) return !now.isBefore(requestedRunAt(destination))
         if (destination.lastRunStatus == BigQueryExportRunStatus.FAILED) {
@@ -70,8 +71,18 @@ class BigQueryExportSchedule(
         }
     }
 
+    /** Whether to try again to finish a stop, which waits for jobs and for BigQuery to delete the tables. */
+    fun isStopDue(destination: BigQueryExportDestination, now: Instant): Boolean =
+        destination.stopRequestedAt != null &&
+            destination.stopAttemptedAt?.let { !now.isBefore(it.plus(minRunInterval)) } != false
+
+    /**
+     * The start per team counts too. It is kept when the team moves or stops and sets up the export
+     * again, so neither can be used to skip the time between runs.
+     */
     private fun requestedRunAt(destination: BigQueryExportDestination): Instant =
-        destination.lastRunStartedAt?.plus(minRunInterval) ?: Instant.EPOCH
+        listOfNotNull(destination.lastRunStartedAt, destination.teamLastRunStartedAt).maxOrNull()?.plus(minRunInterval)
+            ?: Instant.EPOCH
 
     private fun retryAt(destination: BigQueryExportDestination): Instant {
         val finishedAt = destination.lastRunFinishedAt ?: destination.lastRunStartedAt ?: return Instant.EPOCH

@@ -14,6 +14,9 @@ class BigQueryExportScheduleTest : FunSpec({
         lastRunFinishedAt: Instant? = null,
         runRequestedAt: Instant? = null,
         consecutiveFailures: Int = 0,
+        stopRequestedAt: Instant? = null,
+        stopAttemptedAt: Instant? = null,
+        teamLastRunStartedAt: Instant? = null,
     ) = BigQueryExportDestination(
         team = "team-esyfo",
         projectId = "team-esyfo-prod-bbe6",
@@ -30,6 +33,9 @@ class BigQueryExportScheduleTest : FunSpec({
         consecutiveFailures = consecutiveFailures,
         lastSuccessAt = lastSuccessAt,
         lastSuccessRows = null,
+        stopRequestedAt = stopRequestedAt,
+        stopAttemptedAt = stopAttemptedAt,
+        teamLastRunStartedAt = teamLastRunStartedAt,
     )
 
     test("the nightly slot is 01:00 Norwegian time in summer and winter") {
@@ -77,6 +83,28 @@ class BigQueryExportScheduleTest : FunSpec({
         schedule.isDue(requested, Instant.parse("2026-10-20T12:02:59Z")) shouldBe false
         schedule.isDue(requested, Instant.parse("2026-10-20T12:03:00Z")) shouldBe true
         schedule.nextRunAt(requested, Instant.parse("2026-10-20T12:00:00Z")) shouldBe Instant.parse("2026-10-20T12:03:00Z")
+    }
+
+    test("the time between requested runs counts from the team's latest start, also after a move or a new setup") {
+        val teamStart = Instant.parse("2026-10-20T11:58:00Z")
+        val moved = destination(runRequestedAt = Instant.parse("2026-10-20T11:59:00Z"), teamLastRunStartedAt = teamStart)
+
+        schedule.isDue(moved, Instant.parse("2026-10-20T12:02:59Z")) shouldBe false
+        schedule.isDue(moved, Instant.parse("2026-10-20T12:03:00Z")) shouldBe true
+        schedule.nextRunAt(moved, Instant.parse("2026-10-20T12:00:00Z")) shouldBe Instant.parse("2026-10-20T12:03:00Z")
+    }
+
+    test("a stopping export never runs, and a failed stop is tried again after five minutes") {
+        val now = Instant.parse("2026-10-20T12:00:00Z")
+        val stopping = destination(runRequestedAt = now.minusSeconds(600), stopRequestedAt = now.minusSeconds(60))
+
+        schedule.isDue(stopping, now) shouldBe false
+        schedule.isStopDue(stopping, now) shouldBe true
+        schedule.isStopDue(destination(), now) shouldBe false
+
+        val attempted = destination(stopRequestedAt = now.minusSeconds(600), stopAttemptedAt = now.minusSeconds(60))
+        schedule.isStopDue(attempted, now) shouldBe false
+        schedule.isStopDue(attempted, now.plusSeconds(240)) shouldBe true
     }
 
     test("a run marked as running is not due, because the service fails an interrupted run first") {

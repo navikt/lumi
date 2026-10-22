@@ -146,7 +146,14 @@ export function DestinationForm({
       saveBigQueryExport({ data: { team, ...saved } }),
     retry: false,
     onSuccess: (result) => {
-      if (!result.ok) return;
+      if (!result.ok) {
+        // Someone may have stopped the export. The status then shows the stop.
+        if (result.reason === "unavailable")
+          void queryClient.invalidateQueries({
+            queryKey: bigQueryExportQueryKey(team),
+          });
+        return;
+      }
       if (mode === "setup") onStarted?.();
       queryClient.setQueryData(bigQueryExportQueryKey(team), result.value);
       void queryClient.invalidateQueries({

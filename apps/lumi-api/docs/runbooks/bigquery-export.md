@@ -17,7 +17,8 @@ creates the dataset, labels it `lumi-team=<team>` and grants Lumi's service acco
 - `LUMI_BIGQUERY_EXPORT_FREE_TEXT_TEAMS` lists the teams that may export free text, or
   `*` for every team. When it is unset, no team can. Production leaves it unset until a
   team's PVK covers free text in BigQuery. A team that loses access keeps its export, but
-  the next run deletes its `fritekst` table.
+  the next run deletes its `fritekst` table. If BigQuery does not delete it, the run
+  fails with `FREE_TEXT_NOT_REMOVED` and is retried with the usual backoff.
 - Load jobs run in Lumi's team project (`GCP_TEAM_PROJECT_ID`, falling back to
   `GOOGLE_CLOUD_PROJECT`; Nais sets both). The manifests grant `roles/bigquery.jobUser`
   there through `gcp.permissions`. No dataset roles are granted by the manifest.
@@ -30,8 +31,10 @@ creates the dataset, labels it `lumi-team=<team>` and grants Lumi's service acco
 - Each destination is exported once a night after 01:00 Norwegian time, which is
   outside the Cloud SQL maintenance window. Saving settings, choosing
   **Oppdater tabellene nå** or deleting responses in the dashboard queues a run. A queued
-  run starts at most once per five minutes per team. A failed run is retried after one
-  hour, then after twice as long each time, up to 24 hours.
+  run starts at most once per five minutes per team. The latest start per team is kept in
+  `bigquery_export.team_runs`, which moving the export or stopping it and setting it up
+  again does not reset. A failed run is retried after one hour, then after twice as long
+  each time, up to 24 hours.
 - A run still marked as running when a replica takes the lock was cut off, for example
   by a pod restart. It is counted as a failed run with `INTERNAL_ERROR`, so the backoff
   applies instead of an immediate retry. A run someone requested in the meantime still
@@ -52,7 +55,8 @@ creates the dataset, labels it `lumi-team=<team>` and grants Lumi's service acco
   the team asks BigQuery about each stored job before it writes anything: a job that is
   done, or that BigQuery never created, is forgotten, and a job that still runs makes the
   run fail with `LOAD_FAILED` and try again later. An old job can therefore not overwrite
-  newer data or bring back deleted rows. To see the stored jobs:
+  newer data or bring back deleted rows. A stop waits for the stored jobs too, see
+  [Stopping an export](#stopping-an-export). To see the stored jobs:
   `SELECT team, pending_job_ids FROM bigquery_export.destinations;`
 - Tables are replaced one at a time: `fritekst`, `innsendinger`, `svar`. A run that fails
   halfway leaves tables from different runs until the next run. `oppdatert_tidspunkt`
@@ -67,6 +71,38 @@ creates the dataset, labels it `lumi-team=<team>` and grants Lumi's service acco
   are allowed). Turning free text off needs no checks, so it works even when BigQuery or
   Nais API has problems.
 
+## Stopping an export
+
+**Stopp eksporten** marks the export as stopping (`stop_requested_at`). From then on no
+run starts, and the dashboard cannot request a run or change the settings: the API
+answers 409. Lumi then finishes the stop while it holds the export lock, so no run is
+writing:
+
+1. It asks BigQuery about every job in `pending_job_ids`. A job that is done, or that
+   BigQuery never created, is forgotten. A job that still runs is cancelled, and the stop
+   waits for it.
+2. It deletes the tables it wrote for the team.
+3. It deletes the row with the settings. The latest start in `team_runs` stays.
+
+When a run holds the lock, the dashboard shows **Eksporten stoppes**, and the scheduler
+finishes the stop on its first poll after the run. An attempt that cannot finish, for
+example because BigQuery does not answer, is tried again five minutes later
+(`stop_attempted_at`). If Lumi has lost access to the dataset, the stop finishes without
+deleting the tables, which then expire within seven days of the latest run. After 48
+hours a stop finishes even if BigQuery never answers. By then every job Lumi started has
+ended, since BigQuery ends a job within a day, queue and retries included.
+
+A stopping export is left out of the per-team metrics, so it never raises the alerts.
+Stops that have not finished yet:
+
+```sql
+SELECT team, stop_requested_at, stop_attempted_at, pending_job_ids
+FROM bigquery_export.destinations
+WHERE stop_requested_at IS NOT NULL;
+```
+
+The logs name each attempt with `BigQuery export stop` and the team.
+
 ## Problem codes
 
 The dashboard shows these codes to the team. Codes marked *Team* need the team to
@@ -80,12 +116,13 @@ team acts.
 | `DATASET_ACCESS_DENIED` | Lumi's service account cannot read the dataset | Team |
 | `DATASET_WRONG_LOCATION` | The dataset is not in `europe-north1` | Team |
 | `DATASET_TEAM_LABEL_MISSING` / `_MISMATCH` | The `lumi-team` label is missing or names another team | Team |
-| `TABLE_WRITE_DENIED` | Lumi cannot create, load or empty tables in the dataset | Team |
+| `TABLE_WRITE_DENIED` | Lumi cannot create, load, empty or delete tables in the dataset | Team |
 | `TABLE_NOT_CREATED_BY_LUMI` | A table with one of Lumi's names exists without Lumi's labels | Team |
 | `DATASET_NOT_DEDICATED` | The dataset holds tables Lumi did not create (checked when saving) | Team |
 | `DATASET_TIME_TRAVEL_TOO_LONG` | The dataset keeps deleted rows for more than 48 hours | Team |
 | `TEAM_PROJECT_UNKNOWN` | Nais API did not answer, so the project could not be checked | Lumi |
 | `EXPORT_JOB_DENIED` | Lumi may not run jobs in its own project | Lumi |
+| `FREE_TEXT_NOT_REMOVED` | Free text is off or closed for the team, but BigQuery did not delete the `fritekst` table. The team can delete it too | Lumi |
 | `BIGQUERY_UNAVAILABLE` | BigQuery or the metadata server did not answer | Lumi |
 | `LOAD_FAILED` | A load job, a `TRUNCATE` job or a metadata update failed | Lumi |
 | `INTERNAL_ERROR` | An unexpected exception, a run over 30 minutes or an interrupted run | Lumi |
@@ -144,7 +181,8 @@ SELECT pg_advisory_lock(7316244190552);
 ```
 
 A run that is already in progress finishes first, and load jobs already sent to BigQuery
-complete on Google's side.
+complete on Google's side. Stops that teams request in the meantime wait too, and finish
+when the lock is released.
 
 To turn the export off for good, set `LUMI_BIGQUERY_EXPORT_ENABLED` to `false` in the
 manifest and deploy. The tables in the teams' projects then expire within seven days.
@@ -166,7 +204,7 @@ WHERE option_name = 'labels' AND option_value LIKE '%lumi-eksport%'
 - `lumi_bigquery_export_destination_last_success_timestamp_seconds{lumi_team}` is the
   team's latest successful run, or the latest change of its settings if no run has
   succeeded since. It is read from the database on every poll, so it survives restarts.
-  Only teams the export is open for are reported.
+  Only teams the export is open for, and that have not stopped it, are reported.
 - `lumi_bigquery_export_destination_consecutive_failures{lumi_team}` counts failed runs in
   a row.
 - `lumi_bigquery_export_destination_team_action_needed{lumi_team}` is 1 when the team's

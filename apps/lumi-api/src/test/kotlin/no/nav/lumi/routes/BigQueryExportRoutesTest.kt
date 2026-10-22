@@ -1,6 +1,8 @@
 package no.nav.lumi.routes
 
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.ktor.client.request.delete
@@ -146,6 +148,43 @@ class BigQueryExportRoutesTest : FunSpec({
             saved.status shouldBe HttpStatusCode.OK
             saved.bodyAsText() shouldContain "\"runState\":\"QUEUED\""
             saved.bodyAsText().contains("pseudonym") shouldBe false
+        }
+    }
+
+    test("a stop during a run answers that the export is stopping, and changes wait with 409") {
+        val gateway = FakeBigQueryGateway().apply { addDataset(project, "lumi", mapOf("lumi-team" to "team-test")) }
+        val service = availableService(gateway)
+        val repository = BigQueryExportRepository(dataSourceProvider = { TestDatabase.dataSource })
+        testApplication {
+            application { testModule(bigQueryExportService = { service }) }
+            val client = createTestClient()
+
+            suspend fun put() = client.put("$path?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer token")
+                contentType(ContentType.Application.Json)
+                setBody(body())
+            }
+            put().status shouldBe HttpStatusCode.OK
+
+            // Another replica is exporting, so the stop cannot finish at once.
+            repository.withExportLock {
+                val stopped = client.delete("$path?team=team-test") { header(HttpHeaders.Authorization, "Bearer token") }
+                stopped.status shouldBe HttpStatusCode.OK
+                stopped.bodyAsText() shouldContain "\"tablesRemoved\":false"
+                stopped.bodyAsText() shouldContain "\"stopping\":true"
+            }.shouldNotBeNull()
+
+            client.get("$path?team=team-test") { header(HttpHeaders.Authorization, "Bearer token") }
+                .bodyAsText() shouldContain "\"stopping\":true"
+            put().let { refused ->
+                refused.status shouldBe HttpStatusCode.Conflict
+                refused.bodyAsText() shouldContain "Eksporten stoppes"
+            }
+            client.post("$path/run?team=team-test") { header(HttpHeaders.Authorization, "Bearer token") }.status shouldBe
+                HttpStatusCode.Conflict
+
+            service.runDueExports()
+            service.status("team-test").destination.shouldBeNull()
         }
     }
 

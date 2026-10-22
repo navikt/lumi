@@ -16,7 +16,8 @@ import {
  *
  * A queued run starts after about a second and finishes a few seconds later,
  * so the page's polling can be seen working. Like the API, a new run waits
- * until five minutes after the previous run started.
+ * until five minutes after the previous run started, and a stop during a run
+ * finishes when the run is done.
  *
  * Datasets named `mangler_tilgang`, `annet_team`, `andre_tabeller`,
  * `lang_tidsreise` and `nais_nede` give the problems a team meets most often.
@@ -37,6 +38,7 @@ interface MockDestination {
   queuedAt: number | null;
   lastStartedAt: number | null;
   lastSuccessAt: string | null;
+  stopping: boolean;
 }
 
 const destinations = new Map<string, MockDestination>();
@@ -106,6 +108,19 @@ function advance(destination: MockDestination, now: number): void {
   destination.queuedAt = null;
 }
 
+function isRunning(destination: MockDestination, now: number): boolean {
+  const start = startOf(destination);
+  return start !== null && now >= start;
+}
+
+/** A stop waits for the run that is going on, like in the API. */
+function finishStop(team: string, now: number): void {
+  const destination = destinations.get(team);
+  if (!destination?.stopping) return;
+  advance(destination, now);
+  if (!isRunning(destination, now)) destinations.delete(team);
+}
+
 function toDto(
   destination: MockDestination,
   now: number,
@@ -148,10 +163,12 @@ function toDto(
       start !== null && !running
         ? new Date(start).toISOString()
         : nextNight.toISOString(),
+    stopping: destination.stopping,
   };
 }
 
 function status(team: string, now: number): BigQueryExportStatus {
+  finishStop(team, now);
   const state = availability(team);
   const available = state === "AVAILABLE";
   const destination = destinations.get(team);
@@ -182,6 +199,10 @@ export function mockBigQueryExportRequest(
   if (path === "" && method === "GET") return json(status(team, now));
   if (availability(team) !== "AVAILABLE" && method !== "DELETE")
     return json({ message: "Unavailable" }, 409);
+
+  finishStop(team, now);
+  if (destinations.get(team)?.stopping && method !== "DELETE")
+    return json({ message: "Eksporten stoppes" }, 409);
 
   const input = (body ?? {}) as Record<string, unknown>;
   if (path === "/verify" && method === "POST") {
@@ -217,6 +238,7 @@ export function mockBigQueryExportRequest(
         : (existing?.queuedAt ?? null),
       lastStartedAt: existing?.lastStartedAt ?? null,
       lastSuccessAt: existing?.lastSuccessAt ?? null,
+      stopping: false,
     });
     return json(status(team, now));
   }
@@ -228,8 +250,15 @@ export function mockBigQueryExportRequest(
     return json(status(team, now), 202);
   }
   if (path === "" && method === "DELETE") {
-    if (!destinations.delete(team)) return json({ message: "Not found" }, 404);
-    return json({ tablesRemoved: true });
+    const existing = destinations.get(team);
+    if (!existing) return json({ message: "Not found" }, 404);
+    advance(existing, now);
+    if (isRunning(existing, now)) {
+      existing.stopping = true;
+      return json({ tablesRemoved: false, stopping: true });
+    }
+    destinations.delete(team);
+    return json({ tablesRemoved: true, stopping: false });
   }
   return json({ message: "Not found" }, 404);
 }

@@ -66,7 +66,7 @@ class BigQueryExportRepository(
      * Creates or updates the team's destination. A new destination gets a new pseudonym key and a
      * queued first run. Changing project or dataset counts as a new destination: it gets a new key,
      * the run history is reset, and a run is queued so the new dataset is filled. Changing free text
-     * also queues a run.
+     * also queues a run. An export that is being stopped is left as it is, and returned.
      */
     suspend fun upsert(
         team: String,
@@ -102,6 +102,7 @@ class BigQueryExportRepository(
                         THEN COALESCE(d.run_requested_at, EXCLUDED.run_requested_at)
                         ELSE d.run_requested_at
                     END
+                WHERE d.stop_requested_at IS NULL
             """.trimIndent(),
         ).use { statement ->
             val timestamp = Timestamp.from(now)
@@ -129,7 +130,8 @@ class BigQueryExportRepository(
     /** Queues a run unless one is already queued. Returns false when the team has no destination. */
     suspend fun requestRun(team: String, now: Instant): Boolean = dbQuery {
         currentJdbcConnection().prepareStatement(
-            "UPDATE bigquery_export.destinations SET run_requested_at = COALESCE(run_requested_at, ?) WHERE team = ?",
+            "UPDATE bigquery_export.destinations SET run_requested_at = COALESCE(run_requested_at, ?) " +
+                "WHERE team = ? AND stop_requested_at IS NULL",
         ).use { statement ->
             statement.setTimestamp(1, Timestamp.from(now))
             statement.setString(2, team)
@@ -149,10 +151,11 @@ class BigQueryExportRepository(
     /**
      * Marks a run as started and returns the destination as it is now, so the run uses the latest
      * settings. A request made after [startedAt] stays queued for the next run. Returns null when
-     * the team has stopped the export.
+     * the team has stopped the export. The start is also stored per team, where moving or stopping
+     * the export does not reset it.
      */
     suspend fun markStarted(team: String, startedAt: Instant): BigQueryExportDestination? = dbQuery {
-        currentJdbcConnection().prepareStatement(
+        val started = currentJdbcConnection().prepareStatement(
             """
                 UPDATE bigquery_export.destinations SET
                     last_run_status = 'RUNNING',
@@ -160,7 +163,7 @@ class BigQueryExportRepository(
                     last_run_finished_at = NULL,
                     last_run_error_code = NULL,
                     run_requested_at = CASE WHEN run_requested_at <= ? THEN NULL ELSE run_requested_at END
-                WHERE team = ?
+                WHERE team = ? AND stop_requested_at IS NULL
                 RETURNING $DESTINATION_COLUMNS
             """.trimIndent(),
         ).use { statement ->
@@ -169,6 +172,47 @@ class BigQueryExportRepository(
             statement.setTimestamp(2, timestamp)
             statement.setString(3, team)
             statement.executeQuery().use { result -> if (result.next()) result.toDestination() else null }
+        } ?: return@dbQuery null
+        currentJdbcConnection().prepareStatement(
+            """
+                INSERT INTO bigquery_export.team_runs (team, last_run_started_at) VALUES (?, ?)
+                ON CONFLICT (team) DO UPDATE SET
+                    last_run_started_at = GREATEST(bigquery_export.team_runs.last_run_started_at, EXCLUDED.last_run_started_at)
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setString(1, team)
+            statement.setTimestamp(2, Timestamp.from(startedAt))
+            statement.executeUpdate()
+        }
+        started.copy(teamLastRunStartedAt = listOfNotNull(started.teamLastRunStartedAt, startedAt).max())
+    }
+
+    /**
+     * Marks the export as stopping. Nothing more runs or can be requested, and the scheduler
+     * removes the tables and the row under the export lock. Returns false when there is no export.
+     */
+    suspend fun markStopping(team: String, now: Instant): Boolean = dbQuery {
+        currentJdbcConnection().prepareStatement(
+            """
+                UPDATE bigquery_export.destinations
+                SET stop_requested_at = COALESCE(stop_requested_at, ?), run_requested_at = NULL
+                WHERE team = ?
+            """.trimIndent(),
+        ).use { statement ->
+            statement.setTimestamp(1, Timestamp.from(now))
+            statement.setString(2, team)
+            statement.executeUpdate() == 1
+        }
+    }
+
+    /** Remembers that a stop could not finish yet, so the next attempt waits a little. */
+    suspend fun markStopAttemptFailed(team: String, now: Instant): Unit = dbQuery {
+        currentJdbcConnection().prepareStatement(
+            "UPDATE bigquery_export.destinations SET stop_attempted_at = ? WHERE team = ? AND stop_requested_at IS NOT NULL",
+        ).use { statement ->
+            statement.setTimestamp(1, Timestamp.from(now))
+            statement.setString(2, team)
+            statement.executeUpdate()
         }
     }
 
@@ -223,8 +267,11 @@ class BigQueryExportRepository(
         }
     }
 
-    /** Remembers a job that may replace a table, before Lumi starts it. */
-    suspend fun addPendingJob(team: String, jobId: String): Unit = dbQuery {
+    /**
+     * Remembers a job that may replace a table, before Lumi starts it. Returns false when the team
+     * has no export, and the job must then not be started.
+     */
+    suspend fun addPendingJob(team: String, jobId: String): Boolean = dbQuery {
         currentJdbcConnection().prepareStatement(
             """
                 UPDATE bigquery_export.destinations
@@ -235,7 +282,7 @@ class BigQueryExportRepository(
             statement.setString(1, jobId)
             statement.setString(2, jobId)
             statement.setString(3, team)
-            statement.executeUpdate()
+            statement.executeUpdate() == 1
         }
     }
 
@@ -375,6 +422,9 @@ class BigQueryExportRepository(
             json.decodeFromString(BigQueryExportRowCounts.serializer(), it)
         },
         pendingJobIds = getArray("pending_job_ids")?.let { (it.array as Array<*>).map { id -> id.toString() } }.orEmpty(),
+        stopRequestedAt = getTimestamp("stop_requested_at")?.toInstant(),
+        stopAttemptedAt = getTimestamp("stop_attempted_at")?.toInstant(),
+        teamLastRunStartedAt = getTimestamp("team_last_run_started_at")?.toInstant(),
     )
 
     private fun currentJdbcConnection(): Connection =
@@ -397,7 +447,9 @@ class BigQueryExportRepository(
             "team, project_id, dataset_id, include_free_text, pseudonym_key, created_at, updated_at, " +
                 "run_requested_at, last_run_started_at, last_run_finished_at, last_run_status, " +
                 "last_run_error_code, consecutive_failures, last_success_at, last_success_rows::text AS last_success_rows, " +
-                "pending_job_ids"
+                "pending_job_ids, stop_requested_at, stop_attempted_at, " +
+                "(SELECT r.last_run_started_at FROM bigquery_export.team_runs r WHERE r.team = destinations.team) " +
+                "AS team_last_run_started_at"
 
         private const val SELECT_DESTINATION = "SELECT $DESTINATION_COLUMNS FROM bigquery_export.destinations"
 

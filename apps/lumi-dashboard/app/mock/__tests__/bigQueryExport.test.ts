@@ -129,9 +129,43 @@ describe("mock BigQuery export", () => {
       datasetId: "lumi",
       includeFreeText: false,
     });
-    expect((await call("", "DELETE")).body).toEqual({ tablesRemoved: true });
+    expect((await call("", "DELETE")).body).toEqual({
+      tablesRemoved: true,
+      stopping: false,
+    });
     expect((await call("", "DELETE")).status).toBe(404);
     expect((await call("/run", "POST")).status).toBe(404);
+  });
+
+  it("finishes a stop during a run when the run is done, and refuses changes until then", async () => {
+    await call("", "PUT", {
+      projectId: project,
+      datasetId: "lumi",
+      includeFreeText: false,
+    });
+    const duringRun = 1_002_000;
+    expect((await call("", "DELETE", undefined, duringRun)).body).toEqual({
+      tablesRemoved: false,
+      stopping: true,
+    });
+    expect(
+      (await call("", "GET", undefined, duringRun)).body.destination.stopping,
+    ).toBe(true);
+    expect((await call("/run", "POST", undefined, duringRun)).status).toBe(409);
+    expect(
+      (
+        await call(
+          "",
+          "PUT",
+          { projectId: project, datasetId: "lumi", includeFreeText: false },
+          duringRun,
+        )
+      ).status,
+    ).toBe(409);
+
+    expect(
+      (await call("", "GET", undefined, 1_005_000)).body.destination,
+    ).toBeNull();
   });
 
   it("refuses teams the user cannot access and shows the pilot state", async () => {

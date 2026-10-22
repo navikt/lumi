@@ -65,6 +65,9 @@ sealed interface BigQueryExportCommandResult<out T> {
     data class Done<T>(val value: T) : BigQueryExportCommandResult<T>
     data object Unavailable : BigQueryExportCommandResult<Nothing>
     data object NotConfigured : BigQueryExportCommandResult<Nothing>
+
+    /** The team has stopped the export, and Lumi is still removing the tables. */
+    data object Stopping : BigQueryExportCommandResult<Nothing>
 }
 
 /**
@@ -125,6 +128,7 @@ class BigQueryExportService(
         validateIds(request.projectId, request.datasetId)
         require(!request.includeFreeText || env.allowsFreeText(team)) { "Free text is not available for the team" }
         val previous = repository.find(team)
+        if (previous?.stopRequestedAt != null) return BigQueryExportCommandResult.Stopping
         // Keeping the dataset without adding free text writes nothing new, and the next run checks
         // the dataset anyway. Turning free text off must then work even if a check would fail.
         val sameDataset = previous != null &&
@@ -138,7 +142,7 @@ class BigQueryExportService(
             }
         }
 
-        repository.upsert(
+        val saved = repository.upsert(
             team = team,
             projectId = request.projectId,
             datasetId = request.datasetId,
@@ -146,6 +150,8 @@ class BigQueryExportService(
             actor = actor,
             now = clock.instant().truncatedTo(ChronoUnit.MICROS),
         )
+        if (saved.stopRequestedAt != null) return BigQueryExportCommandResult.Stopping
+        // A removal that fails here is retried by the run the upsert queued.
         if (previous != null) {
             val movedDataset = previous.projectId != request.projectId || previous.datasetId != request.datasetId
             when {
@@ -162,7 +168,8 @@ class BigQueryExportService(
     suspend fun requestRun(team: String): BigQueryExportCommandResult<BigQueryExportStatusResponse> {
         if (gatewayFor(team) == null) return BigQueryExportCommandResult.Unavailable
         if (!repository.requestRun(team, clock.instant().truncatedTo(ChronoUnit.MICROS))) {
-            return BigQueryExportCommandResult.NotConfigured
+            // The update skips an export that is being stopped.
+            return if (repository.find(team) == null) BigQueryExportCommandResult.NotConfigured else BigQueryExportCommandResult.Stopping
         }
         return BigQueryExportCommandResult.Done(status(team))
     }
@@ -175,23 +182,77 @@ class BigQueryExportService(
         }
     }
 
+    /**
+     * Stops the export. No new run starts, and the settings stay until Lumi has removed its tables.
+     * That happens under the export lock once every job Lumi started is done, so neither a running
+     * export nor an old job can write the tables back after the stop. When the stop cannot finish
+     * at once, for example during a run, the scheduler finishes it. Stopping is always allowed,
+     * also for a team outside the pilot.
+     */
     suspend fun stop(team: String): BigQueryExportCommandResult<BigQueryExportStopResponse> {
-        val destination = repository.find(team) ?: return BigQueryExportCommandResult.NotConfigured
-        // Stopping is always allowed, also for a team that is no longer in the pilot.
-        val tablesRemoved = enabledGateway()?.let { gateway ->
-            removeLumiTables(gateway, team, destination.projectId, destination.datasetId, BigQueryExportTable.entries)
-        } ?: false
+        repository.find(team) ?: return BigQueryExportCommandResult.NotConfigured
+        val gateway = enabledGateway()
+        if (gateway == null) {
+            // Nothing runs without the export, and the tables expire on their own.
+            repository.delete(team)
+            log.info("BigQuery export stopped for team {} while the export is off", team)
+            return BigQueryExportCommandResult.Done(BigQueryExportStopResponse(tablesRemoved = false))
+        }
+        if (!repository.markStopping(team, clock.instant().truncatedTo(ChronoUnit.MICROS))) {
+            return BigQueryExportCommandResult.NotConfigured
+        }
+        val outcome = repository.withExportLock { finishStop(gateway, team) } ?: StopOutcome.NOT_FINISHED
+        log.info("BigQuery export stop requested for team {}: {}", team, outcome)
+        return BigQueryExportCommandResult.Done(
+            BigQueryExportStopResponse(
+                tablesRemoved = outcome == StopOutcome.TABLES_REMOVED,
+                stopping = outcome == StopOutcome.NOT_FINISHED,
+            ),
+        )
+    }
+
+    /**
+     * Finishes a stop. Call it only while holding the export lock, so no run is writing. Lumi waits
+     * for the jobs it has started, then deletes its tables and the settings. When that cannot happen
+     * yet, the stop stays, and the scheduler tries again later.
+     */
+    private suspend fun finishStop(gateway: BigQueryGateway, team: String): StopOutcome {
+        val destination = repository.find(team) ?: return StopOutcome.NOT_FINISHED
+        val requestedAt = destination.stopRequestedAt ?: return StopOutcome.NOT_FINISHED
+        val now = clock.instant().truncatedTo(ChronoUnit.MICROS)
+        val waitedLongEnough = !now.isBefore(requestedAt.plus(STOP_MAX_WAIT))
+        for (jobId in destination.pendingJobIds) {
+            val state = gateway.jobState(jobId)
+            when {
+                state == BigQueryResult.NotFound || (state as? BigQueryResult.Success)?.value == BigQueryJobState.DONE ->
+                    repository.removePendingJob(team, jobId)
+                waitedLongEnough -> log.warn("BigQuery export stop for team {} stops waiting for job {}: {}", team, jobId, state)
+                else -> {
+                    if (state is BigQueryResult.Success) gateway.cancelJob(jobId)
+                    repository.markStopAttemptFailed(team, now)
+                    log.info("BigQuery export stop for team {} waits for job {}: {}", team, jobId, state)
+                    return StopOutcome.NOT_FINISHED
+                }
+            }
+        }
+        val removal = removeLumiTables(gateway, team, destination.projectId, destination.datasetId, BigQueryExportTable.entries)
+        if (removal == TableRemoval.FAILED && !waitedLongEnough) {
+            repository.markStopAttemptFailed(team, now)
+            log.warn("BigQuery export stop for team {} could not remove the tables yet", team)
+            return StopOutcome.NOT_FINISHED
+        }
         repository.delete(team)
-        log.info("BigQuery export stopped for team {} (tablesRemoved={})", team, tablesRemoved)
-        return BigQueryExportCommandResult.Done(BigQueryExportStopResponse(tablesRemoved = tablesRemoved))
+        log.info("BigQuery export stopped for team {}: {}", team, removal)
+        return if (removal == TableRemoval.REMOVED) StopOutcome.TABLES_REMOVED else StopOutcome.TABLES_LEFT
     }
 
     /** Runs every due export once. Returns the number of runs, or null when another replica is exporting. */
     suspend fun runDueExports(): Int? {
         val gateway = enabledGateway() ?: return 0
-        observability.recordPoll(clock.instant(), repository.findAll().filter { env.isOpenFor(it.team) })
+        observability.recordPoll(clock.instant(), repository.findAll().filter { env.isOpenFor(it.team) && it.stopRequestedAt == null })
         return repository.withExportLock { lock ->
             val now = clock.instant()
+            finishDueStops(gateway, now)
             failInterruptedRuns(now)
             val due = repository.findAll().filter { env.isOpenFor(it.team) && schedule.isDue(it, now) }
             due.forEach { destination ->
@@ -207,14 +268,27 @@ class BigQueryExportService(
         }
     }
 
+    /** Finishes stops that could not finish when the team stopped, for example during a run. */
+    private suspend fun finishDueStops(gateway: BigQueryGateway, now: Instant) {
+        repository.findAll().filter { schedule.isStopDue(it, now) }.forEach { stopping ->
+            try {
+                finishStop(gateway, stopping.team)
+            } catch (cause: CancellationException) {
+                throw cause
+            } catch (cause: Exception) {
+                log.error("BigQuery export stop for team {} could not be finished", stopping.team, cause)
+            }
+        }
+    }
+
     /**
      * A run that is still marked as running while this replica holds the lock was cut off, for
      * example when a pod stopped. It counts as a failure, so the backoff keeps a run that kills its
-     * pod from being retried in a loop.
+     * pod from being retried in a loop. A stopped export is left alone: the stop removes it.
      */
     private suspend fun failInterruptedRuns(now: Instant) {
         repository.findAll()
-            .filter { it.lastRunStatus == BigQueryExportRunStatus.RUNNING && it.lastRunStartedAt != null }
+            .filter { it.lastRunStatus == BigQueryExportRunStatus.RUNNING && it.lastRunStartedAt != null && it.stopRequestedAt == null }
             .forEach { interrupted ->
                 val finishedAt = now.truncatedTo(ChronoUnit.MICROS)
                 if (repository.markFailed(interrupted.team, interrupted.lastRunStartedAt!!, finishedAt, BigQueryExportProblemCode.INTERNAL_ERROR)) {
@@ -269,7 +343,7 @@ class BigQueryExportService(
         val includeFreeText = destination.includeFreeText && env.allowsFreeText(team)
         val tables = exportedTables(includeFreeText)
         if (!includeFreeText) {
-            removeLumiTables(gateway, team, destination.projectId, destination.datasetId, listOf(BigQueryExportTable.FRITEKST))
+            freeTextRemovalProblem(gateway, team, destination)?.let { return ExportOutcome.Failed(it) }
         }
         checkExistingDestination(gateway, destination, tables).firstOrNull()?.let { return ExportOutcome.Failed(it.code) }
         earlierJobProblem(gateway, destination)?.let { return ExportOutcome.Failed(it) }
@@ -351,8 +425,36 @@ class BigQueryExportService(
      * waits for the job, so an old job cannot overwrite newer data or bring back deleted rows.
      */
     private suspend fun <T> tracked(team: String, jobId: String, job: suspend () -> BigQueryResult<T>): BigQueryResult<T> {
-        repository.addPendingJob(team, jobId)
+        if (!repository.addPendingJob(team, jobId)) {
+            return BigQueryResult.Failure("The export for the team is gone, so job $jobId was not started")
+        }
         return job().also { result -> if (result is BigQueryResult.Success) repository.removePendingJob(team, jobId) }
+    }
+
+    /**
+     * Removes Lumi's `fritekst` table when free text is off or closed for the team. A removal that
+     * fails, fails the run, so the status does not say the export is fine while free text remains.
+     */
+    private suspend fun freeTextRemovalProblem(
+        gateway: BigQueryGateway,
+        team: String,
+        destination: BigQueryExportDestination,
+    ): BigQueryExportProblemCode? {
+        val ref = BigQueryTableRef(destination.projectId, destination.datasetId, BigQueryExportTable.FRITEKST.tableId)
+        val removed = when (val existing = gateway.getTable(ref)) {
+            is BigQueryResult.Success -> if (existing.value.isLumiTableFor(team)) gateway.deleteTable(ref) else return null
+            BigQueryResult.NotFound -> return null
+            BigQueryResult.AccessDenied -> return BigQueryExportProblemCode.DATASET_ACCESS_DENIED
+            else -> existing
+        }
+        return when (removed) {
+            is BigQueryResult.Success, BigQueryResult.NotFound -> null
+            BigQueryResult.AccessDenied -> BigQueryExportProblemCode.TABLE_WRITE_DENIED
+            else -> {
+                log.warn("BigQuery export for team {} could not remove the fritekst table: {}", team, removed)
+                BigQueryExportProblemCode.FREE_TEXT_NOT_REMOVED
+            }
+        }
     }
 
     /** Waits for jobs from earlier runs that Lumi did not see finish. Null when all are done. */
@@ -565,30 +667,45 @@ class BigQueryExportService(
         }
     }
 
-    /** Deletes Lumi's own tables for the team. Tries every table, and returns true when none are left. */
+    /**
+     * Deletes Lumi's own tables for the team, and tries every table. Tables Lumi did not write for
+     * the team are left alone.
+     */
     private suspend fun removeLumiTables(
         gateway: BigQueryGateway,
         team: String,
         projectId: String,
         datasetId: String,
         tables: List<BigQueryExportTable>,
-    ): Boolean = tables.map { table ->
-        val ref = BigQueryTableRef(projectId, datasetId, table.tableId)
-        when (val existing = gateway.getTable(ref)) {
-            BigQueryResult.NotFound -> true
-            is BigQueryResult.Success -> existing.value.isLumiTableFor(team) &&
-                gateway.deleteTable(ref).let { it is BigQueryResult.Success || it == BigQueryResult.NotFound }
-            else -> false
+    ): TableRemoval {
+        val results = tables.map { table ->
+            val ref = BigQueryTableRef(projectId, datasetId, table.tableId)
+            val removed = when (val existing = gateway.getTable(ref)) {
+                is BigQueryResult.Success -> if (existing.value.isLumiTableFor(team)) gateway.deleteTable(ref) else existing
+                else -> existing
+            }
+            when (removed) {
+                is BigQueryResult.Success, BigQueryResult.NotFound -> TableRemoval.REMOVED
+                BigQueryResult.AccessDenied, BigQueryResult.JobDenied -> TableRemoval.NO_ACCESS
+                is BigQueryResult.Failure -> TableRemoval.FAILED
+            }
         }
-    }.all { it }
+        return when {
+            TableRemoval.FAILED in results -> TableRemoval.FAILED
+            TableRemoval.NO_ACCESS in results -> TableRemoval.NO_ACCESS
+            else -> TableRemoval.REMOVED
+        }
+    }
 
     /**
-     * If the team stopped the export, moved it or turned free text off during a run, the tables the
-     * run should no longer have written are removed.
+     * If the team moved the export or turned free text off during a run, the tables the run should
+     * no longer have written are removed. If a removal fails, the tables expire, or the next run
+     * removes `fritekst`. A stop is finished by [finishStop] once the run is over.
      */
     private suspend fun cleanUpIfDestinationChanged(gateway: BigQueryGateway, written: BigQueryExportDestination) {
         val current = repository.find(written.team)
         when {
+            current?.stopRequestedAt != null -> Unit
             current == null || current.projectId != written.projectId || current.datasetId != written.datasetId ->
                 removeLumiTables(gateway, written.team, written.projectId, written.datasetId, BigQueryExportTable.entries)
             written.includeFreeText && !current.includeFreeText ->
@@ -647,6 +764,7 @@ class BigQueryExportService(
         lastSuccessAt = lastSuccessAt?.toString(),
         lastSuccessRows = lastSuccessRows,
         nextScheduledRunAt = schedule.nextRunAt(this, now).toString(),
+        stopping = stopRequestedAt != null,
     )
 
     private fun List<BigQueryExportProblem>.toResponse() = BigQueryExportVerificationResponse(
@@ -662,6 +780,11 @@ class BigQueryExportService(
     /** A table Lumi created for this team: it has Lumi's label and the team's label. */
     private fun BigQueryTableInfo.isLumiTableFor(team: String): Boolean =
         labels[BIGQUERY_EXPORT_TABLE_LABEL] != null && labels[BIGQUERY_TEAM_LABEL] == team
+
+    /** NO_ACCESS: Lumi has lost access to some of the tables, which then expire on their own. */
+    private enum class TableRemoval { REMOVED, NO_ACCESS, FAILED }
+
+    private enum class StopOutcome { TABLES_REMOVED, TABLES_LEFT, NOT_FINISHED }
 
     private sealed interface DatasetCheck {
         data class Found(val info: BigQueryDatasetInfo) : DatasetCheck
@@ -702,6 +825,14 @@ class BigQueryExportService(
         /** Tables expire unless a run renews them, so data disappears even if Lumi stops exporting. */
         val TABLE_LIFETIME: Duration = Duration.ofDays(7)
         private val PROBE_LIFETIME: Duration = Duration.ofHours(1)
+
+        /**
+         * A stop that has waited this long finishes even if BigQuery does not answer. By then every
+         * job Lumi started has ended: a run lasts at most half an hour, and BigQuery ends a job
+         * within a day, queue and retries included. Tables Lumi could not delete expire on their
+         * own, since no run renews them.
+         */
+        private val STOP_MAX_WAIT: Duration = Duration.ofHours(48)
 
         /** BigQuery keeps deleted rows for seven days when a dataset does not say otherwise. */
         private const val DEFAULT_TIME_TRAVEL_HOURS = 168

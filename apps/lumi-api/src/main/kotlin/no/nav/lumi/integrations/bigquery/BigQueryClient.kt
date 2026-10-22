@@ -133,6 +133,9 @@ interface BigQueryGateway {
     /** Looks up a job Lumi started. NotFound means BigQuery never created it. */
     suspend fun jobState(jobId: String): BigQueryResult<BigQueryJobState>
 
+    /** Asks BigQuery to cancel a job. BigQuery does not promise to stop it, so check its state after. */
+    suspend fun cancelJob(jobId: String): BigQueryResult<Unit>
+
     /** Sets expiry, description, labels and column descriptions. Other labels on the table are kept. */
     suspend fun updateTableMetadata(spec: BigQueryTableSpec, expiresAt: Instant): BigQueryResult<Unit>
 
@@ -499,7 +502,7 @@ class RestBigQueryGateway(
             is BigQueryResult.Failure -> job
         }
 
-    private suspend fun cancelJob(jobId: String) {
+    override suspend fun cancelJob(jobId: String): BigQueryResult<Unit> {
         val cancelled = call({
             client.post("${jobsUrl()}/${jobId.path()}/cancel") {
                 authorize()
@@ -507,6 +510,7 @@ class RestBigQueryGateway(
             }
         }) { }
         if (cancelled !is BigQueryResult.Success) log.warn("Could not cancel BigQuery job {}: {}", jobId, cancelled)
+        return cancelled
     }
 
     private fun loadJob(spec: BigQueryTableSpec, jobId: String, jobLabels: Map<String, String>): JsonObject =

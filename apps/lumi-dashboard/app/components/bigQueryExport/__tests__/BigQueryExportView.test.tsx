@@ -59,6 +59,7 @@ const destination: BigQueryExportDestination = {
   lastSuccessAt: "2026-10-19T23:00:00Z",
   lastSuccessRows: { svar: 1284, innsendinger: 512, fritekst: null },
   nextScheduledRunAt: "2099-01-01T00:00:00Z",
+  stopping: false,
 };
 const active: BigQueryExportStatus = { ...base, destination };
 
@@ -633,7 +634,7 @@ describe("BigQueryExportView", () => {
       .mockResolvedValue(base);
     vi.mocked(stopBigQueryExport).mockResolvedValue({
       ok: true,
-      value: { tablesRemoved: true },
+      value: { tablesRemoved: true, stopping: false },
     });
     renderView();
 
@@ -658,6 +659,94 @@ describe("BigQueryExportView", () => {
     );
     expect(
       screen.getByRole("button", { name: "Start eksporten" }),
+    ).toBeInTheDocument();
+  });
+
+  it("says that a stop during a run is finishing, and when it is done", async () => {
+    vi.mocked(getBigQueryExport)
+      .mockResolvedValueOnce(active)
+      .mockResolvedValueOnce(
+        withDestination({ runState: "RUNNING", stopping: true }),
+      )
+      .mockResolvedValue(base);
+    vi.mocked(stopBigQueryExport).mockResolvedValue({
+      ok: true,
+      value: { tablesRemoved: false, stopping: true },
+    });
+    renderView();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Stopp eksporten" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(
+      within(dialog).getByRole("checkbox", {
+        name: "Ja, stopp eksporten og slett Lumis tabeller",
+      }),
+    );
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Stopp eksporten" }),
+    );
+
+    const stopping = await screen.findByRole("heading", {
+      name: "Eksporten stoppes",
+    });
+    await waitFor(() =>
+      expect(stopping.closest("[tabindex='-1']")).toHaveFocus(),
+    );
+    expect(
+      screen.queryByRole("button", { name: "Stopp eksporten" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Oppdater tabellene nå" }),
+    ).toBeNull();
+
+    // The page polls until Lumi has finished the stop.
+    const notice = await screen.findByText(
+      "Eksporten er stoppet.",
+      {},
+      { timeout: 5_000 },
+    );
+    await waitFor(() =>
+      expect(notice.closest("[tabindex='-1']")).toHaveFocus(),
+    );
+    expect(
+      screen.getByRole("button", { name: "Start eksporten" }),
+    ).toBeInTheDocument();
+  }, 10_000);
+
+  it("shows a stop that is going on without taking focus", async () => {
+    vi.mocked(getBigQueryExport).mockResolvedValue(
+      withDestination({ stopping: true }),
+    );
+    renderView();
+
+    const stopping = await screen.findByRole("heading", {
+      name: "Eksporten stoppes",
+    });
+    expect(stopping.closest("[tabindex='-1']")).not.toHaveFocus();
+    expect(screen.getByText(`${project}.lumi`)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Stopp eksporten" }),
+    ).toBeNull();
+  });
+
+  it("refreshes the status when a run is refused because the export is being stopped", async () => {
+    vi.mocked(getBigQueryExport)
+      .mockResolvedValueOnce(active)
+      .mockResolvedValue(withDestination({ stopping: true }));
+    vi.mocked(runBigQueryExport).mockResolvedValue({
+      ok: false,
+      reason: "unavailable",
+    });
+    renderView();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Oppdater tabellene nå" }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Eksporten stoppes" }),
     ).toBeInTheDocument();
   });
 });
