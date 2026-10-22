@@ -8,12 +8,14 @@ import { flexjarOgLumi } from "./FlexjarOgLumi";
 import { grupper } from "./Grupper";
 import { hvaVilDereVite } from "./HvaVilDereVite";
 import { hvorBorSvaret } from "./HvorBorSvaret";
+import { iAppen } from "./IAppen";
 import { merEnnViSporOm } from "./MerEnnViSporOm";
 import { oppfolgingsplanen } from "./Oppfolgingsplanen";
 import { personvern } from "./Personvern";
 import { provSelv } from "./ProvSelv";
 import { sammeUtkast } from "./SammeUtkast";
 import { sammeVei } from "./SammeVei";
+import { segmentering } from "./Segmentering";
 import { slikVetVi } from "./SlikVetVi";
 import { slutt } from "./Slutt";
 import { sporsmaletFraForum } from "./SporsmaletFraForum";
@@ -40,6 +42,7 @@ export const deckSlides: readonly Slide[] = [
   { ...sporsmaletFraForum, roomOnly: true },
   tittel,
   svarMeg,
+  iAppen,
   merEnnViSporOm,
   flexjar,
   viTrengteMer,
@@ -52,6 +55,7 @@ export const deckSlides: readonly Slide[] = [
   styrerDere,
   sammeVei,
   bareTeamet,
+  segmentering,
   underPanseret,
   slikVetVi,
   varSkyraVurdert,
