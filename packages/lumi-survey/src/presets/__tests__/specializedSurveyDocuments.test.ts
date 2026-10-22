@@ -316,7 +316,7 @@ describe("specialized survey contracts", () => {
     const questions = questionsFromPages(document.pages);
     const success = questions.find((question) => question.id === "success");
     const blocker = questions.find((question) => question.id === "blocker");
-    if (!success || success.type !== "singleChoice" || !blocker) {
+    if (success?.type !== "singleChoice" || !blocker) {
       throw new Error("missing contract questions");
     }
     success.options.push({ value: "unknown", label: "Vet ikke" });
@@ -357,7 +357,7 @@ describe("specialized survey contracts", () => {
     const document = createDiscoverySurveyDocument();
     const questions = questionsFromPages(document.pages);
     const success = questions.find((question) => question.id === "success");
-    if (!success || success.type !== "singleChoice") {
+    if (success?.type !== "singleChoice") {
       throw new Error("missing success question");
     }
 

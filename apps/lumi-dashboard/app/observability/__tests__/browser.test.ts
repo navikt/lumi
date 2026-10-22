@@ -184,7 +184,7 @@ describe("browser observability contract", () => {
         session: { id: "Abcdef1234" },
       },
     });
-    expect((result?.meta as Record<string, unknown>).user).toBeUndefined();
+    expect(result?.meta).not.toHaveProperty("user");
     expect(JSON.stringify(result)).not.toContain(SENTINEL);
     expect(JSON.stringify(result)).not.toContain("project-123");
   });

@@ -29,7 +29,7 @@ export function usableComparisonStats(
 }
 
 export function ratingResponseCount(field: FieldStat | undefined) {
-  if (!field || field.fieldType !== "RATING") return 0;
+  if (field?.fieldType !== "RATING") return 0;
   const stats = field.stats as RatingStats;
   return Object.values(stats.distribution).reduce(
     (sum, count) => sum + count,
