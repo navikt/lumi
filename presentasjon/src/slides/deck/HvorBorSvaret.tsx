@@ -1,17 +1,12 @@
 import type { Slide, SlideProps } from "../../engine";
-import {
-  Answer,
-  AppBox,
-  Line,
-  LineMap,
-  MapText,
-  Station,
-  Zone,
-} from "../../map";
+import { cx } from "../../engine/css";
+import { AppBox, Line, LineMap, MapText, Station, Zone } from "../../map";
+import { Reise } from "./KartReise";
 import "./deck.css";
 
 const TOP = 196;
-const HEIGHT = 640;
+/** The zones end 46 px above the Teams corner, with their labels. */
+const HEIGHT = 628;
 const ZONE_WIDTH = 592;
 const BROWSER_X = 72;
 const NAIS_X = BROWSER_X + ZONE_WIDTH;
@@ -21,43 +16,43 @@ const SKYRA_APP_Y = 330;
 const LUMI_APP_Y = 520;
 const APP_X = 112;
 const APP_WIDTH = 512;
-/** The script line, far enough in for «etter samtykke» to start at the zone label. */
+const APP_HEIGHT = 96;
+const APP_RIGHT = APP_X + APP_WIDTH;
+/** Under each app, flush with its badge: when the survey code is fetched. */
+const BADGE_RIGHT = APP_RIGHT - 16;
+const FETCH_GAP = 40;
+/** The script comes in here, and the answer leaves here. */
 const SCRIPT_X = 400;
+const ANSWER_X = 520;
+/** Labels on the two lines, each on its own side, as station labels are. */
+const LINE_LABEL_Y = 250;
+const LINE_LABEL_GAP = 28;
 /** Appens backend, on the Lumi line. */
-const BACKEND: readonly [number, number] = [760, LUMI_APP_Y + 48];
-/** Arrows stop at the edge of the station ring, as on the Skyra line. */
-const RING_EDGE = 26;
+const BACKEND = [760, LUMI_APP_Y + 48] as const;
 
-/** The consent switch on the line that loads the vendor's script. */
-function ConsentSwitch({ x, y }: { x: number; y: number }) {
+function Note({
+  x,
+  y,
+  children,
+  anchor = "start",
+}: {
+  x: number;
+  y: number;
+  children: string;
+  anchor?: "start" | "end";
+}) {
   return (
-    <g>
-      <rect
-        x={x - 46}
-        y={y - 26}
-        width={92}
-        height={52}
-        rx={26}
-        className="map-switch__track"
-      />
-      <circle cx={x + 20} cy={y} r={15} className="map-switch__knob" />
-      <text
-        x={x - 70}
-        y={y + 2}
-        textAnchor="end"
-        dominantBaseline="middle"
-        className="map-note"
-      >
-        etter samtykke
-      </text>
-    </g>
+    <MapText x={x} y={y} anchor={anchor} size={32} weight={600} muted>
+      {children}
+    </MapText>
   );
 }
 
 function HvorBorSvaret({ step }: SlideProps) {
+  const concluded = step >= 3;
   return (
     <div className="slide">
-      <LineMap label="Tre soner: brukerens nettleser, Navs plattform Nais og Skyra AS. Linja fra survey.skyra.no er skriptet som hentes, linja til Skyras server er svaret. Med Skyra hentes et skript fra survey.skyra.no etter samtykke, og svaret går fra nettleseren til Skyras server og lagres hos Skyra AS i EU. Med Lumi går svaret fra nettleseren til appens backend, videre til Lumi API og databasen på Nais.">
+      <LineMap label="Tre soner: brukerens nettleser, Navs plattform Nais og Skyra AS. Med Skyra henter nettleseren skriptet fra survey.skyra.no ved hver sidevisning. Svaret går fra nettleseren til Skyras server og lagres hos Skyra AS, hos Scaleway i EU. Skyra AS er databehandler for Nav. Med Lumi hentes widgeten når appen bygges, i en låst versjon. Svaret går fra nettleseren til appens backend, som har samme adresse som appen, videre til Lumi API og databasen på Nais, samme plattform som resten av Navs apper.">
         <Zone
           x={BROWSER_X}
           y={TOP}
@@ -101,8 +96,8 @@ function HvorBorSvaret({ step }: SlideProps) {
           partWidth={220}
         />
 
-        {/* Skyra: the script comes in, the answer goes out over Nav's zone. */}
-        <g data-from={1}>
+        {/* Click 1, Skyra: the script comes in, then the answer goes out over Nav's zone. */}
+        <g className="kart-skript">
           <Line
             points={[
               [1440, 330],
@@ -115,35 +110,36 @@ function HvorBorSvaret({ step }: SlideProps) {
             draw
             from={1}
           />
-          <ConsentSwitch x={SCRIPT_X} y={250} />
-          {/* Which line is which: the script comes in, the answer goes out. */}
-          <MapText x={920} y={64} anchor="middle" size={32} weight={600} muted>
-            skriptet hentes
-          </MapText>
-          <MapText x={548} y={250} size={32} weight={600} muted>
-            svaret
-          </MapText>
+        </g>
+        <g data-from={1}>
           <Station x={1440} y={330} label="survey.skyra.no" mono side="right" />
-          <Line
-            points={[
-              [1360, 500],
-              [1360, 640],
-            ]}
-          />
-          <Line
-            points={[
-              [520, SKYRA_APP_Y],
-              [520, 150],
-              [1360, 150],
-              [1360, 474],
-            ]}
-            radius={56}
-            arrow
-            draw
-            from={1}
-          />
+          <Note x={SCRIPT_X - LINE_LABEL_GAP} y={LINE_LABEL_Y} anchor="end">
+            skriptet
+          </Note>
+          <Note x={ANSWER_X + LINE_LABEL_GAP} y={LINE_LABEL_Y}>
+            svaret
+          </Note>
+          <Note
+            x={BADGE_RIGHT}
+            y={SKYRA_APP_Y + APP_HEIGHT + FETCH_GAP}
+            anchor="end"
+          >
+            hentes ved hver sidevisning
+          </Note>
+        </g>
+        <Reise
+          points={[
+            [ANSWER_X, SKYRA_APP_Y],
+            [ANSWER_X, 150],
+            [1360, 150],
+            [1360, 640],
+          ]}
+          radius={56}
+          from={1}
+          start={700}
+          duration={1300}
+        >
           <Station x={1360} y={500} label="Skyras server" side="right" />
-          <Answer x={1360} y={640} r={36} />
           <Station
             x={1360}
             y={640}
@@ -152,27 +148,19 @@ function HvorBorSvaret({ step }: SlideProps) {
             note="Scaleway i EU"
             className="map-station--label-only"
           />
-        </g>
+        </Reise>
 
-        {/* Lumi: the answer goes the way the app's own data goes. */}
-        <g data-from={2}>
-          <Line
-            points={[
-              [APP_X + APP_WIDTH, BACKEND[1]],
-              [BACKEND[0] - RING_EDGE, BACKEND[1]],
-            ]}
-            arrow
-            draw
-            from={2}
-          />
-          <Line
-            points={[
-              [BACKEND[0], BACKEND[1]],
-              [BACKEND[0], 768],
-            ]}
-            draw
-            from={2}
-          />
+        {/* Click 2, Lumi: the answer goes the way the app's own data goes. */}
+        <Reise
+          points={[
+            [APP_RIGHT, BACKEND[1]],
+            [BACKEND[0], BACKEND[1]],
+            [BACKEND[0], 768],
+          ]}
+          radius={18}
+          from={2}
+          duration={900}
+        >
           <Station
             x={BACKEND[0]}
             y={BACKEND[1]}
@@ -180,7 +168,6 @@ function HvorBorSvaret({ step }: SlideProps) {
             note="samme adresse som appen"
           />
           <Station x={760} y={668} label="Lumi API" />
-          <Answer x={760} y={768} r={36} />
           <Station
             x={760}
             y={768}
@@ -188,11 +175,26 @@ function HvorBorSvaret({ step }: SlideProps) {
             label="Databasen"
             className="map-station--label-only"
           />
+        </Reise>
+        <g data-from={2}>
+          <Note
+            x={BADGE_RIGHT}
+            y={LUMI_APP_Y + APP_HEIGHT + FETCH_GAP}
+            anchor="end"
+          >
+            hentes ved bygg, låst versjon
+          </Note>
         </g>
       </LineMap>
 
-      <h2 className="slide-maptitle hvor__title">
-        {step >= 3 ? (
+      <h2
+        key={concluded ? "svar" : "sporsmal"}
+        className={cx(
+          "slide-maptitle hvor__title",
+          concluded && "hvor__title--svar",
+        )}
+      >
+        {concluded ? (
           <>
             Begge brukes i Nav.
             <br />
@@ -212,17 +214,21 @@ export const hvorBorSvaret: Slide = {
   steps: 3,
   notes: `Bare veiene, ingen vurdering.
 
-Først, beskriv kartet: «Tre soner: til venstre brukerens nettleser, i midten Navs plattform Nais, til høyre Skyra AS. Den gule prikken er der svaret lagres.»
+Først, beskriv kartet: «Tre soner: til venstre brukerens nettleser, i midten Navs plattform Nais, til høyre Skyra AS. Følg den gule prikken. Der den stopper, bor svaret.»
 
 Faggruppa, inn: «Flere av dere kjenner Skyra, som brukes på nav.no og i flere fagsystemer. Begge brukes i Nav. Her er hvor svaret går i hver av dem.»
 
 Frontend forum, ordrett: «Da svarer jeg på spørsmålet fra starten. Nei, vi sammenlignet ikke funksjonene. Vi startet med et annet spørsmål: hvor skal svarene ligge?»
 
-Klikk 1, Skyra: «Skriptet er Skyras kode. Nettleseren henter det fra Skyra etter samtykke.» Svaret går rett fra nettleseren til Skyra AS og lagres i EU. Skyra AS er databehandler for Nav, og Skyra kan også blokkere fødselsnummer, telefonnummer og e-post i fritekst.
+Klikk 1, Skyra: «Skriptet er Skyras kode. Nettleseren henter det fra Skyra ved hver sidevisning.» Så går svaret rett fra nettleseren til Skyra AS og lagres i EU. Skyra AS er databehandler for Nav, og Skyra kan også blokkere fødselsnummer, telefonnummer og e-post i fritekst.
 
-Klikk 2, Lumi: svaret går via appens backend til Lumi API og databasen. Lumi legger ikke til en ny leverandør.
+Klikk 2, Lumi: «Widgeten er en npm-pakke. Den hentes når appen bygges, i en låst versjon.» Svaret går via appens backend til Lumi API og databasen. Lumi legger ikke til en ny leverandør.
 
 Klikk 3: «Begge brukes i Nav. Forskjellen er hvor svaret bor.» Så: «For oss i eSyfo ble svaret Nais, ved siden av appens egne data. Andre team har valgt Skyra.» FlexJar bor på samme sted som Lumi.
+
+Frontend forum: Lumi trenger ingen ny kilde i CSP. Svaret går samme vei som appens egne data, og surveyen ligger i appens kode.
+
+Spør noen om samtykke: på nav.no henter dekoratøren Skyras skript først etter samtykke. I Modia er skriptet en vanlig script-tag. Lumi-widgeten leser samtykket fra dekoratøren selv. Uten samtykke til surveyer starter den minimert, og den husker ikke at brukeren har lukket den.
 
 Google Cloud-spørsmålet: «Lumi kjører i prod-gcp, Nais-klyngen i Google Cloud, med samme sikkerhetsmodell som appene der. Google er alt leverandør for Nais.»`,
   Component: HvorBorSvaret,

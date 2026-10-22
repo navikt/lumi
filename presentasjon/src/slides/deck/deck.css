@@ -1,16 +1,221 @@
-/* Slide-specific styles for the talk. Shared primitives live in slides.css. */
+/*
+ * The map slides: tittel, svarets-vei, hvor-bor-svaret and fagsystemsonen.
+ * Shared primitives live in slides.css and map/map.css.
+ *
+ * Motion runs only with `prefers-reduced-motion: no-preference` and on the
+ * night map. Without it, and on paper, every step shows its end state at once.
+ */
 
+/* A station that only labels an answer disc: no ring of its own. */
+.map-station--label-only .map-station__ring {
+  display: none;
+}
+
+/* While it waits, an element is there but not seen. */
+@keyframes kart-wait {
+  from,
+  to {
+    visibility: hidden;
+  }
+}
+
+@keyframes kart-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes kart-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* tittel: «Hvor bor / svaret?», and the dot of the question mark is the answer */
+
+.tittel__kicker,
+.tittel__title,
+.tittel__byline {
+  position: absolute;
+  left: var(--deck-space-page);
+  margin: 0;
+}
+
+.tittel__kicker {
+  top: 60px;
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.2;
+}
+
+/*
+ * The art director's size for the opening, between hero and monument. The
+ * dot in Tittel.tsx is measured on this layout.
+ */
 .tittel__title {
-  margin-top: 64px;
+  top: 168px;
+  font-family: var(--deck-font-display);
+  font-size: 310px;
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-monument);
+  line-height: 0.9;
 }
 
-.tittel__lead {
-  max-width: none;
-  color: var(--deck-fg);
-  font-weight: 700;
+.tittel__byline {
+  top: 984px;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-label);
+  font-weight: 600;
+  line-height: 1.2;
 }
 
-/* The map's title block sits under the map, clear of the Teams corner. */
+/* The line keeps no transition of its own: it draws, or it is there. */
+.map .tittel__line.map-line--draw {
+  transition: none;
+}
+
+/*
+ * Click 1: the line draws in from the left edge (1 s), and the dot lights
+ * when the line reaches it. Until then the answer waits, hidden, over the
+ * empty station.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .tittel__line[data-revealed] {
+    animation: kart-draw 1000ms var(--deck-easing-travel) backwards;
+  }
+
+  :root:not([data-stil="papir"]) .tittel .map-answer-flash[data-revealed] {
+    animation: kart-wait 950ms step-end;
+  }
+
+  :root:not([data-stil="papir"])
+    .tittel
+    .map-answer-flash[data-revealed]
+    .map-answer {
+    animation-delay: 950ms;
+  }
+
+  :root:not([data-stil="papir"])
+    .tittel
+    .map-answer-flash[data-revealed]
+    .map-answer__ring {
+    animation-delay: 1070ms;
+  }
+}
+
+/* svarets-vei: the line from edge to edge, and the answer rides it */
+
+.kart-vei__title {
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-hero);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-monument);
+  line-height: 1;
+}
+
+/* The ride is an animation. Without motion the answer is simply there. */
+.map .kart-vei__answer {
+  transition: none;
+}
+
+.map .kart-vei__answer--rides {
+  transform: translateX(calc(var(--kart-steg) * 3));
+}
+
+/* The lit line behind the answer, and the stations it has passed. */
+.map .kart-vei__lit.map-line--draw {
+  transition: none;
+}
+
+/*
+ * The train: glide 450 ms, rest 250, glide 450, rest 250, glide 450. The
+ * answer stands at each station for a moment, also on a slow stream. The
+ * line lights behind it, and each ring lights while the answer covers it.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .map .kart-vei__answer--rides {
+    animation: kart-ride 1850ms both;
+  }
+
+  :root:not([data-stil="papir"]) .kart-vei__lit[data-revealed] {
+    animation: kart-lit 1850ms both;
+  }
+
+  :root:not([data-stil="papir"]) .kart-vei__ring[data-revealed] {
+    transition-duration: 150ms;
+    transition-delay: var(--kart-ankomst);
+  }
+}
+
+@keyframes kart-ride {
+  0% {
+    transform: translateX(0);
+    animation-timing-function: var(--deck-easing-travel);
+  }
+
+  24.324% {
+    transform: translateX(var(--kart-steg));
+  }
+
+  37.838% {
+    transform: translateX(var(--kart-steg));
+    animation-timing-function: var(--deck-easing-travel);
+  }
+
+  62.162% {
+    transform: translateX(calc(var(--kart-steg) * 2));
+  }
+
+  75.676% {
+    transform: translateX(calc(var(--kart-steg) * 2));
+    animation-timing-function: var(--deck-easing-travel);
+  }
+
+  100% {
+    transform: translateX(calc(var(--kart-steg) * 3));
+  }
+}
+
+@keyframes kart-lit {
+  0% {
+    stroke-dashoffset: 1;
+    animation-timing-function: var(--deck-easing-travel);
+  }
+
+  24.324% {
+    stroke-dashoffset: 0.6667;
+  }
+
+  37.838% {
+    stroke-dashoffset: 0.6667;
+    animation-timing-function: var(--deck-easing-travel);
+  }
+
+  62.162% {
+    stroke-dashoffset: 0.3333;
+  }
+
+  75.676% {
+    stroke-dashoffset: 0.3333;
+    animation-timing-function: var(--deck-easing-travel);
+  }
+
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* hvor-bor-svaret and fagsystemsonen: the map's title block, under the map */
+
 .hvor__title {
   top: auto;
   bottom: 40px;
@@ -18,104 +223,206 @@
   font-size: 80px;
 }
 
-/* A station that only labels an answer disc: no ring of its own. */
-.map-station--label-only .map-station__ring {
-  display: none;
-}
-
-.tittel__byline {
-  margin: 0;
-  color: var(--deck-muted);
-  font-size: var(--deck-size-body);
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .hvor__title--svar {
+    animation: kart-fade 400ms var(--deck-easing) backwards;
+  }
 }
 
 /*
- * The opening on the stage: the line draws in (1.4 s), the answer lights
- * as it arrives, and the title and the rest of the line follow. The end
- * state is the slide as printed, so a slow stream still lands on it.
+ * The script from the vendor draws in toward the app (700 ms), and its
+ * arrowhead appears when the line reaches it.
  */
-.tittel[data-intro] .tittel__line {
-  animation: tittel-draw 1400ms var(--deck-easing) both;
+.map .kart-skript .map-line--draw,
+.map .kart-skript .map-arrow[data-from] {
+  transition: none;
 }
 
-.tittel[data-intro] .tittel__answer {
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .kart-skript .map-line--draw[data-revealed] {
+    animation: kart-draw 700ms var(--deck-easing-travel) backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .kart-skript
+    .map-arrow[data-revealed]
+    .map-arrow__head {
+    animation: kart-wait 680ms step-end;
+  }
+}
+
+/*
+ * KartReise: the answer travels its route with the line drawn behind it, and
+ * lands with a flare and a thin ring. The times come from the component.
+ */
+.map .kart-reise__line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+.map .kart-reise__dot {
+  visibility: hidden;
+  offset-rotate: 0deg;
+  transition: none;
+}
+
+.map .kart-reise__disc {
   transform-box: fill-box;
   transform-origin: center;
-  animation: tittel-light 900ms 1100ms var(--deck-easing) both;
+  transition: none;
 }
 
-/* The text keeps the slide's own spacing: the wrapper has no box. */
-.tittel__text {
-  display: contents;
+/* A stronger glow under the disc, seen only while the answer lands. */
+.map .kart-reise__flare {
+  opacity: 0;
+  stroke: none;
+  filter: drop-shadow(
+      0 0 40px color-mix(in srgb, var(--map-answer) 95%, transparent)
+    )
+    drop-shadow(
+      0 0 140px color-mix(in srgb, var(--map-answer) 55%, transparent)
+    );
+  transition: none;
 }
 
-.tittel[data-intro] .tittel__after,
-.tittel[data-intro] .tittel__text > * {
-  animation: tittel-fade 700ms 1700ms var(--deck-easing) both;
-}
+@media (prefers-reduced-motion: no-preference) {
+  @supports (offset-path: path("M 0 0")) {
+    :root:not([data-stil="papir"])
+      .kart-reise[data-revealed]
+      .kart-reise__line {
+      animation: kart-draw var(--reise-tid) var(--deck-easing-travel)
+        var(--reise-start) backwards;
+    }
 
-@keyframes tittel-draw {
-  from {
-    stroke-dashoffset: 1;
+    :root:not([data-stil="papir"]) .kart-reise[data-revealed] .kart-reise__dot {
+      animation:
+        kart-travel var(--reise-tid) var(--deck-easing-travel)
+        var(--reise-start),
+        kart-pop 200ms var(--deck-easing) var(--reise-start) backwards;
+    }
+
+    :root:not([data-stil="papir"])
+      .kart-reise[data-revealed]
+      .kart-reise__disc {
+      animation:
+        kart-wait var(--reise-ankomst) step-end,
+        kart-pulse 500ms var(--deck-easing) var(--reise-ankomst);
+    }
+
+    :root:not([data-stil="papir"])
+      .kart-reise[data-revealed]
+      .kart-reise__flare {
+      animation: kart-flare 500ms ease-out var(--reise-ankomst);
+    }
+
+    :root:not([data-stil="papir"])
+      .kart-reise[data-revealed]
+      .kart-reise__ring {
+      animation: kart-ring 500ms ease-out var(--reise-ankomst);
+    }
   }
+}
+
+@keyframes kart-travel {
+  from {
+    offset-distance: 0%;
+    visibility: visible;
+  }
+
   to {
-    stroke-dashoffset: 0;
+    offset-distance: 100%;
+    visibility: visible;
   }
 }
 
-@keyframes tittel-light {
+@keyframes kart-pop {
   from {
-    opacity: 0;
-    transform: scale(0.35);
-    filter: none;
+    transform: scale(0);
   }
-  60% {
-    opacity: 1;
-  }
+
   to {
     transform: scale(1);
-    filter: var(--map-answer-glow);
   }
 }
 
-@keyframes tittel-fade {
-  from {
+/* The landing: the disc swells a little, and the flare blooms and settles. */
+@keyframes kart-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  25% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes kart-flare {
+  0%,
+  100% {
     opacity: 0;
   }
-  to {
+
+  25% {
     opacity: 1;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .tittel[data-intro] .tittel__line,
-  .tittel[data-intro] .tittel__answer,
-  .tittel[data-intro] .tittel__after,
-  .tittel[data-intro] .tittel__text > * {
-    animation: none;
+@keyframes kart-ring {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(2.6);
   }
 }
 
-/* Slide 14: the double wall around the case worker's browser. */
-.wall__outer,
-.wall__inner {
+/* fagsystemsonen: the double wall around the case worker's browser */
+
+.kart-wall__outer,
+.kart-wall__inner {
   fill: none;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
 }
 
-.wall__outer {
+.kart-wall__outer {
   stroke: var(--map-ink);
   stroke-width: 30px;
 }
 
-.wall__inner {
+.kart-wall__inner {
   stroke: var(--map-paper);
   stroke-width: 12px;
 }
 
-.wall__gap {
-  fill: var(--map-paper);
+/* The wall is the edge of the zone it surrounds. */
+.kart-wall__zone .map-zone__area {
+  stroke: none;
 }
 
-.map .wall__label {
-  font-weight: 800;
+/* The vendor's own opening. Open from click 1. */
+.kart-wall__closing--open {
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .kart-wall__closing--open {
+    animation: kart-wall-open 300ms var(--deck-easing-travel);
+  }
+}
+
+@keyframes kart-wall-open {
+  from {
+    visibility: visible;
+    transform: scaleX(1);
+  }
+
+  to {
+    visibility: visible;
+    transform: scaleX(0);
+  }
 }
