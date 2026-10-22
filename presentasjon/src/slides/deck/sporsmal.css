@@ -1,53 +1,44 @@
-/* «Spørsmålstypene dere kan bruke»: the real widget, one question type per frame. */
+/* «Dere velger hvordan brukerne svarer»: the real widget, one question type each. */
+
+/* The small title, so the widgets get the page. There is no token for it yet. */
+.sporsmal__title {
+  position: absolute;
+  top: 52px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-heading);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1.1;
+}
 
 /*
- * On the stage, two groups share one grid and take turns: first the four
- * ratings, then the three other types. In print, all seven share the page.
+ * On the stage the two groups take turns on the whole page: first the four
+ * ratings, then the three other types. Every frame and caption is placed
+ * from Sporsmalstyper.tsx, in stage pixels.
  */
-.sporsmal__group,
-.sporsmal__grid {
-  position: absolute;
-  top: 236px;
-  left: var(--deck-space-page);
-  right: var(--deck-space-page);
-  display: grid;
-  align-items: start;
-}
-
 .sporsmal__group {
-  grid-template-columns: repeat(3, 1fr);
-  gap: 32px 48px;
-}
-
-/* NPS spans two columns, so its row ends well left of the Teams corner. */
-.sporsmal__group .sporsmal__kind--wide {
-  grid-column: span 2;
+  position: absolute;
+  inset: 0;
 }
 
 .sporsmal__kind {
   margin: 0;
 }
 
-.sporsmal__frame {
-  position: relative;
+.sporsmal__frame,
+.sporsmal__caption {
+  position: absolute;
 }
 
+/* No surface round the widget: the panels stand on the stage. */
 .sporsmal__frame .sporsmal__survey {
   position: absolute;
   inset: 0;
-}
-
-/* Room for each panel at full height, with air above and to the left. */
-.sporsmal__kind--ratings .sporsmal__frame {
-  height: 316px;
-}
-
-.sporsmal__kind--wide .sporsmal__frame {
-  height: 300px;
-}
-
-.sporsmal__kind--others .sporsmal__frame {
-  height: 470px;
+  border: 0;
+  border-radius: 0;
+  background: none;
 }
 
 /* A note too long for the line goes whole onto the next one. */
@@ -56,7 +47,7 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0 20px;
-  margin-top: 12px;
+  margin: 0;
 }
 
 .sporsmal__label {
@@ -72,21 +63,30 @@
   line-height: 1.2;
 }
 
-/* Print: four columns, and the eighth cell, in the Teams corner, stays empty. */
-.sporsmal__grid {
-  grid-template-columns: repeat(4, 1fr);
-  gap: 36px 40px;
+/* In print the widgets are smaller, and so are their names. */
+.deck-print .sporsmal__label {
+  font-size: var(--deck-size-label);
 }
 
-.sporsmal__grid .sporsmal__kind--ratings .sporsmal__frame {
-  height: 200px;
-}
-
-.sporsmal__grid .sporsmal__kind--others .sporsmal__frame {
-  height: 280px;
+.deck-print .sporsmal__note {
+  font-size: var(--deck-size-small);
 }
 
 /* «Dere bestemmer innholdet …»: the real widget, with the map's lines on it. */
+
+/* Two lines, set high, so the widget and its lowest names clear the Teams corner. */
+.styrer__title {
+  position: absolute;
+  top: 64px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-title);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: var(--deck-line-height-tight);
+}
+
 .styrer__frame {
   position: absolute;
 }
@@ -96,24 +96,150 @@
   inset: 0;
 }
 
-.styrer__casing,
-.styrer__line {
+/* When Lumi's side comes, the team's side steps back into the dark. */
+.styrer__side[data-back] {
+  opacity: 0.45;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .styrer__side {
+    transition: opacity var(--deck-duration-reveal) var(--deck-easing);
+  }
+}
+
+/* Pointers at parts of the widget (SporsmalPeker): cased map lines with a ring. */
+.peker__casing,
+.peker__line {
   fill: none;
   stroke-linecap: round;
 }
 
-.styrer__casing {
+.peker__casing {
   stroke: var(--map-paper);
   stroke-width: 16px;
 }
 
-.styrer__line {
+.peker__line {
   stroke: var(--map-ink);
   stroke-width: 6px;
 }
 
-.styrer__ring {
+.peker__ring {
   fill: var(--map-paper);
   stroke: var(--map-ink);
   stroke-width: 6px;
+}
+
+/* «Ute nå hos ledere i Dine sykmeldte»: the real app, and the camera moves in. */
+.iappen__title {
+  position: absolute;
+  top: 44px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-title);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: var(--deck-line-height-tight);
+  white-space: nowrap;
+}
+
+/* The window is a clip on a full-stage layer, so it can change with the camera. */
+.iappen__window {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.iappen__camera {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2560px;
+  height: 1600px;
+  transform-origin: 0 0;
+}
+
+.iappen__shot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 2560px;
+  height: 1600px;
+}
+
+/*
+ * Away from the widget the page is dimmed, as the city at night round a lit
+ * window. Close up, the page falls further into the dark.
+ */
+.iappen__dim {
+  position: absolute;
+  inset: 0;
+  background: var(--deck-bg);
+  opacity: 0.62;
+}
+
+.iappen[data-near] .iappen__dim {
+  opacity: 0.86;
+}
+
+:root[data-stil="papir"] .iappen__dim {
+  opacity: 0.45;
+}
+
+:root[data-stil="papir"] .iappen[data-near] .iappen__dim {
+  opacity: 0.8;
+}
+
+/* On paper the dimmed page needs an edge against the white slide; at night the dark does it. */
+.iappen__edge {
+  display: none;
+}
+
+:root[data-stil="papir"] .iappen__edge {
+  position: absolute;
+  display: block;
+  box-sizing: border-box;
+  border: var(--deck-border-width) solid var(--deck-border);
+  border-radius: var(--deck-radius);
+  pointer-events: none;
+}
+
+.iappen__source {
+  position: absolute;
+  left: var(--deck-space-page);
+  bottom: 30px;
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+}
+
+/*
+ * One move: the camera goes in on the corner while the window closes round
+ * the widget. The names come when it has landed.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .iappen__window,
+  :root:not([data-stil="papir"]) .iappen__camera {
+    transition:
+      clip-path var(--deck-duration-travel) var(--deck-easing-travel),
+      transform var(--deck-duration-travel) var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"]) .iappen__dim {
+    transition: opacity var(--deck-duration-travel) var(--deck-easing);
+  }
+
+  :root:not([data-stil="papir"]) .iappen__labels [data-revealed] {
+    transition-delay: 450ms;
+  }
+
+  /* The lit state that leaves goes at once, so two panels never show together. */
+  :root:not([data-stil="papir"])
+    .iappen__shot[data-reveal]:not([data-revealed]) {
+    transition-duration: 120ms;
+  }
 }
