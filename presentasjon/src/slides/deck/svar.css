@@ -1,222 +1,405 @@
-/* Slide 2 and 10: the answer from the room, and its way through Lumi. */
+/* Svar-meg and samme-vei: the answer from the room, and its way through Lumi. */
 
-.svar__meter {
+/*
+ * Svar-meg: the room answers first. The real count is the monument, and the
+ * live widget sits in a window that bleeds off the top edge. The window
+ * ends at y 800 and x 1808, clear of the Teams corner.
+ */
+.svar__title {
   position: absolute;
-  top: 118px;
-  right: var(--deck-space-page);
+  top: 72px;
+  left: var(--deck-space-page);
+  width: 860px;
   margin: 0;
-  font-size: var(--deck-size-label);
-  font-weight: 600;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-statement);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: var(--deck-line-height-tight);
+  text-wrap: balance;
 }
 
-.svar__meter strong {
-  display: inline-block;
-  min-width: 1.4em;
-  margin-left: 16px;
-  padding: 4px 18px 0;
-  border: 6px solid var(--deck-fg);
-  border-radius: 12px;
-  font-family: var(--deck-font-mono);
-  font-size: 56px;
+/* The label sits on the figure's baseline, so a 1 or 12 pushes it along. */
+.svar__meter {
+  position: absolute;
+  top: 440px;
+  left: var(--deck-space-page);
+  display: flex;
+  align-items: last baseline;
+  gap: 40px;
+  margin: 0;
+}
+
+.svar__count {
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-monument);
+  font-weight: var(--deck-weight-black);
   font-variant-numeric: tabular-nums;
-  text-align: center;
+  letter-spacing: var(--deck-tracking-monument);
+  line-height: 0.74;
+}
+
+.svar__count-label {
+  font-size: var(--deck-size-lead);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.1;
 }
 
 /*
- * The app is narrow enough that the summary beside it shows the whole text
- * answer, with the e-mail address on one line, and still ends above the
- * Teams corner.
+ * The window: wide enough for the widget at 1.56 (28 px text on the stage)
+ * with its text field open, and a strip of the app beside it.
  */
 .svar__app {
   position: absolute;
-  top: 232px;
-  left: var(--deck-space-page);
-  width: 856px;
-  height: 760px;
+  top: -24px;
+  left: 1008px;
+  width: 800px;
+  height: 824px;
 }
 
 .svar__app .svar__frame {
   position: absolute;
   inset: 0;
+  border-color: var(--map-zone-edge);
 }
 
-.svar__tag {
+/* In previews the widget is a still: its note sits on the app page. */
+.svar__app .live-survey__still {
+  color: var(--deck-widget-fg);
+}
+
+.svar__caption {
   position: absolute;
-  top: -26px;
-  left: 32px;
-}
-
-.svar__side {
-  position: absolute;
-  top: 232px;
-  left: 1028px;
-  width: 780px;
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-}
-
-.svar__empty {
+  top: 828px;
+  left: 1008px;
   margin: 0;
-  color: var(--deck-muted);
-  font-size: var(--deck-size-body);
-  line-height: var(--deck-line-height);
-}
-
-/* Under the payload after Send: the time and the count, in ink, no fade. */
-.svar__sent {
-  margin: 0;
-  color: var(--deck-fg);
-  font-size: var(--deck-size-label);
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.svar__kept {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  font-size: var(--deck-size-label);
-  font-weight: 600;
-}
-
-.svar__kept svg {
-  flex: none;
-  overflow: visible;
-}
-
-/*
- * On the night map the answer lifts off from the widget and lands by its
- * station when it is kept: from the Send button, in an arc.
- */
-:root:not([data-stil="papir"]) .svar__kept[data-revealed] svg {
-  animation: svar-lift 1100ms var(--deck-easing) both;
-}
-
-@keyframes svar-lift {
-  from {
-    transform: translate(var(--lift-x, -560px), var(--lift-y, 400px))
-      scale(0.45);
-    opacity: 0;
-  }
-  15% {
-    opacity: 1;
-  }
-  55% {
-    transform: translate(
-        calc(var(--lift-x, -560px) * 0.45),
-        calc(var(--lift-y, 400px) * 0.2 - 140px)
-      )
-      scale(0.85);
-  }
-  to {
-    transform: none;
-  }
-}
-
-@keyframes vei-arrive {
-  from {
-    opacity: 0;
-    transform: scale(0.92);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .vei__leaving,
-  .vei__masked,
-  :root:not([data-stil="papir"]) .svar__kept[data-revealed] svg {
-    animation: none;
-  }
-}
-
-/* The plain app page behind the widget: a top bar and nothing else. */
-.app-page {
-  position: absolute;
-  inset: 0;
-}
-
-.app-page__bar {
-  height: 72px;
-  background: var(--deck-embed-bar);
-}
-
-/* Slide 10: the answer card under the map. */
-.vei__card {
-  position: absolute;
-  left: var(--deck-space-page);
-  bottom: 64px;
-  width: 1360px;
-  display: grid;
-  gap: 18px;
-}
-
-/* The same columns as the rows under it. */
-.vei__card-head {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  align-items: center;
-  gap: 28px;
-  font-size: var(--deck-size-label);
-  font-weight: 700;
-}
-
-.vei__rating {
-  font-family: var(--deck-font-mono);
-  font-size: var(--deck-size-code);
-  font-weight: 500;
-}
-
-.vei__text {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 28px;
-  margin: 0;
-  font-size: var(--deck-size-label);
-  line-height: 1.25;
-}
-
-.vei__label {
-  color: var(--deck-muted);
-  font-weight: 600;
-}
-
-.vei__value {
-  font-family: var(--deck-font-mono);
-  font-size: var(--deck-size-code);
-}
-
-/* Under the stored text, in the value column. */
-.vei__note {
-  margin: 0 0 0 328px;
   color: var(--deck-muted);
   font-size: var(--deck-size-small);
   font-weight: 600;
 }
 
 /*
- * The text as written, for a moment, before Lumi API masks it: it dissolves,
- * and the mask takes its place.
+ * The app page behind the widget, dimmer than the answer: the ground is
+ * the darker app tone, and only the cards are the lighter one.
  */
-.vei__leaving {
-  animation: vei-dissolve 700ms 350ms var(--deck-easing) both;
+.app-page {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
-@keyframes vei-dissolve {
-  to {
-    opacity: 0.15;
-    filter: blur(6px);
-    letter-spacing: 0.12em;
+.app-page__ground,
+.app-page__on-bar,
+.app-page__line {
+  fill: var(--deck-embed-bar);
+}
+
+.app-page__bar,
+.app-page__ink {
+  fill: var(--map-dim);
+}
+
+.app-page__card {
+  fill: var(--deck-embed-bg);
+}
+
+/* The kept answer: a station ring, the disc that lands in it, and the text. */
+.svar__kept {
+  position: absolute;
+  top: 872px;
+  left: 104px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.svar__dot {
+  flex: none;
+  overflow: visible;
+}
+
+.svar__fly-y,
+.svar__ripple {
+  transform-origin: 48px 48px;
+}
+
+.svar__ripple {
+  fill: none;
+  stroke: var(--map-answer);
+  stroke-width: 4px;
+  opacity: 0;
+}
+
+.svar__kept-text {
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-body);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/*
+ * On the night map the answer lifts off from the widget and lands in its
+ * ring. X and Y move on their own curves, so the path is an arc with no
+ * stop at the top: up and out of the panel, then down to the ring. A thin
+ * ring runs out when it lands, and the text follows.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .svar__kept[data-revealed] .svar__fly-x {
+    animation: svar-fly-x 1150ms var(--deck-easing-travel) both;
+  }
+
+  :root:not([data-stil="papir"]) .svar__kept[data-revealed] .svar__fly-y {
+    animation: svar-fly-y 1150ms both;
+  }
+
+  :root:not([data-stil="papir"]) .svar__kept[data-revealed] .svar__ripple {
+    animation: svar-ripple 600ms ease-out 1100ms both;
+  }
+
+  :root:not([data-stil="papir"]) .svar__kept[data-revealed] .svar__kept-text {
+    animation: svar-text 450ms var(--deck-easing) 950ms both;
   }
 }
 
-/* The deck's one mark: 6 px ink, radius 10. */
-.vei__masked {
-  animation: vei-arrive 420ms var(--deck-easing) both;
-  white-space: nowrap;
-  padding: 0 8px;
-  border: 6px solid var(--map-ink);
-  border-radius: 10px;
+@keyframes svar-fly-x {
+  from {
+    opacity: 0;
+    transform: translateX(var(--lift-x, 1300px));
+  }
+  8% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Up 48 px while it grows, then a falling curve that lands softly. */
+@keyframes svar-fly-y {
+  0% {
+    transform: translateY(var(--lift-y, -200px)) scale(0.5);
+    animation-timing-function: cubic-bezier(0.25, 0.55, 0.45, 1);
+  }
+  20% {
+    transform: translateY(calc(var(--lift-y, -200px) - 48px)) scale(1);
+    animation-timing-function: cubic-bezier(0.15, 0.25, 0.35, 1);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes svar-ripple {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+
+@keyframes svar-text {
+  from {
+    opacity: 0;
+  }
+}
+
+/*
+ * Samme-vei: the map at the top, the text answer under it and the claim at
+ * the bottom, clear of the Teams corner.
+ */
+.vei__title {
+  position: absolute;
+  bottom: 48px;
+  left: var(--deck-space-page);
+  width: 1100px;
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-title);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: var(--deck-line-height-tight);
+  text-wrap: balance;
+}
+
+/* On the masking step the map and the title step back for the text. */
+.vei--text .vei__map,
+.vei--text .vei__title {
+  opacity: 0.35;
+}
+
+.vei__answer-text {
+  position: absolute;
+  top: 548px;
+  left: var(--deck-space-page);
+  width: 1696px;
+  display: grid;
+  gap: 16px;
+}
+
+.vei__row {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  align-items: first baseline;
+  column-gap: 28px;
+  margin: 0;
+}
+
+.vei__label {
+  color: var(--deck-muted);
+  font-size: var(--deck-size-label);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+/* The text row is 40 px: on the masking step it is what the room reads. */
+.vei__value {
+  font-family: var(--deck-font-mono);
+  font-size: 40px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.vei__plain {
+  font-size: var(--deck-size-label);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+/*
+ * The address and its mark share one cell, so the line keeps its shape
+ * when Lumi API masks the address. The cell is one box on its line, so the
+ * frame never reaches into the line above.
+ */
+.vei__swap {
+  display: inline-grid;
+}
+
+.vei__swap > * {
+  grid-area: 1 / 1;
+}
+
+.vei__was {
+  opacity: 0;
+}
+
+/* The deck's one mark: 6 px ink, radius 12. */
+.vei__mark {
+  align-self: center;
+  justify-self: start;
+  padding: 0 12px;
+  border: var(--deck-border-width) solid var(--map-ink);
+  border-radius: var(--deck-radius);
   background: var(--deck-bg);
   color: var(--deck-fg);
   font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* The name stays: underlined, with the note under it. */
+.vei__name {
+  position: relative;
+}
+
+.vei__name::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -2px;
+  left: 0;
+  height: 4px;
+  background: var(--deck-fg);
+  transform-origin: left center;
+}
+
+.vei__name-note {
+  position: absolute;
+  top: calc(100% + 18px);
+  left: 0;
+  font-family: var(--deck-font-body);
+  font-size: var(--deck-size-small);
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/*
+ * On the night map: the map steps back, the address dissolves while the
+ * mark comes in over it, then the name is pointed at. No gap between the
+ * address and the mark, and the end state is still by 1.5 s.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .vei__map,
+  :root:not([data-stil="papir"]) .vei__title {
+    transition: opacity 500ms var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"]) .vei .vei__answer {
+    transition: transform var(--deck-duration-travel) var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"]) .vei__was {
+    animation: vei-dissolve 600ms var(--deck-easing) 350ms both;
+  }
+
+  :root:not([data-stil="papir"]) .vei__mark {
+    animation: vei-mark 450ms var(--deck-easing) 650ms both;
+  }
+
+  :root:not([data-stil="papir"]) .vei__name::after {
+    animation: vei-underline 400ms var(--deck-easing-travel) 1050ms both;
+  }
+
+  :root:not([data-stil="papir"]) .vei__name-note {
+    animation: vei-fade 400ms var(--deck-easing) 1100ms both;
+  }
+
+  :root:not([data-stil="papir"]) .vei__answer-text [data-revealed] {
+    transition-delay: 1100ms;
+  }
+}
+
+/* On paper the answer moves in one jump, like the rest of the step. */
+:root[data-stil="papir"] .vei .vei__answer {
+  transition: none;
+}
+
+@keyframes vei-dissolve {
+  from {
+    opacity: 1;
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    filter: blur(6px);
+  }
+}
+
+@keyframes vei-mark {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes vei-underline {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes vei-fade {
+  from {
+    opacity: 0;
+  }
 }
