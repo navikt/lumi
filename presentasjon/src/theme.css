@@ -78,6 +78,8 @@
   --deck-size-hero: 220px;
   --deck-size-statement: 120px;
   --deck-size-display: 168px;
+  /* The small title over a monument, a quote or a board. */
+  --deck-size-heading: 64px;
   --deck-size-title: 96px;
   --deck-size-lead: 52px;
   --deck-size-body: 44px;

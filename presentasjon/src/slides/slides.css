@@ -87,7 +87,7 @@
   font-size: 28px;
 }
 
-/* Marks what a thing on the slide is: live, a screenshot or an example. */
+/* Marks what a thing on the slide is: a screenshot or an example. */
 .tag {
   display: inline-flex;
   align-items: center;
@@ -101,12 +101,4 @@
   font-size: var(--deck-size-small);
   font-weight: 700;
   line-height: 1.2;
-}
-
-.tag--live::before {
-  content: "";
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--deck-fg);
 }

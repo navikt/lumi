@@ -35,16 +35,6 @@
   text-transform: none;
 }
 
-/*
- * The PDF shows the widget as it opens, but nothing on the page is live:
- * the «Live» tag on the widget and the call to answer on «Svar meg» are
- * left out.
- */
-.deck-print .live-survey + .tag--live,
-.deck-print .svar__empty {
-  display: none;
-}
-
 .live-survey__still {
   position: absolute;
   right: 32px;
