@@ -268,7 +268,7 @@ function Sporsmalstyper({ step }: SlideProps) {
   const mode = useRenderMode();
   return (
     <div className="slide">
-      <h2 className="sporsmal__title">Dere velger hvordan brukerne svarer</h2>
+      <h2 className="sporsmal__title">Brukerne kan svare på sju måter</h2>
       {mode === "print" ? (
         <div className="sporsmal__group">
           {[...RATINGS, ...OTHERS].map((kind) => (
@@ -287,17 +287,17 @@ function Sporsmalstyper({ step }: SlideProps) {
 
 export const sporsmalstyper: Slide = {
   id: "sporsmalstyper",
-  title: "Dere velger hvordan brukerne svarer",
+  title: "Brukerne kan svare på sju måter",
   steps: 1,
-  notes: `Alle sju er den ekte widgeten, med ett spørsmål hver. Spørsmålene er bare eksempler: teksten, alternativene og etikettene skriver dere selv.
+  notes: `Alle sju er widgeten slik brukerne ser den, med ett spørsmål hver. Spørsmålene er bare eksempler: teksten, alternativene og etikettene skriver dere selv.
 
-Fra start: vurdering i fire varianter. Emoji fra 1 til 5, tommel opp eller ned, stjerner fra 1 til 5 og NPS fra 0 til 10.
+Fra start: vurdering i fire varianter. Emoji fra én til fem, tommel opp eller ned, stjerner fra én til fem og NPS fra null til ti.
 
 Klikk 1: enkeltvalg, flervalg og fritekst. Flervalg med avkryssing, eller som søkbar liste når det er mange alternativer. Fritekst har 1000 tegn som standard, og opptil 2000.
 
 Sider: ett spørsmål per side, eller flere sammen. Valgfri velkomstside og takkeside.
 
-Betinget visning, ordrett: «Et spørsmål kan vises bare etter et bestemt svar.» For eksempel «Hva manglet?» etter «Nei».
+Betinget visning, ordrett: «Dere kan velge at et spørsmål bare vises etter et bestemt svar.» For eksempel «Hva manglet?» etter «Nei».
 
 Fagsystemer: tommel eller enkeltvalg rett etter en fullført oppgave er ofte nok. Spør om løsningen. En survey i et fagsystem skal ikke vurdere arbeidet til saksbehandleren.`,
   Component: Sporsmalstyper,

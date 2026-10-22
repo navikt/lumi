@@ -86,7 +86,7 @@ function Flexjar() {
       <div className="flexjar__titleblock">
         <h2 className="flexjar__title">Grunntanken i FlexJar er god</h2>
         <p className="flexjar__thanks">
-          Takk til Team Flex, som tok imot svarene våre fra 2024
+          Takk til Team Flex, som tok imot svarene våre fra 2024 av
         </p>
       </div>
     </div>
@@ -98,11 +98,11 @@ export const flexjar: Slide = {
   title: "Grunntanken i FlexJar er god",
   rooms: ["frontend", "produktledere"],
   steps: 1,
-  notes: `Ordrett: «Vi startet med FlexJar fra Team Flex, fordi grunntanken er god: surveyen i koden og svarene internt.»
+  notes: `Ordrett: «Vi startet med FlexJar fra Team Flex, fordi surveyen ligger i koden og svarene blir på Nais.»
 
-Klikk 1: linja tegnes inn i Nais, og svaret lyser. Ordrett: «Svarene blir på Nais, der resten av Navs apper og data er.»
+Klikk 1: linja tegnes inn i Nais, og svaret lyser. Ordrett: «Nais er plattformen resten av Navs apper kjører på. Der blir svarene.»
 
-Ordrett: «Takk til Team Flex, som tok imot svarene våre fra 2024.»
+Ordrett: «Takk til Team Flex, som tok imot svarene våre fra 2024 av.»
 
 FlexJar har tatt imot svar for flere team siden 2023, og brukes fortsatt.`,
   Component: Flexjar,

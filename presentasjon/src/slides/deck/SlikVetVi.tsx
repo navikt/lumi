@@ -84,6 +84,6 @@ Klikk 1: rundt 2 600 automatiske tester. axe kjører i widgeten og i e2e-testene
 
 Klikk 2, det dere kan sjekke selv: npm viser provenance for hver versjon av @navikt/lumi-survey, så dere ser at pakken er bygd av workflowen i navikt/lumi. Søk etter adresser i pakken, for eksempel med grep -oE "https?://[^\\"]+" på dist/index.js. Dere finner bare SVG-navnerommet og to lenker til dokumentasjonen.
 
-Ut mot kartet: «Da svarer jeg på spørsmålet fra starten. Kartet viser hvor svaret går. Det rangerer ingen.»`,
+Ut mot kartet: «Så til kartet.»`,
   Component: SlikVetVi,
 };

@@ -150,11 +150,11 @@ export const slutt: Slide = {
   id: "slutt",
   title: "Hvilken oppgave vet dere minst om?",
   steps: 3,
-  notes: `Faggruppa, ordrett: «I starten ba jeg dere ha ett spørsmål i bakhodet. Her er det i praksis: hvilken oppgave vet dere minst om?» Andre rom: bare spørsmålet.
+  notes: `Faggruppa, ordrett: «I starten ba jeg dere ha ett spørsmål i bakhodet. Hvilken oppgave i fagsystemet deres vet dere minst om?» Andre rom: bare spørsmålet.
 
 Vent tre sekunder. Klikk 1: «deres app» kommer stiplet på linja.
 
-Klikk 2, ordrett: «Teamet lager surveyen, den bygges inn i appen, og svaret går samme vei som appens egne data, fram til dashboardet til teamet. Svarene blir på Nais. Lumi er åpent for alle team i Nav.» Så: «Navnet er finsk for snø, og på kartet er svaret det eneste som lyser.»
+Klikk 2, ordrett: «Lumi er åpent for alle team i Nav. Navnet betyr snø på finsk.»
 
 Klikk 3, siste setning, ordrett: «Lag et utkast i Surveyverksted for den oppgaven.» Linja når fram til appen deres, svaret tennes, og snøkrystallen fra logoen vokser fram. Vær stille etterpå, og ikke si takk.
 

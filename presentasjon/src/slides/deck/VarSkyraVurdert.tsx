@@ -38,6 +38,6 @@ export const varSkyraVurdert: Slide = {
 
 Les spørsmålet høyt.
 
-Svaret, ordrett: «Nei, vi sammenlignet ikke funksjonene. Vi startet med et annet spørsmål: hvor skal svarene ligge?»`,
+Svaret, ordrett: «Nei, vi sammenlignet ikke funksjonene. Det som avgjorde, var hvor svaret skulle bo.»`,
   Component: SkyraQuestion,
 };

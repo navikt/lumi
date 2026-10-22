@@ -146,9 +146,9 @@ export const hvaVilDereVite: Slide = {
   title: "Hva vil dere finne ut?",
   steps: 2,
   notes: `Fra start: «Først velger teamet hva det vil finne ut. Det er fem valg i Surveyverksted.»
-Spør salen: «Hvilket av de fem har dere på bordet? Skriv 1 til 5 i chatten, ovenfra.» Les opp noen svar.
+Spør salen: «Hvilket av de fem har dere på bordet? Skriv et tall fra én til fem i chatten. Én er det øverste.» Les opp noen svar.
 
-Klikk 1: «Velger dere «Lyktes brukeren med en kjent oppgave?», får brukeren disse spørsmålene.» Først hva hen prøvde å gjøre, valgt fra oppgavene teamet legger inn. Så om hen klarte det. «Hva hindret deg?» kommer bare når svaret er Delvis eller Nei. Velger brukeren «Noe annet», kommer «Beskriv hva du prøvde å gjøre» først.
+Klikk 1: «Velger dere å måle om brukeren lyktes med en kjent oppgave, får brukeren disse spørsmålene.» Først hva hen prøvde å gjøre, valgt fra oppgavene teamet legger inn. Så om hen klarte det. «Hva hindret deg?» kommer bare når svaret er Delvis eller Nei. Velger brukeren svaret «Noe annet», kommer «Beskriv hva du prøvde å gjøre» først.
 
 Klikk 2: dashboardet viser hvor mange som klarte hver oppgave, og hva som hindret dem.
 

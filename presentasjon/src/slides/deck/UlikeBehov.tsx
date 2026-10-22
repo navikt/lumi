@@ -41,9 +41,9 @@ function UlikeBehov() {
         ))}
       </ul>
       <p className="verktoy__choice" data-from={1}>
-        Teamet velger: hvem lager surveyen,
+        Teamet velger hvem som lager surveyen,
         <br />
-        og hvor skal svaret bo?
+        og hvor svaret skal bo.
       </p>
     </div>
   );
@@ -54,13 +54,13 @@ export const ulikeBehov: Slide = {
   title: "Tre surveyverktøy i Nav",
   rooms: ["frontend", "produktledere"],
   steps: 1,
-  notes: `Bare plassering, ingen rangering. Rekkefølgen er når de kom i bruk i Nav: FlexJar i 2023, Skyra i januar 2025 og Lumi i januar 2026.
+  notes: `Si bare hva hvert verktøy passer til. Rekkefølgen er når de kom i bruk i Nav: FlexJar i 2023, Skyra i januar 2025 og Lumi i januar 2026.
 
 Ordrett om Skyra: «Skal noen publisere surveyer uten utvikler, er Skyra laget for det.»
 
 Lumi krever innlogget bruker i oppsettet vi dokumenterer, fordi appens backend veksler brukerens token. For åpne sider på nav.no er det dette som avgjør.
 
-Klikk 1: «Teamet velger: hvem lager surveyen, og hvor skal svaret bo?»
+Klikk 1: «Teamet velger hvem som lager surveyen, og hvor svaret skal bo.»
 
 Spør Team Flex om FlexJar og #lumi om Lumi.`,
   Component: UlikeBehov,

@@ -22,7 +22,7 @@ function SammeUtkast() {
           poster={poster}
           width={1680}
           height={672}
-          label="Opptak fra Surveyverksted med testdata. Under «Hva vil dere finne ut?» står «Hvordan opplevde brukeren tjenesten?». Utkastet får navnet Dagen så langt, og Surveyverksted foreslår survey-ID-en dagen-sa-langt. I utkastet skrives spørsmålet om til «Hvordan har dagen vært så langt?», og forhåndsvisningen viser det i den ekte widgeten med smilefjes. Så deles versjon 1 med utvikleren, og versjonssiden har knappen Kopier TypeScript."
+          label="Opptak fra Surveyverksted med testdata. Under «Hva vil dere finne ut?» står «Hvordan opplevde brukeren tjenesten?». Utkastet får navnet Dagen så langt, og Surveyverksted foreslår survey-ID-en dagen-sa-langt. I utkastet skrives spørsmålet om til «Hvordan har dagen vært så langt?», og forhåndsvisningen viser det i widgeten med smilefjes. Så deles versjon 1 med utvikleren, og versjonssiden har knappen Kopier TypeScript."
         />
       </div>
       <p className="verksted-film__note">
@@ -40,11 +40,11 @@ export const sammeUtkast: Slide = {
 Under «Hva vil dere finne ut?» velger teamet et oppsett. Her er det vurderingen.
 Utkastet får et navn, og Surveyverksted foreslår survey-ID-en.
 Teamet skriver spørsmålet: «Hvordan har dagen vært så langt?» Det er spørsmålet dere svarte på i stad.
-Forhåndsvisningen viser den ekte widgeten. Den sender ingen svar.
+Forhåndsvisningen viser widgeten slik brukerne ser den. Den sender ingen svar.
 «Del med utvikler» lager versjon 1 med egen lenke. Utvikleren kopierer TypeScript-koden derfra.
 
 Spør salen: «Hvem kan åpne utkastet?» Svar: alle i teamet i Nais Console. Designere, produktfolk og utviklere jobber i samme utkast, og det lagres for teamet.
 
-Når og hvor surveyen vises, bestemmer appen: teamet velger siden, og widgeten kan starte som en liten knapp.`,
+Når og hvor surveyen vises, bestemmer appen. Teamet velger siden, og widgeten kan starte som en liten knapp.`,
   Component: SammeUtkast,
 };

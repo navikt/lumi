@@ -170,7 +170,7 @@ function IAppen({ step }: SlideProps) {
   const view = near ? CLOSE_WINDOW : WIDE_WINDOW;
   return (
     <div className="slide iappen" data-near={near ? "" : undefined}>
-      <h2 className="iappen__title">Ute nå hos ledere i Dine sykmeldte</h2>
+      <h2 className="iappen__title">Dine sykmeldte spør lederne nå</h2>
       <div className="iappen__window" style={clipFor(view)}>
         <div className="iappen__camera" style={camera(near ? CLOSE : WIDE)}>
           <img className="iappen__shot" src={lukket} alt="" aria-hidden />
@@ -225,11 +225,13 @@ function IAppen({ step }: SlideProps) {
 
 export const iAppen: Slide = {
   id: "i-appen",
-  title: "Ute nå hos ledere i Dine sykmeldte",
+  title: "Dine sykmeldte spør lederne nå",
   steps: 2,
   notes: `Fra start: surveyen er ute nå. Siden 15. oktober står knappen «Gi tilbakemelding» nede til høyre på siden for en sykmelding i Dine sykmeldte, ved siden av tilbudet «Start oppfølging tidlig». Bildene er fra den offentlige demoen, med en testperson.
 
-Klikk 1: lederen trykker og får ett spørsmål: «Hvor nyttig er tilbudet om påminnelse på e-post for deg?» Spørsmålet og svaralternativene laget teamet bak Dine sykmeldte i Surveyverksted. Utseendet kommer fra Lumi, bygd med Aksel.
+Hvis noen spør når den kommer opp: som standard åpner surveyen seg når siden lastes, nede til høyre. Lukker brukeren den, blir den knappen «Gi tilbakemelding», og den åpner seg ikke av seg selv igjen før etter 30 dager. På nav.no krever det at brukeren har samtykket. Uten samtykke starter den som knappen, slik som i demoen. Interne apper uten dekoratøren setter storageStrategy til localStorage, så åpner den seg av seg selv og husker at saksbehandleren lukket den.
+
+Klikk 1: lederen trykker og får ett spørsmål: «Hvor nyttig er tilbudet om påminnelse på e-post for deg?» Teamet bak Dine sykmeldte laget spørsmålet og svaralternativene i Surveyverksted. Utseendet kommer fra Lumi, bygd med Aksel.
 
 Klikk 2: etter «Neste» kommer en valgfri fritekst på opptil 500 tegn. Varselet om personopplysninger følger med fra Lumi. Koden er offentlig, i repoet navikt/dinesykmeldte.`,
   Component: IAppen,

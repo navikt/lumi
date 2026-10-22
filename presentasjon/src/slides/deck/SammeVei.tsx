@@ -17,7 +17,7 @@ const OWN_DATA_Y = Y - LINE_WIDTH - 48;
 const STOPS = [
   { x: 250, label: "Nettleseren" },
   { x: 760, label: "Appens backend", note: "veksler token" },
-  { x: 1180, label: "Lumi API", note: "bare apper på lista" },
+  { x: 1180, label: "Lumi API", note: "bare apper med tilgang" },
   { x: 1600, label: "Databasen", note: "på Nais" },
 ] as const;
 
@@ -115,7 +115,7 @@ function SammeVei({ step }: SlideProps) {
     <div className={cx("slide vei", focusText && "vei--text")}>
       <LineMap
         className="vei__map"
-        label="Svaret går fra nettleseren til appens backend, samme vei som appens egne data. Backenden veksler token og sender svaret til Lumi API, som bare tar imot fra apper på lista. Svaret lagres i databasen. Alt etter nettleseren ligger på Nais, samme plattform som resten av Navs apper."
+        label="Svaret går fra nettleseren til appens backend. Backenden veksler token og sender svaret til Lumi API, som bare tar imot fra apper med tilgang. Svaret lagres i databasen. Alt etter nettleseren ligger på Nais, samme plattform som resten av Navs apper."
       >
         <Zone
           x={540}
@@ -219,14 +219,16 @@ function SammeVei({ step }: SlideProps) {
         </div>
       )}
 
-      <h2 className="vei__title">Svaret går samme vei som appens egne data</h2>
+      <h2 className="vei__title">
+        Svaret går via appens backend og blir på Nais
+      </h2>
     </div>
   );
 }
 
 export const sammeVei: Slide = {
   id: "samme-vei",
-  title: "Svaret går samme vei som appens egne data",
+  title: "Svaret går via appens backend og blir på Nais",
   steps: 4,
   notes: `Inn: «Nå følger vi svaret fra i stad, det med navnet og e-postadressen.»
 
@@ -234,13 +236,13 @@ Svaret fra surveyen i starten reiser. Har ingen svart, står et eksempel med sam
 
 Klikk 1: til appens backend. «Svaret går først til appens egen backend. Backenden veksler brukerens innlogging mot et token til Lumi API.» TokenX eller Entra ID.
 
-Klikk 2: til Lumi API. «Lumi API tar bare imot fra apper på lista.»
+Klikk 2: til Lumi API. «Lumi API tar bare imot svar fra apper som har fått tilgang.»
 
 Før klikk 3: «Hva tror dere Lumi lagrer av denne teksten? Skriv i chatten.» Vent noen sekunder.
 
-Klikk 3: kartet trer tilbake, og e-postadressen løses opp. «E-postadressen er borte før svaret lagres. Navnet står igjen, for navn fjernes ikke. Derfor kan teamet slette et svar i dashboardet. Hvem som svarte, lagres ikke.»
+Klikk 3: kartet trer tilbake, og e-postadressen løses opp. «E-postadressen er borte før svaret lagres. Navnet står igjen. Lumi fjerner bare det som har et kjent mønster, som e-post og fødselsnummer. Derfor kan teamet slette et svar i dashboardet. Hvem som svarte, lagres ikke.»
 
-Klikk 4: i databasen. «Der bor svaret, på Nais, der resten av Navs apper og data er. Lumi legger ikke til en ny leverandør.»
+Klikk 4: i databasen. «Der bor svaret, i en database på Nais. Lumi legger ikke til en ny leverandør.»
 
 Ut: «I dashboardet er det bare teamet deres som kan lese svaret.»`,
   Component: SammeVei,

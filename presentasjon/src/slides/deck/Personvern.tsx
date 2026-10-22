@@ -61,13 +61,13 @@ function Personvern() {
 export const personvern: Slide = {
   id: "personvern",
   title: "Lumi lagrer svaret, ikke hvem som svarte",
-  notes: `Reserve: vis den når noen spør om personvern, og lim teksten inn i chatten. Står den rett etter bare-teamet, inn: «Her er hele etiketten: hva Lumi lagrer, og hva som fjernes.»
+  notes: `Reserve: vis den når noen spør om personvern, og lim teksten inn i chatten. Står den rett etter bare-teamet, inn: «Her ser dere hva Lumi lagrer, og hva som fjernes.»
 
 Lumi API lagrer ikke hvem som svarte, heller ikke Nav-identen fra interne apper. Tokenet fra appens backend brukes til å sjekke at kallet kommer fra en app med tilgang. En hash av brukerens ID holdes bare i minnet, for å begrense hvor mange svar én bruker kan sende inn.
 
 Rammen er det samme merket som rundt e-postadressen i stad: det som står i rammen, fjernes før svaret lagres. Fødselsnummer fjernes når kontrollsifrene er gyldige. Navn og vanlige adresser fjernes ikke, derfor har teamet en sletteknapp i dashboardet.
 
-I dashboardet ser bare teamet svarene, altså medlemmene av teamet i Nais Console. Svarene slettes automatisk etter 12 måneder. Et slettet svar kan ligge i sikkerhetskopiene i opptil sju døgn.
+I dashboardet ser bare teamet svarene, altså medlemmene av teamet i Nais Console. Svarene slettes automatisk etter tolv måneder. Et slettet svar kan ligge i sikkerhetskopiene i opptil sju døgn.
 
 Kilde: «Sikkerhet og personvern» i dokumentasjonen.`,
   Component: Personvern,

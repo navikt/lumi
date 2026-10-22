@@ -120,7 +120,7 @@ function Oppfolgingsplanen({ step, active }: SlideProps) {
   return (
     <div className="slide opp" data-motion={motion ? "" : undefined}>
       <h2 className="slide-title">
-        Målet var at den nye planen ikke skulle bli dårligere
+        Den nye oppfølgingsplanen skulle ikke bli dårligere
       </h2>
       <LineMap label="Andelen som svarte 4 eller 5 av 5 på samme spørsmål, på en akse fra 50 til 100 prosent. Ledere, «Hvordan var det å bruke oppfølgingsplanen?»: 66 prosent i den gamle planen og 77 prosent i den nye. Snitt 3,8 og 4,0, med 9 523 og 1 757 svar. Sykmeldte, «Er oppfølgingsplanen til hjelp for deg?»: 73 prosent i den gamle planen og 78 prosent i den nye. Snitt 4,0 og 4,1, med 13 319 og 3 033 svar. Den gamle planen er målt i FlexJar, den nye i Lumi.">
         {ROWS.map((row, i) => (
@@ -169,13 +169,13 @@ function Oppfolgingsplanen({ step, active }: SlideProps) {
 
 export const oppfolgingsplanen: Slide = {
   id: "oppfolgingsplanen",
-  title: "Målet var at den nye planen ikke skulle bli dårligere",
+  title: "Den nye oppfølgingsplanen skulle ikke bli dårligere",
   steps: 1,
   notes: `Ordrett: «Da vi lagde ny oppfølgingsplan, var målet at den ikke skulle bli dårligere. Vi stilte samme spørsmål i den gamle og den nye planen.»
 
 Steg 0 viser bare den gamle planen. Spør: «Hva tror dere skjedde?» Vent noen sekunder.
 
-Klikk 1: «Lederne ga den gamle planen 3,8 og den nye 4,0, og andelen som ga 4 eller 5, gikk fra 66 til 77 prosent. For de sykmeldte gikk den fra 73 til 78.»
+Klikk 1: «Lederne ga den gamle planen 3,8 og den nye 4,0, og andelen som ga fire eller fem, gikk fra 66 til 77 prosent. For de sykmeldte gikk den fra 73 til 78.»
 
 Aksen går fra 50 til 100 prosent, så avstanden mellom ringene viser forskjellen.
 

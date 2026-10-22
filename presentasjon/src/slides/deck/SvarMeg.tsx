@@ -168,7 +168,7 @@ function SvarMeg({ active, step }: SlideProps) {
       <p className="svar__meter">
         <strong className="svar__count">{calls}</strong>
         <span className="svar__count-label">
-          nettverkskall
+          sendt
           <br />
           fra siden
         </span>
@@ -228,9 +228,9 @@ Les noen svar høyt, for eksempel: «Jeg ser to firere og en femmer. Hva sier ro
 Lim inn: Fant ikke planen. Send svar til Ola Nordmann, ola.nordmann@example.com
 Ha teksten klar i utklippstavla.
 
-Før Send: «Se på telleren. Hva tror dere den viser når jeg trykker Send?» Trykk Send.
+Før Send: «Følg med på telleren når jeg trykker Send.» Trykk Send.
 
-«Den står på null. Presentasjonen gir ikke widgeten noen transport som sender, så svaret blir her i nettleseren. I en app går svaret til appens egen backend på samme domene, og derfra videre til Lumi API.»
+«Den står på null. Her i presentasjonen sender ikke widgeten svaret videre, så det blir i nettleseren. I en app går svaret til appens egen backend, og derfra til Lumi API.»
 
 Klikk: svaret letter fra widgeten og lander nede til venstre. «Svaret blir liggende her. Vi følger det om litt.»
 

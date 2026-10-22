@@ -42,11 +42,11 @@ export const grupper: Slide = {
   steps: 1,
   notes: `Lim inn spørsmålene i chatten før gruppene går, og klikk. Be gruppene om notatene, så Team Flex også får dem.
 
-Spørsmål 1 til 3 i gruppene, 4 i plenum.
+Spørsmål én til tre i gruppene, fire i plenum.
 
 Avtal med verten hvor lenge gruppene varer.
 
-Lumi samordner ikke surveyer mellom team. Spør flere team de samme folkene, må teamene snakke sammen.
+Lumi samordner ikke surveyer mellom team. Hvis flere team spør de samme folkene, må teamene snakke sammen.
 
 Til chatten:
 1. ${QUESTIONS[0]}

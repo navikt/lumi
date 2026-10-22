@@ -60,14 +60,14 @@ export const merEnnViSporOm: Slide = {
   id: "mer-enn-vi-spor-om",
   title: "Folk skriver mer enn vi spør om",
   steps: 1,
-  notes: `Ordrett inn: «Varselet i fritekstfeltet står der av en grunn. Svaret jeg skrev i stad, var laget for anledningen, men vi ser det samme i ekte svar.»
+  notes: `Ordrett inn: «Svaret jeg skrev i stad, var laget for anledningen. Vi ser det samme i ekte svar.»
 
 La salen lese svaret et par sekunder.
 
-Klikk 1: rammene tegnes rundt navnet og e-postadressen. Ordrett: «Vi ber ikke om personopplysninger, men de kommer inn i fritekst likevel. Da må teamet kunne finne og slette dem. I Lumi gjør dere det i dashboardet.»
+Klikk 1: rammene tegnes rundt navnet og e-postadressen. Ordrett: «Vi ber ikke om personopplysninger. De kommer inn i fritekst likevel. Da må teamet kunne finne og slette dem. I Lumi gjør dere det i dashboardet.»
 
 Svaret er et laget eksempel. Navn i fritekst maskeres ikke.
 
-Ut mot FlexJar: «Derfor var det første spørsmålet vårt: hvor bor svaret?»`,
+Ut mot FlexJar: «Derfor spurte vi først hvor svaret skulle bo.»`,
   Component: MerEnnViSporOm,
 };

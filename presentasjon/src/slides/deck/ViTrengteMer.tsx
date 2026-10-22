@@ -78,7 +78,7 @@ function ViTrengteMer({ step }: SlideProps) {
       className={cx("slide", step >= 1 && "trengte--built")}
       style={cssVars({ "--trengte-draw": `${DRAW_MS}ms` })}
     >
-      <h2 className="slide-title trengte__title">Men vi trengte mer</h2>
+      <h2 className="slide-title trengte__title">Fire behov vi løste selv</h2>
       <LineMap label="Linjekart. En stiplet linje fra kant til kant, behovene våre i eSyfo, med fire stasjoner: lik widget i alle apper, ulike surveytyper, analyse i dashboardet og tilgang per team. Så kommer Lumi, januar 2026, og tegner en heltrukket linje over den.">
         {/* The needs: a line that is not built yet. */}
         <Line points={EDGE_TO_EDGE} dashed />
@@ -141,13 +141,13 @@ function ViTrengteMer({ step }: SlideProps) {
 
 export const viTrengteMer: Slide = {
   id: "vi-trengte-mer",
-  title: "Men vi trengte mer",
+  title: "Fire behov vi løste selv",
   rooms: ["frontend", "produktledere"],
   steps: 1,
-  notes: `Ordrett: «Det vi manglet, lagde vi selv, først som tillegg: en widget og et dashboard for analyse.»
+  notes: `Ordrett: «Det vi manglet, lagde vi selv. Først var det et tillegg til FlexJar, med en widget og et dashboard for analyse.»
 
 Les opp de fire behovene våre i eSyfo. Linja er stiplet, fordi den ikke er bygd ennå.
 
-Klikk 1: Lumi tegner linja, og stasjonene fylles. Ordrett: «I januar 2026 ble det et eget verktøy, med egen datamodell og tilgang per team.»`,
+Klikk 1: Lumi tegner linja, og stasjonene fylles. Ordrett: «I januar 2026 ble Lumi et eget verktøy, med egen datamodell og tilgang per team.»`,
   Component: ViTrengteMer,
 };

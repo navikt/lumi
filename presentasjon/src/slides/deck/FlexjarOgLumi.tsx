@@ -6,9 +6,9 @@ function FlexjarOgLumi() {
   return (
     <div className="slide flexjar-kort">
       <h2 className="flexjar-kort__claim">
-        Surveyen i koden.
+        Surveyen bor i koden.
         <br />
-        Svarene internt.
+        Svaret bor på Nais.
       </h2>
       <p className="flexjar-kort__names">
         FlexJar
@@ -28,9 +28,9 @@ export const flexjarOgLumi: Slide = {
   rooms: ["faggruppa"],
   notes: `Har Team Flex vist FlexJar først, begynn med: «Dere har akkurat sett FlexJar.»
 
-Ordrett: «Vi startet med FlexJar fra Team Flex, fordi grunntanken er god: surveyen i koden og svarene internt. Takk til Team Flex, som tok imot svarene våre fra 2024.»
+Ordrett: «Vi startet med FlexJar fra Team Flex, fordi surveyen ligger i koden og svarene blir på Nais. Takk til Team Flex, som tok imot svarene våre fra 2024 av.»
 
-Klikk 1: «og Lumi» kommer. Ordrett: «Lumi har samme grunnidé. Det vi manglet, lagde vi selv, først som tillegg: en widget og et dashboard for analyse. I januar 2026 ble det et eget verktøy, med egen datamodell og tilgang per team.»
+Klikk 1: «og Lumi» kommer. Ordrett: «Lumi bygger på samme grunntanke. Det vi manglet, lagde vi selv, først som et tillegg til FlexJar, med en widget og et dashboard for analyse. I januar 2026 ble Lumi et eget verktøy, med egen datamodell og tilgang per team.»
 
 Viser Team Flex FlexJar etter Lumi, slutt med: «Etterpå viser Team Flex FlexJar.»
 

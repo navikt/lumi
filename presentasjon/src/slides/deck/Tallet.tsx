@@ -147,7 +147,7 @@ export const tallet: Slide = {
   id: "tallet",
   title: "30 945 svar",
   steps: 2,
-  notes: `Ordrett inn: «Det var hvordan det virker. Nå skal dere se hvor mye det er i bruk.»
+  notes: `Ordrett inn: «Så langt har dere sett hvordan det virker. Nå skal dere se hvor mye det brukes.»
 
 Steg 0 er tallet alene. Vent et øyeblikk før klikket.
 
@@ -157,7 +157,7 @@ Klikk 2: «De elleve prikkene til høyre er nærmest dere: veiledere som svarer 
 
 Tallene er hentet fra dashboardet 21. oktober 2026.
 
-Spør noen om appene i Team eSyfo: bro-frontend, dialogmote-frontend, dinesykmeldte, narmesteleder-frontend, oppfolgingsplan-frontend og syfo-oppfolgingsplan-frontend.
+Hvis noen spør om appene i Team eSyfo: bro-frontend, dialogmote-frontend, dinesykmeldte, narmesteleder-frontend, oppfolgingsplan-frontend og syfo-oppfolgingsplan-frontend.
 
 Før kjøring: bekreft at bryteren «Arkiverte» var på da tallene ble hentet. Uten den er svar på arkiverte surveyer ikke med.`,
   Component: Tallet,

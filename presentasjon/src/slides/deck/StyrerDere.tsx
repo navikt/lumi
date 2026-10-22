@@ -93,11 +93,7 @@ function StyrerDere({ step }: SlideProps) {
   const back = step >= 2 && mode !== "print";
   return (
     <div className="slide">
-      <h2 className="styrer__title">
-        Dere bestemmer innholdet.
-        <br />
-        Lumi setter rammene.
-      </h2>
+      <h2 className="styrer__title">Hva kan dere endre i widgeten?</h2>
       <div
         className="styrer__frame"
         style={{
@@ -117,7 +113,7 @@ function StyrerDere({ step }: SlideProps) {
           className="styrer__survey"
         />
       </div>
-      <LineMap label="Den ekte widgeten. Til venstre det teamet bestemmer: spørsmålene og tekstene, hvem som får hvilke spørsmål med betinget visning, og når og hvor den vises, som appen bestemmer i koden. Til høyre det Lumi bestemmer: utseendet fra Aksel, faste tekster som (valgfritt) og tegntelleren, og varselet om personopplysninger, som er på som standard og bør stå.">
+      <LineMap label="Widgeten. Til venstre det teamet bestemmer: spørsmålene og tekstene, hvem som får hvilke spørsmål med betinget visning, og når og hvor den vises, som appen bestemmer i koden. Til høyre det Lumi bestemmer: utseendet fra Aksel, faste tekster som (valgfritt) og tegntelleren, og varselet om personopplysninger, som er på som standard og bør stå.">
         <g data-from={1}>
           <g className="styrer__side" data-back={back ? "" : undefined}>
             <MapText
@@ -159,13 +155,13 @@ function StyrerDere({ step }: SlideProps) {
 
 export const styrerDere: Slide = {
   id: "styrer-dere",
-  title: "Dere bestemmer innholdet. Lumi setter rammene.",
+  title: "Hva kan dere endre i widgeten?",
   steps: 2,
-  notes: `Fra start: den ekte widgeten, med to spørsmål.
+  notes: `Fra start: widgeten med to spørsmål.
 
 Klikk 1, dere bestemmer: spørsmålene og tekstene i Surveyverksted. Betinget visning og kontekst avgjør hvem som får hvilke spørsmål, for eksempel «Hva manglet?» bare etter «Nei». Når og hvor den vises, bestemmer appen i koden: når siden lastes, etter en fullført oppgave eller som knappen «Gi tilbakemelding», nede til høyre eller til venstre. Knappetekster og feilmeldinger, som «Send», kan appen også endre i koden.
 
-Klikk 2, Lumi bestemmer: utseendet følger Aksel. Noen tekster er faste: «Neste», «Tilbake», «(valgfritt)» og tegntelleren under fritekstfeltet. Varselet om personopplysninger er på som standard. La det stå. Lumi API maskerer kjente mønstre og sletter svar automatisk etter 12 måneder.
+Klikk 2, Lumi bestemmer: utseendet følger Aksel. Noen tekster er faste: «Neste», «Tilbake», «(valgfritt)» og tegntelleren under fritekstfeltet. Varselet om personopplysninger er på som standard. La det stå. Lumi API maskerer kjente mønstre og sletter svar automatisk etter tolv måneder.
 
 Det som ikke er lov, står på sliden om ansvar: be om navn eller fødselsnummer, og rekruttere til brukertester. Endringer i surveyen krever en ny versjon av appen.`,
   Component: StyrerDere,

@@ -52,7 +52,7 @@ function HvorBorSvaret({ step }: SlideProps) {
   const concluded = step >= 3;
   return (
     <div className="slide">
-      <LineMap label="Tre soner: brukerens nettleser, Navs plattform Nais og Skyra AS. Med Skyra henter nettleseren skriptet fra survey.skyra.no ved hver sidevisning. Svaret går fra nettleseren til Skyras server og lagres hos Skyra AS, hos Scaleway i EU. Skyra AS er databehandler for Nav. Med Lumi hentes widgeten når appen bygges, i en låst versjon. Svaret går fra nettleseren til appens backend, som har samme adresse som appen, videre til Lumi API og databasen på Nais, samme plattform som resten av Navs apper.">
+      <LineMap label="Tre soner: brukerens nettleser, Navs plattform Nais og Skyra AS. Med Skyra henter nettleseren skriptet fra survey.skyra.no ved hver sidevisning. Svaret går fra nettleseren til Skyras server og lagres hos Skyra AS, hos Scaleway i EU. Skyra AS er databehandler for Nav. Med Lumi hentes widgeten når appen bygges, i en låst versjon. Svaret går fra nettleseren til appens backend, som har samme adresse som appen, videre til Lumi API og databasen på Nais.">
         <Zone
           x={BROWSER_X}
           y={TOP}
@@ -68,7 +68,6 @@ function HvorBorSvaret({ step }: SlideProps) {
           height={HEIGHT}
           tone="nais"
           label="Navs plattform (Nais)"
-          note={["samme plattform som", "resten av Navs apper"]}
           labelAt="top"
         />
         <Zone
@@ -212,24 +211,24 @@ export const hvorBorSvaret: Slide = {
   id: "hvor-bor-svaret",
   title: "Hvor bor svaret?",
   steps: 3,
-  notes: `Bare veiene, ingen vurdering.
+  notes: `Beskriv bare veiene.
 
 Først, beskriv kartet: «Tre soner: til venstre brukerens nettleser, i midten Navs plattform Nais, til høyre Skyra AS. Følg den gule prikken. Der den stopper, bor svaret.»
 
-Faggruppa, inn: «Flere av dere kjenner Skyra, som brukes på nav.no og i flere fagsystemer. Begge brukes i Nav. Her er hvor svaret går i hver av dem.»
+Faggruppa, inn: «Flere av dere kjenner Skyra, som brukes på nav.no og i flere fagsystemer. Skyra og Lumi brukes begge i Nav. Nå skal dere se hvor svaret går i hver av dem.»
 
-Frontend forum, ordrett: «Da svarer jeg på spørsmålet fra starten. Nei, vi sammenlignet ikke funksjonene. Vi startet med et annet spørsmål: hvor skal svarene ligge?»
+Frontend forum, ordrett: «Da svarer jeg på spørsmålet fra starten. Nei, vi sammenlignet ikke funksjonene. Det som avgjorde, var hvor svaret skulle bo.»
 
 Klikk 1, Skyra: «Skriptet er Skyras kode. Nettleseren henter det fra Skyra ved hver sidevisning.» Så går svaret rett fra nettleseren til Skyra AS og lagres i EU. Skyra AS er databehandler for Nav, og Skyra kan også blokkere fødselsnummer, telefonnummer og e-post i fritekst.
 
 Klikk 2, Lumi: «Widgeten er en npm-pakke. Den hentes når appen bygges, i en låst versjon.» Svaret går via appens backend til Lumi API og databasen. Lumi legger ikke til en ny leverandør.
 
-Klikk 3: «Begge brukes i Nav. Forskjellen er hvor svaret bor.» Så: «For oss i eSyfo ble svaret Nais, ved siden av appens egne data. Andre team har valgt Skyra.» FlexJar bor på samme sted som Lumi.
+Klikk 3: «Begge brukes i Nav. Forskjellen er hvor svaret bor.» Så: «Vi i eSyfo valgte Nais, der appenes egne data ligger. Andre team har valgt Skyra.» FlexJar bor på samme sted som Lumi.
 
-Frontend forum: Lumi trenger ingen ny kilde i CSP. Svaret går samme vei som appens egne data, og surveyen ligger i appens kode.
+Frontend forum: Lumi trenger ingen ny kilde i CSP. Svaret går gjennom appens egen backend, og surveyen ligger i appens kode.
 
-Spør noen om samtykke: på nav.no henter dekoratøren Skyras skript først etter samtykke. I Modia er skriptet en vanlig script-tag. Lumi-widgeten leser samtykket fra dekoratøren selv. Uten samtykke til surveyer starter den minimert, og den husker ikke at brukeren har lukket den.
+Hvis noen spør om samtykke: på nav.no henter dekoratøren Skyras skript først etter samtykke. I Modia er skriptet en vanlig script-tag. Lumi-widgeten leser samtykket fra dekoratøren selv. Uten samtykke til surveyer starter den minimert, og den husker ikke at brukeren har lukket den.
 
-Google Cloud-spørsmålet: «Lumi kjører i prod-gcp, Nais-klyngen i Google Cloud, med samme sikkerhetsmodell som appene der. Google er alt leverandør for Nais.»`,
+Hvis noen spør om Google Cloud: «Lumi kjører i prod-gcp, Nais-klyngen i Google Cloud. Google er allerede leverandør for Nais.»`,
   Component: HvorBorSvaret,
 };

@@ -79,7 +79,7 @@ function Wall({ open }: { open: boolean }) {
         </g>
       ))}
       <text x={BROWSER_X + 36} y={TOP + 66} className="map-zone__label">
-        Fagsystemsonen
+        Fagsystemer
       </text>
     </g>
   );
@@ -88,7 +88,7 @@ function Wall({ open }: { open: boolean }) {
 function Fagsystemsonen({ step }: SlideProps) {
   return (
     <div className="slide">
-      <LineMap label="Saksbehandlerens nettleser ligger bak en vegg, fagsystemsonen. Appen snakker alt med sin egen backend på Nais, gjennom døra den har. En app med et skript fra en leverandør trenger en egen åpning ut av sonen til leverandørens server, og svaret lagres der. Leverandøren er databehandler for Nav. Med Lumi følger svaret linja som alt finnes, gjennom døra, til appens backend, Lumi API og databasen på Nais.">
+      <LineMap label="Saksbehandlerens nettleser ligger bak en vegg rundt fagsystemene. Appen snakker allerede med sin egen backend på Nais, gjennom døra den har. En app med et skript fra en leverandør trenger en egen åpning ut av sonen til leverandørens server, og svaret lagres der. Leverandøren er databehandler for Nav. Med Lumi følger svaret linja som allerede finnes, gjennom døra, til appens backend, Lumi API og databasen på Nais.">
         <Zone
           x={BROWSER_X}
           y={TOP}
@@ -105,7 +105,7 @@ function Fagsystemsonen({ step }: SlideProps) {
           height={HEIGHT}
           tone="nais"
           label="Navs plattform (Nais)"
-          note={["samme plattform som", "resten av Navs apper"]}
+          note={["gjelder apper med", "backend i prod-gcp"]}
           labelAt="top"
         />
         <Zone
@@ -213,9 +213,9 @@ function Fagsystemsonen({ step }: SlideProps) {
       </LineMap>
 
       <h2 className="slide-maptitle hvor__title">
-        I fagsystemsonen bruker Lumi
+        I fagsystemer går svaret
         <br />
-        døra appen alt har
+        gjennom appens egen backend
       </h2>
     </div>
   );
@@ -223,18 +223,18 @@ function Fagsystemsonen({ step }: SlideProps) {
 
 export const fagsystemsonen: Slide = {
   id: "fagsystemsonen",
-  title: "I fagsystemsonen bruker Lumi døra appen alt har",
+  title: "I fagsystemer går svaret gjennom appens egen backend",
   steps: 2,
-  notes: `Samme kart. Nå er nettleseren saksbehandlerens, bak veggen rundt fagsystemsonen.
+  notes: `Samme kart. Nå er nettleseren saksbehandlerens, bak veggen rundt fagsystemene.
 
-Fra start: appen snakker alt med sin egen backend, gjennom døra den har.
+Fra start: appen snakker allerede med sin egen backend, gjennom døra den har.
 
 Klikk 1: veggen åpnes for leverandøren, og svaret går ut og lagres der. «Skyra brukes i flere fagsystemer i dag, gjennom en åpning som er på plass.»
 
-Klikk 2: svaret følger linja som alt finnes, gjennom døra, til appens backend og Lumi API på Nais. FlexJar trenger heller ingen ny åpning.
+Klikk 2: svaret følger linja som allerede finnes, gjennom døra, til appens backend og Lumi API på Nais. FlexJar trenger heller ingen ny åpning.
 
-Ordrett: «Skal noen publisere surveyer uten utvikler, er Skyra laget for det.»
+Faggruppa, ordrett: «Skal noen publisere surveyer uten utvikler, er Skyra laget for det.»
 
-Det gjelder apper med backend i prod-gcp. Fagsystemer med backend i prod-fss må avklare med oss først.`,
+Det gjelder apper med backend i prod-gcp, og det står i Nais-sonen på sliden. Fagsystemer med backend i prod-fss må avklare med oss først, for Lumi API tar bare imot kall fra prod-gcp.`,
   Component: Fagsystemsonen,
 };
