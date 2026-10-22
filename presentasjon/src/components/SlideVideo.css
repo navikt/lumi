@@ -1,0 +1,9 @@
+/* A recording on a slide. Sized by the slide, never by the video. */
+.slide-video {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--deck-embed-bg);
+  object-fit: cover;
+  pointer-events: none;
+}

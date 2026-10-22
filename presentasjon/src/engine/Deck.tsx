@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CommentMode } from "./CommentMode";
 import { DeckNav } from "./DeckNav";
 import { FittedStage } from "./FittedStage";
 import { toggleFullscreen } from "./fullscreen";
@@ -150,6 +151,13 @@ export function Deck({ slides }: DeckProps) {
         })}
       </FittedStage>
       {black && <div className="deck-blackout" />}
+      {import.meta.env.DEV && (
+        <CommentMode
+          stageRef={stageRef}
+          slideId={slides[index]?.id ?? ""}
+          step={step}
+        />
+      )}
       <div className="deck-sr-only" aria-live="polite" aria-atomic="true">
         {announcement}
       </div>

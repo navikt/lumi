@@ -1,0 +1,130 @@
+/*
+ * Comment mode (K, development only). Its colours are deliberately not the
+ * deck's, so a pin is never mistaken for part of a slide.
+ */
+.comment-mode {
+  --comment-ink: #1a1a1a;
+  --comment-paper: #ffffff;
+  --comment-open: #e4007c;
+  --comment-fixed: #1b8a3a;
+
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  font-family: system-ui, sans-serif;
+  font-size: 15px;
+  pointer-events: none;
+}
+
+.comment-mode__layer {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+}
+
+.comment-mode__layer,
+.comment-mode__pin-wrap,
+.comment-mode__card {
+  pointer-events: auto;
+}
+
+.comment-mode__bar {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--comment-open);
+  color: var(--comment-paper);
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.comment-mode__pin-wrap {
+  position: absolute;
+}
+
+.comment-mode__pin {
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  border: 2px solid var(--comment-paper);
+  border-radius: 50%;
+  background: var(--comment-open);
+  color: var(--comment-paper);
+  font:
+    700 14px / 1 system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+
+.comment-mode__pin[data-status="fixed"] {
+  background: var(--comment-fixed);
+}
+
+.comment-mode__pin[data-other-step] {
+  opacity: 0.45;
+}
+
+.comment-mode__card {
+  position: absolute;
+  width: 320px;
+  margin: 18px 0 0 -12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--comment-paper);
+  color: var(--comment-ink);
+  box-shadow: 0 4px 18px rgb(0 0 0 / 35%);
+}
+
+.comment-mode__draft {
+  margin: 0;
+}
+
+.comment-mode__meta {
+  margin: 0 0 6px;
+  color: #555555;
+  font-size: 13px;
+}
+
+.comment-mode__text,
+.comment-mode__reply {
+  margin: 0 0 10px;
+  white-space: pre-wrap;
+}
+
+.comment-mode__reply {
+  padding-left: 8px;
+  border-left: 3px solid var(--comment-fixed);
+}
+
+.comment-mode__input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #888888;
+  border-radius: 4px;
+  font: inherit;
+}
+
+.comment-mode__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.comment-mode__button {
+  padding: 4px 12px;
+  border: 1px solid var(--comment-ink);
+  border-radius: 4px;
+  background: var(--comment-paper);
+  color: var(--comment-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.comment-mode__button[type="submit"] {
+  background: var(--comment-ink);
+  color: var(--comment-paper);
+}
