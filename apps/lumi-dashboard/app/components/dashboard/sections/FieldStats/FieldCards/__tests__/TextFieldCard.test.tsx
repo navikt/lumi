@@ -168,13 +168,11 @@ describe("TextFieldCard", () => {
     });
     expect(link).toBeInTheDocument();
 
-    // Verify all phrase links have descriptive aria-labels
+    // The links are named by their visible text, so speech input works
     const allLinks = screen.getAllByRole("link");
     for (const phraseLink of allLinks) {
-      expect(phraseLink).toHaveAttribute(
-        "aria-label",
-        expect.stringMatching(/Vis \d+ tilbakemeldinger med uttrykket/),
-      );
+      expect(phraseLink).not.toHaveAttribute("aria-label");
+      expect(phraseLink).toHaveAccessibleName(/\d+ svar\s*–\s*åpne svarene$/);
     }
   });
 

@@ -1,5 +1,9 @@
 # Lokal verifisering av flate analysetabeller
 
+::: warning Erstattet
+Denne siden hører til analyseproduktene i ADR 0006, som er erstattet av [ADR 0007](../adr/0007-teameid-bigquery-eksport.md). Lumi leverer data til BigQuery som beskrevet i [BigQuery og Metabase](../dashboard/bigquery.md).
+:::
+
 `AnalysisFlatProjector` lager kandidattabeller med skjemaet fra en låst
 `AnalysisPublicationSpecificationV2`, via den eksisterende effective-plan-resolveren.
 Dette er en intern, avgrenset domenekomponent. Den har ingen endepunkter, kildeadapter,

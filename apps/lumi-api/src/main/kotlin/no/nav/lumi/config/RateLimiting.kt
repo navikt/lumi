@@ -53,7 +53,11 @@ val UserSubmissionRateLimit = RateLimitName("user-submission")
 val AnalyticsRateLimit = RateLimitName("analytics")
 val ExportRateLimit = RateLimitName("export")
 
+/** Changes to BigQuery export settings call BigQuery in the team's project, so they get a tighter limit. */
+val BigQueryExportRateLimit = RateLimitName("bigquery-export")
+
 private const val EXPORT_REQUESTS_PER_MINUTE = 30
+private const val BIGQUERY_EXPORT_CHANGES_PER_MINUTE = 20
 private val RATE_LIMIT_REFILL_PERIOD = 1.minutes
 private val defaultRateLimitSubmissionObservability = SubmissionObservability()
 
@@ -163,6 +167,11 @@ fun Application.configureRateLimiting(
 
         register(ExportRateLimit) {
             rateLimiter(limit = EXPORT_REQUESTS_PER_MINUTE, refillPeriod = RATE_LIMIT_REFILL_PERIOD)
+            requestKey { call -> call.rateLimitKey() }
+        }
+
+        register(BigQueryExportRateLimit) {
+            rateLimiter(limit = BIGQUERY_EXPORT_CHANGES_PER_MINUTE, refillPeriod = RATE_LIMIT_REFILL_PERIOD)
             requestKey { call -> call.rateLimitKey() }
         }
 

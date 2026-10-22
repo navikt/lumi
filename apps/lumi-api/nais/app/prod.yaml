@@ -60,6 +60,13 @@ spec:
       external:
         - host: console.nav.cloud.nais.io
   gcp:
+    # BigQuery export (ADR 0007): load jobs run in the team project. Teams give
+    # Lumi access to their own dataset, so no dataset roles are granted here.
+    permissions:
+      - resource:
+          apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+          kind: Project
+        role: roles/bigquery.jobUser
     sqlInstances:
       - type: POSTGRES_17
         tier: db-custom-1-3840
@@ -96,3 +103,13 @@ spec:
     # Set to "false" to stop it, see apps/lumi-api/docs/runbooks/automatic-retention.md.
     - name: LUMI_RETENTION_ENABLED
       value: "true"
+    # BigQuery export to the teams' own datasets, see docs/adr/0007-teameid-bigquery-eksport.md.
+    # Off until the export works in dev, see "Checking a new environment" in
+    # apps/lumi-api/docs/runbooks/bigquery-export.md. Then set it to "true".
+    # The pilot list limits who can set it up. Remove it to open the export for every team.
+    - name: LUMI_BIGQUERY_EXPORT_ENABLED
+      value: "false"
+    - name: LUMI_BIGQUERY_EXPORT_PILOT_TEAMS
+      value: "team-esyfo,teamsykefravr"
+    # Free text stays closed in production until a team's PVK covers it. Open it per team with
+    # LUMI_BIGQUERY_EXPORT_FREE_TEXT_TEAMS, a comma-separated list of teams.

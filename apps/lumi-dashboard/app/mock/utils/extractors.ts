@@ -86,7 +86,7 @@ export function getTaskNameFromFeedback(item: FeedbackDto): string | null {
     ),
   );
 
-  if (!taskAnswer || taskAnswer.fieldType !== "SINGLE_CHOICE") return null;
+  if (taskAnswer?.fieldType !== "SINGLE_CHOICE") return null;
 
   const selectedId = taskAnswer.value.selectedOptionId;
   const option = taskAnswer.question.options?.find((o) => o.id === selectedId);
@@ -119,7 +119,7 @@ export function getRatingFromFeedback(item: FeedbackDto): number | null {
       ) && a.fieldType === "RATING",
   );
 
-  if (!ratingAnswer || ratingAnswer.fieldType !== "RATING") return null;
+  if (ratingAnswer?.fieldType !== "RATING") return null;
 
   return ratingAnswer.value.rating ?? null;
 }
@@ -139,8 +139,7 @@ export function getSuccessStatusFromFeedback(
     ),
   );
 
-  if (!successAnswer || successAnswer.fieldType !== "SINGLE_CHOICE")
-    return null;
+  if (successAnswer?.fieldType !== "SINGLE_CHOICE") return null;
 
   const selectedId = successAnswer.value.selectedOptionId;
   const option = successAnswer.question.options?.find(
@@ -168,7 +167,7 @@ export function getBlockerTextFromFeedback(item: FeedbackDto): string | null {
     ),
   );
 
-  if (!blockerAnswer || blockerAnswer.fieldType !== "TEXT") return null;
+  if (blockerAnswer?.fieldType !== "TEXT") return null;
 
   const text = blockerAnswer.value.text?.trim();
   return text && text.length > 0 ? text : null;
@@ -210,7 +209,7 @@ export function getCommentFromFeedback(item: FeedbackDto): string | null {
       ) && a.fieldType === "TEXT",
   );
 
-  if (!commentAnswer || commentAnswer.fieldType !== "TEXT") return null;
+  if (commentAnswer?.fieldType !== "TEXT") return null;
 
   const text = commentAnswer.value.text?.trim();
   return text && text.length > 0 ? text : null;

@@ -74,9 +74,9 @@ class SurveyDefinitionRepositoryTest : FunSpec({
                 """
                     INSERT INTO survey_definitions (
                         team, survey_id, definition_hash, definition,
-                        last_submission_at, definition_retention_at
+                        last_submission_at, definition_retention_at, updated_at
                     )
-                    VALUES ('team-a', 'survey-activity', ?, ?::jsonb, ?, ?)
+                    VALUES ('team-a', 'survey-activity', ?, ?::jsonb, ?, ?, ?)
                 """.trimIndent()
             ).use { statement ->
                 statement.setString(1, "a".repeat(64))
@@ -86,6 +86,7 @@ class SurveyDefinitionRepositoryTest : FunSpec({
                 )
                 statement.setTimestamp(3, Timestamp.from(oldActivity))
                 statement.setTimestamp(4, Timestamp.from(oldActivity))
+                statement.setTimestamp(5, Timestamp.from(oldActivity))
                 statement.executeUpdate()
             }
             connection.commit()
@@ -96,6 +97,8 @@ class SurveyDefinitionRepositoryTest : FunSpec({
 
         val stored = repository.findByTeamAndSurveyId("team-a", "survey-activity").shouldNotBeNull()
         (stored.lastSubmissionAt > oldActivity) shouldBe true
+        // updated_at decides the one-time maxSelections fill-in, so activity must not move it.
+        stored.updatedAt shouldBe oldActivity
         (
             stored.definitionRetentionAt >= stored.lastSubmissionAt.atZone(ZoneOffset.UTC)
                 .plusMonths(18)
@@ -111,9 +114,9 @@ class SurveyDefinitionRepositoryTest : FunSpec({
                 """
                     INSERT INTO survey_definitions (
                         team, survey_id, definition_hash, definition,
-                        last_submission_at, definition_retention_at
+                        last_submission_at, definition_retention_at, updated_at
                     )
-                    VALUES ('team-a', 'survey-rolling', ?, ?::jsonb, ?, ?)
+                    VALUES ('team-a', 'survey-rolling', ?, ?::jsonb, ?, ?, ?)
                 """.trimIndent()
             ).use { statement ->
                 statement.setString(1, "a".repeat(64))
@@ -123,6 +126,7 @@ class SurveyDefinitionRepositoryTest : FunSpec({
                 )
                 statement.setTimestamp(3, Timestamp.from(oldActivity))
                 statement.setTimestamp(4, Timestamp.from(oldActivity))
+                statement.setTimestamp(5, Timestamp.from(oldActivity))
                 statement.executeUpdate()
             }
             connection.prepareStatement(
@@ -138,6 +142,7 @@ class SurveyDefinitionRepositoryTest : FunSpec({
         }
 
         val stored = repository.findByTeamAndSurveyId("team-a", "survey-rolling").shouldNotBeNull()
+        stored.updatedAt shouldBe oldActivity
         stored.lastSubmissionAt shouldBe submissionTime
         stored.definitionRetentionAt shouldBe submissionTime.atZone(ZoneOffset.UTC)
             .plusMonths(18)

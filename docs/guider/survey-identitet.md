@@ -47,7 +47,7 @@ når surveyen redigeres der.
 | Endre `surveyType` | Kan ikke gjøres i et utkast. Typen følger valget under **Hva vil dere finne ut?** | Nei | Endringen gir 409. |
 | Endre ratingvariant eller skala | Endre **Vurderingsskala** | Nei | Endring av `ratingVariant` eller `ratingScale` gir 409. |
 | Legge til, fjerne, bytte eller flytte ID-er for svaralternativer | **Legg til svaralternativ**, **Slett alternativ**, **Flytt alternativ opp**, **Flytt alternativ ned** eller endre verdien til et alternativ i avansert redigering | Nei | Listen med `optionIds` er låst, også rekkefølgen, og endringen gir 409. |
-| Endre eller fjerne grensen for hvor mange svar brukeren kan velge | Endre eller tømme **Hvor mange svar kan de velge?** | Nei | Endring av `maxSelections` gir 409. |
+| Legge til, endre eller fjerne grensen for hvor mange svar brukeren kan velge | Fylle inn, endre eller tømme **Hvor mange svar kan de velge?** | Nei | Endring av `maxSelections` gir 409, også når dere legger til en grense på et spørsmål som ikke hadde en. |
 | Gjenbruke en gammel ID til en ny survey | Skrive inn en ID som er brukt før, i **Foreslått survey-ID** | Nei | Nye svar blir enten avvist eller blandet med en historisk analyseserie. |
 
 Surveyverksted varsler ikke når en endring krever ny `surveyId`, heller ikke når
@@ -85,7 +85,7 @@ registrert for teamet og `surveyId`-en. Innsendingen er avvist og ikke lagret,
 så den vises heller ikke i dashboardet.
 
 Backenden deres får HTTP 409 fra Lumi API. Sender backenden feilen videre slik
-at `transport.submit` feiler, viser widgeten feilmeldingen for innsending og
+at innsendingen feiler, viser widgeten feilmeldingen for innsending og
 kaller `events.onSubmitError`. Standardteksten er «Kunne ikke sende
 tilbakemeldingen. Prøv igjen senere.»
 

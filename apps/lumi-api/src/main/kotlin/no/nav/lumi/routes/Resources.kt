@@ -6,6 +6,22 @@ import no.nav.lumi.domain.QuestionTrendInterval
 
 @Resource("/api/v1/intern")
 class ApiV1Intern {
+    @Resource("bigquery-export")
+    @Serializable
+    class BigQueryExport(
+        val parent: ApiV1Intern = ApiV1Intern(),
+        /** Required team scope. The routes reject requests without it; the authorization plugin validates it. */
+        val team: String? = null,
+    ) {
+        @Resource("verify")
+        @Serializable
+        class Verify(val parent: BigQueryExport = BigQueryExport())
+
+        @Resource("run")
+        @Serializable
+        class Run(val parent: BigQueryExport = BigQueryExport())
+    }
+
     @Resource("analysis-products")
     @Serializable
     class AnalysisProducts(

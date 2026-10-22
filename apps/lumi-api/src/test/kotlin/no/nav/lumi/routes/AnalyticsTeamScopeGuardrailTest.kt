@@ -28,6 +28,7 @@ class AnalyticsTeamScopeGuardrailTest : FunSpec({
         "/api/v1/intern/stats/task-priority",
         "/api/v1/intern/stats/survey-types",
         "/api/v1/intern/export",
+        "/api/v1/intern/bigquery-export",
     )
 
     test("all protected analytics endpoints reject unauthorized team with 403") {

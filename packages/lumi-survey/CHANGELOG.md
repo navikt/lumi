@@ -4,6 +4,87 @@ All notable changes to `@navikt/lumi-survey` will be documented in this file.
 
 This project follows SemVer.
 
+## [2.5.0] - 2026-10-21
+
+### Added
+
+- `transport` accepts `{ endpoint: "/api/lumi/feedback" }`. The widget then
+  sends the answers itself: it POSTs `submission.transportPayload` as JSON to
+  the endpoint with only `Content-Type: application/json`, on the page's own
+  origin (`credentials` and `mode` are `same-origin`), and passes the abort
+  signal on. Only a 2xx answer counts as success. A redirect, for example to a
+  login page, and a web page answered with 200 count as failures, so the
+  receipt never shows while the answers are lost. Error answers throw
+  `LumiSurveyHttpError`, so the time limit and the automatic retry from 2.4.0
+  apply. The widget does not follow redirects, not even one that only adds a
+  trailing slash, so `endpoint` must be the exact path of the route. Each
+  error answer logs one `[Lumi]` line without the payload.
+  `LumiSurveyEndpoint` is the type of this form. A transport with a `submit`
+  function always wins over `endpoint`.
+- `@navikt/lumi-survey/client` is an entry point with `"use client"` for React
+  Server Components, such as the Next.js App Router. A server component can
+  render `LumiSurveyDock` from it with `transport={{ endpoint }}`, data and
+  JSX. Functions such as `events`, a transport with `submit` and
+  `labels.textTooLong` still need the app's own client component. The main
+  entry stays without the directive. TypeScript resolves the types of the new
+  entry with `moduleResolution` `bundler` or `node16`.
+
+### Changed
+
+- The type of `transport` is now `LumiSurveyTransport | LumiSurveyEndpoint`.
+  Code that reads `props.transport.submit` must check for `submit` first.
+  Wrappers that extend `LumiSurveyDockProps` can still narrow `transport`.
+- Without a usable transport, for example when `transport` is a string or
+  `endpoint` is empty, relative to the page or on another origin, the dock
+  renders nothing, counts no view and logs one `[Lumi]` error. Previously it
+  rendered and failed when the user submitted.
+
+## [2.4.0] - 2026-10-21
+
+### Added
+
+- `LumiSurveyHttpError` lets a transport report the HTTP status from the app's
+  backend: `throw LumiSurveyHttpError.fromResponse(response)`. It keeps
+  `status` and the seconds from a valid `Retry-After` header.
+- `transport.submit` gets a second, optional argument with an `AbortSignal`:
+  `submit(submission, options?)`. Pass `options.signal` on to `fetch`, so the
+  request is cancelled when the widget stops waiting. A function that already
+  takes another optional second parameter now receives this object, and
+  TypeScript rejects assigning it as `submit`.
+- `style.zIndex` sets the stacking order of the dock. The default is still
+  1000. Lower it to place the dock under the app's own fixed elements.
+- `behavior.hideMinimizedButton` shows nothing while the dock is minimized,
+  instead of the «Gi tilbakemelding» button. Closing the survey then returns
+  focus to the page. Users the dock cannot store a dismissal for, for example
+  without consent, start minimized and never see the survey.
+- `LumiApiErrorType.DATABASE_UNAVAILABLE`, which Lumi API returns with 503
+  when the database does not answer in time. Code with an exhaustive `switch`
+  or a `Record` over `LumiApiErrorType` must handle it.
+
+### Changed
+
+- The widget waits at most 10 seconds for each attempt. It then aborts the
+  signal and shows the error message. `onSubmitError` receives a
+  `DOMException` named `TimeoutError`. Previously the widget waited for as
+  long as the browser kept the request open.
+- The widget tries once more with the same submission and deduplication key
+  when the transport throws an error with a numeric `status`:
+  - 503: after `Retry-After`, or after 0.5–1.5 seconds without it. The spread
+    keeps widgets that failed together from retrying in the same instant.
+  - 429: only when `Retry-After` asks for at most 5 seconds. Lumi API's rate
+    limits last a minute, so a retry without it would be rejected again.
+
+  When `Retry-After` asks for more than 5 seconds, the error is shown at once.
+  Lumi API stores a repeated deduplication key only once. `onSubmitStart` and
+  `onSubmitError` are still called once per submit. Transports that throw a
+  plain `Error` behave as before. Transports whose own error type has a
+  numeric `status` now get the retry too.
+- A submit that settles after `reset()`, for example after the user closed the
+  dock, no longer sets the status or error of the reset survey. The events
+  still fire.
+- Returning focus to the page after the dock hides no longer scrolls the page
+  to the element that had focus before.
+
 ## [2.3.0] - 2026-10-15
 
 Version 2.2.4 was prepared in the repository but never published. Its changes

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnalyseprodukterRouteImport } from './routes/analyseprodukter'
+import { Route as BigqueryRouteImport } from './routes/bigquery'
 import { Route as ExportRouteImport } from './routes/export'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as ReleaseVerificationRouteImport } from './routes/release-verification'
@@ -31,6 +32,11 @@ const IndexRoute = IndexRouteImport.update({
 const AnalyseprodukterRoute = AnalyseprodukterRouteImport.update({
   id: '/analyseprodukter',
   path: '/analyseprodukter',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BigqueryRoute = BigqueryRouteImport.update({
+  id: '/bigquery',
+  path: '/bigquery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExportRoute = ExportRouteImport.update({
@@ -93,6 +99,7 @@ const SurveyverkstedRevisionsRevisionIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analyseprodukter': typeof AnalyseprodukterRoute
+  '/bigquery': typeof BigqueryRoute
   '/export': typeof ExportRoute
   '/feedback': typeof FeedbackRoute
   '/release-verification': typeof ReleaseVerificationRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analyseprodukter': typeof AnalyseprodukterRoute
+  '/bigquery': typeof BigqueryRoute
   '/export': typeof ExportRoute
   '/feedback': typeof FeedbackRoute
   '/release-verification': typeof ReleaseVerificationRoute
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/analyseprodukter': typeof AnalyseprodukterRoute
+  '/bigquery': typeof BigqueryRoute
   '/export': typeof ExportRoute
   '/feedback': typeof FeedbackRoute
   '/release-verification': typeof ReleaseVerificationRoute
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/analyseprodukter'
+    | '/bigquery'
     | '/export'
     | '/feedback'
     | '/release-verification'
@@ -155,6 +165,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/analyseprodukter'
+    | '/bigquery'
     | '/export'
     | '/feedback'
     | '/release-verification'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/analyseprodukter'
+    | '/bigquery'
     | '/export'
     | '/feedback'
     | '/release-verification'
@@ -185,6 +197,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyseprodukterRoute: typeof AnalyseprodukterRoute
+  BigqueryRoute: typeof BigqueryRoute
   ExportRoute: typeof ExportRoute
   FeedbackRoute: typeof FeedbackRoute
   ReleaseVerificationRoute: typeof ReleaseVerificationRoute
@@ -209,6 +222,13 @@ declare module '@tanstack/react-router' {
       path: '/analyseprodukter'
       fullPath: '/analyseprodukter'
       preLoaderRoute: typeof AnalyseprodukterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bigquery': {
+      id: '/bigquery'
+      path: '/bigquery'
+      fullPath: '/bigquery'
+      preLoaderRoute: typeof BigqueryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/export': {
@@ -311,6 +331,7 @@ const SurveyverkstedRouteWithChildren = SurveyverkstedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyseprodukterRoute: AnalyseprodukterRoute,
+  BigqueryRoute: BigqueryRoute,
   ExportRoute: ExportRoute,
   FeedbackRoute: FeedbackRoute,
   ReleaseVerificationRoute: ReleaseVerificationRoute,

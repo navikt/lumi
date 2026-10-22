@@ -75,10 +75,12 @@ vi.mock("~/components/shared/Charts/RatingChart", () => ({
 
 vi.mock("~/components/shared/Charts/RatingTrendChart", () => ({
   RatingTrendChart: () => <div>MOCK_RATING_TREND</div>,
+  RatingTrendChartTable: () => null,
 }));
 
 vi.mock("~/components/shared/Charts/TopAppsChart", () => ({
   TopAppsChart: () => <div>MOCK_TOP_APPS</div>,
+  TopAppsChartTable: () => null,
 }));
 
 vi.mock("~/components/shared/MarkerModal", () => ({

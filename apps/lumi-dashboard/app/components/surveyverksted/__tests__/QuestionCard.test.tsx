@@ -194,7 +194,9 @@ describe("QuestionCard expanded", () => {
     const onChange = vi.fn();
     renderCard({ expanded: true, onChange });
 
-    expect(screen.getByRole("group", { name: "Skala" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("radiogroup", { name: "Skala" }),
+    ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("radio", { name: "NPS" }));
 
     const updater = onChange.mock.calls[0]?.[0];
@@ -227,31 +229,31 @@ describe("QuestionCard expanded", () => {
     ).toHaveAccessibleName(/alternativene øverst får flere svar/i);
   });
 
-  it.each([
-    "singleChoice",
-    "multiChoice",
-  ] as const)("removes randomization from a %s question when switched off", async (type) => {
-    const question: SurveyQuestionV1 = {
-      id: "choice-1",
-      type,
-      prompt: "Hva vil du gjøre?",
-      randomize: true,
-      options: [
-        { value: "one", label: "Første valg" },
-        { value: "two", label: "Andre valg" },
-      ],
-    };
-    const onChange = vi.fn();
-    renderCard({ expanded: true, question, onChange });
+  it.each(["singleChoice", "multiChoice"] as const)(
+    "removes randomization from a %s question when switched off",
+    async (type) => {
+      const question: SurveyQuestionV1 = {
+        id: "choice-1",
+        type,
+        prompt: "Hva vil du gjøre?",
+        randomize: true,
+        options: [
+          { value: "one", label: "Første valg" },
+          { value: "two", label: "Andre valg" },
+        ],
+      };
+      const onChange = vi.fn();
+      renderCard({ expanded: true, question, onChange });
 
-    await userEvent.click(
-      screen.getByRole("checkbox", { name: /^Bland rekkefølgen/ }),
-    );
+      await userEvent.click(
+        screen.getByRole("checkbox", { name: /^Bland rekkefølgen/ }),
+      );
 
-    const updater = onChange.mock.calls[0]?.[0];
-    expect(updater).toBeTypeOf("function");
-    expect(updater(question)).not.toHaveProperty("randomize");
-  });
+      const updater = onChange.mock.calls[0]?.[0];
+      expect(updater).toBeTypeOf("function");
+      expect(updater(question)).not.toHaveProperty("randomize");
+    },
+  );
 
   it("keeps the ordered analysis outcome from being randomized", () => {
     const question: SurveyQuestionV1 = {
@@ -291,7 +293,7 @@ describe("QuestionCard expanded", () => {
     expect(updater).toBeTypeOf("function");
     expect(updater(question)).toMatchObject({ variant: "combobox" });
     expect(
-      screen.getByRole("group", {
+      screen.getByRole("radiogroup", {
         name: /^Slik vises svaralternativene/,
       }),
     ).toHaveAccessibleName(/opptil 6 alternativer/i);

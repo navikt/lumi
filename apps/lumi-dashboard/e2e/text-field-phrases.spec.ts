@@ -22,7 +22,7 @@ test.describe("TextFieldCard phrases", () => {
 
     // Phrase links should be visible and clickable
     const phraseLinks = page.getByRole("link", {
-      name: /Vis \d+ tilbakemeldinger med uttrykket/i,
+      name: /\d+ svar\s*–\s*åpne svarene/i,
     });
     await expect(phraseLinks.first()).toBeVisible({ timeout: 5000 });
 
@@ -40,19 +40,18 @@ test.describe("TextFieldCard phrases", () => {
     await expect(page.locator("main")).toBeVisible({ timeout: 15000 });
 
     const phraseLinks = page.getByRole("link", {
-      name: /Vis \d+ tilbakemeldinger med uttrykket/i,
+      name: /\d+ svar\s*–\s*åpne svarene/i,
     });
     await expect(phraseLinks.first()).toBeVisible({ timeout: 10000 });
 
-    // Extract phrase text from aria-label before clicking
+    // The phrase and the count are the link's two paragraphs
     const firstLink = phraseLinks.first();
-    const ariaLabel = await firstLink.getAttribute("aria-label");
-    const phraseMatch = ariaLabel?.match(/uttrykket «(.+?)»/);
-    const phraseText = phraseMatch?.[1] ?? "";
-
-    // Extract count from aria-label
-    const countMatch = ariaLabel?.match(/Vis (\d+)/);
-    const expectedCount = countMatch?.[1] ?? "";
+    const phraseText =
+      (await firstLink.locator("p").nth(0).textContent())?.trim() ?? "";
+    const expectedCount =
+      (await firstLink.locator("p").nth(1).textContent())?.match(
+        /(\d+) svar/,
+      )?.[1] ?? "";
 
     await firstLink.click();
 

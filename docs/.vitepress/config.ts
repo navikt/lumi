@@ -77,6 +77,7 @@ export default withMermaid({
             { text: "Les resultatene", link: "/dashboard/visninger" },
             { text: "Filtrering", link: "/dashboard/filtrering" },
             { text: "Eksport", link: "/dashboard/eksport" },
+            { text: "BigQuery og Metabase", link: "/dashboard/bigquery" },
           ],
         },
       ],

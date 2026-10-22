@@ -122,35 +122,38 @@ describe("DefaultQuestionRenderer", () => {
       variant: "nps",
       prompt: "Would you recommend us?",
     },
-  ])("keeps the polite error region mounted for $variant ratings", (question) => {
-    const { container, rerender } = render(
-      <DefaultQuestionRenderer
-        question={question}
-        value={undefined}
-        onChange={() => undefined}
-        validationErrorMessage="This field is required"
-        isMissing={false}
-        disabled={false}
-      />,
-    );
+  ])(
+    "keeps the polite error region mounted for $variant ratings",
+    (question) => {
+      const { container, rerender } = render(
+        <DefaultQuestionRenderer
+          question={question}
+          value={undefined}
+          onChange={() => undefined}
+          validationErrorMessage="This field is required"
+          isMissing={false}
+          disabled={false}
+        />,
+      );
 
-    const liveRegion = container.querySelector('[aria-live="polite"]');
-    expect(liveRegion).toBeEmptyDOMElement();
+      const liveRegion = container.querySelector('[aria-live="polite"]');
+      expect(liveRegion).toBeEmptyDOMElement();
 
-    rerender(
-      <DefaultQuestionRenderer
-        question={question}
-        value={undefined}
-        onChange={() => undefined}
-        validationErrorMessage="This field is required"
-        isMissing
-        disabled={false}
-      />,
-    );
+      rerender(
+        <DefaultQuestionRenderer
+          question={question}
+          value={undefined}
+          onChange={() => undefined}
+          validationErrorMessage="This field is required"
+          isMissing
+          disabled={false}
+        />,
+      );
 
-    expect(container.querySelector('[aria-live="polite"]')).toBe(liveRegion);
-    expect(liveRegion).toHaveTextContent("This field is required");
-  });
+      expect(container.querySelector('[aria-live="polite"]')).toBe(liveRegion);
+      expect(liveRegion).toHaveTextContent("This field is required");
+    },
+  );
 
   it.each<RatingQuestion>([
     {
@@ -177,54 +180,61 @@ describe("DefaultQuestionRenderer", () => {
       variant: "nps",
       prompt: "Would you recommend us?",
     },
-  ])("uses one tab stop and moves focus with wrapping for $variant ratings", async (question) => {
-    const user = userEvent.setup();
+  ])(
+    "uses one tab stop and moves focus with wrapping for $variant ratings",
+    async (question) => {
+      const user = userEvent.setup();
 
-    function ControlledRating() {
-      const [value, setValue] = useState<number | undefined>();
+      function ControlledRating() {
+        const [value, setValue] = useState<number | undefined>();
 
-      return (
-        <DefaultQuestionRenderer
-          question={question}
-          value={value}
-          onChange={(nextValue) =>
-            setValue(typeof nextValue === "number" ? nextValue : undefined)
-          }
-          validationErrorMessage="This field is required"
-          isMissing={false}
-          disabled={false}
-        />
-      );
-    }
+        return (
+          <DefaultQuestionRenderer
+            question={question}
+            value={value}
+            onChange={(nextValue) =>
+              setValue(typeof nextValue === "number" ? nextValue : undefined)
+            }
+            validationErrorMessage="This field is required"
+            isMissing={false}
+            disabled={false}
+          />
+        );
+      }
 
-    render(<ControlledRating />);
+      render(<ControlledRating />);
 
-    const radios = screen.getAllByRole("radio");
-    expect(radios.filter((radio) => radio.tabIndex === 0)).toEqual([radios[0]]);
+      const radios = screen.getAllByRole("radio");
+      expect(radios.filter((radio) => radio.tabIndex === 0)).toEqual([
+        radios[0],
+      ]);
 
-    await user.tab();
-    expect(radios[0]).toHaveFocus();
-    await user.keyboard("{Control>}{Alt>}{ArrowRight}{/Alt}{/Control}");
+      await user.tab();
+      expect(radios[0]).toHaveFocus();
+      await user.keyboard("{Control>}{Alt>}{ArrowRight}{/Alt}{/Control}");
 
-    expect(radios[0]).toHaveFocus();
-    expect(
-      radios.every((radio) => radio.getAttribute("aria-checked") === "false"),
-    ).toBe(true);
+      expect(radios[0]).toHaveFocus();
+      expect(
+        radios.every((radio) => radio.getAttribute("aria-checked") === "false"),
+      ).toBe(true);
 
-    await user.keyboard("{ArrowLeft}");
+      await user.keyboard("{ArrowLeft}");
 
-    expect(radios.at(-1)).toHaveFocus();
-    expect(radios.at(-1)).toHaveAttribute("aria-checked", "true");
-    expect(radios.filter((radio) => radio.tabIndex === 0)).toEqual([
-      radios.at(-1),
-    ]);
+      expect(radios.at(-1)).toHaveFocus();
+      expect(radios.at(-1)).toHaveAttribute("aria-checked", "true");
+      expect(radios.filter((radio) => radio.tabIndex === 0)).toEqual([
+        radios.at(-1),
+      ]);
 
-    await user.keyboard("{ArrowRight}");
+      await user.keyboard("{ArrowRight}");
 
-    expect(radios[0]).toHaveFocus();
-    expect(radios[0]).toHaveAttribute("aria-checked", "true");
-    expect(radios.filter((radio) => radio.tabIndex === 0)).toEqual([radios[0]]);
-  });
+      expect(radios[0]).toHaveFocus();
+      expect(radios[0]).toHaveAttribute("aria-checked", "true");
+      expect(radios.filter((radio) => radio.tabIndex === 0)).toEqual([
+        radios[0],
+      ]);
+    },
+  );
 
   it.each([
     {
@@ -263,27 +273,29 @@ describe("DefaultQuestionRenderer", () => {
       },
       invalidValue: 11,
     },
-  ])("keeps the $question.variant radiogroup reachable for an invalid controlled value", ({
-    question,
-    invalidValue,
-  }) => {
-    render(
-      <DefaultQuestionRenderer
-        question={question}
-        value={invalidValue}
-        onChange={() => undefined}
-        validationErrorMessage="This field is required"
-        isMissing={false}
-        disabled={false}
-      />,
-    );
+  ])(
+    "keeps the $question.variant radiogroup reachable for an invalid controlled value",
+    ({ question, invalidValue }) => {
+      render(
+        <DefaultQuestionRenderer
+          question={question}
+          value={invalidValue}
+          onChange={() => undefined}
+          validationErrorMessage="This field is required"
+          isMissing={false}
+          disabled={false}
+        />,
+      );
 
-    const radios = screen.getAllByRole("radio");
-    expect(radios.filter((radio) => radio.tabIndex === 0)).toEqual([radios[0]]);
-    expect(
-      radios.every((radio) => radio.getAttribute("aria-checked") === "false"),
-    ).toBe(true);
-  });
+      const radios = screen.getAllByRole("radio");
+      expect(radios.filter((radio) => radio.tabIndex === 0)).toEqual([
+        radios[0],
+      ]);
+      expect(
+        radios.every((radio) => radio.getAttribute("aria-checked") === "false"),
+      ).toBe(true);
+    },
+  );
 
   it.each<RatingQuestion>([
     {
@@ -310,38 +322,41 @@ describe("DefaultQuestionRenderer", () => {
       variant: "nps",
       prompt: "Would you recommend us?",
     },
-  ])("connects the Aksel fieldset error to the $variant radiogroup", async (question) => {
-    const { container } = render(
-      <DefaultQuestionRenderer
-        question={question}
-        value={undefined}
-        onChange={() => undefined}
-        validationErrorMessage="This field is required"
-        isMissing
-        disabled={false}
-      />,
-    );
+  ])(
+    "connects the Aksel fieldset error to the $variant radiogroup",
+    async (question) => {
+      const { container } = render(
+        <DefaultQuestionRenderer
+          question={question}
+          value={undefined}
+          onChange={() => undefined}
+          validationErrorMessage="This field is required"
+          isMissing
+          disabled={false}
+        />,
+      );
 
-    const fieldset = container.querySelector("fieldset");
-    const legend = container.querySelector("legend");
-    const radiogroup = screen.getByRole("radiogroup");
-    const errorRegion = container.querySelector(".aksel-fieldset__error");
+      const fieldset = container.querySelector("fieldset");
+      const legend = container.querySelector("legend");
+      const radiogroup = screen.getByRole("radiogroup");
+      const errorRegion = container.querySelector(".aksel-fieldset__error");
 
-    expect(fieldset).toHaveClass("aksel-fieldset");
-    // The legend is the single, visible prompt for the group.
-    expect(legend).not.toHaveClass("aksel-sr-only");
-    expect(legend).toHaveTextContent(question.prompt);
-    expect(errorRegion).toHaveClass("aksel-fieldset__error");
-    expect(errorRegion).toHaveAttribute("aria-live", "polite");
-    expect(errorRegion).toHaveTextContent("This field is required");
-    expect(radiogroup).toHaveAttribute("aria-invalid", "true");
-    expect(errorRegion?.id).toBeTruthy();
-    expect(radiogroup).toHaveAttribute(
-      "aria-describedby",
-      expect.stringContaining(errorRegion?.id as string),
-    );
-    expect((await axe.run(container)).violations).toEqual([]);
-  });
+      expect(fieldset).toHaveClass("aksel-fieldset");
+      // The legend is the single, visible prompt for the group.
+      expect(legend).not.toHaveClass("aksel-sr-only");
+      expect(legend).toHaveTextContent(question.prompt);
+      expect(errorRegion).toHaveClass("aksel-fieldset__error");
+      expect(errorRegion).toHaveAttribute("aria-live", "polite");
+      expect(errorRegion).toHaveTextContent("This field is required");
+      expect(radiogroup).toHaveAttribute("aria-invalid", "true");
+      expect(errorRegion?.id).toBeTruthy();
+      expect(radiogroup).toHaveAttribute(
+        "aria-describedby",
+        expect.stringContaining(errorRegion?.id as string),
+      );
+      expect((await axe.run(container)).violations).toEqual([]);
+    },
+  );
 
   it("keeps the visible thumbs labels in their accessible names", () => {
     render(

@@ -61,6 +61,13 @@ spec:
       external:
         - host: console.nav.cloud.nais.io
   gcp:
+    # BigQuery export (ADR 0007): load jobs run in the team project. Teams give
+    # Lumi access to their own dataset, so no dataset roles are granted here.
+    permissions:
+      - resource:
+          apiVersion: resourcemanager.cnrm.cloud.google.com/v1beta1
+          kind: Project
+        role: roles/bigquery.jobUser
     sqlInstances:
       - type: POSTGRES_17
         tier: db-f1-micro
@@ -92,3 +99,8 @@ spec:
       value: "10000"
     - name: LUMI_RETENTION_ENABLED
       value: "true"
+    - name: LUMI_BIGQUERY_EXPORT_ENABLED
+      value: "true"
+    # Free text is open for every team in dev, which only has test data.
+    - name: LUMI_BIGQUERY_EXPORT_FREE_TEXT_TEAMS
+      value: "*"

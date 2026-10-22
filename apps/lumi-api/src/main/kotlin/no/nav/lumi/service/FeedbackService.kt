@@ -1,6 +1,7 @@
 package no.nav.lumi.service
 
 import kotlinx.serialization.json.*
+import no.nav.lumi.config.bigQueryExportDeletionListener
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.FeedbackDto
 import no.nav.lumi.domain.FeedbackQuery
@@ -14,12 +15,18 @@ import no.nav.lumi.sensitive.generateUniqueKey
 import no.nav.lumi.validation.DeduplicationKeyValidator
 import org.slf4j.LoggerFactory
 
+/** Told when responses are deleted, so copies outside Lumi can follow. */
+fun interface FeedbackDeletionListener {
+    suspend fun responsesDeleted(team: String)
+}
+
 class FeedbackService(
     private val repository: FeedbackRepository = FeedbackRepository(),
     private val sensitiveDataFilter: SensitiveDataFilter = SensitiveDataFilter.DEFAULT,
     private val htmlSanitizer: HtmlSanitizer = HtmlSanitizer.DEFAULT,
     private val urlRedactor: UrlRedactor = UrlRedactor(sensitiveDataFilter),
-    private val jsonRedactor: JsonRedactor = JsonRedactor(sensitiveDataFilter)
+    private val jsonRedactor: JsonRedactor = JsonRedactor(sensitiveDataFilter),
+    private val deletionListener: FeedbackDeletionListener = bigQueryExportDeletionListener,
 ) {
     private val log = LoggerFactory.getLogger(FeedbackService::class.java)
     private val json = Json { ignoreUnknownKeys = true }
@@ -81,7 +88,7 @@ class FeedbackService(
      * Permanently delete a feedback item from the database.
      */
     suspend fun delete(id: String, team: String): Boolean {
-        return repository.delete(id, team)
+        return repository.delete(id, team).also { deleted -> if (deleted) deletionListener.responsesDeleted(team) }
     }
 
     /**
@@ -89,7 +96,7 @@ class FeedbackService(
      * Returns number of deleted rows.
      */
     suspend fun deleteSurvey(surveyId: String, team: String): Int {
-        return repository.deleteSurvey(surveyId, team)
+        return repository.deleteSurvey(surveyId, team).also { deleted -> if (deleted > 0) deletionListener.responsesDeleted(team) }
     }
 
     /**
@@ -98,6 +105,7 @@ class FeedbackService(
      */
     suspend fun deleteSurveyWithMarkers(surveyId: String, team: String): Int {
         return repository.deleteSurveyWithMarkers(surveyId, team)
+            .also { deleted -> if (deleted > 0) deletionListener.responsesDeleted(team) }
     }
 
     /**

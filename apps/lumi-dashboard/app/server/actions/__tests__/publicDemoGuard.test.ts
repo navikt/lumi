@@ -99,10 +99,11 @@ describe("every write in server/actions", () => {
     );
   });
 
-  it.each(
-    guardedWrites.map(({ name, fn }) => [name, fn] as const),
-  )("%s is refused in the public demo", async (_name, fn) => {
-    await expect(fn()).rejects.toThrow(PUBLIC_DEMO_READ_ONLY_MESSAGE);
-    expect(doubles.setResponseStatus).toHaveBeenCalledExactlyOnceWith(403);
-  });
+  it.each(guardedWrites.map(({ name, fn }) => [name, fn] as const))(
+    "%s is refused in the public demo",
+    async (_name, fn) => {
+      await expect(fn()).rejects.toThrow(PUBLIC_DEMO_READ_ONLY_MESSAGE);
+      expect(doubles.setResponseStatus).toHaveBeenCalledExactlyOnceWith(403);
+    },
+  );
 });

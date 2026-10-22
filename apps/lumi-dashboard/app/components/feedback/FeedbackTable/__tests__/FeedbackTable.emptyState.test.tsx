@@ -275,23 +275,22 @@ describe("FeedbackTable empty states", () => {
       toDate: "2026-07-31",
       expected: "Ingen tilbakemeldinger til og med 31.07.2026.",
     },
-  ])("explains a one-sided bookmarked period", ({
-    fromDate,
-    toDate,
-    expected,
-  }) => {
-    mockBootstrap.data = bootstrapWithData();
-    mockParams.dateMode = "fixed";
-    mockParams.fromDate = fromDate;
-    mockParams.toDate = toDate;
+  ])(
+    "explains a one-sided bookmarked period",
+    ({ fromDate, toDate, expected }) => {
+      mockBootstrap.data = bootstrapWithData();
+      mockParams.dateMode = "fixed";
+      mockParams.fromDate = fromDate;
+      mockParams.toDate = toDate;
 
-    render(<FeedbackTable />);
+      render(<FeedbackTable />);
 
-    expect(screen.getByText(expected)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /vis hele svarperioden/i }),
-    ).toBeInTheDocument();
-  });
+      expect(screen.getByText(expected)).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /vis hele svarperioden/i }),
+      ).toBeInTheDocument();
+    },
+  );
 
   it("does not offer an archived-only period while archived surveys are hidden", () => {
     const bootstrap = bootstrapWithData();
@@ -348,10 +347,13 @@ describe("FeedbackTable empty states", () => {
 
     render(<FeedbackTable />);
 
-    expect(
-      screen.getByRole("button", {
-        name: /slett alle svar og fjern surveyen fra dashboardet.*nye innsendinger stoppes ikke/i,
-      }),
-    ).toBeVisible();
+    // The tooltip describes the button, which is named by its visible text.
+    const deleteButton = screen.getByRole("button", {
+      name: /^slett alle svar/i,
+    });
+    expect(deleteButton).toBeVisible();
+    expect(deleteButton).toHaveAccessibleDescription(
+      /slett alle svar og fjern surveyen fra dashboardet.*nye innsendinger stoppes ikke/i,
+    );
   });
 });

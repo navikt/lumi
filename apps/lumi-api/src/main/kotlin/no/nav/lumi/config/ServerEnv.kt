@@ -18,6 +18,7 @@ data class ServerEnv(
     val naisApi: NaisApiEnv,
     val rateLimit: RateLimitEnv,
     val retention: RetentionEnv,
+    val bigQueryExport: BigQueryExportEnv = BigQueryExportEnv.disabled(),
 ) {
     /**
      * Database connection configuration.
@@ -224,6 +225,7 @@ data class ServerEnv(
                 naisApi = NaisApiEnv.fromEnvironment(),
                 rateLimit = RateLimitEnv.fromEnvironment(),
                 retention = RetentionEnv.fromEnvironment(),
+                bigQueryExport = BigQueryExportEnv.fromEnvironment(),
             )
         }
         
@@ -241,6 +243,7 @@ data class ServerEnv(
                 naisApi = NaisApiEnv.forLocal(),
                 rateLimit = RateLimitEnv.fromEnvironment(),
                 retention = RetentionEnv.disabled(),
+                bigQueryExport = BigQueryExportEnv.disabled(),
             )
         }
         
@@ -267,6 +270,7 @@ data class ServerEnv(
                 naisApi = NaisApiEnv(graphqlUrl = null, tokenPath = null, staticKey = null),
                 rateLimit = RateLimitEnv.default(),
                 retention = RetentionEnv.disabled(),
+                bigQueryExport = BigQueryExportEnv.disabled(),
             )
         }
     }

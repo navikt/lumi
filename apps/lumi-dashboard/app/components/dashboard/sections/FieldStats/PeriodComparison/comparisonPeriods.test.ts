@@ -4,22 +4,20 @@ import { getComparisonPeriods } from "./comparisonPeriods";
 const today = "2026-09-07";
 
 describe("calendar-aware comparison periods", () => {
-  it.each([
-    undefined,
-    "rolling",
-    "yearToDate",
-    "custom",
-  ] as const)("defaults comparison to off for preset %s", (preset) => {
-    expect(
-      getComparisonPeriods(
-        "2026-01-01",
-        "2026-01-07",
-        undefined,
-        "2026-01-08",
-        preset,
-      )?.mode,
-    ).toBe("none");
-  });
+  it.each([undefined, "rolling", "yearToDate", "custom"] as const)(
+    "defaults comparison to off for preset %s",
+    (preset) => {
+      expect(
+        getComparisonPeriods(
+          "2026-01-01",
+          "2026-01-07",
+          undefined,
+          "2026-01-08",
+          preset,
+        )?.mode,
+      ).toBe("none");
+    },
+  );
   it("compares both rolling days and year-to-date to the preceding period", () => {
     const rolling = getComparisonPeriods(
       "2026-01-01",
@@ -107,16 +105,19 @@ describe("calendar-aware comparison periods", () => {
       "2026-09-05",
       "Foregående 1 dag",
     ],
-  ])("resolves %s–%s without calendar drift", (from, to, previousFrom, previousTo, label) => {
-    const result = getComparisonPeriods(from, to, "previous", today);
-    expect(result).toMatchObject({
-      previous: { fromDate: previousFrom, toDate: previousTo },
-      label,
-      mode: "previous",
-      incomplete: false,
-    });
-    expect(result?.previous.label).toContain(previousFrom.slice(0, 4));
-  });
+  ])(
+    "resolves %s–%s without calendar drift",
+    (from, to, previousFrom, previousTo, label) => {
+      const result = getComparisonPeriods(from, to, "previous", today);
+      expect(result).toMatchObject({
+        previous: { fromDate: previousFrom, toDate: previousTo },
+        label,
+        mode: "previous",
+        incomplete: false,
+      });
+      expect(result?.previous.label).toContain(previousFrom.slice(0, 4));
+    },
+  );
 
   it("keeps year-to-date comparison off until explicitly enabled", () => {
     expect(
@@ -154,15 +155,14 @@ describe("calendar-aware comparison periods", () => {
     });
   });
 
-  it.each([
-    "2026-09-07",
-    "2026-09-08",
-    "2026-12-31",
-  ])("marks periods ending %s incomplete", (to) => {
-    expect(
-      getComparisonPeriods("2026-01-01", to, undefined, today)?.incomplete,
-    ).toBe(true);
-  });
+  it.each(["2026-09-07", "2026-09-08", "2026-12-31"])(
+    "marks periods ending %s incomplete",
+    (to) => {
+      expect(
+        getComparisonPeriods("2026-01-01", to, undefined, today)?.incomplete,
+      ).toBe(true);
+    },
+  );
 
   it("retains the no-comparison choice", () => {
     expect(
@@ -176,13 +176,16 @@ describe("calendar-aware comparison periods", () => {
     ["2026-09-07", "2026-09-07", true, false],
     ["2026-09-01", "2026-09-08", true, true],
     ["2026-09-08", "2026-09-09", false, true],
-  ] as const)("distinguishes today from future dates for %s–%s", (from, to, includesToday, hasFutureDates) => {
-    expect(getComparisonPeriods(from, to, undefined, today)).toMatchObject({
-      includesToday,
-      hasFutureDates,
-      current: { fromDate: from, toDate: to },
-    });
-  });
+  ] as const)(
+    "distinguishes today from future dates for %s–%s",
+    (from, to, includesToday, hasFutureDates) => {
+      expect(getComparisonPeriods(from, to, undefined, today)).toMatchObject({
+        includesToday,
+        hasFutureDates,
+        current: { fromDate: from, toDate: to },
+      });
+    },
+  );
 
   it("rejects invalid reference dates", () => {
     expect(

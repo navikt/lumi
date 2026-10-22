@@ -11,6 +11,8 @@ Komponenten er rendret, men ingenting vises på skjermen.
 ::: details Sjekk 1: `initialOpen` er satt til `false`
 Widgeten starter som standard åpen (`initialOpen: true`). Hvis dere har satt `initialOpen: false`, vises bare den minimerte knappen, og brukeren må åpne surveyen selv. Widgeten starter også minimert når den ikke får lagre, for eksempel når brukeren ikke har samtykket. Se [Uten samtykke](/guider/lagring#uten-samtykke).
 
+Med `hideMinimizedButton: true` vises heller ikke den minimerte knappen. Da ser ingen surveyen så lenge widgeten er minimert, og med `initialOpen: false` vises den aldri.
+
 ```tsx
 // Starter minimert
 <LumiSurveyDock behavior={{ initialOpen: false }} />
@@ -43,15 +45,28 @@ Uten CSS-importene kan elementer i widgeten bli usynlige. Se [Layout virker tom]
 
 ## Widgeten virker ikke i Next.js App Router
 
-Filen som bruker `LumiSurveyDock`, må starte med `"use client"`. Den bygde
-pakken har ikke direktivet selv. Uten det prøver Next.js å kjøre widgeten som
-serverkomponent, og siden feiler. Se
+Importer `LumiSurveyDock` fra `@navikt/lumi-survey/client` i en serverkomponent,
+eller start filen som bruker `@navikt/lumi-survey`, med `"use client"`. Får dere
+feilen «Functions cannot be passed directly to Client Components», sender
+serverkomponenten en funksjon, for eksempel `events` eller en transport med
+`submit`. Flytt da widgeten til en egen fil med `"use client"`. Se
 [Next.js App Router](/kom-i-gang/konfigurer-survey#next-js).
+
+## Konsollen viser «[Lumi] The survey is not shown»
+
+Widgeten vises ikke fordi `transport` mangler, har feil form eller `endpoint`
+er ugyldig.
+Meldingen sier hva som er feil. `endpoint` må starte med `/` og ligge på samme
+domene som siden, se [Send svarene](/kom-i-gang/konfigurer-survey#send-svarene).
+En vanlig årsak er en miljøvariabel som mangler når appen bygges, slik at
+stien blir `undefined/api/lumi/feedback`.
 
 ## Innsendingen feiler
 
-Widgeten viser en feilmelding når `transport.submit` kaster en feil. Se først i
-nettverksfanen i DevTools hvilken status kallet til appens backend får. Kallet
+Widgeten viser en feilmelding når innsendingen feiler. Med `{ endpoint }`
+skriver widgeten også en melding som starter med
+`[Lumi] Sending the survey to` i konsollen, med status og årsak. Se ellers først
+i nettverksfanen i DevTools hvilken status kallet til appens backend får. Kallet
 videre til Lumi API vises ikke i nettleseren, så detaljene står i loggene til
 backenden. Ruten i
 [backend-eksempelet](/kom-i-gang/koble-til-backend#_3-send-inn-svar-til-lumi-api)
@@ -81,9 +96,11 @@ Sjekk dette:
 
 ### Kallet til Lumi API får tidsavbrudd
 
-`fetch` mot Lumi API får ikke svar og feiler etter en stund, ofte med
-`fetch failed` i loggen. Da slipper ikke nettverket i Nais kallet gjennom,
-vanligvis fordi appen mangler outbound-regel mot mottakeren.
+`fetch` mot Lumi API får ikke svar. Ruten i backend-eksempelet gir opp etter
+åtte sekunder, logger `Lumi API svarte ikke` og svarer 504. Uten en slik grense
+feiler `fetch` først etter en stund, ofte med `fetch failed` i loggen. Som regel
+slipper ikke nettverket i Nais kallet gjennom, fordi appen mangler
+outbound-regel mot mottakeren.
 
 Sjekk dette:
 
@@ -126,10 +143,10 @@ eksempelet gjør.
 | 409 | Surveyen er endret på en måte som ikke passer med definisjonen Lumi API har lagret for `surveyId`. Svaret er ikke lagret. | Se [Hvis API-et svarer med 409](/guider/survey-identitet#hvis-api-et-svarer-med-409). |
 | 411 | Proxyen fikk et kall uten headeren `Content-Length`. Gjelder bare `trygdeetaten.no` i dev. | Send hele payloaden i ett kall med `Content-Length`, ikke som en strøm. |
 | 413 | Payloaden er større enn 1 MB. | Send bare `transportPayload`. |
-| 429 | Appen har sendt mer enn 100 svar på ett minutt, eller samme bruker mer enn 15. I dev deler alle apper i `trygdeetaten.no` én grense gjennom proxyen. | Vent et minutt. Skjer det ofte, spør i [#lumi på Slack](https://nav-it.slack.com/archives/C0AG2FKSSMD). |
+| 429 | Appen har sendt mer enn 100 svar på ett minutt, eller samme bruker mer enn 15. I dev deler alle apper i `trygdeetaten.no` én grense gjennom proxyen. Grensen gjelder et helt minutt, så widgeten prøver ikke på nytt av seg selv. | Vent et minutt. Skjer det ofte, spør i [#lumi på Slack](https://nav-it.slack.com/archives/C0AG2FKSSMD). |
 | 500 | Feil i Lumi API eller proxyen. | Spør i #lumi. |
 | 502 | Proxyen fikk ikke sendt svaret videre til Lumi API. Gjelder bare `trygdeetaten.no` i dev. | Spør i #lumi. |
-| 503 | Lumi API eller proxyen fikk ikke kontrollert tokenet, fordi Texas i Nais ikke svarte. Svaret er ikke lagret. | Prøv igjen litt senere. Skjer det ofte, spør i #lumi. |
+| 503 | Texas i Nais svarte ikke, så Lumi API eller proxyen fikk ikke kontrollert tokenet. Med meldingen «Databasen svarer ikke akkurat nå» svarte databasen ikke i tide. Svaret er ikke lagret. Widgeten prøver én gang til av seg selv, se [Tidsgrense og nytt forsøk](/kom-i-gang/konfigurer-survey#tidsgrense-og-nytt-forsok). | Prøv igjen litt senere. Skjer det ofte, spør i #lumi. |
 
 ## Ingen data i dashboardet
 
@@ -137,11 +154,11 @@ Widgeten viser takkesiden, men svarene dukker ikke opp i dashboardet.
 
 Sjekk dette:
 
-1. `transport.submit` kaster en feil når backenden svarer med feil. Widgeten
-   viser takkesiden så lenge `submit` ikke kaster, også når kallet feilet.
-   Sjekk `response.ok`, slik
-   [eksempelet](/kom-i-gang/konfigurer-survey#vis-surveyen-og-send-inn-svar)
-   gjør.
+1. Med egen transport kaster `transport.submit` en feil når backenden svarer
+   med feil. Widgeten viser takkesiden så lenge `submit` ikke kaster, også når
+   kallet feilet. Sjekk `response.ok`, slik
+   [eksempelet](/kom-i-gang/konfigurer-survey#egen-transport) gjør, eller bruk
+   `{ endpoint }`, som gjør det selv.
 
 2. Backenden svarer med 2xx bare når Lumi API gjorde det. Se i nettverksfanen i
    DevTools hvilken status kallet til appens backend får, og i loggene til

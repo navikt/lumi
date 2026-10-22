@@ -147,7 +147,7 @@ describe("TextAnalysis", () => {
     ).toBeTruthy();
 
     const phraseLink = screen.getByRole("link", {
-      name: /12 tilbakemeldinger.*søke sykepenger/i,
+      name: /søke sykepenger.*12 svar/i,
     });
     expect(phraseLink).toHaveAttribute(
       "href",
@@ -455,15 +455,18 @@ describe("TextAnalysis", () => {
     [30, "Noen svar"],
     [100, "Noen svar"],
     [101, "Mange svar"],
-  ])("utleder riktig svargrunnlag ved %i svar når API-feltet mangler", async (totalCount, expectedLabel) => {
-    await renderWithRouter(
-      <TextAnalysis
-        {...baseProps}
-        confidenceLevel={undefined}
-        totalCount={totalCount}
-      />,
-    );
+  ])(
+    "utleder riktig svargrunnlag ved %i svar når API-feltet mangler",
+    async (totalCount, expectedLabel) => {
+      await renderWithRouter(
+        <TextAnalysis
+          {...baseProps}
+          confidenceLevel={undefined}
+          totalCount={totalCount}
+        />,
+      );
 
-    expect(screen.getByText(expectedLabel)).toBeInTheDocument();
-  });
+      expect(screen.getByText(expectedLabel)).toBeInTheDocument();
+    },
+  );
 });

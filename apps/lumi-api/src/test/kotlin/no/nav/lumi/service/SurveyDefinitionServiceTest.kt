@@ -347,6 +347,7 @@ class SurveyDefinitionServiceTest : FunSpec({
                 definitionHash = storedHash,
                 definition = storedDefinition,
                 source = SurveyDefinitionSource.API,
+                updatedAt = Instant.parse("2026-08-01T00:00:00Z"),
             )
         coEvery {
             repository.updateApiDefinitionIfHashMatches(
@@ -368,6 +369,42 @@ class SurveyDefinitionServiceTest : FunSpec({
                 incomingDefinition,
                 incomingHash,
             )
+        }
+    }
+
+    test("schemaVersion=2 rejects a new maxSelections on a definition written after the contract") {
+        val repository = mockk<SurveyDefinitionRepository>()
+        val service = SurveyDefinitionService(repository)
+        val storedDefinition = SurveyDefinition(
+            surveyId = "survey-priority",
+            surveyType = SurveyType.CUSTOM,
+            fields = listOf(
+                FieldDefinition("topics", FieldType.MULTI_CHOICE, null, null, listOf("a", "b"))
+            )
+        )
+        val incomingDefinition = storedDefinition.copy(
+            fields = listOf(
+                FieldDefinition("topics", FieldType.MULTI_CHOICE, null, null, listOf("a", "b"), 1)
+            )
+        )
+
+        coEvery { repository.findByTeamAndSurveyId("team-a", "survey-priority") } returns
+            StoredSurveyDefinition(
+                team = "team-a",
+                surveyId = "survey-priority",
+                definitionHash = storedDefinition.computeHash(),
+                definition = storedDefinition,
+                source = SurveyDefinitionSource.API,
+                updatedAt = Instant.parse("2026-09-01T00:00:00Z"),
+            )
+
+        val exception = shouldThrowConflict {
+            service.registerOrValidateV2("team-a", prioritySubmission("survey-priority"), incomingDefinition)
+        }
+
+        exception.message shouldContain "maxSelections null -> 1"
+        coVerify(exactly = 0) {
+            repository.updateApiDefinitionIfHashMatches(any(), any(), any(), any(), any())
         }
     }
 
@@ -415,6 +452,7 @@ class SurveyDefinitionServiceTest : FunSpec({
                 definitionHash = storedHash,
                 definition = storedDefinition,
                 source = SurveyDefinitionSource.AUTO,
+                updatedAt = Instant.parse("2026-09-01T00:00:00Z"),
             )
         coEvery {
             repository.updateApiDefinitionIfHashMatches(
@@ -1148,6 +1186,25 @@ private fun ratingSubmission() = FeedbackSubmissionV1(
             fieldType = FieldType.RATING,
             question = Question(label = "Hvor fornøyd er du?"),
             value = AnswerValue.Rating(rating = 4, ratingVariant = RatingVariant.EMOJI, ratingScale = 5)
+        )
+    )
+)
+
+private fun prioritySubmission(surveyId: String) = FeedbackSubmissionV1(
+    schemaVersion = 2,
+    surveyId = surveyId,
+    surveyType = SurveyType.CUSTOM,
+    submittedAt = "2026-01-10T12:00:12Z",
+    deduplicationKey = "client-key-123456",
+    answers = listOf(
+        Answer(
+            fieldId = "topics",
+            fieldType = FieldType.MULTI_CHOICE,
+            question = Question(
+                label = "Tema",
+                options = listOf(ChoiceOption("a", "A"), ChoiceOption("b", "B"))
+            ),
+            value = AnswerValue.MultiChoice(listOf("a"))
         )
     )
 )

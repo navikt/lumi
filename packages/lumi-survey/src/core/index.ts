@@ -23,6 +23,7 @@ export {
   getVisibleQuestions,
   shouldShowSubmitButton,
 } from "./evaluateVisibility";
+export { LumiSurveyHttpError } from "./httpError.js";
 export * from "./ratingLabels";
 export * from "./specializedSurveyContract.js";
 export * from "./types";

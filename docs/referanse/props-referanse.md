@@ -12,7 +12,7 @@ Setter dere opp widgeten for første gang, start med [Legg surveyen i appen](/ko
 | :--- | :--- | :---: | :--- |
 | `surveyId` | `string` | Ja | Stabil identifikator for analyseserien |
 | `survey` | `LumiSurveyDefinition` | Ja | Survey-dokumentet fra Surveyverksted eller kode |
-| `transport` | `LumiSurveyTransport` | Ja | Sender inn svarene |
+| `transport` | `LumiSurveyEndpoint \| LumiSurveyTransport` | Ja | Sender inn svarene |
 | `context` | `LumiSurveyContext` | Nei | Metadata for segmentering og feilsøking |
 | `behavior` | `LumiSurveyBehavior` | Nei | Styrer åpning, lukking, framdrift og lagring |
 | `events` | `LumiSurveyEvents` | Nei | Funksjoner som kalles ved hendelser i widgeten |
@@ -120,15 +120,33 @@ Svarene og `definition` i innsendingsdataene er fortsatt flate og bruker spørsm
 
 Se [Sider og flyt](/guider/sider-og-flyt) og [Spørsmålstyper](/guider/sporsmalstyper).
 
-## `transport`: `LumiSurveyTransport`
+## `transport`: `LumiSurveyEndpoint | LumiSurveyTransport`
 
 ```typescript
+interface LumiSurveyEndpoint {
+  endpoint: string;
+}
+
 interface LumiSurveyTransport {
-  submit: (submission: LumiSurveySubmission) => Promise<void>;
+  submit: (
+    submission: LumiSurveySubmission,
+    options?: { signal: AbortSignal },
+  ) => Promise<void>;
 }
 ```
 
-Send `submission.transportPayload` til endepunktet i appen deres. Se [Koble til backend](/kom-i-gang/koble-til-backend#_3-send-inn-svar-til-lumi-api).
+Med `{ endpoint: "/api/lumi/feedback" }` sender widgeten svarene selv. Se [Send svarene](/kom-i-gang/konfigurer-survey#send-svarene). Fra 2.5.0.
+
+Med en egen `LumiSurveyTransport` sender dere `submission.transportPayload` til endepunktet i appen, sender `options.signal` videre til `fetch` og kaster `LumiSurveyHttpError.fromResponse(response)` når backenden svarer med feil. Se [Egen transport](/kom-i-gang/konfigurer-survey#egen-transport) og [Koble til backend](/kom-i-gang/koble-til-backend#_3-send-inn-svar-til-lumi-api). Har objektet både `submit` og `endpoint`, brukes `submit`.
+
+Se [Tidsgrense og nytt forsøk](/kom-i-gang/konfigurer-survey#tidsgrense-og-nytt-forsok) for hvordan widgeten bruker signalet og statusen.
+
+| `LumiSurveyHttpError` | Beskrivelse |
+| :--- | :--- |
+| `status` | HTTP-statusen backenden svarte med |
+| `retryAfterSeconds` | Sekunder fra `Retry-After`, hvis svaret hadde en gyldig verdi |
+| `LumiSurveyHttpError.fromResponse(response)` | Lager feilen fra et `Response` fra `fetch` |
+
 
 ## `behavior`: `LumiSurveyBehavior`
 
@@ -138,6 +156,7 @@ Send `submission.transportPayload` til endepunktet i appen deres. Se [Koble til 
 | `resetOnClose` | `boolean` | `true` | Nullstill svar når brukeren lukker |
 | `dismissCooldownDays` | `number` | `30` | Dager før widgeten vises igjen etter at surveyen er lukket eller besvart. `0` betyr at ventetiden aldri går ut |
 | `hideAfterSubmit` | `boolean` | `true` | Skjul widgeten etter vellykket innsending, til ventetiden er over |
+| `hideMinimizedButton` | `boolean` | `false` | Skjul knappen **Gi tilbakemelding** når widgeten er minimert. Surveyen vises da bare når den åpner seg selv, og aldri sammen med `initialOpen: false`. Sett verdien én gang. Fra 2.4.0 |
 | `questionLayout` | `"auto" \| "singlePage" \| "steps"` | `"auto"` | Hvordan sidene vises |
 | `showPersonalDataNotice` | `boolean` | `true` | Vis informasjon om personopplysninger |
 | `personalDataNotice` | `ReactNode` | – | Egen informasjon om personopplysninger |
@@ -233,6 +252,7 @@ Hvis `success.title` i dokumentet er tom, bruker widgeten standardteksten på ta
 | :--- | :--- | :--- | :--- |
 | `position` | `"bottom-right" \| "bottom-left"` | `"bottom-right"` | Plassering på skjermen |
 | `offset` | `number` | `24` | Avstand fra kanten, i piksler |
+| `zIndex` | `number` | `1000` | Stablingsrekkefølge, som heltall. Sett et lavere tall for å legge widgeten under andre faste elementer i appen. Fra 2.4.0 |
 | `containerClassName` | `string` | – | Ekstra CSS-klasse for beholderen |
 | `panelClassName` | `string` | – | Ekstra CSS-klasse for panelet |
 | `panelBackground` | Aksel `Box`-token | `"default"` | Bakgrunnsfarge |
