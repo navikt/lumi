@@ -85,8 +85,8 @@ API-et maskerer automatisk PII i fritekst:
 | Fødselsnummer | 12345678901 | `[FØDSELSNUMMER FJERNET]` |
 | NAVident | A123456 | `[NAVIDENT FJERNET]` |
 | E-post | test@nav.no | `[E-POST FJERNET]` |
-| Telefon | 12345678 | `[TELEFON FJERNET]` |
-| Kortnummer | 1234 5678 9012 3456 | `[KORTNUMMER FJERNET]` |
+| Telefon | 987 65 432 | `[TELEFON FJERNET]` |
+| Kortnummer | 1234-5678-9012-3456 | `[KORTNUMMER FJERNET]` |
 | Kontonummer | 1234.56.12345 | `[KONTONUMMER FJERNET]` |
 | Hemmelig adresse | "hemmelig adresse" | `[HEMMELIG ADRESSE]` |
 

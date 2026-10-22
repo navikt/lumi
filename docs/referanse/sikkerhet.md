@@ -8,15 +8,15 @@ Lumi har blant annet maskering av personopplysninger, grenser for hvor mange kal
 
 ## PII-maskering {#pii-maskering}
 
-API-et maskerer kjente mønstre for personlig identifiserbar informasjon (PII) i fritekstsvar og utvalgte kontekstfelt. Maskeringen er mønsterbasert og garanterer ikke at alle personopplysninger blir fanget opp. Navn og vanlige adresser maskeres ikke, og fødselsnummer maskeres bare når kontrollsifrene er gyldige.
+API-et maskerer kjente mønstre for personlig identifiserbar informasjon (PII) i fritekstsvar og utvalgte kontekstfelt. Maskeringen er mønsterbasert og garanterer ikke at alle personopplysninger blir fanget opp. Navn og vanlige adresser maskeres ikke. Fødselsnummer maskeres bare når kontrollsifrene er gyldige, og telefonnummer bare når de har åtte sifre og starter med 2–9.
 
 | Mønster | Eksempel | Erstatning |
 | :--- | :--- | :--- |
 | Fødselsnummer | `01020349294` | `[FØDSELSNUMMER FJERNET]` |
 | Nav-ident | `A123456` | `[NAVIDENT FJERNET]` |
 | E-post | `test@nav.no` | `[E-POST FJERNET]` |
-| Telefonnummer | `12345678` | `[TELEFON FJERNET]` |
-| Kortnummer | `1234 5678 9012 3456` | `[KORTNUMMER FJERNET]` |
+| Telefonnummer | `987 65 432` | `[TELEFON FJERNET]` |
+| Kortnummer | `1234-5678-9012-3456` | `[KORTNUMMER FJERNET]` |
 | Kontonummer | `1234.56.12345` | `[KONTONUMMER FJERNET]` |
 | Hemmelig adresse | «hemmelig adresse» | `[HEMMELIG ADRESSE]` |
 
