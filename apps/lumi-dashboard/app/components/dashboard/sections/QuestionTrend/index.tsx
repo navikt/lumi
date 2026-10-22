@@ -16,6 +16,11 @@ import { useQuestionTrend } from "~/hooks/useQuestionTrend";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import type { QuestionTrendBucket, QuestionTrendResponse } from "~/types/api";
+import {
+  chooseInterval,
+  formatBucketLabel,
+  periodBuckets,
+} from "~/utils/timeBuckets";
 import { QuestionTrendChart } from "./QuestionTrendChart";
 import styles from "./QuestionTrendSection.module.css";
 import {
@@ -35,13 +40,13 @@ const SUPPORTED_FIELD_TYPES = new Set([
 function TrendTable({
   buckets,
   trend,
-  interval,
+  labelFor,
   measure,
   options,
 }: {
   buckets: QuestionTrendBucket[];
   trend: QuestionTrendResponse;
-  interval: "day" | "week" | "month";
+  labelFor: (startDate: string) => string;
   measure: "count" | "percentage";
   options: Array<{ id: string; label: string }>;
 }) {
@@ -82,7 +87,7 @@ function TrendTable({
           {buckets.map((bucket) => (
             <Table.Row key={bucket.startDate}>
               <Table.HeaderCell scope="row">
-                {formatQuestionTrendBucket(bucket.startDate, interval)}
+                {labelFor(bucket.startDate)}
               </Table.HeaderCell>
               {isRating ? (
                 <Table.DataCell
@@ -145,7 +150,10 @@ export function QuestionTrendSection({
   const trendQuery = useQuestionTrend(
     Boolean(selectedField) && !statsQuery.isPlaceholderData,
   );
-  const interval = params.trendInterval ?? "week";
+  // Without a choice of their own, viewers get the same resolution as the
+  // other time series for this period.
+  const interval =
+    params.trendInterval ?? chooseInterval(params.fromDate, params.toDate);
   const measure = params.trendMeasure ?? "percentage";
 
   useEffect(() => {
@@ -175,6 +183,17 @@ export function QuestionTrendSection({
   const buckets = trend
     ? fillQuestionTrendBuckets(trend, params.fromDate, params.toDate)
     : [];
+  // Buckets that are only partly inside the period are named by their days.
+  const labelByStart = new Map(
+    trend
+      ? periodBuckets(params.fromDate, params.toDate, trend.interval).map(
+          (bucket) => [bucket.start, formatBucketLabel(bucket, trend.interval)],
+        )
+      : [],
+  );
+  const labelFor = (startDate: string) =>
+    labelByStart.get(startDate) ??
+    formatQuestionTrendBucket(startDate, trend?.interval ?? interval);
 
   const content = (
     <VStack gap="space-20">
@@ -213,7 +232,8 @@ export function QuestionTrendSection({
               );
               void setParams({
                 trendField: fieldId,
-                trendInterval: fieldId ? interval : undefined,
+                // Only an interval the viewer chose is kept in the link.
+                trendInterval: fieldId ? params.trendInterval : undefined,
                 trendMeasure:
                   fieldId && field?.fieldType !== "RATING"
                     ? measure
@@ -290,11 +310,12 @@ export function QuestionTrendSection({
                 trend={trend}
                 buckets={buckets}
                 measure={measure}
+                labelFor={labelFor}
               />
               <TrendTable
                 buckets={buckets}
                 trend={trend}
-                interval={trend.interval}
+                labelFor={labelFor}
                 measure={measure}
                 options={trend.options}
               />

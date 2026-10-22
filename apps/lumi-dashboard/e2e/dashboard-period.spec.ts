@@ -43,7 +43,7 @@ test.describe("Dashboard response period", () => {
 
     await expect(
       page.getByRole("img", {
-        name: /Stolpediagram som viser \d+ dager med tilbakemeldinger/,
+        name: /Stolpediagram som viser antall tilbakemeldinger per dag/,
       }),
     ).toBeVisible();
     await expect(page.getByText("Ingen data for valgt periode")).toHaveCount(0);
@@ -102,7 +102,7 @@ test.describe("Dashboard response period", () => {
     });
     await expect(
       page.getByRole("img", {
-        name: /Stolpediagram som viser \d+ dager med tilbakemeldinger/,
+        name: /Stolpediagram som viser antall tilbakemeldinger per dag/,
       }),
     ).toBeVisible();
     await expect(page.getByText("Ingen data for valgt periode")).toHaveCount(0);
@@ -130,7 +130,7 @@ test.describe("Dashboard response period", () => {
     });
     await expect(
       page.getByRole("img", {
-        name: /Stolpediagram som viser \d+ dager med tilbakemeldinger/,
+        name: /Stolpediagram som viser antall tilbakemeldinger per dag/,
       }),
     ).toBeVisible();
     await expect(page.getByText("Ingen data for valgt periode")).toHaveCount(0);

@@ -17,7 +17,7 @@ Dette får dere for hver type:
 
 Oversikten har tre kort øverst: **Periode**, **Tilbakemeldinger** og **Med tekst**. Under dem står grafen **Antall tilbakemeldinger**, og nederst fordelingen per app, enhet og surveytype. Med en app valgt gjelder tallene bare den appen.
 
-Hver dag i grafen **Antall tilbakemeldinger** lenker til **Tilbakemeldinger** med svarene fra den dagen, og det samme gjør de andre grafene med antall svar per dag.
+Hver søyle i grafen **Antall tilbakemeldinger** lenker til **Tilbakemeldinger** med svarene fra den dagen eller uka, og det samme gjør de andre grafene med antall svar over tid.
 
 ## Når én survey er valgt {#en-survey}
 
@@ -37,6 +37,14 @@ Alle visningene har kortet **Enheter**. **Segmentering** kommer i tillegg når a
 
 I **Top Tasks**, **Discovery** og **Task Priority** ligger kortet **Utvikling over tid** nederst. Der velger dere et vurderings- eller valgspørsmål under **Spørsmål** og ser svarene per **Dag**, **Uke** eller **Måned**.
 
+## Grafer over tid {#over-tid}
+
+Grafene over tid viser én søyle eller ett punkt per dag når perioden er 92 dager eller kortere. Er perioden lengre, viser de én per uke, og over to år én per måned. Under overskriften står **Per dag**, **Per uke** eller **Per måned**.
+
+Ukene begynner på mandag og har ukenummer og år, for eksempel «Uke 43, 2026». En uke som bare delvis er med i perioden, har lysere søyle eller hul prikk. Det gjelder også uka dere er i nå. I tabellen under grafen står hvor mange av dagene som er med, for eksempel «(4 av 7 dager)». Dager uten svar står som 0, så avstanden mellom søylene viser tiden riktig.
+
+**Suksessrate over tid** i Top Tasks viser én verdi per dag, uansett hvor lang perioden er.
+
 ## Vurdering og Custom {#vurdering-og-custom}
 
 **Vurdering** og **Custom** har samme visning. Øverst ligger **Periode** sammen med bryteren **Sammenlign med forrige periode**.
@@ -55,7 +63,7 @@ I grafen kan dere legge inn en markør for en dato, for eksempel dagen en endrin
 
 Under **Statistikk per felt** har hvert spørsmål sitt eget kort. Vurderings- og valgspørsmål viser hvordan svarene fordeler seg. Velg et svaralternativ for å filtrere hele visningen på det. Fritekstspørsmål viser **Uttrykk som går igjen** eller **Hyppigste ord**, og **Siste svar**.
 
-Velg **Se utvikling** i et kort for å se svarene på spørsmålet over tid. Under **Tidsintervall** velger dere **Dag**, **Uke** eller **Måned**. For valgspørsmål velger dere også om grafen skal vise **Andel** eller **Antall**. Når brukeren kan velge flere alternativer, kan andelene til sammen bli over 100 prosent.
+Velg **Se utvikling** i et kort for å se svarene på spørsmålet over tid. Under **Tidsintervall** velger dere **Dag**, **Uke** eller **Måned**. Før dere velger selv, følger den de andre [grafene over tid](#over-tid). For valgspørsmål velger dere også om grafen skal vise **Andel** eller **Antall**. Når brukeren kan velge flere alternativer, kan andelene til sammen bli over 100 prosent.
 
 ### Sammenligne to perioder {#sammenlign}
 
@@ -139,7 +147,7 @@ I en Task Priority-survey velger brukeren de oppgavene som er viktigst for hen. 
 
 Listen **Task Priority - "Long Neck"** viser de 15 oppgavene med flest stemmer, med antall stemmer og andel av alle stemmene. En linje i listen viser hvor Long Neck slutter. Under listen står det hvor mange oppgaver til som har fått stemmer, hvis det er flere enn 15.
 
-Grafen **Antall svar over tid** viser antall svar per dag. Et svar med tre valgte oppgaver telles én gang.
+Grafen **Antall svar over tid** viser antall svar per dag, eller per uke i lange perioder, se [Grafer over tid](#over-tid). Et svar med tre valgte oppgaver telles én gang.
 
 ## Små utvalg {#sma-utvalg}
 

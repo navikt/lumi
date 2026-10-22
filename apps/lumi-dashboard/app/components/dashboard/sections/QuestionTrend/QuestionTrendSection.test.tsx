@@ -87,9 +87,27 @@ describe("QuestionTrendSection", () => {
 
     expect(setParams).toHaveBeenCalledWith({
       trendField: "choice-1",
-      trendInterval: "week",
+      trendInterval: undefined,
       trendMeasure: "percentage",
     });
+  });
+
+  it("picks the interval from the period until the viewer chooses one", () => {
+    mockUseSearchParams.mockReturnValue({
+      params: {
+        surveyId: "survey-1",
+        trendField: "choice-1",
+        fromDate: "2026-01-01",
+        toDate: "2026-06-30",
+      },
+      setParam: vi.fn(),
+      setParams,
+      resetParams: vi.fn(),
+    } as never);
+    render(<QuestionTrendSection />);
+
+    expect(screen.getByRole("radio", { name: "Uke" })).toBeChecked();
+    expect(setParams).not.toHaveBeenCalled();
   });
 
   it("shows masked periods without exposing values and explains multi-choice percentages", () => {

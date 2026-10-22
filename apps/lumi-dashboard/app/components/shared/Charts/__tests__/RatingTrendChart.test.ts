@@ -48,6 +48,23 @@ describe("RatingTrendChart marker helpers", () => {
     ]);
   });
 
+  it("groups markers by the week they belong to", () => {
+    const grouped = groupMarkersByDate(
+      [
+        marker({ id: "wednesday", markerDate: "2026-10-21" }),
+        marker({ id: "sunday", markerDate: "2026-10-25" }),
+        marker({ id: "next-monday", markerDate: "2026-10-26" }),
+      ],
+      "week",
+    );
+
+    expect(Object.keys(grouped)).toEqual(["2026-10-19", "2026-10-26"]);
+    expect(grouped["2026-10-19"]?.map((entry) => entry.id)).toEqual([
+      "wednesday",
+      "sunday",
+    ]);
+  });
+
   it("stacks marker labels and summarizes overflow with ...+N", () => {
     const meta = buildMarkerLabelMeta([
       marker({ id: "m1", markerDate: "2026-01-01", label: "A" }),

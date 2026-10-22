@@ -30,16 +30,18 @@ interface QuestionTrendChartProps {
   trend: QuestionTrendResponse;
   buckets: QuestionTrendBucket[];
   measure: "count" | "percentage";
+  labelFor?: (startDate: string) => string;
 }
 
 export function QuestionTrendChart({
   trend,
   buckets,
   measure,
+  labelFor,
 }: QuestionTrendChartProps) {
   const isRating = trend.fieldType === "RATING";
   const metric = questionTrendRatingMetric(trend);
-  const chartData = questionTrendChartData(trend, buckets, measure);
+  const chartData = questionTrendChartData(trend, buckets, measure, labelFor);
   const ariaLabel = isRating
     ? `Linjediagram for ${trend.label}, med ${metric.label.toLowerCase()} per periode. Tabellen under viser de samme tallene.`
     : `Linjediagram for ${trend.label}, med ${measure === "count" ? "antall" : "andel"} respondenter per svaralternativ. Tabellen under viser de samme tallene.`;
@@ -73,7 +75,7 @@ export function QuestionTrendChart({
             {!isRating && <Legend />}
             {isRating ? (
               <Line
-                type="monotone"
+                type="linear"
                 dataKey="average"
                 name={metric.label}
                 stroke={SERIES_COLORS[0]}
@@ -85,7 +87,7 @@ export function QuestionTrendChart({
               trend.options.map((option, index) => (
                 <Line
                   key={option.id}
-                  type="monotone"
+                  type="linear"
                   dataKey={`values.${index}`}
                   name={option.label}
                   stroke={SERIES_COLORS[index % SERIES_COLORS.length]}

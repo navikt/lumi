@@ -1,4 +1,4 @@
-import { Alert, Skeleton } from "@navikt/ds-react";
+import { Alert, Detail, Skeleton } from "@navikt/ds-react";
 import { useNavigate } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { useRef } from "react";
@@ -16,7 +16,6 @@ import {
   ratingResponseCount,
 } from "~/components/dashboard/sections/FieldStats/PeriodComparison/model";
 import {
-  fillQuestionTrendBuckets,
   questionTrendRatingMetric,
   questionTrendRatingValue,
 } from "~/components/dashboard/sections/QuestionTrend/questionTrendUtils";
@@ -28,6 +27,19 @@ import { useQuestionTrend } from "~/hooks/useQuestionTrend";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import type { RatingMarker } from "~/types/api";
+import { todayInOslo } from "~/utils/dashboardPeriod";
+import {
+  bucketStart,
+  calendarBucket,
+  chooseInterval,
+  formatBucketLabel,
+  formatBucketTick,
+  INTERVAL_NOUNS,
+  periodBuckets,
+  spansSeveralYears,
+  type TimeBucket,
+  type TimeInterval,
+} from "~/utils/timeBuckets";
 import styles from "./Charts.module.css";
 
 interface RatingTrendChartProps {
@@ -40,7 +52,15 @@ interface MarkerLabelMeta {
 }
 
 interface TrendPoint {
+  /** First day of the bucket, the point's place on the time axis. */
   date: string;
+  /** First and last day of the bucket inside the period. */
+  from: string;
+  to: string;
+  tick: string;
+  label: string;
+  /** Part of the week or month is outside the period. */
+  partial: boolean;
   average: number | null;
   count: number;
   /** Too few answers to show, for privacy. */
@@ -69,19 +89,24 @@ type RatingTrendState =
   | {
       status: "ready";
       data: TrendPoint[];
+      interval: TimeInterval;
       metric: ReturnType<typeof questionTrendRatingMetric>;
       overallAverage: number | undefined;
     };
 
-/** The daily rating trend and markers shown by the chart and its table. */
+/**
+ * The rating trend per day, ISO week or month, with the markers in the
+ * bucket of their date, as the chart and its table show it.
+ */
 function useRatingTrend(markers: RatingMarker[]): RatingTrendState {
   const { data: stats, isPending, isPlaceholderData } = useStats();
+  const { params } = useSearchParams();
+  const interval = chooseInterval(params.fromDate, params.toDate);
   const fields =
     stats?.fieldStats?.filter((field) => field.fieldType === "RATING") ?? [];
   const field =
     !isPlaceholderData && fields.length === 1 ? fields[0] : undefined;
-  const trendQuery = useQuestionTrend(Boolean(field), field?.fieldId, "day");
-  const { params } = useSearchParams();
+  const trendQuery = useQuestionTrend(Boolean(field), field?.fieldId, interval);
 
   if (isPending || isPlaceholderData || (field && trendQuery.isPending)) {
     return { status: "pending" };
@@ -90,33 +115,48 @@ function useRatingTrend(markers: RatingMarker[]): RatingTrendState {
 
   const trend = trendQuery.data;
   const metric = questionTrendRatingMetric(trend ?? {});
-  const buckets = trend
-    ? fillQuestionTrendBuckets(trend, params.fromDate, params.toDate)
-    : [];
-  const ratingByDate = Object.fromEntries(
-    buckets.map((bucket) => [
-      bucket.startDate,
-      {
-        average: trend ? questionTrendRatingValue(trend, bucket) : null,
-        count: bucket.responseCount ?? 0,
-        masked: bucket.masked,
-      },
-    ]),
+  const trendByStart = new Map(
+    (trend?.buckets ?? []).map((bucket) => [bucket.startDate, bucket]),
   );
-  const markersByDate = groupMarkersByDate(markers);
+  const markersByBucket = groupMarkersByDate(markers, interval);
 
-  const allDates = Array.from(
-    new Set([...Object.keys(ratingByDate), ...Object.keys(markersByDate)]),
-  ).sort((a, b) => a.localeCompare(b));
+  // A marker can be set on a later day in the period than today, and the
+  // chart should show it.
+  const today = todayInOslo();
+  const lastMarkerDate = markers
+    .map((marker) => marker.markerDate)
+    .filter((date) => !params.toDate || date <= params.toDate)
+    .sort()
+    .at(-1);
+  const end = lastMarkerDate && lastMarkerDate > today ? lastMarkerDate : today;
+  const inPeriod = periodBuckets(params.fromDate, params.toDate, interval, end);
+  // Without a period, show the buckets that have answers or markers.
+  const buckets: TimeBucket[] =
+    inPeriod.length > 0
+      ? inPeriod
+      : Array.from(
+          new Set([...trendByStart.keys(), ...Object.keys(markersByBucket)]),
+        )
+          .sort((a, b) => a.localeCompare(b))
+          .map((start) => calendarBucket(start, interval));
+  const withYear = spansSeveralYears(buckets);
 
-  const data: TrendPoint[] = allDates.map((date) => {
-    const rating = ratingByDate[date];
+  const data: TrendPoint[] = buckets.map((bucket) => {
+    const trendBucket = trendByStart.get(bucket.start);
     return {
-      date,
-      average: rating?.average ?? null,
-      count: rating?.count ?? 0,
-      masked: rating?.masked ?? false,
-      markers: markersByDate[date] ?? [],
+      date: bucket.start,
+      from: bucket.from,
+      to: bucket.to,
+      tick: formatBucketTick(bucket, interval, withYear),
+      label: formatBucketLabel(bucket, interval),
+      partial: bucket.partial,
+      average:
+        trend && trendBucket
+          ? questionTrendRatingValue(trend, trendBucket)
+          : null,
+      count: trendBucket?.responseCount ?? 0,
+      masked: trendBucket?.masked ?? false,
+      markers: markersByBucket[bucket.start] ?? [],
     };
   });
   const overallAverage =
@@ -124,24 +164,36 @@ function useRatingTrend(markers: RatingMarker[]): RatingTrendState {
       ? getRatingMetric(field).value
       : undefined;
 
-  return { status: "ready", data, metric, overallAverage };
+  return { status: "ready", data, interval, metric, overallAverage };
+}
+
+/** True when nothing in the period has an answer or a marker. */
+function isEmptyTrend(data: TrendPoint[]): boolean {
+  return data.every(
+    (point) =>
+      point.average === null && !point.masked && point.markers.length === 0,
+  );
 }
 
 /**
- * The chart's numbers and markers, under the chart. Days without answers are
- * left out unless they have a marker, as the chart shows no point for them.
+ * The chart's numbers and markers, under the chart. Days, weeks and months
+ * without answers are left out unless they have a marker, as the chart shows
+ * no point for them.
  */
 export function RatingTrendChartTable({ markers = [] }: RatingTrendChartProps) {
   const trend = useRatingTrend(markers);
+  const { params } = useSearchParams();
   // The trend has no placeholder data, so it is pending after each filter
   // change. Keep an opened table open meanwhile.
   const hadRows = useRef(false);
 
   if (trend.status === "pending") {
+    const nouns =
+      INTERVAL_NOUNS[chooseInterval(params.fromDate, params.toDate)];
     return hadRows.current ? (
       <ChartDataTable
-        label="Vurdering per dag"
-        rowHeader="Dato"
+        label={`Vurdering per ${nouns.one}`}
+        rowHeader={nouns.rowHeader}
         columns={[]}
         rows={[]}
         loading
@@ -154,6 +206,7 @@ export function RatingTrendChartTable({ markers = [] }: RatingTrendChartProps) {
   }
 
   const { metric } = trend;
+  const nouns = INTERVAL_NOUNS[trend.interval];
   const rows = trend.data.filter(
     (point) =>
       point.average !== null || point.masked || point.markers.length > 0,
@@ -163,8 +216,8 @@ export function RatingTrendChartTable({ markers = [] }: RatingTrendChartProps) {
 
   return (
     <ChartDataTable
-      label={`${metric.label} per dag`}
-      rowHeader="Dato"
+      label={`${metric.label} per ${nouns.one}`}
+      rowHeader={nouns.rowHeader}
       columns={[
         { label: metric.label },
         { label: "Svar" },
@@ -172,7 +225,7 @@ export function RatingTrendChartTable({ markers = [] }: RatingTrendChartProps) {
       ]}
       rows={rows.map((point) => ({
         key: point.date,
-        header: dayjs(point.date).format("DD.MM.YYYY"),
+        header: point.label,
         cells: [
           point.masked
             ? "Skjult"
@@ -209,13 +262,16 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
       </Alert>
     );
 
-  const { data, metric, overallAverage } = trend;
+  const { data, interval, metric, overallAverage } = trend;
+  const nouns = INTERVAL_NOUNS[interval];
 
-  if (data.length === 0) {
+  if (isEmptyTrend(data)) {
     return (
       <div className={styles.chartNoData}>Ingen data for valgt periode</div>
     );
   }
+
+  const tickByDate = new Map(data.map((point) => [point.date, point.tick]));
 
   const markerLabelMeta = buildMarkerLabelMeta(markers);
   const maxMarkerLabelOffset = Math.max(
@@ -238,7 +294,7 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
         data={data}
         margin={chartMargin}
         role="img"
-        aria-label={`Linjediagram som viser ${metric.label.toLowerCase()} over tid${typeof overallAverage === "number" ? `. Valgt periode: ${overallAverage.toLocaleString("nb-NO")}` : ""}`}
+        aria-label={`Linjediagram som viser ${metric.label.toLowerCase()} per ${nouns.one}${typeof overallAverage === "number" ? `. Valgt periode: ${overallAverage.toLocaleString("nb-NO")}` : ""}`}
         onClick={(state: {
           activeTooltipIndex?: number | TooltipIndex;
           activeIndex?: number | TooltipIndex;
@@ -262,13 +318,15 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
           if (!clickData) return;
           if (typeof clickData.average !== "number") return;
 
+          // The bucket's days inside the period, as a fixed period.
           navigate({
             to: "/feedback",
             search: {
               ...params,
               dateMode: "fixed",
-              fromDate: clickData.date,
-              toDate: clickData.date,
+              fromDate: clickData.from,
+              toDate: clickData.to,
+              periodPreset: undefined,
               page: "1",
               lowRating: undefined,
             },
@@ -282,7 +340,7 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
           tickLine={false}
           tick={{ fill: colors.text, fontSize: 12 }}
           interval="preserveStartEnd"
-          tickFormatter={(value) => dayjs(value).format("DD.MM")}
+          tickFormatter={(date: string) => tickByDate.get(date) ?? date}
         />
 
         <YAxis
@@ -310,7 +368,7 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
           return (
             <ReferenceLine
               key={marker.id}
-              x={marker.markerDate}
+              x={bucketStart(marker.markerDate, interval)}
               stroke={color}
               strokeDasharray="4 4"
               label={
@@ -342,9 +400,7 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
 
             return (
               <div className={styles.tooltipCard}>
-                <div className={styles.tooltipTitle}>
-                  {dayjs(point.date).format("DD. MMMM YYYY")}
-                </div>
+                <div className={styles.tooltipTitle}>{point.label}</div>
 
                 {average !== null && (
                   <div className={styles.tooltipRow}>
@@ -367,7 +423,7 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
 
                 {average === null && (
                   <div className={styles.tooltipMuted}>
-                    Ingen rating-svar denne dagen
+                    Ingen rating-svar {nouns.this}
                   </div>
                 )}
 
@@ -408,12 +464,35 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
         />
 
         <Line
-          type="monotone"
+          type="linear"
           dataKey="average"
           connectNulls
           stroke={colors.primary}
           strokeWidth={2}
-          dot={{ fill: colors.primary, strokeWidth: 0, r: 4 }}
+          dot={(props: {
+            cx?: number;
+            cy?: number;
+            index?: number;
+            payload?: TrendPoint;
+          }) => {
+            const { cx, cy, index, payload } = props;
+            if (typeof cx !== "number" || typeof cy !== "number") {
+              return <g key={`empty-${index}`} />;
+            }
+            // A week or month only partly in the period gets a hollow dot.
+            const partial = payload?.partial ?? false;
+            return (
+              <circle
+                key={payload?.date ?? index}
+                cx={cx}
+                cy={cy}
+                r={4}
+                fill={partial ? "var(--ax-bg-default)" : colors.primary}
+                stroke={colors.primary}
+                strokeWidth={partial ? 2 : 0}
+              />
+            );
+          }}
           activeDot={{
             fill: colors.primary,
             strokeWidth: 2,
@@ -426,15 +505,39 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
   );
 }
 
+/** Explains the hollow dots, when the period has partial weeks or months. */
+export function RatingTrendPartialNote({
+  markers = [],
+}: RatingTrendChartProps) {
+  const trend = useRatingTrend(markers);
+  if (
+    trend.status !== "ready" ||
+    isEmptyTrend(trend.data) ||
+    !trend.data.some((point) => point.partial && point.average !== null)
+  ) {
+    return null;
+  }
+
+  return (
+    <Detail textColor="subtle">
+      {trend.interval === "month" ? "Måneder" : "Uker"} som bare delvis er med i
+      perioden, har hul prikk.
+    </Detail>
+  );
+}
+
+/** Markers by the first day of the day, week or month they belong to. */
 export function groupMarkersByDate(
   markers: RatingMarker[],
+  interval: TimeInterval = "day",
 ): Record<string, RatingMarker[]> {
   const grouped: Record<string, RatingMarker[]> = {};
 
   for (const marker of markers) {
-    const existing = grouped[marker.markerDate] ?? [];
+    const key = bucketStart(marker.markerDate, interval);
+    const existing = grouped[key] ?? [];
     existing.push(marker);
-    grouped[marker.markerDate] = existing;
+    grouped[key] = existing;
   }
 
   for (const key of Object.keys(grouped)) {

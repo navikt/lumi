@@ -55,7 +55,7 @@ describe("rating trend semantics", () => {
       "percentage",
     );
     expect(data[0]).toMatchObject({
-      label: "Uke 2 · 05.01–11.01",
+      label: "Uke 2, 2026 · 05.01–11.01",
       values: [60, 40],
     });
   });
@@ -137,13 +137,27 @@ describe("question trend calendar", () => {
     expect(buckets[2]?.responseCount).toBeUndefined();
   });
 
+  it("does not add buckets after today", () => {
+    const buckets = fillQuestionTrendBuckets(
+      trend,
+      "2026-01-07",
+      "2026-01-31",
+      "2026-01-14",
+    );
+
+    expect(buckets.map((bucket) => bucket.startDate)).toEqual([
+      "2026-01-05",
+      "2026-01-12",
+    ]);
+  });
+
   it("uses understandable Norwegian day, ISO week and month labels", () => {
     expect(formatQuestionTrendBucket("2026-01-01", "day")).toBe("01.01.2026");
     expect(formatQuestionTrendBucket("2025-12-29", "week")).toBe(
-      "Uke 1 · 29.12–04.01",
+      "Uke 1, 2026 · 29.12–04.01",
     );
-    expect(formatQuestionTrendBucket("2026-08-01", "month")).toMatch(
-      /^Aug 2026$/,
+    expect(formatQuestionTrendBucket("2026-08-01", "month")).toBe(
+      "August 2026",
     );
   });
 });
