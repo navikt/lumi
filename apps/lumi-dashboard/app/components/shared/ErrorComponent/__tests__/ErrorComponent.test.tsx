@@ -82,27 +82,27 @@ describe("ErrorComponent", () => {
     expect(reportDashboardRouteError).toHaveBeenCalledExactlyOnceWith(error);
   });
 
-  it.each([
-    "raw synthetic error",
-    { message: "raw synthetic error" },
-  ])("normalizes a non-Error without displaying or reporting its raw value (%j)", (error) => {
-    const { rerender } = render(<ErrorComponent error={error} />);
+  it.each(["raw synthetic error", { message: "raw synthetic error" }])(
+    "normalizes a non-Error without displaying or reporting its raw value (%j)",
+    (error) => {
+      const { rerender } = render(<ErrorComponent error={error} />);
 
-    expect(
-      screen.getByRole("heading", { name: "En uventet feil oppstod" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Vennligst prøv igjen senere."),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/raw synthetic error/)).not.toBeInTheDocument();
-    expect(reportDashboardRouteError).toHaveBeenCalledTimes(1);
-    const reported = vi.mocked(reportDashboardRouteError).mock.calls[0][0];
-    expect(reported).toBeInstanceOf(Error);
-    expect(reported.message).toBe("Vennligst prøv igjen senere.");
-    expect(reported).not.toHaveProperty("cause");
+      expect(
+        screen.getByRole("heading", { name: "En uventet feil oppstod" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Vennligst prøv igjen senere."),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/raw synthetic error/)).not.toBeInTheDocument();
+      expect(reportDashboardRouteError).toHaveBeenCalledTimes(1);
+      const reported = vi.mocked(reportDashboardRouteError).mock.calls[0][0];
+      expect(reported).toBeInstanceOf(Error);
+      expect(reported.message).toBe("Vennligst prøv igjen senere.");
+      expect(reported).not.toHaveProperty("cause");
 
-    rerender(<ErrorComponent error={error} />);
+      rerender(<ErrorComponent error={error} />);
 
-    expect(reportDashboardRouteError).toHaveBeenCalledTimes(1);
-  });
+      expect(reportDashboardRouteError).toHaveBeenCalledTimes(1);
+    },
+  );
 });

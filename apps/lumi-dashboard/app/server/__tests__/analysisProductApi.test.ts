@@ -52,17 +52,20 @@ describe("analysis API transport", () => {
     [429, "limit"],
     [403, "unavailable"],
     [404, "unavailable"],
-  ])("classifies definitive HTTP %i without exposing backend content", async (status, reason) => {
-    expect(
-      await mutateAnalysis(
-        Response.json(
-          { error: "private backend detail" },
-          { status: Number(status) },
+  ])(
+    "classifies definitive HTTP %i without exposing backend content",
+    async (status, reason) => {
+      expect(
+        await mutateAnalysis(
+          Response.json(
+            { error: "private backend detail" },
+            { status: Number(status) },
+          ),
+          z.object({}),
         ),
-        z.object({}),
-      ),
-    ).toEqual({ ok: false, reason });
-  });
+      ).toEqual({ ok: false, reason });
+    },
+  );
 
   it("distinguishes a closed draft from an optimistic concurrency conflict", async () => {
     expect(

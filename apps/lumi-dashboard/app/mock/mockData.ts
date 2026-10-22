@@ -913,7 +913,7 @@ export function getMockContextTags(
       const taskAnswer = item.answers.find(
         (a) => a.fieldId === SPECIALIZED_SURVEY_FIELD_IDS.task,
       );
-      if (!taskAnswer || taskAnswer.fieldType !== "SINGLE_CHOICE") return false;
+      if (taskAnswer?.fieldType !== "SINGLE_CHOICE") return false;
 
       return taskAnswer.value.selectedOptionId === task;
     });

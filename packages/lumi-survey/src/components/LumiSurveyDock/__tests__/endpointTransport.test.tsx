@@ -112,18 +112,21 @@ describe("LumiSurveyDock with transport={{ endpoint }}", () => {
   it.each([
     ["missing", undefined, "transport is missing"],
     ["a string", "/api/lumi/feedback", "got a string"],
-  ])("renders nothing when the transport is %s", async (_name, transport, problem) => {
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
-    const { rerender } = renderDock(VALID_ENDPOINT);
-    expect(
-      await screen.findByRole("radio", { name: /5\./i }),
-    ).toBeInTheDocument();
+  ])(
+    "renders nothing when the transport is %s",
+    async (_name, transport, problem) => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { rerender } = renderDock(VALID_ENDPOINT);
+      expect(
+        await screen.findByRole("radio", { name: /5\./i }),
+      ).toBeInTheDocument();
 
-    rerender(dockElement(transport as unknown as LumiSurveyEndpoint));
+      rerender(dockElement(transport as unknown as LumiSurveyEndpoint));
 
-    expect(dock()).toBeNull();
-    expect(error).toHaveBeenCalledWith(expect.stringContaining(problem));
-  });
+      expect(dock()).toBeNull();
+      expect(error).toHaveBeenCalledWith(expect.stringContaining(problem));
+    },
+  );
 
   it("logs the problem once in StrictMode", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});

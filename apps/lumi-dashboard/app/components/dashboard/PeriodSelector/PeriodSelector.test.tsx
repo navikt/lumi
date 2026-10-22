@@ -40,33 +40,33 @@ describe("PeriodSelector", () => {
     mockSetParams.mockClear();
   });
 
-  it.each([
-    false,
-    true,
-  ])("does not expose automatic mode in the period editor (completed days: %s)", async (completeDays) => {
-    const user = userEvent.setup();
-    mockParams.dateMode = "fixed";
-    mockParams.surveyId = "survey-historisk";
-    mockParams.fromDate = "2024-02-01";
-    mockParams.toDate = "2024-02-18";
-    render(<PeriodSelector completeDays={completeDays} />);
+  it.each([false, true])(
+    "does not expose automatic mode in the period editor (completed days: %s)",
+    async (completeDays) => {
+      const user = userEvent.setup();
+      mockParams.dateMode = "fixed";
+      mockParams.surveyId = "survey-historisk";
+      mockParams.fromDate = "2024-02-01";
+      mockParams.toDate = "2024-02-18";
+      render(<PeriodSelector completeDays={completeDays} />);
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Periode: 01.02.2024 - 18.02.2024",
-      }),
-    );
-    expect(
-      screen.queryByRole("button", { name: /automatisk periode/i }),
-    ).not.toBeInTheDocument();
-    expect(screen.getAllByRole("textbox", { name: "Fra" })[0]).toHaveValue(
-      "01.02.2024",
-    );
-    expect(screen.getAllByRole("textbox", { name: "Til" })[0]).toHaveValue(
-      "18.02.2024",
-    );
-    expect(mockSetParams).not.toHaveBeenCalled();
-  });
+      await user.click(
+        screen.getByRole("button", {
+          name: "Periode: 01.02.2024 - 18.02.2024",
+        }),
+      );
+      expect(
+        screen.queryByRole("button", { name: /automatisk periode/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.getAllByRole("textbox", { name: "Fra" })[0]).toHaveValue(
+        "01.02.2024",
+      );
+      expect(screen.getAllByRole("textbox", { name: "Til" })[0]).toHaveValue(
+        "18.02.2024",
+      );
+      expect(mockSetParams).not.toHaveBeenCalled();
+    },
+  );
 
   it("labels a partial fixed period that only has a start date", () => {
     mockParams.dateMode = "fixed";

@@ -350,36 +350,35 @@ describe("deletion and advanced conditions", () => {
     { variant: "thumbs", operator: "EQ", value: 2 },
     { variant: "nps", operator: "LT", value: 7 },
     { variant: "nps", operator: "GT", value: 8 },
-  ] as const)("allows cascading a $variant shortcut ($operator $value), including its descendants", ({
-    variant,
-    operator,
-    value,
-  }) => {
-    const rating: SurveyQuestionV1 = {
-      id: "rating",
-      type: "rating",
-      prompt: "Hva synes du?",
-      variant,
-    };
-    const ratingFollowup = text("rating-followup", {
-      questionId: "rating",
-      operator,
-      value,
-    });
-    const child = text("child", {
-      questionId: "rating-followup",
-      operator: "EXISTS",
-    });
-    const plan = deletionPlan([rating, ratingFollowup, child], "rating");
-    expect(plan.blockers).toEqual([]);
-    expect(plan.affected).toEqual(
-      new Set(["rating", "rating-followup", "child"]),
-    );
-    // Numeric comparisons must still open the full condition editor.
-    expect(isSimpleCondition(ratingFollowup, [rating, ratingFollowup])).toBe(
-      false,
-    );
-  });
+  ] as const)(
+    "allows cascading a $variant shortcut ($operator $value), including its descendants",
+    ({ variant, operator, value }) => {
+      const rating: SurveyQuestionV1 = {
+        id: "rating",
+        type: "rating",
+        prompt: "Hva synes du?",
+        variant,
+      };
+      const ratingFollowup = text("rating-followup", {
+        questionId: "rating",
+        operator,
+        value,
+      });
+      const child = text("child", {
+        questionId: "rating-followup",
+        operator: "EXISTS",
+      });
+      const plan = deletionPlan([rating, ratingFollowup, child], "rating");
+      expect(plan.blockers).toEqual([]);
+      expect(plan.affected).toEqual(
+        new Set(["rating", "rating-followup", "child"]),
+      );
+      // Numeric comparisons must still open the full condition editor.
+      expect(isSimpleCondition(ratingFollowup, [rating, ratingFollowup])).toBe(
+        false,
+      );
+    },
+  );
 
   it.each([
     { any: [{ questionId: "rating", operator: "LT", value: 7 }] },
@@ -396,20 +395,21 @@ describe("deletion and advanced conditions", () => {
       ],
     },
     { questionId: "rating", operator: "EQ", value: 5 },
-  ] satisfies NonNullable<
-    SurveyQuestionV1["visibleIf"]
-  >[])("keeps grouped, mixed and non-shortcut rating conditions blocked: %j", (visibleIf) => {
-    const rating: SurveyQuestionV1 = {
-      id: "rating",
-      type: "rating",
-      prompt: "Hva synes du?",
-      variant: "nps",
-    };
-    const advanced = text("advanced", visibleIf);
-    const plan = deletionPlan([rating, advanced], "rating");
-    expect(plan.blockers).toEqual([advanced]);
-    expect(advanced.visibleIf).toEqual(visibleIf);
-  });
+  ] satisfies NonNullable<SurveyQuestionV1["visibleIf"]>[])(
+    "keeps grouped, mixed and non-shortcut rating conditions blocked: %j",
+    (visibleIf) => {
+      const rating: SurveyQuestionV1 = {
+        id: "rating",
+        type: "rating",
+        prompt: "Hva synes du?",
+        variant: "nps",
+      };
+      const advanced = text("advanced", visibleIf);
+      const plan = deletionPlan([rating, advanced], "rating");
+      expect(plan.blockers).toEqual([advanced]);
+      expect(advanced.visibleIf).toEqual(visibleIf);
+    },
+  );
 
   it("includes all nested simple follow-ups in the deletion plan, independent of array order", () => {
     const independent = text("independent");

@@ -37,7 +37,7 @@ export function getMockTopTasksStats(
         answer.fieldId as (typeof TopTasksFieldIds.task)[number],
       ),
     );
-    if (!taskAnswer || taskAnswer.fieldType !== "SINGLE_CHOICE") continue;
+    if (taskAnswer?.fieldType !== "SINGLE_CHOICE") continue;
 
     const taskOption = taskAnswer.question.options?.find(
       (o) => o.id === taskAnswer.value.selectedOptionId,

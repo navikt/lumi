@@ -154,7 +154,12 @@ const RailItem = memo(function RailItem({
               return (
                 <span key={question.id} className={styles.railIconPair}>
                   <meta.Icon aria-hidden />
-                  {question.visibleIf ? <BranchingIcon aria-hidden /> : null}
+                  {question.visibleIf ? (
+                    <BranchingIcon
+                      aria-hidden
+                      className={styles.railIconBranch}
+                    />
+                  ) : null}
                 </span>
               );
             })}

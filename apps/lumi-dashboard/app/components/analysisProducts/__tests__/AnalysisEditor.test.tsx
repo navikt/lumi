@@ -152,20 +152,20 @@ describe("AnalysisEditor confirmation and recovery", () => {
       selection: { dimensionKeys: ["invalid dimension"] },
       message: /Velg høyst 50 dimensjoner/,
     },
-  ])("explains invalid data selection without sending a save ($selection)", async ({
-    selection,
-    message,
-  }) => {
-    if (!product.draft) throw new Error("Expected draft fixture");
-    setup({
-      ...product,
-      draft: { ...product.draft, document: { ...document, ...selection } },
-    });
-    changeName();
-    fireEvent.click(screen.getByRole("button", { name: "Lagre utkast" }));
-    expect(await screen.findByText(message)).toBeVisible();
-    expect(saveAnalysisDraft).not.toHaveBeenCalled();
-  });
+  ])(
+    "explains invalid data selection without sending a save ($selection)",
+    async ({ selection, message }) => {
+      if (!product.draft) throw new Error("Expected draft fixture");
+      setup({
+        ...product,
+        draft: { ...product.draft, document: { ...document, ...selection } },
+      });
+      changeName();
+      fireEvent.click(screen.getByRole("button", { name: "Lagre utkast" }));
+      expect(await screen.findByText(message)).toBeVisible();
+      expect(saveAnalysisDraft).not.toHaveBeenCalled();
+    },
+  );
 
   it("hides the saved preview immediately when the document becomes dirty", async () => {
     setup();
@@ -253,21 +253,23 @@ describe("AnalysisEditor confirmation and recovery", () => {
     expect(createAnalysisProduct).toHaveBeenCalledTimes(1);
   });
 
-  it.each([
-    "invalid-input",
-    "too-large",
-  ] as const)("keeps the new form editable after definitive %s rejection", async (reason) => {
-    vi.mocked(createAnalysisProduct).mockResolvedValue({ ok: false, reason });
-    setup(null);
-    fillNewDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Lagre utkast" }));
-    await screen.findByText(/Ingenting ble lagret/);
-    expect(screen.getByRole("textbox", { name: "Navn" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Lagre utkast" })).toBeEnabled();
-    expect(
-      screen.queryByText(/Uklart om produktet ble opprettet/),
-    ).not.toBeInTheDocument();
-  });
+  it.each(["invalid-input", "too-large"] as const)(
+    "keeps the new form editable after definitive %s rejection",
+    async (reason) => {
+      vi.mocked(createAnalysisProduct).mockResolvedValue({ ok: false, reason });
+      setup(null);
+      fillNewDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Lagre utkast" }));
+      await screen.findByText(/Ingenting ble lagret/);
+      expect(screen.getByRole("textbox", { name: "Navn" })).toBeEnabled();
+      expect(
+        screen.getByRole("button", { name: "Lagre utkast" }),
+      ).toBeEnabled();
+      expect(
+        screen.queryByText(/Uklart om produktet ble opprettet/),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it("explains the demo refusal on create and keeps the new form editable", async () => {
     vi.mocked(createAnalysisProduct).mockRejectedValue(
