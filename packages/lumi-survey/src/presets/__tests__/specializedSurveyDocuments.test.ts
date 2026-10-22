@@ -60,18 +60,17 @@ describe("specialized survey contracts", () => {
     expect(validateSurveyDocumentV1(document)).toBe(document);
   });
 
-  it.each([
-    "emoji",
-    "thumbs",
-    "stars",
-  ] as const)("creates a %s rating document", (variant) => {
-    const document = createRatingSurveyDocument({
-      ratingPrompt: "Hvordan gikk det?",
-      variant,
-    });
-    expect(document.pages[0].questions[0]).toMatchObject({ variant });
-    expect(validateSurveyDocumentV1(document)).toBe(document);
-  });
+  it.each(["emoji", "thumbs", "stars"] as const)(
+    "creates a %s rating document",
+    (variant) => {
+      const document = createRatingSurveyDocument({
+        ratingPrompt: "Hvordan gikk det?",
+        variant,
+      });
+      expect(document.pages[0].questions[0]).toMatchObject({ variant });
+      expect(validateSurveyDocumentV1(document)).toBe(document);
+    },
+  );
 
   it("creates an NPS document with endpoint labels", () => {
     const document = createRatingSurveyDocument({
@@ -103,24 +102,27 @@ describe("specialized survey contracts", () => {
       document: createTaskPrioritySurveyDocument({ tasks }),
       expectedIds: ["priority"],
     },
-  ])("creates a valid page-based $name document", ({
-    document,
-    expectedIds,
-  }) => {
-    expect(validateSurveyDocumentV1(document)).toBe(document);
-    expect(document.pages.map((page) => page.id)).toEqual(expectedIds);
-    expect(
-      questionsFromPages(document.pages).map((question) => question.id),
-    ).toEqual(expectedIds);
-  });
+  ])(
+    "creates a valid page-based $name document",
+    ({ document, expectedIds }) => {
+      expect(validateSurveyDocumentV1(document)).toBe(document);
+      expect(document.pages.map((page) => page.id)).toEqual(expectedIds);
+      expect(
+        questionsFromPages(document.pages).map((question) => question.id),
+      ).toEqual(expectedIds);
+    },
+  );
 
   it.each([
     [createDiscoverySurvey(), ["discoveredTask", "taskSuccess", "blocker"]],
     [createTopTasksSurvey({ tasks }), ["task", "taskSuccess", "blocker"]],
     [createTaskPrioritySurvey({ tasks }), ["priorities"]],
-  ])("preserves the 2.0.1 field IDs from a deprecated builder", (survey, ids) => {
-    expect(survey.questions.map((question) => question.id)).toEqual(ids);
-  });
+  ])(
+    "preserves the 2.0.1 field IDs from a deprecated builder",
+    (survey, ids) => {
+      expect(survey.questions.map((question) => question.id)).toEqual(ids);
+    },
+  );
 
   it("still transports a deprecated Discovery config", () => {
     const survey = createDiscoverySurvey();

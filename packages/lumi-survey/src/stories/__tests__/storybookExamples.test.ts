@@ -25,13 +25,14 @@ const currentDocuments = [
 ];
 
 describe("Storybook survey examples", () => {
-  it.each(
-    currentDocuments,
-  )("uses a valid SurveyDocumentV1 with explicit pages", (document) => {
-    expect(validateSurveyDocumentV1(document)).toBe(document);
-    expect(document.authoringSchemaVersion).toBe(1);
-    expect(document.pages.length).toBeGreaterThan(0);
-  });
+  it.each(currentDocuments)(
+    "uses a valid SurveyDocumentV1 with explicit pages",
+    (document) => {
+      expect(validateSurveyDocumentV1(document)).toBe(document);
+      expect(document.authoringSchemaVersion).toBe(1);
+      expect(document.pages.length).toBeGreaterThan(0);
+    },
+  );
 
   it("generates copy-ready SurveyDocumentV1 source", () => {
     const source = buildSurveySource({

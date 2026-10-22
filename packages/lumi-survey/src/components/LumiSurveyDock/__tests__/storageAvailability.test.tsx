@@ -128,45 +128,45 @@ describe("LumiSurveyDock after a successful submit", () => {
     localStorage.clear();
   });
 
-  it.each([
-    "consent",
-    "localStorage",
-  ] as const)("stores the submit with %s storage before the receipt is closed", async (storageStrategy) => {
-    const user = userEvent.setup();
-    const { unmount } = renderDock({ storageStrategy });
+  it.each(["consent", "localStorage"] as const)(
+    "stores the submit with %s storage before the receipt is closed",
+    async (storageStrategy) => {
+      const user = userEvent.setup();
+      const { unmount } = renderDock({ storageStrategy });
 
-    await submitRating(user);
-    expect(
-      await screen.findByRole("heading", {
-        name: /takk for tilbakemeldingen/i,
-      }),
-    ).toBeInTheDocument();
+      await submitRating(user);
+      expect(
+        await screen.findByRole("heading", {
+          name: /takk for tilbakemeldingen/i,
+        }),
+      ).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(localStorage.getItem(STORAGE_KEY)).not.toBeNull();
-    });
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    expect(stored).toMatchObject({
-      version: 1,
-      state: "dismissed",
-      hideCompletely: true,
-    });
-    // The default cooldown of 30 days still applies.
-    expect(Date.parse(stored.resumeAt) - Date.parse(stored.dismissedAt)).toBe(
-      30 * 86_400_000,
-    );
+      await waitFor(() => {
+        expect(localStorage.getItem(STORAGE_KEY)).not.toBeNull();
+      });
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
+      expect(stored).toMatchObject({
+        version: 1,
+        state: "dismissed",
+        hideCompletely: true,
+      });
+      // The default cooldown of 30 days still applies.
+      expect(Date.parse(stored.resumeAt) - Date.parse(stored.dismissedAt)).toBe(
+        30 * 86_400_000,
+      );
 
-    // Leaving the page without pressing close must not reopen the survey.
-    unmount();
-    renderDock({ storageStrategy });
+      // Leaving the page without pressing close must not reopen the survey.
+      unmount();
+      renderDock({ storageStrategy });
 
-    await waitFor(() => {
-      expect(dock()).not.toBeInTheDocument();
-    });
-    expect(
-      screen.queryByRole("button", { name: "Gi tilbakemelding" }),
-    ).not.toBeInTheDocument();
-  });
+      await waitFor(() => {
+        expect(dock()).not.toBeInTheDocument();
+      });
+      expect(
+        screen.queryByRole("button", { name: "Gi tilbakemelding" }),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it("shows the minimized trigger on the next page when hideAfterSubmit is off", async () => {
     const user = userEvent.setup();
