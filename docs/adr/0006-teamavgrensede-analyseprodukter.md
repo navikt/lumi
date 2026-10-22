@@ -1,12 +1,12 @@
 ---
 title: "ADR 0006: Teamavgrensede analyseprodukter"
-status: Akseptert
+status: Erstattet
 date: 2026-08-29
 ---
 
 # ADR 0006: Teamavgrensede analyseprodukter
 
-- **Status:** Akseptert
+- **Status:** Erstattet av [ADR 0007](./0007-teameid-bigquery-eksport.md) 20. oktober 2026
 - **Dato:** 2026-08-29
 - **Berører:** #482, #507, #550, #551 og ADR 0005
 
