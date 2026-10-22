@@ -673,16 +673,18 @@ describe("visibleIf operator validation against referenced question type", () =>
       ],
     }) as unknown as SurveyDocumentV1;
 
-  it.each([
-    "EQ",
-    "NEQ",
-  ] as const)("rejects %s against a multiChoice question", (operator) => {
-    expect(() =>
-      validateSurveyDocumentV1(
-        documentWithFollowUp({ operator, questionId: "multi", value: "sok" }),
-      ),
-    ).toThrowError(/"follow".*EQ|NEQ.*"multi".*multiChoice.*EXISTS, CONTAINS/s);
-  });
+  it.each(["EQ", "NEQ"] as const)(
+    "rejects %s against a multiChoice question",
+    (operator) => {
+      expect(() =>
+        validateSurveyDocumentV1(
+          documentWithFollowUp({ operator, questionId: "multi", value: "sok" }),
+        ),
+      ).toThrowError(
+        /"follow".*EQ|NEQ.*"multi".*multiChoice.*EXISTS, CONTAINS/s,
+      );
+    },
+  );
 
   it("names the owner, the referenced question, its type, the operator and the allowed set", () => {
     expect(() =>
@@ -701,40 +703,40 @@ describe("visibleIf operator validation against referenced question type", () =>
   it.each([
     { operator: "CONTAINS", value: "sok" },
     { operator: "EXISTS", value: undefined },
-  ])("accepts $operator against a multiChoice question", ({
-    operator,
-    value,
-  }) => {
-    const document = documentWithFollowUp({
-      operator,
-      questionId: "multi",
-      ...(value !== undefined && { value }),
-    });
-    expect(() => validateSurveyDocumentV1(document)).not.toThrow();
-  });
+  ])(
+    "accepts $operator against a multiChoice question",
+    ({ operator, value }) => {
+      const document = documentWithFollowUp({
+        operator,
+        questionId: "multi",
+        ...(value !== undefined && { value }),
+      });
+      expect(() => validateSurveyDocumentV1(document)).not.toThrow();
+    },
+  );
 
-  it.each([
-    "any",
-    "all",
-  ] as const)("applies the same rules to leaves in an %s group", (groupKey) => {
-    const invalid = documentWithFollowUp({
-      [groupKey]: [
-        { operator: "EXISTS", questionId: "multi" },
-        { operator: "EQ", questionId: "multi", value: "sok" },
-      ],
-    });
-    expect(() => validateSurveyDocumentV1(invalid)).toThrowError(
-      /"follow".*EQ.*multiChoice/s,
-    );
+  it.each(["any", "all"] as const)(
+    "applies the same rules to leaves in an %s group",
+    (groupKey) => {
+      const invalid = documentWithFollowUp({
+        [groupKey]: [
+          { operator: "EXISTS", questionId: "multi" },
+          { operator: "EQ", questionId: "multi", value: "sok" },
+        ],
+      });
+      expect(() => validateSurveyDocumentV1(invalid)).toThrowError(
+        /"follow".*EQ.*multiChoice/s,
+      );
 
-    const valid = documentWithFollowUp({
-      [groupKey]: [
-        { operator: "EXISTS", questionId: "multi" },
-        { operator: "CONTAINS", questionId: "multi", value: "sok" },
-      ],
-    });
-    expect(() => validateSurveyDocumentV1(valid)).not.toThrow();
-  });
+      const valid = documentWithFollowUp({
+        [groupKey]: [
+          { operator: "EXISTS", questionId: "multi" },
+          { operator: "CONTAINS", questionId: "multi", value: "sok" },
+        ],
+      });
+      expect(() => validateSurveyDocumentV1(valid)).not.toThrow();
+    },
+  );
 
   it("keeps CONTAINS against a singleChoice question compatible", () => {
     expect(() =>

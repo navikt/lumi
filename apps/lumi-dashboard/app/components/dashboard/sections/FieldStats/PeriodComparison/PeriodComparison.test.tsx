@@ -93,12 +93,15 @@ describe("comparison periods", () => {
     ["2026-01-01", "2026-01-01", "2025-12-31", "2025-12-31"],
     ["2024-03-01", "2024-03-02", "2024-02-28", "2024-02-29"],
     ["2026-03-29", "2026-03-30", "2026-03-27", "2026-03-28"],
-  ])("compares inclusive calendar days for %s–%s", (from, to, previousFrom, previousTo) => {
-    expect(getComparisonPeriods(from, to)?.previous).toMatchObject({
-      fromDate: previousFrom,
-      toDate: previousTo,
-    });
-  });
+  ])(
+    "compares inclusive calendar days for %s–%s",
+    (from, to, previousFrom, previousTo) => {
+      expect(getComparisonPeriods(from, to)?.previous).toMatchObject({
+        fromDate: previousFrom,
+        toDate: previousTo,
+      });
+    },
+  );
 
   it.each([
     [undefined, "2026-09-01"],
@@ -236,17 +239,20 @@ describe("comparison data and recovery", () => {
   it.each([
     [undefined, "Historikken for sammenligningen kunne ikke bekreftes"],
     ["2026-08-10", "Hele sammenligningsperioden er ikke lenger tilgjengelig"],
-  ])("suppresses misleading deltas when complete history is unavailable: %s", async (retentionStartDate, message) => {
-    vi.mocked(fetchStatsServerFn).mockResolvedValue({
-      ...stats(80, 40),
-      retentionStartDate,
-    });
-    renderComparison();
-    expect(await screen.findByText(new RegExp(message))).toBeInTheDocument();
-    expect(screen.queryByText("+20")).not.toBeInTheDocument();
-    expect(screen.queryByText("Endring")).not.toBeInTheDocument();
-    expect(screen.getByText("100")).toBeInTheDocument();
-  });
+  ])(
+    "suppresses misleading deltas when complete history is unavailable: %s",
+    async (retentionStartDate, message) => {
+      vi.mocked(fetchStatsServerFn).mockResolvedValue({
+        ...stats(80, 40),
+        retentionStartDate,
+      });
+      renderComparison();
+      expect(await screen.findByText(new RegExp(message))).toBeInTheDocument();
+      expect(screen.queryByText("+20")).not.toBeInTheDocument();
+      expect(screen.queryByText("Endring")).not.toBeInTheDocument();
+      expect(screen.getByText("100")).toBeInTheDocument();
+    },
+  );
 
   it("refreshes the previous period through the shared stats invalidation family", async () => {
     vi.mocked(fetchStatsServerFn).mockResolvedValue(stats(80, 40));
@@ -287,33 +293,34 @@ describe("text field context", () => {
     },
   };
 
-  it.each([
-    0, 1, 259, 1259,
-  ])("shows %i current text answers without a comparison or percentage", (responseCount) => {
-    const { container } = render(
-      <TextFieldCard
-        field={{
-          ...field,
-          stats: { ...field.stats, responseCount } as typeof field.stats,
-        }}
-        totalCount={2000}
-        semanticHeading
-      />,
-    );
-    expect(
-      screen.getByRole("heading", { name: "Kommentar" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        `${responseCount.toLocaleString("nb-NO")} tekstsvar i valgt periode`,
-        { normalizer: (text) => text },
-      ),
-    ).toBeVisible();
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
-    expect(container.textContent).not.toContain("Endring");
-    expect(container.textContent).not.toContain("%");
-    expect(container.textContent).not.toContain("Svarandel");
-  });
+  it.each([0, 1, 259, 1259])(
+    "shows %i current text answers without a comparison or percentage",
+    (responseCount) => {
+      const { container } = render(
+        <TextFieldCard
+          field={{
+            ...field,
+            stats: { ...field.stats, responseCount } as typeof field.stats,
+          }}
+          totalCount={2000}
+          semanticHeading
+        />,
+      );
+      expect(
+        screen.getByRole("heading", { name: "Kommentar" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          `${responseCount.toLocaleString("nb-NO")} tekstsvar i valgt periode`,
+          { normalizer: (text) => text },
+        ),
+      ).toBeVisible();
+      expect(screen.queryByRole("table")).not.toBeInTheDocument();
+      expect(container.textContent).not.toContain("Endring");
+      expect(container.textContent).not.toContain("%");
+      expect(container.textContent).not.toContain("Svarandel");
+    },
+  );
 });
 
 describe("rating metric names", () => {

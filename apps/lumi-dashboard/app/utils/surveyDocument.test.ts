@@ -996,7 +996,7 @@ describe("findHandoffIssues", () => {
     const success = document.pages
       .flatMap((page) => page.questions)
       .find((question) => question.id === "success");
-    if (!success || success.type !== "singleChoice") {
+    if (success?.type !== "singleChoice") {
       throw new Error("missing success question");
     }
     success.options = [{ value: "done", label: "Ferdig" }];
@@ -1013,7 +1013,7 @@ describe("findHandoffIssues", () => {
     const success = document.pages
       .flatMap((page) => page.questions)
       .find((question) => question.id === "success");
-    if (!success || success.type !== "singleChoice") {
+    if (success?.type !== "singleChoice") {
       throw new Error("missing success question");
     }
     success.randomize = true;
@@ -1053,7 +1053,7 @@ describe("findHandoffIssues", () => {
     const questions = document.pages.flatMap((page) => page.questions);
     const success = questions.find((question) => question.id === "success");
     const blocker = questions.find((question) => question.id === "blocker");
-    if (!success || success.type !== "singleChoice" || !blocker) {
+    if (success?.type !== "singleChoice" || !blocker) {
       throw new Error("missing contract questions");
     }
     success.options.push({ value: "unknown", label: "Vet ikke" });
@@ -1170,7 +1170,7 @@ describe("findHandoffIssues", () => {
     const success = document.pages
       .flatMap((page) => page.questions)
       .find((question) => question.id === "success");
-    if (!success || success.type !== "singleChoice") {
+    if (success?.type !== "singleChoice") {
       throw new Error("missing success question");
     }
     success.required = false;
@@ -1184,7 +1184,7 @@ describe("findHandoffIssues", () => {
     const repairedSuccess = repaired.pages
       .flatMap((page) => page.questions)
       .find((question) => question.id === "success");
-    if (!repairedSuccess || repairedSuccess.type !== "singleChoice") {
+    if (repairedSuccess?.type !== "singleChoice") {
       throw new Error("missing repaired success question");
     }
     expect(repairedSuccess.required).toBe(true);
@@ -1261,7 +1261,7 @@ describe("findHandoffIssues", () => {
     const task = document.pages
       .flatMap((page) => page.questions)
       .find((question) => question.id === "task");
-    if (!task || task.type !== "singleChoice") {
+    if (task?.type !== "singleChoice") {
       throw new Error("missing task question");
     }
     task.options = [{ value: "other", label: "Noe annet" }];

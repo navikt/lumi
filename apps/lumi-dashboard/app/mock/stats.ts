@@ -427,7 +427,7 @@ export function calculateStats(
       const taskAnswer = item.answers.find(
         (a) => a.fieldId === SPECIALIZED_SURVEY_FIELD_IDS.task,
       );
-      if (!taskAnswer || taskAnswer.fieldType !== "SINGLE_CHOICE") return false;
+      if (taskAnswer?.fieldType !== "SINGLE_CHOICE") return false;
 
       return taskAnswer.value.selectedOptionId === taskFilter;
     });
@@ -972,7 +972,7 @@ export function getMockTopTasksStats(
     const taskAnswer = item.answers.find(
       (a) => a.fieldId === SPECIALIZED_SURVEY_FIELD_IDS.task,
     );
-    if (!taskAnswer || taskAnswer.fieldType !== "SINGLE_CHOICE") continue;
+    if (taskAnswer?.fieldType !== "SINGLE_CHOICE") continue;
 
     const taskOption = taskAnswer.question.options?.find(
       (o) => o.id === taskAnswer.value.selectedOptionId,

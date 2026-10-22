@@ -320,30 +320,30 @@ describe("usePersistedDismissal storage availability", () => {
     storageMocks.remove.mockReset().mockResolvedValue({ outcome: "applied" });
   });
 
-  it.each([
-    "consent",
-    "localStorage",
-  ] as const)("starts minimized when %s storage cannot store", async (storageStrategy) => {
-    storageMocks.read.mockResolvedValue({
-      outcome: "unavailable",
-      error: new Error("storage unavailable"),
-    });
-    const onDismissalPersistFailed = vi.fn();
-    const { result } = renderDismissalHook({
-      storageStrategy,
-      events: { onDismissalPersistFailed },
-    });
+  it.each(["consent", "localStorage"] as const)(
+    "starts minimized when %s storage cannot store",
+    async (storageStrategy) => {
+      storageMocks.read.mockResolvedValue({
+        outcome: "unavailable",
+        error: new Error("storage unavailable"),
+      });
+      const onDismissalPersistFailed = vi.fn();
+      const { result } = renderDismissalHook({
+        storageStrategy,
+        events: { onDismissalPersistFailed },
+      });
 
-    await act(async () => {
-      await Promise.resolve();
-    });
+      await act(async () => {
+        await Promise.resolve();
+      });
 
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.dismissed).toBe(true);
-    expect(result.current.shouldHideCompletely).toBe(false);
-    // Reading is not a persistence attempt and must stay silent.
-    expect(onDismissalPersistFailed).not.toHaveBeenCalled();
-  });
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.dismissed).toBe(true);
+      expect(result.current.shouldHideCompletely).toBe(false);
+      // Reading is not a persistence attempt and must stay silent.
+      expect(onDismissalPersistFailed).not.toHaveBeenCalled();
+    },
+  );
 
   it("follows initialOpen when storage works but holds no value", async () => {
     storageMocks.read.mockResolvedValue({ outcome: "empty" });
