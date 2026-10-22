@@ -101,21 +101,32 @@ export const sykmeldtTopics: FeedbackTopic[] = [
   },
   // ------------------------------------------------
   // TOPIC: Redacted (Sensitive Info)
+  // Only markers that SensitiveDataFilter.DEFAULT in lumi-api writes.
   // ------------------------------------------------
   {
     rating: 1,
     tags: ["✅ Behandlet"],
     isRedacted: true,
     comments: [
-      "Jeg snakket med [MULIG NAVN FJERNET] som sa jeg skulle klage hit.",
       "Ringte dere på tlf [TELEFON FJERNET] men ingen svarte i går.",
       "Min fnr er [FØDSELSNUMMER FJERNET], hvorfor finner dere meg ikke?",
       "Saksbehandler [NAVIDENT FJERNET] var veldig uhøflig i telefonen.",
       "Send svaret til [E-POST FJERNET] takk, jeg sjekker ikke Digipost.",
-      "Jeg får feilmelding fra IP [IP-ADRESSE FJERNET] når jeg sitter hjemme.",
       "Utbetalingen til konto [KONTONUMMER FJERNET] har ikke kommet.",
-      "Jeg bor midlertidig i [MULIG ADRESSE FJERNET] pga oppussing.",
-      "Bilen min med skilt [BILNUMMER FJERNET] er nødvendig for jobben.",
+    ],
+  },
+  // ------------------------------------------------
+  // TOPIC: Not redacted
+  // The default filter stores names, addresses and IP addresses as written.
+  // ------------------------------------------------
+  {
+    rating: 1,
+    tags: ["✅ Behandlet"],
+    comments: [
+      "Jeg snakket med Ola Nordmann som sa jeg skulle klage hit.",
+      "Jeg får feilmelding når jeg sitter hjemme (IP 10.0.0.12).",
+      "Jeg bor midlertidig i Eksempelveien 12 pga oppussing.",
+      "Bilen min er nødvendig for jobben.",
     ],
   },
   // ------------------------------------------------
@@ -189,18 +200,28 @@ export const arbeidsgiverTopics: FeedbackTopic[] = [
   },
   // ------------------------------------------------
   // TOPIC: Redacted / Errors
+  // Only markers that SensitiveDataFilter.DEFAULT in lumi-api writes.
   // ------------------------------------------------
   {
     rating: 1,
     tags: ["🐛 Bug", "🔥 Kritisk"],
     isRedacted: true,
     comments: [
-      "Systemet henger seg opp når vi prøver å sende inn for [MULIG NAVN FJERNET].",
       "Får ikke sendt planen for [FØDSELSNUMMER FJERNET] selv om alt er fylt ut.",
-      "Org nr [ORGNUMMER FJERNET] kommer ikke opp i listen.",
       "Sendte epost til [E-POST FJERNET] men fikk ikke svar.",
       "Feilmelding ved bruk av firmakort [KORTNUMMER FJERNET].",
       "Systemet kræsjer ved innsending som [NAVIDENT FJERNET].",
+    ],
+  },
+  // ------------------------------------------------
+  // TOPIC: Errors, not redacted
+  // ------------------------------------------------
+  {
+    rating: 1,
+    tags: ["🐛 Bug", "🔥 Kritisk"],
+    comments: [
+      "Systemet henger seg opp når vi prøver å sende inn for Kari Nordmann.",
+      "Org nr 123 456 789 kommer ikke opp i listen.",
     ],
   },
   // ------------------------------------------------

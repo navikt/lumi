@@ -259,7 +259,7 @@ describe("applyFeedbackFilters", () => {
           question: { label: "Hva prøvde du å gjøre?" },
           value: {
             type: "text",
-            text: "[SYKEPENGER FJERNET] trenger hjelp",
+            text: "[TELEFON FJERNET] trenger hjelp",
           },
         },
       ],
@@ -267,7 +267,7 @@ describe("applyFeedbackFilters", () => {
 
     expect(
       applyFeedbackFilters([discovery], {
-        theme: "11111111-1111-1111-1111-111111111111",
+        theme: "44444444-4444-4444-4444-444444444444",
       }),
     ).toEqual([]);
   });

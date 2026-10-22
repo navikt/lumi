@@ -17,7 +17,7 @@ describe("matchesThemeKeywords", () => {
       false,
     );
     expect(
-      matchesThemeKeywords("Jeg fant [PERSON FJERNET] ikke siden", [
+      matchesThemeKeywords("Jeg fant [TELEFON FJERNET] ikke siden", [
         "fant ikke",
       ]),
     ).toBe(false);
