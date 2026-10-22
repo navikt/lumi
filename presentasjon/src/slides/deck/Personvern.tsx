@@ -16,17 +16,15 @@ function Personvern() {
   return (
     <div className="slide">
       <h2 className="slide-title personvern__title">
-        Lumi lagrer svaret,
-        <br />
-        ikke hvem som svarte
+        Lumi lagrer ikke hvem som svarte
       </h2>
       <div className="end-at end-board personvern__label">
         <dl className="personvern__rows">
           <div className="personvern__row">
             <dt>Lagres</dt>
             <dd>
-              Svaret, teamet, appen, tidspunktet, enhetstype, skjermstørrelse og
-              nettleser
+              Svaret, teamet, appen, tidspunktet, det appen sender med,
+              enhetstype, skjermstørrelse og nettleser
             </dd>
           </div>
           <div className="personvern__row">
@@ -60,7 +58,7 @@ function Personvern() {
 
 export const personvern: Slide = {
   id: "personvern",
-  title: "Lumi lagrer svaret, ikke hvem som svarte",
+  title: "Lumi lagrer ikke hvem som svarte",
   notes: `Reserve: vis den når noen spør om personvern, og lim teksten inn i chatten. Står den rett etter bare-teamet, inn: «Her ser dere hva Lumi lagrer, og hva som fjernes.»
 
 Lumi API lagrer ikke hvem som svarte, heller ikke Nav-identen fra interne apper. Tokenet fra appens backend brukes til å sjekke at kallet kommer fra en app med tilgang. En hash av brukerens ID holdes bare i minnet, for å begrense hvor mange svar én bruker kan sende inn.

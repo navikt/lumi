@@ -150,7 +150,7 @@ export const slutt: Slide = {
   id: "slutt",
   title: "Hvilken oppgave vet dere minst om?",
   steps: 3,
-  notes: `Faggruppa, ordrett: «I starten ba jeg dere ha ett spørsmål i bakhodet. Hvilken oppgave i fagsystemet deres vet dere minst om?» Andre rom: bare spørsmålet.
+  notes: `Faggruppa, ordrett: «I starten ba jeg dere tenke på hva dere gjerne skulle visst om hvordan fagsystemet deres blir brukt. Tenk nå på én oppgave, den dere vet minst om.» Andre rom: bare spørsmålet.
 
 Vent tre sekunder. Klikk 1: «deres app» kommer stiplet på linja.
 

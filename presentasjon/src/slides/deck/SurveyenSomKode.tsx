@@ -27,8 +27,8 @@ const STOPS = [
   { label: "Tilgang til Lumi API", note: ["det eneste dere venter på"] },
   { label: "Pakken", note: ["React 18 eller nyere,", "Aksel 8 eller nyere"] },
   {
-    label: "Endepunktet i backend",
-    note: ["veksler token og sender", "svaret videre"],
+    label: "Endepunktet",
+    note: ["i backend, veksler token", "og sender svaret videre"],
   },
   { label: "Miljøvariablene", note: ["tre verdier i Nais"] },
 ] as const;
@@ -115,7 +115,7 @@ export const surveyenSomKode: Slide = {
   steps: 2,
   notes: `Fra start: koden i appen. survey.ts er kopiert fra Surveyverksted med «Kopier TypeScript». Komponenten får surveyen og stien til et endepunkt i appens egen backend. Fra versjon 2.5.0 sender widgeten svaret selv dit, med tidsgrense og ett nytt forsøk.
 
-Klikk 1: dette gjør utvikleren. Be om tilgang først, for det er det eneste steget der dere venter på andre: appen må inn i tilgangslista til Lumi API. Så pakken. Den krever React 18 eller nyere og Aksel 8 eller nyere. Så endepunktet i backend, det som står i koden. Den veksler brukerens token med TokenX eller Entra ID og sender svaret videre til Lumi API. Til slutt tre miljøvariabler i Nais-manifestet: host, audience og sti.
+Klikk 1: dette gjør utvikleren. Be om tilgang først, for det er det eneste steget der dere venter på andre: appen må inn i tilgangslista til Lumi API. Det gjør dere med en PR eller en tilgangsforespørsel i navikt/lumi. Så pakken. Den krever React 18 eller nyere og Aksel 8 eller nyere. Så endepunktet i backend, det som står i koden. Den veksler brukerens token med TokenX eller Entra ID og sender svaret videre til Lumi API. Til slutt tre miljøvariabler i Nais-manifestet: host, audience og sti.
 
 Klikk 2, prisen: endringer i surveyen krever en ny versjon av appen. Brukerne ser endringen når appen er satt i produksjon.
 

@@ -81,7 +81,7 @@ function Segmentering({ step }: SlideProps) {
         </div>
         <div className="segmentering__rad segmentering__rad--selv">
           <dt>Enhet</dt>
-          <dd>samler widgeten selv</dd>
+          <dd>mobil eller PC, samler widgeten selv</dd>
         </div>
       </dl>
       <p className="segmentering__personvern" data-from={2}>
@@ -105,7 +105,7 @@ Klikk på B, og hele visningen viser bare svarene fra B: 34 svar og snittet 3,1.
 Filteret fjernes. Klikk på A: 33 svar og snittet 3,9.
 Samme survey, delt i to grupper. Forskjellen ser dere med en gang.
 
-Klikk 2: dette kan appen sende. Dine sykmeldte sender med rollen «arbeidsgiver» og hvor surveyen vises. Steg i et løp fungerer på samme måte. Enhet samler widgeten selv, og kortet Enheter finnes alltid.
+Klikk 2: dette kan appen sende. Dine sykmeldte sender med rollen «arbeidsgiver» og hvor surveyen vises. Steg i et løp fungerer på samme måte. Enhetstypen, altså mobil, nettbrett eller desktop, samler widgeten selv, og kortet Enheter finnes alltid.
 Hold verdiene få og grove. Aldri person- eller saksnummer. Regn ikke med at konteksten er anonym.
 
 Hvis noen spør: tags er med i eksporten. Har en tag flere enn ti ulike verdier, får den ikke noe kort. Verdier med mange varianter, som versjonsnummer, kan ligge i debug. De lagres, men vises ikke. Widgeten samler aldri inn url, og pathname bare når dere slår på collectLocation. Under Tilbakemeldinger og Eksporter ligger Segmentering i menyen Filter, med én liste per tag.`,

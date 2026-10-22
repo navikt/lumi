@@ -175,7 +175,7 @@ export const oppfolgingsplanen: Slide = {
 
 Steg 0 viser bare den gamle planen. Spør: «Hva tror dere skjedde?» Vent noen sekunder.
 
-Klikk 1: «Lederne ga den gamle planen 3,8 og den nye 4,0, og andelen som ga fire eller fem, gikk fra 66 til 77 prosent. For de sykmeldte gikk den fra 73 til 78.»
+Klikk 1: «Andelen som ga fire eller fem, gikk opp i begge gruppene: fra 66 til 77 prosent for lederne, og fra 73 til 78 for de sykmeldte.» Snittene står på sliden.
 
 Aksen går fra 50 til 100 prosent, så avstanden mellom ringene viser forskjellen.
 
@@ -185,6 +185,6 @@ Si «gikk opp». Den nye planen er ikke bevist bedre: periodene er ikke de samme
 
 95 prosent av de sykmeldte kjenner seg igjen i innholdet i planen.
 
-Poenget for salen: sett et mål for en endring, still samme spørsmål før og etter, og se på svarene.`,
+Poenget for salen: still samme spørsmål før og etter en endring.`,
   Component: Oppfolgingsplanen,
 };

@@ -195,7 +195,7 @@ function HvorBorSvaret({ step }: SlideProps) {
       >
         {concluded ? (
           <>
-            Begge brukes i Nav.
+            Skyra og Lumi brukes begge i Nav.
             <br />
             Forskjellen er hvor svaret bor.
           </>
@@ -221,9 +221,9 @@ Frontend forum, ordrett: «Da svarer jeg på spørsmålet fra starten. Nei, vi s
 
 Klikk 1, Skyra: «Skriptet er Skyras kode. Nettleseren henter det fra Skyra ved hver sidevisning.» Så går svaret rett fra nettleseren til Skyra AS og lagres i EU. Skyra AS er databehandler for Nav, og Skyra kan også blokkere fødselsnummer, telefonnummer og e-post i fritekst.
 
-Klikk 2, Lumi: «Widgeten er en npm-pakke. Den hentes når appen bygges, i en låst versjon.» Svaret går via appens backend til Lumi API og databasen. Lumi legger ikke til en ny leverandør.
+Klikk 2, Lumi: «Widgeten er en npm-pakke. Den hentes når appen bygges, i en låst versjon.» Svaret går via appens backend til Lumi API og databasen. Lumi trenger ingen ny leverandør.
 
-Klikk 3: «Begge brukes i Nav. Forskjellen er hvor svaret bor.» Så: «Vi i eSyfo valgte Nais, der appenes egne data ligger. Andre team har valgt Skyra.» FlexJar bor på samme sted som Lumi.
+Klikk 3: «Skyra og Lumi brukes begge i Nav. Forskjellen er hvor svaret bor.» Så: «Vi i eSyfo valgte Nais, der appenes egne data ligger. Andre team har valgt Skyra.» FlexJar bor på samme sted som Lumi.
 
 Frontend forum: Lumi trenger ingen ny kilde i CSP. Svaret går gjennom appens egen backend, og surveyen ligger i appens kode.
 

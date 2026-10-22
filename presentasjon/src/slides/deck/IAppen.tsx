@@ -170,7 +170,7 @@ function IAppen({ step }: SlideProps) {
   const view = near ? CLOSE_WINDOW : WIDE_WINDOW;
   return (
     <div className="slide iappen" data-near={near ? "" : undefined}>
-      <h2 className="iappen__title">Dine sykmeldte spør lederne nå</h2>
+      <h2 className="iappen__title">Surveyen er ute nå i Dine sykmeldte</h2>
       <div className="iappen__window" style={clipFor(view)}>
         <div className="iappen__camera" style={camera(near ? CLOSE : WIDE)}>
           <img className="iappen__shot" src={lukket} alt="" aria-hidden />
@@ -225,9 +225,9 @@ function IAppen({ step }: SlideProps) {
 
 export const iAppen: Slide = {
   id: "i-appen",
-  title: "Dine sykmeldte spør lederne nå",
+  title: "Surveyen er ute nå i Dine sykmeldte",
   steps: 2,
-  notes: `Fra start: surveyen er ute nå. Siden 15. oktober står knappen «Gi tilbakemelding» nede til høyre på siden for en sykmelding i Dine sykmeldte, ved siden av tilbudet «Start oppfølging tidlig». Bildene er fra den offentlige demoen, med en testperson.
+  notes: `Fra start: «Dette er en ekte survey, ute nå.» Siden 15. oktober ligger den i Dine sykmeldte, appen der ledere følger opp sykmeldte. Lederen ser knappen «Gi tilbakemelding» nede til høyre, ved siden av tilbudet om påminnelse. Bildene er fra den offentlige demoen, med en testperson.
 
 Hvis noen spør når den kommer opp: som standard åpner surveyen seg når siden lastes, nede til høyre. Lukker brukeren den, blir den knappen «Gi tilbakemelding», og den åpner seg ikke av seg selv igjen før etter 30 dager. På nav.no krever det at brukeren har samtykket. Uten samtykke starter den som knappen, slik som i demoen. Interne apper uten dekoratøren setter storageStrategy til localStorage, så åpner den seg av seg selv og husker at saksbehandleren lukket den.
 

@@ -64,7 +64,7 @@ export const merEnnViSporOm: Slide = {
 
 La salen lese svaret et par sekunder.
 
-Klikk 1: rammene tegnes rundt navnet og e-postadressen. Ordrett: «Vi ber ikke om personopplysninger. De kommer inn i fritekst likevel. Da må teamet kunne finne og slette dem. I Lumi gjør dere det i dashboardet.»
+Klikk 1: rammene tegnes rundt navnet og e-postadressen. Ordrett: «Vi ber ikke om personopplysninger, og likevel kommer de inn i fritekst. Da må teamet kunne finne og slette dem. I Lumi gjør dere det i dashboardet.»
 
 Svaret er et laget eksempel. Navn i fritekst maskeres ikke.
 

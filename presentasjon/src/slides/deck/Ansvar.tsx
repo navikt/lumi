@@ -55,7 +55,7 @@ export const ansvar: Slide = {
   steps: 2,
   notes: `Tre setninger, én per rad. Ordrett inn: «Hvis teamet deres vil prøve, er arbeidet delt slik.»
 
-Fra start: «Nav er behandlingsansvarlig, og på vegne av Nav har teamet deres ansvaret for surveyen og svarene.» Før dere starter, lager dere en kopi av etterlevelsesmalen E726 og vurderer om dere trenger en personvernkonsekvensvurdering, en PVK.
+Fra start: «Nav er behandlingsansvarlig, og teamet deres har ansvaret for surveyen og svarene.» Før dere starter, lager dere en kopi av etterlevelsesmalen E726 og vurderer om dere trenger en personvernkonsekvensvurdering, en PVK.
 
 Klikk 1: «Lumi sletter svarene automatisk etter tolv måneder.»
 

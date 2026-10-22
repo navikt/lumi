@@ -16,7 +16,7 @@ const LINE_WIDTH = 14;
 const OWN_DATA_Y = Y - LINE_WIDTH - 48;
 const STOPS = [
   { x: 250, label: "Nettleseren" },
-  { x: 760, label: "Appens backend", note: "veksler token" },
+  { x: 760, label: "Appens backend", note: "sender svaret videre" },
   { x: 1180, label: "Lumi API", note: "bare apper med tilgang" },
   { x: 1600, label: "Databasen", note: "på Nais" },
 ] as const;
@@ -240,9 +240,9 @@ Klikk 2: til Lumi API. «Lumi API tar bare imot svar fra apper som har fått til
 
 Før klikk 3: «Hva tror dere Lumi lagrer av denne teksten? Skriv i chatten.» Vent noen sekunder.
 
-Klikk 3: kartet trer tilbake, og e-postadressen løses opp. «E-postadressen er borte før svaret lagres. Navnet står igjen. Lumi fjerner bare det som har et kjent mønster, som e-post og fødselsnummer. Derfor kan teamet slette et svar i dashboardet. Hvem som svarte, lagres ikke.»
+Klikk 3: kartet trer tilbake, og e-postadressen løses opp. «E-postadressen er borte før svaret lagres. Navnet står igjen. Lumi fjerner bare det som har et kjent mønster, som e-post og fødselsnummer. Derfor kan teamet slette et svar i dashboardet. Lumi lagrer ikke hvem som svarte.»
 
-Klikk 4: i databasen. «Der bor svaret, i en database på Nais. Lumi legger ikke til en ny leverandør.»
+Klikk 4: i databasen. «Der bor svaret, i en database på Nais. Lumi trenger ingen ny leverandør.»
 
 Ut: «I dashboardet er det bare teamet deres som kan lese svaret.»`,
   Component: SammeVei,

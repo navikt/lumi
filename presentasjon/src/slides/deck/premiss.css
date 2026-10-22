@@ -134,7 +134,7 @@
 
 .flexjar-kort__claim {
   margin: 0;
-  font-size: var(--deck-size-display);
+  font-size: var(--deck-size-statement);
   font-weight: var(--deck-weight-display);
   letter-spacing: var(--deck-tracking-display);
   line-height: var(--deck-line-height-tight);

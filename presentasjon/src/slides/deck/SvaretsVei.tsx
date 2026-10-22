@@ -75,7 +75,7 @@ function SvaretsVei({ step }: SlideProps) {
   return (
     <div className="slide">
       <h2 className="kart-vei__title">Svarets vei</h2>
-      <LineMap label="Linjekart med seks stasjoner, fra venstre mot høyre. Svaret starter hos brukeren og reiser til teamet som leser det. Teamet lager: Surveyverksted. Utvikleren legger inn: koden i appen. Brukeren svarer: widgeten. Appens backend: veksler token. Lumi API: lagrer på Nais. Teamet leser: dashboardet.">
+      <LineMap label="Linjekart med seks stasjoner, fra venstre mot høyre. Svaret starter hos brukeren og reiser til teamet som leser det. Teamet lager: Surveyverksted. Utvikleren legger inn: koden i appen. Brukeren svarer: widgeten. Appens backend: sender svaret videre. Lumi API: lagrer på Nais. Teamet leser: dashboardet.">
         <Line
           points={[
             [-20, Y],
@@ -131,7 +131,7 @@ function SvaretsVei({ step }: SlideProps) {
         <StationText
           x={XS[3]}
           label="Appens backend"
-          note="veksler token"
+          note="sender svaret videre"
           from={1}
         />
         <StationText
@@ -168,7 +168,7 @@ export const svaretsVei: Slide = {
 
 Fra start: teamet lager surveyen i Surveyverksted, utvikleren legger koden inn i appen, og brukeren svarer i widgeten. I et fagsystem er det saksbehandleren som svarer.
 
-Klikk 1: resten av veien. Appens backend veksler token, Lumi API lagrer svaret på Nais, og teamet leser det i dashboardet. Fire stasjoner er teamets, én er brukerens, én er vår.
+Klikk 1: resten av veien. Appens backend sender svaret videre med brukerens innlogging, Lumi API lagrer svaret på Nais, og teamet leser det i dashboardet. Fire stasjoner er teamets, én er brukerens, én er vår.
 
 Klikk 2: svaret reiser videre og stopper på hver stasjon. Vent til det står hos teamet.
 

@@ -6,9 +6,9 @@ function FlexjarOgLumi() {
   return (
     <div className="slide flexjar-kort">
       <h2 className="flexjar-kort__claim">
-        Surveyen bor i koden.
+        Surveyen ligger i appens kode,
         <br />
-        Svaret bor på Nais.
+        og svaret blir på Nais.
       </h2>
       <p className="flexjar-kort__names">
         FlexJar
