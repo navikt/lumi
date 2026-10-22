@@ -59,7 +59,9 @@ Lumi setter ingen cookies. På nav.no lagres det at brukeren har lukket surveyen
 
 ## Lagring og sletting
 
-Svar slettes automatisk når de er eldre enn 12 måneder. Svar dere sletter i dashboardet, slettes med en gang. Databasen sikkerhetskopieres, så et slettet svar kan finnes i sikkerhetskopiene en tid etterpå. Detaljene står i [Sikkerhet og personvern](/referanse/sikkerhet#lagringstid).
+Svar slettes automatisk når de er eldre enn tolv måneder. Svar dere sletter i dashboardet, slettes med en gang. Databasen sikkerhetskopieres, så et slettet svar kan finnes i sikkerhetskopiene en tid etterpå. Detaljene står i [Sikkerhet og personvern](/referanse/sikkerhet#lagringstid).
+
+Setter dere opp BigQuery-eksport, har dere ansvaret for kopien i teamets prosjekt og for hvem som får tilgang til den, se [Teamets ansvar](/dashboard/bigquery#ansvar).
 
 ## Hvordan personopplysninger kan komme inn
 
@@ -119,9 +121,10 @@ Selv med automatisk maskering kan personopplysninger unntaksvis slippe gjennom, 
 
 Hvis dere oppdager personopplysninger i svarene:
 
-1. Slett tilbakemeldingen i dashboardet. Hvert svar har en egen sletteknapp.
-2. Vurder hvor alvorlig det er. Er opplysningene direkte identifiserbare, som fødselsnummer og navn, eller indirekte, som en kombinasjon av svar?
-3. Meld avvik i [Navs avviksportal](https://navno.sharepoint.com/sites/intranett-avvik) hvis det gjelder sensitive personopplysninger.
+1. Slett tilbakemeldingen i dashboardet. Hvert svar har en egen sletteknapp. Har dere satt opp [BigQuery-eksport](/dashboard/bigquery), starter Lumi en ny kjøring automatisk, og svaret forsvinner fra BigQuery når kjøringen lykkes.
+2. Slett svaret i kopier dere har laget selv, for eksempel nedlastede filer, lagrede resultater i Metabase og datafortellinger. Har dere delt dataene fra BigQuery, si fra til dem dere har delt dem med.
+3. Vurder hvor alvorlig det er. Er opplysningene direkte identifiserbare, som fødselsnummer og navn, eller indirekte, som en kombinasjon av svar?
+4. Meld avvik i [Navs avviksportal](https://navno.sharepoint.com/sites/intranett-avvik) hvis det gjelder sensitive personopplysninger.
 
 Dere har taushetsplikt om opplysningene som samles inn, også om de er samlet inn ved et uhell.
 

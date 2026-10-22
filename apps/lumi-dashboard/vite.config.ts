@@ -11,7 +11,7 @@ const serverOnlyModules = [
   "@navikt/oasis",
   "@navikt/pino-logger",
   "pino",
-  "prom-client",
+  "@prometheus-io/client",
 ];
 export default defineConfig(({ command, mode }) => {
   const isProductionBuild = command === "build" && mode === "production";
@@ -41,6 +41,13 @@ export default defineConfig(({ command, mode }) => {
     // Nitro configuration for deployment
     nitro: {
       preset: "node-server",
+      // Nitro bundles node_modules for the server with Rolldown, which warns
+      // about every "use client" directive. They mean nothing on the server.
+      // The nitro alpha types require `output`; Nitro fills in the rest.
+      rolldownConfig: {
+        checks: { moduleLevelDirective: false },
+        output: {},
+      },
     },
 
     plugins: [

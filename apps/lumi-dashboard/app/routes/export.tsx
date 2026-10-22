@@ -53,17 +53,18 @@ function ExportPage() {
             padding="space-20"
           >
             <Heading size="small" level="2" spacing>
-              Klargjør data for faste analyser
+              BigQuery-eksport
             </Heading>
             <BodyShort spacing>
-              Velg surveys og felt, se tabellformatet og opprett en kontrakt for
-              senere levering til Metabase eller Datafortelling.
+              Få en kopi av svarene i teamets eget BigQuery-datasett, oppdatert
+              hver natt. Derfra kan du dele dataene på Datamarkedsplassen og
+              bruke dem i Metabase og datafortellinger.
             </BodyShort>
             <Link
-              to="/analyseprodukter"
+              to="/bigquery"
               search={(previous) => ({ team: previous.team })}
             >
-              Åpne analyseprodukter
+              Gå til BigQuery-eksport
             </Link>
           </Box>
 

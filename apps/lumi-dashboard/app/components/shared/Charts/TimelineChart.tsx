@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { ChartDataTable } from "~/components/shared/Charts/ChartDataTable";
 import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import { useTheme } from "~/context/ThemeContext";
 import { useBreakpoint } from "~/hooks/useBreakpoint";
@@ -32,6 +33,38 @@ const CHART_COLORS_LIGHT = {
   textMuted: "#545454", // Nav Gray 60
 };
 
+export function timelineChartData(byDate: Record<string, number>) {
+  return Object.entries(byDate)
+    .map(([date, count]) => ({
+      date,
+      count,
+      displayDate: dayjs(date).format("DD.MM"),
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** The timeline's numbers, under the chart. */
+export function TimelineChartTable() {
+  const { data: stats, isPending } = useStats();
+  if (isPending) return null;
+
+  const data = timelineChartData(stats?.byDate ?? {});
+  if (data.length === 0) return null;
+
+  return (
+    <ChartDataTable
+      label="Antall tilbakemeldinger per dag"
+      rowHeader="Dato"
+      columns={[{ label: "Tilbakemeldinger" }]}
+      rows={data.map((point) => ({
+        key: point.date,
+        header: dayjs(point.date).format("DD.MM.YYYY"),
+        cells: [point.count.toLocaleString("no-NO")],
+      }))}
+    />
+  );
+}
+
 export function TimelineChart() {
   const { data: stats, isPending } = useStats();
   const { theme } = useTheme();
@@ -50,16 +83,7 @@ export function TimelineChart() {
     return <Skeleton variant="rectangle" height={300} />;
   }
 
-  const byDate = stats?.byDate || {};
-
-  // Transform and sort by date
-  const data = Object.entries(byDate)
-    .map(([date, count]) => ({
-      date,
-      count,
-      displayDate: dayjs(date).format("DD.MM"),
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const data = timelineChartData(stats?.byDate ?? {});
 
   if (data.length === 0) {
     return (

@@ -29,6 +29,7 @@ import java.nio.file.Path
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -99,6 +100,9 @@ class NaisGraphQlClient private constructor(
 
     // Log throttling (reduce spam when NAIS API is unreachable)
     private val lastThrottledLog = AtomicReference<ThrottledLog?>(null)
+
+    // GCP projects per team and environment, for BigQuery export destinations
+    private val teamProjectCache = ConcurrentHashMap<String, CachedTeamProject>()
     
     // Metrics
     private val apiCallTimer = Timer.builder("nais_api_call_duration_seconds")
@@ -346,6 +350,65 @@ class NaisGraphQlClient private constructor(
     }
 
     /**
+     * Look up the GCP project a team has in one Nais environment, for example `prod-gcp`.
+     *
+     * Used to check that a BigQuery export goes to the team's own project. Results are cached for
+     * an hour, since a team's project never changes in practice. Returns `Success(null)` when the
+     * team has no project in the environment.
+     */
+    suspend fun getTeamGcpProjectIdResult(team: String, environment: String): NaisApiResult<String?> {
+        val cacheKey = "$team|$environment"
+        teamProjectCache[cacheKey]?.takeIf { it.expiresAt.isAfter(Instant.now(clock)) }?.let {
+            cacheHitCounter.increment()
+            return NaisApiResult.Success(it.projectId)
+        }
+        cacheMissCounter.increment()
+        apiCallCounter.increment()
+
+        val startTime = System.nanoTime()
+        val response = try {
+            client.post(graphqlUrl) {
+                contentType(ContentType.Application.Json)
+                header(HttpHeaders.UserAgent, userAgent)
+                header(HttpHeaders.Authorization, "Bearer ${tokenProvider()}")
+                setBody(GraphQlRequest(query = TEAM_ENVIRONMENTS_QUERY, variables = TeamEnvironmentsVariables(slug = team)))
+            }
+        } catch (e: Exception) {
+            recordError("Failed to call NAIS GraphQL for team environments", e)
+            return NaisApiResult.Error("API call failed", e)
+        } finally {
+            apiCallTimer.record(Duration.ofNanos(System.nanoTime() - startTime))
+        }
+
+        if (response.status != HttpStatusCode.OK) {
+            val errorMsg = "NAIS GraphQL returned non-OK status for team environments: ${response.status}"
+            recordError(errorMsg)
+            return NaisApiResult.Error(errorMsg)
+        }
+
+        val body = try {
+            response.body<GraphQlResponse<TeamEnvironmentsData>>()
+        } catch (e: Exception) {
+            recordError("Failed to parse NAIS GraphQL response for team environments", e)
+            return NaisApiResult.Error("Response parsing failed", e)
+        }
+
+        if (!body.errors.isNullOrEmpty()) {
+            val errorMsg = "NAIS GraphQL returned errors for team environments: ${body.errors.joinToString { it.message }}"
+            recordError(errorMsg)
+            return NaisApiResult.Error(errorMsg)
+        }
+
+        val projectId = body.data?.team?.environments
+            ?.firstOrNull { it.environment?.name == environment }
+            ?.gcpProjectID
+            ?.takeIf { it.isNotBlank() }
+        teamProjectCache[cacheKey] = CachedTeamProject(projectId, Instant.now(clock).plus(TEAM_PROJECT_TTL))
+        lastSuccessfulCall.set(Instant.now(clock))
+        return NaisApiResult.Success(projectId)
+    }
+
+    /**
      * Check if the NAIS API is healthy.
      * Returns true if we've had a successful call recently (within 2 hours).
      */
@@ -439,6 +502,21 @@ class NaisGraphQlClient private constructor(
                 }
             }
         """.trimIndent()
+
+        private val TEAM_ENVIRONMENTS_QUERY = """
+            query TeamEnvironments(${'$'}slug: Slug!) {
+                team(slug: ${'$'}slug) {
+                    environments {
+                        environment {
+                            name
+                        }
+                        gcpProjectID
+                    }
+                }
+            }
+        """.trimIndent()
+
+        private val TEAM_PROJECT_TTL: Duration = Duration.ofHours(1)
 
         private val VIEWER_TEAMS_QUERY = """
             query ViewerTeams {
@@ -701,4 +779,35 @@ private data class TeamMemberNode(
 @Serializable
 private data class TeamNode(
     val slug: String? = null
+)
+
+private data class CachedTeamProject(
+    val projectId: String?,
+    val expiresAt: Instant
+)
+
+@Serializable
+private data class TeamEnvironmentsVariables(
+    val slug: String
+)
+
+@Serializable
+private data class TeamEnvironmentsData(
+    val team: TeamEnvironmentsNode? = null
+)
+
+@Serializable
+private data class TeamEnvironmentsNode(
+    val environments: List<TeamEnvironmentNode>? = null
+)
+
+@Serializable
+private data class TeamEnvironmentNode(
+    val environment: EnvironmentNode? = null,
+    val gcpProjectID: String? = null
+)
+
+@Serializable
+private data class EnvironmentNode(
+    val name: String? = null
 )

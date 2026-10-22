@@ -32,7 +32,9 @@ import no.nav.lumi.routes.surveyAuthoringRoutes
 import no.nav.lumi.routes.surveyFacetRoutes
 import no.nav.lumi.routes.submissionRoutes
 import no.nav.lumi.routes.analysisProductRoutes
+import no.nav.lumi.routes.bigQueryExportRoutes
 import no.nav.lumi.routes.discoveryRoutes
+import no.nav.lumi.service.BigQueryExportService
 import no.nav.lumi.repository.FeedbackStatsRepository
 import java.time.LocalDate
 import java.sql.Timestamp
@@ -243,6 +245,7 @@ fun Application.testModule(
     statsRepository: FeedbackStatsRepository = FeedbackStatsRepository(),
     bootstrapCache: StringCache = InMemoryStringCache(),
     filterFeedbackRepository: FeedbackRepository = FeedbackRepository(),
+    bigQueryExportService: (() -> BigQueryExportService)? = null,
 ) {
     // Initialize test database
     DatabaseHolder.initializeForTesting(TestDatabase.dataSource)
@@ -319,6 +322,11 @@ fun Application.testModule(
             exportRoutes(exportService)
             discoveryRoutes()
             analysisProductRoutes()
+            if (bigQueryExportService != null) {
+                bigQueryExportRoutes(bigQueryExportService)
+            } else {
+                bigQueryExportRoutes()
+            }
         }
     }
 }

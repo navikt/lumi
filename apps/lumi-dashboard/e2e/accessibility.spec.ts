@@ -17,6 +17,12 @@ test.describe("Accessibility - WCAG Compliance", () => {
     ["Feedback", "/feedback"],
     ["Export", "/export"],
     ["Surveyverksted", "/surveyverksted"],
+    // Choice cards are buttons whose names must start with the visible answer.
+    [
+      "Dashboard with choice cards",
+      "/?surveyId=survey-custom&fromDate=2000-01-01",
+      "Rolle",
+    ],
   ];
 
   for (const [name, route, readyHeading] of routes) {
@@ -25,7 +31,7 @@ test.describe("Accessibility - WCAG Compliance", () => {
       await page.waitForLoadState("networkidle");
       if (readyHeading) {
         await expect(
-          page.getByRole("heading", { name: readyHeading }),
+          page.getByRole("heading", { name: readyHeading, exact: true }),
         ).toBeVisible({ timeout: 15000 });
       }
 
@@ -39,6 +45,54 @@ test.describe("Accessibility - WCAG Compliance", () => {
       if (results.violations.length > 0) {
         console.log(
           `${name} a11y violations:`,
+          JSON.stringify(results.violations, null, 2),
+        );
+      }
+
+      expect(results.violations).toEqual([]);
+    });
+  }
+});
+
+test.describe("Chart tables", () => {
+  // The tables are closed, and hidden from axe, until the viewer opens them.
+  // Narrow cards scroll them sideways, so check the scroll regions as well.
+  for (const width of [320, 768]) {
+    test(`open chart tables have no WCAG A/AA violations at ${width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/");
+      await page.waitForLoadState("networkidle");
+
+      const toggles = page.getByRole("button", { name: /^Vis som tabell/ });
+      await expect(toggles.first()).toBeVisible({ timeout: 15000 });
+      for (const toggle of await toggles.all()) {
+        await toggle.click();
+        await expect(toggle).toHaveAttribute("aria-expanded", "true");
+      }
+      await expect(
+        page.getByRole("table", { name: "Antall tilbakemeldinger per dag" }),
+      ).toBeVisible();
+
+      // 30 days do not fit, so the table scrolls inside its fixed height.
+      const timelineRegion = page.getByRole("region", {
+        name: "Antall tilbakemeldinger per dag",
+      });
+      const size = await timelineRegion.evaluate((element) => ({
+        height: element.clientHeight,
+        scrollHeight: element.scrollHeight,
+      }));
+      expect(size.height).toBeLessThanOrEqual(400);
+      expect(size.scrollHeight).toBeGreaterThan(size.height);
+
+      const results = await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+        .analyze();
+
+      if (results.violations.length > 0) {
+        console.log(
+          `Chart tables a11y violations at ${width}px:`,
           JSON.stringify(results.violations, null, 2),
         );
       }

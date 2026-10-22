@@ -30,6 +30,8 @@ describe("browser observability contract", () => {
     ["/", "/"],
     ["/feedback?search=secret#result", "/feedback"],
     ["/export/", "/export"],
+    ["/bigquery?team=team-esyfo", "/bigquery"],
+    ["/analyseprodukter", "/analyseprodukter"],
     ["/survey-preview", "/survey-preview"],
     ["/release-verification", "/release-verification"],
     ["/surveyverksted", "/surveyverksted"],

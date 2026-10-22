@@ -62,20 +62,19 @@ Surveyverksted gir dere TypeScript-koden for surveyen. I appen legges den inn me
 ```tsx
 import { LumiSurveyDock } from "@navikt/lumi-survey";
 import { survey } from "./survey"; // kopiert fra Surveyverksted
-import { transport } from "./lumi-transport"; // skriver dere selv
 
 export function Tilbakemelding() {
   return (
     <LumiSurveyDock
       surveyId="min-app-tilbakemelding"
       survey={survey}
-      transport={transport}
+      transport={{ endpoint: "/api/lumi/feedback" }}
     />
   );
 }
 ```
 
-`transport` sender svaret til et endepunkt i appens egen backend. Endepunktet veksler token med TokenX eller Entra ID og sender svaret videre til Lumi API.
+`transport` sier hvor svaret skal sendes: et endepunkt i appens egen backend. Endepunktet veksler token med TokenX eller Entra ID og sender svaret videre til Lumi API.
 
 Resten av oppsettet, med stilark, lagring og backend, står under [Kom i gang](/kom-i-gang/installer-widget).
 

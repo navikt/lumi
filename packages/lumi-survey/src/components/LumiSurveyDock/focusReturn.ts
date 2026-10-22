@@ -54,7 +54,9 @@ export const returnFocusToPage = (previous: HTMLElement | null): void => {
     previous &&
     previous !== document.body &&
     previous.isConnected &&
-    tryFocus(previous)
+    // The element may be far from where the user is now. Moving focus there
+    // must not scroll the page away.
+    tryFocus(previous, { preventScroll: true })
   ) {
     return;
   }

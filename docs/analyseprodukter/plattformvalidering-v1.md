@@ -1,5 +1,9 @@
 # Plattformvalidering V1 for analyseprodukter
 
+::: warning Erstattet
+Denne siden hører til analyseproduktene i ADR 0006, som er erstattet av [ADR 0007](../adr/0007-teameid-bigquery-eksport.md). Lumi leverer data til BigQuery som beskrevet i [BigQuery og Metabase](../dashboard/bigquery.md).
+:::
+
 Denne siden skiller det som er bekreftet i offentlig NADA-, NAIS- og
 Google-dokumentasjon fra det som fortsatt krever en eksplisitt avklaring med
 NADA. Den er evidensgrunnlag for

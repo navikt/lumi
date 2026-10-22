@@ -1,5 +1,22 @@
+import { register } from "@prometheus-io/client";
 import { describe, expect, it } from "vitest";
 import { isIngressRequest } from "~/routes/api/internal/metrics";
+
+describe("metrics registry", () => {
+  it("includes the token exchange metrics from @navikt/oasis", async () => {
+    await import("@navikt/oasis");
+
+    const names = (await register.getMetricsAsJSON()).map(({ name }) => name);
+
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "oasis_token_exchanges",
+        "oasis_token_exchange_failures",
+        "oasis_token_exchange_duration_seconds",
+      ]),
+    );
+  });
+});
 
 describe("isIngressRequest", () => {
   it("returns false for internal requests without forwarded headers", () => {

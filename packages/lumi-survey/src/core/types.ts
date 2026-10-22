@@ -458,8 +458,44 @@ export interface LumiSurveySubmission {
   transportPayload: LumiSurveyTransportPayload;
 }
 
+export interface LumiSurveyTransportOptions {
+  /**
+   * Aborted when the widget stops waiting for the attempt. Pass it on to
+   * `fetch`, so the request is cancelled too.
+   */
+  signal: AbortSignal;
+}
+
+/**
+ * Lets the widget send the answers itself. It POSTs
+ * `submission.transportPayload` as JSON to `endpoint`, cancels the request when
+ * the time limit runs out, and treats only a 2xx answer as success, so the
+ * automatic retry on 429 and 503 works.
+ *
+ * The request has no headers except `Content-Type` and only goes to the page's
+ * own origin. Use a `LumiSurveyTransport` with `submit` when the backend needs
+ * anything else.
+ */
+export interface LumiSurveyEndpoint {
+  /**
+   * Path to the endpoint in the app's own backend, which exchanges the token
+   * and forwards the payload to Lumi API. Never Lumi API itself. Start with
+   * `/` and include the app's base path.
+   * @example "/api/lumi/feedback"
+   */
+  endpoint: string;
+}
+
 export interface LumiSurveyTransport {
-  submit: (submission: LumiSurveySubmission) => Promise<void>;
+  /**
+   * Sends the submission to the app's backend. Throw when the backend answers
+   * with an error, preferably a `LumiSurveyHttpError`: the widget then tries
+   * once more by itself on 429 and 503.
+   */
+  submit: (
+    submission: LumiSurveySubmission,
+    options?: LumiSurveyTransportOptions,
+  ) => Promise<void>;
 }
 
 export interface LumiSurveyEvents {

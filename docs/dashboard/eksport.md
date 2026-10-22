@@ -6,6 +6,8 @@ title: Eksport
 
 Under **Eksporter** i menyen laster dere ned svarene som CSV, Excel eller JSON. Filen får med svarene som passer med filtrene i filterlinjen.
 
+Skal dere analysere svarene over tid eller bruke dem i Metabase, kan Lumi legge en kopi i teamets GCP-prosjekt, se [BigQuery og Metabase](/dashboard/bigquery).
+
 ## Slik eksporterer dere
 
 1. Velg **Eksporter** i menyen. Filtrene fra **Dashboard** eller **Tilbakemeldinger** følger med.

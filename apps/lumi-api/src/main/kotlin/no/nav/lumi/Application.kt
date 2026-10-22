@@ -4,6 +4,7 @@ import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import no.nav.lumi.config.configureAuth
+import no.nav.lumi.config.configureBigQueryExport
 import no.nav.lumi.config.configureDatabase
 import no.nav.lumi.config.configureSecurityHeaders
 import no.nav.lumi.config.configureMetrics
@@ -33,5 +34,6 @@ fun Application.module() {
     configureDatabase()
     configureMetrics()
     configureRetentionCleanup()
+    configureBigQueryExport()
     configureRouting()
 }

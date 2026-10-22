@@ -1,5 +1,9 @@
 # Fra analyseutkast til første release
 
+::: warning Erstattet
+Denne siden hører til analyseproduktene i ADR 0006, som er erstattet av [ADR 0007](../adr/0007-teameid-bigquery-eksport.md). Lumi leverer data til BigQuery som beskrevet i [BigQuery og Metabase](../dashboard/bigquery.md).
+:::
+
 Denne delen er implementert i Lumi API. Den lagrer en validert datakontrakt,
 men leverer **ikke** data til BigQuery, Metabase eller Datamarkedsplassen.
 Ingen scheduler, connection, IAM-binding eller databasegrant aktiveres.

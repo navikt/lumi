@@ -4,12 +4,21 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   LumiSurveyContext,
+  LumiSurveyEndpoint,
   LumiSurveyEvents,
   LumiSurveyTransport,
   RatingQuestion,
 } from "../../core";
 import { getVisibleQuestions, shouldShowSubmitButton } from "../../core";
 import { resolveDocumentVisibility } from "../../core/documentVisibility.js";
+import {
+  createEndpointTransport,
+  describeMissingTransport,
+  describeTransportShape,
+  isCustomTransport,
+  isEndpointTransport,
+  resolveEndpoint,
+} from "../../core/endpointTransport.js";
 import { useLumiSurveyState } from "../../core/useLumiSurvey.js";
 import { validateAnswers } from "../../core/validation.js";
 import { getVisibilityMetadata } from "../../core/visibilityMetadata.js";
@@ -66,10 +75,15 @@ export interface LumiSurveyDockProps {
   survey: LumiSurveyDefinition;
 
   /**
-   * Transport implementation for submitting feedback data.
-   * Receives the formatted submission payload and returns a promise.
+   * Sends the answers to the app's backend:
+   * - `{ endpoint: "/api/lumi/feedback" }`: the widget sends them itself. This
+   *   is the only form a React Server Component can pass.
+   * - A `LumiSurveyTransport` with `submit`: send them your own way. A `submit`
+   *   function always wins over `endpoint`.
+   *
+   * Without a usable transport the dock renders nothing and logs an error.
    */
-  transport: LumiSurveyTransport;
+  transport: LumiSurveyTransport | LumiSurveyEndpoint;
 
   /**
    * Labels for UI elements (submit button, error messages, etc.).
@@ -125,6 +139,11 @@ export interface LumiSurveyDockProps {
    */
   lang?: string;
 }
+
+// Never called: the dock renders nothing without a usable transport.
+const MISSING_TRANSPORT: LumiSurveyTransport = {
+  submit: () => Promise.reject(new Error("Lumi: No usable transport")),
+};
 
 export const LumiSurveyDock = ({
   surveyId,
@@ -189,6 +208,14 @@ export const LumiSurveyDock = ({
     [labels, effectiveSuccess, style, behavior, effectiveIntro],
   );
 
+  useEffect(() => {
+    if (!config.initialOpen && config.hideMinimizedButton) {
+      console.warn(
+        "[Lumi] initialOpen: false and hideMinimizedButton: true together mean the survey never shows.",
+      );
+    }
+  }, [config.initialOpen, config.hideMinimizedButton]);
+
   // IMPORTANT: Call all hooks before any conditional returns to comply with Rules of Hooks
 
   const canonicalSurvey = useMemo(() => buildCanonicalSurvey(survey), [survey]);
@@ -242,12 +269,53 @@ export const LumiSurveyDock = ({
     [enrichedContext],
   );
 
+  // `{ endpoint }` is often written inline, so key the built-in transport on
+  // the string and not on the object.
+  const endpoint = isEndpointTransport(transport)
+    ? transport.endpoint
+    : undefined;
+  const customTransport = isCustomTransport(transport) ? transport : undefined;
+  const shapeProblem = describeTransportShape(transport);
+  const endpointResolution = useMemo(
+    () =>
+      customTransport
+        ? undefined
+        : shapeProblem
+          ? ({ ok: false, problem: shapeProblem } as const)
+          : resolveEndpoint(endpoint),
+    [customTransport, endpoint, shapeProblem],
+  );
+  const activeTransport = useMemo<LumiSurveyTransport | undefined>(
+    () =>
+      customTransport ??
+      (endpointResolution?.ok
+        ? createEndpointTransport(endpointResolution.url)
+        : undefined),
+    [customTransport, endpointResolution],
+  );
+  const transportProblem =
+    endpointResolution && !endpointResolution.ok
+      ? endpointResolution.problem
+      : undefined;
+  // The ref keeps StrictMode's second effect run from logging the same
+  // problem twice.
+  const loggedTransportProblemRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (transportProblem === loggedTransportProblemRef.current) {
+      return;
+    }
+    loggedTransportProblemRef.current = transportProblem;
+    if (transportProblem) {
+      console.error(describeMissingTransport(transportProblem));
+    }
+  }, [transportProblem]);
+
   const { answers, status, error, setAnswer, submit, reset } =
     useLumiSurveyState(
       {
         surveyId,
         questions,
-        transport,
+        transport: activeTransport ?? MISSING_TRANSPORT,
         events,
         context: enrichedContext,
         surveyType,
@@ -421,7 +489,8 @@ export const LumiSurveyDock = ({
     onReset: handleFullReset,
     storageStrategy: config.storageStrategy,
     viewEnabled:
-      source === "legacy" || visibleQuestions.length > 0 || showIntro,
+      activeTransport !== undefined &&
+      (source === "legacy" || visibleQuestions.length > 0 || showIntro),
   });
 
   const handleIntroStart = useCallback(() => {
@@ -618,13 +687,19 @@ export const LumiSurveyDock = ({
   const handleCloseDock = useCallback(() => {
     const hideCompletely = isSuccess && config.hideAfterSubmit;
     const focusIsWithinDock = dockRef.current?.contains(document.activeElement);
+    // Without a minimized button to land on, focus goes back to the page.
     pendingDockFocusRef.current = focusIsWithinDock
-      ? hideCompletely
+      ? hideCompletely || config.hideMinimizedButton
         ? "return"
         : "minimized"
       : null;
     closeDock(hideCompletely);
-  }, [closeDock, isSuccess, config.hideAfterSubmit]);
+  }, [
+    closeDock,
+    isSuccess,
+    config.hideAfterSubmit,
+    config.hideMinimizedButton,
+  ]);
 
   const handleReopenDock = useCallback(() => {
     pendingDockFocusRef.current = "open-heading";
@@ -698,7 +773,7 @@ export const LumiSurveyDock = ({
     bottom: config.offset,
     right: config.position === "bottom-right" ? config.offset : undefined,
     left: config.position === "bottom-left" ? config.offset : undefined,
-    zIndex: 1000,
+    zIndex: config.zIndex,
   };
 
   const isNpsDock =
@@ -732,8 +807,14 @@ export const LumiSurveyDock = ({
     return null;
   }
 
-  // Don't render anything when dismissed with hideCompletely flag
-  if (dismissed && shouldHideCompletely) {
+  // A survey that cannot be sent must not ask users to fill it in.
+  if (!activeTransport) {
+    return null;
+  }
+
+  // Don't render anything when dismissed with hideCompletely flag, or when
+  // the app has asked not to show the minimized button.
+  if (dismissed && (shouldHideCompletely || config.hideMinimizedButton)) {
     return null;
   }
 

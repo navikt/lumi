@@ -14,26 +14,76 @@ Filen eksporterer `survey` og har en typesjekk med `SurveyDocumentV1`. Spørsmå
 
 ## Vis surveyen og send inn svar
 
-Når dere har [installert pakken og importert stilarkene](/kom-i-gang/installer-widget), kan dere bruke filen i en komponent. Eksempelet er skrevet for Next.js App Router. I Vite og andre React-apper uten serverkomponenter trengs ikke første linje.
+Når dere har [installert pakken og importert stilarkene](/kom-i-gang/installer-widget), kan dere bruke filen i en komponent:
 
 ```tsx
-"use client";
+import { LumiSurveyDock } from "@navikt/lumi-survey";
+import { survey } from "./survey";
 
+export function FeedbackWidget() {
+  return (
+    <LumiSurveyDock
+      surveyId="min-app-tilbakemelding"
+      survey={survey}
+      transport={{ endpoint: "/api/lumi/feedback" }}
+    />
+  );
+}
+```
+
+Legg `FeedbackWidget` på siden der dere vil samle tilbakemeldinger. `survey` er innholdet brukeren møter, og `transport` sier hvor svarene skal sendes. Bruker appen Next.js App Router, se [Next.js App Router](#next-js).
+
+### Send svarene {#send-svarene}
+
+Med `{ endpoint }` som `transport` sender widgeten svarene selv. Den sender `submission.transportPayload` som JSON med `POST` til `endpoint`, og viser takkesiden bare når backenden svarer med 2xx. En videresending, for eksempel til innlogging, og en nettside med status 200 regnes som feil.
+
+`endpoint` er en sti i appens egen backend:
+
+- Stien starter med `/` og ligger på samme domene som siden. Lumi API kan ikke stå her, fordi svarene skal gjennom appens backend.
+- Har appen en base-sti, må den være med, for eksempel `/min-app/api/lumi/feedback`. Se [Base-sti](#base-sti).
+- Stien må være nøyaktig den samme som ruten. Widgeten følger ikke videresendinger, heller ikke en som bare legger til `/` på slutten, for eksempel med `trailingSlash: true` i `next.config`. Skriv da stien med `/` på slutten.
+
+Er `endpoint` ugyldig, viser widgeten ingenting og skriver en melding som starter med `[Lumi]` i konsollen. Svarer backenden med en feil, skriver widgeten en `[Lumi]`-melding med status og årsak, men ikke svarene.
+
+`/api/lumi/feedback` er et endepunkt dere lager selv i appens backend. Det bytter brukerens token mot et token for Lumi API (tokenveksling) og sender svarene videre. Widgeten kan vises før endepunktet finnes, men svarene lagres ikke før [backenden er koblet til](/kom-i-gang/koble-til-backend).
+
+`transport` med `{ endpoint }` finnes fra versjon 2.5.0 av `@navikt/lumi-survey`.
+
+### Tidsgrense og nytt forsøk {#tidsgrense-og-nytt-forsok}
+
+Widgeten venter i høyst ti sekunder på hvert forsøk. Da avbryter den kallet, og brukeren ser feilmeldingen.
+
+Slik prøver widgeten én gang til med det samme svaret:
+
+- 503: etter tiden i `Retry-After`, eller etter et halvt til halvannet sekund når `Retry-After` mangler
+- 429: bare når `Retry-After` ber om å vente i fem sekunder eller mindre
+
+Ber `Retry-After` om mer enn fem sekunder, viser widgeten feilmeldingen med en gang. Lumi API lagrer et svar bare én gang selv om det sendes to ganger, så et nytt forsøk gir ikke doble svar.
+
+Med [egen transport](#egen-transport) gjelder dette når `submit` sender `options.signal` videre til `fetch` og kaster `LumiSurveyHttpError`, eller en annen feil med `status` som tall. Tidsgrensen, `options.signal` og `LumiSurveyHttpError` finnes fra versjon 2.4.0.
+
+### Egen transport {#egen-transport}
+
+Trenger backenden mer enn en sti, lager dere transporten selv. Det gjelder for eksempel egne headere som `Nav-Call-Id`, egen håndtering av utløpt innlogging eller et annet domene:
+
+```tsx
 import {
   LumiSurveyDock,
+  LumiSurveyHttpError,
   type LumiSurveyTransport,
 } from "@navikt/lumi-survey";
 import { survey } from "./survey";
 
 const transport: LumiSurveyTransport = {
-  async submit({ transportPayload }) {
+  async submit({ transportPayload }, options) {
     const response = await fetch("/api/lumi/feedback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(transportPayload),
+      signal: options?.signal ?? null,
     });
     if (!response.ok) {
-      throw new Error(`Innsending feilet med status ${response.status}`);
+      throw LumiSurveyHttpError.fromResponse(response);
     }
   },
 };
@@ -49,31 +99,52 @@ export function FeedbackWidget() {
 }
 ```
 
-Legg `FeedbackWidget` på siden der dere vil samle tilbakemeldinger. `survey` er innholdet brukeren møter, mens `transport` sender svarene til appens backend. Widgeten viser takkesiden når `submit` er ferdig uten feil, så `submit` må kaste en feil når backenden svarer med feil.
+Widgeten viser takkesiden når `submit` er ferdig uten feil, så `submit` må kaste en feil når backenden svarer med feil.
 
-`/api/lumi/feedback` er et endepunkt dere lager selv i appens backend. Det bytter brukerens token mot et token for Lumi API (tokenveksling) og sender svarene videre. Widgeten kan vises før endepunktet finnes, men svarene lagres ikke før [backenden er koblet til](/kom-i-gang/koble-til-backend).
+### Base-sti {#base-sti}
+
+`endpoint` og `fetch` får ikke base-stien lagt til av seg selv. Har appen `basePath` i `next.config`, setter dere den foran stien med samme konstant:
+
+```tsx
+<LumiSurveyDock
+  surveyId="min-app-tilbakemelding"
+  survey={survey}
+  transport={{ endpoint: `${basePath}/api/lumi/feedback` }}
+/>
+```
+
+I Vite står base-stien i `import.meta.env.BASE_URL`, og den slutter alltid med `/`. Den må være en sti som `/min-app/`, ikke `./`:
+
+```tsx
+transport={{ endpoint: `${import.meta.env.BASE_URL}api/lumi/feedback` }}
+```
 
 ### Next.js App Router {#next-js}
 
-`"use client"` på første linje gjør filen til en klientkomponent. Widgeten bruker React-hooks og må kjøre i nettleseren, men den bygde pakken har ikke direktivet selv. Uten linjen prøver Next.js å kjøre widgeten som serverkomponent, og siden feiler. I Vite og andre React-apper uten serverkomponenter trengs ikke linjen.
+Fra versjon 2.5.0 kan en serverkomponent vise widgeten direkte. Importer den fra `@navikt/lumi-survey/client`:
 
-Har appen `basePath` i `next.config`, legger ikke Next.js den til i `fetch`. Sett den foran stien selv, for eksempel med en variabel som også brukes som `basePath`:
+```tsx
+import { LumiSurveyDock } from "@navikt/lumi-survey/client";
+import { survey } from "./survey";
 
-```ts
-fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/lumi/feedback`, {
-  // som over
-});
+export default function Side() {
+  return (
+    <LumiSurveyDock
+      surveyId="min-app-tilbakemelding"
+      survey={survey}
+      transport={{ endpoint: "/api/lumi/feedback" }}
+    />
+  );
+}
 ```
 
-Next.js setter inn `NEXT_PUBLIC_`-variabler i klientkoden når appen bygges, så variabelen må være satt ved bygg.
+`@navikt/lumi-survey/client` har `"use client"`, så Next.js kjører widgeten i nettleseren. Fra en serverkomponent kan dere bare sende data og JSX. `events`, en transport med `submit` og `labels.textTooLong` er funksjoner. De krever en egen fil med `"use client"` øverst, som importerer `LumiSurveyDock` fra `@navikt/lumi-survey`.
 
-I Vite står base-stien i `import.meta.env.BASE_URL`, og den slutter alltid med `/`:
+Hovedinngangen `@navikt/lumi-survey` har ikke direktivet. En serverkomponent kan bare importere typer derfra, for eksempel `import type { SurveyDocumentV1 }`. Hjelpefunksjoner som `createTopTasksSurveyDocument` må brukes i en klientkomponent.
 
-```ts
-fetch(`${import.meta.env.BASE_URL}api/lumi/feedback`, {
-  // som over
-});
-```
+TypeScript finner typene til `@navikt/lumi-survey/client` med `moduleResolution` satt til `bundler` eller `node16`. Next.js bruker `bundler` som standard.
+
+En serverkomponent leser base-stien når siden rendres. Variabelen trenger derfor ikke prefikset `NEXT_PUBLIC_`, men den må være satt når siden rendres, og for statiske sider er det når appen bygges.
 
 ## Sett survey-ID
 

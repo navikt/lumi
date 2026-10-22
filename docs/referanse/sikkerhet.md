@@ -30,7 +30,7 @@ API-et maskerer kjente mønstre for personlig identifiserbar informasjon (PII) i
 | `context.tags` | PII-mønstre maskeres i både nøkler og verdier | Ingen ekstra maskering | Bruk bare verdier med få varianter, aldri identifikatorer |
 | `context.debug` | PII-mønstre maskeres rekursivt i nøkler og verdier | Ingen ekstra maskering | Vises ikke i dashboardet eller eksporten |
 | `context.userAgent` | HTML fjernes, men PII-mønstre maskeres ikke | Ingen ekstra maskering | Sendes automatisk av widgeten og vises ikke i dashboardet eller eksporten |
-| Surveydefinert metadata (`surveyId`, `fieldId`, spørsmålstekst/-beskrivelse og svaralternativenes ID/tekst) | PII-mønstre maskeres ikke | PII-mønstre maskeres ikke | Verdiene valideres, men må ikke inneholde personopplysninger |
+| Surveydefinert metadata (`surveyId`, `fieldId`, spørsmålstekst/-beskrivelse og svaralternativenes ID/tekst) | PII-mønstre maskeres ikke | PII-mønstre maskeres ikke | Verdiene valideres, men må ikke inneholde personopplysninger. [BigQuery-eksporten](/dashboard/bigquery#tolkning) maskerer PII-mønstre i ID-ene og tekstene den tar med |
 | Strukturerte svar (rating, valgte alternativ-ID-er og dato) | PII-mønstre maskeres ikke | PII-mønstre maskeres ikke | Bruk bare svarverdier som ikke identifiserer personen |
 
 ::: info Dobbel maskering
@@ -45,10 +45,11 @@ Hvert svar lagres med team, app, tidspunkt og konteksten widgeten sender, som en
 
 ## Lagringstid og sletting {#lagringstid}
 
-- Svar slettes automatisk når de er eldre enn 12 måneder. Jobben kjører én gang i døgnet og sletter opptil 500 svar. Kommer det over tid inn flere enn 500 svar i døgnet, kan svar bli liggende lenger enn 12 måneder.
+- Svar slettes automatisk når de er eldre enn tolv måneder. Jobben kjører én gang i døgnet og sletter opptil 500 svar. Kommer det over tid inn flere enn 500 svar i døgnet, kan svar bli liggende lenger enn tolv måneder.
 - Svar dere sletter i dashboardet, slettes fra databasen med en gang.
 - Surveydefinisjonen, altså spørsmålene og svaralternativene, slettes ikke automatisk.
 - Databasen sikkerhetskopieres hver natt etter Nais' standardoppsett, og sju sikkerhetskopier beholdes. Et slettet svar kan derfor finnes i sikkerhetskopiene i opptil sju døgn. I tillegg tar Nais en daglig katastrofekopi til et miljø utenfor Google Cloud.
+- Har dere satt opp [BigQuery-eksport](/dashboard/bigquery), har Lumi en kopi av svarene i teamets datasett. Sletter dere et svar i dashboardet, forsvinner det fra kopien innen noen minutter når kjøringen lykkes. Hvordan sletting, time travel og utløp virker der, står i [Teamets ansvar](/dashboard/bigquery#ansvar).
 
 ## Små utvalg i dashboardet
 
@@ -64,6 +65,7 @@ API-et begrenser antall kall på flere nivåer for å hindre misbruk:
 | Innsending (per bruker) | 15 req/min | Per hashet sluttbruker innenfor samme kaller-app |
 | Analyse | 300 req/min | Per kallende klient og bruker |
 | Eksport | 30 req/min | Per kallende klient og bruker |
+| Endringer i BigQuery-eksport | 20 req/min | Per kallende klient og bruker, i tillegg til grensen for analyse |
 | Avvist eksportautentisering/-autorisasjon | 30 forsøk/min | Per kilde-IP |
 | Global | 10 000 req/min | Per kilde-IP |
 

@@ -8,6 +8,8 @@ interface ChartCardProps {
   subtitle?: string;
   size?: "default" | "compact";
   children: ReactNode;
+  /** Shown under the sized chart area, for example the chart's numbers as a table. */
+  table?: ReactNode;
 }
 
 /**
@@ -19,6 +21,7 @@ export function ChartCard({
   subtitle,
   size = "default",
   children,
+  table,
 }: ChartCardProps) {
   const chartHeightClass =
     size === "compact" ? styles.chartCompact : styles.chartDefault;
@@ -33,6 +36,7 @@ export function ChartCard({
           {subtitle && <span className={styles.subtitle}>{subtitle}</span>}
         </VStack>
         <div className={chartHeightClass}>{children}</div>
+        {table}
       </VStack>
     </DashboardCard>
   );
