@@ -245,7 +245,7 @@ test("shows a stop that waits for a run, and says when it is done", async ({
 
   await page.goto("/bigquery?team=team-esyfo");
   await expect(
-    page.getByRole("heading", { name: "Eksporten stoppes", level: 2 }),
+    page.getByRole("heading", { name: "Lumi stopper eksporten", level: 2 }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Stopp eksporten" }),
@@ -253,13 +253,117 @@ test("shows a stop that waits for a run, and says when it is done", async ({
   await expectAccessibleAtBothWidths(page);
 
   stopping = false;
+  // The notice, after the hidden status line that may read it out.
   await expect(
-    page.getByText("Eksporten er stoppet.", { exact: true }),
+    page.getByText("Eksporten er stoppet.", { exact: true }).last(),
   ).toBeVisible({ timeout: 10_000 });
   await expect(
     page.getByRole("button", { name: "Start eksporten" }),
   ).toBeVisible();
   await expectAccessibleAtBothWidths(page);
+});
+
+test("keeps focus when a poll shows the stop before the stop request answers", async ({
+  page,
+}) => {
+  const destination = {
+    projectId: "team-esyfo-dev-1a2b",
+    datasetId: "lumi",
+    includeFreeText: false,
+    createdAt: "2026-10-20T10:00:00Z",
+    updatedAt: "2026-10-20T10:00:00Z",
+    runState: "RUNNING",
+    lastRun: { status: "RUNNING", startedAt: "2026-10-20T10:00:00Z" },
+  };
+  let stage: "running" | "stopping" | "stopped" = "running";
+  let stopRequested = false;
+  let answerStop: () => void = () => {};
+  const stopAnswered = new Promise<void>((resolve) => {
+    answerStop = resolve;
+  });
+  await page.route("**/*", async (route) => {
+    const request = route.request();
+    if (!["fetch", "xhr"].includes(request.resourceType())) {
+      await route.continue();
+      return;
+    }
+    // The stop request waits, like one that waits for BigQuery.
+    if (request.method() === "POST" && stopRequested) {
+      stopRequested = false;
+      await stopAnswered;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          result: { ok: true, value: { tablesRemoved: false, stopping: true } },
+          context: {},
+        }),
+      });
+      return;
+    }
+    if (request.method() !== "GET") {
+      await route.continue();
+      return;
+    }
+    const response = await route.fetch();
+    const body = await response.text();
+    if (!body.includes("freeTextAvailable")) {
+      await route.fulfill({ response });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        result: {
+          team: "team-esyfo",
+          available: true,
+          availability: "AVAILABLE",
+          location: "europe-north1",
+          serviceAccount:
+            "lumi-api-team-esyfo-1a2b3c4d@nais-dev-2e7b.iam.gserviceaccount.com",
+          suggestedProjectId: "team-esyfo-dev-1a2b",
+          freeTextAvailable: true,
+          destination:
+            stage === "stopped"
+              ? null
+              : { ...destination, stopping: stage === "stopping" },
+        },
+        context: {},
+      }),
+    });
+  });
+
+  await page.goto("/bigquery?team=team-esyfo");
+  await page.getByRole("button", { name: "Stopp eksporten" }).click();
+  const dialog = page.getByRole("dialog", { name: "Stopp BigQuery-eksporten" });
+  await dialog
+    .getByRole("checkbox", {
+      name: "Ja, stopp eksporten og slett Lumis tabeller",
+    })
+    .check();
+  stopRequested = true;
+  await dialog.getByRole("button", { name: "Stopp eksporten" }).click();
+  stage = "stopping";
+
+  // The page polls while the run is going on, and the poll shows the stop
+  // before the stop request has answered.
+  const heading = page.getByRole("heading", {
+    name: "Lumi stopper eksporten",
+    level: 2,
+  });
+  await expect(heading).toBeFocused({ timeout: 10_000 });
+  answerStop();
+  await expect(heading).toBeFocused();
+
+  stage = "stopped";
+  await expect(page.locator(":focus")).toContainText("Eksporten er stoppet.", {
+    timeout: 10_000,
+  });
+  // The page scrolls again after the dialog was removed while it was open.
+  expect(
+    await page.evaluate(() => getComputedStyle(document.body).overflowY),
+  ).not.toBe("hidden");
 });
 
 test("keeps teams outside the pilot out and explains why", async ({ page }) => {

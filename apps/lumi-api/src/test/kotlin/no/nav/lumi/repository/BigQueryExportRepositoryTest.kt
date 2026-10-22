@@ -178,6 +178,38 @@ class BigQueryExportRepositoryTest : FunSpec({
         repository.find("team-a").shouldNotBeNull().pendingJobIds shouldContainExactly listOf("lumi_truncate_innsendinger_2")
     }
 
+    test("update changes an existing destination like upsert, and never creates or revives one") {
+        val created = repository.upsert("team-a", "team-a-prod-1234", "lumi", false, "A123456", now)
+        repository.markStarted("team-a", now.plusSeconds(1)).shouldNotBeNull()
+
+        repository.update("team-a", "team-a-prod-1234", "lumi", true, "B234567", now.plusSeconds(10)).shouldNotBeNull().let {
+            it.includeFreeText shouldBe true
+            it.runRequestedAt shouldBe now.plusSeconds(10)
+            it.lastRunStartedAt shouldBe now.plusSeconds(1)
+            it.pseudonymKey.contentEquals(created.pseudonymKey) shouldBe true
+        }
+        repository.update("team-a", "team-a-prod-1234", "lumi_ny", true, "B234567", now.plusSeconds(20)).shouldNotBeNull().let {
+            it.datasetId shouldBe "lumi_ny"
+            it.lastRunStartedAt.shouldBeNull()
+            it.pseudonymKey.contentEquals(created.pseudonymKey) shouldBe false
+        }
+
+        repository.update("team-b", "team-b-prod-1234", "lumi", false, "A123456", now).shouldBeNull()
+        repository.find("team-b").shouldBeNull()
+        repository.markStopping("team-a", now.plusSeconds(30)) shouldBe true
+        repository.update("team-a", "team-a-prod-1234", "lumi", false, "A123456", now.plusSeconds(40)).shouldBeNull()
+        repository.find("team-a").shouldNotBeNull().datasetId shouldBe "lumi_ny"
+    }
+
+    test("a destination that is not stopping is only deleted when asked to directly") {
+        repository.upsert("team-a", "team-a-prod-1234", "lumi", false, "A123456", now)
+
+        repository.delete("team-a", onlyIfStopping = true) shouldBe false
+        repository.markStopping("team-a", now) shouldBe true
+        repository.delete("team-a", onlyIfStopping = true) shouldBe true
+        repository.find("team-a").shouldBeNull()
+    }
+
     test("a stopping export queues and starts nothing, and keeps its settings until it is deleted") {
         repository.upsert("team-a", "team-a-prod-1234", "lumi", false, "A123456", now)
         repository.markStopping("team-a", now.plusSeconds(1)) shouldBe true

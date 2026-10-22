@@ -689,7 +689,7 @@ describe("BigQueryExportView", () => {
     );
 
     const stopping = await screen.findByRole("heading", {
-      name: "Eksporten stoppes",
+      name: "Lumi stopper eksporten",
     });
     await waitFor(() =>
       expect(stopping.closest("[tabindex='-1']")).toHaveFocus(),
@@ -722,7 +722,7 @@ describe("BigQueryExportView", () => {
     renderView();
 
     const stopping = await screen.findByRole("heading", {
-      name: "Eksporten stoppes",
+      name: "Lumi stopper eksporten",
     });
     expect(stopping.closest("[tabindex='-1']")).not.toHaveFocus();
     expect(screen.getByText(`${project}.lumi`)).toBeInTheDocument();
@@ -741,12 +741,115 @@ describe("BigQueryExportView", () => {
     });
     renderView();
 
+    const run = await screen.findByRole("button", {
+      name: "Oppdater tabellene nå",
+    });
+    run.focus();
+    fireEvent.click(run);
+
+    // The button is gone with the export, so the notice takes focus.
+    const heading = await screen.findByRole("heading", {
+      name: "Lumi stopper eksporten",
+    });
+    await waitFor(() => expect(heading).toHaveFocus());
+  });
+
+  it("keeps focus when the status shows the stop before the dialog has the answer", async () => {
+    let answer: (
+      value: Awaited<ReturnType<typeof stopBigQueryExport>>,
+    ) => void = () => {};
+    vi.mocked(getBigQueryExport)
+      .mockResolvedValueOnce(withDestination({ runState: "RUNNING" }))
+      .mockResolvedValue(
+        withDestination({ runState: "RUNNING", stopping: true }),
+      );
+    vi.mocked(stopBigQueryExport).mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+    const { client } = renderView();
+    // Aksel's dialog polyfill, which only jsdom gets, keeps focus for a dialog
+    // that was removed while open. The test checks that the notice asks for
+    // focus, and the e2e test checks the focus in a browser.
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+
     fireEvent.click(
-      await screen.findByRole("button", { name: "Oppdater tabellene nå" }),
+      await screen.findByRole("button", { name: "Stopp eksporten" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(
+      within(dialog).getByRole("checkbox", {
+        name: "Ja, stopp eksporten og slett Lumis tabeller",
+      }),
+    );
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Stopp eksporten" }),
+    );
+    // A poll lands while the stop request is still going on.
+    await act(() =>
+      client.invalidateQueries({ queryKey: ["bigquery-export", team] }),
     );
 
-    expect(
-      await screen.findByRole("heading", { name: "Eksporten stoppes" }),
-    ).toBeInTheDocument();
+    const heading = await screen.findByRole("heading", {
+      name: "Lumi stopper eksporten",
+    });
+    await waitFor(() => expect(focus.mock.contexts).toContain(heading));
+    focus.mockClear();
+    await act(async () =>
+      answer({ ok: true, value: { tablesRemoved: false, stopping: true } }),
+    );
+    await waitFor(() => expect(focus.mock.contexts).toContain(heading));
+    focus.mockRestore();
+  });
+
+  it("reads out a stop Lumi finished later when focus is somewhere else", async () => {
+    vi.mocked(getBigQueryExport)
+      .mockResolvedValueOnce(withDestination({ stopping: true }))
+      .mockResolvedValue(base);
+    const { client } = renderView();
+    await screen.findByRole("heading", { name: "Lumi stopper eksporten" });
+    const elsewhere = document.createElement("button");
+    document.body.append(elsewhere);
+    elsewhere.focus();
+
+    await act(() =>
+      client.invalidateQueries({ queryKey: ["bigquery-export", team] }),
+    );
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Eksporten er stoppet.",
+    );
+    expect(elsewhere).toHaveFocus();
+    elsewhere.remove();
+  });
+
+  it("says the export is stopped when someone else stopped it first", async () => {
+    vi.mocked(getBigQueryExport)
+      .mockResolvedValueOnce(active)
+      .mockResolvedValue(base);
+    vi.mocked(stopBigQueryExport).mockResolvedValue({
+      ok: false,
+      reason: "not-configured",
+    });
+    renderView();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Stopp eksporten" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(
+      within(dialog).getByRole("checkbox", {
+        name: "Ja, stopp eksporten og slett Lumis tabeller",
+      }),
+    );
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Stopp eksporten" }),
+    );
+
+    const notice = await screen.findByText("Eksporten er stoppet.");
+    await waitFor(() =>
+      expect(notice.closest("[tabindex='-1']")).toHaveFocus(),
+    );
   });
 });

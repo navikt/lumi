@@ -83,25 +83,7 @@ class BigQueryExportRepository(
                     (team, project_id, dataset_id, include_free_text, pseudonym_key,
                      created_by, created_at, updated_by, updated_at, run_requested_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT (team) DO UPDATE SET
-                    project_id = EXCLUDED.project_id,
-                    dataset_id = EXCLUDED.dataset_id,
-                    include_free_text = EXCLUDED.include_free_text,
-                    updated_by = EXCLUDED.updated_by,
-                    updated_at = EXCLUDED.updated_at,
-                    pseudonym_key = CASE WHEN $MOVED THEN EXCLUDED.pseudonym_key ELSE d.pseudonym_key END,
-                    last_run_started_at = CASE WHEN $MOVED THEN NULL ELSE d.last_run_started_at END,
-                    last_run_finished_at = CASE WHEN $MOVED THEN NULL ELSE d.last_run_finished_at END,
-                    last_run_status = CASE WHEN $MOVED THEN NULL ELSE d.last_run_status END,
-                    last_run_error_code = CASE WHEN $MOVED THEN NULL ELSE d.last_run_error_code END,
-                    consecutive_failures = CASE WHEN $MOVED THEN 0 ELSE d.consecutive_failures END,
-                    last_success_at = CASE WHEN $MOVED THEN NULL ELSE d.last_success_at END,
-                    last_success_rows = CASE WHEN $MOVED THEN NULL ELSE d.last_success_rows END,
-                    run_requested_at = CASE
-                        WHEN $MOVED OR d.include_free_text <> EXCLUDED.include_free_text
-                        THEN COALESCE(d.run_requested_at, EXCLUDED.run_requested_at)
-                        ELSE d.run_requested_at
-                    END
+                ON CONFLICT (team) DO UPDATE SET ${changesFrom("EXCLUDED")}
                 WHERE d.stop_requested_at IS NULL
             """.trimIndent(),
         ).use { statement ->
@@ -127,6 +109,48 @@ class BigQueryExportRepository(
         }
     }
 
+    /**
+     * Changes an existing destination the way [upsert] does, but never creates one. Returns null
+     * when the team has no destination, or is stopping it.
+     */
+    suspend fun update(
+        team: String,
+        projectId: String,
+        datasetId: String,
+        includeFreeText: Boolean,
+        actor: String,
+        now: Instant,
+    ): BigQueryExportDestination? = dbQuery {
+        val key = ByteArray(PSEUDONYM_KEY_BYTES).also(random::nextBytes)
+        val updated = currentJdbcConnection().prepareStatement(
+            """
+                UPDATE bigquery_export.destinations AS d SET ${changesFrom("n")}
+                FROM (
+                    SELECT ?::varchar AS project_id, ?::varchar AS dataset_id, ?::boolean AS include_free_text,
+                           ?::bytea AS pseudonym_key, ?::varchar AS updated_by, ?::timestamptz AS updated_at,
+                           ?::timestamptz AS run_requested_at
+                ) AS n
+                WHERE d.team = ? AND d.stop_requested_at IS NULL
+            """.trimIndent(),
+        ).use { statement ->
+            val timestamp = Timestamp.from(now)
+            statement.setString(1, projectId)
+            statement.setString(2, datasetId)
+            statement.setBoolean(3, includeFreeText)
+            statement.setBytes(4, key)
+            statement.setString(5, actor)
+            statement.setTimestamp(6, timestamp)
+            statement.setTimestamp(7, timestamp)
+            statement.setString(8, team)
+            statement.executeUpdate() == 1
+        }
+        if (!updated) return@dbQuery null
+        currentJdbcConnection().prepareStatement("$SELECT_DESTINATION WHERE team = ?").use { statement ->
+            statement.setString(1, team)
+            statement.executeQuery().use { result -> if (result.next()) result.toDestination() else null }
+        }
+    }
+
     /** Queues a run unless one is already queued. Returns false when the team has no destination. */
     suspend fun requestRun(team: String, now: Instant): Boolean = dbQuery {
         currentJdbcConnection().prepareStatement(
@@ -139,9 +163,11 @@ class BigQueryExportRepository(
         }
     }
 
-    suspend fun delete(team: String): Boolean = dbQuery {
+    /** Deletes the destination. With [onlyIfStopping], only when the team has stopped the export. */
+    suspend fun delete(team: String, onlyIfStopping: Boolean = false): Boolean = dbQuery {
         currentJdbcConnection().prepareStatement(
-            "DELETE FROM bigquery_export.destinations WHERE team = ?",
+            "DELETE FROM bigquery_export.destinations WHERE team = ?" +
+                if (onlyIfStopping) " AND stop_requested_at IS NOT NULL" else "",
         ).use { statement ->
             statement.setString(1, team)
             statement.executeUpdate() == 1
@@ -440,8 +466,33 @@ class BigQueryExportRepository(
         private val log = LoggerFactory.getLogger(BigQueryExportRepository::class.java)
         private val json = Json { ignoreUnknownKeys = true }
 
-        /** True in the upsert when the team points the export at another project or dataset. */
-        private const val MOVED = "(d.project_id <> EXCLUDED.project_id OR d.dataset_id <> EXCLUDED.dataset_id)"
+        /**
+         * The changes to an existing destination `d`, with the new values in [new]. Pointing the
+         * export at another project or dataset counts as a new destination.
+         */
+        private fun changesFrom(new: String): String {
+            val moved = "(d.project_id <> $new.project_id OR d.dataset_id <> $new.dataset_id)"
+            return """
+                project_id = $new.project_id,
+                dataset_id = $new.dataset_id,
+                include_free_text = $new.include_free_text,
+                updated_by = $new.updated_by,
+                updated_at = $new.updated_at,
+                pseudonym_key = CASE WHEN $moved THEN $new.pseudonym_key ELSE d.pseudonym_key END,
+                last_run_started_at = CASE WHEN $moved THEN NULL ELSE d.last_run_started_at END,
+                last_run_finished_at = CASE WHEN $moved THEN NULL ELSE d.last_run_finished_at END,
+                last_run_status = CASE WHEN $moved THEN NULL ELSE d.last_run_status END,
+                last_run_error_code = CASE WHEN $moved THEN NULL ELSE d.last_run_error_code END,
+                consecutive_failures = CASE WHEN $moved THEN 0 ELSE d.consecutive_failures END,
+                last_success_at = CASE WHEN $moved THEN NULL ELSE d.last_success_at END,
+                last_success_rows = CASE WHEN $moved THEN NULL ELSE d.last_success_rows END,
+                run_requested_at = CASE
+                    WHEN $moved OR d.include_free_text <> $new.include_free_text
+                    THEN COALESCE(d.run_requested_at, $new.run_requested_at)
+                    ELSE d.run_requested_at
+                END
+            """.trimIndent()
+        }
 
         private const val DESTINATION_COLUMNS =
             "team, project_id, dataset_id, include_free_text, pseudonym_key, created_at, updated_at, " +

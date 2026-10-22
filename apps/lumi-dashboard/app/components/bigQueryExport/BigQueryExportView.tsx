@@ -24,6 +24,7 @@ import {
   DEFAULT_DATASET_ID,
 } from "~/types/bigQueryExport";
 import { writeErrorText } from "~/utils/publicDemo";
+import styles from "./BigQueryExportView.module.css";
 import { DestinationForm } from "./DestinationForm";
 import { ExternalLink } from "./ExternalLink";
 import { BIGQUERY_GUIDE_URL, LUMI_SLACK_URL, RATE_LIMIT_TEXT } from "./format";
@@ -35,6 +36,8 @@ import { useFocusAfterLoading } from "./useFocusAfterLoading";
 
 const POLL_WHILE_BUSY_MS = 3_000;
 const POLL_WHILE_WAITING_MS = 15_000;
+const STOPPING_HEADING = "Lumi stopper eksporten";
+const STOPPED_LATER_TEXT = "Eksporten er stoppet.";
 
 /**
  * Polls while a run or a stop is busy. A queued run that waits for the
@@ -44,6 +47,8 @@ function pollInterval(
   status: BigQueryExportStatus | undefined,
   now: number = Date.now(),
 ): number | false {
+  // Nothing runs or finishes a stop while the export is off.
+  if (status?.availability === "DISABLED") return false;
   const destination = status?.destination;
   if (destination?.stopping || destination?.runState === "RUNNING")
     return POLL_WHILE_BUSY_MS;
@@ -64,9 +69,20 @@ type StopState =
 
 const NO_STOP: StopState = { phase: "none" };
 
+/** Focus is lost when the element that had it is gone. */
+function focusIsLost(): boolean {
+  const active = document.activeElement;
+  return !active || active === document.body;
+}
+
 export function BigQueryExportView({ team }: { team: string }) {
   const [stop, setStop] = useState<StopState>(NO_STOP);
+  // Read out when a notice appears while focus is somewhere else.
+  const [announcement, setAnnouncement] = useState("");
   const [started, setStarted] = useState(false);
+  // False while the page shows the status for the first time. A notice that
+  // appears later replaces something the user saw.
+  const [shown, setShown] = useState(false);
   // Only a retry the user starts shows a spinner, not the background polling.
   const [retrying, setRetrying] = useState(false);
   const query = useQuery({
@@ -78,15 +94,25 @@ export function BigQueryExportView({ team }: { team: string }) {
   });
   const loadRetryButton = useFocusAfterLoading(query.isFetching);
   const refreshRetryButton = useFocusAfterLoading(retrying);
-  const stoppingNow = query.data?.destination?.stopping === true;
+  const destinationState = !query.data?.destination
+    ? "none"
+    : query.data.destination.stopping
+      ? "stopping"
+      : "active";
   useEffect(() => {
-    if (stoppingNow)
+    if (query.data) setShown(true);
+  }, [query.data]);
+  // The status shows a stop also when it was not made on this page, and a new
+  // export that someone has set up ends what the page said about the old one.
+  useEffect(() => {
+    if (destinationState === "stopping")
       setStop((current) =>
         current.phase === "stopping"
           ? current
           : { phase: "stopping", byUser: false },
       );
-  }, [stoppingNow]);
+    else if (destinationState === "active") setStop(NO_STOP);
+  }, [destinationState]);
   if (query.isPending)
     return (
       <HStack gap="space-12" align="center">
@@ -120,9 +146,12 @@ export function BigQueryExportView({ team }: { team: string }) {
   const stoppedNotice =
     !status.destination &&
     (stop.phase === "stopped" ? (
-      <StoppedNotice tablesRemoved={stop.tablesRemoved} />
+      <StoppedNotice
+        tablesRemoved={stop.tablesRemoved}
+        announce={setAnnouncement}
+      />
     ) : stop.phase === "stopping" ? (
-      <StoppedNotice tablesRemoved={null} />
+      <StoppedNotice tablesRemoved={null} announce={setAnnouncement} />
     ) : null);
   const onStopped = (result: BigQueryExportStop) =>
     setStop(
@@ -134,6 +163,8 @@ export function BigQueryExportView({ team }: { team: string }) {
     <StoppingNotice
       datasetName={`${status.destination.projectId}.${status.destination.datasetId}`}
       focus={stop.phase === "stopping" && stop.byUser}
+      afterLoad={shown}
+      announce={setAnnouncement}
     />
   ) : null;
   const retry = async () => {
@@ -187,6 +218,7 @@ export function BigQueryExportView({ team }: { team: string }) {
           }}
           onStarted={() => {
             setStop(NO_STOP);
+            setAnnouncement("");
             setStarted(true);
           }}
         />
@@ -210,6 +242,9 @@ export function BigQueryExportView({ team }: { team: string }) {
 
   return (
     <div>
+      <span role="status" className={styles.srOnly}>
+        {announcement}
+      </span>
       {/* A failed background update keeps the page and says so. */}
       <div aria-live="polite">
         {query.isError && (
@@ -240,17 +275,27 @@ export function BigQueryExportView({ team }: { team: string }) {
   );
 }
 
-/** Null when Lumi finished the stop later and the page did not see the result. */
-function StoppedNotice({ tablesRemoved }: { tablesRemoved: boolean | null }) {
+/**
+ * Says how a stop ended. Null tablesRemoved: Lumi finished the stop later,
+ * and the page did not get the result.
+ */
+function StoppedNotice({
+  tablesRemoved,
+  announce,
+}: {
+  tablesRemoved: boolean | null;
+  announce: (text: string) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
-  const finishedLater = useRef(tablesRemoved === null);
-  // The stop dialog and the button that opened it, or the notice about the
-  // stop, are gone, so focus moves to the notice that says what happened. A
-  // stop Lumi finished later does not take focus from somewhere else.
+  const atMount = useRef({ tablesRemoved, announce });
+  // After the stop dialog, the dialog and the button that opened it are
+  // gone, so focus moves to the notice. A stop Lumi finished later takes
+  // focus only if it went with the notice about the stop, and is read out
+  // when focus is somewhere else.
   useEffect(() => {
-    const active = document.activeElement;
-    if (!finishedLater.current || !active || active === document.body)
-      ref.current?.focus();
+    const { tablesRemoved, announce } = atMount.current;
+    if (tablesRemoved !== null || focusIsLost()) ref.current?.focus();
+    else announce(STOPPED_LATER_TEXT);
   }, []);
   return (
     <Alert
@@ -260,7 +305,7 @@ function StoppedNotice({ tablesRemoved }: { tablesRemoved: boolean | null }) {
       size="small"
     >
       {tablesRemoved === null
-        ? "Eksporten er stoppet."
+        ? STOPPED_LATER_TEXT
         : tablesRemoved
           ? "Eksporten er stoppet, og Lumis tabeller er slettet."
           : "Eksporten er stoppet. Lumi fikk ikke slettet alle tabellene, men de forsvinner av seg selv innen sju dager."}
@@ -272,25 +317,36 @@ function StoppedNotice({ tablesRemoved }: { tablesRemoved: boolean | null }) {
 function StoppingNotice({
   datasetName,
   focus,
+  afterLoad,
+  announce,
 }: {
   datasetName: string;
+  /** The user has just stopped the export on this page. */
   focus: boolean;
+  /** The notice replaced what the page showed, for example after a poll. */
+  afterLoad: boolean;
+  announce: (text: string) => void;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const focusOnMount = useRef(focus);
-  // Right after a stop, the dialog and the button that opened it are gone.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const atMount = useRef({ afterLoad, announce });
+  // When the stop dialog closes, or the notice replaces the export the user
+  // was working with, the heading takes focus so it is not lost. The status
+  // can show the stop before the dialog has the answer, so the answer moves
+  // focus too. Focus somewhere else stays, and the notice is read out.
   useEffect(() => {
-    if (focusOnMount.current) ref.current?.focus();
-  }, []);
+    const { afterLoad, announce } = atMount.current;
+    if (focus || (afterLoad && focusIsLost())) headingRef.current?.focus();
+    else if (afterLoad) announce(`${STOPPING_HEADING}.`);
+  }, [focus]);
   return (
-    <Alert ref={ref} tabIndex={-1} variant="info">
-      <Heading level="2" size="small" spacing>
-        Eksporten stoppes
+    <Alert variant="info">
+      <Heading ref={headingRef} tabIndex={-1} level="2" size="small" spacing>
+        {STOPPING_HEADING}
       </Heading>
       <BodyLong>
-        Lumi oppdaterer ikke lenger tabellene i <code>{datasetName}</code> og
-        sletter dem så snart det går. Det tar som regel noen minutter. Du kan
-        lukke siden.
+        Lumi starter ingen nye kjøringer og sletter tabellene i{" "}
+        <code style={{ overflowWrap: "anywhere" }}>{datasetName}</code> så snart
+        det går. Det tar som regel noen minutter. Du kan lukke siden.
       </BodyLong>
     </Alert>
   );
@@ -372,8 +428,11 @@ function ActiveExport({
     onSuccess: (result) => {
       if (result.ok)
         queryClient.setQueryData(bigQueryExportQueryKey(team), result.value);
-      // Someone may have stopped the export. The status then shows the stop.
-      else if (result.reason === "unavailable")
+      // Someone may have stopped the export. The page then shows the stop.
+      else if (
+        result.reason === "unavailable" ||
+        result.reason === "not-configured"
+      )
         void queryClient.invalidateQueries({
           queryKey: bigQueryExportQueryKey(team),
         });
@@ -387,7 +446,7 @@ function ActiveExport({
     : run.data && !run.data.ok
       ? run.data.reason === "limit"
         ? RATE_LIMIT_TEXT
-        : "Lumi fikk ikke startet en ny kjøring. Last siden på nytt."
+        : "Lumi kan ikke starte en ny kjøring nå."
       : null;
 
   return (
@@ -517,8 +576,9 @@ function StopOnly({
   return (
     <VStack gap="space-8" align="start">
       <BodyShort>
-        Teamet har fortsatt en eksport til <code>{datasetName}</code>, men Lumi
-        oppdaterer den ikke lenger.
+        Teamet har fortsatt en eksport til{" "}
+        <code style={{ overflowWrap: "anywhere" }}>{datasetName}</code>, men
+        Lumi oppdaterer den ikke lenger.
       </BodyShort>
       <Button
         type="button"

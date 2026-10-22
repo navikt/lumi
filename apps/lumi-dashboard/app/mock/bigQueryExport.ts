@@ -202,7 +202,7 @@ export function mockBigQueryExportRequest(
 
   finishStop(team, now);
   if (destinations.get(team)?.stopping && method !== "DELETE")
-    return json({ message: "Eksporten stoppes" }, 409);
+    return json({ message: "Lumi stopper eksporten" }, 409);
 
   const input = (body ?? {}) as Record<string, unknown>;
   if (path === "/verify" && method === "POST") {

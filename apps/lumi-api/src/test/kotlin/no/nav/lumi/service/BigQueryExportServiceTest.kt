@@ -277,10 +277,13 @@ class BigQueryExportServiceTest : FunSpec({
 
         gateway.deleteOverride = BigQueryResult.Failure("503 Service Unavailable")
         export.save(team, "A123456", request(includeFreeText = false))
+        feedback("f-2", team, "syfomodiaperson", rating = 2)
         export.runDueExports() shouldBe 1
         gateway.tables.keys shouldContain "$project.lumi.fritekst"
         lastRunCode(export) shouldBe BigQueryExportProblemCode.FREE_TEXT_NOT_REMOVED
         BigQueryExportProblemCode.FREE_TEXT_NOT_REMOVED.isTeamActionable shouldBe false
+        // The other tables are written first, so deleted responses do not wait for fritekst.
+        lines(gateway, "innsendinger") shouldHaveSize 2
 
         // Lumi can see the table but not delete it, so the team must give the access back.
         gateway.deleteOverride = BigQueryResult.AccessDenied
@@ -292,6 +295,31 @@ class BigQueryExportServiceTest : FunSpec({
         clock.now = clock.now.plus(Duration.ofHours(2))
         export.runDueExports() shouldBe 1
         lastRunCode(export).shouldBeNull()
+        gateway.tables shouldNotContainKey "$project.lumi.fritekst"
+    }
+
+    test("a lookup that fails is not reported as free text left behind, and the checks come first") {
+        val gateway = readyGateway()
+        val clock = TestClock()
+        val export = service(gateway, clock = clock)
+        export.save(team, "A123456", request())
+
+        gateway.tableLookups["$project.lumi.fritekst"] = BigQueryResult.Failure("503 Service Unavailable")
+        export.runDueExports() shouldBe 1
+        lastRunCode(export) shouldBe BigQueryExportProblemCode.BIGQUERY_UNAVAILABLE
+
+        // A project that is no longer the team's is reported as such, before anything about fritekst.
+        val moved = service(gateway, projects = mapOf(team to "teamsykefravr-prod-9999"), clock = clock)
+        clock.now = clock.now.plus(Duration.ofHours(1))
+        moved.runDueExports() shouldBe 1
+        lastRunCode(export) shouldBe BigQueryExportProblemCode.PROJECT_NOT_TEAM_PROJECT
+
+        // Lumi still removes its own fritekst there.
+        gateway.tableLookups.clear()
+        gateway.tables["$project.lumi.fritekst"] = FakeBigQueryGateway.Table(labels = mapOf("lumi-eksport" to "v1", "lumi-team" to team))
+        clock.now = clock.now.plus(Duration.ofHours(2))
+        moved.runDueExports() shouldBe 1
+        lastRunCode(export) shouldBe BigQueryExportProblemCode.PROJECT_NOT_TEAM_PROJECT
         gateway.tables shouldNotContainKey "$project.lumi.fritekst"
     }
 
@@ -569,17 +597,60 @@ class BigQueryExportServiceTest : FunSpec({
         export.runDueExports() shouldBe 1
         val jobId = lateJob.shouldNotBeNull()
         repository.find(team).shouldNotBeNull().pendingJobIds shouldContainExactly listOf(jobId)
+        repository.addPendingJob(team, "lumi_truncate_svar_gammel") shouldBe true
+        gateway.jobStates["lumi_truncate_svar_gammel"] = BigQueryJobState.RUNNING
 
+        // Lumi asks BigQuery to cancel every job that still runs, not one per attempt.
         export.runDueExports() shouldBe 0
-        gateway.cancelled shouldContainExactly listOf(jobId)
+        gateway.cancelled shouldContainExactlyInAnyOrder listOf(jobId, "lumi_truncate_svar_gammel")
         gateway.tables.keys shouldContainExactlyInAnyOrder setOf("$project.lumi.svar", "$project.lumi.innsendinger")
         export.status(team).destination.shouldNotBeNull().stopping shouldBe true
 
         gateway.jobStates[jobId] = BigQueryJobState.DONE
+        gateway.jobStates["lumi_truncate_svar_gammel"] = BigQueryJobState.DONE
         clock.now = clock.now.plus(Duration.ofMinutes(5))
         export.runDueExports() shouldBe 0
         gateway.tables.keys.shouldBeEmpty()
         export.status(team).destination.shouldBeNull()
+    }
+
+    test("a stop during a run after a move removes what the run wrote to the old dataset") {
+        val gateway = readyGateway().apply { addDataset(project, "lumi_ny", mapOf("lumi-team" to team)) }
+        val export = service(gateway)
+        feedback("f-1", team, "syfomodiaperson", rating = 3)
+        export.save(team, "A123456", request())
+        gateway.beforeCreateTable = {
+            gateway.beforeCreateTable = null
+            export.save(team, "A123456", request(datasetId = "lumi_ny"))
+            export.stop(team) shouldBe BigQueryExportCommandResult.Done(BigQueryExportStopResponse(tablesRemoved = false, stopping = true))
+        }
+
+        export.runDueExports() shouldBe 1
+        export.runDueExports() shouldBe 0
+
+        gateway.tables.keys.filter { !it.contains("lumi_tilkoblingstest_") }.shouldBeEmpty()
+        export.status(team).destination.shouldBeNull()
+    }
+
+    test("a stop during another team's run finishes before the next team's run, in the same poll") {
+        val other = "team-esyfo"
+        val otherProject = "team-esyfo-prod-bbe6"
+        val gateway = readyGateway().apply { addDataset(otherProject, "lumi", mapOf("lumi-team" to other)) }
+        val export = service(gateway)
+        export.save(other, "A123456", BigQueryExportDestinationRequest(otherProject, "lumi", includeFreeText = false))
+        export.save(team, "A123456", request())
+        gateway.beforeCreateTable = { spec ->
+            if (spec.ref.projectId == otherProject) {
+                gateway.beforeCreateTable = null
+                export.stop(team) shouldBe BigQueryExportCommandResult.Done(BigQueryExportStopResponse(tablesRemoved = false, stopping = true))
+            }
+        }
+
+        export.runDueExports() shouldBe 2
+
+        export.status(team).destination.shouldBeNull()
+        gateway.tables.keys.filter { it.startsWith("$project.") }.shouldBeEmpty()
+        export.status(other).destination.shouldNotBeNull().lastRun.shouldNotBeNull().status shouldBe BigQueryExportRunStatus.SUCCEEDED
     }
 
     test("a stop finishes without the tables when Lumi has lost access, or after two days without an answer") {
@@ -606,10 +677,14 @@ class BigQueryExportServiceTest : FunSpec({
         export.runDueExports() shouldBe 0
         export.status(team).destination.shouldNotBeNull().stopping shouldBe true
 
+        gateway.cancelled.clear()
+        gateway.deleteOverride = BigQueryResult.Failure("503 Service Unavailable")
         clock.now = clock.now.plus(Duration.ofHours(1))
         export.runDueExports() shouldBe 0
         export.status(team).destination.shouldBeNull()
-        gateway.tables.keys.shouldBeEmpty()
+        gateway.cancelled shouldContainExactly listOf("lumi_export_svar_tapt")
+        // The tables expire on their own, since no run renews them.
+        gateway.tables.keys shouldContainExactlyInAnyOrder setOf("$project.lumi.svar", "$project.lumi.innsendinger")
     }
 
     test("an export that is being stopped cannot be changed or run, also when the stop comes during a save") {
@@ -638,6 +713,17 @@ class BigQueryExportServiceTest : FunSpec({
         }
         export.save(team, "A123456", request(datasetId = "lumi_ny")) shouldBe BigQueryExportCommandResult.Stopping
         repository.find(team).shouldNotBeNull().datasetId shouldBe "lumi"
+
+        // The stop finishes while the new dataset is checked, so the save must not set the export up again.
+        export.runDueExports() shouldBe 0
+        export.save(team, "A123456", request())
+        gateway.beforeCreateTable = {
+            gateway.beforeCreateTable = null
+            repository.markStopping(team, clock.now) shouldBe true
+            export.runDueExports() shouldBe 0
+        }
+        export.save(team, "A123456", request(datasetId = "lumi_ny")) shouldBe BigQueryExportCommandResult.NotConfigured
+        repository.find(team).shouldBeNull()
     }
 
     test("moving the export or stopping and setting it up again does not skip the time between runs") {

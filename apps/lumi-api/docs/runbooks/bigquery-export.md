@@ -18,7 +18,9 @@ creates the dataset, labels it `lumi-team=<team>` and grants Lumi's service acco
   `*` for every team. When it is unset, no team can. Production leaves it unset until a
   team's PVK covers free text in BigQuery. A team that loses access keeps its export, but
   the next run deletes its `fritekst` table. If BigQuery does not delete it, the run
-  fails with `FREE_TEXT_NOT_REMOVED` and is retried with the usual backoff.
+  still writes the other tables, then fails with `FREE_TEXT_NOT_REMOVED` and is retried
+  with the usual backoff. A failed table lookup gives `BIGQUERY_UNAVAILABLE` instead, and
+  a problem the checks before the run find is reported first.
 - Load jobs run in Lumi's team project (`GCP_TEAM_PROJECT_ID`, falling back to
   `GOOGLE_CLOUD_PROJECT`; Nais sets both). The manifests grant `roles/bigquery.jobUser`
   there through `gcp.permissions`. No dataset roles are granted by the manifest.
@@ -79,18 +81,21 @@ answers 409. Lumi then finishes the stop while it holds the export lock, so no r
 writing:
 
 1. It asks BigQuery about every job in `pending_job_ids`. A job that is done, or that
-   BigQuery never created, is forgotten. A job that still runs is cancelled, and the stop
-   waits for it.
+   BigQuery never created, is forgotten. Every job that still runs is cancelled, and the
+   stop waits for them.
 2. It deletes the tables it wrote for the team.
 3. It deletes the row with the settings. The latest start in `team_runs` stays.
 
-When a run holds the lock, the dashboard shows **Eksporten stoppes**, and the scheduler
-finishes the stop on its first poll after the run. An attempt that cannot finish, for
-example because BigQuery does not answer, is tried again five minutes later
-(`stop_attempted_at`). If Lumi has lost access to the dataset, the stop finishes without
-deleting the tables, which then expire within seven days of the latest run. After 48
-hours a stop finishes even if BigQuery never answers. By then every job Lumi started has
-ended, since BigQuery ends a job within a day, queue and retries included.
+The stop request does this itself if it gets the lock, and waits at most 15 seconds for
+BigQuery. Otherwise the dashboard shows **Lumi stopper eksporten**, and the scheduler
+finishes the stop on its next poll, or before the next team's run when a batch is going
+on. An attempt that cannot finish, for example because BigQuery does not answer, is tried
+again five minutes later (`stop_attempted_at`). If Lumi has lost access to the dataset,
+the stop finishes without deleting the tables, which then expire seven days after Lumi
+last wrote them. After 48 hours a stop finishes even if BigQuery never answers, and Lumi
+still asks BigQuery to cancel the jobs. By then every job Lumi started has ended, since
+BigQuery ends a job within a day, queue and retries included. Such a stop is logged as a
+warning, with the jobs and tables it left.
 
 A stopping export is left out of the per-team metrics, so it never raises the alerts.
 Stops that have not finished yet:
@@ -122,7 +127,7 @@ team acts.
 | `DATASET_TIME_TRAVEL_TOO_LONG` | The dataset keeps deleted rows for more than 48 hours | Team |
 | `TEAM_PROJECT_UNKNOWN` | Nais API did not answer, so the project could not be checked | Lumi |
 | `EXPORT_JOB_DENIED` | Lumi may not run jobs in its own project | Lumi |
-| `FREE_TEXT_NOT_REMOVED` | Free text is off or closed for the team, but BigQuery did not delete the `fritekst` table. The team can delete it too | Lumi |
+| `FREE_TEXT_NOT_REMOVED` | Free text is off or closed for the team, but BigQuery did not delete the `fritekst` table. The other tables were written. The team can delete it too | Lumi |
 | `BIGQUERY_UNAVAILABLE` | BigQuery or the metadata server did not answer | Lumi |
 | `LOAD_FAILED` | A load job, a `TRUNCATE` job or a metadata update failed | Lumi |
 | `INTERNAL_ERROR` | An unexpected exception, a run over 30 minutes or an interrupted run | Lumi |
@@ -187,7 +192,10 @@ when the lock is released.
 To turn the export off for good, set `LUMI_BIGQUERY_EXPORT_ENABLED` to `false` in the
 manifest and deploy. The tables in the teams' projects then expire within seven days.
 **Stopp eksporten** cannot delete tables while the flag is off, so ask the teams to stop
-the export first if the tables must go sooner.
+the export first if the tables must go sooner. Nothing finishes a stop while the flag is
+off either, so wait until the query in [Stopping an export](#stopping-an-export) returns
+no rows. A stop that is left can be ended by deleting its row; its tables expire on their
+own.
 
 To find every table Lumi has written in a team's project, run in that project:
 

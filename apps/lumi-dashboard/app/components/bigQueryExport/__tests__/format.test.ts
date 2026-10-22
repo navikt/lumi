@@ -137,7 +137,10 @@ describe("BigQuery export formatting", () => {
     const text = problemText({ code: "FREE_TEXT_NOT_REMOVED" }, context);
     expect(text.title).toBe("Lumi fikk ikke slettet tabellen fritekst");
     expect(text.hint).toContain("tabellen ligger fortsatt i datasettet");
-    expect(text.hint).toContain("Teamet kan også slette tabellen selv.");
+    expect(text.hint).toContain("De andre tabellene er oppdatert.");
+    expect(text.hint).toContain(
+      "slett tabellen i BigQuery og velg Oppdater tabellene nå",
+    );
   });
 
   it("offers the SQL for the problems it fixes", () => {

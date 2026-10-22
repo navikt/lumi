@@ -31,6 +31,9 @@ class FakeBigQueryGateway(
     /** Jobs BigQuery knows about. Tests can leave one running to act as a job Lumi gave up on. */
     val jobStates = mutableMapOf<String, BigQueryJobState>()
     var createTableOverride: BigQueryResult<Unit>? = null
+
+    /** Answers to table lookups, keyed by `project.dataset.table`, before the tables themselves. */
+    val tableLookups = mutableMapOf<String, BigQueryResult<BigQueryTableInfo>>()
     var deleteOverride: BigQueryResult<Unit>? = null
     val cancelled = mutableListOf<String>()
     var loadOverride: BigQueryResult<Long>? = null
@@ -80,7 +83,9 @@ class FakeBigQueryGateway(
     }
 
     override suspend fun getTable(ref: BigQueryTableRef): BigQueryResult<BigQueryTableInfo> =
-        tables[ref.toString()]?.let { BigQueryResult.Success(BigQueryTableInfo(it.labels)) } ?: BigQueryResult.NotFound
+        tableLookups[ref.toString()]
+            ?: tables[ref.toString()]?.let { BigQueryResult.Success(BigQueryTableInfo(it.labels)) }
+            ?: BigQueryResult.NotFound
 
     override suspend fun createTable(spec: BigQueryTableSpec, expiresAt: Instant): BigQueryResult<Unit> {
         beforeCreateTable?.invoke(spec)

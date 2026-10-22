@@ -29,7 +29,7 @@ private val bigQueryExportRequestJson = Json { ignoreUnknownKeys = false }
 private const val MAX_BIGQUERY_EXPORT_REQUEST_BYTES = 4096L
 internal const val BIGQUERY_EXPORT_UNAVAILABLE_MESSAGE = "BigQuery-eksport er ikke tilgjengelig for teamet i dette miljøet"
 internal const val BIGQUERY_EXPORT_NOT_CONFIGURED_MESSAGE = "Teamet har ikke satt opp BigQuery-eksport"
-internal const val BIGQUERY_EXPORT_STOPPING_MESSAGE = "Eksporten stoppes. Vent til den er stoppet, og prøv igjen."
+internal const val BIGQUERY_EXPORT_STOPPING_MESSAGE = "Lumi stopper eksporten. Vent til den er stoppet, og prøv igjen."
 
 /**
  * Dashboard routes for setting up and following the team's BigQuery export (ADR 0007).

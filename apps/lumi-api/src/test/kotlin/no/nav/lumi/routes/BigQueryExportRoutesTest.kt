@@ -178,7 +178,7 @@ class BigQueryExportRoutesTest : FunSpec({
                 .bodyAsText() shouldContain "\"stopping\":true"
             put().let { refused ->
                 refused.status shouldBe HttpStatusCode.Conflict
-                refused.bodyAsText() shouldContain "Eksporten stoppes"
+                refused.bodyAsText() shouldContain "Lumi stopper eksporten"
             }
             client.post("$path/run?team=team-test") { header(HttpHeaders.Authorization, "Bearer token") }.status shouldBe
                 HttpStatusCode.Conflict

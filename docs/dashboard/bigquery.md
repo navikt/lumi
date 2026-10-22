@@ -81,7 +81,7 @@ Lumi kjører høyst én gang per fem minutter for hvert team, også når dere by
 
 Tabellene oppdateres én om gangen, den mest følsomme først: `fritekst`, `innsendinger` og `svar`. Feiler en kjøring underveis, kan tabellene komme fra ulike kjøringer. Kolonnen `oppdatert_tidspunkt` viser når Lumi skrev tabellen. Sjekk den før dere bruker tallene, se [Sjekk at tabellene er oppdatert](#ferskhet).
 
-Er det ingen svar til en tabell, tømmer Lumi den. Tabellen og tilgangene på den blir stående. Lumi sletter ikke `svar` og `innsendinger` ved vanlige kjøringer. `fritekst` slettes når fritekst er slått av eller ikke er åpnet for teamet. Får ikke Lumi slettet `fritekst`, feiler kjøringen, og Lumi prøver igjen.
+Er det ingen svar til en tabell, tømmer Lumi den. Tabellen og tilgangene på den blir stående. Lumi sletter ikke `svar` og `innsendinger` ved vanlige kjøringer. `fritekst` slettes når fritekst er slått av eller ikke er åpnet for teamet. Får ikke Lumi slettet `fritekst`, oppdateres de andre tabellene likevel, men kjøringen feiler, og Lumi prøver igjen.
 
 Velg **Åpne datasettet i BigQuery** for å se tabellene i Google Cloud-konsollen.
 
@@ -270,7 +270,7 @@ Under **Innstillinger** kan dere bytte prosjekt eller datasett og slå fritekst 
 
 **Stopp eksporten** sletter Lumis tabeller og innstillingene. Datasettet og viewene i det blir stående. Tilgangene til Lumis tabeller forsvinner, og views, dataprodukter, Metabase-spørsmål og datafortellinger som bruker tabellene, slutter å virke. Setter dere opp eksporten igjen senere, får `innsending_id` nye verdier.
 
-Stopper dere mens Lumi oppdaterer tabellene, venter Lumi til kjøringen er ferdig, og sletter tabellene etterpå. Siden viser **Eksporten stoppes** til det er gjort, som regel etter noen minutter. Så lenge kan dere ikke endre eller starte eksporten. Har ikke Lumi tilgang til datasettet lenger, eller får ikke slettet tabellene på to døgn, forsvinner tabellene av seg selv innen sju dager etter siste kjøring.
+Kan ikke Lumi slette tabellene med en gang, for eksempel fordi en kjøring pågår, viser siden **Lumi stopper eksporten** til Lumi er ferdig. Det tar som regel noen minutter. Til da kan dere ikke endre eksporten eller sette den opp igjen. Har Lumi mistet tilgangen til datasettet eller ikke fått slettet tabellene etter to døgn, gir Lumi opp. Tabellene forsvinner da av seg selv sju dager etter at Lumi sist skrev dem.
 
 ## Når noe feiler {#feil}
 
@@ -292,7 +292,7 @@ Feil ved oppsettet står under **Dette må ordnes først**, og feil i en kjørin
 | **BigQuery svarte ikke** | Prøv igjen om litt. |
 | **Lumi fikk ikke kjøre eksporten** | Feilen er hos Lumi. Skjer den i en kjøring, får team eSyfo varsel. Skjer den ved oppsettet, skriv i #lumi. |
 | **Lumi fikk ikke skrevet tabellene** | Dere trenger ikke gjøre noe. Feilen er hos Lumi, og team eSyfo får varsel. |
-| **Lumi fikk ikke slettet tabellen fritekst** | Lumi prøver igjen, og team eSyfo får varsel. Vil dere ha tabellen bort med en gang, kan dere slette den selv i BigQuery. |
+| **Lumi fikk ikke slettet tabellen fritekst** | De andre tabellene er oppdatert. Lumi prøver igjen, og team eSyfo får varsel. Vil dere ikke vente, slett tabellen i BigQuery og velg **Oppdater tabellene nå**. |
 | **Noe gikk galt i Lumi** | Dere trenger ikke gjøre noe. Feilen er hos Lumi, og team eSyfo får varsel. |
 
 Står eksporten fast, skriv i [#lumi på Slack](https://nav-it.slack.com/archives/C0AG2FKSSMD).

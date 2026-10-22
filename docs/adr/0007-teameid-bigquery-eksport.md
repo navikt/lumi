@@ -163,7 +163,8 @@ Lumi skrev tabellen, og guiden ber konsumentene sjekke den. Er det ingen rader
 til en tabell, tømmer Lumi den på stedet med `TRUNCATE TABLE`. Tabellen og
 tilgangene på den blir stående. Lumi sletter ikke `svar` og `innsendinger` ved
 vanlige kjøringer, bare `fritekst` når fritekst er av eller ikke åpnet for
-teamet. Får ikke Lumi slettet `fritekst`, feiler kjøringen.
+teamet. Får ikke Lumi slettet `fritekst`, feiler kjøringen etter at de andre
+tabellene er oppdatert.
 
 En jobb i BigQuery kan fullføre etter at Lumi har gitt den opp, for eksempel
 når svaret fra BigQuery forsvinner. Lumi lagrer derfor ID-en til hver jobb som
@@ -173,12 +174,12 @@ er ferdige, så en gammel jobb ikke kan overskrive nyere data eller hente tilbak
 slettede svar.
 
 Når teamet stopper eksporten, starter ingen nye kjøringer, og innstillingene kan
-ikke endres. Lumi sletter tabellene og innstillingene mens Lumi holder låsen, og
+ikke endres. Lumi sletter tabellene og innstillingene under låsen i Postgres, og
 først når de lagrede jobbene er ferdige. Pågår en kjøring, gjør Lumi det når
 kjøringen er ferdig. Slik kan verken en kjøring eller en sen jobb skrive
-tabellene tilbake etter at teamet har stoppet. Har ikke Lumi lenger tilgang til
-datasettet, eller svarer ikke BigQuery på to døgn, gir Lumi opp å slette
-tabellene. De forsvinner da av seg selv innen sju dager.
+tabellene tilbake etter at teamet har stoppet. Har Lumi mistet tilgangen til
+datasettet eller ikke fått slettet tabellene etter to døgn, gir Lumi opp.
+Tabellene forsvinner da av seg selv sju dager etter at Lumi sist skrev dem.
 
 Hver gang Lumi skriver en tabell, settes utløpstiden sju dager fram. Stopper
 eksporten av en eller annen grunn, forsvinner kopiene av seg selv.

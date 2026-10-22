@@ -43,8 +43,7 @@ import { SetupSql, type SqlTarget } from "./SetupSql";
 import { useFocusAfterLoading } from "./useFocusAfterLoading";
 
 const FAILURE_TEXTS: Record<BigQueryExportFailureReason, string> = {
-  unavailable:
-    "BigQuery-eksport er ikke tilgjengelig for teamet. Last siden på nytt.",
+  unavailable: "BigQuery-eksport er ikke tilgjengelig for teamet nå.",
   "not-configured": "Teamet har ikke satt opp BigQuery-eksport.",
   "invalid-input": "Sjekk at prosjekt og datasett er skrevet riktig.",
   limit: RATE_LIMIT_TEXT,
@@ -136,10 +135,22 @@ export function DestinationForm({
     location: status.location,
   };
 
+  // The export may have been stopped or closed for the team since the page
+  // got the status. The page then shows what applies now.
+  const refreshIfGone = (result: BigQueryExportResult<unknown>) => {
+    if (
+      !result.ok &&
+      (result.reason === "unavailable" || result.reason === "not-configured")
+    )
+      void queryClient.invalidateQueries({
+        queryKey: bigQueryExportQueryKey(team),
+      });
+  };
   const verify = useMutation({
     mutationFn: (checked: { projectId: string; datasetId: string }) =>
       verifyBigQueryExport({ data: { team, ...checked } }),
     retry: false,
+    onSuccess: refreshIfGone,
   });
   const save = useMutation({
     mutationFn: (saved: DestinationValues) =>
@@ -147,11 +158,7 @@ export function DestinationForm({
     retry: false,
     onSuccess: (result) => {
       if (!result.ok) {
-        // Someone may have stopped the export. The status then shows the stop.
-        if (result.reason === "unavailable")
-          void queryClient.invalidateQueries({
-            queryKey: bigQueryExportQueryKey(team),
-          });
+        refreshIfGone(result);
         return;
       }
       if (mode === "setup") onStarted?.();

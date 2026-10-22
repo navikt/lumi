@@ -11,7 +11,10 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { stopBigQueryExport } from "~/server/actions/bigQueryExport";
-import type { BigQueryExportStop } from "~/types/bigQueryExport";
+import type {
+  BigQueryExportStatus,
+  BigQueryExportStop,
+} from "~/types/bigQueryExport";
 import { writeErrorText } from "~/utils/publicDemo";
 import { bigQueryExportQueryKey } from "./queryKey";
 import { useFocusAfterLoading } from "./useFocusAfterLoading";
@@ -34,13 +37,32 @@ export function StopExportDialog({
   const stop = useMutation({
     mutationFn: () => stopBigQueryExport({ data: { team } }),
     retry: false,
-    onSuccess: async (result) => {
-      if (!result.ok) return;
-      await queryClient.invalidateQueries({
+    onSuccess: (result) => {
+      // Not configured: someone else has stopped the export already.
+      const stopped: BigQueryExportStop | null = result.ok
+        ? result.value
+        : result.reason === "not-configured"
+          ? { tablesRemoved: false, stopping: true }
+          : null;
+      if (!stopped) return;
+      setConfirmed(false);
+      onStopped(stopped);
+      // The page shows the stop at once, also when the status cannot be
+      // fetched again right now.
+      queryClient.setQueryData<BigQueryExportStatus>(
+        bigQueryExportQueryKey(team),
+        (current) =>
+          current && {
+            ...current,
+            destination:
+              stopped.stopping && result.ok && current.destination
+                ? { ...current.destination, stopping: true }
+                : null,
+          },
+      );
+      void queryClient.invalidateQueries({
         queryKey: bigQueryExportQueryKey(team),
       });
-      setConfirmed(false);
-      onStopped(result.value);
     },
   });
   const stopButton = useFocusAfterLoading(stop.isPending);
@@ -51,10 +73,8 @@ export function StopExportDialog({
     onClose();
   };
   const failure =
-    stop.data && !stop.data.ok
-      ? stop.data.reason === "not-configured"
-        ? "Eksporten er allerede stoppet."
-        : "Lumi fikk ikke stoppet eksporten. Prøv igjen."
+    stop.data && !stop.data.ok && stop.data.reason !== "not-configured"
+      ? "Lumi fikk ikke stoppet eksporten. Prøv igjen."
       : null;
 
   return (
@@ -72,8 +92,9 @@ export function StopExportDialog({
         <VStack gap="space-16">
           <BodyLong>
             Lumi slutter å oppdatere tabellene og sletter svar, innsendinger og
-            fritekst fra <code>{datasetName}</code>. Datasettet og kopier teamet
-            har laget, blir stående.
+            fritekst fra{" "}
+            <code style={{ overflowWrap: "anywhere" }}>{datasetName}</code>.
+            Datasettet og kopier teamet har laget, blir stående.
           </BodyLong>
           <BodyLong>
             Views, dataprodukter, Metabase-spørsmål og datafortellinger som

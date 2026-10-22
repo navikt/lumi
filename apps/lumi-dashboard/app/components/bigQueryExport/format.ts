@@ -242,7 +242,7 @@ export function problemText(
     case "FREE_TEXT_NOT_REMOVED":
       return {
         title: "Lumi fikk ikke slettet tabellen fritekst",
-        hint: "Fritekst er ikke lenger med i eksporten, men tabellen ligger fortsatt i datasettet. Lumi prøver igjen automatisk, og team eSyfo får varsel om feilen. Teamet kan også slette tabellen selv.",
+        hint: "Fritekst er ikke lenger med i eksporten, men tabellen ligger fortsatt i datasettet. De andre tabellene er oppdatert. Lumi prøver igjen automatisk, og team eSyfo får varsel. Vil du ikke vente, slett tabellen i BigQuery og velg Oppdater tabellene nå.",
       };
     case "BIGQUERY_UNAVAILABLE":
       return {
