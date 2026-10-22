@@ -27,6 +27,11 @@ export interface Slide {
    * For slides that only make sense live, like an opening hook.
    */
   roomOnly?: boolean;
+  /**
+   * Cut straight in from the slide before, without a transition. For a
+   * slide that continues the one before, like the same map with one change.
+   */
+  cut?: boolean;
   Component: (props: SlideProps) => ReactNode;
 }
 

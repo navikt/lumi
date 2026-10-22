@@ -218,19 +218,40 @@ interface AnswerProps extends Revealable {
   r?: number;
   /** Moves the disc with a transition, for an answer on its way. */
   style?: CSSProperties;
+  /**
+   * Lights up when it appears: the disc grows in, the glow flares and
+   * settles, and a thin ring runs out. For an answer that lights where it
+   * is, not one on its way.
+   */
+  flash?: boolean;
 }
 
 /** The answer: the only warm colour in the deck. */
-export function Answer({ x, y, r = 40, from, className, style }: AnswerProps) {
-  return (
+export function Answer({
+  x,
+  y,
+  r = 40,
+  from,
+  className,
+  style,
+  flash = false,
+}: AnswerProps) {
+  const disc = (
     <circle
       cx={x}
       cy={y}
       r={r}
       className={cx("map-answer", className)}
       style={style}
-      {...reveal(from)}
+      {...(flash ? {} : reveal(from))}
     />
+  );
+  if (!flash) return disc;
+  return (
+    <g className="map-answer-flash" {...reveal(from)}>
+      <circle cx={x} cy={y} r={r} className="map-answer__ring" />
+      {disc}
+    </g>
   );
 }
 

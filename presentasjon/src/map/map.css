@@ -98,6 +98,70 @@
     visibility var(--deck-duration-reveal);
 }
 
+/*
+ * An answer that lights up (`<Answer flash>`): it appears at once, and the
+ * animation is its entrance. Without motion it is simply there.
+ */
+.map .map-answer-flash[data-from] {
+  transition: none;
+}
+
+.map-answer-flash .map-answer,
+.map-answer__ring {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.map-answer__ring {
+  fill: none;
+  stroke: var(--map-answer);
+  stroke-width: 4px;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .map-answer-flash[data-revealed] .map-answer {
+    animation: answer-flash 900ms var(--deck-easing-travel) backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .map-answer-flash[data-revealed]
+    .map-answer__ring {
+    animation: answer-ring 500ms ease-out 120ms backwards;
+  }
+}
+
+@keyframes answer-flash {
+  0% {
+    transform: scale(0);
+    filter: drop-shadow(0 0 0 rgb(242 194 79 / 0%))
+      drop-shadow(0 0 0 rgb(242 194 79 / 0%));
+  }
+
+  20% {
+    transform: scale(1.08);
+    filter: drop-shadow(0 0 40px rgb(242 194 79 / 95%))
+      drop-shadow(0 0 140px rgb(242 194 79 / 55%));
+  }
+
+  100% {
+    transform: scale(1);
+    filter: var(--map-answer-glow);
+  }
+}
+
+@keyframes answer-ring {
+  0% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
 .map-zone__area {
   stroke: var(--map-zone-edge);
   stroke-width: var(--map-zone-border);

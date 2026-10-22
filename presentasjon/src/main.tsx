@@ -27,12 +27,15 @@ const trial = new URLSearchParams(search).has("prov");
 const view = readViewMode(search);
 const room = readRoom(search);
 document.documentElement.dataset.deckView = trial ? "trial" : view;
-// The night map on the stage. Paper for the PDF, the phone page and `?stil=papir`.
-const paper =
-  trial ||
-  view === "print" ||
-  new URLSearchParams(search).get("stil") === "papir";
-document.documentElement.dataset.stil = paper ? "papir" : "natt";
+// The night map on the stage, or paper with `?stil=papir` for a bright
+// room. Always paper for the PDF and the phone page.
+const STILER = ["natt", "papir"] as const;
+const wanted = new URLSearchParams(search).get("stil");
+const stil =
+  trial || view === "print"
+    ? "papir"
+    : (STILER.find((name) => name === wanted) ?? "natt");
+document.documentElement.dataset.stil = stil;
 if (room) document.documentElement.dataset.deckRoom = room;
 
 createRoot(root).render(

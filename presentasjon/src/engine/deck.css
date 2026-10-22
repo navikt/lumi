@@ -104,19 +104,39 @@ html[data-deck-view="print"] body {
 }
 
 /*
- * On the night map a slide change is a short camera move: the old slide
- * slips past, the new one settles into place. Short, so a slow stream
- * still lands on a still frame.
+ * On the night map a slide change is a dip: the old slide leaves in 110 ms,
+ * drifting the way the deck goes, and the new one comes in after it. Two
+ * titles are never on screen at once, and a slow stream lands on a still
+ * frame.
  */
-:root[data-stil="natt"] .deck-slide {
-  transition:
-    opacity 520ms var(--deck-easing),
-    transform 640ms var(--deck-easing),
-    visibility 520ms;
-}
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .deck-slide {
+    transition:
+      opacity 280ms var(--deck-easing) 110ms,
+      transform 280ms var(--deck-easing) 110ms,
+      visibility 0s 110ms;
+  }
 
-:root[data-stil="natt"] .deck-slide[data-hidden] {
-  transform: scale(1.04);
+  :root:not([data-stil="papir"]) .deck-slide[data-hidden] {
+    transition:
+      opacity 110ms ease-in,
+      transform 110ms ease-in,
+      visibility 0s 110ms;
+  }
+
+  :root:not([data-stil="papir"]) .deck-slide[data-hidden][data-side="before"] {
+    transform: translateX(-40px);
+  }
+
+  :root:not([data-stil="papir"]) .deck-slide[data-hidden][data-side="after"] {
+    transform: translateX(40px);
+  }
+
+  /* A slide that continues the one before cuts straight in. */
+  :root:not([data-stil="papir"]) .deck-slide[data-cut],
+  :root:not([data-stil="papir"]) .deck-slide[data-cut][data-hidden] {
+    transition: none;
+  }
 }
 
 /* Build steps: <Reveal at={n}> and data-from="n" */

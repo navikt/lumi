@@ -18,6 +18,7 @@ const SINGLE_KEYS: readonly Shortcut[] = [
   { keys: ["G", "O"], action: "Oversikt" },
   { keys: ["F"], action: "Fullskjerm" },
   { keys: ["B", "."], action: "Svart skjerm av og på" },
+  { keys: ["L"], action: "Lyst kart for et lyst rom, av og på" },
   { keys: ["P"], action: "Presentatørvisning i nytt vindu" },
   { keys: ["?"], action: "Hurtigtaster" },
 ];

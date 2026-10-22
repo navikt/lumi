@@ -71,7 +71,12 @@
   --deck-font-body: "Overpass", system-ui, sans-serif;
   --deck-font-mono: "Overpass Mono", ui-monospace, Menlo, monospace;
 
-  /* Type */
+  /* Type. A monument is one word or number, a hero up to three words, a
+     statement title one short claim. Weight carries meaning: thin for
+     what was, black for what is. */
+  --deck-size-monument: 360px;
+  --deck-size-hero: 220px;
+  --deck-size-statement: 120px;
   --deck-size-display: 168px;
   --deck-size-title: 96px;
   --deck-size-lead: 52px;
@@ -84,6 +89,9 @@
   --deck-line-height-tight: 1.04;
   --deck-weight-display: 800;
   --deck-weight-strong: 700;
+  --deck-weight-thin: 200;
+  --deck-weight-black: 900;
+  --deck-tracking-monument: -0.04em;
   --deck-tracking-display: -0.01em;
   --deck-tracking-kicker: 0;
 
@@ -98,6 +106,9 @@
   --deck-duration-slide: 250ms;
   --deck-duration-travel: 700ms;
   --deck-easing: cubic-bezier(0.2, 0.7, 0.2, 1);
+  /* For things that travel or draw: slow start and end, so every frame of
+     a slow stream shows where the thing is. */
+  --deck-easing-travel: cubic-bezier(0.45, 0, 0.15, 1);
   --deck-reveal-offset: 0px;
 
   /* The edge of a zone, and the glow of the answer (none on paper). */
@@ -109,13 +120,14 @@
 /*
  * The night map, the default on the stage. The map is dark and exact, and
  * the answer is the only thing that glows. The app areas, the widget and
- * the screenshots stay light, as lit windows in the dark. `?stil=papir`
- * and the PDF use the paper map above.
+ * the screenshots stay light, as lit windows in the dark. The PDF and the
+ * phone page use the paper map above, and so does the stage with
+ * `?stil=papir`, for a bright room with a weak projector.
  */
 :root[data-stil="natt"] {
   --deck-bg: #0b1b29;
   --deck-fg: #eaf0f5;
-  --deck-muted: #a3b3c2;
+  --deck-muted: #b8c6d2;
   --deck-surface: #0b1b29;
   --deck-border: #dce6ee;
   --deck-letterbox: #050c13;
@@ -125,15 +137,19 @@
   --map-paper: #0b1b29;
   --map-zone-nais: #12384f;
   --map-zone-neutral: #142331;
-  --map-zone-edge: #2d4d64;
-  --map-dim: #6c8093;
+  --map-zone-edge: #4f7690;
+  --map-dim: #8ea2b4;
   --map-answer-edge: #b8862a;
   --map-answer-glow: drop-shadow(0 0 22px rgb(242 194 79 / 55%))
     drop-shadow(0 0 70px rgb(242 194 79 / 22%));
 
+  /* The app windows are lit, but dimmer than the answer. */
+  --deck-embed-bg: #d3dce4;
+  --deck-embed-bar: #b4c1cc;
+
   --deck-code-bg: #0f2335;
   --deck-code-fg: #eaf0f5;
-  --deck-code-punctuation: #8ea2b4;
+  --deck-code-punctuation: #a3b3c2;
   --deck-code-key: #eaf0f5;
   --deck-code-string: #9fd0ff;
   --deck-code-number: #eaf0f5;

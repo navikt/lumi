@@ -14,6 +14,8 @@ export interface DeckKeyboardActions {
   exitBlack: () => void;
   openHelp: () => void;
   openPresenter?: () => void;
+  /** Switches between the night map and the paper map. */
+  toggleLight?: () => void;
   /** Moves focus out of slide content, so the arrow keys drive the deck again. */
   releaseFocus: () => void;
 }
@@ -111,6 +113,10 @@ export function useDeckKeyboard(
         case "p":
           if (!act.openPresenter) return false;
           act.openPresenter();
+          return true;
+        case "l":
+          if (!act.toggleLight) return false;
+          act.toggleLight();
           return true;
       }
       return false;

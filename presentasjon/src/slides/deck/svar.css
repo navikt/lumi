@@ -89,7 +89,7 @@
  * On the night map the answer lifts off from the widget and lands by its
  * station when it is kept: from the Send button, in an arc.
  */
-:root[data-stil="natt"] .svar__kept[data-revealed] svg {
+:root:not([data-stil="papir"]) .svar__kept[data-revealed] svg {
   animation: svar-lift 1100ms var(--deck-easing) both;
 }
 
@@ -124,7 +124,7 @@
 @media (prefers-reduced-motion: reduce) {
   .vei__leaving,
   .vei__masked,
-  :root[data-stil="natt"] .svar__kept[data-revealed] svg {
+  :root:not([data-stil="papir"]) .svar__kept[data-revealed] svg {
     animation: none;
   }
 }

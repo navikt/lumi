@@ -35,6 +35,15 @@ export function Deck({ slides }: DeckProps) {
     stageRef.current?.focus({ preventScroll: true });
   }, []);
 
+  // A bright room washes out the night map. L switches to the paper map
+  // and back, without a reload.
+  const toggleLight = useCallback(() => {
+    const root = document.documentElement;
+    const light = root.dataset.stil !== "papir";
+    root.dataset.stil = light ? "papir" : "natt";
+    setAnnouncement(light ? "Lyst kart" : "Nattkart");
+  }, []);
+
   const openPresenter = useCallback(() => {
     const popup = window.open(
       presenterUrl(),
@@ -68,6 +77,7 @@ export function Deck({ slides }: DeckProps) {
       exitBlack: () => deck.setBlack(false),
       openHelp: () => setHelpOpen(true),
       openPresenter,
+      toggleLight,
       releaseFocus,
     },
     noDialog,
@@ -101,6 +111,17 @@ export function Deck({ slides }: DeckProps) {
     return candidate < index ? lastStepOf(slides[candidate]) : 0;
   };
 
+  // The slide shown before this render, to cut between a slide marked
+  // `cut` and the one before it, in both directions.
+  const shownRef = useRef(index);
+  const from = shownRef.current;
+  useEffect(() => {
+    shownRef.current = index;
+  }, [index]);
+  const cutting =
+    (from === index - 1 && slides[index]?.cut === true) ||
+    (from === index + 1 && slides[from]?.cut === true);
+
   return (
     <main className="deck" aria-label="Presentasjon">
       <FittedStage className="deck-viewport" stageRef={stageRef} focusable>
@@ -115,6 +136,14 @@ export function Deck({ slides }: DeckProps) {
               step={stepFor(candidate)}
               active={candidate === index}
               hidden={candidate !== index}
+              side={
+                candidate < index
+                  ? "before"
+                  : candidate > index
+                    ? "after"
+                    : undefined
+              }
+              cut={cutting && (candidate === index || candidate === from)}
               mode="stage"
             />
           );

@@ -12,6 +12,10 @@ export interface SlideFrameProps {
   mode: RenderMode;
   /** Mounted but not shown: a neighbour kept ready on the stage. */
   hidden?: boolean;
+  /** Which side of the presented slide a neighbour is on. */
+  side?: "before" | "after";
+  /** Change to or from this slide without a transition. */
+  cut?: boolean;
 }
 
 export function SlideFrame({
@@ -22,6 +26,8 @@ export function SlideFrame({
   active,
   mode,
   hidden = false,
+  side,
+  cut = false,
 }: SlideFrameProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const context = useMemo<SlideContextValue>(
@@ -56,6 +62,8 @@ export function SlideFrame({
       aria-label={`${index + 1} av ${total}: ${slide.title}`}
       data-slide-id={slide.id}
       data-hidden={hidden ? "" : undefined}
+      data-side={side}
+      data-cut={cut ? "" : undefined}
       inert={!interactive}
     >
       <SlideContext value={context}>
