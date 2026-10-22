@@ -82,7 +82,7 @@ API-et maskerer automatisk PII i fritekst:
 
 | Mønster | Eksempel | Erstatning |
 | :--- | :--- | :--- |
-| Fødselsnummer | 12345678901 | `[FØDSELSNUMMER FJERNET]` |
+| Fødselsnummer | 01020349294 | `[FØDSELSNUMMER FJERNET]` |
 | NAVident | A123456 | `[NAVIDENT FJERNET]` |
 | E-post | test@nav.no | `[E-POST FJERNET]` |
 | Telefon | 987 65 432 | `[TELEFON FJERNET]` |
