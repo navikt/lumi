@@ -1,6 +1,6 @@
 /*
- * The workshop chapter: slides 7, 8, 9 and 11, and the «you are here» line
- * (RouteProgress) that slides 7 to 11 share.
+ * The workshop chapter: hva-vil-dere-vite, samme-utkast, surveyen-som-kode
+ * and bare-teamet, and the «you are here» line (RouteProgress) they share.
  */
 
 /* RouteProgress: lower left corner, the first ring on the page margin. */
@@ -36,68 +36,119 @@
   font-weight: var(--deck-weight-strong);
 }
 
-/* Slide 7: hva-vil-dere-vite */
+/*
+ * hva-vil-dere-vite: the menu «Hva vil dere finne ut?» as a line. On the
+ * first click the other setups leave, the chosen one rises to the top, and
+ * the questions come in on its line. Without motion, and on paper, each
+ * step shows its end at once.
+ */
 
-.finne-ut__header {
+.finne-ut__kicker {
   position: absolute;
-  top: 357px;
+  top: 92px;
   left: var(--deck-space-page);
-  display: flex;
-  align-items: center;
-  gap: 24px;
   margin: 0;
+  color: var(--deck-muted);
   font-size: var(--deck-size-label);
   font-weight: var(--deck-weight-strong);
-  line-height: 1.2;
 }
 
-/* Slide 9: surveyen-som-kode */
-
-.som-kode__block {
+.finne-ut__title {
   position: absolute;
-  top: 336px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin: 0;
-}
-
-.som-kode__block--file {
+  top: 136px;
   left: var(--deck-space-page);
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-statement);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: var(--deck-line-height-tight);
 }
 
-.som-kode__block--app {
-  left: 928px;
-}
-
-.som-kode__label {
-  font-size: var(--deck-size-label);
-  font-weight: var(--deck-weight-strong);
+.finne-ut__dashboard {
+  position: absolute;
+  top: 470px;
+  left: 1120px;
+  width: 680px;
+  margin: 0;
+  font-size: var(--deck-size-lead);
+  font-weight: 500;
   line-height: 1.2;
+  text-wrap: balance;
 }
 
-.som-kode__label code {
-  font-family: var(--deck-font-mono);
-  font-variant-ligatures: none;
-  font-weight: 600;
+.finne-ut--valgt .finne-ut__leaves {
+  visibility: hidden;
+  opacity: 0;
+}
+
+.finne-ut--valgt .finne-ut__chosen {
+  transform: translateY(var(--finne-ut-rise));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .finne-ut__leaves {
+    transition:
+      opacity 220ms var(--deck-easing),
+      visibility 0s;
+  }
+
+  :root:not([data-stil="papir"]) .finne-ut--valgt .finne-ut__leaves {
+    transition:
+      opacity 220ms var(--deck-easing),
+      visibility 0s 220ms;
+  }
+
+  :root:not([data-stil="papir"]) .finne-ut__chosen {
+    transition: transform var(--deck-duration-travel) var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"]) .finne-ut--valgt .finne-ut__chosen {
+    transition-delay: 160ms;
+  }
+
+  /* The questions come when the chosen setup has landed. */
+  :root:not([data-stil="papir"]) .finne-ut__questions[data-revealed] {
+    transition-delay: 760ms;
+  }
+}
+
+/*
+ * surveyen-som-kode: the code in the app, then the developer's work as a
+ * line from edge to edge, then the price. No box round the code.
+ */
+
+.som-kode__title {
+  position: absolute;
+  top: 72px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-title);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: var(--deck-line-height-tight);
 }
 
 .som-kode__code {
+  position: absolute;
+  top: 214px;
+  left: var(--deck-space-page);
   margin: 0;
-  padding: 32px 36px;
-  border: var(--deck-border-width) solid var(--deck-border);
-  border-radius: var(--deck-radius);
-  background: var(--deck-code-bg);
   color: var(--deck-code-fg);
   font-family: var(--deck-font-mono);
-  font-size: var(--deck-size-code);
+  font-size: calc(var(--deck-size-code) + 4px);
   font-variant-ligatures: none;
-  line-height: 1.45;
+  line-height: 1.4;
   white-space: pre;
 }
 
 .som-kode__code code {
   font: inherit;
+}
+
+.som-kode__comment {
+  color: var(--deck-muted);
 }
 
 .som-kode__kw {
@@ -112,6 +163,23 @@
   color: var(--deck-code-punctuation);
 }
 
+/* The route the backend needs, underlined when the line names it. */
+.som-kode__mark {
+  position: relative;
+  display: inline-block;
+}
+
+.som-kode__ink {
+  position: absolute;
+  right: 0;
+  bottom: -2px;
+  left: 0;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--map-ink);
+  pointer-events: none;
+}
+
 .som-kode__price {
   position: absolute;
   top: 846px;
@@ -122,129 +190,77 @@
   line-height: 1.2;
 }
 
-/* What the app needs, under the component, before anyone asks. */
-.som-kode__krav {
+/*
+ * The film slides, samme-utkast and bare-teamet: one recording at its own
+ * size (1680×760, UI text about 28 px on the stage), the title beside it.
+ * The window ends at y 800, so the Teams corner keeps its 40 px margin.
+ */
+
+.verksted-film__window {
   position: absolute;
-  top: 728px;
-  left: 930px;
-  margin: 0;
-  color: var(--deck-muted);
-  font-size: var(--deck-size-label);
-  font-weight: 700;
-}
-
-/* Marks on slide 9: the deck's one frame and underline, 6 px ink. */
-
-.som-kode__mark {
-  position: relative;
-  display: inline-block;
-}
-
-.som-kode__ink {
-  position: absolute;
-  pointer-events: none;
-}
-
-.som-kode__mark--frame .som-kode__ink {
-  inset: -2px -12px;
-  border: 6px solid var(--map-ink);
-  border-radius: 10px;
-}
-
-/* Midway between the descenders and the next line of code. */
-.som-kode__mark--underline .som-kode__ink {
-  right: 0;
-  bottom: -2px;
-  left: 0;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--map-ink);
-}
-
-/* The price is set larger, so its line sits a little lower. */
-.som-kode__price .som-kode__ink {
-  bottom: -8px;
-}
-
-/* Screenshot slides 8 and 11: one frame with the tag on its edge, names beside it. */
-
-.shot {
-  position: absolute;
-}
-
-.shot__layer {
-  position: absolute;
-  inset: 0;
+  left: var(--deck-space-page);
+  width: 1680px;
+  height: 760px;
   overflow: hidden;
   border-radius: var(--deck-radius);
   background: var(--deck-embed-bg);
 }
 
-.shot__layer::after {
+/* The frame sits on the film, so it adds nothing to the size. */
+.verksted-film__window::after {
   content: "";
   position: absolute;
   inset: 0;
-  border: var(--deck-border-width) solid var(--deck-border);
+  border: 4px solid var(--map-zone-edge);
   border-radius: var(--deck-radius);
   pointer-events: none;
 }
 
-.shot__image {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.verksted-film--top .verksted-film__window {
+  top: 40px;
 }
 
-/* The ink frame round the control the step is about: the deck's one mark. */
-.shot__mark {
+.verksted-film__title {
   position: absolute;
-  box-sizing: border-box;
-  border: 6px solid var(--map-ink);
-  border-radius: 10px;
-  pointer-events: none;
-}
-
-/* «Skjermbilde med testdata» on the upper left edge, like the live tag. */
-.shot__tag {
-  position: absolute;
-  top: -26px;
-  left: 32px;
-}
-
-/* The name of the marked control, joined to the mark by an ink line. */
-.shot-callout {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.shot-callout__line {
-  position: absolute;
-  border-radius: 3px;
-  background: var(--map-ink);
-}
-
-/* Hangs from the line: the name's middle sits on it, the note above. */
-.shot-callout__label {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  transform: translateY(-100%);
-}
-
-.shot-callout__note {
+  left: var(--deck-space-page);
   margin: 0;
+  max-width: 1400px;
+  font-family: var(--deck-font-display);
+  font-size: calc(var(--deck-size-small) * 2);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1.1;
+}
+
+.verksted-film--top .verksted-film__title {
+  top: 828px;
+}
+
+.verksted-film__note {
+  position: absolute;
+  left: var(--deck-space-page);
+  margin: 0;
+  max-width: 1400px;
   color: var(--deck-muted);
-  font-size: var(--deck-size-label);
+  font-size: var(--deck-size-small);
   font-weight: 600;
   line-height: 1.2;
 }
 
-.shot-callout__name {
-  margin: 0;
-  font-size: var(--deck-size-body);
-  font-weight: var(--deck-weight-strong);
-  white-space: nowrap;
+.verksted-film--top .verksted-film__note {
+  top: 912px;
+}
+
+/* samme-utkast: the title over the film, the note and the route under it. */
+.verksted-film--bottom .verksted-film__title {
+  top: 40px;
+}
+
+.verksted-film--bottom .verksted-film__window {
+  top: 128px;
+  height: 672px;
+}
+
+.verksted-film--bottom .verksted-film__note {
+  top: 826px;
 }
