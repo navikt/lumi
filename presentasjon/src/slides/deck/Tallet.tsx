@@ -1,13 +1,16 @@
-import type { Slide } from "../../engine";
+import type { Slide, SlideProps } from "../../engine";
+import { cssVars, cx } from "../../engine/css";
 import { Answer, LineMap, MapText } from "../../map";
+import { useBuildMotion } from "./bevisMotion";
 import "./bevis.css";
 
 /**
  * Every dot is a hundred answers, rounded: 29 853 is 299 dots and 1 092 is
- * 11. A block holds a hundred dots, ten by ten.
+ * 11. A block holds a hundred dots, ten by ten, counted column by column
+ * from the bottom. Modia's eleven stand in one row, level with the top row.
  */
 const TEAM_ESYFO_BLOCKS = [100, 100, 99] as const;
-const MODIA_BLOCKS = [11] as const;
+const MODIA_COUNT = 11;
 
 const PITCH = 34;
 const ROWS = 10;
@@ -19,96 +22,121 @@ const LABEL_Y = 454;
 const NOTE_Y = LABEL_Y + 44;
 const DOTS_TOP = 532;
 const DOTS_BOTTOM = DOTS_TOP + ROWS * PITCH;
+const TOP_ROW_Y = DOTS_TOP + PITCH / 2;
 const LEGEND_Y = DOTS_BOTTOM + 58;
 
 interface Dot {
   x: number;
   y: number;
+  /** Place in the counting order, for the light-up. */
+  n: number;
+  block: number;
 }
 
 const blockWidth = (count: number) => Math.ceil(count / ROWS) * PITCH;
 
 /** Blocks side by side, each filled column by column from the bottom. */
-function layoutDots(left: number, blocks: readonly number[]): Dot[] {
+function layoutBlocks(left: number, blocks: readonly number[]): Dot[] {
   const dots: Dot[] = [];
   let blockX = left;
-  for (const count of blocks) {
+  blocks.forEach((count, block) => {
     for (let i = 0; i < count; i++) {
       dots.push({
         x: blockX + Math.floor(i / ROWS) * PITCH + PITCH / 2,
         y: DOTS_BOTTOM - (i % ROWS) * PITCH - PITCH / 2,
+        n: dots.length,
+        block,
       });
     }
     blockX += blockWidth(count) + BLOCK_GAP;
-  }
+  });
   return dots;
 }
 
-const groupWidth = (blocks: readonly number[]) =>
-  blocks.reduce((sum, count) => sum + blockWidth(count), 0) +
-  BLOCK_GAP * (blocks.length - 1);
-
-const MODIA_X = LEFT + groupWidth(TEAM_ESYFO_BLOCKS) + GROUP_GAP;
-const TEAM_ESYFO_DOTS = layoutDots(LEFT, TEAM_ESYFO_BLOCKS);
-const MODIA_DOTS = layoutDots(MODIA_X, MODIA_BLOCKS);
-
-function Dots({ dots }: { dots: readonly Dot[] }) {
-  return (
-    <g>
-      {dots.map((dot) => (
-        <Answer
-          key={`${dot.x},${dot.y}`}
-          x={dot.x}
-          y={dot.y}
-          r={DOT_R}
-          className="tallet__dot"
-        />
-      ))}
-    </g>
-  );
+/** One row, from the left. */
+function layoutRow(left: number, count: number): Dot[] {
+  return Array.from({ length: count }, (_, n) => ({
+    x: left + n * PITCH + PITCH / 2,
+    y: TOP_ROW_Y,
+    n,
+    block: 0,
+  }));
 }
 
-function Tallet() {
+const TEAM_ESYFO_WIDTH =
+  TEAM_ESYFO_BLOCKS.reduce((sum, count) => sum + blockWidth(count), 0) +
+  BLOCK_GAP * (TEAM_ESYFO_BLOCKS.length - 1);
+const MODIA_X = LEFT + TEAM_ESYFO_WIDTH + GROUP_GAP;
+const TEAM_ESYFO_DOTS = layoutBlocks(LEFT, TEAM_ESYFO_BLOCKS);
+const MODIA_DOTS = layoutRow(MODIA_X, MODIA_COUNT);
+
+function Dots({ dots }: { dots: readonly Dot[] }) {
+  return dots.map((dot) => (
+    <Answer
+      key={`${dot.x},${dot.y}`}
+      x={dot.x}
+      y={dot.y}
+      r={DOT_R}
+      className="tallet__dot"
+      style={cssVars({ "--n": dot.n, "--block": dot.block })}
+    />
+  ));
+}
+
+function Tallet({ step, active }: SlideProps) {
+  const motion = useBuildMotion(step, active);
   return (
-    <div className="slide">
-      <h2 className="slide-title tallet__title">30&#8239;945 svar</h2>
-      <p className="slide-text tallet__period">
-        Fra 1. januar til 21. oktober 2026. Sju apper i to team.
+    <div
+      className={cx("slide tallet", step === 0 && "tallet--alone")}
+      data-motion={motion ? "" : undefined}
+    >
+      <h2 className="tallet__number">30&#8239;945 svar</h2>
+      <p className="tallet__period" data-from={1}>
+        Fra 1. januar til 21. oktober 2026 i sju apper i to team.
       </p>
-      <LineMap label="Rutediagram der hver prikk er 100 svar. Team eSyfo: 299 prikker, 29 853 svar i seks apper. iSyfo i Modia: 11 prikker, 1 092 svar fra veiledere i Modia.">
-        <g data-from={1}>
+      <LineMap label="Prikkdiagram der hver prikk er 100 svar. Team eSyfo: 299 prikker, 29 853 svar i seks apper. iSyfo i Modia: 11 prikker på én rad, 1 092 svar fra veiledere i Modia.">
+        <g className="tallet__labels" data-from={1}>
           <MapText x={LEFT} y={LABEL_Y} size={36} weight={800}>
             Team eSyfo
           </MapText>
           <MapText x={LEFT} y={NOTE_Y} size={32} weight={500} muted>
             29 853 svar i seks apper
           </MapText>
-          <Dots dots={TEAM_ESYFO_DOTS} />
         </g>
-        <g data-from={1}>
-          <Answer
-            x={LEFT + PITCH / 2}
-            y={LEGEND_Y}
-            r={DOT_R}
-            className="tallet__dot"
-          />
+        <g className="tallet__unit-label" data-from={1}>
           <MapText
             x={LEFT + PITCH + 14}
             y={LEGEND_Y + 2}
-            size={30}
+            size={32}
             weight={600}
           >
             = 100 svar
           </MapText>
         </g>
-        <g data-from={2}>
+        <g className="tallet__modia-labels" data-from={2}>
           <MapText x={MODIA_X} y={LABEL_Y} size={36} weight={800}>
             iSyfo i Modia
           </MapText>
           <MapText x={MODIA_X} y={NOTE_Y} size={32} weight={500} muted>
             1 092 svar fra veiledere i Modia
           </MapText>
-          <Dots dots={MODIA_DOTS} />
+        </g>
+        {/* One glow for all the dots, not one per dot. */}
+        <g className="tallet__glow">
+          <g className="tallet__unit" data-from={1}>
+            <Answer
+              x={LEFT + PITCH / 2}
+              y={LEGEND_Y}
+              r={DOT_R}
+              className="tallet__dot"
+            />
+          </g>
+          <g className="tallet__field" data-from={1}>
+            <Dots dots={TEAM_ESYFO_DOTS} />
+          </g>
+          <g className="tallet__modia" data-from={2}>
+            <Dots dots={MODIA_DOTS} />
+          </g>
         </g>
       </LineMap>
     </div>
@@ -119,13 +147,17 @@ export const tallet: Slide = {
   id: "tallet",
   title: "30 945 svar",
   steps: 2,
-  notes: `Ordrett inn: «Det var hvordan det virker. Så til hvor mye det er i bruk.»
+  notes: `Ordrett inn: «Det var hvordan det virker. Nå skal dere se hvor mye det er i bruk.»
 
-Tallene er fra prod-dashboardet 21. oktober 2026. Hver prikk er 100 svar.
+Steg 0 er tallet alene. Vent et øyeblikk før klikket.
 
-Nesten alle svarene kommer fra vårt eget team. De elleve prikkene til høyre er nærmest dere: veiledere som svarer inne i Modia. Detaljer: spør iSyfo.
+Klikk 1: tallet flytter seg opp, én prikk tennes for 100 svar, og så fyller feltet seg. «Hver prikk er 100 svar. Nesten alle kommer fra vårt eget team, i seks apper.»
 
-Spør noen om appene i team-esyfo: bro-frontend, dialogmote-frontend, dinesykmeldte, narmesteleder-frontend, oppfolgingsplan-frontend og syfo-oppfolgingsplan-frontend.
+Klikk 2: «De elleve prikkene til høyre er nærmest dere: veiledere som svarer inne i Modia.» Vil noen vite mer om dem, kan de spørre iSyfo.
+
+Tallene er hentet fra dashboardet 21. oktober 2026.
+
+Spør noen om appene i Team eSyfo: bro-frontend, dialogmote-frontend, dinesykmeldte, narmesteleder-frontend, oppfolgingsplan-frontend og syfo-oppfolgingsplan-frontend.
 
 Før kjøring: bekreft at bryteren «Arkiverte» var på da tallene ble hentet. Uten den er svar på arkiverte surveyer ikke med.`,
   Component: Tallet,

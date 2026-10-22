@@ -1,104 +1,61 @@
 import type { Slide } from "../../engine";
-import { Answer, Line, LineMap, MapText, Station } from "../../map";
+import { Line, LineMap, MapText, Station } from "../../map";
 import "./bevis.css";
 
-/** The answers in Lumi: the station every line leaves from. */
-const HUB_X = 560;
-const HUB_Y = 540;
-const HUB_R = 60;
-
-/** Where the lines bend out of the hub, and where they end. */
-const BEND_X = HUB_X + 220;
-const END_X = 1140;
-const EXPORT_Y = HUB_Y - 220;
-const BIGQUERY_Y = HUB_Y + 220;
-
-const LEGEND_Y = 936;
+/*
+ * A monument: what every team can take out today, the export formats from
+ * the dashboard. Under it two short lines, as in the key of a line map:
+ * solid for what is built, dashed for what is on the way. All of it ends
+ * left of x 1520, clear of the Teams corner.
+ */
+const KEY_FROM = 112;
+const RING_R = 22;
+/* Three whole dashes (30, gap 24) end at the ring's left edge. */
+const KEY_TO = KEY_FROM + 138 + RING_R;
+/* The solid line's round cap reaches the margin, like the dashes. */
+const CAP = 7;
+const LABEL_X = KEY_TO + RING_R + 30;
+const STORY_Y = 776;
+const BIGQUERY_Y = 868;
 
 function BrukesVidere() {
   return (
-    <div className="slide">
-      <h2 className="slide-title">Svarene kan tas ut til analyse</h2>
-      <LineMap label="Linjekart med stasjonen «Svarene i Lumi». To heltrukne linjer, som finnes i dag, går til eksport som CSV, Excel og JSON og til iSyfos datafortelling. En stiplet linje, som er på vei, går til BigQuery i teamets eget prosjekt: en pilot i eSyfo og iSyfo, uten fritekst.">
-        {/* What exists today */}
-        <g data-from={1}>
-          <Line
-            points={[
-              [HUB_X, HUB_Y],
-              [BEND_X, EXPORT_Y],
-              [END_X, EXPORT_Y],
-            ]}
-            radius={64}
-          />
-          <Station
-            x={END_X}
-            y={EXPORT_Y}
-            label="Eksport"
-            note="CSV, Excel og JSON"
-          />
-        </g>
-        <g data-from={1}>
-          <Line
-            points={[
-              [HUB_X, HUB_Y],
-              [END_X, HUB_Y],
-            ]}
-          />
-          <Station x={END_X} y={HUB_Y} label="iSyfos datafortelling" />
-        </g>
+    <div className="slide eksport">
+      <h2 className="eksport__title">Svarene kan tas ut til analyse</h2>
+      <p className="eksport__formats">
+        CSV, Excel
+        <br />
+        og JSON
+      </p>
+      <p className="eksport__where">Eksport fra dashboardet</p>
+      <LineMap label="Under eksporten to linjer. Heltrukket: iSyfos datafortelling, som finnes. Stiplet: BigQuery i teamets eget prosjekt, som er på vei, en pilot i eSyfo og iSyfo uten fritekst.">
+        <Line
+          points={[
+            [KEY_FROM + CAP, STORY_Y],
+            [KEY_TO, STORY_Y],
+          ]}
+        />
+        <Station x={KEY_TO} y={STORY_Y} r={RING_R} />
+        <MapText x={LABEL_X} y={STORY_Y + 2} size={36} weight={700}>
+          iSyfos datafortelling
+        </MapText>
 
-        {/* On the way */}
-        <g data-from={2}>
+        <g data-from={1}>
           <Line
             points={[
-              [HUB_X, HUB_Y],
-              [BEND_X, BIGQUERY_Y],
-              [END_X, BIGQUERY_Y],
+              [KEY_FROM, BIGQUERY_Y],
+              [KEY_TO, BIGQUERY_Y],
             ]}
-            radius={64}
             dashed
           />
-          <Station
-            x={END_X}
-            y={BIGQUERY_Y}
-            label="BigQuery i teamets eget prosjekt"
-            note="pilot i eSyfo og iSyfo, uten fritekst"
-          />
+          <Station x={KEY_TO} y={BIGQUERY_Y} r={RING_R} />
+          <MapText x={LABEL_X} y={BIGQUERY_Y + 2} size={36} weight={700}>
+            På vei: BigQuery i teamets eget prosjekt
+          </MapText>
+          <MapText x={LABEL_X} y={BIGQUERY_Y + 48} size={32} weight={600} muted>
+            pilot i eSyfo og iSyfo, uten fritekst
+          </MapText>
         </g>
-
-        <Answer x={HUB_X} y={HUB_Y} r={HUB_R} />
-        <Station
-          x={HUB_X}
-          y={HUB_Y}
-          r={HUB_R}
-          side="left"
-          label="Svarene i Lumi"
-          className="map-station--label-only"
-        />
-
-        {/*
-          Legend, as on a transit map. The round caps of the solid sample
-          reach the margin; the dashed sample holds three whole dashes.
-        */}
-        <Line
-          points={[
-            [119, LEGEND_Y],
-            [243, LEGEND_Y],
-          ]}
-        />
-        <MapText x={278} y={LEGEND_Y + 2} size={32} weight={600}>
-          finnes
-        </MapText>
-        <Line
-          points={[
-            [440, LEGEND_Y],
-            [578, LEGEND_Y],
-          ]}
-          dashed
-        />
-        <MapText x={606} y={LEGEND_Y + 2} size={32} weight={600}>
-          på vei
-        </MapText>
       </LineMap>
     </div>
   );
@@ -107,14 +64,14 @@ function BrukesVidere() {
 export const brukesVidere: Slide = {
   id: "brukes-videre",
   title: "Svarene kan tas ut til analyse",
-  steps: 2,
+  steps: 1,
   // In faggruppa the export is one sentence on «Dere ser bare svarene …».
   rooms: ["frontend", "produktledere"],
-  notes: `Eksport finnes: CSV, Excel og JSON fra dashboardet. Til samme formål som surveyen.
+  notes: `Eksport finnes: CSV, Excel og JSON fra dashboardet, til samme formål som surveyen.
 
 iSyfo bruker svarene sine i en datafortelling.
 
-Stiplet, på vei: eksport til BigQuery i teamets eget prosjekt. Pilot i eSyfo og iSyfo, og fritekst er stengt.
+Klikk 1, stiplet: eksport til BigQuery i teamets eget prosjekt er på vei. Det er en pilot i eSyfo og iSyfo, og fritekst er stengt.
 
 Sletting i Lumi gjelder ikke filer dere har lastet ned. Dem sletter dere selv.
 
