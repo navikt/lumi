@@ -22,7 +22,9 @@ function BareTeamet() {
           label="Opptak fra dashboardet med testdata. Teamet velger surveyen survey-vurdering, og kortene viser 67 tilbakemeldinger og et snitt på 3,5. Et klikk på vurderingen 1 filtrerer hele dashboardet til 12 svar. Tilbakemeldingene har samme filter, og øverst ligger svaret «Fant ikke planen. Send svar til Ola Nordmann, [E-POST FJERNET]», merket Redigert. Svaret åpnes."
         />
       </div>
-      <h2 className="verksted-film__title">Bare teamet deres ser svarene</h2>
+      <h2 className="verksted-film__title">
+        I dashboardet ser bare teamet deres svarene
+      </h2>
       <p className="verksted-film__note">
         Tilgangen følger teamet i Nais Console. Opptaket viser testdata.
       </p>
@@ -32,7 +34,7 @@ function BareTeamet() {
 
 export const bareTeamet: Slide = {
   id: "bare-teamet",
-  title: "Bare teamet deres ser svarene",
+  title: "I dashboardet ser bare teamet deres svarene",
   notes: `Filmen går av seg selv i rundt 20 sekunder. Snakk over den:
 Teamet velger surveyen og ser kortene, med antall svar og snittet.
 Et klikk på vurderingen 1 filtrerer hele dashboardet.
@@ -41,7 +43,7 @@ Svaret er åpnet. E-postadressen er fjernet, navnet står igjen, og svaret er me
 
 Opptaket er fra dashboardet med testdata. Svaret fra salen er satt inn med samme tekst, så tallene er ikke deres.
 
-Tilgang: Lumi spør Nais Console hvilke team dere er med i. Er dere ikke med i teamet der, ber dere en utvikler legge dere til. Demoen med testdata er åpen for alle i Nav. Endringer i medlemskap virker innen ti minutter. Et annet team får beskjed om at det ikke har tilgang.
+Tilgang: Lumi spør Nais Console hvilke team dere er med i. Er dere ikke med i teamet der, ber dere en utvikler legge dere til. Demoen med testdata er åpen for alle. Endringer i medlemskap virker innen ti minutter. Et annet team får beskjed om at det ikke har tilgang.
 
 Hvert svar har en sletteknapp, så teamet kan slette svar med personopplysninger. Lumi lagrer ikke hvem som svarte, heller ikke Nav-identen. I små grupper kan app, tidspunkt, enhet og det som står i svaret, likevel røpe hvem som svarte. Lederen til den som svarte, ser ikke svarene i Lumi, med mindre hen er med i teamet i Nais Console.
 

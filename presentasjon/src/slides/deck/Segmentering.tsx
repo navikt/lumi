@@ -108,6 +108,6 @@ Samme survey, delt i to grupper. Forskjellen ser dere med en gang.
 Klikk 2: dette kan appen sende. Dine sykmeldte sender med rollen «arbeidsgiver» og hvor surveyen vises. Steg i et løp fungerer på samme måte. Enhetstypen, altså mobil, nettbrett eller desktop, samler widgeten selv, og kortet Enheter finnes alltid.
 Hold verdiene få og grove. Aldri person- eller saksnummer. Regn ikke med at konteksten er anonym.
 
-Hvis noen spør: tags er med i eksporten. Har en tag flere enn ti ulike verdier, får den ikke noe kort. Verdier med mange varianter, som versjonsnummer, kan ligge i debug. De lagres, men vises ikke. Widgeten samler aldri inn url, og pathname bare når dere slår på collectLocation. Under Tilbakemeldinger og Eksporter ligger Segmentering i menyen Filter, med én liste per tag.`,
+Hvis noen spør: tags er med i JSON-eksporten. Har en tag flere enn ti ulike verdier, får den ikke noe kort. Verdier med mange varianter, som versjonsnummer, kan ligge i debug. De lagres, men vises ikke. Widgeten samler aldri inn url, og pathname bare når dere slår på collectLocation. Under Tilbakemeldinger og Eksporter ligger Segmentering i menyen Filter, med én liste per tag.`,
   Component: Segmentering,
 };

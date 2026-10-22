@@ -28,7 +28,7 @@ function BrukesVidere() {
         og JSON
       </p>
       <p className="eksport__where">Eksport fra dashboardet</p>
-      <LineMap label="Under eksporten to linjer: iSyfos datafortelling, og BigQuery i teamets eget prosjekt, som åpnes først for eSyfo og iSyfo, uten fritekst.">
+      <LineMap label="Under eksporten to linjer. Heltrukket: iSyfos datafortelling, som finnes. Stiplet: BigQuery i teamets eget prosjekt, som kommer, først for eSyfo og iSyfo og uten fritekst.">
         <Line
           points={[
             [KEY_FROM + CAP, STORY_Y],
@@ -46,13 +46,14 @@ function BrukesVidere() {
               [KEY_FROM, BIGQUERY_Y],
               [KEY_TO, BIGQUERY_Y],
             ]}
+            dashed
           />
           <Station x={KEY_TO} y={BIGQUERY_Y} r={RING_R} />
           <MapText x={LABEL_X} y={BIGQUERY_Y + 2} size={36} weight={700}>
             BigQuery i teamets eget prosjekt
           </MapText>
           <MapText x={LABEL_X} y={BIGQUERY_Y + 48} size={32} weight={600} muted>
-            først for eSyfo og iSyfo, uten fritekst
+            kommer, først for eSyfo og iSyfo, uten fritekst
           </MapText>
         </g>
       </LineMap>
@@ -70,7 +71,7 @@ export const brukesVidere: Slide = {
 
 iSyfo bruker svarene sine i en datafortelling.
 
-Klikk 1: eksport til BigQuery i teamets eget GCP-prosjekt. Den åpnes først for eSyfo og iSyfo, og fritekst er ikke åpnet i produksjon.
+Klikk 1, stiplet: eksport til BigQuery i teamets eget GCP-prosjekt kommer. Den er laget, men ikke slått på i produksjon ennå. Den åpnes først for eSyfo og iSyfo, uten fritekst.
 
 Sletting i Lumi gjelder ikke filer dere har lastet ned. Dem sletter dere selv.
 

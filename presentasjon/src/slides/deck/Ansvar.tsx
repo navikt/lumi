@@ -62,7 +62,7 @@ Klikk 1: «Lumi sletter svarene automatisk etter tolv måneder.»
 Klikk 2: «Lumi har ingen avtale om oppetid. Er Lumi nede, får brukeren en feilmelding, og appen virker som før.»
 
 Hvis noen spør:
-Dere har også ansvaret for koden i appen, backenden som veksler token, å fortelle brukerne at dere samler inn tilbakemeldinger, og å slette svar med personopplysninger. I fagsystemer er brukerne kolleger: si fra før dere spør. Ikke be om navn eller fødselsnummer, og ikke rekrutter til brukertester.
+Dere har også ansvaret for koden i appen, backenden som veksler token, å fortelle brukerne at dere samler inn tilbakemeldinger, og å slette svar med personopplysninger. I fagsystemer er brukerne kolleger: si fra før dere spør. Ikke be om navn eller fødselsnummer, ikke rekrutter til brukertester, og ikke rett surveyer mot brukere med skjermingskode.
 Vi gir appen tilgang til Lumi API, men går ikke gjennom E726 eller PVK-en deres. Slettingen gjelder Lumis database. Filer dere har lastet ned, sletter dere selv.
 Vil dere slutte med Lumi, ligger surveyen i koden deres, og svarene kan lastes ned.
 

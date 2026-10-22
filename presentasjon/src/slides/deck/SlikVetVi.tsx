@@ -19,7 +19,7 @@ const STOPS = [
   {
     x: 580,
     r: 20,
-    label: "Rundt 2 600 tester",
+    label: "Over 2 500 tester",
     note: "axe i widgeten og e2e",
   },
   {
@@ -42,7 +42,7 @@ function SlikVetVi() {
           kritiske funn
         </span>
       </h2>
-      <LineMap label="Tre kontroller på én linje: pentesten fra Team SåPe i februar 2026, før Surveyverksted. Rundt 2 600 automatiske tester, med axe i widgeten og i e2e-testene. Og det dere kan sjekke selv på npm: provenance, og hvilke adresser som står i pakken.">
+      <LineMap label="Tre kontroller på én linje: pentesten fra Team SåPe i februar 2026, før Surveyverksted. Over 2 500 automatiske tester, med axe i widgeten og i e2e-testene. Og det dere kan sjekke selv på npm: provenance, og hvilke adresser som står i pakken.">
         <Line
           points={[
             [STOPS[0].x, Y],
@@ -80,9 +80,9 @@ export const slikVetVi: Slide = {
 
 Fra start: Team SåPe, Navs interne team for sikkerhetstesting, testet Lumi i februar 2026 med gjennomgang av kildekoden. Fem funn, to middels og tre som bare var til informasjon. Alle var utbedret i mars 2026.
 
-Klikk 1: rundt 2 600 automatiske tester. axe kjører i widgeten og i e2e-testene for dashboardet.
+Klikk 1: over 2 500 automatiske tester. axe kjører i widgeten og i e2e-testene for dashboardet.
 
-Klikk 2, det dere kan sjekke selv: npm viser provenance for hver versjon av @navikt/lumi-survey, så dere ser at pakken er bygd av workflowen i navikt/lumi. Søk etter adresser i pakken, for eksempel med grep -oE "https?://[^\\"]+" på dist/index.js. Dere finner bare SVG-navnerommet og to lenker til dokumentasjonen.
+Klikk 2, det dere kan sjekke selv: npm viser provenance for versjonene etter 2.2.1 av @navikt/lumi-survey, så dere ser at pakken er bygd av workflowen i navikt/lumi. Søk etter adresser i pakken, for eksempel med grep -oE "https?://[^\\"]+" på dist/index.js. Dere finner bare SVG-navnerommet og to lenker til dokumentasjonen.
 
 Ut mot kartet: «Så til kartet.»`,
   Component: SlikVetVi,

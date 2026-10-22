@@ -61,7 +61,7 @@ export const provSelv: Slide = {
 
 Siden har den samme widgeten som appene bruker. Når dere trykker Send, viser telefonen det appen ville fått, og hva Lumi API ville lagret. Siden sender ingenting til noen server.
 
-Frontend forum: i en ekte app er jobben pnpm add @navikt/lumi-survey og én komponent med transport={{ endpoint }}. Pakken ligger på npmjs, så dere trenger verken .npmrc eller GitHub-token. Har appen ikke Aksel 8 eller nyere, legger dere til @navikt/ds-react og @navikt/ds-css også. Produktlederakademiet får ikke pnpm-linja på sliden.
+Frontend forum: i en ekte app er jobben pnpm add @navikt/lumi-survey og én komponent med transport={{ endpoint }}. Widgeten ligger på npmjs og trenger ingen .npmrc. Backenden trenger @navikt/oasis fra GitHub Packages, tre miljøvariabler og tilgang til Lumi API. Har appen ikke Aksel 8 eller nyere, legger dere til @navikt/ds-react og @navikt/ds-css også. Produktlederakademiet får ikke pnpm-linja på sliden.
 
 La koden stå mens folk spør.`,
   Component: ProvSelv,

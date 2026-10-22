@@ -88,7 +88,7 @@ Klikk 1: Widgeten godtar bare en sti på samme domene som siden. Står det et an
 Klikk 2: I Next.js App Router importerer dere widgeten fra @navikt/lumi-survey/client. Den har "use client", så en serverkomponent kan vise widgeten med transport={{ endpoint }}.
 
 Hvis noen spør:
-Fra 2.4.0 venter widgeten høyst ti sekunder per forsøk og prøver én gang til ved 429 og 503. Lumi API lagrer et svar bare én gang, også om det kommer to ganger.
+Fra 2.4.0 venter widgeten høyst ti sekunder per forsøk og prøver én gang til ved 503, og ved 429 når Retry-After er fem sekunder eller mindre. Lumi API lagrer et svar bare én gang, også om det kommer to ganger.
 Trenger backenden egne headere, kan dere fortsatt skrive en egen transport med submit.
 Lumi trenger ingen ny kilde i CSP.
 Pakken er rundt 34 KB minifisert og gzippet, uten React og Aksel, som appen har fra før.

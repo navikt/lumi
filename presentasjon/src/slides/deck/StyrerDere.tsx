@@ -163,6 +163,6 @@ Klikk 1, dere bestemmer: spørsmålene og tekstene i Surveyverksted. Betinget vi
 
 Klikk 2, Lumi bestemmer: utseendet følger Aksel. Noen tekster er faste: «Neste», «Tilbake», «(valgfritt)» og tegntelleren under fritekstfeltet. Varselet om personopplysninger er på som standard. La det stå. Lumi API maskerer kjente mønstre og sletter svar automatisk etter tolv måneder.
 
-Det som ikke er lov: å be om navn eller fødselsnummer, og å rekruttere til brukertester. Endringer i surveyen krever en ny versjon av appen.`,
+Det som ikke er lov: å be om navn eller fødselsnummer, å rekruttere til brukertester, og å rette surveyer mot brukere med skjermingskode. Endringer i surveyen krever en ny versjon av appen.`,
   Component: StyrerDere,
 };
