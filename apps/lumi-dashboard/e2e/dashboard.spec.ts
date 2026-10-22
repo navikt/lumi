@@ -42,7 +42,7 @@ test.describe("Dashboard", () => {
     await expect(errorAlert).toContainText(
       "Vi viser ikke data før forespørselen lykkes",
     );
-    await expect(errorAlert).not.toContainText("Snevre inn perioden");
+    await expect(errorAlert).not.toContainText("for mange svar");
     await expect(surveySelect).toBeVisible();
     await expect(page.getByText(/Ingen data for valgt periode/)).toHaveCount(0);
 

@@ -6,7 +6,23 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { ApiErrorException, ErrorType } from "~/types/errors";
+import {
+  ANALYSIS_BUDGET_DESCRIPTION,
+  FILTER_BUDGET_DESCRIPTION,
+} from "~/utils/analysisBudget";
 import { DataFetchBoundary } from "../index";
+
+vi.mock("~/components/shared/ShorterPeriodButton", () => ({
+  ShorterPeriodButton: () => <button type="button">Vis siste 30 dager</button>,
+}));
+
+const analysisBudgetError = new ApiErrorException({
+  status: 400,
+  type: ErrorType.ANALYSIS_BUDGET_EXCEEDED,
+  message: "Too much feedback data for in-memory analysis",
+  timestamp: "2026-10-22T00:00:00Z",
+});
 
 describe("DataFetchBoundary", () => {
   it("renders its content when all queries have succeeded", () => {
@@ -38,7 +54,7 @@ describe("DataFetchBoundary", () => {
     render(
       <DataFetchBoundary
         title="Kunne ikke hente dashboarddata"
-        description="Snevre inn perioden eller legg til filtre før du prøver igjen."
+        description="Databasen svarer ikke akkurat nå."
         queries={[
           {
             isError: true,
@@ -60,9 +76,7 @@ describe("DataFetchBoundary", () => {
       screen.getByText("Kunne ikke hente dashboarddata"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Snevre inn perioden eller legg til filtre før du prøver igjen.",
-      ),
+      screen.getByText("Databasen svarer ikke akkurat nå."),
     ).toBeInTheDocument();
     expect(screen.queryByText("0 tilbakemeldinger")).not.toBeInTheDocument();
 
@@ -136,5 +150,85 @@ describe("DataFetchBoundary", () => {
     expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(screen.queryByText("0 tilbakemeldinger")).not.toBeInTheDocument();
+  });
+  it("offers a shorter period instead of a retry when the analysis budget is exceeded", () => {
+    const refetch = vi.fn();
+
+    render(
+      <DataFetchBoundary
+        title="Kunne ikke hente Top Tasks-data"
+        description="Databasen svarer ikke akkurat nå."
+        queries={[
+          {
+            error: analysisBudgetError,
+            isError: true,
+            isFetching: false,
+            refetch,
+          },
+        ]}
+      >
+        <div>Oppgavekvadrant</div>
+      </DataFetchBoundary>,
+    );
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Kunne ikke hente Top Tasks-data");
+    expect(alert).toHaveTextContent(ANALYSIS_BUDGET_DESCRIPTION);
+    expect(alert).not.toHaveTextContent("Databasen svarer ikke akkurat nå.");
+    expect(
+      screen.queryByRole("button", { name: "Prøv igjen" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Vis siste 30 dager" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Oppgavekvadrant")).not.toBeInTheDocument();
+    expect(refetch).not.toHaveBeenCalled();
+  });
+
+  it("uses the page's own text for the analysis budget", () => {
+    render(
+      <DataFetchBoundary
+        title="Kunne ikke hente tilbakemeldinger"
+        analysisBudgetDescription={FILTER_BUDGET_DESCRIPTION}
+        queries={[
+          {
+            error: analysisBudgetError,
+            isError: true,
+            isFetching: false,
+            refetch: vi.fn(),
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      FILTER_BUDGET_DESCRIPTION,
+    );
+  });
+
+  it("keeps the retry for other API errors", () => {
+    render(
+      <DataFetchBoundary
+        title="Kunne ikke hente Top Tasks-data"
+        queries={[
+          {
+            error: new ApiErrorException({
+              status: 400,
+              type: ErrorType.BAD_REQUEST,
+              message: "Ugyldig dato",
+              timestamp: "2026-10-22T00:00:00Z",
+            }),
+            isError: true,
+            isFetching: false,
+            refetch: vi.fn(),
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Prøv igjen" })).toBeVisible();
+    expect(screen.getByRole("alert")).not.toHaveTextContent(
+      ANALYSIS_BUDGET_DESCRIPTION,
+    );
   });
 });

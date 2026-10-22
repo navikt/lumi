@@ -1,9 +1,15 @@
 import { ArrowCirclepathIcon } from "@navikt/aksel-icons";
 import { Alert, BodyShort, Button, VStack } from "@navikt/ds-react";
 import { type ReactNode, useState } from "react";
+import { ShorterPeriodButton } from "~/components/shared/ShorterPeriodButton";
+import {
+  ANALYSIS_BUDGET_DESCRIPTION,
+  isAnalysisBudgetError,
+} from "~/utils/analysisBudget";
 import styles from "./DataFetchBoundary.module.css";
 
 interface RefetchableQuery {
+  error?: unknown;
   isError: boolean;
   isFetching: boolean;
   refetch: () => Promise<unknown>;
@@ -12,6 +18,8 @@ interface RefetchableQuery {
 interface DataFetchBoundaryProps {
   children?: ReactNode;
   description?: ReactNode;
+  /** Shown instead of `description` when a query hits the analysis budget. */
+  analysisBudgetDescription?: string;
   queries: RefetchableQuery[];
   title: string;
 }
@@ -23,6 +31,7 @@ interface DataFetchBoundaryProps {
 export function DataFetchBoundary({
   children,
   description = "Vi viser ikke data før forespørselen lykkes, fordi et tomt resultat kan være misvisende.",
+  analysisBudgetDescription = ANALYSIS_BUDGET_DESCRIPTION,
   queries,
   title,
 }: DataFetchBoundaryProps) {
@@ -68,6 +77,23 @@ export function DataFetchBoundary({
       <>
         {recoveryStatus}
         {children}
+      </>
+    );
+  }
+
+  // The API gives the same answer to the same period, so a retry cannot
+  // help. A shorter period can.
+  if (failedQueries.some((query) => isAnalysisBudgetError(query.error))) {
+    return (
+      <>
+        {recoveryStatus}
+        <Alert variant="warning" role="alert">
+          <VStack gap="space-8" align="start">
+            <BodyShort weight="semibold">{title}</BodyShort>
+            <BodyShort size="small">{analysisBudgetDescription}</BodyShort>
+            <ShorterPeriodButton />
+          </VStack>
+        </Alert>
       </>
     );
   }

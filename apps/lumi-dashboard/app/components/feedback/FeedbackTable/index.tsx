@@ -27,6 +27,7 @@ import { useFeedback } from "~/hooks/useFeedback";
 import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useTeamAccessDenied } from "~/hooks/useTeamAccessDenied";
+import { FILTER_BUDGET_DESCRIPTION } from "~/utils/analysisBudget";
 import { getTeamSubmissionPeriod } from "~/utils/dashboardPeriod";
 import { writeErrorText } from "~/utils/publicDemo";
 import {
@@ -63,6 +64,7 @@ export function FeedbackTable({ onResetFilters }: FeedbackTableProps = {}) {
   return (
     <DataFetchBoundary
       title="Kunne ikke hente tilbakemeldinger"
+      analysisBudgetDescription={FILTER_BUDGET_DESCRIPTION}
       queries={[feedbackQuery]}
     >
       <FeedbackTableContent

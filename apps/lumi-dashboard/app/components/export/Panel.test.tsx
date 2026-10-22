@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ExportPanel } from "~/components/export/Panel";
 import { exportServerFn } from "~/server/actions";
+import { ApiErrorException, ErrorType } from "~/types/errors";
+import { FILTER_BUDGET_DESCRIPTION } from "~/utils/analysisBudget";
 
 const search = vi.hoisted(() => ({
   params: { team: "flex" } as Record<string, string>,
@@ -78,6 +80,46 @@ describe("ExportPanel", () => {
     rerender(<ExportPanel />);
 
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("explains the analysis budget without a retry and clears it when the filters change", async () => {
+    const consoleError = vi.spyOn(console, "error");
+    search.params = { team: "flex", surveyId: "survey-top-tasks", task: "a" };
+    exportMock.mockRejectedValue(
+      new ApiErrorException({
+        status: 400,
+        type: ErrorType.ANALYSIS_BUDGET_EXCEEDED,
+        message: "Too much feedback data for in-memory analysis",
+        timestamp: "2026-10-22T00:00:00Z",
+      }),
+    );
+    const user = userEvent.setup();
+    const { rerender } = render(<ExportPanel />);
+
+    await user.click(screen.getByRole("button", { name: "Last ned CSV" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(FILTER_BUDGET_DESCRIPTION);
+    expect(alert).not.toHaveTextContent("Too much feedback data");
+    expect(
+      screen.queryByRole("button", { name: "Prøv igjen" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Vis siste 30 dager" }),
+    ).toBeInTheDocument();
+    expect(consoleError).not.toHaveBeenCalled();
+
+    search.params = {
+      team: "flex",
+      surveyId: "survey-top-tasks",
+      task: "a",
+      dateMode: "fixed",
+      fromDate: "2026-09-23",
+      toDate: "2026-10-22",
+    };
+    rerender(<ExportPanel />);
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("does not warn when every matching response is included", async () => {

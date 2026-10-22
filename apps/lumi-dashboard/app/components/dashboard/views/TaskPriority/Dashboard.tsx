@@ -18,17 +18,21 @@ export function TaskPriorityDashboard() {
   const { addSegment } = useSegmentFilter();
   const surveyId = params.surveyId;
 
+  // Only the analysis depends on the Task Priority query. The sections below
+  // have their own queries and stay useful when the analysis fails.
   return (
-    <DataFetchBoundary
-      title="Kunne ikke hente Task Priority-data"
-      queries={[taskPriorityQuery]}
-    >
-      {/* Task Priority Analysis - show skeleton while loading */}
-      {isPending ? (
-        <TaskPriorityAnalysisSkeleton />
-      ) : (
-        data && <TaskPriorityAnalysis data={data} />
-      )}
+    <>
+      <DataFetchBoundary
+        title="Kunne ikke hente Task Priority-data"
+        queries={[taskPriorityQuery]}
+      >
+        {/* Task Priority Analysis - show skeleton while loading */}
+        {isPending ? (
+          <TaskPriorityAnalysisSkeleton />
+        ) : (
+          data && <TaskPriorityAnalysis data={data} />
+        )}
+      </DataFetchBoundary>
 
       {/* Timeline */}
       <TimelineSection title="Antall svar over tid" />
@@ -40,6 +44,6 @@ export function TaskPriorityDashboard() {
 
       {/* Device breakdown */}
       <DeviceBreakdownSection />
-    </DataFetchBoundary>
+    </>
   );
 }

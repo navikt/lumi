@@ -12,6 +12,7 @@ import type {
 } from "~/types/api";
 import { parseChoiceParam } from "~/utils/choiceFilterUtils";
 import { parseRatingParam } from "~/utils/ratingFilterUtils";
+import { MOCK_ANALYSIS_BUDGET_SURVEY_ID } from "./analysisBudget";
 
 import {
   generateComplexSurveyData,
@@ -291,7 +292,26 @@ export const mockFeedbackItems: FeedbackDto[] = [
 ];
 
 function generateE2eFixtureData(): FeedbackDto[] {
-  return [...generateHistoricalSurveyData(), ...generateSharedSurveyData()];
+  return [
+    ...generateHistoricalSurveyData(),
+    ...generateSharedSurveyData(),
+    ...generateAnalysisBudgetSurveyData(),
+  ];
+}
+
+/**
+ * A Top Tasks survey whose analyses hit the API's analysis budget when the
+ * period is longer than 30 days (see `assertMockAnalysisBudget`). The answers
+ * are from the last few days, so a 30-day period shows them.
+ */
+function generateAnalysisBudgetSurveyData(): FeedbackDto[] {
+  return generateTopTasksMockData()
+    .slice(0, 60)
+    .map((item, index) => ({
+      ...item,
+      id: `analysegrense-${index + 1}`,
+      surveyId: MOCK_ANALYSIS_BUDGET_SURVEY_ID,
+    }));
 }
 
 export * from "./helpers"; // export helpers if needed by tests

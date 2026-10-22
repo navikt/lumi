@@ -17,9 +17,14 @@ import {
 import { useEffect, useState } from "react";
 import { DashboardCard, DashboardGrid } from "~/components/dashboard";
 import { ActiveFilters } from "~/components/export/ActiveFilters";
+import { ShorterPeriodButton } from "~/components/shared/ShorterPeriodButton";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { exportServerFn } from "~/server/actions";
 import { MAX_EXPORT_SIZE } from "~/server/actions/export";
+import {
+  FILTER_BUDGET_DESCRIPTION,
+  isAnalysisBudgetError,
+} from "~/utils/analysisBudget";
 import { splitChoiceParam } from "~/utils/choiceFilterUtils";
 import { splitRatingParam } from "~/utils/ratingFilterUtils";
 import styles from "./Panel.module.css";
@@ -42,18 +47,21 @@ export function ExportPanel() {
   const [format, setFormat] = useState<ExportFormat>("csv");
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [budgetExceeded, setBudgetExceeded] = useState(false);
   const [success, setSuccess] = useState(false);
   const [truncation, setTruncation] = useState<Truncation | null>(null);
   const filterKey = JSON.stringify(params);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filterKey is the trigger, since the warning only applies to the filters the file was exported with
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filterKey is the trigger, since the warnings only apply to the filters the file was exported with
   useEffect(() => {
     setTruncation(null);
+    setBudgetExceeded(false);
   }, [filterKey]);
 
   const handleExport = async () => {
     setIsExporting(true);
     setError(null);
+    setBudgetExceeded(false);
     setSuccess(false);
     setTruncation(null);
 
@@ -108,6 +116,12 @@ export function ExportPanel() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
+      if (isAnalysisBudgetError(err)) {
+        // An expected answer, not a fault. The same filters give the same
+        // answer, so a retry cannot help.
+        setBudgetExceeded(true);
+        return;
+      }
       console.error("Export failed:", err);
       setError(err instanceof Error ? err.message : "Ukjent feil ved eksport");
     } finally {
@@ -134,6 +148,20 @@ export function ExportPanel() {
           >
             Prøv igjen
           </Button>
+        </Alert>
+      )}
+      {budgetExceeded && (
+        <Alert
+          variant="warning"
+          role="alert"
+          className="export-alert"
+          closeButton
+          onClose={() => setBudgetExceeded(false)}
+        >
+          <VStack gap="space-8" align="start">
+            {FILTER_BUDGET_DESCRIPTION}
+            <ShorterPeriodButton />
+          </VStack>
         </Alert>
       )}
       {success && (

@@ -71,4 +71,28 @@ describe("TaskPriorityDashboard", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("Stemmer over tid")).not.toBeInTheDocument();
   });
+  it("keeps the sections with their own data when the analysis fails", () => {
+    mockUseTaskPriorityStats.mockReturnValue({
+      data: undefined,
+      error: new Error("network failure"),
+      isPending: false,
+      isError: true,
+      isFetching: false,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<TaskPriorityDashboard />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Kunne ikke hente Task Priority-data",
+    );
+    expect(
+      screen.queryByText("MOCK_TASK_PRIORITY_ANALYSIS"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Antall svar over tid" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("MOCK_SEGMENT_BREAKDOWN")).toBeInTheDocument();
+    expect(screen.getByText("MOCK_DEVICE_BREAKDOWN")).toBeInTheDocument();
+  });
 });

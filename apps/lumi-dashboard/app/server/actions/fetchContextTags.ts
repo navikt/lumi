@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { zodValidator } from "@tanstack/zod-adapter";
+import { assertMockAnalysisBudget } from "~/mock/analysisBudget";
 import { getMockContextTags } from "~/mock/mockData";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
@@ -24,6 +25,8 @@ export const fetchContextTagsServerFn = createServerFn({ method: "GET" })
 
     if (isMockMode()) {
       await mockDelay(300);
+      // Like the API, only the task drill-down reads the answers into memory.
+      if (data.task) assertMockAnalysisBudget(data);
 
       // Calculate actual context tags from mock data (with all filters)
       const contextTags = getMockContextTags(

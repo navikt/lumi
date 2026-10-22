@@ -2,6 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { zodValidator } from "@tanstack/zod-adapter";
 import ExcelJS from "exceljs";
 import {
+  assertMockAnalysisBudget,
+  usesInMemoryFeedbackFilters,
+} from "~/mock/analysisBudget";
+import {
   filterMockArchiveVisibility,
   mockFeedbackItems,
 } from "~/mock/mockData";
@@ -239,6 +243,7 @@ export const exportServerFn = createServerFn({ method: "POST" })
     if (isMockMode()) {
       await mockDelay();
       assertMockTeamAccess(data.team);
+      if (usesInMemoryFeedbackFilters(data)) assertMockAnalysisBudget(data);
 
       const matching = applyFeedbackFilters(
         filterMockArchiveVisibility(
