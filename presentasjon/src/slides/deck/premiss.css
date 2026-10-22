@@ -1,52 +1,67 @@
 /*
- * Slides 3–5, the premise: people write personal data in free text, the
- * idea behind FlexJar, and the needs that became Lumi.
+ * The premise: people write personal data in free text, the idea behind
+ * FlexJar, and the needs that became Lumi.
  */
-
-/* Slide 3: the answer as the user wrote it, personal data framed in ink. */
 
 /*
- * Centred in the space under the title, a little above the middle. The gap
- * leaves room for the tag, which reaches above the field.
+ * mer-enn-vi-spor-om, a monument: the answer is the hero, the title is
+ * small over it.
  */
-.mer__example {
-  display: flex;
-  flex-direction: column;
-  gap: 52px;
-  margin: auto 0;
-  padding-bottom: 96px;
-}
 
-/* «Eksempel» on the field's upper left edge, like the live tag. */
-.mer__answer {
-  position: relative;
-}
-
-.mer__tag {
+.mer__title {
   position: absolute;
-  top: -26px;
-  left: 32px;
+  top: 84px;
+  left: var(--deck-space-page);
+  margin: 0;
+  /* The small title of a monument. There is no token for it yet. */
+  font-size: var(--deck-size-heading);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1.1;
 }
 
 .mer__question {
+  position: absolute;
+  top: 176px;
+  left: var(--deck-space-page);
+  display: flex;
+  align-items: center;
+  gap: 28px;
   margin: 0;
-  font-size: var(--deck-size-lead);
-  font-weight: var(--deck-weight-strong);
+  color: var(--deck-muted);
+  font-size: var(--deck-size-body);
+  font-weight: 600;
   line-height: 1.2;
 }
 
-/* A lighter edge than the frames, so the field stays in the background. */
-.mer__field {
+/*
+ * The answer as the user wrote it. The gold dot hangs in front of the
+ * first line, so the three lines start on one edge. The last line ends
+ * above y 800, clear of the Teams corner.
+ */
+.mer__quote {
+  position: absolute;
+  top: 340px;
+  left: var(--deck-space-page);
   margin: 0;
-  padding: 40px 56px 48px;
-  border: 4px solid var(--deck-border);
-  border-radius: var(--deck-radius);
-  background: var(--deck-surface);
-  font-size: 72px;
-  font-weight: 400;
-  line-height: 1.6;
+  padding-left: 120px;
+  text-indent: -120px;
+  font-size: 112px;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: var(--deck-tracking-display);
   /* Room for the frames, so they never touch the next word. */
   word-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+/* An answer is a gold disc, here as tall as the capitals, centred on them. */
+.mer__dot {
+  width: 80px;
+  height: 80px;
+  margin-right: 40px;
+  overflow: visible;
+  vertical-align: -1px;
 }
 
 /* The words stay as they were typed. Only the frame comes and goes. */
@@ -56,38 +71,219 @@
   color: inherit;
 }
 
-/* The deck's one mark: 6 px ink, radius 10. */
+/*
+ * The deck's one mark: 6 px ink, radius 10. On click 1 it is drawn round
+ * the name and then round the e-mail address.
+ */
 .mer__frame {
   position: absolute;
   inset: -3px -14px;
-  border: 6px solid var(--map-ink);
-  border-radius: 10px;
+  text-indent: 0;
   pointer-events: none;
 }
 
-/*
- * A comma right after a framed word: pushed clear of the frame, which
- * reaches 14 px past the word. The space before a framed word is wide
- * enough already.
- */
-.mer__after {
-  margin-left: 18px;
+/* Shown at once: the drawing is its entrance. */
+.mer__frame[data-from] {
+  transition: none;
 }
 
-/* Slide 4: the survey is code the app carries. */
+.mer__frame-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.mer__frame-line {
+  x: 3px;
+  y: 3px;
+  width: calc(100% - 6px);
+  height: calc(100% - 6px);
+  rx: 10px;
+  fill: none;
+  stroke: var(--map-ink);
+  stroke-width: 6px;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+.mer__frame:not([data-revealed]) .mer__frame-line {
+  stroke-dashoffset: 1;
+}
+
+/*
+ * The comma after the name sits close, as typed. When the frame comes, it
+ * moves 18 px, clear of the frame, which reaches 14 px past the word.
+ */
+.mer__after {
+  display: inline-block;
+  /* An inline block takes the quote's hanging indent unless told not to. */
+  text-indent: 0;
+}
+
+.mer__quote--framed .mer__after {
+  transform: translateX(18px);
+}
+
+/* flexjar-og-lumi: one sentence, and the two names under it. */
+
+.flexjar-kort {
+  justify-content: center;
+  gap: 64px;
+}
+
+.flexjar-kort__claim {
+  margin: 0;
+  font-size: var(--deck-size-display);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: var(--deck-line-height-tight);
+}
+
+.flexjar-kort__names {
+  margin: 0;
+  font-size: var(--deck-size-heading);
+  font-weight: var(--deck-weight-display);
+  line-height: 1.1;
+}
+
+/* The names carry the weight, the word between them does not. */
+.flexjar-kort__and {
+  color: var(--deck-muted);
+  font-weight: 500;
+}
+
+/*
+ * flexjar, a zone: the survey is code the app carries, and the answer
+ * stays on Nais. The title block sits under the map, as on a printed map.
+ */
 
 .map .flexjar__app .map-app__part-label {
   font-family: var(--deck-font-mono);
   font-weight: 600;
 }
 
-/* Slide 5: needs on a line that is not built yet. */
+.flexjar__titleblock {
+  position: absolute;
+  bottom: 104px;
+  left: var(--deck-space-page);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.flexjar__title {
+  margin: 0;
+  font-size: var(--deck-size-title);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: var(--deck-line-height-tight);
+}
+
+.flexjar__thanks {
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-body);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Without motion and on paper the line is simply there. */
+.map .map-line.flexjar__line {
+  transition: none;
+}
+
+/*
+ * vi-trengte-mer, a line: the needs on a dashed line from edge to edge.
+ * On click 1 Lumi draws its line over it, and each need lights as the
+ * line reaches it.
+ */
+
+.slide-title.trengte__title {
+  font-size: var(--deck-size-statement);
+}
 
 .trengte__gap .map-station__ring {
   stroke-dasharray: var(--trengte-dash);
 }
 
-/* The short FlexJar slide: the thanks sits under the title. */
-.flexjar-kort__thanks {
-  max-width: none;
+/* A need not met yet is lighter. A met need is set in the display weight. */
+.map .trengte__need {
+  fill: var(--deck-muted);
+  font-size: var(--deck-size-body);
+  font-weight: 500;
+}
+
+.trengte--built .map .trengte__need {
+  fill: var(--map-ink);
+  font-weight: var(--deck-weight-display);
+}
+
+.map .map-line.trengte__line {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* The pen goes round the name, then round the e-mail address. */
+  :root:not([data-stil="papir"]) .mer__frame[data-revealed] .mer__frame-line {
+    transition: stroke-dashoffset 600ms var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"])
+    .mer__personal--second
+    .mer__frame[data-revealed]
+    .mer__frame-line {
+    transition-duration: 900ms;
+    transition-delay: 350ms;
+  }
+
+  /* The comma makes room before the pen gets round to it. */
+  :root:not([data-stil="papir"]) .mer__quote--framed .mer__after {
+    transition: transform 250ms var(--deck-easing);
+  }
+
+  /* The line draws into Nais, and the answer lights when it gets there. */
+  :root:not([data-stil="papir"]) .map .map-line.flexjar__line[data-revealed] {
+    transition: stroke-dashoffset 700ms var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"])
+    .flexjar__landing
+    .map-answer-flash[data-revealed]
+    .map-answer {
+    animation-delay: 620ms;
+  }
+
+  /* The ring stays hidden until it runs out from the lit answer. */
+  :root:not([data-stil="papir"])
+    .flexjar__landing
+    .map-answer-flash[data-revealed]
+    .map-answer__ring {
+    animation-delay: 740ms;
+    animation-fill-mode: none;
+  }
+
+  /*
+   * Only the fade waits. Visibility stays instant, so the caption is there
+   * at once when someone goes back to this slide.
+   */
+  :root:not([data-stil="papir"]) .map .flexjar__caption[data-revealed] {
+    transition: opacity var(--deck-duration-reveal) var(--deck-easing) 760ms;
+  }
+
+  /* Lumi's line draws from edge to edge, the stations fill as it passes. */
+  :root:not([data-stil="papir"]) .map .map-line.trengte__line[data-revealed] {
+    transition: stroke-dashoffset var(--trengte-draw) var(--deck-easing-travel);
+  }
+
+  /* As for the caption on flexjar: the fade waits, visibility does not. */
+  :root:not([data-stil="papir"]) .trengte__fill[data-revealed] {
+    transition: opacity 200ms var(--deck-easing) var(--trengte-delay);
+  }
+
+  :root:not([data-stil="papir"]) .trengte--built .map .trengte__need {
+    transition:
+      fill 300ms var(--deck-easing) var(--trengte-delay),
+      font-weight 300ms var(--deck-easing) var(--trengte-delay);
+  }
 }

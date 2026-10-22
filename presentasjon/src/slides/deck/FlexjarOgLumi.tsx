@@ -1,17 +1,22 @@
 import type { Slide } from "../../engine";
-import { NeedsLine } from "./ViTrengteMer";
 import "./premiss.css";
 
-/** The FlexJar story in one slide, for talks with little time. */
+/** The FlexJar story in one sentence, for the talk with the least time. */
 function FlexjarOgLumi() {
   return (
-    <div className="slide">
-      <h2 className="slide-title">Samme grunntanke som FlexJar</h2>
-      <p className="slide-lead flexjar-kort__thanks">
-        Surveyen i koden, svarene internt. Takk til Team Flex, som tok imot
-        svarene våre fra 2024.
+    <div className="slide flexjar-kort">
+      <h2 className="flexjar-kort__claim">
+        Surveyen i koden.
+        <br />
+        Svarene internt.
+      </h2>
+      <p className="flexjar-kort__names">
+        FlexJar
+        <span data-from={1}>
+          {" "}
+          <span className="flexjar-kort__and">og</span> Lumi
+        </span>
       </p>
-      <NeedsLine />
     </div>
   );
 }
@@ -19,13 +24,15 @@ function FlexjarOgLumi() {
 export const flexjarOgLumi: Slide = {
   id: "flexjar-og-lumi",
   title: "Samme grunntanke som FlexJar",
-  steps: 2,
+  steps: 1,
   rooms: ["faggruppa"],
-  notes: `Ordrett: «Vi startet med FlexJar fra Team Flex, fordi grunntanken er god: surveyen i koden og svarene internt. Det vi manglet, lagde vi selv, først som tillegg: en widget og et dashboard for analyse. I januar 2026 ble det et eget verktøy, med egen datamodell og tilgang per team.»
+  notes: `Har Team Flex vist FlexJar først, begynn med: «Dere har akkurat sett FlexJar.»
 
-Klikk 1: de fire behovene. Klikk 2: Lumi, januar 2026.
+Ordrett: «Vi startet med FlexJar fra Team Flex, fordi grunntanken er god: surveyen i koden og svarene internt. Takk til Team Flex, som tok imot svarene våre fra 2024.»
 
-Har Team Flex vist FlexJar først: «Dere har akkurat sett FlexJar. Lumi har samme grunnidé.» Kommer Lumi først: «Etterpå viser Team Flex FlexJar.»
+Klikk 1: «og Lumi» kommer. Ordrett: «Lumi har samme grunnidé. Det vi manglet, lagde vi selv, først som tillegg: en widget og et dashboard for analyse. I januar 2026 ble det et eget verktøy, med egen datamodell og tilgang per team.»
+
+Viser Team Flex FlexJar etter Lumi, slutt med: «Etterpå viser Team Flex FlexJar.»
 
 FlexJar har tatt imot svar for flere team siden 2023, og brukes fortsatt.`,
   Component: FlexjarOgLumi,
