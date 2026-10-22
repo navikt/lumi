@@ -5,6 +5,7 @@ import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
 import { useTaskPriorityStats } from "~/hooks/useTaskPriorityStats";
+import { analysisBudgetDescription } from "~/utils/analysisBudget";
 import { TaskPriorityAnalysis } from "./index";
 import { Skeleton as TaskPriorityAnalysisSkeleton } from "./Skeleton";
 
@@ -24,6 +25,9 @@ export function TaskPriorityDashboard() {
     <>
       <DataFetchBoundary
         title="Kunne ikke hente Task Priority-data"
+        analysisBudgetDescription={analysisBudgetDescription(
+          "Task Priority-analysen",
+        )}
         queries={[taskPriorityQuery]}
       >
         {/* Task Priority Analysis - show skeleton while loading */}

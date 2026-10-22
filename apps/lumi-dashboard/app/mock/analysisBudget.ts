@@ -1,5 +1,5 @@
-import dayjs from "dayjs";
 import { ApiErrorException, ErrorType } from "~/types/errors";
+import { periodDays } from "~/utils/analysisBudget";
 
 /**
  * E2E fixture survey whose analyses hit the API's analysis budget when the
@@ -22,16 +22,7 @@ export function assertMockAnalysisBudget({
   toDate,
 }: AnalysisBudgetRequest): void {
   if (surveyId !== MOCK_ANALYSIS_BUDGET_SURVEY_ID) return;
-
-  const from = fromDate ? dayjs(fromDate) : undefined;
-  const to = toDate ? dayjs(toDate) : undefined;
-  if (
-    from?.isValid() &&
-    to?.isValid() &&
-    to.diff(from, "day") + 1 <= MOCK_ANALYSIS_BUDGET_MAX_DAYS
-  ) {
-    return;
-  }
+  if (periodDays(fromDate, toDate) <= MOCK_ANALYSIS_BUDGET_MAX_DAYS) return;
 
   throw new ApiErrorException({
     status: 400,

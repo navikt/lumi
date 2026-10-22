@@ -3,6 +3,7 @@ import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { TextAnalysis } from "~/components/shared/TextAnalysis";
 import { useBlockerStats } from "~/hooks/useBlockerStats";
 import type { BlockerResponse } from "~/types/api";
+import { analysisBudgetDescription } from "~/utils/analysisBudget";
 
 interface BlockerAnalysisProps {
   /** Optional - if provided, use this data instead of fetching */
@@ -18,6 +19,7 @@ export function BlockerAnalysis({ data: providedData }: BlockerAnalysisProps) {
   return (
     <DataFetchBoundary
       title="Kunne ikke hente hindringer"
+      analysisBudgetDescription={analysisBudgetDescription("Hindringene")}
       queries={providedData ? [] : [blockerQuery]}
     >
       <BlockerAnalysisContent

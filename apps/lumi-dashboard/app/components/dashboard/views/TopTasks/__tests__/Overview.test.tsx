@@ -170,4 +170,47 @@ describe("TopTasksOverview", () => {
 
     expect(screen.getByText("MOCK_BLOCKER_ANALYSIS")).toBeInTheDocument();
   });
+  it("keeps Enheter and Segmentering when the analysis fails", () => {
+    mockUseTopTasksStats.mockReturnValue({
+      data: undefined,
+      error: new Error("network failure"),
+      isLoading: false,
+      isError: true,
+      isFetching: false,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<TopTasksOverview />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Kunne ikke hente Top Tasks-data",
+    );
+    expect(screen.queryByText("MOCK_BLOCKER_ANALYSIS")).not.toBeInTheDocument();
+    expect(screen.getByText("MOCK_SEGMENT_BREAKDOWN")).toBeInTheDocument();
+    expect(screen.getByText("MOCK_DEVICE_BREAKDOWN")).toBeInTheDocument();
+  });
+
+  it("hides Segmentering for a task with the analysis, since it reads the same answers", () => {
+    mockUseSearchParams.mockReturnValue({
+      params: { surveyId: "survey-top-tasks", task: "soke" },
+      setParam: vi.fn(),
+      setParams: vi.fn(),
+      resetParams: vi.fn(),
+    } as never);
+    mockUseTopTasksStats.mockReturnValue({
+      data: undefined,
+      error: new Error("network failure"),
+      isLoading: false,
+      isError: true,
+      isFetching: false,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<TopTasksOverview />);
+
+    expect(
+      screen.queryByText("MOCK_SEGMENT_BREAKDOWN"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("MOCK_DEVICE_BREAKDOWN")).toBeInTheDocument();
+  });
 });

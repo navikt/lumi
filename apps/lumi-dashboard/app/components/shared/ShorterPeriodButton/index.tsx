@@ -1,7 +1,6 @@
 import { Button } from "@navikt/ds-react";
-import dayjs from "dayjs";
 import { useSearchParams } from "~/hooks/useSearchParams";
-import { shorterPeriodDays } from "~/utils/analysisBudget";
+import { periodEnd, shorterPeriodDays } from "~/utils/analysisBudget";
 
 /**
  * PeriodSelector marks its button with this attribute. The filter bar
@@ -19,8 +18,9 @@ function focusPeriodTrigger() {
 }
 
 /**
- * Offers a shorter period when the selected one has too many answers for an
- * analysis. The new period matches the quick choice with the same name.
+ * Offers the last 30 or 7 days of the selected period when it has too many
+ * answers for an analysis. The new period ends where the old one ends, so it
+ * never has more answers.
  */
 export function ShorterPeriodButton() {
   const { params, setParams } = useSearchParams();
@@ -28,16 +28,16 @@ export function ShorterPeriodButton() {
   if (!days) return null;
 
   const showShorterPeriod = async () => {
-    const today = dayjs();
+    const end = periodEnd(params.toDate);
     await setParams({
       dateMode: "fixed",
-      fromDate: today.subtract(days - 1, "day").format("YYYY-MM-DD"),
-      toDate: today.format("YYYY-MM-DD"),
+      fromDate: end.subtract(days - 1, "day").format("YYYY-MM-DD"),
+      toDate: end.format("YYYY-MM-DD"),
       periodPreset: undefined,
       page: "1",
     });
-    // The alert and this button go away with the new period. The period is
-    // what changed, so focus continues there.
+    // The alert and this button go away with the new period. Focus moves to
+    // the period button, which names the new period.
     window.requestAnimationFrame(focusPeriodTrigger);
   };
 
@@ -48,7 +48,7 @@ export function ShorterPeriodButton() {
       size="small"
       onClick={() => void showShorterPeriod()}
     >
-      Vis siste {days} dager
+      Vis de siste {days} dagene i perioden
     </Button>
   );
 }

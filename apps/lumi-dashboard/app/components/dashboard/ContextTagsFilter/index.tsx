@@ -2,6 +2,7 @@ import { Box, Label, Select, VStack } from "@navikt/ds-react";
 import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { useContextTags } from "~/hooks/useContextTags";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
+import { analysisBudgetDescription } from "~/utils/analysisBudget";
 import { formatMetadataLabel, formatMetadataValue } from "~/utils/segmentUtils";
 
 interface ContextTagsFilterProps {
@@ -15,9 +16,15 @@ interface ContextTagsFilterProps {
 export function ContextTagsFilter({ surveyId }: ContextTagsFilterProps) {
   const contextTagsQuery = useContextTags(surveyId);
 
+  // A button inside the filter menu cannot be reached with the keyboard, so
+  // this alert has none. The page's own alert offers the shorter period.
   return (
     <DataFetchBoundary
       title="Kunne ikke hente segmentfiltre"
+      analysisBudgetDescription={analysisBudgetDescription(
+        "Segmentfiltrene for oppgaven",
+      )}
+      offerShorterPeriod={false}
       queries={[contextTagsQuery]}
     >
       <ContextTagsFilterContent

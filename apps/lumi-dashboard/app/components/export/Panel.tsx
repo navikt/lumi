@@ -14,7 +14,7 @@ import {
   RadioGroup,
   VStack,
 } from "@navikt/ds-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DashboardCard, DashboardGrid } from "~/components/dashboard";
 import { ActiveFilters } from "~/components/export/ActiveFilters";
 import { ShorterPeriodButton } from "~/components/shared/ShorterPeriodButton";
@@ -22,6 +22,7 @@ import { useSearchParams } from "~/hooks/useSearchParams";
 import { exportServerFn } from "~/server/actions";
 import { MAX_EXPORT_SIZE } from "~/server/actions/export";
 import {
+  ANALYSIS_BUDGET_TITLE,
   FILTER_BUDGET_DESCRIPTION,
   isAnalysisBudgetError,
 } from "~/utils/analysisBudget";
@@ -51,6 +52,10 @@ export function ExportPanel() {
   const [success, setSuccess] = useState(false);
   const [truncation, setTruncation] = useState<Truncation | null>(null);
   const filterKey = JSON.stringify(params);
+  // The filters can change while an export runs. Its warnings only apply to
+  // the filters it started with.
+  const currentFilterKey = useRef(filterKey);
+  currentFilterKey.current = filterKey;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: filterKey is the trigger, since the warnings only apply to the filters the file was exported with
   useEffect(() => {
@@ -59,6 +64,7 @@ export function ExportPanel() {
   }, [filterKey]);
 
   const handleExport = async () => {
+    const startedWith = filterKey;
     setIsExporting(true);
     setError(null);
     setBudgetExceeded(false);
@@ -106,6 +112,7 @@ export function ExportPanel() {
       document.body.removeChild(a);
 
       if (
+        currentFilterKey.current === startedWith &&
         result.total !== null &&
         result.count !== null &&
         result.total > result.count
@@ -117,9 +124,9 @@ export function ExportPanel() {
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       if (isAnalysisBudgetError(err)) {
-        // An expected answer, not a fault. The same filters give the same
-        // answer, so a retry cannot help.
-        setBudgetExceeded(true);
+        // The API refuses the same filters every time, so this alert has no
+        // retry button.
+        if (currentFilterKey.current === startedWith) setBudgetExceeded(true);
         return;
       }
       console.error("Export failed:", err);
@@ -151,15 +158,10 @@ export function ExportPanel() {
         </Alert>
       )}
       {budgetExceeded && (
-        <Alert
-          variant="warning"
-          role="alert"
-          className="export-alert"
-          closeButton
-          onClose={() => setBudgetExceeded(false)}
-        >
+        <Alert variant="warning" role="alert" className="export-alert">
           <VStack gap="space-8" align="start">
-            {FILTER_BUDGET_DESCRIPTION}
+            <BodyShort weight="semibold">{ANALYSIS_BUDGET_TITLE}</BodyShort>
+            <BodyShort size="small">{FILTER_BUDGET_DESCRIPTION}</BodyShort>
             <ShorterPeriodButton />
           </VStack>
         </Alert>

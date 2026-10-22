@@ -100,4 +100,22 @@ describe("DiscoveryDashboard", () => {
     expect(screen.getByText("MOCK_SEGMENT_BREAKDOWN")).toBeInTheDocument();
     expect(screen.getByText("MOCK_DEVICE_BREAKDOWN")).toBeInTheDocument();
   });
+  it("shows the skeleton for the analysis and the other sections while it loads", () => {
+    mockUseDiscoveryStats.mockReturnValue({
+      data: undefined,
+      error: null,
+      isPending: true,
+      isError: false,
+      isFetching: true,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<DiscoveryDashboard />);
+
+    expect(screen.getByText("MOCK_SKELETON")).toBeInTheDocument();
+    expect(
+      screen.queryByText("MOCK_DISCOVERY_ANALYSIS"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("MOCK_DEVICE_BREAKDOWN")).toBeInTheDocument();
+  });
 });

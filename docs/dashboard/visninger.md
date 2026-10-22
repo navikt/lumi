@@ -159,13 +159,13 @@ Resten av dashboardet viser tall uansett hvor få svar det er, også når det ba
 
 ## Når perioden har for mange svar {#for-mange-svar}
 
-Analysene i **Top Tasks**, **Discovery** og **Task Priority**, hindringene og **Segmentering** med en valgt oppgave regnes ut fra hvert enkelt svar. Lumi regner dem ut for høyst 10 000 svar om gangen, og for færre når hvert svar har mye tekst. Har perioden flere svar, står meldingen «Det er for mange svar i perioden til at analysen kan regnes ut. Velg en kortere periode.» der analysen skulle vært.
+Har perioden for mange svar, står varselet **Perioden har for mange svar** der analysen skulle vært. Det gjelder analysene i **Top Tasks**, **Discovery** og **Task Priority**, **Det som hindrer brukerne** og **Segmentering** med en valgt oppgave. Lumi regner dem ut fra hvert enkelt svar, og grensen er 10 000 svar. Den er lavere når svarene er store, for eksempel når spørsmålene har mange svaralternativer.
 
-Det hjelper ikke å prøve igjen med samme periode. Med knappen **Vis siste 30 dager** bytter dere til de siste 30 dagene. Er perioden allerede 30 dager eller kortere, heter knappen **Vis siste 7 dager**.
+**Vis de siste 30 dagene i perioden** setter perioden til de siste 30 dagene av perioden dere hadde valgt. Er perioden 30 dager eller kortere, heter knappen **Vis de siste 7 dagene i perioden**. Er den sju dager eller kortere, er det ingen knapp. Et filter på enhet gjør også utvalget mindre.
 
-I **Discovery** og **Task Priority** vises grafen over tid, **Enheter** og **Segmentering** som vanlig, fordi de ikke bygger på analysen.
+I **Discovery** og **Task Priority** vises **Antall svar over tid**, **Enheter** og **Segmentering** selv om analysen mangler. I **Top Tasks** vises **Enheter**, og **Segmentering** når dere ikke har valgt en oppgave.
 
-Det samme gjelder **Tilbakemeldinger** og **Eksporter** når dere filtrerer på oppgave, tema eller frase. Lumi bruker de filtrene etter at svarene i perioden er hentet, så de gjør ikke utvalget mindre. Meldingen er da «Det er for mange svar i perioden til å filtrere på oppgave, tema eller frase. Velg en kortere periode.»
+Grensen gjelder også **Tilbakemeldinger** og **Eksporter** når dere filtrerer på oppgave, tema eller uttrykk. Lumi bruker de filtrene etter at svarene i perioden er hentet. Velg en kortere periode, eller fjern filteret.
 
 ## Les og slett enkeltsvar {#tilbakemeldinger}
 

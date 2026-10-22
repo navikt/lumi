@@ -95,4 +95,22 @@ describe("TaskPriorityDashboard", () => {
     expect(screen.getByText("MOCK_SEGMENT_BREAKDOWN")).toBeInTheDocument();
     expect(screen.getByText("MOCK_DEVICE_BREAKDOWN")).toBeInTheDocument();
   });
+  it("shows the skeleton for the analysis and the other sections while it loads", () => {
+    mockUseTaskPriorityStats.mockReturnValue({
+      data: undefined,
+      error: null,
+      isPending: true,
+      isError: false,
+      isFetching: true,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<TaskPriorityDashboard />);
+
+    expect(screen.getByText("MOCK_SKELETON")).toBeInTheDocument();
+    expect(
+      screen.queryByText("MOCK_TASK_PRIORITY_ANALYSIS"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("MOCK_DEVICE_BREAKDOWN")).toBeInTheDocument();
+  });
 });

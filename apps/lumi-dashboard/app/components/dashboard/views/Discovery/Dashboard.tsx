@@ -6,6 +6,7 @@ import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { useDiscoveryStats } from "~/hooks/useDiscoveryStats";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
+import { analysisBudgetDescription } from "~/utils/analysisBudget";
 import { DiscoveryAnalysis } from "./index";
 import { Skeleton as DiscoveryAnalysisSkeleton } from "./Skeleton";
 
@@ -30,6 +31,9 @@ export function DiscoveryDashboard() {
 
       <DataFetchBoundary
         title="Kunne ikke hente Discovery-data"
+        analysisBudgetDescription={analysisBudgetDescription(
+          "Discovery-analysen",
+        )}
         queries={[discoveryQuery]}
       >
         {/* Discovery Analysis - show skeleton while loading */}

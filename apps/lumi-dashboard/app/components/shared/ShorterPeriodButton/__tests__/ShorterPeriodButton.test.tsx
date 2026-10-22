@@ -38,7 +38,7 @@ describe("ShorterPeriodButton", () => {
     render(<ShorterPeriodButton />);
 
     expect(
-      screen.getByRole("button", { name: "Vis siste 30 dager" }),
+      screen.getByRole("button", { name: "Vis de siste 30 dagene i perioden" }),
     ).toBeInTheDocument();
   });
 
@@ -47,18 +47,42 @@ describe("ShorterPeriodButton", () => {
     render(<ShorterPeriodButton />);
 
     expect(
-      screen.getByRole("button", { name: "Vis siste 7 dager" }),
+      screen.getByRole("button", { name: "Vis de siste 7 dagene i perioden" }),
     ).toBeInTheDocument();
   });
 
-  it("offers nothing for a week or less", () => {
+  it("offers nothing for a week or less, also when the period has no end", () => {
     search.params = { fromDate: "2026-10-16", toDate: "2026-10-22" };
-    const { container } = render(<ShorterPeriodButton />);
+    const { container, rerender } = render(<ShorterPeriodButton />);
+    expect(container).toBeEmptyDOMElement();
 
+    search.params = { fromDate: "2026-10-20" };
+    rerender(<ShorterPeriodButton />);
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("chooses the shorter period like the quick choice and moves focus to the period", async () => {
+  it("keeps the new period inside a period that ended before today", async () => {
+    search.params = {
+      dateMode: "auto",
+      fromDate: "2026-06-01",
+      toDate: "2026-08-15",
+    };
+    const user = userEvent.setup();
+    render(<ShorterPeriodButton />);
+    await user.click(
+      screen.getByRole("button", { name: "Vis de siste 30 dagene i perioden" }),
+    );
+
+    expect(search.setParams).toHaveBeenCalledWith({
+      dateMode: "fixed",
+      fromDate: "2026-07-17",
+      toDate: "2026-08-15",
+      periodPreset: undefined,
+      page: "1",
+    });
+  });
+
+  it("chooses the last days up to today and moves focus to the period", async () => {
     search.params = {
       dateMode: "fixed",
       fromDate: "2026-07-25",
@@ -78,7 +102,7 @@ describe("ShorterPeriodButton", () => {
     const user = userEvent.setup();
     render(<ShorterPeriodButton />);
     await user.click(
-      screen.getByRole("button", { name: "Vis siste 30 dager" }),
+      screen.getByRole("button", { name: "Vis de siste 30 dagene i perioden" }),
     );
 
     expect(search.setParams).toHaveBeenCalledWith({

@@ -6,18 +6,26 @@ import { expect, type Page, test } from "@playwright/test";
 const SURVEY_ID = "survey-analysegrense";
 const TASK_ID = "lage-oppfolgingsplan";
 
-/** A local calendar date, like the period buttons write it. */
-function daysAgo(days: number): string {
+/** Today as a local calendar date, like the period buttons write it. */
+function localToday(): string {
   const date = new Date();
-  date.setDate(date.getDate() - days);
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
-const longPeriod = `dateMode=fixed&fromDate=${daysAgo(89)}&toDate=${daysAgo(0)}`;
+function addDays(date: string, days: number): string {
+  const value = new Date(`${date}T00:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
 
-async function expectLast30Days(page: Page) {
+// The new period ends where the old one ends, so the expected dates follow
+// from the URL and not from the clock.
+const TO_DATE = localToday();
+const longPeriod = `dateMode=fixed&fromDate=${addDays(TO_DATE, -89)}&toDate=${TO_DATE}`;
+
+async function expectLast30DaysOfPeriod(page: Page) {
   await expect
     .poll(() => {
       const search = new URL(page.url()).searchParams;
@@ -30,10 +38,17 @@ async function expectLast30Days(page: Page) {
     })
     .toEqual({
       dateMode: "fixed",
-      fromDate: daysAgo(29),
-      toDate: daysAgo(0),
+      fromDate: addDays(TO_DATE, -29),
+      toDate: TO_DATE,
       page: "1",
     });
+}
+
+async function expectNoAxeViolations(page: Page) {
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .analyze();
+  expect(results.violations).toEqual([]);
 }
 
 test.describe("Analysis budget", () => {
@@ -44,23 +59,21 @@ test.describe("Analysis budget", () => {
 
     const alert = page
       .getByRole("alert")
-      .filter({ hasText: "Kunne ikke hente Top Tasks-data" });
+      .filter({ hasText: "Perioden har for mange svar" });
     await expect(alert).toContainText(
-      "Det er for mange svar i perioden til at analysen kan regnes ut. Velg en kortere periode.",
+      "Top Tasks-analysen kan ikke regnes ut for så mange svar. Velg en kortere periode.",
       { timeout: 15000 },
     );
     await expect(alert.getByRole("button", { name: "Prøv igjen" })).toHaveCount(
       0,
     );
+    await expectNoAxeViolations(page);
 
-    const results = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .analyze();
-    expect(results.violations).toEqual([]);
+    await alert
+      .getByRole("button", { name: "Vis de siste 30 dagene i perioden" })
+      .click();
 
-    await alert.getByRole("button", { name: "Vis siste 30 dager" }).click();
-
-    await expectLast30Days(page);
+    await expectLast30DaysOfPeriod(page);
     await expect(alert).toHaveCount(0);
     await expect(
       page.getByRole("heading", { name: "Oppgavekvadrant" }),
@@ -70,27 +83,28 @@ test.describe("Analysis budget", () => {
     ).toBeFocused();
   });
 
-  test("filtering feedback on a task explains why the filter does not help", async ({
-    page,
-  }) => {
+  test("filtering feedback on a task explains what helps", async ({ page }) => {
     await page.goto(
       `/feedback?surveyId=${SURVEY_ID}&task=${TASK_ID}&${longPeriod}`,
     );
 
     const alert = page
       .getByRole("alert")
-      .filter({ hasText: "Kunne ikke hente tilbakemeldinger" });
+      .filter({ hasText: "Perioden har for mange svar" });
     await expect(alert).toContainText(
-      "Det er for mange svar i perioden til å filtrere på oppgave, tema eller frase. Velg en kortere periode.",
+      "Lumi kan ikke filtrere på oppgave, tema eller uttrykk i så mange svar. Velg en kortere periode, eller fjern filteret.",
       { timeout: 15000 },
     );
     await expect(alert.getByRole("button", { name: "Prøv igjen" })).toHaveCount(
       0,
     );
+    await expectNoAxeViolations(page);
 
-    await alert.getByRole("button", { name: "Vis siste 30 dager" }).click();
+    await alert
+      .getByRole("button", { name: "Vis de siste 30 dagene i perioden" })
+      .click();
 
-    await expectLast30Days(page);
+    await expectLast30DaysOfPeriod(page);
     await expect(alert).toHaveCount(0);
   });
 
@@ -101,23 +115,28 @@ test.describe("Analysis budget", () => {
       `/export?surveyId=${SURVEY_ID}&task=${TASK_ID}&${longPeriod}`,
     );
 
-    const alert = page.getByRole("alert").filter({
-      hasText:
-        "Det er for mange svar i perioden til å filtrere på oppgave, tema eller frase.",
-    });
+    const alert = page
+      .getByRole("alert")
+      .filter({ hasText: "Perioden har for mange svar" });
     // The server renders the button before React handles clicks on it.
     await expect(async () => {
       await page.getByRole("button", { name: "Last ned CSV" }).click();
       await expect(alert).toBeVisible({ timeout: 2000 });
     }).toPass({ timeout: 15000 });
+    await expect(alert).toContainText(
+      "Lumi kan ikke filtrere på oppgave, tema eller uttrykk i så mange svar.",
+    );
     await expect(alert).not.toContainText("Too much feedback data");
     await expect(page.getByRole("button", { name: "Prøv igjen" })).toHaveCount(
       0,
     );
+    await expectNoAxeViolations(page);
 
-    await alert.getByRole("button", { name: "Vis siste 30 dager" }).click();
+    await alert
+      .getByRole("button", { name: "Vis de siste 30 dagene i perioden" })
+      .click();
 
-    await expectLast30Days(page);
+    await expectLast30DaysOfPeriod(page);
     await expect(alert).toHaveCount(0);
   });
 });
