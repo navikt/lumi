@@ -1,7 +1,10 @@
 /*
  * The closing slides and the room modules: under-panseret, slik-vet-vi,
- * caset, ansvar, prov-selv, slutt and grupper. Positions are stage pixels.
- * The lower right corner (x > 1560, y > 840) stays free for Teams.
+ * ansvar, slutt, prov-selv, grupper and personvern. Positions are stage
+ * pixels. The lower right corner (x > 1560, y > 840) stays free for Teams,
+ * with 40 px to spare: nothing below y 800 reaches past x 1520. A rule that
+ * overrides a shared class (.slide-title, .map-line) doubles the class, so
+ * it wins whatever order the stylesheets load in.
  */
 
 /* Text placed on the stage at a fixed point, next to a map. */
@@ -32,28 +35,44 @@
   font-weight: 600;
 }
 
-/* Code inside a label: the code size, so it does not outgrow the words. */
+/* Hairlines on the boards: the zone edge at night, dim ink on paper. */
+.end-board {
+  --end-hair: var(--map-zone-edge);
+}
+
+:root[data-stil="papir"] .end-board {
+  --end-hair: var(--map-dim);
+}
+
+/* Code inside a label: a little smaller, so it does not outgrow the words.
+   Notes are 32 px already, the smallest text on the stage. */
 .end-label code {
   font-size: 0.9em;
 }
 
-/* under-panseret: the transport, as the app writes it */
+/* under-panseret: one line of code in a window that bleeds off the edge */
+
+.slide-title.under-panseret__title {
+  max-width: 1300px;
+}
 
 .under-panseret__code {
   position: absolute;
-  top: 328px;
+  top: 380px;
   left: var(--deck-space-page);
-  box-sizing: border-box;
-  height: 460px;
+  right: -24px;
   margin: 0;
-  padding: 24px;
+  padding: 28px 48px 44px;
   border: var(--deck-border-width) solid var(--deck-border);
-  border-radius: var(--deck-radius);
+  border-right: none;
+  border-radius: var(--deck-radius) 0 0 var(--deck-radius);
   background: var(--deck-code-bg);
   color: var(--deck-code-fg);
   font-family: var(--deck-font-mono);
-  font-size: var(--deck-size-code);
-  line-height: 40px;
+  font-size: var(--deck-size-lead);
+  font-variant-ligatures: none;
+  font-weight: 600;
+  line-height: 1.4;
   white-space: pre;
 }
 
@@ -69,80 +88,156 @@
   color: var(--deck-code-punctuation);
 }
 
-/* Margin notes to the right of the code, 40 px apart. */
-.under-panseret__aside {
-  left: 1530px;
-  width: 278px;
-  display: flex;
-  flex-direction: column;
-  gap: 40px;
+/* A marked part of the line: a 6 px ink bar under it on its click. */
+.under-panseret__target {
+  position: relative;
 }
 
-/* The one call in the code, marked when the map shows where it goes. */
-.under-panseret__call {
+/*
+ * The pointer: the bar under the part, an ink line down out of the window
+ * from the bar's left end, and the label under the line.
+ */
+.under-panseret__pointer {
   position: absolute;
-  height: 6px;
+  top: calc(100% - 2px);
+  left: 0;
+  width: 100%;
+  height: 120px;
+  border-top: 6px solid var(--map-ink);
   border-radius: 3px;
+  white-space: nowrap;
+}
+
+.under-panseret__pointer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 100%;
+  border-radius: 0 0 3px 3px;
   background: var(--map-ink);
 }
 
-/* Endpoints are code: the code size, not the bigger label size. */
-.under-panseret__endpoint .map-label {
-  font-size: var(--deck-size-code);
-}
-
-/* caset: three stations, one per click. Placeholders are drawn dashed. */
-
-.caset__title--placeholder {
-  color: var(--deck-muted);
-}
-
-.caset__step {
-  top: 440px;
-  width: 525px;
-}
-
-.caset__label {
-  height: 60px;
-}
-
-.caset__text {
-  margin: 88px 0 0;
-  font-size: var(--deck-size-body);
-  line-height: var(--deck-line-height);
-  text-wrap: pretty;
-}
-
-.caset__text--placeholder {
-  padding: 16px 20px;
-  border: 4px dashed var(--map-dim);
-  color: var(--deck-muted);
-}
-
-/* ansvar: the seam, with the team above and Team eSyfo below */
-
-/* Whose part it is: bigger than the parts themselves. */
-.ansvar__side {
-  margin: 0;
-  font-size: var(--deck-size-body);
-  font-weight: var(--deck-weight-display);
+.under-panseret__label,
+.under-panseret__note {
+  position: absolute;
+  left: 0;
+  font-family: var(--deck-font-body);
   line-height: 1.2;
 }
 
-/* The parts themselves: lighter, so only the two sides carry weight 800. */
-.ansvar__part {
-  font-weight: 500;
+.under-panseret__label {
+  top: calc(100% + 14px);
+  color: var(--deck-fg);
+  font-size: var(--deck-size-label);
+  font-weight: var(--deck-weight-strong);
 }
 
-.ansvar__sla {
+.under-panseret__note {
+  top: calc(100% + 62px);
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+}
+
+.under-panseret__client {
   left: var(--deck-space-page);
-  top: 856px;
-  max-width: none;
-  color: var(--deck-fg);
+  top: 826px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* slik-vet-vi: one word as the monument, the checks as a stripe below */
+
+.slik-vet-vi {
+  left: var(--deck-space-page);
+  top: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 0;
+  font-family: var(--deck-font-display);
+}
+
+/* The small title over the monument. */
+.slik-vet-vi__kicker {
+  color: var(--deck-muted);
+  font-size: var(--deck-size-heading);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+/* «i» has a wide side bearing at this size; pull it to the margin. */
+.slik-vet-vi__none {
+  margin: 26px 0 0 -14px;
+  font-size: var(--deck-size-monument);
+  font-weight: var(--deck-weight-black);
+  letter-spacing: var(--deck-tracking-monument);
+  line-height: 0.92;
+}
+
+.slik-vet-vi__rest {
+  margin-top: 40px;
+  font-size: var(--deck-size-statement);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: var(--deck-line-height-tight);
+}
+
+/* ansvar: three sentences on a board, one per click */
+
+.ansvar__nav {
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-label);
   font-weight: 700;
 }
 
-/* prov-selv: the code is the slide */
+.ansvar {
+  left: var(--deck-space-page);
+  right: var(--deck-space-page);
+  top: 318px;
+  margin: 0;
+}
+
+/* Big names to the left, the sentence from x 640 to x 1520. */
+.ansvar__row {
+  display: grid;
+  grid-template-columns: 528px 880px;
+  align-items: baseline;
+  padding: 22px 0 28px;
+  border-top: 3px solid var(--end-hair);
+}
+
+.ansvar__name {
+  font-size: var(--deck-size-title);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1;
+}
+
+.ansvar__text {
+  margin: 0;
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+/* One line, wider than the column: the row sits clear above the corner. */
+.ansvar__note {
+  display: block;
+  width: max-content;
+  max-width: 1120px;
+  margin-top: 12px;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+}
+
+/* prov-selv: the QR code is the slide */
 
 .prov-selv__qr {
   line-height: 0;
@@ -157,9 +252,12 @@
 }
 
 .prov-selv__lead {
-  max-width: 16ch;
-  color: var(--deck-fg);
-  font-weight: 700;
+  max-width: 980px;
+  margin: 0;
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.2;
+  text-wrap: balance;
 }
 
 .prov-selv__link {
@@ -169,81 +267,163 @@
   font-weight: 600;
 }
 
-/* slutt: the line with a planned station for the audience's app */
+.prov-selv__install {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
 
-/* Planned, like a dashed line: not on the line yet. */
+.prov-selv__install-label {
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+}
+
+.prov-selv__install code {
+  font-family: var(--deck-font-mono);
+  font-size: var(--deck-size-label);
+  font-variant-ligatures: none;
+  font-weight: 600;
+}
+
+/* Product leads get the QR code, not the install line. */
+:root[data-deck-room="produktledere"] .prov-selv__install {
+  display: none;
+}
+
+/* slutt: the line runs on to the audience's app, and the answer lights */
+
+.slide-title.slutt__title {
+  font-size: var(--deck-size-statement);
+}
+
+/* Light falls off away from the crystal. */
+.map .slutt__segment,
+.slutt__app .map-station__ring {
+  stroke: color-mix(
+    in srgb,
+    var(--map-ink) var(--slutt-light),
+    var(--map-paper)
+  );
+}
+
+:root[data-stil="papir"] .slutt__segment,
+:root[data-stil="papir"] .slutt__app .map-station__ring {
+  stroke: color-mix(
+    in srgb,
+    var(--map-ink) var(--slutt-light-papir),
+    var(--map-paper)
+  );
+}
+
+/* The rings cover the joints, so the segments end square under them. */
+.map .slutt__segment {
+  stroke-linecap: butt;
+}
+
+/* Planned, like a dashed line: ten dashes round a ring of radius 58. */
 .slutt__yours .map-station__ring {
-  stroke-dasharray: 20 14;
+  stroke-dasharray: 22 14.442;
 }
 
-/* When the station lights, its name moves clear of the crystal. */
-.slutt__yours-label {
-  transition: transform var(--deck-duration-travel) var(--deck-easing);
-}
-
-.slide:has(.slutt__crystal[data-revealed]) .slutt__yours-label {
-  transform: translateX(96px);
-}
-
-/* The crystal: ice in the map's own line, drawn in round the gold core. */
-.slutt__branch,
-.slutt__facet {
-  stroke: var(--map-ink);
-  stroke-linejoin: round;
-  stroke-linecap: round;
-  stroke-dasharray: 1;
-  stroke-dashoffset: 0;
-  transition:
-    stroke-dashoffset 900ms var(--deck-easing),
-    fill-opacity 600ms 500ms var(--deck-easing);
-}
-
-.slutt__branch {
+/* The crystal: ice in the map's own line, round the gold core. */
+.slutt__prism {
   fill: var(--map-zone-nais);
-  fill-opacity: 0.85;
-  stroke-width: 6px;
+  stroke: var(--map-ink);
+  stroke-width: 8px;
+  stroke-linejoin: round;
 }
 
 .slutt__facet {
   fill: none;
-  stroke-width: 3px;
-  opacity: 0.7;
+  stroke: var(--map-ink);
+  stroke-width: 4px;
+  stroke-linecap: round;
+  stroke-opacity: 0.45;
 }
 
-.slutt__crystal:not([data-revealed]) :is(.slutt__branch, .slutt__facet) {
-  stroke-dashoffset: 1;
-  fill-opacity: 0;
+/* Each branch grows out of the core, which sits at (1400, 590). */
+.slutt__branch {
+  transform-box: view-box;
+  transform-origin: 1400px 590px;
 }
 
-.slutt__action {
-  left: var(--deck-space-page);
-  top: 780px;
+.map .slutt__join.map-line--draw {
+  transition: none;
+}
+
+/*
+ * Click 3, one moment: the line reaches the app, the core lights when it
+ * gets there, and the branches grow after it, 60 ms apart. Still by 1.6 s.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .map .slutt__join.map-line--draw {
+    transition: stroke-dashoffset 520ms var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"])
+    .slutt
+    .map-answer-flash[data-revealed]
+    .map-answer {
+    animation-delay: 440ms;
+  }
+
+  :root:not([data-stil="papir"])
+    .slutt
+    .map-answer-flash[data-revealed]
+    .map-answer__ring {
+    /* Without fill during the wait, so the ring does not stand there first. */
+    animation-delay: 560ms;
+    animation-fill-mode: none;
+  }
+
+  :root:not([data-stil="papir"]) .slutt__branch {
+    transition:
+      transform 620ms var(--deck-easing-travel) calc(620ms + var(--i) * 60ms),
+      opacity 320ms var(--deck-easing) calc(620ms + var(--i) * 60ms);
+  }
+
+  :root:not([data-stil="papir"])
+    .slutt__crystal:not([data-revealed])
+    .slutt__branch {
+    transform: scale(0.45);
+    opacity: 0;
+    transition: none;
+  }
 }
 
 .slutt__open {
-  margin: 0 0 12px;
-  font-size: var(--deck-size-body);
-  font-weight: 700;
+  left: var(--deck-space-page);
+  top: 690px;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-label);
+  font-weight: 600;
 }
 
+/* The one action. */
 .slutt__lead {
-  max-width: none;
-  color: var(--deck-fg);
-  font-weight: 700;
+  left: var(--deck-space-page);
+  top: 744px;
+  max-width: 900px;
+  font-size: var(--deck-size-lead);
+  font-weight: var(--deck-weight-display);
+  line-height: 1.12;
+  text-wrap: balance;
 }
 
 .slutt__links {
+  left: var(--deck-space-page);
+  top: 900px;
   display: flex;
   align-items: baseline;
-  gap: 64px;
-  margin: 20px 0 0;
+  gap: 40px;
   font-size: var(--deck-size-body);
   font-weight: 700;
 }
 
 .slutt__link {
   color: inherit;
-  font-size: var(--deck-size-lead);
   text-decoration-thickness: 4px;
   text-underline-offset: 10px;
 }
@@ -256,128 +436,128 @@
 
 /* grupper: four questions, in the order the groups answer them */
 
+/* A board from the top edge, 1408 px wide, clear of the Teams corner. */
+.grupper {
+  left: var(--deck-space-page);
+  top: 52px;
+  width: 1408px;
+}
+
+.grupper__title {
+  margin: 0 0 40px;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-lead);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
 .grupper__list {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  margin: 8px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
+  border-bottom: 3px solid var(--end-hair);
 }
 
 .grupper__item {
-  display: flex;
-  align-items: flex-start;
-  gap: 40px;
+  display: grid;
+  grid-template-columns: 288px 1fr;
+  height: 200px;
+  border-top: 3px solid var(--end-hair);
 }
 
-/* Numbered like the line badges on the map. */
+/* Thin numbers: they order the questions and stay out of the way. */
 .grupper__number {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 72px;
-  height: 72px;
-  border-radius: 12px;
-  background: var(--map-ink);
-  color: var(--map-paper);
-  font-size: var(--deck-size-body);
-  font-weight: 800;
+  margin-top: 4px;
+  color: var(--map-dim);
+  font-size: var(--deck-size-hero);
+  font-weight: var(--deck-weight-thin);
+  letter-spacing: var(--deck-tracking-monument);
   line-height: 1;
 }
 
 .grupper__question {
-  max-width: 1440px;
-  padding-top: 4px;
-  font-size: var(--deck-size-lead);
-  line-height: 1.22;
+  padding-top: 30px;
+  font-size: var(--deck-size-body);
+  font-weight: 600;
+  line-height: 1.2;
   text-wrap: balance;
 }
 
 .grupper__chat {
-  left: var(--deck-space-page);
-  top: 924px;
-  max-width: none;
+  margin: 36px 0 0;
   color: var(--deck-muted);
-}
-
-/* ansvar: two lines through the answer's life, the duties at their stations */
-
-.ansvar__nav {
-  margin: 0;
-  color: var(--deck-muted);
-  font-size: var(--deck-size-body);
-  font-weight: 700;
-}
-
-.ansvar__duty {
-  width: 270px;
-  transform: translateX(-50%);
   font-size: var(--deck-size-small);
-  font-weight: 500;
-  line-height: 1.22;
-  text-align: center;
-  text-wrap: balance;
+  font-weight: 600;
 }
 
-.ansvar__bottom {
-  left: var(--deck-space-page);
-  top: 880px;
-  max-width: 1420px;
-  font-size: var(--deck-size-label);
-  font-weight: 700;
+/* personvern: what Lumi stores, read as one label */
+
+.slide-title.personvern__title {
+  font-size: var(--deck-size-statement);
 }
 
-.ansvar__bottom p {
-  margin: 0;
-}
-
-.ansvar__bottom .ansvar__ask {
-  margin-top: 8px;
-  color: var(--deck-muted);
-}
-
-/* personvern: what Lumi stores, as one fixed label */
-
+/* Rows with hairlines, keys at the margin, values at x 520. */
 .personvern__label {
-  display: grid;
-  gap: 10px;
-  max-width: 1440px;
+  left: var(--deck-space-page);
+  right: var(--deck-space-page);
+  top: 456px;
+}
+
+.personvern__rows {
   margin: 0;
-  padding: 26px 40px;
-  border: var(--deck-border-width) solid var(--deck-border);
-  border-radius: 10px;
 }
 
 .personvern__row {
   display: grid;
-  grid-template-columns: 380px 1fr;
-  gap: 32px;
+  grid-template-columns: 408px 1fr;
   align-items: baseline;
-  padding-bottom: 10px;
-  border-bottom: 2px solid var(--map-zone-edge);
+  padding: 18px 0 20px;
+  border-top: 3px solid var(--end-hair);
 }
 
-.personvern__row:last-child {
-  padding-bottom: 0;
-  border-bottom: none;
-}
-
-.personvern__row dt {
+.personvern__row dt,
+.personvern__fact dt {
   color: var(--deck-muted);
   font-size: var(--deck-size-small);
-  font-weight: 700;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .personvern__row dd {
   margin: 0;
-  font-size: var(--deck-size-small);
-  font-weight: 600;
-  line-height: 1.25;
+  font-size: var(--deck-size-label);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.22;
+  text-wrap: balance;
+}
+
+/* What is removed, in the deck's one mark: 6 px ink, radius 10. */
+.personvern__removed {
+  display: inline-block;
+  margin: 0 -20px;
+  padding: 2px 14px 0;
+  border: 6px solid var(--map-ink);
+  border-radius: 10px;
+}
+
+/* Three values, big enough to read from the back of the room. */
+.personvern__facts {
+  display: grid;
+  grid-template-columns: 408px 420px auto;
+  margin: 0;
+  padding-top: 20px;
+  border-top: 3px solid var(--end-hair);
+}
+
+.personvern__fact dd {
+  margin: 4px 0 0;
+  font-size: var(--deck-size-lead);
+  font-weight: var(--deck-weight-display);
+  line-height: 1.1;
 }
 
 .personvern__obs {
-  margin: 0;
-  font-size: var(--deck-size-label);
-  font-weight: 700;
+  margin: 40px 0 0;
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-strong);
 }

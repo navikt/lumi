@@ -1,31 +1,36 @@
 import type { Slide } from "../../engine";
 import "./avslutning.css";
 
-/** Ordrett fra storyboarden. Gruppene svarer i denne rekkefølgen. */
+/**
+ * From the storyboard, with «dere» throughout. The groups answer them in
+ * this order.
+ */
 const QUESTIONS = [
-  "Hva skulle du gjerne visst om hvordan fagsystemet ditt blir brukt?",
-  "Hvor i arbeidsflyten kan du spørre saksbehandlere og veiledere uten å forstyrre, og hvor må du la være?",
-  "Hva må på plass før teamet ditt kan sette\u00a0i\u00a0gang den første surveyen, og hvem må si ja?",
-  "Hva så du i dag som du vil ta med til teamet ditt, og hva savnet du?",
+  "Hva skulle dere gjerne visst om hvordan fagsystemet deres blir brukt?",
+  "Hvor i arbeidsflyten kan dere spørre saksbehandlere og veiledere uten å forstyrre, og hvor må dere la være?",
+  "Hva må på plass før teamet deres kan sette\u00a0i\u00a0gang den første surveyen, og hvem må si ja?",
+  "Hva så dere i dag som dere vil ta med til teamet deres, og hva savnet dere?",
 ] as const;
 
 function Grupper() {
   return (
     <div className="slide">
-      <h2 className="slide-title">Gruppene svarer på fire spørsmål</h2>
-      <ol className="grupper__list">
-        {QUESTIONS.map((question, i) => (
-          <li key={question} className="grupper__item">
-            <span className="grupper__number" aria-hidden="true">
-              {i + 1}
-            </span>
-            <span className="grupper__question">{question}</span>
-          </li>
-        ))}
-      </ol>
-      <p className="end-at slide-text grupper__chat" data-from={1}>
-        Spørsmålene står også i chatten.
-      </p>
+      <div className="end-at end-board grupper">
+        <h2 className="grupper__title">Gruppene svarer på fire spørsmål</h2>
+        <ol className="grupper__list">
+          {QUESTIONS.map((question, i) => (
+            <li key={question} className="grupper__item">
+              <span className="grupper__number" aria-hidden="true">
+                {i + 1}
+              </span>
+              <span className="grupper__question">{question}</span>
+            </li>
+          ))}
+        </ol>
+        <p className="grupper__chat" data-from={1}>
+          Spørsmålene står også i chatten.
+        </p>
+      </div>
     </div>
   );
 }
@@ -35,9 +40,9 @@ export const grupper: Slide = {
   title: "Gruppene svarer på fire spørsmål",
   rooms: ["faggruppa"],
   steps: 1,
-  notes: `Lim inn spørsmålene i chatten før oppdeling. Be gruppene om notatene, så Team Flex også får dem.
+  notes: `Lim inn spørsmålene i chatten før gruppene går, og klikk. Be gruppene om notatene, så Team Flex også får dem.
 
-1–3 i gruppene, 4 i plenum.
+Spørsmål 1 til 3 i gruppene, 4 i plenum.
 
 Avtal med verten hvor lenge gruppene varer.
 
@@ -46,7 +51,7 @@ Lumi samordner ikke surveyer mellom team. Spør flere team de samme folkene, må
 Til chatten:
 1. ${QUESTIONS[0]}
 2. ${QUESTIONS[1]}
-3. ${QUESTIONS[2]}
+3. ${QUESTIONS[2].replaceAll("\u00a0", " ")}
 4. ${QUESTIONS[3]}`,
   Component: Grupper,
 };

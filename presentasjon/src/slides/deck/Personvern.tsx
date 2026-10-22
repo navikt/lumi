@@ -2,41 +2,58 @@ import type { Slide } from "../../engine";
 import "./avslutning.css";
 
 /*
- * What Lumi stores, as one fixed label, like the privacy labels in an app
- * store. Every value is from «Sikkerhet og personvern» in the docs.
+ * What Lumi stores, read as one label: what is stored, what is removed
+ * (framed, like the masks in the stored text), what is not removed, and
+ * three values. Every value is from «Sikkerhet og personvern» in the docs.
  */
-const ROWS = [
-  {
-    label: "Lagres",
-    value:
-      "Svaret, teamet, appen, tidspunktet, enhetstype, skjermstørrelse og nettleser",
-  },
-  { label: "Lagres ikke", value: "Hvem som svarte, heller ikke Nav-identen" },
-  {
-    label: "Fjernes før lagring",
-    value: "Fødselsnummer, Nav-ident, e-post, telefon-, konto- og kortnummer",
-  },
-  { label: "Fjernes ikke", value: "Navn og vanlige adresser" },
-  { label: "Hvor", value: "Databasen på Nais" },
-  { label: "Hvem ser", value: "I dashboardet bare teamet" },
+const FACTS = [
+  { label: "Hvor", value: "Nais" },
+  { label: "Hvem ser i dashboardet", value: "Bare teamet" },
   { label: "Hvor lenge", value: "12 måneder" },
 ] as const;
 
 function Personvern() {
   return (
     <div className="slide">
-      <h2 className="slide-title">Lumi lagrer svaret, ikke hvem som svarte</h2>
-      <dl className="personvern__label">
-        {ROWS.map((row) => (
-          <div key={row.label} className="personvern__row">
-            <dt>{row.label}</dt>
-            <dd>{row.value}</dd>
+      <h2 className="slide-title personvern__title">
+        Lumi lagrer svaret,
+        <br />
+        ikke hvem som svarte
+      </h2>
+      <div className="end-at end-board personvern__label">
+        <dl className="personvern__rows">
+          <div className="personvern__row">
+            <dt>Lagres</dt>
+            <dd>
+              Svaret, teamet, appen, tidspunktet, enhetstype, skjermstørrelse og
+              nettleser
+            </dd>
           </div>
-        ))}
-      </dl>
-      <p className="personvern__obs">
-        I små grupper kan konteksten røpe hvem som svarte.
-      </p>
+          <div className="personvern__row">
+            <dt>Fjernes før lagring</dt>
+            <dd>
+              <span className="personvern__removed">
+                Fødselsnummer, Nav-ident, e-post, telefon-, konto- og kortnummer
+              </span>
+            </dd>
+          </div>
+          <div className="personvern__row">
+            <dt>Fjernes ikke</dt>
+            <dd>Navn og vanlige adresser</dd>
+          </div>
+        </dl>
+        <dl className="personvern__facts">
+          {FACTS.map((fact) => (
+            <div key={fact.label} className="personvern__fact">
+              <dt>{fact.label}</dt>
+              <dd>{fact.value}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="personvern__obs">
+          I små grupper kan konteksten røpe hvem som svarte.
+        </p>
+      </div>
     </div>
   );
 }
@@ -44,8 +61,14 @@ function Personvern() {
 export const personvern: Slide = {
   id: "personvern",
   title: "Lumi lagrer svaret, ikke hvem som svarte",
-  notes: `Reserve. Vis den hvis noen spør om personvern, og lim teksten inn i chatten.
+  notes: `Reserve: vis den når noen spør om personvern, og lim teksten inn i chatten. Står den rett etter bare-teamet, inn: «Her er hele etiketten: hva Lumi lagrer, og hva som fjernes.»
 
-Kilde: «Sikkerhet og personvern» i dokumentasjonen. Fødselsnummer fjernes når kontrollsifrene er gyldige. Et slettet svar kan ligge i sikkerhetskopiene i opptil sju døgn.`,
+Lumi API lagrer ikke hvem som svarte, heller ikke Nav-identen fra interne apper. Tokenet fra appens backend brukes til å sjekke at kallet kommer fra en app med tilgang. En hash av brukerens ID holdes bare i minnet, for å begrense hvor mange svar én bruker kan sende inn.
+
+Rammen er det samme merket som rundt e-postadressen i stad: det som står i rammen, fjernes før svaret lagres. Fødselsnummer fjernes når kontrollsifrene er gyldige. Navn og vanlige adresser fjernes ikke, derfor har teamet en sletteknapp i dashboardet.
+
+I dashboardet ser bare teamet svarene, altså medlemmene av teamet i Nais Console. Svarene slettes automatisk etter 12 måneder. Et slettet svar kan ligge i sikkerhetskopiene i opptil sju døgn.
+
+Kilde: «Sikkerhet og personvern» i dokumentasjonen.`,
   Component: Personvern,
 };
