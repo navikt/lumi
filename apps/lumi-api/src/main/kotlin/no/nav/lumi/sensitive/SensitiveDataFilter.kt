@@ -53,7 +53,7 @@ class SensitiveDataFilter(
         }
         
         val allMatches = detect(text)
-        val appliedMatches = selectNonOverlappingMatches(allMatches)
+        val spans = mergeOverlappingMatches(allMatches)
         
         if (allMatches.isEmpty()) {
             return RedactionResult(
@@ -67,16 +67,13 @@ class SensitiveDataFilter(
         var redactedText: String = text
         
         // Apply replacements in reverse order to preserve indices
-        val sortedMatches = appliedMatches.sortedByDescending { it.startIndex }
+        val sortedSpans = spans.sortedByDescending { it.startIndex }
         
-        for (match in sortedMatches) {
-            val pattern = patterns.find { it.name == match.patternName }
-            val replacement = pattern?.replacement ?: "[SENSITIVT DATA FJERNET]"
-            
+        for (span in sortedSpans) {
             redactedText = redactedText.replaceRange(
-                match.startIndex,
-                match.endIndex,
-                replacement
+                span.startIndex,
+                span.endIndex,
+                span.replacement
             )
         }
         
@@ -148,56 +145,45 @@ class SensitiveDataFilter(
         )
     }
 
+    private data class RedactionSpan(val startIndex: Int, val endIndex: Int, val replacement: String)
+
     /**
-     * Reduce overlapping matches to a non-overlapping set.
+     * Merge overlapping matches into non-overlapping spans to replace.
      *
-     * Some patterns intentionally overlap (e.g. 11 digits can be both fødselsnummer and kontonummer).
-     * If we apply both, the second replacement would use indices from the original string and can corrupt
-     * the output (e.g. "[KONTONUMMER FJERNET]MER FJERNET]").
+     * Some patterns overlap: 11 digits can be both fødselsnummer and kontonummer, and a card number with
+     * spaces contains eight digits that also match the phone pattern. Applying both replacements would
+     * corrupt the output (e.g. "[KONTONUMMER FJERNET]MER FJERNET]"), and keeping only one of the matches
+     * would leave the rest of the other in the text (e.g. "[TELEFON FJERNET] 1111 1111" for a card number).
      *
-     * Strategy: prefer patterns earlier in [patterns] (higher confidence/priority).
+     * Strategy: overlapping matches become one span covering all of them, so everything a pattern matched
+     * is removed. The span gets the replacement of the longest match. On equal length, the pattern earlier
+     * in [patterns] wins (fødselsnummer before kontonummer).
      */
-    private fun selectNonOverlappingMatches(allMatches: List<SensitiveDataMatch>): List<SensitiveDataMatch> {
-        if (allMatches.isEmpty()) return emptyList()
-
+    private fun mergeOverlappingMatches(allMatches: List<SensitiveDataMatch>): List<RedactionSpan> {
         val priorityByName = patterns.mapIndexed { index, pattern -> pattern.name to index }.toMap()
+        val replacementByName = patterns.associate { it.name to it.replacement }
 
-        fun priority(match: SensitiveDataMatch): Int = priorityByName[match.patternName] ?: Int.MAX_VALUE
+        val longestFirst = compareByDescending<SensitiveDataMatch> { it.endIndex - it.startIndex }
+            .thenBy { priorityByName[it.patternName] ?: Int.MAX_VALUE }
 
-        // Sort by start, then by priority (lower is better), then by length (longer first).
-        val sorted = allMatches.sortedWith(
-            compareBy<SensitiveDataMatch> { it.startIndex }
-                .thenBy { priority(it) }
-                .thenByDescending { it.endIndex - it.startIndex }
-        )
+        val groups = mutableListOf<MutableList<SensitiveDataMatch>>()
+        var groupEnd = 0
 
-        val accepted = mutableListOf<SensitiveDataMatch>()
-
-        for (match in sorted) {
-            // Pop and replace any overlapping lower-priority matches.
-            while (accepted.isNotEmpty()) {
-                val last = accepted.last()
-                val overlaps = match.startIndex < last.endIndex && match.endIndex > last.startIndex
-                if (!overlaps) break
-
-                val keepNew = priority(match) < priority(last)
-                if (keepNew) {
-                    accepted.removeAt(accepted.lastIndex)
-                    continue
-                }
-
-                // Existing match has higher or equal priority → drop the new one.
-                break
+        for (match in allMatches.sortedBy { it.startIndex }) {
+            if (groups.isEmpty() || match.startIndex >= groupEnd) {
+                groups.add(mutableListOf())
             }
-
-            val overlapsAny = accepted.any {
-                match.startIndex < it.endIndex && match.endIndex > it.startIndex
-            }
-            if (!overlapsAny) {
-                accepted.add(match)
-            }
+            groups.last().add(match)
+            groupEnd = maxOf(groupEnd, match.endIndex)
         }
 
-        return accepted.sortedBy { it.startIndex }
+        return groups.map { group ->
+            val winner = group.minWith(longestFirst)
+            RedactionSpan(
+                startIndex = group.first().startIndex,
+                endIndex = group.maxOf { it.endIndex },
+                replacement = replacementByName[winner.patternName] ?: "[SENSITIVT DATA FJERNET]",
+            )
+        }
     }
 }

@@ -193,6 +193,12 @@ class SensitiveDataFilterTest : FunSpec({
             result.wasRedacted shouldBe true
         }
 
+        test("should redact only the phone number in ordinary text") {
+            filter.redact("Ring meg på 98765432 i morgen").redactedText shouldBe "Ring meg på [TELEFON FJERNET] i morgen"
+            filter.redact("Ring meg på 987 65 432 i morgen").redactedText shouldBe "Ring meg på [TELEFON FJERNET] i morgen"
+            filter.redact("Tlf: 98 76 54 32, helst før 12").redactedText shouldBe "Tlf: [TELEFON FJERNET], helst før 12"
+        }
+
         test("should not match UUIDs or hex strings") {
             val text = "ID: a1234567-89ab-cdef-0123-456789abcdef"
             val matches = filter.detect(text)
@@ -273,6 +279,43 @@ class SensitiveDataFilterTest : FunSpec({
             result.redactedText shouldContain "[KORTNUMMER FJERNET]"
             result.wasRedacted shouldBe true
         }
+
+        // With spaces, the phone pattern also matches eight of the digits. The whole card number must still go.
+        test("should redact whole card number with spaces when the phone pattern matches its first half") {
+            val result = filter.redact("Kortnummer: 4111 1111 1111 1111")
+
+            result.redactedText shouldBe "Kortnummer: [KORTNUMMER FJERNET]"
+        }
+
+        test("should redact whole card number with spaces when the phone pattern matches its middle") {
+            val result = filter.redact("Kortet mitt er 1234 5678 9012 3456")
+
+            result.redactedText shouldBe "Kortet mitt er [KORTNUMMER FJERNET]"
+        }
+
+        test("should redact whole card number with spaces when the phone pattern matches both halves") {
+            val result = filter.redact("Kortnummer: 5555 5555 5555 4444")
+
+            result.redactedText shouldBe "Kortnummer: [KORTNUMMER FJERNET]"
+        }
+
+        test("should redact whole card number with dashes") {
+            val result = filter.redact("Kortnummer: 4111-1111-1111-1111")
+
+            result.redactedText shouldBe "Kortnummer: [KORTNUMMER FJERNET]"
+        }
+
+        test("should redact whole card number without separators") {
+            val result = filter.redact("Kortnummer: 4111111111111111")
+
+            result.redactedText shouldBe "Kortnummer: [KORTNUMMER FJERNET]"
+        }
+
+        test("should redact card number and phone number in the same text") {
+            val result = filter.redact("Ring 987 65 432 om kortet 4111 1111 1111 1111")
+
+            result.redactedText shouldBe "Ring [TELEFON FJERNET] om kortet [KORTNUMMER FJERNET]"
+        }
     }
 
     context("Secret address detection") {
@@ -327,6 +370,19 @@ class SensitiveDataFilterTest : FunSpec({
             // Fødselsnummer has higher priority than kontonummer.
             result.redactedText shouldContain "[FØDSELSNUMMER FJERNET]"
             result.redactedText shouldNotContain "[KONTONUMMER FJERNET]"
+        }
+
+        test("should redact the whole email address when it contains a fødselsnummer") {
+            val result = filter.redact("Send til ola.nordmann.$validFnr@nav.no")
+
+            result.redactedText shouldBe "Send til [E-POST FJERNET]"
+        }
+
+        test("should not leave part of an account number when a phone match overlaps its end") {
+            // "78901 500" also matches the phone pattern. Overlapping matches are redacted together.
+            val result = filter.redact("Overfør 1234.56.78901 500 kr")
+
+            result.redactedText shouldBe "Overfør [KONTONUMMER FJERNET] kr"
         }
     }
 
