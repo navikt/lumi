@@ -47,6 +47,30 @@ test("shows the not-found page inside the page frame", async ({ page }) => {
   expect(problems).toEqual([]);
 });
 
+test("explains what the survey preview address is missing", async ({
+  page,
+}) => {
+  const problems = collectProblems(page);
+
+  const response = await page.goto("/survey-preview");
+  await waitForHydration(page);
+
+  expect(response?.status()).toBe(200);
+  await expect(
+    page.getByRole("heading", { name: "Forhåndsvisningen kan ikke vises" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Adressen mangler team og projectId. Åpne surveyen i Surveyverksted og velg «Prøv i egen fane».",
+    ),
+  ).toBeVisible();
+  await expectPageFrame(page);
+  expect(problems).toEqual([]);
+
+  await page.goto("/survey-preview?team=team-esyfo");
+  await expect(page.getByText("Adressen mangler projectId.")).toBeVisible();
+});
+
 test("keeps the page frame when a route below the root fails", async ({
   page,
 }) => {
