@@ -1,5 +1,7 @@
 import { createRouter } from "@tanstack/react-router";
 import { getGlobalStartContext } from "@tanstack/react-start";
+import { ErrorComponent } from "~/components/shared/ErrorComponent";
+import { NotFoundComponent } from "~/components/shared/NotFoundComponent";
 import { routeTree } from "./routeTree.gen";
 
 /**
@@ -60,5 +62,10 @@ export function getRouter() {
     stringifySearch,
     parseSearch,
     ssr: nonce ? { nonce } : undefined,
+    // Without these, an error in a route below the root shows TanStack's
+    // English error page on the server, while the browser hands the error to
+    // the root. The two trees then differ, and React renders the page again.
+    defaultErrorComponent: ErrorComponent,
+    defaultNotFoundComponent: NotFoundComponent,
   });
 }

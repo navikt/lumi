@@ -1,13 +1,11 @@
 // Import Aksel and global styles as regular CSS so they are emitted as manifest assets.
 import "@navikt/ds-css";
 import "@navikt/lumi-survey/styles.css";
-import { Alert, BodyShort, Heading } from "@navikt/ds-react";
 import { Theme } from "@navikt/ds-react/Theme";
 import { QueryClientProvider } from "@tanstack/react-query";
 import {
   createRootRoute,
   HeadContent,
-  Outlet,
   Scripts,
   useRouter,
 } from "@tanstack/react-router";
@@ -15,6 +13,7 @@ import type * as React from "react";
 import { useState } from "react";
 import lumiLogo from "~/assets/lumi.png";
 import { ErrorComponent } from "~/components/shared/ErrorComponent";
+import { NotFoundComponent } from "~/components/shared/NotFoundComponent";
 import { THEME_INIT_SCRIPT } from "~/config/themeInit";
 import { ThemeProvider, useTheme } from "~/context/ThemeContext";
 import { BrowserRouteTracker } from "~/observability/BrowserRouteTracker";
@@ -49,23 +48,16 @@ export const Route = createRootRoute({
       },
     ],
   }),
-  component: RootComponent,
+  // The shell wraps the root's error and not-found components as well as its
+  // content, so the page keeps its language, title, theme and providers when
+  // the root fails. Without a component of its own, the root renders the
+  // matched child route.
+  shellComponent: RootShell,
   errorComponent: ErrorComponent,
-  notFoundComponent: RootNotFoundComponent,
+  notFoundComponent: NotFoundComponent,
 });
 
-function RootNotFoundComponent() {
-  return (
-    <Alert variant="info" className="m-4">
-      <Heading spacing size="small" level="3">
-        Siden finnes ikke
-      </Heading>
-      <BodyShort>Vi fant ikke siden du prøvde å åpne.</BodyShort>
-    </Alert>
-  );
-}
-
-function RootComponent() {
+function RootShell({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(createDashboardQueryClient);
 
   return (
@@ -73,7 +65,7 @@ function RootComponent() {
       <QueryClientProvider client={queryClient}>
         <RootDocument>
           <BrowserRouteTracker />
-          <Outlet />
+          {children}
         </RootDocument>
       </QueryClientProvider>
     </ThemeProvider>
