@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { getMockFilterBootstrap, getMockTeams } from "~/mock/mockData";
 import { authMiddleware } from "~/server/middleware/auth";
@@ -33,16 +33,18 @@ export function buildFilterBootstrapUrl(
  * Like the API, mock mode refuses a team the viewer is not a member of, so a
  * shared link to another team can be tried locally (`?team=team-x`).
  */
-export function assertMockTeamAccess(team: string | undefined): void {
-  if (!team || Object.hasOwn(getMockTeams().teams, team)) return;
+export const assertMockTeamAccess = createServerOnlyFn(
+  (team: string | undefined): void => {
+    if (!team || Object.hasOwn(getMockTeams().teams, team)) return;
 
-  throw new ApiErrorException({
-    status: 403,
-    type: ErrorType.AUTHORIZATION_ERROR,
-    message: `Du har ikke tilgang til team: ${team}`,
-    timestamp: new Date().toISOString(),
-  });
-}
+    throw new ApiErrorException({
+      status: 403,
+      type: ErrorType.AUTHORIZATION_ERROR,
+      message: `Du har ikke tilgang til team: ${team}`,
+      timestamp: new Date().toISOString(),
+    });
+  },
+);
 
 async function requestFilterBootstrap(
   data: FilterBootstrapParams,

@@ -3,15 +3,17 @@ import viteReact from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
-import { serverOnlyPlugin } from "./vite-plugins/server-only";
 
-// Server-only modules that should be stubbed in client builds
-// and externalized from SSR bundle to avoid CJS/ESM issues
+// Server-only packages and their subpaths. The client build leaves them out
+// as long as only server code uses them: server functions, middleware,
+// server routes and createServerOnlyFn. If client code imports one anyway,
+// import protection below fails `vite build`; `vite dev` mocks it and warns.
 const serverOnlyModules = [
   "@navikt/oasis",
   "@navikt/pino-logger",
   "pino",
   "@prometheus-io/client",
+  "exceljs",
 ];
 export default defineConfig(({ command, mode }) => {
   const isProductionBuild = command === "build" && mode === "production";
@@ -33,11 +35,6 @@ export default defineConfig(({ command, mode }) => {
       strictPort: true,
     },
 
-    // Externalize server-only dependencies from SSR bundle
-    ssr: {
-      external: serverOnlyModules,
-    },
-
     // Nitro configuration for deployment
     nitro: {
       preset: "node-server",
@@ -51,14 +48,23 @@ export default defineConfig(({ command, mode }) => {
     },
 
     plugins: [
-      // Custom plugin to stub server-only modules in client builds
-      serverOnlyPlugin(serverOnlyModules),
       tsconfigPaths({
         projects: ["./tsconfig.json"],
       }),
       tanstackStart({
         // Use app directory as source (non-standard but keeps our structure)
         srcDirectory: "app",
+        // Fail the client build if client code still imports server-only code.
+        // `files` replaces the defaults, so keep the `.server.*` convention.
+        importProtection: {
+          client: {
+            specifiers: serverOnlyModules.flatMap((module) => [
+              module,
+              `${module}/**`,
+            ]),
+            files: ["**/*.server.*", "**/app/mock/**"],
+          },
+        },
         router: {
           // Prevent route generation from scanning test files/folders under app/routes
           routeFileIgnorePattern:

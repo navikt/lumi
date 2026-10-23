@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { authMiddleware } from "~/server/middleware/auth";
@@ -64,19 +64,17 @@ function throwThemeNameConflict(): never {
   });
 }
 
-export function themeNameExists(
-  name: string,
-  team: string,
-  excludedId?: string,
-): boolean {
-  const normalized = name.trim();
-  return mockThemes.some(
-    (theme) =>
-      theme.id !== excludedId &&
-      theme.team === team &&
-      theme.name.trim() === normalized,
-  );
-}
+export const themeNameExists = createServerOnlyFn(
+  (name: string, team: string, excludedId?: string): boolean => {
+    const normalized = name.trim();
+    return mockThemes.some(
+      (theme) =>
+        theme.id !== excludedId &&
+        theme.team === team &&
+        theme.name.trim() === normalized,
+    );
+  },
+);
 
 // ============================================
 // Server Functions

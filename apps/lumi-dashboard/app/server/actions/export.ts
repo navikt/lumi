@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { zodValidator } from "@tanstack/zod-adapter";
 import ExcelJS from "exceljs";
 import {
@@ -134,27 +134,27 @@ export function toMockCsv(items: typeof mockFeedbackItems): string {
   return `${UTF8_BOM}${[header, ...rows].map((line) => `${line}\n`).join("")}`;
 }
 
-export async function toMockExcelBase64(
-  items: typeof mockFeedbackItems,
-): Promise<string> {
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet("Feedback");
+export const toMockExcelBase64 = createServerOnlyFn(
+  async (items: typeof mockFeedbackItems): Promise<string> => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Feedback");
 
-  sheet.columns = EXPORT_COLUMNS.map((column) => ({
-    header: column.excel,
-    width: column.width,
-  }));
+    sheet.columns = EXPORT_COLUMNS.map((column) => ({
+      header: column.excel,
+      width: column.width,
+    }));
 
-  const sanitize = (v: string) => (isPotentialCsvFormula(v) ? `'${v}` : v);
+    const sanitize = (v: string) => (isPotentialCsvFormula(v) ? `'${v}` : v);
 
-  for (const item of items) {
-    const redacted = item.sensitiveDataRedacted ? "Ja" : "Nei";
-    sheet.addRow(toExportRow(item, redacted).map(sanitize));
-  }
+    for (const item of items) {
+      const redacted = item.sensitiveDataRedacted ? "Ja" : "Nei";
+      sheet.addRow(toExportRow(item, redacted).map(sanitize));
+    }
 
-  const buffer = (await workbook.xlsx.writeBuffer()) as ArrayBuffer;
-  return Buffer.from(buffer).toString("base64");
-}
+    const buffer = (await workbook.xlsx.writeBuffer()) as ArrayBuffer;
+    return Buffer.from(buffer).toString("base64");
+  },
+);
 
 function parseCountHeader(value: string | null): number | null {
   const trimmed = value?.trim();
