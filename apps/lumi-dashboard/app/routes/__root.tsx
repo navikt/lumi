@@ -95,9 +95,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html lang="no" suppressHydrationWarning>
       <head>
-        {isServerRender ? (
-          <meta property="csp-nonce" content={nonce ?? ""} />
-        ) : null}
+        {/* HeadContent renders <meta property="csp-nonce"> from router.options.ssr.nonce. */}
         <script
           nonce={nonce}
           suppressHydrationWarning
