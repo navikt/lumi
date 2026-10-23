@@ -12,7 +12,7 @@ blockExoticSubdeps: true
 # tmp <0.2.6: Path Traversal (GHSA-ph9p-34f9-6g65), via lumi-dashboard>exceljs>tmp
 # vite <=6.4.3, 7.0.0-7.3.6 and 8.0.0-8.3.2: launch-editor existence check and CLI flag bypasses (GHSA-587h-7wmj-h5pm, GHSA-r825-w8mm-5pxw).
 #   TanStack Start 1.169 requires Vite 8. VitePress 1 and its @vitejs/plugin-vue stay on patched Vite 7: under Vite 8 (Rolldown) VitePress cannot emit its .lean.js page chunks
-# undici <7.30.1: TLS bypass / WebSocket DoS / cross-origin routing, and DoS from excessive content-encodings (GHSA-xjj6-f33q-929c), via nitro + jsdom
+# undici <7.30.1: TLS bypass / WebSocket DoS / cross-origin routing, and DoS from excessive content-encodings (GHSA-xjj6-f33q-929c), via jsdom
 # nanoid <3.3.18: custom generators can loop indefinitely for size=0, via postcss
 # browserslist <=4.28.6: OOM + prototype write/crash, via lumi-dashboard>@tanstack/react-start>...>browserslist
 # js-yaml 4.x <4.3.2: unbounded empty merge sources (GHSA-2883-xcg3-v3hh), via xmlbuilder2

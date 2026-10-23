@@ -44,10 +44,8 @@ export default defineConfig(({ command, mode }) => {
       preset: "node-server",
       // Nitro bundles node_modules for the server with Rolldown, which warns
       // about every "use client" directive. They mean nothing on the server.
-      // The nitro alpha types require `output`; Nitro fills in the rest.
       rolldownConfig: {
         checks: { moduleLevelDirective: false },
-        output: {},
       },
     },
 
