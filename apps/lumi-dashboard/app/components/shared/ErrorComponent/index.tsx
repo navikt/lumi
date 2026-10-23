@@ -15,7 +15,7 @@ export function safeHelpUrl(helpUrl: string | null | undefined): string | null {
 
 /** Shown for every error that does not come from the API. */
 const UNEXPECTED_ERROR_TEXT =
-  "Siden kunne ikke vises. Prøv å laste den inn på nytt.";
+  "Siden kunne ikke vises. Sjekk at adressen er riktig, eller last inn siden på nytt.";
 
 export function ErrorComponent({ error }: { error: unknown }) {
   const normalizedError = useMemo(

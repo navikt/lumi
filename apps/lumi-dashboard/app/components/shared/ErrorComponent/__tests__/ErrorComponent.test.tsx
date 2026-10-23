@@ -110,7 +110,7 @@ describe("ErrorComponent", () => {
       ).toBeInTheDocument();
       expect(
         screen.getByText(
-          "Siden kunne ikke vises. Prøv å laste den inn på nytt.",
+          "Siden kunne ikke vises. Sjekk at adressen er riktig, eller last inn siden på nytt.",
         ),
       ).toBeInTheDocument();
       expect(container).not.toHaveTextContent(rawText);
@@ -128,7 +128,7 @@ describe("ErrorComponent", () => {
       ).toBeInTheDocument();
       expect(
         screen.getByText(
-          "Siden kunne ikke vises. Prøv å laste den inn på nytt.",
+          "Siden kunne ikke vises. Sjekk at adressen er riktig, eller last inn siden på nytt.",
         ),
       ).toBeInTheDocument();
       expect(screen.queryByText(/raw synthetic error/)).not.toBeInTheDocument();
@@ -136,7 +136,7 @@ describe("ErrorComponent", () => {
       const reported = vi.mocked(reportDashboardRouteError).mock.calls[0][0];
       expect(reported).toBeInstanceOf(Error);
       expect(reported.message).toBe(
-        "Siden kunne ikke vises. Prøv å laste den inn på nytt.",
+        "Siden kunne ikke vises. Sjekk at adressen er riktig, eller last inn siden på nytt.",
       );
       expect(reported).not.toHaveProperty("cause");
 

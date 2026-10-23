@@ -86,7 +86,9 @@ test("keeps the page frame when a route below the root fails", async ({
     page.getByRole("heading", { name: "En uventet feil oppstod" }),
   ).toBeVisible();
   await expect(
-    page.getByText("Siden kunne ikke vises. Prøv å laste den inn på nytt."),
+    page.getByText(
+      "Siden kunne ikke vises. Sjekk at adressen er riktig, eller last inn siden på nytt.",
+    ),
   ).toBeVisible();
   // The validation message is zod issues as JSON, and TanStack's own error
   // page is in English. Neither may reach the page.
