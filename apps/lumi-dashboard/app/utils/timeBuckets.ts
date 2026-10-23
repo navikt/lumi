@@ -43,8 +43,7 @@ function isCalendarDate(value: string | undefined): value is string {
 
 /**
  * The last day of the period that can have answers: its end, or today when
- * the end is later, missing or not a date. The API reads such a period up
- * to now.
+ * the end is later, missing or not a date.
  */
 function lastDay(toDate: string | undefined, today: string): string {
   return isCalendarDate(toDate) && toDate < today ? toDate : today;
@@ -228,8 +227,9 @@ export function formatBucketTick(
 
 /**
  * Names the weeks or months that are only partly in the period and says how
- * the chart shows them, for example «Uke 41 og uke 43 er bare delvis med i
- * perioden og har lysere søyle.»
+ * the chart shows them, for example «Uke 1 og uke 43 er bare delvis med i
+ * perioden og har hul prikk.» Weeks get their year when they are in
+ * different years.
  */
 export function describePartialBuckets(
   starts: string[],
@@ -237,11 +237,13 @@ export function describePartialBuckets(
   look: string,
 ): string | undefined {
   if (starts.length === 0 || interval === "day") return undefined;
-  const names = starts.map((start) =>
-    interval === "week"
-      ? `uke ${isoWeek(start).week}`
-      : `${monthName(start)} ${start.slice(0, 4)}`,
-  );
+  const weeks = starts.map((start) => isoWeek(start));
+  const severalYears = new Set(weeks.map(({ year }) => year)).size > 1;
+  const names = starts.map((start, index) => {
+    if (interval === "month") return `${monthName(start)} ${start.slice(0, 4)}`;
+    const { week, year } = weeks[index] ?? isoWeek(start);
+    return severalYears ? `uke ${week} i ${year}` : `uke ${week}`;
+  });
   const list =
     names.length === 1
       ? names[0]

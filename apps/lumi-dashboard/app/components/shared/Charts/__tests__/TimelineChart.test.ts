@@ -88,6 +88,18 @@ describe("timelineChartData", () => {
     expect(points.at(-1)).toMatchObject({ key: "2026-10-23", count: 2 });
   });
 
+  it("picks the resolution from the period, like the heading, when an answer is dated after today", () => {
+    const { interval, points } = timelineChartData(
+      { "2026-10-23": 2 },
+      "2026-07-23",
+      "2026-10-31",
+      "2026-10-22",
+    );
+
+    expect(interval).toBe("day");
+    expect(points.at(-1)).toMatchObject({ key: "2026-10-23", count: 2 });
+  });
+
   it("shows the days the API returned when there is no period", () => {
     const { interval, points } = timelineChartData({
       "2026-10-20": 2,

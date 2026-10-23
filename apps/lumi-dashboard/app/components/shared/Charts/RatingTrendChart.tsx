@@ -14,6 +14,7 @@ import {
 import {
   getRatingMetric,
   ratingResponseCount,
+  ratingTrendTitle,
 } from "~/components/dashboard/sections/FieldStats/PeriodComparison/model";
 import {
   questionTrendRatingMetric,
@@ -94,6 +95,8 @@ type RatingTrendState =
       interval: TimeInterval;
       metric: ReturnType<typeof questionTrendRatingMetric>;
       overallAverage: number | undefined;
+      /** The value for the whole period, as the cards above write it. */
+      overallFormatted: string | undefined;
     };
 
 /**
@@ -162,19 +165,25 @@ function useRatingTrend(markers: RatingMarker[]): RatingTrendState {
       markers: markersByBucket[bucket.start] ?? [],
     };
   });
-  const overallAverage =
-    field && ratingResponseCount(field)
-      ? getRatingMetric(field).value
-      : undefined;
+  const overall =
+    field && ratingResponseCount(field) ? getRatingMetric(field) : undefined;
 
-  return { status: "ready", data, interval, metric, overallAverage };
+  return {
+    status: "ready",
+    data,
+    interval,
+    metric,
+    overallAverage: overall?.value,
+    overallFormatted: overall?.formatted,
+  };
 }
 
 /**
  * The buckets of the period up to today. Answers dated after the browser's
  * today still count, in case its clock is behind. A marker can be set on a
- * later day in the period: the axis then goes on to its bucket, while the
- * buckets up to today keep their partial marks.
+ * later day in the period: the axis then goes on to its bucket. The buckets
+ * up to today keep their partial marks, and the later ones are clipped to
+ * the period only.
  */
 export function ratingTrendBuckets({
   fromDate,
@@ -206,9 +215,16 @@ export function ratingTrendBuckets({
     return answered;
   }
 
-  const ahead = periodBuckets(fromDate, toDate, interval, lastMarkerDate)
-    .filter((bucket) => bucket.start > lastAnswered.start)
-    .map((bucket) => ({ ...bucket, partial: false }));
+  const markerBucketEnd = calendarBucket(
+    bucketStart(lastMarkerDate, interval),
+    interval,
+  ).end;
+  const ahead = periodBuckets(
+    fromDate,
+    toDate,
+    interval,
+    toDate && toDate < markerBucketEnd ? toDate : markerBucketEnd,
+  ).filter((bucket) => bucket.start > lastAnswered.start);
   return [...answered, ...ahead];
 }
 
@@ -261,7 +277,7 @@ export function RatingTrendChartTable({ markers = [] }: RatingTrendChartProps) {
 
   return (
     <ChartDataTable
-      label={`${metric.label} per ${nouns.one}`}
+      label={`${ratingTrendTitle(metric.label)} per ${nouns.one}`}
       rowHeader={nouns.rowHeader}
       columns={[
         { label: metric.label },
@@ -307,7 +323,7 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
       </Alert>
     );
 
-  const { data, interval, metric, overallAverage } = trend;
+  const { data, interval, metric, overallAverage, overallFormatted } = trend;
   const nouns = INTERVAL_NOUNS[interval];
 
   if (isEmptyTrend(data)) {
@@ -339,7 +355,7 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
         data={data}
         margin={chartMargin}
         role="img"
-        aria-label={`Linjediagram som viser ${inSentence(metric.label)} per ${nouns.one}${typeof overallAverage === "number" ? `. Valgt periode: ${overallAverage.toLocaleString("nb-NO")}` : ""}`}
+        aria-label={`Linjediagram som viser ${inSentence(metric.label)} per ${nouns.one}${overallFormatted ? `. Hele perioden: ${overallFormatted}` : ""}`}
         onClick={(state: {
           activeTooltipIndex?: number | TooltipIndex;
           activeIndex?: number | TooltipIndex;
@@ -468,7 +484,9 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
 
                 {average === null && (
                   <div className={styles.tooltipMuted}>
-                    Ingen svar {nouns.this}
+                    {point.masked
+                      ? `For få svar til å vises ${nouns.this}`
+                      : `Ingen svar ${nouns.this}`}
                   </div>
                 )}
 
@@ -602,7 +620,9 @@ function bucketDistance(a: string, b: string, interval: TimeInterval): number {
 
 /**
  * Stacks the labels of markers that are close on the time axis: within two
- * days, weeks or months, as the axis shows them.
+ * days, weeks or months of the first marker in the group, as the axis shows
+ * them. A group never spans more than three of them, so markers that come
+ * every week keep their labels.
  */
 export function buildMarkerLabelMeta(
   markers: RatingMarker[],
@@ -623,14 +643,14 @@ export function buildMarkerLabelMeta(
       continue;
     }
 
-    const lastInCluster = currentCluster[currentCluster.length - 1];
-    if (!lastInCluster) {
+    const firstInCluster = currentCluster[0];
+    if (!firstInCluster) {
       currentCluster.push(marker);
       continue;
     }
 
     const distance = bucketDistance(
-      bucketStart(lastInCluster.markerDate, interval),
+      bucketStart(firstInCluster.markerDate, interval),
       bucketStart(marker.markerDate, interval),
       interval,
     );

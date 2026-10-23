@@ -41,19 +41,26 @@ describe("useQuestionTrend", () => {
     mockFetchTrend.mockResolvedValue({} as never);
   });
 
-  it("asks for weeks when the period is longer than 92 days and no interval is chosen", async () => {
-    search.params = {
-      surveyId: "survey-1",
-      trendField: "rating",
-      fromDate: "2026-01-01",
-      toDate: "2026-06-30",
-    };
+  it.each([
+    ["2026-06-01", "day"],
+    ["2026-01-01", "week"],
+    ["2023-01-01", "month"],
+  ])(
+    "asks for the resolution of the period from %s to 30 June 2026 when no interval is chosen",
+    async (fromDate, interval) => {
+      search.params = {
+        surveyId: "survey-1",
+        trendField: "rating",
+        fromDate,
+        toDate: "2026-06-30",
+      };
 
-    renderHook(() => useQuestionTrend(), { wrapper: createWrapper() });
+      renderHook(() => useQuestionTrend(), { wrapper: createWrapper() });
 
-    await waitFor(() => expect(mockFetchTrend).toHaveBeenCalled());
-    expect(requestedInterval()).toBe("week");
-  });
+      await waitFor(() => expect(mockFetchTrend).toHaveBeenCalled());
+      expect(requestedInterval()).toBe(interval);
+    },
+  );
 
   it("asks for the interval the viewer chose", async () => {
     search.params = {

@@ -44,7 +44,7 @@ describe("chooseInterval", () => {
     }
   });
 
-  it("reads a period without an end, or with an invalid end, up to today", () => {
+  it("counts a period without an end, or with an invalid end, up to today", () => {
     expect(chooseInterval("2026-01-01", undefined, TODAY)).toBe("week");
     expect(chooseInterval("2026-01-01", "2026-10-32", TODAY)).toBe("week");
   });
@@ -194,12 +194,29 @@ describe("describePartialBuckets", () => {
   it("names the partial weeks and how the chart shows them", () => {
     expect(
       describePartialBuckets(
-        ["2026-10-05", "2026-10-19"],
+        ["2025-12-29", "2026-10-19"],
         "week",
         "lysere søyle",
       ),
     ).toBe(
-      "Uke 41 og uke 43 er bare delvis med i perioden og har lysere søyle.",
+      "Uke 1 og uke 43 er bare delvis med i perioden og har lysere søyle.",
+    );
+  });
+
+  it("names the year when the partial weeks are in different years", () => {
+    expect(
+      describePartialBuckets(
+        ["2025-10-20", "2026-10-19"],
+        "week",
+        "lysere søyle",
+      ),
+    ).toBe(
+      "Uke 43 i 2025 og uke 43 i 2026 er bare delvis med i perioden og har lysere søyle.",
+    );
+    expect(
+      describePartialBuckets(["2024-12-30", "2025-12-29"], "week", "hul prikk"),
+    ).toBe(
+      "Uke 1 i 2025 og uke 1 i 2026 er bare delvis med i perioden og har hul prikk.",
     );
   });
 

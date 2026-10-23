@@ -18,10 +18,10 @@ import { useStats } from "~/hooks/useStats";
 import type { QuestionTrendBucket, QuestionTrendResponse } from "~/types/api";
 import {
   chooseInterval,
+  describePartialBuckets,
   formatBucketLabel,
   formatBucketTick,
   INTERVAL_NOUNS,
-  periodBuckets,
   spansSeveralYears,
 } from "~/utils/timeBuckets";
 import { QuestionTrendChart } from "./QuestionTrendChart";
@@ -30,6 +30,7 @@ import {
   fillQuestionTrendBuckets,
   formatQuestionTrendBucket,
   questionTrendChoiceValue,
+  questionTrendPeriodBuckets,
   questionTrendRatingMetric,
   questionTrendRatingValue,
 } from "./questionTrendUtils";
@@ -188,8 +189,25 @@ export function QuestionTrendSection({
     : [];
   // Buckets that are only partly inside the period are named by their days.
   const inPeriod = trend
-    ? periodBuckets(params.fromDate, params.toDate, trend.interval)
+    ? questionTrendPeriodBuckets(trend, params.fromDate, params.toDate)
     : [];
+  const partialStarts = new Set(
+    inPeriod.filter((bucket) => bucket.partial).map((bucket) => bucket.start),
+  );
+  const partialNote = trend
+    ? describePartialBuckets(
+        buckets
+          .filter(
+            (bucket) =>
+              partialStarts.has(bucket.startDate) &&
+              !bucket.masked &&
+              (bucket.responseCount ?? 0) > 0,
+          )
+          .map((bucket) => bucket.startDate),
+        trend.interval,
+        "hul prikk",
+      )
+    : undefined;
   const withYear = spansSeveralYears(inPeriod);
   const labelByStart = new Map(
     inPeriod.map((bucket) => [
@@ -326,7 +344,11 @@ export function QuestionTrendSection({
                 measure={measure}
                 labelFor={labelFor}
                 tickFor={tickFor}
+                isPartial={(startDate) => partialStarts.has(startDate)}
               />
+              {partialNote ? (
+                <Detail textColor="subtle">{partialNote}</Detail>
+              ) : null}
               <TrendTable
                 buckets={buckets}
                 trend={trend}

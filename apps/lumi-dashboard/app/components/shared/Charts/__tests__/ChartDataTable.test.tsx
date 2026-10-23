@@ -144,6 +144,41 @@ describe("chart tables", () => {
     ).toHaveAttribute("tabindex", "0");
   });
 
+  it("names the timeline table after what the section counts", async () => {
+    mockStats.data = { byDate: { "2024-02-18": 3 } };
+
+    render(<TimelineChartTable noun="svar" />);
+    expect(toggleButton()).toHaveAccessibleName(
+      "Vis som tabell: Antall svar per dag",
+    );
+    await openTable();
+
+    const table = screen.getByRole("table", { name: "Antall svar per dag" });
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((cell) => cell.textContent),
+    ).toEqual(["Dato", "Svar"]);
+  });
+
+  it("keeps an opened timeline table open while new filters load", async () => {
+    mockStats.data = { byDate: { "2024-02-18": 3 } };
+    const { rerender } = render(<TimelineChartTable />);
+    await openTable();
+
+    mockStats.isPlaceholderData = true;
+    rerender(<TimelineChartTable />);
+    expect(screen.getByText("Laster tallene …")).toBeInTheDocument();
+    expect(toggleButton()).toHaveAttribute("aria-expanded", "true");
+
+    mockStats.isPlaceholderData = false;
+    rerender(<TimelineChartTable />);
+    expect(
+      screen.getByRole("table", { name: "Antall tilbakemeldinger per dag" }),
+    ).toBeInTheDocument();
+    expect(toggleButton()).toHaveAttribute("aria-expanded", "true");
+  });
+
   it("lists the ten apps with most feedback, like the chart", async () => {
     mockStats.data = {
       byApp: Object.fromEntries(
@@ -186,7 +221,9 @@ describe("chart tables", () => {
     render(<RatingTrendChartTable markers={[marker]} />);
     await openTable();
 
-    const table = screen.getByRole("table", { name: "Gjennomsnitt per dag" });
+    const table = screen.getByRole("table", {
+      name: "Gjennomsnittlig vurdering per dag",
+    });
     expect(
       within(table)
         .getAllByRole("columnheader")
@@ -245,7 +282,7 @@ describe("chart tables", () => {
     mockStats.isPlaceholderData = false;
     rerender(<RatingTrendChartTable />);
     expect(
-      screen.getByRole("table", { name: "Gjennomsnitt per dag" }),
+      screen.getByRole("table", { name: "Gjennomsnittlig vurdering per dag" }),
     ).toBeInTheDocument();
     expect(toggleButton()).toHaveAttribute("aria-expanded", "true");
   });

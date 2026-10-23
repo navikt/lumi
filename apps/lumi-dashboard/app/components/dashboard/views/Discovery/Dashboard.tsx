@@ -27,7 +27,7 @@ export function DiscoveryDashboard() {
       <StatsCards />
 
       {/* Timeline */}
-      <TimelineSection title="Antall svar over tid" />
+      <TimelineSection title="Antall svar over tid" noun="svar" />
 
       {/* Discovery Analysis - show skeleton while loading */}
       {isPending ? (

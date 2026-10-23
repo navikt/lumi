@@ -78,12 +78,13 @@ describe("RatingTrendChart marker helpers", () => {
       marker({ id: "m5", markerDate: "2026-01-04", label: "E" }),
     ]);
 
-    expect(meta.size).toBe(3);
+    // A group spans at most three days, so E starts a new one.
+    expect(meta.size).toBe(4);
     expect(meta.get("m1")).toEqual({ offsetY: 10, text: "A" });
     expect(meta.get("m2")).toEqual({ offsetY: 30, text: "B" });
-    expect(meta.get("m3")).toEqual({ offsetY: 50, text: "...+2" });
+    expect(meta.get("m3")).toEqual({ offsetY: 50, text: "...+1" });
     expect(meta.get("m4")).toBeUndefined();
-    expect(meta.get("m5")).toBeUndefined();
+    expect(meta.get("m5")).toEqual({ offsetY: 10, text: "E" });
   });
 
   it("stacks the labels of markers in the same week when the chart shows weeks", () => {
@@ -99,6 +100,31 @@ describe("RatingTrendChart marker helpers", () => {
     expect(meta.get("monday")).toEqual({ offsetY: 10, text: "Mandag" });
     expect(meta.get("friday")).toEqual({ offsetY: 30, text: "Fredag" });
     expect(meta.get("later")).toEqual({ offsetY: 10, text: "Senere" });
+  });
+
+  it("keeps the labels of markers that come every week", () => {
+    const markers = [
+      "2026-09-07",
+      "2026-09-14",
+      "2026-09-21",
+      "2026-09-28",
+      "2026-10-05",
+      "2026-10-12",
+      "2026-10-19",
+      "2026-10-26",
+    ].map((markerDate, index) =>
+      marker({
+        id: `week-${index + 1}`,
+        markerDate,
+        label: `Utgivelse ${index + 1}`,
+      }),
+    );
+
+    const meta = buildMarkerLabelMeta(markers, "week");
+
+    for (const item of markers) {
+      expect(meta.get(item.id)?.text).toBe(item.label);
+    }
   });
 
   it("resets stacking offset for separate clusters", () => {
@@ -126,7 +152,25 @@ describe("ratingTrendBuckets", () => {
     expect(thisWeek).toMatchObject({ to: "2026-10-22", partial: true });
     expect(buckets.at(-1)).toMatchObject({
       start: "2026-11-09",
+      to: "2026-11-15",
       partial: false,
+    });
+  });
+
+  it("clips the weeks after today to the end of the period", () => {
+    const buckets = ratingTrendBuckets({
+      fromDate: "2026-07-01",
+      toDate: "2026-11-11",
+      interval: "week",
+      today: "2026-10-22",
+      markerDates: ["2026-11-10"],
+    });
+
+    expect(buckets.at(-1)).toMatchObject({
+      start: "2026-11-09",
+      from: "2026-11-09",
+      to: "2026-11-11",
+      partial: true,
     });
   });
 

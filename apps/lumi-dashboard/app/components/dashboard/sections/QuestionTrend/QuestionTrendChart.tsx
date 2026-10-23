@@ -35,6 +35,39 @@ interface QuestionTrendChartProps {
   labelFor?: (startDate: string) => string;
   /** The bucket's short name on the time axis. */
   tickFor?: (startDate: string) => string;
+  /** True for a week or month that is only partly in the period. */
+  isPartial?: (startDate: string) => boolean;
+}
+
+interface DotProps {
+  cx?: number;
+  cy?: number;
+  index?: number;
+  payload?: { start: string };
+}
+
+/**
+ * A point for a week or month that is only partly in the period is hollow,
+ * like in the rating chart.
+ */
+function renderDot(color: string, isPartial: (startDate: string) => boolean) {
+  return ({ cx, cy, index, payload }: DotProps) => {
+    if (typeof cx !== "number" || typeof cy !== "number") {
+      return <g key={`empty-${index}`} />;
+    }
+    const partial = payload ? isPartial(payload.start) : false;
+    return (
+      <circle
+        key={payload?.start ?? index}
+        cx={cx}
+        cy={cy}
+        r={4}
+        fill={partial ? "var(--ax-bg-raised)" : color}
+        stroke={color}
+        strokeWidth={partial ? 2 : 0}
+      />
+    );
+  };
 }
 
 export function QuestionTrendChart({
@@ -43,6 +76,7 @@ export function QuestionTrendChart({
   measure,
   labelFor,
   tickFor,
+  isPartial = () => false,
 }: QuestionTrendChartProps) {
   const isRating = trend.fieldType === "RATING";
   const metric = questionTrendRatingMetric(trend);
@@ -105,6 +139,7 @@ export function QuestionTrendChart({
                 stroke={SERIES_COLORS[0]}
                 strokeWidth={2}
                 connectNulls={false}
+                dot={renderDot(SERIES_COLORS[0] ?? "#0067c5", isPartial)}
                 unit={metric.unit}
               />
             ) : (
@@ -117,6 +152,10 @@ export function QuestionTrendChart({
                   stroke={SERIES_COLORS[index % SERIES_COLORS.length]}
                   strokeWidth={2}
                   connectNulls={false}
+                  dot={renderDot(
+                    SERIES_COLORS[index % SERIES_COLORS.length] ?? "#0067c5",
+                    isPartial,
+                  )}
                   unit={measure === "percentage" ? "%" : undefined}
                 />
               ))

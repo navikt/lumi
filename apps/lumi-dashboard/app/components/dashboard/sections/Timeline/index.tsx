@@ -4,6 +4,7 @@ import { TopTasksTimelineChart } from "~/components/dashboard/views/TopTasks/Tim
 import {
   TimelineChart,
   TimelineChartTable,
+  type TimelineNoun,
   TimelinePartialNote,
   useTimelineInterval,
 } from "~/components/shared/Charts/TimelineChart";
@@ -22,6 +23,8 @@ interface TimelineSectionProps {
    * - "topTasks": Success rate timeline (TopTasksTimelineChart)
    */
   variant?: "default" | "topTasks";
+  /** What the count chart counts, as the title names it. */
+  noun?: TimelineNoun;
 }
 
 /**
@@ -31,6 +34,7 @@ interface TimelineSectionProps {
 export function TimelineSection({
   title = "Aktivitet over tid",
   variant = "default",
+  noun = "tilbakemeldinger",
 }: TimelineSectionProps) {
   const interval = useTimelineInterval();
   // The Top Tasks timeline shows one value per day.
@@ -49,11 +53,11 @@ export function TimelineSection({
           {variant === "topTasks" ? (
             <TopTasksTimelineChart />
           ) : (
-            <TimelineChart />
+            <TimelineChart noun={noun} />
           )}
         </div>
         {variant === "topTasks" ? null : <TimelinePartialNote />}
-        {variant === "topTasks" ? null : <TimelineChartTable />}
+        {variant === "topTasks" ? null : <TimelineChartTable noun={noun} />}
       </VStack>
     </DashboardCard>
   );

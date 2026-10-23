@@ -138,7 +138,32 @@ describe("QuestionTrendSection", () => {
     );
   });
 
-  it("picks the interval from the period until the viewer chooses one", () => {
+  it.each([
+    ["2026-06-01", "Dag"],
+    ["2026-01-01", "Uke"],
+    ["2023-01-01", "Måned"],
+  ])(
+    "picks the interval for the period from %s to 30 June 2026 until the viewer chooses one",
+    (fromDate, interval) => {
+      mockUseSearchParams.mockReturnValue({
+        params: {
+          surveyId: "survey-1",
+          trendField: "choice-1",
+          fromDate,
+          toDate: "2026-06-30",
+        },
+        setParam: vi.fn(),
+        setParams,
+        resetParams: vi.fn(),
+      } as never);
+      render(<QuestionTrendSection />);
+
+      expect(screen.getByRole("radio", { name: interval })).toBeChecked();
+      expect(setParams).not.toHaveBeenCalled();
+    },
+  );
+
+  it("names the partial weeks that have answers under the chart", () => {
     mockUseSearchParams.mockReturnValue({
       params: {
         surveyId: "survey-1",
@@ -150,10 +175,42 @@ describe("QuestionTrendSection", () => {
       setParams,
       resetParams: vi.fn(),
     } as never);
+    mockUseQuestionTrend.mockReturnValue({
+      data: {
+        fieldId: "choice-1",
+        fieldType: "MULTI_CHOICE",
+        label: "Hva var viktig?",
+        interval: "week",
+        privacyThreshold: 5,
+        options: [{ id: "a", label: "Alternativ A" }],
+        buckets: [
+          {
+            startDate: "2025-12-29",
+            masked: false,
+            responseCount: 6,
+            distribution: { a: { count: 3, percentage: 50 } },
+          },
+          {
+            startDate: "2026-06-29",
+            masked: false,
+            responseCount: 5,
+            distribution: { a: { count: 1, percentage: 20 } },
+          },
+        ],
+      },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    } as never);
+
     render(<QuestionTrendSection />);
 
-    expect(screen.getByRole("radio", { name: "Uke" })).toBeChecked();
-    expect(setParams).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(
+        "Uke 1 og uke 27 er bare delvis med i perioden og har hul prikk.",
+      ),
+    ).toBeVisible();
   });
 
   it("shows masked periods without exposing values and explains multi-choice percentages", () => {

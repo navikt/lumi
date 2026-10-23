@@ -3,6 +3,7 @@ import type {
   QuestionTrendInterval,
   QuestionTrendResponse,
 } from "~/types/api";
+import { todayInOslo } from "~/utils/dashboardPeriod";
 import {
   calculateNpsScore,
   calculateThumbsPositiveRate,
@@ -11,7 +12,9 @@ import {
 import {
   calendarBucket,
   formatBucketLabel,
+  laterDate,
   periodBuckets,
+  type TimeBucket,
 } from "~/utils/timeBuckets";
 
 export function questionTrendRatingMetric(
@@ -95,6 +98,28 @@ export function questionTrendChartData(
 }
 
 /**
+ * The calendar days, weeks or months of the period up to today. Answers
+ * dated after the browser's today still count, in case its clock is behind.
+ */
+export function questionTrendPeriodBuckets(
+  trend: QuestionTrendResponse,
+  fromDate?: string,
+  toDate?: string,
+  today = todayInOslo(),
+): TimeBucket[] {
+  const latest = trend.buckets
+    .map((bucket) => bucket.startDate)
+    .sort()
+    .at(-1);
+  return periodBuckets(
+    fromDate,
+    toDate,
+    trend.interval,
+    laterDate(today, latest),
+  );
+}
+
+/**
  * One bucket per calendar day, week or month in the period, up to today.
  * Empty buckets get zero answers, so the time axis stays even.
  */
@@ -104,7 +129,7 @@ export function fillQuestionTrendBuckets(
   toDate?: string,
   today?: string,
 ): QuestionTrendBucket[] {
-  const buckets = periodBuckets(fromDate, toDate, trend.interval, today);
+  const buckets = questionTrendPeriodBuckets(trend, fromDate, toDate, today);
   if (buckets.length === 0) return trend.buckets;
 
   const byDate = new Map(

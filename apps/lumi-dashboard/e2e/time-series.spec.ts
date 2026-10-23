@@ -19,10 +19,16 @@ function mondayOf(daysBack: number): number {
 }
 
 // 120 days is longer than 92, so the time series are shown per ISO week.
+// The mock has answers for the last 60 days only, so the last week must be
+// the partial one. On a Sunday the period therefore ends on Saturday.
 const PERIOD_DAYS = 120;
-const longPeriod = `dateMode=fixed&fromDate=${daysAgo(PERIOD_DAYS - 1)}&toDate=${daysAgo(0)}`;
+const END_DAYS_AGO = new Date().getDay() === 0 ? 1 : 0;
+const longPeriod = `dateMode=fixed&fromDate=${daysAgo(END_DAYS_AGO + PERIOD_DAYS - 1)}&toDate=${daysAgo(END_DAYS_AGO)}`;
 const weeksInPeriod =
-  Math.round((mondayOf(0) - mondayOf(PERIOD_DAYS - 1)) / (7 * 864e5)) + 1;
+  Math.round(
+    (mondayOf(END_DAYS_AGO) - mondayOf(END_DAYS_AGO + PERIOD_DAYS - 1)) /
+      (7 * 864e5),
+  ) + 1;
 
 test.describe("Time series over long periods", () => {
   test("the overview counts answers per week and marks partial weeks", async ({
@@ -32,7 +38,7 @@ test.describe("Time series over long periods", () => {
 
     await expect(
       page.getByRole("img", {
-        name: `Stolpediagram som viser antall tilbakemeldinger per uke for ${weeksInPeriod} uker`,
+        name: `Søylediagram som viser antall tilbakemeldinger per uke for ${weeksInPeriod} uker`,
       }),
     ).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("Per uke", { exact: true })).toBeVisible();
@@ -76,15 +82,19 @@ test.describe("Time series over long periods", () => {
     ).toBeVisible({ timeout: 15000 });
     await page
       .getByRole("button", {
-        name: /^Vis som tabell\s*: Gjennomsnitt per uke$/,
+        name: /^Vis som tabell\s*: Gjennomsnittlig vurdering per uke$/,
       })
       .click();
     await expect(
       page
-        .getByRole("table", { name: "Gjennomsnitt per uke" })
+        .getByRole("table", { name: "Gjennomsnittlig vurdering per uke" })
         .getByRole("rowheader")
         .first(),
     ).toHaveText(/^Uke \d{1,2}, \d{4} · /);
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+    expect(results.violations).toEqual([]);
 
     await page
       .getByRole("button", { name: /^Se utvikling for / })

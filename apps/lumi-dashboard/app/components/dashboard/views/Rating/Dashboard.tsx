@@ -19,7 +19,10 @@ import { SegmentBreakdown } from "~/components/dashboard/SegmentBreakdown";
 import { FieldStatsSection } from "~/components/dashboard/sections/FieldStats";
 import { DeviceBreakdownSection } from "~/components/dashboard/sections/FieldStats/DeviceBreakdownSection";
 import { ComparisonStatsCards } from "~/components/dashboard/sections/FieldStats/PeriodComparison/ComparisonStatsCards";
-import { getRatingMetric } from "~/components/dashboard/sections/FieldStats/PeriodComparison/model";
+import {
+  getRatingMetric,
+  ratingTrendTitle,
+} from "~/components/dashboard/sections/FieldStats/PeriodComparison/model";
 import { StatsCards } from "~/components/dashboard/sections/StatsCards";
 import { TimelineSection } from "~/components/dashboard/sections/Timeline";
 import { UrgentUrls } from "~/components/dashboard/sections/UrgentUrls";
@@ -168,9 +171,7 @@ export function RatingDashboard({
                 <VStack gap="space-2">
                   <Heading size="small" level="2">
                     {primaryRating
-                      ? getRatingMetric(primaryRating).label === "Gjennomsnitt"
-                        ? "Gjennomsnittlig vurdering"
-                        : getRatingMetric(primaryRating).label
+                      ? ratingTrendTitle(getRatingMetric(primaryRating).label)
                       : "Vurdering"}
                   </Heading>
                   <Detail textColor="subtle">

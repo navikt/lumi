@@ -275,7 +275,7 @@ describe("chart drilldown", () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("waits for the new period's numbers instead of mixing in the old ones", () => {
+  it("shows no chart while the numbers for a new period load", () => {
     mockParams.fromDate = "2024-01-01";
     mockParams.toDate = "2024-05-01";
     mockStats.data = { byDate: { "2024-04-30": 3 } };

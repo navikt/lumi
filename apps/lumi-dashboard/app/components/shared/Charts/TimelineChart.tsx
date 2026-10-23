@@ -1,5 +1,6 @@
 import { Detail, Skeleton } from "@navikt/ds-react";
 import { useNavigate } from "@tanstack/react-router";
+import { useRef } from "react";
 import {
   Bar,
   BarChart,
@@ -56,6 +57,25 @@ const CHART_COLORS_LIGHT = {
  */
 const PARTIAL_BAR_OPACITY = 0.45;
 
+/** What the timeline counts, in the words of the section's heading. */
+export type TimelineNoun = "tilbakemeldinger" | "svar";
+
+const NOUN_FORMS: Record<
+  TimelineNoun,
+  { one: string; many: string; column: string }
+> = {
+  tilbakemeldinger: {
+    one: "tilbakemelding",
+    many: "tilbakemeldinger",
+    column: "Tilbakemeldinger",
+  },
+  svar: { one: "svar", many: "svar", column: "Svar" },
+};
+
+interface TimelineProps {
+  noun?: TimelineNoun;
+}
+
 export interface TimelinePoint {
   key: string;
   tick: string;
@@ -78,12 +98,17 @@ export function timelineChartData(
   toDate?: string,
   today = todayInOslo(),
 ): { interval: TimeInterval; points: TimelinePoint[] } {
+  // The resolution follows the period, like the heading above the chart.
   // Answers dated after the browser's today still count, in case its clock
   // is behind.
+  const interval = chooseInterval(fromDate, toDate, today);
   const latest = Object.keys(byDate).sort().at(-1);
-  const end = laterDate(today, latest);
-  const interval = chooseInterval(fromDate, toDate, end);
-  const buckets = periodBuckets(fromDate, toDate, interval, end);
+  const buckets = periodBuckets(
+    fromDate,
+    toDate,
+    interval,
+    laterDate(today, latest),
+  );
 
   if (buckets.length === 0) {
     const points = Object.entries(byDate)
@@ -145,15 +170,35 @@ export function useTimelineInterval(): TimeInterval {
 }
 
 /** The timeline's numbers, under the chart. */
-export function TimelineChartTable() {
+export function TimelineChartTable({
+  noun = "tilbakemeldinger",
+}: TimelineProps) {
   const { interval, points, total, isPending } = useTimelineData();
-  if (isPending || total === 0) return null;
+  // New numbers load after each filter change. Keep an opened table open
+  // meanwhile.
+  const hadRows = useRef(false);
+  const label = `Antall ${noun} per ${INTERVAL_NOUNS[interval].one}`;
+  const rowHeader = INTERVAL_NOUNS[interval].rowHeader;
+
+  if (isPending) {
+    return hadRows.current ? (
+      <ChartDataTable
+        label={label}
+        rowHeader={rowHeader}
+        columns={[]}
+        rows={[]}
+        loading
+      />
+    ) : null;
+  }
+  hadRows.current = total > 0;
+  if (total === 0) return null;
 
   return (
     <ChartDataTable
-      label={`Antall tilbakemeldinger per ${INTERVAL_NOUNS[interval].one}`}
-      rowHeader={INTERVAL_NOUNS[interval].rowHeader}
-      columns={[{ label: "Tilbakemeldinger" }]}
+      label={label}
+      rowHeader={rowHeader}
+      columns={[{ label: NOUN_FORMS[noun].column }]}
       rows={points.map((point) => ({
         key: point.key,
         header: point.label,
@@ -178,7 +223,7 @@ export function TimelinePartialNote() {
   return note ? <Detail textColor="subtle">{note}</Detail> : null;
 }
 
-export function TimelineChart() {
+export function TimelineChart({ noun = "tilbakemeldinger" }: TimelineProps) {
   const { interval, points, total, isPending } = useTimelineData();
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -187,6 +232,7 @@ export function TimelineChart() {
 
   const colors = theme === "light" ? CHART_COLORS_LIGHT : CHART_COLORS;
   const nouns = INTERVAL_NOUNS[interval];
+  const forms = NOUN_FORMS[noun];
 
   // Responsive chart margins - minimal margins to maximize chart area
   const chartMargin = isMobile
@@ -216,7 +262,7 @@ export function TimelineChart() {
         data={points}
         margin={chartMargin}
         role="img"
-        aria-label={`Stolpediagram som viser antall tilbakemeldinger per ${nouns.one} for ${points.length} ${points.length === 1 ? nouns.one : nouns.many}`}
+        aria-label={`Søylediagram som viser antall ${noun} per ${nouns.one} for ${points.length} ${points.length === 1 ? nouns.one : nouns.many}`}
         onClick={(state: {
           activeTooltipIndex?: number | TooltipIndex;
           activeIndex?: number | TooltipIndex;
@@ -280,7 +326,8 @@ export function TimelineChart() {
                 <div className={styles.tooltipCard}>
                   <div className={styles.tooltipTitle}>{point.label}</div>
                   <div>
-                    {point.count.toLocaleString("no-NO")} tilbakemeldinger
+                    {point.count.toLocaleString("no-NO")}{" "}
+                    {point.count === 1 ? forms.one : forms.many}
                   </div>
                   {point.count > 0 ? (
                     <div className={styles.tooltipHint}>

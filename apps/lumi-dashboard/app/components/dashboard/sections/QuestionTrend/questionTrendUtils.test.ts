@@ -137,7 +137,21 @@ describe("question trend calendar", () => {
     expect(buckets[2]?.responseCount).toBeUndefined();
   });
 
-  it("does not add buckets after today", () => {
+  it("does not add empty buckets after today", () => {
+    const buckets = fillQuestionTrendBuckets(
+      { ...trend, buckets: trend.buckets.slice(0, 1) },
+      "2026-01-07",
+      "2026-01-31",
+      "2026-01-14",
+    );
+
+    expect(buckets.map((bucket) => bucket.startDate)).toEqual([
+      "2026-01-05",
+      "2026-01-12",
+    ]);
+  });
+
+  it("keeps answers dated after the browser's today", () => {
     const buckets = fillQuestionTrendBuckets(
       trend,
       "2026-01-07",
@@ -148,6 +162,7 @@ describe("question trend calendar", () => {
     expect(buckets.map((bucket) => bucket.startDate)).toEqual([
       "2026-01-05",
       "2026-01-12",
+      "2026-01-19",
     ]);
   });
 

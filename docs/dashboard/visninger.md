@@ -41,9 +41,9 @@ I **Top Tasks**, **Discovery** og **Task Priority** ligger kortet **Utvikling ov
 
 Grafene over tid viser én søyle eller ett punkt per dag når perioden er 92 dager eller kortere. Er perioden lengre, viser de én per uke, og over to år én per måned. Dager etter i dag telles ikke med. Under overskriften står **Per dag**, **Per uke** eller **Per måned**.
 
-Ukene begynner på mandag og har ukenummer og år, for eksempel «Uke 43, 2026». En uke som bare delvis er med i perioden, har lysere søyle med stiplet kant eller hul prikk. Det gjelder også uka dere er i nå. Under grafen står hvilke uker det gjelder, og under **Vis som tabell** står hvor mange av dagene som er med, for eksempel «(4 av 7 dager)».
+Ukene begynner på mandag og har ukenummer og år, for eksempel «Uke 43, 2026». En uke eller måned som bare delvis er med i perioden, har lysere søyle med stiplet kant eller hul prikk. Det gjelder også uka dere er i nå. Under grafen står hvilke uker eller måneder det gjelder, og tabellen viser hvor mange av dagene som er med, for eksempel «(4 av 7 dager)».
 
-I **Antall tilbakemeldinger** står dager og uker uten svar med 0. **Gjennomsnittlig vurdering** har ingen prikk for dem.
+I **Antall tilbakemeldinger** og **Antall svar over tid** står dager, uker og måneder uten svar med 0. **Gjennomsnittlig vurdering** har ingen prikk for dem.
 
 **Suksessrate over tid** i Top Tasks viser én verdi per dag, uansett hvor lang perioden er.
 
