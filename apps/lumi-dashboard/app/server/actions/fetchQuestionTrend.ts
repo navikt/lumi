@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { getMockQuestionTrend } from "~/mock/mockData";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
@@ -43,7 +42,7 @@ export function buildQuestionTrendUrl(
 
 export const fetchQuestionTrendServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator(zodValidator(QuestionTrendParamsSchema))
+  .validator(QuestionTrendParamsSchema)
   .handler(async ({ data, context }): Promise<QuestionTrendResponse> => {
     const { backendUrl, oboToken } = context as AuthContext;
 

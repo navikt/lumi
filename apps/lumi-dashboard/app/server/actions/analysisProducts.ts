@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { zodValidator } from "@tanstack/zod-adapter";
 import {
   analysisRequest,
   mutateAnalysis,
@@ -22,7 +21,7 @@ import {
 
 export const listAnalysisProducts = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator(zodValidator(AnalysisTeamSchema))
+  .validator(AnalysisTeamSchema)
   .handler(async ({ data, context }) =>
     readAnalysis(
       await analysisRequest(context as AuthContext, data.team, ""),
@@ -34,7 +33,7 @@ export const listAnalysisProducts = createServerFn({ method: "GET" })
 
 export const getAnalysisCatalog = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator(zodValidator(AnalysisTeamSchema))
+  .validator(AnalysisTeamSchema)
   .handler(async ({ data, context }) => {
     const catalog = await readAnalysis(
       await analysisRequest(context as AuthContext, data.team, "/catalog"),
@@ -47,7 +46,7 @@ export const getAnalysisCatalog = createServerFn({ method: "GET" })
 
 export const getAnalysisProduct = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator(zodValidator(AnalysisIdSchema))
+  .validator(AnalysisIdSchema)
   .handler(async ({ data, context }) => {
     const product = await readAnalysis(
       await analysisRequest(
@@ -64,7 +63,7 @@ export const getAnalysisProduct = createServerFn({ method: "GET" })
 
 export const getAnalysisPreview = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator(zodValidator(AnalysisIdSchema))
+  .validator(AnalysisIdSchema)
   .handler(async ({ data, context }) => {
     const preview = await readAnalysis(
       await analysisRequest(
@@ -94,7 +93,7 @@ export const getAnalysisPreview = createServerFn({ method: "GET" })
 
 export const getAnalysisReleases = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator(zodValidator(AnalysisIdSchema))
+  .validator(AnalysisIdSchema)
   .handler(async ({ data, context }) =>
     readAnalysis(
       await analysisRequest(
@@ -110,7 +109,7 @@ export const getAnalysisReleases = createServerFn({ method: "GET" })
 
 export const createAnalysisProduct = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(AnalysisCreateSchema))
+  .validator(AnalysisCreateSchema)
   .handler(async ({ data, context }) => {
     refuseWriteInPublicDemo();
     return mutateAnalysis(
@@ -127,7 +126,7 @@ export const createAnalysisProduct = createServerFn({ method: "POST" })
 
 export const saveAnalysisDraft = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(AnalysisSaveSchema))
+  .validator(AnalysisSaveSchema)
   .handler(async ({ data, context }) => {
     refuseWriteInPublicDemo();
     return mutateAnalysis(
@@ -151,7 +150,7 @@ export const saveAnalysisDraft = createServerFn({ method: "POST" })
 
 export const lockAnalysisRelease = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(AnalysisLockSchema))
+  .validator(AnalysisLockSchema)
   .handler(async ({ data, context }) => {
     refuseWriteInPublicDemo();
     return mutateAnalysis(

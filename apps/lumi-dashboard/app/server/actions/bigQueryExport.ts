@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { zodValidator } from "@tanstack/zod-adapter";
 import {
   bigQueryExportRequest,
   mutateBigQueryExport,
@@ -24,7 +23,7 @@ const statusFor = (team: string) =>
 
 export const getBigQueryExport = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator(zodValidator(BigQueryExportTeamSchema))
+  .validator(BigQueryExportTeamSchema)
   .handler(async ({ data, context }) =>
     readBigQueryExport(
       await bigQueryExportRequest(context as AuthContext, data.team, ""),
@@ -34,7 +33,7 @@ export const getBigQueryExport = createServerFn({ method: "GET" })
 
 export const verifyBigQueryExport = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(BigQueryExportTargetSchema))
+  .validator(BigQueryExportTargetSchema)
   .handler(async ({ data, context }) => {
     refuseWriteInPublicDemo();
     return mutateBigQueryExport(
@@ -51,7 +50,7 @@ export const verifyBigQueryExport = createServerFn({ method: "POST" })
 
 export const saveBigQueryExport = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(BigQueryExportSaveSchema))
+  .validator(BigQueryExportSaveSchema)
   .handler(async ({ data, context }) => {
     refuseWriteInPublicDemo();
     return mutateBigQueryExport(
@@ -72,7 +71,7 @@ export const saveBigQueryExport = createServerFn({ method: "POST" })
 
 export const runBigQueryExport = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(BigQueryExportTeamSchema))
+  .validator(BigQueryExportTeamSchema)
   .handler(async ({ data, context }) => {
     refuseWriteInPublicDemo();
     return mutateBigQueryExport(
@@ -88,7 +87,7 @@ export const runBigQueryExport = createServerFn({ method: "POST" })
 
 export const stopBigQueryExport = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(BigQueryExportTeamSchema))
+  .validator(BigQueryExportTeamSchema)
   .handler(async ({ data, context }) => {
     refuseWriteInPublicDemo();
     return mutateBigQueryExport(

@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { getMockBlockerStats } from "~/mock/mockData";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
@@ -46,7 +45,7 @@ function toMockSearchParams(data: BlockerActionParams): URLSearchParams {
 
 export const fetchBlockerServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator(zodValidator(BlockerParamsSchema))
+  .validator(BlockerParamsSchema)
   .handler(async ({ data, context }): Promise<BlockerResponse> => {
     const { backendUrl, oboToken } = context as AuthContext;
 

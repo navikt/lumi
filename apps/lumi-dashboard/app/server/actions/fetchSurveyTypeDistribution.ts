@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { getMockSurveyTypeDistribution } from "~/mock/mockData";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
@@ -31,7 +30,7 @@ export const fetchSurveyTypeDistributionServerFn = createServerFn({
   method: "GET",
 })
   .middleware([authMiddleware])
-  .validator(zodValidator(TeamParamsSchema))
+  .validator(TeamParamsSchema)
   .handler(
     async ({ data, context }): Promise<SurveyTypeDistributionResponse> => {
       const { backendUrl, oboToken } = context as AuthContext;

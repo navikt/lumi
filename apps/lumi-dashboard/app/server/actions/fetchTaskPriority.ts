@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { getMockTaskPriorityStats } from "~/mock/mockData";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
@@ -46,7 +45,7 @@ function toMockSearchParams(data: TaskPriorityActionParams): URLSearchParams {
 
 export const fetchTaskPriorityServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator(zodValidator(TaskPriorityParamsSchema))
+  .validator(TaskPriorityParamsSchema)
   .handler(async ({ data, context }): Promise<TaskPriorityResponse> => {
     const { backendUrl, oboToken } = context as AuthContext;
 

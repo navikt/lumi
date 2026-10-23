@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { authMiddleware } from "~/server/middleware/auth";
 import { refuseWriteInPublicDemo } from "~/server/publicDemo";
 import {
@@ -19,7 +18,7 @@ import { handleApiResponse } from "../fetchUtils";
  */
 export const archiveSurveyServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(ArchiveSurveySchema))
+  .validator(ArchiveSurveySchema)
   .handler(async ({ data, context }): Promise<SurveyArchiveState> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
@@ -50,7 +49,7 @@ export const archiveSurveyServerFn = createServerFn({ method: "POST" })
  */
 export const unarchiveSurveyServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(ArchiveSurveySchema))
+  .validator(ArchiveSurveySchema)
   .handler(async ({ data, context }): Promise<void> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;

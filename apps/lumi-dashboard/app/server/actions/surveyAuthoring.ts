@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { authMiddleware } from "~/server/middleware/auth";
 import { isPublicDemo, refuseWriteInPublicDemo } from "~/server/publicDemo";
 import {
@@ -45,7 +44,7 @@ export const fetchSurveyAuthoringProjectsServerFn = createServerFn({
   method: "GET",
 })
   .middleware([authMiddleware])
-  .validator(zodValidator(SurveyAuthoringTeamSchema))
+  .validator(SurveyAuthoringTeamSchema)
   .handler(
     async ({ data, context }): Promise<SurveyAuthoringProjectSummary[]> => {
       if (isMockMode()) {
@@ -72,7 +71,7 @@ export const fetchSurveyAuthoringProjectServerFn = createServerFn({
   method: "GET",
 })
   .middleware([authMiddleware])
-  .validator(zodValidator(SurveyAuthoringProjectIdSchema))
+  .validator(SurveyAuthoringProjectIdSchema)
   .handler(async ({ data, context }): Promise<SurveyAuthoringProject> => {
     if (isMockMode()) {
       const { getMockSurveyProject } = await import("~/mock/surveyAuthoring");
@@ -99,7 +98,7 @@ export const deleteSurveyAuthoringProjectServerFn = createServerFn({
   method: "POST",
 })
   .middleware([authMiddleware])
-  .validator(zodValidator(SurveyAuthoringProjectIdSchema))
+  .validator(SurveyAuthoringProjectIdSchema)
   .handler(async ({ data, context }): Promise<void> => {
     refuseWriteInPublicDemo();
     if (isMockMode()) {
@@ -129,7 +128,7 @@ export const createSurveyAuthoringProjectServerFn = createServerFn({
   method: "POST",
 })
   .middleware([authMiddleware])
-  .validator(zodValidator(CreateSurveyAuthoringProjectSchema))
+  .validator(CreateSurveyAuthoringProjectSchema)
   .handler(async ({ data, context }): Promise<SurveyAuthoringProject> => {
     refuseWriteInPublicDemo();
     if (isMockMode()) {
@@ -165,7 +164,7 @@ export const saveSurveyAuthoringDraftServerFn = createServerFn({
   method: "POST",
 })
   .middleware([authMiddleware])
-  .validator(zodValidator(SaveSurveyAuthoringDraftSchema))
+  .validator(SaveSurveyAuthoringDraftSchema)
   .handler(async ({ data, context }): Promise<SurveyAuthoringProject> => {
     refuseWriteInPublicDemo();
     if (isMockMode()) {
@@ -202,7 +201,7 @@ export const fetchSurveyAuthoringRevisionsServerFn = createServerFn({
   method: "GET",
 })
   .middleware([authMiddleware])
-  .validator(zodValidator(SurveyAuthoringProjectIdSchema))
+  .validator(SurveyAuthoringProjectIdSchema)
   .handler(
     async ({ data, context }): Promise<SurveyAuthoringRevisionSummary[]> => {
       if (isMockMode()) {
@@ -231,7 +230,7 @@ export const createSurveyAuthoringRevisionServerFn = createServerFn({
   method: "POST",
 })
   .middleware([authMiddleware])
-  .validator(zodValidator(CreateSurveyAuthoringRevisionSchema))
+  .validator(CreateSurveyAuthoringRevisionSchema)
   .handler(async ({ data, context }): Promise<SurveyAuthoringRevision> => {
     refuseWriteInPublicDemo();
     if (isMockMode()) {
@@ -265,7 +264,7 @@ export const fetchSurveyAuthoringRevisionServerFn = createServerFn({
   method: "GET",
 })
   .middleware([authMiddleware])
-  .validator(zodValidator(SurveyAuthoringRevisionIdSchema))
+  .validator(SurveyAuthoringRevisionIdSchema)
   .handler(
     async ({ data, context }): Promise<SurveyAuthoringRevisionDetail> => {
       if (isMockMode()) {

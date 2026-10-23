@@ -1,5 +1,4 @@
 import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { getMockFilterBootstrap, getMockTeams } from "~/mock/mockData";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
@@ -78,7 +77,7 @@ async function requestFilterBootstrap(
  */
 export const fetchFilterBootstrapServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator(zodValidator(FilterBootstrapParamsSchema))
+  .validator(FilterBootstrapParamsSchema)
   .handler(async ({ data, context }): Promise<FilterBootstrapResponse> => {
     return requestFilterBootstrap(data, context as AuthContext);
   });

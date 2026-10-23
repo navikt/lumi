@@ -1,5 +1,4 @@
 import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
-import { zodValidator } from "@tanstack/zod-adapter";
 import ExcelJS from "exceljs";
 import {
   filterMockArchiveVisibility,
@@ -232,7 +231,7 @@ export { transformToBackendParams };
 
 export const exportServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(ExportParamsSchema))
+  .validator(ExportParamsSchema)
   .handler(async ({ data, context }): Promise<ExportResult> => {
     const { backendUrl, oboToken } = context as AuthContext;
 

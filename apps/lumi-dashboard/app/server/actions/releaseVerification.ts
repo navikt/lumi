@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
@@ -259,7 +258,7 @@ export const submitReleaseVerificationServerFn = createServerFn({
   method: "POST",
 })
   .middleware([authMiddleware])
-  .validator(zodValidator(transportPayloadSchema))
+  .validator(transportPayloadSchema)
   .handler(
     async ({ data, context }): Promise<ReleaseVerificationProbeEvidence> => {
       assertReleaseVerificationEnabled();
@@ -299,7 +298,7 @@ export const fetchReleaseVerificationRunServerFn = createServerFn({
   method: "GET",
 })
   .middleware([authMiddleware])
-  .validator(zodValidator(readRunSchema))
+  .validator(readRunSchema)
   .handler(
     async ({ data, context }): Promise<ReleaseVerificationRunReadback> => {
       assertReleaseVerificationEnabled();
