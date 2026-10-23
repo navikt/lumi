@@ -64,7 +64,11 @@ export async function redirectToDashboardTeam(
     if (!isViewerSpecificError(error)) {
       skipLookupUntil = Date.now() + DEFAULT_TEAM_SKIP_MS;
     }
-    await logDefaultTeamFailure(pathname, error);
+    // A server function that fails is logged by serverFnFailureMiddleware in
+    // start.ts. Only the timeout belongs to this function.
+    if (error instanceof DefaultTeamTimeoutError) {
+      await logDefaultTeamTimeout(pathname, timeoutMs);
+    }
     return;
   }
   if (!defaultTeam) return;
@@ -103,30 +107,38 @@ async function fetchDefaultTeam(
   }
 }
 
+/**
+ * A 4xx answer: Lumi API's own, or authMiddleware's when the login is
+ * missing. A failed token exchange gives 502 and counts for everyone.
+ */
 function isViewerSpecificError(error: unknown): boolean {
-  return (
-    error instanceof ApiErrorException &&
-    error.error.status >= 400 &&
-    error.error.status < 500
-  );
+  const status = errorStatus(error);
+  return status !== undefined && status >= 400 && status < 500;
+}
+
+/**
+ * Lumi API's status, or the numeric status an error from the server carries
+ * itself. In the browser an error from a server function has only its
+ * message, unless it is an ApiErrorException.
+ */
+function errorStatus(error: unknown): number | undefined {
+  if (error instanceof ApiErrorException) return error.error.status;
+  if (typeof error !== "object" || error === null || !("status" in error)) {
+    return undefined;
+  }
+  return typeof error.status === "number" ? error.status : undefined;
 }
 
 /** Server-side only. In the browser, FilterBar shows the bootstrap error. */
-async function logDefaultTeamFailure(
+async function logDefaultTeamTimeout(
   pathname: string,
-  error: unknown,
+  timeoutMs: number,
 ): Promise<void> {
   if (!import.meta.env.SSR) return;
 
   const { logger } = await import("~/server/logger");
   logger.warn(
-    {
-      pathname,
-      reason: error instanceof DefaultTeamTimeoutError ? "timeout" : "error",
-      errorName: error instanceof Error ? error.name : typeof error,
-      status:
-        error instanceof ApiErrorException ? error.error.status : undefined,
-    },
+    { pathname, reason: "timeout", timeoutMs },
     "Could not resolve the default team before rendering the dashboard",
   );
 }

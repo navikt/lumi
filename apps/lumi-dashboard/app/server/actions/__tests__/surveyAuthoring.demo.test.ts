@@ -21,6 +21,8 @@ vi.mock("@tanstack/react-start", () => {
     (input: { data?: unknown } = {}) =>
       fn({ ...input, context: doubles.context });
   return {
+    // Writes come from the browser, as server function calls over HTTP.
+    getGlobalStartContext: () => ({ serverFnHttpCall: true }),
     createServerFn: () => ({
       middleware: () => ({ handler, validator: () => ({ handler }) }),
     }),
