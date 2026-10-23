@@ -3,6 +3,7 @@ import { ansvar } from "./Ansvar";
 import { bareTeamet } from "./BareTeamet";
 import { brukesVidere } from "./BrukesVidere";
 import { fagsystemsonen } from "./Fagsystemsonen";
+import { fjernerEPosten } from "./FjernerEPosten";
 import { grupper } from "./Grupper";
 import { hvaVilDereVite } from "./HvaVilDereVite";
 import { hvorBorSvaret } from "./HvorBorSvaret";
@@ -42,6 +43,7 @@ export const deckSlides: readonly Slide[] = [
   svarMeg,
   iAppen,
   merEnnViSporOm,
+  fjernerEPosten,
   viTrengteMer,
   svaretsVei,
   hvaVilDereVite,
