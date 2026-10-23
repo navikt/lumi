@@ -1,5 +1,14 @@
 import dayjs from "dayjs";
-import { describe, expect, it } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { ApiErrorException, ErrorType } from "~/types/errors";
 import {
   isAnalysisBudgetError,
@@ -42,6 +51,37 @@ describe("periodEnd", () => {
       "2026-10-22",
     );
     expect(periodEnd(undefined, TODAY).format("YYYY-MM-DD")).toBe("2026-10-22");
+  });
+});
+
+describe("periodEnd without a given today", () => {
+  const originalTimeZone = process.env.TZ;
+
+  beforeAll(() => {
+    process.env.TZ = "UTC";
+  });
+
+  afterAll(() => {
+    if (originalTimeZone === undefined) {
+      delete process.env.TZ;
+    } else {
+      process.env.TZ = originalTimeZone;
+    }
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    // 01:30 on 23 October in Oslo, still 22 October in UTC.
+    vi.setSystemTime(new Date("2026-10-22T23:30:00Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("uses today's date in Oslo", () => {
+    expect(periodEnd(undefined).format("YYYY-MM-DD")).toBe("2026-10-23");
+    expect(periodEnd("2026-10-23").format("YYYY-MM-DD")).toBe("2026-10-23");
   });
 });
 

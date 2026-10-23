@@ -51,23 +51,26 @@ export function ExportPanel() {
   const [budgetExceeded, setBudgetExceeded] = useState(false);
   const [success, setSuccess] = useState(false);
   const [truncation, setTruncation] = useState<Truncation | null>(null);
+  const [filtersChanged, setFiltersChanged] = useState(false);
   const filterKey = JSON.stringify(params);
-  // The filters can change while an export runs. Its warnings only apply to
-  // the filters it started with.
+  // An export belongs to the filters it started with. If they change before
+  // it is done, the file and its warnings are dropped.
   const currentFilterKey = useRef(filterKey);
-  currentFilterKey.current = filterKey;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filterKey is the trigger, since the warnings only apply to the filters the file was exported with
   useEffect(() => {
+    currentFilterKey.current = filterKey;
     setTruncation(null);
     setBudgetExceeded(false);
+    setFiltersChanged(false);
   }, [filterKey]);
 
   const handleExport = async () => {
     const startedWith = filterKey;
+    const filtersAreUnchanged = () => currentFilterKey.current === startedWith;
     setIsExporting(true);
     setError(null);
     setBudgetExceeded(false);
+    setFiltersChanged(false);
     setSuccess(false);
     setTruncation(null);
 
@@ -95,6 +98,11 @@ export function ExportPanel() {
         },
       });
 
+      if (!filtersAreUnchanged()) {
+        setFiltersChanged(true);
+        return;
+      }
+
       const binaryString = atob(result.data);
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
@@ -112,7 +120,6 @@ export function ExportPanel() {
       document.body.removeChild(a);
 
       if (
-        currentFilterKey.current === startedWith &&
         result.total !== null &&
         result.count !== null &&
         result.total > result.count
@@ -123,10 +130,14 @@ export function ExportPanel() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
+      if (!filtersAreUnchanged()) {
+        setFiltersChanged(true);
+        return;
+      }
       if (isAnalysisBudgetError(err)) {
         // The API refuses the same filters every time, so this alert has no
         // retry button.
-        if (currentFilterKey.current === startedWith) setBudgetExceeded(true);
+        setBudgetExceeded(true);
         return;
       }
       console.error("Export failed:", err);
@@ -169,6 +180,12 @@ export function ExportPanel() {
       {success && (
         <Alert variant="success" className="export-alert">
           Eksport fullført! Filen er lastet ned.
+        </Alert>
+      )}
+      {filtersChanged && (
+        <Alert variant="info" role="status" className="export-alert">
+          Filtrene ble endret før eksporten var ferdig, så filen ble ikke lastet
+          ned. Last ned på nytt.
         </Alert>
       )}
       {truncation && (

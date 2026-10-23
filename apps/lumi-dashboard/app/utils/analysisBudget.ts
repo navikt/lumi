@@ -1,11 +1,13 @@
 import dayjs from "dayjs";
 import { ApiErrorException, ErrorType } from "~/types/errors";
+import { todayInOslo } from "~/utils/dashboardPeriod";
 
 /**
  * Some analyses read every answer in the period into the API's memory. The
  * API refuses a period with more than 10 000 answers or 8 MiB of answer data,
- * and gives the same answer to the same request. A shorter period always
- * helps. Filters the database applies, such as device, also help.
+ * and gives the same answer to the same request. A part of the period never
+ * has more answers than the whole period. Filters the database applies, such
+ * as device, can also help.
  */
 export function isAnalysisBudgetError(error: unknown): boolean {
   return (
@@ -23,7 +25,7 @@ export function analysisBudgetDescription(subject: string): string {
 
 /**
  * The API applies the task, theme and phrase filters after it has read the
- * answers. Removing such a filter makes the request smaller.
+ * answers. Without them, it filters and pages in SQL.
  */
 export const FILTER_BUDGET_DESCRIPTION =
   "Lumi kan ikke filtrere på oppgave, tema eller uttrykk i så mange svar. Velg en kortere periode, eller fjern filteret.";
@@ -34,11 +36,16 @@ function isValidDate(value: string | undefined): value is string {
   return Boolean(value && dayjs(value).isValid());
 }
 
+/** Today's date in Oslo, like the rest of the period logic. */
+function osloToday(): dayjs.Dayjs {
+  return dayjs(todayInOslo());
+}
+
 /**
  * The last day the period has answers for: its end date, or today when the
  * end is later or missing.
  */
-export function periodEnd(toDate?: string, today = dayjs()): dayjs.Dayjs {
+export function periodEnd(toDate?: string, today = osloToday()): dayjs.Dayjs {
   const end = isValidDate(toDate) ? dayjs(toDate) : today;
   return end.isAfter(today, "day") ? today.startOf("day") : end;
 }
@@ -49,7 +56,7 @@ export function periodEnd(toDate?: string, today = dayjs()): dayjs.Dayjs {
 export function periodDays(
   fromDate?: string,
   toDate?: string,
-  today = dayjs(),
+  today = osloToday(),
 ): number {
   if (!isValidDate(fromDate)) return Number.POSITIVE_INFINITY;
   return periodEnd(toDate, today).diff(dayjs(fromDate), "day") + 1;
@@ -62,7 +69,7 @@ export function periodDays(
 export function shorterPeriodDays(
   fromDate?: string,
   toDate?: string,
-  today = dayjs(),
+  today = osloToday(),
 ): number | undefined {
   const days = periodDays(fromDate, toDate, today);
   return SHORTER_PERIOD_DAYS.find((candidate) => candidate < days);

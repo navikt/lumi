@@ -159,9 +159,9 @@ Resten av dashboardet viser tall uansett hvor få svar det er, også når det ba
 
 ## Når perioden har for mange svar {#for-mange-svar}
 
-Har perioden for mange svar, står varselet **Perioden har for mange svar** der analysen skulle vært. Det gjelder analysene i **Top Tasks**, **Discovery** og **Task Priority**, **Det som hindrer brukerne** og **Segmentering** med en valgt oppgave. Lumi regner dem ut fra hvert enkelt svar, og grensen er 10 000 svar. Den er lavere når svarene er store, for eksempel når spørsmålene har mange svaralternativer.
+Har perioden mer enn 10 000 svar, står varselet **Perioden har for mange svar** der analysen skulle vært. Det gjelder analysene i **Top Tasks**, **Discovery** og **Task Priority**, **Det som hindrer brukerne** og **Segmentering** med en valgt oppgave. Lumi regner dem ut fra hvert enkelt svar. Grensen er lavere når svarene er store, for eksempel når spørsmålene har mange svaralternativer.
 
-**Vis de siste 30 dagene i perioden** setter perioden til de siste 30 dagene av perioden dere hadde valgt. Er perioden 30 dager eller kortere, heter knappen **Vis de siste 7 dagene i perioden**. Er den sju dager eller kortere, er det ingen knapp. Et filter på enhet gjør også utvalget mindre.
+**Vis de siste 30 dagene i perioden** gir de siste 30 dagene av perioden dere har valgt. Er den 30 dager eller kortere, heter knappen **Vis de siste 7 dagene i perioden**, og er den sju dager eller kortere, er det ingen knapp. Et [filter på enhet](/dashboard/filtrering#enhet) kan også hjelpe, fordi da teller bare svarene fra den enheten.
 
 I **Discovery** og **Task Priority** vises **Antall svar over tid**, **Enheter** og **Segmentering** selv om analysen mangler. I **Top Tasks** vises **Enheter**, og **Segmentering** når dere ikke har valgt en oppgave.
 

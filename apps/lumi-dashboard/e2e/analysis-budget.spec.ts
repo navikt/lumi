@@ -20,9 +20,9 @@ function addDays(date: string, days: number): string {
   return value.toISOString().slice(0, 10);
 }
 
-// The new period ends where the old one ends, so the expected dates follow
-// from the URL and not from the clock.
-const TO_DATE = localToday();
+// The period ends two days ago, before today in any time zone. The shorter
+// period ends on the same day, so the expected dates are counted from TO_DATE.
+const TO_DATE = addDays(localToday(), -2);
 const longPeriod = `dateMode=fixed&fromDate=${addDays(TO_DATE, -89)}&toDate=${TO_DATE}`;
 
 async function expectLast30DaysOfPeriod(page: Page) {
@@ -52,7 +52,7 @@ async function expectNoAxeViolations(page: Page) {
 }
 
 test.describe("Analysis budget", () => {
-  test("an analysis with too many answers offers a shorter period instead of a retry", async ({
+  test("an analysis with too many answers offers the last 30 days of the period", async ({
     page,
   }) => {
     await page.goto(`/?surveyId=${SURVEY_ID}&${longPeriod}`);

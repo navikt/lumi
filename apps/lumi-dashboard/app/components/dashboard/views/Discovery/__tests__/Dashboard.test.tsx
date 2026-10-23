@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useDiscoveryStats } from "~/hooks/useDiscoveryStats";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
+import { ApiErrorException, ErrorType } from "~/types/errors";
+import { ANALYSIS_BUDGET_TITLE } from "~/utils/analysisBudget";
 import { DiscoveryDashboard } from "../Dashboard";
 
 vi.mock("~/components/dashboard/SegmentBreakdown", () => ({
@@ -48,6 +50,15 @@ const mockUseDiscoveryStats = vi.mocked(useDiscoveryStats);
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseSegmentFilter = vi.mocked(useSegmentFilter);
 
+function budgetError() {
+  return new ApiErrorException({
+    status: 400,
+    type: ErrorType.ANALYSIS_BUDGET_EXCEEDED,
+    message: "Too much feedback data for in-memory analysis",
+    timestamp: "2026-10-22T00:00:00Z",
+  });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockUseSearchParams.mockReturnValue({
@@ -71,8 +82,46 @@ describe("DiscoveryDashboard", () => {
 
     render(<DiscoveryDashboard />);
 
-    expect(screen.getByText("MOCK_DISCOVERY_ANALYSIS")).toBeInTheDocument();
+    const timeline = screen.getByRole("heading", {
+      name: "Antall svar over tid",
+    });
+    const analysis = screen.getByText("MOCK_DISCOVERY_ANALYSIS");
+    const segments = screen.getByText("MOCK_SEGMENT_BREAKDOWN");
+    expect(
+      timeline.compareDocumentPosition(analysis) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      analysis.compareDocumentPosition(segments) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("asks for a shorter period when the period has too many answers", () => {
+    mockUseDiscoveryStats.mockReturnValue({
+      data: undefined,
+      error: budgetError(),
+      isPending: false,
+      isError: true,
+      isFetching: false,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<DiscoveryDashboard />);
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(ANALYSIS_BUDGET_TITLE);
+    expect(alert).toHaveTextContent(
+      "Discovery-analysen kan ikke regnes ut for så mange svar. Velg en kortere periode.",
+    );
+    expect(
+      screen.getByRole("button", { name: "Vis de siste 30 dagene i perioden" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Prøv igjen" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("MOCK_SEGMENT_BREAKDOWN")).toBeInTheDocument();
   });
 
   it("keeps the sections with their own data when the analysis fails", () => {

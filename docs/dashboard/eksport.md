@@ -21,7 +21,7 @@ Filen får navnet `lumi-export-` med dagens dato. Svar fra arkiverte surveyer er
 
 En eksport har opptil 10 000 svar. Når filtrene treffer flere svar, får dere de 10 000 nyeste, og eksportsiden viser et varsel med antallet filtrene traff, for eksempel «Eksporten har de 10 000 nyeste svarene av 12 345». Del opp perioden og eksporter hver del for seg for å få med alle.
 
-Med filter på oppgave, tema eller uttrykk gjelder ikke dette. Da leser Lumi alle svarene i perioden før filteret brukes, og har perioden for mange svar, får dere ingen fil. Eksportsiden ber dere velge en kortere periode eller fjerne filteret, se [Når perioden har for mange svar](/dashboard/visninger#for-mange-svar).
+Med filter på oppgave, tema eller uttrykk leser Lumi alle svarene i perioden før filteret brukes. Har perioden for mange svar, får dere ingen fil, heller ikke de 10 000 nyeste. Eksportsiden ber dere velge en kortere periode eller fjerne filteret, se [Når perioden har for mange svar](/dashboard/visninger#for-mange-svar).
 
 Sidene under **Tilbakemeldinger** påvirker ikke eksporten.
 

@@ -129,7 +129,7 @@ describe("ExportPanel", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("ignores the answer to an export whose filters have changed", async () => {
+  it("drops a refused export whose filters have changed", async () => {
     let rejectExport: (reason: unknown) => void = () => undefined;
     exportMock.mockReturnValue(
       new Promise((_, reject) => {
@@ -146,6 +146,42 @@ describe("ExportPanel", () => {
     await act(async () => rejectExport(budgetError()));
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Filtrene ble endret før eksporten var ferdig, så filen ble ikke lastet ned. Last ned på nytt.",
+    );
+    expect(screen.getByRole("button", { name: "Last ned CSV" })).toBeEnabled();
+  });
+
+  it("does not download a file for filters that have changed", async () => {
+    let resolveExport: (value: unknown) => void = () => undefined;
+    exportMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveExport = resolve;
+      }) as never,
+    );
+    const user = userEvent.setup();
+    const { rerender } = render(<ExportPanel />);
+
+    await user.click(screen.getByRole("button", { name: "Last ned CSV" }));
+    search.params = { team: "flex", fromDate: "2026-09-23" };
+    rerender(<ExportPanel />);
+    await act(async () =>
+      resolveExport(exportResult({ total: 12_345, count: 10_000 })),
+    );
+
+    expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
+    expect(
+      screen.queryByText("Eksport fullført! Filen er lastet ned."),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/nyeste svarene av/)).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Filtrene ble endret før eksporten var ferdig",
+    );
+
+    search.params = { team: "flex", fromDate: "2026-10-01" };
+    rerender(<ExportPanel />);
+
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
   it("keeps the retry for other errors", async () => {

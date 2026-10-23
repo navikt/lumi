@@ -17,12 +17,12 @@ export function ContextTagsFilter({ surveyId }: ContextTagsFilterProps) {
   const contextTagsQuery = useContextTags(surveyId);
 
   // A button inside the filter menu cannot be reached with the keyboard, so
-  // this alert has none. The page's own alert offers the shorter period.
+  // this alert has none.
   return (
     <DataFetchBoundary
       title="Kunne ikke hente segmentfiltre"
       analysisBudgetDescription={analysisBudgetDescription(
-        "Segmentfiltrene for oppgaven",
+        "Segmenteringen for den valgte oppgaven",
       )}
       offerShorterPeriod={false}
       queries={[contextTagsQuery]}
