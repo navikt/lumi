@@ -82,6 +82,19 @@
   margin: 0;
 }
 
+/* Near the bottom or the right edge, the card opens upwards or leftwards. */
+.comment-mode__card[data-up] {
+  translate: 0 calc(-100% - 36px);
+}
+
+.comment-mode__card[data-left] {
+  translate: calc(-100% + 24px) 0;
+}
+
+.comment-mode__card[data-up][data-left] {
+  translate: calc(-100% + 24px) calc(-100% - 36px);
+}
+
 .comment-mode__meta {
   margin: 0 0 6px;
   color: #555555;

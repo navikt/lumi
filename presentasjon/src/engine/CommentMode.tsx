@@ -14,6 +14,8 @@ import "./commentMode.css";
 const ENDPOINT = "/__kommentarer";
 const STAGE_WIDTH = 1920;
 const STAGE_HEIGHT = 1080;
+/** Room a card needs below or to the right of where it opens. */
+const CARD_ROOM = 360;
 
 interface Comment {
   id: string;
@@ -121,6 +123,14 @@ export function CommentMode({ stageRef, slideId, step }: CommentModeProps) {
     left: rect.left + x * scale,
     top: rect.top + y * scale,
   });
+  /** A card opens away from the window edges, so its buttons stay in view. */
+  const cardSide = (x: number, y: number) => {
+    const { left, top } = toScreen(x, y);
+    return {
+      "data-up": top > window.innerHeight - CARD_ROOM ? "" : undefined,
+      "data-left": left > window.innerWidth - CARD_ROOM ? "" : undefined,
+    };
+  };
 
   const onStageClick = (event: MouseEvent<HTMLDivElement>) => {
     const x = (event.clientX - rect.left) / scale;
@@ -197,7 +207,10 @@ export function CommentMode({ stageRef, slideId, step }: CommentModeProps) {
               {index + 1}
             </button>
             {openPin === comment.id && (
-              <div className="comment-mode__card">
+              <div
+                className="comment-mode__card"
+                {...cardSide(comment.x, comment.y)}
+              >
                 <p className="comment-mode__meta">
                   Steg {comment.step}
                   {comment.status === "fixed" ? ", fikset" : ", åpen"}
@@ -222,6 +235,7 @@ export function CommentMode({ stageRef, slideId, step }: CommentModeProps) {
         <form
           className="comment-mode__card comment-mode__draft"
           style={toScreen(draft.x, draft.y)}
+          {...cardSide(draft.x, draft.y)}
           onSubmit={save}
         >
           <textarea
