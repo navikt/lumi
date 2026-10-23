@@ -21,6 +21,7 @@ vi.mock("@tanstack/react-start", () => {
     (input: { data?: unknown } = {}) =>
       fn({ ...input, context: doubles.context });
   return {
+    createServerOnlyFn: <T>(fn: T) => fn,
     createServerFn: () => ({
       middleware: () => ({ handler, validator: () => ({ handler }) }),
     }),

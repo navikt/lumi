@@ -59,6 +59,14 @@ export default defineConfig(({ command, mode }) => {
       tanstackStart({
         // Use app directory as source (non-standard but keeps our structure)
         srcDirectory: "app",
+        // Fail the client build if server-only code stays reachable there.
+        // `files` replaces the defaults, so keep the `.server.*` convention.
+        importProtection: {
+          client: {
+            specifiers: ["exceljs"],
+            files: ["**/*.server.*", "**/app/mock/**"],
+          },
+        },
         router: {
           // Prevent route generation from scanning test files/folders under app/routes
           routeFileIgnorePattern:

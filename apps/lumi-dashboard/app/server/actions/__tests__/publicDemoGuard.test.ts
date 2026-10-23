@@ -9,6 +9,7 @@ const doubles = vi.hoisted(() => ({
 // Every server function records its HTTP method, so the test can find the
 // writes without a list that has to be kept up to date by hand.
 vi.mock("@tanstack/react-start", () => ({
+  createServerOnlyFn: <T>(fn: T) => fn,
   createServerFn: (options?: { method?: string }) => {
     const method = options?.method ?? "GET";
     const builder = {
