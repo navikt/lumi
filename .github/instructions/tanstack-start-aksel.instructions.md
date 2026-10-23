@@ -112,6 +112,23 @@ function FeedbackPage() {
 }
 ```
 
+On zod 3, routes validate search params with `validateSearch: zodValidator(schema)` from `@tanstack/zod-adapter`, never with the schema directly: used directly, a zod 3 schema turns async when anything throws during parsing, and the router rejects async search validation. Search schemas must stay synchronous and must not throw; report problems with `ctx.addIssue`. Give each field a `fallback()` without a trailing `.catch()` (see `app/schemas/searchSchema.ts`); the extra `.catch()` makes the search input `unknown`, so `Link`, `navigate` and `redirect` stop type-checking `search`.
+
+```ts
+import { createFileRoute } from "@tanstack/react-router";
+import { fallback, zodValidator } from "@tanstack/zod-adapter";
+import { z } from "zod";
+
+const searchSchema = z.object({
+  team: fallback(z.string().optional(), undefined),
+});
+
+export const Route = createFileRoute("/export")({
+  validateSearch: zodValidator(searchSchema),
+  component: ExportPage,
+});
+```
+
 ## Server Functions (TanStack Start)
 
 Server-side calls live under `apps/lumi-dashboard/app/server/actions/*` and use `createServerFn()`.
@@ -119,13 +136,12 @@ Prefer Zod validation + auth middleware (matches repo patterns).
 
 ```ts
 import { createServerFn } from "@tanstack/react-start";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { authMiddleware } from "~/server/middleware/auth";
 import { StatsParamsSchema } from "~/types/schemas";
 
 export const fetchStatsServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator(zodValidator(StatsParamsSchema))
+  .validator(StatsParamsSchema)
   .handler(async ({ data, context }) => {
     // fetch from backend with OBO token from context
   });

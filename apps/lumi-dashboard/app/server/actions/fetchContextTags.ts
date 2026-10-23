@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { getMockContextTags } from "~/mock/mockData";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
@@ -18,7 +17,7 @@ import { handleApiResponse } from "../fetchUtils";
  */
 export const fetchContextTagsServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator(zodValidator(ContextTagsParamsSchema))
+  .validator(ContextTagsParamsSchema)
   .handler(async ({ data, context }): Promise<ContextTagsResponse> => {
     const { backendUrl, oboToken } = context as AuthContext;
 

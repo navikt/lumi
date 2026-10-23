@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { authMiddleware } from "~/server/middleware/auth";
 import { refuseWriteInPublicDemo } from "~/server/publicDemo";
 import {
@@ -18,7 +17,7 @@ import { handleApiResponse } from "../fetchUtils";
  */
 export const deleteSurveyServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(DeleteSurveySchema))
+  .validator(DeleteSurveySchema)
   .handler(async ({ data, context }): Promise<DeleteSurveyResult> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
@@ -49,7 +48,7 @@ export const deleteSurveyServerFn = createServerFn({ method: "POST" })
  */
 export const deleteFeedbackServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(DeleteFeedbackSchema))
+  .validator(DeleteFeedbackSchema)
   .handler(async ({ data, context }): Promise<{ success: boolean }> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;

@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { getMockFeedback } from "~/mock/mockData";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
@@ -93,7 +92,7 @@ export { transformToBackendParams };
 
 export const fetchFeedbackServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator(zodValidator(FeedbackParamsSchema))
+  .validator(FeedbackParamsSchema)
   .handler(async ({ data, context }): Promise<FeedbackPage> => {
     const { backendUrl, oboToken } = context as AuthContext;
 

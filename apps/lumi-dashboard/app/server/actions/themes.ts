@@ -1,5 +1,4 @@
 import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { authMiddleware } from "~/server/middleware/auth";
 import { refuseWriteInPublicDemo } from "~/server/publicDemo";
@@ -87,7 +86,7 @@ export const themeNameExists = createServerOnlyFn(
  */
 export const fetchThemesServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator(zodValidator(FetchThemesParamsSchema))
+  .validator(FetchThemesParamsSchema)
   .handler(async ({ data, context: authContext }): Promise<TextTheme[]> => {
     const { backendUrl, oboToken } = authContext as AuthContext;
     const filterContext = data?.context;
@@ -129,7 +128,7 @@ export const fetchThemesServerFn = createServerFn({ method: "GET" })
  */
 export const createThemeServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(CreateThemeSchema))
+  .validator(CreateThemeSchema)
   .handler(async ({ data, context }): Promise<TextTheme> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
@@ -174,7 +173,7 @@ export const createThemeServerFn = createServerFn({ method: "POST" })
  */
 export const updateThemeServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(UpdateThemeSchema))
+  .validator(UpdateThemeSchema)
   .handler(async ({ data, context }): Promise<TextTheme> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
@@ -222,7 +221,7 @@ export const updateThemeServerFn = createServerFn({ method: "POST" })
  */
 export const deleteThemeServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(ThemeIdSchema))
+  .validator(ThemeIdSchema)
   .handler(async ({ data, context }): Promise<void> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;

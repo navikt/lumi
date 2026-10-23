@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { authMiddleware } from "~/server/middleware/auth";
 import { refuseWriteInPublicDemo } from "~/server/publicDemo";
 import {
@@ -50,7 +49,7 @@ function filterMockMarkers(
  */
 export const fetchMarkersServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator(zodValidator(FetchMarkersParamsSchema))
+  .validator(FetchMarkersParamsSchema)
   .handler(async ({ data, context }): Promise<RatingMarker[]> => {
     const { backendUrl, oboToken } = context as AuthContext;
 
@@ -81,7 +80,7 @@ export const fetchMarkersServerFn = createServerFn({ method: "GET" })
  */
 export const createMarkerServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(CreateMarkerSchema))
+  .validator(CreateMarkerSchema)
   .handler(async ({ data, context }): Promise<RatingMarker> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
@@ -130,7 +129,7 @@ export const createMarkerServerFn = createServerFn({ method: "POST" })
  */
 export const updateMarkerServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(UpdateMarkerSchema))
+  .validator(UpdateMarkerSchema)
   .handler(async ({ data, context }): Promise<RatingMarker> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
@@ -210,7 +209,7 @@ export const updateMarkerServerFn = createServerFn({ method: "POST" })
  */
 export const deleteMarkerServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(DeleteMarkerSchema))
+  .validator(DeleteMarkerSchema)
   .handler(async ({ data, context }): Promise<void> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;

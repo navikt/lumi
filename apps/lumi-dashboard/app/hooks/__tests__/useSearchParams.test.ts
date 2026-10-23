@@ -79,6 +79,17 @@ describe("useSearchParams", () => {
     expect(getResult().params.dateMode).toBe("auto");
   });
 
+  it("drops invalid values in the URL instead of failing", async () => {
+    const { getResult } = await setup([
+      "/?team=flex&dateMode=foo&compare=sometimes&trendInterval=x",
+    ]);
+
+    expect(getResult().params.team).toBe("flex");
+    expect(getResult().params.dateMode).toBeUndefined();
+    expect(getResult().params.compare).toBeUndefined();
+    expect(getResult().params.trendInterval).toBeUndefined();
+  });
+
   it("restores the complete question trend configuration from the URL", async () => {
     const { getResult } = await setup([
       "/?surveyId=survey-1&trendField=choice-1&trendInterval=month&trendMeasure=count",

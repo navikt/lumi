@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { getMockTags } from "~/mock/mockData";
 import { authMiddleware } from "~/server/middleware/auth";
 import { refuseWriteInPublicDemo } from "~/server/publicDemo";
@@ -18,7 +17,7 @@ import { handleApiResponse } from "../fetchUtils";
  */
 export const fetchTagsServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator(zodValidator(TeamParamsSchema))
+  .validator(TeamParamsSchema)
   .handler(async ({ data, context }): Promise<string[]> => {
     const { backendUrl, oboToken } = context as AuthContext;
 
@@ -44,7 +43,7 @@ export const fetchTagsServerFn = createServerFn({ method: "GET" })
  */
 export const addTagServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(TagActionSchema))
+  .validator(TagActionSchema)
   .handler(async ({ data, context }): Promise<{ success: boolean }> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;
@@ -77,7 +76,7 @@ export const addTagServerFn = createServerFn({ method: "POST" })
  */
 export const removeTagServerFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(zodValidator(TagActionSchema))
+  .validator(TagActionSchema)
   .handler(async ({ data, context }): Promise<{ success: boolean }> => {
     refuseWriteInPublicDemo();
     const { backendUrl, oboToken } = context as AuthContext;

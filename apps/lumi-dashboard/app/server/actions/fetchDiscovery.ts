@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { getMockDiscoveryStats } from "~/mock/mockData";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
@@ -45,7 +44,7 @@ function toMockSearchParams(data: DiscoveryActionParams): URLSearchParams {
 
 export const fetchDiscoveryServerFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .validator(zodValidator(DiscoveryParamsSchema))
+  .validator(DiscoveryParamsSchema)
   .handler(async ({ data, context }): Promise<DiscoveryResponse> => {
     const { backendUrl, oboToken } = context as AuthContext;
 
