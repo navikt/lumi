@@ -4,9 +4,10 @@ import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
-// Server-only packages. The client build leaves them out as long as only
-// server code uses them: server functions, middleware, server routes and
-// createServerOnlyFn. Import protection below fails the build otherwise.
+// Server-only packages and their subpaths. The client build leaves them out
+// as long as only server code uses them: server functions, middleware,
+// server routes and createServerOnlyFn. If client code imports one anyway,
+// import protection below fails `vite build`; `vite dev` mocks it and warns.
 const serverOnlyModules = [
   "@navikt/oasis",
   "@navikt/pino-logger",
@@ -53,11 +54,14 @@ export default defineConfig(({ command, mode }) => {
       tanstackStart({
         // Use app directory as source (non-standard but keeps our structure)
         srcDirectory: "app",
-        // Fail the client build if server-only code stays reachable there.
+        // Fail the client build if client code still imports server-only code.
         // `files` replaces the defaults, so keep the `.server.*` convention.
         importProtection: {
           client: {
-            specifiers: serverOnlyModules,
+            specifiers: serverOnlyModules.flatMap((module) => [
+              module,
+              `${module}/**`,
+            ]),
             files: ["**/*.server.*", "**/app/mock/**"],
           },
         },
