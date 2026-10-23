@@ -13,7 +13,7 @@ import {
   QuestionTrendParamsSchema,
   QuestionTrendResponseSchema,
 } from "~/types/schemas";
-import { handleApiResponse } from "../fetchUtils";
+import { handleApiResponse, parseApiAnswer } from "../fetchUtils";
 import { assertMockTeamAccess } from "./fetchFilterBootstrap";
 import {
   type StatsActionParams,
@@ -55,12 +55,12 @@ export const fetchQuestionTrendServerFn = createServerFn({ method: "GET" })
         data.interval,
       );
       if (!response) throw new Error("Fant ingen data for valgt spørsmål");
-      return QuestionTrendResponseSchema.parse(response);
+      return parseApiAnswer(QuestionTrendResponseSchema, response);
     }
 
     const response = await fetch(buildQuestionTrendUrl(backendUrl, data), {
       headers: getHeaders(oboToken),
     });
     await handleApiResponse(response);
-    return QuestionTrendResponseSchema.parse(await response.json());
+    return parseApiAnswer(QuestionTrendResponseSchema, await response.json());
   });

@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { apiStatusError, BadGatewayError } from "~/server/serverFnStatus";
 import {
   type AuthContext,
   buildUrl,
@@ -43,12 +44,15 @@ export async function readBigQueryExport<T>(
   schema: ResponseSchema<T>,
 ): Promise<T> {
   if (!response.ok)
-    throw new Error(
+    throw apiStatusError(
+      response.status,
       "BigQuery-eksporten kunne ikke hentes. Kontroller teamet og prøv igjen.",
     );
   const parsed = schema.safeParse(await response.json());
   if (!parsed.success)
-    throw new Error("Uventet svar fra BigQuery-eksporten i Lumi API.");
+    throw new BadGatewayError(
+      "Uventet svar fra BigQuery-eksporten i Lumi API.",
+    );
   return parsed.data;
 }
 
@@ -65,7 +69,9 @@ export async function mutateBigQueryExport<T>(
       await response.json().catch(() => null),
     );
     if (!parsed.success)
-      throw new Error("Uventet svar fra BigQuery-eksporten i Lumi API.");
+      throw new BadGatewayError(
+        "Uventet svar fra BigQuery-eksporten i Lumi API.",
+      );
     return { ok: false, reason: "problems", problems: parsed.data.problems };
   }
   if (response.status === 400 || response.status === 413)
@@ -75,6 +81,6 @@ export async function mutateBigQueryExport<T>(
     return { ok: false, reason: "unavailable" };
   if (response.status === 429) return { ok: false, reason: "limit" };
   if (!response.ok)
-    throw new Error("Kunne ikke bekrefte om endringen ble lagret.");
+    throw new BadGatewayError("Kunne ikke bekrefte om endringen ble lagret.");
   return { ok: true, value: await readBigQueryExport(response, schema) };
 }

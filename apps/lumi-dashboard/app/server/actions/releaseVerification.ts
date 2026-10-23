@@ -22,7 +22,7 @@ import {
   type ReleaseVerificationProfile,
   verifyReleaseVerificationReadback,
 } from "~/utils/releaseVerification";
-import { handleApiResponse } from "../fetchUtils";
+import { handleApiResponse, parseApiAnswer } from "../fetchUtils";
 
 const DEV_HOLD_DURATION_MS = 15 * 60 * 1000;
 const surveyTypeSchema = z.enum([
@@ -284,7 +284,10 @@ export const submitReleaseVerificationServerFn = createServerFn({
         },
       );
       await handleApiResponse(response);
-      const receipt = submissionReceiptSchema.parse(await response.json());
+      const receipt = parseApiAnswer(
+        submissionReceiptSchema,
+        await response.json(),
+      );
       return readExactProbe(authContext, target, {
         phase,
         surveyId: data.surveyId,

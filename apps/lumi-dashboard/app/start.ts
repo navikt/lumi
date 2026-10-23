@@ -11,10 +11,11 @@ import {
   applyBaselineSecurityHeaders,
   buildCspHeaderValue,
 } from "~/server/securityHeaders";
+import { reportServerFnFailure } from "~/server/serverFnFailures";
 import { apiErrorSerializationAdapter } from "~/utils/apiErrorSerialization";
 
 const securityHeadersMiddleware = createMiddleware().server(
-  async ({ next, context }) => {
+  async ({ next, context, handlerType }) => {
     const { randomBytes } = await import("node:crypto");
     const nonce = randomBytes(16).toString("base64");
     const isDev = process.env.NODE_ENV !== "production";
@@ -39,6 +40,10 @@ const securityHeadersMiddleware = createMiddleware().server(
       context: {
         ...(context ?? {}),
         cspNonce: nonce,
+        // Start's own decision, made on the normalized path. Server functions
+        // that a page runs in-process during SSR see the page's context, so
+        // the flag is false for them. Read it with isServerFnHttpCall().
+        serverFnHttpCall: handlerType === "serverFn",
       },
     });
   },
@@ -88,8 +93,33 @@ const csrfMiddleware = createCsrfMiddleware({
   },
 });
 
+// Without this, a server function that throws answers 200 and logs nothing:
+// Start serializes the error and sets no status. It runs outside every
+// server function's own middleware, so failures in authMiddleware and in
+// input validation pass through it too. The error itself reaches the caller
+// unchanged.
+const serverFnFailureMiddleware = createMiddleware({ type: "function" }).server(
+  async ({ next, serverFnMeta }) => {
+    const startedAt = performance.now();
+    try {
+      return await next();
+    } catch (error) {
+      try {
+        reportServerFnFailure(error, {
+          serverFn: serverFnMeta.name,
+          durationMs: performance.now() - startedAt,
+        });
+      } catch {
+        // Logging or metrics must never replace the server function's error.
+      }
+      throw error;
+    }
+  },
+);
+
 export const startInstance = createStart(() => ({
   serializationAdapters: [apiErrorSerializationAdapter],
   // Security headers first, so CSRF rejections carry them too.
   requestMiddleware: [securityHeadersMiddleware, csrfMiddleware],
+  functionMiddleware: [serverFnFailureMiddleware],
 }));

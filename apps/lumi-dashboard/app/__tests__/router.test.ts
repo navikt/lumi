@@ -14,6 +14,7 @@ describe("getRouter", () => {
   it("uses the CSP nonce from the start context", () => {
     vi.mocked(getGlobalStartContext).mockReturnValueOnce({
       cspNonce: "test-nonce",
+      serverFnHttpCall: false,
     });
 
     expect(getRouter().options.ssr).toEqual({ nonce: "test-nonce" });

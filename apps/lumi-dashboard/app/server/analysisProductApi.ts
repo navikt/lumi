@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { apiStatusError, BadGatewayError } from "~/server/serverFnStatus";
 import {
   type AuthContext,
   buildUrl,
@@ -47,13 +48,14 @@ export async function readAnalysis<T>(
     ) {
       throw new ApiErrorException(apiError.data);
     }
-    throw new Error(
+    throw apiStatusError(
+      response.status,
       "Analyseproduktet kunne ikke hentes. Kontroller team og prøv igjen.",
     );
   }
   const parsed = schema.safeParse(await response.json());
   if (!parsed.success)
-    throw new Error("Uventet svar fra analyseprodukt-API-et.");
+    throw new BadGatewayError("Uventet svar fra analyseprodukt-API-et.");
   return parsed.data;
 }
 
@@ -77,6 +79,6 @@ export async function mutateAnalysis<T>(
   if (response.status === 404 || response.status === 403)
     return { ok: false, reason: "unavailable" };
   if (!response.ok)
-    throw new Error("Kunne ikke bekrefte om endringen ble lagret.");
+    throw new BadGatewayError("Kunne ikke bekrefte om endringen ble lagret.");
   return { ok: true, value: await readAnalysis(response, schema) };
 }

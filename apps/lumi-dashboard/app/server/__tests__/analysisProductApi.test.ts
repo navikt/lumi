@@ -120,6 +120,30 @@ describe("analysis API transport", () => {
     expect(error).toMatchObject({ error: payload });
   });
 
+  it("keeps a viewer's 4xx and gives 502 for failures in Lumi API", async () => {
+    await expect(
+      readAnalysis(new Response("no", { status: 403 }), z.object({})),
+    ).rejects.toMatchObject({ name: "HttpStatusError", status: 403 });
+    await expect(
+      readAnalysis(new Response("boom", { status: 500 }), z.object({})),
+    ).rejects.toMatchObject({ name: "BadGatewayError", status: 502 });
+    await expect(
+      readAnalysis(
+        Response.json({ unexpected: true }),
+        z.object({ id: z.string() }),
+      ),
+    ).rejects.toMatchObject({
+      status: 502,
+      message: "Uventet svar fra analyseprodukt-API-et.",
+    });
+    await expect(
+      mutateAnalysis(new Response("boom", { status: 500 }), z.object({})),
+    ).rejects.toMatchObject({
+      status: 502,
+      message: "Kunne ikke bekrefte om endringen ble lagret.",
+    });
+  });
+
   it("gives other failed reads the general message", async () => {
     await expect(
       readAnalysis(new Response("boom", { status: 500 }), z.object({})),
