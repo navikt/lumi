@@ -13,12 +13,13 @@ export function safeHelpUrl(helpUrl: string | null | undefined): string | null {
   }
 }
 
+/** Shown for every error that does not come from the API. */
+const UNEXPECTED_ERROR_TEXT =
+  "Siden kunne ikke vises. Prøv å laste den inn på nytt.";
+
 export function ErrorComponent({ error }: { error: unknown }) {
   const normalizedError = useMemo(
-    () =>
-      error instanceof Error
-        ? error
-        : new Error("Vennligst prøv igjen senere."),
+    () => (error instanceof Error ? error : new Error(UNEXPECTED_ERROR_TEXT)),
     [error],
   );
   useEffect(
@@ -115,15 +116,14 @@ export function ErrorComponent({ error }: { error: unknown }) {
     );
   }
 
-  // Handle standard errors
+  // Other errors can carry zod issues as JSON, stack traces or English text
+  // from a library, so their message is not shown.
   return (
     <Alert variant="error" className="m-4">
       <Heading spacing size="small" level="3">
         En uventet feil oppstod
       </Heading>
-      <BodyShort>
-        {normalizedError.message || "Vennligst prøv igjen senere."}
-      </BodyShort>
+      <BodyShort>{UNEXPECTED_ERROR_TEXT}</BodyShort>
     </Alert>
   );
 }
