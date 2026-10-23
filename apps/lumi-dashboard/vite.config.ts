@@ -47,8 +47,13 @@ export default defineConfig(({ command, mode }) => {
       rolldownConfig: {
         checks: { moduleLevelDirective: false },
       },
-      // Exits the process after a graceful shutdown, which srvx no longer does.
-      plugins: ["./app/server/exitAfterShutdown.ts"],
+      plugins: [
+        // Keeps the year-long cache under /assets for files, not 404s.
+        "./app/server/cacheOnlyAssetFiles.ts",
+        // Exits after a graceful shutdown, which srvx no longer does. Last,
+        // since it ends the process in its close hook.
+        "./app/server/exitAfterShutdown.ts",
+      ],
     },
 
     plugins: [
