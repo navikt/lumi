@@ -1,7 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_MOCK_DATA: string;
+  readonly VITE_MOCK_DATA?: string;
+  readonly VITE_LUMI_RELEASE?: string;
 }
 
 interface ImportMeta {
