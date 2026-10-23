@@ -3,15 +3,16 @@ import viteReact from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
-import { serverOnlyPlugin } from "./vite-plugins/server-only";
 
-// Server-only modules that should be stubbed in client builds
-// and externalized from SSR bundle to avoid CJS/ESM issues
+// Server-only packages. The client build leaves them out as long as only
+// server code uses them: server functions, middleware, server routes and
+// createServerOnlyFn. Import protection below fails the build otherwise.
 const serverOnlyModules = [
   "@navikt/oasis",
   "@navikt/pino-logger",
   "pino",
   "@prometheus-io/client",
+  "exceljs",
 ];
 export default defineConfig(({ command, mode }) => {
   const isProductionBuild = command === "build" && mode === "production";
@@ -33,11 +34,6 @@ export default defineConfig(({ command, mode }) => {
       strictPort: true,
     },
 
-    // Externalize server-only dependencies from SSR bundle
-    ssr: {
-      external: serverOnlyModules,
-    },
-
     // Nitro configuration for deployment
     nitro: {
       preset: "node-server",
@@ -51,8 +47,6 @@ export default defineConfig(({ command, mode }) => {
     },
 
     plugins: [
-      // Custom plugin to stub server-only modules in client builds
-      serverOnlyPlugin(serverOnlyModules),
       tsconfigPaths({
         projects: ["./tsconfig.json"],
       }),
@@ -63,7 +57,7 @@ export default defineConfig(({ command, mode }) => {
         // `files` replaces the defaults, so keep the `.server.*` convention.
         importProtection: {
           client: {
-            specifiers: ["exceljs"],
+            specifiers: serverOnlyModules,
             files: ["**/*.server.*", "**/app/mock/**"],
           },
         },
