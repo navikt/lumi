@@ -32,9 +32,11 @@ import {
   bucketStart,
   calendarBucket,
   chooseInterval,
+  describePartialBuckets,
   formatBucketLabel,
   formatBucketTick,
   INTERVAL_NOUNS,
+  laterDate,
   periodBuckets,
   spansSeveralYears,
   type TimeBucket,
@@ -120,16 +122,17 @@ function useRatingTrend(markers: RatingMarker[]): RatingTrendState {
   );
   const markersByBucket = groupMarkersByDate(markers, interval);
 
-  // A marker can be set on a later day in the period than today, and the
-  // chart should show it.
-  const today = todayInOslo();
-  const lastMarkerDate = markers
-    .map((marker) => marker.markerDate)
-    .filter((date) => !params.toDate || date <= params.toDate)
-    .sort()
-    .at(-1);
-  const end = lastMarkerDate && lastMarkerDate > today ? lastMarkerDate : today;
-  const inPeriod = periodBuckets(params.fromDate, params.toDate, interval, end);
+  const inPeriod = ratingTrendBuckets({
+    fromDate: params.fromDate,
+    toDate: params.toDate,
+    interval,
+    today: todayInOslo(),
+    latestAnswered: (trend?.buckets ?? [])
+      .map((bucket) => bucket.startDate)
+      .sort()
+      .at(-1),
+    markerDates: markers.map((marker) => marker.markerDate),
+  });
   // Without a period, show the buckets that have answers or markers.
   const buckets: TimeBucket[] =
     inPeriod.length > 0
@@ -165,6 +168,48 @@ function useRatingTrend(markers: RatingMarker[]): RatingTrendState {
       : undefined;
 
   return { status: "ready", data, interval, metric, overallAverage };
+}
+
+/**
+ * The buckets of the period up to today. Answers dated after the browser's
+ * today still count, in case its clock is behind. A marker can be set on a
+ * later day in the period: the axis then goes on to its bucket, while the
+ * buckets up to today keep their partial marks.
+ */
+export function ratingTrendBuckets({
+  fromDate,
+  toDate,
+  interval,
+  today,
+  latestAnswered,
+  markerDates,
+}: {
+  fromDate?: string;
+  toDate?: string;
+  interval: TimeInterval;
+  today: string;
+  latestAnswered?: string;
+  markerDates: string[];
+}): TimeBucket[] {
+  const answered = periodBuckets(
+    fromDate,
+    toDate,
+    interval,
+    laterDate(today, latestAnswered),
+  );
+  const lastAnswered = answered.at(-1);
+  const lastMarkerDate = markerDates
+    .filter((date) => !toDate || date <= toDate)
+    .sort()
+    .at(-1);
+  if (!lastAnswered || !lastMarkerDate || lastMarkerDate <= lastAnswered.end) {
+    return answered;
+  }
+
+  const ahead = periodBuckets(fromDate, toDate, interval, lastMarkerDate)
+    .filter((bucket) => bucket.start > lastAnswered.start)
+    .map((bucket) => ({ ...bucket, partial: false }));
+  return [...answered, ...ahead];
 }
 
 /** True when nothing in the period has an answer or a marker. */
@@ -273,7 +318,7 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
 
   const tickByDate = new Map(data.map((point) => [point.date, point.tick]));
 
-  const markerLabelMeta = buildMarkerLabelMeta(markers);
+  const markerLabelMeta = buildMarkerLabelMeta(markers, interval);
   const maxMarkerLabelOffset = Math.max(
     0,
     ...Array.from(markerLabelMeta.values()).map((meta) => meta.offsetY),
@@ -294,7 +339,7 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
         data={data}
         margin={chartMargin}
         role="img"
-        aria-label={`Linjediagram som viser ${metric.label.toLowerCase()} per ${nouns.one}${typeof overallAverage === "number" ? `. Valgt periode: ${overallAverage.toLocaleString("nb-NO")}` : ""}`}
+        aria-label={`Linjediagram som viser ${inSentence(metric.label)} per ${nouns.one}${typeof overallAverage === "number" ? `. Valgt periode: ${overallAverage.toLocaleString("nb-NO")}` : ""}`}
         onClick={(state: {
           activeTooltipIndex?: number | TooltipIndex;
           activeIndex?: number | TooltipIndex;
@@ -423,7 +468,7 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
 
                 {average === null && (
                   <div className={styles.tooltipMuted}>
-                    Ingen rating-svar {nouns.this}
+                    Ingen svar {nouns.this}
                   </div>
                 )}
 
@@ -487,7 +532,7 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
                 cx={cx}
                 cy={cy}
                 r={4}
-                fill={partial ? "var(--ax-bg-default)" : colors.primary}
+                fill={partial ? "var(--ax-bg-raised)" : colors.primary}
                 stroke={colors.primary}
                 strokeWidth={partial ? 2 : 0}
               />
@@ -505,25 +550,26 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
   );
 }
 
-/** Explains the hollow dots, when the period has partial weeks or months. */
+/** Names the partial weeks or months that have answers, under the chart. */
 export function RatingTrendPartialNote({
   markers = [],
 }: RatingTrendChartProps) {
   const trend = useRatingTrend(markers);
-  if (
-    trend.status !== "ready" ||
-    isEmptyTrend(trend.data) ||
-    !trend.data.some((point) => point.partial && point.average !== null)
-  ) {
-    return null;
-  }
+  if (trend.status !== "ready" || isEmptyTrend(trend.data)) return null;
 
-  return (
-    <Detail textColor="subtle">
-      {trend.interval === "month" ? "Måneder" : "Uker"} som bare delvis er med i
-      perioden, har hul prikk.
-    </Detail>
+  const note = describePartialBuckets(
+    trend.data
+      .filter((point) => point.partial && point.average !== null)
+      .map((point) => point.date),
+    trend.interval,
+    "hul prikk",
   );
+  return note ? <Detail textColor="subtle">{note}</Detail> : null;
+}
+
+/** Lower case in a sentence, except for names in capitals such as NPS. */
+function inSentence(label: string): string {
+  return label === label.toUpperCase() ? label : label.toLowerCase();
 }
 
 /** Markers by the first day of the day, week or month they belong to. */
@@ -547,8 +593,20 @@ export function groupMarkersByDate(
   return grouped;
 }
 
+/** Distance in days, weeks or months between two buckets' first days. */
+function bucketDistance(a: string, b: string, interval: TimeInterval): number {
+  if (interval === "month") return dayjs(b).diff(dayjs(a), "month");
+  const days = dayjs(b).diff(dayjs(a), "day");
+  return interval === "week" ? Math.round(days / 7) : days;
+}
+
+/**
+ * Stacks the labels of markers that are close on the time axis: within two
+ * days, weeks or months, as the axis shows them.
+ */
 export function buildMarkerLabelMeta(
   markers: RatingMarker[],
+  interval: TimeInterval = "day",
 ): Map<string, MarkerLabelMeta> {
   const sorted = [...markers].sort((a, b) => {
     const byDate = a.markerDate.localeCompare(b.markerDate);
@@ -571,12 +629,13 @@ export function buildMarkerLabelMeta(
       continue;
     }
 
-    const dayDistance = dayjs(marker.markerDate).diff(
-      dayjs(lastInCluster.markerDate),
-      "day",
+    const distance = bucketDistance(
+      bucketStart(lastInCluster.markerDate, interval),
+      bucketStart(marker.markerDate, interval),
+      interval,
     );
 
-    if (dayDistance <= 2) {
+    if (distance <= 2) {
       currentCluster.push(marker);
     } else {
       clusters.push([marker]);

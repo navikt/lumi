@@ -94,6 +94,7 @@ vi.mock("recharts", () => ({
   Bar: () => null,
   CartesianGrid: () => null,
   Cell: () => null,
+  Rectangle: () => null,
   LineChart: ({
     onClick,
   }: {
@@ -259,6 +260,32 @@ describe("chart drilldown", () => {
         lowRating: undefined,
       },
     });
+  });
+
+  it("does not open an empty bar", async () => {
+    const user = userEvent.setup();
+    mockParams.dateMode = "fixed";
+    mockParams.fromDate = "2024-01-01";
+    mockParams.toDate = "2024-01-07";
+    mockStats.data = { byDate: { "2024-01-03": 2 } };
+
+    render(<TimelineChart />);
+    await user.click(screen.getByRole("button", { name: "Åpne tidslinjedag" }));
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("waits for the new period's numbers instead of mixing in the old ones", () => {
+    mockParams.fromDate = "2024-01-01";
+    mockParams.toDate = "2024-05-01";
+    mockStats.data = { byDate: { "2024-04-30": 3 } };
+    mockStats.isPlaceholderData = true;
+
+    render(<TimelineChart />);
+
+    expect(
+      screen.queryByRole("button", { name: "Åpne tidslinjedag" }),
+    ).not.toBeInTheDocument();
   });
 
   it("does not combine a cached new trend with placeholder statistics from old filters", () => {

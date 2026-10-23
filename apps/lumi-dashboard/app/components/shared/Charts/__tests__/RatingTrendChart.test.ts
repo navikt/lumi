@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { RatingMarker } from "~/types/api";
-import { buildMarkerLabelMeta, groupMarkersByDate } from "../RatingTrendChart";
+import {
+  buildMarkerLabelMeta,
+  groupMarkersByDate,
+  ratingTrendBuckets,
+} from "../RatingTrendChart";
 
 function marker(partial: Partial<RatingMarker> & { id: string }): RatingMarker {
   return {
@@ -82,6 +86,21 @@ describe("RatingTrendChart marker helpers", () => {
     expect(meta.get("m5")).toBeUndefined();
   });
 
+  it("stacks the labels of markers in the same week when the chart shows weeks", () => {
+    const meta = buildMarkerLabelMeta(
+      [
+        marker({ id: "monday", markerDate: "2026-10-19", label: "Mandag" }),
+        marker({ id: "friday", markerDate: "2026-10-23", label: "Fredag" }),
+        marker({ id: "later", markerDate: "2026-11-16", label: "Senere" }),
+      ],
+      "week",
+    );
+
+    expect(meta.get("monday")).toEqual({ offsetY: 10, text: "Mandag" });
+    expect(meta.get("friday")).toEqual({ offsetY: 30, text: "Fredag" });
+    expect(meta.get("later")).toEqual({ offsetY: 10, text: "Senere" });
+  });
+
   it("resets stacking offset for separate clusters", () => {
     const meta = buildMarkerLabelMeta([
       marker({ id: "c1", markerDate: "2026-01-01", label: "Cluster 1" }),
@@ -90,5 +109,37 @@ describe("RatingTrendChart marker helpers", () => {
 
     expect(meta.get("c1")).toEqual({ offsetY: 10, text: "Cluster 1" });
     expect(meta.get("c2")).toEqual({ offsetY: 10, text: "Cluster 2" });
+  });
+});
+
+describe("ratingTrendBuckets", () => {
+  it("keeps the week of today partial when a marker is later in the period", () => {
+    const buckets = ratingTrendBuckets({
+      fromDate: "2026-07-01",
+      toDate: "2026-12-31",
+      interval: "week",
+      today: "2026-10-22",
+      markerDates: ["2026-11-10"],
+    });
+
+    const thisWeek = buckets.find((bucket) => bucket.start === "2026-10-19");
+    expect(thisWeek).toMatchObject({ to: "2026-10-22", partial: true });
+    expect(buckets.at(-1)).toMatchObject({
+      start: "2026-11-09",
+      partial: false,
+    });
+  });
+
+  it("keeps answers dated after the browser's today", () => {
+    const buckets = ratingTrendBuckets({
+      fromDate: "2026-10-01",
+      toDate: "2026-10-31",
+      interval: "day",
+      today: "2026-10-22",
+      latestAnswered: "2026-10-23",
+      markerDates: [],
+    });
+
+    expect(buckets.at(-1)?.start).toBe("2026-10-23");
   });
 });

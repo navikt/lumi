@@ -39,7 +39,7 @@ test.describe("Time series over long periods", () => {
     // 120 days is not a whole number of weeks, so a week is partial.
     await expect(
       page.getByText(
-        "Uker som bare delvis er med i perioden, har lysere søyle.",
+        /er bare delvis med i perioden og har lysere søyle med stiplet kant\./,
       ),
     ).toBeVisible();
 
@@ -95,5 +95,11 @@ test.describe("Time series over long periods", () => {
       dialog.getByRole("radio", { name: "Uke", exact: true }),
     ).toBeChecked();
     expect(new URL(page.url()).searchParams.has("trendInterval")).toBe(false);
+    await expect(
+      dialog
+        .getByRole("table", { name: "Utvikling per uke" })
+        .getByRole("rowheader")
+        .first(),
+    ).toHaveText(/^Uke \d{1,2}, \d{4} · /);
   });
 });

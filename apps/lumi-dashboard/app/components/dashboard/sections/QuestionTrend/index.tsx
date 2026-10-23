@@ -19,7 +19,10 @@ import type { QuestionTrendBucket, QuestionTrendResponse } from "~/types/api";
 import {
   chooseInterval,
   formatBucketLabel,
+  formatBucketTick,
+  INTERVAL_NOUNS,
   periodBuckets,
+  spansSeveralYears,
 } from "~/utils/timeBuckets";
 import { QuestionTrendChart } from "./QuestionTrendChart";
 import styles from "./QuestionTrendSection.module.css";
@@ -66,7 +69,7 @@ function TrendTable({
       <Table
         size="small"
         className={styles.table}
-        aria-label="Data for utvikling over tid"
+        aria-label={`Utvikling per ${INTERVAL_NOUNS[trend.interval].one}`}
       >
         <Table.Header>
           <Table.Row>
@@ -184,16 +187,27 @@ export function QuestionTrendSection({
     ? fillQuestionTrendBuckets(trend, params.fromDate, params.toDate)
     : [];
   // Buckets that are only partly inside the period are named by their days.
+  const inPeriod = trend
+    ? periodBuckets(params.fromDate, params.toDate, trend.interval)
+    : [];
+  const withYear = spansSeveralYears(inPeriod);
   const labelByStart = new Map(
-    trend
-      ? periodBuckets(params.fromDate, params.toDate, trend.interval).map(
-          (bucket) => [bucket.start, formatBucketLabel(bucket, trend.interval)],
-        )
-      : [],
+    inPeriod.map((bucket) => [
+      bucket.start,
+      formatBucketLabel(bucket, trend?.interval ?? interval),
+    ]),
+  );
+  const tickByStart = new Map(
+    inPeriod.map((bucket) => [
+      bucket.start,
+      formatBucketTick(bucket, trend?.interval ?? interval, withYear),
+    ]),
   );
   const labelFor = (startDate: string) =>
     labelByStart.get(startDate) ??
     formatQuestionTrendBucket(startDate, trend?.interval ?? interval);
+  const tickFor = (startDate: string) =>
+    tickByStart.get(startDate) ?? labelFor(startDate);
 
   const content = (
     <VStack gap="space-20">
@@ -311,6 +325,7 @@ export function QuestionTrendSection({
                 buckets={buckets}
                 measure={measure}
                 labelFor={labelFor}
+                tickFor={tickFor}
               />
               <TrendTable
                 buckets={buckets}

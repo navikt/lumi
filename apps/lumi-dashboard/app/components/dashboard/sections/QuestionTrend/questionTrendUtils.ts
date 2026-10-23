@@ -82,6 +82,7 @@ export function questionTrendChartData(
     formatQuestionTrendBucket(startDate, trend.interval),
 ) {
   return buckets.map((bucket) => ({
+    start: bucket.startDate,
     label: labelFor(bucket.startDate),
     average:
       trend.fieldType === "RATING"

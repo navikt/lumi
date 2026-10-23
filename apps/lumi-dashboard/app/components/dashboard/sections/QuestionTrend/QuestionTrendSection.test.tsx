@@ -92,6 +92,52 @@ describe("QuestionTrendSection", () => {
     });
   });
 
+  it("keeps an interval the viewer chose when they pick another question", async () => {
+    mockUseSearchParams.mockReturnValue({
+      params: {
+        surveyId: "survey-1",
+        trendField: "choice-1",
+        trendInterval: "month",
+      },
+      setParam: vi.fn(),
+      setParams,
+      resetParams: vi.fn(),
+    } as never);
+    mockUseStats.mockReturnValue({
+      data: {
+        fieldStats: [
+          {
+            fieldId: "choice-1",
+            fieldType: "MULTI_CHOICE",
+            label: "Hva var viktig?",
+            stats: { type: "choice", distribution: {} },
+          },
+          {
+            fieldId: "choice-2",
+            fieldType: "SINGLE_CHOICE",
+            label: "Hvor ofte?",
+            stats: { type: "choice", distribution: {} },
+          },
+        ],
+      },
+      isPending: false,
+    } as never);
+    const user = userEvent.setup();
+    render(<QuestionTrendSection />);
+
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Spørsmål" }),
+      "choice-2",
+    );
+
+    expect(setParams).toHaveBeenCalledWith(
+      expect.objectContaining({
+        trendField: "choice-2",
+        trendInterval: "month",
+      }),
+    );
+  });
+
   it("picks the interval from the period until the viewer chooses one", () => {
     mockUseSearchParams.mockReturnValue({
       params: {

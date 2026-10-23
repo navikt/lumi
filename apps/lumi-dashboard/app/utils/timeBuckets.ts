@@ -35,11 +35,19 @@ function toIsoDate(date: Date): string {
 }
 
 function isCalendarDate(value: string | undefined): value is string {
-  return (
-    !!value &&
-    /^\d{4}-\d{2}-\d{2}$/.test(value) &&
-    toIsoDate(toUtcDate(value)) === value
-  );
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  // Some engines reject 2026-02-30 and others roll it over, so check both.
+  const date = toUtcDate(value);
+  return !Number.isNaN(date.getTime()) && toIsoDate(date) === value;
+}
+
+/**
+ * The last day of the period that can have answers: its end, or today when
+ * the end is later, missing or not a date. The API reads such a period up
+ * to now.
+ */
+function lastDay(toDate: string | undefined, today: string): string {
+  return isCalendarDate(toDate) && toDate < today ? toDate : today;
 }
 
 function addDays(date: string, days: number): string {
@@ -66,8 +74,8 @@ export function chooseInterval(
   toDate?: string,
   today = todayInOslo(),
 ): TimeInterval {
-  if (!isCalendarDate(fromDate) || !isCalendarDate(toDate)) return "day";
-  const last = toDate < today ? toDate : today;
+  if (!isCalendarDate(fromDate)) return "day";
+  const last = lastDay(toDate, today);
   if (last < fromDate) return "day";
 
   const days = daysBetween(fromDate, last);
@@ -97,7 +105,7 @@ export function nextBucketStart(start: string, interval: TimeInterval): string {
 
 /**
  * The calendar buckets that cover the period up to today, each clipped to
- * the period. Returns no buckets without a valid period.
+ * the period. Returns no buckets without a valid start.
  */
 export function periodBuckets(
   fromDate: string | undefined,
@@ -105,8 +113,8 @@ export function periodBuckets(
   interval: TimeInterval,
   today = todayInOslo(),
 ): TimeBucket[] {
-  if (!isCalendarDate(fromDate) || !isCalendarDate(toDate)) return [];
-  const last = toDate < today ? toDate : today;
+  if (!isCalendarDate(fromDate)) return [];
+  const last = lastDay(toDate, today);
   if (last < fromDate) return [];
 
   const buckets: TimeBucket[] = [];
@@ -203,8 +211,8 @@ export function formatBucketLabel(
 /**
  * The bucket's short name on the time axis. Days and weeks are named by
  * their first day in the period, with the year when the period spans more
- * than one calendar year. Months always have the year, so «okt 2026» is
- * not read as a day.
+ * than one calendar year. Months always have the year, since a period
+ * shown per month spans more than two years.
  */
 export function formatBucketTick(
   bucket: TimeBucket,
@@ -216,6 +224,34 @@ export function formatBucketTick(
   }
   const date = interval === "week" ? bucket.from : bucket.start;
   return withYear ? `${dayMonth(date)}.${date.slice(2, 4)}` : dayMonth(date);
+}
+
+/**
+ * Names the weeks or months that are only partly in the period and says how
+ * the chart shows them, for example «Uke 41 og uke 43 er bare delvis med i
+ * perioden og har lysere søyle.»
+ */
+export function describePartialBuckets(
+  starts: string[],
+  interval: TimeInterval,
+  look: string,
+): string | undefined {
+  if (starts.length === 0 || interval === "day") return undefined;
+  const names = starts.map((start) =>
+    interval === "week"
+      ? `uke ${isoWeek(start).week}`
+      : `${monthName(start)} ${start.slice(0, 4)}`,
+  );
+  const list =
+    names.length === 1
+      ? names[0]
+      : `${names.slice(0, -1).join(", ")} og ${names.at(-1)}`;
+  return `${capitalize(list ?? "")} er bare delvis med i perioden og har ${look}.`;
+}
+
+/** The latest of two `YYYY-MM-DD` dates. */
+export function laterDate(a: string, b: string | undefined): string {
+  return b && b > a ? b : a;
 }
 
 /** True when the buckets run over more than one calendar year. */

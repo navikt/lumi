@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   bucketStart,
   chooseInterval,
+  describePartialBuckets,
   formatBucketLabel,
   formatBucketTick,
   isoWeek,
@@ -27,9 +28,25 @@ describe("chooseInterval", () => {
     expect(chooseInterval("2026-11-01", "2026-12-31", TODAY)).toBe("day");
   });
 
-  it("falls back to days without a valid period", () => {
+  it("falls back to days without a valid start", () => {
     expect(chooseInterval(undefined, TODAY, TODAY)).toBe("day");
     expect(chooseInterval("2026-02-30", TODAY, TODAY)).toBe("day");
+  });
+
+  it("does not throw for dates that do not exist", () => {
+    for (const date of ["2026-13-01", "2026-01-32", "2026-10-32"]) {
+      expect(() => chooseInterval(date, TODAY, TODAY)).not.toThrow();
+      expect(() => chooseInterval("2026-01-01", date, TODAY)).not.toThrow();
+      expect(() => periodBuckets(date, TODAY, "day", TODAY)).not.toThrow();
+      expect(() =>
+        periodBuckets("2026-01-01", date, "week", TODAY),
+      ).not.toThrow();
+    }
+  });
+
+  it("reads a period without an end, or with an invalid end, up to today", () => {
+    expect(chooseInterval("2026-01-01", undefined, TODAY)).toBe("week");
+    expect(chooseInterval("2026-01-01", "2026-10-32", TODAY)).toBe("week");
   });
 });
 
@@ -91,7 +108,16 @@ describe("periodBuckets", () => {
     });
   });
 
-  it("returns no buckets without a valid period", () => {
+  it("ends a period without an end today", () => {
+    const buckets = periodBuckets("2026-10-20", undefined, "day", TODAY);
+    expect(buckets.map((bucket) => bucket.start)).toEqual([
+      "2026-10-20",
+      "2026-10-21",
+      "2026-10-22",
+    ]);
+  });
+
+  it("returns no buckets without a valid start", () => {
     expect(periodBuckets(undefined, TODAY, "day", TODAY)).toEqual([]);
     expect(periodBuckets("2026-11-01", "2026-11-30", "day", TODAY)).toEqual([]);
   });
@@ -161,6 +187,33 @@ describe("formatBucketLabel", () => {
     expect(october && formatBucketLabel(october, "month")).toBe(
       "Oktober 2026 · 01.10–22.10 (22 av 31 dager)",
     );
+  });
+});
+
+describe("describePartialBuckets", () => {
+  it("names the partial weeks and how the chart shows them", () => {
+    expect(
+      describePartialBuckets(
+        ["2026-10-05", "2026-10-19"],
+        "week",
+        "lysere søyle",
+      ),
+    ).toBe(
+      "Uke 41 og uke 43 er bare delvis med i perioden og har lysere søyle.",
+    );
+  });
+
+  it("names partial months with the year", () => {
+    expect(describePartialBuckets(["2026-10-01"], "month", "hul prikk")).toBe(
+      "Oktober 2026 er bare delvis med i perioden og har hul prikk.",
+    );
+  });
+
+  it("says nothing without partial buckets or for days", () => {
+    expect(describePartialBuckets([], "week", "hul prikk")).toBeUndefined();
+    expect(
+      describePartialBuckets(["2026-10-22"], "day", "hul prikk"),
+    ).toBeUndefined();
   });
 });
 

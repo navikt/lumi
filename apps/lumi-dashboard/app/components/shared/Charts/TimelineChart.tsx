@@ -3,8 +3,9 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   Bar,
   BarChart,
+  type BarShapeProps,
   CartesianGrid,
-  Cell,
+  Rectangle,
   Tooltip,
   type TooltipIndex,
   XAxis,
@@ -16,13 +17,16 @@ import { useTheme } from "~/context/ThemeContext";
 import { useBreakpoint } from "~/hooks/useBreakpoint";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
+import { todayInOslo } from "~/utils/dashboardPeriod";
 import {
   bucketStart,
   calendarBucket,
   chooseInterval,
+  describePartialBuckets,
   formatBucketLabel,
   formatBucketTick,
   INTERVAL_NOUNS,
+  laterDate,
   periodBuckets,
   spansSeveralYears,
   type TimeInterval,
@@ -44,7 +48,12 @@ const CHART_COLORS_LIGHT = {
   textMuted: "#545454", // Nav Gray 60
 };
 
-/** Opacity of a bar for a week or month that is only partly in the period. */
+/**
+ * A bar for a week or month that is only partly in the period is lighter
+ * and has a dashed edge in the full colour. The edge keeps the bar visible
+ * against the background (WCAG 1.4.11), and the dashes tell it apart from
+ * a whole bar without colour alone.
+ */
 const PARTIAL_BAR_OPACITY = 0.45;
 
 export interface TimelinePoint {
@@ -67,10 +76,14 @@ export function timelineChartData(
   byDate: Record<string, number>,
   fromDate?: string,
   toDate?: string,
-  today?: string,
+  today = todayInOslo(),
 ): { interval: TimeInterval; points: TimelinePoint[] } {
-  const interval = chooseInterval(fromDate, toDate, today);
-  const buckets = periodBuckets(fromDate, toDate, interval, today);
+  // Answers dated after the browser's today still count, in case its clock
+  // is behind.
+  const latest = Object.keys(byDate).sort().at(-1);
+  const end = laterDate(today, latest);
+  const interval = chooseInterval(fromDate, toDate, end);
+  const buckets = periodBuckets(fromDate, toDate, interval, end);
 
   if (buckets.length === 0) {
     const points = Object.entries(byDate)
@@ -112,7 +125,7 @@ export function timelineChartData(
 }
 
 function useTimelineData() {
-  const { data: stats, isPending } = useStats();
+  const { data: stats, isPending, isPlaceholderData } = useStats();
   const { params } = useSearchParams();
   const series = timelineChartData(
     stats?.byDate ?? {},
@@ -120,7 +133,9 @@ function useTimelineData() {
     params.toDate,
   );
   const total = series.points.reduce((sum, point) => sum + point.count, 0);
-  return { ...series, total, isPending };
+  // Placeholder data belongs to the previous period, while the buckets come
+  // from the new one, so wait for the new numbers.
+  return { ...series, total, isPending: isPending || isPlaceholderData };
 }
 
 /** The resolution of the timeline for the selected period. */
@@ -148,19 +163,19 @@ export function TimelineChartTable() {
   );
 }
 
-/** Explains the lighter bars, when the period has partial weeks or months. */
+/** Names the partial weeks or months that have answers, under the chart. */
 export function TimelinePartialNote() {
   const { interval, points, total, isPending } = useTimelineData();
-  if (isPending || total === 0 || !points.some((point) => point.partial)) {
-    return null;
-  }
+  if (isPending || total === 0) return null;
 
-  return (
-    <Detail textColor="subtle">
-      {interval === "month" ? "Måneder" : "Uker"} som bare delvis er med i
-      perioden, har lysere søyle.
-    </Detail>
+  const note = describePartialBuckets(
+    points
+      .filter((point) => point.partial && point.count > 0)
+      .map((point) => point.key),
+    interval,
+    "lysere søyle med stiplet kant",
   );
+  return note ? <Detail textColor="subtle">{note}</Detail> : null;
 }
 
 export function TimelineChart() {
@@ -221,7 +236,8 @@ export function TimelineChart() {
               : typeof state.activeLabel === "string"
                 ? points.find((point) => point.key === state.activeLabel)
                 : undefined;
-          if (!clickData) return;
+          // An empty bar would open an empty list.
+          if (!clickData || clickData.count === 0) return;
 
           // The bucket's days inside the period, as a fixed period.
           navigate({
@@ -266,9 +282,11 @@ export function TimelineChart() {
                   <div>
                     {point.count.toLocaleString("no-NO")} tilbakemeldinger
                   </div>
-                  <div className={styles.tooltipHint}>
-                    Klikk for å åpne tilbakemeldinger
-                  </div>
+                  {point.count > 0 ? (
+                    <div className={styles.tooltipHint}>
+                      Klikk for å åpne tilbakemeldinger
+                    </div>
+                  ) : null}
                 </div>
               );
             }
@@ -281,14 +299,20 @@ export function TimelineChart() {
           radius={[4, 4, 0, 0]}
           maxBarSize={50}
           cursor="pointer"
-        >
-          {points.map((point) => (
-            <Cell
-              key={point.key}
-              fillOpacity={point.partial ? PARTIAL_BAR_OPACITY : 1}
-            />
-          ))}
-        </Bar>
+          shape={(props: BarShapeProps) =>
+            (props.payload as TimelinePoint | undefined)?.partial ? (
+              <Rectangle
+                {...props}
+                fillOpacity={PARTIAL_BAR_OPACITY}
+                stroke={colors.primary}
+                strokeWidth={1.5}
+                strokeDasharray="4 2"
+              />
+            ) : (
+              <Rectangle {...props} />
+            )
+          }
+        />
       </BarChart>
     </ResponsiveContainerWithInitialSize>
   );

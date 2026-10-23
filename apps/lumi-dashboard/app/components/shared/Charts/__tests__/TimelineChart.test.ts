@@ -63,6 +63,31 @@ describe("timelineChartData", () => {
     expect(points.at(-1)?.key).toBe(TODAY);
   });
 
+  it("adds up the days of each month for periods over two years", () => {
+    const { interval, points } = timelineChartData(
+      { "2024-02-10": 1, "2024-02-29": 2, "2026-10-01": 4 },
+      "2024-01-15",
+      "2026-10-31",
+      TODAY,
+    );
+
+    expect(interval).toBe("month");
+    expect(points.find((point) => point.key === "2024-02-01")?.count).toBe(3);
+    expect(points[0]).toMatchObject({ key: "2024-01-01", partial: true });
+    expect(points.at(-1)).toMatchObject({ key: "2026-10-01", count: 4 });
+  });
+
+  it("keeps answers dated after the browser's today", () => {
+    const { points } = timelineChartData(
+      { "2026-10-23": 2 },
+      "2026-10-20",
+      "2026-10-31",
+      TODAY,
+    );
+
+    expect(points.at(-1)).toMatchObject({ key: "2026-10-23", count: 2 });
+  });
+
   it("shows the days the API returned when there is no period", () => {
     const { interval, points } = timelineChartData({
       "2026-10-20": 2,
