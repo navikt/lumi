@@ -6,11 +6,12 @@ export function sha256Base64(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("base64");
 }
 
+const THEME_INIT_HASH = sha256Base64(THEME_INIT_SCRIPT);
+
 export function buildCspHeaderValue(options?: {
   isDev?: boolean;
   nonce?: string;
 }): string {
-  const themeInitHash = sha256Base64(THEME_INIT_SCRIPT);
   const isDev = options?.isDev === true;
   const nonce = options?.nonce;
 
@@ -30,7 +31,7 @@ export function buildCspHeaderValue(options?: {
     scriptSrcParts.push(`'nonce-${nonce}'`);
   }
 
-  scriptSrcParts.push(`'sha256-${themeInitHash}'`);
+  scriptSrcParts.push(`'sha256-${THEME_INIT_HASH}'`);
 
   return [
     "default-src 'self'",

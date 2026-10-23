@@ -134,11 +134,17 @@ export const fetchStatsServerFn = createServerFn({ method: "GET" })
 ## Security Baseline (Dashboard)
 
 - Keep global security headers/CSP in `apps/lumi-dashboard/app/start.ts` with helpers from `app/server/securityHeaders.ts`.
+  - They are set with `setResponseHeaders`, so they reach every response that goes through Start's middleware chain, including responses built from thrown errors.
+  - Every such response gets `Cache-Control: private, no-store`. Static assets are served by Nitro outside Start and keep their own caching.
 - Keep nonce propagation flow intact:
   - nonce created in `start.ts`
   - passed via start context in `app/router.tsx`
   - consumed in `app/routes/__root.tsx`
-- Keep CSRF checks for non-GET methods in `app/server/middleware/auth.ts` (Origin/Referer validation in prod).
+- Server functions are CSRF-protected by `createCsrfMiddleware({ filter: (ctx) => ctx.handlerType === "serverFn" })` in `requestMiddleware` in `app/start.ts`.
+  - Keep it after `securityHeadersMiddleware`, so its 403 responses carry the security headers.
+  - Only `Sec-Fetch-Site: same-origin` passes. Without that header, `Origin` and then `Referer` must match the request origin.
+  - The Origin/Referer check for non-GET methods in `app/server/middleware/auth.ts` remains as a second layer in NAIS.
+  - Rejections are logged without header values, apart from the `Sec-Fetch-Site` token. Server-only code in the middleware options must go through `createServerOnlyFn`, because Start's compiler leaves the options in the client code.
 - The dashboard has no Subresource Integrity (SRI) for CDN-served JS/CSS today. Do not assume it exists; working SRI is tracked in #637.
 - In root layout, import styles as CSS modules (`import "@navikt/ds-css"; import "~/styles/global.css";`) instead of `?url` links, so TanStack Start/Vite manage the stylesheets (manifest, hashed file names, CDN prefix).
 
