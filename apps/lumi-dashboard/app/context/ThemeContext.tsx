@@ -1,8 +1,10 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useState,
 } from "react";
 
@@ -85,17 +87,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     } catch (_e) {}
   }, [theme]);
 
-  const toggleTheme = () => {
-    setThemeState((prev) => {
-      const next = prev === "light" ? "dark" : "light";
-      return next;
-    });
-  };
+  const toggleTheme = useCallback(() => {
+    setThemeState((prev) => (prev === "light" ? "dark" : "light"));
+  }, []);
+
+  // The root shell renders this provider again on every navigation. A new
+  // value object would make the charts and ThemeToggle render again too.
+  const value = useMemo(() => ({ theme, toggleTheme }), [theme, toggleTheme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
   );
 }
 

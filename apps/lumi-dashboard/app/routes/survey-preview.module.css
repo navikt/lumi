@@ -29,6 +29,7 @@
 }
 
 .previewAlert {
-  max-width: 34rem;
+  /* Keeps a gap to the screen edges on narrow screens. */
+  width: min(34rem, 100% - 2 * var(--ax-space-16));
   margin: 6rem auto;
 }

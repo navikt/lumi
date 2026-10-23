@@ -15,6 +15,7 @@ describe("ErrorComponent", () => {
 
   it.each([
     [403, ErrorType.AUTHORIZATION_ERROR, "Ingen tilgang"],
+    [404, ErrorType.NOT_FOUND, "Fant ikke ressursen"],
     [500, ErrorType.INTERNAL_SERVER_ERROR, "Noe gikk galt (500)"],
   ])("renders an API error with status %s", (status, type, heading) => {
     const error = new ApiErrorException({
@@ -70,17 +71,52 @@ describe("ErrorComponent", () => {
     expect(screen.queryByText(/Kolide/)).not.toBeInTheDocument();
   });
 
-  it("renders and reports a plain Error unchanged", () => {
-    const error = new Error("Test error message");
+  it.each([
+    ["a plain Error", new Error("Test error message"), "Test error message"],
+    [
+      // TanStack Router throws this when a search parameter fails validation.
+      "zod issues as JSON",
+      new Error(
+        JSON.stringify(
+          [
+            {
+              code: "invalid_type",
+              expected: "string",
+              received: "undefined",
+              path: ["team"],
+              message: "Required",
+            },
+          ],
+          null,
+          2,
+        ),
+      ),
+      "invalid_type",
+    ],
+    [
+      "a stack trace",
+      new TypeError(
+        "Cannot read properties of undefined (reading 'map')\n    at FeedbackTable (app.js:1:2)",
+      ),
+      "Cannot read properties",
+    ],
+  ])(
+    "shows a fixed text instead of %s and reports the error itself",
+    (_name, error, rawText) => {
+      const { container } = render(<ErrorComponent error={error} />);
 
-    render(<ErrorComponent error={error} />);
-
-    expect(
-      screen.getByRole("heading", { name: "En uventet feil oppstod" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(error.message)).toBeInTheDocument();
-    expect(reportDashboardRouteError).toHaveBeenCalledExactlyOnceWith(error);
-  });
+      expect(
+        screen.getByRole("heading", { name: "En uventet feil oppstod" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Siden kunne ikke vises. Sjekk at adressen er riktig, eller last inn siden på nytt.",
+        ),
+      ).toBeInTheDocument();
+      expect(container).not.toHaveTextContent(rawText);
+      expect(reportDashboardRouteError).toHaveBeenCalledExactlyOnceWith(error);
+    },
+  );
 
   it.each(["raw synthetic error", { message: "raw synthetic error" }])(
     "normalizes a non-Error without displaying or reporting its raw value (%j)",
@@ -91,13 +127,17 @@ describe("ErrorComponent", () => {
         screen.getByRole("heading", { name: "En uventet feil oppstod" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByText("Vennligst prøv igjen senere."),
+        screen.getByText(
+          "Siden kunne ikke vises. Sjekk at adressen er riktig, eller last inn siden på nytt.",
+        ),
       ).toBeInTheDocument();
       expect(screen.queryByText(/raw synthetic error/)).not.toBeInTheDocument();
       expect(reportDashboardRouteError).toHaveBeenCalledTimes(1);
       const reported = vi.mocked(reportDashboardRouteError).mock.calls[0][0];
       expect(reported).toBeInstanceOf(Error);
-      expect(reported.message).toBe("Vennligst prøv igjen senere.");
+      expect(reported.message).toBe(
+        "Siden kunne ikke vises. Sjekk at adressen er riktig, eller last inn siden på nytt.",
+      );
       expect(reported).not.toHaveProperty("cause");
 
       rerender(<ErrorComponent error={error} />);

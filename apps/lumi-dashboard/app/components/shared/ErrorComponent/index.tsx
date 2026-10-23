@@ -1,4 +1,4 @@
-import { Alert, BodyShort, Heading } from "@navikt/ds-react";
+import { Alert, BodyShort, Box, Heading } from "@navikt/ds-react";
 import { useEffect, useMemo } from "react";
 import { reportDashboardRouteError } from "~/observability/errors";
 import { ApiErrorException, ErrorType } from "~/types/errors";
@@ -13,12 +13,13 @@ export function safeHelpUrl(helpUrl: string | null | undefined): string | null {
   }
 }
 
+/** Shown for every error that does not come from the API. */
+const UNEXPECTED_ERROR_TEXT =
+  "Siden kunne ikke vises. Sjekk at adressen er riktig, eller last inn siden på nytt.";
+
 export function ErrorComponent({ error }: { error: unknown }) {
   const normalizedError = useMemo(
-    () =>
-      error instanceof Error
-        ? error
-        : new Error("Vennligst prøv igjen senere."),
+    () => (error instanceof Error ? error : new Error(UNEXPECTED_ERROR_TEXT)),
     [error],
   );
   useEffect(
@@ -26,6 +27,19 @@ export function ErrorComponent({ error }: { error: unknown }) {
     [normalizedError],
   );
 
+  return (
+    <Box
+      as="main"
+      paddingBlock={{ xs: "space-16", md: "space-24" }}
+      paddingInline={{ xs: "space-12", sm: "space-16" }}
+      className="main-container"
+    >
+      <ErrorAlert error={error} />
+    </Box>
+  );
+}
+
+function ErrorAlert({ error }: { error: unknown }) {
   // Handle structured ApiErrors
   if (error instanceof ApiErrorException) {
     const { type, message, status } = error.error;
@@ -35,7 +49,7 @@ export function ErrorComponent({ error }: { error: unknown }) {
       // Or show login message
       // For now, simple message
       return (
-        <Alert variant="warning" className="m-4">
+        <Alert variant="warning">
           <Heading spacing size="small" level="3">
             Du er ikke logget inn
           </Heading>
@@ -52,7 +66,7 @@ export function ErrorComponent({ error }: { error: unknown }) {
     if (status === 503) {
       const { details } = error.error;
       return (
-        <Alert variant="warning" className="m-4">
+        <Alert variant="warning">
           <Heading spacing size="small" level="3">
             Midlertidig problem
           </Heading>
@@ -66,7 +80,7 @@ export function ErrorComponent({ error }: { error: unknown }) {
       const { details, helpUrl } = error.error;
       const validatedHelpUrl = safeHelpUrl(helpUrl);
       return (
-        <Alert variant="warning" className="m-4">
+        <Alert variant="warning">
           <Heading spacing size="small" level="3">
             Ingen tilgang
           </Heading>
@@ -90,7 +104,7 @@ export function ErrorComponent({ error }: { error: unknown }) {
 
     if (type === ErrorType.NOT_FOUND || status === 404) {
       return (
-        <Alert variant="info" className="m-4">
+        <Alert variant="info">
           <Heading spacing size="small" level="3">
             Fant ikke ressursen
           </Heading>
@@ -101,7 +115,7 @@ export function ErrorComponent({ error }: { error: unknown }) {
 
     // Default ApiError handling
     return (
-      <Alert variant="error" className="m-4">
+      <Alert variant="error">
         <Heading spacing size="small" level="3">
           Noe gikk galt ({status})
         </Heading>
@@ -115,15 +129,14 @@ export function ErrorComponent({ error }: { error: unknown }) {
     );
   }
 
-  // Handle standard errors
+  // Other errors can carry zod issues as JSON, stack traces or English text
+  // from a library, so their message is not shown.
   return (
-    <Alert variant="error" className="m-4">
+    <Alert variant="error">
       <Heading spacing size="small" level="3">
         En uventet feil oppstod
       </Heading>
-      <BodyShort>
-        {normalizedError.message || "Vennligst prøv igjen senere."}
-      </BodyShort>
+      <BodyShort>{UNEXPECTED_ERROR_TEXT}</BodyShort>
     </Alert>
   );
 }

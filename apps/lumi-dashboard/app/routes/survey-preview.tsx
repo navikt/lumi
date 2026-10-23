@@ -1,4 +1,4 @@
-import { Alert, BodyShort, Box, Loader, Tag } from "@navikt/ds-react";
+import { Alert, BodyShort, Box, Heading, Loader, Tag } from "@navikt/ds-react";
 import {
   LumiSurveyDock,
   type LumiSurveyTransport,
@@ -8,27 +8,64 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useMemo } from "react";
-import { z } from "zod";
+import { surveyPreviewSearchSchema } from "~/schemas/surveyPreviewSearchSchema";
 import { fetchSurveyAuthoringProjectServerFn } from "~/server/actions";
 import styles from "./survey-preview.module.css";
-
-const searchSchema = z.object({
-  team: z.string().min(1),
-  projectId: z.string().uuid(),
-  version: z.coerce.number().int().positive().optional(),
-});
 
 const previewTransport: LumiSurveyTransport = {
   submit: async () => undefined,
 };
 
 export const Route = createFileRoute("/survey-preview")({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: zodValidator(surveyPreviewSearchSchema),
   component: SurveyPreview,
 });
 
 function SurveyPreview() {
   const { team, projectId, version } = Route.useSearch();
+
+  if (!team || !projectId) {
+    return <MissingSearchParams team={team} projectId={projectId} />;
+  }
+
+  return <DraftPreview team={team} projectId={projectId} version={version} />;
+}
+
+function MissingSearchParams({
+  team,
+  projectId,
+}: {
+  team?: string;
+  projectId?: string;
+}) {
+  const missing = [!team && "team", !projectId && "projectId"]
+    .filter(Boolean)
+    .join(" og ");
+
+  return (
+    <Box as="main" className={styles.previewSurface}>
+      <Alert variant="warning" className={styles.previewAlert}>
+        <Heading spacing size="small" level="1">
+          Forhåndsvisningen kan ikke vises
+        </Heading>
+        <BodyShort>
+          Adressen mangler {missing}. Åpne surveyen i Surveyverksted og velg
+          «Prøv i egen fane».
+        </BodyShort>
+      </Alert>
+    </Box>
+  );
+}
+
+function DraftPreview({
+  team,
+  projectId,
+  version,
+}: {
+  team: string;
+  projectId: string;
+  version?: number;
+}) {
   const projectQuery = useQuery({
     queryKey: ["survey-authoring-preview", team, projectId, version],
     queryFn: () =>
