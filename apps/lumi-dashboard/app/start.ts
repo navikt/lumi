@@ -1,10 +1,12 @@
 import {
   createCsrfMiddleware,
   createMiddleware,
+  createServerOnlyFn,
   createStart,
 } from "@tanstack/react-start";
 import { setResponseHeaders } from "@tanstack/react-start/server";
 
+import { logger } from "~/server/logger";
 import {
   applyBaselineSecurityHeaders,
   buildCspHeaderValue,
@@ -12,7 +14,7 @@ import {
 import { apiErrorSerializationAdapter } from "~/utils/apiErrorSerialization";
 
 const securityHeadersMiddleware = createMiddleware().server(
-  async ({ next, context, handlerType }) => {
+  async ({ next, context }) => {
     const { randomBytes } = await import("node:crypto");
     const nonce = randomBytes(16).toString("base64");
     const isDev = process.env.NODE_ENV !== "production";
@@ -23,28 +25,49 @@ const securityHeadersMiddleware = createMiddleware().server(
       "Content-Security-Policy",
       buildCspHeaderValue({ isDev, nonce }),
     );
-    if (handlerType === "serverFn") {
-      // Server function responses carry data for one signed-in user.
-      securityHeaders.set("Cache-Control", "private, no-store");
-    }
+    // Pages and server function responses carry data for one signed-in user.
+    // no-store also keeps the back/forward cache from restoring such a page
+    // after logout. Static assets are served by Nitro outside Start and keep
+    // their own caching.
+    securityHeaders.set("Cache-Control", "private, no-store");
 
-    // Start applies response helpers to every response that leaves the
-    // pipeline, including the ones it builds from thrown errors, which never
-    // come back through `next()`.
+    // Start applies these to every response that leaves the middleware chain,
+    // including redirects and the responses it builds from thrown errors.
     setResponseHeaders(securityHeaders);
 
-    const result = await next({
+    return next({
       context: {
         ...(context ?? {}),
         cspNonce: nonce,
       },
     });
+  },
+);
 
-    for (const [name, value] of securityHeaders) {
-      result.response.headers.set(name, value);
-    }
+const SEC_FETCH_SITE_TOKENS = [
+  "same-origin",
+  "same-site",
+  "cross-site",
+  "none",
+];
 
-    return result;
+// Logs no header values apart from a valid Sec-Fetch-Site token.
+const logCsrfRejection = createServerOnlyFn(
+  (request: Request, path: string) => {
+    const secFetchSite = request.headers.get("sec-fetch-site");
+    logger.warn(
+      {
+        method: request.method,
+        path,
+        secFetchSite:
+          secFetchSite && SEC_FETCH_SITE_TOKENS.includes(secFetchSite)
+            ? secFetchSite
+            : undefined,
+        hasOrigin: request.headers.has("origin"),
+        hasReferer: request.headers.has("referer"),
+      },
+      "Rejected server function request due to CSRF validation failure",
+    );
   },
 );
 
@@ -55,8 +78,14 @@ const securityHeadersMiddleware = createMiddleware().server(
 // Origin, Referer must be on that origin. Requests with none of them get 403.
 // Unlike the Origin check in authMiddleware, it also runs in mock mode and in
 // the public demo. Server functions called during SSR never reach it.
+// Start's compiler leaves these options in the client code, so server-only
+// code in them must go through createServerOnlyFn.
 const csrfMiddleware = createCsrfMiddleware({
   filter: (ctx) => ctx.handlerType === "serverFn",
+  failureResponse: ({ request, pathname }) => {
+    logCsrfRejection(request, pathname);
+    return new Response("Forbidden", { status: 403 });
+  },
 });
 
 export const startInstance = createStart(() => ({
