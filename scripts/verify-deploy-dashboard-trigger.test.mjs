@@ -427,12 +427,38 @@ test("dashboard prod deploy applies the alert rules with the app manifest", () =
   );
   assert.equal(alertRules.includes("{{"), false);
 
-  const rule = load(alertRules).spec.groups[0].rules[0];
-  assert.equal(rule.alert, "LumiDashboardNoAvailableReplicas");
+  const [replicas, serverFunctions] = load(alertRules).spec.groups[0].rules;
+  assert.equal(replicas.alert, "LumiDashboardNoAvailableReplicas");
   assert.equal(
-    rule.expr,
+    replicas.expr,
     'kube_deployment_status_replicas_available{namespace="team-esyfo",deployment="lumi-dashboard"} == 0',
   );
-  assert.equal(rule.for, "5m");
-  assert.equal(rule.labels.namespace, "team-esyfo");
+  assert.equal(replicas.for, "5m");
+  assert.equal(replicas.labels.namespace, "team-esyfo");
+
+  assert.equal(serverFunctions.alert, "LumiDashboardServerFunctionFailures");
+  assert.equal(
+    serverFunctions.expr,
+    'sum(increase(lumi_dashboard_server_fn_5xx_failures_total{app="lumi-dashboard"}[15m])) > 20',
+  );
+  assert.equal(serverFunctions.for, "2m");
+  // The dashboard registers the counter under the name the alert uses.
+  const failureMetrics = readFileSync(
+    path.join(
+      repositoryRoot,
+      "apps/lumi-dashboard/app/server/serverFnFailures.ts",
+    ),
+    "utf8",
+  );
+  assert.ok(
+    failureMetrics.includes('"lumi_dashboard_server_fn_5xx_failures_total"'),
+  );
+  assert.deepEqual(serverFunctions.labels, {
+    severity: "warning",
+    namespace: "team-esyfo",
+  });
+  assert.match(
+    serverFunctions.annotations.runbook_url,
+    /submission-health\.md#feil-i-serverfunksjonene-til-dashboardet$/,
+  );
 });

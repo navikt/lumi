@@ -23,3 +23,21 @@ spec:
           labels:
             severity: warning
             namespace: team-esyfo
+        - alert: LumiDashboardServerFunctionFailures
+          # A failed page view gives 6-8 failed server function calls, so more
+          # than 20 in 15 minutes takes about three failed views. The long
+          # window keeps the sum steady between page views, so `for` does not
+          # reset. The counter has no labels and is 0 before the first
+          # failure, so increase() also counts the first failures on a new
+          # pod. lumi_dashboard_server_fn_failures_total tells which function
+          # and status.
+          expr: sum(increase(lumi_dashboard_server_fn_5xx_failures_total{app="lumi-dashboard"}[15m])) > 20
+          for: 2m
+          annotations:
+            summary: "Serverfunksjonene i lumi-dashboard feiler"
+            consequence: "Teamene ser feilmeldinger der dashboardet skulle vist data, og lagring kan feile. Innsendinger går direkte til lumi-api og påvirkes ikke."
+            action: "Finn serverfunksjon og status i loggene til lumi-dashboard, og følg runbooken."
+            runbook_url: "https://github.com/navikt/lumi/blob/main/apps/lumi-api/docs/runbooks/submission-health.md#feil-i-serverfunksjonene-til-dashboardet"
+          labels:
+            severity: warning
+            namespace: team-esyfo
