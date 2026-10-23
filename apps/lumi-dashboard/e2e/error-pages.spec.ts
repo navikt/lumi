@@ -1,21 +1,22 @@
 import { expect, type Page, test } from "@playwright/test";
 
 /**
- * Hydration problems in the browser console. In development the client logs
- * recoverable errors with a "[hydration]" prefix; production builds report
- * them as minified React errors.
+ * Errors in the console and uncaught errors in the page. A page that answers
+ * with an error status also logs that status as a failed resource, which is
+ * expected on these pages.
  */
-const HYDRATION_PROBLEM = /hydrat|Minified React error/i;
-
-function collectProblems(page: Page): string[] {
-  const problems: string[] = [];
-  page.on("pageerror", (error) => problems.push(error.message));
+function collectErrors(page: Page): string[] {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
-    if (message.type() === "error" && HYDRATION_PROBLEM.test(message.text())) {
-      problems.push(message.text());
+    const text = message.text();
+    if (message.type() !== "error") return;
+    if (text.startsWith("Failed to load resource: the server responded")) {
+      return;
     }
+    errors.push(text);
   });
-  return problems;
+  return errors;
 }
 
 /**
@@ -31,57 +32,76 @@ async function waitForHydration(page: Page) {
 async function expectPageFrame(page: Page) {
   await expect(page.locator("html")).toHaveAttribute("lang", "no");
   await expect(page).toHaveTitle("Lumi Dashboard");
+  await expect(page.getByRole("main")).toHaveCount(1);
 }
 
 test("shows the not-found page inside the page frame", async ({ page }) => {
-  const problems = collectProblems(page);
+  const errors = collectErrors(page);
 
   const response = await page.goto("/finnes-ikke");
+  expect(response?.status()).toBe(404);
   await waitForHydration(page);
 
-  expect(response?.status()).toBe(404);
   await expect(
     page.getByRole("heading", { name: "Siden finnes ikke" }),
   ).toBeVisible();
   await expectPageFrame(page);
-  expect(problems).toEqual([]);
+  await page.waitForLoadState("networkidle");
+  expect(errors).toEqual([]);
 });
 
 test("explains what the survey preview address is missing", async ({
   page,
 }) => {
-  const problems = collectProblems(page);
+  const errors = collectErrors(page);
 
-  const response = await page.goto("/survey-preview");
-  await waitForHydration(page);
+  for (const [path, missing] of [
+    ["/survey-preview", "team og projectId"],
+    ["/survey-preview?team=&projectId=", "team og projectId"],
+    ["/survey-preview?team=team-esyfo", "projectId"],
+  ]) {
+    const response = await page.goto(path);
+    expect(response?.status(), path).toBe(200);
+    await waitForHydration(page);
 
-  expect(response?.status()).toBe(200);
-  await expect(
-    page.getByRole("heading", { name: "Forhåndsvisningen kan ikke vises" }),
-  ).toBeVisible();
-  await expect(
-    page.getByText(
-      "Adressen mangler team og projectId. Åpne surveyen i Surveyverksted og velg «Prøv i egen fane».",
-    ),
-  ).toBeVisible();
-  await expectPageFrame(page);
-  expect(problems).toEqual([]);
-
-  await page.goto("/survey-preview?team=team-esyfo");
-  await expect(page.getByText("Adressen mangler projectId.")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Forhåndsvisningen kan ikke vises" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        `Adressen mangler ${missing}. Åpne surveyen i Surveyverksted og velg «Prøv i egen fane».`,
+      ),
+    ).toBeVisible();
+    await expectPageFrame(page);
+    await page.waitForLoadState("networkidle");
+    expect(errors, path).toEqual([]);
+  }
 });
+
+// React logs the route's own error, the zod issue for the missing team, when
+// the error boundary of the route catches it.
+const CAUGHT_ROUTE_ERROR = /"path": \[\s*"team"\s*\]/;
+
+// TanStack Router throws the route's error again in the browser. Because
+// ThemeProvider changes the theme right after hydration, before the route is
+// hydrated, React reports that as a recovered error (#520). Remove this when
+// the theme no longer changes a context above the routes after hydration.
+const RECOVERED_ROUTE_ERROR =
+  /There was an error during concurrent rendering|Minified React error #520;/;
 
 test("keeps the page frame when a route below the root fails", async ({
   page,
 }) => {
+  const errors = collectErrors(page);
+
   // The editor requires team in the address. Without it, the route fails
   // its search validation during server rendering.
   const response = await page.goto(
     "/surveyverksted/00000000-0000-4000-8000-000000000000",
   );
+  expect(response?.status()).toBe(500);
   await waitForHydration(page);
 
-  expect(response?.status()).toBe(500);
   await expect(
     page.getByRole("heading", { name: "En uventet feil oppstod" }),
   ).toBeVisible();
@@ -99,8 +119,15 @@ test("keeps the page frame when a route below the root fails", async ({
     page.getByRole("navigation", { name: "Hovedmeny" }),
   ).toBeVisible();
   await expectPageFrame(page);
-  // Unlike the tests above, this one does not check the console. TanStack
-  // Router throws the route's error again in the browser, and because
-  // ThemeProvider changes the theme right after hydration, React reports
-  // that as a recovered error (#520).
+
+  await page.waitForLoadState("networkidle");
+  expect(
+    errors.filter((error) => RECOVERED_ROUTE_ERROR.test(error)).length,
+  ).toBeLessThanOrEqual(1);
+  expect(
+    errors.filter(
+      (error) =>
+        !CAUGHT_ROUTE_ERROR.test(error) && !RECOVERED_ROUTE_ERROR.test(error),
+    ),
+  ).toEqual([]);
 });
