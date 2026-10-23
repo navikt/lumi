@@ -36,11 +36,23 @@ export function parseSearch(searchStr: string): Record<string, string> {
   return result;
 }
 
+// Server: the nonce the request middleware in app/start.ts put in the context.
+// Browser: undefined. The router reads the nonce from
+// <meta property="csp-nonce"> when it hydrates.
+//
+// Start also calls getRouter outside the request context, for example to
+// resolve a redirect from a server function. getGlobalStartContext() throws
+// there. That router renders no HTML, so it needs no nonce.
+function getCspNonce(): string | undefined {
+  try {
+    return getGlobalStartContext()?.cspNonce;
+  } catch {
+    return undefined;
+  }
+}
+
 export function getRouter() {
-  // Server: the nonce the request middleware in app/start.ts put in the context.
-  // Browser: undefined here. The router reads the nonce from
-  // <meta property="csp-nonce"> when it hydrates.
-  const nonce = getGlobalStartContext()?.cspNonce;
+  const nonce = getCspNonce();
 
   return createRouter({
     routeTree,
