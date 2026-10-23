@@ -135,6 +135,35 @@ updates:
         update-types: ["minor", "patch"]
         patterns:
           - "*"
+  # Base images in the deployed Dockerfiles and the local Dockerfile.local
+  # files. The tags name only a major version (node:24-slim, jre:openjdk-21,
+  # eclipse-temurin:21-jdk) or latest. With the majors ignored below,
+  # Dependabot proposes updates here only for tags with a minor version or
+  # a digest.
+  - package-ecosystem: "docker"
+    directories:
+      - "/apps/lumi-api"
+      - "/apps/lumi-dashboard"
+      - "/apps/lumi-local-demo"
+      - "/apps/lumi-submission-proxy"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 10
+    ignore:
+      # Node follows engines and Java the Gradle toolchain; move majors by hand.
+      - dependency-name: "cgr-nav/pull-through/nav.no/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "cgr-nav/pull-through/nav.no/jre"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eclipse-temurin"
+        update-types: ["version-update:semver-major"]
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+        patterns:
+          - "*"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
