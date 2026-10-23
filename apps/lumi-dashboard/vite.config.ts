@@ -47,6 +47,8 @@ export default defineConfig(({ command, mode }) => {
       rolldownConfig: {
         checks: { moduleLevelDirective: false },
       },
+      // Exits the process after a graceful shutdown, which srvx no longer does.
+      plugins: ["./app/server/exitAfterShutdown.ts"],
     },
 
     plugins: [
