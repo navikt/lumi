@@ -87,9 +87,6 @@ importers:
       '@tanstack/router-core':
         specifier: ^1.171.38
         version: 1.171.38
-      '@tanstack/start-storage-context':
-        specifier: ^1.167.40
-        version: 1.167.40
       '@tanstack/zod-adapter':
         specifier: ^1.167.0
         version: 1.167.0(@tanstack/react-router@1.170.45(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(zod@3.25.76)

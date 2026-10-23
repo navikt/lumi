@@ -1,4 +1,5 @@
 import { createRouter } from "@tanstack/react-router";
+import { getGlobalStartContext } from "@tanstack/react-start";
 import { routeTree } from "./routeTree.gen";
 
 /**
@@ -35,14 +36,23 @@ export function parseSearch(searchStr: string): Record<string, string> {
   return result;
 }
 
-export async function getRouter() {
-  let nonce: string | undefined;
-
-  if (import.meta.env.SSR) {
-    const { getStartContext } = await import("@tanstack/start-storage-context");
-    const startContext = getStartContext({ throwIfNotFound: false });
-    nonce = startContext?.contextAfterGlobalMiddlewares?.cspNonce;
+// Server: the nonce the request middleware in app/start.ts put in the context.
+// Browser: undefined. The router reads the nonce from
+// <meta property="csp-nonce"> when it hydrates.
+//
+// Start also calls getRouter outside the request context, for example to
+// resolve a redirect from a server function. getGlobalStartContext() throws
+// there. That router renders no HTML, so it needs no nonce.
+function getCspNonce(): string | undefined {
+  try {
+    return getGlobalStartContext()?.cspNonce;
+  } catch {
+    return undefined;
   }
+}
+
+export function getRouter() {
+  const nonce = getCspNonce();
 
   return createRouter({
     routeTree,
@@ -51,10 +61,4 @@ export async function getRouter() {
     parseSearch,
     ssr: nonce ? { nonce } : undefined,
   });
-}
-
-declare module "@tanstack/react-router" {
-  interface Register {
-    router: ReturnType<typeof getRouter>;
-  }
 }

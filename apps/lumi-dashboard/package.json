@@ -37,7 +37,6 @@
     "@tanstack/react-router": "^1.170.45",
     "@tanstack/react-start": "^1.169.3",
     "@tanstack/router-core": "^1.171.38",
-    "@tanstack/start-storage-context": "^1.167.40",
     "@tanstack/zod-adapter": "^1.167.0",
     "dayjs": "^1.11.23",
     "exceljs": "^4.4.0",
