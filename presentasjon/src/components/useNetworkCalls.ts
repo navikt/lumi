@@ -2,10 +2,16 @@ import { useEffect, useState } from "react";
 
 const NETWORK_INITIATORS = new Set(["fetch", "xmlhttprequest", "beacon"]);
 
+/** Calls the dev server makes for itself and for comment mode, never the widget. */
+const DEV_ONLY = ["/__kommentarer", "/@vite/", "/@fs/", "/node_modules/.vite/"];
+
 function isNetworkCall(entry: PerformanceEntry, since: number): boolean {
   return (
     entry.startTime >= since &&
-    NETWORK_INITIATORS.has((entry as PerformanceResourceTiming).initiatorType)
+    NETWORK_INITIATORS.has(
+      (entry as PerformanceResourceTiming).initiatorType,
+    ) &&
+    !DEV_ONLY.some((path) => entry.name.includes(path))
   );
 }
 

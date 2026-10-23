@@ -231,7 +231,7 @@ Fra start: appen snakker allerede med sin egen backend, gjennom døra den har.
 
 Klikk 1: veggen åpnes for leverandøren, og svaret går ut og lagres der. «Skyra brukes i flere fagsystemer i dag, gjennom en åpning som er på plass.»
 
-Klikk 2: svaret følger linja som allerede finnes, gjennom døra, til appens backend og Lumi API på Nais. FlexJar trenger heller ingen ny åpning.
+Klikk 2: svaret følger linja som allerede finnes, gjennom døra, til appens backend og Lumi API på Nais.
 
 Faggruppa, ordrett: «Skal noen publisere surveyer uten utvikler, er Skyra laget for det.»
 

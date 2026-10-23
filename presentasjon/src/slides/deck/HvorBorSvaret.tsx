@@ -223,7 +223,7 @@ Klikk 1, Skyra: «Skriptet er Skyras kode. Nettleseren henter det fra Skyra ved 
 
 Klikk 2, Lumi: «Widgeten er en npm-pakke. Den hentes når appen bygges, i en låst versjon.» Svaret går via appens backend til Lumi API og databasen. Lumi trenger ingen ny leverandør.
 
-Klikk 3: «Skyra og Lumi brukes begge i Nav. Forskjellen er hvor svaret bor.» Så: «Vi i eSyfo valgte Nais, der appenes egne data ligger. Andre team har valgt Skyra.» FlexJar bor på samme sted som Lumi.
+Klikk 3: «Skyra og Lumi brukes begge i Nav. Forskjellen er hvor svaret bor.» Så: «Vi i eSyfo valgte Nais, der appenes egne data ligger. Andre team har valgt Skyra.»
 
 Frontend forum: Lumi trenger ingen ny kilde i CSP. Svaret går gjennom appens egen backend, og surveyen ligger i appens kode.
 

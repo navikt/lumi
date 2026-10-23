@@ -122,7 +122,7 @@ function Oppfolgingsplanen({ step, active }: SlideProps) {
       <h2 className="slide-title">
         Den nye oppfølgingsplanen skulle ikke bli dårligere
       </h2>
-      <LineMap label="Andelen som svarte 4 eller 5 av 5 på samme spørsmål, på en akse fra 50 til 100 prosent. Ledere, «Hvordan var det å bruke oppfølgingsplanen?»: 66 prosent i den gamle planen og 77 prosent i den nye. Snitt 3,8 og 4,0, med 9 523 og 1 757 svar. Sykmeldte, «Er oppfølgingsplanen til hjelp for deg?»: 73 prosent i den gamle planen og 78 prosent i den nye. Snitt 4,0 og 4,1, med 13 319 og 3 033 svar. Den gamle planen er målt i FlexJar, den nye i Lumi.">
+      <LineMap label="Andelen som svarte 4 eller 5 av 5 på samme spørsmål, på en akse fra 50 til 100 prosent. Ledere, «Hvordan var det å bruke oppfølgingsplanen?»: 66 prosent i den gamle planen og 77 prosent i den nye. Snitt 3,8 og 4,0, med 9 523 og 1 757 svar. Sykmeldte, «Er oppfølgingsplanen til hjelp for deg?»: 73 prosent i den gamle planen og 78 prosent i den nye. Snitt 4,0 og 4,1, med 13 319 og 3 033 svar.">
         {ROWS.map((row, i) => (
           <Row key={row.who} row={row} index={i} />
         ))}
@@ -154,12 +154,12 @@ function Oppfolgingsplanen({ step, active }: SlideProps) {
         </MapText>
         <Station x={LEFT + 16} y={LEGEND_Y} r={14} dim />
         <MapText x={LEFT + 50} y={LEGEND_Y + 2} size={32} weight={600} muted>
-          Gammel plan, målt i FlexJar
+          Gammel plan
         </MapText>
         <g className="opp__legend-after" data-from={1}>
           <Station x={LEFT + 556} y={LEGEND_Y} r={14} />
           <MapText x={LEFT + 590} y={LEGEND_Y + 2} size={32} weight={600}>
-            Ny plan, målt i Lumi
+            Ny plan
           </MapText>
         </g>
       </LineMap>

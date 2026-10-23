@@ -68,6 +68,6 @@ Klikk 1: rammene tegnes rundt navnet og e-postadressen. Ordrett: «Vi ber ikke o
 
 Svaret er et laget eksempel. Navn i fritekst maskeres ikke.
 
-Ut mot FlexJar: «Derfor spurte vi først hvor svaret skulle bo.»`,
+Ut: «Derfor spurte vi først hvor svaret skulle bo.»`,
   Component: MerEnnViSporOm,
 };

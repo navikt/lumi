@@ -1,6 +1,6 @@
 /*
- * The premise: people write personal data in free text, the idea behind
- * FlexJar, and the needs that became Lumi.
+ * The premise: people write personal data in free text, and the needs
+ * that became Lumi.
  */
 
 /*
@@ -125,74 +125,6 @@
   transform: translateX(18px);
 }
 
-/* flexjar-og-lumi: one sentence, and the two names under it. */
-
-.flexjar-kort {
-  justify-content: center;
-  gap: 64px;
-}
-
-.flexjar-kort__claim {
-  margin: 0;
-  font-size: var(--deck-size-statement);
-  font-weight: var(--deck-weight-display);
-  letter-spacing: var(--deck-tracking-display);
-  line-height: var(--deck-line-height-tight);
-}
-
-.flexjar-kort__names {
-  margin: 0;
-  font-size: var(--deck-size-heading);
-  font-weight: var(--deck-weight-display);
-  line-height: 1.1;
-}
-
-/* The names carry the weight, the word between them does not. */
-.flexjar-kort__and {
-  color: var(--deck-muted);
-  font-weight: 500;
-}
-
-/*
- * flexjar, a zone: the survey is code the app carries, and the answer
- * stays on Nais. The title block sits under the map, as on a printed map.
- */
-
-.map .flexjar__app .map-app__part-label {
-  font-family: var(--deck-font-mono);
-  font-weight: 600;
-}
-
-.flexjar__titleblock {
-  position: absolute;
-  bottom: 104px;
-  left: var(--deck-space-page);
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.flexjar__title {
-  margin: 0;
-  font-size: var(--deck-size-title);
-  font-weight: var(--deck-weight-display);
-  letter-spacing: var(--deck-tracking-display);
-  line-height: var(--deck-line-height-tight);
-}
-
-.flexjar__thanks {
-  margin: 0;
-  color: var(--deck-muted);
-  font-size: var(--deck-size-body);
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-/* Without motion and on paper the line is simply there. */
-.map .map-line.flexjar__line {
-  transition: none;
-}
-
 /*
  * vi-trengte-mer, a line: the needs on a dashed line from edge to edge.
  * On click 1 Lumi draws its line over it, and each need lights as the
@@ -242,41 +174,12 @@
     transition: transform 250ms var(--deck-easing);
   }
 
-  /* The line draws into Nais, and the answer lights when it gets there. */
-  :root:not([data-stil="papir"]) .map .map-line.flexjar__line[data-revealed] {
-    transition: stroke-dashoffset 700ms var(--deck-easing-travel);
-  }
-
-  :root:not([data-stil="papir"])
-    .flexjar__landing
-    .map-answer-flash[data-revealed]
-    .map-answer {
-    animation-delay: 620ms;
-  }
-
-  /* The ring stays hidden until it runs out from the lit answer. */
-  :root:not([data-stil="papir"])
-    .flexjar__landing
-    .map-answer-flash[data-revealed]
-    .map-answer__ring {
-    animation-delay: 740ms;
-    animation-fill-mode: none;
-  }
-
-  /*
-   * Only the fade waits. Visibility stays instant, so the caption is there
-   * at once when someone goes back to this slide.
-   */
-  :root:not([data-stil="papir"]) .map .flexjar__caption[data-revealed] {
-    transition: opacity var(--deck-duration-reveal) var(--deck-easing) 760ms;
-  }
-
   /* Lumi's line draws from edge to edge, the stations fill as it passes. */
   :root:not([data-stil="papir"]) .map .map-line.trengte__line[data-revealed] {
     transition: stroke-dashoffset var(--trengte-draw) var(--deck-easing-travel);
   }
 
-  /* As for the caption on flexjar: the fade waits, visibility does not. */
+  /* Only the fade waits. Visibility stays instant for someone going back. */
   :root:not([data-stil="papir"]) .trengte__fill[data-revealed] {
     transition: opacity 200ms var(--deck-easing) var(--trengte-delay);
   }

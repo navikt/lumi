@@ -3,8 +3,6 @@ import { ansvar } from "./Ansvar";
 import { bareTeamet } from "./BareTeamet";
 import { brukesVidere } from "./BrukesVidere";
 import { fagsystemsonen } from "./Fagsystemsonen";
-import { flexjar } from "./Flexjar";
-import { flexjarOgLumi } from "./FlexjarOgLumi";
 import { grupper } from "./Grupper";
 import { hvaVilDereVite } from "./HvaVilDereVite";
 import { hvorBorSvaret } from "./HvorBorSvaret";
@@ -44,9 +42,7 @@ export const deckSlides: readonly Slide[] = [
   svarMeg,
   iAppen,
   merEnnViSporOm,
-  flexjar,
   viTrengteMer,
-  { ...flexjarOgLumi, roomOnly: true },
   svaretsVei,
   hvaVilDereVite,
   sporsmalstyper,

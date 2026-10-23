@@ -144,10 +144,10 @@ export const viTrengteMer: Slide = {
   title: "Fire behov vi løste selv",
   rooms: ["frontend", "produktledere"],
   steps: 1,
-  notes: `Ordrett: «Det vi manglet, lagde vi selv. Først var det et tillegg til FlexJar, med en widget og et dashboard for analyse.»
+  notes: `Ordrett: «Dette trengte vi i eSyfo, så vi lagde det selv.»
 
 Les opp de fire behovene våre i eSyfo. Linja er stiplet, fordi den ikke er bygd ennå.
 
-Klikk 1: Lumi tegner linja, og stasjonene fylles. Ordrett: «I januar 2026 ble Lumi et eget verktøy, med egen datamodell og tilgang per team.»`,
+Klikk 1: Lumi tegner linja, og stasjonene fylles. Ordrett: «Lumi kom i januar 2026, med egen datamodell og tilgang per team.»`,
   Component: ViTrengteMer,
 };

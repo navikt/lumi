@@ -117,8 +117,8 @@ const STEP_2: typeof STEP_1 = {
   team: [
     {
       at: close(PANEL.x, 795),
-      label: "Friteksten",
-      note: "valgfri, 500 tegn",
+      label: "Oppfølgingsspørsmålet",
+      note: "med fritekst",
     },
   ],
   lumi: [
@@ -170,7 +170,7 @@ function IAppen({ step }: SlideProps) {
   const view = near ? CLOSE_WINDOW : WIDE_WINDOW;
   return (
     <div className="slide iappen" data-near={near ? "" : undefined}>
-      <h2 className="iappen__title">Surveyen er ute nå i Dine sykmeldte</h2>
+      <h2 className="iappen__title">Et eksempel fra Dine sykmeldte</h2>
       <div className="iappen__window" style={clipFor(view)}>
         <div className="iappen__camera" style={camera(near ? CLOSE : WIDE)}>
           <img className="iappen__shot" src={lukket} alt="" aria-hidden />
@@ -201,7 +201,7 @@ function IAppen({ step }: SlideProps) {
       <div className="iappen__edge" style={edgeFor(view)} />
       <LineMap
         className="iappen__labels"
-        label="Til venstre det teamet bestemte: spørsmålet, svaralternativene og friteksten, som er valgfri med 500 tegn. Til høyre det Lumi gir: utseendet fra Aksel og varselet om personopplysninger."
+        label="Til venstre det teamet bestemte: spørsmålet, svaralternativene og et oppfølgingsspørsmål med fritekst. Til høyre det Lumi gir: utseendet fra Aksel og varselet om personopplysninger."
       >
         <g data-from={1}>
           <MapText x={TEAM_X} y={HEADER_Y} anchor="end" muted weight={700}>
@@ -218,21 +218,23 @@ function IAppen({ step }: SlideProps) {
           <Pointers {...STEP_2} />
         </g>
       </LineMap>
-      <p className="iappen__source">Fra demoen, med en testperson</p>
+      <p className="iappen__source">
+        Ute nå. Bildene er fra demoen, med en testperson.
+      </p>
     </div>
   );
 }
 
 export const iAppen: Slide = {
   id: "i-appen",
-  title: "Surveyen er ute nå i Dine sykmeldte",
+  title: "Et eksempel fra Dine sykmeldte",
   steps: 2,
-  notes: `Fra start: «Dette er en ekte survey, ute nå.» Siden 15. oktober ligger den i Dine sykmeldte, appen der ledere følger opp sykmeldte. Lederen ser knappen «Gi tilbakemelding» nede til høyre, ved siden av tilbudet om påminnelse. Bildene er fra den offentlige demoen, med en testperson.
+  notes: `Fra start: «Dette er et eksempel på en survey som er ute nå.» Siden 15. oktober ligger den i Dine sykmeldte, appen der ledere følger opp sykmeldte. Lederen ser knappen «Gi tilbakemelding» nede til høyre, ved siden av tilbudet om påminnelse. Bildene er fra den offentlige demoen, med en testperson.
 
 Hvis noen spør når den kommer opp: som standard åpner surveyen seg når siden lastes, nede til høyre. Lukker brukeren den, blir den knappen «Gi tilbakemelding», og den åpner seg ikke av seg selv igjen før etter 30 dager. På nav.no krever det at brukeren har samtykket. Uten samtykke starter den som knappen, slik som i demoen. Interne apper uten dekoratøren setter storageStrategy til localStorage, så åpner den seg av seg selv og husker at saksbehandleren lukket den.
 
 Klikk 1: lederen trykker og får ett spørsmål: «Hvor nyttig er tilbudet om påminnelse på e-post for deg?» Teamet bak Dine sykmeldte laget spørsmålet og svaralternativene i Surveyverksted. Utseendet kommer fra Lumi, bygd med Aksel.
 
-Klikk 2: etter «Neste» kommer en valgfri fritekst på opptil 500 tegn. Varselet om personopplysninger følger med fra Lumi. Koden er offentlig, i repoet navikt/dinesykmeldte.`,
+Klikk 2: etter «Neste» kommer et oppfølgingsspørsmål med fritekst, «Vil du fortelle oss mer?». Varselet om personopplysninger følger med fra Lumi. Koden er offentlig, i repoet navikt/dinesykmeldte.`,
   Component: IAppen,
 };
