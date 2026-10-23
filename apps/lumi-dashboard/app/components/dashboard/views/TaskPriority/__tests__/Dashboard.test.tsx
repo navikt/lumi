@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
 import { useTaskPriorityStats } from "~/hooks/useTaskPriorityStats";
+import { ApiErrorException, ErrorType } from "~/types/errors";
+import { ANALYSIS_BUDGET_TITLE } from "~/utils/analysisBudget";
 import { TaskPriorityDashboard } from "../Dashboard";
 
 vi.mock("~/components/dashboard/SegmentBreakdown", () => ({
@@ -44,6 +46,15 @@ const mockUseTaskPriorityStats = vi.mocked(useTaskPriorityStats);
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseSegmentFilter = vi.mocked(useSegmentFilter);
 
+function budgetError() {
+  return new ApiErrorException({
+    status: 400,
+    type: ErrorType.ANALYSIS_BUDGET_EXCEEDED,
+    message: "Too much feedback data for in-memory analysis",
+    timestamp: "2026-10-22T00:00:00Z",
+  });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockUseSearchParams.mockReturnValue({
@@ -70,5 +81,72 @@ describe("TaskPriorityDashboard", () => {
       screen.getByRole("heading", { name: "Antall svar over tid" }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Stemmer over tid")).not.toBeInTheDocument();
+  });
+  it("keeps the sections with their own data when the analysis fails", () => {
+    mockUseTaskPriorityStats.mockReturnValue({
+      data: undefined,
+      error: new Error("network failure"),
+      isPending: false,
+      isError: true,
+      isFetching: false,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<TaskPriorityDashboard />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Kunne ikke hente Task Priority-data",
+    );
+    expect(
+      screen.queryByText("MOCK_TASK_PRIORITY_ANALYSIS"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Antall svar over tid" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("MOCK_SEGMENT_BREAKDOWN")).toBeInTheDocument();
+    expect(screen.getByText("MOCK_DEVICE_BREAKDOWN")).toBeInTheDocument();
+  });
+  it("asks for a shorter period when the period has too many answers", () => {
+    mockUseTaskPriorityStats.mockReturnValue({
+      data: undefined,
+      error: budgetError(),
+      isPending: false,
+      isError: true,
+      isFetching: false,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<TaskPriorityDashboard />);
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(ANALYSIS_BUDGET_TITLE);
+    expect(alert).toHaveTextContent(
+      "Task Priority-analysen kan ikke regnes ut for så mange svar. Velg en kortere periode.",
+    );
+    expect(
+      screen.getByRole("button", { name: "Vis de siste 30 dagene i perioden" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Prøv igjen" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("MOCK_DEVICE_BREAKDOWN")).toBeInTheDocument();
+  });
+  it("shows the skeleton for the analysis and the other sections while it loads", () => {
+    mockUseTaskPriorityStats.mockReturnValue({
+      data: undefined,
+      error: null,
+      isPending: true,
+      isError: false,
+      isFetching: true,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<TaskPriorityDashboard />);
+
+    expect(screen.getByText("MOCK_SKELETON")).toBeInTheDocument();
+    expect(
+      screen.queryByText("MOCK_TASK_PRIORITY_ANALYSIS"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("MOCK_DEVICE_BREAKDOWN")).toBeInTheDocument();
   });
 });

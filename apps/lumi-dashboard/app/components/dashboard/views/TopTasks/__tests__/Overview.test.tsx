@@ -5,6 +5,8 @@ import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
 import { useTopTasksStats } from "~/hooks/useTopTasksStats";
 import type { TopTaskStats, TopTasksResponse } from "~/types/api";
+import { ApiErrorException, ErrorType } from "~/types/errors";
+import { ANALYSIS_BUDGET_TITLE } from "~/utils/analysisBudget";
 import { TopTasksOverview } from "../Overview";
 
 vi.mock("~/components/dashboard", () => ({
@@ -40,6 +42,10 @@ vi.mock("../StatsCards", () => ({
   TopTasksStatsCards: () => <div>MOCK_STATS_CARDS</div>,
 }));
 
+vi.mock("../Skeleton", () => ({
+  Skeleton: () => <div>MOCK_SKELETON</div>,
+}));
+
 vi.mock("~/hooks/useTopTasksStats", () => ({
   useTopTasksStats: vi.fn(),
 }));
@@ -55,6 +61,24 @@ vi.mock("~/hooks/useSegmentFilter", () => ({
 const mockUseTopTasksStats = vi.mocked(useTopTasksStats);
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseSegmentFilter = vi.mocked(useSegmentFilter);
+
+function budgetError() {
+  return new ApiErrorException({
+    status: 400,
+    type: ErrorType.ANALYSIS_BUDGET_EXCEEDED,
+    message: "Too much feedback data for in-memory analysis",
+    timestamp: "2026-10-22T00:00:00Z",
+  });
+}
+
+function givenTask(taskId?: string) {
+  mockUseSearchParams.mockReturnValue({
+    params: { surveyId: "survey-top-tasks", ...(taskId && { task: taskId }) },
+    setParam: vi.fn(),
+    setParams: vi.fn(),
+    resetParams: vi.fn(),
+  } as never);
+}
 
 const task: TopTaskStats = {
   taskId: "soke",
@@ -169,5 +193,99 @@ describe("TopTasksOverview", () => {
     render(<TopTasksOverview />);
 
     expect(screen.getByText("MOCK_BLOCKER_ANALYSIS")).toBeInTheDocument();
+  });
+  it("keeps Enheter and Segmentering when the analysis fails", () => {
+    mockUseTopTasksStats.mockReturnValue({
+      data: undefined,
+      error: new Error("network failure"),
+      isLoading: false,
+      isError: true,
+      isFetching: false,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<TopTasksOverview />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Kunne ikke hente Top Tasks-data",
+    );
+    expect(screen.queryByText("MOCK_BLOCKER_ANALYSIS")).not.toBeInTheDocument();
+    expect(screen.getByText("MOCK_SEGMENT_BREAKDOWN")).toBeInTheDocument();
+    expect(screen.getByText("MOCK_DEVICE_BREAKDOWN")).toBeInTheDocument();
+  });
+
+  it("shows Segmentering once, with or without a task", () => {
+    const { unmount } = render(<TopTasksOverview />);
+    expect(screen.getAllByText("MOCK_SEGMENT_BREAKDOWN")).toHaveLength(1);
+    unmount();
+
+    givenTask("soke");
+    render(<TopTasksOverview />);
+    expect(screen.getAllByText("MOCK_SEGMENT_BREAKDOWN")).toHaveLength(1);
+  });
+
+  it("shows the skeleton while the analysis loads, and the sections with their own data", () => {
+    mockUseTopTasksStats.mockReturnValue({
+      data: undefined,
+      error: null,
+      isLoading: true,
+      isError: false,
+      isFetching: true,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<TopTasksOverview />);
+
+    expect(screen.getByText("MOCK_SKELETON")).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.getByText("MOCK_SEGMENT_BREAKDOWN")).toBeInTheDocument();
+    expect(screen.getByText("MOCK_DEVICE_BREAKDOWN")).toBeInTheDocument();
+  });
+
+  it("asks for a shorter period when the period has too many answers", () => {
+    mockUseTopTasksStats.mockReturnValue({
+      data: undefined,
+      error: budgetError(),
+      isLoading: false,
+      isError: true,
+      isFetching: false,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<TopTasksOverview />);
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(ANALYSIS_BUDGET_TITLE);
+    expect(alert).toHaveTextContent(
+      "Top Tasks-analysen kan ikke regnes ut for så mange svar. Velg en kortere periode.",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Prøv igjen" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("MOCK_DEVICE_BREAKDOWN")).toBeInTheDocument();
+  });
+
+  it("hides Segmentering for a task with the analysis, since it reads the same answers", () => {
+    mockUseSearchParams.mockReturnValue({
+      params: { surveyId: "survey-top-tasks", task: "soke" },
+      setParam: vi.fn(),
+      setParams: vi.fn(),
+      resetParams: vi.fn(),
+    } as never);
+    mockUseTopTasksStats.mockReturnValue({
+      data: undefined,
+      error: new Error("network failure"),
+      isLoading: false,
+      isError: true,
+      isFetching: false,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<TopTasksOverview />);
+
+    expect(
+      screen.queryByText("MOCK_SEGMENT_BREAKDOWN"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("MOCK_DEVICE_BREAKDOWN")).toBeInTheDocument();
   });
 });

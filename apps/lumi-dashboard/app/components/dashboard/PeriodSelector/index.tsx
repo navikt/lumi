@@ -252,6 +252,7 @@ export function PeriodSelector({
         icon={<CalendarIcon aria-hidden />}
         iconPosition="left"
         className={completeDays ? styles.completeTrigger : styles.triggerButton}
+        data-period-trigger=""
         aria-label={`Periode: ${periodLabel}`}
         aria-expanded={open}
         aria-haspopup="dialog"

@@ -12,6 +12,7 @@ import type {
 } from "~/types/api";
 import { parseChoiceParam } from "~/utils/choiceFilterUtils";
 import { parseRatingParam } from "~/utils/ratingFilterUtils";
+import { MOCK_ANALYSIS_BUDGET_SURVEY_ID } from "./analysisBudget";
 
 import {
   generateComplexSurveyData,
@@ -291,7 +292,61 @@ export const mockFeedbackItems: FeedbackDto[] = [
 ];
 
 function generateE2eFixtureData(): FeedbackDto[] {
-  return [...generateHistoricalSurveyData(), ...generateSharedSurveyData()];
+  return [
+    ...generateHistoricalSurveyData(),
+    ...generateSharedSurveyData(),
+    ...generateAnalysisBudgetSurveyData(),
+  ];
+}
+
+/**
+ * A small Top Tasks survey whose analyses hit the API's analysis budget when
+ * the period is longer than 30 days (see `assertMockAnalysisBudget`). The
+ * answers are from the last few days, so a 30-day period shows them.
+ */
+function generateAnalysisBudgetSurveyData(): FeedbackDto[] {
+  const tasks = [
+    { id: "lage-oppfolgingsplan", label: "Lage oppfølgingsplan" },
+    { id: "forberede-dialogmote", label: "Forberede dialogmøte" },
+  ];
+  const outcomes = [
+    { id: "yes", label: "Ja" },
+    { id: "partial", label: "Delvis" },
+    { id: "no", label: "Nei" },
+  ];
+
+  return Array.from({ length: 12 }, (_, index) => {
+    const submittedAt = new Date();
+    submittedAt.setUTCDate(submittedAt.getUTCDate() - (index % 6));
+    submittedAt.setUTCHours(10, 0, 0, 0);
+    const task = tasks[index % tasks.length] ?? tasks[0];
+
+    return {
+      id: `analysegrense-${index + 1}`,
+      submittedAt: submittedAt.toISOString(),
+      app: "syfo-oppfolgingsplan-frontend",
+      surveyId: MOCK_ANALYSIS_BUDGET_SURVEY_ID,
+      surveyType: "topTasks",
+      context: createContext("/syk/oppfolgingsplaner", "desktop"),
+      answers: [
+        createSingleChoiceAnswer(
+          SPECIALIZED_SURVEY_FIELD_IDS.task,
+          "Hva prøvde du å gjøre?",
+          task.id,
+          undefined,
+          tasks,
+        ),
+        createSingleChoiceAnswer(
+          SPECIALIZED_SURVEY_FIELD_IDS.success,
+          "Klarte du det?",
+          index % 3 === 0 ? "no" : "yes",
+          undefined,
+          outcomes,
+        ),
+      ],
+      sensitiveDataRedacted: false,
+    };
+  });
 }
 
 export * from "./helpers"; // export helpers if needed by tests

@@ -77,6 +77,7 @@ export function AccessError({ error, team, query }: AccessErrorProps) {
     // once the team access is back.
     const bootstrapKey = filterBootstrapQueryKey()[0];
     const retryAll = {
+      error: query.error,
       isError: query.isError,
       isFetching: query.isFetching,
       refetch: async () => {

@@ -14,12 +14,18 @@ import {
   RadioGroup,
   VStack,
 } from "@navikt/ds-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DashboardCard, DashboardGrid } from "~/components/dashboard";
 import { ActiveFilters } from "~/components/export/ActiveFilters";
+import { ShorterPeriodButton } from "~/components/shared/ShorterPeriodButton";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { exportServerFn } from "~/server/actions";
 import { MAX_EXPORT_SIZE } from "~/server/actions/export";
+import {
+  ANALYSIS_BUDGET_TITLE,
+  FILTER_BUDGET_DESCRIPTION,
+  isAnalysisBudgetError,
+} from "~/utils/analysisBudget";
 import { splitChoiceParam } from "~/utils/choiceFilterUtils";
 import { splitRatingParam } from "~/utils/ratingFilterUtils";
 import styles from "./Panel.module.css";
@@ -42,18 +48,29 @@ export function ExportPanel() {
   const [format, setFormat] = useState<ExportFormat>("csv");
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [budgetExceeded, setBudgetExceeded] = useState(false);
   const [success, setSuccess] = useState(false);
   const [truncation, setTruncation] = useState<Truncation | null>(null);
+  const [filtersChanged, setFiltersChanged] = useState(false);
   const filterKey = JSON.stringify(params);
+  // An export belongs to the filters it started with. If they change before
+  // it is done, the file and its warnings are dropped.
+  const currentFilterKey = useRef(filterKey);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filterKey is the trigger, since the warning only applies to the filters the file was exported with
   useEffect(() => {
+    currentFilterKey.current = filterKey;
     setTruncation(null);
+    setBudgetExceeded(false);
+    setFiltersChanged(false);
   }, [filterKey]);
 
   const handleExport = async () => {
+    const startedWith = filterKey;
+    const filtersAreUnchanged = () => currentFilterKey.current === startedWith;
     setIsExporting(true);
     setError(null);
+    setBudgetExceeded(false);
+    setFiltersChanged(false);
     setSuccess(false);
     setTruncation(null);
 
@@ -80,6 +97,11 @@ export function ExportPanel() {
           phrase: params.phrase,
         },
       });
+
+      if (!filtersAreUnchanged()) {
+        setFiltersChanged(true);
+        return;
+      }
 
       const binaryString = atob(result.data);
       const bytes = new Uint8Array(binaryString.length);
@@ -108,6 +130,16 @@ export function ExportPanel() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
+      if (!filtersAreUnchanged()) {
+        setFiltersChanged(true);
+        return;
+      }
+      if (isAnalysisBudgetError(err)) {
+        // The API refuses the same filters every time, so this alert has no
+        // retry button.
+        setBudgetExceeded(true);
+        return;
+      }
       console.error("Export failed:", err);
       setError(err instanceof Error ? err.message : "Ukjent feil ved eksport");
     } finally {
@@ -136,9 +168,24 @@ export function ExportPanel() {
           </Button>
         </Alert>
       )}
+      {budgetExceeded && (
+        <Alert variant="warning" role="alert" className="export-alert">
+          <VStack gap="space-8" align="start">
+            <BodyShort weight="semibold">{ANALYSIS_BUDGET_TITLE}</BodyShort>
+            <BodyShort size="small">{FILTER_BUDGET_DESCRIPTION}</BodyShort>
+            <ShorterPeriodButton />
+          </VStack>
+        </Alert>
+      )}
       {success && (
         <Alert variant="success" className="export-alert">
           Eksport fullført! Filen er lastet ned.
+        </Alert>
+      )}
+      {filtersChanged && (
+        <Alert variant="info" role="status" className="export-alert">
+          Filtrene ble endret før eksporten var ferdig, så filen ble ikke lastet
+          ned. Last ned på nytt.
         </Alert>
       )}
       {truncation && (

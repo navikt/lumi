@@ -3,6 +3,7 @@ import { DashboardCard, DashboardGrid } from "~/components/dashboard";
 import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { useContextTags } from "~/hooks/useContextTags";
 import type { MetadataValueWithCount } from "~/types/api";
+import { analysisBudgetDescription } from "~/utils/analysisBudget";
 import { formatMetadataLabel } from "~/utils/segmentUtils";
 import styles from "./SegmentBreakdown.module.css";
 
@@ -37,6 +38,7 @@ export function SegmentBreakdown({
   return (
     <DataFetchBoundary
       title="Kunne ikke hente segmentering"
+      analysisBudgetDescription={analysisBudgetDescription("Segmenteringen")}
       queries={[contextTagsQuery]}
     >
       <SegmentBreakdownContent

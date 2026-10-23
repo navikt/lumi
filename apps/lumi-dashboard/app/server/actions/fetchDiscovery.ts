@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { zodValidator } from "@tanstack/zod-adapter";
+import { assertMockAnalysisBudget } from "~/mock/analysisBudget";
 import { getMockDiscoveryStats } from "~/mock/mockData";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
@@ -52,6 +53,7 @@ export const fetchDiscoveryServerFn = createServerFn({ method: "GET" })
     if (isMockMode()) {
       await mockDelay();
       assertMockTeamAccess(data.team);
+      assertMockAnalysisBudget(data);
       return getMockDiscoveryStats(toMockSearchParams(data));
     }
 

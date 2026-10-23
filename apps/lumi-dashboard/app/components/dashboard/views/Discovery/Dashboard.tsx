@@ -6,6 +6,7 @@ import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { useDiscoveryStats } from "~/hooks/useDiscoveryStats";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
+import { analysisBudgetDescription } from "~/utils/analysisBudget";
 import { DiscoveryAnalysis } from "./index";
 import { Skeleton as DiscoveryAnalysisSkeleton } from "./Skeleton";
 
@@ -19,22 +20,29 @@ export function DiscoveryDashboard() {
   const { addSegment } = useSegmentFilter();
   const surveyId = params.surveyId;
 
+  // Only the analysis depends on the Discovery query. The other sections
+  // have their own queries and stay useful when the analysis fails.
   return (
-    <DataFetchBoundary
-      title="Kunne ikke hente Discovery-data"
-      queries={[discoveryQuery]}
-    >
+    <>
       <StatsCards />
 
       {/* Timeline */}
       <TimelineSection title="Antall svar over tid" />
 
-      {/* Discovery Analysis - show skeleton while loading */}
-      {isPending ? (
-        <DiscoveryAnalysisSkeleton />
-      ) : (
-        data && <DiscoveryAnalysis data={data} />
-      )}
+      <DataFetchBoundary
+        title="Kunne ikke hente Discovery-data"
+        analysisBudgetDescription={analysisBudgetDescription(
+          "Discovery-analysen",
+        )}
+        queries={[discoveryQuery]}
+      >
+        {/* Discovery Analysis - show skeleton while loading */}
+        {isPending ? (
+          <DiscoveryAnalysisSkeleton />
+        ) : (
+          data && <DiscoveryAnalysis data={data} />
+        )}
+      </DataFetchBoundary>
 
       {/* Segment breakdown */}
       {surveyId && (
@@ -43,6 +51,6 @@ export function DiscoveryDashboard() {
 
       {/* Device breakdown */}
       <DeviceBreakdownSection />
-    </DataFetchBoundary>
+    </>
   );
 }

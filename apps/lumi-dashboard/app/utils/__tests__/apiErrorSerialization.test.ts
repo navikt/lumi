@@ -6,11 +6,8 @@ import { fromCrossJSON, toCrossJSONAsync } from "seroval";
 import { describe, expect, it } from "vitest";
 import { startInstance } from "~/start";
 import { ApiErrorException, ErrorType } from "~/types/errors";
+import { isAnalysisBudgetError } from "../analysisBudget";
 import { apiErrorSerializationAdapter } from "../apiErrorSerialization";
-import {
-  ANALYSIS_BUDGET_ERROR_DESCRIPTION,
-  getDashboardStatsErrorDescription,
-} from "../dashboardStatsError";
 
 describe("ApiErrorException serialization", () => {
   it("survives the TanStack server-function boundary with its API error", async () => {
@@ -34,8 +31,6 @@ describe("ApiErrorException serialization", () => {
     const restored = fromCrossJSON<unknown>(serialized, { plugins });
 
     expect(restored).toBeInstanceOf(ApiErrorException);
-    expect(getDashboardStatsErrorDescription(restored)).toBe(
-      ANALYSIS_BUDGET_ERROR_DESCRIPTION,
-    );
+    expect(isAnalysisBudgetError(restored)).toBe(true);
   });
 });

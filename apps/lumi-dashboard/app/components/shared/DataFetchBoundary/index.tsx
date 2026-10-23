@@ -1,9 +1,16 @@
 import { ArrowCirclepathIcon } from "@navikt/aksel-icons";
 import { Alert, BodyShort, Button, VStack } from "@navikt/ds-react";
 import { type ReactNode, useState } from "react";
+import { ShorterPeriodButton } from "~/components/shared/ShorterPeriodButton";
+import {
+  ANALYSIS_BUDGET_TITLE,
+  analysisBudgetDescription as describeAnalysisBudget,
+  isAnalysisBudgetError,
+} from "~/utils/analysisBudget";
 import styles from "./DataFetchBoundary.module.css";
 
 interface RefetchableQuery {
+  error: unknown;
   isError: boolean;
   isFetching: boolean;
   refetch: () => Promise<unknown>;
@@ -12,6 +19,16 @@ interface RefetchableQuery {
 interface DataFetchBoundaryProps {
   children?: ReactNode;
   description?: ReactNode;
+  /**
+   * Shown when the API refuses the period because an analysis would read
+   * too many answers. Name what cannot be computed.
+   */
+  analysisBudgetDescription?: string;
+  /**
+   * The alert offers a shorter period. Turn it off where a button cannot be
+   * reached, such as inside a menu.
+   */
+  offerShorterPeriod?: boolean;
   queries: RefetchableQuery[];
   title: string;
 }
@@ -23,6 +40,8 @@ interface DataFetchBoundaryProps {
 export function DataFetchBoundary({
   children,
   description = "Vi viser ikke data før forespørselen lykkes, fordi et tomt resultat kan være misvisende.",
+  analysisBudgetDescription = describeAnalysisBudget("Analysen"),
+  offerShorterPeriod = true,
   queries,
   title,
 }: DataFetchBoundaryProps) {
@@ -69,6 +88,23 @@ export function DataFetchBoundary({
         {recoveryStatus}
         {children}
       </>
+    );
+  }
+
+  // The API refuses the same period every time, so this alert has no retry
+  // button. It keeps the retry when another query failed for another reason.
+  if (
+    !isRetrying &&
+    failedQueries.every((query) => isAnalysisBudgetError(query.error))
+  ) {
+    return (
+      <Alert variant="warning" role="alert">
+        <VStack gap="space-8" align="start">
+          <BodyShort weight="semibold">{ANALYSIS_BUDGET_TITLE}</BodyShort>
+          <BodyShort size="small">{analysisBudgetDescription}</BodyShort>
+          {offerShorterPeriod ? <ShorterPeriodButton /> : null}
+        </VStack>
+      </Alert>
     );
   }
 

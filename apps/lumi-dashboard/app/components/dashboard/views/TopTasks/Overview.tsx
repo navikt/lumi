@@ -16,19 +16,36 @@ import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
 import { useTopTasksStats } from "~/hooks/useTopTasksStats";
+import { analysisBudgetDescription } from "~/utils/analysisBudget";
+import { Skeleton as TopTasksSkeleton } from "./Skeleton";
 import { TopTasksStatsCards } from "./StatsCards";
 import styles from "./TopTasks.module.css";
 
 export function TopTasksOverview() {
   const topTasksQuery = useTopTasksStats();
+  const { params } = useSearchParams();
+  const { addSegment } = useSegmentFilter();
+  const surveyId = params.surveyId;
 
+  // Enheter, and Segmentering without a task, have their own queries and stay
+  // useful when the Top Tasks analysis fails. With a task, Segmentering reads
+  // the same answers as the analysis, so it stays inside the analysis.
   return (
-    <DataFetchBoundary
-      title="Kunne ikke hente Top Tasks-data"
-      queries={[topTasksQuery]}
-    >
-      <TopTasksOverviewContent topTasksQuery={topTasksQuery} />
-    </DataFetchBoundary>
+    <>
+      <DataFetchBoundary
+        title="Kunne ikke hente Top Tasks-data"
+        analysisBudgetDescription={analysisBudgetDescription(
+          "Top Tasks-analysen",
+        )}
+        queries={[topTasksQuery]}
+      >
+        <TopTasksOverviewContent topTasksQuery={topTasksQuery} />
+      </DataFetchBoundary>
+      {surveyId && !params.task && (
+        <SegmentBreakdown surveyId={surveyId} onSegmentClick={addSegment} />
+      )}
+      <DeviceBreakdownSection />
+    </>
   );
 }
 
@@ -52,7 +69,8 @@ function TopTasksOverviewContent({
     });
   };
 
-  if (isLoading) return null;
+  // The sections below the analysis render right away, so keep its place.
+  if (isLoading) return <TopTasksSkeleton />;
   if (!data) return null;
 
   // Sort tasks by problem degree (high volume + low success = high priority)
@@ -167,12 +185,9 @@ function TopTasksOverviewContent({
         </Box>
       </DashboardCard>
       <BlockerAnalysis />
-      {/* Segment breakdown */}
-      {surveyId && (
+      {surveyId && selectedTask && (
         <SegmentBreakdown surveyId={surveyId} onSegmentClick={addSegment} />
       )}
-      {/* Device breakdown */}
-      <DeviceBreakdownSection />
     </>
   );
 }

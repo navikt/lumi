@@ -157,6 +157,16 @@ Med **Få svar** viser dashboardet først de fem siste svarene under **Svarene s
 
 Resten av dashboardet viser tall uansett hvor få svar det er, også når det bare er ett. Med ti svar flytter ett enkelt svar en andel med ti prosentpoeng. Sjekk derfor **Antall svar** eller **Tilbakemeldinger** før dere tolker en andel eller en endring. I oppgavekvadranten havner alle oppgaver med under 50 svar til venstre for den stiplede linjen.
 
+## Når perioden har for mange svar {#for-mange-svar}
+
+Har perioden mer enn 10 000 svar, står varselet **Perioden har for mange svar** der analysen skulle vært. Det gjelder analysene i **Top Tasks**, **Discovery** og **Task Priority**, **Det som hindrer brukerne** og **Segmentering** med en valgt oppgave. Lumi regner dem ut fra hvert enkelt svar. Grensen er lavere når svarene er store, for eksempel når spørsmålene har mange svaralternativer.
+
+**Vis de siste 30 dagene i perioden** gir de siste 30 dagene av perioden dere har valgt. Er den 30 dager eller kortere, heter knappen **Vis de siste 7 dagene i perioden**, og er den sju dager eller kortere, er det ingen knapp. Et [filter på enhet](/dashboard/filtrering#enhet) kan også hjelpe, fordi da teller bare svarene fra den enheten.
+
+I **Discovery** og **Task Priority** vises **Antall svar over tid**, **Enheter** og **Segmentering** selv om analysen mangler. I **Top Tasks** vises **Enheter**, og **Segmentering** når dere ikke har valgt en oppgave.
+
+Grensen gjelder også **Tilbakemeldinger** og **Eksporter** når dere filtrerer på oppgave, tema eller uttrykk. Lumi bruker de filtrene etter at svarene i perioden er hentet. Velg en kortere periode, eller fjern filteret.
+
 ## Les og slett enkeltsvar {#tilbakemeldinger}
 
 Under **Tilbakemeldinger** i menyen leser dere svarene ett og ett. Filtrene fra **Dashboard** følger med. Tabellen har kolonnene **Dato**, **Tilbakemelding** og **App** og viser 20 svar per side. På mobil vises svarene som kort, og **Vis mer** åpner hele svaret.

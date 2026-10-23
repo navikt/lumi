@@ -1,0 +1,170 @@
+import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useDiscoveryStats } from "~/hooks/useDiscoveryStats";
+import { useSearchParams } from "~/hooks/useSearchParams";
+import { useSegmentFilter } from "~/hooks/useSegmentFilter";
+import { ApiErrorException, ErrorType } from "~/types/errors";
+import { ANALYSIS_BUDGET_TITLE } from "~/utils/analysisBudget";
+import { DiscoveryDashboard } from "../Dashboard";
+
+vi.mock("~/components/dashboard/SegmentBreakdown", () => ({
+  SegmentBreakdown: () => <div>MOCK_SEGMENT_BREAKDOWN</div>,
+}));
+
+vi.mock(
+  "~/components/dashboard/sections/FieldStats/DeviceBreakdownSection",
+  () => ({
+    DeviceBreakdownSection: () => <div>MOCK_DEVICE_BREAKDOWN</div>,
+  }),
+);
+
+vi.mock("~/components/dashboard/sections/StatsCards", () => ({
+  StatsCards: () => <div>MOCK_STATS_CARDS</div>,
+}));
+
+vi.mock("~/components/dashboard/sections/Timeline", () => ({
+  TimelineSection: ({ title }: { title: string }) => <h2>{title}</h2>,
+}));
+
+vi.mock("../index", () => ({
+  DiscoveryAnalysis: () => <div>MOCK_DISCOVERY_ANALYSIS</div>,
+}));
+
+vi.mock("../Skeleton", () => ({
+  Skeleton: () => <div>MOCK_SKELETON</div>,
+}));
+
+vi.mock("~/hooks/useDiscoveryStats", () => ({
+  useDiscoveryStats: vi.fn(),
+}));
+
+vi.mock("~/hooks/useSearchParams", () => ({
+  useSearchParams: vi.fn(),
+}));
+
+vi.mock("~/hooks/useSegmentFilter", () => ({
+  useSegmentFilter: vi.fn(),
+}));
+
+const mockUseDiscoveryStats = vi.mocked(useDiscoveryStats);
+const mockUseSearchParams = vi.mocked(useSearchParams);
+const mockUseSegmentFilter = vi.mocked(useSegmentFilter);
+
+function budgetError() {
+  return new ApiErrorException({
+    status: 400,
+    type: ErrorType.ANALYSIS_BUDGET_EXCEEDED,
+    message: "Too much feedback data for in-memory analysis",
+    timestamp: "2026-10-22T00:00:00Z",
+  });
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockUseSearchParams.mockReturnValue({
+    params: { surveyId: "survey-discovery" },
+    setParam: vi.fn(),
+    setParams: vi.fn(),
+    resetParams: vi.fn(),
+  } as never);
+  mockUseSegmentFilter.mockReturnValue({ addSegment: vi.fn() } as never);
+});
+
+describe("DiscoveryDashboard", () => {
+  it("shows the analysis between the timeline and the segments", () => {
+    mockUseDiscoveryStats.mockReturnValue({
+      data: { totalSubmissions: 3 },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<DiscoveryDashboard />);
+
+    const timeline = screen.getByRole("heading", {
+      name: "Antall svar over tid",
+    });
+    const analysis = screen.getByText("MOCK_DISCOVERY_ANALYSIS");
+    const segments = screen.getByText("MOCK_SEGMENT_BREAKDOWN");
+    expect(
+      timeline.compareDocumentPosition(analysis) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      analysis.compareDocumentPosition(segments) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("asks for a shorter period when the period has too many answers", () => {
+    mockUseDiscoveryStats.mockReturnValue({
+      data: undefined,
+      error: budgetError(),
+      isPending: false,
+      isError: true,
+      isFetching: false,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<DiscoveryDashboard />);
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(ANALYSIS_BUDGET_TITLE);
+    expect(alert).toHaveTextContent(
+      "Discovery-analysen kan ikke regnes ut for så mange svar. Velg en kortere periode.",
+    );
+    expect(
+      screen.getByRole("button", { name: "Vis de siste 30 dagene i perioden" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Prøv igjen" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("MOCK_SEGMENT_BREAKDOWN")).toBeInTheDocument();
+  });
+
+  it("keeps the sections with their own data when the analysis fails", () => {
+    mockUseDiscoveryStats.mockReturnValue({
+      data: undefined,
+      error: new Error("network failure"),
+      isPending: false,
+      isError: true,
+      isFetching: false,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<DiscoveryDashboard />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Kunne ikke hente Discovery-data",
+    );
+    expect(
+      screen.queryByText("MOCK_DISCOVERY_ANALYSIS"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("MOCK_STATS_CARDS")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Antall svar over tid" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("MOCK_SEGMENT_BREAKDOWN")).toBeInTheDocument();
+    expect(screen.getByText("MOCK_DEVICE_BREAKDOWN")).toBeInTheDocument();
+  });
+  it("shows the skeleton for the analysis and the other sections while it loads", () => {
+    mockUseDiscoveryStats.mockReturnValue({
+      data: undefined,
+      error: null,
+      isPending: true,
+      isError: false,
+      isFetching: true,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<DiscoveryDashboard />);
+
+    expect(screen.getByText("MOCK_SKELETON")).toBeInTheDocument();
+    expect(
+      screen.queryByText("MOCK_DISCOVERY_ANALYSIS"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("MOCK_DEVICE_BREAKDOWN")).toBeInTheDocument();
+  });
+});

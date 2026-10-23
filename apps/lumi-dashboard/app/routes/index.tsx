@@ -23,7 +23,6 @@ import { useTeamAccessDenied } from "~/hooks/useTeamAccessDenied";
 import { searchSchema } from "~/schemas/searchSchema";
 import type { SurveyType } from "~/types/api";
 import { applyDashboardSearchDefaults } from "~/utils/dashboardSearchDefaults";
-import { getDashboardStatsErrorDescription } from "~/utils/dashboardStatsError";
 import styles from "./index.module.css";
 
 /**
@@ -225,7 +224,6 @@ function DashboardPage() {
           ) : (
             <DataFetchBoundary
               title="Kunne ikke hente dashboarddata"
-              description={getDashboardStatsErrorDescription(statsQuery.error)}
               queries={[statsQuery]}
             >
               {/* Type-specific dashboard view */}

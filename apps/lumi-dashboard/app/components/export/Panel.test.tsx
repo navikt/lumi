@@ -1,9 +1,14 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ExportPanel } from "~/components/export/Panel";
 import { exportServerFn } from "~/server/actions";
+import { ApiErrorException, ErrorType } from "~/types/errors";
+import {
+  ANALYSIS_BUDGET_TITLE,
+  FILTER_BUDGET_DESCRIPTION,
+} from "~/utils/analysisBudget";
 
 const search = vi.hoisted(() => ({
   params: { team: "flex" } as Record<string, string>,
@@ -26,6 +31,15 @@ vi.mock("~/components/dashboard", () => ({
 }));
 
 const exportMock = vi.mocked(exportServerFn);
+
+function budgetError() {
+  return new ApiErrorException({
+    status: 400,
+    type: ErrorType.ANALYSIS_BUDGET_EXCEEDED,
+    message: "Too much feedback data for in-memory analysis",
+    timestamp: "2026-10-22T00:00:00Z",
+  });
+}
 
 function exportResult(counts: { total: number | null; count: number | null }) {
   return {
@@ -78,6 +92,110 @@ describe("ExportPanel", () => {
     rerender(<ExportPanel />);
 
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("explains the analysis budget without a retry and clears it when the filters change", async () => {
+    const consoleError = vi.spyOn(console, "error");
+    search.params = { team: "flex", surveyId: "survey-top-tasks", task: "a" };
+    exportMock.mockRejectedValue(budgetError());
+    const user = userEvent.setup();
+    const { rerender } = render(<ExportPanel />);
+
+    await user.click(screen.getByRole("button", { name: "Last ned CSV" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(ANALYSIS_BUDGET_TITLE);
+    expect(alert).toHaveTextContent(FILTER_BUDGET_DESCRIPTION);
+    expect(alert).not.toHaveTextContent("Too much feedback data");
+    expect(
+      screen.queryByRole("button", { name: "Prøv igjen" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Vis de siste 30 dagene i perioden" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Last ned CSV" })).toBeEnabled();
+    expect(consoleError).not.toHaveBeenCalled();
+
+    search.params = {
+      team: "flex",
+      surveyId: "survey-top-tasks",
+      task: "a",
+      dateMode: "fixed",
+      fromDate: "2026-09-23",
+      toDate: "2026-10-22",
+    };
+    rerender(<ExportPanel />);
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("drops a refused export whose filters have changed", async () => {
+    let rejectExport: (reason: unknown) => void = () => undefined;
+    exportMock.mockReturnValue(
+      new Promise((_, reject) => {
+        rejectExport = reject;
+      }) as never,
+    );
+    search.params = { team: "flex", surveyId: "survey-top-tasks", task: "a" };
+    const user = userEvent.setup();
+    const { rerender } = render(<ExportPanel />);
+
+    await user.click(screen.getByRole("button", { name: "Last ned CSV" }));
+    search.params = { team: "flex", surveyId: "survey-top-tasks" };
+    rerender(<ExportPanel />);
+    await act(async () => rejectExport(budgetError()));
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Filtrene ble endret før eksporten var ferdig, så filen ble ikke lastet ned. Last ned på nytt.",
+    );
+    expect(screen.getByRole("button", { name: "Last ned CSV" })).toBeEnabled();
+  });
+
+  it("does not download a file for filters that have changed", async () => {
+    let resolveExport: (value: unknown) => void = () => undefined;
+    exportMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveExport = resolve;
+      }) as never,
+    );
+    const user = userEvent.setup();
+    const { rerender } = render(<ExportPanel />);
+
+    await user.click(screen.getByRole("button", { name: "Last ned CSV" }));
+    search.params = { team: "flex", fromDate: "2026-09-23" };
+    rerender(<ExportPanel />);
+    await act(async () =>
+      resolveExport(exportResult({ total: 12_345, count: 10_000 })),
+    );
+
+    expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled();
+    expect(
+      screen.queryByText("Eksport fullført! Filen er lastet ned."),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/nyeste svarene av/)).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Filtrene ble endret før eksporten var ferdig",
+    );
+
+    search.params = { team: "flex", fromDate: "2026-10-01" };
+    rerender(<ExportPanel />);
+
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("keeps the retry for other errors", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    exportMock.mockRejectedValue(new Error("Nettverksfeil"));
+    const user = userEvent.setup();
+    render(<ExportPanel />);
+
+    await user.click(screen.getByRole("button", { name: "Last ned CSV" }));
+
+    expect(
+      await screen.findByRole("button", { name: "Prøv igjen" }),
+    ).toBeVisible();
+    expect(screen.getByText("Nettverksfeil")).toBeVisible();
   });
 
   it("does not warn when every matching response is included", async () => {
