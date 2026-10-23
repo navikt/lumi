@@ -8,31 +8,22 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useMemo } from "react";
-import { z } from "zod";
+import { surveyPreviewSearchSchema } from "~/schemas/surveyPreviewSearchSchema";
 import { fetchSurveyAuthoringProjectServerFn } from "~/server/actions";
 import styles from "./survey-preview.module.css";
-
-const searchSchema = z.object({
-  // Optional, so an address without them gets an explanation instead of an
-  // error page with HTTP 500.
-  team: z.string().min(1).optional(),
-  projectId: z.string().uuid().optional(),
-  version: z.coerce.number().int().positive().optional(),
-});
 
 const previewTransport: LumiSurveyTransport = {
   submit: async () => undefined,
 };
 
 export const Route = createFileRoute("/survey-preview")({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: zodValidator(surveyPreviewSearchSchema),
   component: SurveyPreview,
 });
 
 function SurveyPreview() {
   const { team, projectId, version } = Route.useSearch();
 
-  // «Prøv i egen fane» in Surveyverksted always adds both.
   if (!team || !projectId) {
     return <MissingSearchParams team={team} projectId={projectId} />;
   }
