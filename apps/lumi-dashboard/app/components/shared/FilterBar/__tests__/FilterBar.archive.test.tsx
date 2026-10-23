@@ -192,6 +192,7 @@ describe("FilterBar archive state", () => {
     await waitFor(() =>
       expect(mockSetParams).toHaveBeenCalledWith({
         surveyId: undefined,
+        task: undefined,
         choice: undefined,
         rating: undefined,
         phrase: undefined,
@@ -246,6 +247,7 @@ describe("FilterBar archive state", () => {
 
     expect(mockSetParams).toHaveBeenCalledWith({
       surveyId: "survey-active",
+      task: undefined,
       choice: undefined,
       rating: undefined,
       phrase: undefined,
@@ -267,11 +269,28 @@ describe("FilterBar archive state", () => {
 
     expect(mockSetParams).toHaveBeenCalledWith({
       surveyId: "survey-active",
+      task: undefined,
       choice: undefined,
       rating: undefined,
       phrase: undefined,
       page: "1",
     });
+  });
+
+  it("clears the task filter when the survey changes", () => {
+    mockParams.surveyId = undefined;
+    mockParams.dateMode = "fixed";
+    render(<FilterBar />);
+
+    fireEvent.change(screen.getAllByRole("combobox", { name: "Survey" })[0], {
+      target: { value: "survey-active" },
+    });
+
+    // toHaveBeenCalledWith treats a missing key as undefined, so check the key.
+    expect(mockSetParams.mock.calls.at(-1)?.[0]).toHaveProperty(
+      "task",
+      undefined,
+    );
   });
 
   it("offers the survey response period when a fixed period does not overlap", () => {
@@ -324,6 +343,7 @@ describe("FilterBar archive state", () => {
       expect(mockSetParams).toHaveBeenCalledWith({
         app: undefined,
         surveyId: undefined,
+        task: undefined,
         choice: undefined,
         rating: undefined,
         phrase: undefined,
