@@ -1,4 +1,4 @@
-import { createSerializationAdapter } from "@tanstack/router-core";
+import { createSerializationAdapter } from "@tanstack/react-router";
 import {
   type ApiError,
   ApiErrorException,

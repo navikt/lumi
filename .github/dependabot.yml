@@ -63,7 +63,6 @@ updates:
           - "@tanstack/react-start"
           - "@tanstack/router-*"
           - "@tanstack/start-*"
-          - "@tanstack/history"
           - "@tanstack/zod-adapter"
       # New Biome versions add lint rules and change formatting, so they need
       # their own pull request with the code changes.
