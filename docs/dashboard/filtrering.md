@@ -90,7 +90,7 @@ Dere kan velge ett alternativ per spørsmål. Filtrerer dere på flere spørsmå
 
 Klikk på et punkt i **Oppgavekvadrant** for å filtrere på én oppgave. Filteret gjelder hele **Dashboard** og følger med til **Tilbakemeldinger** og **Eksporter**.
 
-Adressen lagrer oppgavens ID (`taskId`). ID-en endres ikke når teamet skriver om oppgaveteksten, så filteret og lenker med filteret virker fortsatt. Merkelappen over resultatene, **Aktive filtre fra grafene** i **Filter** og **Aktive filtre** på **Eksporter** viser oppgaveteksten. Mens dataene lastes, står det «…». Kan ikke dashboardet hente dataene, har oppgaven ingen svar i perioden, eller er ingen Top Tasks-survey valgt, står ID-en. Oppgavefilteret blir stående når dere bytter survey.
+Adressen lagrer oppgavens ID (`taskId`). ID-en endres ikke når teamet skriver om oppgaveteksten, så filteret og lenker med filteret virker fortsatt. Merkelappen over resultatene, **Aktive filtre fra grafene** i **Filter** og **Aktive filtre** på **Eksporter** viser oppgaveteksten. Mens dataene lastes, står det «…». Kan ikke dashboardet hente dataene, har oppgaven ingen svar i perioden, eller er ingen Top Tasks-survey valgt, står ID-en. Bytter dere survey, fjernes oppgavefilteret.
 
 ## Sider på Tilbakemeldinger {#sider}
 

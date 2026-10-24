@@ -263,6 +263,7 @@ function FilterBarContent({
       rating: undefined,
       ...(shouldClearSurvey && {
         surveyId: undefined,
+        task: undefined,
         ...(currentPeriod.dateMode === "auto" && {
           dateMode: "auto" as const,
           fromDate: rollingAutomaticPeriod.fromDate,
@@ -283,8 +284,10 @@ function FilterBarContent({
       surveyMeta: selectedSurveyMeta,
     });
 
+    // A task belongs to one Top Tasks survey.
     setParams({
       surveyId: newSurveyId,
+      task: undefined,
       choice: undefined,
       rating: undefined,
       phrase: undefined,
@@ -322,6 +325,7 @@ function FilterBarContent({
       setParams({
         app: undefined,
         surveyId: undefined,
+        task: undefined,
         choice: undefined,
         rating: undefined,
         phrase: undefined,
@@ -335,6 +339,7 @@ function FilterBarContent({
     } else if (!showArchived && selectedSurveyIsArchived) {
       setParams({
         surveyId: undefined,
+        task: undefined,
         choice: undefined,
         rating: undefined,
         phrase: undefined,
