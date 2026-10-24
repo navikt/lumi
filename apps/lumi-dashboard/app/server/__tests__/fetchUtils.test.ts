@@ -1,8 +1,19 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { logger } from "~/server/logger";
+import { BadGatewayError } from "~/server/serverFnStatus";
 import { ApiErrorException } from "~/types/errors";
-import { handleApiResponse } from "../fetchUtils";
+import { QuestionTrendResponseSchema } from "~/types/schemas";
+import { handleApiResponse, parseApiAnswer } from "../fetchUtils";
 
-vi.mock("~/server/logger", () => ({ logger: { error: vi.fn() } }));
+vi.mock("~/server/logger", () => ({
+  logger: { warn: vi.fn(), error: vi.fn() },
+}));
+
+const mockLogger = vi.mocked(logger);
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe("handleApiResponse", () => {
   it.each([409, 400])(
@@ -61,5 +72,94 @@ describe("handleApiResponse", () => {
         ),
       ),
     ).rejects.toThrow("Backend request failed: 409 Conflict");
+  });
+
+  it("gives 502 for an error answer without Lumi API's format", async () => {
+    for (const response of [
+      Response.json({ message: "Unknown" }, { status: 500 }),
+      new Response("<html>Bad gateway</html>", { status: 502 }),
+    ]) {
+      await expect(handleApiResponse(response)).rejects.toBeInstanceOf(
+        BadGatewayError,
+      );
+    }
+  });
+
+  it("logs only the status and a known error type, not the body", async () => {
+    await handleApiResponse(
+      Response.json(
+        { type: "CONFLICT", message: "Svaret fra Ola Nordmann, 12345678901" },
+        { status: 409, statusText: "Conflict" },
+      ),
+    ).catch(() => undefined);
+    await handleApiResponse(
+      Response.json(
+        { type: "Ola Nordmann", details: "12345678901" },
+        { status: 500 },
+      ),
+    ).catch(() => undefined);
+
+    expect(mockLogger.warn).toHaveBeenNthCalledWith(
+      1,
+      { status: 409, errorType: "CONFLICT" },
+      "Backend error (unknown format)",
+    );
+    expect(mockLogger.warn).toHaveBeenNthCalledWith(
+      2,
+      { status: 500, errorType: undefined },
+      "Backend error (unknown format)",
+    );
+    expect(mockLogger.error).not.toHaveBeenCalled();
+  });
+});
+
+describe("parseApiAnswer", () => {
+  const answer = {
+    fieldId: "q1",
+    fieldType: "RATING",
+    label: "Hvor fornøyd er du?",
+    interval: "week",
+    privacyThreshold: 5,
+    options: [],
+    buckets: [
+      {
+        startDate: "2026-10-05",
+        masked: false,
+        responseCount: 7,
+        distribution: {},
+      },
+    ],
+  };
+
+  it("returns an answer that keeps the contract", () => {
+    expect(parseApiAnswer(QuestionTrendResponseSchema, answer)).toMatchObject({
+      fieldId: "q1",
+      buckets: [{ responseCount: 7 }],
+    });
+  });
+
+  it("throws BadGatewayError with zod's message for an answer that breaks it", () => {
+    const broken = {
+      ...answer,
+      buckets: [{ ...answer.buckets[0], responseCount: null }],
+    };
+    let parseError: unknown;
+    try {
+      QuestionTrendResponseSchema.parse(broken);
+    } catch (caught) {
+      parseError = caught;
+    }
+    let error: unknown;
+    try {
+      parseApiAnswer(QuestionTrendResponseSchema, broken);
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(BadGatewayError);
+    expect((error as Error).message).toBe((parseError as Error).message);
+    expect((error as Error).message).toContain(
+      "unmasked buckets require responseCount",
+    );
   });
 });

@@ -1,8 +1,11 @@
 import { createMiddleware } from "@tanstack/react-start";
-import { setResponseStatus } from "@tanstack/react-start/server";
 
 import { logger } from "~/server/logger";
 import { resolveLocalAuthPolicy } from "~/server/middleware/localAuthPolicy";
+import {
+  HttpStatusError,
+  setServerFnHttpStatus,
+} from "~/server/serverFnStatus";
 import { isMockMode } from "~/server/utils";
 import { serverEnv } from "~/serverEnv";
 
@@ -171,9 +174,14 @@ export async function getCachedAzureOboToken(
 
 const SAFE_METHODS = new Set(["GET", "HEAD"]);
 
+/**
+ * The status goes on the response only when the browser called the server
+ * function. During SSR the page keeps its own status, and the error carries
+ * it instead.
+ */
 function failWithStatus(status: number, message: string): never {
-  setResponseStatus(status);
-  throw new Error(message);
+  setServerFnHttpStatus(status);
+  throw new HttpStatusError(status, message);
 }
 
 export function validateCsrfHeaders(
@@ -284,7 +292,8 @@ export const authMiddleware = createMiddleware().server(
         requestAzureOboToken,
       );
     } catch (error) {
-      logger.error(
+      // A warning: serverFnFailureMiddleware logs the 502 as an error.
+      logger.warn(
         {
           audience: BACKEND_AUDIENCE,
           errorMessage:

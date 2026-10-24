@@ -1,5 +1,7 @@
-import { setResponseStatus } from "@tanstack/react-start/server";
-
+import {
+  HttpStatusError,
+  setServerFnHttpStatus,
+} from "~/server/serverFnStatus";
 import { isMockMode } from "~/server/utils";
 import { serverEnv } from "~/serverEnv";
 import { PUBLIC_DEMO_READ_ONLY_MESSAGE } from "~/utils/publicDemo";
@@ -36,6 +38,6 @@ export function isPublicDemo(): boolean {
  */
 export function refuseWriteInPublicDemo(): void {
   if (!isPublicDemo()) return;
-  setResponseStatus(403);
-  throw new Error(PUBLIC_DEMO_READ_ONLY_MESSAGE);
+  setServerFnHttpStatus(403);
+  throw new HttpStatusError(403, PUBLIC_DEMO_READ_ONLY_MESSAGE);
 }

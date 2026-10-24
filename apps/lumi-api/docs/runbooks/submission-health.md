@@ -3,7 +3,7 @@
 Denne runbooken brukes for feil og avvisninger på Lumi sine tre
 innsendingskanaler: `tokenx`, `azure` og `internal_proxy` (dev-proxyen). Den
 brukes også når `lumi-api` eller `lumi-dashboard` ikke har tilgjengelige
-replikaer.
+replikaer, og når serverfunksjonene i `lumi-dashboard` feiler.
 
 ## Metrikken
 
@@ -117,6 +117,49 @@ bare hvis utfallet varer i fem minutter.
 5. Når replikaene er tilbake, kontrollerer du `LumiSubmissionFailure` og
    `LumiSubmissionRejectionSpike`. Gjaldt alarmen `lumi-api`, noterer du når
    utfallet startet og sluttet, siden svar fra perioden mangler.
+
+## Feil i serverfunksjonene til dashboardet
+
+`LumiDashboardServerFunctionFailures` går når flere enn 20 kall til
+serverfunksjonene i `lumi-dashboard` har feilet med 5xx de siste 15 minuttene,
+og det har vart i to minutter. En sidevisning som feiler, gir seks til åtte
+feilede kall, så alarmen krever omtrent tre slike sidevisninger. Teamene ser
+feilmeldinger der dashboardet skulle vist data, og lagring kan feile.
+Innsendinger går direkte til `lumi-api` og påvirkes ikke.
+
+Alarmen bruker `lumi_dashboard_server_fn_5xx_failures_total`, som ikke har
+labels. `lumi_dashboard_server_fn_failures_total` teller alle feilene, også
+4xx, med to labels:
+
+- `fn`: navnet på serverfunksjonen, for eksempel `fetchStatsServerFn`
+- `status`: statusen feilen står for
+
+Finn funksjonene og statusene i Grafana:
+
+```promql
+sum by (fn, status) (
+  increase(lumi_dashboard_server_fn_failures_total{app="lumi-dashboard"}[15m])
+)
+```
+
+Hver feil gir én linje i loggene til `lumi-dashboard` med meldingen
+`Server function failed` og feltene `serverFn`, `status`, `errorName`,
+`apiErrorType`, `durationMs` og `httpCall`. Feilmeldinger og input logges ikke.
+Med `httpCall: true` er `status` HTTP-statusen kallet fikk. Med
+`httpCall: false` kalte en side serverfunksjonen under serverrendering. Da er
+`status` bare statusen feilen står for, og siden beholder sin egen.
+
+| Status | Betydning | Tiltak |
+| --- | --- | --- |
+| 502 | `errorName: TypeError`: dashboardet nådde ikke `lumi-api`. `errorName: BadGatewayError`: `lumi-api` svarte med en feil uten Lumi API-ets feilformat, svarte 5xx om analyseprodukter eller BigQuery-eksport, eller sendte et svar som bryter kontrakten. `errorName: HttpStatusError`: token-utvekslingen (OBO) feilet, og loggen har også linjen `OBO token exchange failed` | Sjekk podene og loggene til `lumi-api`. Bryter svarene kontrakten, sjekk om en deploy av `lumi-api` eller dashboardet endret den |
+| 503 | `lumi-api` svarte 503 med Lumi API-ets feilformat. Med `apiErrorType: DATABASE_UNAVAILABLE` svarte ikke databasen i tide | Følg avsnittet om 503 over |
+| 500 | Med `errorName: ApiErrorException` svarte `lumi-api` 500 med Lumi API-ets feilformat. Med andre `errorName` oppsto feilen i dashboardet | Sjekk loggene til `lumi-api` eller dashboardet på tidspunktet, og om feilene startet med en deploy |
+
+Alarmen teller ikke 4xx. De gjelder som regel én bruker eller én forespørsel,
+for eksempel manglende tilgang eller ugyldig input.
+
+Startet feilene med en deploy av dashboardet, ruller du tilbake slik punkt 4
+under «Ingen tilgjengelige replikaer» beskriver.
 
 ## Verifikasjon etter retting
 

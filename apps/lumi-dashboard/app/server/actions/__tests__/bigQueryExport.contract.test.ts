@@ -182,6 +182,37 @@ describe("BigQuery export server action contracts", () => {
     ).rejects.toThrow("Kunne ikke bekrefte");
   });
 
+  it("keeps a viewer's 4xx and gives 502 for failures in Lumi API", async () => {
+    const read = () => getBigQueryExport({ data: { team: "team-test" } });
+
+    doubles.request.mockResolvedValueOnce(Response.json({}, { status: 403 }));
+    await expect(read()).rejects.toMatchObject({
+      name: "HttpStatusError",
+      status: 403,
+      message:
+        "BigQuery-eksporten kunne ikke hentes. Kontroller teamet og prøv igjen.",
+    });
+    doubles.request.mockResolvedValueOnce(Response.json({}, { status: 503 }));
+    await expect(read()).rejects.toMatchObject({
+      name: "BadGatewayError",
+      status: 502,
+    });
+    doubles.request.mockResolvedValueOnce(
+      Response.json({ ...status, team: "another-team" }),
+    );
+    await expect(read()).rejects.toMatchObject({
+      status: 502,
+      message: "Uventet svar fra BigQuery-eksporten i Lumi API.",
+    });
+    doubles.request.mockResolvedValueOnce(Response.json({}, { status: 500 }));
+    await expect(
+      runBigQueryExport({ data: { team: "team-test" } }),
+    ).rejects.toMatchObject({
+      status: 502,
+      message: "Kunne ikke bekrefte om endringen ble lagret.",
+    });
+  });
+
   it("calls verify, run and stop with the right method and path", async () => {
     doubles.request.mockResolvedValueOnce(
       Response.json({ ok: true, problems: [] }),

@@ -6,6 +6,7 @@ import {
 } from "~/server/analysisProductApi";
 import { authMiddleware } from "~/server/middleware/auth";
 import { refuseWriteInPublicDemo } from "~/server/publicDemo";
+import { BadGatewayError } from "~/server/serverFnStatus";
 import { type AuthContext, isMockMode } from "~/server/utils";
 import {
   AnalysisCatalogSchema,
@@ -40,7 +41,7 @@ export const getAnalysisCatalog = createServerFn({ method: "GET" })
       AnalysisCatalogSchema,
     );
     if (catalog.team !== data.team)
-      throw new Error("Uventet team i kildekatalogen.");
+      throw new BadGatewayError("Uventet team i kildekatalogen.");
     return catalog;
   });
 
@@ -57,7 +58,7 @@ export const getAnalysisProduct = createServerFn({ method: "GET" })
       AnalysisProductSchema,
     );
     if (product.team !== data.team || product.id !== data.productId)
-      throw new Error("Uventet analyseprodukt.");
+      throw new BadGatewayError("Uventet analyseprodukt.");
     return product;
   });
 
@@ -74,18 +75,18 @@ export const getAnalysisPreview = createServerFn({ method: "GET" })
       AnalysisPreviewSchema,
     );
     if (preview.productId !== data.productId)
-      throw new Error("Uventet forhåndsvisning.");
+      throw new BadGatewayError("Uventet forhåndsvisning.");
     if (
       preview.publicationSpecification &&
       preview.publicationSpecification.team !== data.team
     )
-      throw new Error("Uventet team i forhåndsvisningen.");
+      throw new BadGatewayError("Uventet team i forhåndsvisningen.");
     if (
       !isMockMode() &&
       preview.status !== "BLOCKED" &&
       !preview.publicationSpecification
     )
-      throw new Error(
+      throw new BadGatewayError(
         "Forhåndsvisningen mangler den autoritative feltoversikten.",
       );
     return preview;

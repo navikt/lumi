@@ -147,6 +147,14 @@ export const fetchStatsServerFn = createServerFn({ method: "GET" })
   });
 ```
 
+### Failed server functions
+
+- `serverFnFailureMiddleware` is the first entry in `functionMiddleware` in `app/start.ts`, so it wraps every other middleware and the input validation. For a failed call over HTTP it sets the status from the error (`serverFnFailureStatus` in `app/server/serverFnStatus.ts`), unless a 4xx/5xx is already set. It logs one `Server function failed` line and counts the failure in `lumi_dashboard_server_fn_failures_total{fn,status}` and, for a 5xx, in `lumi_dashboard_server_fn_5xx_failures_total`, which the alert in `nais/alerts/prod.yaml` watches.
+- Whether a call came over HTTP is Start's own `handlerType`, which `securityHeadersMiddleware` puts in the global context. Read it with `isServerFnHttpCall()`, not from the request path.
+- To fail with a status, throw `HttpStatusError`. Set a status yourself only with `setServerFnHttpStatus`: during SSR a page runs its server functions in-process, so `setResponseStatus` there would change the status of the page.
+- Classify failures from Lumi API where they happen. Parse its answers with `parseApiAnswer` from `app/server/fetchUtils.ts`, and pass on an error answer as `apiStatusError` or `BadGatewayError`. A plain `Error` from a handler gives 500; Start's own validation error gives 400.
+- The browser gets only the message of a thrown error, apart from `ApiErrorException`. Never log error messages, input or answers from Lumi API; they can contain user data.
+
 ## Security Baseline (Dashboard)
 
 - Keep global security headers/CSP in `apps/lumi-dashboard/app/start.ts` with helpers from `app/server/securityHeaders.ts`.

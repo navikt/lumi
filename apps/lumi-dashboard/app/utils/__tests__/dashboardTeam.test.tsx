@@ -19,6 +19,7 @@ import {
   fetchStatsServerFn,
 } from "~/server/actions";
 import { logger } from "~/server/logger";
+import { HttpStatusError } from "~/server/serverFnStatus";
 import { ApiErrorException, ErrorType } from "~/types/errors";
 import { applyDashboardSearchDefaults } from "~/utils/dashboardSearchDefaults";
 import {
@@ -266,13 +267,14 @@ describe("redirectToDashboardTeam paths and failures", () => {
     await vi.advanceTimersByTimeAsync(1);
 
     await expect(result).resolves.toBeUndefined();
-    expect(mockLogger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ pathname: "/", reason: "timeout" }),
-      expect.any(String),
+    expect(mockLogger.warn).toHaveBeenCalledExactlyOnceWith(
+      { pathname: "/", reason: "timeout", timeoutMs: DEFAULT_TEAM_TIMEOUT_MS },
+      "Could not resolve the default team before rendering the dashboard",
     );
   });
 
-  it("logs a failed request on the server without its message", async () => {
+  // serverFnFailureMiddleware in start.ts logs the failed server function.
+  it("leaves a failed request to the log line for server functions", async () => {
     vi.stubEnv("SSR", true);
     mockFetchBootstrap.mockRejectedValue(
       new ApiErrorException({
@@ -286,15 +288,7 @@ describe("redirectToDashboardTeam paths and failures", () => {
     await expect(
       redirectFor({ pathname: "/feedback", search: {} }),
     ).resolves.toBeUndefined();
-    expect(mockLogger.warn).toHaveBeenCalledWith(
-      {
-        pathname: "/feedback",
-        reason: "error",
-        errorName: "ApiErrorException",
-        status: 503,
-      },
-      expect.any(String),
-    );
+    expect(mockLogger.warn).not.toHaveBeenCalled();
   });
 
   it("does not wait again on the next navigation after a timeout", async () => {
@@ -338,12 +332,42 @@ describe("redirectToDashboardTeam paths and failures", () => {
     expect(mockFetchBootstrap).toHaveBeenCalledTimes(2);
   });
 
-  it("does not log in the browser", async () => {
-    mockFetchBootstrap.mockRejectedValue(new Error("Midlertidig feil"));
+  it("keeps looking up the team after authMiddleware refuses one viewer", async () => {
+    mockFetchBootstrap.mockRejectedValueOnce(
+      new HttpStatusError(401, "Unauthorized: No token provided"),
+    );
 
     await expect(
-      redirectFor({ pathname: "/feedback", search: {} }),
+      redirectFor({ pathname: "/", search: {} }),
     ).resolves.toBeUndefined();
+    await expect(
+      redirectFor({ pathname: "/", search: {} }),
+    ).resolves.toMatchObject({ search: { team: "team-a" } });
+    expect(mockFetchBootstrap).toHaveBeenCalledTimes(2);
+  });
+
+  it("pauses the lookup for everyone when the token exchange fails", async () => {
+    mockFetchBootstrap.mockRejectedValueOnce(
+      new HttpStatusError(502, "Token exchange failed"),
+    );
+
+    await expect(
+      redirectFor({ pathname: "/", search: {} }),
+    ).resolves.toBeUndefined();
+    await expect(
+      redirectFor({ pathname: "/", search: {} }),
+    ).resolves.toBeUndefined();
+    expect(mockFetchBootstrap).toHaveBeenCalledOnce();
+  });
+
+  it("does not log a timeout in the browser", async () => {
+    vi.useFakeTimers();
+    mockFetchBootstrap.mockReturnValue(new Promise(() => undefined) as never);
+
+    const result = redirectFor({ pathname: "/feedback", search: {} });
+    await vi.advanceTimersByTimeAsync(DEFAULT_TEAM_TIMEOUT_MS);
+
+    await expect(result).resolves.toBeUndefined();
     expect(mockLogger.warn).not.toHaveBeenCalled();
   });
 });
