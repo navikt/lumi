@@ -50,7 +50,6 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.64.1",
-    "@tanstack/history": "^1.162.5",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
@@ -66,7 +65,6 @@
     "seroval": "1.6.9",
     "typescript": "^6.0.3",
     "vite": "^8.3.4",
-    "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.12"
   },
   "engines": {

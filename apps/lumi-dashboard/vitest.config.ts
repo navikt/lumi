@@ -1,14 +1,22 @@
+import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
-import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  plugins: [
-    tsconfigPaths({
-      projects: ["./tsconfig.typecheck.json"],
-    }),
-    react(),
-  ],
+  plugins: [react()],
+  resolve: {
+    tsconfigPaths: true,
+    alias: [
+      // tsconfig.json points @navikt/lumi-survey at the widget source, which
+      // the app build uses. The tests have always loaded the built package.
+      {
+        find: /^@navikt\/lumi-survey$/,
+        replacement: fileURLToPath(
+          new URL("../../packages/lumi-survey/dist/index.js", import.meta.url),
+        ),
+      },
+    ],
+  },
   test: {
     globals: true,
     environment: "jsdom",

@@ -18,7 +18,13 @@ export const publicEnv = (() => {
     return {} as z.infer<typeof clientSchema>;
   }
 
-  const result = clientSchema.safeParse(import.meta.env);
+  // Pass each variable by name. Passing import.meta.env itself makes the
+  // build inline an object with every VITE_* variable present at build
+  // time, used or not.
+  const result = clientSchema.safeParse({
+    VITE_MOCK_DATA: import.meta.env.VITE_MOCK_DATA,
+    VITE_LUMI_RELEASE: import.meta.env.VITE_LUMI_RELEASE,
+  });
 
   if (!result.success) {
     console.error(

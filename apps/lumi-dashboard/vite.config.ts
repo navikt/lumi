@@ -2,7 +2,6 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
-import tsconfigPaths from "vite-tsconfig-paths";
 
 // Server-only packages and their subpaths. The client build leaves them out
 // as long as only server code uses them: server functions, middleware,
@@ -26,6 +25,11 @@ export default defineConfig(({ command, mode }) => {
 
   return {
     base,
+    resolve: {
+      // Each file gets the `paths` from its nearest tsconfig.json. For the
+      // dashboard that is ./tsconfig.json: `~/*` and the workspace packages.
+      tsconfigPaths: true,
+    },
     build: {
       // Browser telemetry uses the release SHA to resolve these maps from NAV CDN.
       sourcemap: isProductionBuild,
@@ -48,9 +52,6 @@ export default defineConfig(({ command, mode }) => {
     },
 
     plugins: [
-      tsconfigPaths({
-        projects: ["./tsconfig.json"],
-      }),
       tanstackStart({
         // Use app directory as source (non-standard but keeps our structure)
         srcDirectory: "app",

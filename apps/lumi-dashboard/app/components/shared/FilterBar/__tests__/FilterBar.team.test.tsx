@@ -1,10 +1,10 @@
-import { createMemoryHistory } from "@tanstack/history";
 import {
   QueryClient,
   QueryClientProvider,
   useQuery,
 } from "@tanstack/react-query";
 import {
+  createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
