@@ -3,6 +3,7 @@ import {
   Alert,
   BodyShort,
   Button,
+  Detail,
   Heading,
   HStack,
   VStack,
@@ -18,7 +19,10 @@ import { SegmentBreakdown } from "~/components/dashboard/SegmentBreakdown";
 import { FieldStatsSection } from "~/components/dashboard/sections/FieldStats";
 import { DeviceBreakdownSection } from "~/components/dashboard/sections/FieldStats/DeviceBreakdownSection";
 import { ComparisonStatsCards } from "~/components/dashboard/sections/FieldStats/PeriodComparison/ComparisonStatsCards";
-import { getRatingMetric } from "~/components/dashboard/sections/FieldStats/PeriodComparison/model";
+import {
+  getRatingMetric,
+  ratingTrendTitle,
+} from "~/components/dashboard/sections/FieldStats/PeriodComparison/model";
 import { StatsCards } from "~/components/dashboard/sections/StatsCards";
 import { TimelineSection } from "~/components/dashboard/sections/Timeline";
 import { UrgentUrls } from "~/components/dashboard/sections/UrgentUrls";
@@ -26,6 +30,7 @@ import { RatingChart } from "~/components/shared/Charts/RatingChart";
 import {
   RatingTrendChart,
   RatingTrendChartTable,
+  RatingTrendPartialNote,
 } from "~/components/shared/Charts/RatingTrendChart";
 import {
   TopAppsChart,
@@ -41,6 +46,7 @@ import type {
   RatingMarker,
   UpdateMarkerInput,
 } from "~/types/api";
+import { chooseInterval, INTERVAL_NOUNS } from "~/utils/timeBuckets";
 import styles from "./RatingDashboard.module.css";
 
 const DEFAULT_MARKER_COLOR = "#1C64F2";
@@ -162,13 +168,21 @@ export function RatingDashboard({
           <DashboardCard padding={{ xs: "space-12", md: "space-16" }}>
             <VStack gap="space-12">
               <HStack justify="space-between" align="center" wrap gap="space-8">
-                <Heading size="small" level="2">
-                  {primaryRating
-                    ? getRatingMetric(primaryRating).label === "Gjennomsnitt"
-                      ? "Gjennomsnittlig vurdering"
-                      : getRatingMetric(primaryRating).label
-                    : "Vurdering"}
-                </Heading>
+                <VStack gap="space-2">
+                  <Heading size="small" level="2">
+                    {primaryRating
+                      ? ratingTrendTitle(getRatingMetric(primaryRating).label)
+                      : "Vurdering"}
+                  </Heading>
+                  <Detail textColor="subtle">
+                    Per{" "}
+                    {
+                      INTERVAL_NOUNS[
+                        chooseInterval(params.fromDate, params.toDate)
+                      ].one
+                    }
+                  </Detail>
+                </VStack>
                 <Button
                   variant="secondary"
                   size="small"
@@ -183,6 +197,7 @@ export function RatingDashboard({
               <div className={styles.trendContainer}>
                 <RatingTrendChart markers={markerState.markers} />
               </div>
+              <RatingTrendPartialNote markers={markerState.markers} />
               <RatingTrendChartTable markers={markerState.markers} />
 
               <VStack gap="space-8" className={styles.markerSection}>

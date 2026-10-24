@@ -16,12 +16,21 @@ import { useQuestionTrend } from "~/hooks/useQuestionTrend";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import type { QuestionTrendBucket, QuestionTrendResponse } from "~/types/api";
+import {
+  chooseInterval,
+  describePartialBuckets,
+  formatBucketLabel,
+  formatBucketTick,
+  INTERVAL_NOUNS,
+  spansSeveralYears,
+} from "~/utils/timeBuckets";
 import { QuestionTrendChart } from "./QuestionTrendChart";
 import styles from "./QuestionTrendSection.module.css";
 import {
   fillQuestionTrendBuckets,
   formatQuestionTrendBucket,
   questionTrendChoiceValue,
+  questionTrendPeriodBuckets,
   questionTrendRatingMetric,
   questionTrendRatingValue,
 } from "./questionTrendUtils";
@@ -35,13 +44,13 @@ const SUPPORTED_FIELD_TYPES = new Set([
 function TrendTable({
   buckets,
   trend,
-  interval,
+  labelFor,
   measure,
   options,
 }: {
   buckets: QuestionTrendBucket[];
   trend: QuestionTrendResponse;
-  interval: "day" | "week" | "month";
+  labelFor: (startDate: string) => string;
   measure: "count" | "percentage";
   options: Array<{ id: string; label: string }>;
 }) {
@@ -61,7 +70,7 @@ function TrendTable({
       <Table
         size="small"
         className={styles.table}
-        aria-label="Data for utvikling over tid"
+        aria-label={`Utvikling per ${INTERVAL_NOUNS[trend.interval].one}`}
       >
         <Table.Header>
           <Table.Row>
@@ -82,7 +91,7 @@ function TrendTable({
           {buckets.map((bucket) => (
             <Table.Row key={bucket.startDate}>
               <Table.HeaderCell scope="row">
-                {formatQuestionTrendBucket(bucket.startDate, interval)}
+                {labelFor(bucket.startDate)}
               </Table.HeaderCell>
               {isRating ? (
                 <Table.DataCell
@@ -145,7 +154,10 @@ export function QuestionTrendSection({
   const trendQuery = useQuestionTrend(
     Boolean(selectedField) && !statsQuery.isPlaceholderData,
   );
-  const interval = params.trendInterval ?? "week";
+  // Without a choice of their own, viewers get the same resolution as the
+  // other time series for this period.
+  const interval =
+    params.trendInterval ?? chooseInterval(params.fromDate, params.toDate);
   const measure = params.trendMeasure ?? "percentage";
 
   useEffect(() => {
@@ -175,6 +187,45 @@ export function QuestionTrendSection({
   const buckets = trend
     ? fillQuestionTrendBuckets(trend, params.fromDate, params.toDate)
     : [];
+  // Buckets that are only partly inside the period are named by their days.
+  const inPeriod = trend
+    ? questionTrendPeriodBuckets(trend, params.fromDate, params.toDate)
+    : [];
+  const partialStarts = new Set(
+    inPeriod.filter((bucket) => bucket.partial).map((bucket) => bucket.start),
+  );
+  const partialNote = trend
+    ? describePartialBuckets(
+        buckets
+          .filter(
+            (bucket) =>
+              partialStarts.has(bucket.startDate) &&
+              !bucket.masked &&
+              (bucket.responseCount ?? 0) > 0,
+          )
+          .map((bucket) => bucket.startDate),
+        trend.interval,
+        "hul prikk",
+      )
+    : undefined;
+  const withYear = spansSeveralYears(inPeriod);
+  const labelByStart = new Map(
+    inPeriod.map((bucket) => [
+      bucket.start,
+      formatBucketLabel(bucket, trend?.interval ?? interval),
+    ]),
+  );
+  const tickByStart = new Map(
+    inPeriod.map((bucket) => [
+      bucket.start,
+      formatBucketTick(bucket, trend?.interval ?? interval, withYear),
+    ]),
+  );
+  const labelFor = (startDate: string) =>
+    labelByStart.get(startDate) ??
+    formatQuestionTrendBucket(startDate, trend?.interval ?? interval);
+  const tickFor = (startDate: string) =>
+    tickByStart.get(startDate) ?? labelFor(startDate);
 
   const content = (
     <VStack gap="space-20">
@@ -213,7 +264,8 @@ export function QuestionTrendSection({
               );
               void setParams({
                 trendField: fieldId,
-                trendInterval: fieldId ? interval : undefined,
+                // Only an interval the viewer chose is kept in the link.
+                trendInterval: fieldId ? params.trendInterval : undefined,
                 trendMeasure:
                   fieldId && field?.fieldType !== "RATING"
                     ? measure
@@ -290,11 +342,17 @@ export function QuestionTrendSection({
                 trend={trend}
                 buckets={buckets}
                 measure={measure}
+                labelFor={labelFor}
+                tickFor={tickFor}
+                isPartial={(startDate) => partialStarts.has(startDate)}
               />
+              {partialNote ? (
+                <Detail textColor="subtle">{partialNote}</Detail>
+              ) : null}
               <TrendTable
                 buckets={buckets}
                 trend={trend}
-                interval={trend.interval}
+                labelFor={labelFor}
                 measure={measure}
                 options={trend.options}
               />

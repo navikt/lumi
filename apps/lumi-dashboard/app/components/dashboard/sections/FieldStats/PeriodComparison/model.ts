@@ -62,6 +62,13 @@ export function choiceResponseCount(
   );
 }
 
+/** The heading of the rating chart, also the name of its table. */
+export function ratingTrendTitle(metricLabel: string): string {
+  return metricLabel === "Gjennomsnitt"
+    ? "Gjennomsnittlig vurdering"
+    : metricLabel;
+}
+
 export function getRatingMetric(
   field: FieldStat,
   forcedVariant?: RatingVariant,

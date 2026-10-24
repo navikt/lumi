@@ -3,6 +3,7 @@ import { useSearchParams } from "~/hooks/useSearchParams";
 import { fetchQuestionTrendServerFn } from "~/server/actions";
 import { splitChoiceParam } from "~/utils/choiceFilterUtils";
 import { splitRatingParam } from "~/utils/ratingFilterUtils";
+import { chooseInterval } from "~/utils/timeBuckets";
 
 export function useQuestionTrend(
   enabled = true,
@@ -10,7 +11,10 @@ export function useQuestionTrend(
   intervalOverride?: "day" | "week" | "month",
 ) {
   const { params } = useSearchParams();
-  const interval = intervalOverride ?? params.trendInterval ?? "week";
+  const interval =
+    intervalOverride ??
+    params.trendInterval ??
+    chooseInterval(params.fromDate, params.toDate);
   const fieldId = fieldOverride ?? params.trendField;
 
   return useQuery({

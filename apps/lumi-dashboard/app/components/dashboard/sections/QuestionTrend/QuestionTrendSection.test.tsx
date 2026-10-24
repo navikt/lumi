@@ -87,9 +87,130 @@ describe("QuestionTrendSection", () => {
 
     expect(setParams).toHaveBeenCalledWith({
       trendField: "choice-1",
-      trendInterval: "week",
+      trendInterval: undefined,
       trendMeasure: "percentage",
     });
+  });
+
+  it("keeps an interval the viewer chose when they pick another question", async () => {
+    mockUseSearchParams.mockReturnValue({
+      params: {
+        surveyId: "survey-1",
+        trendField: "choice-1",
+        trendInterval: "month",
+      },
+      setParam: vi.fn(),
+      setParams,
+      resetParams: vi.fn(),
+    } as never);
+    mockUseStats.mockReturnValue({
+      data: {
+        fieldStats: [
+          {
+            fieldId: "choice-1",
+            fieldType: "MULTI_CHOICE",
+            label: "Hva var viktig?",
+            stats: { type: "choice", distribution: {} },
+          },
+          {
+            fieldId: "choice-2",
+            fieldType: "SINGLE_CHOICE",
+            label: "Hvor ofte?",
+            stats: { type: "choice", distribution: {} },
+          },
+        ],
+      },
+      isPending: false,
+    } as never);
+    const user = userEvent.setup();
+    render(<QuestionTrendSection />);
+
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Spørsmål" }),
+      "choice-2",
+    );
+
+    expect(setParams).toHaveBeenCalledWith(
+      expect.objectContaining({
+        trendField: "choice-2",
+        trendInterval: "month",
+      }),
+    );
+  });
+
+  it.each([
+    ["2026-06-01", "Dag"],
+    ["2026-01-01", "Uke"],
+    ["2023-01-01", "Måned"],
+  ])(
+    "picks the interval for the period from %s to 30 June 2026 until the viewer chooses one",
+    (fromDate, interval) => {
+      mockUseSearchParams.mockReturnValue({
+        params: {
+          surveyId: "survey-1",
+          trendField: "choice-1",
+          fromDate,
+          toDate: "2026-06-30",
+        },
+        setParam: vi.fn(),
+        setParams,
+        resetParams: vi.fn(),
+      } as never);
+      render(<QuestionTrendSection />);
+
+      expect(screen.getByRole("radio", { name: interval })).toBeChecked();
+      expect(setParams).not.toHaveBeenCalled();
+    },
+  );
+
+  it("names the partial weeks that have answers under the chart", () => {
+    mockUseSearchParams.mockReturnValue({
+      params: {
+        surveyId: "survey-1",
+        trendField: "choice-1",
+        fromDate: "2026-01-01",
+        toDate: "2026-06-30",
+      },
+      setParam: vi.fn(),
+      setParams,
+      resetParams: vi.fn(),
+    } as never);
+    mockUseQuestionTrend.mockReturnValue({
+      data: {
+        fieldId: "choice-1",
+        fieldType: "MULTI_CHOICE",
+        label: "Hva var viktig?",
+        interval: "week",
+        privacyThreshold: 5,
+        options: [{ id: "a", label: "Alternativ A" }],
+        buckets: [
+          {
+            startDate: "2025-12-29",
+            masked: false,
+            responseCount: 6,
+            distribution: { a: { count: 3, percentage: 50 } },
+          },
+          {
+            startDate: "2026-06-29",
+            masked: false,
+            responseCount: 5,
+            distribution: { a: { count: 1, percentage: 20 } },
+          },
+        ],
+      },
+      isPending: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    } as never);
+
+    render(<QuestionTrendSection />);
+
+    expect(
+      screen.getByText(
+        "Uke 1 og uke 27 er bare delvis med i perioden og har hul prikk.",
+      ),
+    ).toBeVisible();
   });
 
   it("shows masked periods without exposing values and explains multi-choice percentages", () => {

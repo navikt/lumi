@@ -9,6 +9,7 @@ import {
 } from "recharts";
 import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import type { QuestionTrendBucket, QuestionTrendResponse } from "~/types/api";
+import { INTERVAL_NOUNS } from "~/utils/timeBuckets";
 import styles from "./QuestionTrendSection.module.css";
 import {
   questionTrendChartData,
@@ -30,19 +31,67 @@ interface QuestionTrendChartProps {
   trend: QuestionTrendResponse;
   buckets: QuestionTrendBucket[];
   measure: "count" | "percentage";
+  /** The bucket's full name, for the tooltip and the table. */
+  labelFor?: (startDate: string) => string;
+  /** The bucket's short name on the time axis. */
+  tickFor?: (startDate: string) => string;
+  /** True for a week or month that is only partly in the period. */
+  isPartial?: (startDate: string) => boolean;
+}
+
+interface DotProps {
+  cx?: number;
+  cy?: number;
+  index?: number;
+  payload?: { start: string };
+}
+
+/**
+ * A point for a week or month that is only partly in the period is hollow,
+ * like in the rating chart.
+ */
+function renderDot(color: string, isPartial: (startDate: string) => boolean) {
+  return ({ cx, cy, index, payload }: DotProps) => {
+    if (typeof cx !== "number" || typeof cy !== "number") {
+      return <g key={`empty-${index}`} />;
+    }
+    const partial = payload ? isPartial(payload.start) : false;
+    return (
+      <circle
+        key={payload?.start ?? index}
+        cx={cx}
+        cy={cy}
+        r={4}
+        fill={partial ? "var(--ax-bg-raised)" : color}
+        stroke={color}
+        strokeWidth={partial ? 2 : 0}
+      />
+    );
+  };
 }
 
 export function QuestionTrendChart({
   trend,
   buckets,
   measure,
+  labelFor,
+  tickFor,
+  isPartial = () => false,
 }: QuestionTrendChartProps) {
   const isRating = trend.fieldType === "RATING";
   const metric = questionTrendRatingMetric(trend);
-  const chartData = questionTrendChartData(trend, buckets, measure);
+  const chartData = questionTrendChartData(trend, buckets, measure, labelFor);
+  const labelByStart = new Map(
+    chartData.map((point) => [point.start, point.label]),
+  );
+  const unit = INTERVAL_NOUNS[trend.interval].one;
+  const metricName =
+    metric.label === metric.label.toUpperCase()
+      ? metric.label
+      : metric.label.toLowerCase();
   const ariaLabel = isRating
-    ? `Linjediagram for ${trend.label}, med ${metric.label.toLowerCase()} per periode. Tabellen under viser de samme tallene.`
-    : `Linjediagram for ${trend.label}, med ${measure === "count" ? "antall" : "andel"} respondenter per svaralternativ. Tabellen under viser de samme tallene.`;
+    ? `Linjediagram for ${trend.label}, med ${metricName} per ${unit}. Tabellen under viser de samme tallene.`
+    : `Linjediagram for ${trend.label}, med ${measure === "count" ? "antall" : "andel"} respondenter per svaralternativ og ${unit}. Tabellen under viser de samme tallene.`;
 
   return (
     <div className={styles.chartViewport}>
@@ -55,7 +104,14 @@ export function QuestionTrendChart({
             aria-label={ariaLabel}
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="label" tickLine={false} minTickGap={24} />
+            <XAxis
+              dataKey="start"
+              tickLine={false}
+              minTickGap={24}
+              tickFormatter={(start: string) =>
+                tickFor?.(start) ?? labelByStart.get(start) ?? start
+              }
+            />
             <YAxis
               allowDecimals={isRating}
               domain={isRating ? metric.domain : [0, "auto"]}
@@ -69,28 +125,37 @@ export function QuestionTrendChart({
               }
               width={48}
             />
-            <Tooltip />
+            <Tooltip
+              labelFormatter={(start) =>
+                labelByStart.get(String(start)) ?? String(start)
+              }
+            />
             {!isRating && <Legend />}
             {isRating ? (
               <Line
-                type="monotone"
+                type="linear"
                 dataKey="average"
                 name={metric.label}
                 stroke={SERIES_COLORS[0]}
                 strokeWidth={2}
                 connectNulls={false}
+                dot={renderDot(SERIES_COLORS[0] ?? "#0067c5", isPartial)}
                 unit={metric.unit}
               />
             ) : (
               trend.options.map((option, index) => (
                 <Line
                   key={option.id}
-                  type="monotone"
+                  type="linear"
                   dataKey={`values.${index}`}
                   name={option.label}
                   stroke={SERIES_COLORS[index % SERIES_COLORS.length]}
                   strokeWidth={2}
                   connectNulls={false}
+                  dot={renderDot(
+                    SERIES_COLORS[index % SERIES_COLORS.length] ?? "#0067c5",
+                    isPartial,
+                  )}
                   unit={measure === "percentage" ? "%" : undefined}
                 />
               ))
