@@ -1,5 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getMockFeedback } from "~/mock/mockData";
+import {
+  assertMockAnalysisBudget,
+  usesInMemoryFeedbackFilters,
+} from "~/mock/analysisBudget";
+import { getMockFeedback, mockFeedbackItems } from "~/mock/mockData";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
   type AuthContext,
@@ -99,6 +103,13 @@ export const fetchFeedbackServerFn = createServerFn({ method: "GET" })
     if (isMockMode()) {
       await mockDelay();
       assertMockTeamAccess(data.team);
+      // The task filter runs in memory here and does not lower the count.
+      if (usesInMemoryFeedbackFilters(data)) {
+        assertMockAnalysisBudget(mockFeedbackItems, {
+          ...data,
+          task: undefined,
+        });
+      }
       return getMockFeedback(toMockSearchParams(data));
     }
 

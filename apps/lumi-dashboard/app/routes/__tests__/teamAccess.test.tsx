@@ -30,6 +30,7 @@ vi.mock("~/hooks/useTeamAccessDenied", () => ({
 
 vi.mock("~/hooks/useFilterBootstrap", () => ({
   useFilterBootstrap: () => mockBootstrap,
+  useCachedFilterBootstrap: () => mockBootstrap,
 }));
 
 vi.mock("~/hooks/useStats", () => ({

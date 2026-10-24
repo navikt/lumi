@@ -30,6 +30,18 @@ export interface SurveyPeriodMetadata {
   lastSubmissionAt?: string | null;
 }
 
+/** Whole days in Oslo, both dates included. */
+export interface DateRange {
+  fromDate: string;
+  toDate: string;
+}
+
+/** The parts of the filter bootstrap that describe when surveys had answers. */
+interface SurveyMetaSource {
+  surveyMeta?: Record<string, SurveyPeriodMetadata>;
+  surveyMetaByApp?: Record<string, Record<string, SurveyPeriodMetadata>>;
+}
+
 interface TeamSubmissionPeriodOptions {
   includeArchived?: boolean;
 }
@@ -136,5 +148,56 @@ export function getTeamSubmissionPeriod(
   return {
     fromDate: first.format("YYYY-MM-DD"),
     toDate: last.format("YYYY-MM-DD"),
+  };
+}
+
+/**
+ * The selected survey's metadata. A survey ID can be used by more than one
+ * app. The selected app's own entry comes first.
+ */
+export function getSurveyPeriodMetadata(
+  bootstrap: SurveyMetaSource | undefined,
+  surveyId: string,
+  app?: string,
+): SurveyPeriodMetadata | undefined {
+  return (
+    (app ? bootstrap?.surveyMetaByApp?.[app]?.[surveyId] : undefined) ??
+    bootstrap?.surveyMeta?.[surveyId]
+  );
+}
+
+/**
+ * First and last day with answers for the selected survey, or else for the
+ * selected app or the team. Surveys hidden by the archive filter do not
+ * count, unless one of them is selected.
+ */
+export function getAnswerSpan(
+  bootstrap: SurveyMetaSource | undefined,
+  {
+    surveyId,
+    app,
+    includeArchived = false,
+  }: { surveyId?: string; app?: string; includeArchived?: boolean },
+): DateRange | undefined {
+  if (surveyId) {
+    return getSurveyPeriod(getSurveyPeriodMetadata(bootstrap, surveyId, app));
+  }
+  const surveyMeta =
+    (app ? bootstrap?.surveyMetaByApp?.[app] : undefined) ??
+    bootstrap?.surveyMeta;
+  return getTeamSubmissionPeriod(surveyMeta, { includeArchived });
+}
+
+/**
+ * Search params that show a fixed period from its first page. The preset is
+ * cleared, since it describes periods chosen in the period selector.
+ */
+export function fixedPeriodSearch(fromDate: string, toDate: string) {
+  return {
+    dateMode: "fixed" as const,
+    fromDate,
+    toDate,
+    periodPreset: undefined,
+    page: "1",
   };
 }

@@ -15,7 +15,10 @@ import {
 } from "@navikt/ds-react";
 import dayjs from "dayjs";
 import { type ReactNode, useCallback, useEffect } from "react";
-import { PeriodSelector } from "~/components/dashboard/PeriodSelector";
+import {
+  focusPeriodTrigger,
+  PeriodSelector,
+} from "~/components/dashboard/PeriodSelector";
 import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { getSurveyFeatures } from "~/config/surveyConfig";
 import { useActiveFilters } from "~/hooks/useActiveFilters";
@@ -28,8 +31,9 @@ import {
 } from "~/hooks/useTeamAccessDenied";
 import { useThemes } from "~/hooks/useThemes";
 import {
+  fixedPeriodSearch,
+  getSurveyPeriodMetadata,
   resolveDashboardPeriod,
-  type SurveyPeriodMetadata,
 } from "~/utils/dashboardPeriod";
 import { getFilterLabels } from "~/utils/filterLabels";
 import {
@@ -153,12 +157,6 @@ function FilterBarContent({
   const surveysByApp = bootstrap?.surveysByApp ?? {};
   const allTags = bootstrap?.tags ?? [];
   const showArchived = params.showArchived === "true";
-  const getSurveyPeriodMetadata = (
-    surveyId: string,
-  ): SurveyPeriodMetadata | undefined =>
-    (params.app
-      ? bootstrap?.surveyMetaByApp?.[params.app]?.[surveyId]
-      : undefined) ?? bootstrap?.surveyMeta?.[surveyId];
 
   const allAvailableSurveys = Array.from(
     new Set(Object.values(surveysByApp).flat()),
@@ -275,7 +273,7 @@ function FilterBarContent({
 
   const handleSurveyChange = (newSurveyId: string | undefined) => {
     const selectedSurveyMeta = newSurveyId
-      ? getSurveyPeriodMetadata(newSurveyId)
+      ? getSurveyPeriodMetadata(bootstrap, newSurveyId, params.app)
       : undefined;
     const period = resolveDashboardPeriod({
       dateMode: params.dateMode,
@@ -304,7 +302,7 @@ function FilterBarContent({
     !!params.surveyId &&
     isSurveyArchived(params.surveyId, bootstrap?.surveyMeta);
   const selectedSurveyMeta = params.surveyId
-    ? getSurveyPeriodMetadata(params.surveyId)
+    ? getSurveyPeriodMetadata(bootstrap, params.surveyId, params.app)
     : undefined;
   const selectedSurveyPeriod = resolveDashboardPeriod({
     dateMode: params.dateMode,
@@ -431,6 +429,15 @@ function FilterBarContent({
       page: undefined,
       size: undefined,
     });
+  };
+
+  const showFullSurveyPeriod = async () => {
+    const period = selectedSurveyPeriod.surveyPeriod;
+    if (!period) return;
+    const origin = document.activeElement;
+    await setParams(fixedPeriodSearch(period.fromDate, period.toDate));
+    // The new period removes the alert and its button.
+    window.requestAnimationFrame(() => focusPeriodTrigger(origin));
   };
 
   const isPending = isPendingBootstrap || isPendingStats;
@@ -682,14 +689,7 @@ function FilterBarContent({
                 type="button"
                 variant="tertiary"
                 size="small"
-                onClick={() =>
-                  setParams({
-                    dateMode: "fixed",
-                    fromDate: selectedSurveyPeriod.surveyPeriod?.fromDate,
-                    toDate: selectedSurveyPeriod.surveyPeriod?.toDate,
-                    page: "1",
-                  })
-                }
+                onClick={() => void showFullSurveyPeriod()}
               >
                 Vis hele svarperioden
               </Button>

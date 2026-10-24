@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getMockDiscoveryStats } from "~/mock/mockData";
+import { assertMockAnalysisBudget } from "~/mock/analysisBudget";
+import { getMockDiscoveryStats, mockFeedbackItems } from "~/mock/mockData";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
   type AuthContext,
@@ -51,6 +52,7 @@ export const fetchDiscoveryServerFn = createServerFn({ method: "GET" })
     if (isMockMode()) {
       await mockDelay();
       assertMockTeamAccess(data.team);
+      assertMockAnalysisBudget(mockFeedbackItems, data);
       return getMockDiscoveryStats(toMockSearchParams(data));
     }
 

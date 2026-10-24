@@ -20,6 +20,7 @@ vi.mock("~/hooks/useFeedback", () => ({
 
 vi.mock("~/hooks/useFilterBootstrap", () => ({
   useFilterBootstrap: () => mockBootstrap,
+  useCachedFilterBootstrap: () => mockBootstrap,
 }));
 
 describe("FeedbackTable when the team cannot be read", () => {

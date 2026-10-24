@@ -1,6 +1,10 @@
 import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import ExcelJS from "exceljs";
 import {
+  assertMockAnalysisBudget,
+  usesInMemoryFeedbackFilters,
+} from "~/mock/analysisBudget";
+import {
   filterMockArchiveVisibility,
   mockFeedbackItems,
 } from "~/mock/mockData";
@@ -238,6 +242,13 @@ export const exportServerFn = createServerFn({ method: "POST" })
     if (isMockMode()) {
       await mockDelay();
       assertMockTeamAccess(data.team);
+      // The task filter runs in memory here and does not lower the count.
+      if (usesInMemoryFeedbackFilters(data)) {
+        assertMockAnalysisBudget(mockFeedbackItems, {
+          ...data,
+          task: undefined,
+        });
+      }
 
       const matching = applyFeedbackFilters(
         filterMockArchiveVisibility(

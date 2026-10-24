@@ -3,6 +3,7 @@ import { DashboardCard, DashboardGrid } from "~/components/dashboard";
 import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { useContextTags } from "~/hooks/useContextTags";
 import type { MetadataValueWithCount } from "~/types/api";
+import { describeAnalysisBudget } from "~/utils/analysisBudget";
 import { formatMetadataLabel } from "~/utils/segmentUtils";
 import styles from "./SegmentBreakdown.module.css";
 
@@ -37,6 +38,10 @@ export function SegmentBreakdown({
   return (
     <DataFetchBoundary
       title="Kunne ikke hente segmentering"
+      // Only Segmentering for a task reads the answers into memory.
+      analysisBudgetDescription={describeAnalysisBudget(
+        "Segmenteringen for den valgte oppgaven",
+      )}
       queries={[contextTagsQuery]}
     >
       <SegmentBreakdownContent

@@ -167,6 +167,16 @@ Med **Få svar** viser dashboardet først de fem siste svarene under **Svarene s
 
 Resten av dashboardet viser tall uansett hvor få svar det er, også når det bare er ett. Med ti svar flytter ett enkelt svar en andel med ti prosentpoeng. Sjekk derfor **Antall svar** eller **Tilbakemeldinger** før dere tolker en andel eller en endring. I oppgavekvadranten havner alle oppgaver med under 50 svar til venstre for den stiplede linjen.
 
+## Når perioden har for mange svar {#for-mange-svar}
+
+Har perioden mer enn 10 000 svar, står varselet **Perioden har for mange svar** der analysen skulle vært. Det gjelder analysene i **Top Tasks**, **Discovery** og **Task Priority**, med **Det som hindrer brukerne** i Top Tasks. Med en valgt oppgave gjelder det også **Segmentering**. Lumi regner dem ut fra hvert enkelt svar. Grensen er lavere når svarene er store, for eksempel når spørsmålene har mange svaralternativer.
+
+Varselet har en knapp med datoene for en kortere periode, for eksempel **Vis perioden 01.06.2026–30.06.2026**. Knappen velger de siste 30 dagene av den delen av perioden som har svar. Den delen begynner tidligst den dagen surveyen fikk sitt første svar, og slutter senest den dagen surveyen fikk sitt siste svar. Uten en valgt survey gjelder svarene i appen eller i teamet. Er delen med svar 30 dager eller kortere, velger knappen de siste sju dagene. Er den sju dager eller kortere, får varselet ingen knapp for perioden. På **Dashboard** står det da at et [filter på enhet](/dashboard/filtrering#enhet) kan hjelpe, fordi da teller bare svarene fra den enheten. Er filteret på enhet allerede valgt, står det bare hva som ikke kan regnes ut.
+
+I **Discovery** og **Task Priority** vises **Antall svar over tid**, **Enheter** og **Segmentering** selv om analysen mangler. I **Top Tasks** vises **Enheter** og **Segmentering**. Med en valgt oppgave teller analysen bare svarene på oppgaven, mens **Segmentering** teller alle svarene i perioden. Da kan **Segmentering** vise varselet selv om analysen vises. Med en valgt oppgave venter **Segmentering** på analysen. Får begge varselet, står det bare ett.
+
+Grensen gjelder også **Tilbakemeldinger** og **Eksporter** når dere filtrerer på oppgave, tema eller uttrykk. Lumi bruker de filtrene etter at svarene i perioden er hentet. Varselet har da også en knapp som fjerner filtrene på oppgave, tema og uttrykk, for eksempel **Fjern filteret på oppgave** eller **Fjern filtrene på oppgave og tema**.
+
 ## Les og slett enkeltsvar {#tilbakemeldinger}
 
 Under **Tilbakemeldinger** i menyen leser dere svarene ett og ett. Filtrene fra **Dashboard** følger med. Tabellen har kolonnene **Dato**, **Tilbakemelding** og **App** og viser 20 svar per side. På mobil vises svarene som kort, og **Vis mer** åpner hele svaret.

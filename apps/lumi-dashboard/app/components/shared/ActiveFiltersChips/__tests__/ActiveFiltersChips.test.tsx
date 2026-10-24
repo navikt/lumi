@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -324,6 +324,15 @@ describe("ActiveFiltersChips", () => {
       lowRating: undefined,
       page: "1",
     });
+  });
+
+  it("names the remove button and hides its icon from screen readers", () => {
+    renderActiveFiltersChips({ lowRating: "true" });
+
+    const remove = screen.getByRole("button", {
+      name: "Fjern filter Vis kun: Lav score",
+    });
+    expect(within(remove).queryByRole("img")).not.toBeInTheDocument();
   });
 
   it("shows the text answer filter set by phrase links and removes it", async () => {

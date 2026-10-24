@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { analysisBudgetError } from "~/mock/analysisBudget";
+import { FILTER_BUDGET_DESCRIPTION } from "~/utils/analysisBudget";
 import { FeedbackTable } from "../index";
 
 const {
@@ -59,6 +61,7 @@ vi.mock("~/hooks/useFeedback", () => ({
 
 vi.mock("~/hooks/useFilterBootstrap", () => ({
   useFilterBootstrap: () => mockBootstrap,
+  useCachedFilterBootstrap: () => mockBootstrap,
 }));
 
 vi.mock("~/hooks/useDeleteFeedback", () => ({
@@ -170,6 +173,11 @@ describe("FeedbackTable empty states", () => {
     mockFeedback.isFetching = false;
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.innerHTML = "";
+  });
+
   it("shows an explicit error instead of an empty state and can retry", () => {
     mockBootstrap.data = bootstrapWithData();
     mockFeedback.error = new Error("API unavailable");
@@ -189,6 +197,29 @@ describe("FeedbackTable empty states", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Prøv igjen" }));
     expect(mockFeedback.refetch).toHaveBeenCalledOnce();
+  });
+
+  it("offers to remove the task filter when the period has too many answers for it", () => {
+    mockBootstrap.data = bootstrapWithData();
+    mockParams.task = "soke";
+    mockFeedback.error = analysisBudgetError();
+    mockFeedback.isError = true;
+
+    render(<FeedbackTable />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      `${FILTER_BUDGET_DESCRIPTION} Velg en kortere periode, eller fjern filteret på oppgave.`,
+    );
+    expect(
+      screen.queryByRole("button", { name: "Prøv igjen" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Fjern filteret på oppgave" }),
+    );
+
+    expect(mockSetParams).toHaveBeenCalledTimes(1);
+    expect(mockSetParams.mock.calls[0][0]).toHaveProperty("task", undefined);
   });
 
   it("shows onboarding guidance when the team has no data at all", () => {
@@ -224,7 +255,7 @@ describe("FeedbackTable empty states", () => {
     expect(mockResetParams).toHaveBeenCalled();
   });
 
-  it("shows the period and offers the full survey period when no filters are active", () => {
+  it("shows the period and offers the full survey period when no filters are active", async () => {
     mockBootstrap.data = bootstrapWithData();
 
     render(<FeedbackTable />);
@@ -233,6 +264,17 @@ describe("FeedbackTable empty states", () => {
       screen.getByText(/Ingen tilbakemeldinger i perioden/),
     ).toBeInTheDocument();
     expect(screen.getByText(/24\.07\.2026.*22\.08\.2026/)).toBeInTheDocument();
+
+    const periodButton = document.createElement("button");
+    periodButton.setAttribute("data-period-trigger", "");
+    vi.spyOn(periodButton, "getClientRects").mockReturnValue([
+      new DOMRect(0, 0, 100, 32),
+    ] as unknown as DOMRectList);
+    document.body.append(periodButton);
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      callback(0);
+      return 0;
+    });
 
     fireEvent.click(
       screen.getByRole("button", { name: /vis hele svarperioden/i }),
@@ -245,6 +287,11 @@ describe("FeedbackTable empty states", () => {
         page: "1",
       }),
     );
+    expect(mockSetParams.mock.calls[0][0]).toHaveProperty(
+      "periodPreset",
+      undefined,
+    );
+    await waitFor(() => expect(periodButton).toHaveFocus());
   });
 
   it("explains a fixed period miss instead of calling the period a filter", () => {
