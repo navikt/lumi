@@ -82,13 +82,6 @@ test("explains what the survey preview address is missing", async ({
 // the error boundary of the route catches it.
 const CAUGHT_ROUTE_ERROR = /"path": \[\s*"team"\s*\]/;
 
-// TanStack Router throws the route's error again in the browser. Because
-// ThemeProvider changes the theme right after hydration, before the route is
-// hydrated, React reports that as a recovered error (#520). Remove this when
-// the theme no longer changes a context above the routes after hydration.
-const RECOVERED_ROUTE_ERROR =
-  /There was an error during concurrent rendering|Minified React error #520;/;
-
 test("keeps the page frame when a route below the root fails", async ({
   page,
 }) => {
@@ -121,13 +114,5 @@ test("keeps the page frame when a route below the root fails", async ({
   await expectPageFrame(page);
 
   await page.waitForLoadState("networkidle");
-  expect(
-    errors.filter((error) => RECOVERED_ROUTE_ERROR.test(error)).length,
-  ).toBeLessThanOrEqual(1);
-  expect(
-    errors.filter(
-      (error) =>
-        !CAUGHT_ROUTE_ERROR.test(error) && !RECOVERED_ROUTE_ERROR.test(error),
-    ),
-  ).toEqual([]);
+  expect(errors.filter((error) => !CAUGHT_ROUTE_ERROR.test(error))).toEqual([]);
 });
