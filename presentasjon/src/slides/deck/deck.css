@@ -1,0 +1,200 @@
+/*
+ * The map slides: tittel and svarets-vei. Shared primitives live in
+ * slides.css and map/map.css.
+ *
+ * Motion runs only with `prefers-reduced-motion: no-preference` and on the
+ * night map. Without it, and on paper, every step shows its end state at once.
+ */
+
+/* While it waits, an element is there but not seen. */
+@keyframes kart-wait {
+  from,
+  to {
+    visibility: hidden;
+  }
+}
+
+@keyframes kart-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* tittel: «Hvor bor / svaret?», and the dot of the question mark is the answer */
+
+.tittel__kicker,
+.tittel__title,
+.tittel__byline {
+  position: absolute;
+  left: var(--deck-space-page);
+  margin: 0;
+}
+
+.tittel__kicker {
+  top: 60px;
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.2;
+}
+
+/*
+ * The art director's size for the opening, between hero and monument. The
+ * dot in Tittel.tsx is measured on this layout.
+ */
+.tittel__title {
+  top: 168px;
+  font-family: var(--deck-font-display);
+  font-size: 310px;
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-monument);
+  line-height: 0.9;
+}
+
+.tittel__byline {
+  top: 984px;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-label);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* The line keeps no transition of its own: it draws, or it is there. */
+.map .tittel__line.map-line--draw {
+  transition: none;
+}
+
+/*
+ * Click 1: the line draws in from the left edge (1 s), and the dot lights
+ * when the line reaches it. Until then the answer waits, hidden, over the
+ * empty station.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .tittel__line[data-revealed] {
+    animation: kart-draw 1000ms var(--deck-easing-travel) backwards;
+  }
+
+  :root:not([data-stil="papir"]) .tittel .map-answer-flash[data-revealed] {
+    animation: kart-wait 950ms step-end;
+  }
+
+  :root:not([data-stil="papir"])
+    .tittel
+    .map-answer-flash[data-revealed]
+    .map-answer {
+    animation-delay: 950ms;
+  }
+
+  :root:not([data-stil="papir"])
+    .tittel
+    .map-answer-flash[data-revealed]
+    .map-answer__ring {
+    animation-delay: 1070ms;
+  }
+}
+
+/* svarets-vei: the line from edge to edge, and the answer rides it */
+
+.kart-vei__title {
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-hero);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-monument);
+  line-height: 1;
+}
+
+/* The ride is an animation. Without motion the answer is simply there. */
+.map .kart-vei__answer {
+  transition: none;
+}
+
+.map .kart-vei__answer--rides {
+  transform: translateX(calc(var(--kart-steg) * 3));
+}
+
+/* The lit line behind the answer, and the stations it has passed. */
+.map .kart-vei__lit.map-line--draw {
+  transition: none;
+}
+
+/*
+ * The train: glide 450 ms, rest 250, glide 450, rest 250, glide 450. The
+ * answer stands at each station for a moment, also on a slow stream. The
+ * line lights behind it, and each ring lights while the answer covers it.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .map .kart-vei__answer--rides {
+    animation: kart-ride 1850ms both;
+  }
+
+  :root:not([data-stil="papir"]) .kart-vei__lit[data-revealed] {
+    animation: kart-lit 1850ms both;
+  }
+
+  :root:not([data-stil="papir"]) .kart-vei__ring[data-revealed] {
+    transition-duration: 150ms;
+    transition-delay: var(--kart-ankomst);
+  }
+}
+
+@keyframes kart-ride {
+  0% {
+    transform: translateX(0);
+    animation-timing-function: var(--deck-easing-travel);
+  }
+
+  24.324% {
+    transform: translateX(var(--kart-steg));
+  }
+
+  37.838% {
+    transform: translateX(var(--kart-steg));
+    animation-timing-function: var(--deck-easing-travel);
+  }
+
+  62.162% {
+    transform: translateX(calc(var(--kart-steg) * 2));
+  }
+
+  75.676% {
+    transform: translateX(calc(var(--kart-steg) * 2));
+    animation-timing-function: var(--deck-easing-travel);
+  }
+
+  100% {
+    transform: translateX(calc(var(--kart-steg) * 3));
+  }
+}
+
+@keyframes kart-lit {
+  0% {
+    stroke-dashoffset: 1;
+    animation-timing-function: var(--deck-easing-travel);
+  }
+
+  24.324% {
+    stroke-dashoffset: 0.6667;
+  }
+
+  37.838% {
+    stroke-dashoffset: 0.6667;
+    animation-timing-function: var(--deck-easing-travel);
+  }
+
+  62.162% {
+    stroke-dashoffset: 0.3333;
+  }
+
+  75.676% {
+    stroke-dashoffset: 0.3333;
+    animation-timing-function: var(--deck-easing-travel);
+  }
+
+  100% {
+    stroke-dashoffset: 0;
+  }
+}

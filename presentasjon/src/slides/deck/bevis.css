@@ -1,0 +1,420 @@
+/*
+ * The question and the evidence: verktoy-som-finnes and sporsmalet (the
+ * question from Frontend forum), ulike-behov, tallet, oppfolgingsplanen
+ * and brukes-videre.
+ */
+
+/*
+ * Every build step on these slides is a still at once: without motion and
+ * on paper a step simply appears. Each slide's entrance runs only on the
+ * night stage, under prefers-reduced-motion: no-preference.
+ */
+.verktoy [data-from],
+.eksport [data-from],
+.tallet__period[data-from] {
+  transition: none;
+}
+
+.tallet .map [data-from],
+.opp .map [data-from] {
+  transition: none;
+}
+
+/*
+ * The question and nothing else. A monument: the word the answer turns on,
+ * «finnes?», in black at 360 px, the rest small above it. The word ends
+ * above y 800, clear of the Teams corner.
+ */
+
+.forum-quote {
+  justify-content: center;
+}
+
+/* A little above the middle, where the eye lands. */
+.forum-quote__text {
+  margin: 0 0 40px;
+  font-family: var(--deck-font-display);
+}
+
+.forum-quote__lead {
+  display: block;
+  font-size: var(--deck-size-heading);
+  font-weight: var(--deck-weight-strong);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1.15;
+}
+
+/* The f sits on the margin like the line above. */
+.forum-quote__word {
+  display: block;
+  margin-top: 4px;
+  margin-left: -0.02em;
+  font-size: var(--deck-size-monument);
+  font-weight: var(--deck-weight-black);
+  letter-spacing: var(--deck-tracking-monument);
+  line-height: 0.92;
+}
+
+/* tallet: the number alone, then the answers as dots */
+
+/*
+ * On step 0 the number stands alone in the middle at about 300 px. On
+ * click 1 it travels to the top margin at hero size, and the period and
+ * the dots come. The glyphs sit about 0.1 em above the middle of the line
+ * box, so the box goes a little below the middle of the stage.
+ */
+.tallet__number {
+  position: absolute;
+  top: 90px;
+  left: var(--deck-space-page);
+  width: max-content;
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-hero);
+  font-weight: var(--deck-weight-black);
+  font-variant-numeric: proportional-nums;
+  letter-spacing: var(--deck-tracking-monument);
+  line-height: 0.84;
+  transform-origin: 50% 50%;
+}
+
+.tallet--alone .tallet__number {
+  transform: translate(
+      calc(950px - var(--deck-space-page) - 50%),
+      calc(552px - 90px - 50%)
+    )
+    scale(1.36);
+}
+
+.tallet__period {
+  position: absolute;
+  top: 300px;
+  left: var(--deck-space-page);
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-label);
+  font-weight: 600;
+}
+
+/*
+ * One dot is a hundred answers: a small answer disc with a 2 px edge. The
+ * glow sits on the group and is weaker than on a single answer, so 311
+ * dots cost one filter and do not melt into one block on a stream.
+ */
+.map .tallet__dot {
+  stroke-width: 2px;
+  filter: none;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: none;
+}
+
+:root[data-stil="natt"] .tallet__glow {
+  filter: drop-shadow(
+    0 0 12px color-mix(in srgb, var(--map-answer) 40%, transparent)
+  );
+}
+
+/*
+ * Click 1: the number travels, the unit lights alone, then the field fills
+ * in counting order, about 34 ms a column. Click 2: the eleven in 300 ms.
+ * Done in under 2.2 s.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .tallet[data-motion] .tallet__number {
+    transition: transform 560ms var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"])
+    .tallet[data-motion]
+    .tallet__period[data-revealed] {
+    animation: tallet-fade 400ms var(--deck-easing) 420ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .tallet[data-motion]
+    .tallet__unit[data-revealed]
+    .tallet__dot {
+    animation: tallet-unit 300ms var(--deck-easing) 380ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .tallet[data-motion]
+    .tallet__unit-label[data-revealed] {
+    animation: tallet-fade 300ms var(--deck-easing) 380ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .tallet[data-motion]
+    .tallet__labels[data-revealed] {
+    animation: tallet-fade 400ms var(--deck-easing) 700ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .tallet[data-motion]
+    .tallet__field[data-revealed]
+    .tallet__dot {
+    animation: tallet-dot 240ms var(--deck-easing) backwards;
+    animation-delay: calc(760ms + var(--n) * 3.4ms + var(--block) * 80ms);
+  }
+
+  :root:not([data-stil="papir"])
+    .tallet[data-motion]
+    .tallet__modia-labels[data-revealed] {
+    animation: tallet-fade 300ms var(--deck-easing) backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .tallet[data-motion]
+    .tallet__modia[data-revealed]
+    .tallet__dot {
+    animation: tallet-dot 240ms var(--deck-easing) backwards;
+    animation-delay: calc(var(--n) * 27ms);
+  }
+}
+
+@keyframes tallet-unit {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+
+  55% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes tallet-dot {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+
+  60% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes tallet-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* oppfolgingsplanen: the old and the new plan on one axis */
+
+/*
+ * Weight tells the story: the old number thin and muted, the new one
+ * black. The rings are shares, not answers, so they stay ink: dim for the
+ * old plan, bright for the new.
+ */
+.map .opp__number {
+  letter-spacing: var(--deck-tracking-display);
+}
+
+/* The gap is drawn from the old ring to the new one, so hide it until then. */
+.map .opp__after:not([data-revealed]) .opp__gap.map-line--draw {
+  visibility: hidden;
+}
+
+.map .opp__ring {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/*
+ * Click 1: both gaps open at once and end together, the new rings land,
+ * and the new numbers come. Done in under 1 s.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"])
+    .opp[data-motion]
+    .map
+    .opp__gap.map-line--draw {
+    transition: stroke-dashoffset calc(560ms - var(--row) * 200ms)
+      var(--deck-easing-travel) calc(var(--row) * 200ms);
+  }
+
+  :root:not([data-stil="papir"])
+    .opp[data-motion]
+    .opp__after[data-revealed]
+    .opp__ring {
+    animation: opp-ring 260ms var(--deck-easing) 480ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .opp[data-motion]
+    .opp__after[data-revealed]
+    .opp__number--after {
+    animation: opp-fade 320ms var(--deck-easing) 540ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .opp[data-motion]
+    .opp__legend-after[data-revealed] {
+    animation: opp-fade 320ms var(--deck-easing) 620ms backwards;
+  }
+}
+
+@keyframes opp-ring {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes opp-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* ulike-behov: three tools on a board, with hairlines and no boxes */
+
+.verktoy__title {
+  position: absolute;
+  top: 78px;
+  left: var(--deck-space-page);
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-heading);
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+/*
+ * Three rows of 196 px between hairlines, names at 112 and facts at 1000.
+ * The last hairline stays above y 800, clear of the Teams corner.
+ */
+.verktoy__rows {
+  position: absolute;
+  top: 196px;
+  right: var(--deck-space-page);
+  left: var(--deck-space-page);
+  margin: 0;
+  padding: 0;
+  border-bottom: 4px solid var(--map-zone-edge);
+  list-style: none;
+}
+
+.verktoy__row {
+  display: grid;
+  grid-template-columns: 888px 1fr;
+  align-items: center;
+  box-sizing: border-box;
+  height: 196px;
+  border-top: 4px solid var(--map-zone-edge);
+}
+
+/* «Eksterne verktøy» has to fit the column, so the names are titles, not monuments. */
+.verktoy__name {
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-title);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1;
+}
+
+.verktoy__facts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.verktoy__how {
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.verktoy__where {
+  color: var(--deck-muted);
+  font-size: var(--deck-size-body);
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+/* Lumi's limit decides for the open pages on nav.no, so it is not grey. */
+.verktoy__where--limit {
+  color: var(--deck-fg);
+  font-weight: var(--deck-weight-display);
+}
+
+.verktoy__choice {
+  position: absolute;
+  top: 836px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-size: 56px;
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1.12;
+}
+
+/* brukes-videre: the export formats as the monument, a stripe under them */
+
+.eksport__title {
+  position: absolute;
+  top: 78px;
+  left: var(--deck-space-page);
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-heading);
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+.eksport__formats {
+  position: absolute;
+  top: 196px;
+  left: var(--deck-space-page);
+  margin: 0 0 0 -0.03em;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-hero);
+  font-weight: var(--deck-weight-black);
+  letter-spacing: var(--deck-tracking-monument);
+  line-height: 0.92;
+}
+
+.eksport__where {
+  position: absolute;
+  top: 624px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-strong);
+}
+
+/* ulike-behov and brukes-videre: the reveal fades on the night stage only. */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .verktoy [data-from],
+  :root:not([data-stil="papir"]) .eksport [data-from] {
+    transition:
+      opacity var(--deck-duration-reveal) var(--deck-easing),
+      visibility var(--deck-duration-reveal);
+  }
+}

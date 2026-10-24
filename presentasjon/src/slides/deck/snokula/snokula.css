@@ -1,0 +1,845 @@
+/*
+ * Snøkula: Nav is the globe, and outside the glass is the weather. Drawn in
+ * the illustration panel's fifth round. Two slides share the scene in
+ * scene.svg: inne-i-nav shows the whole globe, and fagsystemene goes in
+ * close to the small globe inside it, where the case worker sits.
+ *
+ * The scene keeps its night palette in both styles. Gold is the answer
+ * only. The steps come from the deck's `data-from`. The entrances, the
+ * globe that shakes and the camera that goes in, run on `data-entre`: set
+ * when the slide is entered at its first step, so going back never replays
+ * them. Without motion, and on paper, every step shows its end state.
+ */
+
+.snokula {
+  --bakgrunn: #0b1b29;
+  --tekst: #eaf0f5;
+  --dempet: #b8c6d2;
+  --blekk: #dce6ee;
+  --nais: #12384f;
+  --sonekant: #4f7690;
+  --dempet-linje: #8ea2b4;
+  --gull: #f2c24f;
+  --gull-kant: #b8862a;
+  --vindu: #d3dce4;
+  /* Three tones of fog and the small globe inside: the only new colours. */
+  --taake-1: #1c3245;
+  --taake-2: #263f54;
+  --taake-3: #3a566c;
+  --mini-inne: #1b4a66;
+  --mork-vindu: #1d3a50;
+  --hull: #050c13;
+  --gull-glod: drop-shadow(0 0 22px rgb(242 194 79 / 55%))
+    drop-shadow(0 0 70px rgb(242 194 79 / 22%));
+  --gull-flamme: drop-shadow(0 0 40px rgb(242 194 79 / 95%))
+    drop-shadow(0 0 140px rgb(242 194 79 / 55%));
+  --lett: var(--deck-easing);
+  --reise: var(--deck-easing-travel);
+
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--bakgrunn);
+  color: var(--tekst);
+  color-scheme: dark;
+}
+
+.snokula__scene {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+}
+
+.snokula text {
+  font-family: var(--deck-font-body);
+}
+
+.snokula__tittel {
+  position: absolute;
+  top: 56px;
+  left: var(--deck-space-page);
+  margin: 0;
+  color: var(--tekst);
+  font-family: var(--deck-font-display);
+  font-size: 84px;
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1.04;
+  white-space: nowrap;
+}
+
+/*
+ * What the fagsystem slide's claim depends on, under the title. It sits on
+ * the inside of the globe, and its own patch of it keeps the snow off the
+ * words.
+ */
+.snokula__merk {
+  position: absolute;
+  top: 248px;
+  left: calc(var(--deck-space-page) - 16px);
+  margin: 0;
+  padding: 6px 16px 10px;
+  border-radius: 999px;
+  background: var(--nais);
+  color: var(--dempet);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* The storm */
+.snokula .regn path {
+  fill: none;
+  stroke: var(--sonekant);
+  stroke-width: 7px;
+  stroke-linecap: round;
+}
+
+.snokula .lyn {
+  fill: var(--blekk);
+}
+
+.snokula .vind path {
+  fill: none;
+  stroke: var(--sonekant);
+  stroke-width: 10px;
+  stroke-linecap: round;
+}
+
+/* The fog and the sign */
+.snokula .taake-1 {
+  fill: var(--taake-1);
+}
+
+.snokula .taake-2 {
+  fill: var(--taake-2);
+}
+
+.snokula .taake-foran rect {
+  fill: var(--taake-3);
+  opacity: 0.74;
+}
+
+.snokula .skilt__stolpe {
+  fill: var(--dempet-linje);
+}
+
+.snokula .skilt__brett {
+  fill: var(--blekk);
+}
+
+.snokula .maltekst {
+  fill: var(--bakgrunn);
+}
+
+/* The globe */
+.snokula .kula {
+  transform-box: view-box;
+  transform-origin: 800px 1100px;
+}
+
+.snokula .kula__inne {
+  fill: var(--nais);
+}
+
+.snokula .glass {
+  fill: none;
+  stroke: var(--blekk);
+  stroke-width: 12px;
+}
+
+.snokula .glass--mini {
+  stroke-width: 8px;
+}
+
+.snokula .glans {
+  fill: none;
+  stroke: var(--tekst);
+  stroke-width: 16px;
+  stroke-linecap: round;
+}
+
+.snokula .glans--svak {
+  stroke-width: 10px;
+  opacity: 0.55;
+}
+
+.snokula .glans--mini {
+  stroke-width: 9px;
+}
+
+.snokula .sokkel__krage {
+  fill: var(--dempet-linje);
+}
+
+.snokula .sokkel {
+  fill: var(--sonekant);
+}
+
+.snokula .sokkel-tekst {
+  fill: var(--tekst);
+}
+
+.snokula .snoe-bakke {
+  fill: var(--blekk);
+}
+
+.snokula .snoe > g {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.snokula .flak {
+  fill: none;
+  stroke: var(--blekk);
+  stroke-width: 5px;
+  stroke-linecap: round;
+}
+
+.snokula .prikk {
+  fill: var(--blekk);
+}
+
+.snokula .tre,
+.snokula .hus-kropp,
+.snokula .mini__gulv,
+.snokula .mini__skjerm-kant,
+.snokula .figur,
+.snokula .dor-flate {
+  fill: var(--bakgrunn);
+}
+
+.snokula .silo__topp,
+.snokula .vindu-mork,
+.snokula .dor {
+  fill: var(--mork-vindu);
+}
+
+.snokula .silo__vindu {
+  fill: var(--nais);
+  stroke: var(--blekk);
+  stroke-width: 6px;
+}
+
+.snokula .maling {
+  fill: var(--tekst);
+}
+
+.snokula .vindu {
+  fill: var(--vindu);
+}
+
+.snokula .mini__inne {
+  fill: var(--mini-inne);
+}
+
+.snokula .figur-arm {
+  fill: none;
+  stroke: var(--bakgrunn);
+  stroke-width: 9px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.snokula .kopp-hank {
+  fill: none;
+  stroke: var(--bakgrunn);
+  stroke-width: 3px;
+}
+
+.snokula .dor-karm,
+.snokula .dor-knott {
+  fill: var(--blekk);
+}
+
+/* The tube */
+.snokula .ror__vegg {
+  fill: var(--bakgrunn);
+  stroke: var(--blekk);
+  stroke-width: 7px;
+}
+
+.snokula .ror__munning {
+  fill: var(--hull);
+  stroke: var(--blekk);
+  stroke-width: 5px;
+}
+
+.snokula .ror__krage {
+  fill: var(--blekk);
+}
+
+.snokula .knekk path {
+  fill: none;
+  stroke: var(--blekk);
+  stroke-width: 6px;
+  stroke-linecap: round;
+}
+
+/* The script */
+.snokula .skript__boks {
+  fill: var(--vindu);
+  stroke: var(--bakgrunn);
+  stroke-width: 4px;
+}
+
+.snokula .skript__tekst {
+  fill: var(--bakgrunn);
+}
+
+.snokula .skript__reiser {
+  visibility: hidden;
+  offset-rotate: 0deg;
+}
+
+/* The answer */
+.snokula .gull {
+  fill: var(--gull);
+  stroke: var(--gull-kant);
+  stroke-width: 8px;
+}
+
+.snokula .svar .gull {
+  filter: var(--gull-glod);
+}
+
+.snokula .oye {
+  fill: var(--bakgrunn);
+}
+
+.snokula .paraply__duk {
+  fill: var(--blekk);
+}
+
+.snokula .paraply__ribbe {
+  fill: none;
+  stroke: var(--bakgrunn);
+  stroke-width: 3px;
+  stroke-linecap: round;
+}
+
+.snokula .paraply__skaft {
+  fill: none;
+  stroke: var(--blekk);
+  stroke-width: 5px;
+  stroke-linecap: round;
+}
+
+/* What travels draws itself: no fade of its own. */
+.snokula .skript[data-from],
+.snokula .reise[data-from] {
+  transition: none;
+}
+
+.snokula .spor {
+  fill: none;
+  stroke: var(--dempet);
+  stroke-width: 8px;
+  stroke-linecap: round;
+  stroke-dasharray: 0 22;
+}
+
+.snokula .spor--liten {
+  stroke-width: 5px;
+  stroke-dasharray: 0 14;
+}
+
+/* A mask: white is what shows. */
+.snokula .spor-maske {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 60px;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+.snokula .reiser {
+  visibility: hidden;
+  offset-rotate: 0deg;
+}
+
+.snokula .landet__ring {
+  fill: none;
+  stroke: var(--gull);
+  stroke-width: 4px;
+  opacity: 0;
+}
+
+.snokula .landet__flamme {
+  opacity: 0;
+  stroke: none;
+  filter: var(--gull-flamme);
+}
+
+.snokula .landet > * {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Out in the fog the answer is still there, but not seen clearly. */
+.snokula .reise--taake .landet {
+  opacity: 0.85;
+}
+
+.snokula .reise--taake .landet .gull {
+  filter: none;
+}
+
+/* Labels */
+.snokula .etikett {
+  fill: var(--tekst);
+}
+
+.snokula .etikett--snoe {
+  fill: var(--bakgrunn);
+}
+
+/* The camera: the fagsystem slide is the same world, closer. */
+.snokula .kamera {
+  transform-origin: 0 0;
+}
+
+.snokula[data-scene="2"] .kamera {
+  transform: translate(-716px, -674px) scale(1.6);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Entering the globe: it shakes, and the snow swirls and settles. */
+  :root:not([data-stil="papir"]) .snokula[data-scene="1"][data-entre] .kula {
+    animation: snokula-rist 900ms var(--lett) 120ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .snokula[data-scene="1"][data-entre]
+    .snoe[data-revealed]
+    > g {
+    animation: snokula-snoe-virvel 1500ms var(--reise) calc(var(--d) + 240ms)
+      backwards;
+  }
+
+  /* Entering the fagsystems: the camera goes in, the small globe drops in. */
+  :root:not([data-stil="papir"]) .snokula[data-scene="2"][data-entre] .kamera {
+    animation: snokula-zoom-inn 1700ms var(--reise) backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .snokula[data-scene="2"][data-entre]
+    .mini[data-revealed] {
+    animation: snokula-mini-ned 900ms var(--reise) 700ms backwards;
+  }
+
+  /* What is named close up comes when the camera has landed. */
+  :root:not([data-stil="papir"])
+    .snokula[data-scene="2"][data-entre]
+    .etikett--sent,
+  :root:not([data-stil="papir"])
+    .snokula[data-scene="2"][data-entre]
+    .snokula__tittel,
+  :root:not([data-stil="papir"])
+    .snokula[data-scene="2"][data-entre]
+    .snokula__merk {
+    animation: snokula-fram 450ms var(--lett) 1450ms backwards;
+  }
+
+  /* The claim that takes over the title. */
+  :root:not([data-stil="papir"]) .snokula__tittel--ny {
+    animation: snokula-fram 450ms var(--lett) backwards;
+  }
+
+  /* The tube is pushed out through the glass, and the glass cracks round it. */
+  :root:not([data-stil="papir"]) .snokula .ror[data-revealed] .ror__kropp {
+    animation: snokula-ror-ut 520ms var(--reise) var(--ror-start) backwards;
+  }
+
+  :root:not([data-stil="papir"]) .snokula .ror[data-revealed] .ror__krage {
+    animation: snokula-vent 380ms step-end;
+  }
+
+  :root:not([data-stil="papir"]) .snokula .ror[data-revealed] .knekk {
+    animation: snokula-knekk 260ms var(--lett) var(--knekk) backwards;
+  }
+
+  /* The script slides in and stays in the app. */
+  :root:not([data-stil="papir"])
+    .snokula
+    .skript[data-revealed]
+    .skript__reiser {
+    animation: snokula-skript-inn var(--tid) var(--reise) var(--start);
+  }
+
+  :root:not([data-stil="papir"]) .snokula .skript[data-revealed] .skript__fram {
+    animation: snokula-vent var(--ankomst) step-end;
+  }
+
+  /* The answer travels with its trail behind it, and lands with a glow. */
+  :root:not([data-stil="papir"]) .snokula .reise[data-revealed] .spor-maske {
+    animation: var(--kf-spor) var(--tid) linear var(--start) backwards;
+  }
+
+  :root:not([data-stil="papir"]) .snokula .reise[data-revealed] .reiser {
+    animation: var(--kf) var(--tid) linear var(--start);
+  }
+
+  :root:not([data-stil="papir"]) .snokula .reise[data-revealed] .reiser__figur {
+    animation: snokula-pop 260ms var(--lett) var(--start) backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .snokula
+    .reise[data-revealed]
+    .reiser
+    .paraply__aapne {
+    animation: snokula-paraply 300ms var(--lett) var(--paraply) backwards;
+  }
+
+  :root:not([data-stil="papir"]) .snokula .reise[data-revealed] .landet {
+    animation: snokula-vent var(--ankomst) step-end;
+  }
+
+  :root:not([data-stil="papir"]) .snokula .reise[data-revealed] .landet__skive {
+    animation: snokula-puls 500ms var(--lett) var(--ankomst);
+  }
+
+  :root:not([data-stil="papir"])
+    .snokula
+    .reise[data-revealed]
+    .landet__flamme {
+    animation: snokula-flamme 520ms ease-out var(--ankomst);
+  }
+
+  :root:not([data-stil="papir"]) .snokula .reise[data-revealed] .landet__ring {
+    animation: snokula-ring 520ms ease-out var(--ankomst);
+  }
+
+  /* In the fog the answer does not glow: it fades a little as it lands. */
+  :root:not([data-stil="papir"])
+    .snokula
+    .reise--taake[data-revealed]
+    .landet__flamme,
+  :root:not([data-stil="papir"])
+    .snokula
+    .reise--taake[data-revealed]
+    .landet__ring {
+    animation: none;
+  }
+
+  :root:not([data-stil="papir"]) .snokula .reise--taake[data-revealed] .landet {
+    animation:
+      snokula-vent var(--ankomst) step-end,
+      snokula-taake-inn 700ms var(--lett) var(--ankomst) backwards;
+  }
+
+  /* The door swings open as the answer goes through it, and closes again. */
+  :root:not([data-stil="papir"])
+    .snokula:has(.reise--dor[data-revealed])
+    .mini__dor {
+    animation: snokula-dor-sving 820ms var(--reise) 520ms;
+  }
+}
+
+/* A snow globe picked up and shaken, gently: it settles back on its base. */
+@keyframes snokula-rist {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+
+  18% {
+    transform: rotate(-2.6deg);
+  }
+
+  40% {
+    transform: rotate(2.2deg);
+  }
+
+  62% {
+    transform: rotate(-1.2deg);
+  }
+
+  82% {
+    transform: rotate(0.5deg);
+  }
+}
+
+/* Each flake starts where the shake threw it, turned, and drifts home. */
+@keyframes snokula-snoe-virvel {
+  from {
+    transform: translate(var(--dx), var(--dy)) rotate(var(--r));
+    opacity: 0.35;
+  }
+}
+
+@keyframes snokula-fram {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes snokula-vent {
+  from,
+  to {
+    visibility: hidden;
+  }
+}
+@keyframes snokula-zoom-inn {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+}
+@keyframes snokula-mini-ned {
+  0% {
+    transform: translateY(-120px);
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+@keyframes snokula-ror-ut {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes snokula-knekk {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
+@keyframes snokula-skript-inn {
+  from {
+    offset-distance: 0%;
+    visibility: visible;
+  }
+  to {
+    offset-distance: 100%;
+    visibility: visible;
+  }
+}
+@keyframes snokula-pop {
+  from {
+    transform: scale(0);
+  }
+}
+@keyframes snokula-paraply {
+  0% {
+    transform: scale(0.12, 0.5);
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes snokula-puls {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.1);
+  }
+}
+@keyframes snokula-flamme {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+}
+@keyframes snokula-ring {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+@keyframes snokula-taake-inn {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.85;
+  }
+}
+@keyframes snokula-dor-sving {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  30%,
+  66% {
+    transform: scaleX(0.14);
+  }
+}
+@keyframes snokula-hopp-s1 {
+  0% {
+    offset-distance: 0%;
+    visibility: visible;
+    animation-timing-function: var(--reise);
+  }
+  43.010000000000005% {
+    offset-distance: 58.08%;
+    visibility: visible;
+  }
+  56.989999999999995% {
+    offset-distance: 58.08%;
+    visibility: visible;
+    animation-timing-function: var(--reise);
+  }
+  100% {
+    offset-distance: 100%;
+    visibility: visible;
+  }
+}
+@keyframes snokula-hopp-s1-spor {
+  0% {
+    stroke-dashoffset: 1;
+    animation-timing-function: var(--reise);
+  }
+  43.010000000000005% {
+    stroke-dashoffset: 0.4192;
+  }
+  56.989999999999995% {
+    stroke-dashoffset: 0.4192;
+    animation-timing-function: var(--reise);
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes snokula-ut-s1 {
+  0% {
+    offset-distance: 0%;
+    visibility: visible;
+    animation-timing-function: var(--reise);
+  }
+  25.22% {
+    offset-distance: 19.97%;
+    visibility: visible;
+  }
+  39.13% {
+    offset-distance: 19.97%;
+    visibility: visible;
+    animation-timing-function: var(--reise);
+  }
+  100% {
+    offset-distance: 100%;
+    visibility: visible;
+  }
+}
+@keyframes snokula-ut-s1-spor {
+  0% {
+    stroke-dashoffset: 1;
+    animation-timing-function: var(--reise);
+  }
+  25.22% {
+    stroke-dashoffset: 0.8003;
+  }
+  39.13% {
+    stroke-dashoffset: 0.8003;
+    animation-timing-function: var(--reise);
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes snokula-ut-s2 {
+  0% {
+    offset-distance: 0%;
+    visibility: visible;
+    animation-timing-function: var(--reise);
+  }
+  24.11% {
+    offset-distance: 19.56%;
+    visibility: visible;
+  }
+  38.39% {
+    offset-distance: 19.56%;
+    visibility: visible;
+    animation-timing-function: var(--reise);
+  }
+  100% {
+    offset-distance: 100%;
+    visibility: visible;
+  }
+}
+@keyframes snokula-ut-s2-spor {
+  0% {
+    stroke-dashoffset: 1;
+    animation-timing-function: var(--reise);
+  }
+  24.11% {
+    stroke-dashoffset: 0.8044;
+  }
+  38.39% {
+    stroke-dashoffset: 0.8044;
+    animation-timing-function: var(--reise);
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes snokula-hopp-s2 {
+  0% {
+    offset-distance: 0%;
+    visibility: visible;
+    animation-timing-function: var(--reise);
+  }
+  27.560000000000002% {
+    offset-distance: 37.78%;
+    visibility: visible;
+  }
+  36.22% {
+    offset-distance: 37.78%;
+    visibility: visible;
+    animation-timing-function: var(--reise);
+  }
+  63.779999999999994% {
+    offset-distance: 62.56%;
+    visibility: visible;
+  }
+  72.44% {
+    offset-distance: 62.56%;
+    visibility: visible;
+    animation-timing-function: var(--reise);
+  }
+  100% {
+    offset-distance: 100%;
+    visibility: visible;
+  }
+}
+@keyframes snokula-hopp-s2-spor {
+  0% {
+    stroke-dashoffset: 1;
+    animation-timing-function: var(--reise);
+  }
+  27.560000000000002% {
+    stroke-dashoffset: 0.6222;
+  }
+  36.22% {
+    stroke-dashoffset: 0.6222;
+    animation-timing-function: var(--reise);
+  }
+  63.779999999999994% {
+    stroke-dashoffset: 0.3744;
+  }
+  72.44% {
+    stroke-dashoffset: 0.3744;
+    animation-timing-function: var(--reise);
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}

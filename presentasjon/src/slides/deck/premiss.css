@@ -1,0 +1,278 @@
+/*
+ * The premise: people write personal data in free text, and the needs
+ * that became Lumi.
+ */
+
+/*
+ * mer-enn-vi-spor-om, a monument: the answer is the hero, the title is
+ * small over it.
+ */
+
+.mer__title {
+  position: absolute;
+  top: 84px;
+  left: var(--deck-space-page);
+  margin: 0;
+  /* The small title of a monument. There is no token for it yet. */
+  font-size: var(--deck-size-heading);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1.1;
+}
+
+.mer__question {
+  position: absolute;
+  top: 176px;
+  left: var(--deck-space-page);
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-body);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/*
+ * The answer as the user wrote it. The gold dot hangs in front of the
+ * first line, so the three lines start on one edge. The last line ends
+ * above y 800, clear of the Teams corner.
+ */
+.mer__quote {
+  position: absolute;
+  top: 340px;
+  left: var(--deck-space-page);
+  margin: 0;
+  padding-left: 120px;
+  text-indent: -120px;
+  font-size: 112px;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: var(--deck-tracking-display);
+  /* Room for the frames, so they never touch the next word. */
+  word-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+/* An answer is a gold disc, here as tall as the capitals, centred on them. */
+.mer__dot {
+  width: 80px;
+  height: 80px;
+  margin-right: 40px;
+  overflow: visible;
+  vertical-align: -1px;
+}
+
+/* The words stay as they were typed. Only the frame comes and goes. */
+.mer__personal {
+  position: relative;
+  background: none;
+  color: inherit;
+}
+
+/*
+ * The deck's one mark: 6 px ink, radius 10. On click 1 it is drawn round
+ * the name and then round the e-mail address.
+ */
+.mer__frame {
+  position: absolute;
+  inset: -3px -14px;
+  text-indent: 0;
+  pointer-events: none;
+}
+
+/* Shown at once: the drawing is its entrance. */
+.mer__frame[data-from] {
+  transition: none;
+}
+
+.mer__frame-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.mer__frame-line {
+  x: 3px;
+  y: 3px;
+  width: calc(100% - 6px);
+  height: calc(100% - 6px);
+  rx: 10px;
+  fill: none;
+  stroke: var(--map-ink);
+  stroke-width: 6px;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+.mer__frame:not([data-revealed]) .mer__frame-line {
+  stroke-dashoffset: 1;
+}
+
+/*
+ * The comma after the name sits close, as typed. When the frame comes, it
+ * moves 18 px, clear of the frame, which reaches 14 px past the word.
+ */
+.mer__after {
+  display: inline-block;
+  /* An inline block takes the quote's hanging indent unless told not to. */
+  text-indent: 0;
+}
+
+.mer__quote--framed .mer__after {
+  transform: translateX(18px);
+}
+
+/*
+ * vi-trengte-mer, a line: the needs on a dashed line from edge to edge.
+ * On click 1 Lumi draws its line over it, and each need lights as the
+ * line reaches it.
+ */
+
+.slide-title.trengte__title {
+  font-size: var(--deck-size-statement);
+}
+
+.trengte__gap .map-station__ring {
+  stroke-dasharray: var(--trengte-dash);
+}
+
+/* A need not met yet is lighter. A met need is set in the display weight. */
+.map .trengte__need {
+  fill: var(--deck-muted);
+  font-size: var(--deck-size-body);
+  font-weight: 500;
+}
+
+.trengte--built .map .trengte__need {
+  fill: var(--map-ink);
+  font-weight: var(--deck-weight-display);
+}
+
+.map .map-line.trengte__line {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* The pen goes round the name, then round the e-mail address. */
+  :root:not([data-stil="papir"]) .mer__frame[data-revealed] .mer__frame-line {
+    transition: stroke-dashoffset 600ms var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"])
+    .mer__personal--second
+    .mer__frame[data-revealed]
+    .mer__frame-line {
+    transition-duration: 900ms;
+    transition-delay: 350ms;
+  }
+
+  /* The comma makes room before the pen gets round to it. */
+  :root:not([data-stil="papir"]) .mer__quote--framed .mer__after {
+    transition: transform 250ms var(--deck-easing);
+  }
+
+  /* Lumi's line draws from edge to edge, the stations fill as it passes. */
+  :root:not([data-stil="papir"]) .map .map-line.trengte__line[data-revealed] {
+    transition: stroke-dashoffset var(--trengte-draw) var(--deck-easing-travel);
+  }
+
+  /* Only the fade waits. Visibility stays instant for someone going back. */
+  :root:not([data-stil="papir"]) .trengte__fill[data-revealed] {
+    transition: opacity 200ms var(--deck-easing) var(--trengte-delay);
+  }
+
+  :root:not([data-stil="papir"]) .trengte--built .map .trengte__need {
+    transition:
+      fill 300ms var(--deck-easing) var(--trengte-delay),
+      font-weight 300ms var(--deck-easing) var(--trengte-delay);
+  }
+}
+
+/*
+ * fjerner-e-posten: the answer from the quote, in the dashboard. The still
+ * is a lit window. A click dims it, all but what the speaker points at.
+ */
+
+.fjerner__title {
+  position: absolute;
+  top: 40px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: calc(var(--deck-size-small) * 2);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1.1;
+}
+
+.fjerner__window {
+  position: absolute;
+  top: 136px;
+  left: var(--deck-space-page);
+  width: 1680px;
+  height: 545px;
+  border-radius: var(--deck-radius);
+  background: var(--deck-embed-bg);
+}
+
+/* The edge sits on the still, so it adds nothing to the size. */
+.fjerner__window::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 4px solid var(--map-zone-edge);
+  border-radius: var(--deck-radius);
+  pointer-events: none;
+}
+
+.fjerner__shot {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--deck-radius);
+}
+
+.fjerner__marks {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.fjerner__dim {
+  fill: var(--deck-bg);
+  opacity: 0.62;
+}
+
+:root[data-stil="papir"] .fjerner__dim {
+  opacity: 0.45;
+}
+
+.fjerner__caption {
+  position: absolute;
+  top: 716px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.2;
+}
+
+.fjerner__tag {
+  position: absolute;
+  bottom: 40px;
+  left: var(--deck-space-page);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .fjerner__dim {
+    transition:
+      opacity var(--deck-duration-travel) var(--deck-easing),
+      visibility var(--deck-duration-travel);
+  }
+}

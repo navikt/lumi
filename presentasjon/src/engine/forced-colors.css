@@ -1,0 +1,25 @@
+/*
+ * Forced colours, such as the contrast themes in Windows. The browser
+ * repaints text and backgrounds, but the maps are SVG drawn with the theme
+ * tokens, so the tokens follow the system colours here. The answer keeps
+ * its gold.
+ */
+@media (forced-colors: active) {
+  :root {
+    --deck-fg: CanvasText;
+    --deck-muted: CanvasText;
+    --deck-border: CanvasText;
+    --map-ink: CanvasText;
+    --deck-bg: Canvas;
+    --deck-surface: Canvas;
+    --deck-embed-bg: Canvas;
+    --map-paper: Canvas;
+    --map-zone-nais: Canvas;
+    --map-zone-neutral: Canvas;
+    --map-dim: GrayText;
+  }
+
+  .map-answer {
+    forced-color-adjust: none;
+  }
+}

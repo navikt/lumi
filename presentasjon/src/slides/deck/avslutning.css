@@ -1,0 +1,563 @@
+/*
+ * The closing slides and the room modules: under-panseret, slik-vet-vi,
+ * ansvar, slutt, prov-selv, grupper and personvern. Positions are stage
+ * pixels. The lower right corner (x > 1560, y > 840) stays free for Teams,
+ * with 40 px to spare: nothing below y 800 reaches past x 1520. A rule that
+ * overrides a shared class (.slide-title, .map-line) doubles the class, so
+ * it wins whatever order the stylesheets load in.
+ */
+
+/* Text placed on the stage at a fixed point, next to a map. */
+.end-at {
+  position: absolute;
+  margin: 0;
+}
+
+.end-label {
+  margin: 0;
+  font-size: var(--deck-size-label);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.2;
+}
+
+.end-note {
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.end-mono,
+.end-label code,
+.end-note code {
+  font-family: var(--deck-font-mono);
+  font-weight: 600;
+}
+
+/* Hairlines on the boards: the zone edge at night, dim ink on paper. */
+.end-board {
+  --end-hair: var(--map-zone-edge);
+}
+
+:root[data-stil="papir"] .end-board {
+  --end-hair: var(--map-dim);
+}
+
+/* Code inside a label: a little smaller, so it does not outgrow the words.
+   Notes are 32 px already, the smallest text on the stage. */
+.end-label code {
+  font-size: 0.9em;
+}
+
+/* under-panseret: one line of code in a window that bleeds off the edge */
+
+.slide-title.under-panseret__title {
+  max-width: 1300px;
+}
+
+.under-panseret__code {
+  position: absolute;
+  top: 380px;
+  left: var(--deck-space-page);
+  right: -24px;
+  margin: 0;
+  padding: 28px 48px 44px;
+  border: var(--deck-border-width) solid var(--deck-border);
+  border-right: none;
+  border-radius: var(--deck-radius) 0 0 var(--deck-radius);
+  background: var(--deck-code-bg);
+  color: var(--deck-code-fg);
+  font-family: var(--deck-font-mono);
+  font-size: var(--deck-size-lead);
+  font-variant-ligatures: none;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: pre;
+}
+
+.under-panseret__code code {
+  font: inherit;
+}
+
+.code-string {
+  color: var(--deck-code-string);
+}
+
+.code-punctuation {
+  color: var(--deck-code-punctuation);
+}
+
+/* A marked part of the line: a 6 px ink bar under it on its click. */
+.under-panseret__target {
+  position: relative;
+}
+
+/*
+ * The pointer: the bar under the part, an ink line down out of the window
+ * from the bar's left end, and the label under the line.
+ */
+.under-panseret__pointer {
+  position: absolute;
+  top: calc(100% - 2px);
+  left: 0;
+  width: 100%;
+  height: 120px;
+  border-top: 6px solid var(--map-ink);
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.under-panseret__pointer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 100%;
+  border-radius: 0 0 3px 3px;
+  background: var(--map-ink);
+}
+
+.under-panseret__label,
+.under-panseret__note {
+  position: absolute;
+  left: 0;
+  font-family: var(--deck-font-body);
+  line-height: 1.2;
+}
+
+.under-panseret__label {
+  top: calc(100% + 14px);
+  color: var(--deck-fg);
+  font-size: var(--deck-size-label);
+  font-weight: var(--deck-weight-strong);
+}
+
+.under-panseret__note {
+  top: calc(100% + 62px);
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+}
+
+.under-panseret__client {
+  left: var(--deck-space-page);
+  top: 826px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* slik-vet-vi: one word as the monument, the checks as a stripe below */
+
+.slik-vet-vi {
+  left: var(--deck-space-page);
+  top: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 0;
+  font-family: var(--deck-font-display);
+}
+
+/* The small title over the monument. */
+.slik-vet-vi__kicker {
+  color: var(--deck-muted);
+  font-size: var(--deck-size-heading);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+/* «i» has a wide side bearing at this size; pull it to the margin. */
+.slik-vet-vi__none {
+  margin: 26px 0 0 -14px;
+  font-size: var(--deck-size-monument);
+  font-weight: var(--deck-weight-black);
+  letter-spacing: var(--deck-tracking-monument);
+  line-height: 0.92;
+}
+
+.slik-vet-vi__rest {
+  margin-top: 40px;
+  font-size: var(--deck-size-statement);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: var(--deck-line-height-tight);
+}
+
+/* ansvar: three sentences on a board, one per click */
+
+.ansvar__nav {
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-label);
+  font-weight: 700;
+}
+
+.ansvar {
+  left: var(--deck-space-page);
+  right: var(--deck-space-page);
+  top: 318px;
+  margin: 0;
+}
+
+/* Big names to the left, the sentence from x 640 to x 1520. */
+.ansvar__row {
+  display: grid;
+  grid-template-columns: 528px 880px;
+  align-items: baseline;
+  padding: 22px 0 28px;
+  border-top: 3px solid var(--end-hair);
+}
+
+.ansvar__name {
+  font-size: var(--deck-size-title);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1;
+}
+
+.ansvar__text {
+  margin: 0;
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+/* One line, wider than the column: the row sits clear above the corner. */
+.ansvar__note {
+  display: block;
+  width: max-content;
+  max-width: 1120px;
+  margin-top: 12px;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+}
+
+/* prov-selv: the QR code is the slide */
+
+.prov-selv__qr {
+  line-height: 0;
+}
+
+.prov-selv__text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 40px;
+}
+
+.prov-selv__lead {
+  max-width: 980px;
+  margin: 0;
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.prov-selv__link {
+  margin: 0;
+  font-family: var(--deck-font-mono);
+  font-size: var(--deck-size-label);
+  font-weight: 600;
+}
+
+.prov-selv__install {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+
+.prov-selv__install-label {
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+}
+
+.prov-selv__install code {
+  font-family: var(--deck-font-mono);
+  font-size: var(--deck-size-label);
+  font-variant-ligatures: none;
+  font-weight: 600;
+}
+
+/* Product leads get the QR code, not the install line. */
+:root[data-deck-room="produktledere"] .prov-selv__install {
+  display: none;
+}
+
+/* slutt: the line runs on to the audience's app, and the answer lights */
+
+.slide-title.slutt__title {
+  font-size: var(--deck-size-statement);
+}
+
+/* Light falls off away from the crystal. */
+.map .slutt__segment,
+.slutt__app .map-station__ring {
+  stroke: color-mix(
+    in srgb,
+    var(--map-ink) var(--slutt-light),
+    var(--map-paper)
+  );
+}
+
+:root[data-stil="papir"] .slutt__segment,
+:root[data-stil="papir"] .slutt__app .map-station__ring {
+  stroke: color-mix(
+    in srgb,
+    var(--map-ink) var(--slutt-light-papir),
+    var(--map-paper)
+  );
+}
+
+/* The rings cover the joints, so the segments end square under them. */
+.map .slutt__segment {
+  stroke-linecap: butt;
+}
+
+/* Planned, like a dashed line: ten dashes round a ring of radius 58. */
+.slutt__yours .map-station__ring {
+  stroke-dasharray: 22 14.442;
+}
+
+/* The crystal: ice in the map's own line, round the gold core. */
+.slutt__prism {
+  fill: var(--map-zone-nais);
+  stroke: var(--map-ink);
+  stroke-width: 8px;
+  stroke-linejoin: round;
+}
+
+.slutt__facet {
+  fill: none;
+  stroke: var(--map-ink);
+  stroke-width: 4px;
+  stroke-linecap: round;
+  stroke-opacity: 0.45;
+}
+
+/* Each branch grows out of the core, which sits at (1400, 590). */
+.slutt__branch {
+  transform-box: view-box;
+  transform-origin: 1400px 590px;
+}
+
+.map .slutt__join.map-line--draw {
+  transition: none;
+}
+
+/*
+ * Click 3, one moment: the line reaches the app, the core lights when it
+ * gets there, and the branches grow after it, 60 ms apart. Still by 1.6 s.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .map .slutt__join.map-line--draw {
+    transition: stroke-dashoffset 520ms var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"])
+    .slutt
+    .map-answer-flash[data-revealed]
+    .map-answer {
+    animation-delay: 440ms;
+  }
+
+  :root:not([data-stil="papir"])
+    .slutt
+    .map-answer-flash[data-revealed]
+    .map-answer__ring {
+    /* Without fill during the wait, so the ring does not stand there first. */
+    animation-delay: 560ms;
+    animation-fill-mode: none;
+  }
+
+  :root:not([data-stil="papir"]) .slutt__branch {
+    transition:
+      transform 620ms var(--deck-easing-travel) calc(620ms + var(--i) * 60ms),
+      opacity 320ms var(--deck-easing) calc(620ms + var(--i) * 60ms);
+  }
+
+  :root:not([data-stil="papir"])
+    .slutt__crystal:not([data-revealed])
+    .slutt__branch {
+    transform: scale(0.45);
+    opacity: 0;
+    transition: none;
+  }
+}
+
+.slutt__open {
+  left: var(--deck-space-page);
+  top: 690px;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-label);
+  font-weight: 600;
+}
+
+/* The one action. */
+.slutt__lead {
+  left: var(--deck-space-page);
+  top: 744px;
+  max-width: 900px;
+  font-size: var(--deck-size-lead);
+  font-weight: var(--deck-weight-display);
+  line-height: 1.12;
+  text-wrap: balance;
+}
+
+.slutt__links {
+  left: var(--deck-space-page);
+  top: 900px;
+  display: flex;
+  align-items: baseline;
+  gap: 40px;
+  font-size: var(--deck-size-body);
+  font-weight: 700;
+}
+
+.slutt__link {
+  color: inherit;
+  text-decoration-thickness: 4px;
+  text-underline-offset: 10px;
+}
+
+.slutt__link:focus-visible {
+  outline: 6px solid var(--deck-focus);
+  outline-offset: 8px;
+  border-radius: 4px;
+}
+
+/* grupper: four questions, in the order the groups answer them */
+
+/* A board from the top edge, 1408 px wide, clear of the Teams corner. */
+.grupper {
+  left: var(--deck-space-page);
+  top: 52px;
+  width: 1408px;
+}
+
+.grupper__title {
+  margin: 0 0 40px;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-lead);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.grupper__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-bottom: 3px solid var(--end-hair);
+}
+
+.grupper__item {
+  display: grid;
+  grid-template-columns: 288px 1fr;
+  height: 200px;
+  border-top: 3px solid var(--end-hair);
+}
+
+/* Thin numbers: they order the questions and stay out of the way. */
+.grupper__number {
+  margin-top: 4px;
+  color: var(--map-dim);
+  font-size: var(--deck-size-hero);
+  font-weight: var(--deck-weight-thin);
+  letter-spacing: var(--deck-tracking-monument);
+  line-height: 1;
+}
+
+.grupper__question {
+  padding-top: 30px;
+  font-size: var(--deck-size-body);
+  font-weight: 600;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.grupper__chat {
+  margin: 36px 0 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+}
+
+/* personvern: what Lumi stores, read as one label */
+
+.slide-title.personvern__title {
+  font-size: var(--deck-size-statement);
+}
+
+/* Rows with hairlines, keys at the margin, values at x 520. */
+.personvern__label {
+  left: var(--deck-space-page);
+  right: var(--deck-space-page);
+  top: 456px;
+}
+
+.personvern__rows {
+  margin: 0;
+}
+
+.personvern__row {
+  display: grid;
+  grid-template-columns: 408px 1fr;
+  align-items: baseline;
+  padding: 18px 0 20px;
+  border-top: 3px solid var(--end-hair);
+}
+
+.personvern__row dt,
+.personvern__fact dt {
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.personvern__row dd {
+  margin: 0;
+  font-size: var(--deck-size-label);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.22;
+  text-wrap: balance;
+}
+
+/* What is removed, in the deck's one mark: 6 px ink, radius 10. */
+.personvern__removed {
+  display: inline-block;
+  margin: 0 -20px;
+  padding: 2px 14px 0;
+  border: 6px solid var(--map-ink);
+  border-radius: 10px;
+}
+
+/* Three values, big enough to read from the back of the room. */
+.personvern__facts {
+  display: grid;
+  grid-template-columns: 408px 420px auto;
+  margin: 0;
+  padding-top: 20px;
+  border-top: 3px solid var(--end-hair);
+}
+
+.personvern__fact dd {
+  margin: 4px 0 0;
+  font-size: var(--deck-size-lead);
+  font-weight: var(--deck-weight-display);
+  line-height: 1.1;
+}
+
+.personvern__obs {
+  margin: 40px 0 0;
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-strong);
+}

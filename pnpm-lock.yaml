@@ -293,6 +293,40 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  presentasjon:
+    dependencies:
+      '@navikt/ds-css':
+        specifier: ^8.7.0
+        version: 8.19.2
+      '@navikt/ds-react':
+        specifier: ^8.7.0
+        version: 8.19.2(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@navikt/lumi-survey':
+        specifier: workspace:*
+        version: link:../packages/lumi-survey
+      react:
+        specifier: ^19.0.0
+        version: 19.3.1
+      react-dom:
+        specifier: ^19.2.4
+        version: 19.3.1(react@19.3.1)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.0.3
+        version: 19.3.0(@types/react@19.3.0)
+      '@vitejs/plugin-react':
+        specifier: ^6.1.2
+        version: 6.1.2(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0))
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.3
+      vite:
+        specifier: ^8.3.3
+        version: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)
+
 packages:
 
   '@adobe/css-tools@4.4.4':

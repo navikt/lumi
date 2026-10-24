@@ -1,0 +1,201 @@
+/*
+ * Segmentering: what the app sends with the answer, and the answers per
+ * group. Stage pixels, 1920 × 1080. The film is at its own size on the
+ * left, the board beside it, and both stay clear of the Teams corner.
+ */
+
+.segmentering {
+  --seg-hair: var(--map-zone-edge);
+}
+
+:root[data-stil="papir"] .segmentering {
+  --seg-hair: var(--map-dim);
+}
+
+.segmentering__title {
+  position: absolute;
+  top: 40px;
+  left: var(--deck-space-page);
+  margin: 0;
+  max-width: 1696px;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-heading);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1.1;
+}
+
+/*
+ * The line in the app. At rest it is a 32 px subtitle under the title. On
+ * step 0 it is the slide: scaled to 72 px, in the middle of the stage.
+ */
+.segmentering__kode {
+  position: absolute;
+  top: 132px;
+  left: var(--deck-space-page);
+  margin: 0;
+  color: var(--deck-code-fg);
+  font-family: var(--deck-font-mono);
+  font-size: var(--deck-size-small);
+  font-variant-ligatures: none;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: pre;
+  transform-origin: 0 0;
+}
+
+.segmentering[data-start] .segmentering__kode {
+  transform: translateY(330px) scale(2.25);
+}
+
+.segmentering__kode code {
+  font: inherit;
+}
+
+.segmentering__tegn {
+  color: var(--deck-code-punctuation);
+}
+
+.segmentering__nokkel {
+  font-weight: 800;
+}
+
+.segmentering__verdi {
+  color: var(--deck-code-string);
+  font-weight: 800;
+}
+
+/* Where the line goes, under it on step 0. */
+.segmentering__hvor {
+  position: absolute;
+  top: 584px;
+  left: var(--deck-space-page);
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-label);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/*
+ * The film: two windows of the same page, 336 and 368 px high, 40 px apart.
+ * The clip path cuts the gap out of the video, so the slide shows there.
+ */
+.segmentering__film {
+  position: absolute;
+  top: 200px;
+  left: var(--deck-space-page);
+  width: 1120px;
+  height: 744px;
+}
+
+.segmentering__video {
+  clip-path: path(
+    "M12 0H1108A12 12 0 0 1 1120 12V324A12 12 0 0 1 1108 336H12A12 12 0 0 1 0 324V12A12 12 0 0 1 12 0Z M12 376H1108A12 12 0 0 1 1120 388V732A12 12 0 0 1 1108 744H12A12 12 0 0 1 0 732V388A12 12 0 0 1 12 376Z"
+  );
+}
+
+/*
+ * The frames sit on the film, like the other recordings in the deck. The
+ * clip path puts the video in its own layer, so the frames need a z-index.
+ */
+.segmentering__film::before,
+.segmentering__film::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  box-sizing: border-box;
+  width: 1120px;
+  border: 4px solid var(--map-zone-edge);
+  border-radius: var(--deck-radius);
+  pointer-events: none;
+}
+
+.segmentering__film::before {
+  top: 0;
+  height: 336px;
+}
+
+.segmentering__film::after {
+  top: 376px;
+  height: 368px;
+}
+
+/*
+ * What else an app can send: a board beside the film, names on the left,
+ * an example on the right. It ends above y 760, clear of the Teams corner.
+ */
+.segmentering__tavle {
+  position: absolute;
+  top: 200px;
+  left: 1280px;
+  width: 528px;
+  margin: 0;
+  border-bottom: 3px solid var(--seg-hair);
+}
+
+.segmentering__rad {
+  display: grid;
+  grid-template-columns: 212px 1fr;
+  align-items: baseline;
+  padding: 16px 0 18px;
+  border-top: 3px solid var(--seg-hair);
+}
+
+.segmentering__rad dt {
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.15;
+}
+
+.segmentering__rad dd {
+  margin: 0;
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.segmentering__rad code {
+  color: var(--deck-code-string);
+  font-family: var(--deck-font-mono);
+  font-size: var(--deck-size-label);
+  font-variant-ligatures: none;
+  font-weight: 600;
+}
+
+/* Enhet comes by itself: dimmer than what the app sends. */
+.segmentering__rad--selv dt,
+.segmentering__rad--selv dd {
+  color: var(--deck-muted);
+}
+
+.segmentering__personvern {
+  position: absolute;
+  top: 592px;
+  left: 1280px;
+  width: 528px;
+  margin: 0;
+  font-size: var(--deck-size-small);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.segmentering__personvern span {
+  display: block;
+}
+
+/*
+ * Step 0 to 1: the line travels up under the title, and the film comes in
+ * once the line has passed over it. On paper and without motion both are
+ * just there.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .segmentering__kode {
+    transition: transform var(--deck-duration-travel) var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"]) .segmentering__film[data-revealed] {
+    transition-delay: 520ms;
+  }
+}

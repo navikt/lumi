@@ -1,0 +1,234 @@
+/* The line map. All parts draw from the map tokens in theme.css. */
+
+.map {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.map text {
+  fill: var(--map-ink);
+  font-family: var(--deck-font-body);
+}
+
+/* Map parts fade in place. A map that jumps loses its reader. */
+.map [data-from]:not([data-revealed]) {
+  transform: none;
+}
+
+.map-line {
+  fill: none;
+  stroke: var(--map-ink);
+  stroke-width: var(--map-line-width);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.map-line--dashed {
+  stroke-dasharray: 30 24;
+  stroke-linecap: butt;
+}
+
+.map-line--dim {
+  stroke: var(--map-dim);
+}
+
+.map .map-line--draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 600ms var(--deck-easing);
+}
+
+.map .map-line--draw[data-from]:not([data-revealed]) {
+  visibility: visible;
+  opacity: 1;
+  stroke-dashoffset: 1;
+}
+
+.map-arrow__head {
+  fill: var(--map-ink);
+}
+
+.map-arrow__head--dim {
+  fill: var(--map-dim);
+}
+
+.map-station__ring {
+  fill: var(--map-paper);
+  stroke: var(--map-ink);
+  stroke-width: var(--map-ring-width);
+}
+
+.map-station--dim .map-station__ring {
+  stroke: var(--map-dim);
+}
+
+.map-station--dim text {
+  fill: var(--deck-muted);
+}
+
+.map-label {
+  font-size: var(--deck-size-label);
+  font-weight: 700;
+}
+
+.map .map-label--mono {
+  font-family: var(--deck-font-mono);
+  font-weight: 600;
+}
+
+.map .map-text--muted {
+  fill: var(--deck-muted);
+}
+
+.map .map-note {
+  fill: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+}
+
+.map-answer {
+  fill: var(--map-answer);
+  stroke: var(--map-answer-edge);
+  stroke-width: 8px;
+  filter: var(--map-answer-glow);
+  transition:
+    transform var(--deck-duration-travel) var(--deck-easing),
+    opacity var(--deck-duration-reveal) var(--deck-easing),
+    visibility var(--deck-duration-reveal);
+}
+
+/*
+ * An answer that lights up (`<Answer flash>`): it appears at once, and the
+ * animation is its entrance. Without motion it is simply there.
+ */
+.map .map-answer-flash[data-from] {
+  transition: none;
+}
+
+.map-answer-flash .map-answer,
+.map-answer__ring {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.map-answer__ring {
+  fill: none;
+  stroke: var(--map-answer);
+  stroke-width: 4px;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .map-answer-flash[data-revealed] .map-answer {
+    animation: answer-flash 900ms var(--deck-easing-travel) backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .map-answer-flash[data-revealed]
+    .map-answer__ring {
+    animation: answer-ring 500ms ease-out 120ms backwards;
+  }
+}
+
+@keyframes answer-flash {
+  0% {
+    transform: scale(0);
+    filter: drop-shadow(0 0 0 rgb(242 194 79 / 0%))
+      drop-shadow(0 0 0 rgb(242 194 79 / 0%));
+  }
+
+  20% {
+    transform: scale(1.08);
+    filter: drop-shadow(0 0 40px rgb(242 194 79 / 95%))
+      drop-shadow(0 0 140px rgb(242 194 79 / 55%));
+  }
+
+  100% {
+    transform: scale(1);
+    filter: var(--map-answer-glow);
+  }
+}
+
+@keyframes answer-ring {
+  0% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+.map-zone__area {
+  stroke: var(--map-zone-edge);
+  stroke-width: var(--map-zone-border);
+}
+
+.map-zone__area--nais {
+  fill: var(--map-zone-nais);
+}
+
+.map-zone__area--neutral {
+  fill: var(--map-zone-neutral);
+}
+
+.map-zone__label {
+  font-size: var(--deck-size-label);
+  font-weight: 800;
+}
+
+.map-zone__note {
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+}
+
+.map-app__frame {
+  fill: var(--map-paper);
+  stroke: var(--map-ink);
+  stroke-width: 6px;
+}
+
+.map-app__label {
+  font-size: var(--deck-size-label);
+  font-weight: 600;
+}
+
+.map-app__part {
+  fill: var(--map-ink);
+}
+
+.map .map-app__part-label {
+  fill: var(--map-paper);
+  font-size: 32px;
+  font-weight: 800;
+}
+
+.map-switch__track {
+  fill: var(--map-paper);
+  stroke: var(--map-ink);
+  stroke-width: 6px;
+}
+
+.map-switch__knob {
+  fill: var(--map-ink);
+}
+
+.map-badge rect {
+  fill: var(--map-ink);
+}
+
+.map .map-badge text {
+  fill: var(--map-paper);
+  font-size: 38px;
+  font-weight: 800;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map .map-line--draw,
+  .map-answer {
+    transition: none;
+  }
+}
