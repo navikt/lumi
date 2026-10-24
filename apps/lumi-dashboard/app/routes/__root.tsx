@@ -15,7 +15,7 @@ import lumiLogo from "~/assets/lumi.png";
 import { ErrorComponent } from "~/components/shared/ErrorComponent";
 import { NotFoundComponent } from "~/components/shared/NotFoundComponent";
 import { THEME_INIT_SCRIPT } from "~/config/themeInit";
-import { ThemeProvider, useTheme } from "~/context/ThemeContext";
+import { ThemeProvider } from "~/context/ThemeContext";
 import { BrowserRouteTracker } from "~/observability/BrowserRouteTracker";
 import { fetchBrowserObservabilityMetaServerFn } from "~/server/browserObservabilityConfig";
 import "~/styles/global.css";
@@ -78,8 +78,11 @@ declare global {
   }
 }
 
+// The document does not read the theme. A value that changed after hydration
+// would reach the routes before React had hydrated them (see
+// context/ThemeContext.tsx). Aksel takes its tokens from the "dark" class on
+// <html>, and ThemeProvider adds the theme class to .app-theme-root.
 function RootDocument({ children }: { children: React.ReactNode }) {
-  const { theme } = useTheme();
   const router = useRouter();
   const isServerRender = typeof document === "undefined";
   const nonce = isServerRender ? router.options.ssr?.nonce : undefined;
@@ -99,7 +102,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <Theme theme={theme} hasBackground={false} className="app-theme-root">
+        <Theme hasBackground={false} className="app-theme-root">
           {children}
         </Theme>
         <Scripts />
