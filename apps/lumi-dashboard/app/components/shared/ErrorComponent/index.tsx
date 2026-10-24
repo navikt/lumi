@@ -1,4 +1,12 @@
-import { Alert, BodyShort, Box, Heading } from "@navikt/ds-react";
+import {
+  Alert,
+  BodyShort,
+  Box,
+  Detail,
+  Heading,
+  Link,
+  VStack,
+} from "@navikt/ds-react";
 import { useEffect, useMemo } from "react";
 import { reportDashboardRouteError } from "~/observability/errors";
 import { ApiErrorException, ErrorType } from "~/types/errors";
@@ -70,8 +78,10 @@ function ErrorAlert({ error }: { error: unknown }) {
           <Heading spacing size="small" level="3">
             Midlertidig problem
           </Heading>
-          <BodyShort>{message || "Prøv igjen om litt."}</BodyShort>
-          {details && <BodyShort className="mt-2">{details}</BodyShort>}
+          <VStack gap="space-8">
+            <BodyShort>{message || "Prøv igjen om litt."}</BodyShort>
+            {details && <BodyShort>{details}</BodyShort>}
+          </VStack>
         </Alert>
       );
     }
@@ -84,20 +94,23 @@ function ErrorAlert({ error }: { error: unknown }) {
           <Heading spacing size="small" level="3">
             Ingen tilgang
           </Heading>
-          <BodyShort>{message}</BodyShort>
-          {details && <BodyShort className="mt-2">{details}</BodyShort>}
-          {validatedHelpUrl && (
-            <BodyShort className="mt-4">
-              <a
-                href={validatedHelpUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                Les mer om hvordan du får tilgang →
-              </a>
-            </BodyShort>
-          )}
+          <VStack gap="space-16">
+            <VStack gap="space-8">
+              <BodyShort>{message}</BodyShort>
+              {details && <BodyShort>{details}</BodyShort>}
+            </VStack>
+            {validatedHelpUrl && (
+              <BodyShort>
+                <Link
+                  href={validatedHelpUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Les mer om hvordan du får tilgang →
+                </Link>
+              </BodyShort>
+            )}
+          </VStack>
         </Alert>
       );
     }
@@ -119,12 +132,17 @@ function ErrorAlert({ error }: { error: unknown }) {
         <Heading spacing size="small" level="3">
           Noe gikk galt ({status})
         </Heading>
-        <BodyShort>
-          {message || "En uventet feil oppstod ved kommunikasjon med serveren."}
-        </BodyShort>
-        {type && (
-          <BodyShort className="mt-2 text-xs font-mono">{type}</BodyShort>
-        )}
+        <VStack gap="space-8">
+          <BodyShort>
+            {message ||
+              "En uventet feil oppstod ved kommunikasjon med serveren."}
+          </BodyShort>
+          {type && (
+            <Detail>
+              <code>{type}</code>
+            </Detail>
+          )}
+        </VStack>
       </Alert>
     );
   }

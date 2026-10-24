@@ -32,6 +32,42 @@ describe("ErrorComponent", () => {
     expect(reportDashboardRouteError).toHaveBeenCalledExactlyOnceWith(error);
   });
 
+  it("links to the help page from the API in a new tab when access is missing", () => {
+    const error = new ApiErrorException({
+      status: 403,
+      type: ErrorType.AUTHORIZATION_ERROR,
+      message: "Du har ikke tilgang til team «team-x».",
+      details: "Be om tilgang i Nais Console.",
+      helpUrl: "https://example.nav.no/tilgang",
+      timestamp: "2026-10-01T00:00:00Z",
+    });
+
+    render(<ErrorComponent error={error} />);
+
+    expect(screen.getByText("Be om tilgang i Nais Console.")).toBeVisible();
+    const link = screen.getByRole("link", {
+      name: "Les mer om hvordan du får tilgang →",
+    });
+    expect(link).toHaveAttribute("href", "https://example.nav.no/tilgang");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("shows the error type from the API as code", () => {
+    const error = new ApiErrorException({
+      status: 500,
+      type: ErrorType.INTERNAL_SERVER_ERROR,
+      message: "Test API error message",
+      timestamp: "2026-10-01T00:00:00Z",
+    });
+
+    render(<ErrorComponent error={error} />);
+
+    expect(screen.getByText(ErrorType.INTERNAL_SERVER_ERROR).tagName).toBe(
+      "CODE",
+    );
+  });
+
   it("shows the API's message and details when the team lookup is unavailable", () => {
     const details =
       "Dette er ofte midlertidig, for eksempel når Nais API er nede. Jobber du utenfor Nav-nettet, sjekk at Kolide kjører. Prøv igjen om litt.";
