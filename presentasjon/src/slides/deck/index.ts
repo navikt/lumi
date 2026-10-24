@@ -27,7 +27,7 @@ import { tallet } from "./Tallet";
 import { tittel } from "./Tittel";
 import { ulikeBehov } from "./UlikeBehov";
 import { underPanseret } from "./UnderPanseret";
-import { varSkyraVurdert } from "./VarSkyraVurdert";
+import { verktoySomFinnes } from "./VerktoySomFinnes";
 import { viTrengteMer } from "./ViTrengteMer";
 
 /**
@@ -56,7 +56,7 @@ export const deckSlides: readonly Slide[] = [
   segmentering,
   underPanseret,
   slikVetVi,
-  varSkyraVurdert,
+  verktoySomFinnes,
   hvorBorSvaret,
   fagsystemsonen,
   ulikeBehov,

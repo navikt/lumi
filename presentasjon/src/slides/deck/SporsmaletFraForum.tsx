@@ -1,17 +1,15 @@
 import type { Slide } from "../../engine";
-import { SkyraQuestion } from "./VarSkyraVurdert";
+import { ForumSporsmal } from "./VerktoySomFinnes";
 
-/** Frontend forum: the question opens the talk, and the map answers it. */
+/** Frontend forum: the question opens the talk, and the snow globe answers it. */
 export const sporsmaletFraForum: Slide = {
   id: "sporsmalet",
-  title: "Var Skyra vurdert?",
+  title: "Hvorfor ikke bare bruke et verktøy som finnes?",
   rooms: ["frontend"],
   notes: `Vis denne før tittelen. Ordrett: «Dette spørsmålet kom herfra. Jeg svarer på det når dere har sett hvordan Lumi virker.»
 
-Svaret er nei. Hvorfor, viser jeg når dere har sett hvordan Lumi virker.
+Etter «Pentesten fant ingen høye eller kritiske funn» kommer «Inne i Nav passer Nav selv på». Si ordrett: «Da svarer jeg på spørsmålet fra starten.»
 
-Etter «Pentesten fant ingen høye eller kritiske funn» kommer kartet. Si ordrett: «Da svarer jeg på spørsmålet fra starten.»
-
-Så svaret, ordrett: «Nei, vi sammenlignet ikke funksjonene. Det som avgjorde, var hvor svaret skulle bo.»`,
-  Component: SkyraQuestion,
+Så svaret, ordrett: «Vi sammenlignet ikke funksjonene. Det som avgjorde, var at svaret skulle bli i Nav.»`,
+  Component: ForumSporsmal,
 };
