@@ -7,6 +7,7 @@ import {
 import { setResponseHeaders } from "@tanstack/react-start/server";
 
 import { logger } from "~/server/logger";
+import { getExpectedOrigin } from "~/server/requestOrigin";
 import {
   applyBaselineSecurityHeaders,
   buildCspHeaderValue,
@@ -76,10 +77,16 @@ const logCsrfRejection = createServerOnlyFn(
   },
 );
 
+// Behind the ingress request.url is http://, while the browser sends an
+// https Origin, so compare with the origin the browser sees.
+const isExpectedOrigin = createServerOnlyFn(
+  (origin: string, request: Request) => origin === getExpectedOrigin(request),
+);
+
 // Start adds this middleware on its own only when an app has no start.ts.
 // It checks every server function request over HTTP, GET included. When
 // Sec-Fetch-Site is present it decides alone, and only same-origin passes.
-// Without it, Origin must equal the origin of the request URL; without
+// Without it, Origin must equal the origin the browser sees; without
 // Origin, Referer must be on that origin. Requests with none of them get 403.
 // Unlike the Origin check in authMiddleware, it also runs in mock mode and in
 // the public demo. Server functions called during SSR never reach it.
@@ -87,6 +94,7 @@ const logCsrfRejection = createServerOnlyFn(
 // code in them must go through createServerOnlyFn.
 const csrfMiddleware = createCsrfMiddleware({
   filter: (ctx) => ctx.handlerType === "serverFn",
+  origin: (origin, { request }) => isExpectedOrigin(origin, request),
   failureResponse: ({ request, pathname }) => {
     logCsrfRejection(request, pathname);
     return new Response("Forbidden", { status: 403 });

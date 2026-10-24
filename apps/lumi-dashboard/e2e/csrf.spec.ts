@@ -36,4 +36,41 @@ test.describe("CSRF protection for server functions", () => {
       });
     }
   });
+
+  test("an https Origin behind the ingress passes without Sec-Fetch-Site", async ({
+    page,
+    request,
+  }) => {
+    const serverFunctionCall = page.waitForRequest(
+      (call) => call.method() === "GET" && isServerFunction(call.url()),
+    );
+    await page.goto("/");
+    const url = (await serverFunctionCall).url();
+    // TLS ends at the ingress, so the server gets http and X-Forwarded-Proto.
+    const httpsOrigin = new URL(url).origin.replace(/^http:/, "https:");
+    const behindIngress = { "X-Forwarded-Proto": "https" };
+
+    for (const [name, headers, status] of [
+      [
+        "Origin on the https origin",
+        { ...behindIngress, Origin: httpsOrigin },
+        200,
+      ],
+      [
+        "Referer on the https origin",
+        { ...behindIngress, Referer: `${httpsOrigin}/feedback` },
+        200,
+      ],
+      [
+        "Origin on another site",
+        { ...behindIngress, Origin: "https://evil.example" },
+        403,
+      ],
+    ] as const) {
+      await test.step(`${name} gives ${status}`, async () => {
+        const response = await request.get(url, { headers });
+        expect(response.status()).toBe(status);
+      });
+    }
+  });
 });

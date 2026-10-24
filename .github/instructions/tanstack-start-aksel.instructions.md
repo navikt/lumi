@@ -169,6 +169,7 @@ export const fetchStatsServerFn = createServerFn({ method: "GET" })
   - Keep it after `securityHeadersMiddleware`, so its 403 responses carry the security headers.
   - Only `Sec-Fetch-Site: same-origin` passes. Without that header, `Origin` and then `Referer` must match the request origin.
   - The Origin/Referer check for non-GET methods in `app/server/middleware/auth.ts` remains as a second layer in NAIS.
+  - Behind the ingress, `request.url` is `http://`. Both checks compare with `getExpectedOrigin` in `app/server/requestOrigin.ts`, which takes the scheme from `X-Forwarded-Proto`.
   - Rejections are logged without header values, apart from the `Sec-Fetch-Site` token. Server-only code in the middleware options must go through `createServerOnlyFn`, because Start's compiler leaves the options in the client code.
 - The dashboard has no Subresource Integrity (SRI) for CDN-served JS/CSS today. Do not assume it exists; working SRI is tracked in #637.
 - In root layout, import styles as CSS modules (`import "@navikt/ds-css"; import "~/styles/global.css";`) instead of `?url` links, so TanStack Start/Vite manage the stylesheets (manifest, hashed file names, CDN prefix).

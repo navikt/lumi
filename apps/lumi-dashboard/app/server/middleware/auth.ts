@@ -2,6 +2,7 @@ import { createMiddleware } from "@tanstack/react-start";
 
 import { logger } from "~/server/logger";
 import { resolveLocalAuthPolicy } from "~/server/middleware/localAuthPolicy";
+import { getExpectedOrigin } from "~/server/requestOrigin";
 import {
   HttpStatusError,
   setServerFnHttpStatus,
@@ -192,7 +193,7 @@ export function validateCsrfHeaders(
     return;
   }
 
-  const expectedOrigin = new URL(request.url).origin;
+  const expectedOrigin = getExpectedOrigin(request);
   const origin = request.headers.get("origin");
   const referer = request.headers.get("referer");
 

@@ -64,3 +64,7 @@ spec:
       value: http://lumi-api
     - name: LUMI_API_AUDIENCE
       value: api://prod-gcp.team-esyfo.lumi-api/.default
+    # Seconds srvx waits for requests in flight after SIGTERM (default 5).
+    # Nais allows 30 s in all, and its preStop sleep takes the first 5.
+    - name: SERVER_SHUTDOWN_TIMEOUT
+      value: "20"
