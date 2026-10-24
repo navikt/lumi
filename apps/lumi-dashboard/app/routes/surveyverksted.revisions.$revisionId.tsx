@@ -22,7 +22,6 @@ import {
 import { validateSurveyDocumentV1 } from "@navikt/lumi-survey";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { StageSurface } from "~/components/surveyverksted/StageSurface";
@@ -46,7 +45,7 @@ import styles from "./surveyverksted-revision.module.css";
 const searchSchema = z.object({ team: z.string().min(1) });
 
 export const Route = createFileRoute("/surveyverksted/revisions/$revisionId")({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   component: SurveyRevisionRoute,
 });
 

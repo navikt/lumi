@@ -6,7 +6,6 @@ import {
   Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { act, render, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
@@ -28,7 +27,7 @@ async function setup(initialEntries: Array<string> = ["/"]) {
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
-    validateSearch: zodValidator(searchSchema),
+    validateSearch: searchSchema,
     component: TestComponent,
   });
   const routeTree = rootRoute.addChildren([indexRoute]);

@@ -112,19 +112,20 @@ function FeedbackPage() {
 }
 ```
 
-On zod 3, routes validate search params with `validateSearch: zodValidator(schema)` from `@tanstack/zod-adapter`, never with the schema directly: used directly, a zod 3 schema turns async when anything throws during parsing, and the router rejects async search validation. Search schemas must stay synchronous and must not throw; report problems with `ctx.addIssue`. Give each field a `fallback()` without a trailing `.catch()` (see `app/schemas/searchSchema.ts`); the extra `.catch()` makes the search input `unknown`, so `Link`, `navigate` and `redirect` stop type-checking `search`.
+Routes give their zod 4 search schema straight to `validateSearch`, without an adapter. The router then calls the schema's Standard Schema `validate`, and the answer must be synchronous. If anything throws during parsing (a transform, a refinement or a `.catch()` callback), zod 4 runs the parse again asynchronously and returns a Promise. The router refuses it with "Async validation not supported", and nothing handles the Promise when it rejects. Search schemas must therefore stay synchronous and must not throw; report problems with `ctx.addIssue`. `app/routes/__tests__/validateSearch.test.ts` gives every route's schema garbage and fails on a Promise or a throw.
+
+Give each field `.catch(undefined)` (see `app/schemas/searchSchema.ts`), so an invalid value becomes `undefined` instead of an error. In zod 4, `.catch()` keeps the input type of the field, so `Link`, `navigate` and `redirect` still type-check `search`. `z.coerce.*` has `unknown` as its input type; give the type as a generic, as in `z.coerce.number<number>()`.
 
 ```ts
 import { createFileRoute } from "@tanstack/react-router";
-import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
 const searchSchema = z.object({
-  team: fallback(z.string().optional(), undefined),
+  team: z.string().optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/export")({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   component: ExportPage,
 });
 ```

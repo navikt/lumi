@@ -21,7 +21,6 @@ import {
 } from "@navikt/lumi-survey";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { Header } from "~/components/shared/Header";
@@ -46,8 +45,8 @@ import {
 
 const searchSchema = z.object({
   surveyId: z.string().regex(RELEASE_VERIFICATION_SURVEY_ID_PATTERN).optional(),
-  initialReceiptId: z.string().uuid().optional(),
-  closingReceiptId: z.string().uuid().optional(),
+  initialReceiptId: z.uuid().optional(),
+  closingReceiptId: z.uuid().optional(),
 });
 
 type AttemptState =
@@ -56,7 +55,7 @@ type AttemptState =
   | { status: "error"; message: string };
 
 export const Route = createFileRoute("/release-verification")({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   component: ReleaseVerificationPage,
 });
 

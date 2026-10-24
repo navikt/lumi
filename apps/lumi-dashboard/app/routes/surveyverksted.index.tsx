@@ -26,7 +26,6 @@ import {
 } from "@navikt/lumi-survey";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { DeleteDraftDialog } from "~/components/surveyverksted/DeleteDraftDialog";
@@ -248,7 +247,7 @@ export const surveyTemplates: Record<
 };
 
 export const Route = createFileRoute("/surveyverksted/")({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   component: SurveyWorkshopIndex,
 });
 

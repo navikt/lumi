@@ -33,8 +33,6 @@ updates:
     # weekly pull request, and every other update waits with it.
     versioning-strategy: increase-if-necessary
     ignore:
-      - dependency-name: "zod"
-        versions: [">=4"]
       # tsup builds the type declarations with rollup-plugin-dts, which reads
       # ts.sys from the TypeScript API. TypeScript 7 does not have it, so both
       # package builds fail.
@@ -63,7 +61,6 @@ updates:
           - "@tanstack/react-start"
           - "@tanstack/router-*"
           - "@tanstack/start-*"
-          - "@tanstack/zod-adapter"
       # New Biome versions add lint rules and change formatting, so they need
       # their own pull request with the code changes.
       biome:

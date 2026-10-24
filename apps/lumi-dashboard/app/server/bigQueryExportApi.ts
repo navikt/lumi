@@ -37,7 +37,7 @@ export async function bigQueryExportRequest(
 }
 
 /** The API may leave out fields that have a default, so the input can differ from T. */
-type ResponseSchema<T> = z.ZodType<T, z.ZodTypeDef, unknown>;
+type ResponseSchema<T> = z.ZodType<T, unknown>;
 
 export async function readBigQueryExport<T>(
   response: Response,

@@ -80,11 +80,10 @@ describe("ErrorComponent", () => {
         JSON.stringify(
           [
             {
-              code: "invalid_type",
               expected: "string",
-              received: "undefined",
+              code: "invalid_type",
               path: ["team"],
-              message: "Required",
+              message: "Invalid input: expected string, received undefined",
             },
           ],
           null,

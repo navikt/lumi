@@ -1,7 +1,6 @@
 import type { TagProps } from "@navikt/ds-react";
 import { Box, Heading, HStack, Tag, Tooltip, VStack } from "@navikt/ds-react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { type ReactNode, useEffect } from "react";
 import { ComparisonPeriodControl } from "~/components/dashboard/sections/FieldStats/PeriodComparison/ComparisonPeriodControl";
 import { QuestionTrendSection } from "~/components/dashboard/sections/QuestionTrend";
@@ -91,7 +90,7 @@ const SURVEY_CONFIG: Record<
 };
 
 export const Route = createFileRoute("/")({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   beforeLoad: async ({ location }) => {
     // Ensure broad default filters are present before route components render.
     // This prevents initial unbounded stats queries followed by narrower refetches.

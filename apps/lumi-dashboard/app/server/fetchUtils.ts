@@ -51,7 +51,7 @@ export async function handleApiResponse(response: Response): Promise<void> {
  * failure in Lumi API, so it gives 502 and is not mistaken for invalid input.
  * The message is zod's, as with schema.parse(), so the page shows the same.
  */
-export function parseApiAnswer<S extends z.ZodTypeAny>(
+export function parseApiAnswer<S extends z.ZodType>(
   schema: S,
   answer: unknown,
 ): z.output<S> {

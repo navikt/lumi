@@ -14,7 +14,6 @@ import {
 } from "@navikt/ds-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
 import dayjs from "dayjs";
 import { z } from "zod";
 import { AnalysisEditor } from "~/components/analysisProducts/AnalysisEditor";
@@ -32,12 +31,10 @@ import type {
 } from "~/types/analysisProducts";
 
 export const Route = createFileRoute("/analyseprodukter")({
-  validateSearch: zodValidator(
-    z.object({
-      team: z.string().optional(),
-      productId: z.union([z.string().uuid(), z.literal("new")]).optional(),
-    }),
-  ),
+  validateSearch: z.object({
+    team: z.string().optional(),
+    productId: z.union([z.uuid(), z.literal("new")]).optional(),
+  }),
   component: AnalysisProductsPage,
 });
 

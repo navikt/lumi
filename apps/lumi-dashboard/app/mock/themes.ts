@@ -3,7 +3,7 @@ import type { TextTheme } from "~/types/api";
 // Discovery/General feedback themes
 export const mockThemes: TextTheme[] = [
   {
-    id: "11111111-1111-1111-1111-111111111111",
+    id: "11111111-1111-4111-8111-111111111111",
     team: "team-esyfo",
     name: "Sykepenger",
     keywords: ["sykemelding", "sykepenger", "syk", "sykmelding"],
@@ -12,7 +12,7 @@ export const mockThemes: TextTheme[] = [
     analysisContext: "GENERAL_FEEDBACK",
   },
   {
-    id: "22222222-2222-2222-2222-222222222222",
+    id: "22222222-2222-4222-8222-222222222222",
     team: "team-esyfo",
     name: "Utbetaling",
     keywords: ["utbetalt", "penger", "konto", "betaling", "utbetaling"],
@@ -21,7 +21,7 @@ export const mockThemes: TextTheme[] = [
     analysisContext: "GENERAL_FEEDBACK",
   },
   {
-    id: "33333333-3333-3333-3333-333333333333",
+    id: "33333333-3333-4333-8333-333333333333",
     team: "team-esyfo",
     name: "Søknad",
     keywords: ["søknad", "søke", "status", "dagpenger", "skjema"],
@@ -30,7 +30,7 @@ export const mockThemes: TextTheme[] = [
     analysisContext: "GENERAL_FEEDBACK",
   },
   {
-    id: "44444444-4444-4444-4444-444444444444",
+    id: "44444444-4444-4444-8444-444444444444",
     team: "team-esyfo",
     name: "Kontakt",
     keywords: ["kontakte", "snakke", "telefon", "saksbehandler", "henvendelse"],
@@ -39,7 +39,7 @@ export const mockThemes: TextTheme[] = [
     analysisContext: "GENERAL_FEEDBACK",
   },
   {
-    id: "55555555-5555-5555-5555-555555555555",
+    id: "55555555-5555-4555-8555-555555555555",
     team: "team-esyfo",
     name: "Navigasjon",
     keywords: [

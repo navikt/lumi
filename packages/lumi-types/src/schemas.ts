@@ -312,14 +312,14 @@ function validateClearConflicts(
 ) {
   if (value.clearDescription && value.description !== undefined) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: "custom",
       message: "description cannot be set when clearDescription is true",
       path: ["clearDescription"],
     });
   }
   if (value.clearColor && value.color !== undefined) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: "custom",
       message: "color cannot be set when clearColor is true",
       path: ["clearColor"],
     });
@@ -330,7 +330,7 @@ export const UpdateMarkerInputSchema = UpdateMarkerInputBaseSchema.superRefine(
   (value, ctx) => {
     if (!hasAnyUpdateField(value)) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "At least one field must be provided",
       });
     }
@@ -345,7 +345,7 @@ export const UpdateMarkerSchema = UpdateMarkerInputBaseSchema.extend({
 }).superRefine((value, ctx) => {
   if (!hasAnyUpdateField(value)) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: "custom",
       message: "At least one field must be provided",
     });
   }
@@ -551,7 +551,7 @@ const SubmissionRatingValueSchema = z
     const expectedScale = expectedScaleByVariant[value.ratingVariant];
     if (value.ratingScale !== expectedScale) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: `ratingScale=${value.ratingScale} does not match ratingVariant=${value.ratingVariant} (expected ${expectedScale})`,
         path: ["ratingScale"],
       });
@@ -561,7 +561,7 @@ const SubmissionRatingValueSchema = z
       value.ratingVariant === "nps" ? [0, 10] : [1, value.ratingScale];
     if (value.rating < minRating || value.rating > maxRating) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: `rating=${value.rating} out of range for ratingVariant=${value.ratingVariant} (${minRating}-${maxRating})`,
         path: ["rating"],
       });
@@ -677,7 +677,7 @@ const SubmissionOptionIdsSchema = z
       if (!optionId) continue;
       if (seen.has(optionId)) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: `optionIds must be unique (duplicate: ${optionId})`,
           path: [i],
         });
@@ -757,7 +757,7 @@ export const SubmissionDefinitionSchema = z
       if (!fieldId) continue;
       if (seen.has(fieldId)) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: `definition.fields.fieldId must be unique (duplicate: ${fieldId})`,
           path: ["fields", i, "fieldId"],
         });
@@ -768,7 +768,7 @@ export const SubmissionDefinitionSchema = z
         const expectedScale = expectedScaleByVariant[field.ratingVariant];
         if (field.ratingScale !== expectedScale) {
           ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            code: "custom",
             message: `ratingScale=${field.ratingScale} does not match ratingVariant=${field.ratingVariant} (expected ${expectedScale})`,
             path: ["fields", i, "ratingScale"],
           });
@@ -780,7 +780,7 @@ export const SubmissionDefinitionSchema = z
         field.maxSelections > field.optionIds.length
       ) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message:
             "maxSelections must not exceed the number of multi-choice options",
           path: ["fields", i, "maxSelections"],
@@ -801,22 +801,20 @@ const SubmissionFlowConditionSchema = z
         "flow condition key must be non-blank",
       ),
     operator: z.enum(["EQ", "NEQ", "GT", "LT", "CONTAINS", "EXISTS"]),
-    value: z
-      .union([z.string().max(2_048), z.number().finite(), z.boolean()])
-      .optional(),
+    value: z.union([z.string().max(2_048), z.number(), z.boolean()]).optional(),
   })
   .strict()
   .superRefine((condition, ctx) => {
     if (condition.operator === "EXISTS" && condition.value !== undefined) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "EXISTS flow conditions must not include value",
         path: ["value"],
       });
     }
     if (condition.operator !== "EXISTS" && condition.value === undefined) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: `${condition.operator} flow conditions require value`,
         path: ["value"],
       });
@@ -850,7 +848,7 @@ export const SubmissionFlowV1Schema = z
       if (!fieldId) continue;
       if (seen.has(fieldId)) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: `flow.fields.fieldId must be unique (duplicate: ${fieldId})`,
           path: ["fields", i, "fieldId"],
         });
@@ -878,7 +876,7 @@ function validateFlowConditionAgainstField(
     )
   ) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: "custom",
       message: `flow operator ${condition.operator} is not supported for ${field.fieldType}`,
       path: [...path, "operator"],
     });
@@ -911,7 +909,7 @@ function validateFlowConditionAgainstField(
   }
   if (!valid) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: "custom",
       message: `flow condition value is outside the domain for ${field.fieldType}`,
       path: [...path, "value"],
     });
@@ -926,7 +924,7 @@ function validateFlowMetadataCondition(
   if (condition.key !== "deviceType") return;
   if (!["EXISTS", "EQ", "NEQ", "CONTAINS"].includes(condition.operator)) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: "custom",
       message: `flow operator ${condition.operator} is not supported for metadata deviceType`,
       path: [...path, "operator"],
     });
@@ -939,7 +937,7 @@ function validateFlowMetadataCondition(
       !["desktop", "mobile", "tablet"].includes(condition.value))
   ) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: "custom",
       message:
         "flow condition value is outside the domain for metadata deviceType",
       path: [...path, "value"],
@@ -966,7 +964,7 @@ function validateUniqueAnswerFieldIds(
     if (!fieldId) continue;
     if (seen.has(fieldId)) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: `answers.fieldId must be unique (duplicate: ${fieldId})`,
         path: ["answers", i, "fieldId"],
       });
@@ -988,7 +986,7 @@ function validateChoiceQuestionOptions(
   const answerOptionIds = answer.question.options?.map((option) => option.id);
   if (!answerOptionIds) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: "custom",
       message: `choice answer fieldId=${answer.fieldId} must include question.options to match definition.optionIds`,
       path: ["answers", answerIndex, "question", "options"],
     });
@@ -1000,7 +998,7 @@ function validateChoiceQuestionOptions(
     answerOptionIds.some((optionId, i) => optionId !== field.optionIds[i])
   ) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: "custom",
       message: `choice answer fieldId=${answer.fieldId} question.options must match definition.optionIds`,
       path: ["answers", answerIndex, "question", "options"],
     });
@@ -1019,7 +1017,7 @@ function validateAnswerValueAgainstDefinition(
       field.ratingScale !== answer.value.ratingScale
     ) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: `rating config for fieldId=${answer.fieldId} must match definition`,
         path: ["answers", answerIndex, "value"],
       });
@@ -1034,7 +1032,7 @@ function validateAnswerValueAgainstDefinition(
     validateChoiceQuestionOptions(answer, field, answerIndex, ctx);
     if (!field.optionIds.includes(answer.value.selectedOptionId)) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: `selectedOptionId=${answer.value.selectedOptionId} is not valid for fieldId=${answer.fieldId}`,
         path: ["answers", answerIndex, "value", "selectedOptionId"],
       });
@@ -1058,7 +1056,7 @@ function validateAnswerValueAgainstDefinition(
 
     if (duplicateSelections.size > 0) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: `duplicate selectedOptionIds=${[...duplicateSelections].join(",")} for fieldId=${answer.fieldId}`,
         path: ["answers", answerIndex, "value", "selectedOptionIds"],
       });
@@ -1069,7 +1067,7 @@ function validateAnswerValueAgainstDefinition(
     );
     if (invalidIds.length > 0) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: `selectedOptionIds=${invalidIds.join(",")} are not valid for fieldId=${answer.fieldId}`,
         path: ["answers", answerIndex, "value", "selectedOptionIds"],
       });
@@ -1079,7 +1077,7 @@ function validateAnswerValueAgainstDefinition(
       answer.value.selectedOptionIds.length > field.maxSelections
     ) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: `selectedOptionIds exceeds maxSelections=${field.maxSelections} for fieldId=${answer.fieldId}`,
         path: ["answers", answerIndex, "value", "selectedOptionIds"],
       });
@@ -1121,7 +1119,7 @@ export const FeedbackSubmissionV2Schema = z
     validateUniqueAnswerFieldIds(submission, ctx);
     if (submission.surveyType !== submission.definition.surveyType) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "surveyType must match definition.surveyType",
         path: ["surveyType"],
       });
@@ -1142,7 +1140,7 @@ export const FeedbackSubmissionV2Schema = z
         )
       ) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "flow.fields must match definition.fields in order",
           path: ["flow", "fields"],
         });
@@ -1164,7 +1162,7 @@ export const FeedbackSubmissionV2Schema = z
             !priorFieldIds.has(condition.key)
           ) {
             ctx.addIssue({
-              code: z.ZodIssueCode.custom,
+              code: "custom",
               message: "ANSWER flow conditions must reference an earlier field",
               path: [
                 "flow",
@@ -1202,7 +1200,7 @@ export const FeedbackSubmissionV2Schema = z
       const field = fieldsById.get(answer.fieldId);
       if (!field) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: `answers.fieldId must exist in definition.fields (unknown: ${answer.fieldId})`,
           path: ["answers", i, "fieldId"],
         });
@@ -1211,7 +1209,7 @@ export const FeedbackSubmissionV2Schema = z
 
       if (field.fieldType !== answer.fieldType) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: `answers.fieldType must match definition fieldType for fieldId=${answer.fieldId}`,
           path: ["answers", i, "fieldType"],
         });
@@ -1326,7 +1324,7 @@ const PrivacyInfoSchema = z.object({
 });
 
 export const FeedbackStatsSchema = z.object({
-  retentionStartDate: z.string().date().optional(),
+  retentionStartDate: z.iso.date().optional(),
   totalCount: z.number(),
   countWithText: z.number(),
   countWithoutText: z.number(),
@@ -1404,19 +1402,19 @@ export const QuestionTrendResponseSchema = z.object({
             Object.keys(bucket.ratingDistribution ?? {}).length > 0
           ) {
             ctx.addIssue({
-              code: z.ZodIssueCode.custom,
+              code: "custom",
               message: "masked buckets cannot expose answer values",
             });
           }
           if (Object.keys(bucket.distribution).length > 0) {
             ctx.addIssue({
-              code: z.ZodIssueCode.custom,
+              code: "custom",
               message: "masked buckets cannot expose a distribution",
             });
           }
         } else if (bucket.responseCount == null) {
           ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            code: "custom",
             message: "unmasked buckets require responseCount",
           });
         }

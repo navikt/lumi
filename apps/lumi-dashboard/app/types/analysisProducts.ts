@@ -10,7 +10,7 @@ const opaqueId = (max: number) =>
 const hash = z.string().regex(/^[0-9a-f]{64}$/);
 export const AnalysisTeamSchema = z.object({ team: text(255) });
 export const AnalysisIdSchema = AnalysisTeamSchema.extend({
-  productId: z.string().uuid(),
+  productId: z.uuid(),
 });
 export const AnalysisSourceSelectionSchema = z
   .object({
@@ -32,7 +32,7 @@ export const AnalysisDocumentSchema = z
       .min(1)
       .max(2),
     retention: z.enum(["SOURCE_MAXIMUM", "DAYS_30", "DAYS_90", "DAYS_180"]),
-    reviewDate: z.string().date(),
+    reviewDate: z.iso.date(),
     sources: z.array(AnalysisSourceSelectionSchema).max(100),
     dimensionKeys: z
       .array(
@@ -49,13 +49,13 @@ export const AnalysisCreateSchema = AnalysisTeamSchema.extend({
   document: AnalysisDocumentSchema,
 });
 export const AnalysisSaveSchema = AnalysisIdSchema.extend({
-  draftId: z.string().uuid(),
+  draftId: z.uuid(),
   draftRevision: z.number().int().positive(),
   document: AnalysisDocumentSchema,
 });
 export const AnalysisConfirmationSchema = z
   .object({
-    draftId: z.string().uuid(),
+    draftId: z.uuid(),
     draftRevision: z.number().int().positive(),
     documentHash: hash,
     catalogRevision: text(255),
@@ -117,7 +117,7 @@ export const AnalysisCatalogSchema = z.object({
   ),
 });
 export const AnalysisProductSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   team: z.string(),
   lifecycleState: z.enum([
     "DRAFT",
@@ -132,7 +132,7 @@ export const AnalysisProductSchema = z.object({
   updatedAt: z.string(),
   draft: z
     .object({
-      id: z.string().uuid(),
+      id: z.uuid(),
       revision: z.number().int().positive(),
       documentHash: hash,
       document: AnalysisDocumentSchema,
@@ -155,7 +155,10 @@ export const AnalysisResourceSchema = z.object({
     }),
   ),
   syntheticRows: z.array(
-    z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])),
+    z.record(
+      z.string(),
+      z.union([z.string(), z.number(), z.boolean(), z.null()]),
+    ),
   ),
 });
 export const AnalysisIssueSchema = z.object({
@@ -188,14 +191,14 @@ const AnalysisPinnedFieldSchema = z
           field.ratingScale !== scales[field.ratingVariant]))
     ) {
       context.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Invalid pinned field structure",
       });
     }
   });
 export const AnalysisPublicationSummarySchema = z.object({
   schemaVersion: z.literal(2),
-  productId: z.string().uuid(),
+  productId: z.uuid(),
   team: z.string(),
   catalogRevision: z.string(),
   sources: z
@@ -218,8 +221,8 @@ export const AnalysisPreviewSchema = z
   .object({
     schemaVersion: z.literal(2),
     dataOrigin: z.literal("SYNTHETIC"),
-    productId: z.string().uuid(),
-    draftId: z.string().uuid(),
+    productId: z.uuid(),
+    draftId: z.uuid(),
     draftRevision: z.number().int().positive(),
     documentHash: hash,
     catalogRevision: z.string(),
@@ -238,14 +241,14 @@ export const AnalysisPreviewSchema = z
         specification.catalogRevision !== preview.catalogRevision)
     ) {
       context.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Specification does not match preview",
       });
     }
   });
 export const AnalysisReleaseSchema = z.object({
-  id: z.string().uuid(),
-  productId: z.string().uuid(),
+  id: z.uuid(),
+  productId: z.uuid(),
   releaseNumber: z.number().int().positive(),
   sourceDocument: AnalysisDocumentSchema,
   publishedAt: z.string(),
