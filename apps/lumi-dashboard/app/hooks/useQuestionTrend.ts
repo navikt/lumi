@@ -3,14 +3,19 @@ import { useSearchParams } from "~/hooks/useSearchParams";
 import { fetchQuestionTrendServerFn } from "~/server/actions";
 import { splitChoiceParam } from "~/utils/choiceFilterUtils";
 import { splitRatingParam } from "~/utils/ratingFilterUtils";
+import type { TimeInterval } from "~/utils/timeBuckets";
 
+/**
+ * The trend for one question. The caller gives the resolution, from
+ * `useSeriesWindow` or the viewer's choice, and the chart's heading names the
+ * same one.
+ */
 export function useQuestionTrend(
-  enabled = true,
-  fieldOverride?: string,
-  intervalOverride?: "day" | "week" | "month",
+  enabled: boolean,
+  fieldOverride: string | undefined,
+  interval: TimeInterval,
 ) {
   const { params } = useSearchParams();
-  const interval = intervalOverride ?? params.trendInterval ?? "week";
   const fieldId = fieldOverride ?? params.trendField;
 
   return useQuery({

@@ -40,28 +40,22 @@ const isPriorityField = (fieldId: string) =>
 // Stats calculation
 // ============================================
 
+/**
+ * The period as the API returns it: the dates that were asked for, or null.
+ * The days count from the start, or from 29 days before the end without one.
+ * A missing end is today, as in `StatsService.calculateDays`.
+ */
 export function calculatePeriod(
   fromDate: string | null,
   toDate: string | null,
 ): { fromDate: string | null; toDate: string | null; days: number } {
-  const today = dayjs();
-  // Default to 30 days (start = today - 29 days)
-  const defaultFrom = today.subtract(29, "day").format("YYYY-MM-DD");
-  const defaultTo = today.format("YYYY-MM-DD");
-
-  const actualFrom = fromDate || defaultFrom;
-  const actualTo = toDate || defaultTo;
-
-  const fromDayjs = dayjs(actualFrom);
-  const toDayjs = dayjs(actualTo);
-
-  // Diff in days + 1 for inclusive range
-  const diffDays = toDayjs.diff(fromDayjs, "day") + 1;
+  const to = toDate ? dayjs(toDate) : dayjs();
+  const from = fromDate ? dayjs(fromDate) : to.subtract(29, "day");
 
   return {
-    fromDate: actualFrom,
-    toDate: actualTo,
-    days: diffDays,
+    fromDate: fromDate || null,
+    toDate: toDate || null,
+    days: Math.max(1, to.diff(from, "day") + 1),
   };
 }
 
@@ -443,6 +437,9 @@ export function calculateStats(
   };
   const byApp: Record<string, number> = {};
   const byDate: Record<string, number> = {};
+  // Without a period, the API counts the days of the last 30 days only.
+  const byDateSince =
+    fromDate || toDate ? undefined : Date.now() - 30 * 24 * 60 * 60 * 1000;
   const bySurveyId: Record<string, number> = {};
   const ratingByDateAccum: Record<string, { total: number; count: number }> =
     {};
@@ -506,7 +503,12 @@ export function calculateStats(
 
     // Date
     const date = item.submittedAt.split("T")[0];
-    byDate[date] = (byDate[date] || 0) + 1;
+    if (
+      byDateSince === undefined ||
+      Date.parse(item.submittedAt) >= byDateSince
+    ) {
+      byDate[date] = (byDate[date] || 0) + 1;
+    }
 
     // Survey
     const currentSurveyId = item.surveyId || "unknown";

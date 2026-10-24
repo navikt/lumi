@@ -1,22 +1,22 @@
-import { Alert, Skeleton } from "@navikt/ds-react";
+import { Alert, Detail, Skeleton } from "@navikt/ds-react";
 import { useNavigate } from "@tanstack/react-router";
-import dayjs from "dayjs";
-import { useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   Line,
   LineChart,
   ReferenceLine,
   Tooltip,
-  type TooltipIndex,
+  type TooltipContentProps,
   XAxis,
   YAxis,
 } from "recharts";
 import {
   getRatingMetric,
   ratingResponseCount,
+  ratingTrendTitle,
 } from "~/components/dashboard/sections/FieldStats/PeriodComparison/model";
 import {
-  fillQuestionTrendBuckets,
+  inSentence,
   questionTrendRatingMetric,
   questionTrendRatingValue,
 } from "~/components/dashboard/sections/QuestionTrend/questionTrendUtils";
@@ -26,27 +26,66 @@ import { useTheme } from "~/context/ThemeContext";
 import { useBreakpoint } from "~/hooks/useBreakpoint";
 import { useQuestionTrend } from "~/hooks/useQuestionTrend";
 import { useSearchParams } from "~/hooks/useSearchParams";
+import { useSeriesWindow } from "~/hooks/useSeriesWindow";
 import { useStats } from "~/hooks/useStats";
-import type { RatingMarker } from "~/types/api";
+import type { QuestionTrendResponse, RatingMarker } from "~/types/api";
+import {
+  type AxisBucket,
+  bucketDistance,
+  bucketStart,
+  buildTimeAxis,
+  describePartialBuckets,
+  INTERVAL_NOUNS,
+  type TimeAxis,
+  type TimeInterval,
+} from "~/utils/timeBuckets";
 import styles from "./Charts.module.css";
-
-interface RatingTrendChartProps {
-  markers?: RatingMarker[];
-}
+import {
+  activePoint,
+  activePointIndex,
+  bucketFeedbackSearch,
+  PARTIAL_DOT_LOOK,
+  PartialDot,
+} from "./timeSeriesParts";
 
 interface MarkerLabelMeta {
   offsetY: number;
   text: string;
 }
 
-interface TrendPoint {
-  date: string;
+export interface RatingPoint extends AxisBucket {
   average: number | null;
   count: number;
   /** Too few answers to show, for privacy. */
   masked: boolean;
   markers: RatingMarker[];
 }
+
+export interface RatingSeries {
+  interval: TimeInterval;
+  withYear: boolean;
+  points: RatingPoint[];
+  /**
+   * Markers in the period dated before the axis begins, which the chart
+   * does not show. The axis begins after the period when answers have been
+   * deleted, or with the first answer when the period has no start.
+   */
+  earlierMarkers: RatingMarker[];
+  /** Markers dated after the axis ends, which the chart does not show. */
+  laterMarkers: RatingMarker[];
+}
+
+export type RatingTrendState =
+  | { status: "pending" }
+  | { status: "error" }
+  | {
+      status: "ready";
+      series: RatingSeries;
+      metric: ReturnType<typeof questionTrendRatingMetric>;
+      overallAverage: number | undefined;
+      /** The value for the whole period, as the cards above write it. */
+      overallFormatted: string | undefined;
+    };
 
 const DEFAULT_MARKER_COLOR = "#1C64F2";
 
@@ -63,85 +102,165 @@ const CHART_COLORS_LIGHT = {
   text: "#262626", // Nav Gray 90
 };
 
-type RatingTrendState =
-  | { status: "pending" }
-  | { status: "error" }
-  | {
-      status: "ready";
-      data: TrendPoint[];
-      metric: ReturnType<typeof questionTrendRatingMetric>;
-      overallAverage: number | undefined;
-    };
+/** By date, and by when they were made for markers on the same date. */
+function compareMarkers(a: RatingMarker, b: RatingMarker): number {
+  return (
+    a.markerDate.localeCompare(b.markerDate) ||
+    a.createdAt.localeCompare(b.createdAt)
+  );
+}
 
-/** The daily rating trend and markers shown by the chart and its table. */
-function useRatingTrend(markers: RatingMarker[]): RatingTrendState {
+/** Markers grouped by the day, week or month of their date, keyed by its first day. */
+export function groupMarkersByBucket(
+  markers: RatingMarker[],
+  interval: TimeInterval,
+): Map<string, RatingMarker[]> {
+  const grouped = new Map<string, RatingMarker[]>();
+  for (const marker of [...markers].sort(compareMarkers)) {
+    const key = bucketStart(marker.markerDate, interval);
+    grouped.set(key, [...(grouped.get(key) ?? []), marker]);
+  }
+  return grouped;
+}
+
+/**
+ * The rating trend on the axis, with each marker in the bucket of its date.
+ * Markers before and after the axis are kept apart.
+ */
+export function ratingSeries(
+  axis: TimeAxis | undefined,
+  trend: QuestionTrendResponse | undefined,
+  markers: RatingMarker[],
+  today?: string,
+): RatingSeries {
+  const buckets = axis?.buckets ?? [];
+  // Without an axis, as before a period has begun, markers after today are
+  // still named under the chart.
+  const lastDay = buckets.at(-1)?.lastDay ?? today;
+  const firstDay = buckets[0]?.firstDay;
+  const onAxis = markers.filter(
+    (marker) =>
+      firstDay !== undefined &&
+      lastDay !== undefined &&
+      marker.markerDate >= firstDay &&
+      marker.markerDate <= lastDay,
+  );
+  const earlierMarkers = markers
+    .filter((marker) => firstDay !== undefined && marker.markerDate < firstDay)
+    .sort(compareMarkers);
+  const laterMarkers = markers
+    .filter((marker) => lastDay !== undefined && marker.markerDate > lastDay)
+    .sort(compareMarkers);
+  const interval = axis?.interval ?? "day";
+  const markersByBucket = groupMarkersByBucket(onAxis, interval);
+  const trendByStart = new Map(
+    (trend?.buckets ?? []).map((bucket) => [bucket.startDate, bucket]),
+  );
+
+  return {
+    interval,
+    withYear: axis?.withYear ?? false,
+    earlierMarkers,
+    laterMarkers,
+    points: buckets.map((bucket) => {
+      const trendBucket = trendByStart.get(bucket.start);
+      return {
+        ...bucket,
+        average:
+          trend && trendBucket
+            ? questionTrendRatingValue(trend, trendBucket)
+            : null,
+        count: trendBucket?.responseCount ?? 0,
+        masked: trendBucket?.masked ?? false,
+        markers: markersByBucket.get(bucket.start) ?? [],
+      };
+    }),
+  };
+}
+
+/**
+ * The rating trend for the page's window. The card computes it once and
+ * passes it to the chart, the notes and the table. The trend comes from the
+ * API with the window's resolution, and the API computes each week's or
+ * month's average from all its answers. Nothing is fetched until `enabled`
+ * is true, as for a page that does not show the card.
+ */
+export function useRatingSeries(
+  markers: RatingMarker[],
+  enabled: boolean,
+): RatingTrendState {
   const { data: stats, isPending, isPlaceholderData } = useStats();
+  const { window, interval, today } = useSeriesWindow();
   const fields =
     stats?.fieldStats?.filter((field) => field.fieldType === "RATING") ?? [];
   const field =
-    !isPlaceholderData && fields.length === 1 ? fields[0] : undefined;
-  const trendQuery = useQuestionTrend(Boolean(field), field?.fieldId, "day");
-  const { params } = useSearchParams();
+    enabled && !isPlaceholderData && fields.length === 1
+      ? fields[0]
+      : undefined;
+  const trendQuery = useQuestionTrend(
+    Boolean(field && window),
+    field?.fieldId,
+    interval,
+  );
+  const trend = trendQuery.data;
 
-  if (isPending || isPlaceholderData || (field && trendQuery.isPending)) {
+  const series = useMemo(
+    () =>
+      ratingSeries(
+        window ? buildTimeAxis(window, trend?.interval ?? interval) : undefined,
+        trend,
+        markers,
+        today,
+      ),
+    [window, interval, trend, markers, today],
+  );
+  const metric = useMemo(() => questionTrendRatingMetric(trend ?? {}), [trend]);
+  const overall = useMemo(
+    () =>
+      field && ratingResponseCount(field) ? getRatingMetric(field) : undefined,
+    [field],
+  );
+
+  if (
+    isPending ||
+    isPlaceholderData ||
+    (field && window && trendQuery.isPending)
+  ) {
     return { status: "pending" };
   }
   if (trendQuery.isError) return { status: "error" };
 
-  const trend = trendQuery.data;
-  const metric = questionTrendRatingMetric(trend ?? {});
-  const buckets = trend
-    ? fillQuestionTrendBuckets(trend, params.fromDate, params.toDate)
-    : [];
-  const ratingByDate = Object.fromEntries(
-    buckets.map((bucket) => [
-      bucket.startDate,
-      {
-        average: trend ? questionTrendRatingValue(trend, bucket) : null,
-        count: bucket.responseCount ?? 0,
-        masked: bucket.masked,
-      },
-    ]),
-  );
-  const markersByDate = groupMarkersByDate(markers);
+  return {
+    status: "ready",
+    series,
+    metric,
+    overallAverage: overall?.value,
+    overallFormatted: overall?.formatted,
+  };
+}
 
-  const allDates = Array.from(
-    new Set([...Object.keys(ratingByDate), ...Object.keys(markersByDate)]),
-  ).sort((a, b) => a.localeCompare(b));
-
-  const data: TrendPoint[] = allDates.map((date) => {
-    const rating = ratingByDate[date];
-    return {
-      date,
-      average: rating?.average ?? null,
-      count: rating?.count ?? 0,
-      masked: rating?.masked ?? false,
-      markers: markersByDate[date] ?? [],
-    };
-  });
-  const overallAverage =
-    field && ratingResponseCount(field)
-      ? getRatingMetric(field).value
-      : undefined;
-
-  return { status: "ready", data, metric, overallAverage };
+/** True when a point has an answer, hidden answers or a marker to show. */
+function hasContent(point: RatingPoint): boolean {
+  return point.average !== null || point.masked || point.markers.length > 0;
 }
 
 /**
- * The chart's numbers and markers, under the chart. Days without answers are
- * left out unless they have a marker, as the chart shows no point for them.
+ * The chart's numbers and markers, under the chart. Days, weeks and months
+ * without answers are left out unless they have a marker, as the chart shows
+ * no point for them.
  */
-export function RatingTrendChartTable({ markers = [] }: RatingTrendChartProps) {
-  const trend = useRatingTrend(markers);
+export function RatingTrendChartTable({ trend }: { trend: RatingTrendState }) {
   // The trend has no placeholder data, so it is pending after each filter
-  // change. Keep an opened table open meanwhile.
-  const hadRows = useRef(false);
+  // change. Keep an opened table open meanwhile, under the same name.
+  const shown = useRef<{ label: string; rowHeader: string } | undefined>(
+    undefined,
+  );
 
   if (trend.status === "pending") {
-    return hadRows.current ? (
+    return shown.current ? (
       <ChartDataTable
-        label="Vurdering per dag"
-        rowHeader="Dato"
+        label={shown.current.label}
+        rowHeader={shown.current.rowHeader}
         columns={[]}
         rows={[]}
         loading
@@ -149,30 +268,30 @@ export function RatingTrendChartTable({ markers = [] }: RatingTrendChartProps) {
     ) : null;
   }
   if (trend.status === "error") {
-    hadRows.current = false;
+    shown.current = undefined;
     return null;
   }
 
-  const { metric } = trend;
-  const rows = trend.data.filter(
-    (point) =>
-      point.average !== null || point.masked || point.markers.length > 0,
-  );
-  hadRows.current = rows.length > 0;
+  const { metric, series } = trend;
+  const nouns = INTERVAL_NOUNS[series.interval];
+  const rows = series.points.filter(hasContent);
+  const label = `${ratingTrendTitle(metric.label)} per ${nouns.one}`;
+  shown.current =
+    rows.length > 0 ? { label, rowHeader: nouns.rowHeader } : undefined;
   if (rows.length === 0) return null;
 
   return (
     <ChartDataTable
-      label={`${metric.label} per dag`}
-      rowHeader="Dato"
+      label={label}
+      rowHeader={nouns.rowHeader}
       columns={[
         { label: metric.label },
         { label: "Svar" },
         { label: "Markører", align: "left" },
       ]}
       rows={rows.map((point) => ({
-        key: point.date,
-        header: dayjs(point.date).format("DD.MM.YYYY"),
+        key: point.start,
+        header: point.label,
         cells: [
           point.masked
             ? "Skjult"
@@ -189,14 +308,85 @@ export function RatingTrendChartTable({ markers = [] }: RatingTrendChartProps) {
   );
 }
 
-export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
-  const trend = useRatingTrend(markers);
+export function RatingTrendChart({ trend }: { trend: RatingTrendState }) {
   const navigate = useNavigate();
   const { params } = useSearchParams();
   const { theme } = useTheme();
   const { isMobile } = useBreakpoint();
+  const [hovered, setHovered] = useState<number>();
 
   const colors = theme === "light" ? CHART_COLORS_LIGHT : CHART_COLORS;
+  const ready = trend.status === "ready" ? trend : undefined;
+  const metric = ready?.metric;
+
+  const renderTooltip = useCallback(
+    ({ active, payload }: TooltipContentProps) => {
+      const point = active
+        ? (payload?.[0]?.payload as RatingPoint | undefined)
+        : undefined;
+      if (!point || !metric) return null;
+      const average = point.average;
+
+      return (
+        <div className={styles.tooltipCard}>
+          <div className={styles.tooltipTitle}>{point.label}</div>
+
+          {average !== null && (
+            <div className={styles.tooltipRow}>
+              {metric.variant === "emoji" ? (
+                <span className={styles.tooltipEmojiLarge}>
+                  {ratingToEmoji(Math.round(average))}
+                </span>
+              ) : null}
+              <span className={styles.tooltipStrong}>
+                {average.toLocaleString("nb-NO", {
+                  maximumFractionDigits: 1,
+                })}
+                {metric.unit}
+              </span>
+              <span className={styles.tooltipMuted}>({point.count} svar)</span>
+            </div>
+          )}
+
+          {average === null && (
+            <div className={styles.tooltipMuted}>
+              {point.masked ? "For få svar til å vises" : "Ingen svar"}
+            </div>
+          )}
+
+          {point.markers.length > 0 && (
+            <div className={styles.tooltipMarkerSection}>
+              {point.markers.map((marker) => (
+                <div key={marker.id}>
+                  <div className={styles.tooltipMarkerRow}>
+                    <span
+                      className={styles.tooltipMarkerDot}
+                      style={{
+                        backgroundColor: marker.color ?? DEFAULT_MARKER_COLOR,
+                      }}
+                    />
+                    <span className={styles.tooltipStrong}>{marker.label}</span>
+                  </div>
+                  {marker.description && (
+                    <div className={styles.tooltipMuted}>
+                      {marker.description}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {average !== null && (
+            <div className={styles.tooltipHint}>
+              Klikk for å åpne tilbakemeldinger
+            </div>
+          )}
+        </div>
+      );
+    },
+    [metric],
+  );
 
   if (trend.status === "pending") {
     return <Skeleton variant="rectangle" height={300} />;
@@ -209,15 +399,19 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
       </Alert>
     );
 
-  const { data, metric, overallAverage } = trend;
+  const { series, overallAverage, overallFormatted } = trend;
+  const { points } = series;
+  const nouns = INTERVAL_NOUNS[series.interval];
 
-  if (data.length === 0) {
+  if (!points.some(hasContent)) {
     return (
       <div className={styles.chartNoData}>Ingen data for valgt periode</div>
     );
   }
 
-  const markerLabelMeta = buildMarkerLabelMeta(markers);
+  const tickByStart = new Map(points.map((point) => [point.start, point.tick]));
+  const markers = points.flatMap((point) => point.markers);
+  const markerLabelMeta = buildMarkerLabelMeta(markers, series.interval);
   const maxMarkerLabelOffset = Math.max(
     0,
     ...Array.from(markerLabelMeta.values()).map((meta) => meta.offsetY),
@@ -226,6 +420,9 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
   const chartMargin = isMobile
     ? { top: chartMarginTop, right: 16, left: 8, bottom: 20 }
     : { top: chartMarginTop, right: 20, left: 12, bottom: 20 };
+  // Points without answers open nothing and keep the arrow.
+  const pointsAtAnswers =
+    hovered !== undefined && typeof points[hovered]?.average === "number";
 
   return (
     <ResponsiveContainerWithInitialSize
@@ -235,63 +432,38 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
       minHeight={2}
     >
       <LineChart
-        data={data}
+        data={points}
         margin={chartMargin}
         role="img"
-        aria-label={`Linjediagram som viser ${metric.label.toLowerCase()} over tid${typeof overallAverage === "number" ? `. Valgt periode: ${overallAverage.toLocaleString("nb-NO")}` : ""}`}
-        onClick={(state: {
-          activeTooltipIndex?: number | TooltipIndex;
-          activeIndex?: number | TooltipIndex;
-          activeLabel?: string | number;
-        }) => {
-          const rawIndex = state.activeTooltipIndex ?? state.activeIndex;
-          const index =
-            typeof rawIndex === "number"
-              ? rawIndex
-              : typeof rawIndex === "string"
-                ? Number.parseInt(rawIndex, 10)
-                : undefined;
-
-          const clickData =
-            typeof index === "number" && Number.isFinite(index)
-              ? data[index]
-              : typeof state.activeLabel === "string"
-                ? data.find((d) => d.date === state.activeLabel)
-                : undefined;
-
-          if (!clickData) return;
-          if (typeof clickData.average !== "number") return;
-
+        aria-label={`Linjediagram som viser ${inSentence(ratingTrendTitle(trend.metric.label))} per ${nouns.one}${overallFormatted ? `. Hele perioden: ${overallFormatted}` : ""}`}
+        onClick={(state) => {
+          const point = activePoint(points, state);
+          if (typeof point?.average !== "number") return;
           navigate({
             to: "/feedback",
-            search: {
-              ...params,
-              dateMode: "fixed",
-              fromDate: clickData.date,
-              toDate: clickData.date,
-              page: "1",
-              lowRating: undefined,
-            },
+            search: bucketFeedbackSearch(params, point),
           });
         }}
-        className={styles.chartClickable}
+        onMouseMove={(state) => setHovered(activePointIndex(state))}
+        onMouseLeave={() => setHovered(undefined)}
+        // recharts sets cursor: default on its wrapper, so a class loses.
+        style={{ cursor: pointsAtAnswers ? "pointer" : "default" }}
       >
         <XAxis
-          dataKey="date"
+          dataKey="tick"
           axisLine={false}
           tickLine={false}
           tick={{ fill: colors.text, fontSize: 12 }}
           interval="preserveStartEnd"
-          tickFormatter={(value) => dayjs(value).format("DD.MM")}
         />
 
         <YAxis
-          domain={metric.domain}
-          unit={metric.unit}
+          domain={trend.metric.domain}
+          unit={trend.metric.unit}
           axisLine={false}
           tickLine={false}
           tick={{ fill: colors.text, fontSize: 11 }}
-          width={20}
+          width="auto"
           hide={isMobile}
         />
 
@@ -310,7 +482,9 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
           return (
             <ReferenceLine
               key={marker.id}
-              x={marker.markerDate}
+              x={tickByStart.get(
+                bucketStart(marker.markerDate, series.interval),
+              )}
               stroke={color}
               strokeDasharray="4 4"
               label={
@@ -330,90 +504,21 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
           );
         })}
 
+        {/* The tooltip also names weeks without an average, and their
+            markers. By default recharts leaves out points without a value. */}
         <Tooltip
           cursor={{ stroke: colors.reference, strokeDasharray: "3 3" }}
-          content={({ active, payload }) => {
-            if (!active || !payload || payload.length === 0 || !payload[0]) {
-              return null;
-            }
-
-            const point = payload[0].payload as TrendPoint;
-            const average = point.average;
-
-            return (
-              <div className={styles.tooltipCard}>
-                <div className={styles.tooltipTitle}>
-                  {dayjs(point.date).format("DD. MMMM YYYY")}
-                </div>
-
-                {average !== null && (
-                  <div className={styles.tooltipRow}>
-                    {metric.variant === "emoji" ? (
-                      <span className={styles.tooltipEmojiLarge}>
-                        {ratingToEmoji(Math.round(average))}
-                      </span>
-                    ) : null}
-                    <span className={styles.tooltipStrong}>
-                      {average.toLocaleString("nb-NO", {
-                        maximumFractionDigits: 1,
-                      })}
-                      {metric.unit}
-                    </span>
-                    <span className={styles.tooltipMuted}>
-                      ({point.count} svar)
-                    </span>
-                  </div>
-                )}
-
-                {average === null && (
-                  <div className={styles.tooltipMuted}>
-                    Ingen rating-svar denne dagen
-                  </div>
-                )}
-
-                {point.markers.length > 0 && (
-                  <div className={styles.tooltipMarkerSection}>
-                    {point.markers.map((marker) => (
-                      <div key={marker.id}>
-                        <div className={styles.tooltipMarkerRow}>
-                          <span
-                            className={styles.tooltipMarkerDot}
-                            style={{
-                              backgroundColor:
-                                marker.color ?? DEFAULT_MARKER_COLOR,
-                            }}
-                          />
-                          <span className={styles.tooltipStrong}>
-                            {marker.label}
-                          </span>
-                        </div>
-                        {marker.description && (
-                          <div className={styles.tooltipMuted}>
-                            {marker.description}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {average !== null && (
-                  <div className={styles.tooltipHint}>
-                    Klikk for å åpne tilbakemeldinger
-                  </div>
-                )}
-              </div>
-            );
-          }}
+          content={renderTooltip}
+          filterNull={false}
         />
 
         <Line
-          type="monotone"
+          type="linear"
           dataKey="average"
           connectNulls
           stroke={colors.primary}
           strokeWidth={2}
-          dot={{ fill: colors.primary, strokeWidth: 0, r: 4 }}
+          dot={PartialDot}
           activeDot={{
             fill: colors.primary,
             strokeWidth: 2,
@@ -426,77 +531,85 @@ export function RatingTrendChart({ markers = [] }: RatingTrendChartProps) {
   );
 }
 
-export function groupMarkersByDate(
-  markers: RatingMarker[],
-): Record<string, RatingMarker[]> {
-  const grouped: Record<string, RatingMarker[]> = {};
-
-  for (const marker of markers) {
-    const existing = grouped[marker.markerDate] ?? [];
-    existing.push(marker);
-    grouped[marker.markerDate] = existing;
-  }
-
-  for (const key of Object.keys(grouped)) {
-    grouped[key]?.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  }
-
-  return grouped;
+/** Names the partial weeks or months that have a point, under the chart. */
+export function RatingTrendPartialNote({ trend }: { trend: RatingTrendState }) {
+  if (trend.status !== "ready") return null;
+  const { series } = trend;
+  const note = describePartialBuckets(
+    series.points.filter((point) => point.partial && point.average !== null),
+    series.interval,
+    PARTIAL_DOT_LOOK,
+    series.withYear,
+  );
+  return note ? <Detail textColor="subtle">{note}</Detail> : null;
 }
 
+function markersOffAxis(count: number, when: string): string | undefined {
+  if (count === 0) return undefined;
+  const markers = count === 1 ? "1 markør" : `${count} markører`;
+  return `${markers} har dato ${when} og står bare i listen Markører.`;
+}
+
+/**
+ * Says which markers the chart cannot show, under the chart. They are still
+ * in the list.
+ */
+export function RatingTrendMarkersOffAxis({
+  trend,
+}: {
+  trend: RatingTrendState;
+}) {
+  if (trend.status !== "ready") return null;
+  const notes = [
+    markersOffAxis(trend.series.earlierMarkers.length, "før grafen begynner"),
+    markersOffAxis(trend.series.laterMarkers.length, "etter i dag"),
+  ].filter(Boolean);
+  if (notes.length === 0) return null;
+  return <Detail textColor="subtle">{notes.join(" ")}</Detail>;
+}
+
+/** Labels in one row stand at least this many buckets apart. */
+const LABEL_GAP = 3;
+const LABEL_ROWS = 3;
+
+/**
+ * Places the marker labels in up to three rows above the chart. Each label
+ * takes the lowest row whose last label is at least three days, weeks or
+ * months away, as the axis shows them. When no row is free, the label in the
+ * top row nearby becomes «...+N» for the markers it stands for.
+ */
 export function buildMarkerLabelMeta(
   markers: RatingMarker[],
+  interval: TimeInterval = "day",
 ): Map<string, MarkerLabelMeta> {
-  const sorted = [...markers].sort((a, b) => {
-    const byDate = a.markerDate.localeCompare(b.markerDate);
-    if (byDate !== 0) return byDate;
-    return a.createdAt.localeCompare(b.createdAt);
-  });
-
-  const clusters: RatingMarker[][] = [];
-
-  for (const marker of sorted) {
-    const currentCluster = clusters[clusters.length - 1];
-    if (!currentCluster) {
-      clusters.push([marker]);
-      continue;
-    }
-
-    const lastInCluster = currentCluster[currentCluster.length - 1];
-    if (!lastInCluster) {
-      currentCluster.push(marker);
-      continue;
-    }
-
-    const dayDistance = dayjs(marker.markerDate).diff(
-      dayjs(lastInCluster.markerDate),
-      "day",
-    );
-
-    if (dayDistance <= 2) {
-      currentCluster.push(marker);
-    } else {
-      clusters.push([marker]);
-    }
-  }
-
+  const rows: (RatingMarker | undefined)[] = Array(LABEL_ROWS).fill(undefined);
   const labelMeta = new Map<string, MarkerLabelMeta>();
+  const hiddenNear = new Map<string, number>();
 
-  for (const cluster of clusters) {
-    cluster.slice(0, 3).forEach((marker, index) => {
-      const overflowCount = cluster.length - 3;
-      const text =
-        index === 2 && overflowCount > 0
-          ? `...+${overflowCount}`
-          : marker.label;
-
-      labelMeta.set(marker.id, {
-        offsetY: 10 + index * 20,
-        text,
-      });
-    });
+  for (const marker of [...markers].sort(compareMarkers)) {
+    const start = bucketStart(marker.markerDate, interval);
+    const row = rows.findIndex(
+      (last) =>
+        !last ||
+        bucketDistance(
+          bucketStart(last.markerDate, interval),
+          start,
+          interval,
+        ) >= LABEL_GAP,
+    );
+    if (row >= 0) {
+      rows[row] = marker;
+      labelMeta.set(marker.id, { offsetY: 10 + row * 20, text: marker.label });
+      continue;
+    }
+    const top = rows[LABEL_ROWS - 1];
+    if (top) hiddenNear.set(top.id, (hiddenNear.get(top.id) ?? 1) + 1);
   }
 
+  for (const [id, count] of hiddenNear) {
+    const meta = labelMeta.get(id);
+    if (meta) labelMeta.set(id, { ...meta, text: `...+${count}` });
+  }
   return labelMeta;
 }
 

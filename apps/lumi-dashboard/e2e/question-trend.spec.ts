@@ -26,8 +26,12 @@ test("question trend can be configured, shared and restored", async ({
   await expect(dialog).toHaveAccessibleName("Utvikling: Ordering Q2");
 
   await expect(page).toHaveURL(/trendField=single-choice/);
-  await expect(page).toHaveURL(/trendInterval=week/);
   await expect(page).toHaveURL(/trendMeasure=percentage/);
+  // The interval follows the period until the viewer chooses one.
+  expect(new URL(page.url()).searchParams.has("trendInterval")).toBe(false);
+  await expect(
+    section.getByRole("radio", { name: "Dag", exact: true }),
+  ).toBeChecked();
   await expect(section.getByRole("table")).toBeVisible();
 
   const accessibility = await new AxeBuilder({ page })

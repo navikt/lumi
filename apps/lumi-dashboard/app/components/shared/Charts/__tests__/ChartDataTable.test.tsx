@@ -1,21 +1,22 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { RatingMarker } from "~/types/api";
-import { RatingTrendChartTable } from "../RatingTrendChart";
-import { TimelineChartTable } from "../TimelineChart";
+import { questionTrendRatingMetric } from "~/components/dashboard/sections/QuestionTrend/questionTrendUtils";
+import type { QuestionTrendResponse, RatingMarker } from "~/types/api";
+import { buildTimeAxis, type SeriesWindow } from "~/utils/timeBuckets";
+import {
+  RatingTrendChartTable,
+  type RatingTrendState,
+  ratingSeries,
+} from "../RatingTrendChart";
+import { countSeries, TimelineChartTable } from "../TimelineChart";
 import { TopAppsChartTable } from "../TopAppsChart";
 
-const { mockStats, mockTrend } = vi.hoisted(() => ({
+const { mockStats } = vi.hoisted(() => ({
   mockStats: {
     data: undefined as unknown,
     isPending: false,
     isPlaceholderData: false,
-  },
-  mockTrend: {
-    isPending: false,
-    isError: false,
-    data: undefined as unknown,
   },
 }));
 
@@ -25,29 +26,30 @@ vi.mock("~/hooks/useStats", () => ({
   useStats: () => ({ ...mockStats }),
 }));
 
-vi.mock("~/hooks/useQuestionTrend", () => ({
-  useQuestionTrend: () => ({ ...mockTrend }),
-}));
-
 vi.mock("~/hooks/useSearchParams", () => ({
   useSearchParams: () => ({ params: {} }),
 }));
 
-const ratingStats = {
-  fieldStats: [
-    {
-      fieldId: "rating",
-      fieldType: "RATING",
-      stats: {
-        type: "rating",
-        average: 2.5,
-        distribution: { "2": 2, "3": 2 },
-        ratingVariant: "emoji",
-        ratingScale: 5,
-      },
-    },
-  ],
-};
+const DAYS: SeriesWindow = { from: "2024-02-18", to: "2024-02-20" };
+
+function days(byDate: Record<string, number>, window: SeriesWindow = DAYS) {
+  return countSeries(buildTimeAxis(window, "day"), byDate);
+}
+
+function ready(
+  trendData: unknown,
+  markers: RatingMarker[] = [],
+  window: SeriesWindow = DAYS,
+): RatingTrendState {
+  const trendResponse = trendData as QuestionTrendResponse;
+  return {
+    status: "ready",
+    series: ratingSeries(buildTimeAxis(window, "day"), trendResponse, markers),
+    metric: questionTrendRatingMetric(trendResponse),
+    overallAverage: undefined,
+    overallFormatted: undefined,
+  };
+}
 
 function trend(
   buckets: unknown[],
@@ -112,15 +114,17 @@ describe("chart tables", () => {
     mockStats.data = undefined;
     mockStats.isPending = false;
     mockStats.isPlaceholderData = false;
-    mockTrend.isPending = false;
-    mockTrend.isError = false;
-    mockTrend.data = undefined;
   });
 
   it("shows the timeline per day when the viewer opens the table", async () => {
-    mockStats.data = { byDate: { "2024-02-19": 1200, "2024-02-18": 3 } };
-
-    render(<TimelineChartTable />);
+    render(
+      <TimelineChartTable
+        series={days(
+          { "2024-02-19": 1200, "2024-02-18": 3 },
+          { from: "2024-02-18", to: "2024-02-19" },
+        )}
+      />,
+    );
     expect(toggleButton()).toHaveAccessibleName(
       "Vis som tabell: Antall tilbakemeldinger per dag",
     );
@@ -144,6 +148,23 @@ describe("chart tables", () => {
     ).toHaveAttribute("tabindex", "0");
   });
 
+  it("names the timeline table after what the section counts", async () => {
+    render(
+      <TimelineChartTable series={days({ "2024-02-18": 3 })} noun="svar" />,
+    );
+    expect(toggleButton()).toHaveAccessibleName(
+      "Vis som tabell: Antall svar per dag",
+    );
+    await openTable();
+
+    const table = screen.getByRole("table", { name: "Antall svar per dag" });
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((cell) => cell.textContent),
+    ).toEqual(["Dato", "Svar"]);
+  });
+
   it("lists the ten apps with most feedback, like the chart", async () => {
     mockStats.data = {
       byApp: Object.fromEntries(
@@ -165,28 +186,34 @@ describe("chart tables", () => {
   });
 
   it("shows the rating per day, hidden days and the markers", async () => {
-    mockStats.data = ratingStats;
-    mockTrend.data = trend([
-      {
-        startDate: "2024-02-18",
-        masked: false,
-        responseCount: 4,
-        average: 2.5,
-        distribution: {},
-      },
-      {
-        startDate: "2024-02-19",
-        masked: true,
-        responseCount: null,
-        average: null,
-        distribution: {},
-      },
-    ]);
-
-    render(<RatingTrendChartTable markers={[marker]} />);
+    render(
+      <RatingTrendChartTable
+        trend={ready(
+          trend([
+            {
+              startDate: "2024-02-18",
+              masked: false,
+              responseCount: 4,
+              average: 2.5,
+              distribution: {},
+            },
+            {
+              startDate: "2024-02-19",
+              masked: true,
+              responseCount: null,
+              average: null,
+              distribution: {},
+            },
+          ]),
+          [marker],
+        )}
+      />,
+    );
     await openTable();
 
-    const table = screen.getByRole("table", { name: "Gjennomsnitt per dag" });
+    const table = screen.getByRole("table", {
+      name: "Gjennomsnittlig vurdering per dag",
+    });
     expect(
       within(table)
         .getAllByRole("columnheader")
@@ -200,21 +227,24 @@ describe("chart tables", () => {
   });
 
   it("writes the share of positive thumbs as a percentage", async () => {
-    mockStats.data = ratingStats;
-    mockTrend.data = trend(
-      [
-        {
-          startDate: "2024-02-18",
-          masked: false,
-          responseCount: 4,
-          ratingDistribution: { "1": 1, "2": 3 },
-          distribution: {},
-        },
-      ],
-      { ratingVariant: "thumbs", ratingScale: 2 },
+    render(
+      <RatingTrendChartTable
+        trend={ready(
+          trend(
+            [
+              {
+                startDate: "2024-02-18",
+                masked: false,
+                responseCount: 4,
+                ratingDistribution: { "1": 1, "2": 3 },
+                distribution: {},
+              },
+            ],
+            { ratingVariant: "thumbs", ratingScale: 2 },
+          ),
+        )}
+      />,
     );
-
-    render(<RatingTrendChartTable />);
     await openTable();
 
     const [row] = bodyRows(
@@ -223,51 +253,50 @@ describe("chart tables", () => {
     expect(row?.[1]).toMatch(/^\d+(,\d)?%$/);
   });
 
-  it("keeps an opened rating table open while new filters load", async () => {
-    mockStats.data = ratingStats;
-    mockTrend.data = trend([
-      {
-        startDate: "2024-02-18",
-        masked: false,
-        responseCount: 4,
-        average: 2.5,
-        distribution: {},
-      },
-    ]);
-    const { rerender } = render(<RatingTrendChartTable />);
+  it("keeps an opened rating table open, under the same name, while new filters load", async () => {
+    const shown = ready(
+      trend([
+        {
+          startDate: "2024-02-18",
+          masked: false,
+          responseCount: 4,
+          average: 2.5,
+          distribution: {},
+        },
+      ]),
+    );
+    const { rerender } = render(<RatingTrendChartTable trend={shown} />);
     await openTable();
 
-    mockStats.isPlaceholderData = true;
-    rerender(<RatingTrendChartTable />);
+    rerender(<RatingTrendChartTable trend={{ status: "pending" }} />);
     expect(screen.getByText("Laster tallene …")).toBeInTheDocument();
     expect(toggleButton()).toHaveAttribute("aria-expanded", "true");
+    expect(toggleButton()).toHaveAccessibleName(
+      "Vis som tabell: Gjennomsnittlig vurdering per dag",
+    );
 
-    mockStats.isPlaceholderData = false;
-    rerender(<RatingTrendChartTable />);
+    rerender(<RatingTrendChartTable trend={shown} />);
     expect(
-      screen.getByRole("table", { name: "Gjennomsnitt per dag" }),
+      screen.getByRole("table", { name: "Gjennomsnittlig vurdering per dag" }),
     ).toBeInTheDocument();
     expect(toggleButton()).toHaveAttribute("aria-expanded", "true");
   });
 
   it("renders nothing while the data first loads, fails or is empty", () => {
-    mockStats.isPending = true;
     const { container, rerender } = render(
       <>
-        <TimelineChartTable />
-        <RatingTrendChartTable />
+        <TimelineChartTable series={days({})} />
+        <RatingTrendChartTable trend={{ status: "pending" }} />
       </>,
     );
     expect(container).toBeEmptyDOMElement();
 
-    mockStats.isPending = false;
-    mockStats.data = { ...ratingStats, byDate: {}, byApp: {} };
-    mockTrend.isError = true;
+    mockStats.data = { byApp: {} };
     rerender(
       <>
-        <TimelineChartTable />
+        <TimelineChartTable series={days({})} />
         <TopAppsChartTable />
-        <RatingTrendChartTable />
+        <RatingTrendChartTable trend={{ status: "error" }} />
       </>,
     );
     expect(container).toBeEmptyDOMElement();

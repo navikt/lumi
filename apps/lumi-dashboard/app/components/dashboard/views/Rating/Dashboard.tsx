@@ -3,6 +3,7 @@ import {
   Alert,
   BodyShort,
   Button,
+  Detail,
   Heading,
   HStack,
   VStack,
@@ -18,7 +19,10 @@ import { SegmentBreakdown } from "~/components/dashboard/SegmentBreakdown";
 import { FieldStatsSection } from "~/components/dashboard/sections/FieldStats";
 import { DeviceBreakdownSection } from "~/components/dashboard/sections/FieldStats/DeviceBreakdownSection";
 import { ComparisonStatsCards } from "~/components/dashboard/sections/FieldStats/PeriodComparison/ComparisonStatsCards";
-import { getRatingMetric } from "~/components/dashboard/sections/FieldStats/PeriodComparison/model";
+import {
+  getRatingMetric,
+  ratingTrendTitle,
+} from "~/components/dashboard/sections/FieldStats/PeriodComparison/model";
 import { StatsCards } from "~/components/dashboard/sections/StatsCards";
 import { TimelineSection } from "~/components/dashboard/sections/Timeline";
 import { UrgentUrls } from "~/components/dashboard/sections/UrgentUrls";
@@ -26,6 +30,9 @@ import { RatingChart } from "~/components/shared/Charts/RatingChart";
 import {
   RatingTrendChart,
   RatingTrendChartTable,
+  RatingTrendMarkersOffAxis,
+  RatingTrendPartialNote,
+  useRatingSeries,
 } from "~/components/shared/Charts/RatingTrendChart";
 import {
   TopAppsChart,
@@ -35,12 +42,14 @@ import { MarkerModal } from "~/components/shared/MarkerModal";
 import { useMarkers } from "~/hooks/useMarkers";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
+import { useSeriesWindow } from "~/hooks/useSeriesWindow";
 import { useStats } from "~/hooks/useStats";
 import type {
   CreateMarkerInput,
   RatingMarker,
   UpdateMarkerInput,
 } from "~/types/api";
+import { INTERVAL_NOUNS } from "~/utils/timeBuckets";
 import styles from "./RatingDashboard.module.css";
 
 const DEFAULT_MARKER_COLOR = "#1C64F2";
@@ -79,6 +88,10 @@ export function RatingDashboard({
     params.fromDate,
     params.toDate,
   );
+  // Computed once for the chart, its notes and its table.
+  const ratingTrend = useRatingSeries(markerState.markers, canManageMarkers);
+  // The resolution stays under the heading while the trend loads.
+  const { window: seriesWindow, interval } = useSeriesWindow();
 
   const closeMarkerModal = () => {
     setIsMarkerModalOpen(false);
@@ -162,13 +175,18 @@ export function RatingDashboard({
           <DashboardCard padding={{ xs: "space-12", md: "space-16" }}>
             <VStack gap="space-12">
               <HStack justify="space-between" align="center" wrap gap="space-8">
-                <Heading size="small" level="2">
-                  {primaryRating
-                    ? getRatingMetric(primaryRating).label === "Gjennomsnitt"
-                      ? "Gjennomsnittlig vurdering"
-                      : getRatingMetric(primaryRating).label
-                    : "Vurdering"}
-                </Heading>
+                <VStack gap="space-2">
+                  <Heading size="small" level="2">
+                    {primaryRating
+                      ? ratingTrendTitle(getRatingMetric(primaryRating).label)
+                      : "Vurdering"}
+                  </Heading>
+                  {seriesWindow ? (
+                    <Detail textColor="subtle">
+                      Per {INTERVAL_NOUNS[interval].one}
+                    </Detail>
+                  ) : null}
+                </VStack>
                 <Button
                   variant="secondary"
                   size="small"
@@ -181,9 +199,11 @@ export function RatingDashboard({
               </HStack>
 
               <div className={styles.trendContainer}>
-                <RatingTrendChart markers={markerState.markers} />
+                <RatingTrendChart trend={ratingTrend} />
               </div>
-              <RatingTrendChartTable markers={markerState.markers} />
+              <RatingTrendPartialNote trend={ratingTrend} />
+              <RatingTrendMarkersOffAxis trend={ratingTrend} />
+              <RatingTrendChartTable trend={ratingTrend} />
 
               <VStack gap="space-8" className={styles.markerSection}>
                 <Heading size="small" level="3">
