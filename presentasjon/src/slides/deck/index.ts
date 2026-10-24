@@ -2,11 +2,9 @@ import type { Slide } from "../../engine";
 import { ansvar } from "./Ansvar";
 import { bareTeamet } from "./BareTeamet";
 import { brukesVidere } from "./BrukesVidere";
-import { fagsystemsonen } from "./Fagsystemsonen";
 import { fjernerEPosten } from "./FjernerEPosten";
 import { grupper } from "./Grupper";
 import { hvaVilDereVite } from "./HvaVilDereVite";
-import { hvorBorSvaret } from "./HvorBorSvaret";
 import { iAppen } from "./IAppen";
 import { merEnnViSporOm } from "./MerEnnViSporOm";
 import { oppfolgingsplanen } from "./Oppfolgingsplanen";
@@ -23,6 +21,7 @@ import { styrerDere } from "./StyrerDere";
 import { surveyenSomKode } from "./SurveyenSomKode";
 import { svaretsVei } from "./SvaretsVei";
 import { svarMeg } from "./SvarMeg";
+import { fagsystemene, inneINav } from "./snokula/Snokula";
 import { tallet } from "./Tallet";
 import { tittel } from "./Tittel";
 import { ulikeBehov } from "./UlikeBehov";
@@ -57,8 +56,8 @@ export const deckSlides: readonly Slide[] = [
   underPanseret,
   slikVetVi,
   verktoySomFinnes,
-  hvorBorSvaret,
-  fagsystemsonen,
+  inneINav,
+  fagsystemene,
   ulikeBehov,
   tallet,
   oppfolgingsplanen,
