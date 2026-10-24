@@ -1,19 +1,21 @@
-import { fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
-const optionalStringParam = fallback(z.string().optional(), undefined);
-const optionalDateModeParam = fallback(
-  z.enum(["auto", "fixed"]).optional(),
-  undefined,
-);
-const optionalTrendIntervalParam = fallback(
-  z.enum(["day", "week", "month"]).optional(),
-  undefined,
-);
-const optionalTrendMeasureParam = fallback(
-  z.enum(["count", "percentage"]).optional(),
-  undefined,
-);
+// .catch(undefined) turns an invalid value into undefined instead of an error.
+// In zod 4 it keeps the input type of the field, so search in Link, navigate
+// and redirect is still type-checked.
+const optionalStringParam = z.string().optional().catch(undefined);
+const optionalDateModeParam = z
+  .enum(["auto", "fixed"])
+  .optional()
+  .catch(undefined);
+const optionalTrendIntervalParam = z
+  .enum(["day", "week", "month"])
+  .optional()
+  .catch(undefined);
+const optionalTrendMeasureParam = z
+  .enum(["count", "percentage"])
+  .optional()
+  .catch(undefined);
 
 export const searchSchema = z
   .object({
@@ -22,12 +24,12 @@ export const searchSchema = z
     page: optionalStringParam,
     size: optionalStringParam,
     dateMode: optionalDateModeParam,
-    compare: fallback(z.enum(["previous", "none"]).optional(), undefined),
+    compare: z.enum(["previous", "none"]).optional().catch(undefined),
     fromDate: optionalStringParam,
-    periodPreset: fallback(
-      z.enum(["rolling", "yearToDate", "custom"]).optional(),
-      undefined,
-    ),
+    periodPreset: z
+      .enum(["rolling", "yearToDate", "custom"])
+      .optional()
+      .catch(undefined),
     toDate: optionalStringParam,
     hasText: optionalStringParam,
     query: optionalStringParam,

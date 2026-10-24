@@ -3,7 +3,7 @@ import { z } from "zod";
 const serverSchema = z.object({
   // Optional with defaults for local development
   // Lumi backend configuration
-  LUMI_API_URL: z.string().url().default("http://localhost:8080"),
+  LUMI_API_URL: z.url().default("http://localhost:8080"),
   LUMI_API_AUDIENCE: z
     .string()
     .min(1)
@@ -44,7 +44,7 @@ export const serverEnv = (() => {
   if (!result.success) {
     console.error(
       "❌ Invalid server environment variables:",
-      result.error.flatten(),
+      z.flattenError(result.error),
     );
     // In dev we might want to throw, in prod definitely throw.
     throw new Error("Invalid environment variables");

@@ -10,14 +10,13 @@ import {
 } from "@navikt/ds-react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { BigQueryExportView } from "~/components/bigQueryExport/BigQueryExportView";
 import { Header } from "~/components/shared/Header";
 import { fetchTeamsServerFn } from "~/server/actions/fetchTeams";
 
 export const Route = createFileRoute("/bigquery")({
-  validateSearch: zodValidator(z.object({ team: z.string().optional() })),
+  validateSearch: z.object({ team: z.string().optional() }),
   component: BigQueryExportPage,
 });
 

@@ -1,6 +1,5 @@
 import { Alert, BodyShort, Box, Heading, VStack } from "@navikt/ds-react";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { ExportPanel } from "~/components/export/Panel";
 import { FilterBar } from "~/components/shared/FilterBar";
 import { Header } from "~/components/shared/Header";
@@ -9,7 +8,7 @@ import { searchSchema } from "~/schemas/searchSchema";
 import { applyDashboardSearchDefaults } from "~/utils/dashboardSearchDefaults";
 
 export const Route = createFileRoute("/export")({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   beforeLoad: async ({ location }) => {
     const defaults = applyDashboardSearchDefaults(
       location.search as Record<string, unknown> | undefined,

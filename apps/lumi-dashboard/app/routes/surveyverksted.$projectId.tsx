@@ -11,7 +11,6 @@ import {
 } from "@navikt/lumi-survey";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useBlocker } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import {
@@ -116,7 +115,7 @@ function initialExpandedIds(page: SurveyPageV1): ReadonlySet<string> {
 }
 
 export const Route = createFileRoute("/surveyverksted/$projectId")({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   component: SurveyWorkshopEditorRoute,
 });
 

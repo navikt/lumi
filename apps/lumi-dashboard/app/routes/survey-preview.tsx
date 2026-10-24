@@ -6,7 +6,6 @@ import {
 } from "@navikt/lumi-survey";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { useMemo } from "react";
 import { surveyPreviewSearchSchema } from "~/schemas/surveyPreviewSearchSchema";
 import { fetchSurveyAuthoringProjectServerFn } from "~/server/actions";
@@ -17,7 +16,7 @@ const previewTransport: LumiSurveyTransport = {
 };
 
 export const Route = createFileRoute("/survey-preview")({
-  validateSearch: zodValidator(surveyPreviewSearchSchema),
+  validateSearch: surveyPreviewSearchSchema,
   component: SurveyPreview,
 });
 

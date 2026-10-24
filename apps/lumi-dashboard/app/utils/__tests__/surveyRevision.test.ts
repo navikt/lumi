@@ -182,8 +182,8 @@ describe("survey revision exports", () => {
 
   it("creates a portable markdown link", () => {
     const revision = {
-      id: "00000000-0000-0000-0000-000000000001",
-      projectId: "00000000-0000-0000-0000-000000000002",
+      id: "00000000-0000-4000-8000-000000000001",
+      projectId: "00000000-0000-4000-8000-000000000002",
       revisionNumber: 3,
       draftVersion: 7,
       name: "Kvittering",

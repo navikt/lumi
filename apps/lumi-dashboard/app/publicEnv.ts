@@ -29,7 +29,7 @@ export const publicEnv = (() => {
   if (!result.success) {
     console.error(
       "❌ Invalid client environment variables:",
-      result.error.flatten(),
+      z.flattenError(result.error),
     );
     throw new Error("Invalid client environment variables");
   }

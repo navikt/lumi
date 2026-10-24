@@ -15,7 +15,7 @@ export enum ErrorType {
 
 export const ApiErrorSchema = z.object({
   status: z.number(),
-  type: z.nativeEnum(ErrorType),
+  type: z.enum(ErrorType),
   message: z.string(),
   timestamp: z.string(),
   path: z.string().nullish(),

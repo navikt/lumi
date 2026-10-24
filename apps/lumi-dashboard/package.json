@@ -37,7 +37,6 @@
     "@tanstack/react-router": "^1.170.45",
     "@tanstack/react-start": "^1.169.3",
     "@tanstack/router-core": "^1.171.38",
-    "@tanstack/zod-adapter": "^1.167.0",
     "dayjs": "^1.11.23",
     "exceljs": "^4.4.0",
     "nitro": "3.0.1-alpha.2",
@@ -45,7 +44,7 @@
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "recharts": "^3.10.1",
-    "zod": "^3.25.76"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",

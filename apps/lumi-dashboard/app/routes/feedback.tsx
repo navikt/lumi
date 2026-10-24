@@ -1,6 +1,5 @@
 import { Box, Heading, VStack } from "@navikt/ds-react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { useState } from "react";
 import { FeedbackTable } from "~/components/feedback/FeedbackTable";
 import { ActiveFiltersChips } from "~/components/shared/ActiveFiltersChips";
@@ -10,7 +9,7 @@ import { searchSchema } from "~/schemas/searchSchema";
 import { applyDashboardSearchDefaults } from "~/utils/dashboardSearchDefaults";
 
 export const Route = createFileRoute("/feedback")({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   beforeLoad: async ({ location }) => {
     const defaults = applyDashboardSearchDefaults(
       location.search as Record<string, unknown> | undefined,

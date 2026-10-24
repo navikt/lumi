@@ -11,7 +11,7 @@ describe("mock theme name conflicts", () => {
       themeNameExists(
         "Søknad",
         "team-esyfo",
-        "33333333-3333-3333-3333-333333333333",
+        "33333333-3333-4333-8333-333333333333",
       ),
     ).toBe(false);
   });

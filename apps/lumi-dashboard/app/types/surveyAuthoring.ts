@@ -76,7 +76,7 @@ export const SurveyAuthoringTeamSchema = z.object({
 });
 
 export const SurveyAuthoringProjectIdSchema = SurveyAuthoringTeamSchema.extend({
-  projectId: z.string().uuid(),
+  projectId: z.uuid(),
 });
 
 export const CreateSurveyAuthoringProjectSchema =
@@ -88,7 +88,7 @@ export const CreateSurveyAuthoringProjectSchema =
 
 export const SaveSurveyAuthoringDraftSchema =
   CreateSurveyAuthoringProjectSchema.extend({
-    projectId: z.string().uuid(),
+    projectId: z.uuid(),
     expectedVersion: z.number().int().positive(),
   });
 
@@ -99,6 +99,6 @@ export const CreateSurveyAuthoringRevisionSchema =
 
 export const SurveyAuthoringRevisionIdSchema = SurveyAuthoringTeamSchema.extend(
   {
-    revisionId: z.string().uuid(),
+    revisionId: z.uuid(),
   },
 );

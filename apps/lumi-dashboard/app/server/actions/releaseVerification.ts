@@ -142,8 +142,8 @@ const feedbackReadbackSchema = z.object({
 
 const readRunSchema = z.object({
   surveyId: z.string().regex(RELEASE_VERIFICATION_SURVEY_ID_PATTERN),
-  initialReceiptId: z.string().uuid().optional(),
-  closingReceiptId: z.string().uuid().optional(),
+  initialReceiptId: z.uuid().optional(),
+  closingReceiptId: z.uuid().optional(),
 });
 
 export type ReleaseVerificationConfig =
