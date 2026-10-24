@@ -133,7 +133,13 @@ export const Route = createFileRoute("/export")({
 ## Server Functions (TanStack Start)
 
 Server-side calls live under `apps/lumi-dashboard/app/server/actions/*` and use `createServerFn()`.
-Prefer Zod validation + auth middleware (matches repo patterns).
+Every server function is a public RPC endpoint: it can be called directly, whatever route or UI uses it.
+
+- Attach `authMiddleware` to every server function that calls Lumi API or returns user data. Route guards and hidden UI are not access control. Only public data, such as `fetchBrowserObservabilityMetaServerFn`, may skip it.
+- Chain in this order: `.middleware()`, `.validator()`, `.handler()`. Pass the zod schema straight to `.validator()`; `.inputValidator()` no longer exists.
+- Use `GET` only for reads and `POST` for anything that changes data.
+- A valid `team` or `surveyId` is not proof of access. Lumi API decides access from the OBO token the handler forwards.
+- Loaders, `beforeLoad` and components run on both server and client. Keep tokens, `serverEnv` and server-only packages inside handlers, middleware `.server()` bodies and `createServerOnlyFn`. Import protection in `apps/lumi-dashboard/vite.config.ts` fails the build if client code still imports a package in `serverOnlyModules`, a `*.server.*` file or a file under `app/mock/`. Add new server-only packages to `serverOnlyModules`.
 
 ```ts
 import { createServerFn } from "@tanstack/react-start";
@@ -171,6 +177,8 @@ export const fetchStatsServerFn = createServerFn({ method: "GET" })
   - The Origin/Referer check for non-GET methods in `app/server/middleware/auth.ts` remains as a second layer in NAIS.
   - Behind the ingress, `request.url` is `http://`. Both checks compare with `getExpectedOrigin` in `app/server/requestOrigin.ts`, which takes the scheme from `X-Forwarded-Proto`.
   - Rejections are logged without header values, apart from the `Sec-Fetch-Site` token. Server-only code in the middleware options must go through `createServerOnlyFn`, because Start's compiler leaves the options in the client code.
+- Login is handled by the Nais Azure AD sidecar (Wonderwall, `azure.sidecar` in `nais/*.yaml`). `authMiddleware` validates the token and exchanges it for an OBO token. Do not add session cookies or OAuth flows from TanStack's auth guides.
+- Server routes (`server.handlers`) that return non-public data need `authMiddleware` too, through `server.middleware`. The `api/internal/*` routes serve Nais probes and Prometheus and have no auth by design.
 - The dashboard has no Subresource Integrity (SRI) for CDN-served JS/CSS today. Do not assume it exists; working SRI is tracked in #637.
 - In root layout, import styles as CSS modules (`import "@navikt/ds-css"; import "~/styles/global.css";`) instead of `?url` links, so TanStack Start/Vite manage the stylesheets (manifest, hashed file names, CDN prefix).
 
@@ -181,6 +189,22 @@ Internal endpoints are implemented as **server handlers** in route files under `
 - `GET /api/internal/isAlive`
 - `GET /api/internal/isReady`
 - `GET /api/internal/metrics` (Prometheus)
+
+## Up-to-date TanStack docs for agents
+
+TanStack Start changes faster than model training data. Look up TanStack APIs in these sources instead of relying on memory. Where they disagree with this file, this file wins.
+
+1. **Skills shipped in the installed packages** (after `pnpm install`). They match the installed versions but can lag the docs a little. Open the files directly; search tools often skip `node_modules`.
+   - Server functions: `node_modules/.pnpm/node_modules/@tanstack/start-client-core/skills/start-core/server-functions/SKILL.md`
+   - Middleware: `node_modules/.pnpm/node_modules/@tanstack/start-client-core/skills/start-core/middleware/SKILL.md`
+   - Where code runs (loaders, env, server-only code): `node_modules/.pnpm/node_modules/@tanstack/start-client-core/skills/start-core/execution-model/SKILL.md`
+   - Server routes: `node_modules/.pnpm/node_modules/@tanstack/start-client-core/skills/start-core/server-routes/SKILL.md`
+   - Search params: `apps/lumi-dashboard/node_modules/@tanstack/router-core/skills/router-core/search-params/SKILL.md`
+   - Not-found and error handling: `apps/lumi-dashboard/node_modules/@tanstack/router-core/skills/router-core/not-found-and-errors/SKILL.md`
+   - All of them: `find -L apps/lumi-dashboard/node_modules/@tanstack node_modules/.pnpm/node_modules/@tanstack -path '*/skills/*' -name SKILL.md`
+2. **Current docs as Markdown.** Add `.md` to any TanStack docs URL, or start from https://tanstack.com/start/latest/llms.txt and https://tanstack.com/router/latest/llms.txt. These follow the latest release, which can be newer than the installed one.
+
+Skip TanStack's guidance on session cookies, OAuth, password reset and rate limiting; see Security Baseline. The skills also show a hand-written Origin check for CSRF; this app uses `createCsrfMiddleware` instead.
 
 ## Testing
 
