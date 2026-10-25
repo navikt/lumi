@@ -69,10 +69,6 @@
   color: var(--ax-text-neutral-subtle);
 }
 
-.chartClickable {
-  cursor: pointer;
-}
-
 .tooltipRow {
   display: flex;
   align-items: center;

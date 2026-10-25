@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { QuestionTrendResponse } from "~/types/api";
+import { buildTimeAxis } from "~/utils/timeBuckets";
 import {
-  fillQuestionTrendBuckets,
-  formatQuestionTrendBucket,
+  inSentence,
+  questionPointHasValue,
+  questionSeries,
   questionTrendChartData,
   questionTrendChoiceValue,
   questionTrendRatingMetric,
@@ -34,28 +36,37 @@ const trend: QuestionTrendResponse = {
 
 describe("rating trend semantics", () => {
   it("keeps period labels separate from arbitrary choice identifiers", () => {
-    const data = questionTrendChartData(
-      {
-        ...trend,
-        fieldType: "SINGLE_CHOICE",
-        options: [
-          { id: "label", label: "Etikett" },
-          { id: "values.0", label: "Verdi" },
-        ],
-      },
-      [
+    const choiceTrend = {
+      ...trend,
+      fieldType: "SINGLE_CHOICE" as const,
+      options: [
+        { id: "label", label: "Etikett" },
+        { id: "values.0", label: "Verdi" },
+      ],
+      buckets: [
         {
           ...trend.buckets[0],
+          startDate: "2026-01-05",
+          masked: false,
           distribution: {
             label: { count: 3, percentage: 60 },
             "values.0": { count: 2, percentage: 40 },
           },
         },
       ],
+    };
+    const series = questionSeries(
+      buildTimeAxis({ from: "2026-01-05", to: "2026-01-11" }, "week"),
+      choiceTrend,
+    );
+    const data = questionTrendChartData(
+      choiceTrend,
+      series.points,
       "percentage",
     );
     expect(data[0]).toMatchObject({
-      label: "Uke 2 · 05.01–11.01",
+      label: "Uke 2, 2026 · 05.01–11.01",
+      tick: "05.01",
       values: [60, 40],
     });
   });
@@ -126,24 +137,47 @@ describe("rating trend semantics", () => {
 
 describe("question trend calendar", () => {
   it("fills missing ISO calendar weeks without changing masked buckets", () => {
-    const buckets = fillQuestionTrendBuckets(trend, "2026-01-07", "2026-01-25");
+    const series = questionSeries(
+      buildTimeAxis({ from: "2026-01-07", to: "2026-01-25" }, "week"),
+      trend,
+    );
 
-    expect(buckets.map((bucket) => bucket.startDate)).toEqual([
+    expect(series.points.map((point) => point.start)).toEqual([
       "2026-01-05",
       "2026-01-12",
       "2026-01-19",
     ]);
-    expect(buckets[1]).toMatchObject({ masked: false, responseCount: 0 });
-    expect(buckets[2]?.responseCount).toBeUndefined();
+    expect(series.points[1]?.bucket).toMatchObject({
+      masked: false,
+      responseCount: 0,
+    });
+    expect(series.points[2]?.bucket.masked).toBe(true);
+    expect(series.points[0]).toMatchObject({
+      partial: true,
+      label: "Uke 2, 2026 · 07.01–11.01 (5 av 7 dager)",
+    });
   });
 
-  it("uses understandable Norwegian day, ISO week and month labels", () => {
-    expect(formatQuestionTrendBucket("2026-01-01", "day")).toBe("01.01.2026");
-    expect(formatQuestionTrendBucket("2025-12-29", "week")).toBe(
-      "Uke 1 · 29.12–04.01",
-    );
-    expect(formatQuestionTrendBucket("2026-08-01", "month")).toMatch(
-      /^Aug 2026$/,
-    );
+  it("draws a point for a bucket without answers only when the chart shows counts", () => {
+    const choiceTrend = {
+      ...trend,
+      fieldType: "SINGLE_CHOICE" as const,
+      options: [{ id: "a", label: "A" }],
+    };
+    const empty = {
+      startDate: "2026-01-12",
+      masked: false,
+      responseCount: 0,
+      distribution: { a: { count: 0, percentage: 0 } },
+    };
+
+    expect(questionPointHasValue(choiceTrend, empty, "count")).toBe(true);
+    expect(questionPointHasValue(choiceTrend, empty, "percentage")).toBe(false);
+    expect(questionPointHasValue(trend, empty, "count")).toBe(false);
+  });
+
+  it("writes metric names in lower case in a sentence, except names in capitals", () => {
+    expect(inSentence("Gjennomsnitt")).toBe("gjennomsnitt");
+    expect(inSentence("NPS")).toBe("NPS");
   });
 });

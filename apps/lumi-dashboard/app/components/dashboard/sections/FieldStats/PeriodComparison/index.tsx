@@ -49,7 +49,9 @@ export function FieldStatsPeriodComparison({
   const showTrend = (field: FieldStat) => {
     void setParams({
       trendField: field.fieldId,
-      trendInterval: "week",
+      // The trend picks its resolution from the period until the viewer
+      // chooses one.
+      trendInterval: undefined,
       trendMeasure: field.fieldType === "RATING" ? undefined : "percentage",
     });
   };

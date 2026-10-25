@@ -9,18 +9,29 @@ import {
   ToggleGroup,
   VStack,
 } from "@navikt/ds-react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { DashboardCard } from "~/components/dashboard/DashboardCard";
+import {
+  PARTIAL_DOT_LOOK,
+  PARTIAL_DOTS_LOOK,
+} from "~/components/shared/Charts/timeSeriesParts";
 import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { useQuestionTrend } from "~/hooks/useQuestionTrend";
 import { useSearchParams } from "~/hooks/useSearchParams";
+import { useSeriesWindow } from "~/hooks/useSeriesWindow";
 import { useStats } from "~/hooks/useStats";
 import type { QuestionTrendBucket, QuestionTrendResponse } from "~/types/api";
+import {
+  buildTimeAxis,
+  describePartialBuckets,
+  INTERVAL_NOUNS,
+} from "~/utils/timeBuckets";
 import { QuestionTrendChart } from "./QuestionTrendChart";
 import styles from "./QuestionTrendSection.module.css";
 import {
-  fillQuestionTrendBuckets,
-  formatQuestionTrendBucket,
+  type QuestionPoint,
+  questionPointHasValue,
+  questionSeries,
   questionTrendChoiceValue,
   questionTrendRatingMetric,
   questionTrendRatingValue,
@@ -33,15 +44,13 @@ const SUPPORTED_FIELD_TYPES = new Set([
 ]);
 
 function TrendTable({
-  buckets,
+  points,
   trend,
-  interval,
   measure,
   options,
 }: {
-  buckets: QuestionTrendBucket[];
+  points: QuestionPoint[];
   trend: QuestionTrendResponse;
-  interval: "day" | "week" | "month";
   measure: "count" | "percentage";
   options: Array<{ id: string; label: string }>;
 }) {
@@ -61,7 +70,7 @@ function TrendTable({
       <Table
         size="small"
         className={styles.table}
-        aria-label="Data for utvikling over tid"
+        aria-label={`Utvikling per ${INTERVAL_NOUNS[trend.interval].one}`}
       >
         <Table.Header>
           <Table.Row>
@@ -79,11 +88,9 @@ function TrendTable({
           </Table.Row>
         </Table.Header>
         <Table.Body>
-          {buckets.map((bucket) => (
-            <Table.Row key={bucket.startDate}>
-              <Table.HeaderCell scope="row">
-                {formatQuestionTrendBucket(bucket.startDate, interval)}
-              </Table.HeaderCell>
+          {points.map(({ bucket, label, start }) => (
+            <Table.Row key={start}>
+              <Table.HeaderCell scope="row">{label}</Table.HeaderCell>
               {isRating ? (
                 <Table.DataCell
                   align="right"
@@ -142,11 +149,41 @@ export function QuestionTrendSection({
   const selectedField = structuredFields.find(
     (field) => field.fieldId === params.trendField,
   );
-  const trendQuery = useQuestionTrend(
-    Boolean(selectedField) && !statsQuery.isPlaceholderData,
-  );
-  const interval = params.trendInterval ?? "week";
+  const { window, interval: periodInterval } = useSeriesWindow();
+  // Without a choice of their own, viewers get the same resolution as the
+  // other time series for this period.
+  const interval = params.trendInterval ?? periodInterval;
   const measure = params.trendMeasure ?? "percentage";
+  const trendEnabled =
+    Boolean(selectedField && window) && !statsQuery.isPlaceholderData;
+  const trendQuery = useQuestionTrend(trendEnabled, undefined, interval);
+  const trend = trendQuery.data;
+  const series = useMemo(
+    () =>
+      trend && window
+        ? questionSeries(buildTimeAxis(window, trend.interval), trend)
+        : undefined,
+    [trend, window],
+  );
+  // The sentence names exactly the buckets that get a hollow point.
+  const partialNote = useMemo(
+    () =>
+      trend && series
+        ? describePartialBuckets(
+            series.points.filter(
+              (point) =>
+                point.partial &&
+                questionPointHasValue(trend, point.bucket, measure),
+            ),
+            series.interval,
+            trend.fieldType === "RATING" || trend.options.length === 1
+              ? PARTIAL_DOT_LOOK
+              : PARTIAL_DOTS_LOOK,
+            series.withYear,
+          )
+        : undefined,
+    [trend, series, measure],
+  );
 
   useEffect(() => {
     if (
@@ -170,11 +207,6 @@ export function QuestionTrendSection({
   ]);
 
   if (!params.surveyId) return null;
-
-  const trend = trendQuery.data;
-  const buckets = trend
-    ? fillQuestionTrendBuckets(trend, params.fromDate, params.toDate)
-    : [];
 
   const content = (
     <VStack gap="space-20">
@@ -213,7 +245,8 @@ export function QuestionTrendSection({
               );
               void setParams({
                 trendField: fieldId,
-                trendInterval: fieldId ? interval : undefined,
+                // Only an interval the viewer chose is kept in the link.
+                trendInterval: fieldId ? params.trendInterval : undefined,
                 trendMeasure:
                   fieldId && field?.fieldType !== "RATING"
                     ? measure
@@ -269,9 +302,15 @@ export function QuestionTrendSection({
           title="Kunne ikke hente utviklingen"
           queries={[trendQuery]}
         >
-          {statsQuery.isPlaceholderData || (trendQuery.isPending && !trend) ? (
+          {statsQuery.isPending ||
+          statsQuery.isPlaceholderData ||
+          (trendEnabled && trendQuery.isPending) ? (
             <Skeleton variant="rectangle" height={320} />
-          ) : trend && buckets.length > 0 ? (
+          ) : trend &&
+            series?.points.some(
+              (point) =>
+                point.bucket.masked || (point.bucket.responseCount ?? 0) > 0,
+            ) ? (
             <VStack gap="space-16">
               {trend.fieldType === "MULTI_CHOICE" &&
               measure === "percentage" ? (
@@ -280,7 +319,7 @@ export function QuestionTrendSection({
                   Summen kan være over 100 prosent fordi flere valg er mulig.
                 </Detail>
               ) : null}
-              {buckets.some((bucket) => bucket.masked) ? (
+              {series.points.some((point) => point.bucket.masked) ? (
                 <Alert variant="info" size="small">
                   Perioder med færre enn {trend.privacyThreshold} svar er
                   skjult.
@@ -288,22 +327,24 @@ export function QuestionTrendSection({
               ) : null}
               <QuestionTrendChart
                 trend={trend}
-                buckets={buckets}
+                points={series.points}
                 measure={measure}
               />
+              {partialNote ? (
+                <Detail textColor="subtle">{partialNote}</Detail>
+              ) : null}
               <TrendTable
-                buckets={buckets}
+                points={series.points}
                 trend={trend}
-                interval={trend.interval}
                 measure={measure}
                 options={trend.options}
               />
             </VStack>
-          ) : trend ? (
+          ) : (
             <Alert variant="info" size="small">
               Ingen svar på dette spørsmålet innenfor de aktive filtrene.
             </Alert>
-          ) : null}
+          )}
         </DataFetchBoundary>
       ) : null}
     </VStack>

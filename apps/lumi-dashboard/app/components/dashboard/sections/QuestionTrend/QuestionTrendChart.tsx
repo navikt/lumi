@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -8,9 +9,16 @@ import {
   YAxis,
 } from "recharts";
 import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
-import type { QuestionTrendBucket, QuestionTrendResponse } from "~/types/api";
+import {
+  formatCount,
+  PartialDot,
+} from "~/components/shared/Charts/timeSeriesParts";
+import type { QuestionTrendResponse } from "~/types/api";
+import { INTERVAL_NOUNS } from "~/utils/timeBuckets";
 import styles from "./QuestionTrendSection.module.css";
 import {
+  inSentence,
+  type QuestionPoint,
   questionTrendChartData,
   questionTrendRatingMetric,
 } from "./questionTrendUtils";
@@ -28,21 +36,33 @@ const SERIES_COLORS = [
 
 interface QuestionTrendChartProps {
   trend: QuestionTrendResponse;
-  buckets: QuestionTrendBucket[];
+  points: QuestionPoint[];
   measure: "count" | "percentage";
 }
 
 export function QuestionTrendChart({
   trend,
-  buckets,
+  points,
   measure,
 }: QuestionTrendChartProps) {
   const isRating = trend.fieldType === "RATING";
-  const metric = questionTrendRatingMetric(trend);
-  const chartData = questionTrendChartData(trend, buckets, measure);
+  const metric = useMemo(() => questionTrendRatingMetric(trend), [trend]);
+  const chartData = useMemo(
+    () => questionTrendChartData(trend, points, measure),
+    [trend, points, measure],
+  );
+  const labelByTick = useMemo(
+    () => new Map(chartData.map((point) => [point.tick, point.label])),
+    [chartData],
+  );
+  const labelFormatter = useCallback(
+    (tick: unknown) => labelByTick.get(String(tick)) ?? String(tick),
+    [labelByTick],
+  );
+  const unit = INTERVAL_NOUNS[trend.interval].one;
   const ariaLabel = isRating
-    ? `Linjediagram for ${trend.label}, med ${metric.label.toLowerCase()} per periode. Tabellen under viser de samme tallene.`
-    : `Linjediagram for ${trend.label}, med ${measure === "count" ? "antall" : "andel"} respondenter per svaralternativ. Tabellen under viser de samme tallene.`;
+    ? `Linjediagram for ${trend.label}, med ${inSentence(metric.label)} per ${unit}. Tabellen under viser de samme tallene.`
+    : `Linjediagram for ${trend.label}, med ${measure === "count" ? "antall" : "andel"} respondenter per svaralternativ og ${unit}. Tabellen under viser de samme tallene.`;
 
   return (
     <div className={styles.chartViewport}>
@@ -55,7 +75,7 @@ export function QuestionTrendChart({
             aria-label={ariaLabel}
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="label" tickLine={false} minTickGap={24} />
+            <XAxis dataKey="tick" tickLine={false} minTickGap={24} />
             <YAxis
               allowDecimals={isRating}
               domain={isRating ? metric.domain : [0, "auto"]}
@@ -67,30 +87,33 @@ export function QuestionTrendChart({
                     ? "%"
                     : undefined
               }
-              width={48}
+              width="auto"
+              tickFormatter={formatCount}
             />
-            <Tooltip />
+            <Tooltip labelFormatter={labelFormatter} />
             {!isRating && <Legend />}
             {isRating ? (
               <Line
-                type="monotone"
+                type="linear"
                 dataKey="average"
                 name={metric.label}
                 stroke={SERIES_COLORS[0]}
                 strokeWidth={2}
                 connectNulls={false}
+                dot={PartialDot}
                 unit={metric.unit}
               />
             ) : (
               trend.options.map((option, index) => (
                 <Line
                   key={option.id}
-                  type="monotone"
+                  type="linear"
                   dataKey={`values.${index}`}
                   name={option.label}
                   stroke={SERIES_COLORS[index % SERIES_COLORS.length]}
                   strokeWidth={2}
                   connectNulls={false}
+                  dot={PartialDot}
                   unit={measure === "percentage" ? "%" : undefined}
                 />
               ))

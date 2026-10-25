@@ -43,7 +43,7 @@ test.describe("Dashboard response period", () => {
 
     await expect(
       page.getByRole("img", {
-        name: /Stolpediagram som viser \d+ dager med tilbakemeldinger/,
+        name: /Søylediagram som viser antall tilbakemeldinger per dag/,
       }),
     ).toBeVisible();
     await expect(page.getByText("Ingen data for valgt periode")).toHaveCount(0);
@@ -85,7 +85,10 @@ test.describe("Dashboard response period", () => {
       toDate: "2035-01-30",
       page: "7",
     });
-    await expect(page.getByText("Ingen data for valgt periode")).toBeVisible();
+    // Every chart over time on the page says so.
+    await expect(
+      page.getByText("Ingen data for valgt periode").first(),
+    ).toBeVisible();
 
     const showFullResponsePeriod = page.getByRole("button", {
       name: "Vis hele svarperioden",
@@ -102,7 +105,7 @@ test.describe("Dashboard response period", () => {
     });
     await expect(
       page.getByRole("img", {
-        name: /Stolpediagram som viser \d+ dager med tilbakemeldinger/,
+        name: /Søylediagram som viser antall tilbakemeldinger per dag/,
       }),
     ).toBeVisible();
     await expect(page.getByText("Ingen data for valgt periode")).toHaveCount(0);
@@ -130,7 +133,7 @@ test.describe("Dashboard response period", () => {
     });
     await expect(
       page.getByRole("img", {
-        name: /Stolpediagram som viser \d+ dager med tilbakemeldinger/,
+        name: /Søylediagram som viser antall tilbakemeldinger per dag/,
       }),
     ).toBeVisible();
     await expect(page.getByText("Ingen data for valgt periode")).toHaveCount(0);

@@ -7,6 +7,20 @@ import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
 import { RatingDashboard } from "../Dashboard";
 
+const { mockSeriesWindow, mockUseRatingSeries } = vi.hoisted(() => ({
+  mockSeriesWindow: {
+    window: undefined as { from: string; to: string } | undefined,
+    interval: "week",
+    isPending: false,
+    isPlaceholderData: false,
+  },
+  mockUseRatingSeries: vi.fn(() => ({ status: "pending" })),
+}));
+
+vi.mock("~/hooks/useSeriesWindow", () => ({
+  useSeriesWindow: () => mockSeriesWindow,
+}));
+
 vi.mock("~/components/dashboard", () => ({
   ChartCard: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DashboardCard: ({ children }: { children: ReactNode }) => (
@@ -76,6 +90,9 @@ vi.mock("~/components/shared/Charts/RatingChart", () => ({
 vi.mock("~/components/shared/Charts/RatingTrendChart", () => ({
   RatingTrendChart: () => <div>MOCK_RATING_TREND</div>,
   RatingTrendChartTable: () => null,
+  RatingTrendMarkersOffAxis: () => null,
+  RatingTrendPartialNote: () => null,
+  useRatingSeries: mockUseRatingSeries,
 }));
 
 vi.mock("~/components/shared/Charts/TopAppsChart", () => ({
@@ -114,6 +131,8 @@ function givenSearchParams(params: Record<string, string | undefined>) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockSeriesWindow.window = undefined;
+  mockSeriesWindow.interval = "week";
   mockUseSegmentFilter.mockReturnValue({
     addSegment: vi.fn(),
   } as never);
@@ -157,6 +176,19 @@ describe("RatingDashboard", () => {
     render(<RatingDashboard hasSurveyFilter isRatingSurvey={false} />);
 
     expect(screen.queryByText("MOCK_RATING_TREND")).not.toBeInTheDocument();
+    // The hidden card fetches no trend either.
+    expect(mockUseRatingSeries).toHaveBeenLastCalledWith([], false);
+  });
+
+  it("keeps the resolution under the heading while the trend loads", () => {
+    givenSearchParams({ surveyId: "rating-survey-1" });
+    mockSeriesWindow.window = { from: "2026-09-01", to: "2026-09-30" };
+    mockSeriesWindow.interval = "day";
+
+    render(<RatingDashboard hasSurveyFilter isRatingSurvey />);
+
+    expect(screen.getByText("Per dag")).toBeInTheDocument();
+    expect(mockUseRatingSeries).toHaveBeenLastCalledWith([], true);
   });
 
   it("requires confirmation before deleting marker from list", async () => {

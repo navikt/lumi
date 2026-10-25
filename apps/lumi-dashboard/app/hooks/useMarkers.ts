@@ -6,7 +6,14 @@ import {
   fetchMarkersServerFn,
   updateMarkerServerFn,
 } from "~/server/actions";
-import type { CreateMarkerInput, UpdateMarkerInput } from "~/types/api";
+import type {
+  CreateMarkerInput,
+  RatingMarker,
+  UpdateMarkerInput,
+} from "~/types/api";
+
+// The same empty list on every render. Charts memoize on the markers.
+const NO_MARKERS: RatingMarker[] = [];
 
 export function useMarkers(
   surveyId?: string,
@@ -90,7 +97,7 @@ export function useMarkers(
   });
 
   return {
-    markers: markersQuery.data ?? [],
+    markers: markersQuery.data ?? NO_MARKERS,
     isLoading: markersQuery.isLoading,
     isFetching: markersQuery.isFetching,
     error: markersQuery.error,
