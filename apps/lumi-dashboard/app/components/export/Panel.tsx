@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from "react";
 import { DashboardCard, DashboardGrid } from "~/components/dashboard";
 import { ActiveFilters } from "~/components/export/ActiveFilters";
 import { AnalysisBudgetAlert } from "~/components/shared/AnalysisBudgetAlert";
+import { usePeriodRange } from "~/hooks/usePeriodRange";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { exportServerFn } from "~/server/actions";
 import { MAX_EXPORT_SIZE } from "~/server/actions/export";
@@ -26,6 +27,7 @@ import {
   isAnalysisBudgetError,
 } from "~/utils/analysisBudget";
 import { splitChoiceParam } from "~/utils/choiceFilterUtils";
+import { isSinceFirst } from "~/utils/dashboardPeriod";
 import { focusIsLost, focusStayedOn } from "~/utils/focus";
 import { splitRatingParam } from "~/utils/ratingFilterUtils";
 import styles from "./Panel.module.css";
@@ -45,7 +47,8 @@ interface Truncation {
 
 /**
  * How the last export ended. It belongs to the filters it was made with and
- * is only shown while they are the current ones.
+ * is only shown while they are the current ones. The end of «Fra første
+ * svar» moving at midnight does not change the filters.
  */
 type ExportOutcome = { filterKey: string } & (
   | { kind: "downloaded"; truncation: Truncation | null }
@@ -56,10 +59,13 @@ type ExportOutcome = { filterKey: string } & (
 
 export function ExportPanel() {
   const { params } = useSearchParams();
+  const { fromDate: firstAnswerDate } = usePeriodRange();
   const [format, setFormat] = useState<ExportFormat>("csv");
   const [isExporting, setIsExporting] = useState(false);
   const [outcome, setOutcome] = useState<ExportOutcome | null>(null);
-  const filterKey = JSON.stringify(params);
+  const filterKey = JSON.stringify(
+    isSinceFirst(params) ? { ...params, toDate: undefined } : params,
+  );
   // Read when the export answers, to see if the filters changed meanwhile.
   const currentFilterKey = useRef(filterKey);
   const exportController = useRef<AbortController | null>(null);
@@ -331,7 +337,7 @@ export function ExportPanel() {
           <Heading size="small" level="2">
             Aktive filtre
           </Heading>
-          <ActiveFilters params={params} />
+          <ActiveFilters params={params} firstAnswerDate={firstAnswerDate} />
           <BodyShort size="small" textColor="subtle">
             CSV og Excel har én rad per innsending med ID, tidspunkt, app,
             survey, første vurdering, første fritekstsvar, skjermstørrelse og om

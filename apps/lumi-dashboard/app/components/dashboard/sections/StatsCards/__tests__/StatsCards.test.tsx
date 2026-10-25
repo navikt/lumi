@@ -6,6 +6,16 @@ import type { FeedbackStats } from "~/hooks/useStats";
 import { useStats } from "~/hooks/useStats";
 import { StatsCards } from "../index";
 
+const { mockAnswerSpan } = vi.hoisted(() => ({
+  mockAnswerSpan: {
+    value: undefined as { fromDate: string; toDate: string } | undefined,
+  },
+}));
+
+vi.mock("~/hooks/useAnswerSpan", () => ({
+  useAnswerSpan: () => mockAnswerSpan.value,
+}));
+
 vi.mock("~/hooks/useStats", () => ({
   useStats: vi.fn(),
 }));
@@ -35,9 +45,86 @@ function givenStats(stats: Partial<FeedbackStats>) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockAnswerSpan.value = undefined;
 });
 
 describe("StatsCards", () => {
+  const sinceFirst = {
+    dateMode: "relative",
+    periodPreset: "sinceFirst",
+    toDate: "2026-10-25",
+  };
+  // The API counts a period without a start as 30 days.
+  const openPeriod = { fromDate: null, toDate: "2026-10-25", days: 30 };
+
+  it("counts «Fra første svar» from the first answer for the selection", () => {
+    givenSearchParams(sinceFirst);
+    givenStats({ totalCount: 3, countWithText: 1, period: openPeriod });
+    mockAnswerSpan.value = { fromDate: "2026-10-01", toDate: "2026-10-24" };
+
+    render(<StatsCards />);
+
+    expect(screen.getByText("25d")).toBeInTheDocument();
+    expect(screen.getByText("2026-10-01 → 2026-10-25")).toBeInTheDocument();
+    expect(
+      screen.getByText("I perioden 01.10.2026–25.10.2026"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("30d")).not.toBeInTheDocument();
+  });
+
+  it("leaves the days out until the first answer is known", () => {
+    givenSearchParams(sinceFirst);
+    givenStats({ totalCount: 0, countWithText: 0, period: openPeriod });
+
+    render(<StatsCards />);
+
+    expect(screen.getByText("–")).toBeInTheDocument();
+    expect(screen.getByText("– → 2026-10-25")).toBeInTheDocument();
+    expect(screen.getByText("I valgt periode")).toBeInTheDocument();
+  });
+
+  it("counts a period without a start from the first answer, also from a link", () => {
+    givenSearchParams({ dateMode: "fixed", toDate: "2026-10-25" });
+    givenStats({ totalCount: 3, countWithText: 1, period: openPeriod });
+    mockAnswerSpan.value = { fromDate: "2026-10-01", toDate: "2026-10-24" };
+
+    render(<StatsCards />);
+
+    expect(screen.getByText("25d")).toBeInTheDocument();
+  });
+
+  it("writes long periods with a thousands separator", () => {
+    givenSearchParams(sinceFirst);
+    givenStats({ totalCount: 3, countWithText: 1, period: openPeriod });
+    mockAnswerSpan.value = { fromDate: "2023-10-24", toDate: "2026-10-24" };
+
+    render(<StatsCards />);
+
+    // The separator is a no-break space, which the matcher reads as a space.
+    expect(screen.getByText("1 098d").textContent).toBe("1\u00a0098d");
+  });
+
+  it("keeps the period of the numbers on screen while new ones load", () => {
+    const shown = { totalCount: 3, countWithText: 1, period: openPeriod };
+    givenSearchParams(sinceFirst);
+    givenStats(shown);
+    mockAnswerSpan.value = { fromDate: "2026-10-01", toDate: "2026-10-24" };
+    const { rerender } = render(<StatsCards />);
+    expect(screen.getByText("25d")).toBeInTheDocument();
+
+    // Another app: its first answer is known, its numbers are not yet.
+    mockUseStats.mockReturnValue({
+      data: shown as FeedbackStats,
+      isPending: false,
+      isPlaceholderData: true,
+    } as never);
+    mockAnswerSpan.value = { fromDate: "2026-10-20", toDate: "2026-10-24" };
+    rerender(<StatsCards />);
+
+    expect(screen.getByText("25d")).toBeInTheDocument();
+    expect(screen.getByText("2026-10-01 → 2026-10-25")).toBeInTheDocument();
+  });
+
   it("describes a historical period with its actual dates", () => {
     givenSearchParams({ surveyId: "survey-1" });
     givenStats({

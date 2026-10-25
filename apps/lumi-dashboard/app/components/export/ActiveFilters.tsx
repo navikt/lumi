@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import type { SearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import { useThemes } from "~/hooks/useThemes";
+import { isSinceFirst, sinceFirstLabel } from "~/utils/dashboardPeriod";
 import { getFilterLabels } from "~/utils/filterLabels";
 import { parsePhraseParam } from "~/utils/phraseFilterUtils";
 import {
@@ -13,9 +14,11 @@ import {
 
 interface ActiveFiltersProps {
   params: SearchParams;
+  /** The first answer for the selection: the start of «Fra første svar». */
+  firstAnswerDate?: string;
 }
 
-export function ActiveFilters({ params }: ActiveFiltersProps) {
+export function ActiveFilters({ params, firstAnswerDate }: ActiveFiltersProps) {
   const segments = parseSegmentParam(params.segment);
   const segmentEntries = Object.entries(segments);
   const { data: stats, isPending: isStatsPending } = useStats();
@@ -47,10 +50,16 @@ export function ActiveFilters({ params }: ActiveFiltersProps) {
           <strong>Survey:</strong> {params.surveyId}
         </BodyShort>
       )}
-      {params.fromDate && (
+      {isSinceFirst(params) ? (
         <BodyShort size="small" spacing>
-          <strong>Fra:</strong> {dayjs(params.fromDate).format("DD.MM.YYYY")}
+          <strong>Periode:</strong> {sinceFirstLabel(firstAnswerDate)}
         </BodyShort>
+      ) : (
+        params.fromDate && (
+          <BodyShort size="small" spacing>
+            <strong>Fra:</strong> {dayjs(params.fromDate).format("DD.MM.YYYY")}
+          </BodyShort>
+        )
       )}
       {params.toDate && (
         <BodyShort size="small" spacing>

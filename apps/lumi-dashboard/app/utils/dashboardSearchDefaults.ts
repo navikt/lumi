@@ -29,6 +29,33 @@ export function applyDashboardSearchDefaults(
   const nextSearch: Search = { ...(currentSearch ?? {}) };
   let changed = false;
 
+  // «Fra første svar» has no start and ends today in Oslo, also after
+  // midnight. No other period is relative, so another one gets the default.
+  if (nextSearch.dateMode === "relative") {
+    if (nextSearch.periodPreset === "sinceFirst") {
+      const today = (options.now ?? dayjs())
+        .tz(OSLO_TIME_ZONE)
+        .format("YYYY-MM-DD");
+      // Also a blank start, so the address loses it.
+      const hadStart = nextSearch.fromDate !== undefined;
+      delete nextSearch.fromDate;
+      if (hadStart || nextSearch.toDate !== today) {
+        nextSearch.toDate = today;
+        changed = true;
+      }
+      return { search: nextSearch, changed };
+    }
+    delete nextSearch.dateMode;
+    delete nextSearch.periodPreset;
+    delete nextSearch.fromDate;
+    delete nextSearch.toDate;
+    changed = true;
+  } else if (nextSearch.periodPreset === "sinceFirst") {
+    // The preset belongs to the relative period.
+    delete nextSearch.periodPreset;
+    changed = true;
+  }
+
   const hasFromDate = hasSearchValue(nextSearch.fromDate);
   const hasToDate = hasSearchValue(nextSearch.toDate);
   const hasDateMode =

@@ -4,11 +4,14 @@ import { resolveDashboardPeriod } from "~/utils/dashboardPeriod";
 
 /**
  * True when any user-adjustable filter deviates from the default view:
- * a fixed period, free-text search, or any survey/app/field filter.
+ * a fixed period, «Fra første svar», free-text search, or any
+ * survey/app/field filter.
  */
 export function hasActiveDashboardFilters(params: SearchParams): boolean {
   return Boolean(
-    params.dateMode === "fixed" || hasActiveNonPeriodFilters(params),
+    params.dateMode === "fixed" ||
+      params.dateMode === "relative" ||
+      hasActiveNonPeriodFilters(params),
   );
 }
 

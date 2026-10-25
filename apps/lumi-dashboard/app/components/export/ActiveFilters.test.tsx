@@ -79,4 +79,32 @@ describe("ActiveFilters", () => {
     expect(screen.getByText("Vis kun:")).toBeInTheDocument();
     expect(screen.getByText("Med tekstsvar")).toBeInTheDocument();
   });
+
+  it("names «Fra første svar» with the first answer", () => {
+    renderActiveFilters({
+      dateMode: "relative",
+      periodPreset: "sinceFirst",
+      toDate: "2026-10-25",
+    });
+    expect(screen.getByText(/Fra første svar/)).toHaveTextContent(
+      "Periode: Fra første svar",
+    );
+
+    render(
+      <ActiveFilters
+        params={
+          {
+            dateMode: "relative",
+            periodPreset: "sinceFirst",
+            toDate: "2026-10-25",
+          } as SearchParams
+        }
+        firstAnswerDate="2025-12-29"
+      />,
+    );
+    expect(
+      screen.getByText("Fra første svar (29.12.2025)", { exact: false }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Fra:")).not.toBeInTheDocument();
+  });
 });

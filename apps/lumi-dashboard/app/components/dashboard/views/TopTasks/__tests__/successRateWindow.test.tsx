@@ -14,6 +14,10 @@ const { stats, topTasks } = vi.hoisted(() => ({
   },
 }));
 
+vi.mock("~/hooks/useAnswerSpan", () => ({
+  useAnswerSpan: () => undefined,
+}));
+
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
   createLink: (Component: unknown) => Component,

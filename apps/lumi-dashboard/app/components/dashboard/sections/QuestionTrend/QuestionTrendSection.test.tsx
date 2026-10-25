@@ -6,6 +6,10 @@ import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import { QuestionTrendSection } from ".";
 
+vi.mock("~/hooks/useAnswerSpan", () => ({
+  useAnswerSpan: () => undefined,
+}));
+
 vi.mock("~/hooks/useQuestionTrend", () => ({ useQuestionTrend: vi.fn() }));
 vi.mock("~/hooks/useSearchParams", () => ({ useSearchParams: vi.fn() }));
 vi.mock("~/hooks/useStats", () => ({ useStats: vi.fn() }));

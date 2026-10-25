@@ -18,6 +18,18 @@ describe("calendar-aware comparison periods", () => {
       ).toBe("none");
     },
   );
+  it("has no previous period for «Fra første svar», even with dates", () => {
+    expect(
+      getComparisonPeriods(
+        "2026-01-01",
+        "2026-09-07",
+        "previous",
+        today,
+        "sinceFirst",
+      ),
+    ).toBeUndefined();
+  });
+
   it("compares both rolling days and year-to-date to the preceding period", () => {
     const rolling = getComparisonPeriods(
       "2026-01-01",

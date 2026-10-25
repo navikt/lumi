@@ -92,7 +92,7 @@ function addDays(date: string, days: number): string {
 }
 
 /** Number of days from `from` to `to`, both included. */
-function daysBetween(from: string, to: string): number {
+export function daysBetween(from: string, to: string): number {
   return (
     Math.round((toUtcDate(to).getTime() - toUtcDate(from).getTime()) / 864e5) +
     1

@@ -41,9 +41,18 @@ Hva **Dashboard** viser når én survey er valgt, står i [Les resultatene](/das
 
 Knappen med perioden åpner **Hurtigvalg** og **Egendefinert periode**. Under **Egendefinert periode** fyller dere inn **Fra** og **Til** og velger **Velg periode**. Begge datoene er med i perioden, og dagene regnes i norsk tid.
 
-Hurtigvalgene er **Hittil i dag**, **Siste 7 dager**, **Siste 30 dager**, **Siste 3 måneder** og **Hittil i år**. Alle tar med dagen i dag, og **Siste 3 måneder** er de siste 90 dagene.
+Hurtigvalgene tar med dagen i dag:
 
-Når én survey av typen **Vurdering** eller **Custom** er valgt, ligger perioden under **Periode** ved siden av **Sammenlign med forrige periode**. Da gjelder hurtigvalgene hele dager til og med i går: **I dag**, **7 hele dager**, **30 hele dager**, **90 hele dager** og **Hittil i år**. Bare **I dag** tar med dagen i dag. Sammenligningen står i [Sammenligne to perioder](/dashboard/visninger#sammenlign).
+- **Hittil i dag**
+- **Siste 7 dager**
+- **Siste 30 dager**
+- **Siste 3 måneder**, de siste 90 dagene
+- **Hittil i år**
+- **Fra første svar**
+
+**Fra første svar** begynner ved det første lagrede svaret for teamet, appen eller surveyen dere har valgt, og slutter i dag. Knappen viser datoen, for eksempel **Fra første svar (29.12.2025)**, unntatt i filterlinjen på små skjermer. Kortet **Periode** teller dagene derfra. Bytter dere survey eller app, begynner perioden ved det første svaret der. Står siden åpen over midnatt, slutter perioden på den nye dagen. Hvor lenge svarene lagres, står i [Lagringstid og sletting](/referanse/sikkerhet#lagringstid). Under **Egendefinert periode** står det første svaret i **Fra**, så dere kan velge en egen **Til** og få faste datoer.
+
+Når én survey av typen **Vurdering** eller **Custom** er valgt, ligger perioden under **Periode** ved siden av **Sammenlign med forrige periode**. Da gjelder hurtigvalgene hele dager til og med i går: **I dag**, **7 hele dager**, **30 hele dager**, **90 hele dager**, **Hittil i år** og **Fra første svar**. Bare **I dag** og **Fra første svar** tar med dagen i dag. Sammenligningen står i [Sammenligne to perioder](/dashboard/visninger#sammenlign).
 
 ### Standardperioden {#standardperiode}
 
@@ -106,7 +115,7 @@ Slik lager dere en lenke som viser det samme for mottakeren:
 
 1. Velg team i teamvelgeren hvis dere er med i flere team. Adressen har alltid `team=`, så mottakeren åpner det samme teamet. Mottakeren må være medlem av teamet, se [Tilgang](/dashboard/tilgang#feilmeldinger).
 2. Sett de andre filtrene. Gjør det etter teamvalget, fordi teambytte fjerner dem.
-3. Velg periode, for eksempel med et hurtigvalg. Har dere ikke valgt periode selv, regner dashboardet ut standardperioden på nytt når mottakeren åpner lenken.
+3. Velg periode, for eksempel med et hurtigvalg. Har dere ikke valgt periode selv, regner dashboardet ut standardperioden på nytt når mottakeren åpner lenken. **Fra første svar** slutter den dagen mottakeren åpner lenken. De andre hurtigvalgene gir faste datoer. Svar slettes etter tolv måneder, så en lenke til en gammel periode kan vise færre svar senere.
 4. Kopier adressen.
 
 ::: details Parametere i adressen

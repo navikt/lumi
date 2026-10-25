@@ -49,6 +49,10 @@ const { mockNavigate, mockStats, mockParams, mockTrend, trendCalls, tooltip } =
     },
   }));
 
+vi.mock("~/hooks/useAnswerSpan", () => ({
+  useAnswerSpan: () => undefined,
+}));
+
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
   // No table renders here, so the links are never drawn.

@@ -9,15 +9,21 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PeriodSelector } from ".";
 
-const { mockParams, mockSetParams } = vi.hoisted(() => ({
-  mockParams: {
-    dateMode: undefined as "auto" | "fixed" | undefined,
-    surveyId: undefined as string | undefined,
-    fromDate: undefined as string | undefined,
-    toDate: undefined as string | undefined,
-  },
-  mockSetParams: vi.fn(),
-}));
+const { mockParams, mockSetParams, mockBreakpoint, mockAnswerSpan } =
+  vi.hoisted(() => ({
+    mockParams: {
+      dateMode: undefined as "auto" | "fixed" | "relative" | undefined,
+      periodPreset: undefined as string | undefined,
+      surveyId: undefined as string | undefined,
+      fromDate: undefined as string | undefined,
+      toDate: undefined as string | undefined,
+    },
+    mockSetParams: vi.fn(),
+    mockBreakpoint: { isMobile: false },
+    mockAnswerSpan: {
+      value: undefined as { fromDate: string; toDate: string } | undefined,
+    },
+  }));
 
 vi.mock("~/hooks/useSearchParams", () => ({
   useSearchParams: () => ({
@@ -27,17 +33,25 @@ vi.mock("~/hooks/useSearchParams", () => ({
 }));
 
 vi.mock("~/hooks/useBreakpoint", () => ({
-  useBreakpoint: () => ({ isMobile: false }),
+  useBreakpoint: () => mockBreakpoint,
+}));
+
+vi.mock("~/hooks/useAnswerSpan", () => ({
+  useAnswerSpan: () => mockAnswerSpan.value,
+  useAnswerSpanState: () => ({ span: mockAnswerSpan.value, isLoaded: true }),
 }));
 
 describe("PeriodSelector", () => {
   afterEach(() => vi.useRealTimers());
   beforeEach(() => {
     mockParams.dateMode = undefined;
+    mockParams.periodPreset = undefined;
     mockParams.surveyId = undefined;
     mockParams.fromDate = undefined;
     mockParams.toDate = undefined;
     mockSetParams.mockClear();
+    mockBreakpoint.isMobile = false;
+    mockAnswerSpan.value = undefined;
   });
 
   it.each([false, true])(
@@ -102,6 +116,129 @@ describe("PeriodSelector", () => {
     expect(mockSetParams).toHaveBeenCalledWith(
       expect.objectContaining({ dateMode: "fixed", page: "1" }),
     );
+    // A fixed period is not «Fra første svar» any more.
+    expect(mockSetParams.mock.lastCall?.[0]).toHaveProperty(
+      "periodPreset",
+      undefined,
+    );
+  });
+
+  it.each([false, true])(
+    "offers «Fra første svar» last among the quick picks (completed days: %s)",
+    (completeDays) => {
+      vi.useFakeTimers();
+      // 00:30 on 26 October in Oslo, after the clocks went back.
+      vi.setSystemTime(new Date("2026-10-25T23:30:00Z"));
+      render(<PeriodSelector completeDays={completeDays} />);
+      fireEvent.click(
+        screen.getByRole("button", { name: "Periode: Velg periode" }),
+      );
+      const dialog = screen.getByRole("dialog", { name: "Velg periode" });
+      const buttons = within(dialog).getAllByRole("button");
+      const yearToDate = buttons.findIndex((button) =>
+        /Hittil i år/.test(button.textContent ?? ""),
+      );
+      expect(buttons[yearToDate + 1]).toHaveTextContent("Fra første svar");
+
+      fireEvent.click(
+        within(dialog).getAllByRole("button", { name: "Fra første svar" })[0],
+      );
+
+      // Today in Oslo, also when the browser is still on the day before.
+      expect(mockSetParams).toHaveBeenCalledWith({
+        dateMode: "relative",
+        periodPreset: "sinceFirst",
+        toDate: "2026-10-26",
+        page: "1",
+      });
+      expect(mockSetParams.mock.lastCall?.[0]).toHaveProperty(
+        "fromDate",
+        undefined,
+      );
+    },
+  );
+
+  it("says that answers are deleted after twelve months", () => {
+    const { unmount } = render(<PeriodSelector />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Periode: Velg periode" }),
+    );
+    expect(
+      screen.getAllByText("Svar slettes etter tolv måneder.")[0],
+    ).toBeInTheDocument();
+    unmount();
+
+    render(<PeriodSelector completeDays />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Periode: Velg periode" }),
+    );
+    expect(
+      screen.getByText(
+        "Hele dager til og med i går, unntatt «I dag» og «Fra første svar». Svar slettes etter tolv måneder.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  describe("with «Fra første svar»", () => {
+    beforeEach(() => {
+      mockParams.dateMode = "relative";
+      mockParams.periodPreset = "sinceFirst";
+      mockParams.toDate = "2026-10-25";
+    });
+
+    it("names the period with the first answer", () => {
+      mockAnswerSpan.value = { fromDate: "2025-12-29", toDate: "2026-10-24" };
+      render(<PeriodSelector />);
+
+      expect(
+        screen.getByRole("button", {
+          name: "Periode: Fra første svar (29.12.2025)",
+        }),
+      ).toHaveTextContent("Fra første svar (29.12.2025)");
+    });
+
+    it("leaves the date out until the first answer is known, and in the filter bar on small screens", () => {
+      const { unmount } = render(<PeriodSelector />);
+      expect(
+        screen.getByRole("button", { name: "Periode: Fra første svar" }),
+      ).toBeInTheDocument();
+      unmount();
+
+      mockBreakpoint.isMobile = true;
+      mockAnswerSpan.value = { fromDate: "2025-12-29", toDate: "2026-10-24" };
+      const { unmount: unmountFilterBar } = render(<PeriodSelector />);
+      expect(
+        screen.getByRole("button", { name: "Periode: Fra første svar" }),
+      ).toBeInTheDocument();
+      unmountFilterBar();
+
+      // Next to the comparison, the button takes the full width.
+      render(<PeriodSelector completeDays />);
+      expect(
+        screen.getByRole("button", {
+          name: "Periode: Fra første svar (29.12.2025)",
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it("fills in the first answer as the start of a custom period", async () => {
+      const user = userEvent.setup();
+      mockAnswerSpan.value = { fromDate: "2025-12-29", toDate: "2026-10-24" };
+      render(<PeriodSelector completeDays />);
+
+      await user.click(
+        screen.getByRole("button", {
+          name: "Periode: Fra første svar (29.12.2025)",
+        }),
+      );
+
+      expect(screen.getAllByRole("textbox", { name: "Fra" })[0]).toHaveValue(
+        "29.12.2025",
+      );
+      expect(screen.getAllByRole("textbox", { name: "Til" })[0]).toHaveValue(
+        "25.10.2026",
+      );
+    });
   });
 
   it("uses completed Oslo days and preserves the explicit comparison choice", () => {
@@ -188,6 +325,10 @@ describe("PeriodSelector", () => {
       toDate: "2024-02-18",
       page: "1",
     });
+    expect(mockSetParams.mock.lastCall?.[0]).toHaveProperty(
+      "periodPreset",
+      undefined,
+    );
   });
 
   it("exposes dialog state and restores focus after Escape", async () => {

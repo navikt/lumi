@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useOsloToday } from "~/hooks/useOsloToday";
 import { useSearchParams } from "~/hooks/useSearchParams";
+import { useShownFirstAnswer } from "~/hooks/useShownFirstAnswer";
 import { useStats } from "~/hooks/useStats";
 import {
   earliestDate,
@@ -41,6 +42,11 @@ const NO_DAYS: readonly string[] = [];
  * statistics load, the previous numbers keep their own buckets. Answers
  * dated after the browser's today still count, in case its clock is behind.
  *
+ * A period without a start, such as «Fra første svar», begins on the day of
+ * the first answer for the selection in the filter bootstrap. With filters
+ * the bootstrap does not apply, the first days can be empty. Previous
+ * numbers keep the first answer they were shown with.
+ *
  * `extraDays` are days with answers in numbers the statistics do not count,
  * such as Top Tasks, which does not filter on segment yet. They count like
  * the days in the statistics, so a period without a start begins with the
@@ -61,24 +67,43 @@ export function useSeriesWindow(
   const fromDate = period?.fromDate ?? null;
   const toDate = period?.toDate ?? null;
   const retentionStartDate = stats?.retentionStartDate ?? null;
+  const shownFirstAnswer = useShownFirstAnswer();
+  const firstAnswer = isCalendarDate(fromDate) ? undefined : shownFirstAnswer;
 
   const days = useMemo(
-    () => [...Object.keys(byDate ?? {}), ...extraDays].filter(isCalendarDate),
-    [byDate, extraDays],
+    () =>
+      [
+        ...Object.keys(byDate ?? {}),
+        ...extraDays,
+        ...(firstAnswer ? [firstAnswer] : []),
+      ].filter(isCalendarDate),
+    [byDate, extraDays, firstAnswer],
   );
   const today = laterDate(osloToday, latestDate(days));
+  const firstDataDay = earliestDate(days);
   const resolved = useMemo(
     () =>
       byDate
         ? resolveSeriesWindow({
-            fromDate,
+            // With the first answer known, the axis starts on that day, as
+            // the period button and the card say. It stays among the days,
+            // so the retention floor does not move it.
+            fromDate: firstAnswer ? (firstDataDay ?? null) : fromDate,
             toDate,
             today,
-            firstDataDay: earliestDate(days),
+            firstDataDay,
             retentionStartDate,
           })
         : undefined,
-    [byDate, days, fromDate, toDate, today, retentionStartDate],
+    [
+      byDate,
+      firstAnswer,
+      firstDataDay,
+      fromDate,
+      toDate,
+      today,
+      retentionStartDate,
+    ],
   );
 
   return {

@@ -3,7 +3,9 @@ import {
   fixedPeriodSearch,
   getAnswerSpan,
   getTeamSubmissionPeriod,
+  isSinceFirst,
   resolveDashboardPeriod,
+  sinceFirstSearch,
 } from "../dashboardPeriod";
 
 describe("resolveDashboardPeriod", () => {
@@ -17,6 +19,19 @@ describe("resolveDashboardPeriod", () => {
       fromDate: "2026-07-23",
       toDate: "2026-08-21",
     });
+  });
+
+  it("keeps «Fra første svar» as it is, without a start", () => {
+    expect(
+      resolveDashboardPeriod({
+        dateMode: "relative",
+        toDate: "2026-08-20",
+        surveyMeta: {
+          firstSubmissionAt: "2026-01-02T10:00:00Z",
+          lastSubmissionAt: "2026-08-01T10:00:00Z",
+        },
+      }),
+    ).toEqual({ dateMode: "relative", toDate: "2026-08-20" });
   });
 
   it("treats legacy URLs with explicit dates as fixed periods", () => {
@@ -125,6 +140,18 @@ describe("getTeamSubmissionPeriod", () => {
     });
   });
 
+  it("skips a submission time that is not a date", () => {
+    expect(
+      getTeamSubmissionPeriod({
+        broken: { firstSubmissionAt: "nonsense", lastSubmissionAt: "nonsense" },
+        valid: {
+          firstSubmissionAt: "2026-03-01T09:00:00Z",
+          lastSubmissionAt: "2026-03-05T09:00:00Z",
+        },
+      }),
+    ).toEqual({ fromDate: "2026-03-01", toDate: "2026-03-05" });
+  });
+
   it("includes archived surveys when they are visible", () => {
     expect(
       getTeamSubmissionPeriod(surveyMeta, { includeArchived: true }),
@@ -176,9 +203,16 @@ describe("getAnswerSpan", () => {
     expect(
       getAnswerSpan(bootstrap, { surveyId: "shared", app: "older-app" }),
     ).toEqual({ fromDate: "2021-04-01", toDate: "2021-04-06" });
+  });
+
+  it("never takes the days from other apps", () => {
+    // The survey has answers, but not in the selected app.
     expect(
       getAnswerSpan(bootstrap, { surveyId: "other", app: "older-app" }),
-    ).toEqual({ fromDate: "2026-08-01", toDate: "2026-10-01" });
+    ).toBeUndefined();
+    expect(getAnswerSpan(bootstrap, { app: "app-without-answers" })).toBe(
+      undefined,
+    );
   });
 
   it("uses the selected app's surveys without a selected survey", () => {
@@ -202,6 +236,29 @@ describe("getAnswerSpan", () => {
   it("has no span before the bootstrap has loaded", () => {
     expect(getAnswerSpan(undefined, { surveyId: "shared" })).toBeUndefined();
     expect(getAnswerSpan(undefined, {})).toBeUndefined();
+  });
+});
+
+describe("sinceFirstSearch", () => {
+  it("has no start and ends today", () => {
+    const search = sinceFirstSearch("2026-10-25");
+
+    expect(search).toEqual({
+      dateMode: "relative",
+      periodPreset: "sinceFirst",
+      toDate: "2026-10-25",
+      page: "1",
+    });
+    // setParams removes a start that is in the address.
+    expect(search).toHaveProperty("fromDate", undefined);
+    expect(isSinceFirst(search)).toBe(true);
+  });
+
+  it("needs both the relative mode and the preset", () => {
+    expect(
+      isSinceFirst({ dateMode: "fixed", periodPreset: "sinceFirst" }),
+    ).toBe(false);
+    expect(isSinceFirst({ dateMode: "relative" })).toBe(false);
   });
 });
 

@@ -24,6 +24,7 @@ vi.mock("~/hooks/useSearchParams", () => ({
 }));
 vi.mock("~/hooks/useAnswerSpan", () => ({
   useAnswerSpan: () => undefined,
+  useAnswerSpanState: () => ({ span: undefined, isLoaded: true }),
 }));
 vi.mock("~/components/export/ActiveFilters", () => ({
   ActiveFilters: () => null,
@@ -321,6 +322,33 @@ describe("ExportPanel", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(FILTERS_CHANGED);
     expect(screen.getByRole("button", { name: "Last ned CSV" })).toBeEnabled();
+  });
+
+  it("downloads «Fra første svar» when its end moves to a new day meanwhile", async () => {
+    let resolveExport: (value: unknown) => void = () => undefined;
+    exportMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveExport = resolve;
+      }) as never,
+    );
+    search.params = {
+      team: "flex",
+      dateMode: "relative",
+      periodPreset: "sinceFirst",
+      toDate: "2026-10-25",
+    };
+    const user = userEvent.setup();
+    const { rerender } = render(<ExportPanel />);
+
+    await user.click(screen.getByRole("button", { name: "Last ned CSV" }));
+    search.params = { ...search.params, toDate: "2026-10-26" };
+    rerender(<ExportPanel />);
+    await act(async () => resolveExport(exportResult({ total: 3, count: 3 })));
+
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalled();
+    expect(
+      screen.getByText("Eksport fullført! Filen er lastet ned."),
+    ).toBeInTheDocument();
   });
 
   it("does not download a file for filters that have changed", async () => {

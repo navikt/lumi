@@ -156,11 +156,15 @@ export function MarkerModal({
   });
   const datepickerSelectedRef = useRef(setDatepickerSelected);
   datepickerSelectedRef.current = setDatepickerSelected;
+  // Read when the form fills in. The end of «Fra første svar» moves at
+  // midnight, and that must not empty a form someone is writing in.
+  const maxDateRef = useRef(maxDate);
+  maxDateRef.current = maxDate;
 
   useEffect(() => {
     if (!isOpen) return;
 
-    const defaultDate = maxDate ?? dayjs().startOf("day").toDate();
+    const defaultDate = maxDateRef.current ?? dayjs().startOf("day").toDate();
     const existingColor = normalizeOptionalColor(marker?.color);
 
     if (!marker) {
@@ -185,7 +189,7 @@ export function MarkerModal({
     setDidChangeColor(false);
     setErrors({});
     setConfirmDelete(false);
-  }, [isOpen, marker, maxDate]);
+  }, [isOpen, marker]);
 
   const resolvedColor = useMemo(
     () => normalizeOptionalColor(selectedColor),

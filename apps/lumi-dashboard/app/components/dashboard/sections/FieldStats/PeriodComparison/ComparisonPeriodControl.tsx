@@ -3,6 +3,7 @@ import { useId } from "react";
 import { PeriodSelector } from "~/components/dashboard/PeriodSelector";
 import { useOsloToday } from "~/hooks/useOsloToday";
 import { useSearchParams } from "~/hooks/useSearchParams";
+import { isSinceFirst } from "~/utils/dashboardPeriod";
 import { getComparisonPeriods } from "./comparisonPeriods";
 import styles from "./PeriodComparison.module.css";
 
@@ -34,41 +35,52 @@ export function ComparisonPeriodControl() {
         </Label>
         <PeriodSelector completeDays />
       </HGrid>
-      <VStack className={styles.comparisonControl}>
-        <Switch
-          size="small"
-          position="right"
-          aria-describedby={
-            periods && periods.mode !== "none" ? descriptionId : undefined
-          }
-          checked={params.compare === "previous"}
-          onChange={(event) =>
-            void setParams({
-              compare: event.target.checked ? "previous" : "none",
-            })
-          }
-        >
-          Sammenlign med forrige periode
-        </Switch>
-        {periods && periods.mode !== "none" ? (
-          <VStack id={descriptionId} gap="space-2">
-            {periods.hasFutureDates ? (
-              <Detail textColor="subtle">
-                Velg en sluttdato senest i dag for å sammenligne.
-              </Detail>
-            ) : (
-              <>
-                <Detail textColor="subtle">Mot {periods.previous.label}</Detail>
-                {periods.includesToday && (
+      {isSinceFirst(params) ? (
+        // The period has no start in the address, so there is no previous
+        // period. `compare` stays and applies again to another period.
+        <Detail textColor="subtle" className={styles.comparisonControl}>
+          Ingen forrige periode å sammenligne med når perioden starter ved
+          første svar.
+        </Detail>
+      ) : (
+        <VStack className={styles.comparisonControl}>
+          <Switch
+            size="small"
+            position="right"
+            aria-describedby={
+              periods && periods.mode !== "none" ? descriptionId : undefined
+            }
+            checked={params.compare === "previous"}
+            onChange={(event) =>
+              void setParams({
+                compare: event.target.checked ? "previous" : "none",
+              })
+            }
+          >
+            Sammenlign med forrige periode
+          </Switch>
+          {periods && periods.mode !== "none" ? (
+            <VStack id={descriptionId} gap="space-2">
+              {periods.hasFutureDates ? (
+                <Detail textColor="subtle">
+                  Velg en sluttdato senest i dag for å sammenligne.
+                </Detail>
+              ) : (
+                <>
                   <Detail textColor="subtle">
-                    Inkluderer i dag · foreløpig sammenligning
+                    Mot {periods.previous.label}
                   </Detail>
-                )}
-              </>
-            )}
-          </VStack>
-        ) : null}
-      </VStack>
+                  {periods.includesToday && (
+                    <Detail textColor="subtle">
+                      Inkluderer i dag · foreløpig sammenligning
+                    </Detail>
+                  )}
+                </>
+              )}
+            </VStack>
+          ) : null}
+        </VStack>
+      )}
     </HGrid>
   );
 }

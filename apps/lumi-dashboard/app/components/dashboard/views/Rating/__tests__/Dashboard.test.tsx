@@ -108,6 +108,18 @@ vi.mock("~/hooks/useMarkers", () => ({
   useMarkers: vi.fn(),
 }));
 
+const { mockAnswerSpan } = vi.hoisted(() => ({
+  mockAnswerSpan: {
+    span: undefined as { fromDate: string; toDate: string } | undefined,
+    isLoaded: true,
+  },
+}));
+
+vi.mock("~/hooks/useAnswerSpan", () => ({
+  useAnswerSpan: () => mockAnswerSpan.span,
+  useAnswerSpanState: () => mockAnswerSpan,
+}));
+
 vi.mock("~/hooks/useSearchParams", () => ({
   useSearchParams: vi.fn(),
 }));
@@ -131,6 +143,8 @@ function givenSearchParams(params: Record<string, string | undefined>) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockAnswerSpan.span = undefined;
+  mockAnswerSpan.isLoaded = true;
   mockSeriesWindow.window = undefined;
   mockSeriesWindow.interval = "week";
   mockUseSegmentFilter.mockReturnValue({
@@ -189,6 +203,47 @@ describe("RatingDashboard", () => {
 
     expect(screen.getByText("Per dag")).toBeInTheDocument();
     expect(mockUseRatingSeries).toHaveBeenLastCalledWith([], true);
+  });
+
+  describe("with «Fra første svar»", () => {
+    const sinceFirst = {
+      surveyId: "rating-survey-1",
+      dateMode: "relative",
+      periodPreset: "sinceFirst",
+      toDate: "2026-10-25",
+    };
+
+    it("waits with the markers until the first answer is known", () => {
+      givenSearchParams(sinceFirst);
+      mockAnswerSpan.isLoaded = false;
+
+      render(<RatingDashboard hasSurveyFilter isRatingSurvey />);
+
+      expect(mockUseMarkers).toHaveBeenLastCalledWith(
+        undefined,
+        undefined,
+        "2026-10-25",
+      );
+      expect(screen.getByText("Laster markører...")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Ingen markører i valgt periode."),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Markør" })).toBeDisabled();
+    });
+
+    it("gets the markers from the first answer", () => {
+      givenSearchParams(sinceFirst);
+      mockAnswerSpan.span = { fromDate: "2026-07-01", toDate: "2026-10-24" };
+
+      render(<RatingDashboard hasSurveyFilter isRatingSurvey />);
+
+      expect(mockUseMarkers).toHaveBeenLastCalledWith(
+        "rating-survey-1",
+        "2026-07-01",
+        "2026-10-25",
+      );
+      expect(screen.getByRole("button", { name: "Markør" })).toBeEnabled();
+    });
   });
 
   it("requires confirmation before deleting marker from list", async () => {

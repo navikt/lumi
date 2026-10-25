@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import type { SearchParams } from "~/schemas/searchSchema";
 import { todayInOslo } from "~/utils/dashboardPeriod";
 import type { ComparisonPeriod } from "./types";
 
@@ -34,8 +35,10 @@ export function getComparisonPeriods(
   toDate?: string,
   mode?: ComparisonMode,
   today = todayInOslo(),
-  preset?: "rolling" | "yearToDate" | "custom",
+  preset?: SearchParams["periodPreset"],
 ) {
+  // «Fra første svar» has no previous period.
+  if (preset === "sinceFirst") return undefined;
   const from = calendarDate(fromDate);
   const to = calendarDate(toDate);
   const now = calendarDate(today);
