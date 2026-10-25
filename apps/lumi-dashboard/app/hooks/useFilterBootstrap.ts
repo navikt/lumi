@@ -34,6 +34,22 @@ export function getFilterBootstrapRefetchInterval(
 }
 
 /**
+ * The filter bootstrap FilterBar keeps up to date, read from the cache.
+ * `useFilterBootstrap` asks for a new copy on every mount. A part of the page
+ * that comes and goes, like an alert, should not.
+ */
+export function useCachedFilterBootstrap() {
+  const { params } = useSearchParams();
+
+  return useQuery<FilterBootstrapResponse>({
+    queryKey: filterBootstrapQueryKey(params.team),
+    queryFn: () =>
+      fetchFilterBootstrapServerFn({ data: { team: params.team } }),
+    enabled: false,
+  });
+}
+
+/**
  * Hook to fetch filter bootstrap data.
  *
  * Provides all data needed for FilterBar dropdowns in a single request:

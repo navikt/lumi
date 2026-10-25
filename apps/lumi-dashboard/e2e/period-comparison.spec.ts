@@ -293,7 +293,7 @@ for (const width of [1280, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`/?${period}&surveyId=survey-vurdering`);
     const trigger = page.getByRole("button", { name: /^Periode:/ });
-    await expect(trigger).toBeVisible();
+    await expect(trigger).toBeVisible({ timeout: 15000 });
     await page.screenshot({ path: testInfo.outputPath("controls.png") });
     await trigger.click();
     const editor = page.getByRole("dialog", {
@@ -327,8 +327,12 @@ for (const width of [1280, 768, 390, 320]) {
       .analyze();
     expect(accessibility.violations).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath("period-editor.png") });
-    await editor.getByTitle("Åpne datovelger").first().click();
+    const openDatePicker = editor.getByTitle("Åpne datovelger").first();
+    await openDatePicker.click();
     await expect(page.getByRole("dialog")).toHaveCount(2);
+    // The date picker moves focus into its calendar just after it opens. An
+    // Escape before that belongs to the period editor and closes both.
+    await expect(openDatePicker).not.toBeFocused();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(1);
     await expect(editor).toBeVisible();

@@ -5,3 +5,9 @@
 .optionIcon {
   margin-top: 2px;
 }
+
+/* The status region is always in the page. While empty, it takes no place in
+   the grid. */
+.status:empty {
+  position: absolute;
+}

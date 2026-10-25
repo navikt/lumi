@@ -52,6 +52,7 @@ vi.mock("~/hooks/useSearchParams", () => ({
 
 vi.mock("~/hooks/useFilterBootstrap", () => ({
   useFilterBootstrap: () => mockBootstrap,
+  useCachedFilterBootstrap: () => mockBootstrap,
 }));
 
 function loadedBootstrapData() {
@@ -149,6 +150,10 @@ describe("FilterBar archive state", () => {
     mockResetParams.mockClear();
     mockBootstrap.refetch.mockClear();
     mockStats.refetch.mockClear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("shows an explicit error instead of empty filters and retries the failed query", () => {
@@ -317,11 +322,15 @@ describe("FilterBar archive state", () => {
     expect(mockSetParams.mock.lastCall?.[0]).toHaveProperty("task", undefined);
   });
 
-  it("offers the survey response period when a fixed period does not overlap", () => {
+  it("offers the survey response period when a fixed period does not overlap", async () => {
     mockParams.surveyId = "survey-active";
     mockParams.dateMode = "fixed";
     mockParams.fromDate = "2026-08-01";
     mockParams.toDate = "2026-08-21";
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      callback(0);
+      return 0;
+    });
 
     render(<FilterBar />);
 
@@ -330,6 +339,11 @@ describe("FilterBar archive state", () => {
         "Surveyen har registrerte svar fra 01.01.2024 til 18.02.2024.",
       ),
     ).toBeInTheDocument();
+    // CSS hides one of the two period buttons. Here the first one shows.
+    const [periodButton] = screen.getAllByRole("button", { name: /^Periode:/ });
+    vi.spyOn(periodButton, "getClientRects").mockReturnValue([
+      new DOMRect(0, 0, 100, 32),
+    ] as unknown as DOMRectList);
 
     fireEvent.click(
       screen.getByRole("button", { name: "Vis hele svarperioden" }),
@@ -341,6 +355,11 @@ describe("FilterBar archive state", () => {
       toDate: "2024-02-18",
       page: "1",
     });
+    expect(mockSetParams.mock.lastCall?.[0]).toHaveProperty(
+      "periodPreset",
+      undefined,
+    );
+    await waitFor(() => expect(periodButton).toHaveFocus());
   });
 
   it("resolves an automatic period for a survey opened from a direct URL", async () => {

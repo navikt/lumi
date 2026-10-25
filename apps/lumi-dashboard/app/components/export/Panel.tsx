@@ -14,13 +14,19 @@ import {
   RadioGroup,
   VStack,
 } from "@navikt/ds-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DashboardCard, DashboardGrid } from "~/components/dashboard";
 import { ActiveFilters } from "~/components/export/ActiveFilters";
+import { AnalysisBudgetAlert } from "~/components/shared/AnalysisBudgetAlert";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { exportServerFn } from "~/server/actions";
 import { MAX_EXPORT_SIZE } from "~/server/actions/export";
+import {
+  FILTER_BUDGET_DESCRIPTION,
+  isAnalysisBudgetError,
+} from "~/utils/analysisBudget";
 import { splitChoiceParam } from "~/utils/choiceFilterUtils";
+import { focusIsLost, focusStayedOn } from "~/utils/focus";
 import { splitRatingParam } from "~/utils/ratingFilterUtils";
 import styles from "./Panel.module.css";
 
@@ -37,25 +43,84 @@ interface Truncation {
   count: number;
 }
 
+/**
+ * How the last export ended. It belongs to the filters it was made with and
+ * is only shown while they are the current ones.
+ */
+type ExportOutcome = { filterKey: string } & (
+  | { kind: "downloaded"; truncation: Truncation | null }
+  | { kind: "budget" }
+  | { kind: "failed"; message: string }
+  | { kind: "filtersChanged" }
+);
+
 export function ExportPanel() {
   const { params } = useSearchParams();
   const [format, setFormat] = useState<ExportFormat>("csv");
   const [isExporting, setIsExporting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [truncation, setTruncation] = useState<Truncation | null>(null);
+  const [outcome, setOutcome] = useState<ExportOutcome | null>(null);
   const filterKey = JSON.stringify(params);
+  // Read when the export answers, to see if the filters changed meanwhile.
+  const currentFilterKey = useRef(filterKey);
+  const exportController = useRef<AbortController | null>(null);
+  const budgetAlertRef = useRef<HTMLDivElement>(null);
+  const failedAlertRef = useRef<HTMLDivElement>(null);
+  const downloadButtonRef = useRef<HTMLButtonElement>(null);
+  // Set when an export ends, for the effect that moves focus.
+  const exportEnded = useRef(false);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filterKey is the trigger, since the warning only applies to the filters the file was exported with
+  // Cleared during render, as the outcome belongs to the filters it was made
+  // with. Going back to those filters does not bring it back.
+  if (outcome && outcome.filterKey !== filterKey) {
+    setOutcome(null);
+  }
+
   useEffect(() => {
-    setTruncation(null);
+    currentFilterKey.current = filterKey;
+    // An export only answers for the filters it started with.
+    return () => exportController.current?.abort();
   }, [filterKey]);
 
+  // Aksel disables the button while the export loads, and the focus is lost.
+  // When the export ends, focus moves to an alert the user must read, or
+  // back to the button.
+  useEffect(() => {
+    if (!outcome || !exportEnded.current) return;
+    exportEnded.current = false;
+    if (!focusIsLost()) return;
+    if (outcome.kind === "budget") budgetAlertRef.current?.focus();
+    else if (outcome.kind === "failed") failedAlertRef.current?.focus();
+    else downloadButtonRef.current?.focus();
+  }, [outcome]);
+
+  // A closed alert takes its close button with it.
+  const closeAlert = (next: ExportOutcome | null) => {
+    setOutcome(next);
+    downloadButtonRef.current?.focus();
+  };
+
   const handleExport = async () => {
+    // A new export with the same filters gets the same refusal. The alert
+    // says what helps.
+    if (outcome?.kind === "budget") {
+      budgetAlertRef.current?.focus();
+      return;
+    }
+
+    exportController.current?.abort();
+    const controller = new AbortController();
+    exportController.current = controller;
+    const startedWith = filterKey;
+    const filtersChanged = () => currentFilterKey.current !== startedWith;
+    const end = (next: ExportOutcome) => {
+      exportEnded.current = true;
+      setOutcome(next);
+    };
+    // Shown with the filters as they are when the export answers.
+    const showFiltersChanged = () =>
+      end({ kind: "filtersChanged", filterKey: currentFilterKey.current });
     setIsExporting(true);
-    setError(null);
-    setSuccess(false);
-    setTruncation(null);
+    setOutcome(null);
 
     try {
       const result = await exportServerFn({
@@ -79,7 +144,15 @@ export function ExportPanel() {
           rating: splitRatingParam(params.rating),
           phrase: params.phrase,
         },
+        signal: controller.signal,
       });
+
+      if (filtersChanged()) {
+        showFiltersChanged();
+        return;
+      }
+      // The panel went away, or a newer export replaced this one.
+      if (controller.signal.aborted) return;
 
       const binaryString = atob(result.data);
       const bytes = new Uint8Array(binaryString.length);
@@ -97,34 +170,53 @@ export function ExportPanel() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      if (
-        result.total !== null &&
-        result.count !== null &&
-        result.total > result.count
-      ) {
-        setTruncation({ total: result.total, count: result.count });
-      }
-
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      end({
+        kind: "downloaded",
+        filterKey: startedWith,
+        truncation:
+          result.total !== null &&
+          result.count !== null &&
+          result.total > result.count
+            ? { total: result.total, count: result.count }
+            : null,
+      });
     } catch (err) {
+      if (filtersChanged()) {
+        showFiltersChanged();
+        return;
+      }
+      if (controller.signal.aborted) return;
+      if (isAnalysisBudgetError(err)) {
+        end({ kind: "budget", filterKey: startedWith });
+        return;
+      }
       console.error("Export failed:", err);
-      setError(err instanceof Error ? err.message : "Ukjent feil ved eksport");
+      end({
+        kind: "failed",
+        filterKey: startedWith,
+        message: err instanceof Error ? err.message : "Ukjent feil ved eksport",
+      });
     } finally {
-      setIsExporting(false);
+      if (exportController.current === controller) {
+        exportController.current = null;
+        setIsExporting(false);
+      }
     }
   };
 
   return (
     <DashboardGrid minColumnWidth="300px">
-      {error && (
+      {outcome?.kind === "failed" && (
         <Alert
+          ref={failedAlertRef}
+          tabIndex={-1}
+          role="alert"
           variant="error"
           className="export-alert"
           closeButton
-          onClose={() => setError(null)}
+          onClose={() => closeAlert(null)}
         >
-          {error}
+          {outcome.message}
           <Button
             variant="tertiary"
             size="small"
@@ -136,24 +228,46 @@ export function ExportPanel() {
           </Button>
         </Alert>
       )}
-      {success && (
-        <Alert variant="success" className="export-alert">
-          Eksport fullført! Filen er lastet ned.
-        </Alert>
-      )}
-      {truncation && (
-        <Alert
-          variant="warning"
-          role="status"
+      {outcome?.kind === "budget" && (
+        <AnalysisBudgetAlert
+          ref={budgetAlertRef}
+          description={FILTER_BUDGET_DESCRIPTION}
+          offerRemoveFilter
+          focusAfterFiltersRemoved={(origin) => {
+            if (focusStayedOn(origin)) downloadButtonRef.current?.focus();
+          }}
           className="export-alert"
-          closeButton
-          onClose={() => setTruncation(null)}
-        >
-          Eksporten har de {truncation.count.toLocaleString("no-NO")} nyeste
-          svarene av {truncation.total.toLocaleString("no-NO")}. Del opp
-          perioden og eksporter hver del for seg for å få med alle.
-        </Alert>
+        />
       )}
+      {/* Always in the page. Screen readers announce what comes into it. */}
+      <div role="status" className={`export-alert ${styles.status}`}>
+        {outcome?.kind === "downloaded" && (
+          <VStack gap={{ xs: "space-16", md: "space-24" }}>
+            <Alert variant="success">
+              Eksport fullført! Filen er lastet ned.
+            </Alert>
+            {outcome.truncation && (
+              <Alert
+                variant="warning"
+                closeButton
+                onClose={() => closeAlert({ ...outcome, truncation: null })}
+              >
+                Eksporten har de{" "}
+                {outcome.truncation.count.toLocaleString("no-NO")} nyeste
+                svarene av {outcome.truncation.total.toLocaleString("no-NO")}.
+                Del opp perioden og eksporter hver del for seg for å få med
+                alle.
+              </Alert>
+            )}
+          </VStack>
+        )}
+        {outcome?.kind === "filtersChanged" && (
+          <Alert variant="info">
+            Filtrene ble endret før eksporten var ferdig. Ingen fil ble lastet
+            ned. Last ned på nytt.
+          </Alert>
+        )}
+      </div>
       <DashboardCard padding="space-24">
         <VStack gap="space-16">
           <Heading size="small" level="2">
@@ -203,6 +317,7 @@ export function ExportPanel() {
           </RadioGroup>
 
           <Button
+            ref={downloadButtonRef}
             onClick={handleExport}
             loading={isExporting}
             icon={<DownloadIcon aria-hidden />}

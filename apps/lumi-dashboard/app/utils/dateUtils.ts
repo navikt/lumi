@@ -25,6 +25,15 @@ export function formatDateLong(date: string): string {
 }
 
 /**
+ * Formats a period of days with the year on both, as the Tilbakemeldinger
+ * card does.
+ * @example formatDateRange("2026-06-01", "2026-06-30") -> "01.06.2026–30.06.2026"
+ */
+export function formatDateRange(fromDate: string, toDate: string): string {
+  return `${formatDateLong(fromDate)}–${formatDateLong(toDate)}`;
+}
+
+/**
  * Gets the start of the default date range (30 days ago).
  */
 export function getDefaultFromDate(): string {

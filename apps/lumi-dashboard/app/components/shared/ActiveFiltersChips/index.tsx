@@ -182,6 +182,7 @@ export function ActiveFiltersChips() {
             aria-label={`Fjern filter ${chip.label}: ${chip.value}`}
           >
             <XMarkIcon
+              aria-hidden
               fontSize="var(--ax-font-size-medium)"
               className={styles.removeIcon}
             />

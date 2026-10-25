@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getMockContextTags } from "~/mock/mockData";
+import { assertMockAnalysisBudget } from "~/mock/analysisBudget";
+import { getMockContextTags, mockFeedbackItems } from "~/mock/mockData";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
   type AuthContext,
@@ -23,6 +24,16 @@ export const fetchContextTagsServerFn = createServerFn({ method: "GET" })
 
     if (isMockMode()) {
       await mockDelay(300);
+      // Like the API, only the task drill-down reads the answers into memory.
+      // It filters on the task there, and has no app filter.
+      if (data.task?.trim()) {
+        assertMockAnalysisBudget(mockFeedbackItems, {
+          surveyId: data.surveyId,
+          fromDate: data.fromDate,
+          toDate: data.toDate,
+          deviceType: data.deviceType,
+        });
+      }
 
       // Calculate actual context tags from mock data (with all filters)
       const contextTags = getMockContextTags(

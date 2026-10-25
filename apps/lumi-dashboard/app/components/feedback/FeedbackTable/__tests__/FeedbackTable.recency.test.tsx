@@ -46,6 +46,7 @@ vi.mock("~/hooks/useFeedback", () => ({
 
 vi.mock("~/hooks/useFilterBootstrap", () => ({
   useFilterBootstrap: () => mockBootstrap,
+  useCachedFilterBootstrap: () => mockBootstrap,
 }));
 
 vi.mock("~/hooks/useDeleteFeedback", () => ({

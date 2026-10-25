@@ -22,7 +22,30 @@ import { useId, useRef, useState } from "react";
 import { useBreakpoint } from "~/hooks/useBreakpoint";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { todayInOslo } from "~/utils/dashboardPeriod";
+import { focusPageHeading, focusStayedOn } from "~/utils/focus";
 import styles from "./PeriodSelector.module.css";
+
+/**
+ * Moves focus to the period button after a button outside it changed the
+ * period. The button names the new period. The filter bar renders one for
+ * wide and one for narrow screens, and CSS hides the other. While the filter
+ * bar loads there is none, and focus goes to the page heading.
+ *
+ * `origin` is the button that changed the period. Focus moves only from it,
+ * or when it is gone with its button. Focus the user has moved somewhere
+ * else stays there.
+ */
+export function focusPeriodTrigger(origin: Element | null) {
+  if (!focusStayedOn(origin)) return;
+  const trigger = Array.from(
+    document.querySelectorAll<HTMLElement>("[data-period-trigger]"),
+  ).find((element) => element.getClientRects().length > 0);
+  if (trigger) {
+    trigger.focus();
+    return;
+  }
+  focusPageHeading(origin);
+}
 
 function CustomPeriodInputs({
   onApply,
@@ -252,6 +275,7 @@ export function PeriodSelector({
         icon={<CalendarIcon aria-hidden />}
         iconPosition="left"
         className={completeDays ? styles.completeTrigger : styles.triggerButton}
+        data-period-trigger=""
         aria-label={`Periode: ${periodLabel}`}
         aria-expanded={open}
         aria-haspopup="dialog"

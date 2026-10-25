@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getMockTopTasksStats } from "~/mock/mockData";
+import { assertMockAnalysisBudget } from "~/mock/analysisBudget";
+import { getMockTopTasksStats, mockFeedbackItems } from "~/mock/mockData";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
   type AuthContext,
@@ -52,6 +53,7 @@ export const fetchTopTasksServerFn = createServerFn({ method: "GET" })
     if (isMockMode()) {
       await mockDelay();
       assertMockTeamAccess(data.team);
+      assertMockAnalysisBudget(mockFeedbackItems, data);
       return getMockTopTasksStats(toMockSearchParams(data));
     }
 

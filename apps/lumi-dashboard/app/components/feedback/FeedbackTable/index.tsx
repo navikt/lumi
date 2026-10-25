@@ -27,7 +27,12 @@ import { useFeedback } from "~/hooks/useFeedback";
 import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useTeamAccessDenied } from "~/hooks/useTeamAccessDenied";
-import { getTeamSubmissionPeriod } from "~/utils/dashboardPeriod";
+import { FILTER_BUDGET_DESCRIPTION } from "~/utils/analysisBudget";
+import {
+  type DateRange,
+  fixedPeriodSearch,
+  getTeamSubmissionPeriod,
+} from "~/utils/dashboardPeriod";
 import { writeErrorText } from "~/utils/publicDemo";
 import {
   formatRelativeSubmissionTime,
@@ -36,6 +41,7 @@ import {
 } from "~/utils/surveyArchiveUtils";
 import { ArchiveSurveyDialog } from "../../dashboard/ArchiveSurveyDialog";
 import { DeleteSurveyDialog } from "../../dashboard/DeleteSurveyDialog";
+import { focusPeriodTrigger } from "../../dashboard/PeriodSelector";
 import { DataFetchBoundary } from "../../shared/DataFetchBoundary";
 import { DeleteFeedbackDialog } from "../DeleteFeedbackDialog";
 import { FeedbackEmptyState } from "./EmptyState";
@@ -63,6 +69,8 @@ export function FeedbackTable({ onResetFilters }: FeedbackTableProps = {}) {
   return (
     <DataFetchBoundary
       title="Kunne ikke hente tilbakemeldinger"
+      analysisBudgetDescription={FILTER_BUDGET_DESCRIPTION}
+      offerRemoveFilter
       queries={[feedbackQuery]}
     >
       <FeedbackTableContent
@@ -103,6 +111,12 @@ function FeedbackTableContent({
   const handleResetFilters = () => {
     onResetFilters?.();
     resetFilters();
+  };
+  const showFullPeriod = async (period: DateRange) => {
+    const origin = document.activeElement;
+    await setParams(fixedPeriodSearch(period.fromDate, period.toDate));
+    // Loading the answers removes the empty state and its button.
+    window.requestAnimationFrame(() => focusPeriodTrigger(origin));
   };
 
   useEffect(() => {
@@ -175,14 +189,7 @@ function FeedbackTableContent({
           fullPeriod={getTeamSubmissionPeriod(bootstrap?.surveyMeta, {
             includeArchived: params.showArchived === "true",
           })}
-          onShowFullPeriod={(period) =>
-            setParams({
-              dateMode: "fixed",
-              fromDate: period.fromDate,
-              toDate: period.toDate,
-              page: "1",
-            })
-          }
+          onShowFullPeriod={(period) => void showFullPeriod(period)}
           team={bootstrap?.selectedTeam}
         />
       ) : (

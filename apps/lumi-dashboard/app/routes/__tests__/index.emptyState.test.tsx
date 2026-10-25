@@ -24,6 +24,7 @@ const { mockBootstrap, mockStats } = vi.hoisted(() => ({
 
 vi.mock("~/hooks/useFilterBootstrap", () => ({
   useFilterBootstrap: () => mockBootstrap,
+  useCachedFilterBootstrap: () => mockBootstrap,
 }));
 
 vi.mock("~/hooks/useStats", () => ({
