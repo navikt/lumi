@@ -13,6 +13,7 @@ const {
   mockParams: {
     team: "team-test",
     surveyId: undefined as string | undefined,
+    task: undefined as string | undefined,
     app: undefined as string | undefined,
     query: undefined as string | undefined,
     dateMode: "auto" as "auto" | "fixed" | undefined,
@@ -148,6 +149,7 @@ describe("FeedbackTable empty states", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockParams.surveyId = undefined;
+    mockParams.task = undefined;
     mockParams.app = undefined;
     mockParams.query = undefined;
     mockParams.dateMode = "auto";
@@ -355,5 +357,27 @@ describe("FeedbackTable empty states", () => {
     expect(deleteButton).toHaveAccessibleDescription(
       /slett alle svar og fjern surveyen fra dashboardet.*nye innsendinger stoppes ikke/i,
     );
+  });
+
+  it("clears the task filter along with the deleted survey", async () => {
+    mockBootstrap.data = bootstrapWithData();
+    mockParams.surveyId = "survey-1";
+    mockParams.task = "task-1";
+
+    render(<FeedbackTable />);
+    fireEvent.click(screen.getByRole("button", { name: /^slett alle svar/i }));
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: "Ja, fjern surveyen fra dashboardet",
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Fjern fra dashboardet" }),
+    );
+
+    await waitFor(() => expect(mockSetParams).toHaveBeenCalled());
+    const [next] = mockSetParams.mock.lastCall ?? [];
+    expect(next).toHaveProperty("surveyId", undefined);
+    expect(next).toHaveProperty("task", undefined);
   });
 });

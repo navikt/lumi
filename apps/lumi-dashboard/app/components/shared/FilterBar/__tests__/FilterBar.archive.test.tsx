@@ -16,6 +16,7 @@ const { mockParams, mockSetParams, mockResetParams, mockBootstrap, mockStats } =
       team: "team-test" as string | undefined,
       app: undefined as string | undefined,
       surveyId: "survey-archived" as string | undefined,
+      task: undefined as string | undefined,
       showArchived: undefined as string | undefined,
       dateMode: "auto" as "auto" | "fixed" | undefined,
       fromDate: "2026-07-23" as string | undefined,
@@ -117,10 +118,22 @@ vi.mock("~/hooks/useThemes", () => ({
   useThemes: () => ({ themes: [] }),
 }));
 
+/**
+ * The argument of the call that took the survey out of the filter.
+ * toHaveBeenCalledWith treats a missing key as undefined, so the tests check
+ * the task key on it.
+ */
+function surveyClearingCall() {
+  return mockSetParams.mock.calls
+    .map(([next]) => next)
+    .find((next) => "surveyId" in next && next.surveyId === undefined);
+}
+
 describe("FilterBar archive state", () => {
   beforeEach(() => {
     mockParams.app = undefined;
     mockParams.surveyId = "survey-archived";
+    mockParams.task = undefined;
     mockParams.showArchived = undefined;
     mockParams.dateMode = "auto";
     mockParams.fromDate = "2026-07-23";
@@ -184,6 +197,7 @@ describe("FilterBar archive state", () => {
 
   it("hides and clears a selected archived survey while the toggle is off", async () => {
     const automaticPeriod = resolveDashboardPeriod({ dateMode: "auto" });
+    mockParams.task = "task-1";
     render(<FilterBar />);
 
     expect(
@@ -192,6 +206,7 @@ describe("FilterBar archive state", () => {
     await waitFor(() =>
       expect(mockSetParams).toHaveBeenCalledWith({
         surveyId: undefined,
+        task: undefined,
         choice: undefined,
         rating: undefined,
         phrase: undefined,
@@ -201,6 +216,7 @@ describe("FilterBar archive state", () => {
         page: "1",
       }),
     );
+    expect(surveyClearingCall()).toHaveProperty("task", undefined);
   });
 
   it("persists archive visibility in the URL and reveals archive-only apps", () => {
@@ -246,6 +262,7 @@ describe("FilterBar archive state", () => {
 
     expect(mockSetParams).toHaveBeenCalledWith({
       surveyId: "survey-active",
+      task: undefined,
       choice: undefined,
       rating: undefined,
       phrase: undefined,
@@ -267,11 +284,37 @@ describe("FilterBar archive state", () => {
 
     expect(mockSetParams).toHaveBeenCalledWith({
       surveyId: "survey-active",
+      task: undefined,
       choice: undefined,
       rating: undefined,
       phrase: undefined,
       page: "1",
     });
+  });
+
+  it("clears the task filter when the survey changes", () => {
+    mockParams.surveyId = "survey-other";
+    mockParams.task = "task-1";
+    mockParams.dateMode = "fixed";
+    mockBootstrap.data = {
+      ...loadedBootstrapData(),
+      surveysByApp: {
+        ...loadedBootstrapData().surveysByApp,
+        "app-test": ["survey-active", "survey-other"],
+      },
+      surveyMeta: {
+        ...loadedBootstrapData().surveyMeta,
+        "survey-other": { archivedAt: null },
+      },
+    };
+    render(<FilterBar />);
+    mockSetParams.mockClear();
+
+    fireEvent.change(screen.getAllByRole("combobox", { name: "Survey" })[0], {
+      target: { value: "survey-active" },
+    });
+
+    expect(mockSetParams.mock.lastCall?.[0]).toHaveProperty("task", undefined);
   });
 
   it("offers the survey response period when a fixed period does not overlap", () => {
@@ -318,12 +361,14 @@ describe("FilterBar archive state", () => {
     const automaticPeriod = resolveDashboardPeriod({ dateMode: "auto" });
     mockParams.app = "app-archived";
     mockParams.surveyId = "survey-only-archived";
+    mockParams.task = "task-1";
     render(<FilterBar />);
 
     await waitFor(() =>
       expect(mockSetParams).toHaveBeenCalledWith({
         app: undefined,
         surveyId: undefined,
+        task: undefined,
         choice: undefined,
         rating: undefined,
         phrase: undefined,
@@ -333,12 +378,14 @@ describe("FilterBar archive state", () => {
         page: "1",
       }),
     );
+    expect(surveyClearingCall()).toHaveProperty("task", undefined);
   });
 
   it("returns to a rolling automatic period when an app change clears the survey", () => {
     const automaticPeriod = resolveDashboardPeriod({ dateMode: "auto" });
     mockParams.app = "app-test";
     mockParams.surveyId = "survey-active";
+    mockParams.task = "task-1";
     mockBootstrap.data = {
       ...loadedBootstrapData(),
       apps: ["app-test", "app-other"],
@@ -368,6 +415,7 @@ describe("FilterBar archive state", () => {
         toDate: automaticPeriod.toDate,
       }),
     );
+    expect(surveyClearingCall()).toHaveProperty("task", undefined);
   });
 
   it("returns to a rolling automatic period when a team change clears the survey", () => {

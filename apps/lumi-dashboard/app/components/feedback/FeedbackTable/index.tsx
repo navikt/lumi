@@ -272,7 +272,8 @@ function FeedbackTableContent({
           filteredCount={totalElements}
           isOpen={deleteDialogOpen}
           onClose={() => setDeleteDialogOpen(false)}
-          onDeleted={() => setParam("surveyId", undefined)}
+          // A task belongs to one Top Tasks survey.
+          onDeleted={() => setParams({ surveyId: undefined, task: undefined })}
         />
       )}
 
