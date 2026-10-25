@@ -6,6 +6,11 @@ import {
   questionSeries,
   questionTrendRatingMetric,
 } from "~/components/dashboard/sections/QuestionTrend/questionTrendUtils";
+import {
+  successRateSeries,
+  TopTasksTimelineChart,
+  TopTasksTimelinePartialNote,
+} from "~/components/dashboard/views/TopTasks/TimelineChart";
 import type { QuestionTrendResponse, RatingMarker } from "~/types/api";
 import { buildTimeAxis, type SeriesWindow } from "~/utils/timeBuckets";
 import {
@@ -21,7 +26,11 @@ const { chart } = vi.hoisted(() => ({
   chart: { data: [] as Array<Record<string, unknown>> },
 }));
 
-vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn() }));
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => vi.fn(),
+  // No table renders here, so the links are never drawn.
+  createLink: () => () => null,
+}));
 
 vi.mock("~/hooks/useSearchParams", () => ({
   useSearchParams: () => ({ params: {} }),
@@ -59,7 +68,50 @@ vi.mock("recharts", () => {
         point,
       );
 
+  const chartMock = ({
+    data,
+    children,
+    role,
+    "aria-label": ariaLabel,
+  }: SVGProps<SVGSVGElement> & { data: Array<Record<string, unknown>> }) => {
+    chart.data = data;
+    return (
+      <svg role={role} aria-label={ariaLabel}>
+        {children}
+      </svg>
+    );
+  };
+  const seriesMock = ({
+    dataKey,
+    stroke,
+    dot,
+  }: {
+    dataKey: string;
+    stroke: string;
+    dot: (props: {
+      cx?: number;
+      cy?: number;
+      index: number;
+      stroke: string;
+      payload: Record<string, unknown>;
+    }) => ReactElement;
+  }) => (
+    <g data-series={dataKey}>
+      {chart.data.map((payload, index) =>
+        dot({
+          cx: index * 10,
+          cy: valueAt(payload, dataKey) == null ? undefined : 10,
+          index,
+          stroke,
+          payload,
+        }),
+      )}
+    </g>
+  );
+
   return {
+    AreaChart: chartMock,
+    Area: seriesMock,
     LineChart: ({
       data,
       children,
@@ -269,5 +321,28 @@ describe("partial weeks", () => {
 
     expect(container.querySelectorAll("circle")).toHaveLength(4);
     expect(hollowDots(container)).toHaveLength(2);
+  });
+
+  it("draws a hollow dot for a partial week of the success rate and names it", () => {
+    const series = successRateSeries(buildTimeAxis(WINDOW, "week"), {
+      "2026-06-04": { total: 4, success: 2 },
+      "2026-08-12": { total: 2, success: 2 },
+    });
+
+    const { container } = render(
+      <>
+        <TopTasksTimelineChart series={series} isPending={false} />
+        <TopTasksTimelinePartialNote series={series} />
+      </>,
+    );
+
+    // Week 43 is partial too, but has no answers and no dot.
+    expect(container.querySelectorAll("circle")).toHaveLength(2);
+    expect(hollowDots(container)).toHaveLength(1);
+    expect(
+      screen.getByText(
+        "Bare 5 av 7 dager i uke 23 er med i grafen. Uka har hul prikk.",
+      ),
+    ).toBeInTheDocument();
   });
 });

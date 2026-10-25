@@ -1,6 +1,11 @@
 import { Detail, Heading, VStack } from "@navikt/ds-react";
 import { DashboardCard } from "~/components/dashboard";
-import { TopTasksTimelineChart } from "~/components/dashboard/views/TopTasks/TimelineChart";
+import {
+  TopTasksTimelineChart,
+  TopTasksTimelinePartialNote,
+  TopTasksTimelineTable,
+  useSuccessRateSeries,
+} from "~/components/dashboard/views/TopTasks/TimelineChart";
 import {
   TimelineChart,
   TimelineChartTable,
@@ -81,13 +86,25 @@ function CountTimeline({ title, noun }: { title: string; noun: TimelineNoun }) {
 }
 
 function TopTasksTimeline({ title }: { title: string }) {
-  // The Top Tasks timeline shows one value per day.
+  const { series, isPending, isStale } = useSuccessRateSeries();
+
   return (
     <VStack gap="space-12">
-      <TimelineHeading title={title} unit={INTERVAL_NOUNS.day.one} />
+      <TimelineHeading
+        title={title}
+        unit={series ? INTERVAL_NOUNS[series.interval].one : undefined}
+      />
       <div className={styles.chartContainer}>
-        <TopTasksTimelineChart />
+        <TopTasksTimelineChart
+          series={series}
+          isPending={isPending}
+          isStale={isStale}
+        />
       </div>
+      {series ? <TopTasksTimelinePartialNote series={series} /> : null}
+      {series ? (
+        <TopTasksTimelineTable series={series} isStale={isStale} />
+      ) : null}
     </VStack>
   );
 }

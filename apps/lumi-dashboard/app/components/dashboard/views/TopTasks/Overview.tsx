@@ -6,6 +6,7 @@ import {
   Table,
   Tooltip,
 } from "@navikt/ds-react";
+import { useId } from "react";
 import { DashboardCard } from "~/components/dashboard";
 import { SegmentBreakdown } from "~/components/dashboard/SegmentBreakdown";
 import { DeviceBreakdownSection } from "~/components/dashboard/sections/FieldStats/DeviceBreakdownSection";
@@ -44,6 +45,7 @@ function TopTasksOverviewContent({
 
   // Task filter from URL (global filter, shown in ActiveFiltersChips)
   const selectedTask = params.task ?? null;
+  const tableHeadingId = useId();
 
   const handleTaskSelect = (taskId: string | null) => {
     setParams({
@@ -94,11 +96,18 @@ function TopTasksOverviewContent({
           borderWidth="0 0 1 0"
           borderColor="neutral-subtle"
         >
-          <Heading size="small" level="2">
+          <Heading size="small" level="2" id={tableHeadingId}>
             {data.questionText ? `Spørsmål: ${data.questionText}` : "Spørsmål"}
           </Heading>
         </Box>
-        <Box overflowX="auto">
+        {/* A narrow screen scrolls the table sideways, so keyboards can
+            focus the region. */}
+        <Box
+          overflowX="auto"
+          tabIndex={0}
+          role="region"
+          aria-labelledby={tableHeadingId}
+        >
           <Table>
             <Table.Header>
               <Table.Row>
