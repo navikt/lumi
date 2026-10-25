@@ -31,15 +31,24 @@ export interface SeriesWindowState {
   isPlaceholderData: boolean;
 }
 
+const NO_DAYS: readonly string[] = [];
+
 /**
- * The window and resolution all time series on the page use, and their
+ * The window and resolution the time series on the page use, and their
  * headings with them.
  *
  * The window follows the period of the statistics on screen. While new
  * statistics load, the previous numbers keep their own buckets. Answers
  * dated after the browser's today still count, in case its clock is behind.
+ *
+ * `extraDays` are days with answers in numbers the statistics do not count,
+ * such as Top Tasks, which does not filter on segment yet. They count like
+ * the days in the statistics, so a period without a start begins with the
+ * earliest of them.
  */
-export function useSeriesWindow(): SeriesWindowState {
+export function useSeriesWindow(
+  extraDays: readonly string[] = NO_DAYS,
+): SeriesWindowState {
   const { params } = useSearchParams();
   const { data: stats, isPending, isPlaceholderData } = useStats();
   const osloToday = useOsloToday();
@@ -54,8 +63,8 @@ export function useSeriesWindow(): SeriesWindowState {
   const retentionStartDate = stats?.retentionStartDate ?? null;
 
   const days = useMemo(
-    () => Object.keys(byDate ?? {}).filter(isCalendarDate),
-    [byDate],
+    () => [...Object.keys(byDate ?? {}), ...extraDays].filter(isCalendarDate),
+    [byDate, extraDays],
   );
   const today = laterDate(osloToday, latestDate(days));
   const resolved = useMemo(

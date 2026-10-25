@@ -17,7 +17,7 @@ Dette får dere for hver type:
 
 Oversikten har tre kort øverst: **Periode**, **Tilbakemeldinger** og **Med tekst**. Under dem står grafen **Antall tilbakemeldinger**, og nederst fordelingen per app, enhet og surveytype. Med en app valgt gjelder tallene bare den appen.
 
-Hver søyle med svar i grafen **Antall tilbakemeldinger** lenker til **Tilbakemeldinger** med svarene fra den dagen, uka eller måneden. Det samme gjør de andre grafene med antall svar over tid.
+Fra grafen **Antall tilbakemeldinger** kan dere åpne svarene fra én dag, uke eller måned, se [Grafer over tid](#over-tid).
 
 ## Når én survey er valgt {#en-survey}
 
@@ -43,9 +43,9 @@ Grafene over tid begynner på periodens første dag og slutter på den siste, el
 
 Ukene begynner på mandag og har ukenummer og år, for eksempel «Uke 43, 2026». En uke eller måned som bare delvis er med i perioden, har lysere søyle med stiplet kant eller hul prikk. Det gjelder også uka dere er i nå, unntatt på søndag. Under grafen står hvilke av dem som har en søyle eller prikk, og hvor mange av dagene som er med, for eksempel «Bare 4 av 7 dager i uke 43 er med i grafen.» Tabellen viser det samme.
 
-I **Antall tilbakemeldinger** og **Antall svar over tid** står dager, uker og måneder uten svar med 0. Grafen som viser vurderingen over tid, har ingen prikk for dem.
+I **Antall tilbakemeldinger** og **Antall svar over tid** står dager, uker og måneder uten svar med 0. Grafen som viser vurderingen over tid, og **Suksessrate over tid** har ingen prikk for dem.
 
-**Suksessrate over tid** i Top Tasks viser én verdi per dag, uansett hvor lang perioden er.
+Et klikk på en søyle eller et punkt med svar åpner **Tilbakemeldinger** med svarene fra den dagen, uka eller måneden. Det gjelder **Antall tilbakemeldinger**, **Antall svar over tid**, **Suksessrate over tid** og grafen som viser vurderingen over tid. Med tastatur velger dere **Vis som tabell** under grafen. Der er hver dag, uke eller måned med svar en lenke. På en berøringsskjerm viser et trykk i grafen bare tallene, og lenkene i tabellen åpner svarene. Grafen i **Utvikling over tid** og dialogen fra **Se utvikling** åpner ikke **Tilbakemeldinger**.
 
 ## Vurdering og Custom {#vurdering-og-custom}
 
@@ -89,7 +89,7 @@ I en Top Tasks-survey velger brukeren en oppgave fra listen og svarer på om hen
 
 Finnes det ingen svar, viser **Suksessrate** og **Ikke fullført** en strek (–).
 
-Grafen **Suksessrate over tid** viser andelen «Ja» per dag.
+Grafen **Suksessrate over tid** viser andelen «Ja» per dag, uke eller måned, se [Grafer over tid](#over-tid). Andelen for en uke regnes av alle svarene i uka.
 
 ### Oppgavekvadranten
 

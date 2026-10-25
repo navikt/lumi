@@ -1,3 +1,4 @@
+import { useMemo, useRef, useSyncExternalStore } from "react";
 import type { MouseHandlerDataParam } from "recharts";
 import type { TimeBucket } from "~/utils/timeBuckets";
 
@@ -65,6 +66,76 @@ export function bucketFeedbackSearch<P extends object>(
     periodPreset: undefined,
     page: "1",
   };
+}
+
+/** How long after a finger leaves the screen its click can still come. */
+const CLICK_AFTER_TOUCH_MS = 600;
+
+/**
+ * A tap on a touch screen also gives a click, before recharts has moved to
+ * the tapped point, and the click would open the point touched before. A
+ * tap therefore only shows the tooltip. The table's links open the answers.
+ *
+ * Browsers that tell the pointer type of a click decide it. Others count a
+ * click as a tap while a finger is on the screen and just after it leaves,
+ * so a long press is caught too.
+ */
+export function useTapGuard() {
+  const touching = useRef(false);
+  const touchEndedAt = useRef(Number.NEGATIVE_INFINITY);
+  return useMemo(
+    () => ({
+      onTouchStart: () => {
+        touching.current = true;
+      },
+      onTouchEnd: () => {
+        touching.current = false;
+        touchEndedAt.current = Date.now();
+      },
+      isTap: (event?: { nativeEvent?: Event }) => {
+        const pointerType = (event?.nativeEvent as PointerEvent | undefined)
+          ?.pointerType;
+        if (pointerType) return pointerType === "touch";
+        return (
+          touching.current ||
+          Date.now() - touchEndedAt.current < CLICK_AFTER_TOUCH_MS
+        );
+      },
+    }),
+    [],
+  );
+}
+
+const HOVER_QUERY = "(hover: hover)";
+
+function subscribeToHover(onChange: () => void) {
+  const query = window.matchMedia(HOVER_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+/** True when the main pointer can hover, as a mouse can and a finger cannot. */
+function useCanHover(): boolean {
+  return useSyncExternalStore(
+    subscribeToHover,
+    () => window.matchMedia(HOVER_QUERY).matches,
+    () => true,
+  );
+}
+
+/**
+ * The tooltip's hint about opening a bucket's answers. A tap only shows the
+ * tooltip, so a touch screen points to the table instead.
+ */
+export function DrilldownHint({ className }: { className?: string }) {
+  const canHover = useCanHover();
+  return (
+    <div className={className}>
+      {canHover
+        ? "Klikk for å åpne tilbakemeldinger"
+        : "Velg Vis som tabell for å åpne svarene"}
+    </div>
+  );
 }
 
 interface PartialDotProps {

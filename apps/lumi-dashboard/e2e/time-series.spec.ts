@@ -115,4 +115,70 @@ test.describe("Time series over long periods", () => {
         .first(),
     ).toHaveText(/^Uke \d{1,2}, \d{4} · /);
   });
+
+  test("the table under a chart opens a week in Tilbakemeldinger with the keyboard", async ({
+    page,
+  }) => {
+    await page.goto(`/?${longPeriod}`);
+    await expect(
+      page.getByRole("img", {
+        name: `Søylediagram som viser antall tilbakemeldinger per uke for ${weeksInPeriod} uker`,
+      }),
+    ).toBeVisible({ timeout: 15000 });
+
+    const toggle = page.getByRole("button", {
+      name: /^Vis som tabell\s*: Antall tilbakemeldinger per uke$/,
+    });
+    await toggle.focus();
+    await page.keyboard.press("Enter");
+    const table = page.getByRole("table", {
+      name: "Antall tilbakemeldinger per uke",
+    });
+    await expect(table).toBeVisible();
+
+    // The table's scroll region comes first, then the first week with answers.
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    const firstLink = table.getByRole("link").first();
+    await expect(firstLink).toBeFocused();
+    await expect(firstLink).toHaveText(/^Uke \d{1,2}, \d{4} · /);
+    await page.keyboard.press("Enter");
+
+    await expect(page).toHaveURL(/\/feedback\?/);
+    const search = new URL(page.url()).searchParams;
+    expect(search.get("dateMode")).toBe("fixed");
+    // The mock has answers for the last 60 days, so the first week with
+    // answers is whole.
+    const fromDate = search.get("fromDate") ?? "";
+    expect(fromDate).toBe(mondayOf(fromDate));
+    expect(search.get("toDate")).toBe(shiftDate(fromDate, 6));
+  });
+
+  test("Top Tasks shows the success rate per week, with a table", async ({
+    page,
+  }) => {
+    await page.goto(`/?surveyId=survey-top-tasks&${longPeriod}`);
+
+    await expect(
+      page.getByRole("img", {
+        name: `Linjediagram som viser suksessrate per uke for ${weeksInPeriod} uker`,
+      }),
+    ).toBeVisible({ timeout: 15000 });
+    await page
+      .getByRole("button", {
+        name: /^Vis som tabell\s*: Suksessrate per uke$/,
+      })
+      .click();
+    const table = page.getByRole("table", { name: "Suksessrate per uke" });
+    await expect(table).toBeVisible();
+    await expect(table.getByRole("rowheader").first()).toHaveText(
+      /^Uke \d{1,2}, \d{4} · /,
+    );
+    await expect(table.getByRole("link").first()).toBeVisible();
+
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+    expect(results.violations).toEqual([]);
+  });
 });

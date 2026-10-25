@@ -20,6 +20,7 @@ import {
   questionTrendRatingMetric,
   questionTrendRatingValue,
 } from "~/components/dashboard/sections/QuestionTrend/questionTrendUtils";
+import { BucketLink } from "~/components/shared/Charts/BucketLink";
 import { ChartDataTable } from "~/components/shared/Charts/ChartDataTable";
 import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import { useTheme } from "~/context/ThemeContext";
@@ -44,8 +45,10 @@ import {
   activePoint,
   activePointIndex,
   bucketFeedbackSearch,
+  DrilldownHint,
   PARTIAL_DOT_LOOK,
   PartialDot,
+  useTapGuard,
 } from "./timeSeriesParts";
 
 interface MarkerLabelMeta {
@@ -250,6 +253,7 @@ function hasContent(point: RatingPoint): boolean {
  * no point for them.
  */
 export function RatingTrendChartTable({ trend }: { trend: RatingTrendState }) {
+  const { params } = useSearchParams();
   // The trend has no placeholder data, so it is pending after each filter
   // change. Keep an opened table open meanwhile, under the same name.
   const shown = useRef<{ label: string; rowHeader: string } | undefined>(
@@ -291,7 +295,15 @@ export function RatingTrendChartTable({ trend }: { trend: RatingTrendState }) {
       ]}
       rows={rows.map((point) => ({
         key: point.start,
-        header: point.label,
+        // As in the chart, only a bucket with an average opens Tilbakemeldinger.
+        header:
+          typeof point.average === "number" ? (
+            <BucketLink search={bucketFeedbackSearch(params, point)}>
+              {point.label}
+            </BucketLink>
+          ) : (
+            point.label
+          ),
         cells: [
           point.masked
             ? "Skjult"
@@ -314,6 +326,7 @@ export function RatingTrendChart({ trend }: { trend: RatingTrendState }) {
   const { theme } = useTheme();
   const { isMobile } = useBreakpoint();
   const [hovered, setHovered] = useState<number>();
+  const tapGuard = useTapGuard();
 
   const colors = theme === "light" ? CHART_COLORS_LIGHT : CHART_COLORS;
   const ready = trend.status === "ready" ? trend : undefined;
@@ -377,11 +390,7 @@ export function RatingTrendChart({ trend }: { trend: RatingTrendState }) {
             </div>
           )}
 
-          {average !== null && (
-            <div className={styles.tooltipHint}>
-              Klikk for å åpne tilbakemeldinger
-            </div>
-          )}
+          {average !== null && <DrilldownHint className={styles.tooltipHint} />}
         </div>
       );
     },
@@ -436,18 +445,25 @@ export function RatingTrendChart({ trend }: { trend: RatingTrendState }) {
         margin={chartMargin}
         role="img"
         aria-label={`Linjediagram som viser ${inSentence(ratingTrendTitle(trend.metric.label))} per ${nouns.one}${overallFormatted ? `. Hele perioden: ${overallFormatted}` : ""}`}
-        onClick={(state) => {
+        onClick={(state, event) => {
           const point = activePoint(points, state);
-          if (typeof point?.average !== "number") return;
+          if (typeof point?.average !== "number" || tapGuard.isTap(event)) {
+            return;
+          }
           navigate({
             to: "/feedback",
             search: bucketFeedbackSearch(params, point),
           });
         }}
+        onTouchStart={tapGuard.onTouchStart}
+        onTouchEnd={tapGuard.onTouchEnd}
         onMouseMove={(state) => setHovered(activePointIndex(state))}
         onMouseLeave={() => setHovered(undefined)}
         // recharts sets cursor: default on its wrapper, so a class loses.
         style={{ cursor: pointsAtAnswers ? "pointer" : "default" }}
+        // Keyboards use the table under the chart, where every bucket with
+        // an average is a link.
+        accessibilityLayer={false}
       >
         <XAxis
           dataKey="tick"

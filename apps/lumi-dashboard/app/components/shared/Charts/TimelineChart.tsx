@@ -12,6 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { BucketLink } from "~/components/shared/Charts/BucketLink";
 import { ChartDataTable } from "~/components/shared/Charts/ChartDataTable";
 import { ResponsiveContainerWithInitialSize } from "~/components/shared/Charts/ResponsiveContainerWithInitialSize";
 import { useTheme } from "~/context/ThemeContext";
@@ -33,7 +34,9 @@ import {
   activePoint,
   activePointIndex,
   bucketFeedbackSearch,
+  DrilldownHint,
   formatCount,
+  useTapGuard,
 } from "./timeSeriesParts";
 
 // Chart colors for dark mode
@@ -142,6 +145,7 @@ export function TimelineChartTable({
   series,
   noun = "tilbakemeldinger",
 }: TimelineProps) {
+  const { params } = useSearchParams();
   if (series.total === 0) return null;
   const nouns = INTERVAL_NOUNS[series.interval];
 
@@ -152,7 +156,15 @@ export function TimelineChartTable({
       columns={[{ label: NOUN_FORMS[noun].column }]}
       rows={series.points.map((point) => ({
         key: point.start,
-        header: point.label,
+        // As in the chart, only a bucket with answers opens Tilbakemeldinger.
+        header:
+          point.count > 0 ? (
+            <BucketLink search={bucketFeedbackSearch(params, point)}>
+              {point.label}
+            </BucketLink>
+          ) : (
+            point.label
+          ),
         cells: [formatCount(point.count)],
       }))}
     />
@@ -198,6 +210,7 @@ export function TimelineChart({
   const { params } = useSearchParams();
   const { isMobile } = useBreakpoint();
   const [hovered, setHovered] = useState<number>();
+  const tapGuard = useTapGuard();
 
   const colors = theme === "light" ? CHART_COLORS_LIGHT : CHART_COLORS;
   const forms = NOUN_FORMS[noun];
@@ -214,9 +227,7 @@ export function TimelineChart({
             {point.count === 1 ? forms.one : forms.many}
           </div>
           {point.count > 0 ? (
-            <div className={styles.tooltipHint}>
-              Klikk for å åpne tilbakemeldinger
-            </div>
+            <DrilldownHint className={styles.tooltipHint} />
           ) : null}
         </div>
       );
@@ -257,19 +268,25 @@ export function TimelineChart({
         margin={chartMargin}
         role="img"
         aria-label={`Søylediagram som viser antall ${noun} per ${nouns.one} for ${points.length} ${points.length === 1 ? nouns.one : nouns.many}`}
-        onClick={(state) => {
+        onClick={(state, event) => {
           const point = activePoint(points, state);
           // An empty bar would open an empty list.
-          if (!point || point.count === 0) return;
+          if (!point || point.count === 0 || tapGuard.isTap(event)) return;
           navigate({
             to: "/feedback",
             search: bucketFeedbackSearch(params, point),
           });
         }}
+        onTouchStart={tapGuard.onTouchStart}
+        onTouchEnd={tapGuard.onTouchEnd}
         onMouseMove={(state) => setHovered(activePointIndex(state))}
         onMouseLeave={() => setHovered(undefined)}
         // recharts sets cursor: default on its wrapper, so a class loses.
         style={{ cursor: pointsAtAnswers ? "pointer" : "default" }}
+        // Keyboards use the table under the chart, where every bucket with
+        // answers is a link. recharts would make the chart a tab stop where
+        // Enter opens nothing.
+        accessibilityLayer={false}
       >
         <CartesianGrid strokeDasharray="3 3" opacity={0.1} vertical={false} />
         <XAxis

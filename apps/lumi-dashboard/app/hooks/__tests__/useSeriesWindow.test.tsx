@@ -98,6 +98,22 @@ describe("useSeriesWindow", () => {
     expect(result.current.interval).toBe("week");
   });
 
+  it("lets days from other numbers start a period without a start", () => {
+    mockStats.data = stats(
+      { "2026-10-20": 1 },
+      { fromDate: null, toDate: "2026-10-22" },
+    );
+
+    const { result } = renderHook(() =>
+      useSeriesWindow(["2026-10-01", "nonsense"]),
+    );
+
+    expect(result.current.window).toEqual({
+      from: "2026-10-01",
+      to: "2026-10-22",
+    });
+  });
+
   it("starts where answers are kept when the period starts earlier", () => {
     mockStats.data = stats(
       { "2025-10-27": 3, "2025-12-01": 1 },

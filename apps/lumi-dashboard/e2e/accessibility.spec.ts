@@ -57,48 +57,60 @@ test.describe("Accessibility - WCAG Compliance", () => {
 test.describe("Chart tables", () => {
   // The tables are closed, and hidden from axe, until the viewer opens them.
   // Narrow cards scroll them sideways, so check the scroll regions as well.
-  for (const width of [320, 768]) {
-    test(`open chart tables have no WCAG A/AA violations at ${width}px`, async ({
-      page,
-    }) => {
-      await page.setViewportSize({ width, height: 900 });
-      await page.goto("/");
-      await page.waitForLoadState("networkidle");
+  // The tables have links, which take focus inside the scroll regions.
+  const pages = [
+    { route: "/", table: "Antall tilbakemeldinger per dag", scrolls: true },
+    // A long period, cut at the retention start, shows the weeks.
+    {
+      route:
+        "/?surveyId=survey-top-tasks&dateMode=fixed&fromDate=2000-01-01&toDate=2099-12-31",
+      table: "Suksessrate per uke",
+      scrolls: false,
+    },
+  ] as const;
 
-      const toggles = page.getByRole("button", { name: /^Vis som tabell/ });
-      await expect(toggles.first()).toBeVisible({ timeout: 15000 });
-      for (const toggle of await toggles.all()) {
-        await toggle.click();
-        await expect(toggle).toHaveAttribute("aria-expanded", "true");
-      }
-      await expect(
-        page.getByRole("table", { name: "Antall tilbakemeldinger per dag" }),
-      ).toBeVisible();
+  for (const { route, table, scrolls } of pages) {
+    for (const width of [320, 768]) {
+      test(`${table} and the other open chart tables have no WCAG A/AA violations at ${width}px`, async ({
+        page,
+      }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto(route);
+        await page.waitForLoadState("networkidle");
 
-      // 30 days do not fit, so the table scrolls inside its fixed height.
-      const timelineRegion = page.getByRole("region", {
-        name: "Antall tilbakemeldinger per dag",
+        const toggles = page.getByRole("button", { name: /^Vis som tabell/ });
+        await expect(toggles.first()).toBeVisible({ timeout: 15000 });
+        for (const toggle of await toggles.all()) {
+          await toggle.click();
+          await expect(toggle).toHaveAttribute("aria-expanded", "true");
+        }
+        await expect(page.getByRole("table", { name: table })).toBeVisible();
+
+        if (scrolls) {
+          // 30 days do not fit, so the table scrolls inside its fixed height.
+          const region = page.getByRole("region", { name: table });
+          const size = await region.evaluate((element) => ({
+            height: element.clientHeight,
+            scrollHeight: element.scrollHeight,
+          }));
+          expect(size.height).toBeLessThanOrEqual(400);
+          expect(size.scrollHeight).toBeGreaterThan(size.height);
+        }
+
+        const results = await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+          .analyze();
+
+        if (results.violations.length > 0) {
+          console.log(
+            `Chart tables a11y violations on ${route} at ${width}px:`,
+            JSON.stringify(results.violations, null, 2),
+          );
+        }
+
+        expect(results.violations).toEqual([]);
       });
-      const size = await timelineRegion.evaluate((element) => ({
-        height: element.clientHeight,
-        scrollHeight: element.scrollHeight,
-      }));
-      expect(size.height).toBeLessThanOrEqual(400);
-      expect(size.scrollHeight).toBeGreaterThan(size.height);
-
-      const results = await new AxeBuilder({ page })
-        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-        .analyze();
-
-      if (results.violations.length > 0) {
-        console.log(
-          `Chart tables a11y violations at ${width}px:`,
-          JSON.stringify(results.violations, null, 2),
-        );
-      }
-
-      expect(results.violations).toEqual([]);
-    });
+    }
   }
 });
 

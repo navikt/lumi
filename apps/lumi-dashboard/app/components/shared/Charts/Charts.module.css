@@ -297,6 +297,9 @@
 .dataTableViewport {
   max-height: 25rem;
   overflow: auto;
+  /* Keeps a focused link in the table from scrolling in under the header
+     row (WCAG 2.4.11). */
+  scroll-padding-top: 3rem;
 }
 
 .dataTableViewport thead th {
