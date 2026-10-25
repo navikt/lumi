@@ -23,6 +23,7 @@ import { DataFetchBoundary } from "~/components/shared/DataFetchBoundary";
 import { getSurveyFeatures } from "~/config/surveyConfig";
 import { useActiveFilters } from "~/hooks/useActiveFilters";
 import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
+import { useOsloToday } from "~/hooks/useOsloToday";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useStats } from "~/hooks/useStats";
 import {
@@ -33,6 +34,7 @@ import { useThemes } from "~/hooks/useThemes";
 import {
   fixedPeriodSearch,
   getSurveyPeriodMetadata,
+  isSinceFirst,
   resolveDashboardPeriod,
 } from "~/utils/dashboardPeriod";
 import { getFilterLabels } from "~/utils/filterLabels";
@@ -157,6 +159,17 @@ function FilterBarContent({
   const surveysByApp = bootstrap?.surveysByApp ?? {};
   const allTags = bootstrap?.tags ?? [];
   const showArchived = params.showArchived === "true";
+
+  // «Fra første svar» ends today, also when the page stays open past
+  // midnight. The page number stays. The end only moves forward: the clock
+  // here can be up to a minute behind the one that set it.
+  const today = useOsloToday();
+  const sinceFirst = isSinceFirst(params);
+  useEffect(() => {
+    if (sinceFirst && (!params.toDate || params.toDate < today)) {
+      void setParams({ toDate: today });
+    }
+  }, [params.toDate, setParams, sinceFirst, today]);
 
   const allAvailableSurveys = Array.from(
     new Set(Object.values(surveysByApp).flat()),

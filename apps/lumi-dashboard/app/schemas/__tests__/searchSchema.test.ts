@@ -42,6 +42,20 @@ describe("searchSchema", () => {
     });
   });
 
+  it("keeps «Fra første svar»", () => {
+    expect(
+      searchSchema.parse({
+        dateMode: "relative",
+        periodPreset: "sinceFirst",
+        toDate: "2026-10-25",
+      }),
+    ).toMatchObject({
+      dateMode: "relative",
+      periodPreset: "sinceFirst",
+      toDate: "2026-10-25",
+    });
+  });
+
   it("maps legacy choice and rating params, and the new params win", () => {
     expect(
       searchSchema.parse({

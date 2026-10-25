@@ -5,6 +5,112 @@ import { applyDashboardSearchDefaults } from "../dashboardSearchDefaults";
 describe("applyDashboardSearchDefaults", () => {
   const now = dayjs("2026-06-03");
 
+  describe("«Fra første svar»", () => {
+    it("ends today and drops a start, keeping the page", () => {
+      const result = applyDashboardSearchDefaults(
+        {
+          team: "flex",
+          dateMode: "relative",
+          periodPreset: "sinceFirst",
+          fromDate: "2026-01-01",
+          toDate: "2026-06-01",
+          page: "3",
+        },
+        { now },
+      );
+
+      expect(result).toEqual({
+        changed: true,
+        search: {
+          team: "flex",
+          dateMode: "relative",
+          periodPreset: "sinceFirst",
+          toDate: "2026-06-03",
+          page: "3",
+        },
+      });
+    });
+
+    it("moves to the next day in Oslo after midnight", () => {
+      const result = applyDashboardSearchDefaults(
+        {
+          dateMode: "relative",
+          periodPreset: "sinceFirst",
+          toDate: "2026-06-03",
+        },
+        { now: dayjs("2026-06-03T22:30:00Z") },
+      );
+
+      expect(result.search.toDate).toBe("2026-06-04");
+    });
+
+    it("drops a blank start", () => {
+      const result = applyDashboardSearchDefaults(
+        {
+          dateMode: "relative",
+          periodPreset: "sinceFirst",
+          fromDate: " ",
+          toDate: "2026-06-03",
+        },
+        { now },
+      );
+
+      expect(result.changed).toBe(true);
+      expect(result.search).not.toHaveProperty("fromDate");
+    });
+
+    it("leaves a link from today as it is", () => {
+      const search = {
+        dateMode: "relative",
+        periodPreset: "sinceFirst",
+        toDate: "2026-06-03",
+      };
+
+      expect(applyDashboardSearchDefaults(search, { now })).toEqual({
+        search,
+        changed: false,
+      });
+    });
+
+    it("gives another relative period the default period", () => {
+      expect(
+        applyDashboardSearchDefaults(
+          { dateMode: "relative", toDate: "2026-06-01" },
+          { now },
+        ),
+      ).toEqual({
+        changed: true,
+        search: {
+          dateMode: "auto",
+          fromDate: "2026-05-05",
+          toDate: "2026-06-03",
+          page: "1",
+        },
+      });
+    });
+
+    it("drops the preset from a fixed period", () => {
+      expect(
+        applyDashboardSearchDefaults(
+          {
+            dateMode: "fixed",
+            periodPreset: "sinceFirst",
+            fromDate: "2026-01-01",
+            toDate: "2026-02-01",
+          },
+          { now },
+        ),
+      ).toEqual({
+        changed: true,
+        search: {
+          dateMode: "fixed",
+          fromDate: "2026-01-01",
+          toDate: "2026-02-01",
+        },
+      });
+    });
+  });
+
   it("adds default 30 day period when search is empty", () => {
     const result = applyDashboardSearchDefaults(undefined, {
       now,

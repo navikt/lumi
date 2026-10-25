@@ -32,6 +32,7 @@ import {
   type DateRange,
   fixedPeriodSearch,
   getTeamSubmissionPeriod,
+  isSinceFirst,
 } from "~/utils/dashboardPeriod";
 import { writeErrorText } from "~/utils/publicDemo";
 import {
@@ -186,6 +187,7 @@ function FeedbackTableContent({
           onResetFilters={handleResetFilters}
           periodFromDate={params.fromDate}
           periodToDate={params.toDate}
+          sinceFirst={isSinceFirst(params)}
           fullPeriod={getTeamSubmissionPeriod(bootstrap?.surveyMeta, {
             includeArchived: params.showArchived === "true",
           })}

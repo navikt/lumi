@@ -5,7 +5,7 @@ import { z } from "zod";
 // and redirect is still type-checked.
 const optionalStringParam = z.string().optional().catch(undefined);
 const optionalDateModeParam = z
-  .enum(["auto", "fixed"])
+  .enum(["auto", "fixed", "relative"])
   .optional()
   .catch(undefined);
 const optionalTrendIntervalParam = z
@@ -27,7 +27,7 @@ export const searchSchema = z
     compare: z.enum(["previous", "none"]).optional().catch(undefined),
     fromDate: optionalStringParam,
     periodPreset: z
-      .enum(["rolling", "yearToDate", "custom"])
+      .enum(["rolling", "yearToDate", "custom", "sinceFirst"])
       .optional()
       .catch(undefined),
     toDate: optionalStringParam,

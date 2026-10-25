@@ -71,7 +71,7 @@ export interface RatingSeries {
   /**
    * Markers in the period dated before the axis begins, which the chart
    * does not show. The axis begins after the period when answers have been
-   * deleted, or with the first answer when the period has no start.
+   * deleted.
    */
   earlierMarkers: RatingMarker[];
   /** Markers dated after the axis ends, which the chart does not show. */

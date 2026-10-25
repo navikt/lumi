@@ -40,6 +40,7 @@ import {
 } from "~/components/shared/Charts/TopAppsChart";
 import { MarkerModal } from "~/components/shared/MarkerModal";
 import { useMarkers } from "~/hooks/useMarkers";
+import { usePeriodRange } from "~/hooks/usePeriodRange";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useSegmentFilter } from "~/hooks/useSegmentFilter";
 import { useSeriesWindow } from "~/hooks/useSeriesWindow";
@@ -83,11 +84,16 @@ export function RatingDashboard({
     hasSurveyFilter && isRatingSurvey && surveyId && primaryRating,
   );
 
+  // Markers belong to the period. One without a start, such as «Fra første
+  // svar», waits for its first answer, so markers from before it never show.
+  const period = usePeriodRange();
   const markerState = useMarkers(
-    canManageMarkers ? surveyId : undefined,
-    params.fromDate,
-    params.toDate,
+    canManageMarkers && !period.isStartPending ? surveyId : undefined,
+    period.fromDate,
+    period.toDate,
   );
+  const markersLoading =
+    markerState.isLoading || (canManageMarkers && period.isStartPending);
   // Computed once for the chart, its notes and its table.
   const ratingTrend = useRatingSeries(markerState.markers, canManageMarkers);
   // The resolution stays under the heading while the trend loads.
@@ -192,7 +198,7 @@ export function RatingDashboard({
                   size="small"
                   icon={<PlusIcon aria-hidden />}
                   onClick={openCreateMarkerModal}
-                  disabled={!surveyId}
+                  disabled={!surveyId || period.isStartPending}
                 >
                   Markør
                 </Button>
@@ -210,13 +216,13 @@ export function RatingDashboard({
                   Markører
                 </Heading>
 
-                {markerState.isLoading && (
+                {markersLoading && (
                   <BodyShort size="small" textColor="subtle">
                     Laster markører...
                   </BodyShort>
                 )}
 
-                {!markerState.isLoading && markerState.markers.length === 0 && (
+                {!markersLoading && markerState.markers.length === 0 && (
                   <BodyShort size="small" textColor="subtle">
                     Ingen markører i valgt periode.
                   </BodyShort>
@@ -304,8 +310,8 @@ export function RatingDashboard({
         isOpen={isMarkerModalOpen}
         mode={editingMarker ? "edit" : "create"}
         marker={editingMarker}
-        fromDate={params.fromDate}
-        toDate={params.toDate}
+        fromDate={period.fromDate}
+        toDate={period.toDate}
         onClose={closeMarkerModal}
         onSave={handleSaveMarker}
         onDelete={handleDeleteMarker}

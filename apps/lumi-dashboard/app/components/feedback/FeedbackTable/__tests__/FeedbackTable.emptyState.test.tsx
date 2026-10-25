@@ -18,7 +18,8 @@ const {
     task: undefined as string | undefined,
     app: undefined as string | undefined,
     query: undefined as string | undefined,
-    dateMode: "auto" as "auto" | "fixed" | undefined,
+    dateMode: "auto" as "auto" | "fixed" | "relative" | undefined,
+    periodPreset: undefined as string | undefined,
     fromDate: "2026-07-24" as string | undefined,
     toDate: "2026-08-22" as string | undefined,
     page: "1" as string | undefined,
@@ -156,6 +157,7 @@ describe("FeedbackTable empty states", () => {
     mockParams.app = undefined;
     mockParams.query = undefined;
     mockParams.dateMode = "auto";
+    mockParams.periodPreset = undefined;
     mockParams.fromDate = "2026-07-24";
     mockParams.toDate = "2026-08-22";
     mockParams.page = "1";
@@ -253,6 +255,22 @@ describe("FeedbackTable empty states", () => {
     fireEvent.click(screen.getByRole("button", { name: /nullstill filtre/i }));
     expect(onResetFilters).toHaveBeenCalledOnce();
     expect(mockResetParams).toHaveBeenCalled();
+  });
+
+  it("says that «Fra første svar» has no answers up to today, without the full period", () => {
+    mockBootstrap.data = bootstrapWithData();
+    mockParams.dateMode = "relative";
+    mockParams.periodPreset = "sinceFirst";
+    mockParams.fromDate = undefined;
+
+    render(<FeedbackTable />);
+
+    expect(
+      screen.getByText("Ingen tilbakemeldinger til og med 22.08.2026."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /vis hele svarperioden/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the period and offers the full survey period when no filters are active", async () => {

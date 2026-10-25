@@ -71,6 +71,8 @@ Velg **Se utvikling** i et kort for å se svarene på spørsmålet over tid. Und
 
 Slå på **Sammenlign med forrige periode** for å sammenligne den valgte perioden med perioden like før. Begge periodene får de samme filtrene. Kortene øverst viser da **Endring**, og kortene under **Statistikk per felt** får kolonnene **Valgt**, **Før** og Endring. Endringer i andeler står i prosentpoeng (pp).
 
+Med **Fra første svar** finnes det ingen periode før. Da står det at det ikke er noen forrige periode å sammenligne med, der bryteren ellers står. Valget blir stående og gjelder igjen når dere velger en annen periode.
+
 Perioden før har like mange dager og slutter dagen før den valgte perioden starter. Ved hele kalendermåneder eller et helt kalenderår valgt med **Egendefinert periode** sammenligner dashboardet med like mange måneder før, eller med året før. Under bryteren står datoene dashboardet sammenligner med.
 
 Er periodene ulike lange, for eksempel februar mot januar, sier dashboardet fra. Da kan antall svar ikke sammenlignes direkte. Sluttdatoen kan ikke være senere enn i dag. Når dagen i dag er med, står det **Inkluderer i dag · foreløpig sammenligning**, fordi dagen ikke er over.

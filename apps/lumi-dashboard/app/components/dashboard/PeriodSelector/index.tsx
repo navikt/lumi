@@ -20,8 +20,14 @@ import {
 import dayjs from "dayjs";
 import { useId, useRef, useState } from "react";
 import { useBreakpoint } from "~/hooks/useBreakpoint";
+import { usePeriodRange } from "~/hooks/usePeriodRange";
 import { useSearchParams } from "~/hooks/useSearchParams";
-import { todayInOslo } from "~/utils/dashboardPeriod";
+import {
+  fixedPeriodSearch,
+  sinceFirstLabel,
+  sinceFirstSearch,
+  todayInOslo,
+} from "~/utils/dashboardPeriod";
 import { focusPageHeading, focusStayedOn } from "~/utils/focus";
 import styles from "./PeriodSelector.module.css";
 
@@ -110,6 +116,8 @@ function CustomPeriodInputs({
   );
 }
 
+type Preset = number | "year" | "today" | "sinceFirst";
+
 export function PeriodSelector({
   completeDays = false,
 }: {
@@ -121,7 +129,9 @@ export function PeriodSelector({
   const popoverId = useId();
   const { isMobile } = useBreakpoint();
 
-  // Parse current params
+  // Parse current params. A period without a start, such as «Fra første
+  // svar», gets the first answer, so a custom period can keep it.
+  const range = usePeriodRange();
   const currentFrom = params.fromDate ? dayjs(params.fromDate) : undefined;
   const currentTo = params.toDate ? dayjs(params.toDate) : undefined;
 
@@ -132,16 +142,21 @@ export function PeriodSelector({
 
   const handleApply = (from: Date, to: Date) => {
     setParams({
-      dateMode: "fixed",
-      fromDate: dayjs(from).format("YYYY-MM-DD"),
-      toDate: dayjs(to).format("YYYY-MM-DD"),
-      ...(completeDays ? { periodPreset: "custom" as const } : {}),
-      page: "1",
+      ...fixedPeriodSearch(
+        dayjs(from).format("YYYY-MM-DD"),
+        dayjs(to).format("YYYY-MM-DD"),
+      ),
+      periodPreset: completeDays ? "custom" : undefined,
     });
     closeAndRestoreFocus();
   };
 
-  const handlePreset = (days: number | "year" | "today") => {
+  const handlePreset = (days: Preset) => {
+    if (days === "sinceFirst") {
+      setParams(sinceFirstSearch());
+      closeAndRestoreFocus();
+      return;
+    }
     const today = completeDays ? dayjs(todayInOslo()) : dayjs();
     const end =
       completeDays && days !== "today" ? today.subtract(1, "day") : today;
@@ -162,22 +177,28 @@ export function PeriodSelector({
     }
 
     setParams({
-      dateMode: "fixed",
-      fromDate: start.format("YYYY-MM-DD"),
-      toDate: end.format("YYYY-MM-DD"),
-      ...(completeDays
-        ? {
-            periodPreset:
-              days === "year" ? ("yearToDate" as const) : ("rolling" as const),
-          }
-        : {}),
-      page: "1",
+      ...fixedPeriodSearch(
+        start.format("YYYY-MM-DD"),
+        end.format("YYYY-MM-DD"),
+      ),
+      periodPreset: completeDays
+        ? days === "year"
+          ? "yearToDate"
+          : "rolling"
+        : undefined,
     });
     closeAndRestoreFocus();
   };
 
   // Determine label text
   const getLabel = () => {
+    if (range.sinceFirst) {
+      // The filter bar has little room on small screens. The button next to
+      // the comparison takes the full width.
+      return sinceFirstLabel(
+        isMobile && !completeDays ? undefined : range.fromDate,
+      );
+    }
     if (currentFrom && !currentTo) {
       return `Fra ${currentFrom.format(isMobile ? "DD.MM" : "DD.MM.YYYY")}`;
     }
@@ -238,6 +259,13 @@ export function PeriodSelector({
   };
 
   const periodLabel = getLabel();
+  const presetNote = (
+    <Detail textColor="subtle">
+      {completeDays &&
+        "Hele dager til og med i går, unntatt «I dag» og «Fra første svar». "}
+      Svar slettes etter tolv måneder.
+    </Detail>
+  );
   const periodEditor = (
     <VStack gap="space-20">
       <HGrid columns={{ xs: 1, sm: "1fr 1fr" }} gap="space-24">
@@ -251,13 +279,11 @@ export function PeriodSelector({
             compact={isMobile}
             concise
           />
-          <Detail textColor="subtle">
-            Hele dager til og med i går, unntatt «I dag».
-          </Detail>
+          {presetNote}
         </VStack>
         <CustomPeriodInputs
           onApply={handleApply}
-          fromDate={params.fromDate}
+          fromDate={range.fromDate}
           toDate={params.toDate}
         />
       </HGrid>
@@ -344,6 +370,7 @@ export function PeriodSelector({
                           onSelect={handlePreset}
                           completeDays={completeDays}
                         />
+                        {presetNote}
                       </VStack>
 
                       {/* Divider */}
@@ -352,7 +379,7 @@ export function PeriodSelector({
                       {/* Custom Range Column */}
                       <CustomPeriodInputs
                         onApply={handleApply}
-                        fromDate={params.fromDate}
+                        fromDate={range.fromDate}
                         toDate={params.toDate}
                       />
                     </HStack>
@@ -368,13 +395,14 @@ export function PeriodSelector({
                           compact
                           completeDays={completeDays}
                         />
+                        {presetNote}
                       </VStack>
 
                       <div className={styles.horizontalDivider} />
 
                       <CustomPeriodInputs
                         onApply={handleApply}
-                        fromDate={params.fromDate}
+                        fromDate={range.fromDate}
                         toDate={params.toDate}
                       />
                     </VStack>
@@ -397,7 +425,7 @@ function PresetButtons({
   completeDays = false,
   concise = false,
 }: {
-  onSelect: (days: number | "year" | "today") => void;
+  onSelect: (days: Preset) => void;
   compact?: boolean;
   completeDays?: boolean;
   concise?: boolean;
@@ -432,6 +460,8 @@ function PresetButtons({
       label: completeDays ? "Hittil i år (t.o.m. i går)" : "Hittil i år",
       value: "year" as const,
     },
+    // No short form: the visible text is the name, also on small screens.
+    { label: "Fra første svar", value: "sinceFirst" as const },
   ].filter(
     (preset) =>
       !(
@@ -481,10 +511,12 @@ function PresetButtons({
   );
 }
 
-function concisePresetLabel(value: number | "year" | "today") {
+function concisePresetLabel(value: Preset) {
   return value === "year"
     ? "Hittil i år"
     : value === "today"
       ? "I dag"
-      : `${value} hele dager`;
+      : value === "sinceFirst"
+        ? "Fra første svar"
+        : `${value} hele dager`;
 }

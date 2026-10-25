@@ -19,6 +19,8 @@ describe("comparison availability", () => {
     vi.clearAllMocks();
     Object.assign(params, {
       surveyId: "survey-vurdering",
+      dateMode: undefined,
+      periodPreset: undefined,
       fromDate: "2026-08-19",
       toDate: "2026-09-01",
       compare: "previous",
@@ -31,6 +33,13 @@ describe("comparison availability", () => {
     { compare: "none" as const },
     { toDate: "2026-09-08" },
     { fromDate: "2026-02-30" },
+    // «Fra første svar» has no previous period. The choice stays.
+    {
+      dateMode: "relative" as const,
+      periodPreset: "sinceFirst" as const,
+      fromDate: undefined,
+      toDate: "2026-09-07",
+    },
   ])("does not fetch disabled or invalid comparisons for %j", (overrides) => {
     Object.assign(params, overrides);
     const client = new QueryClient();

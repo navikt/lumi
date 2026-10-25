@@ -9,6 +9,8 @@ interface FeedbackEmptyStateProps {
   onResetFilters: () => void;
   periodFromDate?: string;
   periodToDate?: string;
+  /** «Fra første svar» is chosen. It has every answer up to today. */
+  sinceFirst?: boolean;
   /** First-to-last submission span across the team's surveys. */
   fullPeriod?: { fromDate: string; toDate: string };
   onShowFullPeriod: (period: { fromDate: string; toDate: string }) => void;
@@ -43,6 +45,7 @@ export function FeedbackEmptyState({
   onResetFilters,
   periodFromDate,
   periodToDate,
+  sinceFirst = false,
   fullPeriod,
   onShowFullPeriod,
   team,
@@ -85,7 +88,8 @@ export function FeedbackEmptyState({
       <Alert variant="info">
         <VStack gap="space-8" align="start">
           <BodyShort>{emptyPeriodDescription}</BodyShort>
-          {fullPeriod && (
+          {/* «Fra første svar» already covers every answer up to today. */}
+          {fullPeriod && !sinceFirst && (
             <Button
               type="button"
               variant="secondary"

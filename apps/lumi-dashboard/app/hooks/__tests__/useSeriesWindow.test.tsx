@@ -1,12 +1,15 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockParams, mockStats } = vi.hoisted(() => ({
+const { mockParams, mockStats, mockAnswerSpan } = vi.hoisted(() => ({
   mockParams: {} as Record<string, string | undefined>,
   mockStats: {
     data: undefined as unknown,
     isPending: false,
     isPlaceholderData: false,
+  },
+  mockAnswerSpan: {
+    value: undefined as { fromDate: string; toDate: string } | undefined,
   },
 }));
 
@@ -16,6 +19,10 @@ vi.mock("~/hooks/useSearchParams", () => ({
 
 vi.mock("~/hooks/useStats", () => ({
   useStats: () => mockStats,
+}));
+
+vi.mock("~/hooks/useAnswerSpan", () => ({
+  useAnswerSpan: () => mockAnswerSpan.value,
 }));
 
 vi.mock("~/hooks/useOsloToday", () => ({
@@ -38,6 +45,7 @@ describe("useSeriesWindow", () => {
     mockStats.data = undefined;
     mockStats.isPending = false;
     mockStats.isPlaceholderData = false;
+    mockAnswerSpan.value = undefined;
   });
 
   it("has no window before the statistics have loaded", () => {
@@ -96,6 +104,82 @@ describe("useSeriesWindow", () => {
       to: "2026-10-01",
     });
     expect(result.current.interval).toBe("week");
+  });
+
+  it("starts a period without a start at the first answer for the selection", () => {
+    // Filters the bootstrap does not apply leave the first days empty.
+    mockStats.data = stats(
+      { "2026-10-20": 1 },
+      { fromDate: null, toDate: "2026-10-22" },
+    );
+    mockAnswerSpan.value = { fromDate: "2026-10-01", toDate: "2026-10-21" };
+
+    const { result } = renderHook(() => useSeriesWindow());
+
+    expect(result.current.window).toEqual({
+      from: "2026-10-01",
+      to: "2026-10-22",
+    });
+  });
+
+  it("starts on the day of the first answer, also in the middle of a week", () => {
+    // Weekly: from Wednesday 1 July to 25 October 2026.
+    mockStats.data = stats(
+      { "2026-08-03": 1 },
+      { fromDate: null, toDate: "2026-10-22" },
+    );
+    mockAnswerSpan.value = { fromDate: "2026-07-01", toDate: "2026-10-21" };
+
+    const { result } = renderHook(() => useSeriesWindow());
+
+    expect(result.current.window?.from).toBe("2026-07-01");
+    expect(result.current.interval).toBe("week");
+  });
+
+  it("keeps the first answer the previous numbers were shown with while new ones load", () => {
+    const shown = stats(
+      { "2026-08-20": 1 },
+      { fromDate: null, toDate: "2026-10-22" },
+    );
+    mockStats.data = shown;
+    mockAnswerSpan.value = { fromDate: "2026-06-01", toDate: "2026-10-21" };
+    const { result, rerender } = renderHook(() => useSeriesWindow());
+    expect(result.current.window?.from).toBe("2026-06-01");
+
+    // Another survey: its first answer is known, its numbers are not yet.
+    mockStats.isPlaceholderData = true;
+    mockAnswerSpan.value = { fromDate: "2026-09-01", toDate: "2026-10-21" };
+    rerender();
+
+    expect(result.current.window?.from).toBe("2026-06-01");
+  });
+
+  it("starts with the statistics when the previous numbers were never shown", () => {
+    mockStats.isPlaceholderData = true;
+    mockStats.data = stats(
+      { "2026-10-20": 1 },
+      { fromDate: null, toDate: "2026-10-22" },
+    );
+    mockAnswerSpan.value = { fromDate: "2026-10-01", toDate: "2026-10-21" };
+
+    const { result } = renderHook(() => useSeriesWindow());
+
+    expect(result.current.window?.from).toBe("2026-10-20");
+  });
+
+  it("leaves a period with a start to its start date", () => {
+    mockStats.data = stats(
+      { "2026-10-20": 1 },
+      { fromDate: "2026-10-15", toDate: "2026-10-22" },
+    );
+    mockAnswerSpan.value = { fromDate: "2026-01-01", toDate: "2026-10-21" };
+
+    const { result } = renderHook(() => useSeriesWindow());
+
+    expect(result.current.window).toEqual({
+      from: "2026-10-15",
+      to: "2026-10-22",
+    });
   });
 
   it("lets days from other numbers start a period without a start", () => {

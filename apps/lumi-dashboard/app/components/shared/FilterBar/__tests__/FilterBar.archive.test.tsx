@@ -18,7 +18,8 @@ const { mockParams, mockSetParams, mockResetParams, mockBootstrap, mockStats } =
       surveyId: "survey-archived" as string | undefined,
       task: undefined as string | undefined,
       showArchived: undefined as string | undefined,
-      dateMode: "auto" as "auto" | "fixed" | undefined,
+      dateMode: "auto" as "auto" | "fixed" | "relative" | undefined,
+      periodPreset: undefined as string | undefined,
       fromDate: "2026-07-23" as string | undefined,
       toDate: "2026-08-21" as string | undefined,
       query: undefined as string | undefined,
@@ -40,6 +41,14 @@ const { mockParams, mockSetParams, mockResetParams, mockBootstrap, mockStats } =
       refetch: vi.fn().mockResolvedValue(undefined),
     },
   }));
+
+const { mockToday } = vi.hoisted(() => ({
+  mockToday: { value: "2026-08-21" },
+}));
+
+vi.mock("~/hooks/useOsloToday", () => ({
+  useOsloToday: () => mockToday.value,
+}));
 
 vi.mock("~/hooks/useSearchParams", () => ({
   useSearchParams: () => ({
@@ -137,6 +146,8 @@ describe("FilterBar archive state", () => {
     mockParams.task = undefined;
     mockParams.showArchived = undefined;
     mockParams.dateMode = "auto";
+    mockParams.periodPreset = undefined;
+    mockToday.value = "2026-08-21";
     mockParams.fromDate = "2026-07-23";
     mockParams.toDate = "2026-08-21";
     mockParams.query = undefined;
@@ -621,6 +632,112 @@ describe("FilterBar archive state", () => {
         page: "1",
       }),
     );
+  });
+
+  describe("with «Fra første svar»", () => {
+    beforeEach(() => {
+      mockParams.surveyId = "survey-active";
+      mockParams.dateMode = "relative";
+      mockParams.periodPreset = "sinceFirst";
+      mockParams.fromDate = undefined;
+      mockParams.toDate = "2026-08-21";
+    });
+
+    /** The calls that wrote a period. */
+    function periodWrites() {
+      return mockSetParams.mock.calls
+        .map(([next]) => next)
+        .filter(
+          (next) =>
+            "dateMode" in next || "fromDate" in next || "toDate" in next,
+        );
+    }
+
+    it("names the period with the first answer and leaves it in the address", () => {
+      render(<FilterBar />);
+
+      expect(
+        screen.getAllByRole("button", {
+          name: "Periode: Fra første svar (01.01.2024)",
+        })[0],
+      ).toBeInTheDocument();
+      expect(periodWrites()).toEqual([]);
+    });
+
+    it("keeps the period when the survey or the app changes", () => {
+      mockParams.app = "app-test";
+      mockBootstrap.data = {
+        ...loadedBootstrapData(),
+        apps: ["app-test", "app-other"],
+        surveysByApp: {
+          ...loadedBootstrapData().surveysByApp,
+          "app-test": ["survey-active", "survey-other"],
+          "app-other": ["survey-third"],
+        },
+        surveyMeta: {
+          ...loadedBootstrapData().surveyMeta,
+          "survey-other": { archivedAt: null },
+          "survey-third": { archivedAt: null },
+        },
+      };
+      render(<FilterBar />);
+      mockSetParams.mockClear();
+
+      fireEvent.change(screen.getAllByRole("combobox", { name: "Survey" })[0], {
+        target: { value: "survey-other" },
+      });
+      fireEvent.change(screen.getAllByRole("combobox", { name: "App" })[0], {
+        target: { value: "app-other" },
+      });
+
+      expect(mockSetParams).toHaveBeenCalledTimes(2);
+      expect(periodWrites()).toEqual([]);
+    });
+
+    it("keeps the period when the team changes", () => {
+      mockBootstrap.data = {
+        ...loadedBootstrapData(),
+        availableTeams: ["team-test", "team-other"],
+      };
+      render(<FilterBar />);
+      mockSetParams.mockClear();
+
+      fireEvent.change(screen.getAllByRole("combobox", { name: "Team" })[0], {
+        target: { value: "team-other" },
+      });
+
+      const [next] = mockSetParams.mock.lastCall ?? [];
+      expect(next).toMatchObject({ team: "team-other", toDate: "2026-08-21" });
+      expect(next).not.toHaveProperty("dateMode");
+    });
+
+    it("moves the end to today after midnight and keeps the page", () => {
+      mockParams.toDate = "2026-08-20";
+
+      render(<FilterBar />);
+
+      expect(mockSetParams).toHaveBeenCalledWith({ toDate: "2026-08-21" });
+    });
+
+    it("does not move the end back to an earlier day", () => {
+      // The address got tomorrow from a clock that is ahead of this one.
+      mockParams.toDate = "2026-08-22";
+
+      render(<FilterBar />);
+
+      expect(mockSetParams).not.toHaveBeenCalledWith({ toDate: "2026-08-21" });
+    });
+
+    it("leaves the end of a fixed period alone after midnight", () => {
+      mockParams.dateMode = "fixed";
+      mockParams.periodPreset = undefined;
+      mockParams.fromDate = "2026-08-01";
+      mockParams.toDate = "2026-08-20";
+
+      render(<FilterBar />);
+
+      expect(mockSetParams).not.toHaveBeenCalledWith({ toDate: "2026-08-21" });
+    });
   });
 });
 

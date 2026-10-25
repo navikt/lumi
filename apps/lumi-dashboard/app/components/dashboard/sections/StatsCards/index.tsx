@@ -8,9 +8,10 @@ import { BodyShort, HStack } from "@navikt/ds-react";
 import type { ReactNode } from "react";
 import { DashboardCard, DashboardGrid } from "~/components/dashboard";
 import { useSearchParams } from "~/hooks/useSearchParams";
+import { useShownFirstAnswer } from "~/hooks/useShownFirstAnswer";
 import { useStats } from "~/hooks/useStats";
 import type { RatingStats, TextStats } from "~/types/api";
-import { formatDateLong } from "~/utils/dateUtils";
+import { formatDateRange } from "~/utils/dateUtils";
 import {
   calculateThumbsPositiveRate,
   getRatingScaleLabel,
@@ -18,6 +19,7 @@ import {
   inferRatingVariantFromDistribution,
   type RatingVariant,
 } from "~/utils/ratingDisplay";
+import { daysBetween } from "~/utils/timeBuckets";
 import { Skeleton as StatsCardsSkeleton } from "./Skeleton";
 import styles from "./StatsCards.module.css";
 
@@ -53,6 +55,7 @@ interface StatsCardsProps {
 export function StatsCards({ showRating = false }: StatsCardsProps) {
   const { data: stats, isPending } = useStats();
   const { params } = useSearchParams();
+  const firstAnswer = useShownFirstAnswer();
   const hasSurveyFilter = !!params.surveyId;
 
   // isPending: no cached data AND fetching (TanStack Query v5 best practice)
@@ -62,11 +65,33 @@ export function StatsCards({ showRating = false }: StatsCardsProps) {
   }
 
   const totalCount = stats?.totalCount || 0;
-  const periodDays = stats?.period?.days || 30;
+  // The period of the numbers on screen. The API counts a period without a
+  // start as 30 days, but it has every answer up to its end, such as with
+  // «Fra første svar». It starts at the first answer for the selection.
+  const period = stats?.period;
+  const periodFrom = period?.fromDate ?? firstAnswer;
+  const periodTo = period?.toDate;
+  const periodDays = period?.fromDate
+    ? period.days
+    : periodFrom && periodTo && periodFrom <= periodTo
+      ? daysBetween(periodFrom, periodTo)
+      : undefined;
   const periodSubtitle =
-    stats?.period?.fromDate && stats.period.toDate
-      ? `I perioden ${formatDateLong(stats.period.fromDate)}–${formatDateLong(stats.period.toDate)}`
+    periodFrom && periodTo
+      ? `I perioden ${formatDateRange(periodFrom, periodTo)}`
       : "I valgt periode";
+  const periodCard = (
+    <StatCard
+      icon={<CalendarIcon fontSize="1.25rem" aria-hidden />}
+      label="Periode"
+      value={
+        periodDays === undefined
+          ? "–"
+          : `${periodDays.toLocaleString("no-NO")}d`
+      }
+      subtitle={`${periodFrom || "–"} → ${periodTo || "nå"}`}
+    />
+  );
   const countWithText = stats?.countWithText || 0;
   const textPercentage =
     totalCount > 0 ? Math.round((countWithText / totalCount) * 100) : 0;
@@ -150,12 +175,7 @@ export function StatsCards({ showRating = false }: StatsCardsProps) {
         columns={{ xs: 1, sm: 2, md: showRating ? 4 : 3 }}
         gap={{ xs: "space-12", md: "space-16" }}
       >
-        <StatCard
-          icon={<CalendarIcon fontSize="1.25rem" aria-hidden />}
-          label="Periode"
-          value={`${periodDays}d`}
-          subtitle={`${stats?.period?.fromDate || "–"} → ${stats?.period?.toDate || "nå"}`}
-        />
+        {periodCard}
 
         <StatCard
           icon={<ChatIcon fontSize="1.25rem" aria-hidden />}
@@ -193,12 +213,7 @@ export function StatsCards({ showRating = false }: StatsCardsProps) {
       columns={{ xs: 1, sm: 2, md: 3 }}
       gap={{ xs: "space-12", md: "space-16" }}
     >
-      <StatCard
-        icon={<CalendarIcon fontSize="1.25rem" aria-hidden />}
-        label="Periode"
-        value={`${periodDays}d`}
-        subtitle={`${stats?.period?.fromDate || "–"} → ${stats?.period?.toDate || "nå"}`}
-      />
+      {periodCard}
 
       <StatCard
         icon={<ChatIcon fontSize="1.25rem" aria-hidden />}
