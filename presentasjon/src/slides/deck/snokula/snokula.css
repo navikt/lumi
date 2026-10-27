@@ -469,6 +469,14 @@
   transform: var(--kamera);
 }
 
+/*
+ * A close-up chapter: the labels on the snow would be cut at the edge, and
+ * the rain would pass behind the chapter's name, so both are left out.
+ */
+.snokula[data-naerbilde] :is(.etikett, .regn) {
+  display: none;
+}
+
 /* The cover: Lumi, what it is, and who is talking. */
 .snokula__forside {
   position: absolute;

@@ -1003,9 +1003,9 @@
 }
 
 /*
- * kom-i-gang: three steps on a line from the top down, and the docs as a
- * QR code. The stations stand empty, and each click lights one in the
- * colour of who does it. The code stays black on white, in a viewfinder.
+ * kom-i-gang: three steps on a line from the top down, with the address of
+ * the docs under the first. The stations stand empty, and each click
+ * lights one in the colour of who does it.
  */
 
 .slide-title.kom-i-gang__tittel {
@@ -1122,46 +1122,6 @@
   stroke-linecap: round;
 }
 
-.kom-i-gang__qr {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.kom-i-gang__kode {
-  position: relative;
-  line-height: 0;
-}
-
-/* The corners of a camera's viewfinder, just outside the quiet zone. */
-.kom-i-gang__sikte {
-  position: absolute;
-  top: -40px;
-  left: -40px;
-  width: 480px;
-  height: 480px;
-  overflow: visible;
-  fill: none;
-  stroke: var(--map-ink);
-  stroke-width: 12px;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.kom-i-gang__lenke {
-  margin: 30px 0 0;
-  font-family: var(--deck-font-mono);
-  font-size: var(--deck-size-label);
-  font-weight: 600;
-}
-
-.kom-i-gang__slack {
-  margin: 0;
-  color: var(--deck-muted);
-  font-size: var(--deck-size-small);
-  font-weight: 600;
-}
-
 /*
  * A click lights a station: the line draws down to it, the disc fills,
  * and the step slides in beside it. On click 2 the hourglass turns over.
@@ -1214,10 +1174,6 @@
     .kom-i-gang__punkt[data-revealed]
     .kom-i-gang__timeglass {
     animation: kom-i-gang-snu 720ms var(--deck-easing-travel) 900ms backwards;
-  }
-
-  :root:not([data-stil="papir"]) .kom-i-gang[data-motion] .kom-i-gang__sikte {
-    animation: end-sikte 640ms var(--deck-easing-travel) 360ms backwards;
   }
 }
 

@@ -34,7 +34,9 @@ som er med:
 | `?rom=frontend` | Frontend forum, med åpningsspørsmålet og de tekniske lysbildene |
 | `?rom=produktledere` | Produktlederakademiet, med åpningsspørsmålet |
 
-Hvilke rom et lysbilde hører til, står i `rooms` på lysbildet.
+Hvilke rom et lysbilde hører til, står i `rooms` på lysbildet. Lysbilder som
+er tatt ut av foredraget for faggruppa, men står i de andre rommene, er merket
+med `utenFaggruppa` i `src/slides/deck/index.ts`.
 
 Uten `?rom` vises foredraget for faggruppa, og det begynner på snøkula. En
 lenke med et lysbilde i adressen, som `#/lumi/2`, åpner det lysbildet. En

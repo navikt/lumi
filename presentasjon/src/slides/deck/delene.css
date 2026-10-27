@@ -1,0 +1,120 @@
+/*
+ * delene: the parts of Lumi as a map in two lanes. The survey's way is the
+ * team's green, the answer's way Lumi's blue, and the answer the only gold.
+ * The lanes end at y 790, so the Teams corner stays clear.
+ */
+
+.delene__title {
+  position: absolute;
+  top: 92px;
+  left: var(--deck-space-page);
+}
+
+/*
+ * The three parts are what the eye counts: the lanes are named like
+ * addresses, and the two stations in between are smaller.
+ */
+.delene .map-station--dim .map-label {
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+}
+
+.map .delene__kode {
+  stroke: var(--farge-team);
+}
+
+.map .delene__rute {
+  stroke: var(--farge-lumi);
+}
+
+/* The answer: the gold disc with eyes. */
+.delene__gull {
+  fill: var(--map-answer);
+  stroke: var(--map-answer-edge);
+  stroke-width: 6px;
+  filter: var(--map-answer-glow);
+}
+
+.delene__oye {
+  fill: var(--deck-accent-fg);
+}
+
+.delene__svar {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* The one that travels only shows while it travels. */
+.delene__reiser {
+  visibility: hidden;
+  offset-rotate: 0deg;
+}
+
+/* One answer, in one place at a time: no fades between the three. */
+.delene .delene__ved-widgeten,
+.delene .delene__reiser,
+.delene .delene__landet {
+  transition: none;
+}
+
+/* Sent on click 3: the answer leaves the widget at once. */
+.delene--sendt .delene__ved-widgeten {
+  visibility: hidden;
+}
+
+:root[data-stil="papir"] .delene .map-line--draw {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"])
+    .delene[data-motion]
+    .delene__ved-widgeten[data-revealed]
+    .delene__svar {
+    animation: delene-pop 300ms var(--deck-easing) backwards;
+  }
+
+  /* Click 3: the answer draws Lumi's line behind it, and lands. */
+  :root:not([data-stil="papir"])
+    .delene[data-motion]
+    .delene__rute[data-revealed] {
+    transition: stroke-dashoffset 1600ms var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"])
+    .delene[data-motion]
+    .delene__reiser[data-revealed] {
+    animation: delene-reis 1600ms var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"])
+    .delene[data-motion]
+    .delene__landet[data-revealed] {
+    animation: delene-vent 1600ms step-end;
+  }
+}
+
+@keyframes delene-pop {
+  from {
+    transform: scale(0);
+  }
+}
+
+@keyframes delene-reis {
+  from {
+    offset-distance: 0%;
+    visibility: visible;
+  }
+
+  to {
+    offset-distance: 100%;
+    visibility: visible;
+  }
+}
+
+@keyframes delene-vent {
+  from,
+  to {
+    visibility: hidden;
+  }
+}
