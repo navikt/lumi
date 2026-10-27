@@ -1,11 +1,13 @@
 /*
  * Forced colours, such as the contrast themes in Windows. The browser
  * repaints text and backgrounds, but the maps are SVG drawn with the theme
- * tokens, so the tokens follow the system colours here. The answer keeps
- * its gold.
+ * tokens, so the tokens follow the system colours here, in every style. The
+ * team's line is text colour and Lumi's the link colour, so the two stay
+ * apart. The answer keeps its gold.
  */
 @media (forced-colors: active) {
-  :root {
+  :root,
+  :root[data-stil] {
     --deck-fg: CanvasText;
     --deck-muted: CanvasText;
     --deck-border: CanvasText;
@@ -17,6 +19,9 @@
     --map-zone-nais: Canvas;
     --map-zone-neutral: Canvas;
     --map-dim: GrayText;
+    --map-zone-edge: CanvasText;
+    --farge-team: CanvasText;
+    --farge-lumi: LinkText;
   }
 
   .map-answer {

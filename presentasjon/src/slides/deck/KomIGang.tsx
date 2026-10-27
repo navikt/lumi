@@ -1,20 +1,19 @@
-import { QrCode } from "../../components/QrCode";
 import type { Slide, SlideProps } from "../../engine";
-import { cssVars } from "../../engine/css";
+import { cssVars, cx } from "../../engine/css";
 import { useBuildMotion } from "./bevisMotion";
 import "./avslutning.css";
 
 /*
- * The first survey in three steps, on a line from the top down, and the
- * docs as a QR code. The three stations stand empty from the start, and
- * each click lights one in the colour of who does it: the team's green,
- * and Lumi's blue for access, the one step where the team waits, marked
- * with an hourglass. The line is dashed until the step before is done.
- * Source: «Hva er Lumi?» and «Koble til backend» in the docs.
+ * The first survey in three steps, on a line from the top down: read «Kom
+ * i gang» and the terms of use, where the docs are, ask for access for the
+ * app, and make the survey in Surveyverksted, which anyone on the team can
+ * do while they wait. The three stations stand empty from the
+ * start, and each click lights one in the colour of who does it: the
+ * team's green, and Lumi's blue for access, the one step where the team
+ * waits, marked with an hourglass. The line is dashed until the step
+ * before is done. Source: «Hva er Lumi?», «Koble til backend» and
+ * «Bruksvilkår» in the docs.
  */
-
-const DOCS_URL = "https://navikt.github.io/lumi/";
-const DOCS_TEXT = "navikt.github.io/lumi";
 
 const LINE_X = 184;
 const STEP_Y = [360, 566, 772] as const;
@@ -22,25 +21,23 @@ const STATION_R = 56;
 
 const STEPS = [
   {
-    label: "Lag et utkast i Surveyverksted",
-    note: "Alle på teamet i Nais Console kan.",
+    label: "Les «Kom i gang» og bruksvilkårene",
+    note: "navikt.github.io/lumi",
     tone: "team",
+    address: true,
   },
   {
-    label: "Be om tilgang for appen",
-    note: "En PR eller en issue i navikt/lumi.",
+    label: "Be om tilgang for appen deres",
+    note: "En issue eller en PR i navikt/lumi.",
     tone: "lumi",
     waits: true,
   },
   {
-    label: "Legg widgeten inn i appen",
-    note: "Utvikleren følger dokumentasjonen.",
+    label: "Lag surveyen i Surveyverksted",
+    note: "Alle på teamet kan, også mens dere venter. Utvikleren legger den inn i appen.",
     tone: "team",
   },
 ] as const;
-
-/** The code: 400 px, top right, ending well above the Teams corner. */
-const QR = { left: 1300, top: 236, size: 400 } as const;
 
 /** Waiting: an hourglass, in Lumi's blue. */
 function Timeglass() {
@@ -131,31 +128,14 @@ function KomIGang({ step, active }: SlideProps) {
               {s.label}
               {"waits" in s && <Timeglass />}
             </span>
-            <span className="kom-i-gang__note">{s.note}</span>
+            <span
+              className={cx("kom-i-gang__note", "address" in s && "end-mono")}
+            >
+              {s.note}
+            </span>
           </li>
         ))}
       </ol>
-      <div
-        className="end-at kom-i-gang__qr"
-        style={{ left: QR.left, top: QR.top, width: QR.size }}
-      >
-        <div className="kom-i-gang__kode">
-          <QrCode
-            text={DOCS_URL}
-            size={QR.size}
-            label={`QR-kode til dokumentasjonen, ${DOCS_TEXT}`}
-          />
-          <svg
-            className="kom-i-gang__sikte"
-            viewBox="-40 -40 480 480"
-            aria-hidden="true"
-          >
-            <path d="M-26 46 V-26 H46 M354 -26 H426 V46 M426 354 V426 H354 M46 426 H-26 V354" />
-          </svg>
-        </div>
-        <p className="kom-i-gang__lenke">{DOCS_TEXT}</p>
-        <p className="kom-i-gang__slack">Spørsmål: #lumi på Slack</p>
-      </div>
     </div>
   );
 }

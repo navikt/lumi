@@ -55,6 +55,8 @@ interface SnokulaProps extends SlideProps {
   label: string;
   /** Where a chapter slide looks: a CSS transform of the world. */
   kamera?: string;
+  /** A close-up: the labels on the snow and the rain are left out. */
+  naerbilde?: boolean;
   children: ReactNode;
 }
 
@@ -64,6 +66,7 @@ function Snokula({
   active,
   label,
   kamera,
+  naerbilde = false,
   children,
 }: SnokulaProps) {
   const suffix = useId().replace(/[^a-zA-Z0-9_-]/g, "");
@@ -87,6 +90,7 @@ function Snokula({
         data-scene={which}
         data-steg={step}
         data-entre={entre ? "" : undefined}
+        data-naerbilde={naerbilde ? "" : undefined}
         style={kamera ? ({ "--kamera": kamera } as CSSProperties) : undefined}
       >
         <svg
@@ -173,12 +177,16 @@ export const fagsystemene: Slide = {
   Component: Fagsystemene,
 };
 
-/** A chapter: the globe, seen from one place in it, and the chapter's name. */
+/**
+ * A chapter: the globe, seen from one place in it, and the chapter's name.
+ * A close-up leaves out what the camera would cut at the edge.
+ */
 function kapittel(
   id: string,
   title: string,
   kamera: string,
   label: string,
+  naerbilde = false,
 ): Slide {
   function Kapittel({ step, active }: SlideProps) {
     return (
@@ -187,6 +195,7 @@ function kapittel(
         step={step}
         active={active}
         kamera={kamera}
+        naerbilde={naerbilde}
         label={label}
       >
         <h2 className="snokula__kapittel">{title}</h2>
@@ -201,6 +210,7 @@ export const kapittelHvaErLumi = kapittel(
   "Hva er Lumi?",
   "translate(-52px, -1503px) scale(2.6)",
   "Nærbilde av krystallen inne i snøkula. I kjernen sitter et svar, en gul skive med øyne.",
+  true,
 );
 
 export const kapittelHvaKanDereGjore = kapittel(
@@ -208,6 +218,7 @@ export const kapittelHvaKanDereGjore = kapittel(
   "Det dere bestemmer selv",
   "translate(-1825px, -1810px) scale(3)",
   "Nærbilde av appens hus inne i snøkula. I vinduet sitter widgeten.",
+  true,
 );
 
 export const kapittelKomIGang = kapittel(

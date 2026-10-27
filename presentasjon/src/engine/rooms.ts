@@ -2,7 +2,12 @@ import type { Room, Slide } from "./types";
 
 export const ROOM_PARAM = "rom";
 
-const ROOMS: readonly Room[] = ["faggruppa", "frontend", "produktledere"];
+/** Every room, in the order the talks are listed. */
+export const ROOMS: readonly Room[] = [
+  "faggruppa",
+  "frontend",
+  "produktledere",
+];
 
 /** The talk the address without `?rom` shows. */
 const DEFAULT_ROOM: Room = "faggruppa";

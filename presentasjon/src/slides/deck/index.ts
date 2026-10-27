@@ -1,7 +1,8 @@
-import type { Slide } from "../../engine";
+import { ROOMS, type Slide } from "../../engine";
 import { ansvar } from "./Ansvar";
 import { bareTeamet } from "./BareTeamet";
 import { brukesVidere } from "./BrukesVidere";
+import { delene } from "./Delene";
 import { fjernerEPosten } from "./FjernerEPosten";
 import { hvaVilDereVite } from "./HvaVilDereVite";
 import { iAppen } from "./IAppen";
@@ -40,6 +41,16 @@ function iKapittel(chapter: string, slides: readonly Slide[]): Slide[] {
 }
 
 /**
+ * Left out of the talk for faggruppa, the one the address without `?rom`
+ * shows. Other rooms that had the slide keep it, so a slide only for
+ * faggruppa, like `fagsystemene`, is left only in the deck with every slide.
+ */
+function utenFaggruppa(slide: Slide): Slide {
+  const rooms = (slide.rooms ?? ROOMS).filter((room) => room !== "faggruppa");
+  return { ...slide, rooms };
+}
+
+/**
  * Lumi, in the order of the story: the snow globe, what Lumi is, what you
  * can do with it, that it works, and how to start. `rooms` on a slide
  * decides which talks get it: `?rom=faggruppa`, `frontend` or
@@ -54,13 +65,16 @@ export const deckSlides: readonly Slide[] = [
     { ...sporsmaletFraForum, roomOnly: true },
     { ...verktoySomFinnes, roomOnly: true },
     apning,
-    fagsystemene,
+    utenFaggruppa(fagsystemene),
   ]),
-  // What Lumi is, as a survey is made and answered: Surveyverksted, the
-  // code, the app, the answer and the dashboard.
+  // What Lumi is: the map of its parts, then a survey as it is made and
+  // answered, in the map's order: Surveyverksted and the question types,
+  // the code, the app, the answer and the dashboard.
   ...iKapittel("lumi", [
     kapittelHvaErLumi,
+    delene,
     sammeUtkast,
+    sporsmalstyper,
     surveyenSomKode,
     utviklerensSteg,
     iAppen,
@@ -72,23 +86,26 @@ export const deckSlides: readonly Slide[] = [
   ]),
   // What you can do with it.
   ...iKapittel("muligheter", [
-    kapittelHvaKanDereGjore,
-    hvaVilDereVite,
-    sporsmalstyper,
-    styrerDere,
+    utenFaggruppa(kapittelHvaKanDereGjore),
+    utenFaggruppa(hvaVilDereVite),
+    utenFaggruppa(styrerDere),
     segmentering,
     brukesVidere,
     underPanseret,
     slikVetVi,
   ]),
   // It works.
-  ...iKapittel("virker", [tallet, oppfolgingsplanenIntro, oppfolgingsplanen]),
-  // How to start. The QR code stays up while people ask.
+  ...iKapittel("virker", [
+    utenFaggruppa(tallet),
+    utenFaggruppa(oppfolgingsplanenIntro),
+    utenFaggruppa(oppfolgingsplanen),
+  ]),
+  // How to start. The last slide stays up while people ask.
   ...iKapittel("i-gang", [
     kapittelKomIGang,
     ulikeBehov,
-    regler,
-    ansvar,
+    utenFaggruppa(regler),
+    utenFaggruppa(ansvar),
     komIGang,
     slutt,
     provSelv,
