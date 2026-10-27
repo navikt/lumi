@@ -2,7 +2,12 @@ import type { Room, Slide } from "./types";
 
 export const ROOM_PARAM = "rom";
 
-const ROOMS: readonly Room[] = ["faggruppa", "frontend", "produktledere"];
+/** The rooms, in the order the front page lists them. */
+export const ROOMS: readonly Room[] = [
+  "faggruppa",
+  "frontend",
+  "produktledere",
+];
 
 function isRoom(value: string | null): value is Room {
   return value !== null && (ROOMS as readonly string[]).includes(value);

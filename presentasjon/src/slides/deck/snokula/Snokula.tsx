@@ -4,6 +4,7 @@ import {
   useId,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { Slide, SlideProps } from "../../../engine";
@@ -216,3 +217,40 @@ export const kapittelKomIGang = kapittel(
   "translate(620px, 160px) scale(0.72)",
   "Hele snøkula, litt på avstand, med stormen rundt.",
 );
+
+/**
+ * The globe as a picture, for the front page: the chapter scene, whole and
+ * without the weather, with the answer in Lumi's core. It says what the
+ * text beside it says, so screen readers skip it.
+ */
+export function SnokulaBilde() {
+  const suffix = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const html = useMemo(() => withIds(markupFor("k"), suffix), [suffix]);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  // As on a slide at its first step: what is shown from step 0 is shown.
+  // The drawing never changes, so once is enough.
+  useLayoutEffect(() => {
+    const parts = svgRef.current?.querySelectorAll("[data-from]") ?? [];
+    for (const element of parts) {
+      element.toggleAttribute(
+        "data-revealed",
+        element.getAttribute("data-from") === "0",
+      );
+    }
+  }, []);
+
+  return (
+    <div className="snokula snokula--bilde" data-scene="k">
+      <svg
+        ref={svgRef}
+        className="snokula__bilde"
+        viewBox="328 168 944 952"
+        aria-hidden="true"
+      >
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: our own drawing, scene.svg beside this file */}
+        <g dangerouslySetInnerHTML={{ __html: html }} />
+      </svg>
+    </div>
+  );
+}

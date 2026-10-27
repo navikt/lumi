@@ -12,6 +12,7 @@ import { App } from "./engine/App";
 import { readRoom, slidesForRoom } from "./engine/rooms";
 import { assertValidSlides } from "./engine/validateSlides";
 import { readViewMode } from "./engine/viewMode";
+import { MenuView } from "./menu/MenuView";
 import { slides } from "./slides";
 import { TrialView } from "./trial/TrialView";
 
@@ -22,30 +23,29 @@ if (!root) {
 }
 
 assertValidSlides(slides);
-const search = window.location.search;
-const trial = new URLSearchParams(search).has("prov");
-const view = readViewMode(search);
+const { search, hash } = window.location;
+const view = readViewMode(search, hash, slides);
 const room = readRoom(search);
-document.documentElement.dataset.deckView = trial ? "trial" : view;
+document.documentElement.dataset.deckView = view;
 // Night on the stage. Day with `?stil=dag`, or paper with `?stil=papir`
 // for a bright room. Always paper for the PDF and the phone page.
 const STILER = ["natt", "dag", "papir"] as const;
 const wanted = new URLSearchParams(search).get("stil");
 const stil =
-  trial || view === "print"
+  view === "trial" || view === "print"
     ? "papir"
     : (STILER.find((name) => name === wanted) ?? "natt");
 document.documentElement.dataset.stil = stil;
 if (room) document.documentElement.dataset.deckRoom = room;
 
-createRoot(root).render(
-  <StrictMode>
-    {trial ? (
-      <TrialView />
-    ) : (
-      <AnswerProvider>
-        <App slides={slidesForRoom(slides, room)} view={view} />
-      </AnswerProvider>
-    )}
-  </StrictMode>,
-);
+function page() {
+  if (view === "trial") return <TrialView />;
+  if (view === "menu") return <MenuView slides={slides} stil={stil} />;
+  return (
+    <AnswerProvider>
+      <App slides={slidesForRoom(slides, room)} view={view} />
+    </AnswerProvider>
+  );
+}
+
+createRoot(root).render(<StrictMode>{page()}</StrictMode>);
