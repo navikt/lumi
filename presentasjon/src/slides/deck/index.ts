@@ -43,9 +43,9 @@ function iKapittel(chapter: string, slides: readonly Slide[]): Slide[] {
  * Lumi, in the order of the story: the snow globe, what Lumi is, what you
  * can do with it, that it works, and how to start. `rooms` on a slide
  * decides which talks get it: `?rom=faggruppa`, `frontend` or
- * `produktledere`. The deck with every slide, from an old link with a
- * slide in the hash or from `?rom=alle`, leaves out the opening question,
- * which only makes sense live, so it starts on the snow globe.
+ * `produktledere`. Without `?rom` the deck is the talk for faggruppa. An
+ * unknown room, like `?rom=alle`, shows every slide except the opening
+ * question, which only makes sense live, so it starts on the snow globe.
  */
 export const deckSlides: readonly Slide[] = [
   // Frontend forum and Produktlederakademiet: the question, before the cover.

@@ -6,8 +6,8 @@ widgeten fra `@navikt/lumi-survey` kjører på lysbildene, med en transport som
 ikke sender noe.
 
 Presentasjonen ligger på <https://navikt.github.io/lumi/presentasjon/>, og
-adressen åpner en forside med foredragene. Den er offentlig, så alt på
-lysbildene må tåle å være det.
+adressen viser foredraget for faggruppa Design for fagsystemer. Den er
+offentlig, så alt på lysbildene må tåle å være det.
 
 ## Kjøre lokalt
 
@@ -36,21 +36,14 @@ som er med:
 
 Hvilke rom et lysbilde hører til, står i `rooms` på lysbildet.
 
+Uten `?rom` vises foredraget for faggruppa, og det begynner på snøkula. En
+lenke med et lysbilde i adressen, som `#/lumi/2`, åpner det lysbildet. En
+lenke til et lysbilde som ikke er med i foredraget, begynner også på snøkula.
+
 `?rom=alle` gir decken med alle lysbildene. Den begynner på snøkula, fordi
 åpningsspørsmålet bare brukes når presentasjonen holdes. Et ukjent rom gir det
 samme. `roomOnly` på et lysbilde holder det utenfor decken med alle
 lysbildene.
-
-## Forsiden
-
-Uten `?rom`, `?print` og `?prov`, og uten et lysbilde i adressen, vises
-forsiden. Der står de tre foredragene med hvem de er for og hvor mange
-lysbilder de har, og lenker til PDF-en av hvert foredrag, siden for mobilen og
-dokumentasjonen. Antallet regnes ut fra lysbildene i hvert rom. Forsiden
-ligger i `src/menu/`, og snøkula på den er tegningen fra lysbildene.
-
-En gammel lenke med et lysbilde i adressen, som `#/lumi/2`, åpner fortsatt
-decken med alle lysbildene på det lysbildet.
 
 ## Hurtigtaster
 
@@ -75,11 +68,10 @@ Hurtigtaster med én tast:
 | ? | Hurtigtaster |
 
 Talestyring kan trykke hurtigtaster med én tast ved et uhell (WCAG 2.1.4). De
-er derfor av i decken med alle lysbildene og på i de tre foredragene, der
-presentasjonen holdes. Bryteren «Hurtigtaster med én tast» i hjelpedialogen
-slår dem av og på. Valget lagres i nettleseren, hver for seg for decken med
-alle lysbildene og for foredragene, så den som presenterer, ikke mister
-tastene fordi de ble slått av i decken med alle lysbildene.
+er derfor av på lenken uten `?rom` og på med `?rom`, der presentasjonen holdes.
+Bryteren «Hurtigtaster med én tast» i hjelpedialogen slår dem av og på. Valget
+lagres i nettleseren, hver for seg for lenkene med og uten `?rom`, så den som
+presenterer, ikke mister tastene fordi de ble slått av på den delte lenken.
 
 Når fokus står i widgeten på et lysbilde, virker bare Page Up og Page Down,
 som er tastene en presentasjonsklikker sender. Mens du skriver i et
@@ -100,8 +92,7 @@ sveipe til venstre og høyre.
 
 Natt er standard. `?stil=dag` gir lyse farger, og `?stil=papir` er for et lyst
 rom. L bytter mellom dem uten å laste siden på nytt. Utskriften og siden for
-mobilen bruker alltid papir. Forsiden følger `?stil`, og lenkene derfra til
-foredragene tar stilen med seg.
+mobilen bruker alltid papir.
 
 ## Høy kontrast
 
@@ -129,11 +120,11 @@ viser, aldri blir liggende skjult bak den.
 
 ## PDF
 
-Åpne adressen med `?print`, gjerne sammen med `rom`, for eksempel
-`?print&rom=faggruppa`. Forsiden lenker dit for hvert foredrag. Alle
-lysbildene vises med alle byggesteg, ett per side på 1920 × 1080 piksler. Velg
-Skriv ut og Lagre som PDF. Widgetene er med slik de ser ut når de åpnes, men
-de kan ikke brukes, og merket «Live» er borte.
+Åpne adressen med `?print`. Uten `rom` er det foredraget for faggruppa, og
+`?print&rom=frontend` gir foredraget for Frontend forum. Alle lysbildene vises
+med alle byggesteg, ett per side på 1920 × 1080 piksler. Velg Skriv ut og
+Lagre som PDF. Widgetene er med slik de ser ut når de åpnes, men de kan ikke
+brukes, og merket «Live» er borte.
 
 ## Lage lysbilder
 
