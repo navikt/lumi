@@ -21,7 +21,7 @@ export interface Slide {
   /** Rooms that get this slide. Leave out to show it in every room. */
   rooms?: readonly Room[];
   /**
-   * Shown only when its room is picked, not on the link without `?rom`.
+   * Shown only when its room is picked, not in the deck with every slide.
    * For slides that only make sense live, like an opening hook.
    */
   roomOnly?: boolean;

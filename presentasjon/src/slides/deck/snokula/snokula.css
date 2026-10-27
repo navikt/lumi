@@ -444,6 +444,44 @@
   fill: var(--morke);
 }
 
+/*
+ * The globe as a picture on the front page: the chapter scene, whole and
+ * still, without the weather. Its own world stays behind it, so on paper
+ * it is the dark globe from the deck. With motion, and not on paper, it is
+ * shaken once as the page opens, and the snow settles.
+ */
+.snokula--bilde {
+  position: relative;
+  border-radius: 32px;
+}
+
+.snokula__bilde {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 944 / 952;
+}
+
+.snokula--bilde :is(.regn, .vind, .lyn, .taake-bak, .taake-foran) {
+  display: none;
+}
+
+.snokula--bilde .kula {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .snokula--bilde .kula {
+    animation: snokula-rist 900ms var(--lett) 200ms backwards;
+  }
+
+  :root:not([data-stil="papir"]) .snokula--bilde .snoe > g {
+    animation: snokula-snoe-virvel 1500ms var(--reise) calc(var(--d) + 300ms)
+      backwards;
+  }
+}
+
 /* The camera: the fagsystem slide is the same world, closer. */
 .snokula .kamera {
   transform-origin: 0 0;

@@ -1,0 +1,165 @@
+/*
+ * The front page uses the real viewport, as the phone page does, with the
+ * deck's colours and fonts. Night unless the address says otherwise.
+ */
+html[data-deck-view="menu"] {
+  color-scheme: light;
+}
+
+html[data-deck-view="menu"][data-stil="natt"] {
+  color-scheme: dark;
+}
+
+html[data-deck-view="menu"] body {
+  background: var(--deck-bg);
+  color: var(--deck-fg);
+}
+
+.menu {
+  box-sizing: border-box;
+  max-width: 70rem;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 6vw, 4.5rem) 1rem 4rem;
+  font-family: var(--deck-font-body);
+  font-size: 1.125rem;
+  line-height: 1.45;
+}
+
+.menu a {
+  color: inherit;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.16em;
+}
+
+.menu a:hover {
+  text-decoration-thickness: 0.16em;
+}
+
+.menu a:focus-visible {
+  outline: 3px solid var(--deck-focus);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/*
+ * As on the deck's cover: Lumi's name, what it is, and the globe. On a
+ * phone the globe stands beside the name, and on a wide screen beside both.
+ */
+.menu__cover {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(7.5rem, 36vw, 23rem);
+  grid-template-areas:
+    "title globe"
+    "lead lead";
+  column-gap: 1rem;
+  margin-bottom: clamp(2rem, 6vw, 4rem);
+}
+
+.menu__title {
+  grid-area: title;
+  align-self: end;
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: clamp(3.5rem, 17vw, 9rem);
+  font-weight: var(--deck-weight-black);
+  letter-spacing: var(--deck-tracking-monument);
+  line-height: 0.9;
+}
+
+.menu__lead {
+  grid-area: lead;
+  max-width: 24ch;
+  margin: 1.25rem 0 0;
+  font-size: clamp(1.375rem, 3vw, 2.125rem);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.2;
+}
+
+.menu__cover .snokula--bilde {
+  grid-area: globe;
+}
+
+@media (min-width: 48rem) {
+  .menu__cover {
+    grid-template-rows: 1fr auto auto 1fr;
+    grid-template-areas:
+      ". globe"
+      "title globe"
+      "lead globe"
+      ". globe";
+    column-gap: 2rem;
+  }
+}
+
+/* The talks: the name opens the talk, the last link its print view. */
+.menu__talks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.menu__talk {
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 1.25rem 1.75rem;
+  border: 3px solid var(--map-zone-edge);
+  border-radius: var(--deck-radius);
+  background: var(--map-zone-neutral);
+}
+
+.menu__talk-title {
+  margin: 0 0 0.75rem;
+  font-family: var(--deck-font-display);
+  font-size: 1.5rem;
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1.15;
+  overflow-wrap: break-word;
+}
+
+.menu__talk-audience,
+.menu__talk-count {
+  margin: 0;
+}
+
+.menu__talk-count {
+  margin: 0.25rem 0 1.25rem;
+  color: var(--deck-muted);
+  font-weight: 600;
+}
+
+.menu__talk-pdf {
+  align-self: flex-start;
+  margin-top: auto;
+}
+
+/* The phone page and the documentation. */
+.menu__more-title {
+  margin: clamp(2.5rem, 7vw, 4rem) 0 1rem;
+  font-family: var(--deck-font-display);
+  font-size: 1.5rem;
+  font-weight: var(--deck-weight-display);
+  line-height: 1.2;
+}
+
+.menu__more {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 1rem 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.menu__more a {
+  font-size: 1.25rem;
+  font-weight: var(--deck-weight-strong);
+}
+
+.menu__more p {
+  margin: 0.25rem 0 0;
+  color: var(--deck-muted);
+}

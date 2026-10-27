@@ -34,25 +34,25 @@ import { underPanseret } from "./UnderPanseret";
 import { utviklerensSteg } from "./UtviklerensSteg";
 import { verktoySomFinnes } from "./VerktoySomFinnes";
 
-/**
- * Lumi, in the order of the story: the snow globe, what Lumi is, what you
- * can do with it, that it works, and how to start. `rooms` on a slide
- * decides which talks get it: `?rom=faggruppa`, `frontend` or
- * `produktledere`. Without `?rom`, every slide is shown except the opening
- * hook for Frontend forum and the questions for the groups, which only make
- * sense live.
- */
-/** Puts slides in a chapter. The day style gives each chapter a colour. */
+/** Puts slides in a chapter, set as `data-kapittel` on each slide. */
 function iKapittel(chapter: string, slides: readonly Slide[]): Slide[] {
   return slides.map((slide) => ({ ...slide, chapter }));
 }
 
+/**
+ * Lumi, in the order of the story: the snow globe, what Lumi is, what you
+ * can do with it, that it works, and how to start. `rooms` on a slide
+ * decides which talks get it: `?rom=faggruppa`, `frontend` or
+ * `produktledere`. The deck with every slide, from an old link with a
+ * slide in the hash or from `?rom=alle`, leaves out the opening question,
+ * which only makes sense live, so it starts on the snow globe.
+ */
 export const deckSlides: readonly Slide[] = [
   // Frontend forum and Produktlederakademiet: the question, before the cover.
   // Then the snow globe: the cover, and why Lumi.
   ...iKapittel("apning", [
     { ...sporsmaletFraForum, roomOnly: true },
-    verktoySomFinnes,
+    { ...verktoySomFinnes, roomOnly: true },
     apning,
     fagsystemene,
   ]),
