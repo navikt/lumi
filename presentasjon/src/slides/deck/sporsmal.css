@@ -1,0 +1,490 @@
+/*
+ * The widget on three slides: «Slik ser surveyen ut i Dine sykmeldte»,
+ * «Lumi har sju spørsmålstyper i dag» and «Hva kan dere endre i widgeten?»,
+ * with the pointers, highlighter strokes and frames from SporsmalPeker.
+ * Green is the team, blue is Lumi. Every move runs only with motion allowed
+ * and not on paper; without it each step shows its end state at once.
+ */
+
+/* Pointers at parts of the widget: cased map lines with a ring. */
+.peker__casing,
+.peker__line {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.peker__casing {
+  stroke: var(--map-paper);
+  stroke-width: 16px;
+}
+
+.peker__line {
+  stroke: var(--map-ink);
+  stroke-width: 6px;
+}
+
+.peker__ring {
+  fill: var(--map-paper);
+  stroke: var(--map-ink);
+  stroke-width: 6px;
+}
+
+/*
+ * Who decides: the team's parts in green, Lumi's in blue, the same on every
+ * slide that splits the widget between them. The heading of each side is
+ * in its colour too.
+ */
+.peker--team {
+  --peker-farge: var(--farge-team);
+}
+
+.peker--lumi {
+  --peker-farge: var(--farge-lumi);
+}
+
+.peker--team .peker__line,
+.peker--lumi .peker__line,
+.peker--team .peker__ring,
+.peker--lumi .peker__ring {
+  stroke: var(--peker-farge);
+}
+
+.map .peker__label {
+  fill: var(--peker-farge, var(--map-ink));
+}
+
+.map .peker__hode--team {
+  fill: var(--farge-team);
+}
+
+.map .peker__hode--lumi {
+  fill: var(--farge-lumi);
+}
+
+/*
+ * Words under a highlighter: the team's in green, Lumi's fixed texts in
+ * blue. The strokes are multiplied onto the white widget, so the letters
+ * stay as dark as before, 4.5:1 or more on the colour in every style. The
+ * layer itself never fades or moves.
+ */
+.merker {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.merker--team {
+  --merke-farge: color-mix(in srgb, var(--farge-team) 48%, #ffffff);
+}
+
+.merker--lumi {
+  --merke-farge: color-mix(in srgb, var(--farge-lumi) 42%, #ffffff);
+}
+
+.merke {
+  position: absolute;
+  border-radius: 8px;
+  background: var(--merke-farge);
+  mix-blend-mode: multiply;
+  transform-origin: left center;
+}
+
+.merker:not([data-on]) .merke {
+  visibility: hidden;
+}
+
+/*
+ * Parts in a frame: Lumi's in blue, the team's app in green. A cased line,
+ * as on the map, so it shows on the dark slide and on the white widget
+ * alike.
+ */
+.ramme rect {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ramme__kasing {
+  stroke: var(--map-paper);
+  stroke-width: calc(var(--ramme-strek) + 6px);
+}
+
+.ramme__linje {
+  stroke: var(--peker-farge);
+  stroke-width: var(--ramme-strek);
+}
+
+.ramme:not([data-on]) {
+  visibility: hidden;
+}
+
+/*
+ * The strokes are drawn one line after the other, left to right, and the
+ * frames draw themselves round. A frame that follows its part moves with it.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .merker[data-on] .merke {
+    animation: merke-strek 320ms var(--deck-easing)
+      calc(var(--merke-start) + var(--i) * 60ms) backwards;
+  }
+
+  :root:not([data-stil="papir"]) .ramme[data-on] rect {
+    animation: ramme-tegn var(--ramme-tid) var(--deck-easing-travel)
+      var(--ramme-start) backwards;
+  }
+
+  :root:not([data-stil="papir"]) .ramme rect {
+    transition:
+      x var(--deck-duration-travel) var(--deck-easing-travel),
+      y var(--deck-duration-travel) var(--deck-easing-travel),
+      width var(--deck-duration-travel) var(--deck-easing-travel),
+      height var(--deck-duration-travel) var(--deck-easing-travel);
+  }
+}
+
+@keyframes merke-strek {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* The dash is the whole frame, and the gap longer, so nothing shows before it. */
+@keyframes ramme-tegn {
+  from {
+    stroke-dasharray: 1 2;
+    stroke-dashoffset: 1.02;
+  }
+
+  to {
+    stroke-dasharray: 1 2;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* «Slik ser surveyen ut i Dine sykmeldte»: the real app, and the camera moves in. */
+.iappen__title {
+  position: absolute;
+  top: 44px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-title);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: var(--deck-line-height-tight);
+  white-space: nowrap;
+}
+
+/* The window is a clip on a full-stage layer, so it can change with the camera. */
+.iappen__window {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.iappen__camera {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2560px;
+  height: 1600px;
+  transform-origin: 0 0;
+}
+
+.iappen__shot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 2560px;
+  height: 1600px;
+}
+
+/* By day and on paper the page needs an edge against the white slide; at night the dark does it. */
+.iappen__edge {
+  display: none;
+}
+
+:root:is([data-stil="papir"], [data-stil="dag"]) .iappen__edge {
+  position: absolute;
+  display: block;
+  box-sizing: border-box;
+  border: var(--deck-border-width) solid var(--deck-border);
+  border-radius: var(--deck-radius);
+  pointer-events: none;
+}
+
+.iappen__source {
+  position: absolute;
+  left: var(--deck-space-page);
+  bottom: 30px;
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+}
+
+/*
+ * One move per click. First the ring draws itself round the button. Then
+ * the camera goes in on the corner while the window closes round the
+ * widget, and the button opens into the panel. On the free text page the
+ * notice's frame draws itself round, and its name comes after it.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .iappen__window,
+  :root:not([data-stil="papir"]) .iappen__camera {
+    transition:
+      clip-path var(--deck-duration-travel) var(--deck-easing-travel),
+      transform var(--deck-duration-travel) var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"]) .iappen__labels [data-revealed] {
+    transition-delay: 450ms;
+  }
+
+  /* A name that leaves goes quickly, before the camera moves far. */
+  :root:not([data-stil="papir"])
+    .iappen__labels
+    [data-reveal]:not([data-revealed]) {
+    transition-duration: 150ms;
+  }
+
+  /*
+   * A page of the widget comes in quickly over the one before, which stays
+   * until it is in, so the closed page under them never shows through.
+   */
+  :root:not([data-stil="papir"]) .iappen__shot[data-reveal] {
+    transition-duration: 160ms;
+  }
+
+  :root:not([data-stil="papir"])
+    .iappen__shot[data-reveal]:not([data-revealed]) {
+    transition-delay: 160ms;
+    transition-duration: 0s;
+  }
+
+  /* The panel grows out of the button, as the light comes on in it. */
+  :root:not([data-stil="papir"]) .iappen__shot.iappen__shot--apen[data-reveal] {
+    transition:
+      clip-path var(--deck-duration-travel) var(--deck-easing-travel),
+      opacity 160ms var(--deck-easing),
+      visibility 160ms;
+  }
+
+  /* When it leaves, it too stays until the next page is in. */
+  :root:not([data-stil="papir"])
+  .iappen__shot.iappen__shot--apen[data-reveal]:not([data-revealed]) {
+    transition: all 0s 160ms;
+  }
+
+  /* The button stays on top while the panel starts to grow, then goes. */
+  :root:not([data-stil="papir"])
+  .iappen__shot.iappen__shot--knapp[data-reveal]:not([data-revealed]) {
+    transition-delay: 180ms;
+    transition-duration: 220ms;
+  }
+}
+
+/* «Hva kan dere endre i widgeten?»: the real widget, split in two by colour. */
+
+/* Two lines, set high, so the widget and its lowest names clear the Teams corner. */
+.styrer__title {
+  position: absolute;
+  top: 64px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-title);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: var(--deck-line-height-tight);
+}
+
+.styrer__frame {
+  position: absolute;
+}
+
+.styrer__frame .styrer__survey {
+  position: absolute;
+  inset: 0;
+}
+
+/* The names come as their frames are drawn. */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .styrer__side[data-revealed] {
+    transition-delay: 300ms;
+  }
+}
+
+/* «Lumi har sju spørsmålstyper i dag»: a widget over its card in the dashboard. */
+
+/* The small title, so the widgets get the page. There is no token for it yet. */
+.sporsmal__title {
+  position: absolute;
+  top: 52px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-heading);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1.1;
+}
+
+/*
+ * On the stage the steps take turns on the page, two kinds at a time.
+ * Every frame, card and caption is placed from Sporsmalstyper.tsx, in
+ * stage pixels.
+ */
+.sporsmal__steg {
+  position: absolute;
+  inset: 0;
+}
+
+.sporsmal__kind {
+  margin: 0;
+}
+
+.sporsmal__frame,
+.sporsmal__caption,
+.sporsmal__kort-vindu {
+  position: absolute;
+}
+
+/* No surface round the widget: the panels stand on the stage. */
+.sporsmal__frame .sporsmal__survey {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+/* A note too long for the line goes whole onto the next one. */
+.sporsmal__caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 20px;
+  margin: 0;
+}
+
+.sporsmal__label {
+  font-size: var(--deck-size-body);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.sporsmal__note {
+  color: var(--deck-muted);
+  font-size: var(--deck-size-label);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* The cards are shots of the dashboard with test data: the mark says so. */
+.sporsmal__tag {
+  position: absolute;
+  top: 60px;
+  right: var(--deck-space-page);
+}
+
+/* The card's window starts at the panel's edge: the card comes out from under it. */
+.sporsmal__kort-vindu {
+  overflow: hidden;
+}
+
+/* The dashboard is light, like the widget. By day it needs an edge. */
+.sporsmal__kort {
+  position: absolute;
+  display: block;
+  box-sizing: border-box;
+}
+
+:root:is([data-stil="papir"], [data-stil="dag"]) .sporsmal__kort {
+  outline: 2px solid var(--deck-muted);
+  outline-offset: -2px;
+}
+
+/*
+ * One move per click: the kinds change places on the page, and the cards
+ * slide out from under the widgets, as receipts from a till. A card that
+ * leaves goes back under its widget once its step has faded out.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .sporsmal__kort {
+    transition: transform 750ms var(--deck-easing-travel) 280ms;
+  }
+
+  :root:not([data-stil="papir"])
+    .sporsmal__steg:not([data-revealed])
+    .sporsmal__kort {
+    transform: var(--kort-inn);
+    transition: transform 0s var(--deck-duration-reveal);
+  }
+}
+
+/* In print all seven share the page, and their names are smaller. */
+.sporsmal--print .sporsmal__caption {
+  flex-direction: column;
+  gap: 0;
+}
+
+.sporsmal--print .sporsmal__label {
+  font-size: var(--deck-size-small);
+}
+
+.sporsmal--print .sporsmal__note {
+  font-size: var(--deck-size-small);
+}
+
+/*
+ * The index: the seven kinds on a line, and a frame on it, like a train,
+ * round the kinds on the stage. The train moves on with every click.
+ */
+.typer__linje {
+  fill: none;
+  stroke: var(--map-dim);
+  stroke-width: 8px;
+  stroke-linecap: round;
+}
+
+.typer__tog {
+  fill: var(--map-paper);
+  stroke: var(--map-ink);
+  stroke-width: 6px;
+}
+
+.typer__stasjon circle {
+  fill: var(--map-paper);
+  stroke: var(--map-dim);
+  stroke-width: 6px;
+}
+
+.typer__stasjon--her circle {
+  fill: var(--map-ink);
+  stroke: var(--map-ink);
+}
+
+.map .typer__navn {
+  fill: var(--deck-muted);
+}
+
+.map .typer__stasjon--her .typer__navn {
+  fill: var(--deck-fg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .typer__tog {
+    transition:
+      y var(--deck-duration-travel) var(--deck-easing-travel),
+      height var(--deck-duration-travel) var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"]) .typer__stasjon circle {
+    transition:
+      r var(--deck-duration-reveal) var(--deck-easing),
+      fill var(--deck-duration-reveal) var(--deck-easing);
+  }
+}

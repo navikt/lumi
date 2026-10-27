@@ -1,0 +1,1273 @@
+/*
+ * Snøkula: Nav is the globe, and outside the glass is the weather. The
+ * slides share the scene in scene.svg: the cover shows the whole globe,
+ * fagsystemene goes in close to the small globe inside it, where the case
+ * worker sits, and each chapter slide looks at one place in it.
+ *
+ * The scene has a night palette and a day palette. Gold is the answer
+ * only. The steps come from the deck's `data-from`. The entrances, the
+ * globe that shakes and the camera that goes in, run on `data-entre`: set
+ * when the slide is entered at its first step, so going back never replays
+ * them. Without motion, and on paper, every step shows its end state.
+ */
+
+.snokula {
+  --bakgrunn: #0b1b29;
+  --tekst: #eaf0f5;
+  --dempet: #b8c6d2;
+  --blekk: #dce6ee;
+  --nais: #12384f;
+  --sonekant: #4f7690;
+  --dempet-linje: #8ea2b4;
+  --gull: #f2c24f;
+  --gull-kant: #b8862a;
+  --vindu: #d3dce4;
+  /* Three tones of fog and the small globe inside: the only new colours. */
+  --taake-1: #1c3245;
+  --taake-2: #263f54;
+  --taake-3: #3a566c;
+  --mini-inne: #1b4a66;
+  --mork-vindu: #1d3a50;
+  --hull: #050c13;
+  /* Silhouettes, the sign's letters and the tube: dark at night. */
+  --morke: #0b1b29;
+  --skilt-tekst: #0b1b29;
+  --ror-fyll: #0b1b29;
+  /* The logo's crystal: ice, the gold core is the answer. */
+  --is-1: #a9cce3;
+  --is-2: #6f9dbd;
+  --is-3: #3f6f91;
+  --is-glans: #cfe5f4;
+  --is-fasett: #bcd9ec;
+  --is-kant: #e6f2fb;
+  --gull-glod: drop-shadow(0 0 22px rgb(242 194 79 / 55%))
+    drop-shadow(0 0 70px rgb(242 194 79 / 22%));
+  --gull-flamme: drop-shadow(0 0 40px rgb(242 194 79 / 95%))
+    drop-shadow(0 0 140px rgb(242 194 79 / 55%));
+  --lett: var(--deck-easing);
+  --reise: var(--deck-easing-travel);
+
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--bakgrunn);
+  color: var(--tekst);
+  color-scheme: dark;
+}
+
+.snokula__scene {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+}
+
+.snokula text {
+  font-family: var(--deck-font-body);
+}
+
+.snokula__tittel {
+  position: absolute;
+  top: 56px;
+  left: var(--deck-space-page);
+  margin: 0;
+  color: var(--tekst);
+  font-family: var(--deck-font-display);
+  font-size: 84px;
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1.04;
+  white-space: nowrap;
+}
+
+/*
+ * What the fagsystem slide's claim depends on, under the title. It sits on
+ * the inside of the globe, and its own patch of it keeps the snow off the
+ * words.
+ */
+.snokula__merk {
+  position: absolute;
+  top: 248px;
+  left: calc(var(--deck-space-page) - 16px);
+  margin: 0;
+  padding: 6px 16px 10px;
+  border-radius: 999px;
+  background: var(--nais);
+  color: var(--dempet);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* The storm */
+.snokula .regn path {
+  fill: none;
+  stroke: var(--sonekant);
+  stroke-width: 7px;
+  stroke-linecap: round;
+}
+
+.snokula .lyn {
+  fill: var(--blekk);
+}
+
+.snokula .vind path {
+  fill: none;
+  stroke: var(--sonekant);
+  stroke-width: 10px;
+  stroke-linecap: round;
+}
+
+/* The fog and the sign */
+.snokula .taake-1 {
+  fill: var(--taake-1);
+}
+
+.snokula .taake-2 {
+  fill: var(--taake-2);
+}
+
+.snokula .taake-foran rect {
+  fill: var(--taake-3);
+  opacity: 0.74;
+}
+
+.snokula .skilt__stolpe {
+  fill: var(--dempet-linje);
+}
+
+.snokula .skilt__brett {
+  fill: var(--blekk);
+}
+
+.snokula .maltekst {
+  fill: var(--skilt-tekst);
+}
+
+/* The globe */
+.snokula .kula {
+  transform-box: view-box;
+  transform-origin: 800px 1100px;
+}
+
+.snokula .kula__inne {
+  fill: var(--nais);
+}
+
+.snokula .glass {
+  fill: none;
+  stroke: var(--blekk);
+  stroke-width: 12px;
+}
+
+.snokula .glass--mini {
+  stroke-width: 8px;
+}
+
+.snokula .glans {
+  fill: none;
+  stroke: var(--tekst);
+  stroke-width: 16px;
+  stroke-linecap: round;
+}
+
+.snokula .glans--svak {
+  stroke-width: 10px;
+  opacity: 0.55;
+}
+
+.snokula .glans--mini {
+  stroke-width: 9px;
+}
+
+.snokula .sokkel__krage {
+  fill: var(--dempet-linje);
+}
+
+.snokula .sokkel {
+  fill: var(--sonekant);
+}
+
+.snokula .sokkel-tekst {
+  fill: var(--tekst);
+}
+
+.snokula .snoe-bakke {
+  fill: var(--blekk);
+}
+
+.snokula .snoe > g {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.snokula .snofall {
+  display: none;
+}
+
+.snokula .flak {
+  fill: none;
+  stroke: var(--blekk);
+  stroke-width: 5px;
+  stroke-linecap: round;
+}
+
+.snokula .prikk {
+  fill: var(--blekk);
+}
+
+.snokula .tre,
+.snokula .hus-kropp,
+.snokula .mini__gulv,
+.snokula .mini__skjerm-kant,
+.snokula .figur,
+.snokula .dor-flate {
+  fill: var(--morke);
+}
+
+.snokula .vindu-mork,
+.snokula .dor {
+  fill: var(--mork-vindu);
+}
+
+/* Lumi is the crystal from the logo. The answer lands in its core. */
+.snokula .krystall__lys {
+  fill: var(--is-1);
+}
+
+.snokula .krystall__mork {
+  fill: var(--is-2);
+}
+
+.snokula .krystall__skygge {
+  fill: var(--is-3);
+}
+
+.snokula .krystall__glans {
+  fill: var(--is-glans);
+}
+
+.snokula .krystall__fasett {
+  fill: var(--is-fasett);
+}
+
+.snokula .krystall__kant {
+  fill: none;
+  stroke: var(--is-kant);
+  stroke-width: 1.6px;
+  stroke-linejoin: round;
+  opacity: 0.85;
+}
+
+.snokula .krystall__kjerne {
+  fill: var(--nais);
+  stroke: var(--blekk);
+  stroke-width: 5px;
+}
+
+.snokula .maling {
+  fill: var(--tekst);
+}
+
+.snokula .vindu {
+  fill: var(--vindu);
+}
+
+/* On a chapter slide the app's window shows the widget. */
+.snokula .vindu-widget {
+  fill: var(--morke);
+}
+
+.snokula .mini__inne {
+  fill: var(--mini-inne);
+}
+
+.snokula .figur-arm {
+  fill: none;
+  stroke: var(--morke);
+  stroke-width: 9px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.snokula .kopp-hank {
+  fill: none;
+  stroke: var(--morke);
+  stroke-width: 3px;
+}
+
+.snokula .dor-karm,
+.snokula .dor-knott {
+  fill: var(--blekk);
+}
+
+/* The tube */
+.snokula .ror__vegg {
+  fill: var(--ror-fyll);
+  stroke: var(--blekk);
+  stroke-width: 7px;
+}
+
+.snokula .ror__munning {
+  fill: var(--hull);
+  stroke: var(--blekk);
+  stroke-width: 5px;
+}
+
+.snokula .ror__krage {
+  fill: var(--blekk);
+}
+
+.snokula .knekk path {
+  fill: none;
+  stroke: var(--blekk);
+  stroke-width: 6px;
+  stroke-linecap: round;
+}
+
+/* The script */
+.snokula .skript__boks {
+  fill: var(--vindu);
+  stroke: var(--morke);
+  stroke-width: 4px;
+}
+
+.snokula .skript__tekst {
+  fill: var(--morke);
+}
+
+.snokula .skript__reiser {
+  visibility: hidden;
+  offset-rotate: 0deg;
+}
+
+/* The answer */
+.snokula .gull {
+  fill: var(--gull);
+  stroke: var(--gull-kant);
+  stroke-width: 8px;
+}
+
+.snokula .svar .gull {
+  filter: var(--gull-glod);
+}
+
+.snokula .oye {
+  fill: var(--morke);
+}
+
+.snokula .paraply__duk {
+  fill: var(--blekk);
+}
+
+.snokula .paraply__ribbe {
+  fill: none;
+  stroke: var(--morke);
+  stroke-width: 3px;
+  stroke-linecap: round;
+}
+
+.snokula .paraply__skaft {
+  fill: none;
+  stroke: var(--blekk);
+  stroke-width: 5px;
+  stroke-linecap: round;
+}
+
+/* What travels draws itself: no fade of its own. */
+.snokula .skript[data-from],
+.snokula .reise[data-from] {
+  transition: none;
+}
+
+.snokula .spor {
+  fill: none;
+  stroke: var(--dempet);
+  stroke-width: 8px;
+  stroke-linecap: round;
+  stroke-dasharray: 0 22;
+}
+
+.snokula .spor--liten {
+  stroke-width: 5px;
+  stroke-dasharray: 0 14;
+}
+
+/* A mask: white is what shows. */
+.snokula .spor-maske {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 60px;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+.snokula .reiser {
+  visibility: hidden;
+  offset-rotate: 0deg;
+}
+
+.snokula .landet__ring {
+  fill: none;
+  stroke: var(--gull);
+  stroke-width: 4px;
+  opacity: 0;
+}
+
+.snokula .landet__flamme {
+  opacity: 0;
+  stroke: none;
+  filter: var(--gull-flamme);
+}
+
+.snokula .landet > * {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Out in the fog the answer is still there, but not seen clearly. */
+.snokula .reise--taake .landet {
+  opacity: 0.85;
+}
+
+.snokula .reise--taake .landet .gull {
+  filter: none;
+}
+
+/* Labels */
+.snokula .etikett {
+  fill: var(--tekst);
+}
+
+.snokula .etikett--snoe {
+  fill: var(--morke);
+}
+
+/* The camera: the fagsystem slide is the same world, closer. */
+.snokula .kamera {
+  transform-origin: 0 0;
+}
+
+.snokula[data-scene="2"] .kamera {
+  transform: translate(-716px, -674px) scale(1.6);
+}
+
+/* The cover: the globe to the right, the name to the left. */
+.snokula[data-scene="1"][data-steg="0"] .kamera {
+  transform: translate(470px, 30px) scale(0.92);
+}
+
+/* The cover is calm. The weather comes when the camera pulls back. */
+.snokula[data-scene="1"][data-steg="0"]
+:is(.regn, .vind, .lyn, .taake-bak, .taake-foran) {
+  opacity: 0;
+}
+
+/* A chapter slide looks at one place in the globe. */
+.snokula[data-scene="k"] .kamera {
+  transform: var(--kamera);
+}
+
+/* The cover: Lumi, what it is, and who is talking. */
+.snokula__forside {
+  position: absolute;
+  top: 300px;
+  left: var(--deck-space-page);
+  margin: 0;
+}
+
+.snokula__navn {
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-hero);
+  font-weight: var(--deck-weight-black);
+  letter-spacing: var(--deck-tracking-monument);
+  line-height: 0.9;
+}
+
+.snokula__hva {
+  margin: 24px 0 0;
+  font-size: var(--deck-size-lead);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.2;
+}
+
+.snokula__hvem {
+  margin: 40px 0 0;
+  color: var(--dempet);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+}
+
+.snokula__forside--borte {
+  visibility: hidden;
+  opacity: 0;
+}
+
+/* A chapter: its name, large, on a patch of night so the scene never gets in the way. */
+.snokula__kapittel {
+  position: absolute;
+  top: 80px;
+  left: calc(var(--deck-space-page) - 32px);
+  margin: 0;
+  padding: 12px 32px 20px;
+  border-radius: 28px;
+  background: var(--bakgrunn);
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-statement);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Entering the globe: it shakes, and the snow swirls and settles. */
+  :root:not([data-stil="papir"]) .snokula[data-scene="1"][data-entre] .kula {
+    animation: snokula-rist 900ms var(--lett) 120ms backwards;
+  }
+
+  /* It snows in the globe while it waits. The snow that lies is hidden. */
+  :root:not([data-stil="papir"]) .snokula .snofall {
+    display: inline;
+    transition:
+      opacity 900ms var(--lett),
+      visibility 0s 900ms;
+  }
+
+  :root:not([data-stil="papir"]) .snokula .snofall > g {
+    animation: snokula-sno-fall var(--fall) linear var(--fd) infinite;
+  }
+
+  :root:not([data-stil="papir"]) .snokula .snofall > g > * {
+    animation: snokula-sno-sway var(--sway) ease-in-out var(--fd) infinite
+      alternate;
+  }
+
+  :root:not([data-stil="papir"])
+    .snokula[data-scene="1"]:not(:has(.reise--lumi[data-revealed]))
+    .snoe {
+    visibility: hidden;
+  }
+
+  /* When the answer lands in Lumi, the snow stops falling and settles. */
+  :root:not([data-stil="papir"])
+    .snokula:has(.reise--lumi[data-revealed])
+    .snofall {
+    visibility: hidden;
+    opacity: 0;
+  }
+
+  :root:not([data-stil="papir"])
+    .snokula:has(.reise--lumi[data-revealed])
+    .snoe
+    > g {
+    animation: snokula-snoe-virvel 1500ms var(--reise) calc(var(--d) + 900ms)
+      backwards;
+  }
+
+  /* From the cover the camera pulls back, and the name goes. */
+  :root:not([data-stil="papir"]) .snokula[data-scene="1"] .kamera {
+    transition: transform 1400ms var(--reise);
+  }
+
+  :root:not([data-stil="papir"])
+    .snokula[data-scene="1"]
+    :is(.regn, .vind, .lyn, .taake-bak, .taake-foran) {
+    transition: opacity 900ms var(--lett) 300ms;
+  }
+
+  :root:not([data-stil="papir"]) .snokula__forside {
+    transition:
+      opacity 500ms var(--lett),
+      visibility 0s 500ms;
+  }
+
+  /* Entering the fagsystems: the camera goes in, the small globe drops in. */
+  :root:not([data-stil="papir"]) .snokula[data-scene="2"][data-entre] .kamera {
+    animation: snokula-zoom-inn 1700ms var(--reise) backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .snokula[data-scene="2"][data-entre]
+    .mini[data-revealed] {
+    animation: snokula-mini-ned 900ms var(--reise) 700ms backwards;
+  }
+
+  /* What is named close up comes when the camera has landed. */
+  :root:not([data-stil="papir"])
+    .snokula[data-scene="2"][data-entre]
+    .etikett--sent,
+  :root:not([data-stil="papir"])
+    .snokula[data-scene="2"][data-entre]
+    .snokula__tittel,
+  :root:not([data-stil="papir"])
+    .snokula[data-scene="2"][data-entre]
+    .snokula__merk {
+    animation: snokula-fram 450ms var(--lett) 1450ms backwards;
+  }
+
+  /* The claim that takes over the title. */
+  :root:not([data-stil="papir"]) .snokula__tittel--ny {
+    animation: snokula-fram 450ms var(--lett) backwards;
+  }
+
+  /* The tube is pushed out through the glass, and the glass cracks round it. */
+  :root:not([data-stil="papir"]) .snokula .ror[data-revealed] .ror__kropp {
+    animation: snokula-ror-ut 520ms var(--reise) var(--ror-start) backwards;
+  }
+
+  :root:not([data-stil="papir"]) .snokula .ror[data-revealed] .ror__krage {
+    animation: snokula-vent 380ms step-end;
+  }
+
+  :root:not([data-stil="papir"]) .snokula .ror[data-revealed] .knekk {
+    animation: snokula-knekk 260ms var(--lett) var(--knekk) backwards;
+  }
+
+  /* The script slides in and stays in the app. */
+  :root:not([data-stil="papir"])
+    .snokula
+    .skript[data-revealed]
+    .skript__reiser {
+    animation: snokula-skript-inn var(--tid) var(--reise) var(--start);
+  }
+
+  :root:not([data-stil="papir"]) .snokula .skript[data-revealed] .skript__fram {
+    animation: snokula-vent var(--ankomst) step-end;
+  }
+
+  /* The answer travels with its trail behind it, and lands with a glow. */
+  :root:not([data-stil="papir"]) .snokula .reise[data-revealed] .spor-maske {
+    animation: var(--kf-spor) var(--tid) linear var(--start) backwards;
+  }
+
+  :root:not([data-stil="papir"]) .snokula .reise[data-revealed] .reiser {
+    animation: var(--kf) var(--tid) linear var(--start);
+  }
+
+  :root:not([data-stil="papir"]) .snokula .reise[data-revealed] .reiser__figur {
+    animation: snokula-pop 260ms var(--lett) var(--start) backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .snokula
+    .reise[data-revealed]
+    .reiser
+    .paraply__aapne {
+    animation: snokula-paraply 300ms var(--lett) var(--paraply) backwards;
+  }
+
+  :root:not([data-stil="papir"]) .snokula .reise[data-revealed] .landet {
+    animation: snokula-vent var(--ankomst) step-end;
+  }
+
+  :root:not([data-stil="papir"]) .snokula .reise[data-revealed] .landet__skive {
+    animation: snokula-puls 500ms var(--lett) var(--ankomst);
+  }
+
+  :root:not([data-stil="papir"])
+    .snokula
+    .reise[data-revealed]
+    .landet__flamme {
+    animation: snokula-flamme 520ms ease-out var(--ankomst);
+  }
+
+  :root:not([data-stil="papir"]) .snokula .reise[data-revealed] .landet__ring {
+    animation: snokula-ring 520ms ease-out var(--ankomst);
+  }
+
+  /* In the fog the answer does not glow: it fades a little as it lands. */
+  :root:not([data-stil="papir"])
+    .snokula
+    .reise--taake[data-revealed]
+    .landet__flamme,
+  :root:not([data-stil="papir"])
+    .snokula
+    .reise--taake[data-revealed]
+    .landet__ring {
+    animation: none;
+  }
+
+  :root:not([data-stil="papir"]) .snokula .reise--taake[data-revealed] .landet {
+    animation:
+      snokula-vent var(--ankomst) step-end,
+      snokula-taake-inn 700ms var(--lett) var(--ankomst) backwards;
+  }
+
+  /* The door swings open as the answer goes through it, and closes again. */
+  :root:not([data-stil="papir"])
+    .snokula:has(.reise--dor[data-revealed])
+    .mini__dor {
+    animation: snokula-dor-sving 820ms var(--reise) 520ms;
+  }
+}
+
+/* A snow globe picked up and shaken, gently: it settles back on its base. */
+@keyframes snokula-rist {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+
+  18% {
+    transform: rotate(-2.6deg);
+  }
+
+  40% {
+    transform: rotate(2.2deg);
+  }
+
+  62% {
+    transform: rotate(-1.2deg);
+  }
+
+  82% {
+    transform: rotate(0.5deg);
+  }
+}
+
+/* Each flake starts where the shake threw it, turned, and drifts home. */
+@keyframes snokula-snoe-virvel {
+  from {
+    transform: translate(var(--dx), var(--dy)) rotate(var(--r));
+    opacity: 0.35;
+  }
+}
+
+@keyframes snokula-fram {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes snokula-vent {
+  from,
+  to {
+    visibility: hidden;
+  }
+}
+@keyframes snokula-zoom-inn {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+}
+@keyframes snokula-mini-ned {
+  0% {
+    transform: translateY(-120px);
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+@keyframes snokula-ror-ut {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes snokula-knekk {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
+@keyframes snokula-skript-inn {
+  from {
+    offset-distance: 0%;
+    visibility: visible;
+  }
+  to {
+    offset-distance: 100%;
+    visibility: visible;
+  }
+}
+@keyframes snokula-pop {
+  from {
+    transform: scale(0);
+  }
+}
+@keyframes snokula-paraply {
+  0% {
+    transform: scale(0.12, 0.5);
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes snokula-puls {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.1);
+  }
+}
+@keyframes snokula-flamme {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+}
+@keyframes snokula-ring {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+@keyframes snokula-taake-inn {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.85;
+  }
+}
+@keyframes snokula-dor-sving {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  30%,
+  66% {
+    transform: scaleX(0.14);
+  }
+}
+@keyframes snokula-hopp-s1 {
+  0% {
+    offset-distance: 0%;
+    visibility: visible;
+    animation-timing-function: var(--reise);
+  }
+  43.010000000000005% {
+    offset-distance: 53.78%;
+    visibility: visible;
+  }
+  56.989999999999995% {
+    offset-distance: 53.78%;
+    visibility: visible;
+    animation-timing-function: var(--reise);
+  }
+  100% {
+    offset-distance: 100%;
+    visibility: visible;
+  }
+}
+@keyframes snokula-hopp-s1-spor {
+  0% {
+    stroke-dashoffset: 1;
+    animation-timing-function: var(--reise);
+  }
+  43.010000000000005% {
+    stroke-dashoffset: 0.4622;
+  }
+  56.989999999999995% {
+    stroke-dashoffset: 0.4622;
+    animation-timing-function: var(--reise);
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes snokula-ut-s1 {
+  0% {
+    offset-distance: 0%;
+    visibility: visible;
+    animation-timing-function: var(--reise);
+  }
+  25.22% {
+    offset-distance: 19.97%;
+    visibility: visible;
+  }
+  39.13% {
+    offset-distance: 19.97%;
+    visibility: visible;
+    animation-timing-function: var(--reise);
+  }
+  100% {
+    offset-distance: 100%;
+    visibility: visible;
+  }
+}
+@keyframes snokula-ut-s1-spor {
+  0% {
+    stroke-dashoffset: 1;
+    animation-timing-function: var(--reise);
+  }
+  25.22% {
+    stroke-dashoffset: 0.8003;
+  }
+  39.13% {
+    stroke-dashoffset: 0.8003;
+    animation-timing-function: var(--reise);
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes snokula-ut-s2 {
+  0% {
+    offset-distance: 0%;
+    visibility: visible;
+    animation-timing-function: var(--reise);
+  }
+  24.11% {
+    offset-distance: 19.56%;
+    visibility: visible;
+  }
+  38.39% {
+    offset-distance: 19.56%;
+    visibility: visible;
+    animation-timing-function: var(--reise);
+  }
+  100% {
+    offset-distance: 100%;
+    visibility: visible;
+  }
+}
+@keyframes snokula-ut-s2-spor {
+  0% {
+    stroke-dashoffset: 1;
+    animation-timing-function: var(--reise);
+  }
+  24.11% {
+    stroke-dashoffset: 0.8044;
+  }
+  38.39% {
+    stroke-dashoffset: 0.8044;
+    animation-timing-function: var(--reise);
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes snokula-hopp-s2 {
+  0% {
+    offset-distance: 0%;
+    visibility: visible;
+    animation-timing-function: var(--reise);
+  }
+  27.560000000000002% {
+    offset-distance: 35.26%;
+    visibility: visible;
+  }
+  36.22% {
+    offset-distance: 35.26%;
+    visibility: visible;
+    animation-timing-function: var(--reise);
+  }
+  63.779999999999994% {
+    offset-distance: 58.39%;
+    visibility: visible;
+  }
+  72.44% {
+    offset-distance: 58.39%;
+    visibility: visible;
+    animation-timing-function: var(--reise);
+  }
+  100% {
+    offset-distance: 100%;
+    visibility: visible;
+  }
+}
+@keyframes snokula-hopp-s2-spor {
+  0% {
+    stroke-dashoffset: 1;
+    animation-timing-function: var(--reise);
+  }
+  27.560000000000002% {
+    stroke-dashoffset: 0.6474;
+  }
+  36.22% {
+    stroke-dashoffset: 0.6474;
+    animation-timing-function: var(--reise);
+  }
+  63.779999999999994% {
+    stroke-dashoffset: 0.4161;
+  }
+  72.44% {
+    stroke-dashoffset: 0.4161;
+    animation-timing-function: var(--reise);
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* A flake falls through the globe, and fades at the top and the bottom. */
+@keyframes snokula-sno-fall {
+  0% {
+    transform: translateY(-470px);
+    opacity: 0;
+  }
+
+  8%,
+  88% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(360px);
+    opacity: 0;
+  }
+}
+
+@keyframes snokula-sno-sway {
+  from {
+    transform: translateX(-12px);
+  }
+
+  to {
+    transform: translateX(12px);
+  }
+}
+
+/*
+ * Day. The world outside is lavender with a purple storm, Nav is a blue
+ * globe on Nav's red base, and inside it still snows white. The colour
+ * carries the point: blue is Nav, purple is what is not. Aksel's light
+ * palette, and Nav's red.
+ */
+:root[data-stil="dag"] .snokula {
+  --bakgrunn: #f4ebff; /* --ax-meta-purple-200 */
+  --tekst: #202733;
+  --dempet: #49515e;
+  --blekk: #ffffff;
+  --nais: #457c9d; /* --ax-brand-blue-600 */
+  --sonekant: #a271df; /* --ax-meta-purple-500 */
+  --dempet-linje: #6f7785;
+  --vindu: #eef6fc;
+  --taake-1: #ebdefc;
+  --taake-2: #decbf7;
+  --taake-3: #cdb4ef;
+  --mini-inne: #5a8fae;
+  --mork-vindu: #156389;
+  --hull: #202733;
+  --morke: #002942;
+  --skilt-tekst: #ffffff;
+  --ror-fyll: #ffffff;
+  --gull-glod: drop-shadow(0 0 14px rgb(242 194 79 / 60%));
+}
+
+:root[data-stil="dag"] .snokula .glass {
+  stroke: #00557d;
+}
+
+:root[data-stil="dag"] .snokula .glans {
+  stroke: #ffffff;
+}
+
+:root[data-stil="dag"] .snokula .sokkel {
+  fill: #c30000;
+}
+
+:root[data-stil="dag"] .snokula .sokkel__krage {
+  fill: #a60017;
+}
+
+:root[data-stil="dag"] .snokula .sokkel-tekst,
+:root[data-stil="dag"] .snokula .maling {
+  fill: #ffffff;
+}
+
+/* The fagsystems' small base is Nav blue, under Nav's red one. */
+:root[data-stil="dag"] .snokula .mini .sokkel {
+  fill: #00557d;
+}
+
+:root[data-stil="dag"] .snokula .mini .sokkel__krage {
+  fill: #002942;
+}
+
+:root[data-stil="dag"] .snokula .lyn {
+  fill: #7c4abf; /* --ax-meta-purple-700 */
+}
+
+:root[data-stil="dag"] .snokula .skilt__brett,
+:root[data-stil="dag"] .snokula .ror__krage,
+:root[data-stil="dag"] .snokula .ror__munning {
+  fill: #202733;
+}
+
+:root[data-stil="dag"] .snokula .ror__vegg,
+:root[data-stil="dag"] .snokula .ror__munning,
+:root[data-stil="dag"] .snokula .knekk path,
+:root[data-stil="dag"] .snokula .spor {
+  stroke: #202733;
+}
+
+:root[data-stil="dag"] .snokula .krystall__kjerne {
+  fill: #00557d;
+}
+
+:root[data-stil="dag"] .snokula__merk {
+  color: #ffffff;
+}
+
+/* Close up, the fagsystem slide's title sits on the blue inside the globe. */
+:root[data-stil="dag"] .snokula[data-scene="2"] .snokula__tittel {
+  color: #ffffff;
+}
+
+/* Out in the lavender day the white umbrella would vanish: it is pink. */
+:root[data-stil="dag"] .snokula .paraply__duk {
+  fill: #b65681; /* --ax-brand-magenta-600 */
+}
+
+:root[data-stil="dag"] .snokula .paraply__ribbe {
+  stroke: #ffffff;
+}
+
+:root[data-stil="dag"] .snokula .paraply__skaft {
+  stroke: #202733;
+}
+
+/*
+ * Night, with colour inside the picture: a purple storm and fog outside,
+ * and Nav is the blue globe on Nav's red base. As in the day style, blue
+ * is Nav and purple is what is not.
+ */
+:root[data-stil="natt"] .snokula {
+  --sonekant: #8f6cc7;
+  --taake-1: #2e2546;
+  --taake-2: #3a2f55;
+  --taake-3: #5a4a7e;
+}
+
+:root[data-stil="natt"] .snokula .lyn {
+  fill: #bb9fe3; /* --ax-meta-purple-900, dark */
+}
+
+:root[data-stil="natt"] .snokula .sokkel {
+  fill: #c30000;
+}
+
+:root[data-stil="natt"] .snokula .sokkel__krage {
+  fill: #8a0000;
+}
+
+:root[data-stil="natt"] .snokula .sokkel-tekst {
+  fill: #ffffff;
+}
+
+:root[data-stil="natt"] .snokula .mini .sokkel {
+  fill: #1b4f73;
+}
+
+:root[data-stil="natt"] .snokula .mini .sokkel__krage {
+  fill: #12384f;
+}
+
+:root[data-stil="natt"] .snokula .paraply__duk {
+  fill: #c26f92; /* --ax-brand-magenta-700, dark */
+}
+
+/*
+ * The troll. It lives out in the weather and now and then looks up over the
+ * lower edge, glances about, and goes down again. Only with motion, once
+ * the camera has pulled back: without motion it is not there.
+ */
+.snokula .troll {
+  visibility: hidden;
+}
+
+.snokula .troll__hode {
+  fill: #6c5a92;
+}
+
+.snokula .troll__nese {
+  fill: #8a76b3;
+}
+
+.snokula .troll__har {
+  fill: #2a2340;
+}
+
+.snokula .troll__oye {
+  fill: #f4f0ff;
+}
+
+.snokula .troll__pupill {
+  fill: #1a1430;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"])
+    .snokula[data-scene="1"]:not([data-steg="0"])
+    .troll[data-revealed] {
+    visibility: visible;
+  }
+
+  :root:not([data-stil="papir"])
+    .snokula[data-scene="1"]:not([data-steg="0"])
+    .troll[data-revealed]
+    .troll__kropp {
+    animation: snokula-troll 11s var(--lett) 2.5s infinite backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .snokula[data-scene="1"]:not([data-steg="0"])
+    .troll[data-revealed]
+    .troll__blikk {
+    animation: snokula-titt 11s ease-in-out 2.5s infinite;
+  }
+}
+
+/* Under the edge most of the time; up for a look, then down again. */
+@keyframes snokula-troll {
+  0%,
+  64%,
+  100% {
+    transform: translateY(170px);
+  }
+
+  70%,
+  90% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes snokula-titt {
+  0%,
+  72%,
+  100% {
+    transform: translateX(0);
+  }
+
+  76%,
+  80% {
+    transform: translateX(-5px);
+  }
+
+  84%,
+  88% {
+    transform: translateX(5px);
+  }
+}
+
+/* The storm is not only purple: the lightning is near white, the wind blue grey. */
+:root[data-stil="natt"] .snokula .lyn {
+  fill: #efe8ff;
+}
+
+:root[data-stil="natt"] .snokula .vind path {
+  stroke: #6f8fb0;
+}
+
+:root[data-stil="dag"] .snokula .vind path {
+  stroke: #5a8fae;
+}

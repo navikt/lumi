@@ -1,0 +1,73 @@
+.payload-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+}
+
+.payload-view__caption {
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+}
+
+.payload-view__code,
+.payload-view__empty {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 32px;
+  border: var(--deck-border-width) solid var(--deck-border);
+  border-radius: var(--deck-radius);
+  background: var(--deck-code-bg);
+}
+
+.payload-view__code {
+  overflow: auto;
+  color: var(--deck-code-fg);
+  font-family: var(--deck-font-mono);
+  font-size: var(--deck-size-code);
+  line-height: 1.45;
+  tab-size: 2;
+  /* Long ids and the user agent wrap instead of scrolling sideways. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.payload-view__code code {
+  font: inherit;
+}
+
+.payload-view__code:focus-visible {
+  outline: 3px solid var(--deck-focus);
+  outline-offset: 4px;
+}
+
+.payload-view__empty {
+  display: grid;
+  place-items: center;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  text-align: center;
+}
+
+.json-key {
+  color: var(--deck-code-key);
+}
+
+.json-string {
+  color: var(--deck-code-string);
+}
+
+.json-number {
+  color: var(--deck-code-number);
+}
+
+.json-literal {
+  color: var(--deck-code-literal);
+}
+
+.json-punctuation {
+  color: var(--deck-code-punctuation);
+}
