@@ -1,0 +1,460 @@
+/*
+ * People write personal data in free text: mer-enn-vi-spor-om, and the
+ * same answer in the dashboard, fjerner-e-posten.
+ */
+
+/*
+ * mer-enn-vi-spor-om, a monument: the answer is the hero, the title is
+ * small over it.
+ */
+
+.mer__title {
+  position: absolute;
+  top: 84px;
+  left: var(--deck-space-page);
+  margin: 0;
+  /* The small title of a monument. There is no token for it yet. */
+  font-size: var(--deck-size-heading);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1.1;
+}
+
+.mer__question {
+  position: absolute;
+  top: 176px;
+  left: var(--deck-space-page);
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-body);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/*
+ * The answer as the user wrote it. The answer's face hangs in front of the
+ * first line, so the four lines start on one edge. The last line ends
+ * above y 800, clear of the Teams corner.
+ */
+.mer__quote {
+  position: absolute;
+  top: 296px;
+  left: var(--deck-space-page);
+  margin: 0;
+  padding-left: 112px;
+  text-indent: -112px;
+  font-size: 100px;
+  font-weight: 500;
+  line-height: 1.22;
+  letter-spacing: var(--deck-tracking-display);
+  /* Room for the marker, so it never touches the next word. */
+  word-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+/* The answer from the snow globe: a gold disc with eyes, as tall as the capitals. */
+.mer__face {
+  width: 72px;
+  height: 72px;
+  margin-right: 40px;
+  overflow: visible;
+  vertical-align: -1px;
+}
+
+.mer__face-disc {
+  fill: var(--map-answer);
+  stroke: var(--map-answer-edge);
+  stroke-width: 7px;
+  filter: var(--map-answer-glow);
+}
+
+.mer__eyes {
+  fill: var(--deck-accent-fg);
+}
+
+/* When the marker comes, the answer looks at what it wrote. */
+.mer--marked .mer__eyes {
+  transform: translate(6px, 3px);
+}
+
+/*
+ * The words stay as they were typed. An inline block keeps the baseline,
+ * so the marked copy lands exactly on them.
+ */
+.mer__personal {
+  position: relative;
+  display: inline-block;
+  background: none;
+  color: inherit;
+  text-indent: 0;
+}
+
+/*
+ * The marker reaches 0.14 em past the words on both sides and covers them
+ * with a dark copy on orange. On click 1 it sweeps over the name, then over
+ * the e-mail address.
+ */
+.mer__marker {
+  position: absolute;
+  top: 0;
+  right: -0.14em;
+  bottom: 0;
+  left: -0.14em;
+  isolation: isolate;
+  padding-left: 0.14em;
+  color: var(--deck-bg);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.mer__marker::before {
+  content: "";
+  position: absolute;
+  inset: 0.11em 0 0.1em;
+  z-index: -1;
+  border-radius: 14px;
+  background: var(--farge-varsel);
+}
+
+/* Shown at once: the sweep is its entrance. */
+.mer__marker[data-from] {
+  transition: none;
+}
+
+/*
+ * The comma after the name sits close, as typed. When the marker comes,
+ * it moves clear of it.
+ */
+.mer__after {
+  display: inline-block;
+  /* An inline block takes the quote's hanging indent unless told not to. */
+  text-indent: 0;
+}
+
+.mer--marked .mer__after {
+  transform: translateX(22px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /*
+   * The marker sweeps over the name, the phone number and the e-mail
+   * address, one after the other, at about the same speed. Done in 1.5 s.
+   */
+  :root:not([data-stil="papir"]) .mer[data-motion] .mer__marker[data-revealed] {
+    animation: mer-sweep 420ms var(--deck-easing-travel) 100ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .mer[data-motion]
+    .mer__personal--second
+    .mer__marker[data-revealed] {
+    animation-duration: 380ms;
+    animation-delay: 480ms;
+  }
+
+  :root:not([data-stil="papir"])
+    .mer[data-motion]
+    .mer__personal--third
+    .mer__marker[data-revealed] {
+    animation-duration: 700ms;
+    animation-delay: 820ms;
+  }
+
+  /* The comma makes room before the marker gets to it. */
+  :root:not([data-stil="papir"]) .mer[data-motion] .mer__after {
+    transition: transform 240ms var(--deck-easing);
+  }
+
+  /* The answer glances at the marker as it starts. */
+  :root:not([data-stil="papir"]) .mer[data-motion] .mer__eyes {
+    transition: transform 360ms var(--deck-easing) 80ms;
+  }
+}
+
+@keyframes mer-sweep {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/*
+ * fjerner-e-posten: the answer from the quote, in the dashboard. The still
+ * is a lit window. A click dims it, all but what the speaker points at, and
+ * a magnifying glass shows the words in the answer large.
+ */
+
+.fjerner__title {
+  position: absolute;
+  top: 40px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: calc(var(--deck-size-small) * 2);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1.1;
+}
+
+.fjerner__window {
+  position: absolute;
+  top: 136px;
+  left: var(--deck-space-page);
+  width: 1680px;
+  height: 545px;
+  border-radius: var(--deck-radius);
+  background: var(--deck-embed-bg);
+}
+
+/* The edge sits on the still, so it adds nothing to the size. */
+.fjerner__window::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 4px solid var(--map-zone-edge);
+  border-radius: var(--deck-radius);
+  pointer-events: none;
+}
+
+.fjerner__shot {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--deck-radius);
+}
+
+.fjerner__marks {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.fjerner__dim {
+  fill: var(--deck-bg);
+  opacity: 0.72;
+}
+
+:root:is([data-stil="papir"], [data-stil="dag"]) .fjerner__dim {
+  opacity: 0.5;
+}
+
+/*
+ * The rings outside the glass: blue for what Lumi did, green for what the
+ * team does. A dark halo keeps them clear of the dimmed still at night.
+ */
+.fjerner .fjerner__ring {
+  transition: none;
+}
+
+.fjerner__ring rect {
+  fill: none;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+.fjerner__ring-halo {
+  stroke: var(--deck-bg);
+  stroke-width: 18px;
+}
+
+.fjerner__ring-line {
+  stroke-width: 8px;
+}
+
+.fjerner__ring--lumi .fjerner__ring-line {
+  stroke: var(--farge-lumi);
+}
+
+.fjerner__ring--team .fjerner__ring-line {
+  stroke: var(--farge-team);
+}
+
+/*
+ * The magnifying glass: 400 px across, at 1.6×. It is a true glass: it sits
+ * on what it shows, so the world under it is the window again, larger,
+ * with the stage round it. The handle points up and to the right, away
+ * from the caption.
+ */
+.fjerner__lens {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 400px;
+  height: 400px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.fjerner__lens--on {
+  visibility: visible;
+}
+
+.fjerner__lens-body {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.fjerner__lens-glass {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--deck-bg);
+}
+
+.fjerner__lens-world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: calc(1680px * var(--zoom));
+  height: calc(545px * var(--zoom));
+  border-radius: calc(var(--deck-radius) * var(--zoom));
+  background: var(--deck-embed-bg);
+}
+
+.fjerner__lens-world::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: calc(4px * var(--zoom)) solid var(--map-zone-edge);
+  border-radius: calc(var(--deck-radius) * var(--zoom));
+}
+
+.fjerner__lens-shot {
+  display: block;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  border-radius: calc(var(--deck-radius) * var(--zoom));
+}
+
+/* The rim says who acted: blue on what Lumi removed, orange on the name. */
+.fjerner__lens-rim {
+  position: absolute;
+  inset: -14px;
+  display: block;
+  border: 14px solid var(--farge-lumi);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 6px var(--deck-bg),
+    0 18px 48px rgb(0 0 0 / 35%);
+}
+
+.fjerner__lens--name .fjerner__lens-rim {
+  border-color: var(--farge-varsel);
+}
+
+.fjerner__lens-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: block;
+  width: 190px;
+  height: 40px;
+  margin-top: -20px;
+  border-radius: 20px;
+  background: var(--map-ink);
+  box-shadow: 0 0 0 6px var(--deck-bg);
+  transform: rotate(-45deg) translateX(196px);
+  transform-origin: 0 50%;
+}
+
+.fjerner__caption {
+  position: absolute;
+  top: 872px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.2;
+}
+
+.fjerner__tag {
+  position: absolute;
+  bottom: 40px;
+  left: var(--deck-space-page);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .fjerner__dim {
+    transition:
+      opacity var(--deck-duration-travel) var(--deck-easing),
+      visibility var(--deck-duration-travel);
+  }
+
+  /* Click 1: the glass comes down on the phone number. */
+  :root:not([data-stil="papir"])
+    .fjerner[data-motion]
+    .fjerner__lens--first.fjerner__lens--on
+    .fjerner__lens-body {
+    animation: fjerner-lens-in 520ms var(--deck-easing) 120ms backwards;
+  }
+
+  /* Clicks 2 and 3: it travels, and the world under it follows. */
+  :root:not([data-stil="papir"]) .fjerner[data-motion] .fjerner__lens--on,
+  :root:not([data-stil="papir"])
+    .fjerner[data-motion]
+    .fjerner__lens--on
+    .fjerner__lens-world {
+    transition: transform 900ms var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"])
+    .fjerner[data-motion]
+    .fjerner__lens--on
+    .fjerner__lens-rim {
+    transition: border-color 500ms var(--deck-easing) 300ms;
+  }
+
+  /*
+   * The rings are drawn by the pen: round «Redigert» once the glass is
+   * down, round what the glass has shown once it has moved on.
+   */
+  :root:not([data-stil="papir"])
+    .fjerner[data-motion]
+    .fjerner__ring[data-revealed]
+    rect {
+    animation: fjerner-ring 520ms var(--deck-easing-travel)
+      var(--ring-delay, 420ms) backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .fjerner[data-motion]
+    .fjerner__caption[data-revealed] {
+    transition-delay: 700ms;
+  }
+}
+
+@keyframes fjerner-lens-in {
+  from {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fjerner-ring {
+  from {
+    stroke-dashoffset: 1;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}

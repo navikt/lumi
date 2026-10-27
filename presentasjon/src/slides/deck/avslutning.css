@@ -1,0 +1,1238 @@
+/*
+ * The closing slides and the room modules: under-panseret, slik-vet-vi,
+ * regler, ansvar, kom-i-gang, slutt, prov-selv and personvern.
+ * Each of these has one movement per click, under no-preference and off
+ * paper, and shows its still at once otherwise. Positions are stage
+ * pixels. The lower right corner (x > 1560, y > 840) stays free for Teams,
+ * with 40 px to spare: nothing below y 800 reaches past x 1520. A rule that
+ * overrides a shared class (.slide-title, .map-line) doubles the class, so
+ * it wins whatever order the stylesheets load in.
+ */
+
+/* Text placed on the stage at a fixed point, next to a map. */
+.end-at {
+  position: absolute;
+  margin: 0;
+}
+
+.end-label {
+  margin: 0;
+  font-size: var(--deck-size-label);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.2;
+}
+
+.end-note {
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.end-mono,
+.end-label code,
+.end-note code {
+  font-family: var(--deck-font-mono);
+  font-weight: 600;
+}
+
+/* Hairlines on the boards: the zone edge at night, dim ink on paper. */
+.end-board {
+  --end-hair: var(--map-zone-edge);
+}
+
+:root:is([data-stil="papir"], [data-stil="dag"]) .end-board {
+  --end-hair: var(--map-dim);
+}
+
+/* The viewfinder round a QR code closes on it when the slide comes on. */
+@keyframes end-sikte {
+  from {
+    opacity: 0;
+    transform: scale(1.18);
+  }
+}
+
+/* Code inside a label: a little smaller, so it does not outgrow the words.
+   Notes are 32 px already, the smallest text on the stage. */
+.end-label code {
+  font-size: 0.9em;
+}
+
+/* under-panseret: one line of code in a window that bleeds off the edge */
+
+.slide-title.under-panseret__title {
+  max-width: 1300px;
+}
+
+.under-panseret__code {
+  position: absolute;
+  top: 380px;
+  left: var(--deck-space-page);
+  right: -24px;
+  margin: 0;
+  padding: 28px 48px 44px;
+  border: var(--deck-border-width) solid var(--deck-border);
+  border-right: none;
+  border-radius: var(--deck-radius) 0 0 var(--deck-radius);
+  background: var(--deck-code-bg);
+  color: var(--deck-code-fg);
+  font-family: var(--deck-font-mono);
+  font-size: var(--deck-size-lead);
+  font-variant-ligatures: none;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: pre;
+}
+
+.under-panseret__code code {
+  font: inherit;
+}
+
+.code-string {
+  color: var(--deck-code-string);
+}
+
+.code-punctuation {
+  color: var(--deck-code-punctuation);
+}
+
+/* A marked part of the line: a 6 px ink bar under it on its click. */
+.under-panseret__target {
+  position: relative;
+}
+
+/*
+ * The pointer: the bar under the part, an ink line down out of the window
+ * from the bar's left end, and the label under the line.
+ */
+.under-panseret__pointer {
+  position: absolute;
+  top: calc(100% - 2px);
+  left: 0;
+  width: 100%;
+  height: 120px;
+  border-top: 6px solid var(--map-ink);
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.under-panseret__pointer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 100%;
+  border-radius: 0 0 3px 3px;
+  background: var(--map-ink);
+}
+
+.under-panseret__label,
+.under-panseret__note {
+  position: absolute;
+  left: 0;
+  font-family: var(--deck-font-body);
+  line-height: 1.2;
+}
+
+.under-panseret__label {
+  top: calc(100% + 14px);
+  color: var(--deck-fg);
+  font-size: var(--deck-size-label);
+  font-weight: var(--deck-weight-strong);
+}
+
+.under-panseret__note {
+  top: calc(100% + 62px);
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+}
+
+.under-panseret__client {
+  left: var(--deck-space-page);
+  top: 826px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* slik-vet-vi: one word as the monument, the checks as a stripe below */
+
+.slik-vet-vi {
+  left: var(--deck-space-page);
+  top: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 0;
+  font-family: var(--deck-font-display);
+}
+
+/* The small title over the monument. */
+.slik-vet-vi__kicker {
+  color: var(--deck-muted);
+  font-size: var(--deck-size-heading);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+/* «i» has a wide side bearing at this size; pull it to the margin. */
+.slik-vet-vi__none {
+  margin: 26px 0 0 -14px;
+  font-size: var(--deck-size-monument);
+  font-weight: var(--deck-weight-black);
+  letter-spacing: var(--deck-tracking-monument);
+  line-height: 0.92;
+}
+
+.slik-vet-vi__rest {
+  margin-top: 40px;
+  font-size: var(--deck-size-statement);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: var(--deck-line-height-tight);
+}
+
+/*
+ * ansvar: the claim as the title, then three columns, one per click, each
+ * headed by a picture in a ring of its colour beside its name: the team's
+ * green, Lumi's blue, and orange for what to know. The third column
+ * reaches past x 1520, so it ends above y 800.
+ */
+
+.slide-title.ansvar__tittel {
+  max-width: 1500px;
+}
+
+.ansvar__nav {
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-label);
+  font-weight: 700;
+}
+
+.ansvar__kolonner {
+  position: absolute;
+  top: 400px;
+  left: var(--deck-space-page);
+  right: var(--deck-space-page);
+  display: grid;
+  /* The third column has the longest sentence: it gets the most room. */
+  grid-template-columns: 500px 420px minmax(0, 1fr);
+  gap: 56px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ansvar__kolonne[data-tone="team"] {
+  --tone: var(--farge-team);
+}
+
+.ansvar__kolonne[data-tone="lumi"] {
+  --tone: var(--farge-lumi);
+}
+
+.ansvar__kolonne[data-tone="varsel"] {
+  --tone: var(--farge-varsel);
+}
+
+/* The picture and the name side by side, at the head of the column. */
+.ansvar__hode {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  margin-bottom: 18px;
+}
+
+.ansvar__bilde {
+  display: block;
+  flex: none;
+  width: 180px;
+  height: 180px;
+  overflow: visible;
+}
+
+.ansvar__name {
+  margin: 0;
+  color: var(--tone);
+  font-family: var(--deck-font-display);
+  font-size: 72px;
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1;
+}
+
+.ansvar__text {
+  margin: 0 0 12px;
+  font-size: 40px;
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.2;
+  text-wrap: pretty;
+}
+
+/* The pictures, in the map's ink, with the answer in gold. */
+.ansvar__ring {
+  fill: none;
+  stroke: var(--tone);
+  stroke-width: 14px;
+}
+
+.ansvar__ark {
+  fill: var(--map-paper);
+  stroke: var(--map-ink);
+  stroke-width: 9px;
+}
+
+.ansvar__strek {
+  fill: none;
+  stroke: var(--map-ink);
+  stroke-width: 9px;
+  stroke-linecap: round;
+}
+
+.ansvar__svar {
+  fill: var(--map-answer);
+  stroke: var(--map-answer-edge);
+  stroke-width: 6px;
+}
+
+.ansvar__tikk {
+  fill: none;
+  stroke: var(--tone);
+  stroke-width: 7px;
+  stroke-linecap: round;
+}
+
+.ansvar__tolv {
+  fill: var(--tone);
+  font-family: var(--deck-font-display);
+  font-size: 72px;
+  font-weight: var(--deck-weight-black);
+}
+
+/* The year turns round the middle of the dial. */
+.ansvar__aaret {
+  transform-box: view-box;
+  transform-origin: 120px 120px;
+}
+
+/* Deleted: the answer is not there in the still. */
+.ansvar__slettes {
+  opacity: 0;
+  transform: scale(0);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* The filter, and what slips through it: orange, for what to know. */
+.ansvar__trakt {
+  fill: var(--map-ink);
+  stroke: var(--map-ink);
+  stroke-width: 6px;
+  stroke-linejoin: round;
+}
+
+.ansvar__gjennom {
+  fill: var(--tone);
+}
+
+/*
+ * Click 1: the answer goes round the dial once, a year, and shrinks away
+ * when it is back at the top. Click 2: something drops out of the filter.
+ * Each still by 1.9 s.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"])
+    .ansvar__kolonne[data-revealed]
+    .ansvar__aaret {
+    animation: ansvar-aar 1300ms var(--deck-easing-travel) 260ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .ansvar__kolonne[data-revealed]
+    .ansvar__slettes {
+    animation: ansvar-slett 340ms var(--deck-easing-travel) 1540ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .ansvar__kolonne[data-revealed]
+    .ansvar__gjennom {
+    animation: ansvar-gjennom 640ms var(--deck-easing-travel) 460ms backwards;
+  }
+}
+
+@keyframes ansvar-aar {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ansvar-slett {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+
+@keyframes ansvar-gjennom {
+  from {
+    transform: translateY(-80px);
+  }
+}
+
+/* prov-selv: the QR code is the slide */
+
+.prov-selv__qr {
+  line-height: 0;
+}
+
+/* The viewfinder's corners, outside the code's white. */
+.prov-selv__sikte {
+  position: absolute;
+  top: -40px;
+  left: -40px;
+  width: 736px;
+  height: 736px;
+  overflow: visible;
+  fill: none;
+  stroke: var(--map-ink);
+  stroke-width: 14px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.prov-selv__text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 44px;
+}
+
+.prov-selv__lead {
+  max-width: 1040px;
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: 64px;
+  font-weight: var(--deck-weight-display);
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.prov-selv__link {
+  margin: 0;
+  font-family: var(--deck-font-mono);
+  font-size: var(--deck-size-label);
+  font-weight: 600;
+}
+
+.prov-selv__install {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+
+.prov-selv__install-label {
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+}
+
+.prov-selv__install code {
+  font-family: var(--deck-font-mono);
+  font-size: var(--deck-size-label);
+  font-variant-ligatures: none;
+  font-weight: 600;
+}
+
+/* On the way in, the viewfinder closes on the code. Still by 1 s. */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .prov-selv[data-motion] .prov-selv__sikte {
+    animation: end-sikte 640ms var(--deck-easing-travel) 360ms backwards;
+  }
+}
+
+/* Product leads get the QR code, not the install line. */
+:root[data-deck-room="produktledere"] .prov-selv__install {
+  display: none;
+}
+
+/* slutt: the line runs on to the audience's app, and the answer lights */
+
+.slide-title.slutt__title {
+  font-size: var(--deck-size-statement);
+}
+
+/*
+ * The logo's ice, from the snow globe. At night the edge is a light
+ * hairline; on white the ice gets the map's ink round it, so the pale
+ * faces still have an edge.
+ */
+.slutt {
+  --is-lys: #a9cce3;
+  --is-mork: #6f9dbd;
+  --is-skygge: #3f6f91;
+  --is-glans: #cfe5f4;
+  --is-fasett: #bcd9ec;
+  --is-kant: #e6f2fb;
+  --is-kant-bredde: 4px;
+}
+
+:root:is([data-stil="papir"], [data-stil="dag"]) .slutt {
+  --is-kant: var(--map-ink);
+  --is-kant-bredde: 6px;
+}
+
+/* Light falls off away from the crystal. */
+.map .slutt__segment,
+.slutt__app .map-station__ring {
+  stroke: color-mix(
+    in srgb,
+    var(--map-ink) var(--slutt-light),
+    var(--map-paper)
+  );
+}
+
+:root:is([data-stil="papir"], [data-stil="dag"]) .slutt__segment,
+:root:is([data-stil="papir"], [data-stil="dag"])
+  .slutt__app
+  .map-station__ring {
+  stroke: color-mix(
+    in srgb,
+    var(--map-ink) var(--slutt-light-papir),
+    var(--map-paper)
+  );
+}
+
+/* The rings cover the joints, so the segments end square under them. */
+.map .slutt__segment {
+  stroke-linecap: butt;
+}
+
+/* Open, like the dashed line: ten dashes round a ring of radius 86. */
+.slutt__ledig .map-station__ring {
+  stroke-dasharray: 30 24.035;
+}
+
+/* The crystal: six prisms of ice round the gold core. */
+.slutt__ice-light {
+  fill: var(--is-lys);
+}
+
+.slutt__ice-dark {
+  fill: var(--is-mork);
+}
+
+.slutt__ice-shine {
+  fill: var(--is-glans);
+}
+
+.slutt__ice-shadow {
+  fill: var(--is-skygge);
+}
+
+.slutt__ice-facet {
+  fill: var(--is-fasett);
+}
+
+.slutt__ice-edge {
+  fill: none;
+  stroke: var(--is-kant);
+  stroke-width: var(--is-kant-bredde);
+  stroke-linejoin: round;
+}
+
+/* Each branch grows out of the core, which sits at (1460, 590). */
+.slutt__branch {
+  transform-box: view-box;
+  transform-origin: 1460px 590px;
+}
+
+/* The answer's eyes, in the ink that goes on gold. */
+.slutt__eyes {
+  fill: var(--deck-accent-fg);
+}
+
+.slutt__eyes ellipse {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.map .slutt__join.map-line--draw {
+  transition: none;
+}
+
+/*
+ * Click 2, one moment: the line reaches the open station, the core lights
+ * when it gets there, the branches grow out of it, 70 ms apart, and last
+ * the answer opens its eyes. Still by 2 s.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .map .slutt__join.map-line--draw {
+    transition: stroke-dashoffset 520ms var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"])
+    .slutt
+    .map-answer-flash[data-revealed]
+    .map-answer {
+    animation-delay: 440ms;
+  }
+
+  :root:not([data-stil="papir"])
+    .slutt
+    .map-answer-flash[data-revealed]
+    .map-answer__ring {
+    /* Without fill during the wait, so the ring does not stand there first. */
+    animation-delay: 560ms;
+    animation-fill-mode: none;
+  }
+
+  :root:not([data-stil="papir"]) .slutt__branch {
+    transition:
+      transform 680ms var(--deck-easing-travel) calc(600ms + var(--i) * 70ms),
+      opacity 280ms var(--deck-easing) calc(600ms + var(--i) * 70ms);
+  }
+
+  :root:not([data-stil="papir"])
+    .slutt__crystal:not([data-revealed])
+    .slutt__branch {
+    transform: scale(0.3);
+    opacity: 0;
+    transition: none;
+  }
+
+  /* Last, when the crystal stands, the answer opens its eyes, once. */
+  :root:not([data-stil="papir"]) .map .slutt__eyes[data-from] {
+    transition: none;
+  }
+
+  :root:not([data-stil="papir"]) .slutt__eyes[data-revealed] ellipse {
+    animation: slutt-eyes 420ms var(--deck-easing) 1560ms backwards;
+  }
+}
+
+@keyframes slutt-eyes {
+  0% {
+    opacity: 0;
+    transform: scaleY(0.12);
+  }
+
+  35% {
+    opacity: 1;
+    transform: scaleY(0.12);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+/*
+ * Where to go, on click 1: the repo's two kinds of issue, drawn as the
+ * buttons people meet there, and the channel for questions. Left of the
+ * crystal, and left of x 1520 below y 800.
+ */
+.slutt__kontakt {
+  left: var(--deck-space-page);
+  top: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* One line each, clear of the crystal's lower branch. */
+.slutt__rad {
+  margin: 0;
+  font-size: 40px;
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.slutt__rad .end-mono {
+  font-weight: 700;
+}
+
+.slutt__typer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0 0 22px;
+  padding: 0;
+  list-style: none;
+}
+
+.slutt__type {
+  padding: 8px 24px 6px;
+  border: 4px solid var(--map-ink);
+  border-radius: 999px;
+  font-size: var(--deck-size-small);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.2;
+}
+
+/*
+ * personvern: what Lumi stores, read as one label beside a person who is
+ * not there. Lumi's blue for what Lumi stores and removes, orange for what
+ * is not removed and for the warning, as everywhere in the deck.
+ */
+
+.slide-title.personvern__title {
+  font-size: var(--deck-size-title);
+}
+
+/* The one who answered: a dashed outline, the person gone. */
+.personvern__hvem {
+  position: absolute;
+  top: 300px;
+  left: var(--deck-space-page);
+  width: 330px;
+  height: 330px;
+  overflow: visible;
+}
+
+/* The answer stays, the only gold on the slide. */
+.personvern__svar {
+  fill: var(--map-answer);
+  stroke: var(--map-answer-edge);
+  stroke-width: 7px;
+  filter: var(--map-answer-glow);
+}
+
+.personvern__oyne {
+  fill: var(--deck-accent-fg);
+}
+
+.personvern__person {
+  fill: var(--deck-muted);
+  opacity: 0;
+}
+
+.personvern__tom {
+  fill: none;
+  stroke: var(--deck-muted);
+  stroke-width: 8px;
+  stroke-dasharray: 20 14;
+  stroke-linejoin: round;
+}
+
+/* Rows with hairlines, keys in their colour, values beside them. */
+.personvern__label {
+  left: 500px;
+  right: var(--deck-space-page);
+  top: 268px;
+}
+
+.personvern__rows {
+  margin: 0;
+}
+
+.personvern__row {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  align-items: baseline;
+  padding: 18px 0 20px;
+  border-top: 3px solid var(--end-hair);
+}
+
+.personvern__row--lumi {
+  --tone: var(--farge-lumi);
+}
+
+.personvern__row--varsel {
+  --tone: var(--farge-varsel);
+}
+
+.personvern__row dt {
+  color: var(--tone);
+  font-size: var(--deck-size-label);
+  font-weight: var(--deck-weight-display);
+  line-height: 1.2;
+}
+
+.personvern__row dd {
+  margin: 0;
+  font-size: var(--deck-size-label);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.22;
+  text-wrap: balance;
+}
+
+.personvern__row--varsel dd {
+  color: var(--tone);
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-display);
+}
+
+/* What is removed, in the deck's one mark: 6 px ink, radius 10. */
+.personvern__removed {
+  display: block;
+  width: fit-content;
+  margin: 0 -20px;
+  padding: 2px 14px 0;
+  border: 6px solid var(--map-ink);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+/* Three values, big enough to read from the back of the room. */
+.personvern__facts {
+  display: grid;
+  grid-template-columns: 380px 1fr 1fr;
+  margin: 0;
+  padding-top: 20px;
+  border-top: 3px solid var(--end-hair);
+}
+
+.personvern__fact dt {
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.personvern__fact dd {
+  margin: 4px 0 0;
+  font-size: var(--deck-size-lead);
+  font-weight: var(--deck-weight-display);
+  line-height: 1.1;
+}
+
+.personvern__obs {
+  left: var(--deck-space-page);
+  top: 842px;
+  color: var(--farge-varsel);
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-display);
+}
+
+/* On the way in, the person fades and leaves the outline. Still by 1.5 s. */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .personvern[data-motion] .personvern__person {
+    animation: personvern-borte 1000ms var(--deck-easing-travel) 500ms backwards;
+  }
+}
+
+@keyframes personvern-borte {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+/*
+ * regler: what the terms of use rule out, as three prohibition signs. The
+ * signs are drawn as signs, the same in every style: a white face, a black
+ * drawing, and a red ring and bar. The ring is the one place the deck uses
+ * red: it means «not». On white the face gets a grey edge, so the sign has
+ * a shape before it is struck.
+ */
+
+.regler {
+  --skilt-flate: #ffffff;
+  --skilt-tegning: #202733;
+  --nei: #d62d20;
+  --skilt-kant: transparent;
+}
+
+:root:is([data-stil="papir"], [data-stil="dag"]) .regler {
+  --skilt-kant: var(--map-dim);
+}
+
+/* One line: the source and the claim. */
+.slide-title.regler__tittel {
+  font-size: 80px;
+}
+
+/* Three signs in a row, the text under each ending above y 800. */
+.regler__liste {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--deck-space-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.regler__regel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  text-align: center;
+}
+
+.regler__skilt {
+  width: 380px;
+  height: 380px;
+  overflow: visible;
+}
+
+.regler__flate {
+  fill: var(--skilt-flate);
+  stroke: var(--skilt-kant);
+  stroke-width: 4px;
+}
+
+.regler__tegning {
+  fill: var(--skilt-tegning);
+}
+
+.regler__strok {
+  fill: none;
+  stroke: var(--skilt-tegning);
+  stroke-width: 11px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.regler__kode {
+  fill: var(--skilt-tegning);
+  font-family: var(--deck-font-display);
+  font-size: 58px;
+  font-weight: var(--deck-weight-black);
+}
+
+/* The ring and the bar end square, inside the face. */
+.regler__ring,
+.regler__strek {
+  fill: none;
+  stroke: var(--nei);
+  stroke-width: 24px;
+  stroke-linecap: butt;
+}
+
+.regler__tekst {
+  max-width: 480px;
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-strong);
+  line-height: 1.12;
+  text-wrap: balance;
+}
+
+/* What the terms add, under the signs: orange, for what to know. */
+.regler__obs {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  gap: 24px;
+  margin: 8px 0 0;
+  color: var(--farge-varsel);
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-display);
+}
+
+.regler__varsel {
+  flex: none;
+  width: 64px;
+  height: 56px;
+  fill: var(--farge-varsel);
+}
+
+.regler__varsel-kant {
+  fill: none;
+  stroke: var(--farge-varsel);
+  stroke-width: 6px;
+  stroke-linejoin: round;
+}
+
+.regler__varsel-tegn {
+  fill: none;
+  stroke: var(--farge-varsel);
+  stroke-width: 6px;
+  stroke-linecap: round;
+}
+
+/*
+ * A click strikes one sign: the ring draws itself round the drawing from
+ * the top left, and the bar strikes across when the ring is nearly round.
+ * On the third, the warning follows. Still by 1.2 s. Going back takes the
+ * ring away at once.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .regler__forbud[data-from] {
+    transition: none;
+  }
+
+  :root:not([data-stil="papir"]) .regler__forbud path {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+
+  :root:not([data-stil="papir"]) .regler__forbud[data-revealed] path {
+    stroke-dashoffset: 0;
+  }
+
+  :root:not([data-stil="papir"]) .regler__forbud[data-revealed] .regler__ring {
+    transition: stroke-dashoffset 540ms var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"]) .regler__forbud[data-revealed] .regler__strek {
+    transition: stroke-dashoffset 220ms var(--deck-easing) 470ms;
+  }
+
+  /* The warning comes when the third sign is struck. */
+  :root:not([data-stil="papir"]) .regler__obs[data-revealed] {
+    transition:
+      opacity 400ms var(--deck-easing) 720ms,
+      visibility 0s 720ms;
+  }
+
+  :root:not([data-stil="papir"]) .regler__obs:not([data-revealed]) {
+    transition: none;
+  }
+}
+
+/*
+ * kom-i-gang: three steps on a line from the top down, and the docs as a
+ * QR code. The stations stand empty, and each click lights one in the
+ * colour of who does it. The code stays black on white, in a viewfinder.
+ */
+
+.slide-title.kom-i-gang__tittel {
+  font-size: 80px;
+}
+
+.kom-i-gang__punkt--team,
+.kom-i-gang__stasjon--team {
+  --steg-farge: var(--farge-team);
+}
+
+.kom-i-gang__punkt--lumi,
+.kom-i-gang__stasjon--lumi {
+  --steg-farge: var(--farge-lumi);
+}
+
+.kom-i-gang__linje {
+  position: absolute;
+  inset: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: visible;
+}
+
+/* The way ahead, dashed, and the line that is built over it. */
+.kom-i-gang__planlagt {
+  fill: none;
+  stroke: var(--map-dim);
+  stroke-width: 10px;
+  stroke-dasharray: 22 18;
+}
+
+.kom-i-gang__bygd {
+  fill: none;
+  stroke: var(--map-ink);
+  stroke-width: var(--map-line-width);
+}
+
+/* An empty station: a dim ring and its number. */
+.kom-i-gang__tom {
+  fill: var(--map-paper);
+  stroke: var(--map-dim);
+  stroke-width: var(--map-ring-width);
+}
+
+.kom-i-gang__linje text {
+  font-family: var(--deck-font-display);
+  font-size: 60px;
+  font-weight: var(--deck-weight-black);
+}
+
+.kom-i-gang__tall-tom {
+  fill: var(--deck-muted);
+}
+
+/* A lit station: a disc in its colour, the number in the paper. */
+.kom-i-gang__tent circle {
+  fill: var(--steg-farge);
+  stroke: var(--steg-farge);
+  stroke-width: var(--map-ring-width);
+}
+
+.kom-i-gang__tent text {
+  fill: var(--map-paper);
+}
+
+.kom-i-gang__steg {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each step beside its station: the name on the line, the note under. */
+.kom-i-gang__punkt {
+  position: absolute;
+  top: calc(var(--y) - 50px);
+  left: 284px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kom-i-gang__navn {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  color: var(--steg-farge);
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-lead);
+  font-weight: var(--deck-weight-display);
+  line-height: 1.1;
+}
+
+.kom-i-gang__note {
+  color: var(--deck-muted);
+  font-size: var(--deck-size-label);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Turned once: the sand is on top, the waiting has begun. */
+.kom-i-gang__timeglass {
+  flex: none;
+  width: 46px;
+  height: 64px;
+  fill: var(--steg-farge);
+  transform: rotate(180deg);
+}
+
+.kom-i-gang__glass {
+  fill: none;
+  stroke: var(--steg-farge);
+  stroke-width: 5px;
+  stroke-linecap: round;
+}
+
+.kom-i-gang__qr {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.kom-i-gang__kode {
+  position: relative;
+  line-height: 0;
+}
+
+/* The corners of a camera's viewfinder, just outside the quiet zone. */
+.kom-i-gang__sikte {
+  position: absolute;
+  top: -40px;
+  left: -40px;
+  width: 480px;
+  height: 480px;
+  overflow: visible;
+  fill: none;
+  stroke: var(--map-ink);
+  stroke-width: 12px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.kom-i-gang__lenke {
+  margin: 30px 0 0;
+  font-family: var(--deck-font-mono);
+  font-size: var(--deck-size-label);
+  font-weight: 600;
+}
+
+.kom-i-gang__slack {
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+}
+
+/*
+ * A click lights a station: the line draws down to it, the disc fills,
+ * and the step slides in beside it. On click 2 the hourglass turns over.
+ * On the way in, the viewfinder closes on the code. Each still by 1.2 s.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .kom-i-gang__bygd {
+    stroke-dasharray: 1;
+  }
+
+  :root:not([data-stil="papir"]) .kom-i-gang__bygd[data-from] {
+    visibility: visible;
+    opacity: 1;
+    transition: none;
+  }
+
+  :root:not([data-stil="papir"])
+    .kom-i-gang__bygd[data-from]:not([data-revealed]) {
+    stroke-dashoffset: 1;
+  }
+
+  :root:not([data-stil="papir"]) .kom-i-gang__bygd[data-revealed] {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 420ms var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"]) .kom-i-gang__tent[data-revealed] {
+    transition: opacity 260ms var(--deck-easing) 300ms;
+  }
+
+  :root:not([data-stil="papir"]) .kom-i-gang__tent[data-revealed] circle {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: kom-i-gang-tenn 520ms var(--deck-easing-travel) 300ms backwards;
+  }
+
+  :root:not([data-stil="papir"]) .kom-i-gang__punkt[data-from] {
+    transition:
+      opacity 360ms var(--deck-easing) 380ms,
+      transform 520ms var(--deck-easing-travel) 380ms,
+      visibility 0s 380ms;
+  }
+
+  :root:not([data-stil="papir"]) .kom-i-gang__punkt:not([data-revealed]) {
+    transform: translateX(-28px);
+    transition: none;
+  }
+
+  :root:not([data-stil="papir"])
+    .kom-i-gang__punkt[data-revealed]
+    .kom-i-gang__timeglass {
+    animation: kom-i-gang-snu 720ms var(--deck-easing-travel) 900ms backwards;
+  }
+
+  :root:not([data-stil="papir"]) .kom-i-gang[data-motion] .kom-i-gang__sikte {
+    animation: end-sikte 640ms var(--deck-easing-travel) 360ms backwards;
+  }
+}
+
+@keyframes kom-i-gang-tenn {
+  from {
+    transform: scale(0.6);
+  }
+}
+
+@keyframes kom-i-gang-snu {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(180deg);
+  }
+}

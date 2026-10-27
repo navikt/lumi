@@ -1,0 +1,552 @@
+/*
+ * The workshop slides: hva-vil-dere-vite, samme-utkast, surveyen-som-kode,
+ * utviklerens-steg and bare-teamet.
+ */
+
+/*
+ * hva-vil-dere-vite: the menu «Hva vil dere finne ut?» as a line of
+ * numbered stops. Click 1: the other setups fall away, the first one turns
+ * the team's green and is marked as an example, and its questions come in
+ * on its line. Click 2: an answer leaves the end of the survey and draws
+ * Lumi's blue line to the dashboard. Without motion, and on paper, each
+ * step shows its end at once.
+ */
+
+.finne-ut__title {
+  position: absolute;
+  top: 92px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-statement);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: var(--deck-line-height-tight);
+}
+
+.finne-ut__hvor {
+  position: absolute;
+  top: 236px;
+  left: var(--deck-space-page);
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-label);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* The numbers are line badges: ink discs, the chosen one the team's green. */
+.finne-ut__skive {
+  fill: var(--map-ink);
+}
+
+.map .finne-ut__tall {
+  fill: var(--map-paper);
+}
+
+.finne-ut--valgt .finne-ut__skive--valgt {
+  fill: var(--farge-team);
+}
+
+.finne-ut--valgt .map .finne-ut__valgt-tekst {
+  fill: var(--farge-team);
+}
+
+.finne-ut--valgt .finne-ut__bort {
+  visibility: hidden;
+  opacity: 0;
+}
+
+/* «Eksempel», after the chosen setup's name, on the same row. */
+.finne-ut__eksempel {
+  position: absolute;
+  top: 356px;
+  left: 1058px;
+}
+
+/* The way to the dashboard is Lumi's: blue, and the dashboard's stop too. */
+.map .finne-ut__rute {
+  stroke: var(--farge-lumi);
+}
+
+.finne-ut__mal {
+  fill: var(--map-paper);
+  stroke: var(--farge-lumi);
+  stroke-width: var(--map-ring-width);
+}
+
+.map .finne-ut__dashnavn {
+  fill: var(--farge-lumi);
+}
+
+/* The answer: the gold disc with eyes, the only gold on the slide. */
+.finne-ut__gull {
+  fill: var(--map-answer);
+  stroke: var(--map-answer-edge);
+  stroke-width: 6px;
+  filter: var(--map-answer-glow);
+}
+
+.finne-ut__oye {
+  fill: var(--deck-accent-fg);
+}
+
+/* The one that travels only shows while it travels. */
+.finne-ut__reiser {
+  visibility: hidden;
+  offset-rotate: 0deg;
+}
+
+.finne-ut__reiser > g {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+:root[data-stil="papir"] .finne-ut .map-line--draw {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Click 1: the others fall, the chosen turns green, the questions
+     follow on its line. */
+  :root:not([data-stil="papir"]) .finne-ut__bort {
+    transition:
+      opacity 300ms var(--deck-easing),
+      transform 300ms var(--deck-easing),
+      visibility 0s;
+  }
+
+  :root:not([data-stil="papir"]) .finne-ut--valgt .finne-ut__bort {
+    transform: translateY(36px);
+    transition:
+      opacity 300ms var(--deck-easing) calc(var(--rad) * 50ms),
+      transform 300ms var(--deck-easing) calc(var(--rad) * 50ms),
+      visibility 0s calc(300ms + var(--rad) * 50ms);
+  }
+
+  :root:not([data-stil="papir"]) .finne-ut__skive--valgt,
+  :root:not([data-stil="papir"]) .finne-ut__valgt-tekst {
+    transition: fill 300ms var(--deck-easing);
+  }
+
+  :root:not([data-stil="papir"]) .finne-ut--valgt .finne-ut__skive--valgt,
+  :root:not([data-stil="papir"]) .finne-ut--valgt .finne-ut__valgt-tekst {
+    transition-delay: 250ms;
+  }
+
+  :root:not([data-stil="papir"]) .finne-ut__eksempel[data-revealed] {
+    transition-delay: 350ms;
+  }
+
+  :root:not([data-stil="papir"]) .map .finne-ut__sporsmalslinje {
+    transition: stroke-dashoffset 300ms var(--deck-easing);
+  }
+
+  :root:not([data-stil="papir"]) .map .finne-ut__sporsmalslinje[data-revealed] {
+    transition: stroke-dashoffset 700ms var(--deck-easing-travel) 400ms;
+  }
+
+  :root:not([data-stil="papir"]) .finne-ut__sporsmal[data-revealed] {
+    transition-delay: calc(550ms + var(--rad) * 240ms);
+  }
+
+  /* Click 2: the answer pops up at the end of the survey and draws the
+     line behind it to the dashboard, where it lands. */
+  :root:not([data-stil="papir"]) .map .finne-ut__rute {
+    transition: stroke-dashoffset 400ms var(--deck-easing);
+  }
+
+  :root:not([data-stil="papir"]) .map .finne-ut__rute[data-revealed] {
+    transition: stroke-dashoffset 1200ms var(--deck-easing-travel) 250ms;
+  }
+
+  :root:not([data-stil="papir"]) .finne-ut__reiser[data-revealed] {
+    animation: finne-ut-reis 1200ms var(--deck-easing-travel) 250ms backwards;
+  }
+
+  :root:not([data-stil="papir"]) .finne-ut__reiser[data-revealed] > g {
+    animation: finne-ut-pop 250ms var(--deck-easing) backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .finne-ut__dashboard[data-revealed]
+    .finne-ut__landet {
+    animation: finne-ut-vent 1450ms step-end;
+  }
+
+  :root:not([data-stil="papir"])
+    .finne-ut__dashboard[data-revealed]
+    .finne-ut__dashtekst {
+    animation: finne-ut-inn 400ms var(--deck-easing) 1400ms backwards;
+  }
+}
+
+@keyframes finne-ut-reis {
+  from {
+    offset-distance: 0%;
+    visibility: visible;
+  }
+
+  to {
+    offset-distance: 100%;
+    visibility: visible;
+  }
+}
+
+@keyframes finne-ut-pop {
+  from {
+    transform: scale(0);
+  }
+}
+
+@keyframes finne-ut-vent {
+  from,
+  to {
+    visibility: hidden;
+  }
+}
+
+@keyframes finne-ut-inn {
+  from {
+    opacity: 0;
+  }
+}
+
+/*
+ * The film slides, samme-utkast and bare-teamet: one recording at its own
+ * size (1680×760, UI text about 28 px on the stage), the title beside it,
+ * and the tag «Opptak med testdata». The window ends at y 800, so the
+ * Teams corner keeps its 40 px margin.
+ */
+
+.verksted-film__window {
+  position: absolute;
+  left: var(--deck-space-page);
+  width: 1680px;
+  height: 760px;
+  overflow: hidden;
+  border-radius: var(--deck-radius);
+  background: var(--deck-embed-bg);
+}
+
+/* The frame sits on the film, so it adds nothing to the size. */
+.verksted-film__window::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 4px solid var(--map-zone-edge);
+  border-radius: var(--deck-radius);
+  pointer-events: none;
+}
+
+.verksted-film__title {
+  position: absolute;
+  left: var(--deck-space-page);
+  margin: 0;
+  max-width: 1400px;
+  font-family: var(--deck-font-display);
+  font-size: calc(var(--deck-size-small) * 2);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1.1;
+}
+
+/*
+ * samme-utkast: the title over the film, the tag under it. The room meets
+ * Surveyverksted here for the first time, so the name is the largest
+ * thing in the title, after what you do there in the team's green.
+ */
+.verksted-film--bottom .verksted-film__title {
+  top: 22px;
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+  max-width: none;
+}
+
+.verksted-film__hva {
+  color: var(--farge-team);
+  font-family: var(--deck-font-body);
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-strong);
+  letter-spacing: 0;
+}
+
+.verksted-film__navn {
+  font-size: 80px;
+  letter-spacing: var(--deck-tracking-display);
+}
+
+.verksted-film--bottom .verksted-film__window {
+  top: 128px;
+  height: 672px;
+}
+
+.verksted-film__tag {
+  position: absolute;
+  top: 826px;
+  left: var(--deck-space-page);
+}
+
+/*
+ * bare-teamet: the film over the title. Who sees the answers is the claim,
+ * in the team's green. Under it, where access comes from, and the tag.
+ */
+.verksted-film--top .verksted-film__window {
+  top: 40px;
+}
+
+.verksted-film--top .verksted-film__title {
+  top: 828px;
+}
+
+.verksted-film__team {
+  color: var(--farge-team);
+}
+
+.verksted-film__fot {
+  position: absolute;
+  top: 908px;
+  left: var(--deck-space-page);
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.verksted-film__note {
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-small);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/*
+ * Code on the stage, shared by surveyen-som-kode and utviklerens-steg. The
+ * size and place of the code come from the slide, which uses them to find
+ * the ends of the lines. Marks sit behind the text, inside the code's own
+ * stacking context.
+ */
+
+.som-kode__title,
+.utvikler__title {
+  position: absolute;
+  top: 56px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-title);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: var(--deck-line-height-tight);
+}
+
+.som-kode__code,
+.utvikler__code {
+  position: absolute;
+  top: var(--kode-top);
+  left: var(--kode-x);
+  margin: 0;
+  color: var(--deck-code-fg);
+  font-family: var(--deck-font-mono);
+  font-size: var(--kode-size);
+  font-variant-ligatures: none;
+  line-height: var(--kode-line);
+  white-space: pre;
+  isolation: isolate;
+}
+
+.som-kode__code code,
+.utvikler__code code {
+  font: inherit;
+}
+
+.som-kode__comment,
+.utvikler__comment {
+  color: var(--deck-muted);
+}
+
+.som-kode__kw,
+.utvikler__kw {
+  font-weight: var(--deck-weight-strong);
+}
+
+.som-kode__str,
+.utvikler__str {
+  color: var(--deck-code-string);
+}
+
+.som-kode__punct,
+.utvikler__punct {
+  color: var(--deck-code-punctuation);
+}
+
+/* Who owns the part: Lumi's widget in blue, the team's in green. */
+.som-kode__mark--team,
+.som-kode__stopp--team,
+.utvikler__mark--team,
+.utvikler__grunn--team,
+.utvikler__stopp--team {
+  --tone: var(--farge-team);
+}
+
+.utvikler__mark--lumi,
+.utvikler__grunn--lumi,
+.utvikler__stopp--lumi {
+  --tone: var(--farge-lumi);
+}
+
+/* The users: what comes out at the end, in the map's own ink. */
+.som-kode__stopp--ute {
+  --tone: var(--map-ink);
+}
+
+.som-kode__mark,
+.utvikler__mark {
+  position: relative;
+}
+
+/* A highlighter stroke: a tint, and a bar under the text in the tone. */
+.som-kode__marker,
+.utvikler__marker {
+  position: absolute;
+  z-index: -1;
+  inset: -1px -10px -8px;
+  border-bottom: 6px solid var(--tone);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--tone) 22%, transparent);
+  transform-origin: left center;
+}
+
+.map .som-kode__leder,
+.map .utvikler__leder {
+  stroke: var(--tone);
+}
+
+.map .som-kode__stoppnavn,
+.map .utvikler__grunnavn,
+.map .utvikler__stoppnavn {
+  fill: var(--tone);
+}
+
+.map .som-kode__stopp .map-station__ring,
+.map .utvikler__stopp .map-station__ring {
+  stroke: var(--tone);
+}
+
+:root[data-stil="papir"] .som-kode .map-line--draw,
+:root[data-stil="papir"] .utvikler .map-line--draw {
+  transition: none;
+}
+
+/*
+ * surveyen-som-kode, for designers: survey.ts with the questions they wrote
+ * marked in green, the lines from them meeting in one stop. Click 1: the
+ * hand-over as a line from edge to edge, drawn from the left. Click 2: the
+ * price, in their words, with what they must know in orange.
+ */
+.som-kode__sporsmal {
+  --tone: var(--farge-team);
+}
+
+.map .som-kode__mote .map-station__ring {
+  stroke: var(--farge-team);
+}
+
+.map .som-kode__dere {
+  fill: var(--farge-team);
+}
+
+.som-kode__price {
+  position: absolute;
+  top: 846px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-display);
+  line-height: 1.25;
+}
+
+.som-kode__price > span {
+  display: block;
+}
+
+.som-kode__pris {
+  color: var(--farge-varsel);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .map .som-kode__arbeid,
+  :root:not([data-stil="papir"]) .map .utvikler__arbeid {
+    transition: stroke-dashoffset 300ms var(--deck-easing);
+  }
+
+  :root:not([data-stil="papir"]) .map .som-kode__arbeid[data-revealed],
+  :root:not([data-stil="papir"]) .map .utvikler__arbeid[data-revealed] {
+    transition: stroke-dashoffset 1000ms var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"]) .som-kode__stopp[data-revealed],
+  :root:not([data-stil="papir"]) .utvikler__stopp[data-revealed] {
+    transition-delay: calc(var(--stopp-x) * 900ms);
+  }
+
+  :root:not([data-stil="papir"]) .som-kode__price:not([data-revealed]) {
+    transform: translateY(24px);
+  }
+}
+
+/*
+ * utviklerens-steg, for Frontend forum only: the code in the app. Click 1:
+ * why it is good, three parts of the code marked, each with a leader to
+ * its reason. Click 2: the developer's work as a line from edge to edge.
+ */
+.utvikler__prikk {
+  fill: var(--tone);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/*
+ * Click 1 is one cascade, a quarter of a second per reason: the mark
+ * sweeps over the code, the leader draws out to the column, and the reason
+ * comes. Click 2 draws the line from the left, and each stop comes as the
+ * line reaches it. On paper and without motion every step is just there.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .utvikler__marker {
+    transition:
+      opacity 160ms var(--deck-easing),
+      transform 420ms var(--deck-easing-travel),
+      visibility 0s;
+  }
+
+  :root:not([data-stil="papir"]) .utvikler__marker:not([data-revealed]) {
+    transform: scaleX(0);
+  }
+
+  :root:not([data-stil="papir"]) .utvikler__marker[data-revealed] {
+    transition-delay: calc(var(--grunn) * 240ms);
+  }
+
+  :root:not([data-stil="papir"]) .utvikler__prikk:not([data-revealed]) {
+    transform: scale(0);
+  }
+
+  :root:not([data-stil="papir"]) .utvikler__prikk[data-revealed] {
+    transition-delay: calc(var(--grunn) * 240ms + 220ms);
+  }
+
+  :root:not([data-stil="papir"]) .map .utvikler__leder {
+    transition: stroke-dashoffset 300ms var(--deck-easing);
+  }
+
+  :root:not([data-stil="papir"]) .map .utvikler__leder[data-revealed] {
+    transition: stroke-dashoffset 420ms var(--deck-easing-travel)
+      calc(var(--grunn) * 240ms + 260ms);
+  }
+
+  :root:not([data-stil="papir"]) .utvikler__grunntekst[data-revealed] {
+    transition-delay: calc(var(--grunn) * 240ms + 560ms);
+  }
+}

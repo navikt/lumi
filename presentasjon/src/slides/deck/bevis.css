@@ -1,0 +1,897 @@
+/*
+ * The question and the evidence: verktoy-som-finnes and sporsmalet (the
+ * question from Frontend forum), ulike-behov, tallet, oppfolgingsplanen
+ * and brukes-videre.
+ */
+
+/*
+ * Every build step on these slides is a still at once: without motion and
+ * on paper a step simply appears. The motion runs only on the stage, not
+ * on paper, under prefers-reduced-motion: no-preference.
+ */
+.verktoy [data-from],
+.eksport [data-from],
+.tallet__period[data-from] {
+  transition: none;
+}
+
+.tallet .map [data-from],
+.opp .map [data-from],
+.opp-intro .map [data-from],
+.verktoy .map [data-from],
+.eksport .map [data-from] {
+  transition: none;
+}
+
+/*
+ * The question and nothing else. A monument: the word the answer turns on,
+ * «finnes?», in black at 360 px, the rest small above it, and the dot of
+ * the question mark is the answer. The word ends above y 800, clear of the
+ * Teams corner.
+ */
+
+.forum-quote {
+  justify-content: center;
+}
+
+/* A little above the middle, where the eye lands. */
+.forum-quote__text {
+  margin: 0 0 40px;
+  font-family: var(--deck-font-display);
+}
+
+.forum-quote__lead {
+  display: block;
+  font-size: var(--deck-size-heading);
+  font-weight: var(--deck-weight-strong);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1.15;
+}
+
+/* The f sits on the margin like the line above. */
+.forum-quote__word {
+  display: block;
+  margin-top: 4px;
+  margin-left: -0.02em;
+  font-size: var(--deck-size-monument);
+  font-weight: var(--deck-weight-black);
+  letter-spacing: var(--deck-tracking-monument);
+  line-height: 0.92;
+}
+
+/*
+ * The question mark without its dot. Measured in Overpass Black: with a
+ * line height of 0.92 the baseline lies 0.71 em from the top of the box and
+ * the box ends 0.21 em under it. The hook ends 0.19 em over the baseline
+ * and the dot starts 0.17 em over it, so the cut goes between them.
+ */
+.forum-quote__mark {
+  position: relative;
+  display: inline-block;
+}
+
+.forum-quote__hook {
+  display: inline-block;
+  clip-path: inset(-0.4em -0.2em 0.389em -0.2em);
+}
+
+/*
+ * In the dot's place: the answer, larger than the dot was and lower, so it
+ * clears the hook: 88 px across, centred 18 px over the baseline. The
+ * glyph's dot was centred 0.249 em from its left edge.
+ */
+.forum-quote__throw {
+  position: absolute;
+  top: calc(0.71em - 18px - 46px);
+  left: calc(0.2486em - 46px);
+  display: block;
+  width: 92px;
+  height: 92px;
+}
+
+.forum-quote__answer {
+  display: block;
+  width: 92px;
+  height: 92px;
+  overflow: visible;
+}
+
+.forum-quote__disc {
+  fill: var(--map-answer);
+  stroke: var(--map-answer-edge);
+  stroke-width: 6px;
+  filter: var(--map-answer-glow);
+}
+
+.forum-quote__eyes {
+  fill: var(--deck-accent-fg);
+}
+
+.forum-quote__fall {
+  display: block;
+}
+
+/*
+ * The entrance: the answer drops in 300 px right of its place, clear of
+ * the question mark, lands soft, and rolls one turn into the dot's place.
+ * The hook leaves no room to come in from above, so it rolls the last bit.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .forum-quote[data-motion] .forum-quote__throw {
+    animation: forum-roll-x 1300ms linear 500ms backwards;
+  }
+
+  :root:not([data-stil="papir"]) .forum-quote[data-motion] .forum-quote__fall {
+    transform-origin: 50% 100%;
+    animation: forum-drop 1300ms linear 500ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .forum-quote[data-motion]
+    .forum-quote__answer {
+    animation: forum-turn 1300ms linear 500ms backwards;
+  }
+}
+
+@keyframes forum-roll-x {
+  0%,
+  36% {
+    transform: translateX(300px);
+    animation-timing-function: cubic-bezier(0.3, 0.5, 0.35, 1);
+  }
+
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes forum-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(-560px);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  }
+
+  4% {
+    opacity: 1;
+  }
+
+  31% {
+    transform: none;
+    animation-timing-function: ease-out;
+  }
+
+  37% {
+    transform: scale(1.12, 0.86);
+    animation-timing-function: ease-in-out;
+  }
+
+  45%,
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes forum-turn {
+  0%,
+  36% {
+    transform: none;
+    animation-timing-function: cubic-bezier(0.3, 0.5, 0.35, 1);
+  }
+
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+
+/* tallet: the number alone, then the answers as dots */
+
+/*
+ * On step 0 the number stands alone in the middle at about 300 px. On
+ * click 1 it travels to the top margin at hero size, and the period and
+ * the dots come. The glyphs sit about 0.1 em above the middle of the line
+ * box, so the box goes a little below the middle of the stage.
+ */
+.tallet__number {
+  position: absolute;
+  top: 90px;
+  left: var(--deck-space-page);
+  width: max-content;
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-hero);
+  font-weight: var(--deck-weight-black);
+  font-variant-numeric: proportional-nums;
+  letter-spacing: var(--deck-tracking-monument);
+  line-height: 0.84;
+  transform-origin: 50% 50%;
+}
+
+.tallet--alone .tallet__number {
+  transform: translate(
+      calc(950px - var(--deck-space-page) - 50%),
+      calc(552px - 90px - 50%)
+    )
+    scale(1.36);
+}
+
+.tallet__period {
+  position: absolute;
+  top: 300px;
+  left: var(--deck-space-page);
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-label);
+  font-weight: 600;
+}
+
+/*
+ * One dot is a hundred answers: a small answer disc with a 2 px edge. The
+ * glow sits on the group and is weaker than on a single answer, so 311
+ * dots cost one filter and do not melt into one block on a stream.
+ */
+.map .tallet__dot {
+  stroke-width: 2px;
+  filter: none;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: none;
+}
+
+/* The deck's one mark, round Modia's eleven: ink, 6 px. */
+.map .tallet__ring rect {
+  fill: none;
+  stroke: var(--map-ink);
+  stroke-width: 6px;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+:root[data-stil="natt"] .tallet__glow {
+  filter: drop-shadow(
+    0 0 12px color-mix(in srgb, var(--map-answer) 40%, transparent)
+  );
+}
+
+/*
+ * Click 1: the number travels, the unit lights alone, then the dots drop
+ * into the field in counting order, 30 ms a column. Done in about 2.15 s.
+ * Click 2: the eleven drop in, and the pen goes round them, in 1.2 s.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .tallet[data-motion] .tallet__number {
+    transition: transform 560ms var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"])
+    .tallet[data-motion]
+    .tallet__period[data-revealed] {
+    animation: tallet-fade 400ms var(--deck-easing) 420ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .tallet[data-motion]
+    .tallet__unit[data-revealed]
+    .tallet__dot {
+    animation: tallet-unit 300ms var(--deck-easing) 380ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .tallet[data-motion]
+    .tallet__unit-label[data-revealed] {
+    animation: tallet-fade 300ms var(--deck-easing) 380ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .tallet[data-motion]
+    .tallet__labels[data-revealed] {
+    animation: tallet-fade 400ms var(--deck-easing) 700ms backwards;
+  }
+
+  /* Each dot drops onto the one under it: a column at a time, counting. */
+  :root:not([data-stil="papir"])
+    .tallet[data-motion]
+    .tallet__field[data-revealed]
+    .tallet__dot {
+    animation: tallet-drop 340ms var(--deck-easing) backwards;
+    animation-delay: calc(760ms + var(--n) * 3ms + var(--block) * 80ms);
+  }
+
+  :root:not([data-stil="papir"])
+    .tallet[data-motion]
+    .tallet__modia-labels[data-revealed] {
+    animation: tallet-fade 300ms var(--deck-easing) backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .tallet[data-motion]
+    .tallet__modia[data-revealed]
+    .tallet__dot {
+    animation: tallet-drop 380ms var(--deck-easing) backwards;
+    animation-delay: calc(var(--n) * 30ms);
+  }
+
+  /* Then the pen goes round them. */
+  :root:not([data-stil="papir"])
+    .tallet[data-motion]
+    .tallet__ring[data-revealed]
+    rect {
+    animation: tallet-ring 640ms var(--deck-easing-travel) 520ms backwards;
+  }
+}
+
+@keyframes tallet-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-40px);
+  }
+
+  45% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes tallet-ring {
+  from {
+    stroke-dashoffset: 1;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes tallet-unit {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+
+  55% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes tallet-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * oppfolgingsplanen-intro: the old plan, the new plan, and the same
+ * questions in both. Thin and dim for what was, solid for what is.
+ */
+.opp-intro__paper {
+  stroke-width: 6px;
+  stroke-linejoin: round;
+}
+
+.opp-intro__line {
+  stroke-width: 10px;
+  stroke-linecap: round;
+}
+
+.opp-intro__sheet--old .opp-intro__paper {
+  fill: var(--map-paper);
+  stroke: var(--map-dim);
+}
+
+.opp-intro__sheet--old .opp-intro__fold {
+  fill: var(--map-dim);
+}
+
+.opp-intro__sheet--old .opp-intro__line {
+  stroke: var(--map-dim);
+}
+
+.opp-intro__sheet--new .opp-intro__paper {
+  fill: var(--map-ink);
+  stroke: var(--map-ink);
+}
+
+.opp-intro__sheet--new .opp-intro__fold {
+  fill: color-mix(in srgb, var(--map-ink) 55%, var(--map-paper));
+}
+
+.opp-intro__sheet--new .opp-intro__line {
+  stroke: var(--map-paper);
+}
+
+/* One bubble, two tails: the same questions went to both plans. */
+.opp-intro__box {
+  fill: var(--map-paper);
+  stroke: var(--map-ink);
+  stroke-width: 6px;
+}
+
+.opp-intro__tail-fill {
+  fill: var(--map-paper);
+}
+
+.opp-intro__tail-edge {
+  fill: none;
+  stroke: var(--map-ink);
+  stroke-width: 6px;
+  stroke-linejoin: round;
+}
+
+.opp-intro__new,
+.opp-intro__bubble {
+  transform-box: fill-box;
+}
+
+.opp-intro__bubble {
+  transform-origin: 50% 100%;
+}
+
+/*
+ * Click 1: the arrow is drawn, and the new plan comes along it. Click 2:
+ * the bubble comes down over both. Each done in under 1 s.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"])
+    .opp-intro[data-motion]
+    .map
+    .opp-intro__arrow.map-line--draw {
+    transition: stroke-dashoffset 560ms var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"])
+    .opp-intro[data-motion]
+    .opp-intro__arrive[data-revealed]
+    .map-arrow__head {
+    animation: opp-fade 200ms var(--deck-easing) 420ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .opp-intro[data-motion]
+    .opp-intro__arrive[data-revealed]
+    .opp-intro__new {
+    animation: opp-intro-arrive 560ms var(--deck-easing-travel) 300ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .opp-intro[data-motion]
+    .opp-intro__bubble[data-revealed] {
+    animation: opp-intro-bubble 420ms var(--deck-easing) backwards;
+  }
+}
+
+@keyframes opp-intro-arrive {
+  from {
+    opacity: 0;
+    transform: translateX(-160px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes opp-intro-bubble {
+  from {
+    opacity: 0;
+    transform: translateY(-24px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* oppfolgingsplanen: the old and the new plan on one axis */
+
+/*
+ * Weight tells the story: the old number thin and muted, the new one
+ * black. The rings are shares, not answers, so they stay ink: a hollow dim
+ * ring for the old plan, a solid one for the new.
+ */
+.map .opp__number {
+  letter-spacing: var(--deck-tracking-display);
+}
+
+/* The gap is drawn from the old ring to the new one, so hide it until then. */
+.map .opp__after:not([data-revealed]) .opp__gap.map-line--draw {
+  visibility: hidden;
+}
+
+.opp__ring .map-station__ring {
+  fill: var(--map-ink);
+}
+
+/* Hairlines part the slide: the title, each group, and the key. */
+.opp__rule {
+  stroke: var(--map-zone-edge);
+  stroke-width: 3px;
+}
+
+/* The period after each key, quieter than the name of the plan. */
+.map .opp__period {
+  fill: var(--deck-muted);
+  font-weight: 500;
+}
+
+/* The gap is the news: a heavy line between the rings. */
+.map .opp__gap {
+  stroke-width: 24px;
+}
+
+/*
+ * Click 1: in both rows the new ring comes out from under the old one and
+ * travels to its value, drawing the gap behind it. Both arrive together,
+ * then the new numbers come. Done in about 1.4 s.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"])
+    .opp[data-motion]
+    .map
+    .opp__gap.map-line--draw {
+    transition: stroke-dashoffset 900ms var(--deck-easing-travel) 120ms;
+  }
+
+  :root:not([data-stil="papir"])
+    .opp[data-motion]
+    .opp__after[data-revealed]
+    .opp__ring {
+    animation: opp-travel 900ms var(--deck-easing-travel) 120ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .opp[data-motion]
+    .opp__after[data-revealed]
+    .opp__number--after {
+    animation: opp-fade 360ms var(--deck-easing) 920ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .opp[data-motion]
+    .opp__legend-after[data-revealed] {
+    animation: opp-fade 360ms var(--deck-easing) 1000ms backwards;
+  }
+}
+
+@keyframes opp-travel {
+  from {
+    transform: translateX(var(--travel));
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+@keyframes opp-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* ulike-behov: a fork on the line map, and the team's line in */
+
+.verktoy__title {
+  position: absolute;
+  top: 78px;
+  left: var(--deck-space-page);
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-heading);
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+/* Purple is outside Nav, blue is Lumi: the line, the ring and the name. */
+.verktoy__branch--ute {
+  --verktoy-tone: var(--farge-ute);
+}
+
+.verktoy__branch--lumi {
+  --verktoy-tone: var(--farge-lumi);
+}
+
+/* The fork is the picture here, so its lines are heavier than a map's. */
+.verktoy .map-line {
+  stroke-width: 20px;
+}
+
+.verktoy .map-station__ring {
+  stroke-width: 12px;
+}
+
+.verktoy__branch .map-line {
+  stroke: var(--verktoy-tone);
+}
+
+.verktoy__branch .map-station__ring {
+  stroke: var(--verktoy-tone);
+}
+
+.map .verktoy__name {
+  fill: var(--verktoy-tone);
+  letter-spacing: var(--deck-tracking-display);
+}
+
+/* The team's line and station, green. */
+.verktoy__team .map-line {
+  stroke: var(--farge-team);
+}
+
+.verktoy__team .map-station__ring {
+  fill: var(--farge-team);
+  stroke: var(--farge-team);
+}
+
+.verktoy__team .map-station {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.verktoy__choice {
+  position: absolute;
+  top: 900px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-size: 52px;
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: 1.12;
+}
+
+/* brukes-videre: the export formats as badges, two green lines under them */
+
+.eksport__title {
+  position: absolute;
+  top: 78px;
+  left: var(--deck-space-page);
+  margin: 0;
+  color: var(--deck-muted);
+  font-size: var(--deck-size-heading);
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+/*
+ * The formats are what Lumi gives, so they are Lumi's blue, with the
+ * stage's own colour as ink: dark on the light blue at night, white on
+ * the dark blue by day.
+ */
+.eksport__formats {
+  position: absolute;
+  top: 196px;
+  left: var(--deck-space-page);
+  display: flex;
+  gap: 32px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each format is a file: a blue sheet with its top corner folded down. */
+.eksport__format {
+  --fold: 64px;
+
+  position: relative;
+  padding: 44px 84px 28px 48px;
+  border-radius: 28px;
+  background: var(--farge-lumi);
+  color: var(--deck-bg);
+  font-family: var(--deck-font-display);
+  font-size: 150px;
+  font-weight: var(--deck-weight-black);
+  letter-spacing: var(--deck-tracking-monument);
+  line-height: 1;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--fold)) 0,
+    100% var(--fold),
+    100% 100%,
+    0 100%
+  );
+}
+
+.eksport__format::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: var(--fold);
+  height: var(--fold);
+  border-bottom-left-radius: 14px;
+  background: color-mix(in srgb, var(--farge-lumi) 55%, var(--deck-bg));
+  clip-path: polygon(0 0, 0 100%, 100% 100%);
+}
+
+.eksport__where {
+  position: absolute;
+  top: 476px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-size: var(--deck-size-body);
+  font-weight: var(--deck-weight-strong);
+}
+
+/* What the teams do with the answers: the team's green. */
+.eksport__line .map-line,
+.eksport__line .map-station__ring {
+  stroke: var(--farge-team);
+}
+
+.eksport__line .map-line {
+  stroke-width: 18px;
+}
+
+.eksport__line .map-station__ring {
+  stroke-width: 12px;
+}
+
+.eksport__line--coming .map-station__ring {
+  fill: var(--map-paper);
+}
+
+.eksport__line:not(.eksport__line--coming) .map-station__ring {
+  fill: var(--farge-team);
+}
+
+.eksport__line--coming .map-station {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* The clip that lays the dashed line, from its left end. */
+.eksport__lay {
+  transform-box: fill-box;
+  transform-origin: 0 50%;
+}
+
+/*
+ * brukes-videre: when the slide comes on, the three badges land one after
+ * the other. Click 1: the dashed line is laid a dash at a time, then its
+ * station lands and the words come.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .eksport[data-motion] .eksport__format {
+    animation: eksport-land 420ms var(--deck-easing) backwards;
+    animation-delay: calc(380ms + var(--i) * 150ms);
+  }
+
+  :root:not([data-stil="papir"])
+    .eksport[data-motion]
+    .eksport__line--coming[data-revealed]
+    .eksport__lay {
+    animation: eksport-lay 840ms steps(7, end) 120ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .eksport[data-motion]
+    .eksport__line--coming[data-revealed]
+    .map-station {
+    animation: eksport-ring 340ms var(--deck-easing) 960ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .eksport[data-motion]
+    .eksport__line--coming[data-revealed]
+    text {
+    animation: eksport-fade 380ms var(--deck-easing) 1060ms backwards;
+  }
+}
+
+@keyframes eksport-land {
+  from {
+    opacity: 0;
+    transform: translateY(-36px) scale(1.06);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes eksport-lay {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+@keyframes eksport-ring {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes eksport-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * ulike-behov, click 1: the team's line is drawn up to the fork, the
+ * station lands at its start, and the sentence comes.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"])
+    .verktoy[data-motion]
+    .map
+    .verktoy__trunk.map-line--draw {
+    transition: stroke-dashoffset 760ms var(--deck-easing-travel) 200ms;
+  }
+
+  :root:not([data-stil="papir"])
+    .verktoy[data-motion]
+    .verktoy__team[data-revealed]
+    .map-station {
+    animation: verktoy-land 360ms var(--deck-easing) backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .verktoy[data-motion]
+    .verktoy__team[data-revealed]
+    text {
+    animation: verktoy-fade 360ms var(--deck-easing) 200ms backwards;
+  }
+
+  :root:not([data-stil="papir"])
+    .verktoy[data-motion]
+    .verktoy__choice[data-revealed] {
+    animation: verktoy-fade 420ms var(--deck-easing) 760ms backwards;
+  }
+}
+
+@keyframes verktoy-land {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes verktoy-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
