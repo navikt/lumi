@@ -31,7 +31,7 @@ import {
   type SurveyQuestionV1,
   validateSurveyDocumentV1,
 } from "@navikt/lumi-survey";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildConditionSummaries } from "~/utils/conditionSummary";
 import {
   deleteFromDocument,
@@ -41,6 +41,7 @@ import {
   moveDocumentQuestion,
   orderConflict,
   placeQuestion,
+  previewAllPages,
   replaceQuestion,
   ruleLeaves,
   valueRuleDependents,
@@ -58,6 +59,7 @@ import {
 import { StageSurface } from "../StageSurface";
 import { QuestionAudience } from "./QuestionAudience";
 import styles from "./questionEditor.module.css";
+import { useBuildPreviewRun } from "./useBuildPreviewRun";
 
 interface Props {
   document: SurveyDocumentV1;
@@ -295,24 +297,13 @@ export function QuestionEditor({
       update({ ...question, options });
     }
   }
-  const selectedPreview = useMemo(
-    () => ({
-      authoringSchemaVersion: 1 as const,
-      pages: [
-        {
-          ...page,
-          questions: page.questions.map(
-            ({ visibleIf: _, ...q }) => q,
-          ) as typeof page.questions,
-        },
-      ] as SurveyDocumentV1["pages"],
-      success: document.success,
-    }),
-    [page, document.success],
+  const buildPreview = useMemo(() => previewAllPages(document), [document]);
+  // The full run tests the actual conditions and the welcome screen.
+  const previewDocument = mode === "try" ? document : buildPreview;
+  const previewKey = useMemo(
+    () => JSON.stringify(previewDocument),
+    [previewDocument],
   );
-  // This isolated presentation copy never reaches onChange/save/share. It shows
-  // every question on the selected page; the full run tests actual conditions.
-  const previewDocument = mode === "try" ? document : selectedPreview;
   const previewError = useMemo(() => {
     try {
       validateSurveyDocumentV1(previewDocument);
@@ -323,6 +314,23 @@ export function QuestionEditor({
         : "Forhåndsvisningen kunne ikke åpnes.";
     }
   }, [previewDocument]);
+  const buildRun = useBuildPreviewRun(page.id);
+  const selectedPageId = useRef(page.id);
+  selectedPageId.current = page.id;
+  const { showPage } = buildRun;
+  const followPreview = useCallback(
+    (stepIndex: number) => {
+      // Every page is visible in the build preview, so the step is the page.
+      const shown = current.current.pages[stepIndex];
+      if (!shown) return;
+      showPage(shown.id);
+      if (shown.id === selectedPageId.current) return;
+      setSelected(shown.questions[0].id);
+      setError("");
+      editSession.current = null;
+    },
+    [showPage],
+  );
   const screenValue =
     selectedScreen === "$intro" ? document.intro : document.success;
   function screenNav(
@@ -989,13 +997,19 @@ export function QuestionEditor({
               ? "Prøv som respondent"
               : selectedScreen
                 ? "Forhåndsvisning"
-                : "Forhåndsvis valgt side"}
+                : document.pages.length === 1
+                  ? "Forhåndsvis siden"
+                  : "Forhåndsvis sidene"}
           </Heading>
-          {mode === "try" && (
+          {(mode === "try" || (!selectedScreen && !previewError)) && (
             <Button
               size="small"
               variant="tertiary"
               onClick={() => {
+                if (mode === "build") {
+                  buildRun.restart();
+                  return;
+                }
                 setSkipIntro(false);
                 setRestart((n) => n + 1);
               }}
@@ -1009,7 +1023,9 @@ export function QuestionEditor({
             ? "Ingen svar sendes. Prøv også å gå tilbake og endre svar."
             : selectedScreen
               ? "Slik blir teksten på siden."
-              : "Viser alle spørsmålene på denne siden. Prøv hele undersøkelsen for å kontrollere hvem som får dem."}
+              : document.pages.length === 1
+                ? "Viser alle spørsmålene på siden. Prøv hele undersøkelsen for å se hvem som får hva."
+                : "Starter på valgt side og viser alle spørsmålene på hver side. Prøv hele undersøkelsen for å se hvem som får hva."}
         </Detail>
         {mode === "build" && selectedScreen ? (
           <VStack gap="space-16">
@@ -1040,8 +1056,8 @@ export function QuestionEditor({
           <StageSurface
             roomy
             document={previewDocument}
-            instanceKey={JSON.stringify(previewDocument)}
-            nonce={restart}
+            instanceKey={previewKey}
+            nonce={mode === "build" ? buildRun.run : restart}
             surveyId={`verksted-preview-${surveyId}`}
             environmentTag="survey-workshop-editor"
             initialPageId={
@@ -1051,7 +1067,9 @@ export function QuestionEditor({
                   ? document.pages[0].id
                   : undefined
             }
+            restartOnPageChange={mode === "try"}
             showProgress={mode === "try"}
+            onStepChange={mode === "build" ? followPreview : undefined}
             successTitle="Takk for svaret"
             successBody="Ingen svar ble sendt."
           />

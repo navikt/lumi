@@ -14,7 +14,7 @@ I Surveyverksted kan dere vise et spørsmål bare til brukere som har gitt et be
    Er spørsmålet en vurdering, velger dere i stedet hvilke vurderinger som skal følges opp, under **Legg til oppfølgingsspørsmål**. Eksempler er **Ved lavt svar (1–2)** og **Ved tommel ned**.
 3. Skriv spørsmålet under **Spørsmålstekst**. Det nye spørsmålet er et fritekstspørsmål, og under **Hvordan skal de svare?** kan dere velge en annen svartype.
 
-Oppfølgingsspørsmålet får en egen side rett etter spørsmålet det følger opp. I lista **Spørsmål** står regelen under spørsmålet, og den begynner med «Vises når». Velg **Prøv hele undersøkelsen**, gi svaret regelen krever, og sjekk at oppfølgingsspørsmålet kommer. Forhåndsvisningen av én side viser alle spørsmålene på siden, også dem som har en regel.
+Oppfølgingsspørsmålet får en egen side rett etter spørsmålet det følger opp. I lista **Spørsmål** står regelen under spørsmålet, og den begynner med «Vises når». Velg **Prøv hele undersøkelsen**, gi svaret regelen krever, og sjekk at oppfølgingsspørsmålet kommer. Mens dere redigerer, viser forhåndsvisningen alle spørsmålene, også dem som har en regel. Den starter på siden dere har valgt, og **Neste** går videre til neste side.
 
 ## Endre hvem som får et spørsmål
 

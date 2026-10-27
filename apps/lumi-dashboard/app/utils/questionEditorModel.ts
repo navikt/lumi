@@ -125,6 +125,26 @@ export function joinedQuestions(pages: QuestionPages) {
   );
 }
 
+/**
+ * Presentation copy for the build preview: every page in authored order with
+ * every question, conditions removed, so «Neste» walks the whole layout and
+ * «Send» first appears on the last page. Leaves out the survey type and the
+ * welcome screen: the stage opens straight on a page, and only questions
+ * marked required block «Neste». Never reaches onChange, save or share.
+ */
+export function previewAllPages(document: SurveyDocumentV1): SurveyDocumentV1 {
+  return {
+    authoringSchemaVersion: 1,
+    pages: document.pages.map((page) => ({
+      ...page,
+      questions: page.questions.map(
+        ({ visibleIf: _, ...question }) => question,
+      ) as SurveyPageV1["questions"],
+    })) as SurveyDocumentV1["pages"],
+    success: document.success,
+  };
+}
+
 // Document operations retain page identities/headings and never rewrite conditions.
 export function replaceQuestion(
   document: SurveyDocumentV1,
