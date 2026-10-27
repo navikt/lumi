@@ -2,12 +2,10 @@ import type { Room, Slide } from "./types";
 
 export const ROOM_PARAM = "rom";
 
-/** The rooms, in the order the front page lists them. */
-export const ROOMS: readonly Room[] = [
-  "faggruppa",
-  "frontend",
-  "produktledere",
-];
+const ROOMS: readonly Room[] = ["faggruppa", "frontend", "produktledere"];
+
+/** The talk the address without `?rom` shows. */
+const DEFAULT_ROOM: Room = "faggruppa";
 
 function isRoom(value: string | null): value is Room {
   return value !== null && (ROOMS as readonly string[]).includes(value);
@@ -17,6 +15,15 @@ function isRoom(value: string | null): value is Room {
 export function readRoom(search: string): Room | null {
   const value = new URLSearchParams(search).get(ROOM_PARAM);
   return isRoom(value) ? value : null;
+}
+
+/**
+ * The room whose slides the address shows: the one in `?rom`, and the
+ * talk for faggruppa without `?rom`. An unknown room means every slide.
+ */
+export function roomForSlides(search: string): Room | null {
+  if (!new URLSearchParams(search).has(ROOM_PARAM)) return DEFAULT_ROOM;
+  return readRoom(search);
 }
 
 /**

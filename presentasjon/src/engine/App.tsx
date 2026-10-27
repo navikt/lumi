@@ -2,16 +2,16 @@ import { useEffect } from "react";
 import { Deck } from "./Deck";
 import { PrintView } from "./PrintView";
 import type { Slide } from "./types";
-import type { DeckView } from "./viewMode";
+import type { ViewMode } from "./viewMode";
 
-const TITLES: Record<DeckView, string> = {
+const TITLES: Record<ViewMode, string> = {
   audience: "Lumi",
   print: "Lumi til utskrift",
 };
 
 interface AppProps {
   slides: readonly Slide[];
-  view: DeckView;
+  view: ViewMode;
 }
 
 export function App({ slides, view }: AppProps) {

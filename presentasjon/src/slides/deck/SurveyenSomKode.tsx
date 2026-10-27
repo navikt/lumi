@@ -227,7 +227,7 @@ function SurveyenSomKode() {
 export const surveyenSomKode: Slide = {
   id: "surveyen-som-kode",
   title: "Utvikleren får surveyen som kode",
-  rooms: ["faggruppa", "frontend"],
+  rooms: ["frontend"],
   steps: 2,
   Component: SurveyenSomKode,
 };

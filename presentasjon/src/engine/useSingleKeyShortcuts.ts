@@ -4,9 +4,9 @@ import { readRoom } from "./rooms";
 const STORAGE_KEY = "lumi-presentasjon:hurtigtaster-en-tast";
 
 /**
- * The choice is kept apart for the deck with every slide and the talks, so
- * turning the keys off while looking at every slide never takes them from
- * the speaker.
+ * The choice is kept apart for the shared link and the links with `?rom`,
+ * so turning the keys off while looking at the shared link never takes
+ * them from the speaker.
  */
 function storageKey(withRoom: boolean): string {
   return `${STORAGE_KEY}:${withRoom ? "rom" : "lenke"}`;
@@ -39,8 +39,8 @@ export interface SingleKeyShortcuts {
 /**
  * Shortcuts on one character key: digits, G, O, F, B, ".", P and "?".
  * Speech input can set them off by accident (WCAG 2.1.4), so they are off
- * in the deck with every slide and on in a talk's room, where it is given.
- * The choice is remembered, and windows of the same deck follow each other.
+ * on the shared link and on with `?rom`, where the talk is given. The
+ * choice is remembered, and windows of the same deck follow each other.
  */
 export function useSingleKeyShortcuts(): SingleKeyShortcuts {
   const [withRoom] = useState(() => readRoom(window.location.search) !== null);
