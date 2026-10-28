@@ -460,7 +460,7 @@
 
 /* The cover is calm. The weather comes when the camera pulls back. */
 .snokula[data-scene="1"][data-steg="0"]
-:is(.regn, .vind, .lyn, .taake-bak, .taake-foran) {
+  :is(.regn, .vind, .lyn, .taake-bak, .taake-foran) {
   opacity: 0;
 }
 

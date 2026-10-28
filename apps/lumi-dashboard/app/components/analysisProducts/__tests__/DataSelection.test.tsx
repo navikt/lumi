@@ -8,6 +8,7 @@ import { catalog, document } from "./fixtures";
 afterEach(cleanup);
 function renderSelection(initial: AnalysisDocument) {
   let latest = initial;
+  // biome-ignore lint/correctness/noComponentHookFactories: Created once per test, outside React rendering, to isolate its state.
   function Harness() {
     const [value, setValue] = useState(initial);
     latest = value;

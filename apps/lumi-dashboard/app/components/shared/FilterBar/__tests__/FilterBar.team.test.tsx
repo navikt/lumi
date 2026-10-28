@@ -379,6 +379,7 @@ describe("FilterBar access errors", () => {
   it("keeps the page visible and does not retry when the database is unavailable", async () => {
     const fetchPageData = vi.fn().mockResolvedValue({ items: [] });
     // Like the pages: its own query, hidden only while team access is denied.
+    // biome-ignore lint/correctness/noComponentHookFactories: Created once per test, outside React rendering, to isolate its state.
     function Page() {
       const teamAccessDenied = useTeamAccessDenied();
       const pageQuery = useQuery({
@@ -426,6 +427,7 @@ describe("FilterBar access errors", () => {
     const user = userEvent.setup();
     const fetchPageData = vi.fn();
     // Like the pages: its own query, hidden while FilterBar explains the error.
+    // biome-ignore lint/correctness/noComponentHookFactories: Created once per test, outside React rendering, to isolate its state.
     function Page() {
       const teamAccessDenied = useTeamAccessDenied();
       const pageQuery = useQuery({

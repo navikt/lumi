@@ -110,6 +110,7 @@ describe("OptionsEditor", () => {
   it("commits value edits to the draft on every keystroke", async () => {
     // Controlled contract: the parent feeds committed values back in,
     // exactly like the editor's draft does.
+    // biome-ignore lint/correctness/noComponentHookFactories: Created once per test, outside React rendering, to isolate its state.
     function Harness() {
       const [current, setCurrent] = useState(options);
       return (

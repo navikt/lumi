@@ -204,11 +204,13 @@ describe("ThemeProvider during hydration", () => {
     const routeError = new Error("The route failed");
     let inBrowser = false;
 
+    // biome-ignore lint/correctness/noComponentHookFactories: Created once per test, outside React rendering, to isolate its state.
     function FailingRoute(): ReactNode {
       if (inBrowser) throw routeError;
       return <p>En uventet feil oppstod</p>;
     }
 
+    // biome-ignore lint/correctness/noComponentHookFactories: Created once per test, outside React rendering, to isolate its state.
     class RouteErrorBoundary extends Component<
       { children: ReactNode },
       { failed: boolean }

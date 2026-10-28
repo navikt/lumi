@@ -80,6 +80,7 @@ function makeDocument(
 function renderEditor(initial = makeDocument(choice, followup)) {
   const onChange = vi.fn<(document: SurveyDocumentV1) => void>();
   const onAdvanced = vi.fn();
+  // biome-ignore lint/correctness/noComponentHookFactories: Created once per test, outside React rendering, to isolate its state.
   function ControlledEditor() {
     const [document, setDocument] = useState(initial);
     return (

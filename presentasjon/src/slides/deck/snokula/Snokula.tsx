@@ -188,6 +188,7 @@ function kapittel(
   label: string,
   naerbilde = false,
 ): Slide {
+  // biome-ignore lint/correctness/noComponentHookFactories: Slides are created once at module initialization, outside React rendering.
   function Kapittel({ step, active }: SlideProps) {
     return (
       <Snokula
