@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 export const TEXT_REDACTION_PLACEHOLDER = "[TEKST FJERNET]";
+// Match TextProcessor's marker definition, including Java Regex's ASCII whitespace.
+const REDACTION_MARKER_PATTERN = /\[[A-ZÆØÅ][A-ZÆØÅ \t\n\v\f\r-]+\]/g;
 export const TextRedactionRangeSchema = z
   .object({
     start: z.number().int().min(0),
@@ -62,6 +64,7 @@ export function redactTextPreview(
 ): string {
   let offset = 0;
   let result = "";
+  const markers = [...text.matchAll(REDACTION_MARKER_PATTERN)];
   for (const range of [...ranges].sort((a, b) => a.start - b.start)) {
     if (
       !TextRedactionRangeSchema.safeParse(range).success ||
@@ -72,6 +75,20 @@ export function redactTextPreview(
     ) {
       throw new Error(
         "Marker en gyldig del av teksten. Hele tegn må være med.",
+      );
+    }
+    if (
+      markers.some((marker) => {
+        const start = marker.index;
+        const end = start + marker[0].length;
+        return (
+          (range.start > start && range.start < end) ||
+          (range.end > start && range.end < end)
+        );
+      })
+    ) {
+      throw new Error(
+        "Marker hele den eksisterende maskeringen, eller velg tekst utenfor den.",
       );
     }
     result += text.slice(offset, range.start) + TEXT_REDACTION_PLACEHOLDER;
