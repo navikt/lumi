@@ -123,7 +123,8 @@ object TestDatabase {
                         "analysis_control.analysis_sources, " +
                         "rating_marker, feedback, survey_definitions, survey_metadata, " +
                         "survey_authoring_revisions, survey_authoring_projects, " +
-                        "feedback_retention_job_state, bigquery_export.destinations, bigquery_export.team_runs CASCADE"
+                        "feedback_retention_job_state, bigquery_export.destinations, bigquery_export.team_runs, " +
+                        "feedback_redaction.team_state CASCADE"
                 )
                 stmt.execute(
                     "ALTER TABLE analysis_control.analysis_product_audit_events " +
