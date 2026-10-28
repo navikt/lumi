@@ -6,9 +6,11 @@ import { RenderAnswer } from "./AnswerRenderer";
 export function TimelineView({
   answers,
   styles,
+  onRedact,
 }: {
   answers: Answer[];
   styles: Record<string, string>;
+  onRedact?: (answer: Answer) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [lines, setLines] = useState<{ top: number; height: number }[]>([]);
@@ -77,7 +79,11 @@ export function TimelineView({
           <div className={`${styles.answerNumber} js-answer-number`}>
             {index + 1}
           </div>
-          <RenderAnswer answer={answer} styles={styles} />
+          <RenderAnswer
+            answer={answer}
+            styles={styles}
+            onRedact={onRedact ? () => onRedact(answer) : undefined}
+          />
         </div>
       ))}
     </div>
