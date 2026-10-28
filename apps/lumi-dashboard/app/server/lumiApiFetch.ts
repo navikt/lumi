@@ -1,4 +1,5 @@
 import { HttpStatusError } from "~/server/serverFnStatus";
+import { LUMI_API_WRITE_TIMEOUT_MESSAGE } from "~/utils/apiErrorMessages";
 
 export const LUMI_API_TIMEOUT_MS = 30_000;
 export const LUMI_API_LONG_TIMEOUT_MS = 150_000;
@@ -11,7 +12,7 @@ export class LumiApiTimeoutError extends HttpStatusError {
       504,
       read
         ? "Lumi API brukte for lang tid. Prøv igjen om litt."
-        : "Lumi API brukte for lang tid. Endringen kan ha blitt lagret. Last siden på nytt før du prøver igjen.",
+        : LUMI_API_WRITE_TIMEOUT_MESSAGE,
     );
     this.name = "LumiApiTimeoutError";
   }

@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DeleteFeedbackDialog } from "~/components/feedback/DeleteFeedbackDialog";
 import { TagEditor } from "~/components/feedback/TagEditor";
+import { LUMI_API_WRITE_TIMEOUT_MESSAGE } from "~/utils/apiErrorMessages";
 import {
   PUBLIC_DEMO_READ_ONLY_MESSAGE,
   PUBLIC_DEMO_READ_ONLY_TEXT,
@@ -31,6 +32,20 @@ beforeEach(() => {
 });
 
 describe("TagEditor", () => {
+  it("asks the user to reload instead of claiming a timed-out write was not saved", () => {
+    tagHooks.add.isError = true;
+    tagHooks.add.error = new Error(LUMI_API_WRITE_TIMEOUT_MESSAGE);
+
+    render(<TagEditor id="feedback-1" currentTags={[]} compact />);
+
+    expect(
+      screen.getByText(LUMI_API_WRITE_TIMEOUT_MESSAGE),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Taggen ble ikke lagret. Prøv igjen."),
+    ).not.toBeInTheDocument();
+  });
+
   it("says the demo does not save tags when the demo refuses", () => {
     tagHooks.add.isError = true;
     tagHooks.add.error = new Error(PUBLIC_DEMO_READ_ONLY_MESSAGE);
