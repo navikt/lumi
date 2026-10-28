@@ -6,6 +6,9 @@ import java.security.MessageDigest
 
 const val MANUAL_REDACTION_PLACEHOLDER = "[TEKST FJERNET]"
 
+// Keep the marker definition aligned with TextProcessor's excluded redaction markers.
+private val redactionMarkerRegex = Regex("\\[[A-ZÆØÅ][A-ZÆØÅ\\s-]+]")
+
 @Serializable
 data class TextRedactionRange(val start: Int, val end: Int)
 
@@ -28,10 +31,15 @@ internal fun textRedactionHash(text: String): String = MessageDigest.getInstance
 /** Browser textarea selections and Kotlin substrings both use UTF-16 offsets. */
 internal fun redactTextRanges(text: String, ranges: List<TextRedactionRange>): String {
     val sorted = ranges.sortedBy { it.start }
+    val markers = redactionMarkerRegex.findAll(text).map { it.range }.toList()
     var previousEnd = 0
     for (range in sorted) {
         if (range.start < previousEnd || range.end <= range.start || range.end > text.length ||
-            splitsSurrogatePair(text, range.start) || splitsSurrogatePair(text, range.end)
+            splitsSurrogatePair(text, range.start) || splitsSurrogatePair(text, range.end) ||
+            markers.any { marker ->
+                (range.start > marker.first && range.start <= marker.last) ||
+                    (range.end > marker.first && range.end <= marker.last)
+            }
         ) invalidRedaction()
         previousEnd = range.end
     }

@@ -4,6 +4,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import no.nav.lumi.config.exception.ApiErrorException
+import no.nav.lumi.service.TextProcessor
 
 class FeedbackRedactionTest : FunSpec({
     test("only selected spans are replaced, including repeated names and line breaks") {
@@ -19,6 +20,42 @@ class FeedbackRedactionTest : FunSpec({
 
     test("UTF-16 offsets preserve emoji outside the selection") {
         redactTextRanges("🙂 Ola", listOf(TextRedactionRange(3, 6))) shouldBe "🙂 [TEKST FJERNET]"
+    }
+
+    test("selections cannot split existing redaction markers") {
+        listOf("[E-POST FJERNET]", "[FØDSELSNUMMER FJERNET]", "[HEMMELIG ADRESSE]", "[TEKST FJERNET]").forEach { marker ->
+            val text = "Bra $marker skjema"
+            val start = text.indexOf(marker)
+            val end = start + marker.length
+            listOf(
+                TextRedactionRange(start + 1, end - 1),
+                TextRedactionRange(end - 8, end - 1),
+                TextRedactionRange(0, end - 1),
+                TextRedactionRange(start + 1, text.length),
+                TextRedactionRange(start, start + 1),
+                TextRedactionRange(end - 1, end),
+            ).forEach { range ->
+                shouldThrow<ApiErrorException.BadRequestException> { redactTextRanges(text, listOf(range)) }
+            }
+        }
+    }
+
+    test("whole markers can be replaced without leaking marker words into analysis") {
+        val text = "Bra [E-POST FJERNET] skjema"
+        val start = text.indexOf('[')
+        val end = text.indexOf(']') + 1
+        val redacted = redactTextRanges(text, listOf(TextRedactionRange(start, end)))
+        redacted shouldBe "Bra [TEKST FJERNET] skjema"
+        TextProcessor.tokenize(redacted) shouldBe listOf("bra", "skjema")
+        redactTextRanges(text, listOf(TextRedactionRange(0, end))) shouldBe "[TEKST FJERNET] skjema"
+    }
+
+    test("normal text and emoji around intact markers keep their original offsets") {
+        val text = "🙂 Ola\r\n[E-POST FJERNET]\r\nMvh Kari"
+        redactTextRanges(text, listOf(TextRedactionRange(3, 6), TextRedactionRange(text.indexOf("Kari"), text.length))) shouldBe
+            "🙂 [TEKST FJERNET]\r\n[E-POST FJERNET]\r\nMvh [TEKST FJERNET]"
+        redactTextRanges("[vanlig tekst] Ola", listOf(TextRedactionRange(1, 7))) shouldBe
+            "[[TEKST FJERNET] tekst] Ola"
     }
 
     test("invalid, overlapping and split surrogate ranges are rejected") {
