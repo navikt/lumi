@@ -40,6 +40,12 @@ export interface StageSurfaceProps {
   surveyId: string;
   environmentTag: string;
   initialPageId?: string;
+  /**
+   * Restart the respondent when initialPageId changes. Turn it off when the
+   * parent moves initialPageId along with the respondent: the dock then
+   * keeps running and only starts on that page after a remount or a reset.
+   */
+  restartOnPageChange?: boolean;
   /** Show the respondent view at normal text size, with room for longer pages. */
   roomy?: boolean;
   showProgress?: boolean;
@@ -52,6 +58,11 @@ export interface StageSurfaceProps {
    * map whenever the dock remounts (document edit, page switch, restart).
    */
   onAnswersChange?: (answers: Record<string, LumiSurveyAnswerValue>) => void;
+  /**
+   * Reports the 0-based index among visible pages each time the respondent
+   * reaches another page, and when the dock mounts. Multi-page documents only.
+   */
+  onStepChange?: (visibleStepIndex: number) => void;
 }
 
 /**
@@ -65,12 +76,14 @@ export const StageSurface = memo(function StageSurface({
   surveyId,
   environmentTag,
   initialPageId,
+  restartOnPageChange = true,
   roomy = false,
   showProgress = true,
   nonce = 0,
   successTitle,
   successBody,
   onAnswersChange,
+  onStepChange,
 }: StageSurfaceProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({
@@ -106,9 +119,10 @@ export const StageSurface = memo(function StageSurface({
   const innerHeight = Math.round(viewport.height / scale);
   const panelMaxHeight = `${Math.max(280, innerHeight - DOCK_OFFSET * 2 - 8)}px`;
 
+  const restartPageId = restartOnPageChange ? (initialPageId ?? "") : "";
   const dockKey = useMemo(
-    () => `${instanceKey}:${initialPageId ?? ""}:${nonce}`,
-    [instanceKey, initialPageId, nonce],
+    () => `${instanceKey}:${restartPageId}:${nonce}`,
+    [instanceKey, restartPageId, nonce],
   );
 
   // Live answer mirror: the dock owns the respondent state; the editor only
@@ -139,9 +153,18 @@ export const StageSurface = memo(function StageSurface({
     answersRef.current = {};
     onAnswersChangeRef.current?.({});
   }, []);
+  const onStepChangeRef = useRef(onStepChange);
+  onStepChangeRef.current = onStepChange;
+  const handleStepChange = useCallback((visibleStepIndex: number) => {
+    onStepChangeRef.current?.(visibleStepIndex);
+  }, []);
   const dockEvents = useMemo(
-    () => ({ onAnswer: handleAnswer, onReset: handleReset }),
-    [handleAnswer, handleReset],
+    () => ({
+      onAnswer: handleAnswer,
+      onReset: handleReset,
+      onStepChange: handleStepChange,
+    }),
+    [handleAnswer, handleReset, handleStepChange],
   );
 
   return (

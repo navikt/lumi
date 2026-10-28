@@ -124,6 +124,101 @@ describe("StageSurface respondent viewport", () => {
     expect(observers.has(viewport)).toBe(false);
   });
 
+  it("reports each page the respondent reaches, from the requested start", async () => {
+    const user = userEvent.setup();
+    const onStepChange = vi.fn();
+    const { rerender } = render(
+      <StageSurface {...props} roomy onStepChange={onStepChange} />,
+    );
+    expect(
+      await screen.findByRole("textbox", { name: /Hva fungerte/ }),
+    ).toBeInTheDocument();
+    expect(onStepChange).toHaveBeenLastCalledWith(0);
+
+    await user.click(screen.getByRole("button", { name: "Neste" }));
+    expect(
+      await screen.findByRole("textbox", { name: /Hva kan bli bedre/ }),
+    ).toBeInTheDocument();
+    expect(onStepChange).toHaveBeenLastCalledWith(1);
+    expect(screen.getByRole("button", { name: "Send" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Tilbake" }));
+    expect(onStepChange).toHaveBeenLastCalledWith(0);
+
+    onStepChange.mockClear();
+    rerender(
+      <StageSurface
+        {...props}
+        roomy
+        initialPageId="second"
+        onStepChange={onStepChange}
+      />,
+    );
+    expect(
+      await screen.findByRole("textbox", { name: /Hva kan bli bedre/ }),
+    ).toBeInTheDocument();
+    expect(onStepChange).toHaveBeenCalledExactlyOnceWith(1);
+  });
+
+  it("keeps the respondent when a following parent moves the page, and resets to that page on close", async () => {
+    const user = userEvent.setup();
+    const onStepChange = vi.fn();
+    const following = (initialPageId: string) => (
+      <StageSurface
+        {...props}
+        roomy
+        restartOnPageChange={false}
+        initialPageId={initialPageId}
+        onStepChange={onStepChange}
+      />
+    );
+    const { rerender } = render(following("first"));
+    await user.type(
+      await screen.findByRole("textbox", { name: /Hva fungerte/ }),
+      "God informasjon",
+    );
+    await user.click(screen.getByRole("button", { name: "Neste" }));
+    expect(onStepChange).toHaveBeenLastCalledWith(1);
+
+    rerender(following("second"));
+    await user.click(screen.getByRole("button", { name: "Tilbake" }));
+    expect(screen.getByRole("textbox", { name: /Hva fungerte/ })).toHaveValue(
+      "God informasjon",
+    );
+    await user.click(screen.getByRole("button", { name: "Neste" }));
+
+    onStepChange.mockClear();
+    await user.click(screen.getByRole("button", { name: "Lukk" }));
+    await user.click(screen.getByRole("button", { name: "Gi tilbakemelding" }));
+    expect(
+      await screen.findByRole("textbox", { name: /Hva kan bli bedre/ }),
+    ).toBeInTheDocument();
+    expect(onStepChange).not.toHaveBeenCalled();
+    // A fresh respondent: the reset page is the start, with nothing behind it.
+    expect(
+      screen.queryByRole("button", { name: "Tilbake" }),
+    ).not.toBeInTheDocument();
+
+    // A new nonce still restarts the respondent on the current page.
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(
+      await screen.findByRole("heading", { name: "Takk" }),
+    ).toBeInTheDocument();
+    rerender(
+      <StageSurface
+        {...props}
+        roomy
+        restartOnPageChange={false}
+        initialPageId="second"
+        nonce={1}
+        onStepChange={onStepChange}
+      />,
+    );
+    expect(
+      await screen.findByRole("textbox", { name: /Hva kan bli bedre/ }),
+    ).toHaveValue("");
+    expect(onStepChange).toHaveBeenLastCalledWith(1);
+  });
+
   it("allows the editor to hide progress while retaining the default for other previews", async () => {
     const { rerender } = render(<StageSurface {...props} />);
     expect(

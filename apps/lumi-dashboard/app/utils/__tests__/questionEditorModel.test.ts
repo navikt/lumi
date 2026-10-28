@@ -15,6 +15,7 @@ import {
   moveDocumentQuestion,
   orderConflict,
   placeQuestion,
+  previewAllPages,
   replaceQuestion,
   sources,
   valueRuleDependents,
@@ -122,6 +123,63 @@ describe("value rule dependents", () => {
         "choice",
       ).map((question) => question.id),
     ).toEqual(["followup", "anyValue"]);
+  });
+});
+
+describe("build preview of all pages", () => {
+  it("keeps every page and question in order with every condition removed", () => {
+    const required = { ...choice, required: true };
+    const metadataGated = text("metadataGated", {
+      field: "METADATA",
+      key: "app",
+      operator: "EQ",
+      value: "modia",
+    });
+    const before = {
+      ...document(
+        page("first", [required, followup], "Første"),
+        page("second", [nested]),
+        page("third", [metadataGated]),
+      ),
+      type: "rating" as const,
+    };
+    const snapshot = structuredClone(before);
+
+    const preview = previewAllPages(before);
+
+    expect(before).toEqual(snapshot);
+    expect(preview.pages.map((item) => item.id)).toEqual([
+      "first",
+      "second",
+      "third",
+    ]);
+    expect(questionIds(preview)).toEqual(questionIds(before));
+    expect(
+      preview.pages.flatMap((item) => item.questions).map((q) => q.visibleIf),
+    ).toEqual([undefined, undefined, undefined, undefined]);
+    expect(preview.pages[0]).toMatchObject({
+      title: "Første",
+      description: "Hjelpetekst for Første",
+    });
+    expect(preview.pages[0].questions[0]).toMatchObject({ required: true });
+    expect(preview.pages[0].questions[1]).toEqual(
+      (({ visibleIf: _, ...rest }) => rest)(followup),
+    );
+    expect(preview.success).toEqual(before.success);
+    expect(preview).not.toHaveProperty("type");
+    expect(preview).not.toHaveProperty("intro");
+    expect(validateSurveyDocumentV1(preview)).toBe(preview);
+  });
+
+  it("accepts a document without a thank-you screen", () => {
+    const { success: _, ...withoutSuccess } = document(
+      page("only", [text("a")]),
+    );
+
+    const preview = previewAllPages(withoutSuccess);
+
+    expect(preview.success).toBeUndefined();
+    expect(() => validateSurveyDocumentV1(preview)).not.toThrow();
   });
 });
 

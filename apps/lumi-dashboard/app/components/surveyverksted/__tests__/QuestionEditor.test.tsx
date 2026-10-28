@@ -5,10 +5,10 @@ import {
   type SurveyDocumentV1,
   type SurveyQuestionV1,
 } from "@navikt/lumi-survey";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { surveyTemplates } from "~/routes/surveyverksted.index";
 import {
   findHandoffIssues,
@@ -16,12 +16,31 @@ import {
   SURVEY_TEMPLATE_PLACEHOLDER_OPTION_VALUE,
 } from "~/utils/surveyDocument";
 import { QuestionEditor } from "../QuestionEditor/QuestionEditor";
+import type { StageSurfaceProps } from "../StageSurface";
 
 // The respondent widget has its own interaction suite; these tests exercise
 // controlled author edits and safeguards, independent of its viewport renderer.
-vi.mock("../StageSurface", () => ({
-  StageSurface: () => <div>Respondentvisning</div>,
+// The stand-in keeps the props it was last given, so tests can read what the
+// preview shows and report page changes the way the widget does.
+const stage = vi.hoisted(() => ({
+  latest: undefined as StageSurfaceProps | undefined,
 }));
+vi.mock("../StageSurface", () => ({
+  StageSurface: (props: StageSurfaceProps) => {
+    stage.latest = props;
+    return <div>Respondentvisning</div>;
+  },
+}));
+function stageProps() {
+  if (!stage.latest) throw new Error("The preview is not shown");
+  return stage.latest;
+}
+function showPreviewStep(index: number) {
+  act(() => stageProps().onStepChange?.(index));
+}
+beforeEach(() => {
+  stage.latest = undefined;
+});
 
 const choice: SurveyQuestionV1 = {
   id: "choice",
@@ -188,6 +207,181 @@ describe("QuestionEditor controlled editing", () => {
     });
     await userEvent.click(screen.getByRole("button", { name: "Angre" }));
     expect(onChange.mock.calls.at(-1)?.[0]).toEqual(initial);
+  });
+});
+
+describe("QuestionEditor build preview", () => {
+  const rest: SurveyQuestionV1 = {
+    id: "rest",
+    type: "text",
+    prompt: "Er det noe mer du vil si?",
+    maxLength: 1000,
+  };
+  // With restartOnPageChange off, only these remount the respondent.
+  function restartKey() {
+    const { instanceKey, nonce } = stageProps();
+    return { instanceKey, nonce };
+  }
+  async function afterEditorFocusFrame() {
+    await act(
+      () => new Promise((resolve) => requestAnimationFrame(() => resolve(0))),
+    );
+  }
+
+  it("previews every page from the selected one with every question", () => {
+    renderEditor(makeDocument(choice, followup, rest));
+    expect(
+      screen.getByRole("heading", { name: "Forhåndsvis sidene" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Starter på valgt side og viser alle spørsmålene på hver side. Prøv hele undersøkelsen for å se hvem som får hva.",
+      ),
+    ).toBeInTheDocument();
+    const { document, initialPageId, restartOnPageChange } = stageProps();
+    expect(document.pages.map((page) => page.id)).toEqual([
+      "page-choice",
+      "page-followup",
+      "page-rest",
+    ]);
+    expect(document.pages[1].questions[0]).toEqual({
+      id: followup.id,
+      type: followup.type,
+      prompt: followup.prompt,
+      maxLength: 1000,
+    });
+    expect(document.pages[0].questions[0]).toMatchObject({ required: true });
+    expect(initialPageId).toBe("page-choice");
+    expect(restartOnPageChange).toBe(false);
+  });
+
+  it("names a single page without promising more", () => {
+    renderEditor(makeDocument(choice));
+    expect(
+      screen.getByRole("heading", { name: "Forhåndsvis siden" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Viser alle spørsmålene på siden. Prøv hele undersøkelsen for å se hvem som får hva.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("lets the outline follow the respondent without restarting the preview or moving focus", async () => {
+    renderEditor(makeDocument(choice, followup, rest));
+    const started = restartKey();
+
+    showPreviewStep(1);
+    expect(editor().getByLabelText("Spørsmålstekst")).toHaveValue(
+      followup.prompt,
+    );
+    expect(
+      screen.getAllByRole("button", {
+        name: `Spørsmål 2 · ${followup.prompt}`,
+      })[0],
+    ).toHaveAttribute("aria-current", "step");
+    // A reset (closing the dock) starts on the page the author is on.
+    expect(stageProps().initialPageId).toBe("page-followup");
+    await afterEditorFocusFrame();
+    expect(document.body).toHaveFocus();
+    showPreviewStep(2);
+    expect(editor().getByLabelText("Spørsmålstekst")).toHaveValue(rest.prompt);
+    // «Tilbake» in the preview.
+    showPreviewStep(1);
+    expect(editor().getByLabelText("Spørsmålstekst")).toHaveValue(
+      followup.prompt,
+    );
+    expect(restartKey()).toEqual(started);
+  });
+
+  it("keeps the selected question when the preview shows its page", async () => {
+    const second: SurveyQuestionV1 = {
+      id: "second",
+      type: "text",
+      prompt: "Hva gikk bra?",
+    };
+    const initial = makeDocument(choice, followup);
+    initial.pages = [
+      { id: "group", questions: [choice, second] },
+      { id: "page-followup", questions: [followup] },
+    ];
+    renderEditor(initial);
+    await selectQuestion(2, second.prompt);
+    const selected = restartKey();
+
+    showPreviewStep(0);
+    expect(editor().getByLabelText("Spørsmålstekst")).toHaveValue(
+      second.prompt,
+    );
+    showPreviewStep(1);
+    showPreviewStep(0);
+    expect(editor().getByLabelText("Spørsmålstekst")).toHaveValue(
+      choice.prompt,
+    );
+    expect(restartKey()).toEqual(selected);
+  });
+
+  it("starts the preview again where the author chooses, edits or asks for it", async () => {
+    renderEditor(makeDocument(choice, followup, rest));
+    showPreviewStep(2);
+    const followed = restartKey();
+
+    // The start page again, while the preview is further on.
+    await selectQuestion(1, choice.prompt);
+    expect(stageProps().initialPageId).toBe("page-choice");
+    expect(restartKey().nonce).not.toBe(followed.nonce);
+
+    // The page the preview already shows keeps it running.
+    showPreviewStep(1);
+    const running = restartKey();
+    await selectQuestion(2, followup.prompt);
+    expect(restartKey()).toEqual(running);
+
+    // An edit starts the preview on the edited page, so the editor stays.
+    await userEvent.type(editor().getByLabelText("Spørsmålstekst"), "!");
+    expect(stageProps().initialPageId).toBe("page-followup");
+    expect(restartKey().instanceKey).not.toBe(running.instanceKey);
+    showPreviewStep(1);
+    expect(editor().getByLabelText("Spørsmålstekst")).toHaveValue(
+      `${followup.prompt}!`,
+    );
+
+    // «Start på nytt» starts again on the page the preview shows.
+    const edited = restartKey();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Start på nytt" }),
+    );
+    expect(stageProps().initialPageId).toBe("page-followup");
+    expect(restartKey().nonce).not.toBe(edited.nonce);
+  });
+
+  it("starts on the selected page after the thank-you screen and the full run, which keeps conditions", async () => {
+    renderEditor(makeDocument(choice, followup, rest));
+    showPreviewStep(1);
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Takkeside" })[0],
+    );
+    expect(
+      screen.queryByRole("button", { name: "Start på nytt" }),
+    ).not.toBeInTheDocument();
+    await selectQuestion(2, followup.prompt);
+    expect(stageProps().initialPageId).toBe("page-followup");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Prøv hele undersøkelsen" }),
+    );
+    expect(stageProps().document.pages[1].questions[0].visibleIf).toEqual(
+      followup.visibleIf,
+    );
+    expect(stageProps().initialPageId).toBeUndefined();
+    expect(stageProps().restartOnPageChange).toBe(true);
+    expect(stageProps().onStepChange).toBeUndefined();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Tilbake til bygging" }),
+    );
+    expect(stageProps().initialPageId).toBe("page-followup");
+    expect(stageProps().onStepChange).toBeDefined();
   });
 });
 
