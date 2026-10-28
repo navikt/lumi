@@ -1,5 +1,6 @@
 import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { getMockFilterBootstrap, getMockTeams } from "~/mock/mockData";
+import { lumiApiFetch } from "~/server/lumiApiFetch";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
   type AuthContext,
@@ -56,7 +57,7 @@ async function requestFilterBootstrap(
   }
 
   const url = buildFilterBootstrapUrl(context.backendUrl, data);
-  const response = await fetch(url, {
+  const response = await lumiApiFetch(url, {
     headers: getHeaders(context.oboToken),
   });
 

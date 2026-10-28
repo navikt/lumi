@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { lumiApiFetch } from "~/server/lumiApiFetch";
 import { authMiddleware } from "~/server/middleware/auth";
 import { refuseWriteInPublicDemo } from "~/server/publicDemo";
 import {
@@ -34,7 +35,7 @@ export const archiveSurveyServerFn = createServerFn({ method: "POST" })
       `/api/v1/intern/surveys/${encodeURIComponent(data.surveyId)}/archive`,
       { team: data.team },
     );
-    const response = await fetch(url, {
+    const response = await lumiApiFetch(url, {
       method: "PUT",
       headers: getHeaders(oboToken),
     });
@@ -66,7 +67,7 @@ export const unarchiveSurveyServerFn = createServerFn({ method: "POST" })
       `/api/v1/intern/surveys/${encodeURIComponent(data.surveyId)}/archive`,
       { team: data.team },
     );
-    const response = await fetch(url, {
+    const response = await lumiApiFetch(url, {
       method: "DELETE",
       headers: getHeaders(oboToken),
     });

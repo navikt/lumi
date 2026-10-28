@@ -4,6 +4,7 @@ import {
   usesInMemoryFeedbackFilters,
 } from "~/mock/analysisBudget";
 import { getMockFeedback, mockFeedbackItems } from "~/mock/mockData";
+import { lumiApiFetch } from "~/server/lumiApiFetch";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
   type AuthContext,
@@ -115,7 +116,7 @@ export const fetchFeedbackServerFn = createServerFn({ method: "GET" })
 
     const backendParams = transformToBackendParams(data);
     const url = buildUrl(backendUrl, "/api/v1/intern/feedback", backendParams);
-    const response = await fetch(url, {
+    const response = await lumiApiFetch(url, {
       headers: getHeaders(oboToken),
     });
 
