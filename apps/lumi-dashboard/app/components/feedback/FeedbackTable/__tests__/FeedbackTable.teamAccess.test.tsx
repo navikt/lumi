@@ -23,6 +23,10 @@ vi.mock("~/hooks/useFilterBootstrap", () => ({
   useCachedFilterBootstrap: () => mockBootstrap,
 }));
 
+vi.mock("~/hooks/useSearchParams", () => ({
+  useSearchParams: () => ({ params: { team: "team-x" } }),
+}));
+
 describe("FeedbackTable when the team cannot be read", () => {
   beforeEach(() => {
     mockBootstrap.error = null;
