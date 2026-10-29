@@ -40,6 +40,7 @@ describe("analysis API transport", () => {
           Authorization: "Bearer test-delegated-token",
         },
         body: JSON.stringify(body),
+        signal: expect.any(AbortSignal),
       },
     );
   });

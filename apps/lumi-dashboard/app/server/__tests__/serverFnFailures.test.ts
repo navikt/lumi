@@ -4,6 +4,7 @@ import { getGlobalStartContext } from "@tanstack/react-start";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { logger } from "~/server/logger";
+import { LumiApiTimeoutError } from "~/server/lumiApiFetch";
 import {
   reportServerFnFailure,
   SERVER_FN_5XX_FAILURES_METRIC,
@@ -66,6 +67,29 @@ beforeEach(() => {
 });
 
 describe("reportServerFnFailure", () => {
+  it("answers 504 and counts an API timeout without logging the request", async () => {
+    callOverHttp();
+    reportServerFnFailure(new LumiApiTimeoutError(), {
+      serverFn: STATS,
+      durationMs: 30_001,
+    });
+
+    expect(doubles.setResponseStatus).toHaveBeenCalledExactlyOnceWith(504);
+    expect(mockLogger.error).toHaveBeenCalledExactlyOnceWith(
+      {
+        serverFn: STATS,
+        status: 504,
+        errorName: "LumiApiTimeoutError",
+        apiErrorType: undefined,
+        durationMs: 30_001,
+        httpCall: true,
+      },
+      "Server function failed",
+    );
+    expect(await failureCount(STATS, "504")).toBe(1);
+    expect(await failures5xx()).toBe(1);
+  });
+
   it("has the 5xx counter at 0 before the first failure", async () => {
     expect(
       await register.getSingleMetricAsString(SERVER_FN_5XX_FAILURES_METRIC),

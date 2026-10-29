@@ -1,5 +1,6 @@
 import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { lumiApiFetch } from "~/server/lumiApiFetch";
 import { authMiddleware } from "~/server/middleware/auth";
 import { refuseWriteInPublicDemo } from "~/server/publicDemo";
 import {
@@ -113,7 +114,7 @@ export const fetchThemesServerFn = createServerFn({ method: "GET" })
     }
 
     const url = buildUrl(backendUrl, "/api/v1/intern/themes", params);
-    const response = await fetch(url, {
+    const response = await lumiApiFetch(url, {
       headers: getHeaders(oboToken),
     });
 
@@ -155,7 +156,7 @@ export const createThemeServerFn = createServerFn({ method: "POST" })
     const url = buildUrl(backendUrl, "/api/v1/intern/themes", {
       team,
     });
-    const response = await fetch(url, {
+    const response = await lumiApiFetch(url, {
       method: "POST",
       headers: {
         ...getHeaders(oboToken),
@@ -203,7 +204,7 @@ export const updateThemeServerFn = createServerFn({ method: "POST" })
         team,
       },
     );
-    const response = await fetch(url, {
+    const response = await lumiApiFetch(url, {
       method: "PUT",
       headers: {
         ...getHeaders(oboToken),
@@ -241,7 +242,7 @@ export const deleteThemeServerFn = createServerFn({ method: "POST" })
         team: data.team,
       },
     );
-    const response = await fetch(url, {
+    const response = await lumiApiFetch(url, {
       method: "DELETE",
       headers: getHeaders(oboToken),
     });

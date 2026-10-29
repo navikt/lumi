@@ -1,4 +1,9 @@
 import type { z } from "zod";
+import {
+  LUMI_API_LONG_TIMEOUT_MS,
+  LUMI_API_TIMEOUT_MS,
+  lumiApiFetch,
+} from "~/server/lumiApiFetch";
 import { apiStatusError, BadGatewayError } from "~/server/serverFnStatus";
 import {
   type AuthContext,
@@ -24,7 +29,7 @@ export async function bigQueryExportRequest(
     const { mockBigQueryExportRequest } = await import("~/mock/bigQueryExport");
     return mockBigQueryExportRequest(team, path, method, body);
   }
-  return fetch(
+  return lumiApiFetch(
     buildUrl(context.backendUrl, `/api/v1/intern/bigquery-export${path}`, {
       team,
     }),
@@ -33,6 +38,7 @@ export async function bigQueryExportRequest(
       headers: getHeaders(context.oboToken),
       body: body === undefined ? undefined : JSON.stringify(body),
     },
+    method === "GET" ? LUMI_API_TIMEOUT_MS : LUMI_API_LONG_TIMEOUT_MS,
   );
 }
 

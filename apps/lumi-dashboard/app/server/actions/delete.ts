@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { lumiApiFetch } from "~/server/lumiApiFetch";
 import { authMiddleware } from "~/server/middleware/auth";
 import { refuseWriteInPublicDemo } from "~/server/publicDemo";
 import {
@@ -33,7 +34,7 @@ export const deleteSurveyServerFn = createServerFn({ method: "POST" })
       `/api/v1/intern/surveys/${encodeURIComponent(data.surveyId)}`,
       { team: data.team },
     );
-    const response = await fetch(url, {
+    const response = await lumiApiFetch(url, {
       method: "DELETE",
       headers: getHeaders(oboToken),
     });
@@ -65,7 +66,7 @@ export const deleteFeedbackServerFn = createServerFn({ method: "POST" })
       `/api/v1/intern/feedback/${encodeURIComponent(data.id)}`,
       { team: data.team },
     );
-    const response = await fetch(url, {
+    const response = await lumiApiFetch(url, {
       method: "DELETE",
       headers: getHeaders(oboToken),
     });

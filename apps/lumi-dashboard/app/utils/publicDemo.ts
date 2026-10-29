@@ -1,3 +1,5 @@
+import { LUMI_API_WRITE_TIMEOUT_MESSAGE } from "./apiErrorMessages";
+
 /**
  * Raised by every write the public demo refuses. Written for the reader
  * because several views show save errors as they are; the message is also
@@ -16,11 +18,15 @@ export function isPublicDemoReadOnlyError(error: unknown): boolean {
 }
 
 /**
- * The text a view shows for a failed write: the demo refusal when that is
- * the cause, otherwise the view's own message.
+ * Preserve known safe write errors after serialization, without showing
+ * arbitrary server messages that may contain user data.
  */
 export function writeErrorText(error: unknown, fallback: string): string {
-  return isPublicDemoReadOnlyError(error)
-    ? PUBLIC_DEMO_READ_ONLY_TEXT
-    : fallback;
+  if (isPublicDemoReadOnlyError(error)) return PUBLIC_DEMO_READ_ONLY_TEXT;
+  if (
+    error instanceof Error &&
+    error.message === LUMI_API_WRITE_TIMEOUT_MESSAGE
+  )
+    return LUMI_API_WRITE_TIMEOUT_MESSAGE;
+  return fallback;
 }

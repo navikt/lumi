@@ -10,10 +10,8 @@ import {
 import { isMockMode } from "~/server/utils";
 import { serverEnv } from "~/serverEnv";
 
-const BACKEND_URL = serverEnv.LUMI_API_URL || "http://localhost:8080";
-
-const BACKEND_AUDIENCE =
-  serverEnv.LUMI_API_AUDIENCE || "api://dev-gcp.team-esyfo.lumi-api/.default";
+const BACKEND_URL = serverEnv.LUMI_API_URL;
+const BACKEND_AUDIENCE = serverEnv.LUMI_API_AUDIENCE;
 
 export interface AuthContext {
   backendUrl: string;

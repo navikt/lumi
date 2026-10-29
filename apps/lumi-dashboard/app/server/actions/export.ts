@@ -9,6 +9,7 @@ import {
   mockFeedbackItems,
 } from "~/mock/mockData";
 import { applyFeedbackFilters } from "~/mock/utils/filters";
+import { LUMI_API_LONG_TIMEOUT_MS, lumiApiFetch } from "~/server/lumiApiFetch";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
   type AuthContext,
@@ -293,9 +294,13 @@ export const exportServerFn = createServerFn({ method: "POST" })
 
     const backendParams = transformToBackendParams(data);
     const url = buildUrl(backendUrl, "/api/v1/intern/export", backendParams);
-    const response = await fetch(url, {
-      headers: getHeaders(oboToken),
-    });
+    const response = await lumiApiFetch(
+      url,
+      {
+        headers: getHeaders(oboToken),
+      },
+      LUMI_API_LONG_TIMEOUT_MS,
+    );
 
     await handleApiResponse(response);
 
