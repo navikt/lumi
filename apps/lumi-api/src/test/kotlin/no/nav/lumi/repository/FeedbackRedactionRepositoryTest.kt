@@ -31,7 +31,7 @@ class FeedbackRedactionRepositoryTest : FunSpec({
 
     test("masking changes only the selected text and preserves rating, context, ids and tags") {
         val id = seedText("Bra skjema. Mvh Ola Nordmann")
-        repository.redact(id, "team-test", "A123456", selection("Bra skjema. Mvh Ola Nordmann", "Ola Nordmann")) shouldBe true
+        repository.redact(id, "team-test", selection("Bra skjema. Mvh Ola Nordmann", "Ola Nordmann")) shouldBe true
         val raw = feedback.findRawById(id, "team-test")!!
         raw.feedbackJson shouldNotContain "Ola Nordmann"
         val dto = feedback.findById(id, "team-test")!!
@@ -49,16 +49,16 @@ class FeedbackRedactionRepositoryTest : FunSpec({
         val raw = "Skriv til person@example.no. Mvh Ola Nordmann"
         val visible = SensitiveDataFilter.DEFAULT.redact(raw).redactedText
         val id = seedText(raw)
-        repository.redact(id, "team-test", "A123456", selection(visible, "Ola Nordmann")) shouldBe true
+        repository.redact(id, "team-test", selection(visible, "Ola Nordmann")) shouldBe true
         val stored = feedback.findRawById(id, "team-test")!!.feedbackJson
         stored shouldNotContain "person@example.no"
         stored shouldNotContain "Ola Nordmann"
         stored shouldContain "E-POST FJERNET"
     }
 
-    test("another team cannot modify a response or create an audit event") {
+    test("another team cannot modify a response or advance its cache generation") {
         val id = seedText("Mvh Ola Nordmann")
-        repository.redact(id, "flex", "A123456", selection("Mvh Ola Nordmann", "Ola Nordmann")) shouldBe false
+        repository.redact(id, "flex", selection("Mvh Ola Nordmann", "Ola Nordmann")) shouldBe false
         repository.generation("flex") shouldBe 0L
         feedback.findRawById(id, "team-test")!!.feedbackJson shouldContain "Ola Nordmann"
     }
@@ -68,56 +68,62 @@ class FeedbackRedactionRepositoryTest : FunSpec({
         val id = seedText(text)
         val results = coroutineScope {
             listOf("Ola", "Nordmann").map { part ->
-                async { runCatching { repository.redact(id, "team-test", "A123456", selection(text, part)) } }
+                async { runCatching { repository.redact(id, "team-test", selection(text, part)) } }
             }.awaitAll()
         }
         results.count { it.isSuccess } shouldBe 1
         (results.single { it.isFailure }.exceptionOrNull() is ApiErrorException.ConflictException) shouldBe true
         repository.generation("team-test") shouldBe 1L
-        sqlLong("SELECT count(*) FROM feedback_redaction.events") shouldBe 1L
     }
 
     test("non-text answers and stale fingerprints are rejected without writes") {
         val text = "Mvh Ola Nordmann"
         val id = seedText(text)
         shouldThrow<ApiErrorException.BadRequestException> {
-            repository.redact(id, "team-test", "A123456", selection(text, "Ola").copy(fieldId = "rating"))
+            repository.redact(id, "team-test", selection(text, "Ola").copy(fieldId = "rating"))
         }
         shouldThrow<ApiErrorException.ConflictException> {
-            repository.redact(id, "team-test", "A123456", selection("different answer", "answer"))
+            repository.redact(id, "team-test", selection("different answer", "answer"))
         }
         repository.generation("team-test") shouldBe 0L
     }
 
-    test("simultaneous changes to different fields preserve both changes and the actor pseudonym") {
+    test("simultaneous changes to different fields preserve both changes") {
         val text = "Mvh Ola Nordmann"
         val id = seedText(text)
         coroutineScope {
             listOf(
                 selection(text, "Ola Nordmann"),
                 selection("Behold dette svaret", "svaret").copy(fieldId = "second"),
-            ).map { input -> async { repository.redact(id, "team-test", "A123456", input) } }.awaitAll()
+            ).map { input -> async { repository.redact(id, "team-test", input) } }.awaitAll()
                 .all { it } shouldBe true
         }
         val stored = feedback.findRawById(id, "team-test")!!.feedbackJson
         stored shouldNotContain "Ola Nordmann"
         stored shouldNotContain "dette svaret"
         repository.generation("team-test") shouldBe 2L
-        sqlLong("SELECT count(DISTINCT actor) FROM feedback_redaction.events") shouldBe 1L
     }
 
-    test("audit records retain no original text or raw identity and are deleted with the response") {
+    test("deleting the last response does not let later masks reuse an old cache generation") {
         val text = "Mvh Ola Nordmann"
         val id = seedText(text)
-        repository.redact(id, "team-test", "A123456", selection(text, "Ola Nordmann"))
-        val event = sqlText("SELECT row_to_json(e)::text FROM feedback_redaction.events e")
-        event shouldNotContain "Ola Nordmann"
-        event shouldNotContain "A123456"
-        event shouldNotContain textRedactionHash(text)
-        event shouldContain "occurred_at"
-        event shouldContain "feedback"
+        repository.redact(id, "team-test", selection(text, "Ola Nordmann"))
         feedback.delete(id, "team-test") shouldBe true
-        sqlLong("SELECT count(*) FROM feedback_redaction.events") shouldBe 0L
+        repository.generation("team-test") shouldBe 1L
+        val nextId = seedText(text)
+        repository.redact(nextId, "team-test", selection(text, "Ola Nordmann")) shouldBe true
+        repository.generation("team-test") shouldBe 2L
+    }
+
+    test("concurrent first masks of different responses advance the team generation twice") {
+        val text = "Mvh Ola Nordmann"
+        val ids = listOf(seedText(text), seedText(text))
+        coroutineScope {
+            ids.map { id -> async { repository.redact(id, "team-test", selection(text, "Ola Nordmann")) } }
+                .awaitAll().all { it } shouldBe true
+        }
+        repository.generation("team-test") shouldBe 2L
+        ids.forEach { id -> feedback.findRawById(id, "team-test")!!.feedbackJson shouldNotContain "Ola Nordmann" }
     }
 
     test("a late cache write cannot resurrect the old namespace, even in a different service instance") {
@@ -128,7 +134,7 @@ class FeedbackRedactionRepositoryTest : FunSpec({
         val query = StatsQuery(team = "team-test")
         val oldKey = first.redactionAwareCacheKey("dashboard", query)
         val oldStats = first.getDashboardStats(query).copy(totalCount = 999)
-        repository.redact(id, "team-test", "A123456", selection(text, "Ola Nordmann"))
+        repository.redact(id, "team-test", selection(text, "Ola Nordmann"))
         cache.set(oldKey, Json.encodeToString(oldStats))
         val next = StatsService(statsCache = cache)
         next.redactionAwareCacheKey("dashboard", query) shouldNotBe oldKey
@@ -144,7 +150,7 @@ class FeedbackRedactionRepositoryTest : FunSpec({
             connection.createStatement().use { it.executeUpdate("UPDATE bigquery_export.destinations SET run_requested_at = NULL") }
             connection.commit()
         }
-        repository.redact(id, "team-test", "A123456", selection(text, "Ola Nordmann"))
+        repository.redact(id, "team-test", selection(text, "Ola Nordmann"))
         exports.find("team-test")!!.runRequestedAt shouldNotBe null
         feedback.findPaginated(FeedbackQuery(team = "team-test", query = "Nordmann")).second shouldBe 0L
         val service = ExportService()
@@ -166,22 +172,20 @@ class FeedbackRedactionRepositoryTest : FunSpec({
         }
     }
 
-    test("failure to queue the exported copy rolls back the text, audit and generation") {
+    test("failure to queue the exported copy rolls back the text and cache generation") {
         val copyQueue = mockk<BigQueryExportRepository>()
         coEvery { copyQueue.requestRun(any(), any()) } throws IllegalStateException("queue unavailable")
         val id = seedText("Mvh Ola Nordmann")
         shouldThrow<IllegalStateException> {
-            FeedbackRedactionRepository(copyQueue).redact(id, "team-test", "A123456", selection("Mvh Ola Nordmann", "Ola"))
+            FeedbackRedactionRepository(copyQueue).redact(id, "team-test", selection("Mvh Ola Nordmann", "Ola"))
         }
         feedback.findRawById(id, "team-test")!!.feedbackJson shouldContain "Ola Nordmann"
         repository.generation("team-test") shouldBe 0L
-        sqlLong("SELECT count(*) FROM feedback_redaction.events") shouldBe 0L
     }
 
-    test("the legacy analysis role cannot read the private audit or actor key") {
+    test("the legacy analysis role cannot read the private cache state") {
         sqlLong("SELECT CASE WHEN has_schema_privilege('esyfo-analyse', 'feedback_redaction', 'USAGE') THEN 1 ELSE 0 END") shouldBe 0L
         sqlLong("SELECT CASE WHEN has_table_privilege('esyfo-analyse', 'feedback_redaction.team_state', 'SELECT') THEN 1 ELSE 0 END") shouldBe 0L
-        sqlLong("SELECT CASE WHEN has_table_privilege('esyfo-analyse', 'feedback_redaction.events', 'SELECT') THEN 1 ELSE 0 END") shouldBe 0L
     }
 })
 
@@ -215,8 +219,4 @@ private fun seedText(text: String): String {
 
 private fun sqlLong(sql: String): Long = TestDatabase.dataSource.connection.use { connection ->
     connection.createStatement().use { statement -> statement.executeQuery(sql).use { result -> result.next(); result.getLong(1) } }
-}
-
-private fun sqlText(sql: String): String = TestDatabase.dataSource.connection.use { connection ->
-    connection.createStatement().use { statement -> statement.executeQuery(sql).use { result -> result.next(); result.getString(1) } }
 }

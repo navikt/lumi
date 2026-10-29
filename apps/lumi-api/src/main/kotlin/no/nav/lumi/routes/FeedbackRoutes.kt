@@ -11,7 +11,6 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import no.nav.lumi.config.auth.authorizedTeam
-import no.nav.lumi.config.auth.authorizedPrincipal
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.RedactFeedbackInput
 import no.nav.lumi.repository.FeedbackRedactionRepository
@@ -45,8 +44,6 @@ fun Route.feedbackRoutes(
             throw ApiErrorException.BadRequestException("Velg team før du maskerer et svar.")
         }
         val team = call.authorizedTeam
-        val actor = stablePrincipalIdentity(call.authorizedPrincipal)
-            ?: throw ApiErrorException.BadRequestException("Brukeren mangler en stabil identitet.")
         val input = try {
             Json.decodeFromString<RedactFeedbackInput>(receiveTextWithLimit(call))
         } catch (_: SerializationException) {
@@ -54,7 +51,7 @@ fun Route.feedbackRoutes(
             // message or cause to request/error logging.
             throw ApiErrorException.BadRequestException("Ugyldig forespørsel om maskering.")
         }
-        if (!redactionRepository.redact(params.parent.id, team, actor, input)) {
+        if (!redactionRepository.redact(params.parent.id, team, input)) {
             throw ApiErrorException.NotFoundException("Fant ikke tilbakemeldingen.")
         }
         statsCacheInvalidator.invalidateTeam(team)

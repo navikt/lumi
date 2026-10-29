@@ -7,10 +7,7 @@ import no.nav.lumi.domain.redactTextRanges
 import no.nav.lumi.domain.textRedactionHash
 import no.nav.lumi.sensitive.SensitiveDataFilter
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
-import java.security.SecureRandom
 import java.time.Instant
-import javax.crypto.Mac
-import javax.crypto.spec.SecretKeySpec
 
 class FeedbackRedactionRepository(
     private val exportRepository: BigQueryExportRepository = BigQueryExportRepository(),
@@ -24,8 +21,8 @@ class FeedbackRedactionRepository(
         }
     }
 
-    /** Text, audit, cache generation and export request commit or roll back together. */
-    suspend fun redact(id: String, team: String, actor: String, input: RedactFeedbackInput): Boolean = dbQuery {
+    /** Text, cache generation and export request commit or roll back together. */
+    suspend fun redact(id: String, team: String, input: RedactFeedbackInput): Boolean = dbQuery {
         input.validate()
         val stored = connection().prepareStatement(
             "SELECT feedback_json::text FROM feedback WHERE id = ? AND team = ? FOR UPDATE",
@@ -62,29 +59,6 @@ class FeedbackRedactionRepository(
             "sensitiveDataRedacted" to JsonPrimitive(true),
         ))
 
-        val newKey = ByteArray(32).also { SecureRandom().nextBytes(it) }
-        connection().prepareStatement(
-            "INSERT INTO feedback_redaction.team_state(team, actor_key) VALUES (?, ?) ON CONFLICT DO NOTHING",
-        ).use { statement ->
-            statement.setString(1, team)
-            statement.setBytes(2, newKey)
-            statement.executeUpdate()
-        }
-        // Serializes generations per team. A later commit can never reuse a
-        // generation already observed by another replica's cache lookup.
-        val (generation, actorKey) = connection().prepareStatement(
-            "UPDATE feedback_redaction.team_state SET generation = generation + 1 WHERE team = ? RETURNING generation, actor_key",
-        ).use { statement ->
-            statement.setString(1, team)
-            statement.executeQuery().use { result ->
-                check(result.next())
-                result.getLong(1) to result.getBytes(2)
-            }
-        }
-        val pseudonym = Mac.getInstance("HmacSHA256").apply {
-            init(SecretKeySpec(actorKey, "HmacSHA256"))
-        }.doFinal(actor.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
-
         connection().prepareStatement(
             "UPDATE feedback SET feedback_json = ?::jsonb WHERE id = ? AND team = ?",
         ).use { statement ->
@@ -93,15 +67,16 @@ class FeedbackRedactionRepository(
             statement.setString(3, team)
             check(statement.executeUpdate() == 1)
         }
+        // Serialize generations per team, including the first concurrent masks.
+        // Late cache writes stay on an old key, also on other replicas.
         connection().prepareStatement(
-            "INSERT INTO feedback_redaction.events(team, generation, feedback_id, field_id, actor) VALUES (?, ?, ?, ?, ?)",
+            """
+            INSERT INTO feedback_redaction.team_state(team, generation) VALUES (?, 1)
+            ON CONFLICT (team) DO UPDATE SET generation = team_state.generation + 1
+            """.trimIndent(),
         ).use { statement ->
             statement.setString(1, team)
-            statement.setLong(2, generation)
-            statement.setString(3, id)
-            statement.setString(4, input.fieldId)
-            statement.setString(5, pseudonym)
-            statement.executeUpdate()
+            check(statement.executeUpdate() == 1)
         }
         exportRepository.requestRun(team, Instant.now())
         true
