@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  mergeRedactionRanges,
   RedactFeedbackSchema,
   redactTextPreview,
   storedTextSelection,
@@ -28,7 +27,6 @@ describe("text selections for permanent masking", () => {
         expect(() => redactTextPreview(text, [range])).toThrow(
           "Marker hele den eksisterende maskeringen",
         );
-        expect(() => mergeRedactionRanges(text, [range])).toThrow();
       }
     }
   });
@@ -81,23 +79,6 @@ describe("text selections for permanent masking", () => {
       ]),
     ).toBe("🙂 Ola fikk hjelp. Mvh [TEKST FJERNET]");
   });
-  it("merges overlapping and adjacent selections using original offsets", () => {
-    const ranges = [
-      { start: 4, end: 7 },
-      { start: 1, end: 5 },
-      { start: 7, end: 9 },
-    ];
-    expect(mergeRedactionRanges("0123456789", ranges)).toEqual([
-      { start: 1, end: 9 },
-    ]);
-    expect(ranges[0]).toEqual({ start: 4, end: 7 });
-    expect(
-      redactTextPreview(
-        "0123456789",
-        mergeRedactionRanges("0123456789", ranges),
-      ),
-    ).toBe("0[TEKST FJERNET]9");
-  });
   it("refuses out-of-range and split-surrogate selections", () => {
     for (const range of [
       { start: -1, end: 1 },
@@ -106,7 +87,7 @@ describe("text selections for permanent masking", () => {
       { start: 0, end: 1 },
       { start: 2, end: 2 },
     ]) {
-      expect(() => mergeRedactionRanges("🙂 Ola", [range])).toThrow();
+      expect(() => redactTextPreview("🙂 Ola", [range])).toThrow();
     }
   });
   it("requires an explicit team, fingerprint and bounded selection list", () => {

@@ -24,7 +24,7 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-function setup() {
+function setup(overrides: Partial<typeof target> = {}) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -36,7 +36,7 @@ function setup() {
   };
   render(
     <QueryClientProvider client={client}>
-      <MaskTextDialog target={target} {...callbacks} />
+      <MaskTextDialog target={{ ...target, ...overrides }} {...callbacks} />
     </QueryClientProvider>,
   );
   return { client, ...callbacks, user: userEvent.setup() };
@@ -49,7 +49,6 @@ async function selectName(user: ReturnType<typeof userEvent.setup>) {
   const start = textarea.value.indexOf("Ola Nordmann");
   textarea.setSelectionRange(start, start + "Ola Nordmann".length);
   fireEvent.select(textarea);
-  await user.click(screen.getByRole("button", { name: "Legg til markering" }));
 }
 describe("permanent text masking dialog", () => {
   it("lets keyboard users extend a selection across a whole emoji without editing text", async () => {
@@ -63,10 +62,9 @@ describe("permanent text masking dialog", () => {
     expect(
       textarea.value.slice(textarea.selectionStart, textarea.selectionEnd),
     ).toBe("🙂");
-    fireEvent.click(screen.getByRole("button", { name: "Legg til markering" }));
     expect(
-      screen.getByRole("textbox", { name: "Slik blir svaret" }),
-    ).toHaveValue("God hjelp.\nHilsen [TEKST FJERNET] Ola Nordmann");
+      screen.getByRole("region", { name: "Slik blir svaret" }),
+    ).toHaveTextContent("God hjelp. Hilsen [TEKST FJERNET] Ola Nordmann");
     expect(request).not.toHaveBeenCalled();
   });
   it("previews only the selection, keeps the original read-only and does not save on cancel", async () => {
@@ -76,14 +74,57 @@ describe("permanent text masking dialog", () => {
     ).toBeDisabled();
     await selectName(user);
     expect(
-      screen.getByRole("textbox", { name: "Slik blir svaret" }),
-    ).toHaveValue("God hjelp.\nHilsen 🙂 [TEKST FJERNET]");
+      screen.getByRole("region", { name: "Slik blir svaret" }),
+    ).toHaveTextContent("God hjelp. Hilsen 🙂 [TEKST FJERNET]");
     expect(
       screen.getByRole("textbox", { name: "Marker teksten som skal fjernes" }),
     ).toHaveAttribute("readonly");
     expect(request).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Avbryt" }));
     expect(onClose).toHaveBeenCalledOnce();
+  });
+  it("replaces the previous selection directly and lets a collapsed selection clear it", async () => {
+    const { user } = setup();
+    await selectName(user);
+    expect(
+      screen.queryByRole("button", { name: "Legg til markering" }),
+    ).not.toBeInTheDocument();
+    const original = screen.getByRole("textbox", {
+      name: "Marker teksten som skal fjernes",
+    }) as HTMLTextAreaElement;
+    await user.click(original);
+    const start = original.value.indexOf("Hilsen");
+    original.setSelectionRange(start, start + "Hilsen".length);
+    fireEvent.select(original);
+    expect(
+      screen.getByRole("region", { name: "Slik blir svaret" }),
+    ).toHaveTextContent("God hjelp. [TEKST FJERNET] 🙂 Ola Nordmann");
+    original.setSelectionRange(start, start);
+    fireEvent.select(original);
+    expect(
+      screen.getByRole("button", { name: "Masker permanent" }),
+    ).toBeDisabled();
+    expect(request).not.toHaveBeenCalled();
+  });
+  it("shows invalid marker boundaries without crashing or enabling a write", async () => {
+    const { user } = setup({ text: "God hjelp. [E-POST FJERNET]" });
+    const original = screen.getByRole("textbox", {
+      name: "Marker teksten som skal fjernes",
+    }) as HTMLTextAreaElement;
+    await user.click(original);
+    const start = original.value.indexOf("FJERNET");
+    original.setSelectionRange(start, start + "FJERNET".length);
+    fireEvent.select(original);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Marker hele den eksisterende maskeringen",
+    );
+    expect(
+      screen.getByRole("region", { name: "Slik blir svaret" }),
+    ).toHaveTextContent(original.value);
+    expect(
+      screen.getByRole("button", { name: "Masker permanent" }),
+    ).toBeDisabled();
+    expect(request).not.toHaveBeenCalled();
   });
   it("sends original offsets and fingerprint only, then clears cached text before success", async () => {
     const { user, client, onMasked } = setup();

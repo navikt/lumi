@@ -13,6 +13,16 @@ async function openMasking(page: Page, name: string, mobile = false) {
   await expect(
     page.getByRole("dialog", { name: "Masker fritekstsvar" }),
   ).toBeVisible();
+  // Measure contrast after the modal's opening animation has finished.
+  await page
+    .getByRole("dialog", { name: "Masker fritekstsvar" })
+    .evaluate(async (element) => {
+      await Promise.all(
+        element
+          .getAnimations({ subtree: true })
+          .map((animation) => animation.finished),
+      );
+    });
 }
 
 async function selectName(page: Page, name: string) {
@@ -32,10 +42,9 @@ async function selectName(page: Page, name: string) {
       ),
     )
     .toBe(name);
-  await page.getByRole("button", { name: "Legg til markering" }).click();
   await expect(
-    page.getByRole("textbox", { name: "Slik blir svaret" }),
-  ).toHaveValue("Skjemaet var enkelt å bruke.\nHilsen [TEKST FJERNET]");
+    page.getByRole("region", { name: "Slik blir svaret" }),
+  ).toContainText("Skjemaet var enkelt å bruke. Hilsen [TEKST FJERNET]");
 }
 
 test("desktop masking previews, cancels and removes the name from search and reload", async ({
@@ -55,8 +64,16 @@ test("desktop masking previews, cancels and removes the name from search and rel
   await page.getByRole("button", { name: "Masker tekst", exact: true }).click();
   await selectName(page, "Ola Nordmann");
   await page
-    .getByRole("button", { name: "Masker permanent", exact: true })
-    .click();
+    .getByRole("textbox", { name: "Marker teksten som skal fjernes" })
+    .press("Tab");
+  await expect(
+    page.getByRole("button", { name: "Avbryt", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(
+    page.getByRole("button", { name: "Masker permanent", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Enter");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(
     page.getByRole("status").filter({ hasText: "Teksten er maskert." }),

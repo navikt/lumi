@@ -18,12 +18,12 @@ import {
 import { ApiErrorException } from "~/types/errors";
 import { writeErrorText } from "~/utils/publicDemo";
 import {
-  mergeRedactionRanges,
   redactTextPreview,
   storedTextSelection,
   type TextRedactionRange,
   textRedactionHash,
 } from "~/utils/textRedaction";
+import styles from "./FeedbackTable/styles.module.css";
 
 export interface TextRedactionTarget {
   id: string;
@@ -46,13 +46,23 @@ export function MaskTextDialog({
 }) {
   const mutation = useRedactFeedback();
   const queryClient = useQueryClient();
-  const [ranges, setRanges] = useState<TextRedactionRange[]>([]);
   const [selection, setSelection] = useState<TextRedactionRange | null>(null);
-  const [selectionError, setSelectionError] = useState<string | null>(null);
+  const [preparationError, setPreparationError] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const busy = preparing || mutation.isPending || refreshing;
-  const preview = redactTextPreview(target.text, ranges);
+  let preview = target.text;
+  let selectionError = preparationError;
+  if (selection) {
+    try {
+      preview = redactTextPreview(target.text, [selection]);
+    } catch (error) {
+      selectionError =
+        error instanceof Error
+          ? error.message
+          : "Markeringen kunne ikke brukes.";
+    }
+  }
   const conflict =
     mutation.error instanceof ApiErrorException &&
     mutation.error.error.status === 409;
@@ -60,18 +70,10 @@ export function MaskTextDialog({
     mutation.error instanceof ApiErrorException &&
     mutation.error.error.status === 404;
 
-  const addSelection = () => {
-    if (!selection) return;
-    try {
-      setRanges(mergeRedactionRanges(target.text, [...ranges, selection]));
-      setSelectionError(null);
-    } catch (error) {
-      setSelectionError(
-        error instanceof Error
-          ? error.message
-          : "Markeringen kunne ikke brukes.",
-      );
-    }
+  const updateSelection = (start: number, end: number) => {
+    if (busy || mutation.isError) return;
+    setSelection(storedTextSelection(target.text, start, end));
+    setPreparationError(null);
   };
 
   const refresh = async () => {
@@ -86,14 +88,21 @@ export function MaskTextDialog({
   };
 
   const confirm = async () => {
-    if (busy || mutation.isError || preview === target.text) return;
+    if (
+      busy ||
+      mutation.isError ||
+      !selection ||
+      selectionError ||
+      preview === target.text
+    )
+      return;
     setPreparing(true);
     try {
       let expectedTextHash: string;
       try {
         expectedTextHash = await textRedactionHash(target.text);
       } catch {
-        setSelectionError(
+        setPreparationError(
           "Maskeringen kunne ikke klargjøres. Last siden på nytt og prøv igjen.",
         );
         return;
@@ -103,7 +112,7 @@ export function MaskTextDialog({
         team: target.team,
         fieldId: target.fieldId,
         expectedTextHash,
-        ranges,
+        ranges: [selection],
       });
       onMasked();
     } catch {
@@ -134,7 +143,7 @@ export function MaskTextDialog({
           <BodyShort weight="semibold">{target.question}</BodyShort>
           <Textarea
             label="Marker teksten som skal fjernes"
-            description="Marker med musen, berøring eller Shift og venstre/høyre piltast. Legg deretter til markeringen."
+            description="Marker med mus eller berøring. Med tastatur: Shift og venstre/høyre piltast."
             value={target.text.replace(/\r\n?/g, "\n")}
             readOnly
             autoFocus
@@ -175,49 +184,30 @@ export function MaskTextDialog({
                 to,
                 next < anchor ? "backward" : "forward",
               );
-              setSelection(storedTextSelection(target.text, from, to));
+              updateSelection(from, to);
             }}
             onSelect={(event) => {
               const { selectionStart: start, selectionEnd: end } =
                 event.currentTarget;
-              setSelection(storedTextSelection(target.text, start, end));
+              updateSelection(start, end);
             }}
           />
-          <HStack gap="space-8" wrap>
-            <Button
-              size="small"
-              variant="secondary"
-              onClick={addSelection}
-              disabled={!selection || busy || mutation.isError}
-            >
-              Legg til markering
-            </Button>
-            <Button
-              size="small"
-              variant="tertiary"
-              onClick={() => {
-                setRanges([]);
-                setSelectionError(null);
-              }}
-              disabled={ranges.length === 0 || busy || mutation.isError}
-            >
-              Nullstill markeringer
-            </Button>
-          </HStack>
           {selectionError && (
             <ErrorMessage role="alert">{selectionError}</ErrorMessage>
           )}
-          <Textarea
-            label="Slik blir svaret"
-            value={preview.replace(/\r\n?/g, "\n")}
-            readOnly
-            minRows={3}
-            maxRows={8}
-          />
+          <section aria-labelledby="redaction-preview-label">
+            <VStack gap="space-8">
+              <BodyShort id="redaction-preview-label" weight="semibold">
+                Slik blir svaret
+              </BodyShort>
+              <BodyLong className={styles.answerContentText}>
+                {preview.replace(/\r\n?/g, "\n")}
+              </BodyLong>
+            </VStack>
+          </section>
           <BodyLong>
-            Maskeringen lagres permanent og kan ikke angres. Resten av svaret
-            beholdes. Kopier dere allerede har lastet ned, må dere rydde opp i
-            selv. BigQuery oppdateres ved neste vellykkede kjøring.
+            Dette kan ikke angres. Filer dere allerede har lastet ned, endres
+            ikke.
           </BodyLong>
           {mutation.isError && (
             <ErrorMessage role="alert">
@@ -251,7 +241,7 @@ export function MaskTextDialog({
               data-color="danger"
               variant="primary"
               loading={busy}
-              disabled={busy || preview === target.text}
+              disabled={busy || !!selectionError || preview === target.text}
               onClick={() => void confirm()}
             >
               Masker permanent

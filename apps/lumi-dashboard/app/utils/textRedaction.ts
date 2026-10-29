@@ -96,21 +96,3 @@ export function redactTextPreview(
   }
   return result + text.slice(offset);
 }
-
-export function mergeRedactionRanges(
-  text: string,
-  ranges: TextRedactionRange[],
-): TextRedactionRange[] {
-  const merged: TextRedactionRange[] = [];
-  for (const range of [...ranges].sort((a, b) => a.start - b.start)) {
-    redactTextPreview(text, [range]);
-    const last = merged.at(-1);
-    if (last && range.start <= last.end)
-      last.end = Math.max(last.end, range.end);
-    else merged.push({ ...range });
-  }
-  if (merged.length > 20)
-    throw new Error("Du kan maskere inntil 20 områder om gangen.");
-  redactTextPreview(text, merged);
-  return merged;
-}

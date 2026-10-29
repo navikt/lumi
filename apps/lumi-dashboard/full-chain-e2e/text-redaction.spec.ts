@@ -50,16 +50,21 @@ test("selected text is permanently masked through the real dashboard, API and da
     await original.press("ArrowRight");
     for (let i = 0; i < name.length; i++)
       await original.press("Shift+ArrowLeft");
-    await tab.getByRole("button", { name: "Legg til markering" }).click();
     await expect(
-      tab.getByRole("textbox", { name: "Slik blir svaret" }),
-    ).toHaveValue(text.replace(name, "[TEKST FJERNET]"));
+      tab.getByRole("region", { name: "Slik blir svaret" }),
+    ).toContainText(text.replace(name, "[TEKST FJERNET]"));
   }
   await page
     .getByRole("button", { name: "Masker permanent", exact: true })
     .click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("table")).toContainText("[TEKST FJERNET]");
+  // The expanded answer survives the cache reset; reopening uses the new text.
+  await page.getByRole("button", { name: "Masker tekst", exact: true }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Marker teksten som skal fjernes" }),
+  ).toHaveValue(text.replace(name, "[TEKST FJERNET]"));
+  await page.getByRole("button", { name: "Avbryt", exact: true }).click();
   await page.reload();
   await expect(page.getByRole("table")).not.toContainText(name);
   await expect(page.getByRole("table")).toContainText(marker);
