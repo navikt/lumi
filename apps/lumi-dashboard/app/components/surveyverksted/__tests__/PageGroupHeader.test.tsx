@@ -30,6 +30,7 @@ describe("PageGroupHeader", () => {
   it("reveals the fields and focuses the title when the author asks for one", async () => {
     const user = userEvent.setup();
 
+    // biome-ignore lint/correctness/noComponentHookFactories: Created once per test, outside React rendering, to isolate its state.
     function Harness() {
       const [title, setTitle] = useState<string | undefined>(undefined);
       return (

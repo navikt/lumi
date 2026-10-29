@@ -185,6 +185,7 @@ describe("DefaultQuestionRenderer", () => {
     async (question) => {
       const user = userEvent.setup();
 
+      // biome-ignore lint/correctness/noComponentHookFactories: Created once per test, outside React rendering, to isolate its state.
       function ControlledRating() {
         const [value, setValue] = useState<number | undefined>();
 

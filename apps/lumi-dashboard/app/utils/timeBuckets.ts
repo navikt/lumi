@@ -229,7 +229,9 @@ function windowBuckets(
     start = previousBucketStart(start, interval)
   ) {
     const calendarEnd = addDays(nextBucketStart(start, interval), -1);
+    // biome-ignore lint/complexity/useMathMinMax: ISO calendar dates are strings; Math.max would coerce them to NaN.
     const firstDay = start < window.from ? window.from : start;
+    // biome-ignore lint/complexity/useMathMinMax: ISO calendar dates are strings; Math.min would coerce them to NaN.
     const lastDay = calendarEnd > window.to ? window.to : calendarEnd;
     buckets.push({
       start,

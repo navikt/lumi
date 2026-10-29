@@ -18,6 +18,7 @@ type SearchParamsHook = ReturnType<typeof useSearchParams>;
 async function setup(initialEntries: Array<string> = ["/"]) {
   const state: { current?: SearchParamsHook } = {};
 
+  // biome-ignore lint/correctness/noComponentHookFactories: Created once per test, outside React rendering, to isolate its state.
   function TestComponent() {
     state.current = useSearchParams();
     return null;

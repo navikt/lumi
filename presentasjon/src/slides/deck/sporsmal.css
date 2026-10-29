@@ -274,13 +274,13 @@
 
   /* When it leaves, it too stays until the next page is in. */
   :root:not([data-stil="papir"])
-  .iappen__shot.iappen__shot--apen[data-reveal]:not([data-revealed]) {
+    .iappen__shot.iappen__shot--apen[data-reveal]:not([data-revealed]) {
     transition: all 0s 160ms;
   }
 
   /* The button stays on top while the panel starts to grow, then goes. */
   :root:not([data-stil="papir"])
-  .iappen__shot.iappen__shot--knapp[data-reveal]:not([data-revealed]) {
+    .iappen__shot.iappen__shot--knapp[data-reveal]:not([data-revealed]) {
     transition-delay: 180ms;
     transition-duration: 220ms;
   }
