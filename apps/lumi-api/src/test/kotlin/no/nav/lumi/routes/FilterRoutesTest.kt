@@ -263,12 +263,17 @@ class FilterRoutesTest : FunSpec({
                 opprettet = java.time.OffsetDateTime.now().minusDays(10),
             )
 
-            createTestClient().put("/api/v1/intern/surveys/survey-zombie/archive?team=team-test") {
+            val archived = createTestClient().put("/api/v1/intern/surveys/survey-zombie/archive?team=team-test") {
                 header(HttpHeaders.Authorization, "Bearer test-token")
-            }.status shouldBe HttpStatusCode.OK
+            }
+            archived.status shouldBe HttpStatusCode.OK
 
-            // New submission arrives after archiving (widget still deployed)
-            insertTestFeedback(surveyId = "survey-zombie")
+            // Use the returned database time: the host and container clocks
+            // need not agree on what "after archiving" means.
+            val afterArchive = java.time.OffsetDateTime.parse(
+                Json.parseToJsonElement(archived.bodyAsText()).jsonObject["archivedAt"]!!.jsonPrimitive.content,
+            ).plusSeconds(1)
+            insertTestFeedback(surveyId = "survey-zombie", opprettet = afterArchive)
 
             val response = createTestClient().get("/api/v1/intern/filters/bootstrap?team=team-test") {
                 header(HttpHeaders.Authorization, "Bearer test-token")
