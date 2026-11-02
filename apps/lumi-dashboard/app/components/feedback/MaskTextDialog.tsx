@@ -143,7 +143,6 @@ export function MaskTextDialog({
           <BodyShort weight="semibold">{target.question}</BodyShort>
           <Textarea
             label="Marker teksten som skal fjernes"
-            description="Marker med mus eller berøring. Med tastatur: Shift og venstre/høyre piltast."
             value={target.text.replace(/\r\n?/g, "\n")}
             readOnly
             autoFocus
