@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { lumiApiFetch } from "~/server/lumiApiFetch";
 import { apiStatusError, BadGatewayError } from "~/server/serverFnStatus";
 import {
   type AuthContext,
@@ -20,7 +21,7 @@ export async function analysisRequest(
     const { mockAnalysisRequest } = await import("~/mock/analysisProducts");
     return mockAnalysisRequest(team, path, method, body);
   }
-  return fetch(
+  return lumiApiFetch(
     buildUrl(context.backendUrl, `/api/v1/intern/analysis-products${path}`, {
       team,
     }),

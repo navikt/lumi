@@ -1,23 +1,5 @@
 import { z } from "zod";
-
-const serverSchema = z.object({
-  // Optional with defaults for local development
-  // Lumi backend configuration
-  LUMI_API_URL: z.url().default("http://localhost:8080"),
-  LUMI_API_AUDIENCE: z
-    .string()
-    .min(1)
-    .default("api://dev-gcp.team-esyfo.lumi-api/.default"),
-
-  NAIS_CLUSTER_NAME: z.string().optional(),
-  USE_MOCK_DATA: z.string().optional(),
-  // Adds deterministic mock surveys that only the Playwright suite relies on.
-  LUMI_E2E_FIXTURES: z.enum(["true", "false"]).optional(),
-  LUMI_LOCAL_AUTH_BYPASS: z.enum(["true", "false"]).optional(),
-  NODE_ENV: z
-    .enum(["development", "production", "test"])
-    .default("development"),
-});
+import { type ServerEnv, serverEnvSchema } from "~/serverEnvSchema";
 
 /**
  * Validated server-side environment variables.
@@ -27,19 +9,10 @@ const serverSchema = z.object({
 export const serverEnv = (() => {
   if (typeof window !== "undefined" || typeof process === "undefined") {
     // We are on the client, or process is not polyfilled.
-    return {} as z.infer<typeof serverSchema>;
+    return {} as ServerEnv;
   }
 
-  // Validate process.env
-  // process.env values are strings. Empty strings should be treated as undefined for .default() to work.
-  const env = Object.fromEntries(
-    Object.entries(process.env).map(([key, value]) => [
-      key,
-      value === "" ? undefined : value,
-    ]),
-  );
-
-  const result = serverSchema.safeParse(env);
+  const result = serverEnvSchema.safeParse(process.env);
 
   if (!result.success) {
     console.error(

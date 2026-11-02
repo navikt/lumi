@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getMockQuestionTrend } from "~/mock/mockData";
+import { lumiApiFetch } from "~/server/lumiApiFetch";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
   type AuthContext,
@@ -58,9 +59,12 @@ export const fetchQuestionTrendServerFn = createServerFn({ method: "GET" })
       return parseApiAnswer(QuestionTrendResponseSchema, response);
     }
 
-    const response = await fetch(buildQuestionTrendUrl(backendUrl, data), {
-      headers: getHeaders(oboToken),
-    });
+    const response = await lumiApiFetch(
+      buildQuestionTrendUrl(backendUrl, data),
+      {
+        headers: getHeaders(oboToken),
+      },
+    );
     await handleApiResponse(response);
     return parseApiAnswer(QuestionTrendResponseSchema, await response.json());
   });

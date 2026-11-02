@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getMockSurveysByApp } from "~/mock/mockData";
+import { lumiApiFetch } from "~/server/lumiApiFetch";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
   type AuthContext,
@@ -28,7 +29,7 @@ export const fetchSurveysByAppServerFn = createServerFn({ method: "GET" })
     const url = buildUrl(backendUrl, "/api/v1/intern/surveys", {
       team: data.team,
     });
-    const response = await fetch(url, {
+    const response = await lumiApiFetch(url, {
       headers: getHeaders(oboToken),
     });
 

@@ -48,6 +48,7 @@ export default defineConfig(({ command, mode }) => {
         checks: { moduleLevelDirective: false },
       },
       plugins: [
+        "./app/server/validateServerEnv.ts",
         // Keeps the year-long cache under /assets for files, not 404s.
         "./app/server/cacheOnlyAssetFiles.ts",
         // Exits after a graceful shutdown, which srvx no longer does. Last,

@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { lumiApiFetch } from "~/server/lumiApiFetch";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
   type AuthContext,
@@ -275,7 +276,7 @@ export const submitReleaseVerificationServerFn = createServerFn({
           preflight.message ?? "Teamtilgang kunne ikke bekreftes",
         );
       }
-      const response = await fetch(
+      const response = await lumiApiFetch(
         buildUrl(authContext.backendUrl, "/api/azure/v1/feedback"),
         {
           method: "POST",
@@ -336,7 +337,7 @@ async function runTeamPreflight(
 ): Promise<ReleaseVerificationPreflightEvidence> {
   const checkedAt = new Date().toISOString();
   try {
-    const response = await fetch(
+    const response = await lumiApiFetch(
       buildUrl(backendUrl, "/api/v1/intern/feedback", {
         team: target.team,
         app: target.app,
@@ -395,7 +396,7 @@ async function readExactProbe(
   for (const [attempt, delayMs] of retryDelaysMs.entries()) {
     if (delayMs > 0) await delay(delayMs);
     try {
-      const response = await fetch(
+      const response = await lumiApiFetch(
         buildUrl(
           backendUrl,
           `/api/v1/intern/feedback/${encodeURIComponent(expected.receiptId)}`,

@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getMockTags } from "~/mock/mockData";
+import { lumiApiFetch } from "~/server/lumiApiFetch";
 import { authMiddleware } from "~/server/middleware/auth";
 import { refuseWriteInPublicDemo } from "~/server/publicDemo";
 import {
@@ -29,7 +30,7 @@ export const fetchTagsServerFn = createServerFn({ method: "GET" })
     const url = buildUrl(backendUrl, "/api/v1/intern/feedback/tags", {
       team: data.team,
     });
-    const response = await fetch(url, {
+    const response = await lumiApiFetch(url, {
       headers: getHeaders(oboToken),
     });
 
@@ -60,7 +61,7 @@ export const addTagServerFn = createServerFn({ method: "POST" })
         team: data.team,
       },
     );
-    const response = await fetch(url, {
+    const response = await lumiApiFetch(url, {
       method: "POST",
       headers: getHeaders(oboToken),
       body: JSON.stringify({ tag: data.tag }),
@@ -91,7 +92,7 @@ export const removeTagServerFn = createServerFn({ method: "POST" })
       `/api/v1/intern/feedback/${encodeURIComponent(data.id)}/tags`,
       { tag: data.tag, team: data.team },
     );
-    const response = await fetch(url, {
+    const response = await lumiApiFetch(url, {
       method: "DELETE",
       headers: getHeaders(oboToken),
     });

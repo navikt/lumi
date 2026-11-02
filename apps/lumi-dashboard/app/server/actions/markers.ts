@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { lumiApiFetch } from "~/server/lumiApiFetch";
 import { authMiddleware } from "~/server/middleware/auth";
 import { refuseWriteInPublicDemo } from "~/server/publicDemo";
 import {
@@ -67,7 +68,7 @@ export const fetchMarkersServerFn = createServerFn({ method: "GET" })
         toDate: data.toDate,
       },
     );
-    const response = await fetch(url, {
+    const response = await lumiApiFetch(url, {
       headers: getHeaders(oboToken),
     });
 
@@ -110,7 +111,7 @@ export const createMarkerServerFn = createServerFn({ method: "POST" })
       `/api/v1/intern/surveys/${encodeURIComponent(surveyId)}/markers`,
       { team },
     );
-    const response = await fetch(url, {
+    const response = await lumiApiFetch(url, {
       method: "POST",
       headers: {
         ...getHeaders(oboToken),
@@ -190,7 +191,7 @@ export const updateMarkerServerFn = createServerFn({ method: "POST" })
       `/api/v1/intern/surveys/${encodeURIComponent(surveyId)}/markers/${encodeURIComponent(id)}`,
       { team },
     );
-    const response = await fetch(url, {
+    const response = await lumiApiFetch(url, {
       method: "PUT",
       headers: {
         ...getHeaders(oboToken),
@@ -234,7 +235,7 @@ export const deleteMarkerServerFn = createServerFn({ method: "POST" })
       `/api/v1/intern/surveys/${encodeURIComponent(data.surveyId)}/markers/${encodeURIComponent(data.id)}`,
       { team: data.team },
     );
-    const response = await fetch(url, {
+    const response = await lumiApiFetch(url, {
       method: "DELETE",
       headers: getHeaders(oboToken),
     });

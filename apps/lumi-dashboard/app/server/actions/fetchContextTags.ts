@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { assertMockAnalysisBudget } from "~/mock/analysisBudget";
 import { getMockContextTags, mockFeedbackItems } from "~/mock/mockData";
+import { lumiApiFetch } from "~/server/lumiApiFetch";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
   type AuthContext,
@@ -71,7 +72,7 @@ export const fetchContextTagsServerFn = createServerFn({ method: "GET" })
         lowRating: data.lowRating === true ? "true" : undefined,
       },
     );
-    const response = await fetch(url, {
+    const response = await lumiApiFetch(url, {
       headers: getHeaders(oboToken),
     });
 

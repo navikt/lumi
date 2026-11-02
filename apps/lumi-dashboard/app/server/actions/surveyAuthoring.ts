@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { lumiApiFetch } from "~/server/lumiApiFetch";
 import { authMiddleware } from "~/server/middleware/auth";
 import { isPublicDemo, refuseWriteInPublicDemo } from "~/server/publicDemo";
 import {
@@ -56,7 +57,7 @@ export const fetchSurveyAuthoringProjectsServerFn = createServerFn({
       }
 
       const { backendUrl, oboToken } = context as AuthContext;
-      const response = await fetch(
+      const response = await lumiApiFetch(
         buildUrl(backendUrl, "/api/v1/intern/authoring/projects", {
           team: data.team,
         }),
@@ -82,7 +83,7 @@ export const fetchSurveyAuthoringProjectServerFn = createServerFn({
     }
 
     const { backendUrl, oboToken } = context as AuthContext;
-    const response = await fetch(
+    const response = await lumiApiFetch(
       buildUrl(
         backendUrl,
         `/api/v1/intern/authoring/projects/${encodeURIComponent(data.projectId)}`,
@@ -113,7 +114,7 @@ export const deleteSurveyAuthoringProjectServerFn = createServerFn({
     }
 
     const { backendUrl, oboToken } = context as AuthContext;
-    const response = await fetch(
+    const response = await lumiApiFetch(
       buildUrl(
         backendUrl,
         `/api/v1/intern/authoring/projects/${encodeURIComponent(data.projectId)}`,
@@ -142,7 +143,7 @@ export const createSurveyAuthoringProjectServerFn = createServerFn({
     }
 
     const { backendUrl, oboToken } = context as AuthContext;
-    const response = await fetch(
+    const response = await lumiApiFetch(
       buildUrl(backendUrl, "/api/v1/intern/authoring/projects", {
         team: data.team,
       }),
@@ -176,7 +177,7 @@ export const saveSurveyAuthoringDraftServerFn = createServerFn({
     }
 
     const { backendUrl, oboToken } = context as AuthContext;
-    const response = await fetch(
+    const response = await lumiApiFetch(
       buildUrl(
         backendUrl,
         `/api/v1/intern/authoring/projects/${encodeURIComponent(data.projectId)}/draft`,
@@ -213,7 +214,7 @@ export const fetchSurveyAuthoringRevisionsServerFn = createServerFn({
       }
 
       const { backendUrl, oboToken } = context as AuthContext;
-      const response = await fetch(
+      const response = await lumiApiFetch(
         buildUrl(
           backendUrl,
           `/api/v1/intern/authoring/projects/${encodeURIComponent(data.projectId)}/revisions`,
@@ -242,7 +243,7 @@ export const createSurveyAuthoringRevisionServerFn = createServerFn({
     }
 
     const { backendUrl, oboToken } = context as AuthContext;
-    const response = await fetch(
+    const response = await lumiApiFetch(
       buildUrl(
         backendUrl,
         `/api/v1/intern/authoring/projects/${encodeURIComponent(data.projectId)}/revisions`,
@@ -278,7 +279,7 @@ export const fetchSurveyAuthoringRevisionServerFn = createServerFn({
       }
 
       const { backendUrl, oboToken } = context as AuthContext;
-      const response = await fetch(
+      const response = await lumiApiFetch(
         buildUrl(
           backendUrl,
           `/api/v1/intern/authoring/revisions/${encodeURIComponent(data.revisionId)}`,

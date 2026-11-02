@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { assertMockAnalysisBudget } from "~/mock/analysisBudget";
 import { getMockDiscoveryStats, mockFeedbackItems } from "~/mock/mockData";
+import { lumiApiFetch } from "~/server/lumiApiFetch";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
   type AuthContext,
@@ -73,7 +74,7 @@ export const fetchDiscoveryServerFn = createServerFn({ method: "GET" })
       "/api/v1/intern/stats/discovery",
       backendParams,
     );
-    const response = await fetch(url, {
+    const response = await lumiApiFetch(url, {
       headers: getHeaders(oboToken),
     });
 

@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getMockSurveyTypeDistribution } from "~/mock/mockData";
+import { lumiApiFetch } from "~/server/lumiApiFetch";
 import { authMiddleware } from "~/server/middleware/auth";
 import {
   type AuthContext,
@@ -47,7 +48,7 @@ export const fetchSurveyTypeDistributionServerFn = createServerFn({
         team: data.team,
         includeArchived: data.includeArchived === "true" ? "true" : undefined,
       });
-      const response = await fetch(url, {
+      const response = await lumiApiFetch(url, {
         headers: getHeaders(oboToken),
       });
 
