@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { LUMI_API_WRITE_TIMEOUT_MESSAGE } from "../app/utils/apiErrorMessages";
 
 /**
  * Any field whose edits persist to the draft. The seeded question prompt is
@@ -876,6 +877,339 @@ test("a flush inherits a failed save instead of repeating it", async ({
   expect(saveCount).toBe(1);
   await expect(page).toHaveURL(/\/surveyverksted\/[0-9a-f-]+/);
   await expect(page.getByText(/endret i en annen fane/)).toBeVisible();
+  await page.unroute("**/*");
+});
+
+test("navigation saves a reverted edit after an in-flight save completes", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  await page.goto("/surveyverksted");
+  await page.getByLabel("Navn på utkastet").fill("Tilbakeført utkast");
+  await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await openAdvancedEditor(page);
+  await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
+  const editorUrl = page.url();
+  const original = await draftField(page).inputValue();
+
+  let releaseResponse = () => {};
+  const responseGate = new Promise<void>((resolve) => {
+    releaseResponse = resolve;
+  });
+  let savedOnServer = () => {};
+  const firstSaveCommitted = new Promise<void>((resolve) => {
+    savedOnServer = resolve;
+  });
+  let saveCount = 0;
+  await page.route("**/*", async (route) => {
+    const request = route.request();
+    if (
+      request.method() === "POST" &&
+      (request.postData() ?? "").includes('"expectedVersion"')
+    ) {
+      saveCount += 1;
+      if (saveCount === 1) {
+        const response = await route.fetch();
+        savedOnServer();
+        await responseGate;
+        await route.fulfill({ response });
+        return;
+      }
+    }
+    await route.continue();
+  });
+
+  await draftField(page).fill("Midlertidig endring");
+  await firstSaveCommitted;
+  await draftField(page).fill(original);
+  await page.getByRole("button", { name: "Til Surveyverksted" }).click();
+  await page.waitForTimeout(300);
+  await expect(page).toHaveURL(editorUrl);
+  releaseResponse();
+  await expect(page).toHaveURL(/\/surveyverksted\?team=/);
+  expect(saveCount).toBe(2);
+  await page.unroute("**/*");
+  await page
+    .getByRole("link", { name: /Tilbakeført utkast/ })
+    .first()
+    .click();
+  await openAdvancedEditor(page);
+  await expect(draftField(page)).toHaveValue(original);
+});
+
+test("an uncertain save requires a reload before saving or sharing", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(90000);
+  const dialogs: string[] = [];
+  const acceptedDialogs: string[] = [];
+  let acceptReload = false;
+  let acceptNavigation = false;
+  page.on("dialog", async (dialog) => {
+    if (
+      (dialog.type() === "beforeunload" && acceptReload) ||
+      (dialog.type() === "confirm" && acceptNavigation)
+    ) {
+      if (dialog.type() === "confirm") acceptedDialogs.push(dialog.message());
+      await dialog.accept();
+      return;
+    }
+    dialogs.push(dialog.message());
+    await dialog.dismiss();
+  });
+
+  await page.goto("/surveyverksted");
+  await page.getByLabel("Navn på utkastet").fill("Ukjent lagringsutfall");
+  await page.getByRole("button", { name: "Opprett utkast" }).click();
+  await openAdvancedEditor(page);
+  await page.waitForURL(/\/surveyverksted\/[0-9a-f-]+/);
+  await expect(page.locator('[data-state="saved"]')).toBeVisible();
+  const editorUrl = page.url();
+
+  // Capture an error from the real server-function serialization boundary.
+  const other = await context.newPage();
+  await other.goto(editorUrl);
+  await openAdvancedEditor(other);
+  await draftField(other).fill("Endret i en annen fane");
+  await expect(other.locator('[data-state="saved"]')).toBeVisible();
+  await other.close();
+
+  const conflictMessage = "Draft changed since it was loaded";
+  let serializedConflict = "";
+  let errorHeaders: Record<string, string> = {};
+  await page.route("**/*", async (route) => {
+    const request = route.request();
+    if (
+      request.method() === "POST" &&
+      (request.postData() ?? "").includes('"expectedVersion"')
+    ) {
+      const response = await route.fetch();
+      serializedConflict = await response.text();
+      errorHeaders = response.headers();
+      await route.fulfill({ response, body: serializedConflict });
+      return;
+    }
+    await route.continue();
+  });
+  await draftField(page).fill("Utdatert versjon");
+  await expect(
+    page.getByText(/Utkastet ble ikke lagret\. Det kan/),
+  ).toBeVisible();
+  expect(serializedConflict).toContain(conflictMessage);
+  await page.unroute("**/*");
+  acceptReload = true;
+  await page.reload();
+  acceptReload = false;
+  await openAdvancedEditor(page);
+
+  const timeoutHeaders = { ...errorHeaders };
+  delete timeoutHeaders["content-length"];
+  delete timeoutHeaders["content-encoding"];
+  delete timeoutHeaders["transfer-encoding"];
+  const timeoutBody = serializedConflict.replace(
+    conflictMessage,
+    LUMI_API_WRITE_TIMEOUT_MESSAGE,
+  );
+  let saveCount = 0;
+  await page.route("**/*", async (route) => {
+    const request = route.request();
+    if (
+      request.method() === "POST" &&
+      (request.postData() ?? "").includes('"expectedVersion"')
+    ) {
+      saveCount += 1;
+      if (saveCount === 1) {
+        // The server commits, but the client receives an uncertain outcome.
+        await route.fetch();
+        await route.fulfill({
+          status: 504,
+          headers: timeoutHeaders,
+          body: timeoutBody,
+        });
+        return;
+      }
+    }
+    await route.continue();
+  });
+
+  await draftField(page).fill("Lagret før svaret fikk timeout");
+  await expect(
+    page.getByText(LUMI_API_WRITE_TIMEOUT_MESSAGE).first(),
+  ).toHaveText(LUMI_API_WRITE_TIMEOUT_MESSAGE);
+  await expect(page.locator('[data-state="uncertain"]')).toHaveText(
+    "Uklart om lagret",
+  );
+  await expect(page.locator("header").getByRole("status")).toHaveText(
+    "Det er uklart om utkastet ble lagret",
+  );
+  await expect(
+    page.getByRole("button", { name: "Prøv å lagre igjen" }),
+  ).toHaveCount(0);
+
+  await page.setViewportSize({ width: 320, height: 844 });
+  await expect(
+    page.getByRole("button", { name: "Del med utvikler" }),
+  ).toBeInViewport({ ratio: 1 });
+  await page.getByRole("button", { name: "Del med utvikler" }).click();
+  const share = page.getByRole("dialog", { name: "Del med utvikler" });
+  await expect(share.getByText(LUMI_API_WRITE_TIMEOUT_MESSAGE)).toBeVisible();
+  await expect(
+    share.getByRole("button", { name: "Prøv å lagre igjen" }),
+  ).toHaveCount(0);
+  await expect(
+    share.getByRole("button", { name: /^Del (en ny )?versjon/ }),
+  ).toBeDisabled();
+  await expectNoAxeViolations(page);
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("button", { name: "Del med utvikler" }),
+  ).toBeFocused();
+
+  // Even if the local draft matches the old version, the server may differ.
+  await draftField(page).fill("Endret i en annen fane");
+  await expect(
+    page.getByRole("button", { name: "Prøv i egen fane" }),
+  ).toBeDisabled();
+  await page.getByRole("button", { name: "Til Surveyverksted" }).click();
+  await expect.poll(() => dialogs.length).toBe(1);
+  expect(dialogs[0]).toContain("kan ha blitt fullført");
+  expect(saveCount).toBe(1);
+  await expect(page).toHaveURL(editorUrl);
+
+  await page.unroute("**/*");
+  acceptReload = true;
+  await page.reload();
+  acceptReload = false;
+  await openAdvancedEditor(page);
+  await expect(draftField(page)).toHaveValue("Lagret før svaret fikk timeout");
+  await draftField(page).fill("Lagret etter omlasting");
+  await expect(page.locator('[data-state="saved"]')).toBeVisible();
+
+  // Leaving is allowed, but reopening must not reuse the pre-timeout cache.
+  let secondSaveCount = 0;
+  await page.route("**/*", async (route) => {
+    const request = route.request();
+    if (
+      request.method() === "POST" &&
+      (request.postData() ?? "").includes('"expectedVersion"')
+    ) {
+      secondSaveCount += 1;
+      if (secondSaveCount === 1) {
+        await route.fetch();
+        await route.fulfill({
+          status: 504,
+          headers: timeoutHeaders,
+          body: timeoutBody,
+        });
+        return;
+      }
+    }
+    await route.continue();
+  });
+  await draftField(page).fill("Lagret før navigering");
+  await expect(page.locator('[data-state="uncertain"]')).toBeVisible();
+  acceptNavigation = true;
+  await page.getByRole("button", { name: "Til Surveyverksted" }).click();
+  await expect(page).toHaveURL(/\/surveyverksted\?team=/);
+  expect(secondSaveCount).toBe(1);
+  await page.unroute("**/*");
+  await page
+    .getByRole("link", { name: /Ukjent lagringsutfall/ })
+    .first()
+    .click();
+  await openAdvancedEditor(page);
+  await expect(draftField(page)).toHaveValue("Lagret før navigering");
+  await draftField(page).fill("Lagret etter gjenåpning");
+  await expect(page.locator('[data-state="saved"]')).toBeVisible();
+  await expect(page.getByText(/endret i en annen fane/)).not.toBeVisible();
+
+  // The timeout can also arrive after the navigation flush gives up.
+  let releaseLateResponse = () => {};
+  const lateResponseGate = new Promise<void>((resolve) => {
+    releaseLateResponse = resolve;
+  });
+  let lateSaveCount = 0;
+  await page.route("**/*", async (route) => {
+    const request = route.request();
+    if (
+      request.method() === "POST" &&
+      (request.postData() ?? "").includes('"expectedVersion"')
+    ) {
+      lateSaveCount += 1;
+      if (lateSaveCount === 1) {
+        await route.fetch();
+        await lateResponseGate;
+        await route.fulfill({
+          status: 504,
+          headers: timeoutHeaders,
+          body: timeoutBody,
+        });
+        return;
+      }
+    }
+    await route.continue();
+  });
+  const lateResponse = page.waitForResponse(
+    (response) =>
+      response.status() === 504 &&
+      (response.request().postData() ?? "").includes('"expectedVersion"'),
+  );
+  await draftField(page).fill("Lagret før sent svar");
+  await page.getByRole("button", { name: "Til Surveyverksted" }).click();
+  await expect(page).toHaveURL(/\/surveyverksted\?team=/, { timeout: 15000 });
+  expect(lateSaveCount).toBe(1);
+  releaseLateResponse();
+  await lateResponse;
+  await page.unroute("**/*");
+  await page
+    .getByRole("link", { name: /Ukjent lagringsutfall/ })
+    .first()
+    .click();
+  await openAdvancedEditor(page);
+  await expect(draftField(page)).toHaveValue("Lagret før sent svar");
+  await draftField(page).fill("Lagret etter sent svar");
+  await expect(page.locator('[data-state="saved"]')).toBeVisible();
+  await expect(page.getByText(/endret i en annen fane/)).not.toBeVisible();
+
+  // Reverting locally must not make a pending, uncertain save disappear.
+  let releasePendingResponse = () => {};
+  const pendingResponseGate = new Promise<void>((resolve) => {
+    releasePendingResponse = resolve;
+  });
+  let pendingSaveCommitted = () => {};
+  const committed = new Promise<void>((resolve) => {
+    pendingSaveCommitted = resolve;
+  });
+  await page.route("**/*", async (route) => {
+    const request = route.request();
+    if (
+      request.method() === "POST" &&
+      (request.postData() ?? "").includes('"expectedVersion"')
+    ) {
+      await route.fetch();
+      pendingSaveCommitted();
+      await pendingResponseGate;
+      await route.fulfill({
+        status: 504,
+        headers: timeoutHeaders,
+        body: timeoutBody,
+      });
+      return;
+    }
+    await route.continue();
+  });
+  await draftField(page).fill("Lagret mens svaret venter");
+  await committed;
+  await draftField(page).fill("Lagret etter sent svar");
+  const confirmationsBeforePendingSave = acceptedDialogs.length;
+  await page.getByRole("button", { name: "Til Surveyverksted" }).click();
+  releasePendingResponse();
+  await expect
+    .poll(() => acceptedDialogs.length)
+    .toBe(confirmationsBeforePendingSave + 1);
+  expect(acceptedDialogs.at(-1)).toContain("kan ha blitt fullført");
+  await expect(page).toHaveURL(/\/surveyverksted\?team=/);
   await page.unroute("**/*");
 });
 

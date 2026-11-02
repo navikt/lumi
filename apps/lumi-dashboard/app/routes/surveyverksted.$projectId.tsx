@@ -43,6 +43,10 @@ import type {
   SurveyAuthoringProject,
   SurveyAuthoringProjectSummary,
 } from "~/types/surveyAuthoring";
+import {
+  isLumiApiWriteTimeoutError,
+  LUMI_API_WRITE_TIMEOUT_MESSAGE,
+} from "~/utils/apiErrorMessages";
 import { buildConditionSummaries } from "~/utils/conditionSummary";
 import {
   isDraftConflictError,
@@ -90,6 +94,8 @@ import {
 import styles from "./surveyverksted-editor.module.css";
 
 const searchSchema = z.object({ team: z.string().min(1) });
+const UNCERTAIN_SAVE_NAVIGATION_PROMPT =
+  "Lagringen kan ha blitt fullført. Endringer som ikke er lagret, kan gå tapt. Vil du forlate siden?";
 
 interface EditableDraft {
   name: string;
@@ -214,6 +220,27 @@ function SurveyWorkshopEditor({
     draft.name.trim() && draft.surveyId.trim(),
   );
 
+  const saveAttemptsRef = useRef(0);
+  const uncertainSaveRef = useRef<Error | null>(null);
+  const editorMountedRef = useRef(true);
+  const clearUncertainCaches = useCallback(() => {
+    queryClient.removeQueries({
+      queryKey: ["survey-authoring-project", project.team, project.id],
+      exact: true,
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ["survey-authoring-projects", project.team],
+    });
+  }, [project.id, project.team, queryClient]);
+
+  useEffect(() => {
+    editorMountedRef.current = true;
+    return () => {
+      editorMountedRef.current = false;
+      if (uncertainSaveRef.current) clearUncertainCaches();
+    };
+  }, [clearUncertainCaches]);
+
   const saveMutation = useMutation({
     mutationFn: (variables: EditableDraft & { expectedVersion: number }) =>
       saveSurveyAuthoringDraftServerFn({
@@ -259,14 +286,20 @@ function SurveyWorkshopEditor({
           ),
       );
     },
-    onError: () => {
+    onError: (error) => {
       saveAttemptsRef.current += 1;
+      if (isLumiApiWriteTimeoutError(error)) {
+        uncertainSaveRef.current = error;
+        // The request may settle after the user has left the editor.
+        if (!editorMountedRef.current) clearUncertainCaches();
+      }
     },
   });
 
-  const saveAttemptsRef = useRef(0);
   const saveConflict =
     saveMutation.isError && isDraftConflictError(saveMutation.error);
+  const saveUncertain =
+    saveMutation.isError && isLumiApiWriteTimeoutError(saveMutation.error);
   const saveRetryable =
     saveMutation.isError &&
     !saveConflict &&
@@ -274,7 +307,7 @@ function SurveyWorkshopEditor({
   const saveStuck =
     saveMutation.isError &&
     !saveConflict &&
-    (!saveRetryable || saveAttemptsRef.current >= 3);
+    (saveUncertain || !saveRetryable || saveAttemptsRef.current >= 3);
 
   const isDirtyRef = useRef(false);
   const savePendingRef = useRef(false);
@@ -296,6 +329,7 @@ function SurveyWorkshopEditor({
       // requests start only after a success or via the explicit retry.
       await activeSaveRef.current;
     }
+    if (uncertainSaveRef.current) throw uncertainSaveRef.current;
     const draft = draftRef.current;
     const fingerprint = JSON.stringify(draft);
     if (fingerprint === savedFingerprintRef.current) return;
@@ -332,7 +366,11 @@ function SurveyWorkshopEditor({
     if (flushPromiseRef.current) return flushPromiseRef.current;
     const run = (async () => {
       const started = Date.now();
-      while (JSON.stringify(draftRef.current) !== savedFingerprintRef.current) {
+      // An in-flight save can change the saved draft even after a local revert.
+      while (
+        activeSaveRef.current ||
+        JSON.stringify(draftRef.current) !== savedFingerprintRef.current
+      ) {
         const remaining = 8000 - (Date.now() - started);
         if (remaining <= 0) {
           throw new Error("Fikk ikke lagret alle endringene i tide");
@@ -359,6 +397,9 @@ function SurveyWorkshopEditor({
 
   useBlocker({
     shouldBlockFn: async () => {
+      if (uncertainSaveRef.current) {
+        return !window.confirm(UNCERTAIN_SAVE_NAVIGATION_PROMPT);
+      }
       if (!isDirtyRef.current && !savePendingRef.current) return false;
       if (saveConflictRef.current) {
         return !window.confirm(
@@ -372,18 +413,24 @@ function SurveyWorkshopEditor({
         return !window.confirm(
           isDraftConflictError(error)
             ? "Endringene kan ikke lagres på grunn av en konflikt. Forlate uten å lagre?"
-            : "Fikk ikke lagret endringene. Forlate likevel?",
+            : isLumiApiWriteTimeoutError(error)
+              ? UNCERTAIN_SAVE_NAVIGATION_PROMPT
+              : "Fikk ikke lagret endringene. Forlate likevel?",
         );
       }
     },
-    enableBeforeUnload: () => isDirtyRef.current || savePendingRef.current,
+    enableBeforeUnload: () =>
+      isDirtyRef.current ||
+      savePendingRef.current ||
+      Boolean(uncertainSaveRef.current),
   });
 
   useEffect(() => {
     if (
       fingerprint === savedFingerprint ||
       !hasRequiredMetadata ||
-      saveMutation.isPending
+      saveMutation.isPending ||
+      uncertainSaveRef.current
     ) {
       return;
     }
@@ -988,8 +1035,9 @@ function SurveyWorkshopEditor({
   draftVersionRef.current = draftVersion;
   savedFingerprintRef.current = savedFingerprint;
 
-  const saveState: SaveState =
-    saveConflict || saveStuck
+  const saveState: SaveState = saveUncertain
+    ? "uncertain"
+    : saveConflict || saveStuck
       ? "error"
       : !hasRequiredMetadata
         ? "missing"
@@ -997,7 +1045,7 @@ function SurveyWorkshopEditor({
           ? "saving"
           : "saved";
 
-  const previewReady = !isDirty && !saveMutation.isPending;
+  const previewReady = !isDirty && !saveMutation.isPending && !saveUncertain;
   const previewHref = previewReady
     ? `/survey-preview?team=${encodeURIComponent(project.team)}&projectId=${encodeURIComponent(project.id)}&version=${draftVersion}`
     : null;
@@ -1026,15 +1074,17 @@ function SurveyWorkshopEditor({
 
   const shareStatus: ShareStatus = saveConflict
     ? "conflict"
-    : saveStuck
-      ? "save-error"
-      : !hasRequiredMetadata
-        ? "missing"
-        : validationError || handoffIssues.length > 0
-          ? "invalid"
-          : isDirty || saveMutation.isPending
-            ? "saving"
-            : "ready";
+    : saveUncertain
+      ? "save-uncertain"
+      : saveStuck
+        ? "save-error"
+        : !hasRequiredMetadata
+          ? "missing"
+          : validationError || handoffIssues.length > 0
+            ? "invalid"
+            : isDirty || saveMutation.isPending
+              ? "saving"
+              : "ready";
 
   const shareIssue = useMemo(() => {
     if (validationError) {
@@ -1111,22 +1161,26 @@ function SurveyWorkshopEditor({
         </Alert>
       ) : saveStuck ? (
         <Alert variant="warning" className={styles.saveAlert}>
-          <HStack gap="space-12" align="center" wrap>
-            <span>
-              Endringene er ikke lagret:{" "}
-              {saveMutation.error instanceof Error
-                ? saveMutation.error.message
-                : "ukjent feil"}
-            </span>
-            <Button
-              type="button"
-              variant="secondary-neutral"
-              size="small"
-              onClick={retrySaveNow}
-            >
-              Prøv å lagre igjen
-            </Button>
-          </HStack>
+          {saveUncertain ? (
+            LUMI_API_WRITE_TIMEOUT_MESSAGE
+          ) : (
+            <HStack gap="space-12" align="center" wrap>
+              <span>
+                Endringene er ikke lagret:{" "}
+                {saveMutation.error instanceof Error
+                  ? saveMutation.error.message
+                  : "ukjent feil"}
+              </span>
+              <Button
+                type="button"
+                variant="secondary-neutral"
+                size="small"
+                onClick={retrySaveNow}
+              >
+                Prøv å lagre igjen
+              </Button>
+            </HStack>
+          )}
         </Alert>
       ) : null}
 
