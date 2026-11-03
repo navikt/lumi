@@ -20,13 +20,27 @@ const TEXT_QUERY_ROOTS = new Set([
 /** Remove old values, including inactive filters, rather than keeping stale text visible. */
 export async function resetRedactedFeedbackQueries(
   queryClient: QueryClient,
+  options?: { requireFreshFeedback?: boolean },
 ): Promise<void> {
   const filters = {
     predicate: (query: { queryKey: readonly unknown[] }) =>
       TEXT_QUERY_ROOTS.has(String(query.queryKey[0])),
   };
   await queryClient.cancelQueries(filters);
+  // throwOnError leaves paused refetch rejections unhandled when offline.
   await queryClient.resetQueries(filters);
+  if (
+    options?.requireFreshFeedback &&
+    queryClient
+      .getQueryCache()
+      .findAll({ queryKey: ["feedback"], type: "active" })
+      .some(
+        ({ state }) =>
+          state.status !== "success" || state.fetchStatus === "paused",
+      )
+  ) {
+    throw new Error("Could not refresh feedback.");
+  }
 }
 
 export function useRedactFeedback() {

@@ -1,5 +1,9 @@
 import { webcrypto } from "node:crypto";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  QueryObserver,
+} from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -150,6 +154,26 @@ describe("permanent text masking dialog", () => {
     });
     expect(client.getQueryData(["feedback", "inactive"])).toBeUndefined();
   });
+  it("reports a confirmed mask even when the feedback reload fails", async () => {
+    const { user, client, onMasked } = setup();
+    const queryKey = ["feedback", "active"];
+    client.setQueryData(queryKey, { text: target.text });
+    const observer = new QueryObserver(client, {
+      queryKey,
+      queryFn: () => Promise.reject(new Error("Refresh failed")),
+      staleTime: Infinity,
+      retry: false,
+    });
+    const unsubscribe = observer.subscribe(() => {});
+
+    await selectName(user);
+    await user.click(screen.getByRole("button", { name: "Masker permanent" }));
+    await waitFor(() => expect(onMasked).toHaveBeenCalledOnce());
+    expect(client.getQueryState(queryKey)?.status).toBe("error");
+    expect(client.getQueryData(queryKey)).toBeUndefined();
+    expect(request).toHaveBeenCalledOnce();
+    unsubscribe();
+  });
   it("requires fresh data after a conflict and never retries stale offsets", async () => {
     request.mockRejectedValue(
       new ApiErrorException({
@@ -188,9 +212,19 @@ describe("permanent text masking dialog", () => {
     expect(onClose).not.toHaveBeenCalled();
     expect(onRefreshed).not.toHaveBeenCalled();
 
-    vi.spyOn(client, "cancelQueries").mockRejectedValueOnce(
-      new Error("Refresh failed"),
-    );
+    const queryKey = ["feedback", "active"];
+    const fetchFeedback = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("Refresh failed"))
+      .mockResolvedValue({ text: "fresh value" });
+    client.setQueryData(queryKey, { text: target.text });
+    const observer = new QueryObserver(client, {
+      queryKey,
+      queryFn: fetchFeedback,
+      staleTime: Infinity,
+      retry: false,
+    });
+    const unsubscribe = observer.subscribe(() => {});
     await user.click(screen.getByRole("button", { name: "Lukk og oppdater" }));
     await waitFor(() =>
       expect(
@@ -208,12 +242,16 @@ describe("permanent text masking dialog", () => {
     expect(onClose).not.toHaveBeenCalled();
     expect(onMasked).not.toHaveBeenCalled();
     expect(onRefreshed).not.toHaveBeenCalled();
+    expect(client.getQueryData(queryKey)).toBeUndefined();
     expect(request).toHaveBeenCalledOnce();
 
     await user.click(screen.getByRole("button", { name: "Lukk og oppdater" }));
     await waitFor(() => expect(onRefreshed).toHaveBeenCalledOnce());
     expect(client.getQueryData(["feedback", "inactive"])).toBeUndefined();
+    expect(client.getQueryData(queryKey)).toEqual({ text: "fresh value" });
+    expect(fetchFeedback).toHaveBeenCalledTimes(2);
     expect(request).toHaveBeenCalledOnce();
+    unsubscribe();
   });
   it("prevents a duplicate submission and closing while a write is in progress", async () => {
     let finish: (value: { success: boolean }) => void = () => {};

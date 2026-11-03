@@ -85,7 +85,9 @@ export function MaskTextDialog({
     setRefreshing(true);
     setRefreshError(false);
     try {
-      await resetRedactedFeedbackQueries(queryClient);
+      await resetRedactedFeedbackQueries(queryClient, {
+        requireFreshFeedback: true,
+      });
       onRefreshed();
     } catch {
       setRefreshError(true);
