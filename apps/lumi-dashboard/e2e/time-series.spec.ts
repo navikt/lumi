@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, type Locator, test } from "@playwright/test";
 
 /** Today's date in Oslo, as the dashboard counts it. */
 const TODAY = new Intl.DateTimeFormat("sv-SE", {
@@ -15,6 +15,12 @@ function shiftDate(date: string, days: number): string {
 function mondayOf(date: string): string {
   const weekday = (new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7;
   return shiftDate(date, -weekday);
+}
+
+async function expectPartialWeekInTable(table: Locator) {
+  await expect(
+    table.getByRole("link", { name: /\(\d av 7 dager\)/ }).first(),
+  ).toBeVisible();
 }
 
 // Over 92 days, the time series are shown per ISO week. The mock only has
@@ -67,12 +73,32 @@ test.describe("Time series over long periods", () => {
     const weeks = table.getByRole("rowheader");
     await expect(weeks).toHaveCount(weeksInPeriod);
     await expect(weeks.first()).toHaveText(/^Uke \d{1,2}, \d{4} · /);
-    await expect(table.getByText(/\(\d av 7 dager\)$/).first()).toBeVisible();
+    await expectPartialWeekInTable(table);
 
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
       .analyze();
     expect(results.violations).toEqual([]);
+  });
+
+  test("a partial last week with answers is labeled after a whole first week", async ({
+    page,
+  }) => {
+    const toDate = mondayOf(TODAY);
+    const fromDate = shiftDate(toDate, -(PERIOD_DAYS - 1));
+    await page.goto(`/?dateMode=fixed&fromDate=${fromDate}&toDate=${toDate}`);
+    await page
+      .getByRole("button", {
+        name: /^Vis som tabell\s*: Antall tilbakemeldinger per uke$/,
+      })
+      .click();
+    const table = page.getByRole("table", {
+      name: "Antall tilbakemeldinger per uke",
+    });
+    await expect(table.getByRole("rowheader").last()).toHaveText(
+      /\(1 av 7 dager\).*åpne svarene$/,
+    );
+    await expectPartialWeekInTable(table);
   });
 
   test("a rating survey shows its average and its question trend per week", async ({

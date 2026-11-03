@@ -1,4 +1,7 @@
-import { LUMI_API_WRITE_TIMEOUT_MESSAGE } from "./apiErrorMessages";
+import {
+  isLumiApiWriteTimeoutError,
+  LUMI_API_WRITE_TIMEOUT_MESSAGE,
+} from "./apiErrorMessages";
 
 /**
  * Raised by every write the public demo refuses. Written for the reader
@@ -23,10 +26,6 @@ export function isPublicDemoReadOnlyError(error: unknown): boolean {
  */
 export function writeErrorText(error: unknown, fallback: string): string {
   if (isPublicDemoReadOnlyError(error)) return PUBLIC_DEMO_READ_ONLY_TEXT;
-  if (
-    error instanceof Error &&
-    error.message === LUMI_API_WRITE_TIMEOUT_MESSAGE
-  )
-    return LUMI_API_WRITE_TIMEOUT_MESSAGE;
+  if (isLumiApiWriteTimeoutError(error)) return LUMI_API_WRITE_TIMEOUT_MESSAGE;
   return fallback;
 }

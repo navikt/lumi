@@ -8,12 +8,13 @@ import { Button, Detail, HStack, TextField, Tooltip } from "@navikt/ds-react";
 import { memo, useEffect, useRef, useState } from "react";
 import styles from "./verksted.module.css";
 
-export type SaveState = "saved" | "saving" | "error" | "missing";
+export type SaveState = "saved" | "saving" | "error" | "uncertain" | "missing";
 
 const SAVE_TEXT: Record<SaveState, string> = {
   saved: "Lagret",
   saving: "Lagrer …",
   error: "Ikke lagret",
+  uncertain: "Uklart om lagret",
   missing: "Mangler navn eller ID",
 };
 
@@ -72,8 +73,12 @@ export const EditorTopbar = memo(function EditorTopbar({
     const previous = previousSaveState.current;
     previousSaveState.current = saveState;
     if (saveState === previous) return;
-    if (saveState === "error") {
-      setAnnouncement("Utkastet ble ikke lagret");
+    if (saveState === "error" || saveState === "uncertain") {
+      setAnnouncement(
+        saveState === "uncertain"
+          ? "Det er uklart om utkastet ble lagret"
+          : "Utkastet ble ikke lagret",
+      );
       lastWasError.current = true;
       return;
     }
@@ -149,7 +154,12 @@ export const EditorTopbar = memo(function EditorTopbar({
         </div>
       </HStack>
 
-      <HStack gap="space-8" align="center" className={styles.topbarActions}>
+      <HStack
+        gap="space-8"
+        align="center"
+        wrap
+        className={styles.topbarActions}
+      >
         <span
           className={styles.saveWhisper}
           data-state={saveState}
