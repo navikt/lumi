@@ -12,6 +12,7 @@ import {
 } from "@navikt/ds-react";
 import { Link } from "@tanstack/react-router";
 import type { SurveyAuthoringRevisionSummary } from "~/types/surveyAuthoring";
+import { LUMI_API_WRITE_TIMEOUT_MESSAGE } from "~/utils/apiErrorMessages";
 import styles from "./verksted.module.css";
 
 export type ShareStatus =
@@ -20,6 +21,7 @@ export type ShareStatus =
   | "invalid"
   | "conflict"
   | "missing"
+  | "save-uncertain"
   | "save-error";
 
 export interface ShareDialogProps {
@@ -89,6 +91,8 @@ export function ShareDialog({
               Utkastet er endret et annet sted, for eksempel i en annen fane.
               Last siden på nytt før du deler.
             </Alert>
+          ) : status === "save-uncertain" ? (
+            <Alert variant="warning">{LUMI_API_WRITE_TIMEOUT_MESSAGE}</Alert>
           ) : status === "save-error" ? (
             <Alert variant="error">
               <BodyShort spacing>

@@ -416,6 +416,7 @@
   z-index: 5;
   min-height: 64px;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: var(--ax-space-16);
@@ -502,7 +503,8 @@
 }
 
 .topbarActions {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .saveWhisper {
@@ -536,11 +538,13 @@
   background: var(--ax-bg-danger-strong);
 }
 
-.saveWhisper[data-state="missing"] {
+.saveWhisper[data-state="missing"],
+.saveWhisper[data-state="uncertain"] {
   color: var(--ax-text-warning);
 }
 
-.saveWhisper[data-state="missing"] .saveDot {
+.saveWhisper[data-state="missing"] .saveDot,
+.saveWhisper[data-state="uncertain"] .saveDot {
   background: var(--ax-bg-warning-strong);
 }
 
