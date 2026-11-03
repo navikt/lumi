@@ -10,7 +10,7 @@ import {
   VStack,
 } from "@navikt/ds-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   resetRedactedFeedbackQueries,
   useRedactFeedback,
@@ -46,10 +46,13 @@ export function MaskTextDialog({
 }) {
   const mutation = useRedactFeedback();
   const queryClient = useQueryClient();
+  const modalRef = useRef<HTMLDialogElement>(null);
+  const closeRequested = useRef(false);
   const [selection, setSelection] = useState<TextRedactionRange | null>(null);
   const [preparationError, setPreparationError] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState(false);
   const busy = preparing || mutation.isPending || refreshing;
   let preview = target.text;
   let selectionError = preparationError;
@@ -78,13 +81,41 @@ export function MaskTextDialog({
 
   const refresh = async () => {
     if (refreshing) return;
+    closeRequested.current = false;
     setRefreshing(true);
-    await resetRedactedFeedbackQueries(queryClient);
-    onRefreshed();
+    setRefreshError(false);
+    try {
+      await resetRedactedFeedbackQueries(queryClient);
+      onRefreshed();
+    } catch {
+      setRefreshError(true);
+    } finally {
+      setRefreshing(false);
+    }
   };
-  const close = () => {
-    if (mutation.isError) void refresh();
-    else onClose();
+  const canClose = () => {
+    if (busy || mutation.isError) {
+      closeRequested.current = false;
+      if (!busy && mutation.isError) void refresh();
+      return false;
+    }
+    closeRequested.current = true;
+    return true;
+  };
+  const handleClose = () => {
+    if (!closeRequested.current || busy || mutation.isError) {
+      closeRequested.current = false;
+      // Native close is not cancelable. Keep the same dialog and mutation state,
+      // even if the request settled before this queued close event arrived.
+      const dialog = modalRef.current;
+      if (dialog?.isConnected && !dialog.open) dialog.showModal();
+      return;
+    }
+    closeRequested.current = false;
+    onClose();
+  };
+  const requestClose = () => {
+    if (canClose()) modalRef.current?.close();
   };
 
   const confirm = async () => {
@@ -96,6 +127,7 @@ export function MaskTextDialog({
       preview === target.text
     )
       return;
+    closeRequested.current = false;
     setPreparing(true);
     try {
       let expectedTextHash: string;
@@ -124,12 +156,18 @@ export function MaskTextDialog({
 
   return (
     <Modal
+      ref={modalRef}
       open
+      closedby={busy ? "none" : undefined}
       aria-label="Masker fritekstsvar"
-      onClose={close}
-      onBeforeClose={() => !busy}
+      onClose={handleClose}
+      onBeforeClose={canClose}
+      onKeyDownCapture={(event) => {
+        // Aksel owns onKeyDown; capture also guards browsers without closedby.
+        if (event.key === "Escape" && !canClose()) event.preventDefault();
+      }}
       onCancel={(event) => {
-        if (busy) event.preventDefault();
+        if (!canClose()) event.preventDefault();
       }}
       header={{
         heading: "Masker fritekstsvar",
@@ -218,13 +256,14 @@ export function MaskTextDialog({
                       mutation.error,
                       "Kunne ikke bekrefte om teksten ble maskert. Oppdater listen før du prøver igjen.",
                     )}
+              {refreshError && " Kunne ikke oppdatere listen. Prøv igjen."}
             </ErrorMessage>
           )}
         </VStack>
       </Modal.Body>
       <Modal.Footer>
         <HStack gap="space-12" justify="end" wrap>
-          <Button variant="secondary" onClick={close} disabled={busy}>
+          <Button variant="secondary" onClick={requestClose} disabled={busy}>
             Avbryt
           </Button>
           {mutation.isError ? (

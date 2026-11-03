@@ -22,7 +22,10 @@ beforeEach(() => {
   request.mockReset().mockResolvedValue({ success: true });
   vi.stubGlobal("crypto", webcrypto);
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 function setup(overrides: Partial<typeof target> = {}) {
   const client = new QueryClient({
@@ -171,6 +174,47 @@ describe("permanent text masking dialog", () => {
     expect(request).toHaveBeenCalledOnce();
     expect(client.getQueryData(["feedback", "inactive"])).toBeUndefined();
   });
+  it("preserves an unknown outcome and the refresh requirement when refreshing fails", async () => {
+    request.mockRejectedValue(new Error("Unknown write outcome"));
+    const { user, client, onClose, onMasked, onRefreshed } = setup();
+    await selectName(user);
+    await user.click(screen.getByRole("button", { name: "Masker permanent" }));
+    const errorText =
+      "Kunne ikke bekrefte om teksten ble maskert. Oppdater listen før du prøver igjen.";
+    expect(await screen.findByRole("alert")).toHaveTextContent(errorText);
+    // The real native close and focus behavior is covered by the browser tests.
+    fireEvent(screen.getByRole("dialog"), new Event("close"));
+    expect(screen.getByRole("alert")).toHaveTextContent(errorText);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onRefreshed).not.toHaveBeenCalled();
+
+    vi.spyOn(client, "cancelQueries").mockRejectedValueOnce(
+      new Error("Refresh failed"),
+    );
+    await user.click(screen.getByRole("button", { name: "Lukk og oppdater" }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Lukk og oppdater/ }),
+      ).toBeEnabled(),
+    );
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(errorText);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Kunne ikke oppdatere listen. Prøv igjen.",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Masker permanent" }),
+    ).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onMasked).not.toHaveBeenCalled();
+    expect(onRefreshed).not.toHaveBeenCalled();
+    expect(request).toHaveBeenCalledOnce();
+
+    await user.click(screen.getByRole("button", { name: "Lukk og oppdater" }));
+    await waitFor(() => expect(onRefreshed).toHaveBeenCalledOnce());
+    expect(client.getQueryData(["feedback", "inactive"])).toBeUndefined();
+    expect(request).toHaveBeenCalledOnce();
+  });
   it("prevents a duplicate submission and closing while a write is in progress", async () => {
     let finish: (value: { success: boolean }) => void = () => {};
     request.mockImplementation(
@@ -187,7 +231,8 @@ describe("permanent text masking dialog", () => {
     expect(
       screen.getByRole("button", { name: /Masker permanent/ }),
     ).toBeDisabled();
-    await user.keyboard("{Escape}");
+    await user.keyboard("{Escape}{Escape}");
+    fireEvent(screen.getByRole("dialog"), new Event("close"));
     expect(onClose).not.toHaveBeenCalled();
     finish({ success: true });
     await waitFor(() => expect(onMasked).toHaveBeenCalledOnce());
