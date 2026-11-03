@@ -101,6 +101,10 @@ class ApiV1Intern {
         @Resource("{id}")
         @Serializable
         class Id(val parent: Feedback, val id: String) {
+            @Resource("redact")
+            @Serializable
+            class Redact(val parent: Id)
+
             @Resource("tags")
             @Serializable
             class Tags(val parent: Id, val tag: String? = null)

@@ -8,7 +8,12 @@ import io.ktor.server.resources.put
 import io.ktor.server.resources.delete
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
 import no.nav.lumi.config.auth.authorizedTeam
+import no.nav.lumi.config.exception.ApiErrorException
+import no.nav.lumi.domain.RedactFeedbackInput
+import no.nav.lumi.repository.FeedbackRedactionRepository
 import no.nav.lumi.domain.FeedbackPage
 import no.nav.lumi.domain.FeedbackQuery
 import no.nav.lumi.domain.ContextTagsResponse
@@ -32,7 +37,27 @@ private val defaultStatsCacheInvalidator = StatsCacheInvalidator(defaultStatsCac
 fun Route.feedbackRoutes(
     service: FeedbackService = defaultFeedbackService,
     statsCacheInvalidator: StatsCacheInvalidator = defaultStatsCacheInvalidator,
+    redactionRepository: FeedbackRedactionRepository = FeedbackRedactionRepository(),
 ) {
+    post<ApiV1Intern.Feedback.Id.Redact> { params ->
+        if (call.request.queryParameters["team"].isNullOrBlank()) {
+            throw ApiErrorException.BadRequestException("Velg team før du maskerer et svar.")
+        }
+        val team = call.authorizedTeam
+        val input = try {
+            Json.decodeFromString<RedactFeedbackInput>(receiveTextWithLimit(call))
+        } catch (_: SerializationException) {
+            // Parse exceptions can quote the payload. Never forward their
+            // message or cause to request/error logging.
+            throw ApiErrorException.BadRequestException("Ugyldig forespørsel om maskering.")
+        }
+        if (!redactionRepository.redact(params.parent.id, team, input)) {
+            throw ApiErrorException.NotFoundException("Fant ikke tilbakemeldingen.")
+        }
+        statsCacheInvalidator.invalidateTeam(team)
+        call.respond(HttpStatusCode.NoContent)
+    }
+
     // List feedback with pagination and filters
     get<ApiV1Intern.Feedback> { params ->
         // Team is already validated by TeamAuthorizationPlugin

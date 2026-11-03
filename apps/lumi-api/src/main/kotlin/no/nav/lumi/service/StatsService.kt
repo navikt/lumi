@@ -7,6 +7,7 @@ import no.nav.lumi.domain.*
 import no.nav.lumi.integrations.valkey.StatsCache
 import no.nav.lumi.integrations.valkey.ValkeyStatsCache
 import no.nav.lumi.repository.FeedbackRepository
+import no.nav.lumi.repository.FeedbackRedactionRepository
 import no.nav.lumi.repository.FeedbackStatsRepository
 import no.nav.lumi.repository.QuestionTrendRepository
 import no.nav.lumi.repository.TextThemeRepository
@@ -35,6 +36,7 @@ class StatsService(
     private val statsCache: StatsCache = ValkeyStatsCache.fromEnvOrFallback(),
     private val cacheTtl: Duration = Duration.ofMinutes(3),
     private val questionTrendRepository: QuestionTrendRepository = QuestionTrendRepository(),
+    private val redactionRepository: FeedbackRedactionRepository = FeedbackRedactionRepository(),
 ) {
     private val overviewCacheTtl: Duration = Duration.ofMinutes(2)
     private val ratingsCacheTtl: Duration = Duration.ofMinutes(2)
@@ -47,6 +49,12 @@ class StatsService(
 
     internal fun statsCacheKey(prefix: String, query: StatsQuery): String =
         "$prefix:${query.toCacheKey()}"
+
+    // The generation is persisted in the same transaction as masking. Late
+    // computations, other replicas and local Valkey fallbacks keep their old
+    // key and cannot repopulate the current cache with removed text.
+    internal suspend fun redactionAwareCacheKey(prefix: String, query: StatsQuery): String =
+        statsCacheKey(prefix, query) + "&redactionGeneration=${redactionRepository.generation(query.team)}"
 
     private fun StatsQuery.toCacheKey(): String {
         fun enc(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)
@@ -80,7 +88,7 @@ class StatsService(
             "rating" to ratingValue,
             // Bump when the cached response semantics change. This prevents a
             // rolling deploy from serving values written by an older version.
-            "resultVersion" to "5",
+            "resultVersion" to "6",
         )
             .filter { (_, value) -> value != null }
             .map { (key, value) -> "${enc(key)}=${enc(value!!)}" }
@@ -94,7 +102,7 @@ class StatsService(
         ttl: Duration,
         crossinline compute: suspend () -> T
     ): T {
-        val cacheKey = statsCacheKey(prefix, query)
+        val cacheKey = redactionAwareCacheKey(prefix, query)
 
         statsCache.get(cacheKey)?.let { cached ->
             return try {
@@ -122,7 +130,7 @@ class StatsService(
         .toLocalDate().plusDays(1).toString()
 
     private suspend fun getCachedDashboardStats(query: StatsQuery): FeedbackStats {
-        val cacheKey = statsCacheKey("dashboard", query)
+        val cacheKey = redactionAwareCacheKey("dashboard", query)
         
         // Try cache first
         statsCache.get(cacheKey)?.let { cached ->
@@ -281,7 +289,7 @@ class StatsService(
             )
         }
 
-        val cacheKey = statsCacheKey("questionTrend", query) +
+        val cacheKey = redactionAwareCacheKey("questionTrend", query) +
             "&fieldId=${URLEncoder.encode(fieldId, StandardCharsets.UTF_8)}" +
             "&interval=${interval.name.lowercase()}"
 
