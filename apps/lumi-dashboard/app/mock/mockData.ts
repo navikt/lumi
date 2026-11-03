@@ -41,6 +41,12 @@ export {
   generateTopTasksMockData,
 };
 
+import { ApiErrorException, ErrorType } from "~/types/errors";
+import {
+  type RedactFeedbackInput,
+  redactTextPreview,
+  textRedactionHash,
+} from "~/utils/textRedaction";
 import { calculateQuestionTrend } from "./questionTrend";
 import { calculateStats } from "./stats";
 import {
@@ -48,9 +54,7 @@ import {
   getMockDiscoveryStats as calculateDiscoveryStats,
   getMockTopTasksStats as calculateTopTasksStats,
 } from "./stats/index";
-
 import { getMockTaskPriorityStats as calculateTaskPriorityStats } from "./stats/taskPriority";
-
 import { sykmeldtTopics } from "./topics";
 import { applyFeedbackFilters } from "./utils/filters";
 
@@ -296,6 +300,23 @@ function generateE2eFixtureData(): FeedbackDto[] {
     ...generateHistoricalSurveyData(),
     ...generateSharedSurveyData(),
     ...generateAnalysisBudgetSurveyData(),
+    ...["Ola Nordmann", "Kari Hansen"].map((name, index) => ({
+      id: `redaction-${index}`,
+      submittedAt: new Date().toISOString(),
+      app: "syfo-oppfolgingsplan-frontend",
+      surveyId: "survey-redaction",
+      surveyType: "rating" as const,
+      context: createContext("/maskering", "desktop"),
+      answers: [
+        createRatingAnswer("rating", "Hvor enkelt var det?", 4),
+        createTextAnswer(
+          "comment",
+          "Hva fungerte bra?",
+          `Skjemaet var enkelt å bruke.\r\nHilsen ${name}`,
+        ),
+      ],
+      sensitiveDataRedacted: false,
+    })),
   ];
 }
 
@@ -887,6 +908,52 @@ export function deleteMockSurvey(surveyId: string): {
   console.log(`[Mock] Deleted ${deletedCount} items for survey "${surveyId}"`);
 
   return { deletedCount, surveyId };
+}
+
+// Permanently mask selected text using the same optimistic concurrency contract as the API.
+export async function redactMockFeedback(
+  input: RedactFeedbackInput,
+): Promise<void> {
+  const item = getMockItemsForTeam(input.team).find(
+    (item) => item.id === input.id,
+  );
+  const fail = (status: number, type: ErrorType, message: string): never => {
+    throw new ApiErrorException({
+      status,
+      type,
+      message,
+      timestamp: new Date().toISOString(),
+    });
+  };
+  if (!item)
+    return fail(404, ErrorType.NOT_FOUND, "Fant ikke tilbakemeldingen.");
+  const answers = item.answers.filter(
+    (answer) => answer.fieldId === input.fieldId,
+  );
+  const answer = answers[0];
+  if (
+    answers.length !== 1 ||
+    answer?.fieldType !== "TEXT" ||
+    answer.value.type !== "text"
+  ) {
+    fail(400, ErrorType.BAD_REQUEST, "Velg ett eksisterende fritekstsvar.");
+  }
+  if (answer.value.type !== "text") return;
+  const current = answer.value.text;
+  const hash = await textRedactionHash(current);
+  if (hash !== input.expectedTextHash || answer.value.text !== current) {
+    fail(
+      409,
+      ErrorType.CONFLICT,
+      "Svaret er endret. Last det inn på nytt før du maskerer.",
+    );
+  }
+  const redacted = redactTextPreview(current, input.ranges);
+  if (redacted === current) {
+    return fail(400, ErrorType.BAD_REQUEST, "Velg tekst som skal fjernes.");
+  }
+  answer.value.text = redacted;
+  item.sensitiveDataRedacted = true;
 }
 
 // Delete single feedback item (mock implementation)

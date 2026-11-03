@@ -18,7 +18,7 @@ import {
 import dayjs from "dayjs";
 import { DashboardCard } from "~/components/dashboard";
 import { useBreakpoint } from "~/hooks/useBreakpoint";
-import type { FeedbackDto } from "~/types/api";
+import type { Answer, FeedbackDto } from "~/types/api";
 import { RenderAnswer } from "./AnswerRenderer";
 import {
   ContextItem,
@@ -41,6 +41,7 @@ interface FeedbackCardProps {
   onToggleExpand: () => void;
   onDelete: () => void;
   isDeleting: boolean;
+  onRedact?: (answer: Answer) => void;
 }
 
 /**
@@ -54,6 +55,7 @@ export function FeedbackCard({
   onToggleExpand,
   onDelete,
   isDeleting,
+  onRedact,
 }: FeedbackCardProps) {
   const ratings = getAllRatings(feedback);
   const preview = getFeedbackPreview(feedback);
@@ -136,7 +138,11 @@ export function FeedbackCard({
               <ExpandedSection label={`Svar (${feedback.answers.length})`}>
                 {/* Timeline on larger screens, simple cards on small screens */}
                 {showTimeline ? (
-                  <TimelineView answers={feedback.answers} styles={styles} />
+                  <TimelineView
+                    answers={feedback.answers}
+                    styles={styles}
+                    onRedact={onRedact}
+                  />
                 ) : (
                   <VStack gap="space-8">
                     {feedback.answers.map((answer) => (
@@ -144,6 +150,7 @@ export function FeedbackCard({
                         key={answer.fieldId}
                         answer={answer}
                         styles={styles}
+                        onRedact={onRedact ? () => onRedact(answer) : undefined}
                       />
                     ))}
                   </VStack>

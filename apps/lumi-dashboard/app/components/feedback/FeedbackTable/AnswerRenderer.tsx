@@ -1,6 +1,7 @@
 import {
   CalendarIcon,
   ChatIcon,
+  EyeSlashIcon,
   StarIcon,
   TasklistIcon,
   ThumbDownIcon,
@@ -8,6 +9,7 @@ import {
 } from "@navikt/aksel-icons";
 import {
   BodyShort,
+  Button,
   Detail,
   HStack,
   Label,
@@ -66,9 +68,11 @@ function renderChoiceFallback(selectedValues: string[]) {
 export function RenderAnswer({
   answer,
   styles,
+  onRedact,
 }: {
   answer: Answer;
   styles: Record<string, string>;
+  onRedact?: () => void;
 }) {
   switch (answer.fieldType) {
     case "RATING": {
@@ -247,6 +251,19 @@ export function RenderAnswer({
             <BodyShort>{answer.value.text}</BodyShort>
           ) : (
             <span className={styles.answerEmpty}>Ikke utfylt</span>
+          )}
+          {onRedact && answer.value.type === "text" && answer.value.text && (
+            <Button
+              size="small"
+              variant="tertiary"
+              icon={<EyeSlashIcon aria-hidden />}
+              onClick={(event) => {
+                event.stopPropagation();
+                onRedact();
+              }}
+            >
+              Masker tekst
+            </Button>
           )}
         </AnswerCardLayout>
       );

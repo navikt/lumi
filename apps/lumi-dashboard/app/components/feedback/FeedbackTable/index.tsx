@@ -18,7 +18,7 @@ import {
   Tooltip,
   VStack,
 } from "@navikt/ds-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import { useActiveFilters } from "~/hooks/useActiveFilters";
 import { useArchiveSurvey } from "~/hooks/useArchiveSurvey";
@@ -27,6 +27,7 @@ import { useFeedback } from "~/hooks/useFeedback";
 import { useFilterBootstrap } from "~/hooks/useFilterBootstrap";
 import { useSearchParams } from "~/hooks/useSearchParams";
 import { useTeamAccessDenied } from "~/hooks/useTeamAccessDenied";
+import type { Answer, FeedbackDto } from "~/types/api";
 import { FILTER_BUDGET_DESCRIPTION } from "~/utils/analysisBudget";
 import {
   type DateRange,
@@ -45,6 +46,7 @@ import { DeleteSurveyDialog } from "../../dashboard/DeleteSurveyDialog";
 import { focusPeriodTrigger } from "../../dashboard/PeriodSelector";
 import { DataFetchBoundary } from "../../shared/DataFetchBoundary";
 import { DeleteFeedbackDialog } from "../DeleteFeedbackDialog";
+import { MaskTextDialog, type TextRedactionTarget } from "../MaskTextDialog";
 import { FeedbackEmptyState } from "./EmptyState";
 import { FeedbackCard } from "./FeedbackCard";
 import { FeedbackExpandedView } from "./FeedbackExpandedView";
@@ -63,31 +65,85 @@ interface FeedbackTableProps {
 
 export function FeedbackTable({ onResetFilters }: FeedbackTableProps = {}) {
   const feedbackQuery = useFeedback();
+  const { params } = useSearchParams();
+  const [redactionTarget, setRedactionTarget] =
+    useState<TextRedactionTarget | null>(null);
+  const [notice, setNotice] = useState("");
+  const noticeRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (notice) noticeRef.current?.focus();
+  }, [notice]);
+  useEffect(() => {
+    if (redactionTarget && redactionTarget.team !== params.team) {
+      setRedactionTarget(null);
+      setNotice("");
+    }
+  }, [params.team, redactionTarget]);
   // FilterBar explains why the team's feedback cannot be fetched.
   const teamAccessDenied = useTeamAccessDenied();
   if (teamAccessDenied) return null;
 
   return (
-    <DataFetchBoundary
-      title="Kunne ikke hente tilbakemeldinger"
-      analysisBudgetDescription={FILTER_BUDGET_DESCRIPTION}
-      offerRemoveFilter
-      queries={[feedbackQuery]}
-    >
-      <FeedbackTableContent
-        feedbackQuery={feedbackQuery}
-        onResetFilters={onResetFilters}
-      />
-    </DataFetchBoundary>
+    <>
+      {notice && (
+        <div role="status" tabIndex={-1} ref={noticeRef}>
+          <BodyShort>{notice}</BodyShort>
+        </div>
+      )}
+      <DataFetchBoundary
+        title="Kunne ikke hente tilbakemeldinger"
+        analysisBudgetDescription={FILTER_BUDGET_DESCRIPTION}
+        offerRemoveFilter
+        queries={[feedbackQuery]}
+      >
+        <FeedbackTableContent
+          feedbackQuery={feedbackQuery}
+          onResetFilters={onResetFilters}
+          onRedact={(feedback, answer) => {
+            if (
+              !params.team ||
+              answer.fieldType !== "TEXT" ||
+              answer.value.type !== "text"
+            )
+              return;
+            setNotice("");
+            setRedactionTarget({
+              id: feedback.id,
+              team: params.team,
+              fieldId: answer.fieldId,
+              question: answer.question.label,
+              text: answer.value.text,
+            });
+          }}
+        />
+      </DataFetchBoundary>
+      {redactionTarget && (
+        <MaskTextDialog
+          key={`${redactionTarget.team}:${redactionTarget.id}:${redactionTarget.fieldId}`}
+          target={redactionTarget}
+          onClose={() => setRedactionTarget(null)}
+          onMasked={() => {
+            setRedactionTarget(null);
+            setNotice("Teksten er maskert.");
+          }}
+          onRefreshed={() => {
+            setRedactionTarget(null);
+            setNotice("Åpne svaret på nytt før du maskerer igjen.");
+          }}
+        />
+      )}
+    </>
   );
 }
 
 function FeedbackTableContent({
   feedbackQuery,
   onResetFilters,
+  onRedact,
 }: {
   feedbackQuery: ReturnType<typeof useFeedback>;
   onResetFilters?: () => void;
+  onRedact: (feedback: FeedbackDto, answer: Answer) => void;
 }) {
   const { params, setParam, setParams } = useSearchParams();
   const page = Number.parseInt(params.page || "1", 10);
@@ -227,7 +283,14 @@ function FeedbackTableContent({
                         }
                       />
                       {expandedRows.has(feedback.id) && (
-                        <FeedbackExpandedView feedback={feedback} />
+                        <FeedbackExpandedView
+                          feedback={feedback}
+                          onRedact={
+                            params.team
+                              ? (answer) => onRedact(feedback, answer)
+                              : undefined
+                          }
+                        />
                       )}
                     </React.Fragment>
                   ))}
@@ -249,6 +312,11 @@ function FeedbackTableContent({
                   isDeleting={
                     deleteFeedbackMutation.isPending &&
                     feedbackToDelete === feedback.id
+                  }
+                  onRedact={
+                    params.team
+                      ? (answer) => onRedact(feedback, answer)
+                      : undefined
                   }
                 />
               ))}

@@ -1,6 +1,6 @@
 import { TagIcon } from "@navikt/aksel-icons";
 import { Box, Detail, HStack, Table, VStack } from "@navikt/ds-react";
-import type { FeedbackDto } from "~/types/api";
+import type { Answer, FeedbackDto } from "~/types/api";
 import { TagEditor } from "../TagEditor";
 import {
   ContextGrid,
@@ -12,13 +12,17 @@ import { TimelineView } from "./TimelineView";
 
 interface FeedbackExpandedViewProps {
   feedback: FeedbackDto;
+  onRedact?: (answer: Answer) => void;
 }
 
 /**
  * Expanded view shown when a feedback row is clicked.
  * Displays full answers, context, metadata, and tags.
  */
-export function FeedbackExpandedView({ feedback }: FeedbackExpandedViewProps) {
+export function FeedbackExpandedView({
+  feedback,
+  onRedact,
+}: FeedbackExpandedViewProps) {
   return (
     <Table.Row className={styles.expandedRow}>
       <Table.DataCell colSpan={5} className={styles.expandedCell}>
@@ -26,7 +30,11 @@ export function FeedbackExpandedView({ feedback }: FeedbackExpandedViewProps) {
           <VStack gap="space-20">
             {/* Answers Timeline */}
             <ExpandedSection label={`Svar(${feedback.answers.length})`}>
-              <TimelineView answers={feedback.answers} styles={styles} />
+              <TimelineView
+                answers={feedback.answers}
+                styles={styles}
+                onRedact={onRedact}
+              />
             </ExpandedSection>
 
             {/* Tags Editor */}

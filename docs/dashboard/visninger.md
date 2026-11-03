@@ -191,7 +191,7 @@ Klikk på en rad for å åpne svaret. Da ser dere:
 - **Segment** og **Metadata** når appen har sendt med slike verdier
 - svarets ID og survey-ID nederst
 
-Merkelappen **Redigert** betyr at Lumi har maskert tekst som så ut som personopplysninger, se [PII-maskering](/referanse/sikkerhet#pii-maskering). Tags dere legger til, kan dere filtrere på, se [Tags](/dashboard/filtrering#tags).
+Merkelappen **Redigert** betyr at tekst er maskert automatisk av Lumi eller manuelt av en i teamet. Se [PII-maskering](/referanse/sikkerhet#pii-maskering). Tags dere legger til, kan dere filtrere på, se [Tags](/dashboard/filtrering#tags).
 
 ### Slett ett svar
 
