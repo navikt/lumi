@@ -7,11 +7,21 @@ hourly. A PostgreSQL advisory lock and the persisted
 including across pod restarts and replica changes. The setting is fail-closed: a
 missing or false value disables deletion.
 
-Each global run deletes at most 500 of the oldest eligible responses. Later runs
-continue with the remaining rows. The deletion and the persisted completion time
-commit in the same database transaction. This bounds deletion to 500 rows in any
-rolling 24-hour period and must not be increased without checking production volume
-and query performance first.
+Each global run deletes at most five batches of 500 of the oldest eligible
+responses (2,500 total). Each batch and its completion time commit together, so
+an interrupted run cannot start a second daily work budget. Later runs continue
+with the remaining rows. The advisory lock and persisted completion time enforce
+one global run per 24 hours. Before increasing either limit, check production
+volume and query performance first.
+
+`lumi_retention_expired_feedback_remaining` is a per-instance gauge: `1` means
+the latest completed run on that instance left expired responses, `0` means
+none remained, and `-1` means no successful run has reported the state or the
+latest attempt failed. It has no team or response labels. Do not aggregate this
+gauge across pods because inactive replicas can retain stale values. The
+`hasMoreExpiredFeedback` field in the latest `Automatic retention run completed`
+log is the global result; a latest `Automatic retention failed` entry means the
+result is unknown.
 
 Cleanup has been enabled in production since #559 (27 August 2026). Follow the
 activation checklist below when enabling it again after an emergency stop.
@@ -35,7 +45,8 @@ Before opening the activation PR:
    ```
 
 4. Run `EXPLAIN (ANALYZE, BUFFERS)` on the bounded `SELECT` from the cleanup CTE,
-   never on the `DELETE`, and confirm use of `idx_feedback_opprettet`.
+   never on the `DELETE`, and confirm use of `idx_feedback_opprettet`. The
+   configured cap is five batches, each selecting at most 500 rows.
 5. Follow the [database recovery runbook](./database-recovery.md). Confirm the
    latest successful backup and explicitly accept the recovery window from
    [ADR 0005](../../../../docs/adr/0005-database-recovery-og-kapasitet.md).
@@ -48,8 +59,10 @@ After deployment:
 1. Confirm `min(lumi_retention_enabled{app="lumi-api"}) == 1`, so every live pod has
    the intended configuration.
 2. Confirm one executed run and no failed runs.
-3. Confirm the increase in `lumi_retention_deleted_feedback_total` is at most 500
-   over 24 hours, and compare it with the eligible-row count.
+3. Confirm the increase in `lumi_retention_deleted_feedback_total` is at most
+   2,500 over 24 hours, and compare it with the eligible-row count. If
+   `lumi_retention_expired_feedback_remaining` is `1`, the run reached its
+   bounded work budget; investigate the query and volume before raising it.
 4. Confirm that dashboard counts and filters are refreshed for affected teams.
 
 ## Emergency stop

@@ -34,9 +34,11 @@ class FeedbackRetentionService(
                         "Executed retention result did not include the database completion time"
                     }
                     observability.recordExecuted(completedAt)
+                    observability.recordExpiredFeedbackRemaining(result.hasMoreExpiredFeedback)
                     log.info(
-                        "Automatic retention run completed: deletedFeedback={}, cutoff={}",
+                        "Automatic retention run completed: deletedFeedback={}, hasMoreExpiredFeedback={}, cutoff={}",
                         result.deletedFeedback,
+                        result.hasMoreExpiredFeedback,
                         cutoff,
                     )
                 } else {
@@ -57,7 +59,8 @@ class FeedbackRetentionService(
             }
         } catch (cause: Throwable) {
             observability.recordFailed()
-            log.error("Automatic retention failed", cause)
+            observability.recordExpiredFeedbackRemainingUnknown()
+            log.error("Automatic retention failed; remaining expired feedback is unknown", cause)
             throw cause
         }
     }
