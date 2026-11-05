@@ -12,3 +12,41 @@ jobs:
     uses: navikt/teamesyfo-github-actions-workflows/.github/workflows/dependabot-automerge.yaml@0516def23d1fa6a69736c970bf64ba31bec10749 # main
     secrets:
       APP_PRIVATE_KEY: ${{ secrets.AUTOMERGE_APP_PRIVATE_KEY }}
+
+  copilot-review:
+    name: Request Copilot review
+    # Updates that the shared workflow does not auto-merge get a Copilot review.
+    # Keep this condition in sync with its policy.
+    if: >-
+      ${{
+        github.event.pull_request.user.login == 'dependabot[bot]' &&
+        !github.event.pull_request.head.repo.fork
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: copilot-review-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read # fetch-metadata reads the Dependabot commit.
+      pull-requests: write # Required to request a reviewer.
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          skip-commit-verification: true
+
+      - name: Request Copilot review
+        if: >-
+          ${{
+            steps.metadata.outputs.package-ecosystem != 'github_actions' &&
+            steps.metadata.outputs.update-type != 'version-update:semver-patch' &&
+            steps.metadata.outputs.update-type != 'version-update:semver-minor'
+          }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh api --method POST "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/requested_reviewers" \
+            -f 'reviewers[]=copilot-pull-request-reviewer[bot]' --silent
