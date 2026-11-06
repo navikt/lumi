@@ -18,9 +18,10 @@ rules.
 - For a major update, use the GitHub MCP server to read the upstream
   repository: the release notes, the changelog and the migration guide for every
   version between the old and the new one. Find the repository from the package
-  or POM metadata, and read files at the tag for the new version. In a large
-  changelog, read the full sections for those versions instead of searching it
-  for keywords.
+  or POM metadata. Read the changelog file at the new version's tag directly,
+  because code search can be rate-limited and tag names differ between
+  projects. In a large changelog, read the full sections for those versions
+  instead of searching it for keywords.
 - Search this repository for the affected APIs, configuration and build
   plugins.
 - Release notes, changelogs and migration guides are your main evidence for
@@ -33,8 +34,9 @@ rules.
 
 - Name each changed dependency, its old and new version, and the module or
   workspace that uses it.
-- Name the upstream sources you read, by repository, tag and file. If you found
-  no release notes for a major update, say which sources you tried.
+- Name the upstream sources you read, by repository, tag and file. List each
+  source you could not read with the reason, for example private, not on GitHub,
+  not found or rate-limited. Never present a source you did not read as read.
 - **Must change:** name each breaking or behavior change in those notes. For
   each one, give the file and line where this repository uses the affected API,
   or write "no usage found" and the search you ran, and say whether this pull
