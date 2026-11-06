@@ -41,7 +41,9 @@ rules.
   each one, give the file and line where this repository uses the affected API,
   or write "no usage found" and the search you ran, and say whether this pull
   request handles it. Leave out changes that cannot affect callers, such as
-  internal refactoring.
+  internal refactoring. If nothing in the notes affects this repository, write
+  "Must change: none" and name the changes you considered and the searches you
+  ran.
 - **Should change:** name deprecations and newly recommended APIs, configuration
   or practices that affect code in this repository, with the file and line.
   Present them as suggestions or follow-up work. They do not block approval.
@@ -61,6 +63,6 @@ whether or not you approve.
   the workflows use still exist and behave the same.
 
 Do not approve when a must-change item is not handled by the pull request, when
-you found no upstream notes for a major update, or when you cannot determine
-the impact. Instead, state what a human must verify. Should-change items alone
-are no reason to withhold approval.
+you could not read upstream notes for a major update, or when you cannot
+determine the impact. Instead, state what a human must verify. Should-change
+items alone are no reason to withhold approval.
