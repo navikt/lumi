@@ -41,6 +41,11 @@ General-purpose agent workflows and skills are provided outside this repository.
 Do not copy them into the codebase. Add a scoped instruction only when a rule is
 specific to Lumi and is expected to remain true over time.
 
+The exception is `dependency-updates.instructions.md`. It is written to be
+reusable in other repositories and lives here because GitHub code review reads
+its instructions from the repository it reviews. Put Lumi-specific checks for
+dependency updates in `lumi-dependency-updates.instructions.md`.
+
 ## Conventions
 
 - Aksel (v8): use `@navikt/ds-react` components and spacing tokens (`space-*`, including `space-0`).
