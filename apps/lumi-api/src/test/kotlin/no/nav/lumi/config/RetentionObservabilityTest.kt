@@ -15,6 +15,7 @@ class RetentionObservabilityTest : FunSpec({
 
         observability.recordDeletedFeedback(7)
         observability.recordExecuted(Instant.parse("2026-08-26T12:00:00Z"))
+        observability.recordExpiredFeedbackRemaining(true)
         observability.recordSkipped()
         observability.recordFailed()
 
@@ -35,11 +36,41 @@ class RetentionObservabilityTest : FunSpec({
             .gauge()
             .value()
             .shouldBeExactly(1.0)
+        registry.get(RetentionObservability.EXPIRED_FEEDBACK_REMAINING_METRIC_NAME)
+            .gauge()
+            .value()
+            .shouldBeExactly(1.0)
         val scrape = registry.scrape()
         scrape shouldContain "lumi_retention_runs_total{outcome=\"failed\"} 1.0"
         scrape shouldContain "lumi_retention_last_success_timestamp_seconds 1.7877456E9"
+        scrape shouldContain "lumi_retention_expired_feedback_remaining 1.0"
         scrape shouldNotContain "survey_id"
         scrape shouldNotContain "team="
+    }
+
+    test("reports when the latest retention run left no expired feedback") {
+        val registry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+        val observability = RetentionObservability(registry)
+
+        observability.recordExpiredFeedbackRemaining(false)
+
+        registry.get(RetentionObservability.EXPIRED_FEEDBACK_REMAINING_METRIC_NAME)
+            .gauge()
+            .value()
+            .shouldBeExactly(0.0)
+    }
+
+    test("reports unknown backlog state after a failed run") {
+        val registry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+        val observability = RetentionObservability(registry)
+        observability.recordExpiredFeedbackRemaining(false)
+
+        observability.recordExpiredFeedbackRemainingUnknown()
+
+        registry.get(RetentionObservability.EXPIRED_FEEDBACK_REMAINING_METRIC_NAME)
+            .gauge()
+            .value()
+            .shouldBeExactly(-1.0)
     }
 
     test("reports disabled state without running cleanup") {

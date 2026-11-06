@@ -17,6 +17,7 @@ data class FeedbackRetentionResult(
     val cutoff: Instant? = null,
     val deletedFeedback: Int = 0,
     val affectedTeams: Set<String> = emptySet(),
+    val hasMoreExpiredFeedback: Boolean = false,
     val skipReason: FeedbackRetentionSkipReason? = null,
     val lastCompletedAt: Instant? = null,
 )
@@ -65,19 +66,38 @@ class FeedbackRetentionRepository(
                 }
 
                 val cutoff = connection.retentionCutoff(retentionMonths)
-                val deletedBatch = connection.deleteExpiredBatch(cutoff, batchSize)
-                val completedAt = connection.recordCleanupCompleted()
-                connection.commit()
-                if (deletedBatch.deletedFeedback > 0) {
-                    onBatchCommitted(deletedBatch)
+                var deletedFeedback = 0
+                val affectedTeams = mutableSetOf<String>()
+                var hasMoreExpiredFeedback = false
+                var completedAt: Instant? = null
+                for (batchNumber in 0 until MAX_DELETE_BATCHES_PER_RUN) {
+                    val batch = connection.deleteExpiredBatch(cutoff, batchSize)
+                    val stopAfterBatch =
+                        batch.deletedFeedback < batchSize || batchNumber == MAX_DELETE_BATCHES_PER_RUN - 1
+                    if (stopAfterBatch) {
+                        hasMoreExpiredFeedback = connection.hasExpiredFeedback(cutoff)
+                    }
+                    completedAt = connection.recordCleanupCompleted()
+                    connection.commit()
+                    deletedFeedback += batch.deletedFeedback
+                    affectedTeams += batch.affectedTeams
+                    if (batch.deletedFeedback > 0) {
+                        onBatchCommitted(batch)
+                    }
+                    if (stopAfterBatch) {
+                        break
+                    }
                 }
 
                 FeedbackRetentionResult(
                     executed = true,
                     cutoff = cutoff,
-                    deletedFeedback = deletedBatch.deletedFeedback,
-                    affectedTeams = deletedBatch.affectedTeams,
-                    lastCompletedAt = completedAt,
+                    deletedFeedback = deletedFeedback,
+                    affectedTeams = affectedTeams,
+                    hasMoreExpiredFeedback = hasMoreExpiredFeedback,
+                    lastCompletedAt = checkNotNull(completedAt) {
+                        "Executed retention result did not include the database completion time"
+                    },
                 )
             } catch (cause: Throwable) {
                 connection.rollback()
@@ -200,10 +220,28 @@ class FeedbackRetentionRepository(
         }
     }
 
+    private fun Connection.hasExpiredFeedback(cutoff: Instant): Boolean =
+        prepareStatement(
+            """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM feedback
+                    WHERE opprettet < ?
+                )
+            """.trimIndent()
+        ).use { statement ->
+            statement.setTimestamp(1, Timestamp.from(cutoff))
+            statement.executeQuery().use { result ->
+                check(result.next()) { "Expired feedback query returned no result" }
+                result.getBoolean(1)
+            }
+        }
+
     internal companion object {
         const val JOB_NAME = "feedback-cleanup"
         const val CLEANUP_LOCK_ID = 4_861_756_693_849L
         const val MAX_DELETE_BATCH_SIZE = 500
+        const val MAX_DELETE_BATCHES_PER_RUN = 5
     }
 }
 
