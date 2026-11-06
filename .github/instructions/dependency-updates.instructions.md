@@ -1,12 +1,15 @@
 ---
-applyTo: "**/package.json,pnpm-lock.yaml,pnpm-workspace.yaml,**/build.gradle.kts,**/settings.gradle.kts,**/gradle-wrapper.properties,**/Dockerfile"
+applyTo: "**/package.json,**/package-lock.json,**/pnpm-lock.yaml,**/pnpm-workspace.yaml,**/yarn.lock,**/*.gradle.kts,**/*.gradle,**/libs.versions.toml,**/gradle-wrapper.properties,**/pom.xml,**/Dockerfile*,.github/workflows/*.yml,.github/workflows/*.yaml"
 excludeAgent: "cloud-agent"
 ---
 
 # Reviewing dependency updates
 
-A Copilot approval counts as the required review in this repository. Approve a
-dependency update only when the evidence shows that Lumi still works with it.
+Use these rules when a pull request changes dependency versions, for example a
+Dependabot update. Your approval may satisfy the required review, so approve
+only when the evidence shows that this repository still works with the new
+versions. Repository-specific instructions for dependency updates add to these
+rules.
 
 ## Gather evidence
 
@@ -28,18 +31,18 @@ dependency update only when the evidence shows that Lumi still works with it.
 
 ## What the review must say
 
-- Name each changed dependency, its old and new version, and the workspace that
-  uses it.
+- Name each changed dependency, its old and new version, and the module or
+  workspace that uses it.
 - Name the upstream sources you read, by repository, tag and file. If you found
   no release notes for a major update, say which sources you tried.
 - **Must change:** name each breaking or behavior change in those notes. For
-  each one, give the file and line where Lumi uses the affected API, or write
-  "no usage found" and the search you ran, and say whether this pull request
-  handles it. Leave out changes that cannot affect callers, such as internal
-  refactoring.
+  each one, give the file and line where this repository uses the affected API,
+  or write "no usage found" and the search you ran, and say whether this pull
+  request handles it. Leave out changes that cannot affect callers, such as
+  internal refactoring.
 - **Should change:** name deprecations and newly recommended APIs, configuration
-  or practices that affect code Lumi has, with the file and line. Present them
-  as suggestions or follow-up work. They do not block approval.
+  or practices that affect code in this repository, with the file and line.
+  Present them as suggestions or follow-up work. They do not block approval.
 - Name the existing tests that cover the affected code, or say that none do. Do
   not claim that tests pass unless you read a completed check run.
 - List what a human must verify when you cannot determine the impact.
@@ -48,16 +51,12 @@ Write this in the review itself, not only in your reasoning, for example as a
 review comment on the changed version line, so that a human can check it
 whether or not you approve.
 
-## Repository-specific checks
+## Common checks
 
-- `@navikt/lumi-survey` is published and used outside this monorepo. Flag any
-  update that changes its peer dependency ranges, bundled runtime dependencies
-  or public build output.
-- In `apps/lumi-api` and `apps/lumi-submission-proxy`, majors of Kotlin, Ktor,
-  Exposed, Flyway, Kotest and Gradle often require code, migration or build
-  changes. Check that the pull request makes them.
 - For a Docker base image, check that the runtime version, user and file paths
   still match the Dockerfile.
+- For a GitHub Actions update, check that the inputs, outputs and permissions
+  the workflows use still exist and behave the same.
 
 Do not approve when a must-change item is not handled by the pull request, when
 you found no upstream notes for a major update, or when you cannot determine
