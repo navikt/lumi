@@ -34,33 +34,48 @@ class FeedbackRetentionServiceTest : FunSpec({
             cutoff = expectedCutoff,
             deletedFeedback = 3,
             affectedTeams = setOf("team-b", "team-a"),
+            hasMoreExpiredFeedback = true,
             lastCompletedAt = databaseCompletion,
         )
 
         every {
-            repository.deleteExpiredFeedback(12, Duration.ofDays(1), 25, any())
-        } answers {
-            lastArg<(FeedbackRetentionBatchResult) -> Unit>().invoke(
-                FeedbackRetentionBatchResult(3, setOf("team-b", "team-a")),
+            repository.deleteExpiredFeedback(
+                12,
+                Duration.ofDays(1),
+                25,
+                any<(FeedbackRetentionBatchResult) -> Unit>(),
             )
+        } answers {
+            val onBatchCommitted = lastArg<(FeedbackRetentionBatchResult) -> Unit>()
+            onBatchCommitted(FeedbackRetentionBatchResult(2, setOf("team-b")))
+            onBatchCommitted(FeedbackRetentionBatchResult(1, setOf("team-a")))
             expectedResult
         }
         every { statsCacheInvalidator.invalidateTeam(any()) } returns Unit
         every { bootstrapCacheInvalidator.invalidateTeam(any()) } returns Unit
-        every { observability.recordDeletedFeedback(3) } returns Unit
+        every { observability.recordDeletedFeedback(2) } returns Unit
+        every { observability.recordDeletedFeedback(1) } returns Unit
         every { observability.recordExecuted(databaseCompletion) } returns Unit
+        every { observability.recordExpiredFeedbackRemaining(true) } returns Unit
 
         service.runOnce() shouldBe expectedResult
 
         verify(exactly = 1) {
-            repository.deleteExpiredFeedback(12, Duration.ofDays(1), 25, any())
+            repository.deleteExpiredFeedback(
+                12,
+                Duration.ofDays(1),
+                25,
+                any(),
+            )
         }
         verify(exactly = 1) { statsCacheInvalidator.invalidateTeam("team-a") }
         verify(exactly = 1) { statsCacheInvalidator.invalidateTeam("team-b") }
         verify(exactly = 1) { bootstrapCacheInvalidator.invalidateTeam("team-a") }
         verify(exactly = 1) { bootstrapCacheInvalidator.invalidateTeam("team-b") }
-        verify(exactly = 1) { observability.recordDeletedFeedback(3) }
+        verify(exactly = 1) { observability.recordDeletedFeedback(2) }
+        verify(exactly = 1) { observability.recordDeletedFeedback(1) }
         verify(exactly = 1) { observability.recordExecuted(databaseCompletion) }
+        verify(exactly = 1) { observability.recordExpiredFeedbackRemaining(true) }
     }
 
     test("publishes a committed batch before a later cleanup failure") {
@@ -78,7 +93,12 @@ class FeedbackRetentionServiceTest : FunSpec({
         val failure = IllegalStateException("later batch failed")
 
         every {
-            repository.deleteExpiredFeedback(12, Duration.ofDays(1), 25, any())
+            repository.deleteExpiredFeedback(
+                12,
+                Duration.ofDays(1),
+                25,
+                any<(FeedbackRetentionBatchResult) -> Unit>(),
+            )
         } answers {
             lastArg<(FeedbackRetentionBatchResult) -> Unit>().invoke(
                 FeedbackRetentionBatchResult(2, setOf("team-a")),
@@ -89,6 +109,7 @@ class FeedbackRetentionServiceTest : FunSpec({
         every { bootstrapCacheInvalidator.invalidateTeam("team-a") } returns Unit
         every { observability.recordDeletedFeedback(2) } returns Unit
         every { observability.recordFailed() } returns Unit
+        every { observability.recordExpiredFeedbackRemainingUnknown() } returns Unit
 
         shouldThrow<IllegalStateException> { service.runOnce() } shouldBe failure
 
@@ -96,6 +117,7 @@ class FeedbackRetentionServiceTest : FunSpec({
         verify(exactly = 1) { bootstrapCacheInvalidator.invalidateTeam("team-a") }
         verify(exactly = 1) { observability.recordDeletedFeedback(2) }
         verify(exactly = 1) { observability.recordFailed() }
+        verify(exactly = 1) { observability.recordExpiredFeedbackRemainingUnknown() }
         verify(exactly = 0) { observability.recordExecuted(any()) }
     }
 
@@ -120,7 +142,7 @@ class FeedbackRetentionServiceTest : FunSpec({
                 12,
                 Duration.ofDays(1),
                 FeedbackRetentionRepository.MAX_DELETE_BATCH_SIZE,
-                any(),
+                any<(FeedbackRetentionBatchResult) -> Unit>(),
             )
         } returns expectedResult
         every { observability.recordSkipped() } returns Unit

@@ -20,10 +20,14 @@ class FeedbackRetentionRepositoryTest : FunSpec({
         TestDatabase.clearAllData()
     }
 
-    test("deletes only one bounded batch of feedback strictly older than cutoff") {
+    test("deletes bounded batches of feedback strictly older than cutoff") {
         val cutoff = databaseRetentionCutoff()
         insertFeedback("old-1", cutoff.minusSeconds(120), "team-a")
-        insertFeedback("old-2", cutoff.minusSeconds(60), "team-b")
+        insertFeedback("old-2", cutoff.minusSeconds(110), "team-b")
+        insertFeedback("old-3", cutoff.minusSeconds(100), "team-a")
+        insertFeedback("old-4", cutoff.minusSeconds(90), "team-b")
+        insertFeedback("old-5", cutoff.minusSeconds(80), "team-a")
+        insertFeedback("old-6", cutoff.minusSeconds(60), "team-a")
         insertFeedback("inside-window", cutoff.plusSeconds(60), "team-a")
         insertFeedback("new", cutoff.plusSeconds(3600), "team-a")
         insertTag("old-1", "expired")
@@ -41,10 +45,11 @@ class FeedbackRetentionRepositoryTest : FunSpec({
         firstResult.lastCompletedAt shouldBe retentionJobLastCompletedAt()
         firstResult.copy(cutoff = null, lastCompletedAt = null) shouldBe FeedbackRetentionResult(
             executed = true,
-            deletedFeedback = 1,
-            affectedTeams = setOf("team-a"),
+            deletedFeedback = 5,
+            affectedTeams = setOf("team-a", "team-b"),
+            hasMoreExpiredFeedback = true,
         )
-        remainingFeedbackIds() shouldContainExactlyInAnyOrder listOf("old-2", "inside-window", "new")
+        remainingFeedbackIds() shouldContainExactlyInAnyOrder listOf("old-6", "inside-window", "new")
         remainingTagFeedbackIds() shouldContainExactlyInAnyOrder listOf("inside-window")
 
         val persistedCompletion = ageCleanupState(Duration.ofHours(23))
@@ -61,7 +66,7 @@ class FeedbackRetentionRepositoryTest : FunSpec({
             skipReason = FeedbackRetentionSkipReason.MINIMUM_INTERVAL_NOT_ELAPSED,
             lastCompletedAt = persistedCompletion,
         )
-        remainingFeedbackIds() shouldContainExactlyInAnyOrder listOf("old-2", "inside-window", "new")
+        remainingFeedbackIds() shouldContainExactlyInAnyOrder listOf("old-6", "inside-window", "new")
 
         ageCleanupState(Duration.ofDays(1).plusSeconds(1))
 
@@ -77,7 +82,7 @@ class FeedbackRetentionRepositoryTest : FunSpec({
         secondResult.copy(cutoff = null, lastCompletedAt = null) shouldBe FeedbackRetentionResult(
             executed = true,
             deletedFeedback = 1,
-            affectedTeams = setOf("team-b"),
+            affectedTeams = setOf("team-a"),
         )
         remainingFeedbackIds() shouldContainExactlyInAnyOrder listOf("inside-window", "new")
     }
@@ -90,6 +95,48 @@ class FeedbackRetentionRepositoryTest : FunSpec({
                 batchSize = FeedbackRetentionRepository.MAX_DELETE_BATCH_SIZE + 1,
             )
         }.message shouldBe "batchSize must be between 1 and 500"
+    }
+
+    test("deletes several bounded batches and reports expired feedback left after the work budget") {
+        val cutoff = databaseRetentionCutoff()
+        insertExpiredFeedback(2_501, cutoff)
+        val committedBatches = mutableListOf<FeedbackRetentionBatchResult>()
+
+        val result = FeedbackRetentionRepository(TestDatabase.dataSource)
+            .deleteExpiredFeedback(
+                retentionMonths = 12,
+                minimumInterval = Duration.ofDays(1),
+                batchSize = FeedbackRetentionRepository.MAX_DELETE_BATCH_SIZE,
+                onBatchCommitted = { committedBatches += it },
+            )
+
+        result.deletedFeedback shouldBe 2_500
+        result.affectedTeams shouldBe setOf("team-a")
+        result.hasMoreExpiredFeedback shouldBe true
+        committedBatches.map { it.deletedFeedback } shouldBe listOf(500, 500, 500, 500, 500)
+        remainingFeedbackIds().size shouldBe 1
+    }
+
+    test("deletes more than 500 expired responses in separate committed batches") {
+        val cutoff = databaseRetentionCutoff()
+        insertExpiredFeedback(
+            FeedbackRetentionRepository.MAX_DELETE_BATCH_SIZE + 1,
+            cutoff,
+        )
+        val committedBatches = mutableListOf<FeedbackRetentionBatchResult>()
+
+        val result = FeedbackRetentionRepository(TestDatabase.dataSource)
+            .deleteExpiredFeedback(
+                retentionMonths = 12,
+                minimumInterval = Duration.ofDays(1),
+                batchSize = FeedbackRetentionRepository.MAX_DELETE_BATCH_SIZE,
+                onBatchCommitted = { committedBatches += it },
+            )
+
+        result.deletedFeedback shouldBe 501
+        result.hasMoreExpiredFeedback shouldBe false
+        committedBatches.map { it.deletedFeedback } shouldBe listOf(500, 1)
+        remainingFeedbackIds() shouldBe emptyList()
     }
 
     test("skips cleanup when another connection holds the advisory lock") {
@@ -121,10 +168,38 @@ class FeedbackRetentionRepositoryTest : FunSpec({
         }
     }
 
-    test("publishes a batch only after its deletion is committed") {
+    test("keeps the advisory lock while later batches commit") {
         val cutoff = databaseRetentionCutoff()
         insertFeedback("first", cutoff.minusSeconds(120), "team-a")
         insertFeedback("second", cutoff.minusSeconds(60), "team-b")
+        var concurrentResult: FeedbackRetentionResult? = null
+
+        val result = FeedbackRetentionRepository(TestDatabase.dataSource)
+            .deleteExpiredFeedback(
+                retentionMonths = 12,
+                minimumInterval = Duration.ofDays(1),
+                batchSize = 1,
+            ) {
+                if (concurrentResult == null) {
+                    concurrentResult = FeedbackRetentionRepository(TestDatabase.dataSource)
+                        .deleteExpiredFeedback(
+                            retentionMonths = 12,
+                            minimumInterval = Duration.ofDays(1),
+                            batchSize = 1,
+                        )
+                }
+            }
+
+        concurrentResult?.skipReason shouldBe FeedbackRetentionSkipReason.LOCK_HELD
+        result.deletedFeedback shouldBe 2
+        remainingFeedbackIds() shouldBe emptyList()
+    }
+
+    test("records the daily limit before publishing a later batch failure") {
+        val cutoff = databaseRetentionCutoff()
+        insertFeedback("first", cutoff.minusSeconds(120), "team-a")
+        insertFeedback("second", cutoff.minusSeconds(90), "team-b")
+        insertFeedback("third", cutoff.minusSeconds(60), "team-a")
         val published = mutableListOf<FeedbackRetentionBatchResult>()
 
         shouldThrow<IllegalStateException> {
@@ -135,7 +210,9 @@ class FeedbackRetentionRepositoryTest : FunSpec({
                     batchSize = 1,
                 ) { batch ->
                     published += batch
-                    error("stop after committed batch")
+                    if (published.size == 2) {
+                        error("stop after second committed batch")
+                    }
                 }
         }
 
@@ -144,8 +221,12 @@ class FeedbackRetentionRepositoryTest : FunSpec({
                 deletedFeedback = 1,
                 affectedTeams = setOf("team-a"),
             ),
+            FeedbackRetentionBatchResult(
+                deletedFeedback = 1,
+                affectedTeams = setOf("team-b"),
+            ),
         )
-        remainingFeedbackIds() shouldBe listOf("second")
+        remainingFeedbackIds() shouldBe listOf("third")
 
         FeedbackRetentionRepository(TestDatabase.dataSource).deleteExpiredFeedback(
             retentionMonths = 12,
@@ -155,7 +236,7 @@ class FeedbackRetentionRepositoryTest : FunSpec({
             executed = false,
             skipReason = FeedbackRetentionSkipReason.MINIMUM_INTERVAL_NOT_ELAPSED,
         )
-        remainingFeedbackIds() shouldBe listOf("second")
+        remainingFeedbackIds() shouldBe listOf("third")
     }
 
     test("rolls back deletion when retention job state cannot be written") {
@@ -179,6 +260,26 @@ class FeedbackRetentionRepositoryTest : FunSpec({
         }
     }
 })
+
+private fun insertExpiredFeedback(count: Int, cutoff: Instant) {
+    TestDatabase.dataSource.connection.use { connection ->
+        connection.autoCommit = false
+        connection.prepareStatement(
+            """
+                INSERT INTO feedback (id, opprettet, feedback_json, team, app)
+                VALUES (?, ?, '{}'::jsonb, 'team-a', 'app-a')
+            """.trimIndent()
+        ).use { statement ->
+            repeat(count) { index ->
+                statement.setString(1, "expired-$index")
+                statement.setTimestamp(2, Timestamp.from(cutoff.minusSeconds(index.toLong() + 1)))
+                statement.addBatch()
+            }
+            statement.executeBatch()
+        }
+        connection.commit()
+    }
+}
 
 private fun databaseRetentionCutoff(): Instant =
     TestDatabase.dataSource.connection.use { connection ->

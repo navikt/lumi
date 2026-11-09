@@ -99,7 +99,7 @@ spec:
       value: https://lumi-dashboard.ansatt.nav.no
     - name: LUMI_GLOBAL_REQUESTS_PER_SOURCE_PER_MINUTE
       value: "10000"
-    # Automatic deletion of responses older than 12 months, enabled in production since #559.
+    # Automatic deletion of responses older than 12 months, at most 5 x 500 per 24 hours.
     # Set to "false" to stop it, see apps/lumi-api/docs/runbooks/automatic-retention.md.
     - name: LUMI_RETENTION_ENABLED
       value: "true"
