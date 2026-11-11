@@ -55,6 +55,8 @@ spec:
         - application: dinesykmeldte
         - application: syfomodiaperson
           namespace: teamsykefravr
+        - application: gosys-oppgavebehandling
+          namespace: oppgavehandtering
         - application: oppfolgingsplan-frontend
     outbound:
       external:
