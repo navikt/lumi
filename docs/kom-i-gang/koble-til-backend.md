@@ -424,7 +424,9 @@ spec:
 #### Send PR selv {#send-pr-selv}
 
 Legg regelen til under `spec.accessPolicy.inbound.rules` i filen for
-mottakeren og hvert miljø dere trenger:
+mottakeren og hvert miljø dere trenger. Har dere ikke skrivetilgang til
+`navikt/lumi`, kan dere forke repoet og opprette PR-en derfra. Tabellen viser
+filene dere skal endre:
 
 | Mottaker | Miljø | Fil |
 | :--- | :--- | :--- |
