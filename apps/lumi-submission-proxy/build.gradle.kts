@@ -18,10 +18,10 @@ repositories {
     mavenCentral()
 }
 
-val ktorVersion = "3.6.0"
+val ktorVersion = "3.6.1"
 val logbackVersion = "1.6.6"
 val logstashVersion = "9.0"
-val nettyVersion = "4.2.19.Final"
+val nettyVersion = "4.2.20.Final"
 
 dependencies {
     implementationWithKtorVersionCheck(
