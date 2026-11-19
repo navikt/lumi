@@ -19,6 +19,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import no.nav.lumi.config.appMicrometerRegistry
 import org.slf4j.LoggerFactory
 import java.net.ConnectException
@@ -437,7 +438,7 @@ data class TexasIntrospectionResult(
     /** AD group UUIDs the user belongs to */
     val groups: List<String>? = null,
     /** Entra ID identity type. The value "app" marks a client credentials token, which has no user. */
-    val idtyp: String? = null,
+    val idtyp: JsonElement? = null,
     /** Entra ID roles. In a client credentials token they are the roles Nais has given the calling app. */
-    val roles: List<String>? = null
+    val roles: JsonElement? = null
 )

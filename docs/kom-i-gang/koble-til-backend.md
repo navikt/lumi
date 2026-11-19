@@ -30,7 +30,7 @@ det leser Lumi API hvilket team og hvilken app som sendte svaret.
 
 Endepunktet avhenger av hvem som bruker appen:
 
-| App | Tokenveksling | Endepunkt |
+| App | Utsteder | Endepunkt |
 | :--- | :--- | :--- |
 | For sluttbrukere (nav.no, arbeidsgiver, privatperson) | TokenX | `POST /api/tokenx/v1/feedback` |
 | Intern (Modia, veiledersystemer, fagsystemer) | Entra ID | `POST /api/azure/v1/feedback` |
@@ -59,7 +59,7 @@ Backenden kan hente tokenet fra Entra ID på to måter:
 
 - Med on-behalf-of (OBO) veksler backenden tokenet til den ansatte mot et token
   for Lumi API. Det nye tokenet sier både hvilken app som kaller, og hvem den
-  ansatte er. Lumi API begrenser da også antall innsendinger per bruker.
+  ansatte er. Ved direkte innsending til `lumi-api` gjelder også grensen per bruker.
 - Med client credentials henter backenden et token som bare sier hvilken app
   som kaller. Lumi API får ingen opplysninger om den ansatte, og grensen per
   bruker gjelder ikke. Nais kaller dette
@@ -423,8 +423,7 @@ spec:
 
 Appen må også legges til som inbound i mottakeren fra tabellen: `lumi-api`
 for direkte kall, eller `lumi-submission-proxy` for `trygdeetaten.no` i dev.
-Uten inbound-regelen får ikke appen hentet token for mottakeren. Det kan dere
-ordne på to måter:
+Dere kan be om inbound-tilgang på to måter:
 
 - Vet dere hvilken mottaker dere skal ha, kan dere [sende en PR selv](#send-pr-selv).
   Det går raskest.

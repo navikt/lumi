@@ -6,10 +6,10 @@ import io.kotest.matchers.string.shouldContain
 import io.ktor.client.engine.mock.respondError
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.install
-import io.ktor.server.plugins.ratelimit.rateLimit
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
@@ -18,8 +18,12 @@ import io.ktor.server.testing.testApplication
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import no.nav.lumi.config.SubmissionObservability
-import no.nav.lumi.config.SubmissionRateLimit
-import no.nav.lumi.config.UserSubmissionRateLimit
+import io.mockk.coEvery
+import io.mockk.mockk
+import no.nav.lumi.domain.SaveResult
+import no.nav.lumi.routes.submissionRoutes
+import no.nav.lumi.service.SubmissionOutcome
+import no.nav.lumi.service.SubmissionService
 import no.nav.lumi.config.configureRateLimiting
 import no.nav.lumi.config.configureSerialization
 import no.nav.lumi.config.configureStatusPages
@@ -103,17 +107,15 @@ class SubmissionAuthPluginTest : FunSpec({
         meterRegistry.get("texas_introspection_errors_total").counter().count() shouldBe 1.0
     }
 
-    /**
-     * Sends [requests] submissions with the same Entra ID token through the
-     * auth plugin and both submission rate limits, nested like the production route.
-     */
     fun submitToAzure(
         texasClient: TexasClient,
         requests: Int = 1,
         meterRegistry: MeterRegistry = SimpleMeterRegistry(),
     ): List<Pair<HttpStatusCode, String>> {
         val results = mutableListOf<Pair<HttpStatusCode, String>>()
-        // One instance for the plugin and the limiters, so a submission counted twice shows in the registry.
+        val service = mockk<SubmissionService>()
+        coEvery { service.submit(any(), "teamsykefravr", "syfomodiaperson", any(), any(), any()) } returns
+            SubmissionOutcome(SaveResult.Created("test-receipt"))
         val observability = SubmissionObservability(meterRegistry)
         testApplication {
             application {
@@ -121,25 +123,25 @@ class SubmissionAuthPluginTest : FunSpec({
                 configureStatusPages()
                 configureRateLimiting(submissionObservability = observability)
                 routing {
-                    route("/api/azure") {
-                        install(AzureSubmissionAuthPlugin) {
-                            localMockIdentityEnabled = false
-                            texasClientProvider = { texasClient }
-                            submissionObservability = observability
-                        }
-                        rateLimit(SubmissionRateLimit) {
-                            rateLimit(UserSubmissionRateLimit) {
-                                post("/v1/feedback") {
-                                    call.respondText(call.getCallerIdentity().app)
-                                }
-                            }
-                        }
+                    submissionRoutes(submissionService = service, submissionObservability = observability) {
+                        localMockIdentityEnabled = false
+                        texasClientProvider = { texasClient }
                     }
                 }
             }
 
             repeat(requests) {
                 val response = client.post("/api/azure/v1/feedback") {
+                    setBody("""
+                        {
+                          "schemaVersion": 1, "surveyId": "auth-test", "surveyType": "rating",
+                          "submittedAt": "2026-11-19T10:00:00Z",
+                          "answers": [{
+                            "fieldId": "rating", "fieldType": "RATING", "question": {"label": "Test"},
+                            "value": {"type": "rating", "rating": 4, "ratingVariant": "emoji", "ratingScale": 5}
+                          }]
+                        }
+                    """.trimIndent())
                     bearerAuth("token-from-app")
                 }
                 results += response.status to response.bodyAsText()
@@ -148,32 +150,33 @@ class SubmissionAuthPluginTest : FunSpec({
         return results
     }
 
-    val onBehalfOfToken = """
+    fun onBehalfOfToken(roles: String? = null) = """
         {
           "active": true,
           "azp_name": "dev-gcp:teamsykefravr:syfomodiaperson",
           "sub": "user-object-id",
           "scp": "defaultaccess",
           "NAVident": "Z999999"
+          ${roles?.let { ""","roles": $it""" } ?: ""}
         }
     """.trimIndent()
 
-    fun appToken(roles: String?) = """
+    fun appToken(roles: String?, identityType: String = "\"app\"") = """
         {
           "active": true,
           "azp_name": "dev-gcp:teamsykefravr:syfomodiaperson",
           "sub": "app-object-id",
           "oid": "app-object-id",
-          "idtyp": "app"
+          "idtyp": $identityType
           ${roles?.let { ""","roles": $it""" } ?: ""}
         }
     """.trimIndent()
 
     test("limits an Entra ID on-behalf-of token per user") {
-        val results = submitToAzure(mockTexasClient { texasJson(onBehalfOfToken) }, requests = 16)
+        val results = submitToAzure(mockTexasClient { texasJson(onBehalfOfToken()) }, requests = 16)
 
-        results.take(15).map { it.first }.distinct() shouldBe listOf(HttpStatusCode.OK)
-        results.first().second shouldBe "syfomodiaperson"
+        results.take(15).map { it.first }.distinct() shouldBe listOf(HttpStatusCode.Created)
+        results.first().second shouldContain "test-receipt"
         results.last().first shouldBe HttpStatusCode.TooManyRequests
     }
 
@@ -183,8 +186,8 @@ class SubmissionAuthPluginTest : FunSpec({
             requests = 16,
         )
 
-        results.map { it.first }.distinct() shouldBe listOf(HttpStatusCode.OK)
-        results.first().second shouldBe "syfomodiaperson"
+        results.map { it.first }.distinct() shouldBe listOf(HttpStatusCode.Created)
+        results.first().second shouldContain "test-receipt"
     }
 
     test("limits an Entra ID app token per calling application") {
@@ -195,7 +198,7 @@ class SubmissionAuthPluginTest : FunSpec({
             meterRegistry = meterRegistry,
         )
 
-        results.take(100).map { it.first }.distinct() shouldBe listOf(HttpStatusCode.OK)
+        results.take(100).map { it.first }.distinct() shouldBe listOf(HttpStatusCode.Created)
         results.last().first shouldBe HttpStatusCode.TooManyRequests
         meterRegistry.get(SubmissionObservability.METRIC_NAME)
             .tags("channel", "azure", "outcome", "rejected")
@@ -222,5 +225,29 @@ class SubmissionAuthPluginTest : FunSpec({
         ).single()
 
         status shouldBe HttpStatusCode.Forbidden
+    }
+
+    test("ignores Entra-specific claim shapes on TokenX submissions") {
+        val (status, _) = submitWith(mockTexasClient {
+            texasJson("""{"active":true,"client_id":"dev-gcp:team:app","sub":"user","idtyp":{},"roles":"custom"}""")
+        })
+        status shouldBe HttpStatusCode.OK
+    }
+
+    test("ignores roles on an on-behalf-of token") {
+        val claims = onBehalfOfToken(roles = "\"custom\"")
+        submitToAzure(mockTexasClient { texasJson(claims) }).single().first shouldBe HttpStatusCode.Created
+    }
+
+    test("denies an app token with malformed roles") {
+        val (status, _) = submitToAzure(mockTexasClient {
+            texasJson(appToken(roles = "\"access_as_application\""))
+        }).single()
+        status shouldBe HttpStatusCode.Forbidden
+    }
+
+    test("denies an Entra submission with a malformed identity type") {
+        val claims = appToken(null, identityType = """["app"]""")
+        submitToAzure(mockTexasClient { texasJson(claims) }).single().first shouldBe HttpStatusCode.Forbidden
     }
 })

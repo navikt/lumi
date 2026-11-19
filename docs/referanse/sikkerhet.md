@@ -39,9 +39,9 @@ Dobbel maskering gjelder bare fritekstsvar. Kontekstfeltene som er markert i tab
 
 ## Hvem som svarte
 
-Lumi API lagrer ikke hvem som svarte. Tokenet fra appens backend brukes til å sjekke at kallet kommer fra en app med tilgang. Lumi API holder det den leser fra tokenet, i minnet for å slippe å kontrollere samme token flere ganger. Det brukes i opptil fem minutter og fjernes neste gang et annet token kontrolleres. Av brukerens ID i tokenet lager Lumi API en hash, som holdes i minnet for å begrense hvor mange svar én bruker kan sende inn.
+Lumi API lagrer ikke hvem som svarte. Tokenet fra appens backend brukes til å sjekke at kallet kommer fra en app med tilgang. Lumi API kan gjenbruke resultatet av tokenkontrollen i opptil fem minutter. Utløpte oppføringer fjernes når API-et slår dem opp eller legger et nytt resultat i mellomlageret. Ved direkte innsending med et brukertoken bruker API-et en hash av ID-en til å telle innsendinger per bruker.
 
-Når en intern app bruker on-behalf-of (OBO), inneholder tokenet også Nav-ident, navn og e-postadresse for den ansatte som er logget inn. Lumi API bruker ikke disse opplysningene ved innsending og lagrer dem ikke i databasen. Henter appen tokenet med client credentials, sier ikke tokenet hvem brukeren er. Se [OBO eller client credentials](/kom-i-gang/koble-til-backend#obo-eller-client-credentials).
+Når en intern app bruker on-behalf-of (OBO), kan tokenet inneholde Nav-ident, navn og e-postadresse for den ansatte som er logget inn. Lumi API bruker ikke disse opplysningene ved innsending og lagrer dem ikke i databasen. Henter appen tokenet med client credentials, sier ikke tokenet hvem brukeren er. Se [OBO eller client credentials](/kom-i-gang/koble-til-backend#obo-eller-client-credentials).
 
 Hvert svar lagres med team, app, tidspunkt og konteksten widgeten sender, som enhetstype, skjermstørrelse og user agent. I små brukergrupper kan dette til sammen gjøre det mulig å kjenne igjen hvem som har svart.
 

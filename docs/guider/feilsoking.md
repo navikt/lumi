@@ -83,8 +83,8 @@ ikke sendt.
 
 Sjekk dette:
 
-1. Mottakeren har appen deres som inbound. Uten regelen får ikke appen token
-   for mottakeren, verken med tokenveksling eller med client credentials.
+1. Mottakeren har appen deres som inbound. Denne regelen gir appen tilgang
+   ved både tokenveksling og client credentials.
    Tilgangen gjelder først når PR-en er merget og
    mottakeren er deployet. Se
    [Mottakeren (inbound)](/kom-i-gang/koble-til-backend#mottakeren-inbound).
@@ -140,7 +140,7 @@ eksempelet gjør.
 | :--- | :--- | :--- |
 | 400 | Payloaden er ugyldig, for eksempel fordi backenden sender hele `submission` og ikke `submission.transportPayload`. | Send `transportPayload` videre uendret. |
 | 401 | Tokenet mangler, er utløpt eller har feil utsteder. Ruten i eksempelet svarer selv 401 når brukerens token mangler eller er ugyldig, så sjekk loggen i backend for å se hvem som svarte. Et TokenX-token til `/api/azure/v1/feedback` gir 401, og det samme gjør et Entra ID-token til `/api/tokenx/v1/feedback`. | Bruk host, audience og sti fra samme [miljøblokk](/kom-i-gang/koble-til-backend#_2-sett-miljøvariabler-i-nais). |
-| 403 | Tokenet er hentet med client credentials, men mangler rollen `access_as_application`. Nais gir rollen til apper som står som inbound i `lumi-api`, så dette skal ikke skje i vanlig bruk. | Spør i #lumi. |
+| 403 | Ved direkte innsending til `lumi-api` kan et app-token mangle rollen `access_as_application`. | Sjekk at appen står som inbound i `lumi-api`. |
 | 404 | Host og sti passer ikke sammen, for eksempel `/api/tokenx/v1/feedback` sendt til `lumi-submission-proxy`, som bare har endepunktet for Entra ID. | Bruk host, audience og sti fra samme miljøblokk. |
 | 409 | Surveyen er endret på en måte som ikke passer med definisjonen Lumi API har lagret for `surveyId`. Svaret er ikke lagret. | Se [Hvis API-et svarer med 409](/guider/survey-identitet#hvis-api-et-svarer-med-409). |
 | 411 | Proxyen fikk et kall uten headeren `Content-Length`. Gjelder bare `trygdeetaten.no` i dev. | Send hele payloaden i ett kall med `Content-Length`, ikke som en strøm. |

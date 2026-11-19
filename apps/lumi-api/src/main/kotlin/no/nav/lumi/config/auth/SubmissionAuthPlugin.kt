@@ -4,6 +4,8 @@ import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.util.AttributeKey
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import no.nav.lumi.config.ServerEnv
 import no.nav.lumi.config.SubmissionChannel
 import no.nav.lumi.config.SubmissionMetricOutcome
@@ -29,15 +31,17 @@ private const val ENTRA_DEFAULT_APP_ROLE = "access_as_application"
  * token belongs to the calling app alone. It has no user, and its sub is the
  * app's own object id.
  */
-private fun TexasIntrospectionResult.isEntraAppToken(): Boolean = idtyp == ENTRA_APP_IDENTITY_TYPE
+private fun TexasIntrospectionResult.isEntraAppToken(): Boolean = idtyp == JsonPrimitive(ENTRA_APP_IDENTITY_TYPE)
 
 /**
  * Nais gives every app in the inbound access policy the role
  * access_as_application. An app token without it comes from an app that has
  * not been given access.
  */
-private fun TexasIntrospectionResult.hasEntraAppAccess(): Boolean =
-    roles.orEmpty().contains(ENTRA_DEFAULT_APP_ROLE)
+private fun TexasIntrospectionResult.hasEntraAppAccess(): Boolean {
+    val appRoles = roles as? JsonArray ?: return false
+    return appRoles.all { it is JsonPrimitive && it.isString } && JsonPrimitive(ENTRA_DEFAULT_APP_ROLE) in appRoles
+}
 
 /**
  * Authentication plugins for submission routes.
@@ -169,7 +173,6 @@ private fun createSubmissionAuthPlugin(
         }
 
         val userKey = extractUserKey(introspectionResult)
-        // perUserLimit shows how the token was read: false for an app token, true for a token with a user.
         log.info(
             "$pluginName: Authenticated submission from team=${identity.team} app=${identity.app} " +
                 "perUserLimit=${!userKey.isNullOrBlank()}"
@@ -204,7 +207,10 @@ val AzureSubmissionAuthPlugin = createSubmissionAuthPlugin(
     // make every user of the app share one per-user bucket.
     extractUserKey = { result -> result.sub.takeUnless { result.isEntraAppToken() } },
     accessDeniedReason = { result ->
-        if (result.isEntraAppToken() && !result.hasEntraAppAccess()) {
+        val identityType = result.idtyp
+        if (identityType != null && (identityType !is JsonPrimitive || !identityType.isString)) {
+            "Invalid Entra ID identity type"
+        } else if (result.isEntraAppToken() && !result.hasEntraAppAccess()) {
             "App token is missing the role $ENTRA_DEFAULT_APP_ROLE. " +
                 "The calling app must be in the inbound access policy of lumi-api"
         } else {

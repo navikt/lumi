@@ -13,6 +13,7 @@ import no.nav.lumi.config.SubmissionObservability
 import no.nav.lumi.config.SubmissionRateLimit
 import no.nav.lumi.config.UserSubmissionRateLimit
 import no.nav.lumi.config.auth.AzureSubmissionAuthPlugin
+import no.nav.lumi.config.auth.SubmissionAuthPluginConfig
 import no.nav.lumi.config.auth.TokenXSubmissionAuthPlugin
 import no.nav.lumi.config.auth.getCallerIdentity
 import no.nav.lumi.config.exception.ApiErrorException
@@ -47,10 +48,12 @@ fun Route.submissionRoutes(
     feedbackService: FeedbackService = defaultFeedbackService,
     surveyDefinitionService: SurveyDefinitionService = defaultSurveyDefinitionService,
     submissionService: SubmissionService = SubmissionService(feedbackService, surveyDefinitionService),
-    submissionObservability: SubmissionObservability = defaultSubmissionObservability
+    submissionObservability: SubmissionObservability = defaultSubmissionObservability,
+    configureAuth: SubmissionAuthPluginConfig.() -> Unit = {},
 ) {
     route("/api/tokenx") {
         install(TokenXSubmissionAuthPlugin) {
+            configureAuth()
             this.submissionObservability = submissionObservability
         }
         rateLimit(SubmissionRateLimit) {
@@ -71,6 +74,7 @@ fun Route.submissionRoutes(
 
     route("/api/azure") {
         install(AzureSubmissionAuthPlugin) {
+            configureAuth()
             this.submissionObservability = submissionObservability
         }
         rateLimit(SubmissionRateLimit) {
