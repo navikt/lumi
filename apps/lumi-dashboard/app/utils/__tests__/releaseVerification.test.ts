@@ -13,7 +13,7 @@ const surveyId = "lumi-release-verification-20260822-8a0dc3b1";
 const initialStoredAt = "2026-08-22T08:49:47.000Z";
 
 function verifiedProbe(
-  phase: "initial" | "closing",
+  phase: "initial" | "closing" | "app-token",
   storedAt = initialStoredAt,
 ): ReleaseVerificationProbeEvidence {
   return {
@@ -189,11 +189,12 @@ describe("release verification", () => {
       "passed",
       "pending",
       "pending",
+      "pending",
     ]);
   });
 
-  it("passes the controlled chain only after a closing exact readback", () => {
-    const report = createReleaseVerificationReport({
+  it("requires separate app-token evidence in dev and reports it as untested locally", () => {
+    const input = {
       profile: "dev-authenticated-roundtrip",
       environment: "dev-gcp",
       surveyId,
@@ -207,12 +208,37 @@ describe("release verification", () => {
       },
       initialProbe: verifiedProbe("initial"),
       closingProbe: verifiedProbe("closing", "2026-08-22T09:05:00.000Z"),
+    } as const;
+    const pending = createReleaseVerificationReport(input);
+    expect(pending.outcome).toBe("pending");
+    expect(pending.finishedAt).toBeNull();
+    expect(pending.coverage.controlledRoundTrip).toBe("passed");
+    const failed = createReleaseVerificationReport({
+      ...input,
+      appProbeError: "idtyp mangler",
+    });
+    expect(failed.outcome).toBe("failed");
+    expect(failed.checks.at(-1)).toMatchObject({
+      status: "failed",
+      detail: "idtyp mangler",
+    });
+    const local = createReleaseVerificationReport({
+      ...input,
+      profile: "local-full-chain",
+      environment: "local",
+    });
+    expect(local.outcome).toBe("passed");
+    expect(local.checks.at(-1)?.status).toBe("not-tested");
+    const report = createReleaseVerificationReport({
+      ...input,
+      appProbe: verifiedProbe("app-token"),
     });
 
     expect(report.outcome).toBe("passed");
     expect(report.finishedAt).toBe("2026-08-22T09:05:00.000Z");
     expect(report.coverage).toEqual({
       controlledRoundTrip: "passed",
+      appTokenRoundTrip: "passed",
       localSubmissionProxy: "not-tested",
       globalAzureHealth: "not-assessed",
       trygdeetatenProxy: "not-tested",

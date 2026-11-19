@@ -45,6 +45,7 @@ export {
 export {
   fetchReleaseVerificationConfigServerFn,
   fetchReleaseVerificationRunServerFn,
+  submitAppTokenProbeServerFn,
   submitReleaseVerificationServerFn,
 } from "./releaseVerification";
 // Survey authoring

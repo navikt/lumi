@@ -2,6 +2,16 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { lumiApiFetch } from "~/server/lumiApiFetch";
 import { authMiddleware } from "~/server/middleware/auth";
+import { refuseWriteInPublicDemo } from "~/server/publicDemo";
+import {
+  createAppProbeSubmission,
+  requestProbeAppToken,
+} from "~/server/releaseVerificationAppToken.server";
+import {
+  apiStatusError,
+  BadGatewayError,
+  HttpStatusError,
+} from "~/server/serverFnStatus";
 import {
   type AuthContext,
   buildUrl,
@@ -115,7 +125,7 @@ const transportPayloadSchema = z.object({
 });
 
 const submissionReceiptSchema = z.object({
-  id: z.string().min(1),
+  id: z.uuid(),
   duplicate: z.boolean().optional(),
 });
 
@@ -141,8 +151,11 @@ const feedbackReadbackSchema = z.object({
   ),
 });
 
-const readRunSchema = z.object({
+const runIdSchema = z.object({
   surveyId: z.string().regex(RELEASE_VERIFICATION_SURVEY_ID_PATTERN),
+});
+const readRunSchema = runIdSchema.extend({
+  appReceiptId: z.uuid().optional(),
   initialReceiptId: z.uuid().optional(),
   closingReceiptId: z.uuid().optional(),
 });
@@ -173,6 +186,7 @@ export type ReleaseVerificationConfig =
 
 export interface ReleaseVerificationRunReadback {
   observedAt: string;
+  appToken: ReleaseVerificationProbeEvidence | null;
   initial: ReleaseVerificationProbeEvidence | null;
   closing: ReleaseVerificationProbeEvidence | null;
 }
@@ -266,16 +280,7 @@ export const submitReleaseVerificationServerFn = createServerFn({
       const target = getTarget();
       const phase = assertExpectedSubmission(data, target);
       const authContext = context as AuthContext;
-      const preflight = await runTeamPreflight(
-        authContext,
-        target,
-        data.surveyId,
-      );
-      if (preflight.status !== "passed") {
-        throw new Error(
-          preflight.message ?? "Teamtilgang kunne ikke bekreftes",
-        );
-      }
+      await requireTeamPreflight(authContext, target, data.surveyId);
       const response = await lumiApiFetch(
         buildUrl(authContext.backendUrl, "/api/azure/v1/feedback"),
         {
@@ -298,6 +303,56 @@ export const submitReleaseVerificationServerFn = createServerFn({
     },
   );
 
+export const submitAppTokenProbeServerFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(runIdSchema)
+  .handler(
+    async ({ data, context }): Promise<ReleaseVerificationProbeEvidence> => {
+      refuseWriteInPublicDemo();
+      assertReleaseVerificationEnabled();
+      const target = getTarget();
+      if (target.environment !== "dev-gcp")
+        throw new HttpStatusError(403, "App-token kan bare testes i dev-gcp.");
+      const authContext = context as AuthContext;
+      await requireTeamPreflight(authContext, target, data.surveyId);
+      const token = await requestProbeAppToken(
+        `${target.environment}:${target.team}:${target.app}`,
+      );
+      const submission = createAppProbeSubmission(data.surveyId);
+      const response = await lumiApiFetch(
+        buildUrl(authContext.backendUrl, "/api/azure/v1/feedback"),
+        {
+          method: "POST",
+          redirect: "error",
+          headers: {
+            ...getHeaders(token),
+            "X-Correlation-ID": submission.deduplicationKey,
+          },
+          body: JSON.stringify(submission),
+        },
+      ).catch(() => {
+        throw new BadGatewayError(
+          "Fikk ikke svar fra Lumi API på innsendingen med app-token.",
+        );
+      });
+      if (!response.ok)
+        throw apiStatusError(
+          response.status,
+          `Lumi API svarte ${response.status} på innsendingen med app-token.`,
+        );
+      const receipt = parseApiAnswer(
+        submissionReceiptSchema,
+        await response.json().catch(() => null),
+      );
+      return readExactProbe(authContext, target, {
+        phase: "app-token",
+        surveyId: data.surveyId,
+        receiptId: receipt.id,
+        duplicate: receipt.duplicate === true,
+      });
+    },
+  );
+
 export const fetchReleaseVerificationRunServerFn = createServerFn({
   method: "GET",
 })
@@ -308,7 +363,15 @@ export const fetchReleaseVerificationRunServerFn = createServerFn({
       assertReleaseVerificationEnabled();
       const target = getTarget();
       const authContext = context as AuthContext;
-      const [initial, closing] = await Promise.all([
+      const [appToken, initial, closing] = await Promise.all([
+        target.environment === "dev-gcp" && data.appReceiptId
+          ? readExactProbe(authContext, target, {
+              phase: "app-token",
+              surveyId: data.surveyId,
+              receiptId: data.appReceiptId,
+              duplicate: null,
+            })
+          : null,
         data.initialReceiptId
           ? readExactProbe(authContext, target, {
               phase: "initial",
@@ -326,9 +389,28 @@ export const fetchReleaseVerificationRunServerFn = createServerFn({
             })
           : null,
       ]);
-      return { observedAt: new Date().toISOString(), initial, closing };
+      return {
+        observedAt: new Date().toISOString(),
+        appToken,
+        initial,
+        closing,
+      };
     },
   );
+
+async function requireTeamPreflight(
+  context: AuthContext,
+  target: ReleaseVerificationTarget,
+  surveyId: string,
+) {
+  const preflight = await runTeamPreflight(context, target, surveyId);
+  if (preflight.status !== "passed") {
+    throw new HttpStatusError(
+      preflight.status === "failed" ? 403 : 503,
+      preflight.message ?? "Teamtilgang kunne ikke bekreftes",
+    );
+  }
+}
 
 async function runTeamPreflight(
   { backendUrl, oboToken }: AuthContext,
@@ -392,6 +474,10 @@ async function readExactProbe(
     duplicate: boolean | null;
   },
 ): Promise<ReleaseVerificationProbeEvidence> {
+  const channel =
+    expected.phase === "app-token"
+      ? "azure-client-credentials"
+      : target.channel;
   const retryDelaysMs = [0, 100, 250, 500];
   for (const [attempt, delayMs] of retryDelaysMs.entries()) {
     if (delayMs > 0) await delay(delayMs);
@@ -409,7 +495,7 @@ async function readExactProbe(
         return verifyReleaseVerificationReadback(null, {
           ...expected,
           app: target.app,
-          channel: target.channel,
+          channel,
         });
       }
       if (!response.ok) {
@@ -427,7 +513,7 @@ async function readExactProbe(
       return verifyReleaseVerificationReadback(parsed.data, {
         ...expected,
         app: target.app,
-        channel: target.channel,
+        channel,
       });
     } catch {
       if (attempt === retryDelaysMs.length - 1) {

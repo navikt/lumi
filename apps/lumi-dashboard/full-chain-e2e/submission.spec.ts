@@ -30,13 +30,14 @@ interface FullChainReport {
   observeAfter: string | null;
   checks: Array<{
     id: string;
-    status: "pending" | "passed" | "failed";
+    status: "pending" | "passed" | "failed" | "not-tested";
     completedAt: string | null;
     detail: string;
   }>;
   probes: Record<string, unknown>;
   coverage: {
     controlledRoundTrip: "pending" | "passed" | "failed";
+    appTokenRoundTrip: "not-tested";
     localSubmissionProxy: "not-tested" | "passed" | "failed";
     surveyContractMatrix?: "not-tested" | "passed" | "failed";
     legacyCompatibility?: "passed" | "failed";
@@ -1251,6 +1252,14 @@ async function verifyControlledDashboardRoundTrip(
     page.getByText("Teamtilgang er bekreftet før skrivetesten starter."),
   ).toBeVisible();
 
+  const appStage = page.getByRole("listitem").filter({
+    has: page.getByRole("heading", { name: "Innsending med app-token" }),
+  });
+  await expect(appStage.getByText("Ikke testet")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Send med app-token" }),
+  ).toHaveCount(0);
+
   await submitReleaseProbe(page);
   await expect(page.getByText(/Holdetiden er ferdig/)).toBeVisible();
   await submitReleaseProbe(page);
@@ -1267,6 +1276,7 @@ async function verifyControlledDashboardRoundTrip(
   expect(report.outcome).toBe("passed");
   expect(report.coverage).toMatchObject({
     controlledRoundTrip: "passed",
+    appTokenRoundTrip: "not-tested",
     navWideRelease: "pending",
   });
   return report;
@@ -1306,9 +1316,10 @@ function createFailedReport(
         detail: "Dashboard-rundturen produserte ingen lesbar rapport",
       },
     ],
-    probes: { initial: null, closing: null },
+    probes: { initial: null, closing: null, appToken: null },
     coverage: {
       controlledRoundTrip: "failed",
+      appTokenRoundTrip: "not-tested",
       localSubmissionProxy: "not-tested",
       legacyCompatibility: "failed",
       globalAzureHealth: "not-assessed",

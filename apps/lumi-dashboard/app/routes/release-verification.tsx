@@ -27,6 +27,7 @@ import { Header } from "~/components/shared/Header";
 import {
   fetchReleaseVerificationConfigServerFn,
   fetchReleaseVerificationRunServerFn,
+  submitAppTokenProbeServerFn,
   submitReleaseVerificationServerFn,
 } from "~/server/actions";
 import {
@@ -37,7 +38,7 @@ import {
   createReleaseVerificationSurveyId,
   RELEASE_VERIFICATION_CONTROL_FIELD_ID,
   RELEASE_VERIFICATION_SURVEY_ID_PATTERN,
-  type ReleaseVerificationCheckStatus,
+  type ReleaseVerificationCheck,
   type ReleaseVerificationPhase,
   type ReleaseVerificationProbeEvidence,
   type ReleaseVerificationReportV1,
@@ -45,6 +46,7 @@ import {
 
 const searchSchema = z.object({
   surveyId: z.string().regex(RELEASE_VERIFICATION_SURVEY_ID_PATTERN).optional(),
+  appReceiptId: z.uuid().optional().catch(undefined),
   initialReceiptId: z.uuid().optional(),
   closingReceiptId: z.uuid().optional(),
 });
@@ -61,6 +63,11 @@ export const Route = createFileRoute("/release-verification")({
 
 function ReleaseVerificationPage() {
   const search = Route.useSearch();
+  return <ReleaseVerificationRun key={search.surveyId} />;
+}
+
+function ReleaseVerificationRun() {
+  const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const configQuery = useQuery({
     queryKey: ["release-verification-config"],
@@ -69,20 +76,25 @@ function ReleaseVerificationPage() {
     refetchOnWindowFocus: false,
   });
   const [attempt, setAttempt] = useState<AttemptState>({ status: "idle" });
+  const [appAttempt, setAppAttempt] = useState<AttemptState>({
+    status: "idle",
+  });
   const [optimisticProbes, setOptimisticProbes] = useState<{
+    appToken?: ReleaseVerificationProbeEvidence;
     initial?: ReleaseVerificationProbeEvidence;
     closing?: ReleaseVerificationProbeEvidence;
   }>({});
   const [openedAt] = useState(() => new Date().toISOString());
   const [shareUrl, setShareUrl] = useState("");
-  const shareKey = `${search.surveyId ?? ""}:${search.initialReceiptId ?? ""}:${search.closingReceiptId ?? ""}`;
+  const shareKey = `${search.surveyId ?? ""}:${search.initialReceiptId ?? ""}:${search.closingReceiptId ?? ""}:${search.appReceiptId ?? ""}`;
 
   const config = configQuery.data;
   const surveyId = search.surveyId ?? config?.surveyId ?? null;
   const readbackInput =
-    surveyId && search.initialReceiptId
+    surveyId && (search.initialReceiptId || search.appReceiptId)
       ? {
           surveyId,
+          appReceiptId: search.appReceiptId,
           initialReceiptId: search.initialReceiptId,
           closingReceiptId: search.closingReceiptId,
         }
@@ -97,10 +109,13 @@ function ReleaseVerificationPage() {
     refetchInterval: (query) => {
       const current = query.state.data;
       const unavailable =
+        current?.appToken?.status === "unavailable" ||
         current?.initial?.status === "unavailable" ||
         current?.closing?.status === "unavailable";
       if (unavailable) return 5_000;
-      return readbackInput && !search.closingReceiptId ? 30_000 : false;
+      return search.initialReceiptId && !search.closingReceiptId
+        ? 30_000
+        : false;
     },
     refetchOnWindowFocus: true,
   });
@@ -119,6 +134,11 @@ function ReleaseVerificationPage() {
     });
   }, [config, navigate, search.surveyId]);
 
+  const appProbe =
+    runQuery.data?.appToken ??
+    (optimisticProbes.appToken?.receiptId === search.appReceiptId
+      ? optimisticProbes.appToken
+      : undefined);
   const initialProbe =
     runQuery.data?.initial ?? optimisticProbes.initial ?? null;
   const closingProbe =
@@ -134,6 +154,11 @@ function ReleaseVerificationPage() {
           now: trustedNow,
           holdDurationMs: config.holdDurationMs,
           preflight: config.preflight,
+          appProbe,
+          appProbeError:
+            appAttempt.status === "error" && !search.appReceiptId
+              ? appAttempt.message
+              : undefined,
           initialProbe: initialProbe ?? undefined,
           closingProbe: closingProbe ?? undefined,
         })
@@ -146,6 +171,7 @@ function ReleaseVerificationPage() {
   const earlyClosingProbe =
     closingProbe?.status === "verified" && closingStatus === "pending";
   const readbackUnavailable =
+    appProbe?.status === "unavailable" ||
     initialProbe?.status === "unavailable" ||
     closingProbe?.status === "unavailable";
   const activePhase: ReleaseVerificationPhase | null =
@@ -156,7 +182,7 @@ function ReleaseVerificationPage() {
             holdPassed &&
             closingStatus === "pending" &&
             (!closingProbe || earlyClosingProbe) &&
-            report?.outcome !== "failed"
+            report?.coverage.controlledRoundTrip !== "failed"
           ? "closing"
           : null
       : null;
@@ -181,7 +207,8 @@ function ReleaseVerificationPage() {
           setAttempt({ status: "idle" });
           await navigate({
             to: "/release-verification",
-            search: {
+            search: (previous) => ({
+              ...previous,
               surveyId,
               initialReceiptId:
                 activePhase === "initial"
@@ -189,7 +216,7 @@ function ReleaseVerificationPage() {
                   : search.initialReceiptId,
               closingReceiptId:
                 activePhase === "closing" ? evidence.receiptId : undefined,
-            },
+            }),
             replace: true,
           });
         } catch (error) {
@@ -206,8 +233,42 @@ function ReleaseVerificationPage() {
     };
   }, [activePhase, navigate, search.initialReceiptId, surveyId]);
 
+  const sendAppProbe = async () => {
+    if (!surveyId || appAttempt.status === "sending") return;
+    setAppAttempt({ status: "sending" });
+    try {
+      const evidence = await submitAppTokenProbeServerFn({
+        data: { surveyId },
+      });
+      setOptimisticProbes((current) => ({ ...current, appToken: evidence }));
+      await navigate({
+        to: "/release-verification",
+        search: (previous) => ({
+          ...previous,
+          surveyId,
+          appReceiptId: evidence.receiptId,
+        }),
+        replace: true,
+      });
+      setAppAttempt({ status: "idle" });
+    } catch (error) {
+      setAppAttempt({
+        status: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Innsendingen med app-token feilet.",
+      });
+    }
+  };
+
   const startNewRun = async () => {
-    if (!canStartReleaseVerificationRun(attempt.status)) return;
+    if (
+      !canStartReleaseVerificationRun(attempt.status) ||
+      appAttempt.status === "sending"
+    )
+      return;
+    setAppAttempt({ status: "idle" });
     setAttempt({ status: "idle" });
     setOptimisticProbes({});
     await navigate({
@@ -286,6 +347,21 @@ function ReleaseVerificationPage() {
                 ))}
               </HGrid>
 
+              {config.environment === "dev-gcp" &&
+              config.preflight.status === "passed" &&
+              !search.appReceiptId ? (
+                <HStack>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    loading={appAttempt.status === "sending"}
+                    onClick={sendAppProbe}
+                  >
+                    Send med app-token
+                  </Button>
+                </HStack>
+              ) : null}
+
               <Box
                 background="neutral-soft"
                 borderWidth="1"
@@ -316,7 +392,8 @@ function ReleaseVerificationPage() {
                         size="small"
                         onClick={startNewRun}
                         disabled={
-                          !canStartReleaseVerificationRun(attempt.status)
+                          !canStartReleaseVerificationRun(attempt.status) ||
+                          appAttempt.status === "sending"
                         }
                       >
                         Ny kjøring
@@ -371,9 +448,9 @@ function ReleaseVerificationPage() {
                       Holdetiden er ferdig. Send den avsluttende proben med de
                       samme syntetiske valgene.
                     </Alert>
-                  ) : report.outcome === "passed" ? (
+                  ) : report.coverage.controlledRoundTrip === "passed" ? (
                     <Alert variant="success">
-                      Den kontrollerte dev-kjeden er bestått. Begge receipts er
+                      Start- og sluttproben er bestått. Begge kvitteringene er
                       lest tilbake eksakt, og avslutningsproben ble lagret etter
                       holdetiden.
                     </Alert>
@@ -383,7 +460,7 @@ function ReleaseVerificationPage() {
                       Startproben er bevist. Siden låser opp avslutningsproben
                       etter {report.observeAfter}.
                     </Alert>
-                  ) : report.outcome === "failed" ? (
+                  ) : report.coverage.controlledRoundTrip === "failed" ? (
                     <Alert variant="error">
                       Kjøringen er stoppet fordi et lagret bevis ikke matcher
                       forventet receipt, survey, app, svar eller kontekst.
@@ -506,7 +583,7 @@ function VerificationStage({
   step: string;
   title: string;
   detail: string;
-  status: ReleaseVerificationCheckStatus;
+  status: ReleaseVerificationCheck["status"];
 }) {
   return (
     <Box
@@ -627,14 +704,20 @@ function StatusTag({
   status,
   size = "medium",
 }: {
-  status: ReleaseVerificationCheckStatus;
+  status: ReleaseVerificationCheck["status"];
   size?: "small" | "medium";
 }) {
-  const labels = { passed: "Bestått", pending: "Venter", failed: "Feilet" };
+  const labels = {
+    passed: "Bestått",
+    pending: "Venter",
+    failed: "Feilet",
+    "not-tested": "Ikke testet",
+  };
   const variants = {
     passed: "success",
     pending: "warning",
     failed: "error",
+    "not-tested": "neutral",
   } as const;
   return (
     <Tag variant={variants[status]} size={size}>
@@ -656,6 +739,7 @@ function checkTitle(
   id: ReleaseVerificationReportV1["checks"][number]["id"],
 ): string {
   return {
+    "app-token-round-trip": "Innsending med app-token",
     "team-preflight": "Teamtilgang",
     "initial-round-trip": "Startprobe",
     "hold-window": "15 minutters hold",
