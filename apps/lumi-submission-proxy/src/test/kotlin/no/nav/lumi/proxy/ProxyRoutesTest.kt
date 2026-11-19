@@ -91,7 +91,7 @@ class ProxyRoutesTest {
 
     @Test
     fun `forwards the azp_name of an introspected app token to the internal submission route`() {
-        val caller = "dev-gcp:teamsykefravr:gosys-oppgavebehandling"
+        val caller = "dev-gcp:oppgavehandtering:gosys-oppgavebehandling"
         val texas = mockTexas {
             texasJson("""{"active":true,"azp_name":"$caller","idtyp":"app","roles":["access_as_application"]}""")
         }
@@ -105,6 +105,18 @@ class ProxyRoutesTest {
 
         assertEquals(HttpStatusCode.Created, status)
         assertEquals(1, forwarded.get())
+    }
+
+    @Test
+    fun `does not forward an active app token without azp_name`() {
+        val texas = mockTexas {
+            texasJson("""{"active":true,"idtyp":"app","roles":["access_as_application"]}""")
+        }
+        val forwarded = AtomicInteger()
+        val status = callProxy(texasConfig, texas, forwarded) { client -> postWithToken(client) }
+
+        assertEquals(HttpStatusCode.Unauthorized, status)
+        assertEquals(0, forwarded.get())
     }
 
     @Test
