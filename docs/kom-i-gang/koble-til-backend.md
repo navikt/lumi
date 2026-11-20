@@ -15,7 +15,8 @@ Svaret går fra widgeten via appens backend til Lumi API:
 
 1. Widgeten sender `submission.transportPayload` til et endepunkt i appens backend.
 2. Backenden bytter brukerens token mot et nytt token for Lumi API med TokenX
-   eller Entra ID. Dette kalles tokenveksling.
+   eller Entra ID. Dette kalles tokenveksling. Interne apper kan også hente et
+   token uten bruker, se [OBO eller client credentials](#obo-eller-client-credentials).
 3. Backenden sender payloaden videre til Lumi API med det nye tokenet.
 
 ::: info Hvorfor tokenveksling?
@@ -32,20 +33,19 @@ Endepunktet avhenger av hvem som bruker appen:
 | App | Tokenveksling | Endepunkt |
 | :--- | :--- | :--- |
 | For sluttbrukere (nav.no, arbeidsgiver, privatperson) | TokenX | `POST /api/tokenx/v1/feedback` |
-| Intern (Modia, veiledersystemer, fagsystemer) | Entra ID (OBO) | `POST /api/azure/v1/feedback` |
+| Intern (Modia, veiledersystemer, fagsystemer) | Entra ID | `POST /api/azure/v1/feedback` |
 
 ### Interne apper og Modia {#interne-apper}
 
-Interne apper veksler token med Entra ID. Der heter tokenvekslingen
-on-behalf-of (OBO). I prod kaller alle interne apper `lumi-api` direkte. I dev
-avhenger det av hvilken Entra ID-tenant appen bruker:
+Interne apper henter tokenet fra Entra ID. I prod kaller alle interne apper
+`lumi-api` direkte. I dev avhenger det av hvilken Entra ID-tenant appen bruker:
 
 - `nav.no`: appen kaller `lumi-api` direkte, som i prod
 - `trygdeetaten.no`, slik Modia-apper gjør: appen sender svarene til `lumi-submission-proxy`
 
-Lumi API ligger i tenanten `nav.no`, og et OBO-token gjelder bare innenfor én
-tenant. Proxyen ligger i `trygdeetaten.no`, sjekker tokenet og sender svaret
-videre til Lumi API. Den finnes bare i dev-gcp.
+Lumi API ligger i tenanten `nav.no`, og et token fra Entra ID gjelder bare
+innenfor én tenant. Proxyen ligger i `trygdeetaten.no`, sjekker tokenet og
+sender svaret videre til Lumi API. Den finnes bare i dev-gcp.
 
 Tenanten står i `spec.azure.application.tenant` i Nais-manifestet. Hvis feltet
 mangler, ser dere på brukeren dere logger inn med i dev: en bruker på
@@ -53,9 +53,25 @@ mangler, ser dere på brukeren dere logger inn med i dev: en bruker på
 betyr `nav.no`. Er dere
 fortsatt usikre, skriv det i tilgangsforespørselen.
 
-Fra tokenet lagrer Lumi API bare team og app sammen med svaret. Nav-identen som
-kan ligge i OBO-tokenet, blir verken brukt eller lagret. For å begrense antall
-innsendinger per bruker holder Lumi API en hash av brukerens ID i minnet. Legg heller ikke Nav-ident eller andre personopplysninger i `context`.
+### OBO eller client credentials {#obo-eller-client-credentials}
+
+Backenden kan hente tokenet fra Entra ID på to måter:
+
+- Med on-behalf-of (OBO) veksler backenden tokenet til den ansatte mot et token
+  for Lumi API. Det nye tokenet sier både hvilken app som kaller, og hvem den
+  ansatte er. Lumi API begrenser da også antall innsendinger per bruker.
+- Med client credentials henter backenden et token som bare sier hvilken app
+  som kaller. Lumi API får ingen opplysninger om den ansatte, og grensen per
+  bruker gjelder ikke. Nais kaller dette
+  [maskin-til-maskin](https://doc.nais.io/auth/entra-id/how-to/consume-m2m/).
+
+Endepunktet, miljøvariablene og access policies er de samme for begge. Hva
+Lumi API gjør med opplysningene i tokenet, står i
+[Hvem som svarte](/referanse/sikkerhet#hvem-som-svarte). Grensene står i
+[Rate limiting](/referanse/sikkerhet#rate-limiting).
+
+Fra tokenet lagrer Lumi API bare team og app sammen med svaret. Legg ikke
+Nav-ident eller andre personopplysninger i `context`.
 
 ## 2. Sett miljøvariabler i Nais {#_2-sett-miljøvariabler-i-nais}
 
@@ -356,6 +372,12 @@ Host, audience og sti kommer fra en av Entra ID-blokkene i
 [Express med TokenX](#express), med `validateAzureToken` og
 `requestAzureOboToken` i stedet.
 
+Med [client credentials](#obo-eller-client-credentials) bytter dere ut
+`requestAzureOboToken(token, audience)` med
+`requestAzureClientCredentialsToken(audience)`. Ruten må fortsatt sjekke
+tokenet til den ansatte med `validateAzureToken(token)`. Uten den sjekken kan
+alle som når ruten, sende inn svar i appens navn uten å være logget inn.
+
 ## 4. Konfigurer access policies {#_4-konfigurer-access-policies}
 
 Både appen deres og mottakeren hos Lumi må ha en access policy som slipper
@@ -401,7 +423,7 @@ spec:
 
 Appen må også legges til som inbound i mottakeren fra tabellen: `lumi-api`
 for direkte kall, eller `lumi-submission-proxy` for `trygdeetaten.no` i dev.
-Uten inbound-regelen får ikke appen veksle token til mottakeren. Det kan dere
+Uten inbound-regelen får ikke appen hentet token for mottakeren. Det kan dere
 ordne på to måter:
 
 - Vet dere hvilken mottaker dere skal ha, kan dere [sende en PR selv](#send-pr-selv).

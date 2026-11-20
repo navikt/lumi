@@ -28,7 +28,8 @@ import kotlin.time.Duration.Companion.minutes
  *   (Token/Azure SubmissionAuthPlugin) sets [CallerIdentityKey] and
  *   [UserRateLimitHashKey] in its `onCall`, which runs before the RateLimit
  *   `requestKey`. These routes are therefore keyed per caller-app and, when a
- *   user hash is present, per hashed user.
+ *   user hash is present, per hashed user. Entra ID client credentials tokens
+ *   have no user and get no user hash.
  * - Internal proxy submissions: PSK authentication runs before the named
  *   submission limit and sets [InternalSubmissionAuthenticatedKey]. The proxy
  *   remains keyed by its trusted socket peer because the forwarded caller

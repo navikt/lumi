@@ -435,5 +435,9 @@ data class TexasIntrospectionResult(
     @SerialName("unique_name")
     val uniqueName: String? = null,
     /** AD group UUIDs the user belongs to */
-    val groups: List<String>? = null
+    val groups: List<String>? = null,
+    /** Entra ID identity type. The value "app" marks a client credentials token, which has no user. */
+    val idtyp: String? = null,
+    /** Entra ID roles. In a client credentials token they are the roles Nais has given the calling app. */
+    val roles: List<String>? = null
 )

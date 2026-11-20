@@ -40,7 +40,8 @@ private val defaultSubmissionObservability = SubmissionObservability()
  * - AzureAD: azp_name
  * 
  * Rate limited to 100 requests per minute per calling application,
- * and 15 requests per minute per individual user.
+ * and 15 requests per minute per individual user. An Entra ID client
+ * credentials token has no user, so only the application limit applies.
  */
 fun Route.submissionRoutes(
     feedbackService: FeedbackService = defaultFeedbackService,
@@ -49,7 +50,9 @@ fun Route.submissionRoutes(
     submissionObservability: SubmissionObservability = defaultSubmissionObservability
 ) {
     route("/api/tokenx") {
-        install(TokenXSubmissionAuthPlugin)
+        install(TokenXSubmissionAuthPlugin) {
+            this.submissionObservability = submissionObservability
+        }
         rateLimit(SubmissionRateLimit) {
             rateLimit(UserSubmissionRateLimit) {
                 post("/v1/feedback") {
@@ -67,7 +70,9 @@ fun Route.submissionRoutes(
     }
 
     route("/api/azure") {
-        install(AzureSubmissionAuthPlugin)
+        install(AzureSubmissionAuthPlugin) {
+            this.submissionObservability = submissionObservability
+        }
         rateLimit(SubmissionRateLimit) {
             rateLimit(UserSubmissionRateLimit) {
                 post("/v1/feedback") {

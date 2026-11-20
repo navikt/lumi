@@ -83,8 +83,9 @@ ikke sendt.
 
 Sjekk dette:
 
-1. Mottakeren har appen deres som inbound. Uten regelen får ikke appen veksle
-   token til mottakeren. Tilgangen gjelder først når PR-en er merget og
+1. Mottakeren har appen deres som inbound. Uten regelen får ikke appen token
+   for mottakeren, verken med tokenveksling eller med client credentials.
+   Tilgangen gjelder først når PR-en er merget og
    mottakeren er deployet. Se
    [Mottakeren (inbound)](/kom-i-gang/koble-til-backend#mottakeren-inbound).
 2. `LUMI_AUDIENCE` hører til samme mottaker som `LUMI_API_HOST`. Se
@@ -139,11 +140,12 @@ eksempelet gjør.
 | :--- | :--- | :--- |
 | 400 | Payloaden er ugyldig, for eksempel fordi backenden sender hele `submission` og ikke `submission.transportPayload`. | Send `transportPayload` videre uendret. |
 | 401 | Tokenet mangler, er utløpt eller har feil utsteder. Ruten i eksempelet svarer selv 401 når brukerens token mangler eller er ugyldig, så sjekk loggen i backend for å se hvem som svarte. Et TokenX-token til `/api/azure/v1/feedback` gir 401, og det samme gjør et Entra ID-token til `/api/tokenx/v1/feedback`. | Bruk host, audience og sti fra samme [miljøblokk](/kom-i-gang/koble-til-backend#_2-sett-miljøvariabler-i-nais). |
+| 403 | Tokenet er hentet med client credentials, men mangler rollen `access_as_application`. Nais gir rollen til apper som står som inbound i `lumi-api`, så dette skal ikke skje i vanlig bruk. | Spør i #lumi. |
 | 404 | Host og sti passer ikke sammen, for eksempel `/api/tokenx/v1/feedback` sendt til `lumi-submission-proxy`, som bare har endepunktet for Entra ID. | Bruk host, audience og sti fra samme miljøblokk. |
 | 409 | Surveyen er endret på en måte som ikke passer med definisjonen Lumi API har lagret for `surveyId`. Svaret er ikke lagret. | Se [Hvis API-et svarer med 409](/guider/survey-identitet#hvis-api-et-svarer-med-409). |
 | 411 | Proxyen fikk et kall uten headeren `Content-Length`. Gjelder bare `trygdeetaten.no` i dev. | Send hele payloaden i ett kall med `Content-Length`, ikke som en strøm. |
 | 413 | Payloaden er større enn 1 MB. | Send bare `transportPayload`. |
-| 429 | Appen har sendt mer enn 100 svar på ett minutt, eller samme bruker mer enn 15. I dev deler alle apper i `trygdeetaten.no` én grense gjennom proxyen. Grensen gjelder et helt minutt, så widgeten prøver ikke på nytt av seg selv. | Vent et minutt. Skjer det ofte, spør i [#lumi på Slack](https://nav-it.slack.com/archives/C0AG2FKSSMD). |
+| 429 | Appen har sendt mer enn 100 svar på ett minutt, eller samme bruker mer enn 15. Grensen per bruker gjelder ikke når tokenet er hentet med client credentials. I dev deler alle apper i `trygdeetaten.no` én grense gjennom proxyen. Grensen gjelder et helt minutt, så widgeten prøver ikke på nytt av seg selv. | Vent et minutt. Skjer det ofte, spør i [#lumi på Slack](https://nav-it.slack.com/archives/C0AG2FKSSMD). |
 | 500 | Feil i Lumi API eller proxyen. | Spør i #lumi. |
 | 502 | Proxyen fikk ikke sendt svaret videre til Lumi API. Gjelder bare `trygdeetaten.no` i dev. | Spør i #lumi. |
 | 503 | Texas i Nais svarte ikke, så Lumi API eller proxyen fikk ikke kontrollert tokenet. Med meldingen «Databasen svarer ikke akkurat nå» svarte databasen ikke i tide. Svaret er ikke lagret. Widgeten prøver én gang til av seg selv, se [Tidsgrense og nytt forsøk](/kom-i-gang/konfigurer-survey#tidsgrense-og-nytt-forsok). | Prøv igjen litt senere. Skjer det ofte, spør i #lumi. |
