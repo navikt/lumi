@@ -88,7 +88,7 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-to-slf4j:$log4jVersion")
     
     // Excel export
-    implementation("org.apache.poi:poi-ooxml:5.5.1")
+    implementation("org.apache.poi:poi-ooxml:6.0.0")
     
     // Valkey/Redis cache
     implementation("redis.clients:jedis:8.0.2")
