@@ -38,10 +38,8 @@ private fun TexasIntrospectionResult.isEntraAppToken(): Boolean = idtyp == JsonP
  * access_as_application. An app token without it comes from an app that has
  * not been given access.
  */
-private fun TexasIntrospectionResult.hasEntraAppAccess(): Boolean {
-    val appRoles = roles as? JsonArray ?: return false
-    return appRoles.all { it is JsonPrimitive && it.isString } && JsonPrimitive(ENTRA_DEFAULT_APP_ROLE) in appRoles
-}
+private fun TexasIntrospectionResult.hasEntraAppAccess(): Boolean =
+    (roles as? JsonArray)?.contains(JsonPrimitive(ENTRA_DEFAULT_APP_ROLE)) == true
 
 /**
  * Authentication plugins for submission routes.

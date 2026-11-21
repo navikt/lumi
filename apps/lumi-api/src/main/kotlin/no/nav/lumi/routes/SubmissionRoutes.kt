@@ -43,6 +43,10 @@ private val defaultSubmissionObservability = SubmissionObservability()
  * Rate limited to 100 requests per minute per calling application,
  * and 15 requests per minute per individual user. An Entra ID client
  * credentials token has no user, so only the application limit applies.
+ *
+ * [configureAuth] lets tests replace the Texas client on both auth plugins. The
+ * plugins always count with [submissionObservability], also when [configureAuth]
+ * sets another instance.
  */
 fun Route.submissionRoutes(
     feedbackService: FeedbackService = defaultFeedbackService,

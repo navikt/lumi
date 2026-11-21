@@ -437,8 +437,15 @@ data class TexasIntrospectionResult(
     val uniqueName: String? = null,
     /** AD group UUIDs the user belongs to */
     val groups: List<String>? = null,
-    /** Entra ID identity type. The value "app" marks a client credentials token, which has no user. */
+    /**
+     * Entra ID identity type. The value "app" marks a client credentials token, which has no user.
+     * Only Entra ID submission reads it. It is kept as raw JSON so an unexpected shape cannot make
+     * the answer unreadable for TokenX submission and dashboard login.
+     */
     val idtyp: JsonElement? = null,
-    /** Entra ID roles. In a client credentials token they are the roles Nais has given the calling app. */
+    /**
+     * Entra ID roles. In a client credentials token they are the roles Nais has given the calling app.
+     * Raw JSON for the same reason as [idtyp].
+     */
     val roles: JsonElement? = null
 )

@@ -30,7 +30,7 @@ det leser Lumi API hvilket team og hvilken app som sendte svaret.
 
 Endepunktet avhenger av hvem som bruker appen:
 
-| App | Utsteder | Endepunkt |
+| App | Tokenveksling | Endepunkt |
 | :--- | :--- | :--- |
 | For sluttbrukere (nav.no, arbeidsgiver, privatperson) | TokenX | `POST /api/tokenx/v1/feedback` |
 | Intern (Modia, veiledersystemer, fagsystemer) | Entra ID | `POST /api/azure/v1/feedback` |
@@ -423,7 +423,8 @@ spec:
 
 Appen må også legges til som inbound i mottakeren fra tabellen: `lumi-api`
 for direkte kall, eller `lumi-submission-proxy` for `trygdeetaten.no` i dev.
-Dere kan be om inbound-tilgang på to måter:
+Uten inbound-regelen får ikke appen veksle token til mottakeren. Det kan dere
+ordne på to måter:
 
 - Vet dere hvilken mottaker dere skal ha, kan dere [sende en PR selv](#send-pr-selv).
   Det går raskest.

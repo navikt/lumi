@@ -227,6 +227,20 @@ class SubmissionAuthPluginTest : FunSpec({
         status shouldBe HttpStatusCode.Forbidden
     }
 
+    test("returns 403 for an Entra ID app token with an empty role list") {
+        val (status, _) = submitToAzure(mockTexasClient { texasJson(appToken(roles = "[]")) }).single()
+
+        status shouldBe HttpStatusCode.Forbidden
+    }
+
+    test("accepts an Entra ID app token that has the default role among other roles") {
+        val (status, _) = submitToAzure(
+            mockTexasClient { texasJson(appToken(roles = """["custom-role", "access_as_application"]""")) },
+        ).single()
+
+        status shouldBe HttpStatusCode.Created
+    }
+
     test("ignores Entra-specific claim shapes on TokenX submissions") {
         val (status, _) = submitWith(mockTexasClient {
             texasJson("""{"active":true,"client_id":"dev-gcp:team:app","sub":"user","idtyp":{},"roles":"custom"}""")
