@@ -1,17 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { lumiApiFetch } from "~/server/lumiApiFetch";
+import { LumiApiTimeoutError, lumiApiFetch } from "~/server/lumiApiFetch";
 import { authMiddleware } from "~/server/middleware/auth";
 import { refuseWriteInPublicDemo } from "~/server/publicDemo";
 import {
   createAppProbeSubmission,
   requestProbeAppToken,
 } from "~/server/releaseVerificationAppToken.server";
-import {
-  apiStatusError,
-  BadGatewayError,
-  HttpStatusError,
-} from "~/server/serverFnStatus";
+import { BadGatewayError, HttpStatusError } from "~/server/serverFnStatus";
 import {
   type AuthContext,
   buildUrl,
@@ -20,6 +16,7 @@ import {
 } from "~/server/utils";
 import { serverEnv } from "~/serverEnv";
 import {
+  appProbeCaller,
   createReleaseVerificationControlOptionId,
   createReleaseVerificationSurveyId,
   isReleaseVerificationEnabled,
@@ -32,8 +29,9 @@ import {
   type ReleaseVerificationProbeEvidence,
   type ReleaseVerificationProfile,
   verifyReleaseVerificationReadback,
+  type WidgetProbePhase,
 } from "~/utils/releaseVerification";
-import { handleApiResponse, parseApiAnswer } from "../fetchUtils";
+import { handleApiResponse } from "../fetchUtils";
 
 const DEV_HOLD_DURATION_MS = 15 * 60 * 1000;
 const surveyTypeSchema = z.enum([
@@ -128,6 +126,15 @@ const submissionReceiptSchema = z.object({
   id: z.uuid(),
   duplicate: z.boolean().optional(),
 });
+
+async function readSubmissionReceipt(response: Response) {
+  const receipt = submissionReceiptSchema.safeParse(
+    await response.json().catch(() => null),
+  );
+  if (!receipt.success)
+    throw new BadGatewayError("Lumi API returnerte en ugyldig kvittering.");
+  return receipt.data;
+}
 
 const feedbackReadbackSchema = z.object({
   id: z.string(),
@@ -290,12 +297,10 @@ export const submitReleaseVerificationServerFn = createServerFn({
         },
       );
       await handleApiResponse(response);
-      const receipt = parseApiAnswer(
-        submissionReceiptSchema,
-        await response.json(),
-      );
+      const receipt = await readSubmissionReceipt(response);
       return readExactProbe(authContext, target, {
         phase,
+        channel: target.channel,
         surveyId: data.surveyId,
         receiptId: receipt.id,
         duplicate: receipt.duplicate === true,
@@ -316,7 +321,7 @@ export const submitAppTokenProbeServerFn = createServerFn({ method: "POST" })
       const authContext = context as AuthContext;
       await requireTeamPreflight(authContext, target, data.surveyId);
       const token = await requestProbeAppToken(
-        `${target.environment}:${target.team}:${target.app}`,
+        appProbeCaller(target.environment, target.team, target.app),
       );
       const submission = createAppProbeSubmission(data.surveyId);
       const response = await lumiApiFetch(
@@ -330,22 +335,20 @@ export const submitAppTokenProbeServerFn = createServerFn({ method: "POST" })
           },
           body: JSON.stringify(submission),
         },
-      ).catch(() => {
+      ).catch((error: unknown) => {
+        if (error instanceof LumiApiTimeoutError) throw error;
         throw new BadGatewayError(
           "Fikk ikke svar fra Lumi API på innsendingen med app-token.",
         );
       });
       if (!response.ok)
-        throw apiStatusError(
-          response.status,
+        throw new BadGatewayError(
           `Lumi API svarte ${response.status} på innsendingen med app-token.`,
         );
-      const receipt = parseApiAnswer(
-        submissionReceiptSchema,
-        await response.json().catch(() => null),
-      );
+      const receipt = await readSubmissionReceipt(response);
       return readExactProbe(authContext, target, {
         phase: "app-token",
+        channel: "azure-client-credentials",
         surveyId: data.surveyId,
         receiptId: receipt.id,
         duplicate: receipt.duplicate === true,
@@ -367,6 +370,7 @@ export const fetchReleaseVerificationRunServerFn = createServerFn({
         target.environment === "dev-gcp" && data.appReceiptId
           ? readExactProbe(authContext, target, {
               phase: "app-token",
+              channel: "azure-client-credentials",
               surveyId: data.surveyId,
               receiptId: data.appReceiptId,
               duplicate: null,
@@ -375,6 +379,7 @@ export const fetchReleaseVerificationRunServerFn = createServerFn({
         data.initialReceiptId
           ? readExactProbe(authContext, target, {
               phase: "initial",
+              channel: target.channel,
               surveyId: data.surveyId,
               receiptId: data.initialReceiptId,
               duplicate: null,
@@ -383,6 +388,7 @@ export const fetchReleaseVerificationRunServerFn = createServerFn({
         data.closingReceiptId
           ? readExactProbe(authContext, target, {
               phase: "closing",
+              channel: target.channel,
               surveyId: data.surveyId,
               receiptId: data.closingReceiptId,
               duplicate: null,
@@ -469,15 +475,12 @@ async function readExactProbe(
   target: ReleaseVerificationTarget,
   expected: {
     phase: ReleaseVerificationPhase;
+    channel: ReleaseVerificationTarget["channel"] | "azure-client-credentials";
     surveyId: string;
     receiptId: string;
     duplicate: boolean | null;
   },
 ): Promise<ReleaseVerificationProbeEvidence> {
-  const channel =
-    expected.phase === "app-token"
-      ? "azure-client-credentials"
-      : target.channel;
   const retryDelaysMs = [0, 100, 250, 500];
   for (const [attempt, delayMs] of retryDelaysMs.entries()) {
     if (delayMs > 0) await delay(delayMs);
@@ -495,7 +498,6 @@ async function readExactProbe(
         return verifyReleaseVerificationReadback(null, {
           ...expected,
           app: target.app,
-          channel,
         });
       }
       if (!response.ok) {
@@ -513,7 +515,6 @@ async function readExactProbe(
       return verifyReleaseVerificationReadback(parsed.data, {
         ...expected,
         app: target.app,
-        channel,
       });
     } catch {
       if (attempt === retryDelaysMs.length - 1) {
@@ -566,14 +567,17 @@ function delay(ms: number): Promise<void> {
 
 function assertReleaseVerificationEnabled(): void {
   if (!releaseVerificationEnabled()) {
-    throw new Error("Release-verifikasjon er bare tilgjengelig i dev");
+    throw new HttpStatusError(
+      403,
+      "Release-verifikasjon er bare tilgjengelig i dev",
+    );
   }
 }
 
 function assertExpectedSubmission(
   payload: z.infer<typeof transportPayloadSchema>,
   target: ReleaseVerificationTarget,
-): ReleaseVerificationPhase {
+): WidgetProbePhase {
   const phase = phaseSchema.safeParse(payload.context?.tags?.phase);
   const expectedControlOption = createReleaseVerificationControlOptionId(
     payload.surveyId,

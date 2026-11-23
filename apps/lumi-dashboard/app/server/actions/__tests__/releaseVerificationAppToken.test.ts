@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ZodType } from "zod";
+import { LumiApiTimeoutError } from "~/server/lumiApiFetch";
 import { authMiddleware } from "~/server/middleware/auth";
+import { LUMI_API_WRITE_TIMEOUT_MESSAGE } from "~/utils/apiErrorMessages";
+import { createReleaseVerificationReport } from "~/utils/releaseVerification";
 import {
   fetchReleaseVerificationRunServerFn,
   submitAppTokenProbeServerFn,
@@ -21,23 +25,31 @@ const doubles = vi.hoisted(() => ({
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => ({
     middleware: (middleware: unknown[]) => {
-      const handler = (
-        fn: (args: {
-          data: unknown;
-          context: typeof doubles.context;
-        }) => unknown,
-      ) =>
-        Object.assign(
-          (args: { data: unknown }) =>
-            fn({ ...args, context: doubles.context }),
-          { middleware },
-        );
-      return { handler, validator: () => ({ handler }) };
+      const withSchema = (schema?: ZodType) => ({
+        handler: (
+          fn: (args: {
+            data: unknown;
+            context: typeof doubles.context;
+          }) => unknown,
+        ) =>
+          Object.assign(
+            async (args: { data: unknown }) =>
+              fn({
+                data: schema ? schema.parse(args.data) : args.data,
+                context: doubles.context,
+              }),
+            { middleware },
+          ),
+      });
+      return { ...withSchema(), validator: withSchema };
     },
   }),
 }));
 vi.mock("~/server/middleware/auth", () => ({ authMiddleware: {} }));
-vi.mock("~/server/lumiApiFetch", () => ({ lumiApiFetch: doubles.request }));
+vi.mock("~/server/lumiApiFetch", async (original) => ({
+  ...(await original<typeof import("~/server/lumiApiFetch")>()),
+  lumiApiFetch: doubles.request,
+}));
 vi.mock("~/serverEnv", () => ({ serverEnv: doubles.env }));
 vi.mock("~/server/utils", async (original) => ({
   ...(await original<typeof import("~/server/utils")>()),
@@ -129,8 +141,30 @@ describe("innsending med app-token", () => {
       phase: "app-token",
       receiptId,
     });
+    const report = createReleaseVerificationReport({
+      profile: "dev-authenticated-roundtrip",
+      environment: "dev-gcp",
+      surveyId,
+      now: readback.submittedAt,
+      holdDurationMs: 900000,
+      preflight: {
+        status: "passed",
+        checkedAt: readback.submittedAt,
+        app: readback.app,
+        team: "team-esyfo",
+      },
+      appProbe: evidence,
+    });
+    const check = report.checks.find(({ id }) => id === "app-token-round-trip");
+    expect(check?.status).toBe("passed");
+    expect(check?.detail).toContain(
+      `Før innsending kontrollerte dashboardet azp_name=${claims.azp_name}, idtyp=${claims.idtyp} og rollen ${claims.roles[0]}.`,
+    );
+    expect(check?.detail).toContain(
+      `callId=${post[1].headers["X-Correlation-ID"]}`,
+    );
     for (const sensitive of [tokenFor(claims), claims.name, "delegated"]) {
-      expect(JSON.stringify(evidence)).not.toContain(sensitive);
+      expect(JSON.stringify(report)).not.toContain(sensitive);
       expect(post[1].body).not.toContain(sensitive);
     }
   });
@@ -141,7 +175,7 @@ describe("innsending med app-token", () => {
       doubles.env.NAIS_CLUSTER_NAME = cluster;
       await expect(
         submitAppTokenProbeServerFn({ data: { surveyId } }),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject({ status: 403 });
       expect(doubles.issueToken).not.toHaveBeenCalled();
       expect(doubles.request).not.toHaveBeenCalled();
     },
@@ -152,7 +186,7 @@ describe("innsending med app-token", () => {
       doubles.request.mockResolvedValueOnce(new Response(null, { status }));
       await expect(
         submitAppTokenProbeServerFn({ data: { surveyId } }),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject({ status });
       expect(doubles.issueToken).not.toHaveBeenCalled();
       expect(doubles.request).toHaveBeenCalledTimes(1);
     },
@@ -164,6 +198,15 @@ describe("innsending med app-token", () => {
       "azp_name avviker fra dashboardets navn",
     ],
     [{ ...claims, idtyp: undefined }, "idtyp mangler"],
+    [{ ...claims, idtyp: "user" }, "idtyp har en annen verdi enn app"],
+    [
+      { ...claims, roles: "access_as_application" },
+      "roles mangler access_as_application",
+    ],
+    [
+      {},
+      "azp_name mangler. idtyp mangler. roles mangler access_as_application",
+    ],
     [
       { ...claims, roles: ["private value"] },
       "roles mangler access_as_application",
@@ -182,20 +225,89 @@ describe("innsending med app-token", () => {
       expect(doubles.request).toHaveBeenCalledTimes(1);
     },
   );
-  it("does not forward token acquisition errors or backend response bodies", async () => {
+  it("rejects invalid run IDs before preflight or token acquisition", async () => {
+    await expect(
+      submitAppTokenProbeServerFn({
+        data: { surveyId: "lumi-release-verification-incorrect" },
+      }),
+    ).rejects.toThrow();
+    expect(doubles.request).not.toHaveBeenCalled();
+    expect(doubles.issueToken).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      { ok: false, error: "private value" },
+      "Kunne ikke hente app-token fra Entra ID.",
+    ],
+    [
+      { ok: true, token: "private value" },
+      "Kunne ikke lese feltene i app-tokenet.",
+    ],
+    [
+      { ok: true, token: "header.invalid.signature" },
+      "Kunne ikke lese feltene i app-tokenet.",
+    ],
+  ])(
+    "returns a safe message when token acquisition or decoding fails",
+    async (result, message) => {
+      doubles.request.mockResolvedValueOnce(Response.json({}));
+      doubles.issueToken.mockResolvedValueOnce(result);
+      await expect(
+        submitAppTokenProbeServerFn({ data: { surveyId } }),
+      ).rejects.toMatchObject({ status: 502, message });
+      expect(doubles.request).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("does not forward token acquisition errors", async () => {
     doubles.request.mockResolvedValue(Response.json({}));
     doubles.issueToken.mockRejectedValueOnce(new Error("private value"));
     await expect(
       submitAppTokenProbeServerFn({ data: { surveyId } }),
     ).rejects.toThrow(/^Kunne ikke hente app-token fra Entra ID\.$/);
+  });
+
+  it.each([401, 403, 429, 503])(
+    "maps app-token submission HTTP %i to 502 without the body",
+    async (status) => {
+      doubles.request
+        .mockResolvedValueOnce(Response.json({}))
+        .mockResolvedValueOnce(new Response("private value", { status }));
+      await expect(
+        submitAppTokenProbeServerFn({ data: { surveyId } }),
+      ).rejects.toMatchObject({
+        status: 502,
+        message: `Lumi API svarte ${status} på innsendingen med app-token.`,
+      });
+    },
+  );
+
+  it.each([
+    Response.json({ id: "private value" }),
+    new Response("invalid json"),
+  ])("sanitizes invalid receipts", async (response) => {
     doubles.request
       .mockResolvedValueOnce(Response.json({}))
-      .mockResolvedValueOnce(new Response("private value", { status: 403 }));
+      .mockResolvedValueOnce(response);
     await expect(
       submitAppTokenProbeServerFn({ data: { surveyId } }),
     ).rejects.toMatchObject({
-      status: 403,
-      message: "Lumi API svarte 403 på innsendingen med app-token.",
+      status: 502,
+      message: "Lumi API returnerte en ugyldig kvittering.",
+    });
+    expect(doubles.request).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserves the uncertain write result on timeout", async () => {
+    doubles.request
+      .mockResolvedValueOnce(Response.json({}))
+      .mockRejectedValueOnce(new LumiApiTimeoutError("POST"));
+    await expect(
+      submitAppTokenProbeServerFn({ data: { surveyId } }),
+    ).rejects.toMatchObject({
+      status: 504,
+      message: LUMI_API_WRITE_TIMEOUT_MESSAGE,
     });
   });
   it("keeps transport errors containing request details on the server", async () => {

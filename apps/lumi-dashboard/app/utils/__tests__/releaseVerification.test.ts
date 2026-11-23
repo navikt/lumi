@@ -213,29 +213,29 @@ describe("release verification", () => {
     expect(pending.outcome).toBe("pending");
     expect(pending.finishedAt).toBeNull();
     expect(pending.coverage.controlledRoundTrip).toBe("passed");
-    const failed = createReleaseVerificationReport({
-      ...input,
-      appProbeError: "idtyp mangler",
-    });
-    expect(failed.outcome).toBe("failed");
-    expect(failed.checks.at(-1)).toMatchObject({
-      status: "failed",
-      detail: "idtyp mangler",
-    });
     const local = createReleaseVerificationReport({
       ...input,
       profile: "local-full-chain",
       environment: "local",
     });
+    expect(local.profileVersion).toBe(2);
     expect(local.outcome).toBe("passed");
     expect(local.checks.at(-1)?.status).toBe("not-tested");
     const report = createReleaseVerificationReport({
       ...input,
-      appProbe: verifiedProbe("app-token"),
+      now: "2026-08-22T09:07:00.000Z",
+      appProbe: verifiedProbe("app-token", "2026-08-22T09:06:00.000Z"),
     });
 
     expect(report.outcome).toBe("passed");
-    expect(report.finishedAt).toBe("2026-08-22T09:05:00.000Z");
+    expect(report.profileVersion).toBe(2);
+    expect(report.finishedAt).toBe("2026-08-22T09:06:00.000Z");
+    expect(report.startedAt).toBe(initialStoredAt);
+    const earlierApp = verifiedProbe("app-token", "2026-08-22T08:48:30.000Z");
+    expect(
+      createReleaseVerificationReport({ ...input, appProbe: earlierApp })
+        .startedAt,
+    ).toBe(earlierApp.storedAt);
     expect(report.coverage).toEqual({
       controlledRoundTrip: "passed",
       appTokenRoundTrip: "passed",
@@ -244,6 +244,40 @@ describe("release verification", () => {
       trygdeetatenProxy: "not-tested",
       navWideRelease: "pending",
     });
+  });
+
+  it.each([
+    ["mismatch", "failed"],
+    ["not-found", "failed"],
+    ["unavailable", "pending"],
+  ] as const)("reports app readback %s as %s", (status, outcome) => {
+    const report = createReleaseVerificationReport({
+      profile: "dev-authenticated-roundtrip",
+      environment: "dev-gcp",
+      surveyId,
+      now: initialStoredAt,
+      holdDurationMs: 0,
+      preflight: {
+        status: "passed",
+        checkedAt: initialStoredAt,
+        team: "team-esyfo",
+        app: "lumi-dashboard",
+      },
+      initialProbe: verifiedProbe("initial"),
+      closingProbe: verifiedProbe("closing"),
+      appProbe: {
+        ...verifiedProbe("app-token"),
+        status,
+        storedAt: null,
+        mismatches: [status],
+      },
+    });
+    expect(report.coverage.controlledRoundTrip).toBe("passed");
+    expect(report.coverage.appTokenRoundTrip).toBe(outcome);
+    expect(report.outcome).toBe(outcome);
+    expect(report.finishedAt).toBe(
+      outcome === "failed" ? initialStoredAt : null,
+    );
   });
 
   it("keeps an early closing probe retryable instead of permanently failing", () => {

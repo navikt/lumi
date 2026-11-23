@@ -1,8 +1,9 @@
 import type { LumiSurveyTransportPayload } from "@navikt/lumi-survey";
-import { requestAzureClientCredentialsToken } from "@navikt/oasis";
+import { decodeJwtPayload } from "~/server/jwtPayload.server";
 import { BadGatewayError } from "~/server/serverFnStatus";
 import { serverEnv } from "~/serverEnv";
 import {
+  appProbeCallId,
   createReleaseVerificationControlOptionId,
   RELEASE_VERIFICATION_CONTROL_FIELD_ID,
   RELEASE_VERIFICATION_RATING,
@@ -11,6 +12,7 @@ import {
 export async function requestProbeAppToken(
   expectedCaller: string,
 ): Promise<string> {
+  const { requestAzureClientCredentialsToken } = await import("@navikt/oasis");
   const result = await requestAzureClientCredentialsToken(
     serverEnv.LUMI_API_AUDIENCE,
   ).catch(() => null);
@@ -19,16 +21,10 @@ export async function requestProbeAppToken(
   }
 
   // Only inspect the three fields reported by the probe. Lumi API validates the token with Texas.
-  let claims: Record<string, unknown>;
-  try {
-    const segments = result.token.split(".");
-    if (segments.length !== 3) throw new Error();
-    claims = JSON.parse(Buffer.from(segments[1], "base64url").toString("utf8"));
-    if (!claims || typeof claims !== "object" || Array.isArray(claims))
-      throw new Error();
-  } catch {
+  const segments = result.token.split(".");
+  const claims = segments.length === 3 ? decodeJwtPayload(segments[1]) : null;
+  if (!claims)
     throw new BadGatewayError("Kunne ikke lese feltene i app-tokenet.");
-  }
   const mismatches: string[] = [];
   if (claims.azp_name !== expectedCaller) {
     mismatches.push(
@@ -68,7 +64,7 @@ export function createAppProbeSubmission(
     surveyType: "rating",
     surveyId,
     submittedAt: new Date().toISOString(),
-    deduplicationKey: `${surveyId}-app-token`,
+    deduplicationKey: appProbeCallId(surveyId),
     context: {
       tags: {
         purpose: "release-verification",

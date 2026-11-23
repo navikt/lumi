@@ -1273,6 +1273,7 @@ async function verifyControlledDashboardRoundTrip(
   expect(reportText).not.toBeNull();
   const report = JSON.parse(reportText ?? "{}") as FullChainReport;
   expect(report.schemaVersion).toBe(1);
+  expect(report.profileVersion).toBe(2);
   expect(report.outcome).toBe("passed");
   expect(report.coverage).toMatchObject({
     controlledRoundTrip: "passed",
@@ -1294,7 +1295,7 @@ function createFailedReport(
 ): FullChainReport {
   return {
     schemaVersion: 1,
-    profileVersion: 1,
+    profileVersion: 2,
     profile: "local-full-chain",
     runId: `full-chain-${Date.now()}`,
     environment: "local",

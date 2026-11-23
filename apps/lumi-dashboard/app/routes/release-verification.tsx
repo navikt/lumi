@@ -20,8 +20,14 @@ import {
   type SurveyDocumentV1,
 } from "@navikt/lumi-survey";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { z } from "zod";
 import { Header } from "~/components/shared/Header";
 import {
@@ -42,6 +48,7 @@ import {
   type ReleaseVerificationPhase,
   type ReleaseVerificationProbeEvidence,
   type ReleaseVerificationReportV1,
+  type WidgetProbePhase,
 } from "~/utils/releaseVerification";
 
 const searchSchema = z.object({
@@ -69,6 +76,7 @@ function ReleaseVerificationPage() {
 function ReleaseVerificationRun() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
+  const router = useRouter();
   const configQuery = useQuery({
     queryKey: ["release-verification-config"],
     queryFn: () => fetchReleaseVerificationConfigServerFn(),
@@ -79,11 +87,9 @@ function ReleaseVerificationRun() {
   const [appAttempt, setAppAttempt] = useState<AttemptState>({
     status: "idle",
   });
-  const [optimisticProbes, setOptimisticProbes] = useState<{
-    appToken?: ReleaseVerificationProbeEvidence;
-    initial?: ReleaseVerificationProbeEvidence;
-    closing?: ReleaseVerificationProbeEvidence;
-  }>({});
+  const [optimisticProbes, setOptimisticProbes] = useState<
+    Partial<Record<ReleaseVerificationPhase, ReleaseVerificationProbeEvidence>>
+  >({});
   const [openedAt] = useState(() => new Date().toISOString());
   const [shareUrl, setShareUrl] = useState("");
   const shareKey = `${search.surveyId ?? ""}:${search.initialReceiptId ?? ""}:${search.closingReceiptId ?? ""}:${search.appReceiptId ?? ""}`;
@@ -106,6 +112,7 @@ function ReleaseVerificationRun() {
       return fetchReleaseVerificationRunServerFn({ data: readbackInput });
     },
     enabled: Boolean(config?.enabled && readbackInput),
+    placeholderData: (previous) => previous,
     refetchInterval: (query) => {
       const current = query.state.data;
       const unavailable =
@@ -134,15 +141,21 @@ function ReleaseVerificationRun() {
     });
   }, [config, navigate, search.surveyId]);
 
-  const appProbe =
-    runQuery.data?.appToken ??
-    (optimisticProbes.appToken?.receiptId === search.appReceiptId
-      ? optimisticProbes.appToken
-      : undefined);
-  const initialProbe =
-    runQuery.data?.initial ?? optimisticProbes.initial ?? null;
-  const closingProbe =
-    runQuery.data?.closing ?? optimisticProbes.closing ?? null;
+  const appProbe = currentProbe(
+    search.appReceiptId,
+    runQuery.data?.appToken,
+    optimisticProbes["app-token"],
+  );
+  const initialProbe = currentProbe(
+    search.initialReceiptId,
+    runQuery.data?.initial,
+    optimisticProbes.initial,
+  );
+  const closingProbe = currentProbe(
+    search.closingReceiptId,
+    runQuery.data?.closing,
+    optimisticProbes.closing,
+  );
   const trustedNow =
     runQuery.data?.observedAt ?? initialProbe?.storedAt ?? openedAt;
   const report =
@@ -155,12 +168,8 @@ function ReleaseVerificationRun() {
           holdDurationMs: config.holdDurationMs,
           preflight: config.preflight,
           appProbe,
-          appProbeError:
-            appAttempt.status === "error" && !search.appReceiptId
-              ? appAttempt.message
-              : undefined,
-          initialProbe: initialProbe ?? undefined,
-          closingProbe: closingProbe ?? undefined,
+          initialProbe,
+          closingProbe,
         })
       : null;
   const holdPassed =
@@ -174,15 +183,20 @@ function ReleaseVerificationRun() {
     appProbe?.status === "unavailable" ||
     initialProbe?.status === "unavailable" ||
     closingProbe?.status === "unavailable";
-  const activePhase: ReleaseVerificationPhase | null =
-    config?.enabled && config.preflight.status === "passed"
-      ? !initialProbe
+  const failedProbe = report?.checks.find(
+    (check) => check.status === "failed" && check.id !== "hold-window",
+  );
+  const activePhase: WidgetProbePhase | null =
+    config?.enabled &&
+    config.preflight.status === "passed" &&
+    report?.outcome !== "failed" &&
+    (!search.appReceiptId || appProbe)
+      ? !search.initialReceiptId
         ? "initial"
-        : initialProbe.status === "verified" &&
+        : initialProbe?.status === "verified" &&
             holdPassed &&
             closingStatus === "pending" &&
-            (!closingProbe || earlyClosingProbe) &&
-            report?.coverage.controlledRoundTrip !== "failed"
+            (!search.closingReceiptId || earlyClosingProbe)
           ? "closing"
           : null
       : null;
@@ -190,6 +204,35 @@ function ReleaseVerificationRun() {
   const survey = useMemo(
     () => (surveyId ? createVerificationSurvey(surveyId) : null),
     [surveyId],
+  );
+  const recordReceipt = useCallback(
+    async (evidence: ReleaseVerificationProbeEvidence) => {
+      const location = router.latestLocation;
+      if (
+        location.pathname !== "/release-verification" ||
+        location.search.surveyId !== surveyId
+      )
+        return;
+      const key = {
+        initial: "initialReceiptId",
+        closing: "closingReceiptId",
+        "app-token": "appReceiptId",
+      } as const;
+      const phase = evidence.phase;
+      setOptimisticProbes((current) => ({
+        ...current,
+        [phase]: evidence,
+      }));
+      await navigate({
+        to: "/release-verification",
+        search: (previous) => ({
+          ...previous,
+          [key[phase]]: evidence.receiptId,
+        }),
+        replace: true,
+      });
+    },
+    [navigate, router, surveyId],
   );
   const transport = useMemo<LumiSurveyTransport | null>(() => {
     if (!activePhase || !surveyId) return null;
@@ -200,25 +243,8 @@ function ReleaseVerificationRun() {
           const evidence = await submitReleaseVerificationServerFn({
             data: submission.transportPayload,
           });
-          setOptimisticProbes((current) => ({
-            ...current,
-            [activePhase]: evidence,
-          }));
+          await recordReceipt(evidence);
           setAttempt({ status: "idle" });
-          await navigate({
-            to: "/release-verification",
-            search: (previous) => ({
-              ...previous,
-              surveyId,
-              initialReceiptId:
-                activePhase === "initial"
-                  ? evidence.receiptId
-                  : search.initialReceiptId,
-              closingReceiptId:
-                activePhase === "closing" ? evidence.receiptId : undefined,
-            }),
-            replace: true,
-          });
         } catch (error) {
           setAttempt({
             status: "error",
@@ -231,7 +257,7 @@ function ReleaseVerificationRun() {
         }
       },
     };
-  }, [activePhase, navigate, search.initialReceiptId, surveyId]);
+  }, [activePhase, recordReceipt, surveyId]);
 
   const sendAppProbe = async () => {
     if (!surveyId || appAttempt.status === "sending") return;
@@ -240,16 +266,7 @@ function ReleaseVerificationRun() {
       const evidence = await submitAppTokenProbeServerFn({
         data: { surveyId },
       });
-      setOptimisticProbes((current) => ({ ...current, appToken: evidence }));
-      await navigate({
-        to: "/release-verification",
-        search: (previous) => ({
-          ...previous,
-          surveyId,
-          appReceiptId: evidence.receiptId,
-        }),
-        replace: true,
-      });
+      await recordReceipt(evidence);
       setAppAttempt({ status: "idle" });
     } catch (error) {
       setAppAttempt({
@@ -268,9 +285,6 @@ function ReleaseVerificationRun() {
       appAttempt.status === "sending"
     )
       return;
-    setAppAttempt({ status: "idle" });
-    setAttempt({ status: "idle" });
-    setOptimisticProbes({});
     await navigate({
       to: "/release-verification",
       search: { surveyId: createReleaseVerificationSurveyId() },
@@ -335,7 +349,7 @@ function ReleaseVerificationRun() {
                 </Alert>
               )}
 
-              <HGrid as="ol" columns={{ xs: 1, md: 4 }} gap="space-12">
+              <HGrid as="ol" columns={{ xs: 1, sm: 2, xl: 5 }} gap="space-12">
                 {report.checks.map((check, index) => (
                   <VerificationStage
                     key={check.id}
@@ -343,24 +357,30 @@ function ReleaseVerificationRun() {
                     title={checkTitle(check.id)}
                     detail={check.detail}
                     status={check.status}
-                  />
+                  >
+                    {check.id === "app-token-round-trip" &&
+                    config.environment === "dev-gcp" &&
+                    config.preflight.status === "passed" &&
+                    report.outcome !== "failed" &&
+                    !search.appReceiptId ? (
+                      <>
+                        {appAttempt.status === "error" && (
+                          <Alert variant="error">{appAttempt.message}</Alert>
+                        )}
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="small"
+                          loading={appAttempt.status === "sending"}
+                          onClick={sendAppProbe}
+                        >
+                          Send med app-token
+                        </Button>
+                      </>
+                    ) : null}
+                  </VerificationStage>
                 ))}
               </HGrid>
-
-              {config.environment === "dev-gcp" &&
-              config.preflight.status === "passed" &&
-              !search.appReceiptId ? (
-                <HStack>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    loading={appAttempt.status === "sending"}
-                    onClick={sendAppProbe}
-                  >
-                    Send med app-token
-                  </Button>
-                </HStack>
-              ) : null}
 
               <Box
                 background="neutral-soft"
@@ -438,7 +458,14 @@ function ReleaseVerificationRun() {
                     </Alert>
                   ) : null}
 
-                  {activePhase === "initial" ? (
+                  {report.outcome === "failed" ? (
+                    failedProbe &&
+                    failedProbe.id !== "team-preflight" && (
+                      <Alert variant="error">
+                        {checkTitle(failedProbe.id)}: {failedProbe.detail}
+                      </Alert>
+                    )
+                  ) : activePhase === "initial" ? (
                     <Alert variant="warning">
                       Åpne widgeten, velg 4 «Bra» og den viste kontrollkoden.
                       Startproben leses automatisk tilbake fra databasen.
@@ -454,16 +481,12 @@ function ReleaseVerificationRun() {
                       lest tilbake eksakt, og avslutningsproben ble lagret etter
                       holdetiden.
                     </Alert>
-                  ) : report.observeAfter &&
+                  ) : !holdPassed &&
+                    report.observeAfter &&
                     initialProbe?.status === "verified" ? (
                     <Alert variant="info">
                       Startproben er bevist. Siden låser opp avslutningsproben
                       etter {report.observeAfter}.
-                    </Alert>
-                  ) : report.coverage.controlledRoundTrip === "failed" ? (
-                    <Alert variant="error">
-                      Kjøringen er stoppet fordi et lagret bevis ikke matcher
-                      forventet receipt, survey, app, svar eller kontekst.
                     </Alert>
                   ) : null}
 
@@ -503,6 +526,15 @@ function ReleaseVerificationRun() {
       </Box>
     </>
   );
+}
+
+function currentProbe(
+  receiptId: string | undefined,
+  stored: ReleaseVerificationProbeEvidence | null | undefined,
+  optimistic: ReleaseVerificationProbeEvidence | undefined,
+) {
+  if (stored && stored.receiptId === receiptId) return stored;
+  return optimistic?.receiptId === receiptId ? optimistic : undefined;
 }
 
 function createVerificationSurvey(surveyId: string): SurveyDocumentV1 {
@@ -579,7 +611,9 @@ function VerificationStage({
   title,
   detail,
   status,
+  children,
 }: {
+  children: ReactNode;
   step: string;
   title: string;
   detail: string;
@@ -603,6 +637,7 @@ function VerificationStage({
           {title}
         </Heading>
         <BodyShort size="small">{detail}</BodyShort>
+        {children}
       </VStack>
     </Box>
   );

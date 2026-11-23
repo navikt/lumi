@@ -1,4 +1,5 @@
-import { createMiddleware } from "@tanstack/react-start";
+import { createMiddleware, createServerOnlyFn } from "@tanstack/react-start";
+import { decodeJwtPayload } from "~/server/jwtPayload.server";
 
 import { logger } from "~/server/logger";
 import { resolveLocalAuthPolicy } from "~/server/middleware/localAuthPolicy";
@@ -38,21 +39,12 @@ const JWT_LIKE_VALUE_PATTERN =
 const NORWEGIAN_ID_NUMBER_PATTERN = /\b\d{11}\b/g;
 const MAX_OBO_DIAGNOSTIC_LENGTH = 500;
 
-function base64UrlDecode(value: string): string {
-  return Buffer.from(value, "base64url").toString("utf8");
-}
-
-export function getJwtExpiresAtMs(token: string): number | null {
-  const [, payload] = token.split(".");
-  if (!payload) return null;
-
-  try {
-    const decoded = JSON.parse(base64UrlDecode(payload)) as { exp?: unknown };
-    return typeof decoded.exp === "number" ? decoded.exp * 1000 : null;
-  } catch {
-    return null;
-  }
-}
+export const getJwtExpiresAtMs = createServerOnlyFn(
+  (token: string): number | null => {
+    const exp = decodeJwtPayload(token.split(".")[1])?.exp;
+    return typeof exp === "number" ? exp * 1000 : null;
+  },
+);
 
 function toHex(bytes: Uint8Array): string {
   return Array.from(bytes)

@@ -67,9 +67,10 @@ er fortsatt gate for den appens produksjonssetting.
 ### Hva rapporten faktisk beviser
 
 Dev-profilen går gjennom den publiserte widgeten, dashboardets innloggede
-Azure OBO-flyt, Lumi API, Postgres og det eksakte analytics-readbacket. Siden
-kan lukkes og åpnes igjen; receipt-ID-ene i URL-en rekonstruerer rapporten fra
-lagrede data i stedet for nettleserstate.
+Azure OBO-flyt, Lumi API, Postgres og det eksakte analytics-readbacket. Når siden
+åpnes på nytt, brukes kvitterings-ID-ene i URL-en til å lese de lagrede probene.
+En feil før dashboardet mottar en kvittering vises bare i nettleseren og
+forsvinner ved omlasting. Du kan prøve igjen i samme kjøring.
 
 Under **Innsending med app-token** kontrollerer dashboardet at `azp_name` er
 `dev-gcp:team-esyfo:lumi-dashboard`, at `idtyp` er `app` og at `roles`
@@ -79,12 +80,14 @@ tilbake kvitteringen for `team-esyfo` og kontrollerer blant annet app,
 survey-ID og kontrollkode. Flere forsøk i samme kjøring bruker samme
 dedupliseringsnøkkel. Lokalt viser steget **Ikke testet**.
 
-Søk i loggen for `lumi-api` i dev etter rapportens `callId`
-(`<survey-ID>-app-token`). Kontroller at logglinjen fra
-`AzureSubmissionAuthPlugin` for dette kallet viser `perUserLimit=false`.
-Dette feltet finnes fra [PR 824](https://github.com/navikt/lumi/pull/824).
-Rapporten leser ingen logger. Full bekreftelse krever både godkjent
-tilbakelesing og denne logglinjen fra API-versjonen i dev.
+App-steget kan bli grønt også mot API-et fra før PR 824. Den versjonen godtar
+ethvert aktivt Entra-token med `azp_name`. For å bekrefte at API-et klassifiserte
+kallet som en app-innsending, må du i tillegg sjekke API-loggen i dev.
+
+Finn `callId=<survey-ID>-app-token` i detaljteksten på det beståtte app-steget.
+Søk etter samme ID i loggen for `lumi-api` på en versjon med
+[PR 824](https://github.com/navikt/lumi/pull/824) og bekreft at
+`AzureSubmissionAuthPlugin` skrev `perUserLimit=false` for akkurat det kallet.
 
 Den lokale profilen bruker den samme rapportmodellen med null minutters hold.
 CI laster opp `apps/lumi-dashboard/test-results/full-chain` som

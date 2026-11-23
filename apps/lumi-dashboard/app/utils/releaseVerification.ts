@@ -17,7 +17,8 @@ export type ReleaseVerificationAttemptStatus =
   | "success"
   | "error";
 
-export type ReleaseVerificationPhase = "initial" | "closing" | "app-token";
+export type WidgetProbePhase = "initial" | "closing";
+export type ReleaseVerificationPhase = WidgetProbePhase | "app-token";
 export type ReleaseVerificationProfile =
   | "local-full-chain"
   | "dev-authenticated-roundtrip";
@@ -56,7 +57,7 @@ export interface ReleaseVerificationCheck {
 
 export interface ReleaseVerificationReportV1 {
   schemaVersion: typeof RELEASE_VERIFICATION_SCHEMA_VERSION;
-  profileVersion: 1 | 2;
+  profileVersion: 2;
   profile: ReleaseVerificationProfile;
   runId: string;
   environment: string;
@@ -121,7 +122,6 @@ interface CreateReleaseVerificationReportInput {
   holdDurationMs: number;
   preflight: ReleaseVerificationPreflightEvidence;
   appProbe?: ReleaseVerificationProbeEvidence;
-  appProbeError?: string;
   initialProbe?: ReleaseVerificationProbeEvidence;
   closingProbe?: ReleaseVerificationProbeEvidence;
 }
@@ -139,6 +139,18 @@ export function createReleaseVerificationSurveyId(
   const date = now.toISOString().slice(0, 10).replaceAll("-", "");
   const suffix = randomId.replaceAll("-", "").slice(0, 8).toLowerCase();
   return `${RELEASE_VERIFICATION_SURVEY_PREFIX}${date}-${suffix}`;
+}
+
+export function appProbeCallId(surveyId: string): string {
+  return `${surveyId}-app-token`;
+}
+
+export function appProbeCaller(
+  environment: string,
+  team: string,
+  app: string,
+): string {
+  return `${environment}:${team}:${app}`;
 }
 
 export function createReleaseVerificationControlCode(surveyId: string): string {
@@ -238,7 +250,6 @@ export function createReleaseVerificationReport({
   holdDurationMs,
   preflight,
   appProbe,
-  appProbeError,
   initialProbe,
   closingProbe,
 }: CreateReleaseVerificationReportInput): ReleaseVerificationReportV1 {
@@ -281,24 +292,18 @@ export function createReleaseVerificationReport({
   }
 
   const appStatus =
-    profile === "local-full-chain"
-      ? "not-tested"
-      : appProbeError
-        ? "failed"
-        : probeCheckStatus(appProbe);
+    profile === "local-full-chain" ? "not-tested" : probeCheckStatus(appProbe);
   let outcome = controlledRoundTrip;
   if (appStatus === "failed") outcome = "failed";
   else if (controlledRoundTrip === "passed" && appStatus === "pending")
     outcome = "pending";
 
-  let appDetail = probeDetail(appProbe, "App-proben er ikke sendt.");
+  let appDetail = probeDetail(appProbe, "Venter på kvittering fra app-proben.");
   if (appStatus === "not-tested") {
     appDetail = "Entra ID er ikke tilgjengelig lokalt.";
-  } else if (appProbeError) {
-    appDetail = appProbeError;
   } else if (appStatus === "passed") {
-    const caller = `${environment}:${preflight.team}:${preflight.app}`;
-    appDetail += `. Tokenet hadde azp_name=${caller}, idtyp=app og rollen access_as_application. Sjekk perUserLimit i API-loggen for callId=${surveyId}-app-token.`;
+    const caller = appProbeCaller(environment, preflight.team, preflight.app);
+    appDetail += `. Før innsending kontrollerte dashboardet azp_name=${caller}, idtyp=app og rollen access_as_application. Sjekk perUserLimit i API-loggen for callId=${appProbeCallId(surveyId)}.`;
   }
 
   const checks: ReleaseVerificationCheck[] = [
@@ -351,22 +356,24 @@ export function createReleaseVerificationReport({
     },
   ];
 
+  const storedTimes = [initialProbe, closingProbe, appProbe]
+    .flatMap((probe) =>
+      probe?.storedAt ? [toIsoTimestamp(probe.storedAt, "storedAt")] : [],
+    )
+    .sort();
   return {
     schemaVersion: RELEASE_VERIFICATION_SCHEMA_VERSION,
-    profileVersion: profile === "dev-authenticated-roundtrip" ? 2 : 1,
+    profileVersion: 2,
     profile,
     runId: surveyId,
     environment,
     generatedAt,
-    startedAt: initialProbe?.storedAt
-      ? toIsoTimestamp(initialProbe.storedAt, "initialProbe.storedAt")
-      : toIsoTimestamp(preflight.checkedAt, "preflight.checkedAt"),
+    startedAt:
+      storedTimes[0] ??
+      toIsoTimestamp(preflight.checkedAt, "preflight.checkedAt"),
     finishedAt:
       outcome === "passed"
-        ? ([closingProbe?.storedAt, appProbe?.storedAt]
-            .filter((value): value is string => Boolean(value))
-            .sort()
-            .at(-1) ?? generatedAt)
+        ? (storedTimes.at(-1) ?? generatedAt)
         : outcome === "failed"
           ? generatedAt
           : null,
