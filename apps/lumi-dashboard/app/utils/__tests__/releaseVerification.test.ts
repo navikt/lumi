@@ -13,7 +13,7 @@ const surveyId = "lumi-release-verification-20260822-8a0dc3b1";
 const initialStoredAt = "2026-08-22T08:49:47.000Z";
 
 function verifiedProbe(
-  phase: "initial" | "closing",
+  phase: "initial" | "closing" | "app-token",
   storedAt = initialStoredAt,
 ): ReleaseVerificationProbeEvidence {
   return {
@@ -189,11 +189,12 @@ describe("release verification", () => {
       "passed",
       "pending",
       "pending",
+      "pending",
     ]);
   });
 
-  it("passes the controlled chain only after a closing exact readback", () => {
-    const report = createReleaseVerificationReport({
+  it("requires separate app-token evidence in dev and reports it as untested locally", () => {
+    const input = {
       profile: "dev-authenticated-roundtrip",
       environment: "dev-gcp",
       surveyId,
@@ -207,17 +208,80 @@ describe("release verification", () => {
       },
       initialProbe: verifiedProbe("initial"),
       closingProbe: verifiedProbe("closing", "2026-08-22T09:05:00.000Z"),
+    } as const;
+    const pending = createReleaseVerificationReport(input);
+    expect(pending.outcome).toBe("pending");
+    expect(pending.finishedAt).toBeNull();
+    expect(pending.coverage.controlledRoundTrip).toBe("passed");
+    expect(pending.checks.at(-1)).toMatchObject({
+      status: "pending",
+      detail: "Ingen kvittering fra app-proben ennå",
+    });
+    const local = createReleaseVerificationReport({
+      ...input,
+      profile: "local-full-chain",
+      environment: "local",
+    });
+    expect(local.profileVersion).toBe(2);
+    expect(local.outcome).toBe("passed");
+    expect(local.checks.at(-1)?.status).toBe("not-tested");
+    const report = createReleaseVerificationReport({
+      ...input,
+      now: "2026-08-22T09:07:00.000Z",
+      appProbe: verifiedProbe("app-token", "2026-08-22T09:06:00.000Z"),
     });
 
     expect(report.outcome).toBe("passed");
-    expect(report.finishedAt).toBe("2026-08-22T09:05:00.000Z");
+    expect(report.profileVersion).toBe(2);
+    expect(report.finishedAt).toBe("2026-08-22T09:06:00.000Z");
+    expect(report.startedAt).toBe(initialStoredAt);
+    const earlierApp = verifiedProbe("app-token", "2026-08-22T08:48:30.000Z");
+    expect(
+      createReleaseVerificationReport({ ...input, appProbe: earlierApp })
+        .startedAt,
+    ).toBe(earlierApp.storedAt);
     expect(report.coverage).toEqual({
       controlledRoundTrip: "passed",
+      appTokenRoundTrip: "passed",
       localSubmissionProxy: "not-tested",
       globalAzureHealth: "not-assessed",
       trygdeetatenProxy: "not-tested",
       navWideRelease: "pending",
     });
+  });
+
+  it.each([
+    ["mismatch", "failed"],
+    ["not-found", "failed"],
+    ["unavailable", "pending"],
+  ] as const)("reports app readback %s as %s", (status, outcome) => {
+    const report = createReleaseVerificationReport({
+      profile: "dev-authenticated-roundtrip",
+      environment: "dev-gcp",
+      surveyId,
+      now: initialStoredAt,
+      holdDurationMs: 0,
+      preflight: {
+        status: "passed",
+        checkedAt: initialStoredAt,
+        team: "team-esyfo",
+        app: "lumi-dashboard",
+      },
+      initialProbe: verifiedProbe("initial"),
+      closingProbe: verifiedProbe("closing"),
+      appProbe: {
+        ...verifiedProbe("app-token"),
+        status,
+        storedAt: null,
+        mismatches: [status],
+      },
+    });
+    expect(report.coverage.controlledRoundTrip).toBe("passed");
+    expect(report.coverage.appTokenRoundTrip).toBe(outcome);
+    expect(report.outcome).toBe(outcome);
+    expect(report.finishedAt).toBe(
+      outcome === "failed" ? initialStoredAt : null,
+    );
   });
 
   it("keeps an early closing probe retryable instead of permanently failing", () => {
@@ -243,7 +307,13 @@ describe("release verification", () => {
     ).toBe("pending");
   });
 
-  it("keeps a transient readback failure pending for retry", () => {
+  it.each([
+    [
+      "readback-http-503",
+      "Readback er midlertidig utilgjengelig og prøves på nytt",
+    ],
+    ["readback-access", "Dashboardet mangler lesetilgang til kvitteringen."],
+  ])("keeps a readback failure pending for retry (%s)", (mismatch, detail) => {
     const report = createReleaseVerificationReport({
       profile: "dev-authenticated-roundtrip",
       environment: "dev-gcp",
@@ -262,12 +332,12 @@ describe("release verification", () => {
         receiptId: "initial-receipt-id",
         duplicate: false,
         storedAt: null,
-        mismatches: ["readback-http-503"],
+        mismatches: [mismatch],
       },
     });
 
     expect(report.outcome).toBe("pending");
-    expect(report.checks[1].status).toBe("pending");
+    expect(report.checks[1]).toMatchObject({ status: "pending", detail });
   });
 
   it("keeps a transient preflight failure pending instead of inventing a pass", () => {

@@ -39,7 +39,9 @@ Dobbel maskering gjelder bare fritekstsvar. Kontekstfeltene som er markert i tab
 
 ## Hvem som svarte
 
-Lumi API lagrer ikke hvem som svarte. Tokenet fra appens backend brukes til å sjekke at kallet kommer fra en app med tilgang. En hash av brukerens ID holdes bare i minnet, for å begrense hvor mange svar én bruker kan sende inn. Nav-identen i tokenet fra interne apper lagres ikke.
+Lumi API lagrer ikke hvem som svarte. Tokenet fra appens backend brukes til å sjekke at kallet kommer fra en app med tilgang. Lumi API holder resultatet av tokenkontrollen i minnet og kan gjenbruke det i opptil fem minutter. Utløpte resultater fjernes når API-et slår dem opp eller legger et nytt resultat i minnet. Når tokenet sier hvem brukeren er, teller API-et innsendinger per bruker på en hash av brukerens ID.
+
+Når en intern app bruker on-behalf-of (OBO), kan tokenet inneholde Nav-ident, navn og e-postadresse for den ansatte som er logget inn. Disse opplysningene følger med i resultatet av tokenkontrollen og ligger i minnet like lenge. Lumi API bruker dem ikke ved innsending og lagrer dem ikke i databasen. Henter appen tokenet med client credentials, sier ikke tokenet hvem brukeren er. Se [OBO eller client credentials](/kom-i-gang/koble-til-backend#obo-eller-client-credentials).
 
 Hvert svar lagres med team, app, tidspunkt og konteksten widgeten sender, som enhetstype, skjermstørrelse og user agent. I små brukergrupper kan dette til sammen gjøre det mulig å kjenne igjen hvem som har svart.
 
@@ -70,6 +72,8 @@ API-et begrenser antall kall på flere nivåer for å hindre misbruk:
 | Global | 10 000 req/min | Per kilde-IP |
 
 I dev går innsendinger fra apper i tenanten `trygdeetaten.no` via `lumi-submission-proxy`. Da gjelder grensen for innsending for proxyen samlet, og grensen per bruker brukes ikke.
+
+Et token hentet med client credentials sier ikke hvem brukeren er. Da gjelder ikke grensen per bruker, og én bruker kan bruke opp hele grensen for appen.
 
 ::: details Slik telles analyse- og eksportkall
 Gyldige kall telles per kallende klient og per pseudonymisert bruker. Eksportkall reserverer i tillegg en plass per kilde-IP før autentiseringen. Plassen gis tilbake når kallet er godkjent, mens avviste kall beholder den. Kilde-IP er socket-adressen til den som kaller. Forwarding-headere som `X-Forwarded-For` brukes ikke.
