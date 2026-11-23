@@ -253,7 +253,15 @@ export function createReleaseVerificationReport({
   initialProbe,
   closingProbe,
 }: CreateReleaseVerificationReportInput): ReleaseVerificationReportV1 {
-  const generatedAt = toIsoTimestamp(now, "now");
+  const storedTimes = [initialProbe, closingProbe, appProbe]
+    .flatMap((probe) =>
+      probe?.storedAt ? [toIsoTimestamp(probe.storedAt, "storedAt")] : [],
+    )
+    .sort();
+  const checkedAt = toIsoTimestamp(preflight.checkedAt, "preflight.checkedAt");
+  const observedAt = toIsoTimestamp(now, "now");
+  const generatedAt =
+    [checkedAt, observedAt, ...storedTimes].sort().at(-1) ?? observedAt;
   const initialPassed = initialProbe?.status === "verified";
   const initialFailed =
     initialProbe !== undefined &&
@@ -356,11 +364,6 @@ export function createReleaseVerificationReport({
     },
   ];
 
-  const storedTimes = [initialProbe, closingProbe, appProbe]
-    .flatMap((probe) =>
-      probe?.storedAt ? [toIsoTimestamp(probe.storedAt, "storedAt")] : [],
-    )
-    .sort();
   return {
     schemaVersion: RELEASE_VERIFICATION_SCHEMA_VERSION,
     profileVersion: 2,
@@ -368,9 +371,7 @@ export function createReleaseVerificationReport({
     runId: surveyId,
     environment,
     generatedAt,
-    startedAt:
-      storedTimes[0] ??
-      toIsoTimestamp(preflight.checkedAt, "preflight.checkedAt"),
+    startedAt: storedTimes[0] ?? checkedAt,
     finishedAt:
       outcome === "passed"
         ? (storedTimes.at(-1) ?? generatedAt)
@@ -409,6 +410,15 @@ function probeCheckStatus(
   return probe.status === "verified" ? "passed" : "failed";
 }
 
+export function readbackNeedsAccess(
+  probe: ReleaseVerificationProbeEvidence | null | undefined,
+): boolean {
+  return (
+    probe?.status === "unavailable" &&
+    probe.mismatches.includes("readback-access")
+  );
+}
+
 function probeDetail(
   probe: ReleaseVerificationProbeEvidence | undefined,
   pendingDetail: string,
@@ -416,6 +426,9 @@ function probeDetail(
   if (!probe) return pendingDetail;
   if (probe.status === "verified") {
     return `Receipt ${probe.receiptId} er lest tilbake eksakt`;
+  }
+  if (readbackNeedsAccess(probe)) {
+    return "Dashboardet mangler lesetilgang til kvitteringen.";
   }
   if (probe.status === "unavailable") {
     return "Readback er midlertidig utilgjengelig og prøves på nytt";

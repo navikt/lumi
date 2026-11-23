@@ -64,13 +64,15 @@ forblir `pending`. Feltene beskriver det rapporten selv har observert; de betyr
 ikke at Lumi-teamet skal kjøre en annen apps canary. Konsumentens egen canary
 er fortsatt gate for den appens produksjonssetting.
 
-### Hva rapporten faktisk beviser
+### Hva rapporten bekrefter
 
-Dev-profilen går gjennom den publiserte widgeten, dashboardets innloggede
-Azure OBO-flyt, Lumi API, Postgres og det eksakte analytics-readbacket. Når siden
-åpnes på nytt, brukes kvitterings-ID-ene i URL-en til å lese de lagrede probene.
-En feil før dashboardet mottar en kvittering vises bare i nettleseren og
-forsvinner ved omlasting. Du kan prøve igjen i samme kjøring.
+Start- og sluttproben går fra widgeten til Lumi API via det innloggede
+dashboardet. Dashboardet bruker kvitterings-ID-ene i lenken til å lese begge
+svarene fra databasen når dere åpner rapporten igjen. Hvis innsendingen feiler
+før dashboardet mottar en kvittering, forsvinner feilmeldingen ved omlasting.
+Dere kan prøve igjen i samme kjøring. Hvis dashboardet allerede har mottatt
+en kvittering og mangler tilgang til å lese den, kontroller innlogging og
+teamtilgang. Velg deretter **Prøv readback igjen**.
 
 Under **Innsending med app-token** kontrollerer dashboardet at `azp_name` er
 `dev-gcp:team-esyfo:lumi-dashboard`, at `idtyp` er `app` og at `roles`
@@ -80,14 +82,15 @@ tilbake kvitteringen for `team-esyfo` og kontrollerer blant annet app,
 survey-ID og kontrollkode. Flere forsøk i samme kjøring bruker samme
 dedupliseringsnøkkel. Lokalt viser steget **Ikke testet**.
 
-App-steget kan bli grønt også mot API-et fra før PR 824. Den versjonen godtar
-ethvert aktivt Entra-token med `azp_name`. For å bekrefte at API-et klassifiserte
-kallet som en app-innsending, må du i tillegg sjekke API-loggen i dev.
+App-steget kan bli grønt også mot API-et fra før PR 824. Den versjonen
+godtar aktive Entra-tokener med gyldig `azp_name` for den kallende appen.
+Den skiller ikke mellom app- og brukertokener ved innsending.
 
 Finn `callId=<survey-ID>-app-token` i detaljteksten på det beståtte app-steget.
 Søk etter samme ID i loggen for `lumi-api` på en versjon med
 [PR 824](https://github.com/navikt/lumi/pull/824) og bekreft at
 `AzureSubmissionAuthPlugin` skrev `perUserLimit=false` for akkurat det kallet.
+Det viser at API-et behandlet innsendingen uten en egen grense per bruker.
 
 Den lokale profilen bruker den samme rapportmodellen med null minutters hold.
 CI laster opp `apps/lumi-dashboard/test-results/full-chain` som

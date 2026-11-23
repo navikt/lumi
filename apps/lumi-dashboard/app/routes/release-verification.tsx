@@ -48,6 +48,7 @@ import {
   type ReleaseVerificationPhase,
   type ReleaseVerificationProbeEvidence,
   type ReleaseVerificationReportV1,
+  readbackNeedsAccess,
   type WidgetProbePhase,
 } from "~/utils/releaseVerification";
 
@@ -90,7 +91,6 @@ function ReleaseVerificationRun() {
   const [optimisticProbes, setOptimisticProbes] = useState<
     Partial<Record<ReleaseVerificationPhase, ReleaseVerificationProbeEvidence>>
   >({});
-  const [openedAt] = useState(() => new Date().toISOString());
   const [shareUrl, setShareUrl] = useState("");
   const shareKey = `${search.surveyId ?? ""}:${search.initialReceiptId ?? ""}:${search.closingReceiptId ?? ""}:${search.appReceiptId ?? ""}`;
 
@@ -115,11 +115,9 @@ function ReleaseVerificationRun() {
     placeholderData: (previous) => previous,
     refetchInterval: (query) => {
       const current = query.state.data;
-      const unavailable =
-        current?.appToken?.status === "unavailable" ||
-        current?.initial?.status === "unavailable" ||
-        current?.closing?.status === "unavailable";
-      if (unavailable) return 5_000;
+      const probes = [current?.appToken, current?.initial, current?.closing];
+      if (probes.some(readbackNeedsAccess)) return false;
+      if (probes.some((probe) => probe?.status === "unavailable")) return 5_000;
       return search.initialReceiptId && !search.closingReceiptId
         ? 30_000
         : false;
@@ -156,15 +154,13 @@ function ReleaseVerificationRun() {
     runQuery.data?.closing,
     optimisticProbes.closing,
   );
-  const trustedNow =
-    runQuery.data?.observedAt ?? initialProbe?.storedAt ?? openedAt;
   const report =
     config?.enabled && surveyId
       ? createReleaseVerificationReport({
           profile: config.profile,
           environment: config.environment,
           surveyId,
-          now: trustedNow,
+          now: runQuery.data?.observedAt ?? config.preflight.checkedAt,
           holdDurationMs: config.holdDurationMs,
           preflight: config.preflight,
           appProbe,
@@ -179,10 +175,10 @@ function ReleaseVerificationRun() {
   )?.status;
   const earlyClosingProbe =
     closingProbe?.status === "verified" && closingStatus === "pending";
-  const readbackUnavailable =
-    appProbe?.status === "unavailable" ||
-    initialProbe?.status === "unavailable" ||
-    closingProbe?.status === "unavailable";
+  const probes = [appProbe, initialProbe, closingProbe];
+  const readbackUnavailable = probes.some(
+    (probe) => probe?.status === "unavailable",
+  );
   const failedProbe = report?.checks.find(
     (check) => check.status === "failed" && check.id !== "hold-window",
   );
@@ -443,8 +439,9 @@ function ReleaseVerificationRun() {
                     <Alert variant="info">
                       <HStack gap="space-12" align="center" wrap>
                         <BodyShort>
-                          Readback er midlertidig utilgjengelig. Siden prøver
-                          automatisk på nytt.
+                          {probes.some(readbackNeedsAccess)
+                            ? "Kontroller innlogging og teamtilgang før du prøver å lese kvitteringen igjen."
+                            : "Readback er midlertidig utilgjengelig. Siden prøver automatisk på nytt."}
                         </BodyShort>
                         <Button
                           type="button"

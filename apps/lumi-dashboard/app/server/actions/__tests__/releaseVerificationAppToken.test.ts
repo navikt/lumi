@@ -321,6 +321,27 @@ describe("innsending med app-token", () => {
     });
   });
 
+  it.each([401, 403, 429])(
+    "keeps the receipt when readback returns HTTP %i",
+    async (status) => {
+      doubles.request
+        .mockResolvedValueOnce(Response.json({}))
+        .mockResolvedValueOnce(
+          Response.json({ id: receiptId }, { status: 201 }),
+        )
+        .mockResolvedValueOnce(new Response(null, { status }));
+      const evidence = await submitAppTokenProbeServerFn({
+        data: { surveyId },
+      });
+      expect(evidence).toMatchObject({
+        receiptId,
+        status: "unavailable",
+        storedAt: null,
+      });
+      expect(doubles.request).toHaveBeenCalledTimes(3);
+    },
+  );
+
   it("rebuilds a shared app receipt with OBO and rejects a receipt from the OBO probe", async () => {
     doubles.request
       .mockResolvedValueOnce(Response.json(readback))

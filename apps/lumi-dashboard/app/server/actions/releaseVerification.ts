@@ -501,10 +501,13 @@ async function readExactProbe(
         });
       }
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          return unavailableReadback(expected, "readback-access");
+        }
         if (response.status >= 500 && attempt < retryDelaysMs.length - 1) {
           continue;
         }
-        return response.status >= 500
+        return response.status >= 500 || response.status === 429
           ? unavailableReadback(expected, `readback-http-${response.status}`)
           : failedReadback(expected, `readback-http-${response.status}`);
       }

@@ -198,6 +198,65 @@ it("retains a reloaded start receipt throughout app submission and readback", as
   expect(screen.getByText(/Startproben er bevist/)).toBeVisible();
 });
 
+it("reads the same receipt again after team access is restored", async () => {
+  const run = { observedAt: ended, initial, closing, appToken };
+  api.fetchReleaseVerificationRunServerFn
+    .mockResolvedValueOnce({
+      ...run,
+      appToken: {
+        ...appToken,
+        status: "unavailable",
+        storedAt: null,
+        mismatches: ["readback-access"],
+      },
+    })
+    .mockResolvedValueOnce(run);
+  await openRun({ initialReceiptId, closingReceiptId, appReceiptId });
+  expect(
+    await screen.findByText(/Kontroller innlogging og teamtilgang/),
+  ).toBeVisible();
+  expect(
+    screen.getByRole("heading", { name: "Kjøringen pågår" }),
+  ).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Prøv readback igjen" }));
+  expect(
+    await screen.findByRole("heading", {
+      name: "Kontrollert dev-kjede bestått",
+    }),
+  ).toBeVisible();
+  expect(api.fetchReleaseVerificationRunServerFn.mock.calls[1]).toEqual(
+    api.fetchReleaseVerificationRunServerFn.mock.calls[0],
+  );
+  expect(api.submitAppTokenProbeServerFn).not.toHaveBeenCalled();
+});
+
+it("dates the report from the new app receipt while the next read is pending", async () => {
+  const later = "2026-11-23T10:19:00.000Z";
+  api.fetchReleaseVerificationRunServerFn
+    .mockResolvedValueOnce({
+      observedAt: ended,
+      initial,
+      closing,
+      appToken: null,
+    })
+    .mockImplementationOnce(() => new Promise(() => {}));
+  api.submitAppTokenProbeServerFn.mockResolvedValue({
+    ...appToken,
+    storedAt: later,
+  });
+  await openRun({ initialReceiptId, closingReceiptId });
+  await screen.findByText(/Start- og sluttproben er bestått/);
+  fireEvent.click(screen.getByRole("button", { name: "Send med app-token" }));
+  await screen.findByRole("heading", { name: "Kontrollert dev-kjede bestått" });
+  expect(
+    JSON.parse(document.querySelector("pre")?.textContent ?? ""),
+  ).toMatchObject({
+    outcome: "passed",
+    generatedAt: later,
+    finishedAt: later,
+  });
+});
+
 it("keeps a failed app attempt out of the shareable report and allows retry", async () => {
   api.fetchReleaseVerificationRunServerFn.mockResolvedValue({
     observedAt: ended,
