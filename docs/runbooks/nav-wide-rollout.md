@@ -17,6 +17,7 @@ konsumentteam eier deretter sin kodeendring, dev-canary og produksjonssetting.
 | Pakket `@navikt/lumi-survey` | Klar for 2.2.0-release | `pnpm run verify:lumi-survey-consumer` installerer tarballen i en ren konsument og kjører typecheck + Vite-build |
 | Widget → proxy → API → Postgres → dashboard | Automatisert | `pnpm run test:full-chain` kjører alle elleve stabile survey- og feltvarianter mot en isolert Compose-stack, inkludert legacy v1 → kompatibel widget-v2 på samme survey-ID, og CI laster opp én aggregert terminalrapport med receipt per innsending |
 | Ekte Azure OBO i dev | Selvbetjent | `/release-verification` kjører team-preflight, startprobe, 15 minutters hold og sluttprobe med eksakt receipt-readback |
+| Entra ID med client credentials i dev | Må bekreftes i dev | **Send med app-token** kontrollerer tokenfeltene og leser tilbake kvitteringen fra Lumi API. API-loggen viser om brukergrensen gjaldt. |
 | Innsendingshelse | Instrumentert | `lumi_submissions_total` skiller kanal og utfall; prod varsler på serverfeil og rejection-spike |
 | Hvilke eksisterende surveys som skal fortsette | Konsumenteid | Må avklares av data- og produkteier før migrering; surveys som skal stoppes migreres ikke |
 | Ekte trygdeetaten-proxy fra konsument i dev | Klar for konsumentverifikasjon | Proxyen og onboardingoppskriften leveres av Lumi; hver konsument verifiserer sin egen deployede OBO-flyt |
@@ -48,10 +49,11 @@ Konsumentteamet eier:
 2. Deploy Lumi-endringene til dev etter ordinær review.
 3. Åpne `/release-verification` i dev. Ikke send noe dersom team-preflighten
    feiler.
-4. Send startproben med de syntetiske valgene. Vent til siden låser opp
-   sluttproben etter 15 minutter, og send den.
+4. Send startproben med de syntetiske valgene. Velg **Send med app-token**.
+   Send sluttproben når holdetiden på 15 minutter er over.
 5. Del rapportlenken eller last ned JSON-beviset. For den kontrollerte kjeden
-   skal `outcome` og `coverage.controlledRoundTrip` være `passed`. CI-profilen
+   skal `outcome` og `coverage.controlledRoundTrip` være `passed`. I dev skal
+   også `coverage.appTokenRoundTrip` være `passed`. CI-profilen
    krever i tillegg `coverage.legacyCompatibility: passed`.
 6. Lagre rapportlenken eller JSON-beviset sammen med release-evidensen.
 
@@ -62,12 +64,38 @@ forblir `pending`. Feltene beskriver det rapporten selv har observert; de betyr
 ikke at Lumi-teamet skal kjøre en annen apps canary. Konsumentens egen canary
 er fortsatt gate for den appens produksjonssetting.
 
-### Hva rapporten faktisk beviser
+### Hva rapporten bekrefter
 
-Dev-profilen går gjennom den publiserte widgeten, dashboardets innloggede
-Azure OBO-flyt, Lumi API, Postgres og det eksakte analytics-readbacket. Siden
-kan lukkes og åpnes igjen; receipt-ID-ene i URL-en rekonstruerer rapporten fra
-lagrede data i stedet for nettleserstate.
+Start- og sluttproben går fra widgeten til Lumi API via det innloggede
+dashboardet. Dashboardet bruker kvitterings-ID-ene i lenken til å lese begge
+svarene fra databasen når dere åpner rapporten igjen. Hvis innsendingen feiler
+før dashboardet mottar en kvittering, forsvinner feilmeldingen ved omlasting.
+Dere kan prøve igjen i samme kjøring. Hvis dashboardet allerede har mottatt
+en kvittering og mangler tilgang til å lese den, kontroller innlogging og
+teamtilgang. Velg deretter **Prøv readback igjen**.
+
+Under **Innsending med app-token** kontrollerer dashboardet at `azp_name` er
+`dev-gcp:team-esyfo:lumi-dashboard`, at `idtyp` er `app` og at `roles`
+inneholder `access_as_application`. Det sender ett syntetisk svar direkte til
+Lumi API med app-tokenet. Med den innloggedes OBO-token leser dashboardet
+tilbake kvitteringen for `team-esyfo` og kontrollerer blant annet app,
+survey-ID og kontrollkode. Flere forsøk i samme kjøring bruker samme
+dedupliseringsnøkkel. Lokalt viser steget **Ikke testet**.
+
+Avviker et av de tre feltene, sender dashboardet ingenting. Feilmeldingen,
+for eksempel «idtyp mangler», vises ved knappen og står ikke i rapporten.
+Noter den før dere laster siden på nytt. Et slikt avvik går ikke over ved
+nytt forsøk.
+
+App-steget kan bli grønt også mot API-et fra før PR 824. Den versjonen
+godtar aktive Entra-tokener med gyldig `azp_name` for den kallende appen.
+Den skiller ikke mellom app- og brukertokener ved innsending.
+
+Finn `callId=<survey-ID>-app-token` i detaljteksten på det beståtte app-steget.
+Søk etter samme ID i loggen for `lumi-api` på en versjon med
+[PR 824](https://github.com/navikt/lumi/pull/824) og bekreft at
+`AzureSubmissionAuthPlugin` skrev `perUserLimit=false` for akkurat det kallet.
+Det viser at API-et behandlet innsendingen uten en egen grense per bruker.
 
 Den lokale profilen bruker den samme rapportmodellen med null minutters hold.
 CI laster opp `apps/lumi-dashboard/test-results/full-chain` som

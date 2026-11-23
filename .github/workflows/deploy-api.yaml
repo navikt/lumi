@@ -64,7 +64,7 @@ jobs:
 
       - name: Setup Java
         if: github.event_name == 'workflow_dispatch' || steps.what-changed.outputs.changed != 'non-inputs'
-        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
         with:
           distribution: temurin
           java-version: 21
@@ -83,7 +83,7 @@ jobs:
 
       - name: Push docker image to GAR
         if: github.event_name == 'workflow_dispatch' || steps.what-changed.outputs.changed != 'non-inputs'
-        uses: nais/docker-build-push@d3a1f7e259ecc381a50435e1d4add9059429ebd7
+        uses: nais/docker-build-push@588f76a6f45aeb1e75d5e8417ec6ef6d79b2b39f
         id: docker-build-push
         with:
           team: team-esyfo

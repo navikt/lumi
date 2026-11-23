@@ -9,6 +9,7 @@ import io.ktor.client.engine.mock.MockRequestHandler
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.HttpRequestData
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -89,6 +90,36 @@ class ProxyRoutesTest {
     }
 
     @Test
+    fun `forwards the azp_name of an introspected app token to the internal submission route`() {
+        val caller = "dev-gcp:oppgavehandtering:gosys-oppgavebehandling"
+        val texas = mockTexas {
+            texasJson("""{"active":true,"azp_name":"$caller","idtyp":"app","roles":["access_as_application"]}""")
+        }
+        val forwarded = AtomicInteger()
+        val status = callProxy(texasConfig, texas, forwarded, inspect = { request ->
+            assertEquals("/api/internal/v1/feedback", request.url.encodedPath)
+            assertEquals(caller, request.headers["X-Lumi-Caller-Identity"])
+            assertEquals(texasConfig.internalSubmissionKey, request.headers["X-Lumi-Submission-Key"])
+            assertEquals(null, request.headers[HttpHeaders.Authorization])
+        }) { client -> postWithToken(client) }
+
+        assertEquals(HttpStatusCode.Created, status)
+        assertEquals(1, forwarded.get())
+    }
+
+    @Test
+    fun `does not forward an active app token without azp_name`() {
+        val texas = mockTexas {
+            texasJson("""{"active":true,"idtyp":"app","roles":["access_as_application"]}""")
+        }
+        val forwarded = AtomicInteger()
+        val status = callProxy(texasConfig, texas, forwarded) { client -> postWithToken(client) }
+
+        assertEquals(HttpStatusCode.Unauthorized, status)
+        assertEquals(0, forwarded.get())
+    }
+
+    @Test
     fun `answers 401 when Texas rejects the token`() {
         val texas = mockTexas { texasJson("""{"active": false}""") }
         val status = callProxy(texasConfig, texas) { client -> postWithToken(client) }
@@ -144,9 +175,11 @@ class ProxyRoutesTest {
         config: ProxyConfig,
         texasClient: TexasClient?,
         forwarded: AtomicInteger = AtomicInteger(),
+        inspect: (HttpRequestData) -> Unit = {},
         request: suspend (HttpClient) -> HttpResponse,
     ): HttpStatusCode {
-        val lumiApi = HttpClient(MockEngine {
+        val lumiApi = HttpClient(MockEngine { requestData ->
+            inspect(requestData)
             forwarded.incrementAndGet()
             respond(
                 content = """{"id":"forwarded"}""",

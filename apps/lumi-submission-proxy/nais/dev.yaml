@@ -43,6 +43,8 @@ spec:
           namespace: teamsykefravr
         - application: modiapersonoversikt-api
           namespace: personoversikt
+        - application: gosys-oppgavebehandling
+          namespace: oppgavehandtering
     outbound:
       rules:
         - application: lumi-api
