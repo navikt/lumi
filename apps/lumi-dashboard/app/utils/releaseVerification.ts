@@ -17,7 +17,8 @@ export type ReleaseVerificationAttemptStatus =
   | "success"
   | "error";
 
-export type ReleaseVerificationPhase = "initial" | "closing";
+export type WidgetProbePhase = "initial" | "closing";
+export type ReleaseVerificationPhase = WidgetProbePhase | "app-token";
 export type ReleaseVerificationProfile =
   | "local-full-chain"
   | "dev-authenticated-roundtrip";
@@ -42,20 +43,21 @@ export interface ReleaseVerificationProbeEvidence {
 
 export interface ReleaseVerificationCheck {
   id:
+    | "app-token-round-trip"
     | "team-preflight"
     | "initial-round-trip"
     | "hold-window"
     | "closing-round-trip"
     | "local-submission-proxy"
     | "controlled-dashboard-round-trip";
-  status: ReleaseVerificationCheckStatus;
+  status: ReleaseVerificationCheckStatus | "not-tested";
   completedAt: string | null;
   detail: string;
 }
 
 export interface ReleaseVerificationReportV1 {
   schemaVersion: typeof RELEASE_VERIFICATION_SCHEMA_VERSION;
-  profileVersion: 1;
+  profileVersion: 2;
   profile: ReleaseVerificationProfile;
   runId: string;
   environment: string;
@@ -71,11 +73,13 @@ export interface ReleaseVerificationReportV1 {
   observeAfter: string | null;
   checks: ReleaseVerificationCheck[];
   probes: {
+    appToken: ReleaseVerificationProbeEvidence | null;
     initial: ReleaseVerificationProbeEvidence | null;
     closing: ReleaseVerificationProbeEvidence | null;
   };
   coverage: {
     controlledRoundTrip: ReleaseVerificationCheckStatus;
+    appTokenRoundTrip: ReleaseVerificationCheck["status"];
     localSubmissionProxy: ReleaseVerificationCheckStatus | "not-tested";
     globalAzureHealth: "not-assessed";
     trygdeetatenProxy: "not-tested";
@@ -106,7 +110,7 @@ interface ExpectedReleaseVerificationReadback {
   surveyId: string;
   app: string;
   phase: ReleaseVerificationPhase;
-  channel: "azure-obo" | "local-bypass";
+  channel: "azure-obo" | "azure-client-credentials" | "local-bypass";
   duplicate: boolean | null;
 }
 
@@ -117,6 +121,7 @@ interface CreateReleaseVerificationReportInput {
   now: string;
   holdDurationMs: number;
   preflight: ReleaseVerificationPreflightEvidence;
+  appProbe?: ReleaseVerificationProbeEvidence;
   initialProbe?: ReleaseVerificationProbeEvidence;
   closingProbe?: ReleaseVerificationProbeEvidence;
 }
@@ -134,6 +139,18 @@ export function createReleaseVerificationSurveyId(
   const date = now.toISOString().slice(0, 10).replaceAll("-", "");
   const suffix = randomId.replaceAll("-", "").slice(0, 8).toLowerCase();
   return `${RELEASE_VERIFICATION_SURVEY_PREFIX}${date}-${suffix}`;
+}
+
+export function appProbeCallId(surveyId: string): string {
+  return `${surveyId}-app-token`;
+}
+
+export function appProbeCaller(
+  environment: string,
+  team: string,
+  app: string,
+): string {
+  return `${environment}:${team}:${app}`;
 }
 
 export function createReleaseVerificationControlCode(surveyId: string): string {
@@ -232,10 +249,19 @@ export function createReleaseVerificationReport({
   now,
   holdDurationMs,
   preflight,
+  appProbe,
   initialProbe,
   closingProbe,
 }: CreateReleaseVerificationReportInput): ReleaseVerificationReportV1 {
-  const generatedAt = toIsoTimestamp(now, "now");
+  const storedTimes = [initialProbe, closingProbe, appProbe]
+    .flatMap((probe) =>
+      probe?.storedAt ? [toIsoTimestamp(probe.storedAt, "storedAt")] : [],
+    )
+    .sort();
+  const checkedAt = toIsoTimestamp(preflight.checkedAt, "preflight.checkedAt");
+  const observedAt = toIsoTimestamp(now, "now");
+  const generatedAt =
+    [checkedAt, observedAt, ...storedTimes].sort().at(-1) ?? observedAt;
   const initialPassed = initialProbe?.status === "verified";
   const initialFailed =
     initialProbe !== undefined &&
@@ -261,16 +287,31 @@ export function createReleaseVerificationReport({
     closingProbe !== undefined &&
     (closingProbe.status === "mismatch" || closingProbe.status === "not-found");
 
-  let outcome: ReleaseVerificationCheckStatus = "pending";
+  let controlledRoundTrip: ReleaseVerificationCheckStatus = "pending";
   if (preflight.status === "failed" || initialFailed || closingFailed) {
-    outcome = "failed";
+    controlledRoundTrip = "failed";
   } else if (
     preflight.status === "passed" &&
     initialPassed &&
     holdPassed &&
     closingPassed
   ) {
-    outcome = "passed";
+    controlledRoundTrip = "passed";
+  }
+
+  const appStatus =
+    profile === "local-full-chain" ? "not-tested" : probeCheckStatus(appProbe);
+  let outcome = controlledRoundTrip;
+  if (appStatus === "failed") outcome = "failed";
+  else if (controlledRoundTrip === "passed" && appStatus === "pending")
+    outcome = "pending";
+
+  let appDetail = probeDetail(appProbe, "Ingen kvittering fra app-proben ennå");
+  if (appStatus === "not-tested") {
+    appDetail = "Entra ID er ikke tilgjengelig lokalt.";
+  } else if (appStatus === "passed") {
+    const caller = appProbeCaller(environment, preflight.team, preflight.app);
+    appDetail += `. Før innsending kontrollerte dashboardet azp_name=${caller}, idtyp=app og rollen access_as_application. Sjekk perUserLimit i API-loggen for callId=${appProbeCallId(surveyId)}.`;
   }
 
   const checks: ReleaseVerificationCheck[] = [
@@ -315,21 +356,25 @@ export function createReleaseVerificationReport({
           ? "Klar for avsluttende probe"
           : "Venter på holdetiden",
     },
+    {
+      id: "app-token-round-trip",
+      status: appStatus,
+      completedAt: appProbe?.storedAt ?? null,
+      detail: appDetail,
+    },
   ];
 
   return {
     schemaVersion: RELEASE_VERIFICATION_SCHEMA_VERSION,
-    profileVersion: 1,
+    profileVersion: 2,
     profile,
     runId: surveyId,
     environment,
     generatedAt,
-    startedAt: initialProbe?.storedAt
-      ? toIsoTimestamp(initialProbe.storedAt, "initialProbe.storedAt")
-      : toIsoTimestamp(preflight.checkedAt, "preflight.checkedAt"),
+    startedAt: storedTimes[0] ?? checkedAt,
     finishedAt:
       outcome === "passed"
-        ? (closingProbe?.storedAt ?? generatedAt)
+        ? (storedTimes.at(-1) ?? generatedAt)
         : outcome === "failed"
           ? generatedAt
           : null,
@@ -342,11 +387,13 @@ export function createReleaseVerificationReport({
     observeAfter,
     checks,
     probes: {
+      appToken: appProbe ?? null,
       initial: initialProbe ?? null,
       closing: closingProbe ?? null,
     },
     coverage: {
-      controlledRoundTrip: outcome,
+      controlledRoundTrip,
+      appTokenRoundTrip: appStatus,
       localSubmissionProxy: "not-tested",
       globalAzureHealth: "not-assessed",
       trygdeetatenProxy: "not-tested",
@@ -363,6 +410,15 @@ function probeCheckStatus(
   return probe.status === "verified" ? "passed" : "failed";
 }
 
+export function readbackNeedsAccess(
+  probe: ReleaseVerificationProbeEvidence | null | undefined,
+): boolean {
+  return (
+    probe?.status === "unavailable" &&
+    probe.mismatches.includes("readback-access")
+  );
+}
+
 function probeDetail(
   probe: ReleaseVerificationProbeEvidence | undefined,
   pendingDetail: string,
@@ -370,6 +426,9 @@ function probeDetail(
   if (!probe) return pendingDetail;
   if (probe.status === "verified") {
     return `Receipt ${probe.receiptId} er lest tilbake eksakt`;
+  }
+  if (readbackNeedsAccess(probe)) {
+    return "Dashboardet mangler lesetilgang til kvitteringen.";
   }
   if (probe.status === "unavailable") {
     return "Readback er midlertidig utilgjengelig og prøves på nytt";
