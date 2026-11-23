@@ -349,6 +349,40 @@ describe("LumiSurveyDock Accessibility", () => {
     ).toHaveFocus();
   });
 
+  it("moves focus to the success heading after a disabled submit drops focus", async () => {
+    let resolveSubmission!: () => void;
+    const submission = new Promise<void>((resolve) => {
+      resolveSubmission = resolve;
+    });
+    const transport = { submit: vi.fn().mockReturnValue(submission) };
+    const user = userEvent.setup();
+    render(
+      <LumiSurveyDock
+        surveyId="focus-success-pending-test"
+        survey={survey}
+        transport={transport}
+        behavior={{ storageStrategy: "none" }}
+      />,
+    );
+
+    await user.click(await screen.findByRole("radio", { name: /5\./i }));
+    const submitButton = screen.getByRole("button", { name: /send/i });
+    await user.click(submitButton);
+    submitButton.blur();
+    expect(document.body).toHaveFocus();
+
+    await act(async () => {
+      resolveSubmission();
+      await submission;
+    });
+
+    expect(
+      await screen.findByRole("heading", {
+        name: /takk for tilbakemeldingen/i,
+      }),
+    ).toHaveFocus();
+  });
+
   it("does not steal focus back when a pending submit finishes", async () => {
     let resolveSubmission!: () => void;
     const submission = new Promise<void>((resolve) => {
