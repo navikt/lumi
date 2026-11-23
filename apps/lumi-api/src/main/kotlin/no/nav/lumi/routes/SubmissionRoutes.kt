@@ -13,6 +13,7 @@ import no.nav.lumi.config.SubmissionObservability
 import no.nav.lumi.config.SubmissionRateLimit
 import no.nav.lumi.config.UserSubmissionRateLimit
 import no.nav.lumi.config.auth.AzureSubmissionAuthPlugin
+import no.nav.lumi.config.auth.SubmissionAuthPluginConfig
 import no.nav.lumi.config.auth.TokenXSubmissionAuthPlugin
 import no.nav.lumi.config.auth.getCallerIdentity
 import no.nav.lumi.config.exception.ApiErrorException
@@ -40,16 +41,25 @@ private val defaultSubmissionObservability = SubmissionObservability()
  * - AzureAD: azp_name
  * 
  * Rate limited to 100 requests per minute per calling application,
- * and 15 requests per minute per individual user.
+ * and 15 requests per minute per individual user. An Entra ID client
+ * credentials token has no user, so only the application limit applies.
+ *
+ * [configureAuth] lets tests replace the Texas client on both auth plugins. The
+ * plugins always count with [submissionObservability], also when [configureAuth]
+ * sets another instance.
  */
 fun Route.submissionRoutes(
     feedbackService: FeedbackService = defaultFeedbackService,
     surveyDefinitionService: SurveyDefinitionService = defaultSurveyDefinitionService,
     submissionService: SubmissionService = SubmissionService(feedbackService, surveyDefinitionService),
-    submissionObservability: SubmissionObservability = defaultSubmissionObservability
+    submissionObservability: SubmissionObservability = defaultSubmissionObservability,
+    configureAuth: SubmissionAuthPluginConfig.() -> Unit = {},
 ) {
     route("/api/tokenx") {
-        install(TokenXSubmissionAuthPlugin)
+        install(TokenXSubmissionAuthPlugin) {
+            configureAuth()
+            this.submissionObservability = submissionObservability
+        }
         rateLimit(SubmissionRateLimit) {
             rateLimit(UserSubmissionRateLimit) {
                 post("/v1/feedback") {
@@ -67,7 +77,10 @@ fun Route.submissionRoutes(
     }
 
     route("/api/azure") {
-        install(AzureSubmissionAuthPlugin)
+        install(AzureSubmissionAuthPlugin) {
+            configureAuth()
+            this.submissionObservability = submissionObservability
+        }
         rateLimit(SubmissionRateLimit) {
             rateLimit(UserSubmissionRateLimit) {
                 post("/v1/feedback") {
