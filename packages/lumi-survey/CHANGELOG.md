@@ -4,6 +4,13 @@ All notable changes to `@navikt/lumi-survey` will be documented in this file.
 
 This project follows SemVer.
 
+## [2.5.1] - 2026-11-23
+
+### Fixed
+
+- The success receipt no longer takes focus from the host page when the disabled
+  submit button has already lost focus while the submission is pending.
+
 ## [2.5.0] - 2026-10-21
 
 ### Added

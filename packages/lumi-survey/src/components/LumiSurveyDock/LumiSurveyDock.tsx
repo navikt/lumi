@@ -679,7 +679,13 @@ export const LumiSurveyDock = ({
     // without pressing close, and the survey must not reopen on the next page.
     persistSubmission(config.hideAfterSubmit);
 
-    if (focusWithinDockRef.current) {
+    // Disabling submit can blur it without a related target. Check the actual
+    // focus as well, so a stale ref cannot move focus away from the host page.
+    if (
+      focusWithinDockRef.current &&
+      (document.activeElement === document.body ||
+        dockRef.current?.contains(document.activeElement))
+    ) {
       document.getElementById(successHeadingId)?.focus();
     }
   }, [config.hideAfterSubmit, persistSubmission, status, successHeadingId]);

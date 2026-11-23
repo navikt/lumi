@@ -370,7 +370,10 @@ describe("LumiSurveyDock Accessibility", () => {
     );
 
     await user.click(await screen.findByRole("radio", { name: /5\./i }));
-    await user.click(screen.getByRole("button", { name: /send/i }));
+    const submitButton = screen.getByRole("button", { name: /send/i });
+    await user.click(submitButton);
+    // A disabled submit control can lose focus before the host button receives it.
+    submitButton.blur();
     await user.click(screen.getByRole("button", { name: /vertsside/i }));
 
     await act(async () => {
