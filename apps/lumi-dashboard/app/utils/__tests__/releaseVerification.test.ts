@@ -213,6 +213,10 @@ describe("release verification", () => {
     expect(pending.outcome).toBe("pending");
     expect(pending.finishedAt).toBeNull();
     expect(pending.coverage.controlledRoundTrip).toBe("passed");
+    expect(pending.checks.at(-1)).toMatchObject({
+      status: "pending",
+      detail: "Ingen kvittering fra app-proben ennå",
+    });
     const local = createReleaseVerificationReport({
       ...input,
       profile: "local-full-chain",
@@ -303,7 +307,13 @@ describe("release verification", () => {
     ).toBe("pending");
   });
 
-  it("keeps a transient readback failure pending for retry", () => {
+  it.each([
+    [
+      "readback-http-503",
+      "Readback er midlertidig utilgjengelig og prøves på nytt",
+    ],
+    ["readback-access", "Dashboardet mangler lesetilgang til kvitteringen."],
+  ])("keeps a readback failure pending for retry (%s)", (mismatch, detail) => {
     const report = createReleaseVerificationReport({
       profile: "dev-authenticated-roundtrip",
       environment: "dev-gcp",
@@ -322,12 +332,12 @@ describe("release verification", () => {
         receiptId: "initial-receipt-id",
         duplicate: false,
         storedAt: null,
-        mismatches: ["readback-http-503"],
+        mismatches: [mismatch],
       },
     });
 
     expect(report.outcome).toBe("pending");
-    expect(report.checks[1].status).toBe("pending");
+    expect(report.checks[1]).toMatchObject({ status: "pending", detail });
   });
 
   it("keeps a transient preflight failure pending instead of inventing a pass", () => {

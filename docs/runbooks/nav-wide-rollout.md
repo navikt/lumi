@@ -82,6 +82,11 @@ tilbake kvitteringen for `team-esyfo` og kontrollerer blant annet app,
 survey-ID og kontrollkode. Flere forsøk i samme kjøring bruker samme
 dedupliseringsnøkkel. Lokalt viser steget **Ikke testet**.
 
+Avviker et av de tre feltene, sender dashboardet ingenting. Feilmeldingen,
+for eksempel «idtyp mangler», vises ved knappen og står ikke i rapporten.
+Noter den før dere laster siden på nytt. Et slikt avvik går ikke over ved
+nytt forsøk.
+
 App-steget kan bli grønt også mot API-et fra før PR 824. Den versjonen
 godtar aktive Entra-tokener med gyldig `azp_name` for den kallende appen.
 Den skiller ikke mellom app- og brukertokener ved innsending.

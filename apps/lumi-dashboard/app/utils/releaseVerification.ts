@@ -306,7 +306,7 @@ export function createReleaseVerificationReport({
   else if (controlledRoundTrip === "passed" && appStatus === "pending")
     outcome = "pending";
 
-  let appDetail = probeDetail(appProbe, "Venter på kvittering fra app-proben.");
+  let appDetail = probeDetail(appProbe, "Ingen kvittering fra app-proben ennå");
   if (appStatus === "not-tested") {
     appDetail = "Entra ID er ikke tilgjengelig lokalt.";
   } else if (appStatus === "passed") {

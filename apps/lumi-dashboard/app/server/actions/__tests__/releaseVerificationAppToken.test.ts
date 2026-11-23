@@ -248,6 +248,10 @@ describe("innsending med app-token", () => {
       { ok: true, token: "header.invalid.signature" },
       "Kunne ikke lese feltene i app-tokenet.",
     ],
+    [
+      { ok: true, token: tokenFor(claims).split(".").slice(0, 2).join(".") },
+      "Kunne ikke lese feltene i app-tokenet.",
+    ],
   ])(
     "returns a safe message when token acquisition or decoding fails",
     async (result, message) => {
@@ -341,6 +345,20 @@ describe("innsending med app-token", () => {
       expect(doubles.request).toHaveBeenCalledTimes(3);
     },
   );
+
+  it("stops when readback returns a status that a retry cannot change", async () => {
+    doubles.request
+      .mockResolvedValueOnce(Response.json({}))
+      .mockResolvedValueOnce(Response.json({ id: receiptId }, { status: 201 }))
+      .mockResolvedValueOnce(new Response(null, { status: 400 }));
+    await expect(
+      submitAppTokenProbeServerFn({ data: { surveyId } }),
+    ).resolves.toMatchObject({
+      receiptId,
+      status: "mismatch",
+      mismatches: ["readback-http-400"],
+    });
+  });
 
   it("rebuilds a shared app receipt with OBO and rejects a receipt from the OBO probe", async () => {
     doubles.request

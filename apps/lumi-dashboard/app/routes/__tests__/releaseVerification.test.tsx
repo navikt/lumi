@@ -13,7 +13,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createAppProbeSubmission } from "~/server/releaseVerificationAppToken.server";
 import { Route } from "../release-verification";
 
@@ -98,6 +98,10 @@ beforeEach(() => {
   });
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 it("stops the run instructions when only the app receipt mismatches", async () => {
   api.fetchReleaseVerificationRunServerFn.mockResolvedValue({
     observedAt: ended,
@@ -148,26 +152,77 @@ it.each([false, true])(
   },
 );
 
-it("keeps the widget closed while a shared start receipt is loading or cannot be read", async () => {
-  let failRead!: (error: Error) => void;
-  api.fetchReleaseVerificationRunServerFn.mockImplementationOnce(
-    () =>
-      new Promise((_resolve, reject) => {
-        failRead = reject;
+it.each([
+  ["start", { initialReceiptId }],
+  ["app", { appReceiptId }],
+])(
+  "keeps the widget closed while a shared %s receipt is loading or cannot be read",
+  async (_phase, receipts) => {
+    let failRead!: (error: Error) => void;
+    api.fetchReleaseVerificationRunServerFn.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          failRead = reject;
+        }),
+    );
+    await openRun(receipts);
+    expect(
+      await screen.findByText("Leser receipts fra databasen …", {
+        selector: "p",
       }),
-  );
+    ).toBeVisible();
+    expect(screen.queryByRole("radio", { name: "4. Bra" })).toBeNull();
+    await act(async () => failRead(new Error("Utilgjengelig")));
+    expect(
+      await screen.findByText(
+        "Kunne ikke rekonstruere rapporten fra receipts.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByRole("radio", { name: "4. Bra" })).toBeNull();
+  },
+);
+
+it("hides the app-token button once the run has stopped", async () => {
+  api.fetchReleaseVerificationRunServerFn.mockResolvedValue({
+    observedAt: started,
+    initial: { ...initial, status: "mismatch", mismatches: ["survey-id"] },
+    closing: null,
+    appToken: null,
+  });
   await openRun({ initialReceiptId });
   expect(
-    await screen.findByText("Leser receipts fra databasen …", {
-      selector: "p",
-    }),
+    await screen.findByRole("heading", { name: "Kjøringen er stoppet" }),
   ).toBeVisible();
-  expect(screen.queryByRole("radio", { name: "4. Bra" })).toBeNull();
-  await act(async () => failRead(new Error("Utilgjengelig")));
   expect(
-    await screen.findByText("Kunne ikke rekonstruere rapporten fra receipts."),
+    screen.queryByRole("button", { name: "Send med app-token" }),
+  ).toBeNull();
+});
+
+it("replaces an early closing receipt with the resubmitted one before the next read", async () => {
+  const resubmitted = {
+    ...closing,
+    receiptId: "0b7f3a52-6f0e-4c58-9d0a-3c1e5b7a9f10",
+  };
+  api.fetchReleaseVerificationRunServerFn
+    .mockResolvedValueOnce({
+      observedAt: ended,
+      initial,
+      closing: { ...closing, storedAt: "2026-11-23T10:14:00.000Z" },
+      appToken: null,
+    })
+    .mockImplementationOnce(() => new Promise(() => {}));
+  api.submitReleaseVerificationServerFn.mockResolvedValueOnce(resubmitted);
+  const router = await openRun({ initialReceiptId, closingReceiptId });
+  fireEvent.click(await screen.findByRole("radio", { name: "4. Bra" }));
+  fireEvent.click(screen.getByRole("radio", { name: /Kontrollkode RV-/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+  expect(
+    await screen.findByText(/Start- og sluttproben er bestått/),
   ).toBeVisible();
-  expect(screen.queryByRole("radio", { name: "4. Bra" })).toBeNull();
+  expect(router.state.location.search).toMatchObject({
+    initialReceiptId,
+    closingReceiptId: resubmitted.receiptId,
+  });
 });
 
 it("retains a reloaded start receipt throughout app submission and readback", async () => {
@@ -228,6 +283,39 @@ it("reads the same receipt again after team access is restored", async () => {
     api.fetchReleaseVerificationRunServerFn.mock.calls[0],
   );
   expect(api.submitAppTokenProbeServerFn).not.toHaveBeenCalled();
+});
+
+it("does not poll while read access is missing", async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  api.fetchReleaseVerificationRunServerFn.mockResolvedValue({
+    observedAt: started,
+    initial,
+    closing: null,
+    appToken: {
+      ...appToken,
+      status: "unavailable",
+      storedAt: null,
+      mismatches: ["readback-access"],
+    },
+  });
+  await openRun({ initialReceiptId, appReceiptId });
+  await screen.findByText(/Kontroller innlogging og teamtilgang/);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60_000);
+  });
+  expect(api.fetchReleaseVerificationRunServerFn).toHaveBeenCalledTimes(1);
+});
+
+it("dates an unread run from the preflight check and not the browser clock", async () => {
+  vi.useFakeTimers({
+    shouldAdvanceTime: true,
+    now: new Date("2026-11-23T12:00:00.000Z"),
+  });
+  await openRun();
+  await screen.findByRole("button", { name: "Send med app-token" });
+  expect(
+    JSON.parse(document.querySelector("pre")?.textContent ?? ""),
+  ).toMatchObject({ generatedAt: started, startedAt: started });
 });
 
 it("dates the report from the new app receipt while the next read is pending", async () => {
