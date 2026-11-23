@@ -159,7 +159,7 @@ test("API-only and docs-only pushes classify as unrelated to the dashboard", () 
     false,
   );
   assert.equal(
-    requiresDashboardDeploy(["docs/runbooks/nav-wide-rollout.md"]),
+    requiresDashboardDeploy(["docs/runbooks/release-verifikasjon.md"]),
     false,
   );
 });
