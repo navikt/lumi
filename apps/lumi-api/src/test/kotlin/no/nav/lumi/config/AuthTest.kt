@@ -60,6 +60,24 @@ class AuthTest : FunSpec({
         body shouldBe "Z123456"
     }
 
+    test("accepts a token whose app claims have an unexpected shape") {
+        val (status, body) = callDashboardRouteWith(
+            mockTexasClient {
+                texasJson(
+                    """
+                    {
+                      "active": true, "NAVident": "Z123456", "azp_name": "dev-gcp:team-esyfo:lumi-dashboard",
+                      "idtyp": {"unexpected": true}, "roles": "custom"
+                    }
+                    """.trimIndent(),
+                )
+            },
+        )
+
+        status shouldBe HttpStatusCode.OK
+        body shouldBe "Z123456"
+    }
+
     test("returns 401 when Texas rejects the token") {
         val (status, _) = callDashboardRouteWith(mockTexasClient { texasJson("""{"active": false}""") })
 

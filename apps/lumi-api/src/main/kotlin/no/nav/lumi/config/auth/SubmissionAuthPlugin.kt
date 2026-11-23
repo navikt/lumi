@@ -4,7 +4,12 @@ import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.util.AttributeKey
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import no.nav.lumi.config.ServerEnv
+import no.nav.lumi.config.SubmissionChannel
+import no.nav.lumi.config.SubmissionMetricOutcome
+import no.nav.lumi.config.SubmissionObservability
 import no.nav.lumi.config.exception.ApiErrorException
 import org.slf4j.LoggerFactory
 
@@ -16,13 +21,33 @@ import org.slf4j.LoggerFactory
 internal val UserRateLimitHashKey = AttributeKey<String>("UserRateLimitHash")
 
 private val log = LoggerFactory.getLogger("SubmissionAuthPlugin")
+private val defaultSubmissionObservability = SubmissionObservability()
+
+private const val ENTRA_APP_IDENTITY_TYPE = "app"
+private const val ENTRA_DEFAULT_APP_ROLE = "access_as_application"
+
+/**
+ * Entra ID sets idtyp=app on tokens from the client credentials flow. Such a
+ * token belongs to the calling app alone. It has no user, and its sub is the
+ * app's own object id.
+ */
+private fun TexasIntrospectionResult.isEntraAppToken(): Boolean = idtyp == JsonPrimitive(ENTRA_APP_IDENTITY_TYPE)
+
+/**
+ * Nais gives every app in the inbound access policy the role
+ * access_as_application. An app token without it comes from an app that has
+ * not been given access.
+ */
+private fun TexasIntrospectionResult.hasEntraAppAccess(): Boolean =
+    (roles as? JsonArray)?.contains(JsonPrimitive(ENTRA_DEFAULT_APP_ROLE)) == true
 
 /**
  * Authentication plugins for submission routes.
  *
  * Submission is intentionally split by issuer to avoid guessing:
  * - TokenX (end-user apps)
- * - AzureAD (internal tools)
+ * - AzureAD (internal tools), with an on-behalf-of token or a client
+ *   credentials token
  *
  * Submission routes must not store end-user identifiers.
  */
@@ -42,21 +67,31 @@ class SubmissionAuthPluginConfig {
      * NAIS; tests disable it to exercise the Texas path.
      */
     var localMockIdentityEnabled: Boolean = true
+
+    /**
+     * Counts submissions from an authenticated app that is denied access, so
+     * they show up as rejected like other 4xx answers to authenticated callers.
+     */
+    var submissionObservability: SubmissionObservability = defaultSubmissionObservability
 }
 
 private fun createSubmissionAuthPlugin(
     pluginName: String,
     identityProvider: String,
+    channel: SubmissionChannel,
     endpointHint: String,
     callerIdentityClaim: String,
     extractCallerId: (TexasIntrospectionResult) -> String?,
-    extractUserKey: (TexasIntrospectionResult) -> String?
+    extractUserKey: (TexasIntrospectionResult) -> String?,
+    /** Returns why a valid token still has no access, or null when it has. */
+    accessDeniedReason: (TexasIntrospectionResult) -> String? = { null }
 ) = createRouteScopedPlugin(
     name = pluginName,
     createConfiguration = ::SubmissionAuthPluginConfig,
 ) {
     val useLocalMockIdentity = pluginConfig.localMockIdentityEnabled && !ServerEnv.current.nais.isNais
     val texasClient = pluginConfig.texasClientProvider()
+    val submissionObservability = pluginConfig.submissionObservability
 
     onCall { call ->
         if (useLocalMockIdentity) {
@@ -129,10 +164,19 @@ private fun createSubmissionAuthPlugin(
                 throw ApiErrorException.UnauthorizedException("Invalid caller identity format")
             }
 
-        log.info("$pluginName: Authenticated submission from team=${identity.team} app=${identity.app}")
-        call.attributes.put(CallerIdentityKey, identity)
+        accessDeniedReason(introspectionResult)?.let { reason ->
+            log.warn("$pluginName: Denied submission from team=${identity.team} app=${identity.app}: $reason")
+            submissionObservability.record(channel, SubmissionMetricOutcome.REJECTED)
+            throw ApiErrorException.ForbiddenException(reason)
+        }
 
         val userKey = extractUserKey(introspectionResult)
+        log.info(
+            "$pluginName: Authenticated submission from team=${identity.team} app=${identity.app} " +
+                "perUserLimit=${!userKey.isNullOrBlank()}"
+        )
+        call.attributes.put(CallerIdentityKey, identity)
+
         if (!userKey.isNullOrBlank()) {
             val hash = sha256Hex(userKey)
             call.attributes.put(UserRateLimitHashKey, "user:${identity.team}:${identity.app}:$hash")
@@ -143,6 +187,7 @@ private fun createSubmissionAuthPlugin(
 val TokenXSubmissionAuthPlugin = createSubmissionAuthPlugin(
     pluginName = "TokenXSubmissionAuthPlugin",
     identityProvider = "tokenx",
+    channel = SubmissionChannel.TOKENX,
     endpointHint = "/api/tokenx/v1/feedback",
     callerIdentityClaim = "client_id",
     extractCallerId = { it.clientId },
@@ -152,10 +197,24 @@ val TokenXSubmissionAuthPlugin = createSubmissionAuthPlugin(
 val AzureSubmissionAuthPlugin = createSubmissionAuthPlugin(
     pluginName = "AzureSubmissionAuthPlugin",
     identityProvider = "entra_id",
+    channel = SubmissionChannel.AZURE,
     endpointHint = "/api/azure/v1/feedback",
     callerIdentityClaim = "azp_name",
     extractCallerId = { it.azp_name },
-    extractUserKey = { it.sub }
+    // The sub of an app token identifies the app. Using it as a user key would
+    // make every user of the app share one per-user bucket.
+    extractUserKey = { result -> result.sub.takeUnless { result.isEntraAppToken() } },
+    accessDeniedReason = { result ->
+        val identityType = result.idtyp
+        if (identityType != null && (identityType !is JsonPrimitive || !identityType.isString)) {
+            "Invalid Entra ID identity type"
+        } else if (result.isEntraAppToken() && !result.hasEntraAppAccess()) {
+            "App token is missing the role $ENTRA_DEFAULT_APP_ROLE. " +
+                "The calling app must be in the inbound access policy of lumi-api"
+        } else {
+            null
+        }
+    }
 )
 
 /**

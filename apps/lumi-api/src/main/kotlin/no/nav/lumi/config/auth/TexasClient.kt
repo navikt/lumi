@@ -19,6 +19,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import no.nav.lumi.config.appMicrometerRegistry
 import org.slf4j.LoggerFactory
 import java.net.ConnectException
@@ -435,5 +436,16 @@ data class TexasIntrospectionResult(
     @SerialName("unique_name")
     val uniqueName: String? = null,
     /** AD group UUIDs the user belongs to */
-    val groups: List<String>? = null
+    val groups: List<String>? = null,
+    /**
+     * Entra ID identity type. The value "app" marks a client credentials token, which has no user.
+     * Only Entra ID submission reads it. It is kept as raw JSON so an unexpected shape cannot make
+     * the answer unreadable for TokenX submission and dashboard login.
+     */
+    val idtyp: JsonElement? = null,
+    /**
+     * Entra ID roles. In a client credentials token they are the roles Nais has given the calling app.
+     * Raw JSON for the same reason as [idtyp].
+     */
+    val roles: JsonElement? = null
 )
