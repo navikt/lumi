@@ -457,14 +457,12 @@
 .som-kode__mark--team,
 .som-kode__stopp--team,
 .utvikler__mark--team,
-.utvikler__grunn--team,
-.utvikler__stopp--team {
+.utvikler__grunn--team {
   --tone: var(--farge-team);
 }
 
 .utvikler__mark--lumi,
-.utvikler__grunn--lumi,
-.utvikler__stopp--lumi {
+.utvikler__grunn--lumi {
   --tone: var(--farge-lumi);
 }
 
@@ -496,26 +494,23 @@
 }
 
 .map .som-kode__stoppnavn,
-.map .utvikler__grunnavn,
-.map .utvikler__stoppnavn {
+.map .utvikler__grunnavn {
   fill: var(--tone);
 }
 
-.map .som-kode__stopp .map-station__ring,
-.map .utvikler__stopp .map-station__ring {
+.map .som-kode__stopp .map-station__ring {
   stroke: var(--tone);
 }
 
-:root[data-stil="papir"] .som-kode .map-line--draw,
-:root[data-stil="papir"] .utvikler .map-line--draw {
+:root[data-stil="papir"] .som-kode .map-line--draw {
   transition: none;
 }
 
 /*
  * surveyen-som-kode, for designers: survey.ts with the questions they wrote
- * marked in green, the lines from them meeting in one stop. Click 1: the
- * hand-over as a line from edge to edge, drawn from the left. Click 2: the
- * price, in their words, with what they must know in orange.
+ * marked in green, the lines from them meeting in one stop. One click: the
+ * hand-over as a line from edge to edge, drawn from the left, and under it
+ * the price in one sentence, with what they must know in orange.
  */
 .som-kode__sporsmal {
   --tone: var(--farge-team);
@@ -539,86 +534,38 @@
   line-height: 1.25;
 }
 
-.som-kode__price > span {
-  display: block;
-}
-
 .som-kode__pris {
   color: var(--farge-varsel);
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  :root:not([data-stil="papir"]) .map .som-kode__arbeid,
-  :root:not([data-stil="papir"]) .map .utvikler__arbeid {
+  :root:not([data-stil="papir"]) .map .som-kode__arbeid {
     transition: stroke-dashoffset 300ms var(--deck-easing);
   }
 
-  :root:not([data-stil="papir"]) .map .som-kode__arbeid[data-revealed],
-  :root:not([data-stil="papir"]) .map .utvikler__arbeid[data-revealed] {
+  :root:not([data-stil="papir"]) .map .som-kode__arbeid[data-revealed] {
     transition: stroke-dashoffset 1000ms var(--deck-easing-travel);
   }
 
-  :root:not([data-stil="papir"]) .som-kode__stopp[data-revealed],
-  :root:not([data-stil="papir"]) .utvikler__stopp[data-revealed] {
+  :root:not([data-stil="papir"]) .som-kode__stopp[data-revealed] {
     transition-delay: calc(var(--stopp-x) * 900ms);
   }
 
   :root:not([data-stil="papir"]) .som-kode__price:not([data-revealed]) {
     transform: translateY(24px);
   }
+
+  /* The price comes when the line has reached the users. */
+  :root:not([data-stil="papir"]) .som-kode__price[data-revealed] {
+    transition-delay: 900ms;
+  }
 }
 
 /*
- * utviklerens-steg, for Frontend forum only: the code in the app. Click 1:
- * why it is good, three parts of the code marked, each with a leader to
- * its reason. Click 2: the developer's work as a line from edge to edge.
+ * utviklerens-steg, for Frontend forum only: the code in the app, with the
+ * three things the developer does marked in it, each with a leader to its
+ * name. All there at once.
  */
 .utvikler__prikk {
   fill: var(--tone);
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-/*
- * Click 1 is one cascade, a quarter of a second per reason: the mark
- * sweeps over the code, the leader draws out to the column, and the reason
- * comes. Click 2 draws the line from the left, and each stop comes as the
- * line reaches it. On paper and without motion every step is just there.
- */
-@media (prefers-reduced-motion: no-preference) {
-  :root:not([data-stil="papir"]) .utvikler__marker {
-    transition:
-      opacity 160ms var(--deck-easing),
-      transform 420ms var(--deck-easing-travel),
-      visibility 0s;
-  }
-
-  :root:not([data-stil="papir"]) .utvikler__marker:not([data-revealed]) {
-    transform: scaleX(0);
-  }
-
-  :root:not([data-stil="papir"]) .utvikler__marker[data-revealed] {
-    transition-delay: calc(var(--grunn) * 240ms);
-  }
-
-  :root:not([data-stil="papir"]) .utvikler__prikk:not([data-revealed]) {
-    transform: scale(0);
-  }
-
-  :root:not([data-stil="papir"]) .utvikler__prikk[data-revealed] {
-    transition-delay: calc(var(--grunn) * 240ms + 220ms);
-  }
-
-  :root:not([data-stil="papir"]) .map .utvikler__leder {
-    transition: stroke-dashoffset 300ms var(--deck-easing);
-  }
-
-  :root:not([data-stil="papir"]) .map .utvikler__leder[data-revealed] {
-    transition: stroke-dashoffset 420ms var(--deck-easing-travel)
-      calc(var(--grunn) * 240ms + 260ms);
-  }
-
-  :root:not([data-stil="papir"]) .utvikler__grunntekst[data-revealed] {
-    transition-delay: calc(var(--grunn) * 240ms + 560ms);
-  }
 }
