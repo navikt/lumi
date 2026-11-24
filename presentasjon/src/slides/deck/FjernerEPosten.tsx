@@ -20,7 +20,9 @@ import "./premiss.css";
  * e-mail address, both in Lumi's blue, and it leaves a blue ring on what it
  * has shown. Click 3, the honest limit: it travels to the name, which is
  * still there, in orange, and a green ring goes round the button the team
- * deletes the answer with.
+ * deletes the answer with. The team can also mask the name themselves: the
+ * caption says so, but the still is from before the dashboard got «Masker
+ * tekst», so that button is not in it.
  */
 
 const WINDOW = { width: 1680, height: 545 } as const;
@@ -214,7 +216,7 @@ function FjernerEPosten({ step, active }: SlideProps) {
         <Lens step={step} />
       </div>
       <p className="fjerner__caption" data-from={3}>
-        Navnet står igjen, men dere kan slette svaret.
+        Navnet står igjen, men dere kan maskere det eller slette svaret.
       </p>
       <Tag kind="screenshot" className="fjerner__tag" />
     </div>

@@ -62,22 +62,17 @@ function questionLine(row: number, columns: number): Point[] {
 
 /**
  * The hand-over as a line from edge to edge: the team shares a version,
- * gives the link to a developer, the developer copies the code into the
- * app, and the users see the survey with the next version of the app.
- * Labels and notes sit above the line, so nothing reaches the Teams corner.
+ * the developer copies the code into the app, and the users see the
+ * survey with the next version of the app. Labels and notes sit above the
+ * line, so nothing reaches the Teams corner.
  */
 const LINE_Y = 776;
-const STOP_X = [150, 590, 1030, 1470] as const;
+const STOP_X = [150, 760, 1370] as const;
 const LABEL_Y = LINE_Y - 150;
 const STOPS = [
   {
     label: "«Del med utvikler»",
     note: ["dere, i Surveyverksted"],
-    tone: "team",
-  },
-  {
-    label: "En issue",
-    note: ["med lenken til versjonen"],
     tone: "team",
   },
   {
@@ -137,7 +132,7 @@ function SurveyenSomKode() {
         </code>
       </pre>
 
-      <LineMap label="Utdrag av survey.ts, kopiert fra Surveyverksted. Der står spørsmålene teamet skrev: «Hvordan har dagen vært så langt?» og «Hva kan vi gjøre bedre?». Utviklere kan også skrive surveyen rett i TypeScript. Så overleveringen, fra venstre: dere trykker «Del med utvikler» i Surveyverksted, gir lenken til versjonen til en utvikler i en issue, utvikleren trykker «Kopier TypeScript» og limer koden inn i appen, og brukerne ser surveyen når den nye versjonen av appen er ute.">
+      <LineMap label="Utdrag av survey.ts, kopiert fra Surveyverksted. Der står spørsmålene teamet skrev: «Hvordan har dagen vært så langt?» og «Hva kan vi gjøre bedre?». Så overleveringen, fra venstre: dere trykker «Del med utvikler» i Surveyverksted, utvikleren trykker «Kopier TypeScript» og limer koden inn i appen, og brukerne ser surveyen når den nye versjonen av appen er ute.">
         {/* The questions the team wrote, in the code. */}
         <g className="som-kode__sporsmal">
           {QUESTION_ROWS.map(({ row, columns }) => (
@@ -161,12 +156,6 @@ function SurveyenSomKode() {
           </MapText>
           <MapText x={NOTE_X} y={MEET_Y + 24} size={32} weight={600} muted>
             i Surveyverksted
-          </MapText>
-          <MapText x={NOTE_X} y={MEET_Y + 104} size={32} weight={600} muted>
-            Utviklere kan også skrive
-          </MapText>
-          <MapText x={NOTE_X} y={MEET_Y + 142} size={32} weight={600} muted>
-            surveyen rett i TypeScript.
           </MapText>
         </g>
 
@@ -213,12 +202,9 @@ function SurveyenSomKode() {
         ))}
       </LineMap>
 
-      <p className="som-kode__price" data-from={2}>
-        <span>
-          Surveyen er <span className="som-kode__pris">ikke ute</span> når dere
-          trykker «Del med utvikler».
-        </span>{" "}
-        <span>Utvikleren må legge den inn i appen først.</span>
+      <p className="som-kode__price" data-from={1}>
+        Surveyen er <span className="som-kode__pris">ikke ute</span> før
+        utvikleren har lagt den inn i appen.
       </p>
     </div>
   );
@@ -228,6 +214,6 @@ export const surveyenSomKode: Slide = {
   id: "surveyen-som-kode",
   title: "Utvikleren får surveyen som kode",
   rooms: ["frontend"],
-  steps: 2,
+  steps: 1,
   Component: SurveyenSomKode,
 };
