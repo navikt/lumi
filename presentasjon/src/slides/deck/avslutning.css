@@ -1,12 +1,13 @@
 /*
  * The closing slides and the room modules: under-panseret, slik-vet-vi,
  * regler, ansvar, kom-i-gang, slutt, prov-selv and personvern.
- * Each of these has one movement per click, under no-preference and off
- * paper, and shows its still at once otherwise. Positions are stage
- * pixels. The lower right corner (x > 1560, y > 840) stays free for Teams,
- * with 40 px to spare: nothing below y 800 reaches past x 1520. A rule that
- * overrides a shared class (.slide-title, .map-line) doubles the class, so
- * it wins whatever order the stylesheets load in.
+ * Each of these but kom-i-gang and slutt, which are all there at once, has
+ * one movement per click, under no-preference and off paper, and shows its
+ * still at once otherwise. Positions are stage pixels. The lower right
+ * corner (x > 1560, y > 840) stays free for Teams, with 40 px to spare:
+ * nothing below y 800 reaches past x 1520. A rule that overrides a shared
+ * class (.slide-title, .map-line) doubles the class, so it wins whatever
+ * order the stylesheets load in.
  */
 
 /* Text placed on the stage at a fixed point, next to a map. */
@@ -471,7 +472,7 @@
   display: none;
 }
 
-/* slutt: the line runs on to the audience's app, and the answer lights */
+/* slutt: open to every team, where to go from here, and the logo's crystal */
 
 .slide-title.slutt__title {
   font-size: var(--deck-size-statement);
@@ -495,37 +496,6 @@
 :root:is([data-stil="papir"], [data-stil="dag"]) .slutt {
   --is-kant: var(--map-ink);
   --is-kant-bredde: 6px;
-}
-
-/* Light falls off away from the crystal. */
-.map .slutt__segment,
-.slutt__app .map-station__ring {
-  stroke: color-mix(
-    in srgb,
-    var(--map-ink) var(--slutt-light),
-    var(--map-paper)
-  );
-}
-
-:root:is([data-stil="papir"], [data-stil="dag"]) .slutt__segment,
-:root:is([data-stil="papir"], [data-stil="dag"])
-  .slutt__app
-  .map-station__ring {
-  stroke: color-mix(
-    in srgb,
-    var(--map-ink) var(--slutt-light-papir),
-    var(--map-paper)
-  );
-}
-
-/* The rings cover the joints, so the segments end square under them. */
-.map .slutt__segment {
-  stroke-linecap: butt;
-}
-
-/* Open, like the dashed line: ten dashes round a ring of radius 86. */
-.slutt__ledig .map-station__ring {
-  stroke-dasharray: 30 24.035;
 }
 
 /* The crystal: six prisms of ice round the gold core. */
@@ -562,6 +532,12 @@
   transform-origin: 1460px 590px;
 }
 
+/* The core lights from its own centre. */
+.slutt .map-answer {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
 /* The answer's eyes, in the ink that goes on gold. */
 .slutt__eyes {
   fill: var(--deck-accent-fg);
@@ -572,57 +548,30 @@
   transform-origin: center;
 }
 
-.map .slutt__join.map-line--draw {
-  transition: none;
-}
-
 /*
- * Click 2, one moment: the line reaches the open station, the core lights
- * when it gets there, the branches grow out of it, 70 ms apart, and last
- * the answer opens its eyes. Still by 2 s.
+ * When the slide comes on, one moment: the core lights, the branches grow
+ * out of it, 70 ms apart, and last the answer opens its eyes. Still by
+ * 1.8 s. On paper, in print and without motion the crystal just stands.
  */
 @media (prefers-reduced-motion: no-preference) {
-  :root:not([data-stil="papir"]) .map .slutt__join.map-line--draw {
-    transition: stroke-dashoffset 520ms var(--deck-easing-travel);
+  :root:not([data-stil="papir"]) .slutt[data-i-gang] .map-answer {
+    animation: answer-flash 900ms var(--deck-easing-travel) 200ms backwards;
   }
 
-  :root:not([data-stil="papir"])
-    .slutt
-    .map-answer-flash[data-revealed]
-    .map-answer {
-    animation-delay: 440ms;
+  :root:not([data-stil="papir"]) .slutt[data-i-gang] .slutt__branch {
+    animation: slutt-gren 680ms var(--deck-easing-travel)
+      calc(360ms + var(--i) * 70ms) backwards;
   }
 
-  :root:not([data-stil="papir"])
-    .slutt
-    .map-answer-flash[data-revealed]
-    .map-answer__ring {
-    /* Without fill during the wait, so the ring does not stand there first. */
-    animation-delay: 560ms;
-    animation-fill-mode: none;
+  :root:not([data-stil="papir"]) .slutt[data-i-gang] .slutt__eyes ellipse {
+    animation: slutt-eyes 420ms var(--deck-easing) 1320ms backwards;
   }
+}
 
-  :root:not([data-stil="papir"]) .slutt__branch {
-    transition:
-      transform 680ms var(--deck-easing-travel) calc(600ms + var(--i) * 70ms),
-      opacity 280ms var(--deck-easing) calc(600ms + var(--i) * 70ms);
-  }
-
-  :root:not([data-stil="papir"])
-    .slutt__crystal:not([data-revealed])
-    .slutt__branch {
-    transform: scale(0.3);
+@keyframes slutt-gren {
+  from {
     opacity: 0;
-    transition: none;
-  }
-
-  /* Last, when the crystal stands, the answer opens its eyes, once. */
-  :root:not([data-stil="papir"]) .map .slutt__eyes[data-from] {
-    transition: none;
-  }
-
-  :root:not([data-stil="papir"]) .slutt__eyes[data-revealed] ellipse {
-    animation: slutt-eyes 420ms var(--deck-easing) 1560ms backwards;
+    transform: scale(0.3);
   }
 }
 
@@ -644,47 +593,31 @@
 }
 
 /*
- * Where to go, on click 1: the repo's two kinds of issue, drawn as the
- * buttons people meet there, and the channel for questions. Left of the
- * crystal, and left of x 1520 below y 800.
+ * Where to go from here: what to do, and under it the address, the
+ * largest text after the title, since it is what people write down. Left
+ * of the crystal, and above y 800.
  */
-.slutt__kontakt {
+.slutt__veier {
+  top: 470px;
   left: var(--deck-space-page);
-  top: 680px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 44px;
 }
 
-/* One line each, clear of the crystal's lower branch. */
-.slutt__rad {
-  margin: 0;
-  font-size: 40px;
-  font-weight: var(--deck-weight-strong);
+.slutt__vei dt {
+  color: var(--deck-muted);
+  font-size: var(--deck-size-label);
+  font-weight: 600;
   line-height: 1.2;
-  white-space: nowrap;
 }
 
-.slutt__rad .end-mono {
+.slutt__vei dd {
+  margin: 6px 0 0;
+  font-size: var(--deck-size-heading);
   font-weight: 700;
-}
-
-.slutt__typer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin: 0 0 22px;
-  padding: 0;
-  list-style: none;
-}
-
-.slutt__type {
-  padding: 8px 24px 6px;
-  border: 4px solid var(--map-ink);
-  border-radius: 999px;
-  font-size: var(--deck-size-small);
-  font-weight: var(--deck-weight-strong);
-  line-height: 1.2;
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
 /*
@@ -1003,13 +936,15 @@
 }
 
 /*
- * kom-i-gang: three steps on a line from the top down, with the address of
- * the docs under the first. The stations stand empty, and each click
- * lights one in the colour of who does it.
+ * kom-i-gang: how to start, three steps on a line from the top down, with
+ * the address of the docs under the first. Each station is the colour of
+ * who does it. All there at once, left of the calm globe. It stands on the
+ * globe's background, so its ink and text are the globe's own.
  */
 
-.slide-title.kom-i-gang__tittel {
-  font-size: 80px;
+.kom-i-gang {
+  position: absolute;
+  inset: 0;
 }
 
 .kom-i-gang__punkt--team,
@@ -1030,46 +965,22 @@
   overflow: visible;
 }
 
-/* The way ahead, dashed, and the line that is built over it. */
-.kom-i-gang__planlagt {
+.kom-i-gang__vei {
   fill: none;
-  stroke: var(--map-dim);
-  stroke-width: 10px;
-  stroke-dasharray: 22 18;
-}
-
-.kom-i-gang__bygd {
-  fill: none;
-  stroke: var(--map-ink);
+  stroke: var(--tekst);
   stroke-width: var(--map-line-width);
 }
 
-/* An empty station: a dim ring and its number. */
-.kom-i-gang__tom {
-  fill: var(--map-paper);
-  stroke: var(--map-dim);
-  stroke-width: var(--map-ring-width);
+/* A station: a disc in its colour, the number in the background. */
+.kom-i-gang__stasjon circle {
+  fill: var(--steg-farge);
 }
 
 .kom-i-gang__linje text {
+  fill: var(--bakgrunn);
   font-family: var(--deck-font-display);
   font-size: 60px;
   font-weight: var(--deck-weight-black);
-}
-
-.kom-i-gang__tall-tom {
-  fill: var(--deck-muted);
-}
-
-/* A lit station: a disc in its colour, the number in the paper. */
-.kom-i-gang__tent circle {
-  fill: var(--steg-farge);
-  stroke: var(--steg-farge);
-  stroke-width: var(--map-ring-width);
-}
-
-.kom-i-gang__tent text {
-  fill: var(--map-paper);
 }
 
 .kom-i-gang__steg {
@@ -1078,7 +989,8 @@
   list-style: none;
 }
 
-/* Each step beside its station: the name on the line, the note under. */
+/* Each step beside its station: the name on the line, the note under,
+   ending before the globe. */
 .kom-i-gang__punkt {
   position: absolute;
   top: calc(var(--y) - 50px);
@@ -1086,6 +998,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  max-width: 900px;
 }
 
 .kom-i-gang__navn {
@@ -1100,7 +1013,7 @@
 }
 
 .kom-i-gang__note {
-  color: var(--deck-muted);
+  color: var(--dempet);
   font-size: var(--deck-size-label);
   font-weight: 600;
   line-height: 1.2;
@@ -1120,75 +1033,4 @@
   stroke: var(--steg-farge);
   stroke-width: 5px;
   stroke-linecap: round;
-}
-
-/*
- * A click lights a station: the line draws down to it, the disc fills,
- * and the step slides in beside it. On click 2 the hourglass turns over.
- * On the way in, the viewfinder closes on the code. Each still by 1.2 s.
- */
-@media (prefers-reduced-motion: no-preference) {
-  :root:not([data-stil="papir"]) .kom-i-gang__bygd {
-    stroke-dasharray: 1;
-  }
-
-  :root:not([data-stil="papir"]) .kom-i-gang__bygd[data-from] {
-    visibility: visible;
-    opacity: 1;
-    transition: none;
-  }
-
-  :root:not([data-stil="papir"])
-    .kom-i-gang__bygd[data-from]:not([data-revealed]) {
-    stroke-dashoffset: 1;
-  }
-
-  :root:not([data-stil="papir"]) .kom-i-gang__bygd[data-revealed] {
-    stroke-dashoffset: 0;
-    transition: stroke-dashoffset 420ms var(--deck-easing-travel);
-  }
-
-  :root:not([data-stil="papir"]) .kom-i-gang__tent[data-revealed] {
-    transition: opacity 260ms var(--deck-easing) 300ms;
-  }
-
-  :root:not([data-stil="papir"]) .kom-i-gang__tent[data-revealed] circle {
-    transform-box: fill-box;
-    transform-origin: center;
-    animation: kom-i-gang-tenn 520ms var(--deck-easing-travel) 300ms backwards;
-  }
-
-  :root:not([data-stil="papir"]) .kom-i-gang__punkt[data-from] {
-    transition:
-      opacity 360ms var(--deck-easing) 380ms,
-      transform 520ms var(--deck-easing-travel) 380ms,
-      visibility 0s 380ms;
-  }
-
-  :root:not([data-stil="papir"]) .kom-i-gang__punkt:not([data-revealed]) {
-    transform: translateX(-28px);
-    transition: none;
-  }
-
-  :root:not([data-stil="papir"])
-    .kom-i-gang__punkt[data-revealed]
-    .kom-i-gang__timeglass {
-    animation: kom-i-gang-snu 720ms var(--deck-easing-travel) 900ms backwards;
-  }
-}
-
-@keyframes kom-i-gang-tenn {
-  from {
-    transform: scale(0.6);
-  }
-}
-
-@keyframes kom-i-gang-snu {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(180deg);
-  }
 }

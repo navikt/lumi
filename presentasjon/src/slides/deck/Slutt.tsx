@@ -1,29 +1,27 @@
-import type { Slide } from "../../engine";
+import { type Slide, type SlideProps, useSlide } from "../../engine";
 import { cssVars } from "../../engine/css";
-import { Answer, Line, LineMap, Station } from "../../map";
+import { Answer, LineMap } from "../../map";
 import "./avslutning.css";
 
-const Y = 590;
-/** The apps on the line today: seven, in two teams. */
-const APPS = [200, 330, 460, 590, 720, 850, 980] as const;
-/** The open station at the end of the line, and the core of the crystal. */
-const OPEN_X = 1460;
-const CORE_R = 92;
-/** The planned station, a little smaller, so the gold core covers it. */
-const PLANNED_R = 86;
-
-/**
- * Light falls off away from the answer: the stations far from the crystal
- * are mixed towards the paper. Night gets a steeper fall than paper, where
- * a pale ring would vanish on white.
+/*
+ * The last slide, up while people ask: Lumi is open to every team, and the
+ * two places to go from here, the docs and the channel on Slack. All there
+ * at once. Beside it the snow crystal of the Lumi logo, with the answer
+ * home in its core, as in the snow globe on the cover. When the slide
+ * comes on, the answer lights, the branches grow out of it, and the answer
+ * opens its eyes, once.
  */
-function light(i: number) {
-  const t = i / (APPS.length - 1);
-  return cssVars({
-    "--slutt-light": `${Math.round(35 + 65 * t)}%`,
-    "--slutt-light-papir": `${Math.round(55 + 45 * t)}%`,
-  });
-}
+
+/** The core of the crystal. */
+const X = 1460;
+const Y = 590;
+const CORE_R = 92;
+
+/** Where to go from here: what to do, and the address. */
+const WAYS = [
+  { label: "Les dokumentasjonen", at: "navikt.github.io/lumi" },
+  { label: "Bli med på Slack", at: "#lumi" },
+] as const;
 
 /*
  * The snow crystal of the Lumi logo, drawn as in the snow globe: six
@@ -46,7 +44,7 @@ const CRYSTAL = {
 /** A point on a branch's own axis, turned to the branch's angle. */
 function turn(angleDeg: number, x: number, y: number): string {
   const a = (angleDeg * Math.PI) / 180;
-  const px = OPEN_X + x * Math.cos(a) - y * Math.sin(a);
+  const px = X + x * Math.cos(a) - y * Math.sin(a);
   const py = Y + x * Math.sin(a) + y * Math.cos(a);
   return `${px.toFixed(1)},${py.toFixed(1)}`;
 }
@@ -103,52 +101,16 @@ const BRANCHES = [-90, -30, 30, 90, 150, 210].map(branch);
 /** The answer's eyes, as on the answer in the snow globe. */
 const EYE = { dx: 30, dy: -16, rx: 13, ry: 19 } as const;
 
-/** The two kinds of issue in navikt/lumi, as the repo names them. */
-const ISSUE_TYPES = ["Ønske eller forslag", "Meld fra om feil"] as const;
-
-function Slutt() {
+function Slutt({ active }: SlideProps) {
+  const { mode } = useSlide();
+  const coming = active && mode === "stage";
   return (
-    <div className="slide slutt">
+    <div className="slide slutt" data-i-gang={coming ? "" : undefined}>
       <h2 className="slide-title slutt__title">
         Lumi er åpent for alle team i Nav
       </h2>
-      <LineMap label="En linje med sju stasjoner, en for hver app som bruker Lumi i dag. Stasjonene lysner mot høyre. Linja går stiplet videre til en stor, tom stasjon. Til slutt når linja fram, stasjonen tennes som et gyllent svar med øyne, og snøkrystallen fra Lumi-logoen vokser fram rundt det.">
-        {/* The line, in segments, so each can take the light of its station. */}
-        {APPS.map((x, i) => (
-          <path
-            key={x}
-            d={`M${i === 0 ? -20 : APPS[i - 1]} ${Y} H${x}`}
-            className="map-line slutt__segment"
-            style={light(Math.max(i - 1, 0))}
-          />
-        ))}
-        {/* Open for the next one: dashed, to an empty station. */}
-        <Line
-          points={[
-            [APPS[APPS.length - 1], Y],
-            [OPEN_X - PLANNED_R, Y],
-          ]}
-          dashed
-        />
-        {/* The next app joins the line, the answer lights, the crystal grows. */}
-        <Line
-          points={[
-            [APPS[APPS.length - 1], Y],
-            [OPEN_X - CORE_R, Y],
-          ]}
-          draw
-          from={2}
-          className="slutt__join"
-        />
-        {/* The stations go over the line, so no line shows inside a ring. */}
-        {APPS.map((x, i) => (
-          <g key={x} className="slutt__app" style={light(i)}>
-            <Station x={x} y={Y} r={24} />
-          </g>
-        ))}
-        <Station x={OPEN_X} y={Y} r={PLANNED_R} className="slutt__ledig" />
-
-        <g data-from={2} className="slutt__crystal">
+      <LineMap label="Snøkrystallen fra Lumi-logoen, med et gyllent svar med øyne i kjernen.">
+        <g className="slutt__crystal">
           {BRANCHES.map((b, i) => (
             <g
               key={b.key}
@@ -164,38 +126,21 @@ function Slutt() {
             </g>
           ))}
         </g>
-        <Answer x={OPEN_X} y={Y} r={CORE_R} from={2} flash />
-        <g data-from={2} className="slutt__eyes">
-          <ellipse
-            cx={OPEN_X - EYE.dx}
-            cy={Y + EYE.dy}
-            rx={EYE.rx}
-            ry={EYE.ry}
-          />
-          <ellipse
-            cx={OPEN_X + EYE.dx}
-            cy={Y + EYE.dy}
-            rx={EYE.rx}
-            ry={EYE.ry}
-          />
+        <Answer x={X} y={Y} r={CORE_R} />
+        <g className="slutt__eyes">
+          <ellipse cx={X - EYE.dx} cy={Y + EYE.dy} rx={EYE.rx} ry={EYE.ry} />
+          <ellipse cx={X + EYE.dx} cy={Y + EYE.dy} rx={EYE.rx} ry={EYE.ry} />
         </g>
       </LineMap>
 
-      {/* Where to go: the repo's two kinds of issue, and the channel. */}
-      <div className="end-at slutt__kontakt" data-from={1}>
-        <p className="slutt__rad">
-          Forslag og feil meldes som issues i{" "}
-          <span className="end-mono">navikt/lumi</span>.
-        </p>
-        <ul className="slutt__typer">
-          {ISSUE_TYPES.map((type) => (
-            <li key={type} className="slutt__type">
-              {type}
-            </li>
-          ))}
-        </ul>
-        <p className="slutt__rad">Spørsmål tas i #lumi på Slack.</p>
-      </div>
+      <dl className="end-at slutt__veier">
+        {WAYS.map((way) => (
+          <div key={way.at} className="slutt__vei">
+            <dt>{way.label}</dt>
+            <dd className="end-mono">{way.at}</dd>
+          </div>
+        ))}
+      </dl>
     </div>
   );
 }
@@ -203,6 +148,5 @@ function Slutt() {
 export const slutt: Slide = {
   id: "slutt",
   title: "Lumi er åpent for alle team i Nav",
-  steps: 2,
   Component: Slutt,
 };

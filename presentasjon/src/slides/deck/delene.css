@@ -1,7 +1,8 @@
 /*
  * delene: the parts of Lumi as a map in two lanes. The survey's way is the
  * team's green, the answer's way Lumi's blue, and the answer the only gold.
- * The lanes end at y 790, so the Teams corner stays clear.
+ * The map is drawn at 109 %, so its lanes end at x 1516 and y 920, and the
+ * Teams corner stays clear.
  */
 
 .delene__title {
@@ -17,6 +18,16 @@
 .delene .map-station--dim .map-label {
   font-size: var(--deck-size-small);
   font-weight: 600;
+}
+
+/* The three parts: filled discs with their number, in the map's ink. */
+.delene__del .map-station__ring {
+  fill: var(--map-ink);
+}
+
+.map .delene__nummer {
+  fill: var(--map-paper);
+  font-weight: 800;
 }
 
 .map .delene__kode {
