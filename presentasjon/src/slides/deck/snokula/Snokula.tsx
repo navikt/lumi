@@ -57,16 +57,23 @@ interface SnokulaProps extends SlideProps {
   kamera?: string;
   /** A close-up: the labels on the snow and the rain are left out. */
   naerbilde?: boolean;
+  /** Calm, as on the cover: no storm and no fog round the globe. */
+  rolig?: boolean;
   children: ReactNode;
 }
 
-function Snokula({
+/**
+ * The globe as the background of a slide, with the slide's own content
+ * over it. Used by the chapter slides here and by kom-i-gang.
+ */
+export function Snokula({
   scene: which,
   step,
   active,
   label,
   kamera,
   naerbilde = false,
+  rolig = false,
   children,
 }: SnokulaProps) {
   const suffix = useId().replace(/[^a-zA-Z0-9_-]/g, "");
@@ -91,6 +98,7 @@ function Snokula({
         data-steg={step}
         data-entre={entre ? "" : undefined}
         data-naerbilde={naerbilde ? "" : undefined}
+        data-rolig={rolig ? "" : undefined}
         style={kamera ? ({ "--kamera": kamera } as CSSProperties) : undefined}
       >
         <svg
@@ -130,9 +138,9 @@ function Apning({ step, active }: SlideProps) {
       >
         <h1 className="snokula__navn">Lumi</h1>
         <p className="snokula__hva">
-          Surveyer der svaret
+          Surveyer der svarene
           <br />
-          blir i Nav
+          bor i Nav
         </p>
         <p className="snokula__hvem">Audun Sørheim, Team eSyfo</p>
       </div>
@@ -147,7 +155,7 @@ function Apning({ step, active }: SlideProps) {
 
 export const apning: Slide = {
   id: "lumi",
-  title: "Lumi: surveyer der svaret blir i Nav",
+  title: "Lumi: surveyer der svarene bor i Nav",
   steps: 4,
   Component: Apning,
 };
@@ -220,11 +228,4 @@ export const kapittelHvaKanDereGjore = kapittel(
   "translate(-1825px, -1810px) scale(3)",
   "Nærbilde av appens hus inne i snøkula. I vinduet sitter widgeten.",
   true,
-);
-
-export const kapittelKomIGang = kapittel(
-  "kapittel-kom-i-gang",
-  "Slik kommer dere i gang",
-  "translate(620px, 160px) scale(0.72)",
-  "Hele snøkula, litt på avstand, med stormen rundt.",
 );

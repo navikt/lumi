@@ -1,0 +1,197 @@
+/*
+ * The TanStack Start slides: tanstack-start, for Frontend forum, and
+ * serverkoden, the code behind it, in no room. Lumi's blue is the
+ * dashboard's: the Start line, the call and the reasons.
+ */
+
+/*
+ * tanstack-start: the title and two lines on the map. Next.js is a ring,
+ * dimmed, with its own modules at every stop; the Start line is Lumi's
+ * blue and runs on out of the map. All there at once.
+ */
+.tanstack__title {
+  position: absolute;
+  top: 56px;
+  left: var(--deck-space-page);
+  margin: 0;
+  max-width: 1500px;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-title);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: var(--deck-line-height-tight);
+  text-wrap: balance;
+}
+
+.map .tanstack__ring {
+  stroke: var(--map-dim);
+}
+
+.tanstack__next-stopp circle {
+  fill: var(--map-paper);
+  stroke: var(--map-dim);
+  stroke-width: 8px;
+}
+
+.map .tanstack__start-linje {
+  stroke: var(--farge-lumi);
+}
+
+.tanstack__badge--next rect {
+  fill: var(--map-dim);
+}
+
+.tanstack__badge--start rect {
+  fill: var(--farge-lumi);
+}
+
+.tanstack__stasjon--start .map-station__ring {
+  stroke: var(--farge-lumi);
+}
+
+.map .tanstack__navn {
+  fill: var(--deck-muted);
+}
+
+/*
+ * The trains: one goes round and round the ring, one runs out along the
+ * Start line and on out of the map. Only while the slide is up, on the
+ * stage, with motion. On paper, in print and without motion they are not
+ * there.
+ */
+.tanstack__tog {
+  visibility: hidden;
+  offset-rotate: 0deg;
+}
+
+.tanstack__tog circle {
+  fill: var(--map-ink);
+  stroke: var(--map-paper);
+  stroke-width: 4px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .tanstack[data-i-gang] .tanstack__tog {
+    visibility: visible;
+  }
+
+  :root:not([data-stil="papir"]) .tanstack[data-i-gang] .tanstack__tog--ring {
+    animation: tanstack-rundt 9s linear infinite;
+  }
+
+  :root:not([data-stil="papir"]) .tanstack[data-i-gang] .tanstack__tog--ut {
+    animation: tanstack-ut 6s var(--deck-easing-travel) infinite;
+  }
+}
+
+@keyframes tanstack-rundt {
+  from {
+    offset-distance: 0%;
+  }
+
+  to {
+    offset-distance: 100%;
+  }
+}
+
+/* Out along the line in four seconds, off the map, then a new one. */
+@keyframes tanstack-ut {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+
+  6% {
+    opacity: 1;
+  }
+
+  70%,
+  100% {
+    offset-distance: 100%;
+    opacity: 1;
+  }
+}
+
+/*
+ * serverkoden: the dashboard's own code in two zones, the browser over
+ * Nais. The call and its name on the server are marked, and the request
+ * crosses the edge between the zones. Three parts of the server function
+ * are marked too, each with a leader to its reason. All there at once.
+ */
+.serverkode__title {
+  position: absolute;
+  top: 44px;
+  left: var(--deck-space-page);
+  margin: 0;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-size-heading);
+  font-weight: var(--deck-weight-display);
+  letter-spacing: var(--deck-tracking-display);
+  line-height: var(--deck-line-height-tight);
+}
+
+.serverkode__code {
+  position: absolute;
+  top: var(--kode-top);
+  left: var(--kode-x);
+  margin: 0;
+  color: var(--deck-code-fg);
+  font-family: var(--deck-font-mono);
+  font-size: var(--kode-size);
+  font-variant-ligatures: none;
+  line-height: var(--kode-line);
+  white-space: pre;
+  isolation: isolate;
+}
+
+.serverkode__code code {
+  font: inherit;
+}
+
+.serverkode__kw {
+  font-weight: var(--deck-weight-strong);
+}
+
+.serverkode__str {
+  color: var(--deck-code-string);
+}
+
+.serverkode__punct {
+  color: var(--deck-code-punctuation);
+}
+
+.serverkode__comment {
+  color: var(--deck-muted);
+}
+
+.serverkode__mark {
+  position: relative;
+}
+
+/* A highlighter stroke: a tint, and a bar under the text, in Lumi's blue. */
+.serverkode__marker {
+  position: absolute;
+  z-index: -1;
+  inset: -1px -8px -6px;
+  border-bottom: 6px solid var(--farge-lumi);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--farge-lumi) 24%, transparent);
+}
+
+.map .serverkode__kall,
+.map .serverkode__leder {
+  stroke: var(--farge-lumi);
+}
+
+.serverkode__kart .map-arrow__head {
+  fill: var(--farge-lumi);
+}
+
+.map .serverkode__get,
+.map .serverkode__grunnavn {
+  fill: var(--farge-lumi);
+}
+
+.serverkode__prikk {
+  fill: var(--farge-lumi);
+}

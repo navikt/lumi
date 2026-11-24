@@ -5,9 +5,9 @@ import "./bevis.css";
 /**
  * The question from Frontend forum, without the name of a product, and with
  * the word the answer turns on as the monument. It is not word for word, so
- * it has no quotation marks: the speaker says where it came from. Frontend
- * forum gets it first, as the hook (`sporsmalet`). Produktlederakademiet
- * gets it first too. Faggruppa starts with the snow globe.
+ * it has no quotation marks: the speaker says where it came from.
+ * Produktlederakademiet gets it first, as the hook. Faggruppa and Frontend
+ * forum start with the snow globe.
  *
  * The dot of the question mark is the answer from the snow globe, a gold
  * disc with eyes, looking up at the question. When the slide comes on, it

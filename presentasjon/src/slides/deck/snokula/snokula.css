@@ -453,6 +453,11 @@
   transform: translate(-716px, -674px) scale(1.6);
 }
 
+/* Calm beside the slide's own content, as on the cover: no weather. */
+.snokula[data-rolig] :is(.regn, .vind, .lyn, .taake-bak, .taake-foran) {
+  display: none;
+}
+
 /* The cover: the globe to the right, the name to the left. */
 .snokula[data-scene="1"][data-steg="0"] .kamera {
   transform: translate(470px, 30px) scale(0.92);

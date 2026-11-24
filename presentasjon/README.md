@@ -31,12 +31,12 @@ som er med:
 | Adresse | Rom |
 | --- | --- |
 | `?rom=faggruppa` | Faggruppa Design for fagsystemer |
-| `?rom=frontend` | Frontend forum, med åpningsspørsmålet og de tekniske lysbildene |
+| `?rom=frontend` | Frontend forum, med utviklerens steg og TanStack Start |
 | `?rom=produktledere` | Produktlederakademiet, med åpningsspørsmålet |
 
 Hvilke rom et lysbilde hører til, står i `rooms` på lysbildet. Lysbilder som
-er tatt ut av foredraget for faggruppa, men står i de andre rommene, er merket
-med `utenFaggruppa` i `src/slides/deck/index.ts`.
+er tatt ut av et foredrag, men står i de andre rommene, er merket med `utenom`
+i `src/slides/deck/index.ts`, for eksempel `utenom(["faggruppa"], tallet)`.
 
 Uten `?rom` vises foredraget for faggruppa, og det begynner på snøkula. En
 lenke med et lysbilde i adressen, som `#/lumi/2`, åpner det lysbildet. En

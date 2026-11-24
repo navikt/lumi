@@ -160,7 +160,7 @@ function Segmentering({ step, active }: SlideProps) {
       </dl>
       <p className="segmentering__personvern" data-from={2}>
         <span>Verdier med få varianter.</span>{" "}
-        <span>Aldri person- eller saksnummer.</span>
+        <span>Aldri fødsels- eller saksnummer.</span>
       </p>
     </div>
   );

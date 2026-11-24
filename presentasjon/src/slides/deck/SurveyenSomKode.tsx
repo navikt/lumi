@@ -215,10 +215,10 @@ function SurveyenSomKode() {
 
       <p className="som-kode__price" data-from={2}>
         <span>
-          Surveyen <span className="som-kode__pris">går ikke live</span> når
-          dere trykker «Del med utvikler».
+          Surveyen er <span className="som-kode__pris">ikke ute</span> når dere
+          trykker «Del med utvikler».
         </span>{" "}
-        <span>Utviklerne må oppdatere surveyen i appen.</span>
+        <span>Utvikleren må legge den inn i appen først.</span>
       </p>
     </div>
   );

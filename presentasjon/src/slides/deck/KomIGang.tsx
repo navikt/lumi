@@ -1,23 +1,27 @@
 import type { Slide, SlideProps } from "../../engine";
 import { cssVars, cx } from "../../engine/css";
-import { useBuildMotion } from "./bevisMotion";
+import { Snokula } from "./snokula/Snokula";
 import "./avslutning.css";
 
 /*
- * The first survey in three steps, on a line from the top down: read «Kom
- * i gang» and the terms of use, where the docs are, ask for access for the
- * app, and make the survey in Surveyverksted, which anyone on the team can
- * do while they wait. The three stations stand empty from the
- * start, and each click lights one in the colour of who does it: the
- * team's green, and Lumi's blue for access, the one step where the team
- * waits, marked with an hourglass. The line is dashed until the step
- * before is done. Source: «Hva er Lumi?», «Koble til backend» and
- * «Bruksvilkår» in the docs.
+ * How to start, on one slide, all there at once: the speaker talks through
+ * it without clicking. The chapter's name over the three steps on the
+ * left, and the globe on the right, smaller and calm, as on the cover,
+ * with the answer home in Lumi's crystal. The steps stand on a line from
+ * the top down: read «Kom i gang» and the terms of use, where the docs
+ * are, ask for access for the app, and make the survey in Surveyverksted,
+ * which anyone on the team can do while they wait. Each station is the
+ * colour of who does it: the team's green, and Lumi's blue for access,
+ * the one step where the team waits, marked with an hourglass. Source:
+ * «Hva er Lumi?», «Koble til backend» and «Bruksvilkår» in the docs.
  */
 
 const LINE_X = 184;
-const STEP_Y = [360, 566, 772] as const;
+const STEP_Y = [384, 574, 764] as const;
 const STATION_R = 56;
+
+/** The globe, right of the steps and clear above the Teams corner. */
+const KAMERA = "translate(984px, 124px) scale(0.62)";
 
 const STEPS = [
   {
@@ -39,7 +43,7 @@ const STEPS = [
   },
 ] as const;
 
-/** Waiting: an hourglass, in Lumi's blue. */
+/** Waiting: an hourglass, in Lumi's blue, turned so the sand runs. */
 function Timeglass() {
   return (
     <svg
@@ -56,53 +60,32 @@ function Timeglass() {
   );
 }
 
-function KomIGang({ step, active }: SlideProps) {
-  const motion = useBuildMotion(step, active);
+function KomIGang({ active }: SlideProps) {
   return (
-    <div className="slide kom-i-gang" data-motion={motion ? "" : undefined}>
-      <h2 className="slide-title kom-i-gang__tittel">
-        Tre steg til den første surveyen
-      </h2>
-      <svg
-        className="kom-i-gang__linje"
-        viewBox="0 0 1920 1080"
-        aria-hidden="true"
-      >
-        {/* Planned: the whole way, dashed, under the line that is built. */}
-        <path
-          d={`M${LINE_X} ${STEP_Y[0]} V${STEP_Y[2]}`}
-          className="kom-i-gang__planlagt"
-        />
-        {[1, 2].map((i) => (
+    <Snokula
+      scene="k"
+      step={0}
+      active={active}
+      kamera={KAMERA}
+      rolig
+      label="Snøkula til høyre, rolig, med svaret i kjernen av krystallen."
+    >
+      <h2 className="snokula__kapittel">Slik kommer dere i gang</h2>
+      <div className="kom-i-gang">
+        <svg
+          className="kom-i-gang__linje"
+          viewBox="0 0 1920 1080"
+          aria-hidden="true"
+        >
           <path
-            key={i}
-            d={`M${LINE_X} ${STEP_Y[i - 1]} V${STEP_Y[i]}`}
-            pathLength={1}
-            className="kom-i-gang__bygd"
-            data-from={i + 1}
+            d={`M${LINE_X} ${STEP_Y[0]} V${STEP_Y[STEP_Y.length - 1]}`}
+            className="kom-i-gang__vei"
           />
-        ))}
-        {STEPS.map((s, i) => (
-          <g
-            key={s.label}
-            className={`kom-i-gang__stasjon kom-i-gang__stasjon--${s.tone}`}
-          >
-            <circle
-              cx={LINE_X}
-              cy={STEP_Y[i]}
-              r={STATION_R}
-              className="kom-i-gang__tom"
-            />
-            <text
-              x={LINE_X}
-              y={STEP_Y[i] + 4}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              className="kom-i-gang__tall-tom"
+          {STEPS.map((s, i) => (
+            <g
+              key={s.label}
+              className={`kom-i-gang__stasjon kom-i-gang__stasjon--${s.tone}`}
             >
-              {i + 1}
-            </text>
-            <g className="kom-i-gang__tent" data-from={i + 1}>
               <circle cx={LINE_X} cy={STEP_Y[i]} r={STATION_R} />
               <text
                 x={LINE_X}
@@ -113,36 +96,34 @@ function KomIGang({ step, active }: SlideProps) {
                 {i + 1}
               </text>
             </g>
-          </g>
-        ))}
-      </svg>
-      <ol className="kom-i-gang__steg">
-        {STEPS.map((s, i) => (
-          <li
-            key={s.label}
-            className={`kom-i-gang__punkt kom-i-gang__punkt--${s.tone}`}
-            style={cssVars({ "--y": `${STEP_Y[i]}px` })}
-            data-from={i + 1}
-          >
-            <span className="kom-i-gang__navn">
-              {s.label}
-              {"waits" in s && <Timeglass />}
-            </span>
-            <span
-              className={cx("kom-i-gang__note", "address" in s && "end-mono")}
+          ))}
+        </svg>
+        <ol className="kom-i-gang__steg">
+          {STEPS.map((s, i) => (
+            <li
+              key={s.label}
+              className={`kom-i-gang__punkt kom-i-gang__punkt--${s.tone}`}
+              style={cssVars({ "--y": `${STEP_Y[i]}px` })}
             >
-              {s.note}
-            </span>
-          </li>
-        ))}
-      </ol>
-    </div>
+              <span className="kom-i-gang__navn">
+                {s.label}
+                {"waits" in s && <Timeglass />}
+              </span>
+              <span
+                className={cx("kom-i-gang__note", "address" in s && "end-mono")}
+              >
+                {s.note}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </Snokula>
   );
 }
 
 export const komIGang: Slide = {
   id: "kom-i-gang",
-  title: "Tre steg til den første surveyen",
-  steps: 3,
+  title: "Slik kommer dere i gang",
   Component: KomIGang,
 };

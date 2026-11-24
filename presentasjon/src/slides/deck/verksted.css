@@ -213,10 +213,10 @@
 }
 
 /*
- * The film slides, samme-utkast and bare-teamet: one recording at its own
- * size (1680×760, UI text about 28 px on the stage), the title beside it,
- * and the tag «Opptak med testdata». The window ends at y 800, so the
- * Teams corner keeps its 40 px margin.
+ * The film slide, bare-teamet: one recording at its own size (1680×760,
+ * UI text about 28 px on the stage), the title beside it, and the tag
+ * «Opptak med testdata». The window ends at y 800, so the Teams corner
+ * keeps its 40 px margin. samme-utkast shows its stills in the same frame.
  */
 
 .verksted-film__window {
@@ -252,11 +252,14 @@
 }
 
 /*
- * samme-utkast: the title over the film, the tag under it. The room meets
- * Surveyverksted here for the first time, so the name is the largest
- * thing in the title, after what you do there in the team's green.
+ * samme-utkast: Surveyverksted in four steps, one still per click. The
+ * room meets Surveyverksted here for the first time, so the name is the
+ * largest thing in the title, after what you do there in the team's green.
+ * The still fills a window with the film's frame, 1290 × 880 from
+ * (112, 140). The line of steps stands right of it, above the Teams
+ * corner, and the step on screen is the team's green.
  */
-.verksted-film--bottom .verksted-film__title {
+.verksted-steg .verksted-film__title {
   top: 22px;
   display: flex;
   align-items: baseline;
@@ -277,15 +280,84 @@
   letter-spacing: var(--deck-tracking-display);
 }
 
-.verksted-film--bottom .verksted-film__window {
-  top: 128px;
-  height: 672px;
+.verksted-steg__tag {
+  position: absolute;
+  top: 46px;
+  right: var(--deck-space-page);
 }
 
-.verksted-film__tag {
+.verksted-steg__window {
+  top: 140px;
+  width: 1290px;
+  height: 880px;
+}
+
+.verksted-steg__bilde {
   position: absolute;
-  top: 826px;
-  left: var(--deck-space-page);
+  top: 0;
+  left: 0;
+  display: block;
+  max-width: none;
+  height: auto;
+  opacity: 0;
+}
+
+.verksted-steg__bilde[data-vist] {
+  opacity: 1;
+}
+
+/* The way travelled, in the team's green, over the whole line, dimmed. */
+.map .verksted-steg__rute {
+  stroke: var(--farge-team);
+  stroke-dasharray: 1;
+  stroke-dashoffset: var(--igjen);
+}
+
+.verksted-steg__stopp circle {
+  fill: var(--map-paper);
+  stroke: var(--map-dim);
+  stroke-width: var(--map-ring-width);
+}
+
+.verksted-steg__stopp--gjort circle {
+  stroke: var(--farge-team);
+}
+
+.verksted-steg__stopp--her circle {
+  fill: var(--farge-team);
+  stroke: var(--farge-team);
+}
+
+.map .verksted-steg__stopp--senere .verksted-steg__navn {
+  fill: var(--deck-muted);
+}
+
+.map .verksted-steg__stopp--her .verksted-steg__navn {
+  fill: var(--farge-team);
+}
+
+/*
+ * A click fades in the next page, or scrolls the editor down to the
+ * preview. The green runs on to the next stop, and the ring draws itself
+ * when the still has settled. On paper and without motion it is just there.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-stil="papir"]) .verksted-steg__bilde {
+    transition:
+      opacity 450ms var(--deck-easing),
+      transform 1100ms var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"]) .map .verksted-steg__rute {
+    transition: stroke-dashoffset 700ms var(--deck-easing-travel);
+  }
+
+  :root:not([data-stil="papir"]) .verksted-steg__stopp circle,
+  :root:not([data-stil="papir"]) .map .verksted-steg__navn {
+    transition:
+      fill 300ms var(--deck-easing),
+      stroke 300ms var(--deck-easing);
+  }
 }
 
 /*
