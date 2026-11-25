@@ -26,19 +26,19 @@ repositories {
 }
 
 val ktorVersion = "3.6.1"
-val logbackVersion = "1.6.6"
+val logbackVersion = "1.6.7"
 val logstashVersion = "9.0"
 val postgresVersion = "42.7.14"
 val hikariVersion = "7.1.0"
-val flywayVersion = "13.12.1"
-val kotestVersion = "6.2.6"
+val flywayVersion = "13.12.2"
+val kotestVersion = "6.2.7"
 val mockkVersion = "1.14.12"
 val testcontainersVersion = "1.21.4"
 val tokenSupportVersion = "5.0.13"
 val exposedVersion = "1.6.1"
 val micrometerVersion = "1.17.2"
 val log4jVersion = "2.26.1"
-val nettyVersion = "4.2.20.Final"
+val nettyVersion = "4.2.21.Final"
 
 dependencies {
     implementation(platform("io.netty:netty-bom:$nettyVersion"))
