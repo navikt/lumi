@@ -11,6 +11,14 @@ function draftField(target: import("@playwright/test").Page) {
   return target.getByRole("textbox", { name: "Spørsmålstekst" }).first();
 }
 
+/**
+ * The survey in the preview. The preview also holds the choice of display,
+ * which is a group of radios of its own.
+ */
+function surveyIn(stage: import("@playwright/test").Locator) {
+  return stage.locator('[class*="stageViewport"]');
+}
+
 /** These scenarios exercise the detailed editor; the simple flow has its own suite. */
 async function openAdvancedEditor(page: import("@playwright/test").Page) {
   await page.getByText("Avanserte innstillinger", { exact: true }).click();
@@ -135,8 +143,13 @@ test("creates, edits, previews and shares a survey draft", async ({ page }) => {
   await expect(
     page.getByText("Første delte versjon i prosjektet."),
   ).toBeVisible();
+  // The same version as the example for the app below it, which sends the
+  // answers with `transport={{ endpoint }}`.
   await expect(
-    page.getByText("pnpm add @navikt/lumi-survey@^2.2.1", { exact: true }),
+    page.getByText("pnpm add @navikt/lumi-survey@^2.5.0", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("// Krever @navikt/lumi-survey 2.5.0 eller nyere."),
   ).toBeVisible();
 
   // The frozen revision is interactive right on the page
@@ -1301,7 +1314,7 @@ test("a visibility condition set in the editor gates the question live in the st
   await expect(
     stage.getByRole("textbox", { name: /Hva kan vi gjøre bedre/ }),
   ).not.toBeVisible({ timeout: 10000 });
-  await stage.getByRole("radio").nth(2).click();
+  await surveyIn(stage).getByRole("radio").nth(2).click();
   await expect(
     stage.getByRole("textbox", { name: /Hva kan vi gjøre bedre/ }),
   ).toBeVisible();
@@ -1393,7 +1406,7 @@ test("an any/all group over two conditions gates the question live in the stage"
   ).not.toBeVisible({
     timeout: 10000,
   });
-  await stage.getByRole("radio").nth(3).click();
+  await surveyIn(stage).getByRole("radio").nth(3).click();
   await expect(
     stage.getByRole("radiogroup", { name: "Vil du utdype?" }),
   ).not.toBeVisible();
@@ -1405,7 +1418,7 @@ test("an any/all group over two conditions gates the question live in the stage"
   await expect(
     stage.getByRole("radiogroup", { name: "Vil du utdype?" }),
   ).not.toBeVisible({ timeout: 10000 });
-  await stage.getByRole("radio").nth(3).click();
+  await surveyIn(stage).getByRole("radio").nth(3).click();
   await expect(
     stage.getByRole("radiogroup", { name: "Vil du utdype?" }),
   ).toBeVisible();
@@ -1423,7 +1436,7 @@ test("an any/all group over two conditions gates the question live in the stage"
   await expect(
     stage.getByRole("radiogroup", { name: "Vil du utdype?" }),
   ).not.toBeVisible({ timeout: 10000 });
-  await stage.getByRole("radio").nth(3).click();
+  await surveyIn(stage).getByRole("radio").nth(3).click();
   await expect(
     stage.getByRole("radiogroup", { name: "Vil du utdype?" }),
   ).toBeVisible();
@@ -1471,7 +1484,7 @@ test("follow-up branches read live in the cards and in the flow overview", async
     page.locator("article").getByText(text, { exact: true });
   await expect(cardChips("Vises nå")).toHaveCount(0);
   await expect(cardChips("Skjult nå")).toHaveCount(2);
-  await stage.getByRole("radio").first().click();
+  await surveyIn(stage).getByRole("radio").first().click();
   await expect(cardChips("Vises nå")).toHaveCount(2);
   await expect(cardChips("Skjult nå")).toHaveCount(0);
 

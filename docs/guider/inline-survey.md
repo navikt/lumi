@@ -8,6 +8,8 @@ title: Vis surveyen ved innholdet
 
 `LumiSurveyDock` viser surveyen i et panel nederst i vinduet. Begge komponentene bruker den samme filen fra Surveyverksted og sender svarene på samme måte.
 
+I Surveyverksted velger den som lager surveyen, **Ved innholdet** under **Visning**, og kan skrive hvor surveyen skal stå. Valget og plasseringen står på versjonssiden sammen med et eksempel med `LumiSurveyInline`. Eksempelet setter `surface: "inline"` i `context.tags`, og `placement` med et kort navn laget av plasseringen. Valget og plasseringen følger ikke med i den kopierte TypeScript-filen, så appen bestemmer selv hvilken komponent den bruker, og hvor den står. Se [Hvor og når brukeren ser surveyen](/kom-i-gang/lag-survey#visning).
+
 ## Sett inn komponenten
 
 Installer pakken og importer stilarkene som i [Installer widgeten](/kom-i-gang/installer-widget). Sett så `LumiSurveyInline` der surveyen skal stå:

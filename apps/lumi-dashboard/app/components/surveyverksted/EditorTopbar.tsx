@@ -65,6 +65,8 @@ export const EditorTopbar = memo(function EditorTopbar({
   // Announce only meaningful transitions to screen readers: errors, the
   // FIRST successful save, and recovery after an error. Routine autosaves
   // stay quiet so the live region never narrates every keystroke pause.
+  // Recovery can come without a save, when the author goes back to what is
+  // saved, and the error must not stay in the live region then.
   const [announcement, setAnnouncement] = useState("");
   const previousSaveState = useRef<SaveState>(saveState);
   const hasAnnouncedSave = useRef(false);
@@ -84,8 +86,8 @@ export const EditorTopbar = memo(function EditorTopbar({
     }
     if (
       saveState === "saved" &&
-      previous === "saving" &&
-      (!hasAnnouncedSave.current || lastWasError.current)
+      (lastWasError.current ||
+        (previous === "saving" && !hasAnnouncedSave.current))
     ) {
       setAnnouncement("Lagret");
       hasAnnouncedSave.current = true;

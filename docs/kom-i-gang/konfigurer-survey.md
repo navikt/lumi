@@ -35,6 +35,8 @@ Legg `FeedbackWidget` på siden der dere vil samle tilbakemeldinger. `survey` er
 
 `LumiSurveyDock` viser surveyen i et panel nederst i vinduet. Spør surveyen om en bestemt del av siden, kan dere sette den inn ved innholdet med `LumiSurveyInline`. Se [Vis surveyen ved innholdet](/guider/inline-survey).
 
+På versjonssiden i Surveyverksted står det under **Visning** hvilken av de to som er valgt for surveyen, og under **Slik viser appen surveyen** står et eksempel med den komponenten. Eksempelet importerer fra `@navikt/lumi-survey/client`, som også virker i en serverkomponent i Next.js. Bruker appen `"moduleResolution": "node"` i `tsconfig.json`, importerer dere fra `@navikt/lumi-survey` i en fil med `"use client"` øverst, se [Next.js App Router](#next-js). I et ESM-prosjekt med `"moduleResolution": "node16"` eller `"nodenext"` må en relativ import ha filendelsen, så dere importerer dokumentet fra `./survey.js`.
+
 ### Send svarene {#send-svarene}
 
 Med `{ endpoint }` som `transport` sender widgeten svarene selv. Den sender `submission.transportPayload` som JSON med `POST` til `endpoint`, og viser takkesiden bare når backenden svarer med 2xx. En videresending, for eksempel til innlogging, og en nettside med status 200 regnes som feil.

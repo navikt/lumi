@@ -33,3 +33,40 @@
   width: min(34rem, 100% - 2 * var(--ax-space-16));
   margin: 6rem auto;
 }
+
+/* A survey at the content can be longer than the window. */
+.previewSurface[data-mode="inline"] {
+  overflow: visible;
+}
+
+.inlinePage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-16);
+  width: min(48rem, 100% - 2 * var(--ax-space-16));
+  margin-inline: auto;
+  padding-block: 5.5rem var(--ax-space-48);
+}
+
+.exampleContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-8);
+  /* A placement note can be one long word, and a phone is narrow. */
+  overflow-wrap: anywhere;
+  padding: var(--ax-space-20);
+  background: var(--ax-bg-default);
+  border: 1px dashed var(--ax-border-neutral);
+  border-radius: var(--ax-radius-12);
+}
+
+.exampleLabel {
+  color: var(--ax-text-neutral-subtle);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.placementLabel {
+  font-weight: 600;
+}

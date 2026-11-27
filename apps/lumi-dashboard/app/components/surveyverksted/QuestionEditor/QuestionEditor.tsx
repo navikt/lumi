@@ -32,6 +32,7 @@ import {
   validateSurveyDocumentV1,
 } from "@navikt/lumi-survey";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { SurveyPresentation } from "~/types/surveyAuthoring";
 import { buildConditionSummaries } from "~/utils/conditionSummary";
 import {
   deleteFromDocument,
@@ -56,6 +57,10 @@ import {
   isSurveyTemplatePlaceholderValue,
   type QuestionTypeId,
 } from "~/utils/surveyDocument";
+import {
+  type InlinePreviewWidth,
+  PresentationControls,
+} from "../PresentationControls";
 import { StageSurface } from "../StageSurface";
 import { QuestionAudience } from "./QuestionAudience";
 import styles from "./questionEditor.module.css";
@@ -66,12 +71,24 @@ interface Props {
   surveyId: string;
   onChange: (document: SurveyDocumentV1) => void;
   onAdvanced: () => void;
+  /** Where the survey is shown. Saved with the draft, beside the document. */
+  presentation: SurveyPresentation;
+  onPresentationChange: (presentation: SurveyPresentation) => void;
+  /** True when the API did not say which display the draft has. */
+  presentationUnknown?: boolean;
+  inlineWidth: InlinePreviewWidth;
+  onInlineWidthChange: (width: InlinePreviewWidth) => void;
 }
 export function QuestionEditor({
   document,
   surveyId,
   onChange,
   onAdvanced,
+  presentation,
+  onPresentationChange,
+  presentationUnknown = false,
+  inlineWidth,
+  onInlineWidthChange,
 }: Props) {
   const [selected, setSelected] = useState(document.pages[0].questions[0].id);
   const [selectedScreen, setSelectedScreen] = useState<
@@ -100,6 +117,8 @@ export function QuestionEditor({
   useEffect(() => {
     if (document !== lastOwnChange.current) {
       setHistory([]);
+      // A notice can offer the undo that is gone now.
+      setNotice("");
       editSession.current = null;
       lastOwnChange.current = document;
     }
@@ -162,6 +181,13 @@ export function QuestionEditor({
     setError("");
     editSession.current = null;
     setFocusNonce((n) => n + 1);
+  }
+  // The display is not a part of the document, so undo leaves it as chosen
+  // and still takes back the edits made before it, as the advanced editor
+  // does. Typing after the change starts a new step to undo.
+  function changePresentation(next: SurveyPresentation) {
+    editSession.current = null;
+    onPresentationChange(next);
   }
   function undo() {
     const last = history.at(-1);
@@ -1027,6 +1053,17 @@ export function QuestionEditor({
                 ? "Viser alle spørsmålene på siden. Prøv hele undersøkelsen for å se hvem som får hva."
                 : "Starter på valgt side og viser alle spørsmålene på hver side. Prøv hele undersøkelsen for å se hvem som får hva."}
         </Detail>
+        {/* The text of the welcome and thank-you pages is shown as text, not
+            in the widget, so the choice of display would change nothing. */}
+        {mode === "build" && selectedScreen ? null : (
+          <PresentationControls
+            presentation={presentation}
+            onChange={changePresentation}
+            unknown={presentationUnknown}
+            inlineWidth={inlineWidth}
+            onInlineWidthChange={onInlineWidthChange}
+          />
+        )}
         {mode === "build" && selectedScreen ? (
           <VStack gap="space-16">
             <Heading size="medium" level="3">
@@ -1069,6 +1106,8 @@ export function QuestionEditor({
             }
             restartOnPageChange={mode === "try"}
             showProgress={mode === "try"}
+            presentation={presentation}
+            inlineWidth={inlineWidth}
             onStepChange={mode === "build" ? followPreview : undefined}
             successTitle="Takk for svaret"
             successBody="Ingen svar ble sendt."

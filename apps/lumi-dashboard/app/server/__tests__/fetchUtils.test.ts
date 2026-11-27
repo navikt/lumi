@@ -1,9 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { logger } from "~/server/logger";
 import { BadGatewayError } from "~/server/serverFnStatus";
 import { ApiErrorException } from "~/types/errors";
 import { QuestionTrendResponseSchema } from "~/types/schemas";
-import { handleApiResponse, parseApiAnswer } from "../fetchUtils";
+import { UNREADABLE_WRITE_ANSWER_MESSAGE } from "~/utils/apiErrorMessages";
+import {
+  handleApiResponse,
+  parseApiAnswer,
+  readWriteAnswer,
+} from "../fetchUtils";
 
 vi.mock("~/server/logger", () => ({
   logger: { warn: vi.fn(), error: vi.fn() },
@@ -110,6 +116,27 @@ describe("handleApiResponse", () => {
       "Backend error (unknown format)",
     );
     expect(mockLogger.error).not.toHaveBeenCalled();
+  });
+});
+
+describe("readWriteAnswer", () => {
+  const schema = z.object({ id: z.string() });
+
+  it("reads the answer to a write", async () => {
+    await expect(
+      readWriteAnswer(new Response(JSON.stringify({ id: "p1" })), schema),
+    ).resolves.toEqual({ id: "p1" });
+  });
+
+  it.each([
+    ["cannot be read", '{"id": "p1", "na'],
+    ["is null", "null"],
+    ["breaks the contract", '{"id": 1}'],
+  ])("says that the change may be made when the answer %s", async (_, body) => {
+    const answer = readWriteAnswer(new Response(body), schema);
+
+    await expect(answer).rejects.toBeInstanceOf(BadGatewayError);
+    await expect(answer).rejects.toThrow(UNREADABLE_WRITE_ANSWER_MESSAGE);
   });
 });
 

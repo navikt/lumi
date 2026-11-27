@@ -5,10 +5,7 @@ import type {
   SurveyPageV1,
   SurveyQuestionV1,
 } from "@navikt/lumi-survey";
-import {
-  evaluateVisibility,
-  validateSurveyDocumentV1,
-} from "@navikt/lumi-survey";
+import { validateSurveyDocumentV1 } from "@navikt/lumi-survey";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useBlocker } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -19,6 +16,10 @@ import {
 } from "~/components/surveyverksted/EditorTopbar";
 import { FlowOverview } from "~/components/surveyverksted/FlowOverview";
 import { PageRail } from "~/components/surveyverksted/PageRail";
+import {
+  changePresentation,
+  type InlinePreviewWidth,
+} from "~/components/surveyverksted/PresentationControls";
 import {
   PreviewStage,
   STAGE_ENVIRONMENT_TAG,
@@ -39,18 +40,31 @@ import {
   fetchSurveyAuthoringRevisionsServerFn,
   saveSurveyAuthoringDraftServerFn,
 } from "~/server/actions";
-import type {
-  SurveyAuthoringProject,
-  SurveyAuthoringProjectSummary,
+import {
+  isDraftAnswer,
+  isRevisionAnswer,
+  presentationAsStored,
+  type SurveyAuthoringProject,
+  type SurveyAuthoringProjectSummary,
+  type SurveyPresentation,
+  savedAsSent,
+  withPresentation,
+  withStoredPresentation,
 } from "~/types/surveyAuthoring";
 import {
-  isLumiApiWriteTimeoutError,
   LUMI_API_WRITE_TIMEOUT_MESSAGE,
+  UNREADABLE_WRITE_ANSWER_MESSAGE,
 } from "~/utils/apiErrorMessages";
 import { buildConditionSummaries } from "~/utils/conditionSummary";
 import {
+  computeLiveVisibility,
+  type PreviewViewport,
+} from "~/utils/liveVisibility";
+import {
   isDraftConflictError,
-  isRetryableSaveError,
+  isRetryable,
+  PresentationNotSavedError,
+  saveFailureOf,
 } from "~/utils/surveyAuthoringErrors";
 import type {
   ReferenceableQuestion,
@@ -101,7 +115,27 @@ interface EditableDraft {
   name: string;
   surveyId: string;
   document: SurveyDocumentV1;
+  presentation: SurveyPresentation;
 }
+
+/**
+ * What the server holds when a save failed on the way: the request may have
+ * reached it. No draft has this fingerprint, so the draft is sent again.
+ */
+const SAVE_NOT_KNOWN = "";
+
+/**
+ * The draft as text, to tell whether it has changed since it was saved. It is
+ * read as the API stores it, so a name, survey id or placement note that
+ * differs only in spaces at its ends is no change.
+ */
+const fingerprintOf = (draft: EditableDraft) =>
+  JSON.stringify({
+    name: draft.name.trim(),
+    surveyId: draft.surveyId.trim(),
+    document: draft.document,
+    presentation: presentationAsStored(draft.presentation),
+  });
 
 type UndoState =
   | {
@@ -133,8 +167,17 @@ function SurveyWorkshopEditorRoute() {
   // external changes surface as 409 conflicts on save instead.
   const projectQuery = useQuery({
     queryKey: ["survey-authoring-project", team, projectId],
+    // A server from before the display choice existed can answer while a
+    // new version is rolled out. Its answer has no presentation.
     queryFn: () =>
-      fetchSurveyAuthoringProjectServerFn({ data: { team, projectId } }),
+      fetchSurveyAuthoringProjectServerFn({ data: { team, projectId } }).then(
+        (answer) => {
+          if (!isDraftAnswer(answer, team, projectId)) {
+            throw new Error("Svaret er ikke utkastet");
+          }
+          return withPresentation(answer);
+        },
+      ),
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
@@ -176,15 +219,22 @@ function SurveyWorkshopEditor({
     name: project.name,
     surveyId: project.surveyId,
     document: project.document,
+    presentation: project.presentation,
   }));
   const [draftVersion, setDraftVersion] = useState(project.draftVersion);
   const [savedFingerprint, setSavedFingerprint] = useState(() =>
-    JSON.stringify({
-      name: project.name,
-      surveyId: project.surveyId,
-      document: project.document,
-    }),
+    fingerprintOf(project),
   );
+  // An API from before the display choice existed does not say which one
+  // the draft has. The editor then sends none, so the API keeps the stored
+  // choice, and the author cannot change it until the page is opened again.
+  // That holds also when a later answer says which choice is stored: the
+  // draft here still has the floating panel that was shown in its place.
+  const [presentationKnown] = useState(() => !project.presentationUnknown);
+  // The choice the API holds, as far as the editor knows.
+  const storedPresentationRef = useRef(project.presentation);
+  // The width of the preview is a way to look at the survey, not a part of it.
+  const [inlineWidth, setInlineWidth] = useState<InlinePreviewWidth>("full");
   const [selectedPageId, setSelectedPageId] = useState(
     project.document.pages[0].id,
   );
@@ -204,6 +254,8 @@ function SurveyWorkshopEditor({
   const [stageAnswers, setStageAnswers] = useState<
     Record<string, LumiSurveyAnswerValue>
   >({});
+  // The page the stage shows the survey on, which decides its device type.
+  const [stageViewport, setStageViewport] = useState<PreviewViewport>();
   const [repairNoticeVisible, setRepairNoticeVisible] = useState(false);
   const repairNoticeRef = useRef<HTMLDivElement>(null);
 
@@ -215,7 +267,7 @@ function SurveyWorkshopEditor({
       }),
   });
 
-  const fingerprint = useMemo(() => JSON.stringify(draft), [draft]);
+  const fingerprint = useMemo(() => fingerprintOf(draft), [draft]);
   const hasRequiredMetadata = Boolean(
     draft.name.trim() && draft.surveyId.trim(),
   );
@@ -223,7 +275,11 @@ function SurveyWorkshopEditor({
   const saveAttemptsRef = useRef(0);
   const uncertainSaveRef = useRef<Error | null>(null);
   const editorMountedRef = useRef(true);
-  const clearUncertainCaches = useCallback(() => {
+  // The cached draft can differ from what the server holds: after a
+  // conflict, or after a save the server may have stored without this editor
+  // knowing it. Opening the draft again then fetches it.
+  const cacheMayBeStaleRef = useRef(false);
+  const clearDraftCaches = useCallback(() => {
     queryClient.removeQueries({
       queryKey: ["survey-authoring-project", project.team, project.id],
       exact: true,
@@ -232,37 +288,30 @@ function SurveyWorkshopEditor({
       queryKey: ["survey-authoring-projects", project.team],
     });
   }, [project.id, project.team, queryClient]);
+  const noteCacheMayBeStale = useCallback(() => {
+    cacheMayBeStaleRef.current = true;
+    // A request can settle after the author has left the editor.
+    if (!editorMountedRef.current) clearDraftCaches();
+  }, [clearDraftCaches]);
 
   useEffect(() => {
     editorMountedRef.current = true;
     return () => {
       editorMountedRef.current = false;
-      if (uncertainSaveRef.current) clearUncertainCaches();
+      if (cacheMayBeStaleRef.current) clearDraftCaches();
     };
-  }, [clearUncertainCaches]);
+  }, [clearDraftCaches]);
 
-  const saveMutation = useMutation({
-    mutationFn: (variables: EditableDraft & { expectedVersion: number }) =>
-      saveSurveyAuthoringDraftServerFn({
-        data: {
-          team: project.team,
-          projectId: project.id,
-          expectedVersion: variables.expectedVersion,
-          name: variables.name,
-          surveyId: variables.surveyId,
-          document: variables.document,
-        },
-      }),
-    onSuccess: (saved, variables) => {
-      saveAttemptsRef.current = 0;
+  // What the server saved: `sent` is the draft that was sent, with the
+  // presentation the server holds now.
+  const recordSaved = useCallback(
+    (saved: SurveyAuthoringProject, sent: EditableDraft) => {
+      if (!saved.presentationUnknown) {
+        storedPresentationRef.current = saved.presentation;
+      }
+      cacheMayBeStaleRef.current = false;
       setDraftVersion(saved.draftVersion);
-      setSavedFingerprint(
-        JSON.stringify({
-          name: variables.name,
-          surveyId: variables.surveyId,
-          document: variables.document,
-        }),
-      );
+      setSavedFingerprint(fingerprintOf(sent));
       // Keep the caches authoritative: reopening the editor within staleTime
       // must hand back the saved draft, not the version from first mount.
       // While THIS editor stays mounted, cache updates never touch its state.
@@ -279,6 +328,7 @@ function SurveyWorkshopEditor({
                   ...candidate,
                   name: saved.name,
                   surveyId: saved.surveyId,
+                  presentation: saved.presentation,
                   draftVersion: saved.draftVersion,
                   updatedAt: saved.updatedAt,
                 }
@@ -286,28 +336,86 @@ function SurveyWorkshopEditor({
           ),
       );
     },
-    onError: (error) => {
+    [project.id, project.team, queryClient],
+  );
+
+  const saveMutation = useMutation({
+    mutationFn: async (
+      variables: EditableDraft & { expectedVersion: number },
+    ) => {
+      const answer: SurveyAuthoringProject =
+        await saveSurveyAuthoringDraftServerFn({
+          data: {
+            team: project.team,
+            projectId: project.id,
+            expectedVersion: variables.expectedVersion,
+            name: variables.name,
+            surveyId: variables.surveyId,
+            document: variables.document,
+            // Left out, the API keeps the choice it has.
+            ...(presentationKnown
+              ? { presentation: variables.presentation }
+              : {}),
+          },
+        });
+      // A save moves the draft one version on. Any other answer, such as an
+      // old draft from a proxy, says nothing about what is saved.
+      if (
+        !isDraftAnswer(answer, project.team, project.id) ||
+        answer.draftVersion !== variables.expectedVersion + 1
+      ) {
+        throw new Error(UNREADABLE_WRITE_ANSWER_MESSAGE);
+      }
+      const saved = presentationKnown
+        ? withStoredPresentation(answer, storedPresentationRef.current)
+        : withPresentation(answer);
+      if (presentationKnown && !savedAsSent(variables.presentation, saved)) {
+        throw new PresentationNotSavedError(saved);
+      }
+      return saved;
+    },
+    onSuccess: (saved, variables) => {
+      saveAttemptsRef.current = 0;
+      recordSaved(saved, variables);
+    },
+    onError: (error, variables) => {
       saveAttemptsRef.current += 1;
-      if (isLumiApiWriteTimeoutError(error)) {
-        uncertainSaveRef.current = error;
-        // The request may settle after the user has left the editor.
-        if (!editorMountedRef.current) clearUncertainCaches();
+      switch (saveFailureOf(error)) {
+        case "partial":
+          // The rest of the draft was saved. The choice stays unsaved, so the
+          // draft is still changed and is sent again.
+          recordSaved((error as PresentationNotSavedError).saved, {
+            ...variables,
+            presentation: (error as PresentationNotSavedError).saved
+              .presentation,
+          });
+          break;
+        case "unknown":
+          // The draft is sent again, also if the author has changed it back.
+          savedFingerprintRef.current = SAVE_NOT_KNOWN;
+          setSavedFingerprint(SAVE_NOT_KNOWN);
+          noteCacheMayBeStale();
+          break;
+        case "uncertain":
+          uncertainSaveRef.current = error as Error;
+          noteCacheMayBeStale();
+          break;
+        case "conflict":
+          noteCacheMayBeStale();
+          break;
       }
     },
   });
 
-  const saveConflict =
-    saveMutation.isError && isDraftConflictError(saveMutation.error);
-  const saveUncertain =
-    saveMutation.isError && isLumiApiWriteTimeoutError(saveMutation.error);
-  const saveRetryable =
-    saveMutation.isError &&
-    !saveConflict &&
-    isRetryableSaveError(saveMutation.error);
+  const saveFailure = saveMutation.isError
+    ? saveFailureOf(saveMutation.error)
+    : null;
+  const saveConflict = saveFailure === "conflict";
+  const saveUncertain = saveFailure === "uncertain";
   const saveStuck =
-    saveMutation.isError &&
+    saveFailure !== null &&
     !saveConflict &&
-    (saveUncertain || !saveRetryable || saveAttemptsRef.current >= 3);
+    (!isRetryable(saveFailure) || saveAttemptsRef.current >= 3);
 
   const isDirtyRef = useRef(false);
   const savePendingRef = useRef(false);
@@ -331,7 +439,7 @@ function SurveyWorkshopEditor({
     }
     if (uncertainSaveRef.current) throw uncertainSaveRef.current;
     const draft = draftRef.current;
-    const fingerprint = JSON.stringify(draft);
+    const fingerprint = fingerprintOf(draft);
     if (fingerprint === savedFingerprintRef.current) return;
     if (!draft.name.trim() || !draft.surveyId.trim()) {
       throw new Error("Utkastet mangler navn eller survey-ID");
@@ -369,7 +477,7 @@ function SurveyWorkshopEditor({
       // An in-flight save can change the saved draft even after a local revert.
       while (
         activeSaveRef.current ||
-        JSON.stringify(draftRef.current) !== savedFingerprintRef.current
+        fingerprintOf(draftRef.current) !== savedFingerprintRef.current
       ) {
         const remaining = 8000 - (Date.now() - started);
         if (remaining <= 0) {
@@ -413,7 +521,7 @@ function SurveyWorkshopEditor({
         return !window.confirm(
           isDraftConflictError(error)
             ? "Endringene kan ikke lagres på grunn av en konflikt. Forlate uten å lagre?"
-            : isLumiApiWriteTimeoutError(error)
+            : saveFailureOf(error) === "uncertain"
               ? UNCERTAIN_SAVE_NAVIGATION_PROMPT
               : "Fikk ikke lagret endringene. Forlate likevel?",
         );
@@ -426,21 +534,47 @@ function SurveyWorkshopEditor({
   });
 
   useEffect(() => {
+    const failure = saveMutation.isError
+      ? saveFailureOf(saveMutation.error)
+      : null;
+    // Back at what the server holds, nothing is left to save, and a change
+    // that could not be saved is gone. A conflict and an uncertain save stay
+    // until the page is loaded again.
+    if (
+      fingerprint === savedFingerprint &&
+      failure &&
+      failure !== "conflict" &&
+      failure !== "uncertain"
+    ) {
+      saveAttemptsRef.current = 0;
+      saveMutation.reset();
+      return;
+    }
+    // After a conflict when sharing, a save meets the same conflict.
     if (
       fingerprint === savedFingerprint ||
       !hasRequiredMetadata ||
       saveMutation.isPending ||
-      uncertainSaveRef.current
+      uncertainSaveRef.current ||
+      saveConflictRef.current
     ) {
       return;
     }
-    // A version conflict freezes autosave until reload. Genuinely transient
-    // errors get a few slower retries; everything else waits for the manual
-    // retry action so permanent errors never masquerade as network noise.
-    if (saveMutation.isError) {
-      if (isDraftConflictError(saveMutation.error)) return;
-      if (!isRetryableSaveError(saveMutation.error)) return;
-      if (saveAttemptsRef.current >= 3) return;
+    // When only the display choice was not saved, the rest of the draft was.
+    // A later change to the rest is saved as usual, also after the tries
+    // below, so the message that the rest is saved stays true.
+    const restUnsaved =
+      saveMutation.error instanceof PresentationNotSavedError &&
+      fingerprintOf({
+        ...draftRef.current,
+        presentation: storedPresentationRef.current,
+      }) !== savedFingerprint;
+    // Failures another try can fix get a few slower tries. Everything else
+    // waits for the manual retry, so a lasting error is not taken for noise
+    // on the network.
+    if (failure) {
+      if (!isRetryable(failure)) return;
+      if (saveAttemptsRef.current >= 3 && !restUnsaved) return;
     }
 
     const timeout = window.setTimeout(
@@ -449,7 +583,7 @@ function SurveyWorkshopEditor({
           // Surfaced via mutation state.
         });
       },
-      saveMutation.isError ? 3000 : 800,
+      saveMutation.isError && !restUnsaved ? 3000 : 800,
     );
     return () => window.clearTimeout(timeout);
   }, [
@@ -458,6 +592,7 @@ function SurveyWorkshopEditor({
     saveMutation.isPending,
     saveMutation.isError,
     saveMutation.error,
+    saveMutation.reset,
     savedFingerprint,
     runSerializedSave,
   ]);
@@ -480,6 +615,11 @@ function SurveyWorkshopEditor({
     [draft.document],
   );
   const isDirty = fingerprint !== savedFingerprint;
+  // Whether all but the display choice is saved, which the message for a
+  // choice that was not saved can then say.
+  const restSaved =
+    fingerprintOf({ ...draft, presentation: storedPresentationRef.current }) ===
+    savedFingerprint;
   const totalQuestions = pages.reduce(
     (sum, page) => sum + page.questions.length,
     0,
@@ -500,6 +640,17 @@ function SurveyWorkshopEditor({
   // Refs keep option handlers stable without stale closures.
   const draftRef = useRef(draft);
   draftRef.current = draft;
+  // The placement note from before the author chose the floating panel.
+  const noteAtTheContentRef = useRef(project.presentation.placementNote);
+  const handlePresentationChange = useCallback((next: SurveyPresentation) => {
+    const { presentation, noteAtTheContent } = changePresentation(
+      draftRef.current.presentation,
+      next,
+      noteAtTheContentRef.current,
+    );
+    noteAtTheContentRef.current = noteAtTheContent;
+    setDraft((current) => ({ ...current, presentation }));
+  }, []);
   const selectedPageRef = useRef(selectedPageId);
 
   // Re-initialize which cards are open when the author switches page:
@@ -567,14 +718,26 @@ function SurveyWorkshopEditor({
   }, [undo, updateDocument]);
 
   const revisionMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       validateSurveyDocumentV1(draft.document);
-      return createSurveyAuthoringRevisionServerFn({
+      const expectedDraftVersion = draftVersion;
+      const revision = await createSurveyAuthoringRevisionServerFn({
         data: {
           team: project.team,
           projectId: project.id,
-          expectedDraftVersion: draftVersion,
+          expectedDraftVersion,
         },
+      });
+      if (!isRevisionAnswer(revision, project.id, expectedDraftVersion)) {
+        throw new Error(UNREADABLE_WRITE_ANSWER_MESSAGE);
+      }
+      return revision;
+    },
+    onError: (error) => {
+      if (isDraftConflictError(error)) noteCacheMayBeStale();
+      // The version may have been shared before the answer failed.
+      void queryClient.invalidateQueries({
+        queryKey: ["survey-authoring-revisions", project.team, project.id],
       });
     },
     onSuccess: async (revision) => {
@@ -613,6 +776,13 @@ function SurveyWorkshopEditor({
       });
     },
   });
+
+  // Sharing meets a conflict too when the draft was saved somewhere else,
+  // for example in another tab. The draft here is then not the one the
+  // server holds, also when nothing here is unsaved.
+  const shareConflict =
+    revisionMutation.isError && isDraftConflictError(revisionMutation.error);
+  const draftConflict = saveConflict || shareConflict;
 
   const handleStageAnswers = useCallback(
     (answers: Record<string, LumiSurveyAnswerValue>) =>
@@ -654,33 +824,20 @@ function SurveyWorkshopEditor({
   }, []);
   const handleFlowClose = useCallback(() => setFlowOpen(false), []);
 
-  // Which conditional questions are visible with the preview's answers now,
-  // computed with the package's own evaluator so editor and runtime can
-  // never drift apart. The stage dock's environment tag is mirrored into
-  // metadata; device/viewport metadata is not (METADATA conditions are
-  // code-authored and read-only in the workshop).
-  const liveVisibility = useMemo(() => {
-    const metadata = { environment: STAGE_ENVIRONMENT_TAG };
-    const map = new Map<string, boolean>();
-    for (const page of draft.document.pages) {
-      for (const question of page.questions) {
-        if (!question.visibleIf) continue;
-        // The document type (SurveyVisibleIfV1) and the runtime condition
-        // type disagree on METADATA+EXISTS's optional value; the evaluator
-        // itself accepts every document shape and fails closed on malformed
-        // input — the same boundary the dock's canonicalization crosses.
-        map.set(
-          question.id,
-          evaluateVisibility(
-            question.visibleIf as Parameters<typeof evaluateVisibility>[0],
-            stageAnswers,
-            metadata,
-          ),
-        );
-      }
-    }
-    return map;
-  }, [draft.document, stageAnswers]);
+  // Which conditional questions the preview shows with its answers now. The
+  // display choice is part of it: at the content the preview has the tags of
+  // the embed example. So is the width of the page it shows the survey on.
+  const liveVisibility = useMemo(
+    () =>
+      computeLiveVisibility(
+        draft.document,
+        stageAnswers,
+        STAGE_ENVIRONMENT_TAG,
+        draft.presentation,
+        stageViewport,
+      ),
+    [draft.document, draft.presentation, stageAnswers, stageViewport],
+  );
 
   const handleAddFollowUp = useCallback(
     (questionId: string, branch: FollowUpBranch) => {
@@ -1031,13 +1188,13 @@ function SurveyWorkshopEditor({
   selectedPageRef.current = selectedPage.id;
   isDirtyRef.current = isDirty;
   savePendingRef.current = saveMutation.isPending;
-  saveConflictRef.current = saveConflict;
+  saveConflictRef.current = draftConflict;
   draftVersionRef.current = draftVersion;
   savedFingerprintRef.current = savedFingerprint;
 
   const saveState: SaveState = saveUncertain
     ? "uncertain"
-    : saveConflict || saveStuck
+    : draftConflict || saveStuck
       ? "error"
       : !hasRequiredMetadata
         ? "missing"
@@ -1045,7 +1202,10 @@ function SurveyWorkshopEditor({
           ? "saving"
           : "saved";
 
-  const previewReady = !isDirty && !saveMutation.isPending && !saveUncertain;
+  // After a conflict the server holds another draft than the one shown here,
+  // also when the author has undone the change that met the conflict.
+  const previewReady =
+    !isDirty && !saveMutation.isPending && !saveUncertain && !draftConflict;
   const previewHref = previewReady
     ? `/survey-preview?team=${encodeURIComponent(project.team)}&projectId=${encodeURIComponent(project.id)}&version=${draftVersion}`
     : null;
@@ -1072,7 +1232,7 @@ function SurveyWorkshopEditor({
     return { byQuestion, surveyLevel };
   }, [handoffIssues]);
 
-  const shareStatus: ShareStatus = saveConflict
+  const shareStatus: ShareStatus = draftConflict
     ? "conflict"
     : saveUncertain
       ? "save-uncertain"
@@ -1159,17 +1319,38 @@ function SurveyWorkshopEditor({
           Utkastet ble ikke lagret. Det kan ha blitt endret i en annen fane.
           Last siden på nytt før du fortsetter.
         </Alert>
+      ) : shareConflict ? (
+        <Alert variant="error" className={styles.saveAlert}>
+          Utkastet er endret et annet sted, for eksempel i en annen fane. Last
+          siden på nytt før du fortsetter.
+        </Alert>
       ) : saveStuck ? (
         <Alert variant="warning" className={styles.saveAlert}>
           {saveUncertain ? (
-            LUMI_API_WRITE_TIMEOUT_MESSAGE
+            saveMutation.error instanceof Error ? (
+              saveMutation.error.message
+            ) : (
+              LUMI_API_WRITE_TIMEOUT_MESSAGE
+            )
           ) : (
             <HStack gap="space-12" align="center" wrap>
               <span>
-                Endringene er ikke lagret:{" "}
-                {saveMutation.error instanceof Error
-                  ? saveMutation.error.message
-                  : "ukjent feil"}
+                {saveMutation.error instanceof PresentationNotSavedError ? (
+                  restSaved ? (
+                    saveMutation.error.message
+                  ) : hasRequiredMetadata ? (
+                    "Visningsvalget ble ikke lagret. Prøv igjen om litt."
+                  ) : (
+                    "Visningsvalget ble ikke lagret, og utkastet mangler navn eller survey-ID. De siste endringene lagres når det er rettet."
+                  )
+                ) : (
+                  <>
+                    Endringene er ikke lagret:{" "}
+                    {saveMutation.error instanceof Error
+                      ? saveMutation.error.message
+                      : "ukjent feil"}
+                  </>
+                )}
               </span>
               <Button
                 type="button"
@@ -1283,7 +1464,13 @@ function SurveyWorkshopEditor({
                 initialPageId={selectedPage.id}
                 fullPreviewHref={previewHref}
                 stats={stats}
+                presentation={draft.presentation}
+                onPresentationChange={handlePresentationChange}
+                presentationUnknown={!presentationKnown}
+                inlineWidth={inlineWidth}
+                onInlineWidthChange={setInlineWidth}
                 onAnswersChange={handleStageAnswers}
+                onViewportChange={setStageViewport}
                 onOpenFlow={handleOpenFlow}
                 flowIssueCount={handoffIssues.length}
               />
@@ -1296,6 +1483,11 @@ function SurveyWorkshopEditor({
           surveyId={draft.surveyId}
           onChange={updateDocument}
           onAdvanced={() => setAdvancedMode(true)}
+          presentation={draft.presentation}
+          onPresentationChange={handlePresentationChange}
+          presentationUnknown={!presentationKnown}
+          inlineWidth={inlineWidth}
+          onInlineWidthChange={setInlineWidth}
         />
       )}
 
@@ -1321,7 +1513,8 @@ function SurveyWorkshopEditor({
         team={project.team}
         freezing={revisionMutation.isPending}
         freezeError={
-          revisionMutation.isError
+          // A conflict is told by the status above.
+          revisionMutation.isError && !shareConflict
             ? revisionMutation.error instanceof Error
               ? revisionMutation.error.message
               : "Versjonen kunne ikke deles."
@@ -1331,7 +1524,9 @@ function SurveyWorkshopEditor({
         onOpenSettings={handleOpenSettingsFromShare}
         saveErrorMessage={
           saveStuck && saveMutation.error instanceof Error
-            ? saveMutation.error.message
+            ? saveMutation.error instanceof PresentationNotSavedError
+              ? "visningsvalget ble ikke lagret"
+              : saveMutation.error.message
             : null
         }
         onRetrySave={retrySaveNow}

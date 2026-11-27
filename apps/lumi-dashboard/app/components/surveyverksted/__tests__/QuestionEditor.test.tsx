@@ -60,6 +60,13 @@ const followup: SurveyQuestionV1 = {
   maxLength: 1000,
   visibleIf: { questionId: "choice", operator: "EQ", value: "yes" },
 };
+/** The floating panel, as every existing test of the editor assumes. */
+const presentationProps = {
+  presentation: { mode: "dock" as const, placementNote: null },
+  onPresentationChange: () => {},
+  inlineWidth: "full" as const,
+  onInlineWidthChange: () => {},
+};
 function makeDocument(
   first: SurveyQuestionV1,
   ...questions: SurveyQuestionV1[]
@@ -85,6 +92,7 @@ function renderEditor(initial = makeDocument(choice, followup)) {
     const [document, setDocument] = useState(initial);
     return (
       <QuestionEditor
+        {...presentationProps}
         document={document}
         surveyId="dialogmote"
         onAdvanced={onAdvanced}
@@ -152,6 +160,25 @@ describe("QuestionEditor controlled editing", () => {
     );
   });
 
+  it("offers the choice of display with the widget, not with the text of the welcome and thank-you pages", async () => {
+    renderEditor();
+    const display = () => screen.queryByRole("radiogroup", { name: "Visning" });
+    expect(display()).toBeInTheDocument();
+
+    // These two are previewed as text, where the choice would change nothing.
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Velkomstside" })[0],
+    );
+    expect(display()).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Takkeside" })[0],
+    );
+    expect(display()).not.toBeInTheDocument();
+
+    await selectQuestion(1, choice.prompt);
+    expect(display()).toBeInTheDocument();
+  });
+
   it("reports a new document without mutating input and undoes one continuous text edit", async () => {
     const initial = makeDocument(choice, followup);
     const snapshot = structuredClone(initial);
@@ -176,7 +203,12 @@ describe("QuestionEditor controlled editing", () => {
   it("clears undo when the parent supplies an independent repaired document", async () => {
     const initial = makeDocument(choice, followup);
     const onChange = vi.fn();
-    const props = { surveyId: "dialogmote", onChange, onAdvanced: vi.fn() };
+    const props = {
+      ...presentationProps,
+      surveyId: "dialogmote",
+      onChange,
+      onAdvanced: vi.fn(),
+    };
     const { rerender } = render(
       <QuestionEditor {...props} document={initial} />,
     );
@@ -185,6 +217,112 @@ describe("QuestionEditor controlled editing", () => {
     const repaired = { ...initial, intro: { title: "Ny velkomst" } };
     rerender(<QuestionEditor {...props} document={repaired} />);
     expect(screen.getByRole("button", { name: "Angre" })).toBeDisabled();
+  });
+
+  it("takes away the notice that offers undo when the parent supplies an independent document", async () => {
+    const initial = makeDocument(choice, followup, {
+      ...followup,
+      id: "extra",
+      prompt: "Noe mer?",
+      visibleIf: undefined,
+    });
+    const props = {
+      ...presentationProps,
+      surveyId: "dialogmote",
+      onChange: vi.fn(),
+      onAdvanced: vi.fn(),
+    };
+    const { rerender } = render(
+      <QuestionEditor {...props} document={initial} />,
+    );
+    await selectQuestion(3, "Noe mer?");
+    await userEvent.click(screen.getByRole("button", { name: "Handlinger" }));
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Slett spørsmål" }),
+    );
+    expect(
+      screen.getByText("Spørsmålet er slettet. Du kan angre."),
+    ).toBeVisible();
+
+    const repaired = { ...initial, intro: { title: "Ny velkomst" } };
+    rerender(<QuestionEditor {...props} document={repaired} />);
+
+    expect(
+      screen.queryByText("Spørsmålet er slettet. Du kan angre."),
+    ).toBeNull();
+    expect(screen.getByRole("button", { name: "Angre" })).toBeDisabled();
+  });
+
+  it("keeps undo when the author changes the display, and undo leaves the display as chosen", async () => {
+    const initial = makeDocument(choice, followup);
+    const onPresentationChange = vi.fn();
+    const onChange = vi.fn();
+    render(
+      <QuestionEditor
+        {...presentationProps}
+        onPresentationChange={onPresentationChange}
+        document={initial}
+        surveyId="dialogmote"
+        onChange={onChange}
+        onAdvanced={vi.fn()}
+      />,
+    );
+    await userEvent.type(editor().getByLabelText("Spørsmålstekst"), "!");
+
+    await userEvent.click(screen.getByRole("radio", { name: "Ved innholdet" }));
+    expect(onPresentationChange).toHaveBeenCalledExactlyOnceWith({
+      mode: "inline",
+      placementNote: null,
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Angre" }));
+    expect(onChange).toHaveBeenLastCalledWith(initial);
+    expect(onPresentationChange).toHaveBeenCalledOnce();
+  });
+
+  it("reports no change when a full placement note takes nothing more", async () => {
+    const full = "a".repeat(200);
+    const onPresentationChange = vi.fn();
+    render(
+      <QuestionEditor
+        {...presentationProps}
+        presentation={{ mode: "inline", placementNote: full }}
+        onPresentationChange={onPresentationChange}
+        document={makeDocument(choice, followup)}
+        surveyId="dialogmote"
+        onChange={vi.fn()}
+        onAdvanced={vi.fn()}
+      />,
+    );
+    await userEvent.type(screen.getByLabelText(/Plassering i appen/), "b");
+
+    expect(onPresentationChange).not.toHaveBeenCalled();
+  });
+
+  it("can still undo a deleted question after the display is changed", async () => {
+    renderEditor(
+      makeDocument(choice, followup, {
+        ...followup,
+        id: "extra",
+        prompt: "Noe mer?",
+        visibleIf: undefined,
+      }),
+    );
+    const extra = { name: "Spørsmål 3 · Noe mer?" };
+    await selectQuestion(3, "Noe mer?");
+    await userEvent.click(screen.getByRole("button", { name: "Handlinger" }));
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Slett spørsmål" }),
+    );
+    expect(screen.queryAllByRole("button", extra)).toHaveLength(0);
+
+    await userEvent.click(screen.getByRole("radio", { name: "Ved innholdet" }));
+    expect(
+      screen.getByText("Spørsmålet er slettet. Du kan angre."),
+    ).toBeVisible();
+
+    await userEvent.click(screen.getByRole("button", { name: "Angre" }));
+    expect(screen.getAllByRole("button", extra).length).toBeGreaterThan(0);
   });
 
   it("adds an answer-based follow-up after the entire source page and can undo it", async () => {

@@ -869,6 +869,82 @@
   width: 48%;
 }
 
+/* The survey at the content: a page that scrolls inside the stage. */
+.stageInlineScroller {
+  /* The page must not determine the measured viewport's height. */
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.stageInlinePage {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  width: 100%;
+  margin-inline: auto;
+  background: var(--ax-bg-neutral-soft);
+}
+
+.stageInlinePage[data-width="mobile"] {
+  width: min(100%, 22.5rem);
+  border-inline: 1px solid var(--ax-border-neutral-subtle);
+}
+
+.stageInlineBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-16);
+  padding: var(--ax-space-16);
+}
+
+.stageInlineBody[data-width="column"] {
+  flex-flow: row wrap;
+  align-items: flex-start;
+}
+
+.stageExample {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-8);
+  /* A placement note can be one long word, and a phone is narrow. */
+  overflow-wrap: anywhere;
+  padding: var(--ax-space-16);
+  background: var(--ax-bg-default);
+  border: 1px dashed var(--ax-border-neutral);
+  border-radius: var(--ax-radius-8);
+}
+
+.stageInlineBody[data-width="column"] > .stageExample {
+  flex: 1 1 12rem;
+}
+
+.stageExampleLabel {
+  font-weight: 600;
+}
+
+.stageInlineSurvey {
+  min-width: 0;
+}
+
+.stageInlineBody[data-width="column"] > .stageInlineSurvey {
+  flex: 0 0 16rem;
+  max-width: 100%;
+}
+
+.presentationControls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ax-space-12);
+  align-items: flex-start;
+}
+
+.presentationControls > :global(.aksel-form-field) {
+  width: 100%;
+}
+
 .stageEmpty {
   position: absolute;
   inset: auto var(--ax-space-16) var(--ax-space-16);

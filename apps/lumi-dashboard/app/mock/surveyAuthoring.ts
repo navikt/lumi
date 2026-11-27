@@ -2,12 +2,14 @@ import {
   type SurveyDocumentV1,
   validateSurveyDocumentV1,
 } from "@navikt/lumi-survey";
-import type {
-  SurveyAuthoringProject,
-  SurveyAuthoringProjectSummary,
-  SurveyAuthoringRevision,
-  SurveyAuthoringRevisionDetail,
-  SurveyAuthoringRevisionSummary,
+import {
+  FLOATING_PANEL_PRESENTATION,
+  type SurveyAuthoringProject,
+  type SurveyAuthoringProjectSummary,
+  type SurveyAuthoringRevision,
+  type SurveyAuthoringRevisionDetail,
+  type SurveyAuthoringRevisionSummary,
+  type SurveyPresentation,
 } from "~/types/surveyAuthoring";
 import { findHandoffIssues } from "~/utils/surveyDocument";
 import {
@@ -56,6 +58,8 @@ export function createMockSurveyProject(input: {
   name: string;
   surveyId: string;
   document: SurveyDocumentV1;
+  /** Left out, the project starts as the floating panel, as in the API. */
+  presentation?: SurveyPresentation;
 }): SurveyAuthoringProject {
   const now = new Date().toISOString();
   const project: SurveyAuthoringProject = {
@@ -64,6 +68,9 @@ export function createMockSurveyProject(input: {
     name: input.name.trim(),
     surveyId: input.surveyId.trim(),
     document: structuredClone(input.document),
+    presentation: structuredClone(
+      input.presentation ?? FLOATING_PANEL_PRESENTATION,
+    ),
     draftVersion: 1,
     createdAt: now,
     updatedAt: now,
@@ -92,6 +99,8 @@ export function saveMockSurveyProject(input: {
   name: string;
   surveyId: string;
   document: SurveyDocumentV1;
+  /** Left out, the stored presentation is kept, as in the API. */
+  presentation?: SurveyPresentation;
 }): SurveyAuthoringProject {
   const current = projects.get(input.projectId);
   if (!current || current.team !== input.team) {
@@ -106,6 +115,7 @@ export function saveMockSurveyProject(input: {
     name: input.name.trim(),
     surveyId: input.surveyId.trim(),
     document: structuredClone(input.document),
+    presentation: structuredClone(input.presentation ?? current.presentation),
     draftVersion: current.draftVersion + 1,
     updatedAt: new Date().toISOString(),
   };
@@ -150,9 +160,6 @@ export async function createMockSurveyRevision(input: {
   if (handoffIssue) {
     throw new Error(handoffIssue.message);
   }
-  const projectRevisions = [...revisions.values()]
-    .filter((revision) => revision.projectId === project.id)
-    .sort((a, b) => b.revisionNumber - a.revisionNumber);
   const documentHash = await sha256(serializeSurveyDocumentJson(document));
   const definitionHash = await sha256(analyticalStructure(document));
   // Hashing yielded to the event loop — mirror the API's advisory lock by
@@ -165,6 +172,14 @@ export async function createMockSurveyRevision(input: {
   if (current.draftVersion !== input.expectedDraftVersion) {
     throw new Error("Draft changed since it was validated");
   }
+  // Another share of the same draft may have finished in the meantime. The
+  // API serializes shares per project, so the second one gets the first.
+  const projectRevisions = [...revisions.values()]
+    .filter((revision) => revision.projectId === project.id)
+    .sort((a, b) => b.revisionNumber - a.revisionNumber);
+  if (projectRevisions[0]?.draftVersion === project.draftVersion) {
+    return structuredClone(projectRevisions[0]);
+  }
   const revision: SurveyAuthoringRevision = {
     id: crypto.randomUUID(),
     projectId: project.id,
@@ -173,6 +188,8 @@ export async function createMockSurveyRevision(input: {
     name: project.name,
     surveyId: project.surveyId,
     document: structuredClone(document),
+    // Frozen with the revision, outside both hashes, as in the API.
+    presentation: structuredClone(project.presentation),
     documentHash,
     definitionHash,
     createdBy: "A123456",
