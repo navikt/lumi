@@ -33,6 +33,8 @@ export function FeedbackWidget() {
 
 Legg `FeedbackWidget` på siden der dere vil samle tilbakemeldinger. `survey` er innholdet brukeren møter, og `transport` sier hvor svarene skal sendes. Bruker appen Next.js App Router, se [Next.js App Router](#next-js).
 
+`LumiSurveyDock` viser surveyen i et panel nederst i vinduet. Spør surveyen om en bestemt del av siden, kan dere sette den inn ved innholdet med `LumiSurveyInline`. Se [Vis surveyen ved innholdet](/guider/inline-survey).
+
 ### Send svarene {#send-svarene}
 
 Med `{ endpoint }` som `transport` sender widgeten svarene selv. Den sender `submission.transportPayload` som JSON med `POST` til `endpoint`, og viser takkesiden bare når backenden svarer med 2xx. En videresending, for eksempel til innlogging, og en nettside med status 200 regnes som feil.
@@ -140,6 +142,8 @@ export default function Side() {
 
 `@navikt/lumi-survey/client` har `"use client"`, så Next.js kjører widgeten i nettleseren. Fra en serverkomponent kan dere bare sende data og JSX. `events`, en transport med `submit` og `labels.textTooLong` er funksjoner. De krever en egen fil med `"use client"` øverst, som importerer `LumiSurveyDock` fra `@navikt/lumi-survey`.
 
+Fra versjon 2.6.0 eksporterer `@navikt/lumi-survey/client` også `LumiSurveyInline`.
+
 Hovedinngangen `@navikt/lumi-survey` har ikke direktivet. En serverkomponent kan bare importere typer derfra, for eksempel `import type { SurveyDocumentV1 }`. Hjelpefunksjoner som `createTopTasksSurveyDocument` må brukes i en klientkomponent.
 
 TypeScript finner typene til `@navikt/lumi-survey/client` med `moduleResolution` satt til `bundler` eller `node16`. Next.js bruker `bundler` som standard.
@@ -148,7 +152,7 @@ En serverkomponent leser base-stien når siden rendres. Variabelen trenger derfo
 
 ## Sett survey-ID
 
-Bytt ut `min-app-tilbakemelding` med en stabil ID for surveyen. Surveyverksted foreslår en ID, og den står som **Survey-ID** på versjonssiden. ID-en settes på `LumiSurveyDock` og følger ikke med i den kopierte TypeScript-filen.
+Bytt ut `min-app-tilbakemelding` med en stabil ID for surveyen. Surveyverksted foreslår en ID, og den står som **Survey-ID** på versjonssiden. ID-en settes på komponenten og følger ikke med i den kopierte TypeScript-filen.
 
 Behold ID-en så lenge svarene skal tilhøre samme analyseserie. Se [Survey-identitet og endringer](/guider/survey-identitet) før dere endrer hva surveyen måler eller hvilke svaralternativer den har.
 

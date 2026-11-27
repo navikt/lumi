@@ -48,6 +48,34 @@ Med `{ endpoint }` sender widgeten svarene selv til appens backend, med tidsgren
 
 Widgeten bruker Nav-dekoratørens samtykkeløsning for å huske at brukeren har lukket surveyen. På interne flater uten dekoratøren, sett `behavior={{ storageStrategy: "localStorage" }}` på `LumiSurveyDock`. Se [Lagring](https://navikt.github.io/lumi/guider/lagring) for innstillinger.
 
+### Ved innholdet
+
+`LumiSurveyDock` viser surveyen i et panel nederst i vinduet. Spør surveyen om en bestemt del av siden, setter dere den inn ved innholdet med `LumiSurveyInline`:
+
+```tsx
+import { LumiSurveyInline } from "@navikt/lumi-survey";
+import { survey } from "./survey";
+
+export function KalkulatorSide() {
+  return (
+    <>
+      <Kalkulator />
+      <LumiSurveyInline
+        surveyId="kalkulator-tilbakemelding"
+        survey={survey}
+        transport={{ endpoint: "/api/lumi/feedback" }}
+        headingLevel="3"
+        context={{
+          tags: { surface: "inline", placement: "under-kalkulator" },
+        }}
+      />
+    </>
+  );
+}
+```
+
+`LumiSurveyInline` følger bredden på elementet den står i, kan ikke lukkes og lagrer ingenting i nettleseren. Kvitteringen blir stående der surveyen var. Se [Vis surveyen ved innholdet](https://navikt.github.io/lumi/guider/inline-survey).
+
 ## 4. Koble til Lumi og se svarene
 
 `/api/lumi/feedback` i eksempelet er et endepunkt **dere oppretter i egen app**. Backend gjør token exchange med TokenX eller Entra ID (OBO) og sender svarene videre til Lumi API. Appen trenger også tilgang til API-et i Nais.

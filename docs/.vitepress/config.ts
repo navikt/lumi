@@ -62,6 +62,10 @@ export default withMermaid({
               text: "Survey-identitet og endringer",
               link: "/guider/survey-identitet",
             },
+            {
+              text: "Vis surveyen ved innholdet",
+              link: "/guider/inline-survey",
+            },
             { text: "Context og tags", link: "/guider/context-og-tags" },
             { text: "Lagring", link: "/guider/lagring" },
             { text: "Styling", link: "/guider/styling" },

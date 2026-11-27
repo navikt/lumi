@@ -1,4 +1,5 @@
 import { isLeafCondition } from "./conditionUtils.js";
+import { ownValue, setOwnValue } from "./ownValue.js";
 import type {
   LogicLeafCondition,
   LumiSurveyAnswerValue,
@@ -69,7 +70,7 @@ function evaluateLeaf(
   if (!isLeafCondition(condition)) return false;
 
   if (condition.field === "METADATA") {
-    const metaValue = metadata?.[condition.key];
+    const metaValue = ownValue(metadata, condition.key);
     return evaluateOperator(metaValue, condition.operator, condition.value);
   }
 
@@ -79,12 +80,12 @@ function evaluateLeaf(
   // EXISTS operator: check if answer is defined
   if (condition.operator === "EXISTS") {
     if (!questionId) return true; // No reference = visible
-    return answers[questionId] !== undefined;
+    return ownValue(answers, questionId) !== undefined;
   }
 
   // Other operators: compare with value
   if (!questionId) return true; // No reference = visible
-  const answer = answers[questionId];
+  const answer = ownValue(answers, questionId);
   return evaluateOperator(answer, condition.operator, condition.value);
 }
 
@@ -163,7 +164,7 @@ export function getVisibleAnswers(
 
   for (const [questionId, value] of Object.entries(answers)) {
     if (visibleQuestionIds.has(questionId)) {
-      visibleAnswers[questionId] = value;
+      setOwnValue(visibleAnswers, questionId, value);
     }
   }
 

@@ -60,7 +60,8 @@ export function detectDeviceType(viewportWidth: number): DeviceType {
 
 /**
  * Viewport-only classification, for simulated viewports in embedded
- * previews where the real UA must not leak through.
+ * previews where the real UA must not leak through. It is the `deviceType`
+ * a survey with `behavior.simulatedViewport` of this width reports.
  */
 export function classifyDeviceTypeByViewport(width: number): DeviceType {
   return classifyByViewport(width);

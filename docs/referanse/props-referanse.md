@@ -6,6 +6,8 @@ title: Props-referanse
 
 Setter dere opp widgeten for første gang, start med [Legg surveyen i appen](/kom-i-gang/konfigurer-survey).
 
+Pakken har to komponenter. `LumiSurveyDock` viser surveyen i et panel nederst i vinduet. `LumiSurveyInline` viser den som en del av siden og har [færre props](#lumisurveyinline).
+
 ## Props på `LumiSurveyDock`
 
 | Prop | Type | Påkrevd | Beskrivelse |
@@ -232,7 +234,7 @@ I eksempelet beholder widgeten `intro.startLabel`, `success.title` og `success.b
 | `body` | `ReactNode` | – | Innhold under overskriften |
 | `startLabel` | `string` | `"Start"` | Knapp som starter surveyen |
 
-En tom `startLabel` faller tilbake til `"Start"`. En velkomstside med tom dokumenttittel vises ikke. Utkast kan være ufullstendige, men en versjon fra Surveyverksted må ha en tittel.
+En tom `startLabel` faller tilbake til `"Start"`. En velkomstside med tom dokumenttittel vises ikke. Fra versjon 2.6.0 vises heller ikke velkomstsiden når surveyen ikke har noen synlige spørsmål for brukeren, for eksempel fordi alle har en `visibleIf`-regel for en annen enhet. Utkast kan være ufullstendige, men en versjon fra Surveyverksted må ha en tittel.
 
 ### `success`: `LumiSurveySuccessConfig`
 
@@ -281,6 +283,48 @@ interface LumiSurveyContext {
 ```
 
 Se [Context og tags](/guider/context-og-tags) for personvernråd og eksempler.
+
+## Props på `LumiSurveyInline` {#lumisurveyinline}
+
+`LumiSurveyInline` finnes fra versjon 2.6.0. Se [Vis surveyen ved innholdet](/guider/inline-survey) for hvordan den brukes.
+
+| Prop | Type | Påkrevd | Beskrivelse |
+| :--- | :--- | :---: | :--- |
+| `surveyId` | `string` | Ja | Stabil identifikator for analyseserien. Flere surveyer på samme side kan ha samme `surveyId` |
+| `survey` | `SurveyDocumentV1` | Ja | Survey-dokumentet fra Surveyverksted eller kode. Den eldre, flate konfigurasjonen støttes ikke |
+| `transport` | `LumiSurveyEndpoint \| LumiSurveyTransport` | Ja | Sender inn svarene, som på `LumiSurveyDock` |
+| `headingLevel` | `"2" \| "3" \| "4" \| "5"` | Nei | Nivået på overskriften i surveyen. Standard er `"2"`. Se [Overskriftsnivå](/guider/inline-survey#overskriftsniva) |
+| `context` | `LumiSurveyContext` | Nei | Metadata for segmentering og feilsøking. Se [Skill plasseringene med tags](/guider/context-og-tags#plassering) |
+| `behavior` | `LumiSurveyInlineBehavior` | Nei | Styrer sidevisning, framdrift og informasjon om personopplysninger |
+| `events` | `LumiSurveyEvents` | Nei | Funksjoner som kalles ved hendelser. Se [Visning og svartid](/guider/inline-survey#visning-og-svartid) |
+| `labels` | `LumiSurveyLabels` uten `cancel` og `minimizedButton` | Nei | Tekster for knapper og feilmeldinger |
+| `intro` | `LumiSurveyIntroConfig` | Nei | Overstyrer innhold på velkomstsiden per felt |
+| `success` | `{ title?: string; body?: ReactNode }` | Nei | Overstyrer tittel og innhold på kvitteringen per felt |
+| `style` | `LumiSurveyInlineStyle` | Nei | Egne CSS-klasser og farger på rammen |
+| `lang` | `string` | Nei | Språket i teksten fra surveyen, som på `LumiSurveyDock` |
+
+### `behavior`: `LumiSurveyInlineBehavior` {#inline-behavior}
+
+| Felt | Type | Standard | Beskrivelse |
+| :--- | :--- | :--- | :--- |
+| `questionLayout` | `"auto" \| "singlePage"` | `"auto"` | Hvordan sidene vises, se [`questionLayout`](#questionlayout) |
+| `showPersonalDataNotice` | `boolean` | `true` | Vis informasjon om personopplysninger |
+| `personalDataNotice` | `ReactNode` | – | Egen informasjon om personopplysninger |
+| `collectLocation` | `boolean` | `false` | Samle inn `pathname` automatisk |
+| `showProgress` | `boolean` | `false` | Vis framdrift når minst to steg kan nås |
+| `initialPageId` | `string` | – | Start på denne synlige siden. Laget for forhåndsvisning |
+| `simulatedViewport` | `{ width: number; height: number }` | – | Simuler størrelse og enhetstype for synlighetsregler i innebygd forhåndsvisning. Bredden på surveyen følger fortsatt elementet den står i |
+
+### `style`: `LumiSurveyInlineStyle` {#inline-style}
+
+| Felt | Type | Standard | Beskrivelse |
+| :--- | :--- | :--- | :--- |
+| `containerClassName` | `string` | – | Ekstra CSS-klasse for elementet rundt surveyen, som har klassen `lumi-survey-inline` |
+| `panelClassName` | `string` | – | Ekstra CSS-klasse for rammen |
+| `panelBackground` | Aksel `Box`-token | `"default"` | Bakgrunnsfarge |
+| `panelBorderColor` | Aksel `Box`-token | `"neutral-subtle"` | Kantfarge |
+
+Bredden setter dere på elementet surveyen står i, se [Bredde og utseende](/guider/inline-survey#bredde-og-utseende).
 
 ## Eldre konfigurasjoner
 

@@ -74,6 +74,28 @@ Tags brukes til segmentering og grafer i dashboardet. Verdiene skal fungere som 
 
 Gode tags er for eksempel `rolle: "arbeidsgiver"`, `abTest: "A"` og `steg: "kvittering"`. `behandlingId: "abc-123"` og `timestamp: 1699000000` er dårlige tags, fordi nesten hver innsending får sin egen verdi.
 
+### Skill plasseringene med tags {#plassering}
+
+Viser dere den samme surveyen flere steder, forteller en tag hvor svaret kom fra. Det gjelder både når `LumiSurveyDock` og `LumiSurveyInline` har samme `surveyId`, og når flere `LumiSurveyInline` står på samme side. Lumi API trenger ingen endring for dette.
+
+```tsx
+<LumiSurveyInline
+  surveyId="kalkulator-tilbakemelding"
+  survey={survey}
+  transport={transport}
+  context={{
+    tags: {
+      surface: "inline",
+      placement: "under-kalkulator",
+    },
+  }}
+/>
+```
+
+Bruk de samme navnene overalt i appen, for eksempel `surface` for visningsmåten (`"inline"` eller `"dock"`) og `placement` for stedet på siden. Verdien i `placement` skal være et fast navn på stedet, som `"under-kalkulator"` eller `"sidekolonne"`. Ikke bruk en ID per artikkel, sak eller søketreff. Da får nesten hver innsending sin egen verdi.
+
+Se [Vis surveyen ved innholdet](/guider/inline-survey#flere-surveyer-pa-samme-side).
+
 ### `context.debug`: mange varianter, vises ikke i dashboardet
 
 Verdiene i `debug` lagres med innsendingen, men vises verken i dashboardet eller i eksporten, og de brukes ikke til grafer eller segmentering. Ikke send person-, saks- eller andre identifikatorer i feltet.

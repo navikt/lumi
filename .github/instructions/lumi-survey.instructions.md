@@ -32,6 +32,11 @@ Changes must preserve its public contract, accessibility and packaging boundary.
 - Keep styles available through `@navikt/lumi-survey/styles.css` and avoid
   selectors that require dashboard-specific markup.
 - Add or update tests under `src/**/__tests__/` for behavior changes.
+- The unit tests run in jsdom, which has no layout. Width, wrapping and
+  overflow are measured in Chromium by the Playwright tests in `e2e/`, against
+  the stories in `src/stories/LumiSurveyInline.layout.stories.tsx`. Those
+  stories are not shown in the Storybook menu. Add a case there when a change
+  affects how wide something is.
 
 ## Verification
 
@@ -41,4 +46,12 @@ From the repository root, run:
 pnpm --filter @navikt/lumi-survey run test
 pnpm --filter @navikt/lumi-survey run typecheck
 pnpm run verify:lumi-survey
+```
+
+After changing styles or layout, also run the browser tests. They start
+Storybook themselves and need the Chromium that
+`pnpm --filter @navikt/lumi-survey exec playwright install chromium` installs:
+
+```sh
+pnpm run e2e:survey
 ```

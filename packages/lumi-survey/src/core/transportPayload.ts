@@ -1,5 +1,6 @@
 import { buildDefinitionBlock } from "./definitionBlock.js";
 import { buildFlowBlock } from "./flowBlock.js";
+import { ownValue } from "./ownValue.js";
 import { assertSpecializedSurveyContract } from "./specializedSurveyContract.js";
 import type {
   ChoiceOption,
@@ -81,7 +82,7 @@ export function buildTransportPayload(
   const answersList: TransportAnswer[] = [];
 
   for (const question of questions) {
-    const value = answers[question.id];
+    const value = ownValue(answers, question.id);
     // Skip if unanswered
     if (value === undefined || value === null || value === "") continue;
 

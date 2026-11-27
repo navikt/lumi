@@ -22,6 +22,11 @@ export interface CanonicalSurvey {
   pages: CanonicalSurveyPage[];
 }
 
+// A page title of blanks says nothing. The first question then stands in for
+// it as the heading, as when the page has no title.
+const textOrUndefined = (text: string | undefined): string | undefined =>
+  text?.trim() ? text : undefined;
+
 export interface CanonicalSurveyPage {
   id: string;
   title?: string;
@@ -87,8 +92,8 @@ export function buildCanonicalSurvey(
     questionOffset += page.questions.length;
     return {
       id: page.id,
-      title: page.title,
-      description: page.description,
+      title: textOrUndefined(page.title),
+      description: textOrUndefined(page.description),
       questions: pageQuestions,
     };
   });

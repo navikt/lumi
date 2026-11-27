@@ -5,5 +5,7 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
+    // The browser tests in e2e/ are run by Playwright.
+    include: ["src/**/*.test.{ts,tsx}"],
   },
 });

@@ -1,0 +1,45 @@
+.lumi-survey-inline {
+  display: block;
+  /*
+   * A flex item shrinks with its row, but not to a sliver beside a long
+   * text: 16rem is the narrowest the survey gets, unless the container
+   * itself is narrower. Narrower than that, the fields no longer fit their
+   * frame. A row with no room for 16rem beside its other content has to
+   * wrap, or the survey sticks out of it.
+   */
+  min-width: min(100%, 16rem);
+  max-width: 100%;
+  /* The fields are laid out from the start edge also in a centred page. */
+  text-align: start;
+  /* A long word breaks rather than widening a narrow column. */
+  overflow-wrap: anywhere;
+}
+
+/*
+ * The frame follows the container. What is inside keeps a readable width, so
+ * a wide container stretches neither the lines of text nor the rating scale.
+ * 32rem is also what the survey takes where nothing gives it a width, for
+ * example as an item in a flex row. Without it the fields, which size
+ * themselves from their container, would collapse there.
+ *
+ * The width is the upper limit of a grid column and not a width on the
+ * content. A fixed width would also be the least the survey could be, and an
+ * element around it that sizes itself from its content, such as a flex or
+ * grid item, would then push the page wider than a phone's viewport.
+ */
+.lumi-survey-inline .lumi-survey-dock__panel {
+  display: grid;
+  grid-template-columns: minmax(0, 32rem);
+}
+
+/* A narrow column shrinks the faces. The scale never breaks over two lines. */
+.lumi-survey-inline .lumi-survey-dock__rating-button svg {
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+}
+
+/* In the page the start button is as wide as its label, like the others. */
+.lumi-survey-inline .lumi-survey-dock__intro-start {
+  align-self: flex-start;
+}

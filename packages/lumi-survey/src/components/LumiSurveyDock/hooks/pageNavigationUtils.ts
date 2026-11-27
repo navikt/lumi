@@ -3,6 +3,7 @@ import {
   isLeafCondition,
 } from "../../../core/conditionUtils.js";
 import { evaluateVisibility } from "../../../core/evaluateVisibility.js";
+import { ownValue } from "../../../core/ownValue.js";
 import type {
   LumiSurveyAnswerValue,
   LumiSurveyQuestion,
@@ -113,7 +114,7 @@ export function estimateReachablePages(
       return getLeafConditions(question.visibleIf).some((leaf) => {
         if (!isLeafCondition(leaf)) return false;
         if (leaf.field === "METADATA" || !leaf.questionId) return true;
-        if (answers[leaf.questionId] !== undefined) return false;
+        if (ownValue(answers, leaf.questionId) !== undefined) return false;
         return (
           (questionOrder.get(leaf.questionId) ?? Number.POSITIVE_INFINITY) <
           (questionOrder.get(question.id) ?? -1)

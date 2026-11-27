@@ -3,6 +3,8 @@ import type React from "react";
 import type { LumiSurveyAnswerValue, TextQuestion } from "../../../core";
 import { getTextAnswerMaxLength } from "../../../core/textAnswerLimits.js";
 import { DEFAULT_COPY } from "../../shared/commonDefaults.js";
+import { useSurveyFieldIds } from "../../shared/surveyFieldId.js";
+import { useFieldFormOwner } from "../../shared/surveyFormOwner.js";
 import { QuestionPrompt, SurveyText } from "../../shared/surveyLanguage.js";
 
 interface TextQuestionFieldProps {
@@ -26,6 +28,8 @@ export const TextQuestionField = ({
   disabled,
   hideLabel,
 }: TextQuestionFieldProps) => {
+  const fieldIds = useSurveyFieldIds(question.id);
+  const formOwner = useFieldFormOwner();
   const textValue = typeof value === "string" ? value : "";
   const maxLength = getTextAnswerMaxLength(question);
   const isOverLimit = textValue.length > maxLength;
@@ -35,6 +39,11 @@ export const TextQuestionField = ({
 
   return (
     <Textarea
+      {...formOwner}
+      {...(fieldIds && {
+        id: fieldIds("field"),
+        errorId: fieldIds("error"),
+      })}
       label={<QuestionPrompt question={question} />}
       hideLabel={hideLabel}
       description={

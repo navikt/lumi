@@ -1,4 +1,5 @@
 import { type MutableRefObject, useCallback, useRef, useState } from "react";
+import { setOwnValue } from "./ownValue.js";
 import type { LumiSurveyAnswerValue } from "./types";
 
 export interface UseAnswerStateOptions {
@@ -41,7 +42,7 @@ export function useAnswerState(
           delete next[questionId];
         } else {
           const safeValue = value as LumiSurveyAnswerValue;
-          next[questionId] = cloneAnswerValue(safeValue);
+          setOwnValue(next, questionId, cloneAnswerValue(safeValue));
         }
         return next;
       });
@@ -72,7 +73,7 @@ export function cloneAnswers(
   for (const key of Object.keys(source)) {
     const value = source[key];
     if (value !== undefined) {
-      copy[key] = cloneAnswerValue(value);
+      setOwnValue(copy, key, cloneAnswerValue(value));
     }
   }
   return copy;

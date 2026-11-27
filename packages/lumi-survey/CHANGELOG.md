@@ -4,6 +4,134 @@ All notable changes to `@navikt/lumi-survey` will be documented in this file.
 
 This project follows SemVer.
 
+## [2.6.0] - Unreleased
+
+### Added
+
+- `LumiSurveyInline` shows a survey as a part of the page, where the app
+  places it, for example right below the content it asks about. It takes the
+  same `SurveyDocumentV1`, validation, transport and submission payload as
+  `LumiSurveyDock`, and is also exported from `@navikt/lumi-survey/client`.
+  - It has no close button, is never minimized and stores nothing in the
+    browser. It therefore does not wait for storage consent from the Nav
+    decorator and is shown on every page load, also to users who have
+    answered. The receipt stays where the survey was and has no button.
+  - The frame follows the width of its container, and the text and fields
+    inside it are at most 32rem wide. In a narrow column the faces and stars
+    shrink, the 0–10 scale wraps and long words break. As an item in a flex
+    row it takes up to 32rem plus the frame and never shrinks below 16rem.
+  - `headingLevel` (`"2"`–`"5"`, default `"2"`) sets the level of the survey's
+    title, page titles, intro, receipt and error summary. A rating question
+    with its own heading uses the level below.
+  - It takes no focus when it is shown. After that, focus stays in the
+    survey: on the heading of the next page, on the error summary or the
+    missing field, on the receipt after a submit, and on the submit button
+    when sending fails. If the user scrolls away while the answer is sent,
+    the page does not scroll back. If the receipt is shorter than the
+    questions it replaces, the page scrolls to it. This also works in scroll
+    areas and shadow trees, and when `<html>` or `<body>` scrolls the page.
+    A click that does not move focus, as with a mouse in Safari or a screen
+    reader in browse mode, counts as being in the survey. A click in a
+    portal that the app renders from the survey, such as a dialog, does not.
+  - It renders no `<form>`, and its send button is not a submit button. Its
+    fields have no form owner, so a form of the app around the survey leaves
+    the answers out of its `FormData`, keeps them on `form.reset()`, and is
+    submitted with Enter in its own fields as without the survey. Enter in a
+    field of the survey submits no form.
+  - Every instance has its own DOM ids, field ids and radio names, so several
+    can be on one page, also with the same `surveyId`. Tell the places apart
+    with `context.tags`, for example `surface: "inline"` and `placement`.
+    Apps on one page that each bundle React must also set React's
+    `identifierPrefix`: Aksel's ids for descriptions and legends come from
+    `useId`, which counts from the start in every copy of React.
+  - `onViewDock` is called once, the first time the survey is on screen: when
+    at least half of its height and half of its width are visible, or when it
+    covers half of the viewport in a direction where it is larger than the
+    viewport. Only the survey's panel is measured, not the extra space a flex
+    row or a grid gives the element around it. Scroll areas, shadow trees,
+    iframes and CSS transforms are taken into account. A survey that is
+    invisible or fully transparent, or on a page in a background tab, does not
+    count until it can be seen. An answer, a click or focus in the survey
+    before that also counts as a view. `startedAt` is the time of that view.
+    `onReset` and `onDismissalPersistFailed` are never called.
+  - A new `surveyId` starts the survey over: without the answers and the
+    receipt of the survey before it, and with its own view and `startedAt`.
+  - `LumiSurveyInlineProps`, `LumiSurveyInlineBehavior` and
+    `LumiSurveyInlineStyle` are its types. They accept neither the flat
+    legacy configuration nor the options that only apply to the dock, such
+    as `storageStrategy`, `initialOpen`, `position` and `success.autoClose`.
+    Only the types check this: from JavaScript, a flat configuration is
+    still shown, and the dock's options have no effect.
+  - It is rendered in the browser only, like the dock. On a server-rendered
+    page it appears after hydration.
+  - `behavior.initialPageId` and `behavior.simulatedViewport` are the same
+    seams for authoring previews as on the dock. The simulated viewport only
+    decides `viewport` and `deviceType` for visibility rules: the width of
+    the survey still follows its container.
+- `resolveDocumentVisibility` tells which questions of a `SurveyDocumentV1`
+  a survey shows with given answers and metadata, as both components resolve
+  them: a question hidden by its condition also hides the questions that
+  depend on its answer. It takes the questions of the document's pages as
+  they are, and gives back the visible ones with the same type, and their
+  answers in an object without a prototype: a question without an answer
+  gives `undefined`, also when its id is `constructor`.
+  `classifyDeviceTypeByViewport` gives the `deviceType` a survey reports for
+  a `simulatedViewport` of a given width. An authoring preview can use them
+  to show which questions its survey shows.
+
+### Fixed
+
+- When sending fails, `LumiSurveyDock` returns focus to the submit button,
+  or to the next button when that button sent the survey because no later
+  question is shown. Chromium and WebKit move focus to `<body>` when the
+  focused button is disabled during the submit, and focus stayed there. Focus is left alone
+  when the user has moved it to the page in the meantime.
+- The receipt no longer takes focus when focus had gone from the dock to the
+  page and then to no element while the answer was sent. Browsers drop focus
+  from the disabled submit button without a blur event, so the dock did not
+  know that focus had left it. This now also holds when a dialog on the page
+  stops the focus event, and when the dock is shown in an iframe through a
+  portal and focus went to an element in the iframe's own document.
+- The receipt takes focus after a click on the submit button that leaves
+  focus where it was, as with a mouse in Safari or a screen reader in browse
+  mode. A click outside the dock while the answer is sent counts as leaving
+  it, also on the page around an iframe the dock is in.
+- A form that the app renders from the dock through a portal, such as a
+  search in a dialog opened from `personalDataNotice`, no longer sends the
+  dock's answer when it is submitted, and the dock no longer stops that
+  form from being sent.
+- A question id or a metadata key that every JavaScript object has, such as
+  `constructor` or `toString`, no longer counts as answered or set. A
+  condition on such a question was met without an answer, and an optional
+  text field with such an id stopped the submit as invalid.
+- In an iframe, the dock no longer takes focus from the page around the
+  iframe when the user went there while the answer was sent. The iframe
+  hears nothing when focus leaves it for that page.
+- The star rating shrinks to fit a panel narrower than about 20rem, for
+  example the dock in a viewport under 370px. The stars previously kept
+  their size and stuck out of their buttons.
+- A page title or page description that is only spaces no longer gives
+  `LumiSurveyDock` an empty heading or paragraph. The page is shown as one
+  without a title.
+- A searchable multi-choice question answers with the option the keyboard is
+  on, also when two option values differ only in case, spaces or hyphens,
+  such as `A B` and `a-b`. Aksel built the same DOM id for both options, and
+  Enter picked the other one. The DOM id of an option now ends with its
+  position in the list, in both components.
+- `LumiSurveyDock` finds its headings and fields in the document or shadow
+  tree it is rendered in. In a shadow tree, or shown in an iframe through a
+  portal, focus was not moved to the next page, the missing field or the
+  receipt.
+- `LumiSurveyDock` no longer shows the intro of a document that has no
+  visible question for the user, for example when every question has a
+  `visibleIf` rule for another device. The start button led to nothing, and
+  the dock vanished with focus in it. `onViewDock` is not called for such a
+  document.
+- With `success.autoClose` and `behavior.resetOnClose: false`, closing the
+  receipt before the automatic close no longer leaves a focus move waiting.
+  It could later pull focus from the page to the minimized button, for
+  example when the app passed a new `survey`.
+
 ## [2.5.1] - 2026-11-23
 
 ### Fixed

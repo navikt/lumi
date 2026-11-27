@@ -24,6 +24,7 @@ pnpm run lint:fix
 pnpm run typecheck
 pnpm run test
 pnpm run e2e
+pnpm run e2e:survey
 
 pnpm run api:run
 pnpm run api:test

@@ -8,6 +8,8 @@ Widgeten kaller funksjonene i `events` blant annet når brukeren ser surveyen, s
 
 `events` er funksjoner og kan ikke sendes fra en serverkomponent i Next.js App Router. Bruk en egen fil med `"use client"`, se [Next.js App Router](/kom-i-gang/konfigurer-survey#next-js).
 
+`LumiSurveyInline` tar de samme funksjonene. Der betyr `onViewDock` noe annet, og `onReset` og `onDismissalPersistFailed` kalles aldri. Se [Visning og svartid](/guider/inline-survey#visning-og-svartid).
+
 ## Alle events
 
 Send et `events`-objekt til `LumiSurveyDock`:
@@ -37,7 +39,9 @@ Send et `events`-objekt til `LumiSurveyDock`:
 
 Kalles én gang hver gang panelet faktisk åpnes for brukeren, enten det vises åpent fra start eller brukeren åpner det fra den minimerte knappen. Den minimerte knappen alene teller ikke.
 
-Fra versjon 2.3.0 venter widgeten til den har lest lagringen. Brukere på nav.no som ikke har samtykket til `surveys`, og alle brukere i apper uten Nav-dekoratøren som ikke setter `storageStrategy: "localStorage"`, ser bare den minimerte knappen. De teller ikke før de åpner surveyen selv. Regner dere svarandel mot antall visninger, får tallserien et brudd ved 2.3.0.
+I `LumiSurveyInline` finnes det ikke noe panel å åpne. Der kalles `onViewDock` én gang, første gang surveyen er synlig i vinduet. Svarer brukeren, klikker i surveyen eller flytter fokus inn i den før det, kalles funksjonen da. [Visning og svartid](/guider/inline-survey#visning-og-svartid) sier når surveyen regnes som synlig.
+
+Fra versjon 2.3.0 venter `LumiSurveyDock` til den har lest lagringen. Brukere på nav.no som ikke har samtykket til `surveys`, og alle brukere i apper uten Nav-dekoratøren som ikke setter `storageStrategy: "localStorage"`, ser bare den minimerte knappen. De teller ikke før de åpner surveyen selv. Regner dere svarandel mot antall visninger, får tallserien et brudd ved 2.3.0.
 
 ```ts
 onViewDock?: (surveyId: string) => void;
@@ -90,7 +94,7 @@ onValidationFailed?: (missingQuestionIds: string[]) => void;
 
 ### `onReset`
 
-Kalles når skjemaet nullstilles, for eksempel når brukeren lukker widgeten og `resetOnClose` er `true`.
+Kalles når skjemaet nullstilles, for eksempel når brukeren lukker widgeten og `resetOnClose` er `true`. `LumiSurveyInline` kan ikke lukkes og kaller aldri funksjonen.
 
 ```ts
 onReset?: () => void;
@@ -98,7 +102,7 @@ onReset?: () => void;
 
 ### `onDismissalPersistFailed`
 
-Kalles når widgeten ikke klarer å lagre at brukeren har lukket surveyen eller sendt inn svar. Lagringen skjer rett etter en vellykket innsending, så også den kan utløse hendelsen. Funksjonen kalles i tillegg når widgeten ikke klarer å fjerne en lagret lukking, enten fordi brukeren åpner surveyen igjen, eller fordi ventetiden er over når siden lastes. Det skjer typisk når brukeren ikke har gitt samtykke, eller når `localStorage` ikke er tilgjengelig. Å lese lagringen utløser ikke hendelsen. Finnes det ingenting å fjerne, prøver ikke widgeten.
+Kalles når widgeten ikke klarer å lagre at brukeren har lukket surveyen eller sendt inn svar. Lagringen skjer rett etter en vellykket innsending, så også den kan utløse hendelsen. Funksjonen kalles i tillegg når widgeten ikke klarer å fjerne en lagret lukking, enten fordi brukeren åpner surveyen igjen, eller fordi ventetiden er over når siden lastes. Det skjer typisk når brukeren ikke har gitt samtykke, eller når `localStorage` ikke er tilgjengelig. Å lese lagringen utløser ikke hendelsen. Finnes det ingenting å fjerne, prøver ikke widgeten. `LumiSurveyInline` lagrer ingenting og kaller aldri funksjonen.
 
 ```ts
 onDismissalPersistFailed?: (cause: unknown) => void;

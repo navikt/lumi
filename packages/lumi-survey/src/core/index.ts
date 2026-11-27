@@ -18,6 +18,7 @@ export {
   isConditionGroup,
   isLeafCondition,
 } from "./conditionUtils.js";
+export { resolveDocumentVisibility } from "./documentVisibility.js";
 export {
   evaluateVisibility,
   getVisibleQuestions,

@@ -43,6 +43,12 @@ Ikke sett `dismissCooldownDays: 0`. Da går ventetiden aldri ut, og surveyen åp
 Uten CSS-importene kan elementer i widgeten bli usynlige. Se [Layout virker tom](#layout-virker-tom) lenger ned.
 :::
 
+::: details Sjekk 5: Det gjelder `LumiSurveyInline`
+`LumiSurveyInline` lagrer ingenting og kan ikke lukkes, så sjekk 1 til 3 gjelder ikke. Vises den ikke, er `transport` ugyldig, eller så er ingen spørsmål synlige med `visibleIf`-reglene i surveyen. Er `transport` ugyldig, står det en melding som begynner med `[Lumi]` i konsollen.
+
+Komponenten rendres bare i nettleseren. I en app som rendres på serveren, kommer surveyen derfor til syne først når siden er lastet.
+:::
+
 ## Widgeten virker ikke i Next.js App Router
 
 Importer `LumiSurveyDock` fra `@navikt/lumi-survey/client` i en serverkomponent,

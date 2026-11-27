@@ -499,15 +499,30 @@ export interface LumiSurveyTransport {
 }
 
 export interface LumiSurveyEvents {
+  /**
+   * Fired when the user is shown the survey. `LumiSurveyDock` calls it each
+   * time the open panel is shown, not for the minimized button.
+   * `LumiSurveyInline` calls it once, the first time the survey is on screen:
+   * at least half of its height and half of its width, or enough of it to
+   * cover half of the viewport in a direction where it is larger than the
+   * viewport. A scroll area smaller than the viewport takes the viewport's
+   * place. An answer, a click or focus in the survey before that
+   * counts as the view.
+   */
   onViewDock?: (surveyId: string) => void;
   onAnswer?: (questionId: string, value: unknown) => void;
   onSubmitStart?: (submission: LumiSurveySubmission) => void;
   onSubmitSuccess?: (submission: LumiSurveySubmission) => void;
   onSubmitError?: (cause: unknown) => void;
   onValidationFailed?: (missingQuestionIds: string[]) => void;
+  /**
+   * Fired when the answers are cleared, for example when the dock closes.
+   * `LumiSurveyInline` never calls it.
+   */
   onReset?: () => void;
   /**
    * Fired when the dock cannot persist its dismissal flag due to storage restrictions (for example when consent is denied).
+   * `LumiSurveyInline` stores nothing and never calls it.
    */
   onDismissalPersistFailed?: (cause: unknown) => void;
   /**

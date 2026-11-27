@@ -150,8 +150,11 @@ export function StarRating({
                   aria-hidden
                   style={{
                     display: "inline-block",
+                    // 2.5rem where there is room. In a narrow panel the star
+                    // shrinks with its button and stays square.
                     width: "2.5rem",
-                    height: "2.5rem",
+                    maxWidth: "100%",
+                    aspectRatio: "1 / 1",
                     position: "relative",
                     pointerEvents: "none",
                   }}
@@ -161,8 +164,8 @@ export function StarRating({
                     style={{
                       position: "absolute",
                       inset: 0,
-                      width: "2.5rem",
-                      height: "2.5rem",
+                      width: "100%",
+                      height: "100%",
                       color: "var(--ax-text-warning)",
                       opacity: isFilled ? 1 : 0,
                     }}
@@ -172,8 +175,8 @@ export function StarRating({
                     style={{
                       position: "absolute",
                       inset: 0,
-                      width: "2.5rem",
-                      height: "2.5rem",
+                      width: "100%",
+                      height: "100%",
                       color: "var(--ax-text-neutral-subtle)",
                       opacity: isFilled ? 0 : 1,
                     }}

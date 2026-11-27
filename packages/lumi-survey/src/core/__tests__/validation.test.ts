@@ -26,6 +26,17 @@ describe("validateAnswers", () => {
     );
   });
 
+  it("takes a question id that every object inherits for an unanswered question", () => {
+    const questions: LumiSurveyQuestion[] = [
+      { id: "constructor", type: "text", prompt: "Kommentar" },
+      { id: "toString", type: "rating", prompt: "Hvor fornøyd er du?" },
+      { id: "valueOf", type: "text", prompt: "Mer", required: true },
+    ];
+
+    expect(validateAnswers(questions, {})).toEqual(["valueOf"]);
+    expect(validateAnswers(questions, { valueOf: "Hei" })).toEqual([]);
+  });
+
   it.each([
     { variant: "emoji" as const, invalidValue: 1.5 },
     { variant: "thumbs" as const, invalidValue: 1.5 },

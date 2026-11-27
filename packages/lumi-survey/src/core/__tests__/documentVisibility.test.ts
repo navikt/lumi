@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type {
+  SurveyDocumentV1,
+  SurveyQuestionV1,
+} from "../../components/surveyTypes.js";
 import { resolveDocumentVisibility } from "../documentVisibility.js";
 import { getVisibleQuestions } from "../evaluateVisibility.js";
 import type { LumiSurveyQuestion, VisibleIfCondition } from "../types.js";
@@ -91,5 +95,96 @@ describe("document visibility", () => {
         { audience: "employer" },
       ).visibleQuestions.map(({ id }) => id),
     ).toEqual(["root", "anyAnswer", "anyMetadata", "metadataOnly"]);
+  });
+  it("reads the questions of a SurveyDocumentV1 as they are, also metadata that only has to exist", () => {
+    const document: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      pages: [
+        {
+          id: "page",
+          questions: [
+            {
+              id: "tagged",
+              type: "text",
+              prompt: "Hvordan var resultatlisten?",
+              visibleIf: {
+                field: "METADATA",
+                key: "placement",
+                operator: "EXISTS",
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const questions = document.pages.flatMap((page) => page.questions);
+    const shown: SurveyQuestionV1[] = resolveDocumentVisibility(
+      questions,
+      {},
+      {
+        placement: "under-listen",
+      },
+    ).visibleQuestions;
+    expect(shown).toEqual(questions);
+    expect(
+      resolveDocumentVisibility(questions, {}, {}).visibleQuestionIds.size,
+    ).toBe(0);
+  });
+
+  it("takes a question id or a metadata key that every object inherits for no answer", () => {
+    const questions = [
+      question("constructor"),
+      question("toString"),
+      question("follows", { questionId: "constructor", operator: "EXISTS" }),
+      question("tagged", {
+        field: "METADATA",
+        key: "hasOwnProperty",
+        operator: "EXISTS",
+        value: "",
+      }),
+      question("__proto__"),
+      question("follows-proto", {
+        questionId: "__proto__",
+        operator: "EXISTS",
+      }),
+    ];
+    const unanswered = resolveDocumentVisibility(questions, {}, {});
+    expect(unanswered.visibleQuestions.map(({ id }) => id)).toEqual([
+      "constructor",
+      "toString",
+      "__proto__",
+    ]);
+    expect(Object.keys(unanswered.visibleAnswers)).toEqual([]);
+
+    const answers = JSON.parse('{"constructor":"ja","__proto__":"ja"}');
+    const answered = resolveDocumentVisibility(questions, answers, {
+      hasOwnProperty: "yes",
+    });
+    expect(answered.visibleQuestions.map(({ id }) => id)).toEqual([
+      "constructor",
+      "toString",
+      "follows",
+      "tagged",
+      "__proto__",
+      "follows-proto",
+    ]);
+    expect(Object.keys(answered.visibleAnswers)).toEqual([
+      "constructor",
+      "__proto__",
+    ]);
+  });
+
+  it("gives back only answers: a question without one gives undefined, whatever its id", () => {
+    const { visibleAnswers } = resolveDocumentVisibility(
+      [question("constructor"), question("toString"), question("svar")],
+      { svar: "ja" },
+    );
+    expect(visibleAnswers.constructor).toBeUndefined();
+    expect(visibleAnswers.toString).toBeUndefined();
+    expect(visibleAnswers.svar).toBe("ja");
+    expect(Object.getPrototypeOf(visibleAnswers)).toBeNull();
+    // It is still a plain object to read and send on.
+    expect(JSON.stringify(visibleAnswers)).toBe('{"svar":"ja"}');
+    expect({ ...visibleAnswers }).toEqual({ svar: "ja" });
   });
 });

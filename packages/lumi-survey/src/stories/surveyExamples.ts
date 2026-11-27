@@ -325,6 +325,83 @@ export const SEARCHABLE_MULTI_CHOICE_DOCUMENT = {
   ],
 } satisfies SurveyDocumentV1;
 
+export const INLINE_CONTENT_DOCUMENT = {
+  authoringSchemaVersion: 1,
+  type: "rating",
+  pages: [
+    {
+      id: "kalkulator",
+      questions: [
+        {
+          id: "rating",
+          type: "rating",
+          variant: "emoji",
+          prompt: "Hvor lett var det å bruke kalkulatoren?",
+          required: true,
+        },
+        {
+          id: "begrunnelse",
+          type: "text",
+          prompt: "Hva kunne vært bedre?",
+          maxLength: 500,
+          minRows: 2,
+          visibleIf: {
+            questionId: "rating",
+            operator: "EXISTS",
+          },
+        },
+      ],
+    },
+  ],
+  success: {
+    title: "Takk for svaret",
+    body: "Vi bruker tilbakemeldingen når vi forbedrer kalkulatoren.",
+  },
+} satisfies SurveyDocumentV1;
+
+export const INLINE_NARROW_COLUMN_DOCUMENT = {
+  authoringSchemaVersion: 1,
+  type: "rating",
+  pages: [
+    {
+      id: "anbefaling",
+      questions: [
+        {
+          id: "rating",
+          type: "rating",
+          variant: "nps",
+          prompt: "Hvor sannsynlig er det at du bruker oversikten igjen?",
+          lowLabel: "Lite sannsynlig",
+          highLabel: "Svært sannsynlig",
+          required: true,
+        },
+      ],
+    },
+  ],
+} satisfies SurveyDocumentV1;
+
+export const INLINE_REPEATED_DOCUMENT = {
+  authoringSchemaVersion: 1,
+  type: "rating",
+  pages: [
+    {
+      id: "nytte",
+      questions: [
+        {
+          id: "rating",
+          type: "rating",
+          variant: "thumbs",
+          prompt: "Var dette nyttig?",
+          required: true,
+        },
+      ],
+    },
+  ],
+  success: {
+    title: "Takk for svaret",
+  },
+} satisfies SurveyDocumentV1;
+
 export const LEGACY_SURVEY_CONFIG = {
   type: "rating",
   questions: [

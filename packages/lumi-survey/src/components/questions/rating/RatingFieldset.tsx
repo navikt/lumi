@@ -2,6 +2,8 @@ import { BodyShort, Box, Fieldset, Heading, VStack } from "@navikt/ds-react";
 import type { ComponentProps, ReactNode } from "react";
 import { useId } from "react";
 import type { RatingQuestion } from "../../../core/types.js";
+import { useSurveyFieldIds } from "../../shared/surveyFieldId.js";
+import { useQuestionHeadingLevel } from "../../shared/surveyHeadingLevel.js";
 import { QuestionPrompt, useSurveyLang } from "../../shared/surveyLanguage.js";
 
 interface RatingFieldsetProps {
@@ -30,7 +32,8 @@ const joinIds = (...ids: Array<string | undefined>): string | undefined =>
  * The fieldset itself carries `role="radiogroup"` (an allowed role for
  * fieldset), so the accessibility tree exposes exactly one named group per
  * question. The prompt exists in one place only: as the legend. When the
- * prompt is visible it is a level 3 heading inside the legend; when an
+ * prompt is visible it is a heading inside the legend, one level below the
+ * survey's title (level 3 unless the app has set another level); when an
  * external heading labels the group, the legend copy is removed from the
  * accessibility tree entirely.
  */
@@ -49,11 +52,14 @@ export function RatingFieldset({
   fieldsetPaddingInline,
   children,
 }: RatingFieldsetProps) {
-  const instanceId = useId();
-  const headingId = `${instanceId}-heading`;
-  const fallbackDescriptionId = `${instanceId}-description`;
-  const legendContentId = `${instanceId}-legend`;
-  const errorId = `${instanceId}-error`;
+  const reactId = useId();
+  const fieldIds = useSurveyFieldIds(question.id);
+  // The dock keeps the ids React makes, with the part last.
+  const partId = (part: string) => fieldIds?.(part) ?? `${reactId}-${part}`;
+  const headingId = partId("heading");
+  const fallbackDescriptionId = partId("description");
+  const legendContentId = partId("legend");
+  const errorId = partId("error");
   const descriptionId =
     !hideDescription && question.description
       ? fallbackDescriptionId
@@ -65,6 +71,7 @@ export function RatingFieldset({
     hasError ? errorId : undefined,
   );
   const surveyLang = useSurveyLang();
+  const headingLevel = useQuestionHeadingLevel();
   const promptText = <QuestionPrompt question={question} />;
 
   // Exactly one name source for the group:
@@ -75,7 +82,7 @@ export function RatingFieldset({
   // - hidden prompt without an external heading: the visually hidden legend
   //   is the only name source
   const legend = !hidePrompt ? (
-    <Heading id={headingId} level="3" size="xsmall">
+    <Heading id={headingId} level={headingLevel} size="xsmall">
       {promptText}
     </Heading>
   ) : ariaLabelledBy ? (

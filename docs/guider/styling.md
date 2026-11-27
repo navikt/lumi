@@ -51,6 +51,10 @@ Widgeten ligger som standard nederst til høyre, over Frida-chatboten i Nav-deko
 
 Alle feltene står i [`style` i props-referansen](/referanse/props-referanse#style-lumisurveystyle).
 
+## `LumiSurveyInline`
+
+`LumiSurveyInline` har ingen plassering å stille på. Den står der dere setter den inn, og bredden følger elementet rundt. `style` har feltene `containerClassName`, `panelClassName`, `panelBackground` og `panelBorderColor`. Elementet rundt surveyen har klassen `lumi-survey-inline`. Se [Bredde og utseende](/guider/inline-survey#bredde-og-utseende).
+
 ## Aksel-kompatibilitet
 
 Widgeten bruker Aksel-komponenter og -tokens og følger derfor Aksel automatisk: Fonter og tekststørrelser kommer fra `@navikt/ds-css`, avstander fra `space-*`-tokenene og farger fra tokens som `neutral-soft` og `neutral-subtle`.

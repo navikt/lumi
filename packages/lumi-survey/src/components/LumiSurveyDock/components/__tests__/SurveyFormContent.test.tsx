@@ -80,7 +80,7 @@ function defaultProps(
     questionContext: {
       promptQuestionId: "rating",
       promptHeadingId: "heading-id",
-      questionAnchorPrefix: "survey-question",
+      questionAnchorId: (questionId: string) => `survey-question-${questionId}`,
       validationErrorMessage: "Feltet er påkrevd",
       validationSummaryHeading: "Rett svarene før du fortsetter:",
       textTooLongErrorMessage: (maxLength: number) =>
@@ -103,6 +103,76 @@ function defaultProps(
 // ---------------------------------------------------------------------------
 
 describe("SurveyFormContent", () => {
+  // ---- Form element ----
+
+  describe("form element", () => {
+    it("wraps the fields in a form and submits through it by default", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn((event) => {
+        event.preventDefault();
+        return Promise.resolve();
+      });
+      const { container } = render(
+        <SurveyFormContent {...defaultProps({ onSubmit })} />,
+      );
+
+      const submit = screen.getByRole("button", { name: "Send" });
+      expect(container.querySelector("form")).toContainElement(submit);
+      expect(submit).toHaveAttribute("type", "submit");
+      await user.click(submit);
+
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      expect(onSubmit.mock.calls[0][0].type).toBe("submit");
+    });
+
+    it("renders no form when formless, and submits from the button", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn(() => Promise.resolve());
+      const { container } = render(
+        <SurveyFormContent {...defaultProps({ onSubmit, formless: true })} />,
+      );
+
+      const submit = screen.getByRole("button", { name: "Send" });
+      expect(container.querySelector("form")).toBeNull();
+      expect(submit).toHaveAttribute("type", "button");
+      await user.click(submit);
+
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      expect(onSubmit).toHaveBeenCalledWith();
+    });
+
+    it("submits from the button on the last step when formless", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn(() => Promise.resolve());
+      render(
+        <SurveyFormContent
+          {...defaultProps({
+            onSubmit,
+            formless: true,
+            stepNavigation: {
+              isStepMode: true,
+              currentStep: 1,
+              currentStepQuestion: textQuestion,
+              canGoBack: true,
+              canGoNext: true,
+              isLastStep: true,
+            },
+          })}
+        />,
+      );
+
+      const submit = screen.getByRole("button", { name: "Send" });
+      expect(submit).toHaveAttribute("type", "button");
+      expect(screen.getByRole("button", { name: "Tilbake" })).toHaveAttribute(
+        "type",
+        "button",
+      );
+      await user.click(submit);
+
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+  });
+
   // ---- Step mode ----
 
   describe("step mode", () => {
@@ -256,7 +326,8 @@ describe("SurveyFormContent", () => {
             questionContext: {
               promptQuestionId: "rating",
               promptHeadingId: "heading-id",
-              questionAnchorPrefix: "survey-question",
+              questionAnchorId: (questionId: string) =>
+                `survey-question-${questionId}`,
               validationErrorMessage: "This field is required",
               validationSummaryHeading: "Correct these answers:",
               textTooLongErrorMessage: (maxLength: number) =>

@@ -1136,6 +1136,54 @@ describe("LumiSurveyDock", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows no intro when the document has no question for this user", async () => {
+    const onViewDock = vi.fn();
+    const mobileOnly: SurveyDocumentV1 = {
+      authoringSchemaVersion: 1,
+      intro: { title: "Hjelp oss å bli bedre", body: "Tre spørsmål." },
+      pages: [
+        {
+          id: "mobil",
+          questions: [
+            {
+              id: "kun-mobil",
+              type: "text",
+              prompt: "Hvordan var det på mobil?",
+              visibleIf: {
+                field: "METADATA",
+                key: "deviceType",
+                operator: "EQ",
+                value: "mobile",
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const dock = (viewport: { width: number; height: number }) => (
+      <LumiSurveyDock
+        surveyId="dock-intro-uten-sporsmal"
+        survey={mobileOnly}
+        transport={{ submit: vi.fn().mockResolvedValue(undefined) }}
+        events={{ onViewDock }}
+        behavior={{ storageStrategy: "none", simulatedViewport: viewport }}
+      />
+    );
+
+    // On a desktop the start button would lead to nothing, and the dock
+    // would vanish with focus in it.
+    const { container, rerender } = render(dock({ width: 1280, height: 800 }));
+    await act(async () => {});
+    expect(container.querySelector("aside")).toBeNull();
+    expect(onViewDock).not.toHaveBeenCalled();
+
+    rerender(dock({ width: 360, height: 640 }));
+    expect(
+      await screen.findByRole("heading", { name: "Hjelp oss å bli bedre" }),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(onViewDock).toHaveBeenCalledTimes(1));
+  });
+
   it("lets an explicit intro prop override the document's intro", async () => {
     render(
       <LumiSurveyDock
@@ -1419,6 +1467,7 @@ describe("LumiSurveyDock", () => {
     );
 
     await screen.findByRole("heading", { name: /hvor fornøyd er du/i });
+    await waitFor(() => expect(onViewDock).toHaveBeenCalled());
     expect(onViewDock).toHaveBeenCalledOnce();
   });
 

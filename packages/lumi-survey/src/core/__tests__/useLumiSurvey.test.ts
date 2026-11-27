@@ -9,7 +9,7 @@ import type {
   LumiSurveySubmitResult,
   LumiSurveyTransport,
 } from "../types.js";
-import { useLumiSurvey } from "../useLumiSurvey.js";
+import { useLumiSurvey, useLumiSurveyState } from "../useLumiSurvey.js";
 
 const _delay = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -385,6 +385,42 @@ describe("useLumiSurvey", () => {
       gate: "no",
       details: "should not leave the browser",
     });
+  });
+
+  it("gives the transport and the events the answers of a document as a plain object", async () => {
+    // A transport written before `Object.hasOwn` can ask the answers itself.
+    const asked: boolean[] = [];
+    const ask = (submission: LumiSurveySubmission) => {
+      // biome-ignore lint/suspicious/noPrototypeBuiltins: A transport as apps have written them.
+      asked.push(submission.answers.hasOwnProperty("rating"));
+    };
+    const submitMock = vi.fn(async (submission: LumiSurveySubmission) => {
+      ask(submission);
+    });
+    const { result } = renderHook(() =>
+      useLumiSurveyState(
+        {
+          surveyId: SURVEY_ID,
+          questions: optionalMainQuestionSurvey,
+          transport: { submit: submitMock },
+          events: { onSubmitStart: ask, onSubmitSuccess: ask },
+        },
+        true,
+      ),
+    );
+
+    await act(() => {
+      result.current.setAnswer("rating", 4);
+    });
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(asked).toEqual([true, true, true]);
+    const submission = submitMock.mock.calls[0][0];
+    expect(Object.getPrototypeOf(submission.answers)).toBe(Object.prototype);
+    expect(submission.answers).toEqual({ rating: 4 });
+    expect(result.current.status).toBe("success");
   });
 
   it("retains answers visible through context metadata at submission time", async () => {

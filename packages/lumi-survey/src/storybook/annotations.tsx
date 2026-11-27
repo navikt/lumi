@@ -40,6 +40,7 @@ export const previewAnnotations: Preview = {
       storySort: {
         order: [
           "Kom i gang",
+          "Plassering",
           "Datamodell",
           ["Pages og flyt", "Spørsmålstyper"],
           "Surveytyper",

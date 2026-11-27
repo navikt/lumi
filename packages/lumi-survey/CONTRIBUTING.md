@@ -10,6 +10,7 @@ Kjør fra repo root:
 - `pnpm run lint`
 - `pnpm run typecheck`
 - `pnpm --filter @navikt/lumi-survey test`
+- `pnpm run e2e:survey` når du har endret stilark eller layout. Testene måler bredder i Chromium mot Storybook, og trenger nettleseren fra `pnpm --filter @navikt/lumi-survey exec playwright install chromium`.
 
 ## Lage ny versjon av `@navikt/lumi-survey`
 
