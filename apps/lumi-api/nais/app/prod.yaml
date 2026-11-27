@@ -58,6 +58,8 @@ spec:
         - application: gosys-oppgavebehandling
           namespace: oppgavehandtering
         - application: oppfolgingsplan-frontend
+        - application: arbeidssokerregistrering-for-veileder
+          namespace: paw
     outbound:
       external:
         - host: console.nav.cloud.nais.io
