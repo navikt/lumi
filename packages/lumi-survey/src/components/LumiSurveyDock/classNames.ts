@@ -1,5 +1,6 @@
 export const CLASS_NAMES = {
   container: "lumi-survey-dock",
+  inlineContainer: "lumi-survey-inline",
   panel: "lumi-survey-dock__panel",
   header: "lumi-survey-dock__header",
   headerText: "lumi-survey-dock__header-text",
@@ -12,6 +13,7 @@ export const CLASS_NAMES = {
   ratingRow: "lumi-survey-dock__rating-row",
   ratingButton: "lumi-survey-dock__rating-button",
   minimizedButton: "lumi-survey-dock__minimized-button",
+  introStart: "lumi-survey-dock__intro-start",
   question: "lumi-survey-question",
 } as const;
 

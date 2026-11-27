@@ -53,14 +53,26 @@ export interface UseLumiSurveyReturn {
 export function useLumiSurvey(
   options: UseLumiSurveyOptions,
 ): UseLumiSurveyReturn {
-  return useLumiSurveyState(options);
+  // The timer control is not part of the public hook.
+  const { restartTimer: _restartTimer, ...survey } =
+    useLumiSurveyState(options);
+  return survey;
+}
+
+export interface LumiSurveyState extends UseLumiSurveyReturn {
+  /**
+   * Moves `startedAt` to now. The clock otherwise starts when the hook
+   * mounts, which for a survey further down a page is long before the user
+   * sees it.
+   */
+  restartTimer: () => void;
 }
 
 /** Internal document-aware state hook; the public hook retains flat semantics. */
 export function useLumiSurveyState(
   options: UseLumiSurveyOptions,
   documentVisibility = false,
-): UseLumiSurveyReturn {
+): LumiSurveyState {
   const {
     surveyId,
     questions,
@@ -133,11 +145,15 @@ export function useLumiSurveyState(
       try {
         const answerSnapshot = cloneAnswers(answers);
         const submittedAnswers = documentVisibility
-          ? resolveDocumentVisibility(
-              questions,
-              answerSnapshot,
-              getVisibilityMetadata(context),
-            ).visibleAnswers
+          ? // The answers have no prototype there. The transport and the
+            // events get the plain object they have always had.
+            {
+              ...resolveDocumentVisibility(
+                questions,
+                answerSnapshot,
+                getVisibilityMetadata(context),
+              ).visibleAnswers,
+            }
           : getVisibleAnswers(
               questions,
               answerSnapshot,
@@ -198,6 +214,10 @@ export function useLumiSurveyState(
     ],
   );
 
+  const restartTimer = useCallback(() => {
+    startedAtRef.current = new Date().toISOString();
+  }, [startedAtRef]);
+
   const reset = useCallback(() => {
     generationRef.current += 1;
     resetAnswers();
@@ -216,5 +236,6 @@ export function useLumiSurveyState(
     submit,
     validate,
     reset,
+    restartTimer,
   };
 }

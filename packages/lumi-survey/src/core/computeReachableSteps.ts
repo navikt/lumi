@@ -4,6 +4,7 @@ import {
   isLeafCondition,
 } from "./conditionUtils.js";
 import { evaluateVisibility } from "./evaluateVisibility.js";
+import { ownValue, setOwnValue } from "./ownValue.js";
 import type {
   LogicLeafCondition,
   LumiSurveyAnswerValue,
@@ -178,7 +179,7 @@ export function computeReachableSteps(
         if (!isLeafCondition(leaf)) return false;
         if (leaf.field === "METADATA") return true;
         if (!leaf.questionId) return true;
-        if (answers[leaf.questionId] !== undefined) {
+        if (ownValue(answers, leaf.questionId) !== undefined) {
           return evaluateVisibility(leaf, answers, metadata);
         }
         return isDeterministicallyReachable(leaf.questionId, new Set(visited));
@@ -219,7 +220,7 @@ export function computeReachableSteps(
       return result;
     }
 
-    if (answers[condition.questionId] !== undefined) {
+    if (ownValue(answers, condition.questionId) !== undefined) {
       const result = evaluateVisibility(condition, answers, metadata);
       deterministicReachableCache.set(questionId, result);
       return result;
@@ -251,7 +252,7 @@ export function computeReachableSteps(
     ) {
       if (condition.operator !== "EXISTS") {
         const parentId = condition.questionId;
-        if (answers[parentId] !== undefined) {
+        if (ownValue(answers, parentId) !== undefined) {
           if (!evaluateVisibility(condition, answers, metadata)) {
             return 0;
           }
@@ -279,7 +280,7 @@ export function computeReachableSteps(
         continue;
       }
 
-      if (answers[questionId] !== undefined) {
+      if (ownValue(answers, questionId) !== undefined) {
         if (evaluateVisibility(childCondition, answers, metadata)) {
           total += branchLengthFrom(child.id, new Set(visited));
         }
@@ -327,7 +328,7 @@ export function computeReachableSteps(
       if (witness === undefined) {
         delete hypotheticalAnswers[parentId];
       } else {
-        hypotheticalAnswers[parentId] = witness;
+        setOwnValue(hypotheticalAnswers, parentId, witness);
       }
 
       let total = 0;
@@ -363,7 +364,7 @@ export function computeReachableSteps(
       continue;
     }
 
-    if (answers[condition.questionId] !== undefined) {
+    if (ownValue(answers, condition.questionId) !== undefined) {
       continue;
     }
 

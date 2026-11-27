@@ -1,5 +1,7 @@
+import type { SurveyQuestionV1 } from "../components/surveyTypes.js";
 import { isLeafCondition } from "./conditionUtils.js";
 import { evaluateVisibility } from "./evaluateVisibility.js";
+import { ownValue, setOwnValue } from "./ownValue.js";
 import type {
   LogicLeafCondition,
   LumiSurveyAnswerValue,
@@ -8,17 +10,40 @@ import type {
 } from "./types.js";
 
 /**
+ * A question as `resolveDocumentVisibility` reads it: from the pages of a
+ * `SurveyDocumentV1`, or in the format the widget uses inside.
+ */
+export interface DocumentVisibilityQuestion {
+  id: LumiSurveyQuestion["id"];
+  visibleIf?: VisibleIfCondition | SurveyQuestionV1["visibleIf"];
+}
+
+/**
+ * Which questions of a `SurveyDocumentV1` the survey shows, with these
+ * answers and this metadata. Give the questions of all pages in order.
+ *
  * V1 documents only reference earlier questions. Resolve the whole document in
  * order so cached answers from a closed branch cannot open its descendants.
  * Keep the cached answers intact so returning to that branch restores input.
+ *
+ * `visibleAnswers` holds the answers to the visible questions and nothing
+ * else: it has no prototype, so a question without an answer gives
+ * `undefined`, also when its id is `constructor`.
  */
-export function resolveDocumentVisibility(
-  questions: LumiSurveyQuestion[],
-  answers: Record<string, LumiSurveyAnswerValue>,
-  metadata?: Record<string, unknown>,
-) {
+export function resolveDocumentVisibility<
+  Question extends DocumentVisibilityQuestion,
+>(
+  questions: readonly Question[],
+  answers: Readonly<Record<string, LumiSurveyAnswerValue>>,
+  metadata?: Readonly<Record<string, unknown>>,
+): {
+  visibleQuestions: Question[];
+  visibleQuestionIds: Set<string>;
+  visibleAnswers: Record<string, LumiSurveyAnswerValue>;
+} {
   const visibleQuestionIds = new Set<string>();
-  const visibleAnswers: Record<string, LumiSurveyAnswerValue> = {};
+  const visibleAnswers: Record<string, LumiSurveyAnswerValue> =
+    Object.create(null);
 
   const evaluateLeaf = (leaf: LogicLeafCondition): boolean => {
     if (!isLeafCondition(leaf)) return false;
@@ -48,10 +73,15 @@ export function resolveDocumentVisibility(
   };
 
   const visibleQuestions = questions.filter((question) => {
-    if (!evaluate(question.visibleIf)) return false;
+    // A V1 condition is the same shape, except that `EXISTS` on metadata has
+    // no value. The evaluator reads both, and fails closed on anything else.
+    if (!evaluate(question.visibleIf as VisibleIfCondition | undefined)) {
+      return false;
+    }
     visibleQuestionIds.add(question.id);
-    if (answers[question.id] !== undefined) {
-      visibleAnswers[question.id] = answers[question.id];
+    const answer = ownValue(answers, question.id);
+    if (answer !== undefined) {
+      setOwnValue(visibleAnswers, question.id, answer);
     }
     return true;
   });

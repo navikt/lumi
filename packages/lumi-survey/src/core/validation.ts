@@ -1,3 +1,4 @@
+import { ownValue } from "./ownValue.js";
 import { getTextAnswerMaxLength } from "./textAnswerLimits.js";
 import type {
   ChoiceOption,
@@ -15,7 +16,7 @@ export function validateAnswers(
   const missingIds: string[] = [];
 
   for (const question of questions) {
-    if (getAnswerValidationIssue(question, answers[question.id])) {
+    if (getAnswerValidationIssue(question, ownValue(answers, question.id))) {
       missingIds.push(question.id);
     }
   }

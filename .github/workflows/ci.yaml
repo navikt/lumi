@@ -270,6 +270,11 @@ jobs:
         run: pnpm run e2e
         env:
           USE_MOCK_DATA: 'true'
+      # Measures the widget's layout in the Chromium installed above. The
+      # dashboard and the widget resolve @playwright/test to the same version
+      # in the lockfile, so they use the same browser build.
+      - name: Survey layout tests
+        run: pnpm run e2e:survey
 
   release-guards:
     name: Release guards

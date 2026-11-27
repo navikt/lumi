@@ -1,5 +1,6 @@
 import { BodyLong, Heading, VStack } from "@navikt/ds-react";
 import React from "react";
+import { useSurveyHeadingLevel } from "../../shared/surveyHeadingLevel.js";
 import { useSurveyLang } from "../../shared/surveyLanguage.js";
 
 interface SuccessContentProps {
@@ -12,6 +13,7 @@ interface SuccessContentProps {
 export const SuccessContent = React.memo(
   ({ title, body, showTitle = true, announce = true }: SuccessContentProps) => {
     const surveyLang = useSurveyLang();
+    const headingLevel = useSurveyHeadingLevel();
     const accessibilityProps = announce
       ? { role: "status" as const, "aria-live": "polite" as const }
       : {};
@@ -19,7 +21,7 @@ export const SuccessContent = React.memo(
     return (
       <VStack gap="space-12" {...accessibilityProps}>
         {showTitle && (
-          <Heading level="2" size="small">
+          <Heading level={headingLevel} size="small">
             {title}
           </Heading>
         )}

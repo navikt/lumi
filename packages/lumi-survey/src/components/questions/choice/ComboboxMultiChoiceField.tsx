@@ -1,10 +1,11 @@
 import { UNSAFE_Combobox } from "@navikt/ds-react";
 import { useMemo } from "react";
 import type {
-  ChoiceOption,
   ChoiceQuestion,
   LumiSurveyAnswerValue,
 } from "../../../core/types.js";
+import { useSurveyFieldIds } from "../../shared/surveyFieldId.js";
+import { useFieldFormOwner } from "../../shared/surveyFormOwner.js";
 import {
   BuiltInText,
   QuestionPrompt,
@@ -40,37 +41,36 @@ export const ComboboxMultiChoiceField = ({
   hideLabel,
 }: ComboboxMultiChoiceFieldProps) => {
   const options = useChoiceOptions(question);
+  const fieldIds = useSurveyFieldIds(question.id);
+  const formOwner = useFieldFormOwner();
   const selected = useMemo(() => (Array.isArray(value) ? value : []), [value]);
   const maxSelections = question.maxSelections;
 
-  // Build a map for quick label lookup
-  const optionMap = useMemo(() => {
-    const map = new Map<string, ChoiceOption>();
-    for (const opt of options) {
-      map.set(opt.value, opt);
-    }
-    return map;
-  }, [options]);
-
-  // Convert options to Combobox format (value/label pairs)
+  // Aksel builds the DOM id of each option from the value it is given: lower
+  // case, with spaces as hyphens. Two values from a document can then get the
+  // same id, such as `A B` and `a-b`, and the keyboard picks the wrong one.
+  // Aksel is given the position of the option as its value, and the answer
+  // is mapped back to the value in the document.
   const comboboxOptions = useMemo(
-    () => options.map((opt) => ({ value: opt.value, label: opt.label })),
+    () =>
+      options.map((opt, index) => ({ value: String(index), label: opt.label })),
     [options],
   );
 
-  // Convert selected values to Combobox format
   const selectedOptions = useMemo(
     () =>
-      selected
-        .map((val) => {
-          const opt = optionMap.get(val);
-          return opt ? { value: opt.value, label: opt.label } : null;
-        })
-        .filter(Boolean) as { value: string; label: string }[],
-    [selected, optionMap],
+      selected.flatMap((val) => {
+        const index = options.findIndex((opt) => opt.value === val);
+        return index === -1 ? [] : [comboboxOptions[index]];
+      }),
+    [comboboxOptions, options, selected],
   );
 
-  const handleToggle = (option: string, isSelected: boolean) => {
+  const handleToggle = (position: string, isSelected: boolean) => {
+    const option = options[Number(position)]?.value;
+    if (option === undefined) {
+      return;
+    }
     if (isSelected) {
       // Check max selections limit
       if (maxSelections && selected.length >= maxSelections) {
@@ -105,6 +105,10 @@ export const ComboboxMultiChoiceField = ({
 
   return (
     <UNSAFE_Combobox
+      {...formOwner}
+      // Aksel adds to this id to name the list and its options. The part is
+      // the field's own, so none of those ids can be the id of another field.
+      {...(fieldIds && { id: fieldIds("combobox") })}
       label={<QuestionPrompt question={question} />}
       hideLabel={hideLabel}
       description={description}

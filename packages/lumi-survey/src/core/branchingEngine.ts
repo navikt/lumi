@@ -1,4 +1,5 @@
 import { getLeafConditions, isLeafCondition } from "./conditionUtils.js";
+import { ownValue } from "./ownValue.js";
 import type {
   LogicLeafCondition,
   LogicOperator,
@@ -32,14 +33,14 @@ function evaluateCondition(
   let actualValue: unknown;
 
   if (condition.field === "METADATA") {
-    actualValue = metadata?.[condition.key];
+    actualValue = ownValue(metadata, condition.key);
   } else {
     // Default: condition.field is "ANSWER" (or omitted). A questionId
     // references another question's answer (cross-question); without one, the
     // condition applies to the current question's own answer. Mirrors
     // evaluateVisibility() so logic and visibleIf resolve answers the same way.
     actualValue = condition.questionId
-      ? answers?.[condition.questionId]
+      ? ownValue(answers, condition.questionId)
       : currentAnswer;
   }
 

@@ -1,10 +1,17 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import type React from "react";
+import { createPortal } from "react-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRatingSurvey } from "../../../presets";
-import type { SurveyDocumentV1 } from "../../surveyTypes.js";
+import type { LumiSurveyConfig, SurveyDocumentV1 } from "../../surveyTypes.js";
 import { LumiSurveyDock } from "../LumiSurveyDock.js";
 
 const survey = createRatingSurvey({
@@ -419,6 +426,318 @@ describe("LumiSurveyDock Accessibility", () => {
       name: /takk for tilbakemeldingen/i,
     });
     expect(screen.getByRole("button", { name: /vertsside/i })).toHaveFocus();
+  });
+
+  it("does not take focus when it went from the dock to the host page and then to no element", async () => {
+    let resolveSubmission!: () => void;
+    const submission = new Promise<void>((resolve) => {
+      resolveSubmission = resolve;
+    });
+    const transport = { submit: vi.fn().mockReturnValue(submission) };
+    const user = userEvent.setup();
+    render(
+      <>
+        <button type="button">Vertsside</button>
+        <LumiSurveyDock
+          surveyId="focus-success-left-test"
+          survey={survey}
+          transport={transport}
+          behavior={{ storageStrategy: "none" }}
+        />
+      </>,
+    );
+
+    await user.click(await screen.findByRole("radio", { name: /5\./i }));
+    const submitButton = screen.getByRole("button", { name: /send/i });
+    await user.click(submitButton);
+    // The browser drops focus from the disabled submit button to <body>
+    // without telling the dock where focus goes next.
+    submitButton.blur();
+    expect(document.body).toHaveFocus();
+    // Focus then goes to the host page, and from there to no element.
+    const hostButton = screen.getByRole("button", { name: /vertsside/i });
+    act(() => hostButton.focus());
+    act(() => hostButton.blur());
+    expect(document.body).toHaveFocus();
+
+    await act(async () => {
+      resolveSubmission();
+      await submission;
+    });
+    await screen.findByRole("heading", {
+      name: /takk for tilbakemeldingen/i,
+    });
+    // Let the effects after the receipt run before checking what they did not do.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(document.body).toHaveFocus();
+  });
+
+  it("returns focus to the submit button when sending fails after the disabled submit dropped focus", async () => {
+    let rejectSubmission!: (cause: unknown) => void;
+    const submission = new Promise<void>((_resolve, reject) => {
+      rejectSubmission = reject;
+    });
+    const transport = { submit: vi.fn().mockReturnValue(submission) };
+    const user = userEvent.setup();
+    render(
+      <LumiSurveyDock
+        surveyId="focus-error-pending-test"
+        survey={survey}
+        transport={transport}
+        behavior={{ storageStrategy: "none" }}
+      />,
+    );
+
+    await user.click(await screen.findByRole("radio", { name: /5\./i }));
+    const submitButton = screen.getByRole("button", { name: /send/i });
+    await user.click(submitButton);
+    // Chromium and WebKit move focus to <body> when the focused button is
+    // disabled. jsdom keeps it, so the test drops it by hand.
+    submitButton.blur();
+    expect(document.body).toHaveFocus();
+
+    await act(async () => {
+      rejectSubmission(new Error("nettverk"));
+      await submission.catch(() => {});
+    });
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /send/i })).toHaveFocus(),
+    );
+  });
+
+  it("moves focus to the success heading after a press on Send that did not move focus, as in Safari", async () => {
+    let resolveSubmission!: () => void;
+    const submission = new Promise<void>((resolve) => {
+      resolveSubmission = resolve;
+    });
+    const transport = { submit: vi.fn().mockReturnValue(submission) };
+    const user = userEvent.setup();
+    render(
+      <>
+        <button type="button">Vertsside</button>
+        <LumiSurveyDock
+          surveyId="focus-press-test"
+          survey={survey}
+          transport={transport}
+          behavior={{ storageStrategy: "none" }}
+        />
+      </>,
+    );
+
+    await user.click(await screen.findByRole("radio", { name: /5\./i }));
+    // The user goes to the page, and comes back with a press on Send that
+    // leaves focus where it is.
+    const hostButton = screen.getByRole("button", { name: /vertsside/i });
+    await user.click(hostButton);
+    hostButton.blur();
+    const send = screen.getByRole("button", { name: /send/i });
+    fireEvent.pointerDown(send);
+    fireEvent.click(send);
+    await waitFor(() => expect(transport.submit).toHaveBeenCalled());
+    expect(document.body).toHaveFocus();
+
+    await act(async () => {
+      resolveSubmission();
+      await submission;
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: /takk for tilbakemeldingen/i }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it("leaves a form that the app shows from the dock through a portal to the app", async () => {
+    const transport = { submit: vi.fn().mockResolvedValue(undefined) };
+    const onSearch = vi.fn();
+    const user = userEvent.setup();
+    // The app's notice opens a search outside the dock. React passes its
+    // submit on through the dock's tree.
+    // biome-ignore lint/correctness/noComponentHookFactories: Created once per test, outside React rendering, to isolate its state.
+    const NoticeWithSearch = () => (
+      <>
+        Les om personvern.
+        {createPortal(
+          <form aria-label="Søk i hjelpen" onSubmit={onSearch}>
+            <input aria-label="Søkeord" />
+          </form>,
+          document.body,
+        )}
+      </>
+    );
+    render(
+      <LumiSurveyDock
+        surveyId="portal-form-test"
+        survey={survey}
+        transport={transport}
+        behavior={{
+          storageStrategy: "none",
+          personalDataNotice: <NoticeWithSearch />,
+        }}
+      />,
+    );
+    await user.click(await screen.findByRole("radio", { name: /5\./i }));
+
+    const sentAsTheAppHasIt = fireEvent.submit(
+      screen.getByRole("form", { name: "Søk i hjelpen" }),
+    );
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(onSearch).toHaveBeenCalledTimes(1);
+    expect(sentAsTheAppHasIt).toBe(true);
+    expect(transport.submit).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("heading", { name: /takk for tilbakemeldingen/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("returns focus to Next when Next sent the survey and sending failed", async () => {
+    let rejectSubmission!: (cause: unknown) => void;
+    const submission = new Promise<void>((_resolve, reject) => {
+      rejectSubmission = reject;
+    });
+    const transport = { submit: vi.fn().mockReturnValue(submission) };
+    const user = userEvent.setup();
+    // The last question follows an answer to the one before it. Without that
+    // answer, Next on the second question sends the survey.
+    const branching: LumiSurveyConfig = {
+      questions: [
+        { id: "rating", type: "rating", prompt: "Hvor fornøyd er du?" },
+        { id: "why", type: "text", prompt: "Hvorfor?" },
+        {
+          id: "more",
+          type: "text",
+          prompt: "Fortell mer",
+          visibleIf: { questionId: "why", operator: "EXISTS" },
+        },
+      ],
+    };
+    render(
+      <LumiSurveyDock
+        surveyId="focus-error-next-test"
+        survey={branching}
+        transport={transport}
+        behavior={{ storageStrategy: "none", questionLayout: "steps" }}
+      />,
+    );
+
+    await user.click(await screen.findByRole("radio", { name: /5\./i }));
+    await user.click(screen.getByRole("button", { name: /neste/i }));
+    await screen.findByRole("heading", { name: /hvorfor/i });
+    const next = screen.getByRole("button", { name: /neste/i });
+    await user.click(next);
+    expect(transport.submit).toHaveBeenCalled();
+    next.blur();
+    expect(document.body).toHaveFocus();
+
+    await act(async () => {
+      rejectSubmission(new Error("nettverk"));
+      await submission.catch(() => {});
+    });
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /neste/i })).toHaveFocus(),
+    );
+  });
+
+  it("does not take focus back when sending fails after the user moved to the host page", async () => {
+    let rejectSubmission!: (cause: unknown) => void;
+    const submission = new Promise<void>((_resolve, reject) => {
+      rejectSubmission = reject;
+    });
+    const transport = { submit: vi.fn().mockReturnValue(submission) };
+    const user = userEvent.setup();
+    render(
+      <>
+        <button type="button">Vertsside</button>
+        <LumiSurveyDock
+          surveyId="focus-error-host-test"
+          survey={survey}
+          transport={transport}
+          behavior={{ storageStrategy: "none" }}
+        />
+      </>,
+    );
+
+    await user.click(await screen.findByRole("radio", { name: /5\./i }));
+    const submitButton = screen.getByRole("button", { name: /send/i });
+    await user.click(submitButton);
+    submitButton.blur();
+    await user.click(screen.getByRole("button", { name: /vertsside/i }));
+
+    await act(async () => {
+      rejectSubmission(new Error("nettverk"));
+      await submission.catch(() => {});
+    });
+
+    await screen.findByRole("alert");
+    // Let the effects after the error run before checking what they did not do.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(screen.getByRole("button", { name: /vertsside/i })).toHaveFocus();
+  });
+
+  it("does not pull focus from the page after the automatic close fires on a receipt the user already closed", async () => {
+    const documentWith = (questionId: string): SurveyDocumentV1 => ({
+      authoringSchemaVersion: 1,
+      pages: [
+        {
+          id: "side",
+          questions: [
+            { id: questionId, type: "rating", prompt: "Hvordan gikk det?" },
+          ],
+        },
+      ],
+    });
+    const dock = (questionId: string) => (
+      <>
+        <button type="button">Vertsside</button>
+        <LumiSurveyDock
+          surveyId="stale-focus-test"
+          survey={documentWith(questionId)}
+          transport={mockTransport}
+          behavior={{
+            storageStrategy: "none",
+            resetOnClose: false,
+            hideAfterSubmit: false,
+          }}
+          success={{ autoClose: true, autoCloseDelayMs: 250 }}
+        />
+      </>
+    );
+    const user = userEvent.setup();
+    const { rerender } = render(dock("forste"));
+
+    await user.click(await screen.findByRole("radio", { name: /5\./i }));
+    await user.click(screen.getByRole("button", { name: /send/i }));
+    await screen.findByRole("heading", { name: /takk for tilbakemeldingen/i });
+    // The user closes the receipt before the automatic close.
+    await user.click(screen.getAllByRole("button", { name: "Lukk" })[0]);
+    expect(
+      await screen.findByRole("button", { name: /gi tilbakemelding/i }),
+    ).toHaveFocus();
+
+    // The automatic close fires on the dock that is already closed.
+    await act(() => new Promise<void>((resolve) => setTimeout(resolve, 400)));
+    const hostButton = screen.getByRole("button", { name: /vertsside/i });
+    await user.click(hostButton);
+    // A new survey gives the heading a new id, which re-runs the focus effect.
+    rerender(dock("andre"));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(hostButton).toHaveFocus();
   });
 
   describe("when the receipt hides the dock completely", () => {

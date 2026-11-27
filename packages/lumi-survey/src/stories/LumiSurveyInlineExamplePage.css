@@ -1,0 +1,50 @@
+.lumi-storybook-inline-page {
+  display: grid;
+  gap: var(--ax-space-24);
+  min-height: 100vh;
+  padding: var(--ax-space-16);
+  background: var(--ax-bg-neutral-soft);
+  color: var(--ax-text-neutral);
+  align-content: start;
+}
+
+.lumi-storybook-inline-page__intro,
+.lumi-storybook-inline-page__code {
+  display: grid;
+  gap: var(--ax-space-8);
+  max-width: 48rem;
+}
+
+.lumi-storybook-inline-page__main {
+  display: grid;
+  gap: var(--ax-space-16);
+  max-width: 48rem;
+  min-width: 0;
+}
+
+.lumi-storybook-inline-page__columns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: var(--ax-space-16);
+  max-width: 64rem;
+}
+
+.lumi-storybook-inline-page__columns > .lumi-storybook-inline-page__main {
+  flex: 1 1 20rem;
+}
+
+.lumi-storybook-inline-page__column {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
+.lumi-storybook-inline-page__muted {
+  color: var(--ax-text-neutral-subtle);
+}
+
+@media (min-width: 48rem) {
+  .lumi-storybook-inline-page {
+    padding: var(--ax-space-48);
+  }
+}

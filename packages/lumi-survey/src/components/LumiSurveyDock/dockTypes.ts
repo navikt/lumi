@@ -28,7 +28,8 @@ export interface QuestionContextProps {
   promptHeadingId: string;
   promptDescriptionId?: string;
   promptDescriptionIsQuestionDescription?: boolean;
-  questionAnchorPrefix: string;
+  /** The DOM id of the element that wraps a question. */
+  questionAnchorId: (questionId: string) => string;
   validationErrorMessage: string;
   validationSummaryHeading: string;
   textTooLongErrorMessage: (maxLength: number) => string;

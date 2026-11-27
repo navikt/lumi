@@ -11,6 +11,7 @@ import type { ComponentProps } from "react";
 import type { LumiSurveyAnswerValue, LumiSurveyQuestion } from "../../../core";
 import type { CanonicalSurveyPage } from "../../shared/canonicalSurvey.js";
 import { DEFAULT_COPY } from "../../shared/commonDefaults.js";
+import { useSurveyHeadingLevel } from "../../shared/surveyHeadingLevel.js";
 import {
   builtInCopyLang,
   QuestionPrompt,
@@ -33,20 +34,34 @@ const noop = () => {};
 
 type BoxProps = ComponentProps<typeof Box>;
 
-interface DockPanelProps {
+export interface DockPanelProps {
   panelId: string;
   panelLabel: string;
+  /** The panel itself: the box the user sees, without the space around it. */
+  panelRef?: React.Ref<HTMLDivElement>;
   panelClassName?: string;
-  panelStyle: React.CSSProperties;
+  panelStyle?: React.CSSProperties;
   panelBackground: BoxProps["background"];
   panelBorderColor?: BoxProps["borderColor"];
+  /**
+   * Lift the panel off the page with a shadow, as the dock does. A survey
+   * that is part of the page stays flat.
+   * @default true
+   */
+  elevated?: boolean;
+  /** Render the questions without a `<form>` element. */
+  formless?: boolean;
   promptQuestion: LumiSurveyQuestion;
   headerTitle?: string;
   headerDescription?: string;
   successHeadingId: string;
   introHeadingId: string;
-  onClose: () => void;
-  onSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  /**
+   * Closes the panel. Without it there is no close button, and the receipt
+   * has no button either: the survey stays where it is.
+   */
+  onClose?: () => void;
+  onSubmit: (event?: React.FormEvent<HTMLFormElement>) => Promise<void>;
   orderedQuestions: LumiSurveyQuestion[];
   orderedPages?: CanonicalSurveyPage[];
   answers: Record<string, LumiSurveyAnswerValue>;
@@ -76,10 +91,13 @@ interface DockPanelProps {
 export const DockPanel = ({
   panelId,
   panelLabel,
+  panelRef,
   panelClassName,
   panelStyle,
   panelBackground,
   panelBorderColor,
+  elevated = true,
+  formless = false,
   promptQuestion,
   headerTitle,
   headerDescription,
@@ -138,6 +156,7 @@ export const DockPanel = ({
    * a page title indistinguishable from the question right beneath it.
    */
   const surveyLang = useSurveyLang();
+  const headingLevel = useSurveyHeadingLevel();
   const headerIsPageTitle = Boolean(headerTitle);
   const activeHeading = headerTitle ?? (
     <QuestionPrompt question={activeQuestion} />
@@ -154,10 +173,11 @@ export const DockPanel = ({
   return (
     <div style={{ position: "relative" }}>
       <Box
+        ref={panelRef}
         padding="space-16"
         background={panelBackground}
         borderRadius="12"
-        shadow="dialog"
+        shadow={elevated ? "dialog" : undefined}
         borderWidth={panelBorderColor ? "1" : undefined}
         borderColor={panelBorderColor}
         className={joinClassNames(CLASS_NAMES.panel, panelClassName)}
@@ -184,7 +204,7 @@ export const DockPanel = ({
             >
               <div className={CLASS_NAMES.headerText} style={{ flex: 1 }}>
                 <Heading
-                  level="2"
+                  level={headingLevel}
                   size="small"
                   className={CLASS_NAMES.ratingHeading}
                   id={introHeadingId}
@@ -195,7 +215,12 @@ export const DockPanel = ({
                 </Heading>
               </div>
               {/* Close button */}
-              <CloseButton onClick={onClose} label={cancelLabel ?? "Avbryt"} />
+              {onClose && (
+                <CloseButton
+                  onClick={onClose}
+                  label={cancelLabel ?? "Avbryt"}
+                />
+              )}
             </HStack>
             <IntroContent
               headingId={introHeadingId}
@@ -229,7 +254,7 @@ export const DockPanel = ({
               >
                 {isSuccess ? (
                   <Heading
-                    level="2"
+                    level={headingLevel}
                     size="small"
                     className={CLASS_NAMES.ratingHeading}
                     id={successHeadingId}
@@ -241,7 +266,7 @@ export const DockPanel = ({
                 ) : (
                   <>
                     <Heading
-                      level="2"
+                      level={headingLevel}
                       size="small"
                       className={CLASS_NAMES.ratingHeading}
                       id={promptHeadingId}
@@ -264,29 +289,41 @@ export const DockPanel = ({
                 )}
               </div>
               {/* Close button - circular hover effect for better affordance */}
-              <CloseButton onClick={onClose} label={cancelLabel ?? "Avbryt"} />
+              {onClose && (
+                <CloseButton
+                  onClick={onClose}
+                  label={cancelLabel ?? "Avbryt"}
+                />
+              )}
             </HStack>
 
             {isSuccess ? (
-              <VStack gap="space-16">
-                <SuccessContent
-                  title={successTitle}
-                  body={successBody}
-                  showTitle={false}
-                  announce={Boolean(successBody)}
-                />
-                <Button
-                  onClick={onClose}
-                  lang={builtInCopyLang(
-                    successPrimaryLabel === DEFAULT_COPY.successPrimaryLabel,
+              // A receipt that cannot close and has no body is only its title.
+              (onClose || successBody) && (
+                <VStack gap="space-16">
+                  <SuccessContent
+                    title={successTitle}
+                    body={successBody}
+                    showTitle={false}
+                    announce={Boolean(successBody)}
+                  />
+                  {onClose && (
+                    <Button
+                      onClick={onClose}
+                      lang={builtInCopyLang(
+                        successPrimaryLabel ===
+                          DEFAULT_COPY.successPrimaryLabel,
+                      )}
+                    >
+                      {successPrimaryLabel}
+                    </Button>
                   )}
-                >
-                  {successPrimaryLabel}
-                </Button>
-              </VStack>
+                </VStack>
+              )
             ) : (
               <SurveyFormContent
                 onSubmit={onSubmit}
+                formless={formless}
                 isSubmitting={isSubmitting}
                 isSubmitBlocked={isSubmitBlocked}
                 submitLabel={submitLabel}

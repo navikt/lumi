@@ -1,3 +1,4 @@
+export { classifyDeviceTypeByViewport } from "./components/LumiSurveyDock/hooks/deviceDetection.js";
 export {
   LumiSurveyDock,
   type LumiSurveyDockProps,
@@ -10,6 +11,14 @@ export type {
   LumiSurveySuccessConfig,
   StorageStrategy,
 } from "./components/LumiSurveyDock/propTypes.js";
+export {
+  LumiSurveyInline,
+  type LumiSurveyInlineProps,
+} from "./components/LumiSurveyInline/index.js";
+export type {
+  LumiSurveyInlineBehavior,
+  LumiSurveyInlineStyle,
+} from "./components/LumiSurveyInline/propTypes.js";
 export * from "./components/questions/index.js";
 export { validateSurveyDocumentV1 } from "./components/shared/canonicalSurvey.js";
 export type {

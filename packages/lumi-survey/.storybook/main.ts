@@ -10,6 +10,7 @@ const config: StorybookConfig = {
   // matched by more than one entry.
   stories: [
     "../src/stories/LumiSurveyDock.overview.stories.tsx",
+    "../src/stories/LumiSurveyInline.stories.tsx",
     "../src/stories/LumiSurveyDock.pages.stories.tsx",
     "../src/stories/LumiSurveyDock.questions.stories.tsx",
     "../src/stories/LumiSurveyDock.rating.stories.tsx",

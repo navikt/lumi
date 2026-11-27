@@ -1,0 +1,4 @@
+/* Only for the stories the browser tests open. */
+.lumi-storybook-tall-survey {
+  min-height: var(--lumi-storybook-survey-height);
+}

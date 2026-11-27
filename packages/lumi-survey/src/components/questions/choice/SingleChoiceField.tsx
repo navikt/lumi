@@ -4,6 +4,8 @@ import type {
   ChoiceQuestion,
   LumiSurveyAnswerValue,
 } from "../../../core/types.js";
+import { useSurveyFieldIds } from "../../shared/surveyFieldId.js";
+import { useFieldFormOwner } from "../../shared/surveyFormOwner.js";
 import { QuestionPrompt, SurveyText } from "../../shared/surveyLanguage.js";
 import { useChoiceOptions } from "./useChoiceOptions.js";
 
@@ -27,10 +29,16 @@ export const SingleChoiceField = ({
   hideLabel,
 }: SingleChoiceFieldProps) => {
   const options = useChoiceOptions(question);
+  const fieldIds = useSurveyFieldIds(question.id);
+  const formOwner = useFieldFormOwner();
   const selected = typeof value === "string" ? value : "";
 
   return (
     <RadioGroup
+      {...(fieldIds && {
+        name: fieldIds("field"),
+        errorId: fieldIds("error"),
+      })}
       legend={<QuestionPrompt question={question} />}
       hideLegend={hideLabel}
       description={
@@ -43,9 +51,11 @@ export const SingleChoiceField = ({
       disabled={disabled}
       error={isMissing ? validationErrorMessage : undefined}
     >
-      {options.map((option: ChoiceOption) => (
+      {options.map((option: ChoiceOption, index: number) => (
         <Radio
           key={option.value}
+          {...formOwner}
+          {...(fieldIds && { id: fieldIds(`option-${index}`) })}
           value={option.value}
           // Aksel takes a plain string here, so it cannot carry `lang`.
           description={option.description}

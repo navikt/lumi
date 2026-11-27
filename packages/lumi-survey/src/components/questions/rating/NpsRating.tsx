@@ -5,6 +5,7 @@ import type {
   LumiSurveyAnswerValue,
   NpsRatingQuestion,
 } from "../../../core/types.js";
+import { useSurveyFieldIds } from "../../shared/surveyFieldId.js";
 import { builtInCopyLang, useSurveyLang } from "../../shared/surveyLanguage.js";
 import { RatingFieldset } from "./RatingFieldset.js";
 import { useRatingRadioGroup } from "./useRatingRadioGroup.js";
@@ -63,9 +64,10 @@ export function NpsRating({
   fieldsetPaddingBlock,
   fieldsetPaddingInline,
 }: NpsRatingProps) {
-  const endpointId = useId();
-  const lowLabelId = `${endpointId}-low`;
-  const highLabelId = `${endpointId}-high`;
+  const reactId = useId();
+  const fieldIds = useSurveyFieldIds(question.id);
+  const lowLabelId = fieldIds?.("low") ?? `${reactId}-low`;
+  const highLabelId = fieldIds?.("high") ?? `${reactId}-high`;
   const groupDescriptionIds = [ariaDescribedBy, lowLabelId, highLabelId]
     .filter(Boolean)
     .join(" ");

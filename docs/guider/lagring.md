@@ -6,6 +6,8 @@ title: Lagring
 
 Widgeten husker at brukeren har lukket eller svart på surveyen, og kan vente en stund før den viser surveyen igjen. Med `storageStrategy` velger dere hvordan widgeten husker dette.
 
+Siden gjelder `LumiSurveyDock`. `LumiSurveyInline` lagrer ingenting og har ikke `storageStrategy`, se [Surveyen vises ved hver sidelast](/guider/inline-survey#ingen-lagring).
+
 ## Strategier
 
 | Strategi | App | Avhengigheter | Merknad |

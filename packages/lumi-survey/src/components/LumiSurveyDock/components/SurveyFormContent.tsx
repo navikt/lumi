@@ -16,16 +16,23 @@ import {
   DEFAULT_COPY,
   DEFAULT_PERSONAL_DATA_NOTICE,
 } from "../../shared/commonDefaults.js";
+import { SurveyFormlessProvider } from "../../shared/surveyFormOwner.js";
+import { useSurveyHeadingLevel } from "../../shared/surveyHeadingLevel.js";
 import {
   BuiltInText,
   builtInCopyLang,
   QuestionPrompt,
   useSurveyLang,
 } from "../../shared/surveyLanguage.js";
+import { type SurveyTree, treeOf } from "../../shared/surveyTree.js";
 
 const DEFAULT_NEXT_LABEL = "Neste";
 const DEFAULT_BACK_LABEL = "Tilbake";
 
+/** Marks the button that sends the answers. */
+export const SUBMIT_BUTTON_ATTRIBUTE = "data-lumi-survey-submit";
+
+import { ownValue } from "../../../core/ownValue.js";
 import { CLASS_NAMES } from "../classNames.js";
 import type {
   ProgressProps,
@@ -36,7 +43,14 @@ import { DockQuestionRenderer } from "./DockQuestionRenderer.js";
 
 interface SurveyFormContentProps {
   // Form
-  onSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  onSubmit: (event?: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  /**
+   * Render the questions without a `<form>` element, and submit from the
+   * button. An inline survey can sit inside a form the app owns, where a
+   * nested form is invalid HTML and a submit button would submit the app's
+   * form.
+   */
+  formless?: boolean;
   isSubmitting: boolean;
   isSubmitBlocked: boolean;
   submitLabel: string;
@@ -68,8 +82,29 @@ interface SurveyFormContentProps {
   disabled: boolean;
 }
 
-function focusQuestionField(anchorPrefix: string, questionId: string) {
-  const question = document.getElementById(`${anchorPrefix}-${questionId}`);
+/**
+ * The fields in a `<form>`, or without a form owner when the survey is
+ * formless.
+ */
+const FieldsContainer = ({
+  formless,
+  onSubmit,
+  children,
+}: {
+  formless: boolean;
+  onSubmit: (event?: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  children: React.ReactNode;
+}) =>
+  formless ? (
+    <SurveyFormlessProvider value>{children}</SurveyFormlessProvider>
+  ) : (
+    <form onSubmit={onSubmit} noValidate>
+      {children}
+    </form>
+  );
+
+function focusQuestionField(tree: SurveyTree, anchorId: string) {
+  const question = tree.getElementById(anchorId);
   const field = question?.querySelector<HTMLElement>(
     "input, textarea, select, button",
   );
@@ -79,6 +114,7 @@ function focusQuestionField(anchorPrefix: string, questionId: string) {
 export const SurveyFormContent = React.memo(
   ({
     onSubmit,
+    formless = false,
     isSubmitting,
     isSubmitBlocked,
     submitLabel,
@@ -99,6 +135,7 @@ export const SurveyFormContent = React.memo(
     disabled,
   }: SurveyFormContentProps) => {
     const surveyLang = useSurveyLang();
+    const headingLevel = useSurveyHeadingLevel();
     // Destructure grouped props
     const {
       isStepMode = false,
@@ -126,7 +163,7 @@ export const SurveyFormContent = React.memo(
       promptHeadingId,
       promptDescriptionId,
       promptDescriptionIsQuestionDescription,
-      questionAnchorPrefix,
+      questionAnchorId,
       validationErrorMessage,
       validationSummaryHeading,
       textTooLongErrorMessage,
@@ -172,11 +209,26 @@ export const SurveyFormContent = React.memo(
       return handler;
     }, []);
 
+    // Without a form there is no submit event, so the button submits. The
+    // marker lets the survey return focus to the button after a failed submit.
+    const submitButtonProps = formless
+      ? ({
+          type: "button",
+          [SUBMIT_BUTTON_ATTRIBUTE]: "",
+          onClick: () => {
+            void onSubmit();
+          },
+        } as const)
+      : ({ type: "submit", [SUBMIT_BUTTON_ATTRIBUTE]: "" } as const);
+
     const errorSummaryRef = useRef<HTMLDivElement>(null);
+    // An element that is always rendered, to find the document or the shadow
+    // tree the survey is in.
+    const fieldsRef = useRef<HTMLDivElement>(null);
     const validationMissingRef = useRef(validationMissing);
     validationMissingRef.current = validationMissing;
-    const questionAnchorPrefixRef = useRef(questionAnchorPrefix);
-    questionAnchorPrefixRef.current = questionAnchorPrefix;
+    const questionAnchorIdRef = useRef(questionAnchorId);
+    questionAnchorIdRef.current = questionAnchorId;
     const previousValidationAttemptRef = useRef(validationAttempt);
     useEffect(() => {
       if (
@@ -192,7 +244,10 @@ export const SurveyFormContent = React.memo(
         return;
       }
       if (missing.length === 0) return;
-      focusQuestionField(questionAnchorPrefixRef.current, missing[0]);
+      focusQuestionField(
+        treeOf(fieldsRef.current),
+        questionAnchorIdRef.current(missing[0]),
+      );
     }, [validationAttempt]);
 
     const renderQuestion = (
@@ -203,13 +258,13 @@ export const SurveyFormContent = React.memo(
       return (
         <div
           key={question.id}
-          id={`${questionAnchorPrefix}-${question.id}`}
+          id={questionAnchorId(question.id)}
           className={CLASS_NAMES.question}
           tabIndex={-1}
         >
           <DockQuestionRenderer
             question={question}
-            value={answers[question.id]}
+            value={ownValue(answers, question.id)}
             onChange={getChangeHandler(question.id)}
             isMissing={isMissing}
             disabled={disabled}
@@ -231,6 +286,7 @@ export const SurveyFormContent = React.memo(
       <ErrorSummary
         ref={errorSummaryRef}
         size="small"
+        headingTag={`h${headingLevel}`}
         heading={
           <BuiltInText
             isDefault={
@@ -246,7 +302,7 @@ export const SurveyFormContent = React.memo(
             (candidate) => candidate.id === questionId,
           );
           const issue = question
-            ? getAnswerValidationIssue(question, answers[questionId])
+            ? getAnswerValidationIssue(question, ownValue(answers, questionId))
             : undefined;
           const questionLabel = question ? (
             <QuestionPrompt question={question} />
@@ -262,10 +318,13 @@ export const SurveyFormContent = React.memo(
           return (
             <ErrorSummary.Item
               key={questionId}
-              href={`#${questionAnchorPrefix}-${questionId}`}
+              href={`#${questionAnchorId(questionId)}`}
               onClick={(event) => {
                 event.preventDefault();
-                focusQuestionField(questionAnchorPrefix, questionId);
+                focusQuestionField(
+                  treeOf(event.currentTarget),
+                  questionAnchorId(questionId),
+                );
               }}
             >
               {questionLabel}
@@ -315,8 +374,8 @@ export const SurveyFormContent = React.memo(
             </VStack>
           )}
 
-        <form onSubmit={onSubmit} noValidate>
-          <VStack gap="space-16">
+        <FieldsContainer formless={formless} onSubmit={onSubmit}>
+          <VStack ref={fieldsRef} gap="space-16">
             {isStepMode && currentStepQuestion ? (
               // Step mode: Show all visible questions on the current page.
               <>
@@ -354,7 +413,7 @@ export const SurveyFormContent = React.memo(
                   {isLastStep ? (
                     <Button
                       key="submit-btn"
-                      type="submit"
+                      {...submitButtonProps}
                       lang={submitLang}
                       loading={isSubmitting}
                       disabled={
@@ -367,6 +426,9 @@ export const SurveyFormContent = React.memo(
                     <Button
                       key="next-btn"
                       type="button"
+                      // Next sends the survey when no later question is shown,
+                      // so focus returns here after a failed send.
+                      {...{ [SUBMIT_BUTTON_ATTRIBUTE]: "" }}
                       lang={builtInCopyLang(nextLabel === DEFAULT_NEXT_LABEL)}
                       onClick={onNext}
                       disabled={
@@ -394,7 +456,11 @@ export const SurveyFormContent = React.memo(
                             className={CLASS_NAMES.groupHeader}
                           >
                             {page.title && (
-                              <Heading level="2" size="small" lang={surveyLang}>
+                              <Heading
+                                level={headingLevel}
+                                size="small"
+                                lang={surveyLang}
+                              >
                                 {page.title}
                               </Heading>
                             )}
@@ -428,7 +494,7 @@ export const SurveyFormContent = React.memo(
 
                 <HStack gap="space-8" wrap>
                   <Button
-                    type="submit"
+                    {...submitButtonProps}
                     lang={submitLang}
                     loading={isSubmitting}
                     disabled={isSubmitBlocked || isSubmitting}
@@ -445,7 +511,7 @@ export const SurveyFormContent = React.memo(
               </>
             )}
           </VStack>
-        </form>
+        </FieldsContainer>
       </>
     );
   },

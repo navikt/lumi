@@ -27,6 +27,8 @@ export {
   isAnswered,
 } from "./stepNavigationUtils.js";
 
+import { ownValue } from "../../../core/ownValue.js";
+
 export interface UseStepNavigationOptions {
   questions: LumiSurveyQuestion[];
   answers: Record<string, LumiSurveyAnswerValue>;
@@ -106,7 +108,9 @@ export function useStepNavigation(
   const currentQuestion = questions[currentStep];
 
   // Check if current question has been answered
-  const currentAnswer = answers[currentQuestion?.id];
+  const currentAnswer = currentQuestion
+    ? ownValue(answers, currentQuestion.id)
+    : undefined;
   const hasAnsweredCurrent = isAnswered(currentAnswer);
 
   const canGoBack = visitedSteps.length > 1;
