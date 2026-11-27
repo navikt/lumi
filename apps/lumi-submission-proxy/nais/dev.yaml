@@ -45,6 +45,8 @@ spec:
           namespace: personoversikt
         - application: gosys-oppgavebehandling
           namespace: oppgavehandtering
+        - application: arbeidssokerregistrering-for-veileder
+          namespace: paw
     outbound:
       rules:
         - application: lumi-api
