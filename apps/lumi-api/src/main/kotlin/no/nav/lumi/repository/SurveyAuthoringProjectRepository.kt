@@ -3,8 +3,10 @@ package no.nav.lumi.repository
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import no.nav.lumi.domain.SurveyAuthoringLatestRevision
+import no.nav.lumi.domain.SurveyAuthoringPresentation
 import no.nav.lumi.domain.SurveyAuthoringProject
 import no.nav.lumi.domain.SurveyAuthoringProjectSummary
+import no.nav.lumi.domain.SurveyDisplayMode
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
@@ -27,6 +29,7 @@ class SurveyAuthoringProjectRepository {
         name: String,
         surveyId: String,
         document: JsonObject,
+        presentation: SurveyAuthoringPresentation,
         principalIdentity: String,
         maxProjects: Int,
     ): SurveyAuthoringProject? = dbQuery {
@@ -38,8 +41,8 @@ class SurveyAuthoringProjectRepository {
 
         val sql = """
             INSERT INTO survey_authoring_projects
-                (team, name, survey_id, draft, created_by, updated_by)
-            SELECT ?, ?, ?, ?::jsonb, ?, ?
+                (team, name, survey_id, draft, display_mode, placement_note, created_by, updated_by)
+            SELECT ?, ?, ?, ?::jsonb, ?, ?, ?, ?
             WHERE (SELECT count(*) FROM survey_authoring_projects WHERE team = ?) < ?
             RETURNING id
         """.trimIndent()
@@ -48,10 +51,12 @@ class SurveyAuthoringProjectRepository {
             statement.setString(2, name)
             statement.setString(3, surveyId)
             statement.setString(4, document.toString())
-            statement.setString(5, principalIdentity)
-            statement.setString(6, principalIdentity)
-            statement.setString(7, team)
-            statement.setInt(8, maxProjects)
+            statement.setString(5, presentation.mode.storedValue)
+            statement.setString(6, presentation.placementNote)
+            statement.setString(7, principalIdentity)
+            statement.setString(8, principalIdentity)
+            statement.setString(9, team)
+            statement.setInt(10, maxProjects)
             statement.executeQuery().use { result ->
                 if (result.next()) result.getObject("id", UUID::class.java) else null
             }
@@ -130,6 +135,8 @@ class SurveyAuthoringProjectRepository {
         name: String,
         surveyId: String,
         document: JsonObject,
+        /** Null keeps the presentation that is stored. */
+        presentation: SurveyAuthoringPresentation?,
         principalIdentity: String,
     ): DraftUpdateResult = dbQuery {
         val updated = SurveyAuthoringProjectTable.update({
@@ -140,6 +147,10 @@ class SurveyAuthoringProjectRepository {
             it[SurveyAuthoringProjectTable.name] = name
             it[SurveyAuthoringProjectTable.surveyId] = surveyId
             it[draft] = document.toString()
+            if (presentation != null) {
+                it[displayMode] = presentation.mode.storedValue
+                it[placementNote] = presentation.placementNote
+            }
             it[draftVersion] = expectedVersion + 1
             it[updatedBy] = principalIdentity
             it[updatedAt] = OffsetDateTime.now()
@@ -164,12 +175,18 @@ class SurveyAuthoringProjectRepository {
             .singleOrNull()
             ?.let(::toProject)
 
+    private fun toPresentation(row: ResultRow) = SurveyAuthoringPresentation(
+        mode = SurveyDisplayMode.fromStoredValue(row[SurveyAuthoringProjectTable.displayMode]),
+        placementNote = row[SurveyAuthoringProjectTable.placementNote],
+    )
+
     private fun toProject(row: ResultRow) = SurveyAuthoringProject(
         id = row[SurveyAuthoringProjectTable.id].toString(),
         team = row[SurveyAuthoringProjectTable.team],
         name = row[SurveyAuthoringProjectTable.name],
         surveyId = row[SurveyAuthoringProjectTable.surveyId],
         document = json.parseToJsonElement(row[SurveyAuthoringProjectTable.draft]) as JsonObject,
+        presentation = toPresentation(row),
         draftVersion = row[SurveyAuthoringProjectTable.draftVersion],
         createdAt = row[SurveyAuthoringProjectTable.createdAt].toString(),
         updatedAt = row[SurveyAuthoringProjectTable.updatedAt].toString(),
@@ -180,6 +197,7 @@ class SurveyAuthoringProjectRepository {
         team = row[SurveyAuthoringProjectTable.team],
         name = row[SurveyAuthoringProjectTable.name],
         surveyId = row[SurveyAuthoringProjectTable.surveyId],
+        presentation = toPresentation(row),
         draftVersion = row[SurveyAuthoringProjectTable.draftVersion],
         createdAt = row[SurveyAuthoringProjectTable.createdAt].toString(),
         updatedAt = row[SurveyAuthoringProjectTable.updatedAt].toString(),

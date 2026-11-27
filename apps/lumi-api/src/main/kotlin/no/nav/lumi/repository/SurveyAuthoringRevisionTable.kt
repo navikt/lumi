@@ -15,6 +15,8 @@ object SurveyAuthoringRevisionTable : Table("survey_authoring_revisions") {
     val documentHash = varchar("document_hash", 64)
     val definition = registerColumn<String>("definition", JsonbColumnType())
     val definitionHash = varchar("definition_hash", 64)
+    val displayMode = varchar("display_mode", 16)
+    val placementNote = varchar("placement_note", 200).nullable()
     val createdBy = text("created_by")
     val createdAt = timestampWithTimeZone("created_at")
 

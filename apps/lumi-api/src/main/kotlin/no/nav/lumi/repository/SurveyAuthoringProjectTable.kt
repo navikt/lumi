@@ -11,6 +11,8 @@ object SurveyAuthoringProjectTable : Table("survey_authoring_projects") {
     val surveyId = varchar("survey_id", 200)
     val draft = registerColumn<String>("draft", JsonbColumnType())
     val draftVersion = long("draft_version")
+    val displayMode = varchar("display_mode", 16)
+    val placementNote = varchar("placement_note", 200).nullable()
     val createdBy = text("created_by")
     val updatedBy = text("updated_by")
     val createdAt = timestampWithTimeZone("created_at")

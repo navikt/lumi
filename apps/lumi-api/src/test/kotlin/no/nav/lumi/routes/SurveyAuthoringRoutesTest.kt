@@ -20,6 +20,7 @@ import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -637,7 +638,348 @@ class SurveyAuthoringRoutesTest : FunSpec({
             }.status shouldBe HttpStatusCode.NotFound
         }
     }
+    test("a project starts as the floating panel when the client sends no presentation") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+
+            val created = client.post("/api/v1/intern/authoring/projects?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(createBody())
+            }
+
+            created.status shouldBe HttpStatusCode.Created
+            val presentation = Json.parseToJsonElement(created.bodyAsText()).jsonObject
+                .getValue("presentation").jsonObject
+            presentation.getValue("mode").jsonPrimitive.content shouldBe "dock"
+            presentation.getValue("placementNote") shouldBe JsonNull
+
+            // The list of projects says the same, without the document.
+            val listed = client.get("/api/v1/intern/authoring/projects?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+            Json.parseToJsonElement(listed.bodyAsText()).jsonArray.single().jsonObject
+                .getValue("presentation").jsonObject
+                .getValue("mode").jsonPrimitive.content shouldBe "dock"
+        }
+    }
+
+    test("the presentation is saved with the draft and bumps the draft version") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+            val created = client.post("/api/v1/intern/authoring/projects?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(createBody())
+            }
+            val projectId = Json.parseToJsonElement(created.bodyAsText()).jsonObject
+                .getValue("id").jsonPrimitive.content
+            val draftPath = "/api/v1/intern/authoring/projects/$projectId/draft?team=team-test"
+
+            val saved = client.put(draftPath) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(presentationBody(expectedVersion = 1, presentation = """{"mode":"inline","placementNote":"  Under resultatlisten  "}"""))
+            }
+
+            saved.status shouldBe HttpStatusCode.OK
+            val savedJson = Json.parseToJsonElement(saved.bodyAsText()).jsonObject
+            // A change of presentation alone is a new draft version: only a
+            // new version can be shared as a new revision.
+            savedJson.getValue("draftVersion").jsonPrimitive.content shouldBe "2"
+            savedJson.getValue("presentation").jsonObject.let { presentation ->
+                presentation.getValue("mode").jsonPrimitive.content shouldBe "inline"
+                presentation.getValue("placementNote").jsonPrimitive.content shouldBe "Under resultatlisten"
+            }
+
+            val reopened = client.get("/api/v1/intern/authoring/projects/$projectId?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+            Json.parseToJsonElement(reopened.bodyAsText()).jsonObject
+                .getValue("presentation").jsonObject
+                .getValue("placementNote").jsonPrimitive.content shouldBe "Under resultatlisten"
+
+            // A blank note is no note.
+            val cleared = client.put(draftPath) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(presentationBody(expectedVersion = 2, presentation = """{"mode":"inline","placementNote":"   "}"""))
+            }
+            cleared.status shouldBe HttpStatusCode.OK
+            Json.parseToJsonElement(cleared.bodyAsText()).jsonObject
+                .getValue("presentation").jsonObject
+                .getValue("placementNote") shouldBe JsonNull
+        }
+    }
+
+    test("the floating panel is stored without a placement note") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+            // The note describes a place at the content.
+            val created = client.post("/api/v1/intern/authoring/projects?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(presentationBody(expectedVersion = null, presentation = """{"mode":"dock","placementNote":"Under resultatlisten"}"""))
+            }
+            created.status shouldBe HttpStatusCode.Created
+            val createdJson = Json.parseToJsonElement(created.bodyAsText()).jsonObject
+            createdJson.getValue("presentation").jsonObject.getValue("placementNote") shouldBe JsonNull
+            val projectId = createdJson.getValue("id").jsonPrimitive.content
+            val draftPath = "/api/v1/intern/authoring/projects/$projectId/draft?team=team-test"
+
+            client.put(draftPath) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(presentationBody(expectedVersion = 1, presentation = """{"mode":"inline","placementNote":"Under resultatlisten"}"""))
+            }.status shouldBe HttpStatusCode.OK
+            val backToPanel = client.put(draftPath) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(presentationBody(expectedVersion = 2, presentation = """{"mode":"dock","placementNote":"Under resultatlisten"}"""))
+            }
+
+            backToPanel.status shouldBe HttpStatusCode.OK
+            Json.parseToJsonElement(backToPanel.bodyAsText()).jsonObject
+                .getValue("presentation").jsonObject.let { presentation ->
+                    presentation.getValue("mode").jsonPrimitive.content shouldBe "dock"
+                    presentation.getValue("placementNote") shouldBe JsonNull
+                }
+        }
+    }
+
+    test("a save without presentation keeps the stored presentation") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+            val created = client.post("/api/v1/intern/authoring/projects?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(presentationBody(expectedVersion = null, presentation = """{"mode":"inline","placementNote":"Under resultatlisten"}"""))
+            }
+            created.status shouldBe HttpStatusCode.Created
+            val projectId = Json.parseToJsonElement(created.bodyAsText()).jsonObject
+                .getValue("id").jsonPrimitive.content
+
+            // An older dashboard saves the questions and knows no presentation.
+            val saved = client.put("/api/v1/intern/authoring/projects/$projectId/draft?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(updateBody(expectedVersion = 1, name = "Endret av eldre klient"))
+            }
+
+            saved.status shouldBe HttpStatusCode.OK
+            Json.parseToJsonElement(saved.bodyAsText()).jsonObject
+                .getValue("presentation").jsonObject.let { presentation ->
+                    presentation.getValue("mode").jsonPrimitive.content shouldBe "inline"
+                    presentation.getValue("placementNote").jsonPrimitive.content shouldBe "Under resultatlisten"
+                }
+        }
+    }
+
+    test("each shared revision freezes the presentation, outside the document hash") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+            val created = client.post("/api/v1/intern/authoring/projects?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(createBody())
+            }
+            val projectId = Json.parseToJsonElement(created.bodyAsText()).jsonObject
+                .getValue("id").jsonPrimitive.content
+            val revisionsPath = "/api/v1/intern/authoring/projects/$projectId/revisions?team=team-test"
+
+            suspend fun share(expectedDraftVersion: Long) = client.post(revisionsPath) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody("""{"expectedDraftVersion":$expectedDraftVersion}""")
+            }
+
+            val first = share(expectedDraftVersion = 1)
+            first.status shouldBe HttpStatusCode.Created
+            val firstJson = Json.parseToJsonElement(first.bodyAsText()).jsonObject
+            firstJson.getValue("presentation").jsonObject
+                .getValue("mode").jsonPrimitive.content shouldBe "dock"
+
+            // The same document, moved to the content. Nothing else changes.
+            client.put("/api/v1/intern/authoring/projects/$projectId/draft?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(presentationBody(expectedVersion = 1, presentation = """{"mode":"inline","placementNote":"Under resultatlisten"}"""))
+            }.status shouldBe HttpStatusCode.OK
+
+            val second = share(expectedDraftVersion = 2)
+            second.status shouldBe HttpStatusCode.Created
+            val secondJson = Json.parseToJsonElement(second.bodyAsText()).jsonObject
+            secondJson.getValue("revisionNumber").jsonPrimitive.content shouldBe "2"
+            secondJson.getValue("presentation").jsonObject.let { presentation ->
+                presentation.getValue("mode").jsonPrimitive.content shouldBe "inline"
+                presentation.getValue("placementNote").jsonPrimitive.content shouldBe "Under resultatlisten"
+            }
+            secondJson.getValue("documentHash").jsonPrimitive.content shouldBe
+                firstJson.getValue("documentHash").jsonPrimitive.content
+            secondJson.getValue("definitionHash").jsonPrimitive.content shouldBe
+                firstJson.getValue("definitionHash").jsonPrimitive.content
+
+            // The list of revisions shows where each one was meant to stand.
+            val listed = client.get(revisionsPath) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+            Json.parseToJsonElement(listed.bodyAsText()).jsonArray.map {
+                it.jsonObject.getValue("presentation").jsonObject.getValue("mode").jsonPrimitive.content
+            } shouldBe listOf("inline", "dock")
+
+            // The first revision is still the floating panel.
+            val detail = client.get(
+                "/api/v1/intern/authoring/revisions/${secondJson.getValue("id").jsonPrimitive.content}?team=team-test",
+            ) {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+            val detailJson = Json.parseToJsonElement(detail.bodyAsText()).jsonObject
+            detailJson.getValue("revision").jsonObject.getValue("presentation").jsonObject
+                .getValue("mode").jsonPrimitive.content shouldBe "inline"
+            detailJson.getValue("previousRevision").jsonObject.getValue("presentation").jsonObject.let { presentation ->
+                presentation.getValue("mode").jsonPrimitive.content shouldBe "dock"
+                presentation.getValue("placementNote") shouldBe JsonNull
+            }
+        }
+    }
+
+    test("an invalid presentation is rejected and leaves the draft as it was") {
+        testApplication {
+            application { testModule() }
+            val client = createTestClient()
+            val created = client.post("/api/v1/intern/authoring/projects?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(createBody())
+            }
+            val projectId = Json.parseToJsonElement(created.bodyAsText()).jsonObject
+                .getValue("id").jsonPrimitive.content
+
+            suspend fun save(presentation: String) =
+                client.put("/api/v1/intern/authoring/projects/$projectId/draft?team=team-test") {
+                    header(HttpHeaders.Authorization, "Bearer test-token")
+                    contentType(ContentType.Application.Json)
+                    setBody(presentationBody(expectedVersion = 1, presentation = presentation))
+                }
+
+            // A display mode the widget does not have.
+            save("""{"mode":"popup","placementNote":null}""").status shouldBe HttpStatusCode.BadRequest
+            // An object that is sent must say both things.
+            save("""{"mode":"inline"}""").status shouldBe HttpStatusCode.BadRequest
+            save("""{"placementNote":"Under resultatlisten"}""").status shouldBe HttpStatusCode.BadRequest
+
+            val tooLong = save("""{"mode":"inline","placementNote":"${"a".repeat(201)}"}""")
+            tooLong.status shouldBe HttpStatusCode.BadRequest
+            tooLong.bodyAsText() shouldContain "placementNote"
+            save("""{"mode":"inline","placementNote":"${"a".repeat(200)}"}""").status shouldBe
+                HttpStatusCode.OK
+            // The limit is counted in characters, as in the dashboard and the
+            // database: 200 emoji are 400 UTF-16 units.
+            val emoji = "\uD83D\uDE00"
+            client.put("/api/v1/intern/authoring/projects/$projectId/draft?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(presentationBody(expectedVersion = 2, presentation = """{"mode":"inline","placementNote":"${emoji.repeat(201)}"}"""))
+            }.status shouldBe HttpStatusCode.BadRequest
+            val manyEmoji = client.put("/api/v1/intern/authoring/projects/$projectId/draft?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(presentationBody(expectedVersion = 2, presentation = """{"mode":"inline","placementNote":"${emoji.repeat(200)}"}"""))
+            }
+            manyEmoji.status shouldBe HttpStatusCode.OK
+            Json.parseToJsonElement(manyEmoji.bodyAsText()).jsonObject
+                .getValue("presentation").jsonObject
+                .getValue("placementNote").jsonPrimitive.content shouldBe emoji.repeat(200)
+
+            val twoLines = client.put("/api/v1/intern/authoring/projects/$projectId/draft?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(presentationBody(expectedVersion = 3, presentation = """{"mode":"inline","placementNote":"Under\nlisten"}"""))
+            }
+            twoLines.status shouldBe HttpStatusCode.BadRequest
+            // The JSON escape is the line separator, which is no control character.
+            val separated = client.put("/api/v1/intern/authoring/projects/$projectId/draft?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(presentationBody(expectedVersion = 3, presentation = """{"mode":"inline","placementNote":"Under\u2028listen"}"""))
+            }
+            separated.status shouldBe HttpStatusCode.BadRequest
+            separated.bodyAsText() shouldContain "single line"
+
+            // JSON can carry half of a surrogate pair, or the halves in the
+            // wrong order. That is no character, and PostgreSQL would store a
+            // question mark in its place.
+            for (note in listOf("a\\ud800b", "a\\udc00b", "\\ude00\\ud83d")) {
+                val halfPair = client.put("/api/v1/intern/authoring/projects/$projectId/draft?team=team-test") {
+                    header(HttpHeaders.Authorization, "Bearer test-token")
+                    contentType(ContentType.Application.Json)
+                    setBody(presentationBody(expectedVersion = 3, presentation = """{"mode":"inline","placementNote":"$note"}"""))
+                }
+                halfPair.status shouldBe HttpStatusCode.BadRequest
+                halfPair.bodyAsText() shouldContain "valid Unicode"
+            }
+
+            // The note is trimmed as the dashboard trims it, with JavaScript's
+            // trim(): a control character first in the note is not removed,
+            // and a byte order mark is.
+            val controlFirst = client.put("/api/v1/intern/authoring/projects/$projectId/draft?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(presentationBody(expectedVersion = 3, presentation = """{"mode":"inline","placementNote":"\u001cUnder listen"}"""))
+            }
+            controlFirst.status shouldBe HttpStatusCode.BadRequest
+            controlFirst.bodyAsText() shouldContain "single line"
+            val byteOrderMark = client.put("/api/v1/intern/authoring/projects/$projectId/draft?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+                contentType(ContentType.Application.Json)
+                setBody(presentationBody(expectedVersion = 3, presentation = """{"mode":"inline","placementNote":"\uFEFF\u3000Under listen\uFEFF"}"""))
+            }
+            byteOrderMark.status shouldBe HttpStatusCode.OK
+            Json.parseToJsonElement(byteOrderMark.bodyAsText()).jsonObject
+                .getValue("presentation").jsonObject
+                .getValue("placementNote").jsonPrimitive.content shouldBe "Under listen"
+
+            // Only the three valid saves went through.
+            val reopened = client.get("/api/v1/intern/authoring/projects/$projectId?team=team-test") {
+                header(HttpHeaders.Authorization, "Bearer test-token")
+            }
+            Json.parseToJsonElement(reopened.bodyAsText()).jsonObject
+                .getValue("draftVersion").jsonPrimitive.content shouldBe "4"
+        }
+    }
 })
+
+/**
+ * The document from [createBody] with a presentation beside it: a create
+ * request without `expectedVersion`, a draft save with it.
+ */
+private fun presentationBody(expectedVersion: Long?, presentation: String) = """
+    {
+      ${if (expectedVersion != null) "\"expectedVersion\": $expectedVersion," else ""}
+      "name": "Første utkast",
+      "surveyId": "verksted-test",
+      "presentation": $presentation,
+      "document": {
+        "authoringSchemaVersion": 1,
+        "type": "rating",
+        "pages": [{
+          "id": "opplevelse",
+          "title": "Fortell om opplevelsen",
+          "questions": [{
+            "id": "rating",
+            "type": "rating",
+            "prompt": "Hvordan gikk det?",
+            "required": true
+          }]
+        }]
+      }
+    }
+""".trimIndent()
 
 private fun createBody() = """
     {
