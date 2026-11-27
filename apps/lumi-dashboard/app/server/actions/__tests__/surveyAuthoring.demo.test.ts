@@ -40,6 +40,7 @@ vi.mock("~/server/utils", async (importOriginal) => ({
 }));
 
 const team = "team-esyfo";
+const presentation = { mode: "dock" as const, placementNote: null };
 const document: SurveyDocumentV1 = {
   authoringSchemaVersion: 1,
   pages: [
@@ -102,7 +103,13 @@ describe("Surveyverksted in the public demo", () => {
 
     await expect(
       actions.createSurveyAuthoringProjectServerFn({
-        data: { team, name: "Utkast", surveyId: "utkast-v1", document },
+        data: {
+          team,
+          name: "Utkast",
+          surveyId: "utkast-v1",
+          document,
+          presentation,
+        },
       }),
     ).rejects.toThrow(PUBLIC_DEMO_READ_ONLY_MESSAGE);
 
@@ -123,6 +130,7 @@ describe("Surveyverksted in the public demo", () => {
           name: "Overskrevet",
           surveyId: project.surveyId,
           document,
+          presentation,
         },
       }),
     ).rejects.toThrow(PUBLIC_DEMO_READ_ONLY_MESSAGE);
@@ -187,7 +195,13 @@ describe("Surveyverksted in local mock mode", () => {
     );
 
     const created = await actions.createSurveyAuthoringProjectServerFn({
-      data: { team, name: "Utkast", surveyId: "utkast-v1", document },
+      data: {
+        team,
+        name: "Utkast",
+        surveyId: "utkast-v1",
+        document,
+        presentation,
+      },
     });
     const saved = await actions.saveSurveyAuthoringDraftServerFn({
       data: {
@@ -197,6 +211,7 @@ describe("Surveyverksted in local mock mode", () => {
         name: "Utkast 2",
         surveyId: created.surveyId,
         document,
+        presentation,
       },
     });
     expect(saved.draftVersion).toBe(2);

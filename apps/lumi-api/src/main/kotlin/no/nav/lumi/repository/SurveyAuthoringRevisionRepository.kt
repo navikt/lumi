@@ -3,9 +3,11 @@ package no.nav.lumi.repository
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import no.nav.lumi.domain.SurveyAuthoringPresentation
 import no.nav.lumi.domain.SurveyAuthoringRevision
 import no.nav.lumi.domain.SurveyAuthoringRevisionDetail
 import no.nav.lumi.domain.SurveyAuthoringRevisionSummary
+import no.nav.lumi.domain.SurveyDisplayMode
 import no.nav.lumi.domain.computeHash
 import no.nav.lumi.validation.SurveyAuthoringDocumentValidator
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -89,6 +91,12 @@ class SurveyAuthoringRevisionRepository {
             it[documentHash] = validated.documentHash
             it[definition] = json.encodeToString(validated.definition)
             it[SurveyAuthoringRevisionTable.definitionHash] = definitionHash
+            // Frozen from the same project row as the document. They are not
+            // a part of either hash: a revision that only moves the survey
+            // has the same document as the one before it. An API from before
+            // V29 leaves both out, and a trigger copies them instead.
+            it[displayMode] = projectRow[SurveyAuthoringProjectTable.displayMode]
+            it[placementNote] = projectRow[SurveyAuthoringProjectTable.placementNote]
             it[createdBy] = principalIdentity
         }
 
@@ -140,6 +148,11 @@ class SurveyAuthoringRevisionRepository {
             .singleOrNull()
             ?.let(::toRevision)
 
+    private fun toPresentation(row: ResultRow) = SurveyAuthoringPresentation(
+        mode = SurveyDisplayMode.fromStoredValue(row[SurveyAuthoringRevisionTable.displayMode]),
+        placementNote = row[SurveyAuthoringRevisionTable.placementNote],
+    )
+
     private fun toRevision(row: ResultRow) = SurveyAuthoringRevision(
         id = row[SurveyAuthoringRevisionTable.id].toString(),
         projectId = row[SurveyAuthoringRevisionTable.projectId].toString(),
@@ -148,6 +161,7 @@ class SurveyAuthoringRevisionRepository {
         name = row[SurveyAuthoringRevisionTable.name],
         surveyId = row[SurveyAuthoringRevisionTable.surveyId],
         document = json.parseToJsonElement(row[SurveyAuthoringRevisionTable.document]) as JsonObject,
+        presentation = toPresentation(row),
         documentHash = row[SurveyAuthoringRevisionTable.documentHash],
         definitionHash = row[SurveyAuthoringRevisionTable.definitionHash],
         createdBy = row[SurveyAuthoringRevisionTable.createdBy],
@@ -161,6 +175,7 @@ class SurveyAuthoringRevisionRepository {
         draftVersion = row[SurveyAuthoringRevisionTable.draftVersion],
         name = row[SurveyAuthoringRevisionTable.name],
         surveyId = row[SurveyAuthoringRevisionTable.surveyId],
+        presentation = toPresentation(row),
         documentHash = row[SurveyAuthoringRevisionTable.documentHash],
         definitionHash = row[SurveyAuthoringRevisionTable.definitionHash],
         createdBy = row[SurveyAuthoringRevisionTable.createdBy],

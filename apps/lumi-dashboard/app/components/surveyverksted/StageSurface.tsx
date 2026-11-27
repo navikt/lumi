@@ -1,11 +1,23 @@
+import { BodyShort, Detail } from "@navikt/ds-react";
 import type {
   LumiSurveyAnswerValue,
   SurveyDocumentV1,
 } from "@navikt/lumi-survey";
-import { LumiSurveyDock, type LumiSurveyTransport } from "@navikt/lumi-survey";
+import {
+  LumiSurveyDock,
+  LumiSurveyInline,
+  type LumiSurveyTransport,
+} from "@navikt/lumi-survey";
 import type { ReactNode } from "react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  FLOATING_PANEL_PRESENTATION,
+  type SurveyPresentation,
+} from "~/types/surveyAuthoring";
+import type { PreviewViewport } from "~/utils/liveVisibility";
 import { documentNeedsWideDock } from "~/utils/surveyDocument";
+import { previewContextTags } from "~/utils/surveyRevision";
+import type { InlinePreviewWidth } from "./PresentationControls";
 import styles from "./verksted.module.css";
 
 /**
@@ -27,6 +39,8 @@ const inertTransport: LumiSurveyTransport = {
 const DOCK_OFFSET = 16;
 const DOCK_WIDTH = 384; // 24rem
 const NPS_DOCK_WIDTH = 512; // 32rem
+/** The width of the page when the preview shows a phone. */
+const MOBILE_PAGE_WIDTH = 360;
 
 export interface StageSurfaceProps {
   /** A document that passes validateSurveyDocumentV1 */
@@ -54,6 +68,14 @@ export interface StageSurfaceProps {
   successTitle: string;
   successBody: ReactNode;
   /**
+   * Where the survey is shown: docked in the corner of a miniature page, or
+   * in the flow of a page with example content. The floating panel when left
+   * out.
+   */
+  presentation?: SurveyPresentation;
+  /** The width of the page when the survey stands at the content. */
+  inlineWidth?: InlinePreviewWidth;
+  /**
    * Reports the stage's current answer state on every answer, and an empty
    * map whenever the dock remounts (document edit, page switch, restart).
    */
@@ -63,12 +85,21 @@ export interface StageSurfaceProps {
    * reaches another page, and when the dock mounts. Multi-page documents only.
    */
   onStepChange?: (visibleStepIndex: number) => void;
+  /**
+   * Reports the size of the page the survey is shown on, each time it
+   * changes. The survey reports it as its viewport, and its device type
+   * follows from the width.
+   */
+  onViewportChange?: (viewport: PreviewViewport) => void;
 }
 
 /**
- * A miniature page with the real LumiSurveyDock docked in its corner.
- * The scaled wrapper's transform makes it the containing block for the
- * dock's fixed positioning — production placement, faithfully contained.
+ * A miniature page with the real widget on it. As the floating panel it is
+ * the real LumiSurveyDock docked in the corner: the scaled wrapper's
+ * transform makes it the containing block for the dock's fixed positioning —
+ * production placement, faithfully contained. At the content it is the real
+ * LumiSurveyInline in the flow of a page, below content that is marked as
+ * an example.
  */
 export const StageSurface = memo(function StageSurface({
   document,
@@ -82,8 +113,11 @@ export const StageSurface = memo(function StageSurface({
   nonce = 0,
   successTitle,
   successBody,
+  presentation = FLOATING_PANEL_PRESENTATION,
+  inlineWidth = "full",
   onAnswersChange,
   onStepChange,
+  onViewportChange,
 }: StageSurfaceProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({
@@ -118,11 +152,37 @@ export const StageSurface = memo(function StageSurface({
   const innerWidth = Math.round(viewport.width / scale);
   const innerHeight = Math.round(viewport.height / scale);
   const panelMaxHeight = `${Math.max(280, innerHeight - DOCK_OFFSET * 2 - 8)}px`;
+  const pageWidth =
+    inlineWidth === "mobile"
+      ? Math.min(MOBILE_PAGE_WIDTH, viewport.width)
+      : viewport.width;
+
+  // The page the survey is shown on: at the content, the page in the flow;
+  // as the floating panel, the miniature page it is docked in.
+  const simulatedWidth =
+    presentation.mode === "inline" ? pageWidth : innerWidth;
+  const simulatedHeight =
+    presentation.mode === "inline" ? viewport.height : innerHeight;
+  const simulatedViewport = useMemo(
+    () => ({ width: simulatedWidth, height: simulatedHeight }),
+    [simulatedWidth, simulatedHeight],
+  );
+  const onViewportChangeRef = useRef(onViewportChange);
+  onViewportChangeRef.current = onViewportChange;
+  useEffect(() => {
+    onViewportChangeRef.current?.(simulatedViewport);
+  }, [simulatedViewport]);
 
   const restartPageId = restartOnPageChange ? (initialPageId ?? "") : "";
+  // The two display modes are two components, so a change of mode starts a
+  // fresh respondent like the other parts of the key. At the content, a new
+  // `surveyId` starts one too: `LumiSurveyInline` treats it as a new survey,
+  // while the dock keeps its answers.
+  const respondentSurveyId = presentation.mode === "inline" ? surveyId : "";
   const dockKey = useMemo(
-    () => `${instanceKey}:${restartPageId}:${nonce}`,
-    [instanceKey, restartPageId, nonce],
+    () =>
+      `${instanceKey}:${restartPageId}:${nonce}:${presentation.mode}:${respondentSurveyId}`,
+    [instanceKey, restartPageId, nonce, presentation.mode, respondentSurveyId],
   );
 
   // Live answer mirror: the dock owns the respondent state; the editor only
@@ -139,7 +199,14 @@ export const StageSurface = memo(function StageSurface({
   const handleAnswer = useCallback((questionId: string, value: unknown) => {
     const next = { ...answersRef.current };
     if (keepsAnswer(value)) {
-      next[questionId] = Array.isArray(value) ? [...value] : value;
+      // Not `next[questionId] =`: for the id `__proto__` that would change
+      // the object's prototype and keep no answer.
+      Object.defineProperty(next, questionId, {
+        value: Array.isArray(value) ? [...value] : value,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
     } else {
       delete next[questionId];
     }
@@ -166,6 +233,82 @@ export const StageSurface = memo(function StageSurface({
     }),
     [handleAnswer, handleReset, handleStepChange],
   );
+
+  const success = document.success?.title.trim()
+    ? undefined
+    : { title: successTitle, body: successBody };
+
+  if (presentation.mode === "inline") {
+    const placementNote = presentation.placementNote?.trim();
+    return (
+      <div
+        ref={viewportRef}
+        className={styles.stageViewport}
+        data-roomy={roomy || undefined}
+        data-mode="inline"
+      >
+        <div className={styles.stageInlineScroller}>
+          <div className={styles.stageInlinePage} data-width={inlineWidth}>
+            <div className={styles.stageChrome} aria-hidden>
+              <span />
+              <span />
+              <span />
+              <span className={styles.stageUrl}>nav.no</span>
+            </div>
+            <div className={styles.stageInlineBody} data-width={inlineWidth}>
+              <div className={styles.stageExample}>
+                <Detail as="p" className={styles.eyebrow}>
+                  Eksempelinnhold
+                </Detail>
+                <BodyShort size="small">
+                  Her står innholdet i appen som surveyen spør om.
+                </BodyShort>
+                {placementNote ? (
+                  <BodyShort size="small">
+                    <span className={styles.stageExampleLabel}>
+                      Plassering:
+                    </span>{" "}
+                    {placementNote}
+                  </BodyShort>
+                ) : null}
+                <span
+                  className={styles.stageLine}
+                  data-width="72"
+                  aria-hidden
+                />
+                <span
+                  className={styles.stageLine}
+                  data-width="48"
+                  aria-hidden
+                />
+              </div>
+              <div className={styles.stageInlineSurvey}>
+                <LumiSurveyInline
+                  key={dockKey}
+                  surveyId={surveyId}
+                  survey={document}
+                  transport={inertTransport}
+                  // The tags of the embed example, so a question that is
+                  // shown by them is shown here too.
+                  context={{
+                    tags: previewContextTags(environmentTag, presentation),
+                  }}
+                  behavior={{
+                    questionLayout: "auto",
+                    showProgress,
+                    initialPageId,
+                    simulatedViewport,
+                  }}
+                  events={dockEvents}
+                  success={success}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -200,7 +343,7 @@ export const StageSurface = memo(function StageSurface({
           surveyId={surveyId}
           survey={document}
           transport={inertTransport}
-          context={{ tags: { environment: environmentTag } }}
+          context={{ tags: previewContextTags(environmentTag, presentation) }}
           behavior={{
             initialOpen: true,
             hideAfterSubmit: false,
@@ -208,15 +351,11 @@ export const StageSurface = memo(function StageSurface({
             showProgress,
             storageStrategy: "none",
             initialPageId,
-            simulatedViewport: { width: innerWidth, height: innerHeight },
+            simulatedViewport,
           }}
           style={{ offset: DOCK_OFFSET, panelMaxHeight }}
           events={dockEvents}
-          success={
-            document.success?.title.trim()
-              ? undefined
-              : { title: successTitle, body: successBody }
-          }
+          success={success}
         />
       </div>
     </div>

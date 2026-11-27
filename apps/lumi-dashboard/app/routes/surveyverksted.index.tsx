@@ -37,10 +37,11 @@ import {
   fetchSurveyAuthoringProjectsServerFn,
   fetchTeamsServerFn,
 } from "~/server/actions";
-import type {
-  SurveyAuthoringLatestRevision,
-  SurveyAuthoringProjectSummary,
-  SurveyAuthoringRevisionDetail,
+import {
+  FLOATING_PANEL_PRESENTATION,
+  type SurveyAuthoringLatestRevision,
+  type SurveyAuthoringProjectSummary,
+  type SurveyAuthoringRevisionDetail,
 } from "~/types/surveyAuthoring";
 import { isPublicDemoReadOnlyError } from "~/utils/publicDemo";
 import {
@@ -300,6 +301,9 @@ function SurveyWorkshopIndex() {
           name,
           surveyId,
           document: surveyTemplates[templateId].create(),
+          // A new survey starts as the floating panel. The author chooses
+          // where it is shown at the preview in the editor.
+          presentation: FLOATING_PANEL_PRESENTATION,
         },
       });
     },

@@ -3,6 +3,7 @@ import type { z } from "zod";
 import { logger } from "~/server/logger";
 import { BadGatewayError } from "~/server/serverFnStatus";
 import { ApiErrorException, ApiErrorSchema, ErrorType } from "~/types/errors";
+import { UNREADABLE_WRITE_ANSWER_MESSAGE } from "~/utils/apiErrorMessages";
 
 const ERROR_TYPES = new Set<unknown>(Object.values(ErrorType));
 
@@ -44,6 +45,28 @@ export async function handleApiResponse(response: Response): Promise<void> {
     "Backend error (unknown format)",
   );
   throw new BadGatewayError(failure);
+}
+
+/**
+ * Reads the answer to a write that Lumi API has accepted. The change is made,
+ * so an answer that cannot be read, or that breaks the contract, must not
+ * look like a refused write.
+ */
+export async function readWriteAnswer<S extends z.ZodType>(
+  response: Response,
+  schema: S,
+): Promise<z.output<S>> {
+  let answer: unknown;
+  try {
+    answer = await response.json();
+  } catch {
+    throw new BadGatewayError(UNREADABLE_WRITE_ANSWER_MESSAGE);
+  }
+  const result = schema.safeParse(answer);
+  if (!result.success) {
+    throw new BadGatewayError(UNREADABLE_WRITE_ANSWER_MESSAGE);
+  }
+  return result.data;
 }
 
 /**

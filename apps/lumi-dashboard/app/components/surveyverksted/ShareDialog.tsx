@@ -92,7 +92,9 @@ export function ShareDialog({
               Last siden på nytt før du deler.
             </Alert>
           ) : status === "save-uncertain" ? (
-            <Alert variant="warning">{LUMI_API_WRITE_TIMEOUT_MESSAGE}</Alert>
+            <Alert variant="warning">
+              {saveErrorMessage ?? LUMI_API_WRITE_TIMEOUT_MESSAGE}
+            </Alert>
           ) : status === "save-error" ? (
             <Alert variant="error">
               <BodyShort spacing>

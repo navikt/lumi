@@ -119,7 +119,10 @@ test("builds, saves, tries and shares questions with answer-dependent pages", as
   await expect(
     preview(page).getByRole("heading", { name: /Bidro møtet til en plan/ }),
   ).toBeVisible();
-  await expect(preview(page).getByRole("radio")).toHaveCount(6);
+  // Only the survey's own options: the preview also holds the display choice.
+  await expect(
+    preview(page).locator('[class*="stageViewport"]').getByRole("radio"),
+  ).toHaveCount(6);
   await expect(preview(page).getByRole("progressbar")).toHaveCount(0);
   await expect(
     preview(page).getByText("Steg 2", { exact: true }),

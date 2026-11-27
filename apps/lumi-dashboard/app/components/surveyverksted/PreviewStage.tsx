@@ -9,6 +9,12 @@ import type {
   SurveyDocumentV1,
 } from "@navikt/lumi-survey";
 import { memo, useEffect, useState } from "react";
+import type { SurveyPresentation } from "~/types/surveyAuthoring";
+import type { PreviewViewport } from "~/utils/liveVisibility";
+import {
+  type InlinePreviewWidth,
+  PresentationControls,
+} from "./PresentationControls";
 import { StageSurface } from "./StageSurface";
 import styles from "./verksted.module.css";
 
@@ -25,7 +31,15 @@ export interface PreviewStageProps {
   initialPageId: string;
   fullPreviewHref: string | null;
   stats: { pages: number; questions: number };
+  presentation: SurveyPresentation;
+  onPresentationChange: (presentation: SurveyPresentation) => void;
+  /** True when the API did not say which display the draft has. */
+  presentationUnknown?: boolean;
+  inlineWidth: InlinePreviewWidth;
+  onInlineWidthChange: (width: InlinePreviewWidth) => void;
   onAnswersChange?: (answers: Record<string, LumiSurveyAnswerValue>) => void;
+  /** The size of the page the stage shows the survey on, when it changes. */
+  onViewportChange?: (viewport: PreviewViewport) => void;
   onOpenFlow?: () => void;
   /** Unresolved handoff issues, badged on the flow button */
   flowIssueCount?: number;
@@ -43,7 +57,13 @@ export const PreviewStage = memo(function PreviewStage({
   initialPageId,
   fullPreviewHref,
   stats,
+  presentation,
+  onPresentationChange,
+  presentationUnknown = false,
+  inlineWidth,
+  onInlineWidthChange,
   onAnswersChange,
+  onViewportChange,
   onOpenFlow,
   flowIssueCount = 0,
 }: PreviewStageProps) {
@@ -147,6 +167,14 @@ export const PreviewStage = memo(function PreviewStage({
         </div>
       </div>
 
+      <PresentationControls
+        presentation={presentation}
+        onChange={onPresentationChange}
+        unknown={presentationUnknown}
+        inlineWidth={inlineWidth}
+        onInlineWidthChange={onInlineWidthChange}
+      />
+
       {!isValid ? (
         <Detail as="p" className={styles.stageStale} role="status">
           Utkastet har en feil — viser sist gyldige versjon.
@@ -161,7 +189,10 @@ export const PreviewStage = memo(function PreviewStage({
           environmentTag={STAGE_ENVIRONMENT_TAG}
           initialPageId={previewFromStart ? undefined : initialPageId}
           nonce={restartNonce}
+          presentation={presentation}
+          inlineWidth={inlineWidth}
           onAnswersChange={onAnswersChange}
+          onViewportChange={onViewportChange}
           successTitle="Slik ser kvitteringen ut"
           successBody="Bare en forhåndsvisning — ingenting ble sendt."
         />

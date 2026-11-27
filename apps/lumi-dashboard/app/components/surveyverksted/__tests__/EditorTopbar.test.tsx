@@ -61,4 +61,12 @@ describe("EditorTopbar save announcements", () => {
     rerenderTopbar(rerender, "saved");
     expect(screen.getByRole("status")).toHaveTextContent("Lagret");
   });
+
+  it("announces that the draft is saved when the author goes back to what is saved after an error", () => {
+    // Nothing is sent: the editor holds what the server holds again.
+    const { rerender } = renderTopbar("saved");
+    rerenderTopbar(rerender, "error");
+    rerenderTopbar(rerender, "saved");
+    expect(screen.getByRole("status")).toHaveTextContent("Lagret");
+  });
 });

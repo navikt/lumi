@@ -22,6 +22,8 @@ import no.nav.lumi.config.auth.authorizedTeam
 import no.nav.lumi.config.exception.ApiErrorException
 import no.nav.lumi.domain.CreateSurveyAuthoringProjectRequest
 import no.nav.lumi.domain.CreateSurveyAuthoringRevisionRequest
+import no.nav.lumi.domain.SurveyAuthoringPresentation
+import no.nav.lumi.domain.SurveyDisplayMode
 import no.nav.lumi.domain.UpdateSurveyAuthoringDraftRequest
 import no.nav.lumi.repository.CreateSurveyAuthoringRevisionResult
 import no.nav.lumi.repository.SurveyAuthoringProjectRepository
@@ -32,6 +34,7 @@ private val defaultSurveyAuthoringProjectRepository = SurveyAuthoringProjectRepo
 private val defaultSurveyAuthoringRevisionRepository = SurveyAuthoringRevisionRepository()
 private const val MAX_PROJECT_NAME_LENGTH = 120
 private const val MAX_SURVEY_ID_LENGTH = 200
+private const val MAX_PLACEMENT_NOTE_LENGTH = 200
 private const val MAX_DRAFT_BYTES = 256 * 1024
 private const val MAX_REQUEST_BYTES = MAX_DRAFT_BYTES + 16 * 1024
 private const val MAX_PROJECTS_PER_TEAM = 100
@@ -48,6 +51,8 @@ fun Route.surveyAuthoringRoutes(
     post<ApiV1Intern.Authoring.Projects> {
         val request = receiveAuthoringRequest<CreateSurveyAuthoringProjectRequest>(call)
         val validated = validateProjectInput(request.name, request.surveyId, request.document)
+        val presentation = request.presentation?.let(::validatePresentation)
+            ?: SurveyAuthoringPresentation.FLOATING_PANEL
         val principalIdentity = stablePrincipalIdentity(call.authorizedPrincipal)
             ?: throw ApiErrorException.BadRequestException("Authenticated user needs a stable identity")
 
@@ -56,6 +61,7 @@ fun Route.surveyAuthoringRoutes(
             name = validated.name,
             surveyId = validated.surveyId,
             document = request.document,
+            presentation = presentation,
             principalIdentity = principalIdentity,
             maxProjects = MAX_PROJECTS_PER_TEAM,
         ) ?: throw ApiErrorException.TooManyRequestsException(
@@ -88,6 +94,7 @@ fun Route.surveyAuthoringRoutes(
             throw ApiErrorException.BadRequestException("expectedVersion must be positive")
         }
         val validated = validateProjectInput(request.name, request.surveyId, request.document)
+        val presentation = request.presentation?.let(::validatePresentation)
         val team = call.authorizedTeam
         val projectId = parseProjectId(params.parent.projectId)
         val principalIdentity = stablePrincipalIdentity(call.authorizedPrincipal)
@@ -101,6 +108,7 @@ fun Route.surveyAuthoringRoutes(
                 name = validated.name,
                 surveyId = validated.surveyId,
                 document = request.document,
+                presentation = presentation,
                 principalIdentity = principalIdentity,
             )
         ) {
@@ -229,6 +237,45 @@ private fun validateProjectInput(
 
     return ValidatedProjectInput(name, surveyId)
 }
+
+/**
+ * A note is one short line of text. It is stored trimmed, and a blank note is
+ * stored as no note. It describes a place at the content, so the floating
+ * panel is stored without one.
+ */
+private fun validatePresentation(presentation: SurveyAuthoringPresentation): SurveyAuthoringPresentation {
+    val note = presentation.placementNote?.trim { it.isTrimmedLikeJavaScript() }.orEmpty()
+    // Counted in characters, as the column is. An emoji is two `Char`s.
+    if (note.codePointCount(0, note.length) > MAX_PLACEMENT_NOTE_LENGTH) {
+        throw ApiErrorException.BadRequestException(
+            "placementNote must contain at most $MAX_PLACEMENT_NOTE_LENGTH characters",
+        )
+    }
+    // U+2028 and U+2029 break a line without being control characters.
+    if (note.any { it.isISOControl() || it == '\u2028' || it == '\u2029' }) {
+        throw ApiErrorException.BadRequestException(
+            "placementNote must be a single line of text",
+        )
+    }
+    // JSON can carry half of a UTF-16 surrogate pair, which is no character.
+    // PostgreSQL would get a question mark in its place.
+    if (!Charsets.UTF_8.newEncoder().canEncode(note)) {
+        throw ApiErrorException.BadRequestException(
+            "placementNote must be valid Unicode text",
+        )
+    }
+    val kept = note.takeIf { it.isNotEmpty() && presentation.mode == SurveyDisplayMode.INLINE }
+    return presentation.copy(placementNote = kept)
+}
+
+/**
+ * What JavaScript's `trim()` removes, which the dashboard uses on the note.
+ * Kotlin's own `trim()` also removes control characters such as U+001C, which
+ * the dashboard rejects, and keeps U+FEFF, which the dashboard removes.
+ */
+private fun Char.isTrimmedLikeJavaScript(): Boolean =
+    this in "\t\n\u000B\u000C\r\u2028\u2029\uFEFF" ||
+        Character.getType(this) == Character.SPACE_SEPARATOR.toInt()
 
 private fun parseProjectId(value: String): UUID = try {
     UUID.fromString(value)

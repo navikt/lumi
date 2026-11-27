@@ -6,6 +6,7 @@ const base = {
   team: "team-a",
   name: "Kvitteringsside",
   surveyId: "kvittering-v1",
+  presentation: { mode: "dock" as const, placementNote: null },
   createdAt: "2026-09-01T08:00:00Z",
   updatedAt: "2026-09-02T08:00:00Z",
 };

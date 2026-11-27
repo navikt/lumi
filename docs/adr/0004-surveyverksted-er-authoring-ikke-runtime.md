@@ -47,7 +47,8 @@ konsumenter.
    utviklingsmiljøets drafts er disposable. Delbare produksjonsrevisjoner er
    teamautoriserte.
 7. **Authoring og analytics har ulike hasher.** `documentHash` identifiserer
-   hele authoring-revisjonen. Dagens
+   surveydokumentet i authoring-revisjonen (presisert 2026-11-23, se
+   [Visningsmåte](#visningsmate)). Dagens
    `definitionHash` beskriver bare svarenes analytiske struktur og endres ikke
    av page-titler eller layout.
 
@@ -70,6 +71,54 @@ konsumenter.
 
 Revisjoner lagres fortsatt utenfor `survey_definitions`; første reelle
 innsending registrerer fremdeles produksjonens analytiske definisjon.
+
+## Visningsmåte (lagt til 2026-11-23) {#visningsmate}
+
+Den som lager surveyen, velger om den skal vises som flytende panel eller ved
+innholdet, og kan beskrive plasseringen i appen (#805, #806).
+
+- Visningsmåten og plasseringsbeskrivelsen er authoring-metadata, som navn og
+  `surveyId`. De ligger i kolonnene `display_mode` og `placement_note` på
+  prosjektet og kopieres til revisjonen når den opprettes.
+- Plasseringsbeskrivelsen hører til visning ved innholdet. API-et lagrer ingen
+  beskrivelse for flytende panel.
+- De er ikke en del av `SurveyDocumentV1` og inngår verken i `documentHash`
+  eller `definitionHash`. To revisjoner med samme dokument og ulik visning har
+  samme `documentHash`.
+- En lagring som bare endrer visningen, øker `draft_version`. En revisjon er
+  knyttet til en lagret draft-versjon, så endringen kan deles som en ny
+  revisjon.
+- Valget er en beskjed til utvikleren. Produksjon er fortsatt survey-as-code,
+  og appen velger komponent og plassering i koden.
+- Prosjekter og revisjoner fra før valget fantes, er flytende panel.
+- Forhåndsvisningen bruker komponenten som hører til valget, `LumiSurveyDock`
+  eller `LumiSurveyInline`, med inert transport som før. Ved innholdet setter
+  den de samme `context.tags` som innbyggingseksempelet på versjonssiden.
+- Et API fra før V29 kjenner ikke kolonnene. Kolonnene på revisjonen har
+  derfor ingen standardverdi, og en trigger kopierer prosjektets verdier når en
+  revisjon opprettes uten dem. Valget fryses dermed riktig også mens gamle og
+  nye instanser kjører samtidig, og etter en tilbakerulling av API-et. Er
+  utkastet lagret på nytt mens revisjonen opprettes, avviser triggeren den.
+- API-et må settes i produksjon før dashboardet. Et dashboard uten feltet kan
+  lagre mot et nytt API, som da beholder den lagrede visningen.
+- Mens dashboardet rulles ut, kan en server fra før valget svare på en
+  lagring. Den utelater visningen i kallet til API-et, som da beholder den
+  lagrede. Editoren sjekker derfor visningen i svaret, prøver igjen og sier fra
+  når valget ikke ble lagret. En side som var åpen før valget fantes, kan
+  fortsatt lagre utkastet.
+- Svarer et API fra før V29 når et utkast åpnes, vet ikke editoren hvilken
+  visning utkastet har. Den sender da ingen visning, og valget kan ikke endres
+  før siden er lastet på nytt, heller ikke når et senere svar sier hvilken
+  visning som er lagret.
+- Svarer et API fra før V29 på en lagring, er visningen den som var lagret
+  fra før. Editoren regner med den, og sier fra når et nytt valg ikke ble
+  lagret. Svarer det når en revisjon eller forhåndsvisningen i egen fane
+  åpnes, sier siden at visningen ikke kunne hentes, og versjonssiden viser
+  ikke eksempelet for appen.
+
+Egne kolonner er valgt framfor et metadataobjekt i `draft`-kolonnen fordi
+`draft` er selve `SurveyDocumentV1`, og fordi databasen da kan avvise ukjente
+verdier.
 
 ## Konsekvenser
 

@@ -6,7 +6,7 @@ import {
   PUBLIC_DEMO_READ_ONLY_TEXT,
   writeErrorText,
 } from "~/utils/publicDemo";
-import { isRetryableSaveError } from "~/utils/surveyAuthoringErrors";
+import { isRetryable, saveFailureOf } from "~/utils/surveyAuthoringErrors";
 
 const refusal = new Error(PUBLIC_DEMO_READ_ONLY_MESSAGE);
 
@@ -32,7 +32,7 @@ describe("writeErrorText", () => {
     expect(
       writeErrorText(error, "Endringen ble ikke lagret. Prøv igjen."),
     ).toBe(LUMI_API_WRITE_TIMEOUT_MESSAGE);
-    expect(isRetryableSaveError(error)).toBe(false);
+    expect(isRetryable(saveFailureOf(error))).toBe(false);
   });
 
   it("does not pass through arbitrary details appended to a known timeout message", () => {
@@ -55,6 +55,6 @@ describe("writeErrorText", () => {
   });
 
   it("is never retried as a transient save error", () => {
-    expect(isRetryableSaveError(refusal)).toBe(false);
+    expect(isRetryable(saveFailureOf(refusal))).toBe(false);
   });
 });

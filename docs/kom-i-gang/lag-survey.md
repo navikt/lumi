@@ -26,9 +26,17 @@ Utkastet lagres automatisk for teamet.
 
 Survey-ID-en holder svarene sammen i dashboardet: alle svar med samme survey-ID regnes som den samme surveyen, se [Survey-identitet og endringer](/guider/survey-identitet). Utvikleren bestemmer den endelige ID-en i koden. Forslaget kan dere endre under **Innstillinger for utkastet**, tannhjulet øverst i utkastet.
 
-## Hvor og når brukeren ser surveyen
+## Hvor og når brukeren ser surveyen {#visning}
 
-Som standard ligger widgeten nederst til høyre i nettleservinduet og er åpen når siden lastes. Lukker brukeren den med krysset, blir den liggende som knappen **Gi tilbakemelding**, og etter innsending forsvinner den helt når brukeren lukker den. Om og hvor lenge widgeten husker at brukeren har lukket den, står i [Lagring](/guider/lagring).
+Under **Visning** ved forhåndsvisningen velger dere hvordan surveyen skal vises i appen. Valget lagres med utkastet og står på versjonssiden når dere deler en versjon. Det er en beskjed til utvikleren, som setter surveyen inn i appen.
+
+**Flytende panel** er valgt i nye utkast. Da ligger widgeten nederst til høyre i nettleservinduet. Den er bare åpen når siden lastes hvis den får lagre at brukeren lukker den. Med standardinnstillingen krever det Nav-dekoratøren og at brukeren har samtykket. Ellers starter den minimert som knappen **Gi tilbakemelding**, og brukeren åpner surveyen selv. Lukker brukeren panelet med krysset, blir det liggende som knappen, og etter innsending forsvinner det helt når brukeren lukker det. Se [Lagring](/guider/lagring#uten-samtykke).
+
+Velg **Ved innholdet** når surveyen spør om en bestemt del av siden. Da er den en del av siden, og brukeren kan ikke lukke den. Den lagrer ingenting, og vises derfor også for brukere som ikke har samtykket. Se [Vis surveyen ved innholdet](/guider/inline-survey) for hva som ellers er annerledes for brukeren.
+
+Når **Ved innholdet** er valgt, viser forhåndsvisningen surveyen ved et eksempelinnhold, og **Prøv i egen fane** gjør det samme. Under **Bredde i forhåndsvisningen** kan dere se surveyen i **Full bredde**, **Smal kolonne** og **Mobil**. I **Plassering i appen (valgfritt)** kan dere skrive hvor surveyen skal stå, for eksempel «Under resultatlisten». Utvikleren ser teksten på versjonssiden. Plasseringen hører til **Ved innholdet** og lagres ikke når **Flytende panel** er valgt.
+
+Dere kan bytte visning uten at spørsmålene, sidene eller reglene for når et spørsmål vises, endres.
 
 ## Sjekk surveyen før dere deler
 
@@ -50,9 +58,12 @@ Den delte versjonen beholder innholdet sitt når dere fortsetter å redigere utk
 Fra versjonssiden kan dere:
 
 - velge **Kopier TypeScript** for å hente surveyen til appen
+- velge **Kopier eksempelet** under **Slik viser appen surveyen** for å hente et eksempel med `LumiSurveyInline` eller `LumiSurveyDock`, etter visningen dere har valgt
 - velge **Kopier lenke og sammendrag** for å lime inn lenken i en oppgave eller pull request
-- se under **Hva er endret?** hva som er endret fra forrige delte versjon
+- se under **Hva er endret?** hva som er endret fra forrige delte versjon, også visningen og plasseringen
 - prøve surveyen i den ekte widgeten uten å sende inn data
+
+**Visning** står sammen med survey-ID-en på versjonssiden, og **Plassering** står der når dere har skrevet en. Versjoner som ble delt før valget fantes, vises som **Flytende panel**.
 
 ### Endringer som krever ny survey-ID
 

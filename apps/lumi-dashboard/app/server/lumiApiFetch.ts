@@ -1,5 +1,8 @@
 import { HttpStatusError } from "~/server/serverFnStatus";
-import { LUMI_API_WRITE_TIMEOUT_MESSAGE } from "~/utils/apiErrorMessages";
+import {
+  LUMI_API_READ_TIMEOUT_MESSAGE,
+  LUMI_API_WRITE_TIMEOUT_MESSAGE,
+} from "~/utils/apiErrorMessages";
 
 export const LUMI_API_TIMEOUT_MS = 30_000;
 export const LUMI_API_LONG_TIMEOUT_MS = 150_000;
@@ -10,9 +13,7 @@ export class LumiApiTimeoutError extends HttpStatusError {
       method.toUpperCase() === "GET" || method.toUpperCase() === "HEAD";
     super(
       504,
-      read
-        ? "Lumi API brukte for lang tid. Prøv igjen om litt."
-        : LUMI_API_WRITE_TIMEOUT_MESSAGE,
+      read ? LUMI_API_READ_TIMEOUT_MESSAGE : LUMI_API_WRITE_TIMEOUT_MESSAGE,
     );
     this.name = "LumiApiTimeoutError";
   }

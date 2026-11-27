@@ -342,14 +342,14 @@ export function slugifyOptionValue(
 }
 
 /**
- * Lowest `@navikt/lumi-survey` release that understands `authoringSchemaVersion: 1`.
- * The page-based document format landed after 1.0.0, so an export handed to a
- * consumer on an older widget will not type-check or render.
+ * The first `@navikt/lumi-survey` release where `transport` takes
+ * `{ endpoint }`. The document format is older: 2.0.0 reads it, and 2.2.1
+ * shows follow-up questions and progress right.
  */
-export const MIN_WIDGET_VERSION_FOR_DOCUMENTS = "2.0.0";
+export const MIN_WIDGET_VERSION_FOR_ENDPOINT_TRANSPORT = "2.5.0";
 
-/** Includes document follow-up visibility and conditional progress fixes. */
-export const RECOMMENDED_WIDGET_VERSION_FOR_DOCUMENTS = "2.2.1";
+/** The first `@navikt/lumi-survey` release with `LumiSurveyInline`. */
+export const MIN_WIDGET_VERSION_FOR_INLINE = "2.6.0";
 
 export function createQuestion(
   type: QuestionTypeId,

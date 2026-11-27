@@ -21,11 +21,14 @@ import {
   CreateSurveyAuthoringProjectSchema,
   CreateSurveyAuthoringRevisionSchema,
   SaveSurveyAuthoringDraftSchema,
+  SurveyAuthoringProjectAnswerSchema,
   SurveyAuthoringProjectIdSchema,
+  SurveyAuthoringRevisionAnswerSchema,
   SurveyAuthoringRevisionIdSchema,
   SurveyAuthoringTeamSchema,
+  withPresentation,
 } from "~/types/surveyAuthoring";
-import { handleApiResponse } from "../fetchUtils";
+import { handleApiResponse, readWriteAnswer } from "../fetchUtils";
 
 /**
  * Whether this deployment accepts Surveyverksted writes. The write functions
@@ -64,7 +67,9 @@ export const fetchSurveyAuthoringProjectsServerFn = createServerFn({
         { headers: getHeaders(oboToken) },
       );
       await handleApiResponse(response);
-      return response.json() as Promise<SurveyAuthoringProjectSummary[]>;
+      return ((await response.json()) as SurveyAuthoringProjectSummary[]).map(
+        withPresentation,
+      );
     },
   );
 
@@ -92,7 +97,7 @@ export const fetchSurveyAuthoringProjectServerFn = createServerFn({
       { headers: getHeaders(oboToken) },
     );
     await handleApiResponse(response);
-    return response.json() as Promise<SurveyAuthoringProject>;
+    return withPresentation((await response.json()) as SurveyAuthoringProject);
   });
 
 export const deleteSurveyAuthoringProjectServerFn = createServerFn({
@@ -154,11 +159,12 @@ export const createSurveyAuthoringProjectServerFn = createServerFn({
           name: data.name,
           surveyId: data.surveyId,
           document: data.document,
+          presentation: data.presentation,
         }),
       },
     );
     await handleApiResponse(response);
-    return response.json() as Promise<SurveyAuthoringProject>;
+    return withPresentation((await response.json()) as SurveyAuthoringProject);
   });
 
 export const saveSurveyAuthoringDraftServerFn = createServerFn({
@@ -191,11 +197,14 @@ export const saveSurveyAuthoringDraftServerFn = createServerFn({
           name: data.name,
           surveyId: data.surveyId,
           document: data.document,
+          presentation: data.presentation,
         }),
       },
     );
     await handleApiResponse(response);
-    return response.json() as Promise<SurveyAuthoringProject>;
+    return withPresentation(
+      await readWriteAnswer(response, SurveyAuthoringProjectAnswerSchema),
+    );
   });
 
 export const fetchSurveyAuthoringRevisionsServerFn = createServerFn({
@@ -223,7 +232,9 @@ export const fetchSurveyAuthoringRevisionsServerFn = createServerFn({
         { headers: getHeaders(oboToken) },
       );
       await handleApiResponse(response);
-      return response.json() as Promise<SurveyAuthoringRevisionSummary[]>;
+      return ((await response.json()) as SurveyAuthoringRevisionSummary[]).map(
+        withPresentation,
+      );
     },
   );
 
@@ -258,7 +269,9 @@ export const createSurveyAuthoringRevisionServerFn = createServerFn({
       },
     );
     await handleApiResponse(response);
-    return response.json() as Promise<SurveyAuthoringRevision>;
+    return withPresentation(
+      await readWriteAnswer(response, SurveyAuthoringRevisionAnswerSchema),
+    );
   });
 
 export const fetchSurveyAuthoringRevisionServerFn = createServerFn({
@@ -288,6 +301,12 @@ export const fetchSurveyAuthoringRevisionServerFn = createServerFn({
         { headers: getHeaders(oboToken) },
       );
       await handleApiResponse(response);
-      return response.json() as Promise<SurveyAuthoringRevisionDetail>;
+      const detail = (await response.json()) as SurveyAuthoringRevisionDetail;
+      return {
+        revision: withPresentation(detail.revision),
+        previousRevision: detail.previousRevision
+          ? withPresentation(detail.previousRevision)
+          : null,
+      };
     },
   );

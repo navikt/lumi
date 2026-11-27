@@ -265,6 +265,79 @@ describe("mock survey authoring store", () => {
     expect(store.listMockSurveyRevisions("team-a", project.id)).toHaveLength(2);
   });
 
+  it("gives two shares of the same draft at once the same revision", async () => {
+    const store = await import("../surveyAuthoring");
+    const project = store.createMockSurveyProject({
+      team: "team-a",
+      name: "Utkast",
+      surveyId: "survey-samtidig",
+      document,
+    });
+    const share = () =>
+      store.createMockSurveyRevision({
+        team: "team-a",
+        projectId: project.id,
+        expectedDraftVersion: 1,
+      });
+
+    const [first, second] = await Promise.all([share(), share()]);
+
+    expect(second.id).toBe(first.id);
+    expect(store.listMockSurveyRevisions("team-a", project.id)).toHaveLength(1);
+  });
+
+  it("keeps the presentation as the API does: a default, kept when a save leaves it out, frozen with each revision", async () => {
+    const store = await import("../surveyAuthoring");
+    const atTheContent = {
+      mode: "inline" as const,
+      placementNote: "Under resultatlisten",
+    };
+    const project = store.createMockSurveyProject({
+      team: "team-a",
+      name: "Utkast",
+      surveyId: "survey-visning",
+      document,
+    });
+    const save = (
+      expectedVersion: number,
+      presentation?: typeof atTheContent,
+    ) =>
+      store.saveMockSurveyProject({
+        team: "team-a",
+        projectId: project.id,
+        expectedVersion,
+        name: "Utkast",
+        surveyId: "survey-visning",
+        document,
+        presentation,
+      });
+    const share = (expectedDraftVersion: number) =>
+      store.createMockSurveyRevision({
+        team: "team-a",
+        projectId: project.id,
+        expectedDraftVersion,
+      });
+
+    expect(project.presentation).toEqual({ mode: "dock", placementNote: null });
+    const asPanel = await share(1);
+
+    expect(save(1, atTheContent).presentation).toEqual(atTheContent);
+    // A save that knows no presentation leaves the stored one alone.
+    expect(save(2).presentation).toEqual(atTheContent);
+    const atContent = await share(3);
+
+    expect(atContent.presentation).toEqual(atTheContent);
+    expect(atContent.revisionNumber).toBe(2);
+    // The document is the same, so the presentation is outside the hash.
+    expect(atContent.documentHash).toBe(asPanel.documentHash);
+    const detail = store.getMockSurveyRevisionDetail("team-a", atContent.id);
+    expect(detail?.revision.presentation).toEqual(atTheContent);
+    expect(detail?.previousRevision?.presentation).toEqual({
+      mode: "dock",
+      placementNote: null,
+    });
+  });
+
   it("lists each project's newest shared version alongside the draft", async () => {
     const store = await import("../surveyAuthoring");
     const shared = store.createMockSurveyProject({

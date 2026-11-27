@@ -24,21 +24,27 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
+import {
+  DISPLAY_MODE_LABELS,
+  type InlinePreviewWidth,
+  PresentationControls,
+} from "~/components/surveyverksted/PresentationControls";
 import { StageSurface } from "~/components/surveyverksted/StageSurface";
 import {
   fetchSurveyAuthoringRevisionServerFn,
   fetchSurveyAuthoringRevisionsServerFn,
 } from "~/server/actions";
-import type { SurveyAuthoringRevisionDetail } from "~/types/surveyAuthoring";
 import {
-  MIN_WIDGET_VERSION_FOR_DOCUMENTS,
-  RECOMMENDED_WIDGET_VERSION_FOR_DOCUMENTS,
-} from "~/utils/surveyDocument";
+  type SurveyAuthoringRevisionDetail,
+  withPresentation,
+} from "~/types/surveyAuthoring";
 import {
   createRevisionMarkdown,
+  DISPLAY_MODE_COMPONENTS,
   describeRevisionChanges,
   serializeSurveyDocumentJson,
   serializeSurveyDocumentTypeScript,
+  serializeSurveyEmbedExample,
 } from "~/utils/surveyRevision";
 import styles from "./surveyverksted-revision.module.css";
 
@@ -54,8 +60,17 @@ function SurveyRevisionRoute() {
   const { team } = Route.useSearch();
   const revisionQuery = useQuery({
     queryKey: ["survey-authoring-revision", team, revisionId],
+    // A server from before the display choice existed can answer while a
+    // new version is rolled out. Its answer has no presentation.
     queryFn: () =>
-      fetchSurveyAuthoringRevisionServerFn({ data: { team, revisionId } }),
+      fetchSurveyAuthoringRevisionServerFn({ data: { team, revisionId } }).then(
+        ({ revision, previousRevision }) => ({
+          revision: withPresentation(revision),
+          previousRevision: previousRevision
+            ? withPresentation(previousRevision)
+            : null,
+        }),
+      ),
   });
 
   if (revisionQuery.isPending) {
@@ -106,7 +121,16 @@ function SurveyRevision({
       }),
   });
 
-  useEffect(() => setRevisionUrl(window.location.href), []);
+  // The page stays mounted when the user moves to another version that is
+  // already loaded, so the link is made from the version it shows.
+  useEffect(() => {
+    const path = router.buildLocation({
+      to: "/surveyverksted/revisions/$revisionId",
+      params: { revisionId: revision.id },
+      search: { team },
+    }).href;
+    setRevisionUrl(new URL(path, window.location.origin).href);
+  }, [revision.id, router, team]);
 
   const validation = useMemo(() => {
     try {
@@ -129,11 +153,26 @@ function SurveyRevision({
     () => serializeSurveyDocumentTypeScript(revision.document),
     [revision.document],
   );
-  const diff = useMemo(
+  const embedExample = useMemo(
     () =>
-      describeRevisionChanges(revision.document, previousRevision?.document),
-    [previousRevision?.document, revision.document],
+      serializeSurveyEmbedExample({
+        surveyId: revision.surveyId,
+        presentation: revision.presentation,
+      }),
+    [revision.presentation, revision.surveyId],
   );
+  const diff = useMemo(
+    () => describeRevisionChanges(revision, previousRevision),
+    [previousRevision, revision],
+  );
+  // An API from before the display choice existed sends none. The page then
+  // shows the floating panel, says so, and gives no example for the app.
+  const presentationUnknown = Boolean(revision.presentationUnknown);
+  const isInline = revision.presentation.mode === "inline";
+  const placementNote = revision.presentation.placementNote?.trim();
+  const embedComponent = DISPLAY_MODE_COMPONENTS[revision.presentation.mode];
+  // The width of the preview is a way to look at the version, not a part of it.
+  const [inlineWidth, setInlineWidth] = useState<InlinePreviewWidth>("full");
   const markdown = revisionUrl
     ? createRevisionMarkdown(revision, revisionUrl)
     : "";
@@ -237,7 +276,9 @@ function SurveyRevision({
                   Prøv surveyen slik brukeren møter den
                 </Heading>
                 <BodyShort textColor="subtle">
-                  Gå gjennom hele surveyen her. Svarene lagres ikke.
+                  {isInline
+                    ? "Surveyen vises ved eksempelinnhold, slik den er tenkt plassert i appen. Svarene lagres ikke."
+                    : "Gå gjennom hele surveyen her. Svarene lagres ikke."}
                 </BodyShort>
               </div>
               <Tooltip content="Start forhåndsvisningen på nytt">
@@ -252,14 +293,27 @@ function SurveyRevision({
                 />
               </Tooltip>
             </HStack>
+            {presentationUnknown ? (
+              <Alert variant="warning" size="small">
+                Visningsvalget kunne ikke hentes, så forhåndsvisningen viser
+                flytende panel. Last siden på nytt for å se valget.
+              </Alert>
+            ) : null}
             {validation.document ? (
               <div className={styles.stageWrap}>
+                <PresentationControls
+                  presentation={revision.presentation}
+                  inlineWidth={inlineWidth}
+                  onInlineWidthChange={setInlineWidth}
+                />
                 <StageSurface
                   document={validation.document}
                   instanceKey={revision.id}
                   surveyId={`revision-preview-${revision.surveyId}`}
                   environmentTag="survey-workshop-revision"
                   nonce={restartNonce}
+                  presentation={revision.presentation}
+                  inlineWidth={inlineWidth}
                   successTitle="Du har fullført forhåndsvisningen"
                   successBody="Dette var bare en forhåndsvisning. Ingen svar ble sendt inn."
                 />
@@ -289,19 +343,34 @@ function SurveyRevision({
               Utvikleren kan kopiere TypeScript eller laste ned hele oppsettet
               som JSON.
             </BodyShort>
-            <Alert variant="info" size="small" className={styles.exportNotice}>
-              <BodyShort size="small" spacing>
-                Bruk <code>@navikt/lumi-survey</code>{" "}
-                {RECOMMENDED_WIDGET_VERSION_FOR_DOCUMENTS} eller nyere for
-                riktig håndtering av oppfølgingsspørsmål ved endrede svar og
-                fremdrift i betingede svarløp. Selve dokumentformatet krever
-                minst versjon {MIN_WIDGET_VERSION_FOR_DOCUMENTS}.
-              </BodyShort>
-              <code className={styles.exportInstall}>
-                pnpm add @navikt/lumi-survey@^
-                {RECOMMENDED_WIDGET_VERSION_FOR_DOCUMENTS}
-              </code>
-            </Alert>
+            {presentationUnknown ? (
+              <Alert
+                variant="warning"
+                size="small"
+                className={styles.exportNotice}
+              >
+                Visningsvalget kunne ikke hentes, så eksempelet for appen vises
+                ikke. Last siden på nytt for å se det.
+              </Alert>
+            ) : (
+              <Alert
+                variant="info"
+                size="small"
+                className={styles.exportNotice}
+              >
+                <BodyShort size="small" spacing>
+                  Surveyen skal vises{" "}
+                  {isInline ? "ved innholdet" : "som flytende panel"}, med{" "}
+                  <code>{embedComponent.component}</code>. Eksempelet under
+                  krever <code>@navikt/lumi-survey</code>{" "}
+                  {embedComponent.minWidgetVersion} eller nyere.
+                </BodyShort>
+                <code className={styles.exportInstall}>
+                  pnpm add @navikt/lumi-survey@^
+                  {embedComponent.minWidgetVersion}
+                </code>
+              </Alert>
+            )}
             <div className={styles.exportGrid}>
               <div className={styles.exportCard} data-featured="true">
                 <div className={styles.exportIcon} aria-hidden>
@@ -371,6 +440,32 @@ function SurveyRevision({
                 </pre>
               </div>
             </details>
+            {presentationUnknown ? null : (
+              <div className={styles.embedExample}>
+                <div className={styles.shareRow}>
+                  <div>
+                    <Heading size="small" level="3">
+                      Slik viser appen surveyen
+                    </Heading>
+                    <BodyShort size="small" textColor="subtle">
+                      Et eksempel med <code>{embedComponent.component}</code>,
+                      som passer visningen som er valgt. Utvikleren bestemmer
+                      selv hvor komponenten står, og hvor svarene sendes.
+                    </BodyShort>
+                  </div>
+                  <CopyButton
+                    copyText={embedExample}
+                    text="Kopier eksempelet"
+                    activeText="Eksempelet kopiert"
+                  />
+                </div>
+                <div className={styles.codeScroller}>
+                  <pre>
+                    <code>{embedExample}</code>
+                  </pre>
+                </div>
+              </div>
+            )}
           </section>
         </VStack>
 
@@ -399,6 +494,20 @@ function SurveyRevision({
               <dt>Survey-ID</dt>
               <dd>{revision.surveyId}</dd>
             </div>
+            <div>
+              <dt>Visning</dt>
+              <dd>
+                {presentationUnknown
+                  ? "Kunne ikke hentes"
+                  : DISPLAY_MODE_LABELS[revision.presentation.mode]}
+              </dd>
+            </div>
+            {placementNote ? (
+              <div>
+                <dt>Plassering</dt>
+                <dd>{placementNote}</dd>
+              </div>
+            ) : null}
             <div>
               <dt>Opprettet av</dt>
               <dd>{revision.createdBy}</dd>
